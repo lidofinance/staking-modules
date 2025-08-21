@@ -435,14 +435,14 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         address manager = nextAddress();
         address rewards = nextAddress();
 
-        vm.expectEmit(true, true, true, true, address(cm));
+        vm.expectEmit(address(cm));
         emit INOAddresses.NodeOperatorManagerAddressChanged(
             noId,
             nodeOperator,
             manager
         );
 
-        vm.expectEmit(true, true, true, true, address(cm));
+        vm.expectEmit(address(cm));
         emit INOAddresses.NodeOperatorRewardAddressChanged(
             noId,
             nodeOperator,
@@ -479,14 +479,14 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         address manager = nextAddress();
         address rewards = nextAddress();
 
-        vm.expectEmit(true, true, true, true, address(cm));
+        vm.expectEmit(address(cm));
         emit INOAddresses.NodeOperatorManagerAddressChanged(
             noId,
             managerToChange,
             manager
         );
 
-        vm.expectEmit(true, true, true, true, address(cm));
+        vm.expectEmit(address(cm));
         emit INOAddresses.NodeOperatorRewardAddressChanged(
             noId,
             rewardsToChange,
@@ -520,14 +520,14 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         address manager = nextAddress();
         address rewards = nextAddress();
 
-        vm.expectEmit(true, true, true, true, address(cm));
+        vm.expectEmit(address(cm));
         emit INOAddresses.NodeOperatorManagerAddressChanged(
             noId,
             nodeOperator,
             manager
         );
 
-        vm.expectEmit(true, true, true, true, address(cm));
+        vm.expectEmit(address(cm));
         emit INOAddresses.NodeOperatorRewardAddressChanged(
             noId,
             nodeOperator,
@@ -564,14 +564,14 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         address manager = nextAddress();
         address rewards = nextAddress();
 
-        vm.expectEmit(true, true, true, true, address(cm));
+        vm.expectEmit(address(cm));
         emit INOAddresses.NodeOperatorManagerAddressChanged(
             noId,
             managerToChange,
             manager
         );
 
-        vm.expectEmit(true, true, true, true, address(cm));
+        vm.expectEmit(address(cm));
         emit INOAddresses.NodeOperatorRewardAddressChanged(
             noId,
             rewardsToChange,
@@ -609,7 +609,7 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         uint256 snapshot = vm.snapshotState();
 
         {
-            vm.expectEmit(true, true, true, true, address(cm));
+            vm.expectEmit(address(cm));
             emit INOAddresses.NodeOperatorRewardAddressChanged(
                 noId,
                 rewardsToChange,
@@ -623,7 +623,7 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         vm.revertToState(snapshot);
 
         {
-            vm.expectEmit(true, true, true, true, address(cm));
+            vm.expectEmit(address(cm));
             emit INOAddresses.NodeOperatorManagerAddressChanged(
                 noId,
                 managerToChange,

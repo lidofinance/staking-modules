@@ -128,6 +128,7 @@ contract VettedGateTest is VettedGateTestBase {
 
         assertEq(vettedGate.curveId(), curveId);
         assertEq(vettedGate.treeRoot(), root);
+        assertEq(keccak256(bytes(vettedGate.treeCid())), keccak256(bytes(cid)));
         assertEq(
             vettedGate.getRoleMemberCount(vettedGate.DEFAULT_ADMIN_ROLE()),
             1
