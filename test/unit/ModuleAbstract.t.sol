@@ -128,7 +128,6 @@ abstract contract ModuleFixtures is
         address managerAddress,
         bool extendedManagerPermissions
     ) internal returns (uint256) {
-        vm.prank(module.getRoleMember(module.CREATE_NODE_OPERATOR_ROLE(), 0));
         return
             module.createNodeOperator(
                 managerAddress,
@@ -6675,6 +6674,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
+        module.onSlashedValidatorWithdrawable(noId, keyIndex);
 
         uint256 slashingPenalty = 5 ether;
 
@@ -6705,6 +6705,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
+        module.onSlashedValidatorWithdrawable(noId, keyIndex);
 
         uint256 slashingPenalty = 5 ether;
 
@@ -6735,6 +6736,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
+        module.onSlashedValidatorWithdrawable(noId, keyIndex);
 
         uint256 slashingPenalty = 7 ether;
         uint256 multiplier = 5;
@@ -6756,6 +6758,33 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 slashingPenalty
             )
         );
+        module.submitWithdrawals(withdrawalInfo);
+    }
+
+    function test_submitWithdrawals_slashingPenalty_RevertWhenNotReported()
+        public
+        assertInvariants
+    {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        uint256 slashingPenalty = 5 ether;
+
+        ValidatorWithdrawalInfo[]
+            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(
+            noId,
+            keyIndex,
+            module.MIN_ACTIVATION_BALANCE(),
+            slashingPenalty
+        );
+
+        vm.expectRevert(
+            ICSModule.SlashingPenaltyIsNotApplicable.selector,
+            address(module)
+        );
+
         module.submitWithdrawals(withdrawalInfo);
     }
 
@@ -7588,6 +7617,46 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             "Module nonce should increment only once for batch withdrawals"
         );
     }
+
+    function test_onSlashedValidatorWithdrawable_HappyPath() public {
+        uint256 noId = createNodeOperator(17);
+        module.obtainDepositData(17, "");
+        uint256 keyIndex = 11;
+        bytes memory pubkey = module.getSigningKeys(noId, keyIndex, 1);
+
+        vm.expectEmit(address(module));
+        emit ICSModule.SlashedValidatorWithdrawable(noId, keyIndex, pubkey);
+
+        module.onSlashedValidatorWithdrawable(noId, keyIndex);
+        assertTrue(module.isSlashedValidatorWithdrawable(noId, keyIndex));
+    }
+
+    function test_onSlashedValidatorWithdrawable_canBeCalledMultipleTimes()
+        public
+    {
+        uint256 noId = createNodeOperator(17);
+        module.obtainDepositData(17, "");
+        uint256 keyIndex = 11;
+
+        module.onSlashedValidatorWithdrawable(noId, keyIndex);
+        module.onSlashedValidatorWithdrawable(noId, keyIndex);
+    }
+
+    function test_onSlashedValidatorWithdrawable_RevertWhen_OperatorDoesNotExist()
+        public
+    {
+        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        module.onSlashedValidatorWithdrawable(0, 0);
+    }
+
+    function test_onSlashedValidatorWithdrawable_RevertWhen_InvalidKeyIndex()
+        public
+    {
+        uint256 noId = createNodeOperator(1);
+
+        vm.expectRevert(ICSModule.SigningKeysInvalidOffset.selector);
+        module.onSlashedValidatorWithdrawable(noId, 0);
+    }
 }
 
 abstract contract ModuleGetStakingModuleSummary is ModuleFixtures {
@@ -7780,9 +7849,32 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         );
     }
 
-    function test_verifierRole_submitWithdrawals() public {
+    function test_verifierRole() public {
         uint256 noId = createNodeOperator();
         bytes32 role = module.VERIFIER_ROLE();
+
+        vm.startPrank(admin);
+        module.grantRole(role, actor);
+        module.grantRole(module.STAKING_ROUTER_ROLE(), admin);
+        module.obtainDepositData(1, "");
+        vm.stopPrank();
+
+        vm.prank(actor);
+        module.onSlashedValidatorWithdrawable(noId, 0);
+    }
+
+    function test_verifierRole_revert() public {
+        uint256 noId = createNodeOperator();
+        bytes32 role = module.VERIFIER_ROLE();
+
+        vm.prank(stranger);
+        expectRoleRevert(stranger, role);
+        module.onSlashedValidatorWithdrawable(noId, 0);
+    }
+
+    function test_submitWithdrawalsRole() public {
+        uint256 noId = createNodeOperator();
+        bytes32 role = module.SUBMIT_WITHDRAWALS_ROLE();
 
         vm.startPrank(admin);
         module.grantRole(role, actor);
@@ -7798,9 +7890,9 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         module.submitWithdrawals(withdrawalInfo);
     }
 
-    function test_verifierRole_submitWithdrawals_revert() public {
+    function test_submitWithdrawalsRole_revert() public {
         uint256 noId = createNodeOperator();
-        bytes32 role = module.VERIFIER_ROLE();
+        bytes32 role = module.SUBMIT_WITHDRAWALS_ROLE();
 
         ValidatorWithdrawalInfo[]
             memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);

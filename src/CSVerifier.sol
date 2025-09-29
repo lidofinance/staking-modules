@@ -188,6 +188,62 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
     }
 
     /// @inheritdoc ICSVerifier
+    function processSlashedWithdrawableProof(
+        ProcessSlashedWithdrawableInput calldata data
+    ) external {
+        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.recentBlock.header.slot);
+        }
+
+        {
+            bytes32 trustedHeaderRoot = _getParentBlockRoot(
+                data.recentBlock.rootsTimestamp
+            );
+            if (trustedHeaderRoot != data.recentBlock.header.hashTreeRoot()) {
+                revert InvalidBlockHeader();
+            }
+        }
+
+        if (!data.validator.object.slashed) {
+            revert ValidatorIsNotSlashed();
+        }
+
+        if (
+            _computeEpochAtSlot(data.recentBlock.header.slot) <
+            data.validator.object.withdrawableEpoch
+        ) {
+            revert ValidatorIsNotWithdrawable();
+        }
+
+        {
+            bytes memory pubkey = MODULE.getSigningKeys(
+                data.validator.nodeOperatorId,
+                data.validator.keyIndex,
+                1
+            );
+
+            if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) {
+                revert InvalidPublicKey();
+            }
+        }
+
+        SSZ.verifyProof({
+            proof: data.validator.proof,
+            root: data.recentBlock.header.stateRoot,
+            leaf: data.validator.object.hashTreeRoot(),
+            gI: _getValidatorGI(
+                data.validator.index,
+                data.recentBlock.header.slot
+            )
+        });
+
+        MODULE.onSlashedValidatorWithdrawable(
+            data.validator.nodeOperatorId,
+            data.validator.keyIndex
+        );
+    }
+
+    /// @inheritdoc ICSVerifier
     function processWithdrawalProof(
         RecentHeaderWitness calldata beaconBlock,
         WithdrawalWitness calldata witness,

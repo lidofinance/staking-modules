@@ -2,7 +2,7 @@
 solc = "0.8.24"
 evm_version = "cancun"
 optimizer = true
-optimizer_runs = 100 # REVISE IN THE FUTURE
+optimizer_runs = 0 # REVISE IN THE FUTURE
 bytecode_hash = "none" # The metadata hash removed from the bytecode (not the metadata itself).
 # uncomment this to inspect storage layouts in build artifacts
 # extra_output = ["storageLayout"]

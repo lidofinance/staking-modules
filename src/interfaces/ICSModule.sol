@@ -66,6 +66,7 @@ interface ICSModule is
     error ExitedKeysHigherThanTotalDeposited();
     error ExitedKeysDecrease();
     error ZeroExitBalance();
+    error SlashingPenaltyIsNotApplicable();
 
     error InvalidInput();
     error NotEnoughKeys();
@@ -126,6 +127,11 @@ interface ICSModule is
         uint256 slashingPenalty,
         bytes pubkey
     );
+    event SlashedValidatorWithdrawable(
+        uint256 indexed nodeOperatorId,
+        uint256 keyIndex,
+        bytes pubkey
+    );
 
     event BatchEnqueued(
         uint256 indexed queuePriority,
@@ -166,6 +172,8 @@ interface ICSModule is
         returns (bytes32);
 
     function VERIFIER_ROLE() external view returns (bytes32);
+
+    function SUBMIT_WITHDRAWALS_ROLE() external view returns (bytes32);
 
     function RECOVERER_ROLE() external view returns (bytes32);
 
@@ -463,6 +471,15 @@ interface ICSModule is
         uint256 keysCount
     ) external view returns (bytes memory keys, bytes memory signatures);
 
+    /// @notice Report Node Operator's key as slashed and withdrawable
+    /// @notice Called by `CSVerifier` contract. See `CSVerifier.processSlashedWithdrawableProof`.
+    /// @param nodeOperatorId The ID of the Node Operator
+    /// @param keyIndex The index of the validator key that was slashed
+    function onSlashedValidatorWithdrawable(
+        uint256 nodeOperatorId,
+        uint256 keyIndex
+    ) external;
+
     /// @notice Report Node Operator's keys as withdrawn and settle withdrawn amount
     /// @notice Called by `CSVerifier` contract.
     ///         See `CSVerifier.processWithdrawalProof` to use this method permissionless
@@ -470,6 +487,15 @@ interface ICSModule is
     function submitWithdrawals(
         ValidatorWithdrawalInfo[] calldata withdrawalsInfo
     ) external;
+
+    /// @notice Checks if a slashed validator is withdrawable
+    /// @param nodeOperatorId The ID of the node operator
+    /// @param keyIndex The index of the validator key
+    /// @return bool False if a validator was not reported as slashed and withdrawable
+    function isSlashedValidatorWithdrawable(
+        uint256 nodeOperatorId,
+        uint256 keyIndex
+    ) external view returns (bool);
 
     /// @notice Check if the given Node Operator's key is reported as withdrawn
     /// @param nodeOperatorId ID of the Node Operator

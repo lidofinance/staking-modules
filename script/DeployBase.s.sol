@@ -582,6 +582,11 @@ abstract contract DeployBase is Script {
             );
 
             csm.grantRole(csm.VERIFIER_ROLE(), address(verifier));
+            csm.grantRole(csm.SUBMIT_WITHDRAWALS_ROLE(), address(verifier));
+            csm.grantRole(
+                csm.SUBMIT_WITHDRAWALS_ROLE(),
+                config.easyTrackEVMScriptExecutor
+            );
 
             if (config.secondAdminAddress != address(0)) {
                 if (config.secondAdminAddress == deployer) {

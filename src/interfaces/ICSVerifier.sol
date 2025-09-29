@@ -95,11 +95,17 @@ interface ICSVerifier {
         HistoricalHeaderWitness consolidationBlock;
     }
 
+    struct ProcessSlashedWithdrawableInput {
+        ValidatorWitness validator;
+        RecentHeaderWitness recentBlock;
+    }
+
     error RootNotFound();
     error InvalidBlockHeader();
     error InvalidChainConfig();
     error PartialWithdrawal();
     error ValidatorIsSlashed();
+    error ValidatorIsNotSlashed();
     error ValidatorIsNotWithdrawable();
     error InvalidWithdrawalAddress();
     error InvalidPublicKey();
@@ -160,6 +166,12 @@ interface ICSVerifier {
 
     /// @notice Resume write methods calls
     function resume() external;
+
+    /// @notice Verify proof of a slashed validator being withdrawable and report it to the module
+    /// @param data @see ProcessSlashedWithdrawableInput
+    function processSlashedWithdrawableProof(
+        ProcessSlashedWithdrawableInput calldata data
+    ) external;
 
     /// @notice Verify withdrawal proof and report withdrawal to the module for valid proofs
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
