@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.24;
 
-import { BeaconBlockHeader, Withdrawal, Validator } from "./Types.sol";
+import { BeaconBlockHeader, Withdrawal, Validator, PendingConsolidation } from "./Types.sol";
 import { GIndex } from "./GIndex.sol";
 
 library SSZ {
@@ -271,8 +271,28 @@ library SSZ {
             );
     }
 
-    // See https://github.com/succinctlabs/telepathy-contracts/blob/5aa4bb7/src/libraries/SimpleSerialize.sol#L17-L28
+    function hashTreeRoot(
+        PendingConsolidation memory consolidation
+    ) internal pure returns (bytes32) {
+        return
+            sha256(
+                bytes.concat(
+                    toLittleEndian(consolidation.sourceIndex),
+                    toLittleEndian(consolidation.targetIndex)
+                )
+            );
+    }
+
     function toLittleEndian(uint256 v) internal pure returns (bytes32) {
+        return endianReverse(bytes32(v));
+    }
+
+    function toLittleEndian(bool v) internal pure returns (bytes32) {
+        return bytes32(v ? 1 << 248 : 0);
+    }
+
+    // See https://github.com/succinctlabs/telepathy-contracts/blob/5aa4bb7/src/libraries/SimpleSerialize.sol#L17-L28
+    function endianReverse(bytes32 v) internal pure returns (bytes32) {
         v =
             ((v &
                 0xFF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00) >>
@@ -302,10 +322,6 @@ library SSZ {
                 0x0000000000000000FFFFFFFFFFFFFFFF0000000000000000FFFFFFFFFFFFFFFF) <<
                 64);
         v = (v >> 128) | (v << 128);
-        return bytes32(v);
-    }
-
-    function toLittleEndian(bool v) internal pure returns (bytes32) {
-        return bytes32(v ? 1 << 248 : 0);
+        return v;
     }
 }

@@ -1,4 +1,6 @@
 set dotenv-load
+
+import? ".local.just"
 import "fork.just"
 
 chain := env_var_or_default("CHAIN", "mainnet")
@@ -75,7 +77,7 @@ test-all:
 
 # Run all unit tests
 test-unit *args:
-    forge test --no-match-path 'test/fork/*' -vvv {{args}}
+    forge test --skip script --no-match-path 'test/fork/*' -vvv {{args}}
 
 # Run all deployment tests that should be executed against full scratch deployment before the module activation vote
 test-deployment-full-scratch *args:
@@ -331,4 +333,3 @@ test-v2-only-deploy *args:
 
 _warn message:
     @tput setaf 3 && printf "[WARNING]" && tput sgr0 && echo " {{message}}"
-

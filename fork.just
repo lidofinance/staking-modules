@@ -53,8 +53,8 @@ stuck-keys noId stuckKeysCount:
     just _impersonate-script NodeOperators --sig="stuck\(uint256,uint256\)" -- {{noId}} {{stuckKeysCount}}
 
 defaultAmount := "32000000000000000000"
-withdraw-key noId keyIndex amount=defaultAmount:
-    just _impersonate-script NodeOperators --sig="withdraw\(uint256,uint256,uint256\)" -- {{noId}} {{keyIndex}} {{amount}}
+withdraw-key noId keyIndex exitBalance=defaultAmount slashingPenalty="0":
+    just _impersonate-script NodeOperators --sig="withdraw\(uint256,uint256,uint256,uint256\)" -- {{noId}} {{keyIndex}} {{exitBalance}} {{slashingPenalty}}
 
 slash-key noId keyIndex:
     just _impersonate-script NodeOperators --sig="slash\(uint256,uint256\)" -- {{noId}} {{keyIndex}}

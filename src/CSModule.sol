@@ -47,7 +47,10 @@ contract CSModule is
     bytes32 public constant CREATE_NODE_OPERATOR_ROLE =
         keccak256("CREATE_NODE_OPERATOR_ROLE");
 
-    uint256 public constant DEPOSIT_SIZE = 32 ether;
+    uint256 public constant MIN_ACTIVATION_BALANCE = 32 ether;
+    uint256 public constant PENALTY_QUOTIENT = 32 ether;
+    uint256 public constant MAX_PENALTY_MULTIPLIER = 64;
+
     // @dev see IStakingModule.sol
     uint8 private constant FORCED_TARGET_LIMIT_MODE_ID = 2;
     // keccak256(abi.encode(uint256(keccak256("OPERATORS_CREATED_IN_TX_MAP_TSLOT")) - 1)) & ~bytes32(uint256(0xff))
@@ -719,6 +722,12 @@ contract CSModule is
         for (uint256 i; i < withdrawalsInfo.length; ++i) {
             ValidatorWithdrawalInfo memory withdrawalInfo = withdrawalsInfo[i];
 
+            // For slashed validator this value should reflect pre-slashing, hence non-zero balance.
+            // For non-slashed validator it will reflect the withdrawal amount, hence it cannot be zero either.
+            if (withdrawalInfo.exitBalance == 0) {
+                revert ZeroExitBalance();
+            }
+
             _onlyExistingNodeOperator(withdrawalInfo.nodeOperatorId);
             NodeOperator storage no = _nodeOperators[
                 withdrawalInfo.nodeOperatorId
@@ -736,6 +745,8 @@ contract CSModule is
                 continue;
             }
 
+            anySubmission = true;
+
             _isValidatorWithdrawn[pointer] = true;
             unchecked {
                 ++no.totalWithdrawnKeys;
@@ -747,29 +758,49 @@ contract CSModule is
                 1
             );
 
+            // solhint-disable-next-line func-named-parameters
             emit WithdrawalSubmitted(
                 withdrawalInfo.nodeOperatorId,
                 withdrawalInfo.keyIndex,
-                withdrawalInfo.amount,
+                withdrawalInfo.exitBalance,
+                withdrawalInfo.slashingPenalty,
                 pubkey
             );
-            anySubmission = true;
 
-            // It is safe to use unchecked for penalty sum because it's limited to uint248 in the structure.
             uint256 penaltySum;
+            // penaltyMultiplier is >= 1
+            uint256 penaltyMultiplier = Math.max(
+                withdrawalInfo.exitBalance,
+                MIN_ACTIVATION_BALANCE
+            ) / PENALTY_QUOTIENT;
+            // It's rather unlikely that the value will exceed 64 because anything above maximum effective balance of a
+            // validator will likely be withdrawn while it waits for a withdrawal. The introduced limit makes it
+            // possible to use unchecked blocks below and acts as an additional limiting factor.
+            penaltyMultiplier = Math.min(
+                MAX_PENALTY_MULTIPLIER,
+                penaltyMultiplier
+            );
+
             bool chargeWithdrawalRequestFee;
 
+            // It is safe to use unchecked for penalty sum because base penalties and fees are limited to uint248 in the
+            // MarkedUint248 structures used to store them, and the maximum multiplier is limited to 64, so
+            // `type(uint248).max * 64 * 2 < type(uint256).max`.
             ExitPenaltyInfo memory exitPenaltyInfo = EXIT_PENALTIES
                 .getExitPenaltyInfo(withdrawalInfo.nodeOperatorId, pubkey);
             if (exitPenaltyInfo.delayPenalty.isValue) {
                 unchecked {
-                    penaltySum += exitPenaltyInfo.delayPenalty.value;
+                    penaltySum +=
+                        exitPenaltyInfo.delayPenalty.value *
+                        penaltyMultiplier;
                 }
                 chargeWithdrawalRequestFee = true;
             }
             if (exitPenaltyInfo.strikesPenalty.isValue) {
                 unchecked {
-                    penaltySum += exitPenaltyInfo.strikesPenalty.value;
+                    penaltySum +=
+                        exitPenaltyInfo.strikesPenalty.value *
+                        penaltyMultiplier;
                 }
                 chargeWithdrawalRequestFee = true;
             }
@@ -792,11 +823,18 @@ contract CSModule is
                 );
             }
 
-            if (DEPOSIT_SIZE > withdrawalInfo.amount) {
+            if (withdrawalInfo.slashingPenalty > 0) {
+                // Slashing penalty doesn't scale because all the losses are already accounted.
+                penaltySum += withdrawalInfo.slashingPenalty;
+            } else if (withdrawalInfo.exitBalance < MIN_ACTIVATION_BALANCE) {
+                // type(uint248).max * 64 * 2 + 32 * 10**18 < type(uint256).max
                 unchecked {
-                    penaltySum += DEPOSIT_SIZE - withdrawalInfo.amount;
+                    penaltySum +=
+                        MIN_ACTIVATION_BALANCE -
+                        withdrawalInfo.exitBalance;
                 }
             }
+
             if (penaltySum > 0) {
                 isFullyBurned = _accounting.penalize(
                     withdrawalInfo.nodeOperatorId,
