@@ -196,13 +196,19 @@ contract NodeOperators is
     function withdraw(
         uint256 noId,
         uint256 keyIndex,
-        uint256 amount
+        uint256 exitBalance,
+        uint256 slashingPenalty
     ) external broadcastVerifier {
         uint256 withdrawnBefore = csm.getNodeOperator(noId).totalWithdrawnKeys;
 
         ValidatorWithdrawalInfo[]
             memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(noId, keyIndex, amount);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(
+            noId,
+            keyIndex,
+            exitBalance,
+            slashingPenalty
+        );
         csm.submitWithdrawals(withdrawalInfo);
 
         assertTrue(csm.isValidatorWithdrawn(noId, keyIndex));

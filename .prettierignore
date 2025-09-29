@@ -1,8 +1,6 @@
 node_modules
 out/
 cache/
-lib/
-!src/lib
 GAS.md
 artifacts/
 docs/

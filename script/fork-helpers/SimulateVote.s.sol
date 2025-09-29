@@ -192,6 +192,7 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
         //         csm.VERIFIER_ROLE(),
         //         address(deploymentConfig.verifierV2)
         //     );
+        //     TODO: Grant VERIFIER_ROLE on CSModule to EasyTrack executor.
 
         //     csm.revokeRole(csm.PAUSE_ROLE(), address(deploymentConfig.gateSeal));
         //     accounting.revokeRole(

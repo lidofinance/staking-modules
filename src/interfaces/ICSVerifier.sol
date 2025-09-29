@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.24;
 
-import { BeaconBlockHeader, Slot } from "../lib/Types.sol";
+import { BeaconBlockHeader, PendingConsolidation, Slot, Validator } from "../lib/Types.sol";
 import { GIndex } from "../lib/GIndex.sol";
 import { ICSModule } from "./ICSModule.sol";
 
@@ -17,9 +17,13 @@ interface ICSVerifier {
         GIndex gIFirstHistoricalSummaryCurr;
         GIndex gIFirstBlockRootInSummaryPrev;
         GIndex gIFirstBlockRootInSummaryCurr;
+        GIndex gIFirstBalanceNodePrev;
+        GIndex gIFirstBalanceNodeCurr;
+        GIndex gIFirstPendingConsolidationPrev;
+        GIndex gIFirstPendingConsolidationCurr;
     }
 
-    struct ProvableBeaconBlockHeader {
+    struct RecentHeaderWitness {
         BeaconBlockHeader header; // Header of a block which root is a root at rootsTimestamp.
         uint64 rootsTimestamp; // To be passed to the EIP-4788 block roots contract.
     }
@@ -61,12 +65,45 @@ interface ICSVerifier {
         bytes32[] proof;
     }
 
+    struct ValidatorWitness {
+        uint64 index; // Index of a validator in a Beacon state.
+        uint32 nodeOperatorId;
+        uint32 keyIndex; // Index of the withdrawn key in the Node Operator's keys storage.
+        Validator object;
+        bytes32[] proof;
+    }
+
+    struct BalanceWitness {
+        bytes32 node;
+        bytes32[] proof;
+    }
+
+    struct PendingConsolidationWitness {
+        PendingConsolidation object;
+        uint64 offset; // in the list of pending consolidations
+        bytes32[] proof;
+    }
+
+    struct ProcessConsolidationInput {
+        PendingConsolidationWitness consolidation;
+        ValidatorWitness validator;
+        // Represents the validator's balance before the CL processes the pending consolidation. Used as a proxy for the
+        // "withdrawal balance" in accounting/penalties, since consolidation is not an EL withdrawal.
+        BalanceWitness balance;
+        RecentHeaderWitness recentBlock;
+        HistoricalHeaderWitness withdrawableBlock;
+        HistoricalHeaderWitness consolidationBlock;
+    }
+
     error RootNotFound();
     error InvalidBlockHeader();
     error InvalidChainConfig();
     error PartialWithdrawal();
-    error ValidatorNotWithdrawn();
+    error ValidatorIsSlashed();
+    error ValidatorIsNotWithdrawable();
     error InvalidWithdrawalAddress();
+    error InvalidPublicKey();
+    error InvalidConsolidationSource();
     error UnsupportedSlot(Slot slot);
     error ZeroModuleAddress();
     error ZeroWithdrawalAddress();
@@ -125,28 +162,43 @@ interface ICSVerifier {
     function resume() external;
 
     /// @notice Verify withdrawal proof and report withdrawal to the module for valid proofs
+    /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
+    /// determining the exact penalty amounts and calling the `ICSModule.submitWithdrawals` method via an EasyTrack
+    /// motion.
     /// @param beaconBlock Beacon block header
     /// @param witness Withdrawal witness against the `beaconBlock`'s state root.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndex Index of the validator key in the Node Operator's key storage
     function processWithdrawalProof(
-        ProvableBeaconBlockHeader calldata beaconBlock,
+        RecentHeaderWitness calldata beaconBlock,
         WithdrawalWitness calldata witness,
         uint256 nodeOperatorId,
         uint256 keyIndex
     ) external;
 
     /// @notice Verify withdrawal proof against historical summaries data and report withdrawal to the module for valid proofs
+    /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
+    /// determining the exact penalty amounts and calling the `ICSModule.submitWithdrawals` method via an EasyTrack
+    /// motion.
     /// @param beaconBlock Beacon block header
     /// @param oldBlock Historical block header witness
     /// @param witness Withdrawal witness
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndex Index of the validator key in the Node Operator's key storage
     function processHistoricalWithdrawalProof(
-        ProvableBeaconBlockHeader calldata beaconBlock,
+        RecentHeaderWitness calldata beaconBlock,
         HistoricalHeaderWitness calldata oldBlock,
         WithdrawalWitness calldata witness,
         uint256 nodeOperatorId,
         uint256 keyIndex
+    ) external;
+
+    /// @notice Processes a validator's consolidation from a module's validator. The balance before consolidation is
+    /// assumed to be the withdrawal balance.
+    /// @dev The caveat is that a pending consolidation is processed later, making it impossible to account for losses
+    /// or rewards during the waiting period, as there's no indication of consolidation processing in the state.
+    /// @param data @see ProcessConsolidationInput struct
+    function processConsolidation(
+        ProcessConsolidationInput calldata data
     ) external;
 }
