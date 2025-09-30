@@ -127,7 +127,7 @@ interface ICSModule is
         uint256 slashingPenalty,
         bytes pubkey
     );
-    event SlashedValidatorWithdrawable(
+    event ValidatorSlashed(
         uint256 indexed nodeOperatorId,
         uint256 keyIndex,
         bytes pubkey
@@ -471,11 +471,11 @@ interface ICSModule is
         uint256 keysCount
     ) external view returns (bytes memory keys, bytes memory signatures);
 
-    /// @notice Report Node Operator's key as slashed and withdrawable
-    /// @notice Called by `CSVerifier` contract. See `CSVerifier.processSlashedWithdrawableProof`.
+    /// @notice Report Node Operator's key as slashed.
+    /// @notice Called by `CSVerifier` contract. See `CSVerifier.processSlashedProof`.
     /// @param nodeOperatorId The ID of the Node Operator
     /// @param keyIndex The index of the validator key that was slashed
-    function onSlashedValidatorWithdrawable(
+    function onValidatorSlashed(
         uint256 nodeOperatorId,
         uint256 keyIndex
     ) external;
@@ -488,11 +488,11 @@ interface ICSModule is
         ValidatorWithdrawalInfo[] calldata withdrawalsInfo
     ) external;
 
-    /// @notice Checks if a slashed validator is withdrawable
+    /// @notice Checks if a validator is sla
     /// @param nodeOperatorId The ID of the node operator
     /// @param keyIndex The index of the validator key
-    /// @return bool False if a validator was not reported as slashed and withdrawable
-    function isSlashedValidatorWithdrawable(
+    /// @return bool True if a validator was reported as slashed
+    function isValidatorSlashed(
         uint256 nodeOperatorId,
         uint256 keyIndex
     ) external view returns (bool);

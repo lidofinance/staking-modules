@@ -689,7 +689,7 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
 contract CSVerifierSlashingTest is CSVerifierTestBase {
     struct Fixture {
         bytes32 blockRoot;
-        ICSVerifier.ProcessSlashedWithdrawableInput data;
+        ICSVerifier.ProcessSlashedInput data;
     }
 
     Fixture internal fixture;
@@ -742,32 +742,31 @@ contract CSVerifierSlashingTest is CSVerifierTestBase {
         );
     }
 
-    function test_processSlashedWithdrawable_HappyPath() public {
+    function test_processSlashed_HappyPath() public {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.onSlashedValidatorWithdrawable.selector,
+                ICSModule.onValidatorSlashed.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex
             )
         );
 
-        verifier.processSlashedWithdrawableProof(fixture.data);
+        verifier.processSlashedProof(fixture.data);
     }
 
-    function test_processSlashedWithdrawable_RevertWhenPaused() public {
+    function test_processSlashed_RevertWhenPaused() public {
         vm.prank(admin);
         verifier.pauseFor(100_500);
-        assertTrue(verifier.isPaused());
 
         vm.expectRevert(
             PausableUntil.ResumedExpected.selector,
             address(verifier)
         );
-        verifier.processSlashedWithdrawableProof(fixture.data);
+        verifier.processSlashedProof(fixture.data);
     }
 
-    function test_processSlashedWithdrawable_RevertWhen_RecentBlockSlotUnsupported()
+    function test_processSlashed_RevertWhen_RecentBlockSlotUnsupported()
         public
     {
         fixture.data.recentBlock.header.slot = verifier
@@ -780,39 +779,35 @@ contract CSVerifierSlashingTest is CSVerifierTestBase {
                 fixture.data.recentBlock.header.slot
             )
         );
-        verifier.processSlashedWithdrawableProof(fixture.data);
+        verifier.processSlashedProof(fixture.data);
     }
 
-    function test_processSlashedWithdrawable_RevertWhen_NotSlashed() public {
+    function test_processSlashed_RevertWhen_NotSlashed() public {
         fixture.data.validator.object.slashed = false;
 
         vm.expectRevert(ICSVerifier.ValidatorIsNotSlashed.selector);
-        verifier.processSlashedWithdrawableProof(fixture.data);
+        verifier.processSlashedProof(fixture.data);
     }
 
-    function test_processSlashedWithdrawable_RevertWhen_InvalidPublicKey()
-        public
-    {
+    function test_processSlashed_RevertWhen_InvalidPublicKey() public {
         fixture.data.validator.object.pubkey = hex"deadbeef";
 
         vm.expectRevert(ICSVerifier.InvalidPublicKey.selector);
-        verifier.processSlashedWithdrawableProof(fixture.data);
+        verifier.processSlashedProof(fixture.data);
     }
 
-    function test_processSlashedWithdrawable_RevertWhen_ValidatorIsNotWithdrawable()
-        public
-    {
-        fixture.data.validator.object.withdrawableEpoch =
-            fixture.data.recentBlock.header.slot.unwrap() *
-            32 +
-            1;
-        vm.expectRevert(ICSVerifier.ValidatorIsNotWithdrawable.selector);
-        verifier.processSlashedWithdrawableProof(fixture.data);
-    }
+    // function test_processSlashed_RevertWhen_ValidatorIsNotWithdrawable()
+    //     public
+    // {
+    //     fixture.data.validator.object.withdrawableEpoch =
+    //         fixture.data.recentBlock.header.slot.unwrap() *
+    //         32 +
+    //         1;
+    //     vm.expectRevert(ICSVerifier.ValidatorIsNotWithdrawable.selector);
+    //     verifier.processSlashedProof(fixture.data);
+    // }
 
-    function test_processSlashedWithdrawable_RevertWhen_InvalidBlockHeader()
-        public
-    {
+    function test_processSlashed_RevertWhen_InvalidBlockHeader() public {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
             abi.encode(fixture.data.recentBlock.rootsTimestamp),
@@ -820,7 +815,7 @@ contract CSVerifierSlashingTest is CSVerifierTestBase {
         );
 
         vm.expectRevert(ICSVerifier.InvalidBlockHeader.selector);
-        verifier.processSlashedWithdrawableProof(fixture.data);
+        verifier.processSlashedProof(fixture.data);
     }
 
     function _setMocks() internal {
@@ -842,9 +837,7 @@ contract CSVerifierSlashingTest is CSVerifierTestBase {
 
         vm.mockCall(
             address(module),
-            abi.encodeWithSelector(
-                ICSModule.onSlashedValidatorWithdrawable.selector
-            ),
+            abi.encodeWithSelector(ICSModule.onValidatorSlashed.selector),
             ""
         );
     }

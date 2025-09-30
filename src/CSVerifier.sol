@@ -188,8 +188,8 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
     }
 
     /// @inheritdoc ICSVerifier
-    function processSlashedWithdrawableProof(
-        ProcessSlashedWithdrawableInput calldata data
+    function processSlashedProof(
+        ProcessSlashedInput calldata data
     ) external whenResumed {
         if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.recentBlock.header.slot);
@@ -208,12 +208,13 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
             revert ValidatorIsNotSlashed();
         }
 
-        if (
-            _computeEpochAtSlot(data.recentBlock.header.slot) <
-            data.validator.object.withdrawableEpoch
-        ) {
-            revert ValidatorIsNotWithdrawable();
-        }
+        // TODO: Consider uncommenting or removing the block.
+        // if (
+        //     _computeEpochAtSlot(data.recentBlock.header.slot) <
+        //     data.validator.object.withdrawableEpoch
+        // ) {
+        //     revert ValidatorIsNotWithdrawable();
+        // }
 
         {
             bytes memory pubkey = MODULE.getSigningKeys(
@@ -237,7 +238,7 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
             )
         });
 
-        MODULE.onSlashedValidatorWithdrawable(
+        MODULE.onValidatorSlashed(
             data.validator.nodeOperatorId,
             data.validator.keyIndex
         );

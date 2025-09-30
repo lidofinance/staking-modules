@@ -6674,7 +6674,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
-        module.onSlashedValidatorWithdrawable(noId, keyIndex);
+        module.onValidatorSlashed(noId, keyIndex);
 
         uint256 slashingPenalty = 5 ether;
 
@@ -6705,7 +6705,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
-        module.onSlashedValidatorWithdrawable(noId, keyIndex);
+        module.onValidatorSlashed(noId, keyIndex);
 
         uint256 slashingPenalty = 5 ether;
 
@@ -6736,7 +6736,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
-        module.onSlashedValidatorWithdrawable(noId, keyIndex);
+        module.onValidatorSlashed(noId, keyIndex);
 
         uint256 slashingPenalty = 7 ether;
         uint256 multiplier = 5;
@@ -7618,44 +7618,38 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         );
     }
 
-    function test_onSlashedValidatorWithdrawable_HappyPath() public {
+    function test_onValidatorSlashed_HappyPath() public {
         uint256 noId = createNodeOperator(17);
         module.obtainDepositData(17, "");
         uint256 keyIndex = 11;
         bytes memory pubkey = module.getSigningKeys(noId, keyIndex, 1);
 
         vm.expectEmit(address(module));
-        emit ICSModule.SlashedValidatorWithdrawable(noId, keyIndex, pubkey);
+        emit ICSModule.ValidatorSlashed(noId, keyIndex, pubkey);
 
-        module.onSlashedValidatorWithdrawable(noId, keyIndex);
-        assertTrue(module.isSlashedValidatorWithdrawable(noId, keyIndex));
+        module.onValidatorSlashed(noId, keyIndex);
+        assertTrue(module.isValidatorSlashed(noId, keyIndex));
     }
 
-    function test_onSlashedValidatorWithdrawable_canBeCalledMultipleTimes()
-        public
-    {
+    function test_onValidatorSlashed_canBeCalledMultipleTimes() public {
         uint256 noId = createNodeOperator(17);
         module.obtainDepositData(17, "");
         uint256 keyIndex = 11;
 
-        module.onSlashedValidatorWithdrawable(noId, keyIndex);
-        module.onSlashedValidatorWithdrawable(noId, keyIndex);
+        module.onValidatorSlashed(noId, keyIndex);
+        module.onValidatorSlashed(noId, keyIndex);
     }
 
-    function test_onSlashedValidatorWithdrawable_RevertWhen_OperatorDoesNotExist()
-        public
-    {
+    function test_onValidatorSlashed_RevertWhen_OperatorDoesNotExist() public {
         vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
-        module.onSlashedValidatorWithdrawable(0, 0);
+        module.onValidatorSlashed(0, 0);
     }
 
-    function test_onSlashedValidatorWithdrawable_RevertWhen_InvalidKeyIndex()
-        public
-    {
+    function test_onValidatorSlashed_RevertWhen_InvalidKeyIndex() public {
         uint256 noId = createNodeOperator(1);
 
         vm.expectRevert(ICSModule.SigningKeysInvalidOffset.selector);
-        module.onSlashedValidatorWithdrawable(noId, 0);
+        module.onValidatorSlashed(noId, 0);
     }
 }
 
@@ -7860,7 +7854,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         vm.stopPrank();
 
         vm.prank(actor);
-        module.onSlashedValidatorWithdrawable(noId, 0);
+        module.onValidatorSlashed(noId, 0);
     }
 
     function test_verifierRole_revert() public {
@@ -7869,7 +7863,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        module.onSlashedValidatorWithdrawable(noId, 0);
+        module.onValidatorSlashed(noId, 0);
     }
 
     function test_submitWithdrawalsRole() public {

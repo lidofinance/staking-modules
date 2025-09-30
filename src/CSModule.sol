@@ -100,8 +100,7 @@ contract CSModule is
     mapping(uint256 => NodeOperator) internal _nodeOperators;
     /// @dev see _keyPointer function for details of noKeyIndexPacked structure
     mapping(uint256 noKeyIndexPacked => bool) private _isValidatorWithdrawn;
-    mapping(uint256 noKeyIndexPacked => bool)
-        private _isSlashedValidatorWithdrawable;
+    mapping(uint256 noKeyIndexPacked => bool) private _isValidatorSlashed;
 
     uint64 private _totalDepositedValidators;
     uint64 private _totalExitedValidators;
@@ -716,7 +715,7 @@ contract CSModule is
     }
 
     /// @inheritdoc ICSModule
-    function onSlashedValidatorWithdrawable(
+    function onValidatorSlashed(
         uint256 nodeOperatorId,
         uint256 keyIndex
     ) external onlyRole(VERIFIER_ROLE) {
@@ -727,10 +726,10 @@ contract CSModule is
         }
 
         uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
-        _isSlashedValidatorWithdrawable[pointer] = true;
+        _isValidatorSlashed[pointer] = true;
 
         bytes memory pubkey = SigningKeys.loadKeys(nodeOperatorId, keyIndex, 1);
-        emit SlashedValidatorWithdrawable(nodeOperatorId, keyIndex, pubkey);
+        emit ValidatorSlashed(nodeOperatorId, keyIndex, pubkey);
     }
 
     /// @inheritdoc ICSModule
@@ -767,7 +766,7 @@ contract CSModule is
 
             if (
                 withdrawalInfo.slashingPenalty > 0 &&
-                !_isSlashedValidatorWithdrawable[pointer]
+                !_isValidatorSlashed[pointer]
             ) {
                 revert SlashingPenaltyIsNotApplicable();
             }
@@ -1150,14 +1149,11 @@ contract CSModule is
     }
 
     /// @inheritdoc ICSModule
-    function isSlashedValidatorWithdrawable(
+    function isValidatorSlashed(
         uint256 nodeOperatorId,
         uint256 keyIndex
     ) external view returns (bool) {
-        return
-            _isSlashedValidatorWithdrawable[
-                _keyPointer(nodeOperatorId, keyIndex)
-            ];
+        return _isValidatorSlashed[_keyPointer(nodeOperatorId, keyIndex)];
     }
 
     /// @inheritdoc ICSModule
