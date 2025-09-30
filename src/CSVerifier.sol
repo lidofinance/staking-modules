@@ -190,7 +190,7 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
     /// @inheritdoc ICSVerifier
     function processSlashedWithdrawableProof(
         ProcessSlashedWithdrawableInput calldata data
-    ) external {
+    ) external whenResumed {
         if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.recentBlock.header.slot);
         }

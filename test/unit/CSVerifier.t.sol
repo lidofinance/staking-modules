@@ -755,15 +755,19 @@ contract CSVerifierSlashingTest is CSVerifierTestBase {
         verifier.processSlashedWithdrawableProof(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhenPaused() public {
+    function test_processSlashedWithdrawable_RevertWhenPaused() public {
         vm.prank(admin);
         verifier.pauseFor(100_500);
         assertTrue(verifier.isPaused());
 
+        vm.expectRevert(
+            PausableUntil.ResumedExpected.selector,
+            address(verifier)
+        );
         verifier.processSlashedWithdrawableProof(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_RecentBlockSlotUnsupported()
+    function test_processSlashedWithdrawable_RevertWhen_RecentBlockSlotUnsupported()
         public
     {
         fixture.data.recentBlock.header.slot = verifier
@@ -779,21 +783,23 @@ contract CSVerifierSlashingTest is CSVerifierTestBase {
         verifier.processSlashedWithdrawableProof(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_NotSlashed() public {
+    function test_processSlashedWithdrawable_RevertWhen_NotSlashed() public {
         fixture.data.validator.object.slashed = false;
 
         vm.expectRevert(ICSVerifier.ValidatorIsNotSlashed.selector);
         verifier.processSlashedWithdrawableProof(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_InvalidPublicKey() public {
+    function test_processSlashedWithdrawable_RevertWhen_InvalidPublicKey()
+        public
+    {
         fixture.data.validator.object.pubkey = hex"deadbeef";
 
         vm.expectRevert(ICSVerifier.InvalidPublicKey.selector);
         verifier.processSlashedWithdrawableProof(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_ValidatorIsNotWithdrawable()
+    function test_processSlashedWithdrawable_RevertWhen_ValidatorIsNotWithdrawable()
         public
     {
         fixture.data.validator.object.withdrawableEpoch =
@@ -804,7 +810,9 @@ contract CSVerifierSlashingTest is CSVerifierTestBase {
         verifier.processSlashedWithdrawableProof(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_InvalidBlockHeader() public {
+    function test_processSlashedWithdrawable_RevertWhen_InvalidBlockHeader()
+        public
+    {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
             abi.encode(fixture.data.recentBlock.rootsTimestamp),
