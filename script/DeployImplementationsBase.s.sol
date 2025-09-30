@@ -35,6 +35,11 @@ abstract contract DeployImplementationsBase is DeployBase {
     CSVerifier public verifierV2;
     address public earlyAdoption;
 
+    bytes32 internal constant LEGACY_QUEUE_SLOT = bytes32(uint256(1));
+
+    error LegacyQueueNotEmpty(uint128 head, uint128 tail);
+    error MissingCSModuleAddress();
+
     function _deploy() internal {
         if (chainId != block.chainid) {
             revert ChainIdMismatch({
@@ -42,6 +47,8 @@ abstract contract DeployImplementationsBase is DeployBase {
                 expected: chainId
             });
         }
+
+        _ensureLegacyQueueDrained();
         artifactDir = vm.envOr("ARTIFACTS_DIR", string("./artifacts/local/"));
 
         vm.startBroadcast();
@@ -407,6 +414,21 @@ abstract contract DeployImplementationsBase is DeployBase {
             strikes.DEFAULT_ADMIN_ROLE(),
             config.secondAdminAddress
         );
+    }
+
+    function _ensureLegacyQueueDrained() internal {
+        if (address(csm) == address(0)) {
+            revert MissingCSModuleAddress();
+        }
+
+        // QueueLib.Queue packs head/tail into a single slot. See forge inspect output for slot indexes.
+        bytes32 queuePointers = vm.load(address(csm), LEGACY_QUEUE_SLOT);
+        uint128 head = uint128(uint256(queuePointers));
+        uint128 tail = uint128(uint256(queuePointers) >> 128);
+
+        if (head != tail) {
+            revert LegacyQueueNotEmpty(head, tail);
+        }
     }
 }
 
