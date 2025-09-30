@@ -25,8 +25,6 @@ contract CSParametersRegistry is
 
     /// @dev QUEUE_LOWEST_PRIORITY identifies the range of available priorities: [0; QUEUE_LOWEST_PRIORITY].
     uint256 public immutable QUEUE_LOWEST_PRIORITY;
-    /// @dev QUEUE_LEGACY_PRIORITY is the priority for the CSM v1 queue.
-    uint256 public immutable QUEUE_LEGACY_PRIORITY;
 
     ////////////////////////
     // State variables below
@@ -82,7 +80,6 @@ contract CSParametersRegistry is
         }
 
         QUEUE_LOWEST_PRIORITY = queueLowestPriority;
-        QUEUE_LEGACY_PRIORITY = queueLowestPriority - 1;
 
         _disableInitializers();
     }
@@ -727,10 +724,7 @@ contract CSParametersRegistry is
         uint256 priority,
         uint256 maxDeposits
     ) internal view {
-        if (
-            priority > QUEUE_LOWEST_PRIORITY ||
-            priority == QUEUE_LEGACY_PRIORITY
-        ) {
+        if (priority > QUEUE_LOWEST_PRIORITY) {
             revert QueueCannotBeUsed();
         }
         if (maxDeposits == 0) {

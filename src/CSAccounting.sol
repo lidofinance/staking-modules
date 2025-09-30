@@ -71,14 +71,14 @@ contract CSAccounting is
 
     /// @param lidoLocator Lido locator contract address
     /// @param module Community Staking Module contract address
-    /// @param _feeDistributor Fee Distributor contract address
+    /// @param feeDistributor Fee Distributor contract address
     /// @param minBondLockPeriod Min time in seconds for the bondLock period
     /// @param maxBondLockPeriod Max time in seconds for the bondLock period
     /// @param enableBondReserve Whether to enable bond reserve feature
     constructor(
         address lidoLocator,
         address module,
-        address _feeDistributor,
+        address feeDistributor,
         uint256 minBondLockPeriod,
         uint256 maxBondLockPeriod,
         bool enableBondReserve
@@ -86,12 +86,12 @@ contract CSAccounting is
         if (module == address(0)) {
             revert ZeroModuleAddress();
         }
-        if (_feeDistributor == address(0)) {
+        if (feeDistributor == address(0)) {
             revert ZeroFeeDistributorAddress();
         }
 
         MODULE = ICSModule(module);
-        FEE_DISTRIBUTOR = ICSFeeDistributor(_feeDistributor);
+        FEE_DISTRIBUTOR = ICSFeeDistributor(feeDistributor);
         BOND_RESERVE_IS_ENABLED = enableBondReserve;
 
         _disableInitializers();
@@ -612,12 +612,6 @@ contract CSAccounting is
         current = current + feesToDistribute;
 
         return current > required ? current - required : 0;
-    }
-
-    /// @dev TODO: Remove in the next major release
-    /// @inheritdoc ICSAccounting
-    function feeDistributor() external view returns (ICSFeeDistributor) {
-        return FEE_DISTRIBUTOR;
     }
 
     /// @inheritdoc ICSAccounting

@@ -68,7 +68,7 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
         CSAccounting newAccounting = new CSAccounting({
             lidoLocator: address(accounting.LIDO_LOCATOR()),
             module: address(csm),
-            _feeDistributor: address(feeDistributor),
+            feeDistributor: address(feeDistributor),
             minBondLockPeriod: accounting.MIN_BOND_LOCK_PERIOD(),
             maxBondLockPeriod: currentMaxBondLockPeriod + 10,
             enableBondReserve: accounting.BOND_RESERVE_IS_ENABLED()
@@ -87,7 +87,7 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
         CSAccounting newAccounting = new CSAccounting({
             lidoLocator: address(accounting.LIDO_LOCATOR()),
             module: address(csm),
-            _feeDistributor: address(feeDistributor),
+            feeDistributor: address(feeDistributor),
             minBondLockPeriod: accounting.MIN_BOND_LOCK_PERIOD(),
             maxBondLockPeriod: currentMaxBondLockPeriod + 10,
             enableBondReserve: accounting.BOND_RESERVE_IS_ENABLED()

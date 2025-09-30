@@ -67,8 +67,6 @@ contract CSModule is
 
     /// @dev QUEUE_LOWEST_PRIORITY identifies the range of available priorities: [0; QUEUE_LOWEST_PRIORITY].
     uint256 public immutable QUEUE_LOWEST_PRIORITY;
-    /// @dev QUEUE_LEGACY_PRIORITY is the priority for the CSM v1 queue.
-    uint256 public immutable QUEUE_LEGACY_PRIORITY;
 
     ////////////////////////
     // State variables below
@@ -79,7 +77,7 @@ contract CSModule is
     mapping(uint256 queuePriority => QueueLib.Queue queue)
         internal _queueByPriority;
 
-    /// @dev Legacy queue (priority=QUEUE_LEGACY_PRIORITY), that should be removed in the future once there are no more batches in it.
+    /// @dev Unused
     /// @custom:oz-renamed-from depositQueue
     QueueLib.Queue internal _legacyQueue;
 
@@ -87,10 +85,10 @@ contract CSModule is
     /// @custom:oz-renamed-from accounting
     ICSAccounting internal _accountingOld;
 
-    /// @dev Unused. Nullified in the finalizeUpgradeV2
+    /// @dev Unused. Nullified in v2 upgrade
     /// @custom:oz-renamed-from earlyAdoption
     address internal _earlyAdoption;
-    /// @dev deprecated. Nullified in the finalizeUpgradeV2
+    /// @dev deprecated. Nullified in v2 upgrade
     /// @custom:oz-renamed-from publicRelease
     bool internal _publicRelease;
 
@@ -134,10 +132,9 @@ contract CSModule is
         STETH = IStETH(LIDO_LOCATOR.lido());
         PARAMETERS_REGISTRY = ICSParametersRegistry(parametersRegistry);
         QUEUE_LOWEST_PRIORITY = PARAMETERS_REGISTRY.QUEUE_LOWEST_PRIORITY();
-        QUEUE_LEGACY_PRIORITY = PARAMETERS_REGISTRY.QUEUE_LEGACY_PRIORITY();
         ACCOUNTING = ICSAccounting(_accounting);
         EXIT_PENALTIES = ICSExitPenalties(exitPenalties);
-        FEE_DISTRIBUTOR = address(ACCOUNTING.feeDistributor());
+        FEE_DISTRIBUTOR = address(ACCOUNTING.FEE_DISTRIBUTOR());
 
         _disableInitializers();
     }
@@ -573,52 +570,6 @@ contract CSModule is
     }
 
     /// @inheritdoc ICSModule
-    function migrateToPriorityQueue(uint256 nodeOperatorId) external {
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-
-        if (no.usedPriorityQueue) {
-            revert PriorityQueueAlreadyUsed();
-        }
-
-        uint256 curveId = _getBondCurveId(nodeOperatorId);
-        (uint32 priority, uint32 maxDeposits) = PARAMETERS_REGISTRY
-            .getQueueConfig(curveId);
-
-        if (priority == QUEUE_LOWEST_PRIORITY) {
-            revert NotEligibleForPriorityQueue();
-        }
-
-        uint32 enqueued = no.enqueuedCount;
-        if (enqueued == 0) {
-            revert NoQueuedKeysToMigrate();
-        }
-
-        uint32 deposited = no.totalDepositedKeys;
-        if (maxDeposits <= deposited) {
-            revert PriorityQueueMaxDepositsUsed();
-        }
-
-        uint32 toMigrate = uint32(Math.min(enqueued, maxDeposits - deposited));
-        _enqueueNodeOperatorKeys(nodeOperatorId, priority, toMigrate);
-        no.usedPriorityQueue = true;
-        _incrementModuleNonce();
-
-        // An alternative version to fit into the bytecode requirements is below. Please consider
-        // the described caveat of the approach.
-
-        // NOTE: We allow a node operator (NO) to reset their enqueued counter to zero only once to
-        // migrate their keys from the legacy queue to a priority queue, if any. As a downside, the
-        // node operator effectively can have their seats doubled in the queue.
-        // Let's say we have a priority queue with a maximum of 10 deposits. Imagine a NO has 20
-        // keys queued in the legacy queue. Then, the NO calls this method and gets their enqueued
-        // counter reset to zero. As a result, the module will place 10 keys into the priority queue
-        // and 10 more keys at the end of the overall queue. The original batches are kept in the
-        // queue, so in total, the NO will have batches with 40 keys queued altogether.
-        // _nodeOperators[nodeOperatorId].enqueuedCount = 0;
-        // _enqueueNodeOperatorKeys(nodeOperatorId);
-    }
-
-    /// @inheritdoc ICSModule
     function reportELRewardsStealingPenalty(
         uint256 nodeOperatorId,
         bytes32 blockHash,
@@ -934,7 +885,7 @@ contract CSModule is
                 break;
             }
 
-            queue = _getQueue(priority);
+            queue = _queueByPriority[priority];
             unchecked {
                 // Note: unused below
                 ++priority;
@@ -1057,7 +1008,7 @@ contract CSModule is
                 break;
             }
 
-            queue = _getQueue(priority);
+            queue = _queueByPriority[priority];
             unchecked {
                 ++priority;
             }
@@ -1110,7 +1061,7 @@ contract CSModule is
     function depositQueuePointers(
         uint256 queuePriority
     ) external view returns (uint128 head, uint128 tail) {
-        QueueLib.Queue storage q = _getQueue(queuePriority);
+        QueueLib.Queue storage q = _queueByPriority[queuePriority];
         return (q.head, q.tail);
     }
 
@@ -1119,7 +1070,7 @@ contract CSModule is
         uint256 queuePriority,
         uint128 index
     ) external view returns (Batch) {
-        return _getQueue(queuePriority).at(index);
+        return _queueByPriority[queuePriority].at(index);
     }
 
     /// @inheritdoc ICSModule
@@ -1551,10 +1502,6 @@ contract CSModule is
 
                     _enqueueNodeOperatorKeys(nodeOperatorId, priority, count);
                     toEnqueue -= count;
-
-                    if (!no.usedPriorityQueue) {
-                        no.usedPriorityQueue = true;
-                    }
                 }
             }
         }
@@ -1576,7 +1523,7 @@ contract CSModule is
     ) internal {
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
         no.enqueuedCount += count;
-        QueueLib.Queue storage q = _getQueue(queuePriority);
+        QueueLib.Queue storage q = _queueByPriority[queuePriority];
         q.enqueue(nodeOperatorId, count);
         emit BatchEnqueued(queuePriority, nodeOperatorId, count);
     }
@@ -1641,20 +1588,6 @@ contract CSModule is
             OPERATORS_CREATED_IN_TX_MAP_TSLOT
         );
         return address(uint160(map.get(nodeOperatorId)));
-    }
-
-    /// @dev Acts as a proxy to `_queueByPriority` till `_legacyQueue` deprecation.
-    /// @dev TODO: Remove the method in the next major release.
-    function _getQueue(
-        uint256 priority
-    ) internal view returns (QueueLib.Queue storage q) {
-        if (priority == QUEUE_LEGACY_PRIORITY) {
-            assembly {
-                q.slot := _legacyQueue.slot
-            }
-        } else {
-            q = _queueByPriority[priority];
-        }
     }
 
     function _checkCanAddKeys(

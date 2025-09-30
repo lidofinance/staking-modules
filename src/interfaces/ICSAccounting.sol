@@ -60,8 +60,6 @@ interface ICSAccounting is
 
     function FEE_DISTRIBUTOR() external view returns (ICSFeeDistributor);
 
-    function feeDistributor() external view returns (ICSFeeDistributor);
-
     function chargePenaltyRecipient() external view returns (address);
 
     /// @notice Get the initialized version of the contract

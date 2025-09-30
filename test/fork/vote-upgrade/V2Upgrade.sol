@@ -71,10 +71,6 @@ contract VoteChangesTest is V2UpgradeTestBase {
         assertEq(csm.getRoleMemberCount(keccak256("MODULE_MANAGER_ROLE")), 0);
 
         assertEq(csm.getInitializedVersion(), 2);
-
-        assertFalse(
-            csm.depositQueueItem(csm.QUEUE_LEGACY_PRIORITY(), 0).isNil()
-        );
     }
 
     function test_csmState() public {
@@ -249,14 +245,14 @@ contract VoteChangesTest is V2UpgradeTestBase {
 
     function test_accountingState() public {
         vm.selectFork(forkIdBeforeUpgrade);
-        address feeDistributorBefore = address(accounting.feeDistributor());
+        address feeDistributorBefore = address(accounting.FEE_DISTRIBUTOR());
         address chargePenaltyRecipientBefore = address(
             accounting.chargePenaltyRecipient()
         );
         uint256 totalBondSharesBefore = accounting.totalBondShares();
 
         vm.selectFork(forkIdAfterUpgrade);
-        address feeDistributorAfter = address(accounting.feeDistributor());
+        address feeDistributorAfter = address(accounting.FEE_DISTRIBUTOR());
         address chargePenaltyRecipientAfter = address(
             accounting.chargePenaltyRecipient()
         );
