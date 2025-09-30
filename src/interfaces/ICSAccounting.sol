@@ -386,17 +386,6 @@ interface ICSAccounting is
         uint256 amount
     ) external returns (bool fullyCharged);
 
-    /// @notice Pull fees from CSFeeDistributor to the Node Operator's bond
-    /// @dev Permissionless method. Can be called before penalty application to ensure that rewards are also penalized
-    /// @param nodeOperatorId ID of the Node Operator
-    /// @param cumulativeFeeShares Cumulative fee stETH shares for the Node Operator
-    /// @param rewardsProof Merkle proof of the rewards
-    function pullFeeRewards(
-        uint256 nodeOperatorId,
-        uint256 cumulativeFeeShares,
-        bytes32[] calldata rewardsProof
-    ) external;
-
     /// @notice Increase bond reserve value (requires excess bond >= amount)
     /// @param nodeOperatorId ID of the Node Operator
     /// @param newAmount Amount to set as additional bond reserve

@@ -25,6 +25,13 @@ library FeeSplits {
     uint256 internal constant MAX_BP = 10_000;
     uint256 public constant MAX_FEE_SPLITS = 5;
 
+    function hasSplits(
+        mapping(uint256 => ICSAccounting.FeeSplit[]) storage feeSplitsStorage,
+        uint256 nodeOperatorId
+    ) external view returns (bool) {
+        return feeSplitsStorage[nodeOperatorId].length != 0;
+    }
+
     function setFeeSplits(
         mapping(uint256 => ICSAccounting.FeeSplit[]) storage feeSplitsStorage,
         mapping(uint256 => uint256) storage pendingSharesToSplitStorage,
@@ -83,63 +90,31 @@ library FeeSplits {
         mapping(uint256 => uint256) storage pendingSharesToSplitStorage,
         ILido lido,
         uint256 nodeOperatorId,
-        uint256 distributed,
-        function(uint256)
-            external
-            view
-            returns (uint256, uint256) getBondSummaryShares
-    ) external returns (uint256 remainder) {
+        uint256 claimableShares
+    ) external returns (uint256 transferred) {
+        if (claimableShares == 0) {
+            return 0;
+        }
+
+        uint256 pending = pendingSharesToSplitStorage[nodeOperatorId];
+        if (claimableShares > pending) {
+            claimableShares = pending;
+        }
+
         ICSAccounting.FeeSplit[] storage splits = feeSplitsStorage[
             nodeOperatorId
         ];
         uint256 len = splits.length;
-        if (len == 0) {
-            return distributed;
-        }
-
-        (uint256 currentBond, uint256 requiredBond) = getBondSummaryShares(
-            nodeOperatorId
-        );
-
-        uint256 prevPending = pendingSharesToSplitStorage[nodeOperatorId];
-        uint256 pendingWithNew = prevPending + distributed;
-
-        currentBond += pendingWithNew;
-
-        uint256 claimableShares;
-        if (currentBond > requiredBond) {
-            unchecked {
-                claimableShares = currentBond - requiredBond;
-            }
-        }
-
-        if (claimableShares == 0) {
-            if (distributed != 0) {
-                pendingSharesToSplitStorage[nodeOperatorId] = pendingWithNew;
-            }
-            return 0;
-        }
-
-        if (claimableShares > pendingWithNew) {
-            claimableShares = pendingWithNew;
-        }
-
-        remainder = pendingWithNew;
-
         for (uint256 i; i < len; ++i) {
             ICSAccounting.FeeSplit storage feeSplit = splits[i];
             uint256 amount = (claimableShares * feeSplit.share) / MAX_BP;
             if (amount != 0) {
                 lido.transferShares(feeSplit.recipient, amount);
-                unchecked {
-                    remainder -= amount;
-                }
+                transferred += amount;
             }
         }
 
-        uint256 newPending = pendingWithNew - claimableShares;
-        if (newPending != prevPending) {
-            pendingSharesToSplitStorage[nodeOperatorId] = newPending;
-        }
+        uint256 newPending = pending - claimableShares;
+        pendingSharesToSplitStorage[nodeOperatorId] = newPending;
     }
 }
