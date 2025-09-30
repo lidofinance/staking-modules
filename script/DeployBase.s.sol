@@ -55,6 +55,8 @@ struct DeployParams {
     GIndex gIFirstValidator;
     GIndex gIFirstHistoricalSummary;
     GIndex gIFirstBlockRootInSummary;
+    GIndex gIFirstBalanceNode;
+    GIndex gIFirstPendingConsolidation;
     uint256 verifierFirstSupportedSlot;
     uint256 capellaSlot;
     // Accounting
@@ -220,6 +222,7 @@ abstract contract DeployBase is Script {
                 _deployProxy(config.proxyAdmin, address(feeDistributorImpl))
             );
 
+            // prettier-ignore
             verifier = new CSVerifier({
                 withdrawalAddress: locator.withdrawalVault(),
                 module: address(csm),
@@ -230,18 +233,16 @@ abstract contract DeployBase is Script {
                     gIFirstWithdrawalCurr: config.gIFirstWithdrawal,
                     gIFirstValidatorPrev: config.gIFirstValidator,
                     gIFirstValidatorCurr: config.gIFirstValidator,
-                    gIFirstHistoricalSummaryPrev: config
-                        .gIFirstHistoricalSummary,
-                    gIFirstHistoricalSummaryCurr: config
-                        .gIFirstHistoricalSummary,
-                    gIFirstBlockRootInSummaryPrev: config
-                        .gIFirstBlockRootInSummary,
-                    gIFirstBlockRootInSummaryCurr: config
-                        .gIFirstBlockRootInSummary
+                    gIFirstHistoricalSummaryPrev: config.gIFirstHistoricalSummary,
+                    gIFirstHistoricalSummaryCurr: config.gIFirstHistoricalSummary,
+                    gIFirstBlockRootInSummaryPrev: config.gIFirstBlockRootInSummary,
+                    gIFirstBlockRootInSummaryCurr: config.gIFirstBlockRootInSummary,
+                    gIFirstBalanceNodePrev: config.gIFirstBalanceNode,
+                    gIFirstBalanceNodeCurr: config.gIFirstBalanceNode,
+                    gIFirstPendingConsolidationPrev: config.gIFirstPendingConsolidation,
+                    gIFirstPendingConsolidationCurr: config.gIFirstPendingConsolidation
                 }),
-                firstSupportedSlot: Slot.wrap(
-                    uint64(config.verifierFirstSupportedSlot)
-                ),
+                firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 pivotSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 capellaSlot: Slot.wrap(uint64(config.capellaSlot)),
                 admin: deployer

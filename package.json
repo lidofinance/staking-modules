@@ -19,7 +19,8 @@
     "@openzeppelin/contracts-upgradeable": "5.0.2",
     "@openzeppelin/merkle-tree": "^1.0.8",
     "ds-test": "https://github.com/dapphub/ds-test",
-    "forge-std": "https://github.com/foundry-rs/forge-std.git#v1.9.6"
+    "forge-std": "https://github.com/foundry-rs/forge-std.git#v1.9.6",
+    "web3-eth-abi": "^4.4.1"
   },
   "devDependencies": {
     "husky": "^8.0.3",

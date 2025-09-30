@@ -4,11 +4,12 @@ pragma solidity 0.8.24;
 
 import { Test } from "forge-std/Test.sol";
 
-import { BeaconBlockHeader, Validator, Withdrawal } from "src/lib/Types.sol";
+import { BeaconBlockHeader, PendingConsolidation, Validator, Withdrawal } from "src/lib/Types.sol";
 import { GIndex, pack } from "src/lib/GIndex.sol";
-import { Utilities } from "../../helpers/Utilities.sol";
 import { Slot } from "src/lib/Types.sol";
 import { SSZ } from "src/lib/SSZ.sol";
+
+import { Utilities } from "test/helpers/Utilities.sol";
 
 // Wrap the library internal methods to make an actual call to them.
 // Supposed to be used with `expectRevert` cheatcode and to pass
@@ -59,10 +60,29 @@ contract SSZTest is Utilities, Test {
         assertEq(actual, expected);
     }
 
-    function testFuzz_toLittleEndian_Idempotent(uint256 v) public pure {
-        uint256 n = v;
-        n = uint256(SSZ.toLittleEndian(n));
-        n = uint256(SSZ.toLittleEndian(n));
+    function testFuzz_endianReverse(bytes32 v) public pure {
+        bytes32 expected = endianReverseNaive(v);
+        bytes32 actual = SSZ.endianReverse(v);
+        assertEq(actual, expected);
+    }
+
+    function endianReverseNaive(bytes32 v) internal pure returns (bytes32 r) {
+        assembly {
+            for {
+                let i := 0
+            } lt(i, 32) {
+                i := add(i, 1)
+            } {
+                r := or(shl(8, r), and(v, 0xff))
+                v := shr(8, v)
+            }
+        }
+    }
+
+    function testFuzz_endianReverse_Idempotent(bytes32 v) public pure {
+        bytes32 n = v;
+        n = SSZ.endianReverse(n);
+        n = SSZ.endianReverse(n);
         assertEq(n, v);
     }
 
@@ -246,6 +266,56 @@ contract SSZTest is Utilities, Test {
         BeaconBlockHeader memory h
     ) public view brutalizeMemory {
         SSZ.hashTreeRoot(h);
+    }
+
+    function test_PendingConsolidationRoot() public pure {
+        // The `expected` value can be obtained by using lodestar library:
+        // const PendingConsolidation = ssz.electra.PendingConsolidation;
+        // const consolidation = PendingConsolidation.defaultView();
+        // consolidation.sourceIndex = 87270;
+        // consolidation.targetIndex = 68209;
+        // consolidation.hashTreeRoot();
+
+        PendingConsolidation memory c = PendingConsolidation({
+            sourceIndex: 87270,
+            targetIndex: 68209
+        });
+
+        bytes32 expected = 0xca8072e50620350824fb4c5b3788b1efefd3b56720dd2bd274d47515e419088d;
+        bytes32 actual = SSZ.hashTreeRoot(c);
+        assertEq(actual, expected);
+    }
+
+    function test_PendingConsolidationRoot_AllZeroes() public pure {
+        PendingConsolidation memory c = PendingConsolidation({
+            sourceIndex: 0,
+            targetIndex: 0
+        });
+
+        bytes32 expected = 0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b;
+        bytes32 actual = SSZ.hashTreeRoot(c);
+        assertEq(actual, expected);
+    }
+
+    function test_PendingConsolidationRoot_AllOnes() public pure {
+        // In lodestar you would need to tweak the type slightly to make it work with uint64 max.
+        // PendingConsolidation.fields.sourceIndex.clipInfinity = true;
+        // PendingConsolidation.fields.targetIndex.clipInfinity = true;
+
+        PendingConsolidation memory c = PendingConsolidation({
+            sourceIndex: type(uint64).max,
+            targetIndex: type(uint64).max
+        });
+
+        bytes32 expected = 0x520cc47c38af7c1a550b6f04a1de72582ceebd40bb079dfb08d97d3849da57de;
+        bytes32 actual = SSZ.hashTreeRoot(c);
+        assertEq(actual, expected);
+    }
+
+    function testFuzz_PendingConsolidation_memory(
+        PendingConsolidation memory c
+    ) public view brutalizeMemory {
+        SSZ.hashTreeRoot(c);
     }
 
     // For the tests below, assume there's the following tree from the bottom up:

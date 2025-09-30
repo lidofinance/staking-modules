@@ -3,8 +3,8 @@
 import { concatGindices } from "@chainsafe/persistent-merkle-tree";
 import { ssz } from "@lodestar/types";
 
-for (const fork of ["deneb", "electra"]) {
-  /** @type ssz.deneb|ssz.electra */
+for (const fork of ["electra"]) {
+  /** @type ssz.electra */
   const Fork = ssz[fork];
 
   {
@@ -31,6 +31,25 @@ for (const fork of ["deneb", "electra"]) {
     const gI = pack(Fork.BeaconState.getPathInfo(["validators", 0]).gindex, Validators.limit);
 
     console.log(`${fork}::gIFirstValidator:`, toBytes32String(gI));
+  }
+
+  {
+    const Balances = Fork.BeaconState.getPathInfo(["balances"]).type;
+
+    const gI = pack(Fork.BeaconState.getPathInfo(["balances", 0]).gindex, Balances.limit);
+
+    console.log(`${fork}::gIFirstBalanceNode:`, toBytes32String(gI));
+  }
+
+  {
+    const PendingConsolidations = Fork.BeaconState.getPathInfo(["pending_consolidations"]).type;
+
+    const gI = pack(
+      Fork.BeaconState.getPathInfo(["pending_consolidations", 0]).gindex,
+      PendingConsolidations.limit,
+    );
+
+    console.log(`${fork}::gIFirstPendingConsolidation:`, toBytes32String(gI));
   }
 
   {

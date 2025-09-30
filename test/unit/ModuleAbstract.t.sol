@@ -205,7 +205,8 @@ abstract contract ModuleFixtures is
         withdrawalsInfo[0] = ValidatorWithdrawalInfo(
             noId,
             0,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
         module.submitWithdrawals(withdrawalsInfo);
     }
@@ -3040,7 +3041,8 @@ abstract contract ModuleQueueOps is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             0,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         vm.expectEmit(address(module));
@@ -4244,7 +4246,8 @@ abstract contract ModuleGetNodeOperatorNonWithdrawnKeys is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             0,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         module.submitWithdrawals(withdrawalInfo);
@@ -6006,14 +6009,16 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         vm.expectEmit(address(module));
         emit ICSModule.WithdrawalSubmitted(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE(),
+            module.MIN_ACTIVATION_BALANCE(),
+            0,
             pubkey
         );
         module.submitWithdrawals(withdrawalInfo);
@@ -6044,14 +6049,16 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE() - balanceShortage
+            module.MIN_ACTIVATION_BALANCE() - balanceShortage,
+            0
         );
 
         vm.expectEmit(address(module));
         emit ICSModule.WithdrawalSubmitted(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE() - balanceShortage,
+            module.MIN_ACTIVATION_BALANCE() - balanceShortage,
+            0,
             pubkey
         );
         module.submitWithdrawals(withdrawalInfo);
@@ -6078,7 +6085,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE() - balanceShortage
+            module.MIN_ACTIVATION_BALANCE() - balanceShortage,
+            0
         );
 
         vm.expectCall(
@@ -6114,7 +6122,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE() - balanceShortage
+            module.MIN_ACTIVATION_BALANCE() - balanceShortage,
+            0
         );
 
         vm.expectCall(
@@ -6158,7 +6167,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         vm.expectCall(
@@ -6205,7 +6215,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         vm.expectCall(
@@ -6223,6 +6234,84 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         // There should be target limit if the penalty is not covered by the bond.
         assertEq(no.targetLimit, 0);
         assertEq(no.targetLimitMode, 2);
+    }
+
+    function test_submitWithdrawals_exitDelayPenaltyWithMultiplier()
+        public
+        assertInvariants
+    {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        uint248 penalty = 1 ether;
+        uint256 multiplier = 3;
+
+        exitPenalties.mock_setDelayedExitPenaltyInfo(
+            ExitPenaltyInfo({
+                delayPenalty: MarkedUint248(penalty, true),
+                strikesPenalty: MarkedUint248(0, false),
+                withdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+
+        ValidatorWithdrawalInfo[]
+            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(
+            noId,
+            keyIndex,
+            module.MIN_ACTIVATION_BALANCE() * multiplier + 1 ether,
+            0
+        );
+
+        vm.expectCall(
+            address(accounting),
+            abi.encodeWithSelector(
+                accounting.penalize.selector,
+                noId,
+                penalty * multiplier
+            )
+        );
+        module.submitWithdrawals(withdrawalInfo);
+    }
+
+    function test_submitWithdrawals_exitDelayPenaltyAtMaxWithMultiplier()
+        public
+        assertInvariants
+    {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        uint248 penalty = type(uint248).max;
+        uint256 multiplier = module.MAX_PENALTY_MULTIPLIER();
+
+        exitPenalties.mock_setDelayedExitPenaltyInfo(
+            ExitPenaltyInfo({
+                delayPenalty: MarkedUint248(penalty, true),
+                strikesPenalty: MarkedUint248(0, false),
+                withdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+
+        ValidatorWithdrawalInfo[]
+            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(
+            noId,
+            keyIndex,
+            module.MIN_ACTIVATION_BALANCE() * multiplier + 1000 ether,
+            0
+        );
+
+        vm.expectCall(
+            address(accounting),
+            abi.encodeWithSelector(
+                accounting.penalize.selector,
+                noId,
+                penalty * multiplier
+            )
+        );
+        module.submitWithdrawals(withdrawalInfo);
     }
 
     function test_submitWithdrawals_strikesPenalty() public assertInvariants {
@@ -6249,7 +6338,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         vm.expectCall(
@@ -6296,7 +6386,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         vm.expectCall(
@@ -6314,6 +6405,84 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         // There should be target limit if the penalty is not covered by the bond.
         assertEq(no.targetLimit, 0);
         assertEq(no.targetLimitMode, 2);
+    }
+
+    function test_submitWithdrawals_strikesPenaltyWithMultiplier()
+        public
+        assertInvariants
+    {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        uint248 penalty = 1 ether;
+        uint256 multiplier = 3;
+
+        exitPenalties.mock_setDelayedExitPenaltyInfo(
+            ExitPenaltyInfo({
+                delayPenalty: MarkedUint248(0, false),
+                strikesPenalty: MarkedUint248(penalty, true),
+                withdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+
+        ValidatorWithdrawalInfo[]
+            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(
+            noId,
+            keyIndex,
+            module.MIN_ACTIVATION_BALANCE() * multiplier + 1 ether,
+            0
+        );
+
+        vm.expectCall(
+            address(accounting),
+            abi.encodeWithSelector(
+                accounting.penalize.selector,
+                noId,
+                penalty * multiplier
+            )
+        );
+        module.submitWithdrawals(withdrawalInfo);
+    }
+
+    function test_submitWithdrawals_strikesPenaltyAtMaxWithMultiplier()
+        public
+        assertInvariants
+    {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        uint248 penalty = type(uint248).max;
+        uint256 multiplier = module.MAX_PENALTY_MULTIPLIER();
+
+        exitPenalties.mock_setDelayedExitPenaltyInfo(
+            ExitPenaltyInfo({
+                delayPenalty: MarkedUint248(0, false),
+                strikesPenalty: MarkedUint248(penalty, true),
+                withdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+
+        ValidatorWithdrawalInfo[]
+            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(
+            noId,
+            keyIndex,
+            module.MIN_ACTIVATION_BALANCE() * multiplier + 1000 ether,
+            0
+        );
+
+        vm.expectCall(
+            address(accounting),
+            abi.encodeWithSelector(
+                accounting.penalize.selector,
+                noId,
+                penalty * multiplier
+            )
+        );
+        module.submitWithdrawals(withdrawalInfo);
     }
 
     function test_submitWithdrawals_allPenalties() public assertInvariants {
@@ -6345,7 +6514,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE() - balanceShortage
+            module.MIN_ACTIVATION_BALANCE() - balanceShortage,
+            0
         );
 
         vm.expectCall(
@@ -6397,7 +6567,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE() - balanceShortage
+            module.MIN_ACTIVATION_BALANCE() - balanceShortage,
+            0
         );
 
         vm.expectCall(
@@ -6415,6 +6586,177 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         // There should be target limit if the penalty is not covered by the bond.
         assertEq(no.targetLimit, 0);
         assertEq(no.targetLimitMode, 2);
+    }
+
+    function test_submitWithdrawals_allPenaltiesWithMultiplier()
+        public
+        assertInvariants
+    {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        uint248 delayPenalty = 2 ether;
+        uint248 strikesPenalty = 3 ether;
+        uint256 multiplier = 3;
+
+        exitPenalties.mock_setDelayedExitPenaltyInfo(
+            ExitPenaltyInfo({
+                delayPenalty: MarkedUint248(delayPenalty, true),
+                strikesPenalty: MarkedUint248(strikesPenalty, true),
+                withdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+
+        ValidatorWithdrawalInfo[]
+            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(
+            noId,
+            keyIndex,
+            module.MIN_ACTIVATION_BALANCE() * multiplier + 1 ether,
+            0
+        );
+
+        vm.expectCall(
+            address(accounting),
+            abi.encodeWithSelector(
+                accounting.penalize.selector,
+                noId,
+                delayPenalty * multiplier + strikesPenalty * multiplier
+            )
+        );
+        module.submitWithdrawals(withdrawalInfo);
+    }
+
+    function test_submitWithdrawals_allPenaltiesAtMaxWithMultiplier()
+        public
+        assertInvariants
+    {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        uint248 delayPenalty = type(uint248).max;
+        uint248 strikesPenalty = type(uint248).max;
+        uint256 multiplier = module.MAX_PENALTY_MULTIPLIER();
+
+        exitPenalties.mock_setDelayedExitPenaltyInfo(
+            ExitPenaltyInfo({
+                delayPenalty: MarkedUint248(delayPenalty, true),
+                strikesPenalty: MarkedUint248(strikesPenalty, true),
+                withdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+
+        ValidatorWithdrawalInfo[]
+            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(
+            noId,
+            keyIndex,
+            module.MIN_ACTIVATION_BALANCE() * multiplier + 1000 ether,
+            0
+        );
+
+        vm.expectCall(
+            address(accounting),
+            abi.encodeWithSelector(
+                accounting.penalize.selector,
+                noId,
+                delayPenalty * multiplier + strikesPenalty * multiplier
+            )
+        );
+        module.submitWithdrawals(withdrawalInfo);
+    }
+
+    function test_submitWithdrawals_slashingPenaltyApplied()
+        public
+        assertInvariants
+    {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        uint256 slashingPenalty = 5 ether;
+
+        ValidatorWithdrawalInfo[]
+            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(
+            noId,
+            keyIndex,
+            module.MIN_ACTIVATION_BALANCE(),
+            slashingPenalty
+        );
+
+        vm.expectCall(
+            address(accounting),
+            abi.encodeWithSelector(
+                accounting.penalize.selector,
+                noId,
+                slashingPenalty
+            )
+        );
+        module.submitWithdrawals(withdrawalInfo);
+    }
+
+    function test_submitWithdrawals_slashingPenaltyOverridesExitBalancePenalty()
+        public
+        assertInvariants
+    {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        uint256 slashingPenalty = 5 ether;
+
+        ValidatorWithdrawalInfo[]
+            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(
+            noId,
+            keyIndex,
+            module.MIN_ACTIVATION_BALANCE() - 11 ether,
+            slashingPenalty
+        );
+
+        vm.expectCall(
+            address(accounting),
+            abi.encodeWithSelector(
+                accounting.penalize.selector,
+                noId,
+                slashingPenalty
+            )
+        );
+        module.submitWithdrawals(withdrawalInfo);
+    }
+
+    function test_submitWithdrawals_slashingPenaltyNotScaled()
+        public
+        assertInvariants
+    {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        uint256 slashingPenalty = 7 ether;
+        uint256 multiplier = 5;
+
+        ValidatorWithdrawalInfo[]
+            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(
+            noId,
+            keyIndex,
+            module.MIN_ACTIVATION_BALANCE() * multiplier,
+            slashingPenalty
+        );
+
+        vm.expectCall(
+            address(accounting),
+            abi.encodeWithSelector(
+                accounting.penalize.selector,
+                noId,
+                slashingPenalty
+            )
+        );
+        module.submitWithdrawals(withdrawalInfo);
     }
 
     function test_submitWithdrawals_chargeWithdrawalFee_DelayPenalty()
@@ -6450,7 +6792,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         vm.expectCall(
@@ -6509,7 +6852,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         vm.expectCall(
@@ -6568,7 +6912,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         vm.expectCall(
@@ -6629,7 +6974,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         vm.expectCall(
@@ -6688,7 +7034,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         vm.expectCall(
@@ -6747,7 +7094,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         vm.expectCall(
@@ -6810,7 +7158,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         vm.expectCall(
@@ -6873,7 +7222,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         vm.expectCall(
@@ -6928,7 +7278,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         vm.expectCall(
@@ -6975,7 +7326,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         vm.expectCall(
@@ -6993,6 +7345,45 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         // There should be target limit if the charges are not covered by the bond.
         assertEq(no.targetLimit, 0);
         assertEq(no.targetLimitMode, 2);
+    }
+
+    function test_submitWithdrawals_chargeWithdrawalFeeNotScaled()
+        public
+        assertInvariants
+    {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        uint248 withdrawalRequestFee = 0.1 ether;
+        uint256 multiplier = 5;
+
+        exitPenalties.mock_setDelayedExitPenaltyInfo(
+            ExitPenaltyInfo({
+                delayPenalty: MarkedUint248(0, true),
+                strikesPenalty: MarkedUint248(0, true),
+                withdrawalRequestFee: MarkedUint248(withdrawalRequestFee, true)
+            })
+        );
+
+        ValidatorWithdrawalInfo[]
+            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(
+            noId,
+            keyIndex,
+            module.MIN_ACTIVATION_BALANCE() * multiplier,
+            0
+        );
+
+        vm.expectCall(
+            address(accounting),
+            abi.encodeWithSelector(
+                accounting.chargeFee.selector,
+                noId,
+                withdrawalRequestFee
+            )
+        );
+        module.submitWithdrawals(withdrawalInfo);
     }
 
     function test_submitWithdrawals_dontChargeWithdrawalFee_noPenalties()
@@ -7022,7 +7413,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         expectNoCall(
@@ -7070,7 +7462,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             keyIndex,
-            module.DEPOSIT_SIZE() - balanceShortage
+            module.MIN_ACTIVATION_BALANCE() - balanceShortage,
+            0
         );
 
         expectNoCall(
@@ -7098,10 +7491,26 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         ValidatorWithdrawalInfo[]
             memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(noId, keyIndex, 1 ether);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(noId, keyIndex, 1 ether, 0);
 
         module.submitWithdrawals(withdrawalInfo);
         assertEq(module.getNonce(), nonce + 1);
+    }
+
+    function test_submitWithdrawals_RevertWhen_ZeroExitBalance()
+        public
+        assertInvariants
+    {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        ValidatorWithdrawalInfo[]
+            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(noId, keyIndex, 0, 0);
+
+        vm.expectRevert(ICSModule.ZeroExitBalance.selector);
+        module.submitWithdrawals(withdrawalInfo);
     }
 
     function test_submitWithdrawals_RevertWhen_NoNodeOperator()
@@ -7110,7 +7519,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
     {
         ValidatorWithdrawalInfo[]
             memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(0, 0, 0);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(0, 0, 32 ether, 0);
 
         vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
         module.submitWithdrawals(withdrawalInfo);
@@ -7124,7 +7533,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         ValidatorWithdrawalInfo[]
             memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(noId, 0, 0);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(noId, 0, 32 ether, 0);
 
         vm.expectRevert(ICSModule.SigningKeysInvalidOffset.selector);
         module.submitWithdrawals(withdrawalInfo);
@@ -7139,7 +7548,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             0,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
 
         module.submitWithdrawals(withdrawalInfo);
@@ -7167,7 +7577,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             withdrawalInfo[i] = ValidatorWithdrawalInfo(
                 noId,
                 i,
-                module.DEPOSIT_SIZE()
+                module.MIN_ACTIVATION_BALANCE(),
+                0
             );
         }
         module.submitWithdrawals(withdrawalInfo);
@@ -7381,7 +7792,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
 
         ValidatorWithdrawalInfo[]
             memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(noId, 0, 1 ether);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(noId, 0, 1 ether, 0);
 
         vm.prank(actor);
         module.submitWithdrawals(withdrawalInfo);
@@ -7393,7 +7804,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
 
         ValidatorWithdrawalInfo[]
             memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(noId, 0, 1 ether);
+        withdrawalInfo[0] = ValidatorWithdrawalInfo(noId, 0, 1 ether, 0);
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
@@ -7645,17 +8056,20 @@ abstract contract ModuleDepositableValidatorsCount is ModuleFixtures {
         withdrawalInfo[0] = ValidatorWithdrawalInfo(
             noId,
             0,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
         withdrawalInfo[1] = ValidatorWithdrawalInfo(
             noId,
             1,
-            module.DEPOSIT_SIZE()
+            module.MIN_ACTIVATION_BALANCE(),
+            0
         );
         withdrawalInfo[2] = ValidatorWithdrawalInfo(
             noId,
             2,
-            module.DEPOSIT_SIZE() - BOND_SIZE
+            module.MIN_ACTIVATION_BALANCE() - BOND_SIZE,
+            0
         ); // Large CL balance drop, that doesn't change the unbonded count.
 
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 0);

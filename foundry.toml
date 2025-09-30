@@ -10,10 +10,11 @@ bytecode_hash = "none" # The metadata hash removed from the bytecode (not the me
 src = "src"
 out = "out"
 libs = ["lib", "node_modules"]
-cache_path  = "cache"
+cache_path = "cache"
 
 block_gas_limit = 30_000_000
 fuzz = { runs = 256 }
+ffi = true
 
 gas_reports = [
     "VettedGate",
@@ -26,7 +27,7 @@ gas_reports = [
     "CSPerksRegistry",
     "AssetRecovererLib",
     "OssifiableProxy",
-    "HashConsensus"
+    "HashConsensus",
 ]
 
 fs_permissions = [
@@ -35,13 +36,19 @@ fs_permissions = [
     { access = "read", path = "./test/fixtures" },
 ]
 
-ignored_warnings_from = ["src/lib/base-oracle/HashConsensus.sol", "test/OssifiableProxy.t.sol"]
+ignored_warnings_from = [
+    "src/lib/base-oracle/HashConsensus.sol",
+    "test/OssifiableProxy.t.sol",
+]
+
+[profile.lite]
+optimizer = false
+fuzz = { runs = 50 }
+block_gas_limit = 60_000_000
 
 [profile.ci]
 verbosity = 3
 fuzz = { runs = 10_000, max_test_rejects = 2_000_000 }
-
-# See more config options https://github.com/foundry-rs/foundry/tree/master/crates/config
 
 [profile.coverage]
 # due to coverage running with optimizer disabled, we need to increase the gas limit
@@ -55,4 +62,6 @@ block_gas_limit = 60_000_000
 
 [profile.upgrades]
 extra_output = ["storageLayout"]
-build_info=true
+build_info = true
+
+# See more config options https://github.com/foundry-rs/foundry/tree/master/crates/config

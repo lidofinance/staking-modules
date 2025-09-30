@@ -35,6 +35,8 @@ contract DeployHolesky is DeployBase {
         config.gIFirstValidator = GIndices.FIRST_VALIDATOR_ELECTRA;
         config.gIFirstHistoricalSummary = GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA; // prettier-ignore
         config.gIFirstBlockRootInSummary = GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA; // prettier-ignore
+        config.gIFirstBalanceNode = GIndices.FIRST_BALANCE_NODE_ELECTRA;
+        config.gIFirstPendingConsolidation = GIndices.FIRST_PENDING_CONSOLIDATION_ELECTRA; // prettier-ignore
         config.verifierFirstSupportedSlot = 115968 * config.slotsPerEpoch; // @see https://github.com/eth-clients/holesky/blob/main/metadata/config.yaml#L42
         config.capellaSlot = 256 * config.slotsPerEpoch; // @see https://github.com/eth-clients/holesky/blob/main/metadata/config.yaml#L34
 
