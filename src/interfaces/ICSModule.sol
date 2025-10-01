@@ -127,7 +127,7 @@ interface ICSModule is
         uint256 slashingPenalty,
         bytes pubkey
     );
-    event ValidatorSlashed(
+    event ValidatorSlashingReported(
         uint256 indexed nodeOperatorId,
         uint256 keyIndex,
         bytes pubkey

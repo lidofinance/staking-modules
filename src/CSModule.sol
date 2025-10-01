@@ -729,7 +729,7 @@ contract CSModule is
         _isValidatorSlashed[pointer] = true;
 
         bytes memory pubkey = SigningKeys.loadKeys(nodeOperatorId, keyIndex, 1);
-        emit ValidatorSlashed(nodeOperatorId, keyIndex, pubkey);
+        emit ValidatorSlashingReported(nodeOperatorId, keyIndex, pubkey);
     }
 
     /// @inheritdoc ICSModule

@@ -7625,7 +7625,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         bytes memory pubkey = module.getSigningKeys(noId, keyIndex, 1);
 
         vm.expectEmit(address(module));
-        emit ICSModule.ValidatorSlashed(noId, keyIndex, pubkey);
+        emit ICSModule.ValidatorSlashingReported(noId, keyIndex, pubkey);
 
         module.onValidatorSlashed(noId, keyIndex);
         assertTrue(module.isValidatorSlashed(noId, keyIndex));
