@@ -38,7 +38,6 @@ interface ICSAccounting is
     error SenderIsNotEligible();
     error BondReserveFeatureDisabled();
     error MinReserveTimeHasNotPassed();
-    error NodeOperatorIsNotEmpty();
     error ZeroModuleAddress();
     error ZeroAdminAddress();
     error ZeroFeeDistributorAddress();

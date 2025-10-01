@@ -309,9 +309,7 @@ contract FeeSplitsTest is BaseTest {
         accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
     }
 
-    function test_setFeeSplits_revertWhen_PendingOrUndistributedSharesExist_withPendingShares()
-        public
-    {
+    function test_setFeeSplits_revertWhen_PendingShares() public {
         ICSAccounting.FeeSplit[]
             memory initialSplits = new ICSAccounting.FeeSplit[](1);
         initialSplits[0] = ICSAccounting.FeeSplit({
@@ -339,14 +337,12 @@ contract FeeSplitsTest is BaseTest {
             share: 3000
         });
 
-        vm.expectRevert(IFeeSplits.PendingOrUndistributedSharesExist.selector);
+        vm.expectRevert(IFeeSplits.PendingSharesExist.selector);
         vm.prank(user);
         accounting.setFeeSplits(0, 0, new bytes32[](0), newSplits);
     }
 
-    function test_setFeeSplits_revertWhen_PendingOrUndistributedSharesExist_withUndistributedFees()
-        public
-    {
+    function test_setFeeSplits_revertWhen_UndistributedFees() public {
         uint256 feeShares = 1 ether;
         stETH.mintShares(address(feeDistributor), feeShares);
         mock_getNodeOperatorOwner(user);
@@ -359,7 +355,7 @@ contract FeeSplitsTest is BaseTest {
             share: 5000
         });
 
-        vm.expectRevert(IFeeSplits.PendingOrUndistributedSharesExist.selector);
+        vm.expectRevert(IFeeSplits.UndistributedSharesExit.selector);
         vm.prank(user);
         accounting.setFeeSplits(0, feeShares, new bytes32[](0), splits);
     }
@@ -804,28 +800,11 @@ contract PullFeeRewardsTest is BaseTest {
         assertEq(totalBondSharesAfter, totalBondSharesBefore);
     }
 
-    function test_pullFeeRewards_doesNotRevert_when_operatorDoesNotExist()
-        public
-    {
-        // No operator registered
+    function test_pullFeeRewards_RevertWhen_operatorDoesNotExist() public {
         mock_getNodeOperatorsCount(0);
-        // Mock keys query to avoid low-level revert on stub
         mock_getNodeOperatorNonWithdrawnKeys(0);
-
-        uint256 bondSharesBefore = accounting.getBondShares(0);
-        uint256 totalBondSharesBefore = accounting.totalBondShares();
-        // Should not revert; no distribution occurs (0 shares), just updates module hook
-        vm.expectCall(
-            address(accounting.MODULE()),
-            abi.encodeWithSelector(
-                ICSModule.updateDepositableValidatorsCount.selector,
-                0
-            )
-        );
+        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
         accounting.claimRewardsStETH(0, 0, 0, new bytes32[](1));
-
-        assertEq(accounting.getBondShares(0), bondSharesBefore);
-        assertEq(accounting.totalBondShares(), totalBondSharesBefore);
     }
 
     function test_pullFeeRewards_withSplits() public assertInvariants {

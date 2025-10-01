@@ -279,13 +279,11 @@ contract CSAccounting is
         bytes32[] calldata rewardsProof
     ) external whenResumed returns (uint256 claimedShares) {
         _onlyExistingNodeOperator(nodeOperatorId);
-        if (rewardsProof.length != 0) {
-            _pullFeeRewards(nodeOperatorId, cumulativeFeeShares, rewardsProof);
-        }
-        uint256 claimableShares = _getClaimableBondShares(nodeOperatorId);
-        claimableShares = _splitAndTransferFees(
+
+        uint256 claimableShares = _pullAndSplitFeeRewards(
             nodeOperatorId,
-            claimableShares
+            cumulativeFeeShares,
+            rewardsProof
         );
         // NOTE: Check eligibility to call only if there is something to claim.
         //      This allows to call pull and split fee rewards by any actor without claiming bond.
@@ -316,13 +314,10 @@ contract CSAccounting is
                 nodeOperatorId
             );
 
-        if (rewardsProof.length != 0) {
-            _pullFeeRewards(nodeOperatorId, cumulativeFeeShares, rewardsProof);
-        }
-        uint256 claimableShares = _getClaimableBondShares(nodeOperatorId);
-        claimableShares = _splitAndTransferFees(
+        uint256 claimableShares = _pullAndSplitFeeRewards(
             nodeOperatorId,
-            claimableShares
+            cumulativeFeeShares,
+            rewardsProof
         );
         if (wstETHAmount != 0 && claimableShares != 0) {
             claimedWstETH = CSBondCore._claimWstETH(
@@ -347,13 +342,10 @@ contract CSAccounting is
                 nodeOperatorId
             );
 
-        if (rewardsProof.length != 0) {
-            _pullFeeRewards(nodeOperatorId, cumulativeFeeShares, rewardsProof);
-        }
-        uint256 claimableShares = _getClaimableBondShares(nodeOperatorId);
-        claimableShares = _splitAndTransferFees(
+        uint256 claimableShares = _pullAndSplitFeeRewards(
             nodeOperatorId,
-            claimableShares
+            cumulativeFeeShares,
+            rewardsProof
         );
         if (stETHAmount != 0 && claimableShares != 0) {
             requestId = CSBondCore._claimUnstETH(
@@ -658,45 +650,41 @@ contract CSAccounting is
         }
     }
 
-    function _pullFeeRewards(
+    function _pullAndSplitFeeRewards(
         uint256 nodeOperatorId,
         uint256 cumulativeFeeShares,
         bytes32[] calldata rewardsProof
-    ) internal {
-        uint256 distributed = FEE_DISTRIBUTOR.distributeFees(
-            nodeOperatorId,
-            cumulativeFeeShares,
-            rewardsProof
-        );
-        if (distributed == 0) {
-            return;
+    ) internal returns (uint256 claimableShares) {
+        bool hasSplits = FeeSplits.hasSplits(_feeSplits, nodeOperatorId);
+        if (rewardsProof.length != 0) {
+            uint256 distributed = FEE_DISTRIBUTOR.distributeFees(
+                nodeOperatorId,
+                cumulativeFeeShares,
+                rewardsProof
+            );
+            if (distributed != 0) {
+                CSBondCore._increaseBond(nodeOperatorId, distributed);
+                if (hasSplits) {
+                    _pendingSharesToSplit[nodeOperatorId] += distributed;
+                }
+            }
         }
-        if (FeeSplits.hasSplits(_feeSplits, nodeOperatorId)) {
-            _pendingSharesToSplit[nodeOperatorId] += distributed;
-        }
-        CSBondCore._increaseBond(nodeOperatorId, distributed);
-    }
-
-    function _splitAndTransferFees(
-        uint256 nodeOperatorId,
-        uint256 claimableShares
-    ) internal returns (uint256) {
-        if (!FeeSplits.hasSplits(_feeSplits, nodeOperatorId)) {
-            return claimableShares;
-        }
-        uint256 transferredShares = FeeSplits.splitAndTransferFees({
-            feeSplitsStorage: _feeSplits,
-            pendingSharesToSplitStorage: _pendingSharesToSplit,
-            lido: LIDO,
-            nodeOperatorId: nodeOperatorId,
-            claimableShares: claimableShares
-        });
-        if (transferredShares != 0) {
-            CSBondCore._unsafeReduceBond(nodeOperatorId, transferredShares);
-        }
-        // @dev It is safe to use unchecked here since `transferredShares` is always <= `claimableShares`
-        unchecked {
-            return claimableShares - transferredShares;
+        claimableShares = _getClaimableBondShares(nodeOperatorId);
+        if (hasSplits) {
+            uint256 transferredShares = FeeSplits.splitAndTransferFees({
+                feeSplitsStorage: _feeSplits,
+                pendingSharesToSplitStorage: _pendingSharesToSplit,
+                lido: LIDO,
+                nodeOperatorId: nodeOperatorId,
+                claimableShares: claimableShares
+            });
+            if (transferredShares != 0) {
+                CSBondCore._unsafeReduceBond(nodeOperatorId, transferredShares);
+                // @dev It is safe to use unchecked here since `transferredShares` is always <= `claimableShares`
+                unchecked {
+                    claimableShares -= transferredShares;
+                }
+            }
         }
     }
 

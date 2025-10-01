@@ -14,7 +14,8 @@ interface IFeeSplits {
         ICSAccounting.FeeSplit[] feeSplits
     );
 
-    error PendingOrUndistributedSharesExist();
+    error PendingSharesExist();
+    error UndistributedSharesExit();
     error TooManySplits();
     error TooManySplitShares();
     error ZeroSplitRecipient();
@@ -24,13 +25,6 @@ interface IFeeSplits {
 library FeeSplits {
     uint256 internal constant MAX_BP = 10_000;
     uint256 public constant MAX_FEE_SPLITS = 5;
-
-    function hasSplits(
-        mapping(uint256 => ICSAccounting.FeeSplit[]) storage feeSplitsStorage,
-        uint256 nodeOperatorId
-    ) external view returns (bool) {
-        return feeSplitsStorage[nodeOperatorId].length != 0;
-    }
 
     function setFeeSplits(
         mapping(uint256 => ICSAccounting.FeeSplit[]) storage feeSplitsStorage,
@@ -47,7 +41,7 @@ library FeeSplits {
         }
 
         if (pendingSharesToSplitStorage[nodeOperatorId] > 0) {
-            revert IFeeSplits.PendingOrUndistributedSharesExist();
+            revert IFeeSplits.PendingSharesExist();
         }
 
         if (
@@ -57,7 +51,7 @@ library FeeSplits {
                 rewardsProof
             ) != 0
         ) {
-            revert IFeeSplits.PendingOrUndistributedSharesExist();
+            revert IFeeSplits.UndistributedSharesExit();
         }
 
         uint256 totalShare = 0;
@@ -116,5 +110,12 @@ library FeeSplits {
 
         uint256 newPending = pending - claimableShares;
         pendingSharesToSplitStorage[nodeOperatorId] = newPending;
+    }
+
+    function hasSplits(
+        mapping(uint256 => ICSAccounting.FeeSplit[]) storage feeSplitsStorage,
+        uint256 nodeOperatorId
+    ) external view returns (bool) {
+        return feeSplitsStorage[nodeOperatorId].length != 0;
     }
 }
