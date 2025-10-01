@@ -488,7 +488,7 @@ interface ICSModule is
         ValidatorWithdrawalInfo[] calldata withdrawalsInfo
     ) external;
 
-    /// @notice Checks if a validator is sla
+    /// @notice Checks if a validator was reported as slashed
     /// @param nodeOperatorId The ID of the node operator
     /// @param keyIndex The index of the validator key
     /// @return bool True if a validator was reported as slashed
