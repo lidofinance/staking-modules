@@ -278,20 +278,17 @@ contract CSAccounting is
         uint256 cumulativeFeeShares,
         bytes32[] calldata rewardsProof
     ) external whenResumed returns (uint256 claimedShares) {
-        _onlyExistingNodeOperator(nodeOperatorId);
+        NodeOperatorManagementProperties
+            memory no = _checkAndGetEligibleNodeOperatorProperties(
+                nodeOperatorId
+            );
 
         uint256 claimableShares = _pullAndSplitFeeRewards(
             nodeOperatorId,
             cumulativeFeeShares,
             rewardsProof
         );
-        // NOTE: Check eligibility to call only if there is something to claim.
-        //      This allows to call pull and split fee rewards by any actor without claiming bond.
         if (stETHAmount != 0 && claimableShares != 0) {
-            NodeOperatorManagementProperties
-                memory no = _checkAndGetEligibleNodeOperatorProperties(
-                    nodeOperatorId
-                );
             claimedShares = CSBondCore._claimStETH(
                 nodeOperatorId,
                 stETHAmount,
@@ -488,6 +485,21 @@ contract CSAccounting is
             chargePenaltyRecipient
         );
         _adjustBondReserve(nodeOperatorId);
+    }
+
+    /// @inheritdoc ICSAccounting
+    function pullAndSplitFeeRewards(
+        uint256 nodeOperatorId,
+        uint256 cumulativeFeeShares,
+        bytes32[] calldata rewardsProof
+    ) external {
+        _onlyExistingNodeOperator(nodeOperatorId);
+        _pullAndSplitFeeRewards(
+            nodeOperatorId,
+            cumulativeFeeShares,
+            rewardsProof
+        );
+        MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
     /// @inheritdoc AssetRecoverer

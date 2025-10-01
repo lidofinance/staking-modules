@@ -327,7 +327,7 @@ contract FeeSplitsTest is BaseTest {
         // Have some non-withdrawn keys that requires claimable shares to be > 0
         mock_getNodeOperatorNonWithdrawnKeys(1);
 
-        accounting.claimRewardsStETH(0, 0, feeShares, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
 
         // Now try to set new splits - should fail due to pending shares
         ICSAccounting.FeeSplit[]
@@ -775,7 +775,7 @@ contract PullFeeRewardsTest is BaseTest {
                 0
             )
         );
-        accounting.claimRewardsStETH(0, 0, feeShares, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
 
         uint256 bondSharesAfter = accounting.getBondShares(0);
         uint256 totalBondSharesAfter = accounting.totalBondShares();
@@ -791,7 +791,7 @@ contract PullFeeRewardsTest is BaseTest {
         uint256 bondSharesBefore = accounting.getBondShares(0);
         uint256 totalBondSharesBefore = accounting.totalBondShares();
 
-        accounting.claimRewardsStETH(0, 0, 0, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, 0, new bytes32[](1));
 
         uint256 bondSharesAfter = accounting.getBondShares(0);
         uint256 totalBondSharesAfter = accounting.totalBondShares();
@@ -803,8 +803,8 @@ contract PullFeeRewardsTest is BaseTest {
     function test_pullFeeRewards_RevertWhen_operatorDoesNotExist() public {
         mock_getNodeOperatorsCount(0);
         mock_getNodeOperatorNonWithdrawnKeys(0);
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
-        accounting.claimRewardsStETH(0, 0, 0, new bytes32[](1));
+        vm.expectRevert(ICSAccounting.NodeOperatorDoesNotExist.selector);
+        accounting.pullAndSplitFeeRewards(0, 0, new bytes32[](1));
     }
 
     function test_pullFeeRewards_withSplits() public assertInvariants {
@@ -846,7 +846,7 @@ contract PullFeeRewardsTest is BaseTest {
                 0
             )
         );
-        accounting.claimRewardsStETH(0, 0, feeShares, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
 
         feeShares -= 8 ether; // remaining shares after splits
 
@@ -910,7 +910,7 @@ contract PullFeeRewardsTest is BaseTest {
                 0
             )
         );
-        accounting.claimRewardsStETH(0, 0, feeShares, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
 
         uint256 bondSharesAfter = accounting.getBondShares(0);
         uint256 totalBondSharesAfter = accounting.totalBondShares();
@@ -972,7 +972,7 @@ contract PullFeeRewardsTest is BaseTest {
                 0
             )
         );
-        accounting.claimRewardsStETH(0, 0, feeShares, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
 
         uint256 bondSharesAfter = accounting.getBondShares(0);
         uint256 totalBondSharesAfter = accounting.totalBondShares();
@@ -1033,7 +1033,7 @@ contract PullFeeRewardsTest is BaseTest {
                 0
             )
         );
-        accounting.claimRewardsStETH(0, 0, feeShares, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
 
         uint256 bondSharesAfter = accounting.getBondShares(0);
         uint256 totalBondSharesAfter = accounting.totalBondShares();
@@ -1107,7 +1107,7 @@ contract PullFeeRewardsTest is BaseTest {
                 0
             )
         );
-        accounting.claimRewardsStETH(0, 0, feeShares, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
 
         feeShares -= totalFeeSharesForSplits; // remaining shares after splits
 
@@ -1157,7 +1157,7 @@ contract PullFeeRewardsTest is BaseTest {
         uint256 expectedClaimableAfterPull = feeShares - requiredShares;
 
         uint256 pendingBefore = accounting.getPendingSharesToSplit(0);
-        accounting.claimRewardsStETH(0, 0, feeShares, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
         uint256 pendingAfter = accounting.getPendingSharesToSplit(0);
 
         uint256 expectedPendingIncrease = feeShares;
@@ -1196,14 +1196,13 @@ contract PullFeeRewardsTest is BaseTest {
         // First pull with less than required - should be limited by claimable
         uint256 firstFeeShares = 0.5 ether;
         stETH.mintShares(address(feeDistributor), firstFeeShares);
-        accounting.claimRewardsStETH(0, 0, firstFeeShares, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, firstFeeShares, new bytes32[](1));
 
         // Multiple small pulls to accumulate pending
         uint256 secondFeeShares = 0.1 ether;
         for (uint256 i = 0; i < 5; i++) {
             stETH.mintShares(address(feeDistributor), secondFeeShares);
-            accounting.claimRewardsStETH(
-                0,
+            accounting.pullAndSplitFeeRewards(
                 0,
                 secondFeeShares,
                 new bytes32[](1)
@@ -1214,7 +1213,7 @@ contract PullFeeRewardsTest is BaseTest {
 
         // One more pull should process accumulated pending
         stETH.mintShares(address(feeDistributor), secondFeeShares);
-        accounting.claimRewardsStETH(0, 0, secondFeeShares, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, secondFeeShares, new bytes32[](1));
 
         uint256 expectedTransferred = (firstFeeShares +
             (5 * secondFeeShares) +
@@ -1254,7 +1253,7 @@ contract PullFeeRewardsTest is BaseTest {
         uint256 sharesBefore = stETH.sharesOf(splits[0].recipient);
         uint256 bondSharesBefore = accounting.getBondShares(0);
 
-        accounting.claimRewardsStETH(0, 0, feeShares, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
 
         assertEq(stETH.sharesOf(splits[0].recipient), sharesBefore);
         assertEq(accounting.getBondShares(0), bondSharesBefore + feeShares);
@@ -1296,7 +1295,7 @@ contract PullFeeRewardsTest is BaseTest {
         uint256 bondSharesBefore = accounting.getBondShares(0);
         uint256 totalBondSharesBefore = accounting.totalBondShares();
 
-        accounting.claimRewardsStETH(0, 0, feeShares, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
 
         uint256 recipient0 = (feeShares * splits[0].share) / 10_000;
         uint256 recipient1 = (feeShares * splits[1].share) / 10_000;
@@ -1361,7 +1360,7 @@ contract PullFeeRewardsTest is BaseTest {
         uint256 bondSharesBefore = accounting.getBondShares(0);
         uint256 totalBondSharesBefore = accounting.totalBondShares();
 
-        accounting.claimRewardsStETH(0, 0, feeShares, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
 
         uint256 recipient0 = (feeShares * splits[0].share) / 10_000; // 0
         uint256 recipient1 = (feeShares * splits[1].share) / 10_000; // 0
@@ -1411,12 +1410,12 @@ contract PullFeeRewardsTest is BaseTest {
         // Accumulate pending while locked
         uint256 first = 5;
         stETH.mintShares(address(feeDistributor), first);
-        accounting.claimRewardsStETH(0, 0, first, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, first, new bytes32[](1));
         assertEq(accounting.getPendingSharesToSplit(0), first);
 
         uint256 second = 7;
         stETH.mintShares(address(feeDistributor), second);
-        accounting.claimRewardsStETH(0, 0, second, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, second, new bytes32[](1));
         assertEq(accounting.getPendingSharesToSplit(0), first + second);
 
         // Let the lock expire
@@ -1428,7 +1427,7 @@ contract PullFeeRewardsTest is BaseTest {
         uint256 third = 8;
         stETH.mintShares(address(feeDistributor), third);
         uint256 recipientBefore = stETH.sharesOf(splits[0].recipient);
-        accounting.claimRewardsStETH(0, 0, third, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, third, new bytes32[](1));
 
         uint256 total = first + second + third; // all pending becomes claimable now
         uint256 expectedToRecipient = (total * 5000) / 10000;
@@ -1648,7 +1647,7 @@ contract ClaimRewardsWithFeeSplitsTest is BaseTest {
         uint256 feeShares = stETH.getSharesByPooledEth(1 ether);
         stETH.mintShares(address(feeDistributor), feeShares);
         // Pull rewards (with proof) to accumulate pending while claimable == 0
-        accounting.claimRewardsStETH(0, 0, feeShares, new bytes32[](1));
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
 
         uint256 claimableAfterPull = accounting.getClaimableBondShares(0);
         assertEq(claimableAfterPull, 0, "claimable must still be zero");
@@ -1669,7 +1668,7 @@ contract ClaimRewardsWithFeeSplitsTest is BaseTest {
         uint256 bondBeforeSplit = accounting.getBondShares(0);
 
         // Now split pending without pulling (empty proof, zero amount)
-        accounting.claimRewardsStETH(0, 0, 0, new bytes32[](0));
+        accounting.pullAndSplitFeeRewards(0, 0, new bytes32[](0));
 
         uint256 expectedToRecipient = (feeShares * splits[0].share) / 10_000;
         assertEq(
