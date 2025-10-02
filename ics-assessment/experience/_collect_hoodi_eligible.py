@@ -18,7 +18,7 @@ FEE_DISTRIBUTOR_ADDRESS: str = "0xaCd9820b0A2229a82dc1A0770307ce5522FF3582"
 FROM_BLOCK: int = 4980
 TO_BLOCK: str | int = 1329775
 OUTPUT_PATH: Path = Path(__file__).parent / "eligible_node_operators_hoodi.json"
-REQUIRED_PERFORMANCE_WINDOW = 60  # days
+REQUIRED_PERFORMANCE_WINDOW = 53  # days
 
 # Event signature for DistributionLogUpdated(string logCid)
 EVENT_SIGNATURE: str = "DistributionLogUpdated(string)"

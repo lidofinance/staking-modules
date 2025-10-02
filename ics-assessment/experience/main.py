@@ -26,7 +26,6 @@ scores = {
 
 # TODO add support for v2 reports
 MAINNET_PERFORMANCE_REPORTS = [
-    "QmVgGQS7QBeRMq2noqqxekY5ezmqRsgu7JjiyMyRaaWEDv",  # 23048383 block
     "QmaUC2HBv88mJ9Gf99hfNgtH4qo2F1yHaBMC4imwVhxDDi",  # 23248929 block
     "QmPPFkydgtnwMBDF6nZZaU5nnqy3csbKts3UfRRgWXreEu"  # 23463926 block
 ]
