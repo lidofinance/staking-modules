@@ -66,5 +66,7 @@ def main():
         why = ", ".join(missing)
         print(f"❌ Not eligible: requirements not met in category(ies): {why}.")
 
+
+
 if __name__ == "__main__":
     main()
