@@ -726,6 +726,9 @@ contract CSModule is
         }
 
         uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
+        if (_isValidatorSlashed[pointer]) {
+            revert ValidatorSlashingAlreadyReported();
+        }
         _isValidatorSlashed[pointer] = true;
 
         bytes memory pubkey = SigningKeys.loadKeys(nodeOperatorId, keyIndex, 1);

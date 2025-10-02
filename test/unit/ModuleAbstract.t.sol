@@ -7631,12 +7631,16 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertTrue(module.isValidatorSlashed(noId, keyIndex));
     }
 
-    function test_onValidatorSlashed_canBeCalledMultipleTimes() public {
+    function test_onValidatorSlashed_RevertWhen_CalledTwice() public {
         uint256 noId = createNodeOperator(17);
         module.obtainDepositData(17, "");
         uint256 keyIndex = 11;
 
         module.onValidatorSlashed(noId, keyIndex);
+        vm.expectRevert(
+            ICSModule.ValidatorSlashingAlreadyReported.selector,
+            address(module)
+        );
         module.onValidatorSlashed(noId, keyIndex);
     }
 

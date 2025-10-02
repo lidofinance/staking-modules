@@ -67,6 +67,7 @@ interface ICSModule is
     error ExitedKeysDecrease();
     error ZeroExitBalance();
     error SlashingPenaltyIsNotApplicable();
+    error ValidatorSlashingAlreadyReported();
 
     error InvalidInput();
     error NotEnoughKeys();
