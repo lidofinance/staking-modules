@@ -210,14 +210,14 @@ def test_high_signal_api_buckets_and_max(monkeypatch, mod):
     # Return 35 for addr1, 85 for addr2, 404 for addr3
     def fake_get(url, params=None):
         val = params.get("searchValue")
-        if val == "0xaddr1":
+        if val == "0x1231231231231231231312312312312311231233":
             return DummyResp(200, {"totalScores": [{"totalScore": 35}]})
-        if val == "0xaddr2":
+        if val == "0x1231231231231231231312312312312311231232":
             return DummyResp(200, {"totalScores": [{"totalScore": 85}]})
         return DummyResp(404, {})
 
     monkeypatch.setattr(mod.requests, "get", fake_get)
-    score = mod.high_signal({"0xaddr1", "0xaddr2", "0xaddr3"})
+    score = mod.high_signal({"0x1231231231231231231312312312312311231233", "0x1231231231231231231312312312312311231232", "0x1231231231231231231312312312312311231231"})
     assert score == mod.scores["high-signal-80"]
 
 
