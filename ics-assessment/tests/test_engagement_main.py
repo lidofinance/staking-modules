@@ -1,3 +1,4 @@
+import json
 import types
 import sys
 from importlib import util
@@ -24,6 +25,7 @@ def mod(tmp_path):
     spec.loader.exec_module(mod)
     # redirect file base to temp directory used by tests
     mod.current_dir = Path(tmp_path)
+    mod.CACHE_DIR = mod.current_dir / ".cache"
     return mod
 
 
@@ -169,6 +171,25 @@ def test_galxe_scores_none_zero(monkeypatch, mod):
     assert mod.galxe_scores({"0xabc"}) == 0
 
 
+def test_galxe_scores_uses_cache(monkeypatch, mod, capsys):
+    cache_dir = mod.CACHE_DIR
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cached_data = [
+        {"points": 12, "address": {"address": "0xabc"}},
+        {"points": 3, "address": {"address": "0xdef"}},
+    ]
+    (cache_dir / "galxe_loyalty_points.json").write_text(json.dumps(cached_data))
+
+    def fail_post(*_args, **_kwargs):
+        raise AssertionError("Network call should be skipped when cache is present")
+
+    monkeypatch.setattr(mod.requests, "post", fail_post)
+    score = mod.galxe_scores({"0xabc"})
+    captured = capsys.readouterr()
+    assert "Warning: found cache file" in captured.out
+    assert score == mod.scores["galxe-score-above-10"]
+
+
 def test_gitpoap_any_event_awards_once(monkeypatch, mod):
     # prepare events csv
     (Path(mod.current_dir) / "gitpoap_events.csv").write_text("ID,Name\n1,evt1\n2,evt2\n")
@@ -204,20 +225,40 @@ def test_gitpoap_no_matches_zero(monkeypatch, mod):
     assert mod.gitpoap({"0xabc"}) == 0
 
 
+def test_gitpoap_uses_cache(monkeypatch, mod, capsys):
+    events_csv = Path(mod.current_dir) / "gitpoap_events.csv"
+    events_csv.write_text("ID,Name\n1,evt1\n")
+
+    cache_dir = mod.CACHE_DIR
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cached = {"1": ["0xabc"]}
+    (cache_dir / "gitpoap_holders.json").write_text(json.dumps(cached))
+
+    class FailSession:
+        def __init__(self):
+            raise AssertionError("Session should not be instantiated when cache is used")
+
+    monkeypatch.setattr(mod.requests, "Session", FailSession)
+    score = mod.gitpoap({"0xabc"})
+    captured = capsys.readouterr()
+    assert "Warning: found cache file" in captured.out
+    assert score == mod.scores["git-poap"]
+
+
 def test_high_signal_api_buckets_and_max(monkeypatch, mod):
     monkeypatch.setenv("HIGH_SIGNAL_API_KEY", "key")
 
     # Return 35 for addr1, 85 for addr2, 404 for addr3
     def fake_get(url, params=None):
         val = params.get("searchValue")
-        if val == "0xaddr1":
+        if val == "0x1231231231231231231312312312312311231233":
             return DummyResp(200, {"totalScores": [{"totalScore": 35}]})
-        if val == "0xaddr2":
+        if val == "0x1231231231231231231312312312312311231232":
             return DummyResp(200, {"totalScores": [{"totalScore": 85}]})
         return DummyResp(404, {})
 
     monkeypatch.setattr(mod.requests, "get", fake_get)
-    score = mod.high_signal({"0xaddr1", "0xaddr2", "0xaddr3"})
+    score = mod.high_signal({"0x1231231231231231231312312312312311231233", "0x1231231231231231231312312312312311231232", "0x1231231231231231231312312312312311231231"})
     assert score == mod.scores["high-signal-80"]
 
 

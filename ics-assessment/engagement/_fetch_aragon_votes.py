@@ -3,7 +3,7 @@ from collections import defaultdict
 from web3 import Web3
 
 RPC_URL = "http://localhost:8545/"
-ARAGON_BLOCK_CUTOFF = 23281557 # TODO update
+ARAGON_BLOCK_CUTOFF = 23486383
 REQUIRED_LDO = 100 * 10 ** 18  # 100 LDO in wei
 
 if __name__ == '__main__':

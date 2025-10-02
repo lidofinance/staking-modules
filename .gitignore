@@ -16,6 +16,7 @@ cache/
 out/
 localhost.json
 lcov.info
+ics-assessment/engagement/.cache/
 
 # Yarn
 .yarn/*

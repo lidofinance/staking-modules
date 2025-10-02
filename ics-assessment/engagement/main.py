@@ -1,9 +1,11 @@
 # Proof of engagement
 import csv
+import json
 import os
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import requests
 from web3 import Web3
@@ -23,16 +25,31 @@ scores = {
 MIN_SCORE = 2
 MAX_SCORE = 7
 
-SNAPSHOT_VOTE_TIMESTAMP = 1756890119  # TODO update
+SNAPSHOT_VOTE_TIMESTAMP = 1759363200
 REQUIRED_SNAPSHOT_VOTES = 3
 REQUIRED_SNAPSHOT_VP = 100  # 100 LDO
 REQUIRED_ARAGON_VOTES = 2
 
-# TODO update dates
 HIGH_SIGNAL_START_DATE = datetime(2025, 7, 1)  # YYYY, MM, DD
 HIGH_SIGNAL_END_DATE = datetime(2025, 10, 1)  # YYYY, MM, DD
 
 current_dir = Path(__file__).parent.resolve()
+CACHE_DIR = current_dir / ".cache"
+
+
+def _read_cache_file(filename: str) -> Any | None:
+    cache_path = CACHE_DIR / filename
+    if cache_path.exists():
+        with cache_path.open("r", encoding="utf-8") as cache_file:
+            return json.load(cache_file)
+    return None
+
+
+def _write_cache_file(filename: str, data: Any) -> None:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_path = CACHE_DIR / filename
+    with cache_path.open("w", encoding="utf-8") as cache_file:
+        json.dump(data, cache_file)
 
 
 def snapshot_vote(addresses: set[str]) -> int:
@@ -126,7 +143,9 @@ def galxe_scores(addresses: set[str]) -> int:
     }
     """
 
-    def fetch_all_items():
+    cache_filename = "galxe_loyalty_points.json"
+
+    def fetch_all_items() -> list[dict[str, Any]]:
         cursor = None
         all_items = []
         while True:
@@ -148,7 +167,12 @@ def galxe_scores(addresses: set[str]) -> int:
             cursor = page_info['endCursor']
         return all_items
 
-    all_items = fetch_all_items()
+    cached_items = _read_cache_file(cache_filename)
+    if cached_items is not None:
+        all_items = cached_items
+    else:
+        all_items = fetch_all_items()
+        _write_cache_file(cache_filename, all_items)
     addr_to_points = {item["address"]["address"].lower(): item["points"] for item in all_items}
 
     score = 0
@@ -167,23 +191,34 @@ def galxe_scores(addresses: set[str]) -> int:
 
 def gitpoap(addresses: set[str]) -> int:
     url = "https://public-api.gitpoap.io/v1"
+    cache_filename = "gitpoap_holders.json"
 
     with open(current_dir / "gitpoap_events.csv", "r") as f:
         reader = csv.DictReader(f)
         gitpoap_events = {row["ID"]: row["Name"] for row in reader}
-    s = requests.Session()
-    a = requests.adapters.HTTPAdapter(max_retries=3)
-    s.mount('https://', a)
+    cached_holders = _read_cache_file(cache_filename)
+    if not isinstance(cached_holders, dict):
+        cached_holders = {}
 
     final_score = 0
-    for event_id, event_name in gitpoap_events.items():
-        response = s.get(f"{url}/gitpoaps/{event_id}/addresses")
-        response.raise_for_status()
+    session = requests.Session()
+    adapter = requests.adapters.HTTPAdapter(max_retries=3)
+    session.mount('https://', adapter)
 
-        poap_holders = response.json().get("addresses", [])
-        if any(address.lower() in poap_holders for address in addresses):
+    for event_id, event_name in gitpoap_events.items():
+        holders = cached_holders.get(event_id)
+        if holders is None:
+            response = session.get(f"{url}/gitpoaps/{event_id}/addresses")
+            response.raise_for_status()
+            holder_set = {addr.lower() for addr in response.json().get("addresses", [])}
+            holders = sorted(holder_set)
+            cached_holders[event_id] = holders
+        holder_set = {addr.lower() for addr in holders}
+        if any(address.lower() in holder_set for address in addresses):
             print(f"    Found GitPoap for event '{event_name}'")
             final_score = scores["git-poap"]
+
+    _write_cache_file(cache_filename, cached_holders)
 
     return final_score
 
@@ -276,6 +311,8 @@ def main(addresses: set[str], high_signal_score: float | None = None):
     - `addresses`: set of lowercase addresses.
     - `high_signal_score`: optional override for High-signal score; if None, use API or prompt.
     """
+    if (current_dir / CACHE_DIR).exists():
+        print(f"⚠️ Warning: found cache dir; using cached data... If you want fresh data, remove engagement/{CACHE_DIR}.")
     print(f"Your addresses: {', '.join(addresses)}")
     print("Checking addresses for Proof of Engagement...")
 

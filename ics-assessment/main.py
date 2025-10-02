@@ -44,7 +44,9 @@ def main():
         + ("✅" if engagement_score else "❌")
     )
     total = experience_score + humanity_score + engagement_score
-    print("Sum of all scores:", total)
+    print(
+        f"Sum of all scores: {total} (limits: min=15)" + (" ✅" if total > 15 else " ❌")
+    )
 
     # Final resolution summary
     print("\n==== Resolution ====")
@@ -55,12 +57,16 @@ def main():
         missing.append("Humanity")
     if not engagement_score:
         missing.append("Engagement")
+    if total < 15:
+        missing.append("Total")
 
     if not missing:
         print("✅ Eligible: minimum criteria met in all categories (Experience, Humanity, Engagement).")
     else:
         why = ", ".join(missing)
         print(f"❌ Not eligible: requirements not met in category(ies): {why}.")
+
+
 
 if __name__ == "__main__":
     main()
