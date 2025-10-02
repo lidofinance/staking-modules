@@ -311,6 +311,8 @@ def main(addresses: set[str], high_signal_score: float | None = None):
     - `addresses`: set of lowercase addresses.
     - `high_signal_score`: optional override for High-signal score; if None, use API or prompt.
     """
+    if (current_dir / CACHE_DIR).exists():
+        print(f"⚠️ Warning: found cache dir; using cached data... If you want fresh data, remove engagement/{CACHE_DIR}.")
     print(f"Your addresses: {', '.join(addresses)}")
     print("Checking addresses for Proof of Engagement...")
 
@@ -340,8 +342,6 @@ def main(addresses: set[str], high_signal_score: float | None = None):
         if total_score > MAX_SCORE:
             print(f"Score exceeds the maximum allowed for the category ({MAX_SCORE}). Final score capped at {MAX_SCORE}.")
         print(f"Final Proof of Engagement score: {final_score}")
-    if (current_dir / CACHE_DIR).exists():
-        print(f"⚠️ Warning: found cache dir; cached data used. If you want fresh data, remove engagement/{CACHE_DIR}.")
     return final_score
 
 if __name__ == '__main__':
