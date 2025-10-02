@@ -9,6 +9,8 @@ node_modules/
 .direnv
 .DS_Store
 
+**/venv
+
 # Foundry files
 broadcast/
 coverage/

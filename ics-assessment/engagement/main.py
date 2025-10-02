@@ -31,7 +31,7 @@ REQUIRED_SNAPSHOT_VP = 100  # 100 LDO
 REQUIRED_ARAGON_VOTES = 2
 
 HIGH_SIGNAL_START_DATE = datetime(2025, 7, 1)  # YYYY, MM, DD
-HIGH_SIGNAL_END_DATE = datetime(2025, 10, 1)  # YYYY, MM, DD
+HIGH_SIGNAL_END_DATE = datetime(2025, 10, 3)  # YYYY, MM, DD
 
 current_dir = Path(__file__).parent.resolve()
 CACHE_DIR = current_dir / ".cache"
