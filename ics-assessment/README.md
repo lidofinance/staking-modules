@@ -41,6 +41,28 @@ python experience/main.py 0xabc... 0xdef...
 python humanity/main.py 0xabc... 0xdef...
 ```
 
+### Batch runner for form CSV
+
+Runs assessments per form submission, captures per-submission logs, and writes/prints a concise summary.
+
+```bash
+# No arguments; uses constant files and requires API keys
+export HIGH_SIGNAL_API_KEY=...   # required
+export HUMAN_PASSPORT_API_KEY=... # required
+python batch_process_forms.py
+```
+
+Files/paths (constants):
+
+- Input: `ics-forms.csv`
+- Logs dir: `logs/` under `ics-assessment/`
+
+Console output: one human-readable line per submission, e.g.
+
+```
+[#62] APPROVED | main 0x23fb…aa76 | addrs 1 | EXP 6, HUM 8, ENG 7 | total 21 | eligible YES | log logs/62.log
+```
+
 ## How Data Is Collected
 
 - Static, curated snapshots (as-of a date or block):

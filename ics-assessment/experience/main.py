@@ -8,6 +8,7 @@ from pathlib import Path
 from datetime import datetime
 
 import requests
+from functools import lru_cache
 
 scores = {
     # TODO exclude slashed
@@ -35,17 +36,21 @@ MAX_SCORE = 8
 
 current_dir = Path(__file__).parent.resolve()
 
+@lru_cache(maxsize=None)
+def _read_csv_rows_cached(path_str: str):
+    with open(path_str, "r") as f:
+        reader = csv.reader(f)
+        return tuple(tuple(row) for row in reader)
+
 def is_addresses_in_csv(addresses: set[str], csv_file: str, base_dir=current_dir) -> bool:
     """
     Returns True if any address in `addresses` is found in the first column of the given CSV file.
     The CSV file should contain a single column with addresses or a header with 'Address'.
     """
-    with open(base_dir / csv_file, "r") as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if row and row[0].strip().lower() in addresses:
-                print(f"    Found address {row[0]} in {csv_file}")
-                return True
+    for row in _read_csv_rows_cached(str((base_dir / csv_file).resolve())):
+        if row and row[0].strip().lower() in addresses:
+            print(f"    Found address {row[0]} in {csv_file}")
+            return True
     return False
 
 
@@ -161,7 +166,7 @@ def _csm_mainnet_score(addresses: set[str]) -> int:
         return scores["csm-mainnet"]
     return 0
 
-def _request_performance_report(report_file, retries=3, delay=2):
+def _request_performance_report_uncached(report_file, retries=3, delay=2):
     url = f"https://ipfs.io/ipfs/{report_file}"
     for attempt in range(retries):
         try:
@@ -175,6 +180,12 @@ def _request_performance_report(report_file, retries=3, delay=2):
                 continue
             raise e
     raise Exception(f"Failed to fetch report {report_file}")
+
+
+@lru_cache(maxsize=None)
+def _request_performance_report(report_file):
+    """LRU-cached IPFS fetch for performance reports keyed by CID."""
+    return _request_performance_report_uncached(report_file)
 
 
 def _check_csm_performance_logs(addresses: set[str], no_owners_file_name, perf_reports, network_name) -> bool:
