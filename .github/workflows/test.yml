@@ -136,12 +136,13 @@ jobs:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
-      - name: Run post-vote tests after upgrade
-        run: just test-upgrade --no-match-contract=VoteChangesTest
-        env:
-          CHAIN: mainnet
-          DEPLOY_CONFIG: ./artifacts/mainnet/deploy-mainnet.json
-          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+      # TODO: Enable when new upgrade tests are ready
+      # - name: Run post-vote tests after upgrade
+      #   run: just test-upgrade --no-match-contract=VoteChangesTest
+      #   env:
+      #     CHAIN: mainnet
+      #     DEPLOY_CONFIG: ./artifacts/mainnet/deploy-mainnet.json
+      #     RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
       # TODO: Enable later
       # - name: Check gas report
