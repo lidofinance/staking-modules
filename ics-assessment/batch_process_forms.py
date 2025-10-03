@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import csv
+import json
 import sys
-import traceback
-from contextlib import redirect_stdout, redirect_stderr
+from contextlib import redirect_stdout
 from pathlib import Path
 import re
 import os
@@ -106,6 +106,8 @@ def main():
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     processed = 0
+    approved_ineligible = 0
+    main_addresses: list[tuple[str, str]] = []
     with open(input_csv, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for idx, row in enumerate(reader):
@@ -141,10 +143,21 @@ def main():
                 f"EXP {exp}, HUM {hum}, ENG {eng} | total {total} | eligible {eligible} | log {log_path.relative_to(input_csv.parent)}"
             )
             processed += 1
+            main_addresses.append((row_id, main_addr.lower()))
             if status == "APPROVED" and eligible == "NO":
                 print(f"⚠️ {row_id} Application is approved but not eligible with score")
+                approved_ineligible += 1
 
-    print(f"Processed {processed} submission(s). Logs: {logs_dir}", file=sys.stderr)
+    summary_path = script_dir / "main-address-summary.json"
+    sorted_addresses = [addr for _, addr in sorted(main_addresses, key=lambda x: x[0])]
+    with open(summary_path, "w", encoding="utf-8") as summary_file:
+        json.dump(sorted_addresses, summary_file, indent=2)
+    print(
+        f"Processed {processed} application(s); found {approved_ineligible} approved submission(s) that remain ineligible. \n"
+        f"Logs: {logs_dir}. \n"
+        f"Main address summary: {summary_path}",
+        file=sys.stderr,
+    )
 
 
 if __name__ == "__main__":
