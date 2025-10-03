@@ -60,35 +60,27 @@ def assess_addresses(addresses: list[str], log_path: Path, *,
     exp = hum = eng = 0
     eligibility = "NO"
 
-    with open(log_path, "w", encoding="utf-8") as lf, redirect_stdout(lf), redirect_stderr(lf):
+    with open(log_path, "w", encoding="utf-8") as lf, redirect_stdout(lf):
         print(f"=== ICS Assessment Log ===")
         print(f"Addresses: {', '.join(addresses) if addresses else '(none)'}")
         print()
-        try:
-            print("==== Proof of Experience ====")
-            exp = int(experience_main(set(addresses)))
-            print("\n==== Proof of Humanity ====")
-            # Pass flags based on links presence from the CSV; API key is required
-            hum = int(humanity_main(set(addresses), discord=has_discord, x=has_twitter))
-            print("\n==== Proof of Engagement ====")
-            # API key is required; no manual override
-            eng = int(engagement_main(set(addresses)))
-        except SystemExit as e:
-            # In case any sub-main() tries to exit
-            print(f"[ERROR] Subprocess attempted to exit: {e}")
-            traceback.print_exc()
-        except Exception as e:  # noqa: BLE001
-            print(f"[ERROR] Exception during assessment: {e}")
-            traceback.print_exc()
-        finally:
-            total = int(exp) + int(hum) + int(eng)
-            eligibility = "YES" if (exp > 0 and hum > 0 and eng > 0) else "NO"
-            print("\n==== Assessment Completed ====")
-            print(f"Experience Score: {exp}")
-            print(f"Humanity Score:  {hum}")
-            print(f"Engagement Score: {eng}")
-            print(f"Total: {total}")
-            print(f"Eligible: {eligibility}")
+        print("==== Proof of Experience ====")
+        exp = int(experience_main(set(addresses)))
+        print("\n==== Proof of Humanity ====")
+        # Pass flags based on links presence from the CSV; API key is required
+        hum = int(humanity_main(set(addresses), discord=has_discord, x=has_twitter))
+        print("\n==== Proof of Engagement ====")
+        # API key is required; no manual override
+        eng = int(engagement_main(set(addresses)))
+
+        total = int(exp) + int(hum) + int(eng)
+        eligibility = "YES" if (exp > 0 and hum > 0 and eng > 0 and total > 15) else "NO"
+        print("\n==== Assessment Completed ====")
+        print(f"Experience Score: {exp}")
+        print(f"Humanity Score:  {hum}")
+        print(f"Engagement Score: {eng}")
+        print(f"Total: {total}")
+        print(f"Eligible: {eligibility}")
 
     total = int(exp) + int(hum) + int(eng)
     return exp, hum, eng, total, eligibility
@@ -135,21 +127,12 @@ def main():
 
             log_path = logs_dir / log_name
 
-            exp = hum = eng = total = 0
-            eligible = "NO"
-            try:
-                exp, hum, eng, total, eligible = assess_addresses(
-                    addresses,
-                    log_path,
-                    has_discord=bool(discord_link) and not bool(discord_comment),
-                    has_twitter=bool(twitter_link) and not bool(twitter_comment),
-                )
-            except Exception as e:  # noqa: BLE001
-                # As a fallback, ensure we at least note the error in a minimal log
-                with open(log_path, "a", encoding="utf-8") as lf:
-                    lf.write("\n[ERROR] Batch-level exception while assessing submission.\n")
-                    lf.write(str(e) + "\n")
-                    lf.write(traceback.format_exc() + "\n")
+            exp, hum, eng, total, eligible = assess_addresses(
+                addresses,
+                log_path,
+                has_discord=bool(discord_link) and not bool(discord_comment),
+                has_twitter=bool(twitter_link) and not bool(twitter_comment),
+            )
 
             # Human-readable one-liner for the console
             main_short = _short_addr(main_addr) if main_addr else "-"

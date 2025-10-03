@@ -55,13 +55,18 @@ def human_passport_score(addresses: set[str], score: float | None = None) -> int
                     scorer_id=HUMAN_PASSPORT_SCORER_ID, address=address
                 )
                 headers = {"X-API-Key": api_key}
-                # Simple throttle: fixed spacing between calls (skip in pytest)
-                resp = requests.get(url, headers=headers)
-                if resp.status_code == 429:
-                    # Too many requests — wait a bit and retry once
-                    print("    Rate limited by Human Passport. Waiting 10 and retrying once…")
-                    time.sleep(10)
+                tries_count = 0
+                while True:
                     resp = requests.get(url, headers=headers)
+                    if resp.status_code == 429:
+                        # Too many requests — wait a bit and retry once
+                        print("    Rate limited by Human Passport. Waiting 10 sec and retrying...")
+                        time.sleep(10)
+                        tries_count += 1
+                        if tries_count > 15:
+                            print("    Rate limited by Human Passport. Reached maximum retries.")
+                            exit(1)
+                    break
                 resp.raise_for_status()
                 data = resp.json() if getattr(resp, "content", None) else resp.json()
                 s_val = float(data.get("score", 0) or 0)
