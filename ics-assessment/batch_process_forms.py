@@ -141,6 +141,8 @@ def main():
                 f"EXP {exp}, HUM {hum}, ENG {eng} | total {total} | eligible {eligible} | log {log_path.relative_to(input_csv.parent)}"
             )
             processed += 1
+            if status == "APPROVED" and eligible == "NO":
+                print(f"⚠️ {row_id} Application is approved but not eligible with score")
 
     print(f"Processed {processed} submission(s). Logs: {logs_dir}", file=sys.stderr)
 
