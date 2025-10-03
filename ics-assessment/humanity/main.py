@@ -66,6 +66,7 @@ def human_passport_score(addresses: set[str], score: float | None = None) -> int
                         if tries_count > 15:
                             print("    Rate limited by Human Passport. Reached maximum retries.")
                             exit(1)
+                        continue
                     break
                 resp.raise_for_status()
                 data = resp.json() if getattr(resp, "content", None) else resp.json()
