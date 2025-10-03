@@ -74,7 +74,7 @@ def assess_addresses(addresses: list[str], log_path: Path, *,
         eng = int(engagement_main(set(addresses)))
 
         total = int(exp) + int(hum) + int(eng)
-        eligibility = "YES" if (exp > 0 and hum > 0 and eng > 0 and total > 15) else "NO"
+        eligibility = "YES" if (exp > 0 and hum > 0 and eng > 0 and total >= 15) else "NO"
         print("\n==== Assessment Completed ====")
         print(f"Experience Score: {exp}")
         print(f"Humanity Score:  {hum}")
