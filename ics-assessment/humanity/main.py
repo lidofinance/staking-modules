@@ -1,9 +1,11 @@
 import csv
 import os
 import sys
+import time
 from pathlib import Path
 
 import requests
+from functools import lru_cache
 
 scores = {
     "human-passport-min": 3,
@@ -19,7 +21,14 @@ MAX_SCORE = 8
 HUMAN_PASSPORT_SCORER_ID = 11737
 HUMAN_PASSPORT_API_URL = "https://api.passport.xyz/v2/stamps/{scorer_id}/score/{address}"
 
+
 current_dir = Path(__file__).parent.resolve()
+
+@lru_cache(maxsize=None)
+def _read_csv_rows_cached(path_str: str):
+    with open(path_str, "r") as f:
+        reader = csv.reader(f)
+        return tuple(tuple(row) for row in reader)
 
 def human_passport_score(addresses: set[str], score: float | None = None) -> int:
     """
@@ -42,14 +51,20 @@ def human_passport_score(addresses: set[str], score: float | None = None) -> int
         else:
             final_score = 0
             for address in addresses:
-                url = HUMAN_PASSPORT_API_URL.format(scorer_id=HUMAN_PASSPORT_SCORER_ID, address=address)
-                headers = {
-                    "X-API-Key": api_key,
-                }
-                response = requests.get(url, headers=headers)
-                response.raise_for_status()
-                data = response.json()
-                s_val = float(data.get("score", 0))
+                url = HUMAN_PASSPORT_API_URL.format(
+                    scorer_id=HUMAN_PASSPORT_SCORER_ID, address=address
+                )
+                headers = {"X-API-Key": api_key}
+                # Simple throttle: fixed spacing between calls (skip in pytest)
+                resp = requests.get(url, headers=headers)
+                if resp.status_code == 429:
+                    # Too many requests — wait a bit and retry once
+                    print("    Rate limited by Human Passport. Waiting 10 and retrying once…")
+                    time.sleep(10)
+                    resp = requests.get(url, headers=headers)
+                resp.raise_for_status()
+                data = resp.json() if getattr(resp, "content", None) else resp.json()
+                s_val = float(data.get("score", 0) or 0)
                 if s_val:
                     print(f"    Found Human Passport score {s_val} for address {address}")
                 if s_val > final_score:
@@ -64,12 +79,10 @@ def human_passport_score(addresses: set[str], score: float | None = None) -> int
 
 
 def circles_verified_score(addresses: set[str]) -> int:
-    with open(current_dir / "circle_group_members.csv", "r") as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if row and row[0].strip().lower() in addresses:
-                print(f"    Found address {row[0]} in Circles group members")
-                return scores["circles-verified"]
+    for row in _read_csv_rows_cached(str(current_dir / "circle_group_members.csv")):
+        if row and row[0].strip().lower() in addresses:
+            print(f"    Found address {row[0]} in Circles group members")
+            return scores["circles-verified"]
 
 
 def discord_account_score(provided: bool | None = None) -> int:
