@@ -35,6 +35,11 @@ def main():
     filtered_nos = ea_nos - exclude
     print(f"Filtered Node Operators (excluding {len(exclude)}): {len(filtered_nos)}")
 
+    with open("sources/ics_assessment_1.json", "r") as f:
+        ics_1_addresses = json.load(f)
+
+    print(f"Total ICS Round 1 Addresses: {len(ics_1_addresses)}")
+
     w3 = Web3(Web3.HTTPProvider(PROVIDER_URL_MAINNET))
     contract = w3.eth.contract(address=CONTRACT_ADDRESS_MAINNET, abi=CSM_ABI, decode_tuples=True)
 
@@ -44,9 +49,12 @@ def main():
         no_address = node_operator.managerAddress if node_operator.extendedManagerPermissions else node_operator.rewardAddress
         final_addresses.append(no_address)
         print(f"Node Operator ID: {no_id}, Address: {no_address}")
+    for addr in ics_1_addresses:
+        final_addresses.append(addr)
 
+    final_addresses_set = set(final_addresses)
     with open("ics.csv", "w") as f:
-        for address in set(final_addresses):
+        for address in sorted(final_addresses_set):
             f.write(f"{address}\n")
 
 if __name__ == '__main__':
