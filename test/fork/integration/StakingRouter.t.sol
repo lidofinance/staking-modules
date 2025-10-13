@@ -91,6 +91,12 @@ contract StakingRouterIntegrationTest is
         assertTrue(module.stakingModuleAddress == address(csm));
     }
 
+    function test_validStakingModuleId() public view {
+        IStakingRouter.StakingModule memory module = stakingRouter
+            .getStakingModule(ejector.STAKING_MODULE_ID());
+        assertEq(module.stakingModuleAddress, address(csm));
+    }
+
     function test_RouterDeposit() public assertInvariants {
         (uint256 noId, uint256 keysCount) = getDepositableNodeOperator(
             nextAddress()

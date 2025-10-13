@@ -81,7 +81,9 @@ contract DeployHolesky is DeployBase {
         config
             .chargePenaltyRecipient = 0xE92329EC7ddB11D25e25b3c21eeBf11f15eB325d; // locator.treasury()
         // Module
-        config.stakingModuleId = 4;
+        config.stakingModuleId = _nextStakingModuleId(
+            config.lidoLocatorAddress
+        );
         config.moduleType = "community-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
         config
             .elRewardsStealingReporter = 0xc4DAB3a3ef68C6DFd8614a870D64D475bA44F164; // Dev team EOA

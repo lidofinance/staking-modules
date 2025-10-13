@@ -33,6 +33,7 @@ import { Slot } from "../src/lib/Types.sol";
 import { VettedGateFactory } from "../src/VettedGateFactory.sol";
 import { CSExitPenalties } from "../src/CSExitPenalties.sol";
 import { IGateSeal } from "../src/interfaces/IGateSeal.sol";
+import { IStakingRouter } from "../src/interfaces/IStakingRouter.sol";
 
 struct DeployParams {
     // Lido addresses
@@ -786,5 +787,13 @@ abstract contract DeployBase is Script {
             strikes.DEFAULT_ADMIN_ROLE(),
             config.secondAdminAddress
         );
+    }
+
+    function _nextStakingModuleId(
+        address locatorAddress
+    ) internal view returns (uint256) {
+        return
+            IStakingRouter(ILidoLocator(locatorAddress).stakingRouter())
+                .getStakingModulesCount() + 1;
     }
 }
