@@ -354,10 +354,6 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
             revert UnsupportedSlot(data.recentBlock.header.slot);
         }
 
-        if (data.withdrawableBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(data.withdrawableBlock.header.slot);
-        }
-
         if (data.consolidationBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.consolidationBlock.header.slot);
         }
@@ -379,7 +375,7 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
         }
 
         if (
-            _computeEpochAtSlot(data.withdrawableBlock.header.slot) <
+            _computeEpochAtSlot(data.recentBlock.header.slot) <
             data.validator.object.withdrawableEpoch
         ) {
             revert ValidatorIsNotWithdrawable();
@@ -422,25 +418,14 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
             )
         });
 
-        // Verify "withdrawable" block header.
-        SSZ.verifyProof({
-            proof: data.withdrawableBlock.proof,
-            root: data.recentBlock.header.stateRoot,
-            leaf: data.withdrawableBlock.header.hashTreeRoot(),
-            gI: _getHistoricalBlockRootGI(
-                data.recentBlock.header.slot,
-                data.withdrawableBlock.header.slot
-            )
-        });
-
         // Verify Validator object against the "withdrawable" block.
         SSZ.verifyProof({
             proof: data.validator.proof,
-            root: data.withdrawableBlock.header.stateRoot,
+            root: data.recentBlock.header.stateRoot,
             leaf: data.validator.object.hashTreeRoot(),
             gI: _getValidatorGI(
                 data.validator.index,
-                data.withdrawableBlock.header.slot
+                data.recentBlock.header.slot
             )
         });
 

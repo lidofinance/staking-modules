@@ -91,7 +91,6 @@ interface ICSVerifier {
         // "withdrawal balance" in accounting/penalties, since consolidation is not an EL withdrawal.
         BalanceWitness balance;
         RecentHeaderWitness recentBlock;
-        HistoricalHeaderWitness withdrawableBlock;
         HistoricalHeaderWitness consolidationBlock;
     }
 
@@ -207,7 +206,6 @@ interface ICSVerifier {
     /// assumed to be the withdrawal balance.
     /// @dev The caveat is that a pending consolidation is processed later, making it impossible to account for losses
     /// or rewards during the waiting period, as there's no indication of consolidation processing in the state.
-    /// @param data @see ProcessConsolidationInput struct
     function processConsolidation(
         ProcessConsolidationInput calldata data
     ) external;

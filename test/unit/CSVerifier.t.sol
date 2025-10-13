@@ -963,22 +963,6 @@ contract CSVerifierConsolidationTest is CSVerifierTestBase {
         verifier.processConsolidation(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_WithdrawableBlockSlotUnsupported()
-        public
-    {
-        fixture.data.withdrawableBlock.header.slot = verifier
-            .FIRST_SUPPORTED_SLOT()
-            .dec();
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ICSVerifier.UnsupportedSlot.selector,
-                fixture.data.withdrawableBlock.header.slot
-            )
-        );
-        verifier.processConsolidation(fixture.data);
-    }
-
     function test_processConsolidation_RevertWhen_ConsolidationBlockSlotUnsupported()
         public
     {
@@ -1013,7 +997,7 @@ contract CSVerifierConsolidationTest is CSVerifierTestBase {
         public
     {
         fixture.data.validator.object.withdrawableEpoch =
-            fixture.data.withdrawableBlock.header.slot.unwrap() *
+            fixture.data.recentBlock.header.slot.unwrap() *
             32 +
             1;
         vm.expectRevert(ICSVerifier.ValidatorIsNotWithdrawable.selector);
