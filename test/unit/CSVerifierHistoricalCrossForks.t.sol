@@ -117,7 +117,7 @@ contract CSVerifierBiForkHistoricalTest is
         withdrawals[0] = ValidatorWithdrawalInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
-            exitBalance: uint256(fixture.witness.amount) * 1e9,
+            exitBalance: uint256(fixture.witness.object.amount) * 1e9,
             slashingPenalty: 0
         });
 
