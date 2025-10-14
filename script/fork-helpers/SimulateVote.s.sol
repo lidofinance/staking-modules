@@ -15,6 +15,7 @@ import { CSEjector } from "../../src/CSEjector.sol";
 import { CSParametersRegistry } from "../../src/CSParametersRegistry.sol";
 
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
+import { ITriggerableWithdrawalsGateway } from "../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { ICSBondCurve } from "../../src/interfaces/ICSBondCurve.sol";
 import { IBurner } from "../../src/interfaces/IBurner.sol";
 import { ICSParametersRegistry } from "../../src/interfaces/ICSParametersRegistry.sol";
@@ -30,6 +31,9 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
 
         IStakingRouter stakingRouter = IStakingRouter(locator.stakingRouter());
         IBurner burner = IBurner(locator.burner());
+        ITriggerableWithdrawalsGateway twg = ITriggerableWithdrawalsGateway(
+            locator.triggerableWithdrawalsGateway()
+        );
 
         address agent = stakingRouter.getRoleMember(
             stakingRouter.STAKING_MODULE_MANAGE_ROLE(),
@@ -39,6 +43,7 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
 
         address csmAdmin = _prepareAdmin(address(csm));
         address burnerAdmin = _prepareAdmin(address(burner));
+        address twgAdmin = _prepareAdmin(address(twg));
 
         vm.startBroadcast(csmAdmin);
         csm.grantRole(csm.DEFAULT_ADMIN_ROLE(), agent);
@@ -47,6 +52,10 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
 
         vm.startBroadcast(burnerAdmin);
         burner.grantRole(burner.DEFAULT_ADMIN_ROLE(), agent);
+        vm.stopBroadcast();
+
+        vm.startBroadcast(twgAdmin);
+        twg.grantRole(twg.DEFAULT_ADMIN_ROLE(), agent);
         vm.stopBroadcast();
 
         vm.startBroadcast(agent);
@@ -67,13 +76,15 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
             burner.REQUEST_BURN_SHARES_ROLE(),
             address(accounting)
         );
-        // 3. Grant resume to agent
+        // 3. twg role
+        twg.grantRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), address(ejector));
+        // 4. Grant resume to agent
         csm.grantRole(csm.RESUME_ROLE(), agent);
-        // 4. Resume CSM
+        // 5. Resume CSM
         csm.resume();
-        // 5. Revoke resume
+        // 6. Revoke resume
         csm.revokeRole(csm.RESUME_ROLE(), agent);
-        // 6. Update initial epoch
+        // 7. Update initial epoch
         hashConsensus.updateInitialEpoch(47480);
     }
 

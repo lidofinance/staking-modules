@@ -491,14 +491,21 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
     function getDepositedNodeOperator(
         address nodeOperatorAddress,
         uint256 keysCount
-    ) internal returns (uint256) {
-        for (uint256 noId; ; ++noId) {
+    ) internal returns (uint256 noId) {
+        uint256 nosCount = csm.getNodeOperatorsCount();
+        for (; noId < nosCount; ++noId) {
             NodeOperator memory no = csm.getNodeOperator(noId);
             if (no.totalDepositedKeys - no.totalWithdrawnKeys >= keysCount) {
                 return noId;
             }
         }
-        return addNodeOperator(nodeOperatorAddress, keysCount);
+        noId = addNodeOperator(nodeOperatorAddress, keysCount);
+        (, , uint256 depositableValidatorsCount) = csm
+            .getStakingModuleSummary();
+        vm.startPrank(address(stakingRouter));
+        // potentially time-consuming or reverting due to block/tx gas limit
+        csm.obtainDepositData(depositableValidatorsCount, "");
+        vm.stopPrank();
     }
 
     function getDepositedNodeOperatorWithSequentialActiveKeys(
@@ -523,6 +530,13 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
                 }
             }
         }
-        return (addNodeOperator(nodeOperatorAddress, keysCount), 0);
+        noId = addNodeOperator(nodeOperatorAddress, keysCount);
+        (, , uint256 depositableValidatorsCount) = csm
+            .getStakingModuleSummary();
+        vm.startPrank(address(stakingRouter));
+        // potentially time-consuming or reverting due to block/tx gas limit
+        csm.obtainDepositData(depositableValidatorsCount, "");
+        vm.stopPrank();
+        return (noId, 0);
     }
 }
