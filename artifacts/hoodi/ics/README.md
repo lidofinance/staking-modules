@@ -1,7 +1,7 @@
 # Initial ICS list on Hoodi
 
 Data collected as of block 761666, July 8, 2025.
-Updated with extra addresses 30 Sep, 2025.
+Updated with extra addresses 09 Oct, 2025.
 
 Based on private CSM Hoodi Sybil Analysis source from 20.06.2025.
 
