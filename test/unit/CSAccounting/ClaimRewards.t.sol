@@ -98,13 +98,18 @@ contract ClaimStETHRewardsTest is ClaimRewardsBaseTest {
         _rewards({ fee: 0.1 ether });
         _lock({ amount: 1 ether });
 
-        vm.expectRevert(ICSBondCore.NothingToClaim.selector);
         vm.prank(user);
         accounting.claimRewardsStETH(
             leaf.nodeOperatorId,
             UINT256_MAX,
             leaf.shares,
             leaf.proof
+        );
+        // No claim due to zero claimable; only rewards pull (no splits configured)
+        assertEq(stETH.balanceOf(rewardAddress), 0);
+        assertEq(
+            accounting.getBondShares(0),
+            stETH.sharesOf(address(accounting))
         );
     }
 
@@ -357,13 +362,18 @@ contract ClaimStETHRewardsTest is ClaimRewardsBaseTest {
         _deposit({ bond: 16 ether });
         _rewards({ fee: 0.1 ether });
 
-        vm.expectRevert(ICSBondCore.NothingToClaim.selector);
         vm.prank(user);
         accounting.claimRewardsStETH(
             leaf.nodeOperatorId,
             UINT256_MAX,
             leaf.shares,
             leaf.proof
+        );
+        // No claim possible, but rewards are pulled (no splits configured)
+        assertEq(stETH.balanceOf(rewardAddress), 0);
+        assertEq(
+            accounting.getBondShares(0),
+            stETH.sharesOf(address(accounting))
         );
     }
 
@@ -376,13 +386,17 @@ contract ClaimStETHRewardsTest is ClaimRewardsBaseTest {
         _deposit({ bond: 16 ether });
         _rewards({ fee: 0.1 ether });
 
-        vm.expectRevert(ICSBondCore.NothingToClaim.selector);
         vm.prank(user);
         accounting.claimRewardsStETH(
             leaf.nodeOperatorId,
             UINT256_MAX,
             leaf.shares,
             leaf.proof
+        );
+        assertEq(stETH.balanceOf(rewardAddress), 0);
+        assertEq(
+            accounting.getBondShares(0),
+            stETH.sharesOf(address(accounting))
         );
     }
 
@@ -427,13 +441,19 @@ contract ClaimStETHRewardsTest is ClaimRewardsBaseTest {
         _deposit({ bond: 32 ether });
         _rewards({ fee: 0.1 ether });
 
-        vm.expectRevert(ICSBondCore.NothingToClaim.selector);
+        // Permissionless pull path: stETHAmount = 0 performs pull + split only
         vm.prank(user);
         accounting.claimRewardsStETH(
             leaf.nodeOperatorId,
             0,
             leaf.shares,
             leaf.proof
+        );
+        assertEq(stETH.balanceOf(rewardAddress), 0);
+        assertEq(accounting.getPendingSharesToSplit(0), 0);
+        assertEq(
+            accounting.getBondShares(0),
+            stETH.sharesOf(address(accounting))
         );
     }
 
@@ -503,7 +523,10 @@ contract ClaimStETHRewardsTest is ClaimRewardsBaseTest {
     }
 
     function test_RevertWhen_SenderIsNotEligible() public override {
+        // Ensure there is claimable amount to trigger eligibility check
         _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 33 ether });
+        _rewards({ fee: 0.1 ether });
 
         vm.expectRevert(
             abi.encodeWithSelector(ICSAccounting.SenderIsNotEligible.selector)
@@ -518,6 +541,11 @@ contract ClaimStETHRewardsTest is ClaimRewardsBaseTest {
     }
 
     function test_RevertWhen_NodeOperatorDoesNotExist() public override {
+        // Ensure there is claimable amount to trigger eligibility check path
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 33 ether });
+        _rewards({ fee: 0.1 ether });
+
         mock_getNodeOperatorManagementProperties(address(0), address(0), false);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -744,7 +772,6 @@ contract ClaimWstETHRewardsTest is ClaimRewardsBaseTest {
         _rewards({ fee: 0.1 ether });
         _lock({ amount: 1 ether });
 
-        vm.expectRevert(ICSBondCore.NothingToClaim.selector);
         vm.prank(user);
         accounting.claimRewardsWstETH(
             leaf.nodeOperatorId,
@@ -752,6 +779,8 @@ contract ClaimWstETHRewardsTest is ClaimRewardsBaseTest {
             leaf.shares,
             leaf.proof
         );
+        // No claim due to zero claimable; only rewards pull
+        assertEq(wstETH.balanceOf(rewardAddress), 0);
     }
 
     function test_WithCurveAndLocked() public override assertInvariants {
@@ -1033,7 +1062,6 @@ contract ClaimWstETHRewardsTest is ClaimRewardsBaseTest {
         _deposit({ bond: 16 ether });
         _rewards({ fee: 0.1 ether });
 
-        vm.expectRevert(ICSBondCore.NothingToClaim.selector);
         vm.prank(user);
         accounting.claimRewardsWstETH(
             leaf.nodeOperatorId,
@@ -1041,6 +1069,7 @@ contract ClaimWstETHRewardsTest is ClaimRewardsBaseTest {
             leaf.shares,
             leaf.proof
         );
+        assertEq(wstETH.balanceOf(rewardAddress), 0);
     }
 
     function test_WithMissingBondAndOneWithdrawnValidator()
@@ -1052,7 +1081,6 @@ contract ClaimWstETHRewardsTest is ClaimRewardsBaseTest {
         _deposit({ bond: 16 ether });
         _rewards({ fee: 0.1 ether });
 
-        vm.expectRevert(ICSBondCore.NothingToClaim.selector);
         vm.prank(user);
         accounting.claimRewardsWstETH(
             leaf.nodeOperatorId,
@@ -1060,6 +1088,7 @@ contract ClaimWstETHRewardsTest is ClaimRewardsBaseTest {
             leaf.shares,
             leaf.proof
         );
+        assertEq(wstETH.balanceOf(rewardAddress), 0);
     }
 
     function test_WithDesirableValue() public override assertInvariants {
@@ -1116,7 +1145,7 @@ contract ClaimWstETHRewardsTest is ClaimRewardsBaseTest {
         _deposit({ bond: 32 ether });
         _rewards({ fee: 0.1 ether });
 
-        vm.expectRevert(ICSBondCore.NothingToClaim.selector);
+        // Permissionless pull path:
         vm.prank(user);
         accounting.claimRewardsWstETH(
             leaf.nodeOperatorId,
@@ -1124,6 +1153,7 @@ contract ClaimWstETHRewardsTest is ClaimRewardsBaseTest {
             leaf.shares,
             leaf.proof
         );
+        assertEq(wstETH.balanceOf(rewardAddress), 0);
     }
 
     function test_ExcessBondWithoutProof() public override assertInvariants {
@@ -1421,14 +1451,14 @@ contract ClaimRewardsUnstETHTest is ClaimRewardsBaseTest {
         _rewards({ fee: 0.1 ether });
         _lock({ amount: 1 ether });
 
-        vm.expectRevert(ICSBondCore.NothingToClaim.selector);
         vm.prank(user);
-        accounting.claimRewardsUnstETH(
+        uint256 requestId = accounting.claimRewardsUnstETH(
             leaf.nodeOperatorId,
             UINT256_MAX,
             leaf.shares,
             leaf.proof
         );
+        assertEq(requestId, 0);
     }
 
     function test_WithCurveAndLocked() public override assertInvariants {
@@ -1654,14 +1684,14 @@ contract ClaimRewardsUnstETHTest is ClaimRewardsBaseTest {
         _deposit({ bond: 16 ether });
         _rewards({ fee: 0.1 ether });
 
-        vm.expectRevert(ICSBondCore.NothingToClaim.selector);
         vm.prank(user);
-        accounting.claimRewardsUnstETH(
+        uint256 requestId2 = accounting.claimRewardsUnstETH(
             leaf.nodeOperatorId,
             UINT256_MAX,
             leaf.shares,
             leaf.proof
         );
+        assertEq(requestId2, 0);
     }
 
     function test_WithMissingBondAndOneWithdrawnValidator()
@@ -1673,14 +1703,14 @@ contract ClaimRewardsUnstETHTest is ClaimRewardsBaseTest {
         _deposit({ bond: 16 ether });
         _rewards({ fee: 0.1 ether });
 
-        vm.expectRevert(ICSBondCore.NothingToClaim.selector);
         vm.prank(user);
-        accounting.claimRewardsUnstETH(
+        uint256 requestId = accounting.claimRewardsUnstETH(
             leaf.nodeOperatorId,
             UINT256_MAX,
             leaf.shares,
             leaf.proof
         );
+        assertEq(requestId, 0);
     }
 
     function test_WithDesirableValue() public override assertInvariants {
@@ -1723,14 +1753,14 @@ contract ClaimRewardsUnstETHTest is ClaimRewardsBaseTest {
         _deposit({ bond: 32 ether });
         _rewards({ fee: 0.1 ether });
 
-        vm.expectRevert(ICSBondCore.NothingToClaim.selector);
         vm.prank(user);
-        accounting.claimRewardsUnstETH(
+        uint256 requestId = accounting.claimRewardsUnstETH(
             leaf.nodeOperatorId,
             0,
             leaf.shares,
             leaf.proof
         );
+        assertEq(requestId, 0);
     }
 
     function test_ExcessBondWithoutProof() public override assertInvariants {

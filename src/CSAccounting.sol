@@ -50,6 +50,8 @@ contract CSAccounting is
     address public chargePenaltyRecipient;
 
     mapping(uint256 nodeOperatorId => FeeSplit[]) internal _feeSplits;
+    mapping(uint256 nodeOperatorId => uint256 pendingSharesToSplit)
+        internal _pendingSharesToSplit;
 
     modifier onlyModule() {
         if (msg.sender != address(MODULE)) {
@@ -167,11 +169,20 @@ contract CSAccounting is
     /// @inheritdoc ICSAccounting
     function setFeeSplits(
         uint256 nodeOperatorId,
+        uint256 cumulativeFeeShares,
+        bytes32[] calldata rewardsProof,
         FeeSplit[] calldata feeSplits
     ) external {
         _onlyNodeOperatorOwner(nodeOperatorId);
-
-        FeeSplits.setFeeSplits(_feeSplits, nodeOperatorId, feeSplits);
+        FeeSplits.setFeeSplits({
+            feeSplitsStorage: _feeSplits,
+            pendingSharesToSplitStorage: _pendingSharesToSplit,
+            feeDistributor: FEE_DISTRIBUTOR,
+            nodeOperatorId: nodeOperatorId,
+            cumulativeFeeShares: cumulativeFeeShares,
+            rewardsProof: rewardsProof,
+            feeSplits: feeSplits
+        });
     }
 
     /// @inheritdoc ICSAccounting
@@ -272,14 +283,19 @@ contract CSAccounting is
                 nodeOperatorId
             );
 
-        if (rewardsProof.length != 0) {
-            _pullFeeRewards(nodeOperatorId, cumulativeFeeShares, rewardsProof);
-        }
-        claimedShares = CSBondCore._claimStETH(
+        uint256 claimableShares = _pullAndSplitFeeRewards(
             nodeOperatorId,
-            stETHAmount,
-            no.rewardAddress
+            cumulativeFeeShares,
+            rewardsProof
         );
+        if (stETHAmount != 0 && claimableShares != 0) {
+            claimedShares = CSBondCore._claimStETH(
+                nodeOperatorId,
+                stETHAmount,
+                claimableShares,
+                no.rewardAddress
+            );
+        }
         MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
@@ -295,14 +311,19 @@ contract CSAccounting is
                 nodeOperatorId
             );
 
-        if (rewardsProof.length != 0) {
-            _pullFeeRewards(nodeOperatorId, cumulativeFeeShares, rewardsProof);
-        }
-        claimedWstETH = CSBondCore._claimWstETH(
+        uint256 claimableShares = _pullAndSplitFeeRewards(
             nodeOperatorId,
-            wstETHAmount,
-            no.rewardAddress
+            cumulativeFeeShares,
+            rewardsProof
         );
+        if (wstETHAmount != 0 && claimableShares != 0) {
+            claimedWstETH = CSBondCore._claimWstETH(
+                nodeOperatorId,
+                wstETHAmount,
+                claimableShares,
+                no.rewardAddress
+            );
+        }
         MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
@@ -318,14 +339,19 @@ contract CSAccounting is
                 nodeOperatorId
             );
 
-        if (rewardsProof.length != 0) {
-            _pullFeeRewards(nodeOperatorId, cumulativeFeeShares, rewardsProof);
-        }
-        requestId = CSBondCore._claimUnstETH(
+        uint256 claimableShares = _pullAndSplitFeeRewards(
             nodeOperatorId,
-            stETHAmount,
-            no.rewardAddress
+            cumulativeFeeShares,
+            rewardsProof
         );
+        if (stETHAmount != 0 && claimableShares != 0) {
+            requestId = CSBondCore._claimUnstETH(
+                nodeOperatorId,
+                stETHAmount,
+                claimableShares,
+                no.rewardAddress
+            );
+        }
         MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
@@ -355,7 +381,10 @@ contract CSAccounting is
     function removeBondReserve(
         uint256 nodeOperatorId
     ) external whenResumed whenBondReserveIsEnabled {
-        _checkAndGetEligibleNodeOperatorProperties(nodeOperatorId);
+        // Allow for permissionless call if there are no active and depositable keys. In this case, the bond reserve is useless
+        if (MODULE.getNodeOperatorNonWithdrawnKeys(nodeOperatorId) > 0) {
+            _checkAndGetEligibleNodeOperatorProperties(nodeOperatorId);
+        }
 
         IBondReserve.BondReserveInfo memory r = BondReserve.getBondReserveInfo(
             nodeOperatorId
@@ -459,13 +488,17 @@ contract CSAccounting is
     }
 
     /// @inheritdoc ICSAccounting
-    function pullFeeRewards(
+    function pullAndSplitFeeRewards(
         uint256 nodeOperatorId,
         uint256 cumulativeFeeShares,
         bytes32[] calldata rewardsProof
     ) external {
         _onlyExistingNodeOperator(nodeOperatorId);
-        _pullFeeRewards(nodeOperatorId, cumulativeFeeShares, rewardsProof);
+        _pullAndSplitFeeRewards(
+            nodeOperatorId,
+            cumulativeFeeShares,
+            rewardsProof
+        );
         MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
@@ -501,6 +534,13 @@ contract CSAccounting is
         uint256 nodeOperatorId
     ) external view returns (FeeSplit[] memory) {
         return _feeSplits[nodeOperatorId];
+    }
+
+    /// @inheritdoc ICSAccounting
+    function getPendingSharesToSplit(
+        uint256 nodeOperatorId
+    ) external view returns (uint256) {
+        return _pendingSharesToSplit[nodeOperatorId];
     }
 
     /// @inheritdoc ICSAccounting
@@ -622,29 +662,41 @@ contract CSAccounting is
         }
     }
 
-    function _pullFeeRewards(
+    function _pullAndSplitFeeRewards(
         uint256 nodeOperatorId,
         uint256 cumulativeFeeShares,
         bytes32[] calldata rewardsProof
-    ) internal {
-        uint256 distributed = FEE_DISTRIBUTOR.distributeFees(
-            nodeOperatorId,
-            cumulativeFeeShares,
-            rewardsProof
-        );
-
-        // @dev If there are fee splits, distribute the shares accordingly.
-        //      At low amounts, due to rounding, it is possible that some split recipients
-        //      will not receive any shares. The remainder goes to the bond.
-        uint256 reminder = FeeSplits.splitAndTransferFees(
-            _feeSplits,
-            LIDO,
-            nodeOperatorId,
-            distributed
-        );
-
-        if (reminder != 0) {
-            CSBondCore._increaseBond(nodeOperatorId, reminder);
+    ) internal returns (uint256 claimableShares) {
+        bool hasSplits = FeeSplits.hasSplits(_feeSplits, nodeOperatorId);
+        if (rewardsProof.length != 0) {
+            uint256 distributed = FEE_DISTRIBUTOR.distributeFees(
+                nodeOperatorId,
+                cumulativeFeeShares,
+                rewardsProof
+            );
+            if (distributed != 0) {
+                CSBondCore._increaseBond(nodeOperatorId, distributed);
+                if (hasSplits) {
+                    _pendingSharesToSplit[nodeOperatorId] += distributed;
+                }
+            }
+        }
+        claimableShares = _getClaimableBondShares(nodeOperatorId);
+        if (hasSplits) {
+            uint256 transferredShares = FeeSplits.splitAndTransferFees({
+                feeSplitsStorage: _feeSplits,
+                pendingSharesToSplitStorage: _pendingSharesToSplit,
+                lido: LIDO,
+                nodeOperatorId: nodeOperatorId,
+                maxSharesToSplit: claimableShares
+            });
+            if (transferredShares != 0) {
+                CSBondCore._unsafeReduceBond(nodeOperatorId, transferredShares);
+                // @dev It is safe to use unchecked here since `transferredShares` is always <= `claimableShares`
+                unchecked {
+                    claimableShares -= transferredShares;
+                }
+            }
         }
     }
 
@@ -711,10 +763,10 @@ contract CSAccounting is
         }
     }
 
-    /// @dev Overrides the original implementation to account for a locked bond and withdrawn validators
+    /// @dev Calculates claimable bond shares accounting for locked bond and withdrawn validators
     function _getClaimableBondShares(
         uint256 nodeOperatorId
-    ) internal view override returns (uint256) {
+    ) internal view returns (uint256) {
         unchecked {
             (
                 uint256 currentShares,

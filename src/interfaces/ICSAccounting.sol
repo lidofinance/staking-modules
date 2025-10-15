@@ -91,10 +91,14 @@ interface ICSAccounting is
 
     /// @notice Set fee splits for the given Node Operator
     /// @param nodeOperatorId ID of the Node Operator
+    /// @param cumulativeFeeShares Cumulative fee stETH shares for the Node Operator
+    /// @param rewardsProof Merkle proof of the rewards
     /// @param feeSplits Array of FeeSplit structs defining recipients and their shares in basis points
     ///                  Total shares must be <= 10_000 (100%). Remainder goes to the Node Operator's bond
     function setFeeSplits(
         uint256 nodeOperatorId,
+        uint256 cumulativeFeeShares,
+        bytes32[] calldata rewardsProof,
         FeeSplit[] calldata feeSplits
     ) external;
 
@@ -150,6 +154,11 @@ interface ICSAccounting is
     function getFeeSplits(
         uint256 nodeOperatorId
     ) external view returns (FeeSplit[] memory);
+
+    /// @notice Get the number of the pending shares to be split for the given Node Operator
+    function getPendingSharesToSplit(
+        uint256 nodeOperatorId
+    ) external view returns (uint256);
 
     /// @notice Get the number of the unbonded keys
     /// @param nodeOperatorId ID of the Node Operator
@@ -378,12 +387,12 @@ interface ICSAccounting is
         uint256 amount
     ) external returns (bool fullyCharged);
 
-    /// @notice Pull fees from CSFeeDistributor to the Node Operator's bond
-    /// @dev Permissionless method. Can be called before penalty application to ensure that rewards are also penalized
+    /// @notice Pull fees (if proof provided) from CSFeeDistributor to the Node Operator's bond and split pending according to configured fee splits.
+    /// @dev Permissionless method. Can be called before penalty application to ensure that rewards are also penalized and split.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param cumulativeFeeShares Cumulative fee stETH shares for the Node Operator
     /// @param rewardsProof Merkle proof of the rewards
-    function pullFeeRewards(
+    function pullAndSplitFeeRewards(
         uint256 nodeOperatorId,
         uint256 cumulativeFeeShares,
         bytes32[] calldata rewardsProof
