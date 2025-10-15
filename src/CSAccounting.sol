@@ -688,7 +688,7 @@ contract CSAccounting is
                 pendingSharesToSplitStorage: _pendingSharesToSplit,
                 lido: LIDO,
                 nodeOperatorId: nodeOperatorId,
-                claimableShares: claimableShares
+                maxSharesToSplit: claimableShares
             });
             if (transferredShares != 0) {
                 CSBondCore._unsafeReduceBond(nodeOperatorId, transferredShares);

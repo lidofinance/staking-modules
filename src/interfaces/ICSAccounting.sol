@@ -91,6 +91,8 @@ interface ICSAccounting is
 
     /// @notice Set fee splits for the given Node Operator
     /// @param nodeOperatorId ID of the Node Operator
+    /// @param cumulativeFeeShares Cumulative fee stETH shares for the Node Operator
+    /// @param rewardsProof Merkle proof of the rewards
     /// @param feeSplits Array of FeeSplit structs defining recipients and their shares in basis points
     ///                  Total shares must be <= 10_000 (100%). Remainder goes to the Node Operator's bond
     function setFeeSplits(

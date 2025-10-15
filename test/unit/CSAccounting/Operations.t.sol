@@ -355,7 +355,7 @@ contract FeeSplitsTest is BaseTest {
             share: 5000
         });
 
-        vm.expectRevert(IFeeSplits.UndistributedSharesExit.selector);
+        vm.expectRevert(IFeeSplits.UndistributedSharesExist.selector);
         vm.prank(user);
         accounting.setFeeSplits(0, feeShares, new bytes32[](0), splits);
     }
