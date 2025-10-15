@@ -1934,7 +1934,10 @@ contract CSVerifierParentBlockRootTest is Test, Utilities {
         {
             vm.startPrank(SYSTEM_ADDRESS);
             vm.warp(ts);
-            verifier.BEACON_ROOTS().call(abi.encode(expected));
+            (bool success, ) = verifier.BEACON_ROOTS().call(
+                abi.encode(expected)
+            );
+            assertTrue(success);
             vm.stopPrank();
         }
 
