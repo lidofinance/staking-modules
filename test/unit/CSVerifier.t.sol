@@ -1102,33 +1102,9 @@ contract CSVerifierPauseTest is CSVerifierTestBase {
         verifier.pauseFor(100_500);
         assertTrue(verifier.isPaused());
 
-        ICSVerifier.WithdrawalWitness memory emptyInput;
+        ICSVerifier.ProcessHistoricalWithdrawalInput memory emptyInput;
         vm.expectRevert(PausableUntil.ResumedExpected.selector);
-        verifier.processHistoricalWithdrawalProof(
-            ICSVerifier.RecentHeaderWitness({
-                header: BeaconBlockHeader({
-                    slot: Slot.wrap(0),
-                    proposerIndex: 0,
-                    parentRoot: bytes32(0),
-                    stateRoot: bytes32(0),
-                    bodyRoot: bytes32(0)
-                }),
-                rootsTimestamp: 0
-            }),
-            ICSVerifier.HistoricalHeaderWitness({
-                header: BeaconBlockHeader({
-                    slot: Slot.wrap(0),
-                    proposerIndex: 0,
-                    parentRoot: bytes32(0),
-                    stateRoot: bytes32(0),
-                    bodyRoot: bytes32(0)
-                }),
-                proof: new bytes32[](0)
-            }),
-            emptyInput,
-            0,
-            0
-        );
+        verifier.processHistoricalWithdrawalProof(emptyInput);
     }
 }
 

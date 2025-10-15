@@ -285,59 +285,46 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
 
     /// @inheritdoc ICSVerifier
     function processHistoricalWithdrawalProof(
-        RecentHeaderWitness calldata beaconBlock,
-        HistoricalHeaderWitness calldata oldBlock,
-        WithdrawalWitness calldata witness,
-        uint256 nodeOperatorId,
-        uint256 keyIndex
+        ProcessHistoricalWithdrawalInput calldata data
     ) external whenResumed {
-        if (beaconBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(beaconBlock.header.slot);
+        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.recentBlock.header.slot);
         }
 
-        if (oldBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(oldBlock.header.slot);
+        if (data.withdrawalBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.withdrawalBlock.header.slot);
         }
 
         {
             bytes32 trustedHeaderRoot = _getParentBlockRoot(
-                beaconBlock.rootsTimestamp
+                data.recentBlock.rootsTimestamp
             );
-            bytes32 headerRoot = beaconBlock.header.hashTreeRoot();
+            bytes32 headerRoot = data.recentBlock.header.hashTreeRoot();
             if (trustedHeaderRoot != headerRoot) {
                 revert InvalidBlockHeader();
             }
         }
 
         SSZ.verifyProof({
-            proof: oldBlock.proof,
-            root: beaconBlock.header.stateRoot,
-            leaf: oldBlock.header.hashTreeRoot(),
+            proof: data.withdrawalBlock.proof,
+            root: data.recentBlock.header.stateRoot,
+            leaf: data.withdrawalBlock.header.hashTreeRoot(),
             gI: _getHistoricalBlockRootGI(
-                beaconBlock.header.slot,
-                oldBlock.header.slot
+                data.recentBlock.header.slot,
+                data.withdrawalBlock.header.slot
             )
         });
 
-        bytes memory pubkey = MODULE.getSigningKeys(
-            nodeOperatorId,
-            keyIndex,
-            1
+        uint256 withdrawalAmount = _processWithdrawalProof(
+            data.withdrawal,
+            data.validator,
+            data.withdrawalBlock.header
         );
-
-        // FIXME: Refactor inputs to use the current version of _processWithdrawalProof.
-        // uint256 withdrawalAmount = _processWithdrawalProof({
-        //     witness: witness,
-        //     stateSlot: oldBlock.header.slot,
-        //     stateRoot: oldBlock.header.stateRoot,
-        //     pubkey: pubkey
-        // });
-        uint256 withdrawalAmount;
 
         _submitSingleWithdrawal(
             ValidatorWithdrawalInfo(
-                nodeOperatorId,
-                keyIndex,
+                data.validator.nodeOperatorId,
+                data.validator.keyIndex,
                 withdrawalAmount,
                 NO_SLASHING_PENALTY
             )

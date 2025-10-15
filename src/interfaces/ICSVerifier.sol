@@ -91,6 +91,13 @@ interface ICSVerifier {
         RecentHeaderWitness recentBlock;
     }
 
+    struct ProcessHistoricalWithdrawalInput {
+        WithdrawalWitness withdrawal;
+        ValidatorWitness validator;
+        RecentHeaderWitness recentBlock;
+        HistoricalHeaderWitness withdrawalBlock;
+    }
+
     error RootNotFound();
     error InvalidBlockHeader();
     error InvalidChainConfig();
@@ -175,17 +182,8 @@ interface ICSVerifier {
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
     /// determining the exact penalty amounts and calling the `ICSModule.submitWithdrawals` method via an EasyTrack
     /// motion.
-    /// @param beaconBlock Beacon block header
-    /// @param oldBlock Historical block header witness
-    /// @param witness Withdrawal witness
-    /// @param nodeOperatorId ID of the Node Operator
-    /// @param keyIndex Index of the validator key in the Node Operator's key storage
     function processHistoricalWithdrawalProof(
-        RecentHeaderWitness calldata beaconBlock,
-        HistoricalHeaderWitness calldata oldBlock,
-        WithdrawalWitness calldata witness,
-        uint256 nodeOperatorId,
-        uint256 keyIndex
+        ProcessHistoricalWithdrawalInput calldata data
     ) external;
 
     /// @notice Processes a validator's consolidation from a module's validator. The balance before consolidation is

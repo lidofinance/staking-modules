@@ -28,19 +28,16 @@ using { dec } for Slot;
 contract CSVerifierBiForkHistoricalTestShared is Utilities {
     using stdJson for string;
 
-    struct HistoricalWithdrawalFixture {
-        bytes32 _blockRoot;
-        bytes _pubkey;
-        ICSVerifier.RecentHeaderWitness beaconBlock;
-        ICSVerifier.HistoricalHeaderWitness oldBlock;
-        ICSVerifier.WithdrawalWitness witness;
+    struct Fixture {
+        bytes32 blockRoot;
+        ICSVerifier.ProcessHistoricalWithdrawalInput data;
     }
 
     CSVerifier public verifier;
     Stub public module;
     address public admin;
 
-    HistoricalWithdrawalFixture public fixture;
+    Fixture public fixture;
 
     function _loadFixture() internal {
         string memory root = vm.projectRoot();
@@ -50,22 +47,20 @@ contract CSVerifierBiForkHistoricalTestShared is Utilities {
         );
         string memory json = vm.readFile(path);
         bytes memory data = json.parseRaw("$");
-        fixture = abi.decode(data, (HistoricalWithdrawalFixture));
+        fixture = abi.decode(data, (Fixture));
     }
 
-    function _setMocksWithdrawal(
-        HistoricalWithdrawalFixture memory _fixture
-    ) internal {
+    function _setMocksWithdrawal(Fixture memory f) internal {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
-            abi.encode(_fixture.beaconBlock.rootsTimestamp),
-            abi.encode(_fixture._blockRoot)
+            abi.encode(f.data.recentBlock.rootsTimestamp),
+            abi.encode(f.blockRoot)
         );
 
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(ICSModule.getSigningKeys.selector, 0, 0),
-            abi.encode(_fixture._pubkey)
+            abi.encode(f.data.validator.object.pubkey)
         );
 
         vm.mockCall(
@@ -103,9 +98,9 @@ contract CSVerifierBiForkHistoricalTest is
                 gIFirstPendingConsolidationPrev: pack(0x3200000, 18),
                 gIFirstPendingConsolidationCurr: pack(0x3200000, 18)
             }),
-            firstSupportedSlot: fixture.oldBlock.header.slot,
-            pivotSlot: fixture.beaconBlock.header.slot.dec(),
-            capellaSlot: fixture.oldBlock.header.slot,
+            firstSupportedSlot: fixture.data.withdrawalBlock.header.slot,
+            pivotSlot: fixture.data.recentBlock.header.slot.dec(),
+            capellaSlot: fixture.data.withdrawalBlock.header.slot,
             admin: admin
         });
         _setMocksWithdrawal(fixture);
@@ -117,7 +112,7 @@ contract CSVerifierBiForkHistoricalTest is
         withdrawals[0] = ValidatorWithdrawalInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
-            exitBalance: uint256(fixture.witness.object.amount) * 1e9,
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
             slashingPenalty: 0
         });
 
@@ -129,57 +124,39 @@ contract CSVerifierBiForkHistoricalTest is
             )
         );
 
-        // solhint-disable-next-line func-named-parameters
-        verifier.processHistoricalWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.oldBlock,
-            fixture.witness,
-            0,
-            0
-        );
+        verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
     function test_processWithdrawalProof_RevertWhen_UnsupportedSlot() public {
-        fixture.beaconBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
-        fixture.oldBlock.header.slot = fixture.beaconBlock.header.slot.dec();
+        fixture.data.recentBlock.header.slot = verifier
+            .FIRST_SUPPORTED_SLOT()
+            .dec();
 
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICSVerifier.UnsupportedSlot.selector,
-                fixture.beaconBlock.header.slot
+                fixture.data.recentBlock.header.slot
             )
         );
 
-        // solhint-disable-next-line func-named-parameters
-        verifier.processHistoricalWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.oldBlock,
-            fixture.witness,
-            0,
-            0
-        );
+        verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhen_UnsupportedSlot_OldBlock()
+    function test_processWithdrawalProof_RevertWhen_UnsupportedSlot_WithdrawalBlock()
         public
     {
-        fixture.oldBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
+        fixture.data.withdrawalBlock.header.slot = verifier
+            .FIRST_SUPPORTED_SLOT()
+            .dec();
 
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICSVerifier.UnsupportedSlot.selector,
-                fixture.oldBlock.header.slot
+                fixture.data.withdrawalBlock.header.slot
             )
         );
 
-        // solhint-disable-next-line func-named-parameters
-        verifier.processHistoricalWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.oldBlock,
-            fixture.witness,
-            0,
-            0
-        );
+        verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
     function test_processWithdrawalProof_RevertWhen_InvalidBlockHeader()
@@ -187,19 +164,12 @@ contract CSVerifierBiForkHistoricalTest is
     {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
-            abi.encode(fixture.beaconBlock.rootsTimestamp),
+            abi.encode(fixture.data.recentBlock.rootsTimestamp),
             abi.encode("lol")
         );
 
         vm.expectRevert(ICSVerifier.InvalidBlockHeader.selector);
-        // solhint-disable-next-line func-named-parameters
-        verifier.processHistoricalWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.oldBlock,
-            fixture.witness,
-            0,
-            0
-        );
+        verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 }
 
@@ -230,22 +200,32 @@ contract CSVerifierBiForkHistoricalAtPivotSlotTest is
                 gIFirstPendingConsolidationPrev: pack(0x3200000, 18),
                 gIFirstPendingConsolidationCurr: pack(0x3200000, 18)
             }),
-            firstSupportedSlot: fixture.oldBlock.header.slot,
-            pivotSlot: fixture.beaconBlock.header.slot,
-            capellaSlot: fixture.oldBlock.header.slot,
+            firstSupportedSlot: fixture.data.withdrawalBlock.header.slot,
+            pivotSlot: fixture.data.recentBlock.header.slot,
+            capellaSlot: fixture.data.withdrawalBlock.header.slot,
             admin: admin
         });
         _setMocksWithdrawal(fixture);
     }
 
-    function test_processWithdrawalProof() public {
-        // solhint-disable-next-line func-named-parameters
-        verifier.processHistoricalWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.oldBlock,
-            fixture.witness,
-            0,
-            0
+    function test_processWithdrawalProof_HappyPath() public {
+        ValidatorWithdrawalInfo[]
+            memory withdrawals = new ValidatorWithdrawalInfo[](1);
+        withdrawals[0] = ValidatorWithdrawalInfo({
+            nodeOperatorId: 0,
+            keyIndex: 0,
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
+            slashingPenalty: 0
+        });
+
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICSModule.submitWithdrawals.selector,
+                withdrawals
+            )
         );
+
+        verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 }
