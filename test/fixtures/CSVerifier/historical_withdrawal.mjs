@@ -1,4 +1,4 @@
-// Usage: node withdrawal.mjs <fork_of_historical_withdrawal>
+// Usage: node historical_withdrawal.mjs <fork_of_historical_withdrawal>
 
 "use strict";
 
