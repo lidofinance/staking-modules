@@ -28,17 +28,6 @@ interface ICSVerifier {
         uint64 rootsTimestamp; // To be passed to the EIP-4788 block roots contract.
     }
 
-    struct SlashingWitness {
-        uint64 validatorIndex;
-        bytes32 withdrawalCredentials;
-        uint64 effectiveBalance;
-        uint64 activationEligibilityEpoch;
-        uint64 activationEpoch;
-        uint64 exitEpoch;
-        uint64 withdrawableEpoch;
-        bytes32[] validatorProof;
-    }
-
     // A witness for a block header which root is accessible via `historical_summaries` field.
     struct HistoricalHeaderWitness {
         BeaconBlockHeader header;
