@@ -251,21 +251,6 @@ contract CSParametersRegistryInitTest is CSParametersRegistryBaseTest {
         parametersRegistry.initialize(admin, customInitData);
     }
 
-    function test_initialize_RevertWhen_InvalidPriorityQueueId_QueueIdIsLegacyQueue()
-        public
-    {
-        _enableInitializers(address(parametersRegistry));
-
-        ICSParametersRegistry.InitializationData
-            memory customInitData = defaultInitData;
-
-        customInitData.defaultQueuePriority = parametersRegistry
-            .QUEUE_LEGACY_PRIORITY();
-
-        vm.expectRevert(ICSParametersRegistry.QueueCannotBeUsed.selector);
-        parametersRegistry.initialize(admin, customInitData);
-    }
-
     function test_initialize_RevertWhen_ZeroPriorityQueueMaxDeposits() public {
         _enableInitializers(address(parametersRegistry));
 
@@ -1542,15 +1527,6 @@ contract CSParametersRegistryQueueConfigTest is
         parametersRegistry.setDefaultQueueConfig(priority, maxDeposits);
     }
 
-    function test_setDefault_RevertWhen_QueuePriorityIsLegacyQueue() public {
-        uint32 priority = uint32(parametersRegistry.QUEUE_LEGACY_PRIORITY());
-        uint32 maxDeposits = 42;
-
-        vm.expectRevert(ICSParametersRegistry.QueueCannotBeUsed.selector);
-        vm.prank(admin);
-        parametersRegistry.setDefaultQueueConfig(priority, maxDeposits);
-    }
-
     function test_setDefault_RevertWhen_QueuePriorityAboveLimit() public {
         uint32 priority = uint32(parametersRegistry.QUEUE_LOWEST_PRIORITY()) +
             1;
@@ -1661,16 +1637,6 @@ contract CSParametersRegistryQueueConfigTest is
             .getQueueConfig(curveId);
         assertEq(priorityOut, defaultInitData.defaultQueuePriority);
         assertEq(maxDepositsOut, defaultInitData.defaultQueueMaxDeposits);
-    }
-
-    function test_set_RevertWhen_QueuePriorityIsLegacyQueue() public {
-        uint256 curveId = 11;
-        uint32 priority = uint32(parametersRegistry.QUEUE_LEGACY_PRIORITY());
-        uint32 maxDeposits = 42;
-
-        vm.expectRevert(ICSParametersRegistry.QueueCannotBeUsed.selector);
-        vm.prank(admin);
-        parametersRegistry.setQueueConfig(curveId, priority, maxDeposits);
     }
 
     function test_set_RevertWhen_QueuePriorityAboveLimit() public {

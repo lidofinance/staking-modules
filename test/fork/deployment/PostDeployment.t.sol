@@ -71,10 +71,6 @@ contract CSModuleDeploymentTest is DeploymentBaseTest {
             csmImpl.QUEUE_LOWEST_PRIORITY(),
             deployParams.queueLowestPriority
         );
-        assertEq(
-            csmImpl.QUEUE_LEGACY_PRIORITY(),
-            deployParams.queueLowestPriority - 1
-        );
         assertEq(address(csmImpl.ACCOUNTING()), address(accounting));
         assertEq(address(csmImpl.EXIT_PENALTIES()), address(exitPenalties));
         assertEq(address(csmImpl.FEE_DISTRIBUTOR()), address(feeDistributor));
@@ -177,7 +173,10 @@ contract CSAccountingDeploymentTest is DeploymentBaseTest {
     function test_state_onlyFull() public view {
         assertEq(accounting.DEFAULT_BOND_CURVE_ID(), 0);
 
-        assertEq(address(accounting.feeDistributor()), address(feeDistributor));
+        assertEq(
+            address(accounting.FEE_DISTRIBUTOR()),
+            address(feeDistributor)
+        );
         assertEq(accounting.getBondLockPeriod(), deployParams.bondLockPeriod);
         assertEq(
             accounting.getBondReserveMinPeriod(),
@@ -670,10 +669,6 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
         assertEq(
             parametersRegistryImpl.QUEUE_LOWEST_PRIORITY(),
             deployParams.queueLowestPriority
-        );
-        assertEq(
-            parametersRegistryImpl.QUEUE_LEGACY_PRIORITY(),
-            deployParams.queueLowestPriority - 1
         );
     }
 

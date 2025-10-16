@@ -73,10 +73,6 @@ interface ICSBondCurve {
     error InvalidBondCurveId();
     error InvalidInitializationCurveId();
 
-    function MIN_CURVE_LENGTH() external view returns (uint256);
-
-    function MAX_CURVE_LENGTH() external view returns (uint256);
-
     function DEFAULT_BOND_CURVE_ID() external view returns (uint256);
 
     /// @notice Get the number of available curves
