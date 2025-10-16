@@ -261,11 +261,17 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
             }
         }
 
-        bytes memory pubkey = MODULE.getSigningKeys(
-            data.validator.nodeOperatorId,
-            data.validator.keyIndex,
-            1
-        );
+        {
+            bytes memory pubkey = MODULE.getSigningKeys(
+                data.validator.nodeOperatorId,
+                data.validator.keyIndex,
+                1
+            );
+
+            if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) {
+                revert InvalidPublicKey();
+            }
+        }
 
         uint256 withdrawalAmount = _processWithdrawalProof(
             data.withdrawal,
@@ -302,6 +308,18 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
             bytes32 headerRoot = data.recentBlock.header.hashTreeRoot();
             if (trustedHeaderRoot != headerRoot) {
                 revert InvalidBlockHeader();
+            }
+        }
+
+        {
+            bytes memory pubkey = MODULE.getSigningKeys(
+                data.validator.nodeOperatorId,
+                data.validator.keyIndex,
+                1
+            );
+
+            if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) {
+                revert InvalidPublicKey();
             }
         }
 
@@ -462,11 +480,13 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
         ValidatorWitness calldata validator,
         BeaconBlockHeader calldata header
     ) internal view returns (uint256 withdrawalAmount) {
-        // WC to address
-        address withdrawalAddress = address(
-            uint160(uint256(validator.object.withdrawalCredentials))
-        );
-        if (withdrawalAddress != WITHDRAWAL_ADDRESS) {
+        if (
+            address(uint160(uint256(validator.object.withdrawalCredentials))) !=
+            WITHDRAWAL_ADDRESS
+        ) {
+            revert InvalidWithdrawalAddress();
+        }
+        if (withdrawal.object.withdrawalAddress != WITHDRAWAL_ADDRESS) {
             revert InvalidWithdrawalAddress();
         }
 

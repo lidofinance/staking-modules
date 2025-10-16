@@ -14,6 +14,7 @@ import { CSVerifier } from "src/CSVerifier.sol";
 import { ICSVerifier } from "src/interfaces/ICSVerifier.sol";
 import { pack } from "src/lib/GIndex.sol";
 import { Slot } from "src/lib/Types.sol";
+import { SSZ } from "src/lib/SSZ.sol";
 
 import { GIndices } from "script/constants/GIndices.sol";
 
@@ -128,7 +129,7 @@ contract CSVerifierHistoricalTest is CSVerifierHistoricalBase {
         _setMocks();
     }
 
-    function test_processWithdrawalProof_HappyPath() public {
+    function test_processHistoricalWithdrawalProof_HappyPath() public {
         ValidatorWithdrawalInfo[]
             memory withdrawals = new ValidatorWithdrawalInfo[](1);
         withdrawals[0] = ValidatorWithdrawalInfo({
@@ -149,16 +150,9 @@ contract CSVerifierHistoricalTest is CSVerifierHistoricalBase {
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processHistoricalWithdrawalProof_RevertWhen_ValidatorSlashed()
+    function test_processHistoricalWithdrawalProof_RevertWhen_UnsupportedSlot_RecentBlock()
         public
     {
-        fixture.data.validator.object.slashed = true;
-
-        vm.expectRevert(ICSVerifier.ValidatorIsSlashed.selector);
-        verifier.processHistoricalWithdrawalProof(fixture.data);
-    }
-
-    function test_processWithdrawalProof_RevertWhen_UnsupportedSlot() public {
         fixture.data.recentBlock.header.slot = verifier
             .FIRST_SUPPORTED_SLOT()
             .dec();
@@ -173,7 +167,7 @@ contract CSVerifierHistoricalTest is CSVerifierHistoricalBase {
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhen_UnsupportedSlot_OldBlock()
+    function test_processHistoricalWithdrawalProof_RevertWhen_UnsupportedSlot_WithdrawalBlock()
         public
     {
         fixture.data.withdrawalBlock.header.slot = verifier
@@ -190,7 +184,7 @@ contract CSVerifierHistoricalTest is CSVerifierHistoricalBase {
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhen_InvalidBlockHeader()
+    function test_processHistoricalWithdrawalProof_RevertWhen_InvalidRecentBlock()
         public
     {
         vm.mockCall(
@@ -200,6 +194,92 @@ contract CSVerifierHistoricalTest is CSVerifierHistoricalBase {
         );
 
         vm.expectRevert(ICSVerifier.InvalidBlockHeader.selector);
+        verifier.processHistoricalWithdrawalProof(fixture.data);
+    }
+
+    function test_processHistoricalWithdrawalProof_RevertWhen_InvalidWithdrawalBlock()
+        public
+    {
+        // Breaking something in the header.
+        fixture.data.withdrawalBlock.header.parentRoot = someBytes32();
+
+        vm.expectRevert(SSZ.InvalidProof.selector);
+        verifier.processHistoricalWithdrawalProof(fixture.data);
+    }
+
+    function test_processHistoricalWithdrawalProof_RevertWhen_InvalidPublicKey()
+        public
+    {
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICSModule.getSigningKeys.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex
+            ),
+            abi.encode(hex"deadbeef")
+        );
+
+        vm.expectRevert(ICSVerifier.InvalidPublicKey.selector);
+        verifier.processHistoricalWithdrawalProof(fixture.data);
+    }
+
+    function test_processHistoricalWithdrawalProof_RevertWhen_InvalidWithdrawalCredentials()
+        public
+    {
+        fixture.data.validator.object.withdrawalCredentials = someBytes32();
+
+        vm.expectRevert(ICSVerifier.InvalidWithdrawalAddress.selector);
+        verifier.processHistoricalWithdrawalProof(fixture.data);
+    }
+
+    function test_processHistoricalWithdrawalProof_RevertWhen_InvalidWithdrawalAddress()
+        public
+    {
+        fixture.data.withdrawal.object.withdrawalAddress = nextAddress();
+
+        vm.expectRevert(ICSVerifier.InvalidWithdrawalAddress.selector);
+        verifier.processHistoricalWithdrawalProof(fixture.data);
+    }
+
+    function test_processHistoricalWithdrawalProof_RevertWhen_ValidatorIsNotWithdrawable()
+        public
+    {
+        fixture.data.validator.object.withdrawableEpoch =
+            fixture.data.recentBlock.header.slot.unwrap() /
+            32 +
+            1;
+
+        vm.expectRevert(ICSVerifier.ValidatorIsNotWithdrawable.selector);
+        verifier.processHistoricalWithdrawalProof(fixture.data);
+    }
+
+    function test_processHistoricalWithdrawalProof_RevertWhen_ValidatorSlashed()
+        public
+    {
+        fixture.data.validator.object.slashed = true;
+
+        vm.expectRevert(ICSVerifier.ValidatorIsSlashed.selector);
+        verifier.processHistoricalWithdrawalProof(fixture.data);
+    }
+
+    function test_processHistoricalWithdrawalProof_RevertWhen_ValidatorIndexDoesNotMatch()
+        public
+    {
+        fixture.data.withdrawal.object.validatorIndex =
+            fixture.data.validator.index +
+            1;
+
+        vm.expectRevert(ICSVerifier.InvalidValidatorIndex.selector);
+        verifier.processHistoricalWithdrawalProof(fixture.data);
+    }
+
+    function test_processHistoricalWithdrawalProof_RevertWhen_PartialWitdrawal()
+        public
+    {
+        fixture.data.withdrawal.object.amount = 15e9 - 1;
+
+        vm.expectRevert(ICSVerifier.PartialWithdrawal.selector);
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 }
@@ -238,7 +318,7 @@ contract CSVerifierCrossForkHistoricalTest is CSVerifierHistoricalBase {
         _setMocks();
     }
 
-    function test_processWithdrawalProof_HappyPath() public {
+    function test_processHistoricalWithdrawalProof_HappyPath() public {
         ValidatorWithdrawalInfo[]
             memory withdrawals = new ValidatorWithdrawalInfo[](1);
         withdrawals[0] = ValidatorWithdrawalInfo({
@@ -296,7 +376,7 @@ contract CSVerifierCrossForkHistoricalAtPivotSlotTest is
         _setMocks();
     }
 
-    function test_processWithdrawalProof_HappyPath() public {
+    function test_processHistoricalWithdrawalProof_HappyPath() public {
         ValidatorWithdrawalInfo[]
             memory withdrawals = new ValidatorWithdrawalInfo[](1);
         withdrawals[0] = ValidatorWithdrawalInfo({

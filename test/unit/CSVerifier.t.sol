@@ -464,7 +464,7 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
         verifier.processWithdrawalProof(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhen_InvalidBlockHeader()
+    function test_processWithdrawalProof_RevertWhen_InvalidRecentBlock()
         public
     {
         vm.mockCall(
@@ -489,21 +489,24 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
     function test_processWithdrawalProof_RevertWhen_InvalidWithdrawalAddress()
         public
     {
-        ICSVerifier.GIndices memory ZERO_INDICES;
-
-        verifier = new CSVerifier({
-            withdrawalAddress: nextAddress(),
-            module: address(module),
-            slotsPerEpoch: 32,
-            slotsPerHistoricalRoot: 8192,
-            gindices: ZERO_INDICES,
-            firstSupportedSlot: Slot.wrap(0),
-            pivotSlot: Slot.wrap(0),
-            capellaSlot: Slot.wrap(0),
-            admin: admin
-        });
+        fixture.data.withdrawal.object.withdrawalAddress = nextAddress();
 
         vm.expectRevert(ICSVerifier.InvalidWithdrawalAddress.selector);
+        verifier.processWithdrawalProof(fixture.data);
+    }
+
+    function test_processWithdrawalProof_RevertWhen_InvalidPublicKey() public {
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICSModule.getSigningKeys.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex
+            ),
+            abi.encode(hex"deadbeef")
+        );
+
+        vm.expectRevert(ICSVerifier.InvalidPublicKey.selector);
         verifier.processWithdrawalProof(fixture.data);
     }
 
@@ -523,6 +526,17 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
             1;
 
         vm.expectRevert(ICSVerifier.ValidatorIsNotWithdrawable.selector);
+        verifier.processWithdrawalProof(fixture.data);
+    }
+
+    function test_processWithdrawalProof_RevertWhen_ValidatorIndexDoesNotMatch()
+        public
+    {
+        fixture.data.withdrawal.object.validatorIndex =
+            fixture.data.validator.index +
+            1;
+
+        vm.expectRevert(ICSVerifier.InvalidValidatorIndex.selector);
         verifier.processWithdrawalProof(fixture.data);
     }
 
