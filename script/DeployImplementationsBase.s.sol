@@ -48,7 +48,10 @@ abstract contract DeployImplementationsBase is DeployBase {
             });
         }
 
-        _ensureLegacyQueueDrained();
+        bool skipLegacyQueueCheck = vm.envOr("SKIP_LEGACY_QUEUE_CHECK", false);
+        if (!skipLegacyQueueCheck) {
+            _ensureLegacyQueueDrained();
+        }
         artifactDir = vm.envOr("ARTIFACTS_DIR", string("./artifacts/local/"));
 
         vm.startBroadcast();
