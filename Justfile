@@ -264,7 +264,7 @@ test-upgrade *args:
 
     export RPC_URL={{anvil_rpc_url}}
 
-    just _deploy-impl --broadcast --private-key=`cat localhost.json | jq -r ".private_keys[0]"`
+    SKIP_LEGACY_QUEUE_CHECK=1 just _deploy-impl --broadcast --private-key=`cat localhost.json | jq -r ".private_keys[0]"`
 
     export DEPLOY_CONFIG=./artifacts/local/upgrade-{{chain}}.json
     export VOTE_PREV_BLOCK=`cast block-number -r $RPC_URL`
@@ -323,7 +323,7 @@ test-v2-only-deploy *args:
 
     export RPC_URL={{anvil_rpc_url}}
 
-    just _deploy-impl --broadcast --private-key=`cat localhost.json | jq -r ".private_keys[0]"`
+    SKIP_LEGACY_QUEUE_CHECK=1 just _deploy-impl --broadcast --private-key=`cat localhost.json | jq -r ".private_keys[0]"`
 
     export DEPLOY_CONFIG=./artifacts/local/upgrade-{{chain}}.json
 

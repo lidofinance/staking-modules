@@ -6,6 +6,8 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
 import { Batch, createBatch, QueueLib, IQueueLib } from "src/lib/QueueLib.sol";
+import { NodeOperator } from "src/interfaces/ICSModule.sol";
+import { TransientUintUintMap, TransientUintUintMapLib } from "src/lib/TransientUintUintMapLib.sol";
 
 // Wrap the library internal methods to make an actual call to them.
 // Supposed to be used with `expectRevert` cheatcode and to pass
@@ -14,6 +16,7 @@ contract Library {
     using QueueLib for QueueLib.Queue;
 
     QueueLib.Queue internal q;
+    mapping(uint256 => NodeOperator) internal nodeOperators;
 
     function tail() public view returns (uint128) {
         return q.tail;
@@ -40,6 +43,20 @@ contract Library {
 
     function at(uint128 index) public view returns (Batch) {
         return q.at(index);
+    }
+
+    function clean(
+        uint256 maxItems
+    ) external returns (uint256, uint256, uint256, bool) {
+        TransientUintUintMap queueLookup = TransientUintUintMapLib.create();
+        return q.clean(nodeOperators, maxItems, queueLookup);
+    }
+
+    function setNodeOperator(
+        uint256 id,
+        NodeOperator calldata operatorData
+    ) external {
+        nodeOperators[id] = operatorData;
     }
 }
 
@@ -132,6 +149,16 @@ contract QueueLibTest is Test {
         assertTrue(q.peek().isNil());
         vm.expectRevert(IQueueLib.QueueIsEmpty.selector);
         q.dequeue();
+    }
+
+    function test_clean_revertWhen_MaxItemsIsZero() public {
+        NodeOperator memory operatorData;
+        operatorData.depositableValidatorsCount = 1;
+        operatorData.enqueuedCount = 1;
+        q.setNodeOperator(1, operatorData);
+
+        vm.expectRevert(IQueueLib.QueueLookupNoLimit.selector);
+        q.clean(0);
     }
 }
 

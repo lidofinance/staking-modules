@@ -20,7 +20,6 @@ contract CSParametersRegistryMock {
     uint256 public badPerformancePenalty = 0.01 ether;
 
     uint256 public QUEUE_LOWEST_PRIORITY = 5;
-    uint256 public QUEUE_LEGACY_PRIORITY = 4;
 
     uint256 public allowedExitDelay = 1 weeks;
     uint256 public exitDelayPenalty = 0.1 ether;

@@ -22,7 +22,10 @@ contract ConstructorTest is BaseConstructorTest {
             address(accounting.FEE_DISTRIBUTOR()),
             address(feeDistributor)
         );
-        assertEq(address(accounting.feeDistributor()), address(feeDistributor));
+        assertEq(
+            address(accounting.FEE_DISTRIBUTOR()),
+            address(feeDistributor)
+        );
     }
 
     function test_constructor_RevertWhen_InitOnImpl() public {

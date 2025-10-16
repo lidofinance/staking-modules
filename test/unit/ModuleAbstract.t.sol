@@ -61,7 +61,6 @@ abstract contract ModuleFixtures is
     address internal stakingRouter;
 
     uint32 internal REGULAR_QUEUE;
-    uint32 internal LEGACY_QUEUE;
     uint32 constant PRIORITY_QUEUE = 0;
 
     struct NodeOperatorSummary {
@@ -3228,168 +3227,6 @@ abstract contract ModulePriorityQueue is ModuleFixtures {
         _assertQueueState(REGULAR_QUEUE, exp);
     }
 
-    function test_migrateToPriorityQueue_EnqueuedLessThanMaxDeposits() public {
-        uint256 noId = createNodeOperator(0);
-        uploadMoreKeys(noId, 8);
-
-        _assertQueueIsEmptyByPriority(PRIORITY_QUEUE);
-        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-
-        uint256 initialNonce = module.getNonce();
-
-        {
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(PRIORITY_QUEUE, noId, 8);
-
-            module.migrateToPriorityQueue(noId);
-        }
-
-        assertEq(module.getNodeOperator(noId).enqueuedCount, 8 + 8);
-
-        uint256 updatedNonce = module.getNonce();
-        assertEq(
-            updatedNonce,
-            initialNonce + 1,
-            "Module nonce should increment by 1"
-        );
-
-        BatchInfo[] memory exp = new BatchInfo[](1);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 8 });
-        _assertQueueState(PRIORITY_QUEUE, exp);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 8 });
-        _assertQueueState(REGULAR_QUEUE, exp);
-    }
-
-    function test_migrateToPriorityQueue_EnqueuedMoreThanMaxDeposits() public {
-        uint256 noId = createNodeOperator(0);
-        uploadMoreKeys(noId, 15);
-
-        _assertQueueIsEmptyByPriority(PRIORITY_QUEUE);
-        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-
-        {
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(PRIORITY_QUEUE, noId, 10);
-
-            module.migrateToPriorityQueue(noId);
-        }
-
-        assertEq(module.getNodeOperator(noId).enqueuedCount, 15 + 10);
-
-        BatchInfo[] memory exp = new BatchInfo[](1);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 10 });
-        _assertQueueState(PRIORITY_QUEUE, exp);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 15 });
-        _assertQueueState(REGULAR_QUEUE, exp);
-    }
-
-    function test_migrateToPriorityQueue_DepositedLessThanMaxDeposits() public {
-        uint256 noId = createNodeOperator(0);
-        uploadMoreKeys(noId, 15);
-
-        module.obtainDepositData(8, "");
-
-        _assertQueueIsEmptyByPriority(PRIORITY_QUEUE);
-        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-
-        {
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(PRIORITY_QUEUE, noId, 2);
-
-            module.migrateToPriorityQueue(noId);
-        }
-
-        assertEq(module.getNodeOperator(noId).enqueuedCount, 15 - 8 + 2);
-
-        BatchInfo[] memory exp = new BatchInfo[](1);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 2 });
-        _assertQueueState(PRIORITY_QUEUE, exp);
-
-        // The batch was partially consumed by the obtainDepositData call.
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 7 });
-        _assertQueueState(REGULAR_QUEUE, exp);
-    }
-
-    function test_migrateToPriorityQueue_RevertsIfDepositedMoreThanMaxDeposits()
-        public
-    {
-        uint256 noId = createNodeOperator(0);
-        uploadMoreKeys(noId, 15);
-
-        module.obtainDepositData(12, "");
-
-        _assertQueueIsEmptyByPriority(PRIORITY_QUEUE);
-        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-
-        {
-            vm.expectRevert(ICSModule.PriorityQueueMaxDepositsUsed.selector);
-            module.migrateToPriorityQueue(noId);
-        }
-    }
-
-    function test_migrateToPriorityQueue_RevertsIfPriorityQueueAlreadyUsedViaMigrate()
-        public
-    {
-        uint256 noId = createNodeOperator(0);
-        uploadMoreKeys(noId, 15);
-
-        _assertQueueIsEmptyByPriority(PRIORITY_QUEUE);
-        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-
-        module.migrateToPriorityQueue(noId);
-
-        {
-            vm.expectRevert(ICSModule.PriorityQueueAlreadyUsed.selector);
-            module.migrateToPriorityQueue(noId);
-        }
-    }
-
-    function test_migrateToPriorityQueue_RevertsIfPriorityQueueAlreadyUsedViaAddKeys()
-        public
-    {
-        _assertQueueIsEmptyByPriority(PRIORITY_QUEUE);
-        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-
-        uint256 noId = createNodeOperator(0);
-        uploadMoreKeys(noId, 15);
-
-        {
-            vm.expectRevert(ICSModule.PriorityQueueAlreadyUsed.selector);
-            module.migrateToPriorityQueue(noId);
-        }
-    }
-
-    function test_migrateToPriorityQueue_RevertsIfNoPriorityQueue() public {
-        vm.expectRevert(ICSModule.NotEligibleForPriorityQueue.selector);
-        module.migrateToPriorityQueue(0);
-    }
-
-    function test_migrateToPriorityQueue_RevertsIfEmptyNodeOperator() public {
-        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-
-        {
-            vm.expectRevert(ICSModule.NoQueuedKeysToMigrate.selector);
-            module.migrateToPriorityQueue(0);
-        }
-    }
-
-    function test_migrateToPriorityQueue_RevertsIfMaxDepositsUsed() public {
-        createNodeOperator(MAX_DEPOSITS + 1);
-        module.obtainDepositData(MAX_DEPOSITS, "");
-
-        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-
-        {
-            vm.expectRevert(ICSModule.PriorityQueueMaxDepositsUsed.selector);
-            module.migrateToPriorityQueue(0);
-        }
-    }
-
     function test_queueCleanupWorksAcrossQueues() public {
         _assertQueueIsEmptyByPriority(PRIORITY_QUEUE);
         _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
@@ -3467,28 +3304,6 @@ abstract contract ModulePriorityQueue is ModuleFixtures {
             assertEq(toRemove, 2, "should remove 2 batch(es)");
             assertEq(lastRemovedAtDepth, 7, "the depth should be 7");
         }
-    }
-
-    function test_queueCleanupInvalidBatchesAfterMigrationToPriorityQueue()
-        public
-    {
-        createNodeOperator({ keysCount: 12 });
-        _enablePriorityQueue(0, 12);
-        module.migrateToPriorityQueue(0);
-        module.cleanDepositQueue({ maxItems: 2 });
-        assertEq(module.getNodeOperator(0).enqueuedCount, 12);
-    }
-
-    function test_obtainDepositDataAfterMigrationSkipsInvalidBatches() public {
-        createNodeOperator(10);
-        createNodeOperator(10);
-
-        _enablePriorityQueue(0, 8);
-        module.migrateToPriorityQueue(0);
-
-        module.obtainDepositData(20, "");
-        assertEq(module.getNodeOperator(0).enqueuedCount, 0);
-        assertEq(module.getNodeOperator(1).enqueuedCount, 0);
     }
 
     function _enablePriorityQueue(

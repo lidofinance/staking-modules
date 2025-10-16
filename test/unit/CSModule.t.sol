@@ -16,36 +16,6 @@ import { CSAccountingMock } from "../helpers/mocks/CSAccountingMock.sol";
 import { Stub } from "../helpers/mocks/Stub.sol";
 import "./ModuleAbstract.t.sol";
 
-contract CSModuleTestable is CSModule {
-    using QueueLib for QueueLib.Queue;
-    mapping(uint256 => NodeOperator) internal nodeOperators;
-
-    constructor(
-        bytes32 moduleType,
-        address lidoLocator,
-        address parametersRegistry,
-        address _accounting,
-        address exitPenalties
-    )
-        CSModule(
-            moduleType,
-            lidoLocator,
-            parametersRegistry,
-            _accounting,
-            exitPenalties
-        )
-    {}
-
-    function _enqueueToLegacyQueue(uint256 noId, uint32 count) external {
-        _enqueueNodeOperatorKeys(noId, QUEUE_LEGACY_PRIORITY, count);
-    }
-
-    function cleanDepositQueueTestable(uint256 maxItems) external {
-        TransientUintUintMap queueLookup = TransientUintUintMapLib.create();
-        _legacyQueue.clean(nodeOperators, maxItems, queueLookup);
-    }
-}
-
 contract CSMCommon is ModuleFixtures {
     function setUp() public virtual {
         nodeOperator = nextAddress("NODE_OPERATOR");
@@ -70,19 +40,17 @@ contract CSMCommon is ModuleFixtures {
         accounting = new CSAccountingMock(
             BOND_SIZE,
             address(wstETH),
-            address(stETH)
+            address(stETH),
+            address(feeDistributor)
         );
-        accounting.setFeeDistributor(address(feeDistributor));
 
-        module = CSModule(
-            new CSModuleTestable({
-                moduleType: "community-staking-module",
-                lidoLocator: address(locator),
-                parametersRegistry: address(parametersRegistry),
-                _accounting: address(accounting),
-                exitPenalties: address(exitPenalties)
-            })
-        );
+        module = new CSModule({
+            moduleType: "community-staking-module",
+            lidoLocator: address(locator),
+            parametersRegistry: address(parametersRegistry),
+            _accounting: address(accounting),
+            exitPenalties: address(exitPenalties)
+        });
 
         accounting.setModule(module);
 
@@ -111,9 +79,7 @@ contract CSMCommon is ModuleFixtures {
 
         // Just to make sure we configured defaults properly and check things properly.
         assertNotEq(PRIORITY_QUEUE, module.QUEUE_LOWEST_PRIORITY());
-        assertNotEq(PRIORITY_QUEUE, module.QUEUE_LEGACY_PRIORITY());
         REGULAR_QUEUE = uint32(module.QUEUE_LOWEST_PRIORITY());
-        LEGACY_QUEUE = uint32(module.QUEUE_LEGACY_PRIORITY());
     }
 }
 
@@ -140,19 +106,17 @@ contract CSMCommonNoRoles is ModuleFixtures {
         accounting = new CSAccountingMock(
             BOND_SIZE,
             address(wstETH),
-            address(stETH)
+            address(stETH),
+            address(feeDistributor)
         );
-        accounting.setFeeDistributor(address(feeDistributor));
 
-        module = CSModule(
-            new CSModuleTestable({
-                moduleType: "community-staking-module",
-                lidoLocator: address(locator),
-                parametersRegistry: address(parametersRegistry),
-                _accounting: address(accounting),
-                exitPenalties: address(exitPenalties)
-            })
-        );
+        module = new CSModule({
+            moduleType: "community-staking-module",
+            lidoLocator: address(locator),
+            parametersRegistry: address(parametersRegistry),
+            _accounting: address(accounting),
+            exitPenalties: address(exitPenalties)
+        });
 
         accounting.setModule(module);
 
@@ -345,54 +309,9 @@ contract CSMChangeNodeOperatorRewardAddress is
 
 contract CSMVetKeys is ModuleVetKeys, CSMCommon {}
 
-contract CSMQueueOps is ModuleQueueOps, CSMCommon {
-    function test_cleanDepositQueue_revertWhen_QueueLookupNoLimit()
-        public
-        assertInvariants
-    {
-        uint256 noId = createNodeOperator({ keysCount: 2 });
-        uploadMoreKeys(noId, 1);
-        unvetKeys({ noId: noId, to: 2 });
+contract CSMQueueOps is ModuleQueueOps, CSMCommon {}
 
-        vm.expectRevert(IQueueLib.QueueLookupNoLimit.selector);
-        CSModuleTestable(address(module)).cleanDepositQueueTestable(0);
-    }
-}
-
-contract CSMPriorityQueue is ModulePriorityQueue, CSMCommon {
-    function test_migrateToPriorityQueue_FromLegacyQueue() public {
-        uint256 noId = createNodeOperator(0);
-        CSModuleTestable(address(module))._enqueueToLegacyQueue(noId, 8);
-        uploadMoreKeys(noId, 8);
-
-        BatchInfo[] memory exp = new BatchInfo[](1);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 8 });
-        _assertQueueState(LEGACY_QUEUE, exp);
-
-        _assertQueueIsEmptyByPriority(REGULAR_QUEUE);
-        _assertQueueIsEmptyByPriority(PRIORITY_QUEUE);
-
-        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-
-        {
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(PRIORITY_QUEUE, noId, 8);
-
-            module.migrateToPriorityQueue(noId);
-        }
-
-        assertEq(module.getNodeOperator(noId).enqueuedCount, 8 + 8);
-
-        _assertQueueIsEmptyByPriority(REGULAR_QUEUE);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 8 });
-        _assertQueueState(PRIORITY_QUEUE, exp);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 8 });
-        _assertQueueState(LEGACY_QUEUE, exp);
-    }
-}
+contract CSMPriorityQueue is ModulePriorityQueue, CSMCommon {}
 
 contract CSMDecreaseVettedSigningKeysCount is
     ModuleDecreaseVettedSigningKeysCount,

@@ -8,6 +8,7 @@ import { ICSBondLock } from "../../../src/interfaces/ICSBondLock.sol";
 import { ICSModule } from "../../../src/interfaces/ICSModule.sol";
 import { IWstETH } from "../../../src/interfaces/IWstETH.sol";
 import { ILido } from "../../../src/interfaces/ILido.sol";
+import { ICSFeeDistributor } from "../../../src/interfaces/ICSFeeDistributor.sol";
 
 contract CSAccountingMock {
     uint256 public constant DEFAULT_BOND_CURVE_ID = 0;
@@ -21,22 +22,24 @@ contract CSAccountingMock {
     mapping(uint256 nodeOperatorId => uint256 bondCurveId) operatorBondCurveId;
     uint256[] bondCurves;
 
-    ICSModule public module;
-    address public feeDistributor;
+    ICSModule public MODULE;
     IWstETH public wstETH;
+    ICSFeeDistributor public FEE_DISTRIBUTOR;
 
-    constructor(uint256 _bond, address _wstETH, address lido) {
+    constructor(
+        uint256 _bond,
+        address _wstETH,
+        address lido,
+        address _feeDistributor
+    ) {
         bondCurves.push(_bond);
         wstETH = IWstETH(_wstETH);
         LIDO = ILido(lido);
+        FEE_DISTRIBUTOR = ICSFeeDistributor(_feeDistributor);
     }
 
     function setModule(ICSModule _module) external {
-        module = _module;
-    }
-
-    function setFeeDistributor(address _feeDistributor) external {
-        feeDistributor = _feeDistributor;
+        MODULE = _module;
     }
 
     function depositETH(
@@ -163,7 +166,7 @@ contract CSAccountingMock {
         return (
             bond[nodeOperatorId],
             getBondAmountByKeysCount(
-                module.getNodeOperatorNonWithdrawnKeys(nodeOperatorId),
+                MODULE.getNodeOperatorNonWithdrawnKeys(nodeOperatorId),
                 operatorBondCurveId[nodeOperatorId]
             ) + getActualLockedBond(nodeOperatorId)
         );
@@ -175,7 +178,7 @@ contract CSAccountingMock {
     ) public view returns (uint256) {
         uint256 current = getBond(nodeOperatorId);
         uint256 requiredForNewTotalKeys = getBondAmountByKeysCount(
-            module.getNodeOperatorNonWithdrawnKeys(nodeOperatorId) +
+            MODULE.getNodeOperatorNonWithdrawnKeys(nodeOperatorId) +
                 additionalKeys,
             operatorBondCurveId[nodeOperatorId]
         );

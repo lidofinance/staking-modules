@@ -139,11 +139,6 @@ abstract contract CSBondCurve is ICSBondCurve, Initializable {
         emit BondCurveSet(nodeOperatorId, curveId);
     }
 
-    // Deprecated. To be removed in the next upgrade
-    function _getLegacyBondCurvesLength() internal view returns (uint256) {
-        return _getCSBondCurveStorage().legacyBondCurves.length;
-    }
-
     function _getCurveInfo(
         uint256 curveId
     ) private view returns (BondCurve storage) {

@@ -35,12 +35,22 @@ abstract contract DeployImplementationsBase is DeployBase {
     CSVerifier public verifierV2;
     address public earlyAdoption;
 
+    bytes32 internal constant LEGACY_QUEUE_SLOT = bytes32(uint256(1));
+
+    error LegacyQueueNotEmpty(uint128 head, uint128 tail);
+    error MissingCSModuleAddress();
+
     function _deploy() internal {
         if (chainId != block.chainid) {
             revert ChainIdMismatch({
                 actual: block.chainid,
                 expected: chainId
             });
+        }
+
+        bool skipLegacyQueueCheck = vm.envOr("SKIP_LEGACY_QUEUE_CHECK", false);
+        if (!skipLegacyQueueCheck) {
+            _ensureLegacyQueueDrained();
         }
         artifactDir = vm.envOr("ARTIFACTS_DIR", string("./artifacts/local/"));
 
@@ -82,7 +92,7 @@ abstract contract DeployImplementationsBase is DeployBase {
             CSAccounting accountingImpl = new CSAccounting({
                 lidoLocator: config.lidoLocatorAddress,
                 module: address(csm),
-                _feeDistributor: address(feeDistributor),
+                feeDistributor: address(feeDistributor),
                 minBondLockPeriod: config.minBondLockPeriod,
                 maxBondLockPeriod: config.maxBondLockPeriod,
                 enableBondReserve: config.enableBondReserve
@@ -407,6 +417,21 @@ abstract contract DeployImplementationsBase is DeployBase {
             strikes.DEFAULT_ADMIN_ROLE(),
             config.secondAdminAddress
         );
+    }
+
+    function _ensureLegacyQueueDrained() internal {
+        if (address(csm) == address(0)) {
+            revert MissingCSModuleAddress();
+        }
+
+        // QueueLib.Queue packs head/tail into a single slot. See forge inspect output for slot indexes.
+        bytes32 queuePointers = vm.load(address(csm), LEGACY_QUEUE_SLOT);
+        uint128 head = uint128(uint256(queuePointers));
+        uint128 tail = uint128(uint256(queuePointers) >> 128);
+
+        if (head != tail) {
+            revert LegacyQueueNotEmpty(head, tail);
+        }
     }
 }
 

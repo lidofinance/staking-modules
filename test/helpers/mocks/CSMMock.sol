@@ -33,7 +33,12 @@ contract CSMMock is Utilities, Fixtures {
         (LIDO_LOCATOR, wstETH, lido, , ) = initLido();
         ACCOUNTING = ICSAccounting(
             address(
-                new CSAccountingMock(2 ether, address(wstETH), address(lido))
+                new CSAccountingMock(
+                    2 ether,
+                    address(wstETH),
+                    address(lido),
+                    address(1337)
+                )
             )
         );
     }

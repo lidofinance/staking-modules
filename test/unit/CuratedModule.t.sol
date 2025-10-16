@@ -17,36 +17,6 @@ import "./ModuleAbstract.t.sol";
 
 // TODO uncomment all the commented tests after implementing obtainDepositData
 
-contract CuratedModuleTestable is CuratedModule {
-    using QueueLib for QueueLib.Queue;
-    mapping(uint256 => NodeOperator) internal nodeOperators;
-
-    constructor(
-        bytes32 moduleType,
-        address lidoLocator,
-        address parametersRegistry,
-        address _accounting,
-        address exitPenalties
-    )
-        CuratedModule(
-            moduleType,
-            lidoLocator,
-            parametersRegistry,
-            _accounting,
-            exitPenalties
-        )
-    {}
-
-    function _enqueueToLegacyQueue(uint256 noId, uint32 count) external {
-        _enqueueNodeOperatorKeys(noId, QUEUE_LEGACY_PRIORITY, count);
-    }
-
-    function cleanDepositQueueTestable(uint256 maxItems) external {
-        TransientUintUintMap queueLookup = TransientUintUintMapLib.create();
-        _legacyQueue.clean(nodeOperators, maxItems, queueLookup);
-    }
-}
-
 contract CuratedCommon is ModuleFixtures {
     CuratedModule cm;
 
@@ -73,12 +43,12 @@ contract CuratedCommon is ModuleFixtures {
         accounting = new CSAccountingMock(
             BOND_SIZE,
             address(wstETH),
-            address(stETH)
+            address(stETH),
+            address(feeDistributor)
         );
-        accounting.setFeeDistributor(address(feeDistributor));
 
         module = CSModule(
-            new CuratedModuleTestable({
+            new CuratedModule({
                 moduleType: "curated-module",
                 lidoLocator: address(locator),
                 parametersRegistry: address(parametersRegistry),
@@ -115,9 +85,7 @@ contract CuratedCommon is ModuleFixtures {
 
         // Just to make sure we configured defaults properly and check things properly.
         assertNotEq(PRIORITY_QUEUE, module.QUEUE_LOWEST_PRIORITY());
-        assertNotEq(PRIORITY_QUEUE, module.QUEUE_LEGACY_PRIORITY());
         REGULAR_QUEUE = uint32(module.QUEUE_LOWEST_PRIORITY());
-        LEGACY_QUEUE = uint32(module.QUEUE_LEGACY_PRIORITY());
     }
 }
 
@@ -144,12 +112,12 @@ contract CuratedCommonNoRoles is ModuleFixtures {
         accounting = new CSAccountingMock(
             BOND_SIZE,
             address(wstETH),
-            address(stETH)
+            address(stETH),
+            address(feeDistributor)
         );
-        accounting.setFeeDistributor(address(feeDistributor));
 
         module = CSModule(
-            new CuratedModuleTestable({
+            new CuratedModule({
                 moduleType: "curated-module",
                 lidoLocator: address(locator),
                 parametersRegistry: address(parametersRegistry),
@@ -351,53 +319,8 @@ contract CuratedChangeNodeOperatorRewardAddress is
 
 contract CuratedVetKeys is ModuleVetKeys, CuratedCommon {}
 
-//contract CuratedQueueOps is ModuleQueueOps, CuratedCommon {
-//    function test_cleanDepositQueue_revertWhen_QueueLookupNoLimit()
-//        public
-//        assertInvariants
-//    {
-//        uint256 noId = createNodeOperator({ keysCount: 2 });
-//        uploadMoreKeys(noId, 1);
-//        unvetKeys({ noId: noId, to: 2 });
-//
-//        vm.expectRevert(IQueueLib.QueueLookupNoLimit.selector);
-//        CuratedModuleTestable(address(module)).cleanDepositQueueTestable(0);
-//    }
-//}
-//contract CuratedPriorityQueue is ModulePriorityQueue, CuratedCommon {
-//    function test_migrateToPriorityQueue_FromLegacyQueue() public {
-//        uint256 noId = createNodeOperator(0);
-//        CuratedModuleTestable(address(module))._enqueueToLegacyQueue(noId, 8);
-//        uploadMoreKeys(noId, 8);
-//
-//        BatchInfo[] memory exp = new BatchInfo[](1);
-//
-//        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 8 });
-//        _assertQueueState(LEGACY_QUEUE, exp);
-//
-//        _assertQueueIsEmptyByPriority(REGULAR_QUEUE);
-//        _assertQueueIsEmptyByPriority(PRIORITY_QUEUE);
-//
-//        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-//
-//        {
-//            vm.expectEmit(address(module));
-//            emit ICSModule.BatchEnqueued(PRIORITY_QUEUE, noId, 8);
-//
-//            module.migrateToPriorityQueue(noId);
-//        }
-//
-//        assertEq(module.getNodeOperator(noId).enqueuedCount, 8 + 8);
-//
-//        _assertQueueIsEmptyByPriority(REGULAR_QUEUE);
-//
-//        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 8 });
-//        _assertQueueState(PRIORITY_QUEUE, exp);
-//
-//        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 8 });
-//        _assertQueueState(LEGACY_QUEUE, exp);
-//    }
-//}
+//contract CuratedQueueOps is ModuleQueueOps, CuratedCommon {}
+//contract CuratedPriorityQueue is ModulePriorityQueue, CuratedCommon {}
 //contract CuratedDecreaseVettedSigningKeysCount is ModuleDecreaseVettedSigningKeysCount, CuratedCommon {}
 contract CuratedGetSigningKeys is ModuleGetSigningKeys, CuratedCommon {
 
