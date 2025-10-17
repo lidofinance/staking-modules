@@ -77,7 +77,7 @@ interface ICSVerifier {
     struct ProcessWithdrawalInput {
         WithdrawalWitness withdrawal;
         ValidatorWitness validator;
-        RecentHeaderWitness recentBlock;
+        RecentHeaderWitness withdrawalBlock;
     }
 
     struct ProcessHistoricalWithdrawalInput {

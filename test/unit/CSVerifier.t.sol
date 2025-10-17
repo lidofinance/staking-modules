@@ -403,8 +403,8 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
                 gIFirstPendingConsolidationPrev: NULL_GINDEX,
                 gIFirstPendingConsolidationCurr: NULL_GINDEX
             }),
-            firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
-            pivotSlot: fixture.data.recentBlock.header.slot.dec(),
+            firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
+            pivotSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             capellaSlot: Slot.wrap(0),
             admin: admin
         });
@@ -450,26 +450,28 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
         test_processWithdrawalProof_HappyPath();
     }
 
-    function test_processWithdrawalProof_RevertWhen_UnsupportedSlot() public {
-        fixture.data.recentBlock.header.slot = verifier
+    function test_processWithdrawalProof_RevertWhen_WithdrawalBlockSlotUnsupported()
+        public
+    {
+        fixture.data.withdrawalBlock.header.slot = verifier
             .FIRST_SUPPORTED_SLOT()
             .dec();
 
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICSVerifier.UnsupportedSlot.selector,
-                fixture.data.recentBlock.header.slot
+                fixture.data.withdrawalBlock.header.slot
             )
         );
         verifier.processWithdrawalProof(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhen_InvalidRecentBlock()
+    function test_processWithdrawalProof_RevertWhen_InvalidWithdrawalBlock()
         public
     {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
-            abi.encode(fixture.data.recentBlock.rootsTimestamp),
+            abi.encode(fixture.data.withdrawalBlock.rootsTimestamp),
             abi.encode(hex"deadbeef")
         );
 
@@ -521,7 +523,7 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
         public
     {
         fixture.data.validator.object.withdrawableEpoch =
-            fixture.data.recentBlock.header.slot.unwrap() /
+            fixture.data.withdrawalBlock.header.slot.unwrap() /
             32 +
             1;
 
@@ -567,8 +569,8 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
                 gIFirstPendingConsolidationPrev: NULL_GINDEX,
                 gIFirstPendingConsolidationCurr: NULL_GINDEX
             }),
-            firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
-            pivotSlot: fixture.data.recentBlock.header.slot.inc(),
+            firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
+            pivotSlot: fixture.data.withdrawalBlock.header.slot.inc(),
             capellaSlot: Slot.wrap(0),
             admin: admin
         });
@@ -596,8 +598,8 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
                 gIFirstPendingConsolidationPrev: NULL_GINDEX,
                 gIFirstPendingConsolidationCurr: NULL_GINDEX
             }),
-            firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
-            pivotSlot: fixture.data.recentBlock.header.slot,
+            firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
+            pivotSlot: fixture.data.withdrawalBlock.header.slot,
             capellaSlot: Slot.wrap(0),
             admin: admin
         });
@@ -625,8 +627,8 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
                 gIFirstPendingConsolidationPrev: NULL_GINDEX,
                 gIFirstPendingConsolidationCurr: NULL_GINDEX
             }),
-            firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
-            pivotSlot: fixture.data.recentBlock.header.slot.dec(),
+            firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
+            pivotSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             capellaSlot: Slot.wrap(0),
             admin: admin
         });
@@ -637,7 +639,7 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
     function _setMocks() internal {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
-            abi.encode(fixture.data.recentBlock.rootsTimestamp),
+            abi.encode(fixture.data.withdrawalBlock.rootsTimestamp),
             abi.encode(fixture.blockRoot)
         );
 

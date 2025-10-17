@@ -248,15 +248,17 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
     function processWithdrawalProof(
         ProcessWithdrawalInput calldata data
     ) external whenResumed {
-        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(data.recentBlock.header.slot);
+        if (data.withdrawalBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.withdrawalBlock.header.slot);
         }
 
         {
             bytes32 trustedHeaderRoot = _getParentBlockRoot(
-                data.recentBlock.rootsTimestamp
+                data.withdrawalBlock.rootsTimestamp
             );
-            if (trustedHeaderRoot != data.recentBlock.header.hashTreeRoot()) {
+            if (
+                trustedHeaderRoot != data.withdrawalBlock.header.hashTreeRoot()
+            ) {
                 revert InvalidBlockHeader();
             }
         }
@@ -276,7 +278,7 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
         uint256 withdrawalAmount = _processWithdrawalProof(
             data.withdrawal,
             data.validator,
-            data.recentBlock.header
+            data.withdrawalBlock.header
         );
 
         _submitSingleWithdrawal(

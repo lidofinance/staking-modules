@@ -55,7 +55,7 @@ function main(opts) {
   }
   state.validators.set(opts.validatorIndex, validator);
 
-  const recentBlock = Fork.BeaconBlock.defaultView();
+  const withdrawalBlock = Fork.BeaconBlock.defaultView();
 
   /** @type {import('@chainsafe/ssz').ContainerType} */
   const Withdrawal = Fork.BeaconBlock.getPathInfo([
@@ -74,11 +74,11 @@ function main(opts) {
   withdrawal.amount = BigInt(opts.amount);
 
   for (let i = 0; i != opts.withdrawalOffset; i++)
-    recentBlock.body.executionPayload.withdrawals.push(Withdrawal.defaultView());
-  recentBlock.body.executionPayload.withdrawals.push(withdrawal);
+    withdrawalBlock.body.executionPayload.withdrawals.push(Withdrawal.defaultView());
+  withdrawalBlock.body.executionPayload.withdrawals.push(withdrawal);
 
   state.latestExecutionPayloadHeader.withdrawalsRoot =
-    recentBlock.body.executionPayload.withdrawals.hashTreeRoot();
+    withdrawalBlock.body.executionPayload.withdrawals.hashTreeRoot();
 
   const validatorProof = createProof(state.node, {
     type: ProofType.single,
@@ -89,7 +89,7 @@ function main(opts) {
     "latestExecutionPayloadHeader",
     "withdrawalsRoot",
   ]);
-  const withdrawals = recentBlock.body.executionPayload.withdrawals;
+  const withdrawals = withdrawalBlock.body.executionPayload.withdrawals;
   state.tree.setNode(pathFromStateToWithdrawals.gindex, withdrawals.node);
 
   const withdrawalProof = createProof(state.node, {
@@ -100,12 +100,12 @@ function main(opts) {
     ]),
   });
 
-  recentBlock.slot = state.slot;
-  recentBlock.parentRoot = faker.someBytes32();
-  recentBlock.stateRoot = state.hashTreeRoot();
+  withdrawalBlock.slot = state.slot;
+  withdrawalBlock.parentRoot = faker.someBytes32();
+  withdrawalBlock.stateRoot = state.hashTreeRoot();
 
   const fixture = {
-    blockRoot: recentBlock.hashTreeRoot(),
+    blockRoot: withdrawalBlock.hashTreeRoot(),
     data: {
       validator: {
         index: opts.validatorIndex,
@@ -133,13 +133,13 @@ function main(opts) {
         },
         proof: withdrawalProof.witnesses,
       },
-      recentBlock: {
+      withdrawalBlock: {
         header: {
-          slot: recentBlock.slot,
-          proposerIndex: recentBlock.proposerIndex,
-          parentRoot: recentBlock.parentRoot,
-          stateRoot: recentBlock.stateRoot,
-          bodyRoot: recentBlock.body.hashTreeRoot(),
+          slot: withdrawalBlock.slot,
+          proposerIndex: withdrawalBlock.proposerIndex,
+          parentRoot: withdrawalBlock.parentRoot,
+          stateRoot: withdrawalBlock.stateRoot,
+          bodyRoot: withdrawalBlock.body.hashTreeRoot(),
         },
         rootsTimestamp: 42,
       },
