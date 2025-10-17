@@ -20,7 +20,7 @@ const Fork = ssz.electra;
  * @param {Object} opts
  * @param {number} opts.validatorIndex - Index of a validator in the `validators` list.
  * @param {number} opts.consolidationOffset - Index of a consolidation in the `pending_consolidations` list.
- * @param {bigint} opts.balance - Validator's balance before consolidation.
+ * @param {number} opts.balance - Validator's balance before consolidation.
  * @param {string} opts.address - Ethereum address for withdrawal credentials.
  * @param {number} opts.withdrawableEpoch - Epoch to calculate slot for withdrawable block.
  * @param {number} opts.capellaSlot - Slot of Cappela fork.
@@ -29,7 +29,7 @@ function main(opts) {
   assert(opts);
   assert(opts.validatorIndex < MAX_VALIDATORS);
   assert(opts.withdrawableEpoch > MIN_VALIDATOR_WITHDRAWABILITY_DELAY);
-  assert(opts.capellaSlot % SLOTS_PER_HISTORICAL_ROOT == 0);
+  assert(opts.capellaSlot % SLOTS_PER_HISTORICAL_ROOT === 0);
 
   const faker = new Faker("seed sEed seEd");
 

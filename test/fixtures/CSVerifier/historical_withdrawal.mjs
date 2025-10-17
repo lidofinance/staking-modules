@@ -32,7 +32,7 @@ function main(opts) {
   assert(opts.validatorIndex < MAX_VALIDATORS);
   assert(opts.withdrawalOffset < MAX_WITHDRAWALS);
   assert(["deneb", "electra"].includes(opts.fork));
-  assert(opts.capellaSlot % SLOTS_PER_HISTORICAL_ROOT == 0);
+  assert(opts.capellaSlot % SLOTS_PER_HISTORICAL_ROOT === 0);
 
   const faker = new Faker("seed sEed seEd");
 
