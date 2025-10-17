@@ -984,7 +984,7 @@ contract CSVerifierConsolidationTest is CSVerifierTestBase {
         public
     {
         fixture.data.validator.object.withdrawableEpoch =
-            fixture.data.recentBlock.header.slot.unwrap() *
+            fixture.data.recentBlock.header.slot.unwrap() /
             32 +
             1;
         vm.expectRevert(ICSVerifier.ValidatorIsNotWithdrawable.selector);
