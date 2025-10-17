@@ -542,7 +542,7 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
         verifier.processWithdrawalProof(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhen_PartialWitdrawal() public {
+    function test_processWithdrawalProof_RevertWhen_PartialWithdrawal() public {
         fixture.data.withdrawal.object.amount = 15e9 - 1;
 
         vm.expectRevert(ICSVerifier.PartialWithdrawal.selector);

@@ -273,7 +273,7 @@ contract CSVerifierHistoricalTest is CSVerifierHistoricalBase {
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processHistoricalWithdrawalProof_RevertWhen_PartialWitdrawal()
+    function test_processHistoricalWithdrawalProof_RevertWhen_PartialWithdrawal()
         public
     {
         fixture.data.withdrawal.object.amount = 15e9 - 1;
