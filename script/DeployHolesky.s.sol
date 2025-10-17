@@ -78,8 +78,6 @@ contract DeployHolesky is DeployBase {
         config.minBondLockPeriod = 1 days;
         config.maxBondLockPeriod = 365 days;
         config.bondLockPeriod = 8 weeks;
-        config.bondReserveMinPeriod = 4 weeks;
-        config.enableBondReserve = false;
         config
             .setResetBondCurveAddress = 0xc4DAB3a3ef68C6DFd8614a870D64D475bA44F164; // Dev team EOA
         config

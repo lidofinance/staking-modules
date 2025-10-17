@@ -16,7 +16,6 @@ import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
 import { ICSBondCurve } from "src/interfaces/ICSBondCurve.sol";
 import { ICSBondCore } from "src/interfaces/ICSBondCore.sol";
 import { ICSBondLock } from "src/interfaces/ICSBondLock.sol";
-import { IBondReserve } from "src/interfaces/IBondReserve.sol";
 
 import { CSAccounting } from "src/CSAccounting.sol";
 import { CSBondCore } from "src/abstract/CSBondCore.sol";
@@ -179,8 +178,7 @@ contract BaseTest is AccountingFixtures {
             address(stakingModule),
             address(feeDistributor),
             4 weeks,
-            365 days,
-            true
+            365 days
         );
 
         feeDistributor.setAccounting(address(accounting));
@@ -191,7 +189,6 @@ contract BaseTest is AccountingFixtures {
             curve,
             admin,
             8 weeks,
-            4 weeks,
             testChargePenaltyRecipient
         );
 
@@ -239,14 +236,6 @@ abstract contract BondAmountModifiersTest {
     // 2 keys -> 3 ether + 1 ether
     // n keys -> 2 + (n - 1) * 1 ether + 1 ether
     function test_WithCurveAndLocked() public virtual;
-
-    function test_WithReserve() public virtual;
-
-    function test_WithCurveAndReserve() public virtual;
-
-    function test_WithLockedAndReserve() public virtual;
-
-    function test_WithCurveAndLockedAndReserve() public virtual;
 }
 
 abstract contract BondStateBaseTest is BondAmountModifiersTest, BaseTest {
@@ -297,11 +286,6 @@ abstract contract BondStateBaseTest is BondAmountModifiersTest, BaseTest {
     function _lock(uint256 amount) internal virtual {
         vm.prank(address(stakingModule));
         accounting.lockBondETH(0, amount);
-    }
-
-    function _reserve(uint256 amount) internal virtual {
-        vm.prank(address(user));
-        accounting.increaseBondReserve(0, amount);
     }
 
     function test_WithOneWithdrawnValidator() public virtual;
@@ -434,8 +418,7 @@ contract BaseInitTest is AccountingFixtures {
             address(stakingModule),
             address(feeDistributor),
             4 weeks,
-            365 days,
-            true
+            365 days
         );
 
         feeDistributor.setAccounting(address(accounting));

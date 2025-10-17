@@ -142,9 +142,7 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
         //     vm.startBroadcast(_prepareProxyAdmin(address(accountingProxy)));
         //     {
         //         accountingProxy.proxy__upgradeTo(deploymentConfig.accountingImpl);
-        //         CSAccounting(deploymentConfig.accounting).finalizeUpgradeV3(
-        //             deployParams.bondReserveMinPeriod
-        //         );
+        //         CSAccounting(deploymentConfig.accounting).finalizeUpgradeV3();
         //     }
         //     vm.stopBroadcast();
 

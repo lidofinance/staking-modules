@@ -213,7 +213,7 @@ contract InvariantAsserts is Test {
     }
 
     function assertAccountingUnusedStorageSlots(
-        CSAccounting accounting
+        CSAccounting /* accounting */
     ) public {
         if (skipInvariants()) {
             return;

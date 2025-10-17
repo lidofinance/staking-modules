@@ -178,10 +178,6 @@ contract CSAccountingDeploymentTest is DeploymentBaseTest {
             address(feeDistributor)
         );
         assertEq(accounting.getBondLockPeriod(), deployParams.bondLockPeriod);
-        assertEq(
-            accounting.getBondReserveMinPeriod(),
-            deployParams.bondReserveMinPeriod
-        );
 
         assertEq(
             accounting.chargePenaltyRecipient(),
@@ -312,7 +308,6 @@ contract CSAccountingDeploymentTest is DeploymentBaseTest {
             bondCurve: defaultBondCurve,
             admin: address(deployParams.aragonAgent),
             bondLockPeriod: deployParams.bondLockPeriod,
-            bondReserveMinPeriod: deployParams.bondReserveMinPeriod,
             _chargePenaltyRecipient: address(0)
         });
 
@@ -330,7 +325,6 @@ contract CSAccountingDeploymentTest is DeploymentBaseTest {
             bondCurve: defaultBondCurve,
             admin: address(deployParams.aragonAgent),
             bondLockPeriod: deployParams.bondLockPeriod,
-            bondReserveMinPeriod: deployParams.bondReserveMinPeriod,
             _chargePenaltyRecipient: address(0)
         });
     }

@@ -1385,10 +1385,7 @@ contract PullFeeRewardsTest is BaseTest {
         );
     }
 
-    function test_pullFeeRewards_withSplits_withLockOrReserve()
-        public
-        assertInvariants
-    {
+    function test_pullFeeRewards_withSplits_withLock() public assertInvariants {
         ICSAccounting.FeeSplit[] memory splits = new ICSAccounting.FeeSplit[](
             1
         );
@@ -1573,7 +1570,7 @@ contract ClaimRewardsWithFeeSplitsTest is BaseTest {
         uint256 sharesBefore = stETH.sharesOf(splits[0].recipient);
 
         vm.prank(user);
-        uint256 requestId = accounting.claimRewardsUnstETH(
+        accounting.claimRewardsUnstETH(
             0,
             0.4 ether,
             feeShares,
@@ -1694,30 +1691,33 @@ contract ClaimRewardsWithFeeSplitsTest is BaseTest {
 }
 
 contract ScenarioTest is BaseTest {
-    function test_scenario_lock_curve_withdraw_reserve_settle()
+    function test_scenario_lock_curve_withdraw_settle()
         public
         assertInvariants
     {
+        uint256 curr;
+        uint256 req;
+
         // 1) Initial operator with 16 ongoing, 0 withdrawn
         _operator({ ongoing: 16, withdrawn: 0 });
 
         // Required: 32 ether
-        (uint256 curr0, uint256 req0) = accounting.getBondSummary(0);
-        assertEq(curr0, 0);
-        assertEq(req0, 32 ether);
+        (curr, req) = accounting.getBondSummary(0);
+        assertEq(curr, 0);
+        assertEq(req, 32 ether);
 
         // 2) Deposit 40 ether bond, we have 8 ether excess claimable
         _deposit({ bond: 40 ether });
-        (uint256 curr1, uint256 req1) = accounting.getBondSummary(0);
-        assertApproxEqAbs(curr1, ethToSharesToEth(40 ether), 1);
-        assertEq(req1, 32 ether);
+        (curr, req) = accounting.getBondSummary(0);
+        assertApproxEqAbs(curr, ethToSharesToEth(40 ether), 1);
+        assertEq(req, 32 ether);
 
         // 3) Apply a lock of 3 ether
         vm.prank(address(stakingModule));
         accounting.lockBondETH(0, 3 ether);
-        (, uint256 req2) = accounting.getBondSummary(0);
+        (, req) = accounting.getBondSummary(0);
         // required grows by locked amount
-        assertEq(req2, 35 ether);
+        assertEq(req, 35 ether);
 
         // 4) Change curve to discounted: for 16 keys = 17 ether
         {
@@ -1736,94 +1736,45 @@ contract ScenarioTest is BaseTest {
             accounting.setBondCurve(0, curveId);
             vm.stopPrank();
         }
-        (, uint256 req3) = accounting.getBondSummary(0);
+        (, req) = accounting.getBondSummary(0);
         // lock is kept
-        assertEq(req3, 20 ether);
+        assertEq(req, 20 ether);
 
         // 5) Withdraw 2 validators => non-withdrawn becomes 14, curve(14)=15 ether
         mock_getNodeOperatorNonWithdrawnKeys(14);
-        (uint256 curr4, uint256 req4) = accounting.getBondSummary(0);
+        (, req) = accounting.getBondSummary(0);
         // required: 15 + 3 locked = 18 ether
-        assertEq(req4, 18 ether);
+        assertEq(req, 18 ether);
 
-        // 6) Create reserve from current claimable (must be > 0)
-        uint256 claimable = curr4 > req4 ? curr4 - req4 : 0;
-        assertGt(claimable, 0);
-        mock_getNodeOperatorManagementProperties(user, user, false);
-
-        uint256 claimablePortion = claimable / 3;
-        vm.prank(user);
-        accounting.increaseBondReserve(0, claimablePortion);
-
-        (uint256 curr5, uint256 req5) = accounting.getBondSummary(0);
-        // current stays the same, required increases by reserve amount
-        assertApproxEqAbs(curr5, curr4, 1);
-        assertEq(req5, req4 + claimablePortion);
-
-        vm.prank(user);
-        accounting.increaseBondReserve(0, claimable);
-        (curr5, req5) = accounting.getBondSummary(0);
-        assertApproxEqAbs(curr5, curr4, 1);
-        assertEq(req5, req4 + claimable);
-        assertEq(accounting.getBondReserveInfo(0).amount, claimable);
-
-        // 7) Check unbonded counts reflect reserve+lock when included
-        uint256 unbondedAll = accounting.getUnbondedKeysCount(0); // include locked+reserve
-        uint256 unbondedToEject = accounting.getUnbondedKeysCountToEject(0); // exclude locked
         // Since current >= required, all unbonded should be zero
-        assertEq(unbondedAll, 0);
-        assertEq(unbondedToEject, 0);
-
-        // 7.a) Increase active keys to 15. With reserve excluded from coverage, we expect unbonded (include locked)
-        _operator({ ongoing: 15, withdrawn: 0 });
-        // include locked+reserve -> available = 15 ETH -> covers 14 keys -> 1 unbonded
-        assertEq(accounting.getUnbondedKeysCount(0), 1);
-        // exclude locked -> available = 18 ETH -> covers >=15 keys -> 0 unbonded
+        assertEq(accounting.getUnbondedKeysCount(0), 0);
         assertEq(accounting.getUnbondedKeysCountToEject(0), 0);
 
-        // 7.b) Penalize a small amount. Reserve should be untouched
+        // 6.a) Increase active keys to 37. We expect unbonded (include locked)
+        _operator({ ongoing: 37, withdrawn: 0 });
+        // include locked -> available = 37 ETH -> covers 36 keys -> 1 unbonded
+        assertEq(accounting.getUnbondedKeysCount(0), 1);
+        // exclude locked -> available = 40 ETH -> covers >= 36 keys -> 0 unbonded
+        assertEq(accounting.getUnbondedKeysCountToEject(0), 0);
+
+        // 6.b) Penalize a small amount.
         vm.prank(address(stakingModule));
         accounting.penalize(0, 1 ether);
-        // after 1 ETH penalty: include locked -> available = 14 ETH -> covers 13 -> 2 unbonded
+        // after 1 ETH penalty: include locked -> available = 36 ETH -> covers 35 keys -> 2 unbonded
         assertEq(accounting.getUnbondedKeysCount(0), 2);
-        // exclude locked -> available = 17 ETH -> covers >=15 -> 0 unbonded
+        // exclude locked -> available = 39 ETH -> covers >= 15 -> 0 unbonded
         assertEq(accounting.getUnbondedKeysCountToEject(0), 0);
-        assertEq(accounting.getBondReserveInfo(0).amount, claimable);
 
-        // 7.c) Penalize more than the reserve
-        IBondReserve.BondReserveInfo memory rinfo = accounting
-            .getBondReserveInfo(0);
-        vm.prank(address(stakingModule));
-        accounting.penalize(0, uint256(rinfo.amount) + 1 ether);
-        // Reserve should now equal the (post-penalty) current bond
-        rinfo = accounting.getBondReserveInfo(0);
-        uint256 currentAfterPenalty = accounting.getBond(0);
-        assertEq(uint256(rinfo.amount), currentAfterPenalty);
-        // reserve equals current, available after excluding reserve is 0 -> 15 unbonded in both modes
-        assertEq(accounting.getUnbondedKeysCount(0), 15);
-        assertEq(accounting.getUnbondedKeysCountToEject(0), 15);
-
-        // 8) Settle lock
+        // 7) Settle lock
         vm.prank(address(stakingModule));
         bool applied = accounting.settleLockedBondETH(0);
         assertTrue(applied);
 
-        (uint256 curr6, uint256 req6) = accounting.getBondSummary(0);
-        uint256 reserve6 = accounting.getBondReserveInfo(0).amount;
+        (, req) = accounting.getBondSummary(0);
 
-        assertApproxEqAbs(req6 - reserve6, 16 ether, 1);
-        assertEq(reserve6, curr6);
-        // after settling lock, locked=0 but available excluding reserve is still 0 -> 15 unbonded
-        assertEq(accounting.getUnbondedKeysCount(0), 15);
-        assertEq(accounting.getUnbondedKeysCountToEject(0), 15);
-
-        // 9) Remove reserve after min period; unbonded decreases
-        vm.warp(block.timestamp + 4 weeks + 1 seconds);
-        vm.prank(user);
-        accounting.removeBondReserve(0);
-        assertEq(accounting.getBondReserveInfo(0).amount, 0);
-        // With no reserve and no lock, available bond ~= 13 ETH -> covers 12 keys -> 3 unbonded
-        assertEq(accounting.getUnbondedKeysCount(0), 3);
-        assertEq(accounting.getUnbondedKeysCountToEject(0), 3);
+        assertApproxEqAbs(req, 38 ether, 1);
+        // after settling lock, locked=0 but available = 36 ETH -> covers 35 keys -> 2 unbonded
+        assertEq(accounting.getUnbondedKeysCount(0), 2);
+        assertEq(accounting.getUnbondedKeysCountToEject(0), 2);
     }
 }
