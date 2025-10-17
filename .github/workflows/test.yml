@@ -139,6 +139,8 @@ jobs:
         env:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+        continue-on-error: true # FIXME: remove after bug with nonce is fixed in foundry
+
 
       # TODO: uncomment when v2 -> v3 upgrade flow is ready
       # - name: Run post-vote tests after upgrade
