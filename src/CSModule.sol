@@ -43,6 +43,8 @@ contract CSModule is
     bytes32 public constant SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE =
         keccak256("SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE");
     bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
+    bytes32 public constant SUBMIT_WITHDRAWALS_ROLE =
+        keccak256("SUBMIT_WITHDRAWALS_ROLE");
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
     bytes32 public constant CREATE_NODE_OPERATOR_ROLE =
         keccak256("CREATE_NODE_OPERATOR_ROLE");
@@ -96,7 +98,6 @@ contract CSModule is
     mapping(uint256 => NodeOperator) internal _nodeOperators;
     /// @dev see _keyPointer function for details of noKeyIndexPacked structure
     mapping(uint256 noKeyIndexPacked => bool) private _isValidatorWithdrawn;
-    /// @dev DEPRECATED! No writes expected after CSM v2
     mapping(uint256 noKeyIndexPacked => bool) private _isValidatorSlashed;
 
     uint64 private _totalDepositedValidators;
@@ -665,9 +666,30 @@ contract CSModule is
     }
 
     /// @inheritdoc ICSModule
+    function onValidatorSlashed(
+        uint256 nodeOperatorId,
+        uint256 keyIndex
+    ) external onlyRole(VERIFIER_ROLE) {
+        _onlyExistingNodeOperator(nodeOperatorId);
+        NodeOperator storage no = _nodeOperators[nodeOperatorId];
+        if (keyIndex >= no.totalDepositedKeys) {
+            revert SigningKeysInvalidOffset();
+        }
+
+        uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
+        if (_isValidatorSlashed[pointer]) {
+            revert ValidatorSlashingAlreadyReported();
+        }
+        _isValidatorSlashed[pointer] = true;
+
+        bytes memory pubkey = SigningKeys.loadKeys(nodeOperatorId, keyIndex, 1);
+        emit ValidatorSlashingReported(nodeOperatorId, keyIndex, pubkey);
+    }
+
+    /// @inheritdoc ICSModule
     function submitWithdrawals(
         ValidatorWithdrawalInfo[] calldata withdrawalsInfo
-    ) external onlyRole(VERIFIER_ROLE) {
+    ) external onlyRole(SUBMIT_WITHDRAWALS_ROLE) {
         bool anySubmission = false;
 
         for (uint256 i; i < withdrawalsInfo.length; ++i) {
@@ -694,6 +716,13 @@ contract CSModule is
             );
             if (_isValidatorWithdrawn[pointer]) {
                 continue;
+            }
+
+            if (
+                withdrawalInfo.slashingPenalty > 0 &&
+                !_isValidatorSlashed[pointer]
+            ) {
+                revert SlashingPenaltyIsNotApplicable();
             }
 
             anySubmission = true;
@@ -1071,6 +1100,14 @@ contract CSModule is
         uint128 index
     ) external view returns (Batch) {
         return _queueByPriority[queuePriority].at(index);
+    }
+
+    /// @inheritdoc ICSModule
+    function isValidatorSlashed(
+        uint256 nodeOperatorId,
+        uint256 keyIndex
+    ) external view returns (bool) {
+        return _isValidatorSlashed[_keyPointer(nodeOperatorId, keyIndex)];
     }
 
     /// @inheritdoc ICSModule

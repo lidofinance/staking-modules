@@ -686,6 +686,174 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
     }
 }
 
+contract CSVerifierSlashingTest is CSVerifierTestBase {
+    struct Fixture {
+        bytes32 blockRoot;
+        ICSVerifier.ProcessSlashedInput data;
+    }
+
+    Fixture internal fixture;
+
+    function setUp() public {
+        _loadFixture();
+
+        module = new Stub();
+        admin = nextAddress("ADMIN");
+
+        verifier = new CSVerifier({
+            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            module: address(module),
+            slotsPerEpoch: 32,
+            slotsPerHistoricalRoot: 8192,
+            gindices: ICSVerifier.GIndices({
+                gIFirstWithdrawalPrev: NULL_GINDEX,
+                gIFirstWithdrawalCurr: NULL_GINDEX,
+                gIFirstValidatorPrev: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIFirstHistoricalSummaryPrev: NULL_GINDEX,
+                gIFirstHistoricalSummaryCurr: NULL_GINDEX,
+                gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
+                gIFirstBlockRootInSummaryCurr: NULL_GINDEX,
+                gIFirstBalanceNodePrev: NULL_GINDEX,
+                gIFirstBalanceNodeCurr: NULL_GINDEX,
+                gIFirstPendingConsolidationPrev: NULL_GINDEX,
+                gIFirstPendingConsolidationCurr: NULL_GINDEX
+            }),
+            firstSupportedSlot: Slot.wrap(8192),
+            pivotSlot: Slot.wrap(8192),
+            capellaSlot: Slot.wrap(0),
+            admin: admin
+        });
+
+        pauseRole = verifier.PAUSE_ROLE();
+        resumeRole = verifier.RESUME_ROLE();
+
+        vm.startPrank(admin);
+        verifier.grantRole(pauseRole, admin);
+        verifier.grantRole(resumeRole, admin);
+        vm.stopPrank();
+
+        _setMocks();
+
+        assertGt(
+            verifier.FIRST_SUPPORTED_SLOT().unwrap(),
+            0,
+            "Non-zero slot needed for tests"
+        );
+    }
+
+    function test_processSlashed_HappyPath() public {
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICSModule.onValidatorSlashed.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex
+            )
+        );
+
+        verifier.processSlashedProof(fixture.data);
+    }
+
+    function test_processSlashed_RevertWhenPaused() public {
+        vm.prank(admin);
+        verifier.pauseFor(100_500);
+
+        vm.expectRevert(
+            PausableUntil.ResumedExpected.selector,
+            address(verifier)
+        );
+        verifier.processSlashedProof(fixture.data);
+    }
+
+    function test_processSlashed_RevertWhen_RecentBlockSlotUnsupported()
+        public
+    {
+        fixture.data.recentBlock.header.slot = verifier
+            .FIRST_SUPPORTED_SLOT()
+            .dec();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ICSVerifier.UnsupportedSlot.selector,
+                fixture.data.recentBlock.header.slot
+            )
+        );
+        verifier.processSlashedProof(fixture.data);
+    }
+
+    function test_processSlashed_RevertWhen_NotSlashed() public {
+        fixture.data.validator.object.slashed = false;
+
+        vm.expectRevert(ICSVerifier.ValidatorIsNotSlashed.selector);
+        verifier.processSlashedProof(fixture.data);
+    }
+
+    function test_processSlashed_RevertWhen_InvalidPublicKey() public {
+        fixture.data.validator.object.pubkey = hex"deadbeef";
+
+        vm.expectRevert(ICSVerifier.InvalidPublicKey.selector);
+        verifier.processSlashedProof(fixture.data);
+    }
+
+    // function test_processSlashed_RevertWhen_ValidatorIsNotWithdrawable()
+    //     public
+    // {
+    //     fixture.data.validator.object.withdrawableEpoch =
+    //         fixture.data.recentBlock.header.slot.unwrap() *
+    //         32 +
+    //         1;
+    //     vm.expectRevert(ICSVerifier.ValidatorIsNotWithdrawable.selector);
+    //     verifier.processSlashedProof(fixture.data);
+    // }
+
+    function test_processSlashed_RevertWhen_InvalidBlockHeader() public {
+        vm.mockCall(
+            verifier.BEACON_ROOTS(),
+            abi.encode(fixture.data.recentBlock.rootsTimestamp),
+            abi.encode(hex"deadbeef")
+        );
+
+        vm.expectRevert(ICSVerifier.InvalidBlockHeader.selector);
+        verifier.processSlashedProof(fixture.data);
+    }
+
+    function _setMocks() internal {
+        vm.mockCall(
+            verifier.BEACON_ROOTS(),
+            abi.encode(fixture.data.recentBlock.rootsTimestamp),
+            abi.encode(fixture.blockRoot)
+        );
+
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICSModule.getSigningKeys.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex
+            ),
+            abi.encode(fixture.data.validator.object.pubkey)
+        );
+
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(ICSModule.onValidatorSlashed.selector),
+            ""
+        );
+    }
+
+    function _loadFixture() internal {
+        string[] memory cmd = new string[](3);
+        cmd[0] = "node";
+        cmd[1] = "--no-warnings";
+        cmd[2] = "test/fixtures/CSVerifier/slashing.mjs";
+        bytes memory res = vm.ffi(cmd);
+        fixture = abi.decode(res, (Fixture));
+    }
+
+    function ffi_interface(Fixture memory) external {}
+}
+
 contract CSVerifierConsolidationTest is CSVerifierTestBase {
     struct Fixture {
         bytes32 blockRoot;

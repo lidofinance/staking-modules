@@ -73,6 +73,7 @@ contract CSMCommon is ModuleFixtures {
             address(this)
         );
         module.grantRole(module.VERIFIER_ROLE(), address(this));
+        module.grantRole(module.SUBMIT_WITHDRAWALS_ROLE(), address(this));
         vm.stopPrank();
 
         module.resume();
@@ -124,11 +125,13 @@ contract CSMCommonNoRoles is ModuleFixtures {
         module.initialize({ admin: admin });
 
         vm.startPrank(admin);
-        module.grantRole(module.DEFAULT_ADMIN_ROLE(), address(this));
-        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), admin);
-        module.grantRole(module.RESUME_ROLE(), admin);
-        module.grantRole(module.VERIFIER_ROLE(), address(this));
-        module.resume();
+        {
+            module.grantRole(module.RESUME_ROLE(), address(admin));
+            module.resume();
+            module.revokeRole(module.RESUME_ROLE(), address(admin));
+            // NOTE: Needed for the `createNodeOperator` helper.
+            module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), address(this));
+        }
         vm.stopPrank();
     }
 }

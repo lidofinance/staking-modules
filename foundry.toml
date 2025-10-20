@@ -2,7 +2,7 @@
 solc = "0.8.24"
 evm_version = "cancun"
 optimizer = true
-optimizer_runs = 100 # REVISE IN THE FUTURE
+optimizer_runs = 0 # REVISE IN THE FUTURE
 bytecode_hash = "none" # The metadata hash removed from the bytecode (not the metadata itself).
 # uncomment this to inspect storage layouts in build artifacts
 # extra_output = ["storageLayout"]
@@ -63,5 +63,8 @@ block_gas_limit = 60_000_000
 [profile.upgrades]
 extra_output = ["storageLayout"]
 build_info = true
+
+[lint]
+lint_on_build = false
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/crates/config

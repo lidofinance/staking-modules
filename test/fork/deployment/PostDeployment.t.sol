@@ -124,6 +124,16 @@ contract CSModuleDeploymentTest is DeploymentBaseTest {
 
         assertTrue(csm.hasRole(csm.VERIFIER_ROLE(), address(verifier)));
         assertEq(csm.getRoleMemberCount(csm.VERIFIER_ROLE()), 1);
+        assertTrue(
+            csm.hasRole(csm.SUBMIT_WITHDRAWALS_ROLE(), address(verifier))
+        );
+        assertTrue(
+            csm.hasRole(
+                csm.SUBMIT_WITHDRAWALS_ROLE(),
+                address(deployParams.easyTrackEVMScriptExecutor)
+            )
+        );
+        assertEq(csm.getRoleMemberCount(csm.SUBMIT_WITHDRAWALS_ROLE()), 2);
 
         assertEq(csm.getRoleMemberCount(csm.RECOVERER_ROLE()), 0);
 

@@ -75,6 +75,8 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
         csm.revokeRole(csm.RESUME_ROLE(), agent);
         // 6. Update initial epoch
         hashConsensus.updateInitialEpoch(47480);
+
+        vm.stopBroadcast();
     }
 
     function upgrade() external {
