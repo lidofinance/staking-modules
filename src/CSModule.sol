@@ -761,22 +761,23 @@ contract CSModule is
                 penaltyMultiplier
             );
 
-            bool chargeWithdrawalRequestFee;
+            ICSAccounting _accounting = accounting();
+            bool chargeWithdrawalRequestFee = false;
+            bool bondCoveredCharges = true;
 
-            // It is safe to use unchecked for penalty sum because base penalties and fees are limited to uint248 in the
-            // MarkedUint248 structures used to store them, and the maximum multiplier is limited to 64, so
-            // `type(uint248).max * 64 * 2 < type(uint256).max`.
             ExitPenaltyInfo memory exitPenaltyInfo = EXIT_PENALTIES
                 .getExitPenaltyInfo(withdrawalInfo.nodeOperatorId, pubkey);
             if (exitPenaltyInfo.delayPenalty.isValue) {
-                unchecked {
-                    penaltySum +=
-                        exitPenaltyInfo.delayPenalty.value *
-                        penaltyMultiplier;
-                }
+                bondCoveredCharges = _accounting.chargeFee(
+                    withdrawalInfo.nodeOperatorId,
+                    exitPenaltyInfo.delayPenalty.value * penaltyMultiplier
+                );
                 chargeWithdrawalRequestFee = true;
             }
             if (exitPenaltyInfo.strikesPenalty.isValue) {
+                // It is safe to use unchecked for penalty sum because base penalties and fees are limited to uint248 in
+                // the MarkedUint248 structures used to store them, and the maximum multiplier is limited to 64, so
+                // `type(uint248).max * 64 < type(uint256).max`.
                 unchecked {
                     penaltySum +=
                         exitPenaltyInfo.strikesPenalty.value *
@@ -785,19 +786,17 @@ contract CSModule is
                 chargeWithdrawalRequestFee = true;
             }
 
-            ICSAccounting _accounting = accounting();
-            bool isFullyBurned = true;
-            bool isFullyCharged = true;
-
-            // The withdrawal request fee is taken only if the penalty is applied if no penalty, the
-            // fee has been paid by the node operator on the withdrawal trigger, or it is the DAO
-            // decision to withdraw the validator before that the withdrawal request becomes
-            // delayed.
+            // The withdrawal request fee is taken only if the penalty is applied. If no penalty
+            // is applied, the fee has been paid by the node operator on the withdrawal trigger,
+            // or it is the DAO decision to withdraw the validator before the withdrawal request
+            // becomes delayed.
             if (
+                bondCoveredCharges &&
                 chargeWithdrawalRequestFee &&
                 exitPenaltyInfo.withdrawalRequestFee.value != 0
             ) {
-                isFullyCharged = _accounting.chargeFee(
+                // We do not call the method if there is no bond left after the first call to the `chargeFee`.
+                bondCoveredCharges = _accounting.chargeFee(
                     withdrawalInfo.nodeOperatorId,
                     exitPenaltyInfo.withdrawalRequestFee.value
                 );
@@ -807,7 +806,7 @@ contract CSModule is
                 // Slashing penalty doesn't scale because all the losses are already accounted.
                 penaltySum += withdrawalInfo.slashingPenalty;
             } else if (withdrawalInfo.exitBalance < MIN_ACTIVATION_BALANCE) {
-                // type(uint248).max * 64 * 2 + 32 * 10**18 < type(uint256).max
+                // type(uint248).max * 64 + 32 * 10**18 < type(uint256).max
                 unchecked {
                     penaltySum +=
                         MIN_ACTIVATION_BALANCE -
@@ -816,13 +815,14 @@ contract CSModule is
             }
 
             if (penaltySum > 0) {
-                isFullyBurned = _accounting.penalize(
+                // We still call `penalize` even if there's no bond left, for the lock to be created.
+                bondCoveredCharges = _accounting.penalize(
                     withdrawalInfo.nodeOperatorId,
                     penaltySum
                 );
             }
 
-            if (!isFullyCharged || !isFullyBurned) {
+            if (!bondCoveredCharges) {
                 _onUncompensatedPenalty(withdrawalInfo.nodeOperatorId);
             }
 
@@ -853,7 +853,8 @@ contract CSModule is
     /// @inheritdoc IStakingModule
     function reportValidatorExitDelay(
         uint256 nodeOperatorId,
-        uint256 /* proofSlotTimestamp */,
+        uint256,
+        /* proofSlotTimestamp */
         bytes calldata publicKey,
         uint256 eligibleToExitInSec
     ) external onlyRole(STAKING_ROUTER_ROLE) {
@@ -1323,7 +1324,8 @@ contract CSModule is
     /// @inheritdoc IStakingModule
     function isValidatorExitDelayPenaltyApplicable(
         uint256 nodeOperatorId,
-        uint256 /* proofSlotTimestamp */,
+        uint256,
+        /* proofSlotTimestamp */
         bytes calldata publicKey,
         uint256 eligibleToExitInSec
     ) external view returns (bool) {

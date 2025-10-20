@@ -5988,7 +5988,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         vm.expectCall(
             address(accounting),
             abi.encodeWithSelector(
-                accounting.penalize.selector,
+                accounting.chargeFee.selector,
                 noId,
                 exitDelayPenaltyAmount
             )
@@ -6036,7 +6036,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         vm.expectCall(
             address(accounting),
             abi.encodeWithSelector(
-                accounting.penalize.selector,
+                accounting.chargeFee.selector,
                 noId,
                 exitDelayPenaltyAmount
             )
@@ -6081,7 +6081,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         vm.expectCall(
             address(accounting),
             abi.encodeWithSelector(
-                accounting.penalize.selector,
+                accounting.chargeFee.selector,
                 noId,
                 penalty * multiplier
             )
@@ -6120,7 +6120,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         vm.expectCall(
             address(accounting),
             abi.encodeWithSelector(
-                accounting.penalize.selector,
+                accounting.chargeFee.selector,
                 noId,
                 penalty * multiplier
             )
@@ -6299,189 +6299,6 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         module.submitWithdrawals(withdrawalInfo);
     }
 
-    function test_submitWithdrawals_allPenalties() public assertInvariants {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        uint256 balanceShortage = (BOND_SIZE - 1 ether) / 3;
-        uint256 exitDelayPenaltyAmount = (BOND_SIZE - 1 ether) / 3;
-        uint256 strikesPenaltyAmount = (BOND_SIZE - 1 ether) / 3;
-
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
-            ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(
-                    uint248(exitDelayPenaltyAmount),
-                    true
-                ),
-                strikesPenalty: MarkedUint248(
-                    uint248(strikesPenaltyAmount),
-                    true
-                ),
-                withdrawalRequestFee: MarkedUint248(0, false)
-            })
-        );
-
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE() - balanceShortage,
-            0
-        );
-
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(
-                accounting.penalize.selector,
-                noId,
-                balanceShortage + exitDelayPenaltyAmount + strikesPenaltyAmount
-            )
-        );
-        module.submitWithdrawals(withdrawalInfo);
-
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalWithdrawnKeys, 1);
-        // There should be no target limit if the penalty is covered by the bond.
-        assertEq(no.targetLimit, 0);
-        assertEq(no.targetLimitMode, 0);
-    }
-
-    function test_submitWithdrawals_allPenaltiesHugeSum()
-        public
-        assertInvariants
-    {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        uint256 balanceShortage = (BOND_SIZE + 1 ether) / 3;
-        uint256 exitDelayPenaltyAmount = (BOND_SIZE + 1 ether) / 3;
-        uint256 strikesPenaltyAmount = (BOND_SIZE + 1 ether) / 3;
-
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
-            ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(
-                    uint248(exitDelayPenaltyAmount),
-                    true
-                ),
-                strikesPenalty: MarkedUint248(
-                    uint248(strikesPenaltyAmount),
-                    true
-                ),
-                withdrawalRequestFee: MarkedUint248(0, false)
-            })
-        );
-
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE() - balanceShortage,
-            0
-        );
-
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(
-                accounting.penalize.selector,
-                noId,
-                balanceShortage + exitDelayPenaltyAmount + strikesPenaltyAmount
-            )
-        );
-        module.submitWithdrawals(withdrawalInfo);
-
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalWithdrawnKeys, 1);
-        // There should be target limit if the penalty is not covered by the bond.
-        assertEq(no.targetLimit, 0);
-        assertEq(no.targetLimitMode, 2);
-    }
-
-    function test_submitWithdrawals_allPenaltiesWithMultiplier()
-        public
-        assertInvariants
-    {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        uint248 delayPenalty = 2 ether;
-        uint248 strikesPenalty = 3 ether;
-        uint256 multiplier = 3;
-
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
-            ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(delayPenalty, true),
-                strikesPenalty: MarkedUint248(strikesPenalty, true),
-                withdrawalRequestFee: MarkedUint248(0, false)
-            })
-        );
-
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE() * multiplier + 1 ether,
-            0
-        );
-
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(
-                accounting.penalize.selector,
-                noId,
-                delayPenalty * multiplier + strikesPenalty * multiplier
-            )
-        );
-        module.submitWithdrawals(withdrawalInfo);
-    }
-
-    function test_submitWithdrawals_allPenaltiesAtMaxWithMultiplier()
-        public
-        assertInvariants
-    {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        uint248 delayPenalty = type(uint248).max;
-        uint248 strikesPenalty = type(uint248).max;
-        uint256 multiplier = module.MAX_PENALTY_MULTIPLIER();
-
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
-            ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(delayPenalty, true),
-                strikesPenalty: MarkedUint248(strikesPenalty, true),
-                withdrawalRequestFee: MarkedUint248(0, false)
-            })
-        );
-
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE() * multiplier + 1000 ether,
-            0
-        );
-
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(
-                accounting.penalize.selector,
-                noId,
-                delayPenalty * multiplier + strikesPenalty * multiplier
-            )
-        );
-        module.submitWithdrawals(withdrawalInfo);
-    }
-
     function test_submitWithdrawals_slashingPenaltyApplied()
         public
         assertInvariants
@@ -6611,10 +6428,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        uint256 exitDelayPenaltyAmount = BOND_SIZE - 1 ether;
-        uint256 withdrawalRequestFeeAmount = BOND_SIZE -
-            exitDelayPenaltyAmount -
-            0.1 ether;
+        uint256 exitDelayPenaltyAmount = 0.7 ether;
+        uint256 withdrawalRequestFeeAmount = 0.3 ether;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
@@ -6643,7 +6458,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         vm.expectCall(
             address(accounting),
             abi.encodeWithSelector(
-                accounting.penalize.selector,
+                accounting.chargeFee.selector,
                 noId,
                 exitDelayPenaltyAmount
             )
@@ -6703,12 +6518,13 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         vm.expectCall(
             address(accounting),
             abi.encodeWithSelector(
-                accounting.penalize.selector,
+                accounting.chargeFee.selector,
                 noId,
                 exitDelayPenaltyAmount
             )
         );
-        vm.expectCall(
+        // All bond was burned by the first call to `chargeFee`.
+        expectNoCall(
             address(accounting),
             abi.encodeWithSelector(
                 accounting.chargeFee.selector,
@@ -6763,7 +6579,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         vm.expectCall(
             address(accounting),
             abi.encodeWithSelector(
-                accounting.penalize.selector,
+                accounting.chargeFee.selector,
                 noId,
                 exitDelayPenaltyAmount
             )
@@ -6975,9 +6791,9 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        uint256 exitDelayPenaltyAmount = (BOND_SIZE - 1 ether) / 2;
-        uint256 strikesPenaltyAmount = (BOND_SIZE - 1 ether) / 2;
-        uint256 withdrawalRequestFeeAmount = strikesPenaltyAmount - 0.1 ether;
+        uint256 exitDelayPenaltyAmount = 0.17 ether;
+        uint256 strikesPenaltyAmount = 0.31 ether;
+        uint256 withdrawalRequestFeeAmount = 0.42 ether;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
@@ -7009,9 +6825,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         vm.expectCall(
             address(accounting),
             abi.encodeWithSelector(
+                accounting.chargeFee.selector,
+                noId,
+                exitDelayPenaltyAmount
+            )
+        );
+        vm.expectCall(
+            address(accounting),
+            abi.encodeWithSelector(
                 accounting.penalize.selector,
                 noId,
-                exitDelayPenaltyAmount + strikesPenaltyAmount
+                strikesPenaltyAmount
             )
         );
         vm.expectCall(
@@ -7033,15 +6857,14 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
     function test_submitWithdrawals_chargeWithdrawalFee_DelayAndStrikesPenalties_AllHuge()
         public
-        assertInvariants
     {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        uint256 exitDelayPenaltyAmount = BOND_SIZE + 1 ether;
-        uint256 strikesPenaltyAmount = BOND_SIZE + 1 ether;
-        uint256 withdrawalRequestFeeAmount = BOND_SIZE + 1 ether;
+        uint256 exitDelayPenaltyAmount = BOND_SIZE + 17 ether;
+        uint256 strikesPenaltyAmount = BOND_SIZE + 31 ether;
+        uint256 withdrawalRequestFeeAmount = BOND_SIZE + 42 ether;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
@@ -7073,12 +6896,21 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         vm.expectCall(
             address(accounting),
             abi.encodeWithSelector(
-                accounting.penalize.selector,
+                accounting.chargeFee.selector,
                 noId,
-                exitDelayPenaltyAmount + strikesPenaltyAmount
+                exitDelayPenaltyAmount
             )
         );
         vm.expectCall(
+            address(accounting),
+            abi.encodeWithSelector(
+                accounting.penalize.selector,
+                noId,
+                strikesPenaltyAmount
+            )
+        );
+        // All bond was burned by the first call to the `chargeFee`.
+        expectNoCall(
             address(accounting),
             abi.encodeWithSelector(
                 accounting.chargeFee.selector,
