@@ -423,7 +423,7 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
             )
         });
 
-        // Verify Validator object against the "withdrawable" block.
+        // Verify Validator object against the recent block.
         SSZ.verifyProof({
             proof: data.validator.proof,
             root: data.recentBlock.header.stateRoot,
