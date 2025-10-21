@@ -163,6 +163,7 @@ interface ICSVerifier {
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
     /// determining the exact penalty amounts and calling the `ICSModule.submitWithdrawals` method via an EasyTrack
     /// motion.
+    /// @param data @see ProcessWithdrawalInput
     function processWithdrawalProof(
         ProcessWithdrawalInput calldata data
     ) external;
@@ -171,6 +172,7 @@ interface ICSVerifier {
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
     /// determining the exact penalty amounts and calling the `ICSModule.submitWithdrawals` method via an EasyTrack
     /// motion.
+    /// @param data @see ProcessHistoricalWithdrawalInput
     function processHistoricalWithdrawalProof(
         ProcessHistoricalWithdrawalInput calldata data
     ) external;
@@ -179,6 +181,7 @@ interface ICSVerifier {
     /// assumed to be the withdrawal balance.
     /// @dev The caveat is that a pending consolidation is processed later, making it impossible to account for losses
     /// or rewards during the waiting period, as there's no indication of consolidation processing in the state.
+    /// @param data @see ProcessConsolidationInput
     function processConsolidation(
         ProcessConsolidationInput calldata data
     ) external;
