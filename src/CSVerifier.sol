@@ -492,6 +492,8 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
             revert InvalidWithdrawalAddress();
         }
 
+        // The methods in this contract do not accept proofs of withdrawals from slashed validators. It is proposed that
+        // such withdrawals be processed off-chain and reported directly to the CSModule using EasyTracks.
         if (validator.object.slashed) {
             revert ValidatorIsSlashed();
         }
