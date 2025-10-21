@@ -6460,15 +6460,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             abi.encodeWithSelector(
                 accounting.chargeFee.selector,
                 noId,
-                exitDelayPenaltyAmount
-            )
-        );
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(
-                accounting.chargeFee.selector,
-                noId,
-                withdrawalRequestFeeAmount
+                exitDelayPenaltyAmount + withdrawalRequestFeeAmount
             )
         );
         module.submitWithdrawals(withdrawalInfo);
@@ -6520,16 +6512,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             abi.encodeWithSelector(
                 accounting.chargeFee.selector,
                 noId,
-                exitDelayPenaltyAmount
-            )
-        );
-        // All bond was burned by the first call to `chargeFee`.
-        expectNoCall(
-            address(accounting),
-            abi.encodeWithSelector(
-                accounting.chargeFee.selector,
-                noId,
-                withdrawalRequestFeeAmount
+                exitDelayPenaltyAmount + withdrawalRequestFeeAmount
             )
         );
         module.submitWithdrawals(withdrawalInfo);
@@ -6581,15 +6564,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             abi.encodeWithSelector(
                 accounting.chargeFee.selector,
                 noId,
-                exitDelayPenaltyAmount
-            )
-        );
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(
-                accounting.chargeFee.selector,
-                noId,
-                withdrawalRequestFeeAmount
+                exitDelayPenaltyAmount + withdrawalRequestFeeAmount
             )
         );
         module.submitWithdrawals(withdrawalInfo);
@@ -6827,7 +6802,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             abi.encodeWithSelector(
                 accounting.chargeFee.selector,
                 noId,
-                exitDelayPenaltyAmount
+                exitDelayPenaltyAmount + withdrawalRequestFeeAmount
             )
         );
         vm.expectCall(
@@ -6836,14 +6811,6 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 accounting.penalize.selector,
                 noId,
                 strikesPenaltyAmount
-            )
-        );
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(
-                accounting.chargeFee.selector,
-                noId,
-                withdrawalRequestFeeAmount
             )
         );
         module.submitWithdrawals(withdrawalInfo);
@@ -6898,7 +6865,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             abi.encodeWithSelector(
                 accounting.chargeFee.selector,
                 noId,
-                exitDelayPenaltyAmount
+                exitDelayPenaltyAmount + withdrawalRequestFeeAmount
             )
         );
         vm.expectCall(
@@ -6907,15 +6874,6 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 accounting.penalize.selector,
                 noId,
                 strikesPenaltyAmount
-            )
-        );
-        // All bond was burned by the first call to the `chargeFee`.
-        expectNoCall(
-            address(accounting),
-            abi.encodeWithSelector(
-                accounting.chargeFee.selector,
-                noId,
-                withdrawalRequestFeeAmount
             )
         );
         module.submitWithdrawals(withdrawalInfo);
