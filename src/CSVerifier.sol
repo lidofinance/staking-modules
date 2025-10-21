@@ -246,41 +246,45 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
 
     /// @inheritdoc ICSVerifier
     function processWithdrawalProof(
-        RecentHeaderWitness calldata beaconBlock,
-        WithdrawalWitness calldata witness,
-        uint256 nodeOperatorId,
-        uint256 keyIndex
+        ProcessWithdrawalInput calldata data
     ) external whenResumed {
-        if (beaconBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(beaconBlock.header.slot);
+        if (data.withdrawalBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.withdrawalBlock.header.slot);
         }
 
         {
             bytes32 trustedHeaderRoot = _getParentBlockRoot(
-                beaconBlock.rootsTimestamp
+                data.withdrawalBlock.rootsTimestamp
             );
-            if (trustedHeaderRoot != beaconBlock.header.hashTreeRoot()) {
+            if (
+                trustedHeaderRoot != data.withdrawalBlock.header.hashTreeRoot()
+            ) {
                 revert InvalidBlockHeader();
             }
         }
 
-        bytes memory pubkey = MODULE.getSigningKeys(
-            nodeOperatorId,
-            keyIndex,
-            1
-        );
+        {
+            bytes memory pubkey = MODULE.getSigningKeys(
+                data.validator.nodeOperatorId,
+                data.validator.keyIndex,
+                1
+            );
 
-        uint256 withdrawalAmount = _processWithdrawalProof({
-            witness: witness,
-            stateSlot: beaconBlock.header.slot,
-            stateRoot: beaconBlock.header.stateRoot,
-            pubkey: pubkey
-        });
+            if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) {
+                revert InvalidPublicKey();
+            }
+        }
+
+        uint256 withdrawalAmount = _processWithdrawalProof(
+            data.withdrawal,
+            data.validator,
+            data.withdrawalBlock.header
+        );
 
         _submitSingleWithdrawal(
             ValidatorWithdrawalInfo(
-                nodeOperatorId,
-                keyIndex,
+                data.validator.nodeOperatorId,
+                data.validator.keyIndex,
                 withdrawalAmount,
                 NO_SLASHING_PENALTY
             )
@@ -289,57 +293,58 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
 
     /// @inheritdoc ICSVerifier
     function processHistoricalWithdrawalProof(
-        RecentHeaderWitness calldata beaconBlock,
-        HistoricalHeaderWitness calldata oldBlock,
-        WithdrawalWitness calldata witness,
-        uint256 nodeOperatorId,
-        uint256 keyIndex
+        ProcessHistoricalWithdrawalInput calldata data
     ) external whenResumed {
-        if (beaconBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(beaconBlock.header.slot);
+        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.recentBlock.header.slot);
         }
 
-        if (oldBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(oldBlock.header.slot);
+        if (data.withdrawalBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.withdrawalBlock.header.slot);
         }
 
         {
             bytes32 trustedHeaderRoot = _getParentBlockRoot(
-                beaconBlock.rootsTimestamp
+                data.recentBlock.rootsTimestamp
             );
-            bytes32 headerRoot = beaconBlock.header.hashTreeRoot();
+            bytes32 headerRoot = data.recentBlock.header.hashTreeRoot();
             if (trustedHeaderRoot != headerRoot) {
                 revert InvalidBlockHeader();
             }
         }
 
+        {
+            bytes memory pubkey = MODULE.getSigningKeys(
+                data.validator.nodeOperatorId,
+                data.validator.keyIndex,
+                1
+            );
+
+            if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) {
+                revert InvalidPublicKey();
+            }
+        }
+
         SSZ.verifyProof({
-            proof: oldBlock.proof,
-            root: beaconBlock.header.stateRoot,
-            leaf: oldBlock.header.hashTreeRoot(),
+            proof: data.withdrawalBlock.proof,
+            root: data.recentBlock.header.stateRoot,
+            leaf: data.withdrawalBlock.header.hashTreeRoot(),
             gI: _getHistoricalBlockRootGI(
-                beaconBlock.header.slot,
-                oldBlock.header.slot
+                data.recentBlock.header.slot,
+                data.withdrawalBlock.header.slot
             )
         });
 
-        bytes memory pubkey = MODULE.getSigningKeys(
-            nodeOperatorId,
-            keyIndex,
-            1
+        uint256 withdrawalAmount = _processWithdrawalProof(
+            data.withdrawal,
+            data.validator,
+            data.withdrawalBlock.header
         );
-
-        uint256 withdrawalAmount = _processWithdrawalProof({
-            witness: witness,
-            stateSlot: oldBlock.header.slot,
-            stateRoot: oldBlock.header.stateRoot,
-            pubkey: pubkey
-        });
 
         _submitSingleWithdrawal(
             ValidatorWithdrawalInfo(
-                nodeOperatorId,
-                keyIndex,
+                data.validator.nodeOperatorId,
+                data.validator.keyIndex,
                 withdrawalAmount,
                 NO_SLASHING_PENALTY
             )
@@ -352,10 +357,6 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
     ) external whenResumed {
         if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.recentBlock.header.slot);
-        }
-
-        if (data.withdrawableBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(data.withdrawableBlock.header.slot);
         }
 
         if (data.consolidationBlock.header.slot < FIRST_SUPPORTED_SLOT) {
@@ -379,7 +380,7 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
         }
 
         if (
-            _computeEpochAtSlot(data.withdrawableBlock.header.slot) <
+            _computeEpochAtSlot(data.recentBlock.header.slot) <
             data.validator.object.withdrawableEpoch
         ) {
             revert ValidatorIsNotWithdrawable();
@@ -422,25 +423,14 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
             )
         });
 
-        // Verify "withdrawable" block header.
-        SSZ.verifyProof({
-            proof: data.withdrawableBlock.proof,
-            root: data.recentBlock.header.stateRoot,
-            leaf: data.withdrawableBlock.header.hashTreeRoot(),
-            gI: _getHistoricalBlockRootGI(
-                data.recentBlock.header.slot,
-                data.withdrawableBlock.header.slot
-            )
-        });
-
-        // Verify Validator object against the "withdrawable" block.
+        // Verify Validator object against the recent block.
         SSZ.verifyProof({
             proof: data.validator.proof,
-            root: data.withdrawableBlock.header.stateRoot,
+            root: data.recentBlock.header.stateRoot,
             leaf: data.validator.object.hashTreeRoot(),
             gI: _getValidatorGI(
                 data.validator.index,
-                data.withdrawableBlock.header.slot
+                data.recentBlock.header.slot
             )
         });
 
@@ -486,27 +476,37 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
         return abi.decode(data, (bytes32));
     }
 
-    /// @dev `stateRoot` is supposed to be trusted at this point.
+    /// @dev `header` MUST be trusted at this point.
     function _processWithdrawalProof(
-        WithdrawalWitness calldata witness,
-        Slot stateSlot,
-        bytes32 stateRoot,
-        bytes memory pubkey
+        WithdrawalWitness calldata withdrawal,
+        ValidatorWitness calldata validator,
+        BeaconBlockHeader calldata header
     ) internal view returns (uint256 withdrawalAmount) {
-        // WC to address
-        address withdrawalAddress = address(
-            uint160(uint256(witness.withdrawalCredentials))
-        );
-        if (withdrawalAddress != WITHDRAWAL_ADDRESS) {
+        if (
+            address(uint160(uint256(validator.object.withdrawalCredentials))) !=
+            WITHDRAWAL_ADDRESS
+        ) {
+            revert InvalidWithdrawalAddress();
+        }
+        if (withdrawal.object.withdrawalAddress != WITHDRAWAL_ADDRESS) {
             revert InvalidWithdrawalAddress();
         }
 
-        if (witness.slashed) {
+        // The methods in this contract do not accept proofs of withdrawals from slashed validators. It is proposed that
+        // such withdrawals be processed off-chain and reported directly to the CSModule using EasyTracks.
+        if (validator.object.slashed) {
             revert ValidatorIsSlashed();
         }
 
-        if (_computeEpochAtSlot(stateSlot) < witness.withdrawableEpoch) {
+        if (
+            _computeEpochAtSlot(header.slot) <
+            validator.object.withdrawableEpoch
+        ) {
             revert ValidatorIsNotWithdrawable();
+        }
+
+        if (withdrawal.object.validatorIndex != validator.index) {
+            revert InvalidValidatorIndex();
         }
 
         // See https://hackmd.io/1wM8vqeNTjqt4pC3XoCUKQ
@@ -531,43 +531,24 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
         // and lack of feasible ways to mitigate it in the smart contract's code,
         // it is proposed to acknowledge possibility of the attack
         // and be ready to propose a corresponding vote to the DAO if it will ever happen
-        if (gweiToWei(witness.amount) < 15 ether) {
+        withdrawalAmount = withdrawal.object.amountWei();
+        if (withdrawalAmount < 15 ether) {
             revert PartialWithdrawal();
         }
 
-        Validator memory validator = Validator({
-            pubkey: pubkey,
-            withdrawalCredentials: witness.withdrawalCredentials,
-            effectiveBalance: witness.effectiveBalance,
-            slashed: false,
-            activationEligibilityEpoch: witness.activationEligibilityEpoch,
-            activationEpoch: witness.activationEpoch,
-            exitEpoch: witness.exitEpoch,
-            withdrawableEpoch: witness.withdrawableEpoch
+        SSZ.verifyProof({
+            proof: validator.proof,
+            root: header.stateRoot,
+            leaf: validator.object.hashTreeRoot(),
+            gI: _getValidatorGI(validator.index, header.slot)
         });
 
         SSZ.verifyProof({
-            proof: witness.validatorProof,
-            root: stateRoot,
-            leaf: validator.hashTreeRoot(),
-            gI: _getValidatorGI(witness.validatorIndex, stateSlot)
+            proof: withdrawal.proof,
+            root: header.stateRoot,
+            leaf: withdrawal.object.hashTreeRoot(),
+            gI: _getWithdrawalGI(withdrawal.offset, header.slot)
         });
-
-        Withdrawal memory withdrawal = Withdrawal({
-            index: witness.withdrawalIndex,
-            validatorIndex: witness.validatorIndex,
-            withdrawalAddress: withdrawalAddress,
-            amount: witness.amount
-        });
-
-        SSZ.verifyProof({
-            proof: witness.withdrawalProof,
-            root: stateRoot,
-            leaf: withdrawal.hashTreeRoot(),
-            gI: _getWithdrawalGI(witness.withdrawalOffset, stateSlot)
-        });
-
-        return withdrawal.amountWei();
     }
 
     /// @return balanceGwei Validator's balance in gwei.

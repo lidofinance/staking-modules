@@ -20,7 +20,7 @@ const Fork = ssz.electra;
  * @param {Object} opts
  * @param {number} opts.validatorIndex - Index of a validator in the `validators` list.
  * @param {number} opts.consolidationOffset - Index of a consolidation in the `pending_consolidations` list.
- * @param {bigint} opts.balance - Validator's balance before consolidation.
+ * @param {number} opts.balance - Validator's balance before consolidation.
  * @param {string} opts.address - Ethereum address for withdrawal credentials.
  * @param {number} opts.withdrawableEpoch - Epoch to calculate slot for withdrawable block.
  * @param {number} opts.capellaSlot - Slot of Cappela fork.
@@ -29,7 +29,7 @@ function main(opts) {
   assert(opts);
   assert(opts.validatorIndex < MAX_VALIDATORS);
   assert(opts.withdrawableEpoch > MIN_VALIDATOR_WITHDRAWABILITY_DELAY);
-  assert(opts.capellaSlot % SLOTS_PER_HISTORICAL_ROOT == 0);
+  assert(opts.capellaSlot % SLOTS_PER_HISTORICAL_ROOT === 0);
 
   const faker = new Faker("seed sEed seEd");
 
@@ -97,29 +97,6 @@ function main(opts) {
     gindex: state.type.getPathInfo(["balances", opts.validatorIndex]).gindex,
   });
 
-  // --- "withdrawable" block's state.
-
-  state.pendingConsolidations = state.pendingConsolidations.type.defaultView();
-  state.slot = opts.withdrawableEpoch * SLOTS_PER_EPOCH;
-
-  const withdrawableBlock = Fork.BeaconBlock.defaultView();
-  withdrawableBlock.slot = state.slot;
-  withdrawableBlock.parentRoot = faker.someBytes32();
-  withdrawableBlock.stateRoot = state.hashTreeRoot();
-  {
-    const summaryIndex = Math.floor(withdrawableBlock.slot / SLOTS_PER_HISTORICAL_ROOT);
-    const rootIndex = withdrawableBlock.slot % SLOTS_PER_HISTORICAL_ROOT;
-    withdrawableBlock.meta = {
-      summaryIndex,
-      rootIndex,
-    };
-  }
-
-  const validatorProof = createProof(state.node, {
-    type: ProofType.single,
-    gindex: state.type.getPathInfo(["validators", opts.validatorIndex]).gindex,
-  });
-
   // --- Final state here, for the "recent" block.
 
   state.slot = (opts.withdrawableEpoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY) * SLOTS_PER_EPOCH;
@@ -130,21 +107,20 @@ function main(opts) {
     summary.blockSummaryRoot = faker.someBytes32();
     summary.stateSummaryRoot = faker.someBytes32();
 
-    const isSummaryWithConsolidationBlock = state.historicalSummaries.length == consolidationBlock.meta.summaryIndex;
-    const isSummaryWithWithdrawableBlock = state.historicalSummaries.length == withdrawableBlock.meta.summaryIndex;
-    const shouldPatchSummary = isSummaryWithConsolidationBlock || isSummaryWithWithdrawableBlock;
-
     // This branch significantly improves performance.
-    if (shouldPatchSummary) {
+    if (state.historicalSummaries.length == consolidationBlock.meta.summaryIndex) {
       const BlockRoots = state.blockRoots.type;
-      const blockRoots = BlockRoots.fromJson(new Array(8192).fill(faker.someBytes32().toString("hex")));
+      const blockRoots = BlockRoots.fromJson(
+        new Array(8192).fill(faker.someBytes32().toString("hex")),
+      );
 
-      if (isSummaryWithConsolidationBlock)
-        blockRoots[consolidationBlock.meta.rootIndex] = consolidationBlock.hashTreeRoot();
-      if (isSummaryWithWithdrawableBlock)
-        blockRoots[withdrawableBlock.meta.rootIndex] = withdrawableBlock.hashTreeRoot();
+      blockRoots[consolidationBlock.meta.rootIndex] = consolidationBlock.hashTreeRoot();
 
-      const nav = state.type.getPathInfo(["historicalSummaries", state.historicalSummaries.length, "blockSummaryRoot"]);
+      const nav = state.type.getPathInfo([
+        "historicalSummaries",
+        state.historicalSummaries.length,
+        "blockSummaryRoot",
+      ]);
       summary.blockSummaryRoot = state.blockRoots.type.hashTreeRoot(blockRoots);
       summary.stateSummaryRoot = faker.someBytes32();
       state.historicalSummaries.push(summary);
@@ -154,19 +130,20 @@ function main(opts) {
     }
   }
 
+  const validatorProof = createProof(state.node, {
+    type: ProofType.single,
+    gindex: state.type.getPathInfo(["validators", opts.validatorIndex]).gindex,
+  });
+
   const consolidationBlockProof = createProof(state.node, {
     type: ProofType.single,
     gindex: concatGindices([
-      state.type.getPathInfo(["historicalSummaries", consolidationBlock.meta.summaryIndex, "blockSummaryRoot"]).gindex,
+      state.type.getPathInfo([
+        "historicalSummaries",
+        consolidationBlock.meta.summaryIndex,
+        "blockSummaryRoot",
+      ]).gindex,
       state.blockRoots.type.getPropertyGindex(consolidationBlock.meta.rootIndex),
-    ]),
-  });
-
-  const withdrawableBlockProof = createProof(state.node, {
-    type: ProofType.single,
-    gindex: concatGindices([
-      state.type.getPathInfo(["historicalSummaries", withdrawableBlock.meta.summaryIndex, "blockSummaryRoot"]).gindex,
-      state.blockRoots.type.getPropertyGindex(withdrawableBlock.meta.rootIndex),
     ]),
   });
 
@@ -216,16 +193,6 @@ function main(opts) {
           bodyRoot: recentBlock.body.hashTreeRoot(),
         },
         rootsTimestamp: 42,
-      },
-      withdrawableBlock: {
-        header: {
-          slot: withdrawableBlock.slot,
-          proposerIndex: withdrawableBlock.proposerIndex,
-          parentRoot: withdrawableBlock.parentRoot,
-          stateRoot: withdrawableBlock.stateRoot,
-          bodyRoot: withdrawableBlock.body.hashTreeRoot(),
-        },
-        proof: withdrawableBlockProof.witnesses,
       },
       consolidationBlock: {
         header: {

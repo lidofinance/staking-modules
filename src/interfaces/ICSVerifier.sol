@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.24;
 
-import { BeaconBlockHeader, PendingConsolidation, Slot, Validator } from "../lib/Types.sol";
+import { BeaconBlockHeader, PendingConsolidation, Slot, Validator, Withdrawal } from "../lib/Types.sol";
 import { GIndex } from "../lib/GIndex.sol";
 import { ICSModule } from "./ICSModule.sol";
 
@@ -28,40 +28,15 @@ interface ICSVerifier {
         uint64 rootsTimestamp; // To be passed to the EIP-4788 block roots contract.
     }
 
-    struct SlashingWitness {
-        uint64 validatorIndex;
-        bytes32 withdrawalCredentials;
-        uint64 effectiveBalance;
-        uint64 activationEligibilityEpoch;
-        uint64 activationEpoch;
-        uint64 exitEpoch;
-        uint64 withdrawableEpoch;
-        bytes32[] validatorProof;
-    }
-
-    struct WithdrawalWitness {
-        // ── Withdrawal fields ─────────────────────────────────────────────────
-        uint8 withdrawalOffset; // In the withdrawals list.
-        uint64 withdrawalIndex; // Network-wise.
-        uint64 validatorIndex;
-        uint64 amount;
-        // ── Validator fields ──────────────────────────────────────────────────
-        bytes32 withdrawalCredentials;
-        uint64 effectiveBalance;
-        bool slashed;
-        uint64 activationEligibilityEpoch;
-        uint64 activationEpoch;
-        uint64 exitEpoch;
-        uint64 withdrawableEpoch;
-        // ── Proofs ────────────────────────────────────────────────────────────
-        // We accept the `withdrawalProof` against a state root, because it saves a few hops.
-        bytes32[] withdrawalProof;
-        bytes32[] validatorProof;
-    }
-
     // A witness for a block header which root is accessible via `historical_summaries` field.
     struct HistoricalHeaderWitness {
         BeaconBlockHeader header;
+        bytes32[] proof;
+    }
+
+    struct WithdrawalWitness {
+        uint8 offset; // In the withdrawals list.
+        Withdrawal object;
         bytes32[] proof;
     }
 
@@ -91,13 +66,25 @@ interface ICSVerifier {
         // "withdrawal balance" in accounting/penalties, since consolidation is not an EL withdrawal.
         BalanceWitness balance;
         RecentHeaderWitness recentBlock;
-        HistoricalHeaderWitness withdrawableBlock;
         HistoricalHeaderWitness consolidationBlock;
     }
 
     struct ProcessSlashedInput {
         ValidatorWitness validator;
         RecentHeaderWitness recentBlock;
+    }
+
+    struct ProcessWithdrawalInput {
+        WithdrawalWitness withdrawal;
+        ValidatorWitness validator;
+        RecentHeaderWitness withdrawalBlock;
+    }
+
+    struct ProcessHistoricalWithdrawalInput {
+        WithdrawalWitness withdrawal;
+        ValidatorWitness validator;
+        RecentHeaderWitness recentBlock;
+        HistoricalHeaderWitness withdrawalBlock;
     }
 
     error RootNotFound();
@@ -110,6 +97,7 @@ interface ICSVerifier {
     error InvalidWithdrawalAddress();
     error InvalidPublicKey();
     error InvalidConsolidationSource();
+    error InvalidValidatorIndex();
     error UnsupportedSlot(Slot slot);
     error ZeroModuleAddress();
     error ZeroWithdrawalAddress();
@@ -175,39 +163,25 @@ interface ICSVerifier {
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
     /// determining the exact penalty amounts and calling the `ICSModule.submitWithdrawals` method via an EasyTrack
     /// motion.
-    /// @param beaconBlock Beacon block header
-    /// @param witness Withdrawal witness against the `beaconBlock`'s state root.
-    /// @param nodeOperatorId ID of the Node Operator
-    /// @param keyIndex Index of the validator key in the Node Operator's key storage
+    /// @param data @see ProcessWithdrawalInput
     function processWithdrawalProof(
-        RecentHeaderWitness calldata beaconBlock,
-        WithdrawalWitness calldata witness,
-        uint256 nodeOperatorId,
-        uint256 keyIndex
+        ProcessWithdrawalInput calldata data
     ) external;
 
     /// @notice Verify withdrawal proof against historical summaries data and report withdrawal to the module for valid proofs
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
     /// determining the exact penalty amounts and calling the `ICSModule.submitWithdrawals` method via an EasyTrack
     /// motion.
-    /// @param beaconBlock Beacon block header
-    /// @param oldBlock Historical block header witness
-    /// @param witness Withdrawal witness
-    /// @param nodeOperatorId ID of the Node Operator
-    /// @param keyIndex Index of the validator key in the Node Operator's key storage
+    /// @param data @see ProcessHistoricalWithdrawalInput
     function processHistoricalWithdrawalProof(
-        RecentHeaderWitness calldata beaconBlock,
-        HistoricalHeaderWitness calldata oldBlock,
-        WithdrawalWitness calldata witness,
-        uint256 nodeOperatorId,
-        uint256 keyIndex
+        ProcessHistoricalWithdrawalInput calldata data
     ) external;
 
     /// @notice Processes a validator's consolidation from a module's validator. The balance before consolidation is
     /// assumed to be the withdrawal balance.
     /// @dev The caveat is that a pending consolidation is processed later, making it impossible to account for losses
     /// or rewards during the waiting period, as there's no indication of consolidation processing in the state.
-    /// @param data @see ProcessConsolidationInput struct
+    /// @param data @see ProcessConsolidationInput
     function processConsolidation(
         ProcessConsolidationInput calldata data
     ) external;

@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 import { stdJson } from "forge-std/StdJson.sol";
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { CSVerifier } from "src/CSVerifier.sol";
@@ -368,34 +369,31 @@ contract CSVerifierTestConstructor is CSVerifierTestBase {
 }
 
 contract CSVerifierWithdrawalTest is CSVerifierTestBase {
-    struct WithdrawalFixture {
-        bytes32 _blockRoot;
-        bytes _pubkey;
-        ICSVerifier.RecentHeaderWitness beaconBlock;
-        ICSVerifier.WithdrawalWitness witness;
+    using Strings for uint8;
+
+    struct Fixture {
+        bytes32 blockRoot;
+        ICSVerifier.ProcessWithdrawalInput data;
     }
 
-    WithdrawalFixture internal fixture;
+    Fixture internal fixture;
 
     function setUp() public {
+        _loadFixture();
+
         module = new Stub();
         admin = nextAddress("ADMIN");
 
-        fixture = abi.decode(
-            _readFixture("withdrawal.json"),
-            (WithdrawalFixture)
-        );
-
         verifier = new CSVerifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalAddress: fixture.data.withdrawal.object.withdrawalAddress,
             module: address(module),
             slotsPerEpoch: 32,
             slotsPerHistoricalRoot: 8192,
             gindices: ICSVerifier.GIndices({
-                gIFirstWithdrawalPrev: pack(0xe1c0, 4),
-                gIFirstWithdrawalCurr: pack(0xe1c0, 4),
-                gIFirstValidatorPrev: pack(0x560000000000, 40),
-                gIFirstValidatorCurr: pack(0x560000000000, 40),
+                gIFirstWithdrawalPrev: GIndices.FIRST_WITHDRAWAL_ELECTRA,
+                gIFirstWithdrawalCurr: GIndices.FIRST_WITHDRAWAL_ELECTRA,
+                gIFirstValidatorPrev: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
                 gIFirstHistoricalSummaryPrev: NULL_GINDEX,
                 gIFirstHistoricalSummaryCurr: NULL_GINDEX,
                 gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
@@ -405,9 +403,9 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
                 gIFirstPendingConsolidationPrev: NULL_GINDEX,
                 gIFirstPendingConsolidationCurr: NULL_GINDEX
             }),
-            firstSupportedSlot: Slot.wrap(100_500), // Any value less than the slots from the fixtures.
-            pivotSlot: Slot.wrap(100_500),
-            capellaSlot: Slot.wrap(100_500),
+            firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
+            pivotSlot: fixture.data.withdrawalBlock.header.slot.dec(),
+            capellaSlot: Slot.wrap(0),
             admin: admin
         });
 
@@ -419,7 +417,7 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
         verifier.grantRole(resumeRole, admin);
         vm.stopPrank();
 
-        _setMocksWithdrawal(fixture);
+        _setMocks();
     }
 
     function test_processWithdrawalProof_HappyPath() public {
@@ -428,7 +426,7 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
         withdrawals[0] = ValidatorWithdrawalInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
-            exitBalance: uint256(fixture.witness.amount) * 1e9,
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
             slashingPenalty: 0
         });
 
@@ -440,140 +438,128 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
             )
         );
 
-        verifier.processWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.witness,
-            0,
-            0
-        );
+        verifier.processWithdrawalProof(fixture.data);
     }
 
     function test_processWithdrawalProof_ZeroWithdrawalIndex() public {
-        verifier.processWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.witness,
-            0,
-            0
-        );
+        {
+            _loadFixtureWithWithdrawalOffset(0);
+            _setMocks();
+        }
+
+        test_processWithdrawalProof_HappyPath();
     }
 
-    function test_processWithdrawalProof_RevertWhen_UnsupportedSlot() public {
-        fixture.beaconBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
+    function test_processWithdrawalProof_RevertWhen_WithdrawalBlockSlotUnsupported()
+        public
+    {
+        fixture.data.withdrawalBlock.header.slot = verifier
+            .FIRST_SUPPORTED_SLOT()
+            .dec();
 
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICSVerifier.UnsupportedSlot.selector,
-                fixture.beaconBlock.header.slot
+                fixture.data.withdrawalBlock.header.slot
             )
         );
-        verifier.processWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.witness,
-            0,
-            0
-        );
+        verifier.processWithdrawalProof(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhen_InvalidBlockHeader()
+    function test_processWithdrawalProof_RevertWhen_InvalidWithdrawalBlock()
         public
     {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
-            abi.encode(fixture.beaconBlock.rootsTimestamp),
+            abi.encode(fixture.data.withdrawalBlock.rootsTimestamp),
             abi.encode(hex"deadbeef")
         );
 
         vm.expectRevert(ICSVerifier.InvalidBlockHeader.selector);
-        verifier.processWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.witness,
-            0,
-            0
-        );
+        verifier.processWithdrawalProof(fixture.data);
+    }
+
+    function test_processWithdrawalProof_RevertWhen_InvalidWithdrawalCredentials()
+        public
+    {
+        fixture.data.validator.object.withdrawalCredentials = someBytes32();
+
+        vm.expectRevert(ICSVerifier.InvalidWithdrawalAddress.selector);
+        verifier.processWithdrawalProof(fixture.data);
     }
 
     function test_processWithdrawalProof_RevertWhen_InvalidWithdrawalAddress()
         public
     {
-        fixture.witness.withdrawalCredentials = bytes32(0);
+        fixture.data.withdrawal.object.withdrawalAddress = nextAddress();
 
         vm.expectRevert(ICSVerifier.InvalidWithdrawalAddress.selector);
-        verifier.processWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.witness,
-            0,
-            0
-        );
+        verifier.processWithdrawalProof(fixture.data);
     }
 
-    function test_processHistoricalWithdrawalProof_RevertWhen_ValidatorSlashed()
-        public
-    {
-        fixture.witness.slashed = true;
+    function test_processWithdrawalProof_RevertWhen_InvalidPublicKey() public {
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICSModule.getSigningKeys.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex
+            ),
+            abi.encode(hex"deadbeef")
+        );
+
+        vm.expectRevert(ICSVerifier.InvalidPublicKey.selector);
+        verifier.processWithdrawalProof(fixture.data);
+    }
+
+    function test_processWithdrawalProof_RevertWhen_ValidatorSlashed() public {
+        fixture.data.validator.object.slashed = true;
 
         vm.expectRevert(ICSVerifier.ValidatorIsSlashed.selector);
-        verifier.processWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.witness,
-            0,
-            0
-        );
+        verifier.processWithdrawalProof(fixture.data);
     }
 
     function test_processWithdrawalProof_RevertWhen_ValidatorIsNotWithdrawable()
         public
     {
-        fixture.witness.withdrawableEpoch =
-            fixture.beaconBlock.header.slot.unwrap() /
+        fixture.data.validator.object.withdrawableEpoch =
+            fixture.data.withdrawalBlock.header.slot.unwrap() /
             32 +
-            154;
+            1;
 
         vm.expectRevert(ICSVerifier.ValidatorIsNotWithdrawable.selector);
-        verifier.processWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.witness,
-            0,
-            0
-        );
+        verifier.processWithdrawalProof(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhen_PartialWitdrawal() public {
-        fixture.witness.amount = 154;
+    function test_processWithdrawalProof_RevertWhen_ValidatorIndexDoesNotMatch()
+        public
+    {
+        fixture.data.withdrawal.object.validatorIndex =
+            fixture.data.validator.index +
+            1;
+
+        vm.expectRevert(ICSVerifier.InvalidValidatorIndex.selector);
+        verifier.processWithdrawalProof(fixture.data);
+    }
+
+    function test_processWithdrawalProof_RevertWhen_PartialWithdrawal() public {
+        fixture.data.withdrawal.object.amount = 15e9 - 1;
 
         vm.expectRevert(ICSVerifier.PartialWithdrawal.selector);
-        verifier.processWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.witness,
-            0,
-            0
-        );
-    }
-
-    function test_processWithdrawalProof_RevertWhenPaused() public {
-        vm.prank(admin);
-        verifier.pauseFor(100_500);
-        assertTrue(verifier.isPaused());
-
-        vm.expectRevert(PausableUntil.ResumedExpected.selector);
-        verifier.processWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.witness,
-            0,
-            0
-        );
+        verifier.processWithdrawalProof(fixture.data);
     }
 
     function test_processWithdrawalProof_ForkBeforePivot() public {
         verifier = new CSVerifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalAddress: fixture.data.withdrawal.object.withdrawalAddress,
             module: address(module),
             slotsPerEpoch: 32,
             slotsPerHistoricalRoot: 8192,
             gindices: ICSVerifier.GIndices({
-                gIFirstWithdrawalPrev: pack(0xe1c0, 4),
-                gIFirstWithdrawalCurr: pack(0x0, 4),
-                gIFirstValidatorPrev: pack(0x560000000000, 40),
-                gIFirstValidatorCurr: pack(0x0, 40),
+                gIFirstWithdrawalPrev: GIndices.FIRST_WITHDRAWAL_ELECTRA,
+                gIFirstWithdrawalCurr: NULL_GINDEX,
+                gIFirstValidatorPrev: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIFirstValidatorCurr: NULL_GINDEX,
                 gIFirstHistoricalSummaryPrev: NULL_GINDEX,
                 gIFirstHistoricalSummaryCurr: NULL_GINDEX,
                 gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
@@ -583,31 +569,26 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
                 gIFirstPendingConsolidationPrev: NULL_GINDEX,
                 gIFirstPendingConsolidationCurr: NULL_GINDEX
             }),
-            firstSupportedSlot: fixture.beaconBlock.header.slot.dec(),
-            pivotSlot: fixture.beaconBlock.header.slot.inc(),
+            firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
+            pivotSlot: fixture.data.withdrawalBlock.header.slot.inc(),
             capellaSlot: Slot.wrap(0),
             admin: admin
         });
 
-        verifier.processWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.witness,
-            0,
-            0
-        );
+        test_processWithdrawalProof_HappyPath();
     }
 
     function test_processWithdrawalProof_ForkAtPivot() public {
         verifier = new CSVerifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalAddress: fixture.data.withdrawal.object.withdrawalAddress,
             module: address(module),
             slotsPerEpoch: 32,
             slotsPerHistoricalRoot: 8192,
             gindices: ICSVerifier.GIndices({
-                gIFirstWithdrawalPrev: pack(0x0, 4),
-                gIFirstWithdrawalCurr: pack(0xe1c0, 4),
-                gIFirstValidatorPrev: pack(0x0, 40),
-                gIFirstValidatorCurr: pack(0x560000000000, 40),
+                gIFirstWithdrawalPrev: NULL_GINDEX,
+                gIFirstWithdrawalCurr: GIndices.FIRST_WITHDRAWAL_ELECTRA,
+                gIFirstValidatorPrev: NULL_GINDEX,
+                gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
                 gIFirstHistoricalSummaryPrev: NULL_GINDEX,
                 gIFirstHistoricalSummaryCurr: NULL_GINDEX,
                 gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
@@ -617,31 +598,26 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
                 gIFirstPendingConsolidationPrev: NULL_GINDEX,
                 gIFirstPendingConsolidationCurr: NULL_GINDEX
             }),
-            firstSupportedSlot: fixture.beaconBlock.header.slot.dec(),
-            pivotSlot: fixture.beaconBlock.header.slot,
+            firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
+            pivotSlot: fixture.data.withdrawalBlock.header.slot,
             capellaSlot: Slot.wrap(0),
             admin: admin
         });
 
-        verifier.processWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.witness,
-            0,
-            0
-        );
+        test_processWithdrawalProof_HappyPath();
     }
 
     function test_processWithdrawalProof_ForkAfterPivot() public {
         verifier = new CSVerifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalAddress: fixture.data.withdrawal.object.withdrawalAddress,
             module: address(module),
             slotsPerEpoch: 32,
             slotsPerHistoricalRoot: 8192,
             gindices: ICSVerifier.GIndices({
-                gIFirstWithdrawalPrev: pack(0x0, 4),
-                gIFirstWithdrawalCurr: pack(0xe1c0, 4),
-                gIFirstValidatorPrev: pack(0x0, 40),
-                gIFirstValidatorCurr: pack(0x560000000000, 40),
+                gIFirstWithdrawalPrev: NULL_GINDEX,
+                gIFirstWithdrawalCurr: GIndices.FIRST_WITHDRAWAL_ELECTRA,
+                gIFirstValidatorPrev: NULL_GINDEX,
+                gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
                 gIFirstHistoricalSummaryPrev: NULL_GINDEX,
                 gIFirstHistoricalSummaryCurr: NULL_GINDEX,
                 gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
@@ -651,31 +627,26 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
                 gIFirstPendingConsolidationPrev: NULL_GINDEX,
                 gIFirstPendingConsolidationCurr: NULL_GINDEX
             }),
-            firstSupportedSlot: fixture.beaconBlock.header.slot.dec(),
-            pivotSlot: fixture.beaconBlock.header.slot.dec(),
+            firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
+            pivotSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             capellaSlot: Slot.wrap(0),
             admin: admin
         });
 
-        verifier.processWithdrawalProof(
-            fixture.beaconBlock,
-            fixture.witness,
-            0,
-            0
-        );
+        test_processWithdrawalProof_HappyPath();
     }
 
-    function _setMocksWithdrawal(WithdrawalFixture memory f) internal {
+    function _setMocks() internal {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
-            abi.encode(f.beaconBlock.rootsTimestamp),
-            abi.encode(f._blockRoot)
+            abi.encode(fixture.data.withdrawalBlock.rootsTimestamp),
+            abi.encode(fixture.blockRoot)
         );
 
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(ICSModule.getSigningKeys.selector, 0, 0),
-            abi.encode(f._pubkey)
+            abi.encode(fixture.data.validator.object.pubkey)
         );
 
         vm.mockCall(
@@ -684,6 +655,22 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
             ""
         );
     }
+
+    function _loadFixture() internal {
+        _loadFixtureWithWithdrawalOffset(11);
+    }
+
+    function _loadFixtureWithWithdrawalOffset(uint8 offset) internal {
+        string[] memory cmd = new string[](4);
+        cmd[0] = "node";
+        cmd[1] = "--no-warnings";
+        cmd[2] = "test/fixtures/CSVerifier/withdrawal.mjs";
+        cmd[3] = offset.toString();
+        bytes memory res = vm.ffi(cmd);
+        fixture = abi.decode(res, (Fixture));
+    }
+
+    function ffi_interface(Fixture memory) external {}
 }
 
 contract CSVerifierSlashingTest is CSVerifierTestBase {
@@ -963,22 +950,6 @@ contract CSVerifierConsolidationTest is CSVerifierTestBase {
         verifier.processConsolidation(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_WithdrawableBlockSlotUnsupported()
-        public
-    {
-        fixture.data.withdrawableBlock.header.slot = verifier
-            .FIRST_SUPPORTED_SLOT()
-            .dec();
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ICSVerifier.UnsupportedSlot.selector,
-                fixture.data.withdrawableBlock.header.slot
-            )
-        );
-        verifier.processConsolidation(fixture.data);
-    }
-
     function test_processConsolidation_RevertWhen_ConsolidationBlockSlotUnsupported()
         public
     {
@@ -1013,7 +984,7 @@ contract CSVerifierConsolidationTest is CSVerifierTestBase {
         public
     {
         fixture.data.validator.object.withdrawableEpoch =
-            fixture.data.withdrawableBlock.header.slot.unwrap() *
+            fixture.data.recentBlock.header.slot.unwrap() /
             32 +
             1;
         vm.expectRevert(ICSVerifier.ValidatorIsNotWithdrawable.selector);
@@ -1171,36 +1142,9 @@ contract CSVerifierPauseTest is CSVerifierTestBase {
         verifier.pauseFor(100_500);
         assertTrue(verifier.isPaused());
 
+        ICSVerifier.ProcessWithdrawalInput memory emptyInput;
         vm.expectRevert(PausableUntil.ResumedExpected.selector);
-        verifier.processWithdrawalProof(
-            ICSVerifier.RecentHeaderWitness({
-                header: BeaconBlockHeader({
-                    slot: Slot.wrap(0),
-                    proposerIndex: 0,
-                    parentRoot: bytes32(0),
-                    stateRoot: bytes32(0),
-                    bodyRoot: bytes32(0)
-                }),
-                rootsTimestamp: 0
-            }),
-            ICSVerifier.WithdrawalWitness({
-                withdrawalOffset: 0,
-                withdrawalIndex: 0,
-                validatorIndex: 0,
-                amount: 0,
-                withdrawalCredentials: bytes32(0),
-                effectiveBalance: 0 ether,
-                slashed: false,
-                activationEligibilityEpoch: 0,
-                activationEpoch: 0,
-                exitEpoch: 0,
-                withdrawableEpoch: 0,
-                withdrawalProof: new bytes32[](0),
-                validatorProof: new bytes32[](0)
-            }),
-            0,
-            0
-        );
+        verifier.processWithdrawalProof(emptyInput);
     }
 
     function test_processHistoricalWithdrawalProof_RevertWhenPaused() public {
@@ -1208,46 +1152,9 @@ contract CSVerifierPauseTest is CSVerifierTestBase {
         verifier.pauseFor(100_500);
         assertTrue(verifier.isPaused());
 
+        ICSVerifier.ProcessHistoricalWithdrawalInput memory emptyInput;
         vm.expectRevert(PausableUntil.ResumedExpected.selector);
-        verifier.processHistoricalWithdrawalProof(
-            ICSVerifier.RecentHeaderWitness({
-                header: BeaconBlockHeader({
-                    slot: Slot.wrap(0),
-                    proposerIndex: 0,
-                    parentRoot: bytes32(0),
-                    stateRoot: bytes32(0),
-                    bodyRoot: bytes32(0)
-                }),
-                rootsTimestamp: 0
-            }),
-            ICSVerifier.HistoricalHeaderWitness({
-                header: BeaconBlockHeader({
-                    slot: Slot.wrap(0),
-                    proposerIndex: 0,
-                    parentRoot: bytes32(0),
-                    stateRoot: bytes32(0),
-                    bodyRoot: bytes32(0)
-                }),
-                proof: new bytes32[](0)
-            }),
-            ICSVerifier.WithdrawalWitness({
-                withdrawalOffset: 0,
-                withdrawalIndex: 0,
-                validatorIndex: 0,
-                amount: 0,
-                withdrawalCredentials: bytes32(0),
-                effectiveBalance: 0 ether,
-                slashed: false,
-                activationEligibilityEpoch: 0,
-                activationEpoch: 0,
-                exitEpoch: 0,
-                withdrawableEpoch: 0,
-                withdrawalProof: new bytes32[](0),
-                validatorProof: new bytes32[](0)
-            }),
-            0,
-            0
-        );
+        verifier.processHistoricalWithdrawalProof(emptyInput);
     }
 }
 
@@ -2077,7 +1984,10 @@ contract CSVerifierParentBlockRootTest is Test, Utilities {
         {
             vm.startPrank(SYSTEM_ADDRESS);
             vm.warp(ts);
-            verifier.BEACON_ROOTS().call(abi.encode(expected));
+            (bool success, ) = verifier.BEACON_ROOTS().call(
+                abi.encode(expected)
+            );
+            assertTrue(success);
             vm.stopPrank();
         }
 
