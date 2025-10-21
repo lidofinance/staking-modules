@@ -788,10 +788,9 @@ contract CSModule is
                 chargeWithdrawalRequestFee = true;
             }
 
-            // The withdrawal request fee is taken only if the penalty is applied. If no penalty
-            // is applied, the fee has been paid by the node operator on the withdrawal trigger,
-            // or it is the DAO decision to withdraw the validator before the withdrawal request
-            // becomes delayed.
+            // The withdrawal request fee is taken when either a delay was reported or the validator exited due to
+            // strikes. Otherwise, the fee has already been paid by the node operator upon withdrawal trigger, or it is
+            // a DAO decision to withdraw the validator before the withdrawal request becomes delayed.
             if (
                 chargeWithdrawalRequestFee &&
                 exitPenaltyInfo.withdrawalRequestFee.value != 0
