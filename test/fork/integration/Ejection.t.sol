@@ -45,7 +45,6 @@ contract EjectionTest is Test, Utilities, DeploymentFixtures {
     }
 
     function test_voluntaryEject() public {
-        vm.skip(true, "Protocol upgrade needed");
         uint256 startFrom;
         (
             nodeOperatorId,
@@ -102,7 +101,6 @@ contract EjectionTest is Test, Utilities, DeploymentFixtures {
     }
 
     function test_voluntaryEjectByArray() public {
-        vm.skip(true, "Protocol upgrade needed");
         nodeOperatorId = getDepositedNodeOperator(nextAddress(), keysCount);
 
         uint256 initialBalance = 1 ether;

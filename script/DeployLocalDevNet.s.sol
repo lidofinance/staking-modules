@@ -37,6 +37,7 @@ contract DeployLocalDevNet is DeployBase {
         config.gIFirstWithdrawal = GIndices.FIRST_WITHDRAWAL_ELECTRA;
         config.gIFirstValidator = GIndices.FIRST_VALIDATOR_ELECTRA;
         config.gIFirstHistoricalSummary = GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA; // prettier-ignore
+        config.gIFirstBlockRootInSummary = GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA; // prettier-ignore
         config.verifierFirstSupportedSlot =
             vm.envUint("DEVNET_ELECTRA_EPOCH") *
             config.slotsPerEpoch;

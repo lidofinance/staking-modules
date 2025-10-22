@@ -57,7 +57,7 @@ contract DeployHoodi is DeployBase {
         config.legacyEaBondCurve.push([1, 1.5 ether]);
         config.legacyEaBondCurve.push([2, 1.3 ether]);
 
-        config.minBondLockPeriod = 0;
+        config.minBondLockPeriod = 1 days;
         config.maxBondLockPeriod = 365 days;
         config.bondLockPeriod = 8 weeks;
         config.bondReserveMinPeriod = 4 weeks;
@@ -67,7 +67,9 @@ contract DeployHoodi is DeployBase {
         config
             .chargePenaltyRecipient = 0x0534aA41907c9631fae990960bCC72d75fA7cfeD; // locator.treasury()
         // Module
-        config.stakingModuleId = 4;
+        config.stakingModuleId = _nextStakingModuleId(
+            config.lidoLocatorAddress
+        );
         config.moduleType = "community-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
         config
             .elRewardsStealingReporter = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA

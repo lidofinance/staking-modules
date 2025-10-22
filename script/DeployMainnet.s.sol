@@ -65,7 +65,9 @@ contract DeployMainnet is DeployBase {
             .chargePenaltyRecipient = 0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c; // locator.treasury()
 
         // Module
-        config.stakingModuleId = 3;
+        config.stakingModuleId = _nextStakingModuleId(
+            config.lidoLocatorAddress
+        );
         config.moduleType = "community-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
         config
             .elRewardsStealingReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
@@ -94,8 +96,9 @@ contract DeployMainnet is DeployBase {
             .identifiedCommunityStakersGateManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
         config.identifiedCommunityStakersGateCurveId = 2;
         config
-            .identifiedCommunityStakersGateTreeRoot = 0x359e02c5c065c682839661c9bdfaf38db472629bf5f7a7e8f0261b31dc9332c2; // TODO: update before deployment
-        config.identifiedCommunityStakersGateTreeCid = "someCid"; // TODO: update with a real CID before deployment
+            .identifiedCommunityStakersGateTreeRoot = 0x91545c42adde0f5d82e4c228f81449eab20349c1d31a8538e0468466f93495c5;
+        config
+            .identifiedCommunityStakersGateTreeCid = "bafkreido7ieacbe6nlhdivxfp2gd5kxovofngf6qdmahih4laihm675e2a";
         // 1.5 -> 1.3
         config.identifiedCommunityStakersGateBondCurve.push([1, 1.5 ether]);
         config.identifiedCommunityStakersGateBondCurve.push([2, 1.3 ether]);

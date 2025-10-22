@@ -1,9 +1,12 @@
 # Proof of engagement
 import csv
+import json
 import os
 import sys
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 import requests
 from web3 import Web3
@@ -23,16 +26,45 @@ scores = {
 MIN_SCORE = 2
 MAX_SCORE = 7
 
-SNAPSHOT_VOTE_TIMESTAMP = 1756890119  # TODO update
+SNAPSHOT_VOTE_TIMESTAMP = 1759363200
 REQUIRED_SNAPSHOT_VOTES = 3
 REQUIRED_SNAPSHOT_VP = 100  # 100 LDO
 REQUIRED_ARAGON_VOTES = 2
 
-# TODO update dates
 HIGH_SIGNAL_START_DATE = datetime(2025, 7, 1)  # YYYY, MM, DD
-HIGH_SIGNAL_END_DATE = datetime(2025, 9, 3)  # YYYY, MM, DD
+HIGH_SIGNAL_END_DATE = datetime(2025, 10, 3)  # YYYY, MM, DD
 
 current_dir = Path(__file__).parent.resolve()
+CACHE_DIR = current_dir / ".cache"
+
+
+@lru_cache(maxsize=None)
+def _read_cache_file(filename: str) -> Any | None:
+    cache_path = CACHE_DIR / filename
+    if cache_path.exists():
+        with cache_path.open("r", encoding="utf-8") as cache_file:
+            return json.load(cache_file)
+    return None
+
+
+def _write_cache_file(filename: str, data: Any) -> None:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_path = CACHE_DIR / filename
+    with cache_path.open("w", encoding="utf-8") as cache_file:
+        json.dump(data, cache_file)
+
+@lru_cache(maxsize=None)
+def _read_csv_dicts_cached(path_str: str):
+    with open(path_str, "r") as f:
+        reader = csv.DictReader(f)
+        return tuple(tuple(item.items()) for item in reader)
+
+
+@lru_cache(maxsize=None)
+def _read_csv_rows_cached(path_str: str):
+    with open(path_str, "r") as f:
+        reader = csv.reader(f)
+        return tuple(tuple(row) for row in reader)
 
 
 def snapshot_vote(addresses: set[str]) -> int:
@@ -84,15 +116,14 @@ def aragon_vote(addresses: set[str]) -> int:
     Check if the address has participated in Aragon votes.
     """
 
-    with open(current_dir / "aragon_voters.csv", "r") as f:
-        reader = csv.DictReader(f)
-        total_votes_count = 0
-        for row in reader:
-            address = row["Address"]
-            votes_count = int(row["VoteCount"])
-            if address.strip().lower() in addresses:
-                total_votes_count += votes_count
-                print(f"    Found {votes_count} Aragon votes for address {address}")
+    rows = map(dict, _read_csv_dicts_cached(str(current_dir / "aragon_voters.csv")))
+    total_votes_count = 0
+    for row in rows:
+        address = row["Address"].strip().lower()
+        votes_count = int(row["VoteCount"])
+        if address in addresses:
+            total_votes_count += votes_count
+            print(f"    Found {votes_count} Aragon votes for address {address}")
     if total_votes_count >= REQUIRED_ARAGON_VOTES:
         return scores["aragon-vote"]
     return 0
@@ -126,7 +157,9 @@ def galxe_scores(addresses: set[str]) -> int:
     }
     """
 
-    def fetch_all_items():
+    cache_filename = "galxe_loyalty_points.json"
+
+    def fetch_all_items() -> list[dict[str, Any]]:
         cursor = None
         all_items = []
         while True:
@@ -148,7 +181,12 @@ def galxe_scores(addresses: set[str]) -> int:
             cursor = page_info['endCursor']
         return all_items
 
-    all_items = fetch_all_items()
+    cached_items = _read_cache_file(cache_filename)
+    if cached_items is not None:
+        all_items = cached_items
+    else:
+        all_items = fetch_all_items()
+        _write_cache_file(cache_filename, all_items)
     addr_to_points = {item["address"]["address"].lower(): item["points"] for item in all_items}
 
     score = 0
@@ -167,23 +205,34 @@ def galxe_scores(addresses: set[str]) -> int:
 
 def gitpoap(addresses: set[str]) -> int:
     url = "https://public-api.gitpoap.io/v1"
+    cache_filename = "gitpoap_holders.json"
 
     with open(current_dir / "gitpoap_events.csv", "r") as f:
         reader = csv.DictReader(f)
         gitpoap_events = {row["ID"]: row["Name"] for row in reader}
-    s = requests.Session()
-    a = requests.adapters.HTTPAdapter(max_retries=3)
-    s.mount('https://', a)
+    cached_holders = _read_cache_file(cache_filename)
+    if not isinstance(cached_holders, dict):
+        cached_holders = {}
 
     final_score = 0
-    for event_id, event_name in gitpoap_events.items():
-        response = s.get(f"{url}/gitpoaps/{event_id}/addresses")
-        response.raise_for_status()
+    session = requests.Session()
+    adapter = requests.adapters.HTTPAdapter(max_retries=3)
+    session.mount('https://', adapter)
 
-        poap_holders = response.json().get("addresses", [])
-        if any(address.lower() in poap_holders for address in addresses):
+    for event_id, event_name in gitpoap_events.items():
+        holders = cached_holders.get(event_id)
+        if holders is None:
+            response = session.get(f"{url}/gitpoaps/{event_id}/addresses")
+            response.raise_for_status()
+            holder_set = {addr.lower() for addr in response.json().get("addresses", [])}
+            holders = sorted(holder_set)
+            cached_holders[event_id] = holders
+        holder_set = {addr.lower() for addr in holders}
+        if any(address.lower() in holder_set for address in addresses):
             print(f"    Found GitPoap for event '{event_name}'")
             final_score = scores["git-poap"]
+
+    _write_cache_file(cache_filename, cached_holders)
 
     return final_score
 
@@ -219,7 +268,10 @@ def high_signal(addresses: set[str], score: float | None = None) -> int:
                 continue
             response.raise_for_status()
             response = response.json()
-            address_score = response.get("totalScores", 0)[0]["totalScore"]
+            total_scores = response.get("totalScores", 0)
+            address_score = 0
+            if total_scores:
+                address_score = response.get("totalScores", 0)[0]["totalScore"]
 
             high_signal_score = max(address_score, high_signal_score)
             print(f"    Found High-signal score {address_score} for address {address}")
@@ -257,13 +309,10 @@ def protocol_guild(addresses: set[str]) -> float:
     Check if any of the given addresses is in the Protocol Guild list.
     Always returns 0, but prints a note if present.
     """
-    pg_path = current_dir / "protocol_guild.csv"
-    with open(pg_path, "r") as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if row and row[0].strip().lower() in addresses:
-                print(f"    🤩 Found address {row[0]} in Protocol Guild list")
-                return True
+    for row in _read_csv_rows_cached(str(current_dir / "protocol_guild.csv")):
+        if row and row[0].strip().lower() in addresses:
+            print(f"    🤩 Found address {row[0]} in Protocol Guild list")
+            return True
     return False
 
 
@@ -273,6 +322,8 @@ def main(addresses: set[str], high_signal_score: float | None = None):
     - `addresses`: set of lowercase addresses.
     - `high_signal_score`: optional override for High-signal score; if None, use API or prompt.
     """
+    if (current_dir / CACHE_DIR).exists():
+        print(f"⚠️ Warning: found cache dir; using cached data... If you want fresh data, remove engagement/{CACHE_DIR}.")
     print(f"Your addresses: {', '.join(addresses)}")
     print("Checking addresses for Proof of Engagement...")
 

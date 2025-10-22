@@ -8,6 +8,7 @@ from pathlib import Path
 from datetime import datetime
 
 import requests
+from functools import lru_cache
 
 scores = {
     # TODO exclude slashed
@@ -24,10 +25,10 @@ scores = {
     "sdvtm-mainnet": 7
 }
 
-# TODO update
+# TODO add support for v2 reports
 MAINNET_PERFORMANCE_REPORTS = [
-    "QmVgGQS7QBeRMq2noqqxekY5ezmqRsgu7JjiyMyRaaWEDv",  # 23048383 block
-    "QmaUC2HBv88mJ9Gf99hfNgtH4qo2F1yHaBMC4imwVhxDDi"  # 23248929 block
+    "QmaUC2HBv88mJ9Gf99hfNgtH4qo2F1yHaBMC4imwVhxDDi",  # 23248929 block
+    "QmPPFkydgtnwMBDF6nZZaU5nnqy3csbKts3UfRRgWXreEu"  # 23463926 block
 ]
 
 MIN_SCORE = 5
@@ -35,17 +36,21 @@ MAX_SCORE = 8
 
 current_dir = Path(__file__).parent.resolve()
 
+@lru_cache(maxsize=None)
+def _read_csv_rows_cached(path_str: str):
+    with open(path_str, "r") as f:
+        reader = csv.reader(f)
+        return tuple(tuple(row) for row in reader)
+
 def is_addresses_in_csv(addresses: set[str], csv_file: str, base_dir=current_dir) -> bool:
     """
     Returns True if any address in `addresses` is found in the first column of the given CSV file.
     The CSV file should contain a single column with addresses or a header with 'Address'.
     """
-    with open(base_dir / csv_file, "r") as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if row and row[0].strip().lower() in addresses:
-                print(f"    Found address {row[0]} in {csv_file}")
-                return True
+    for row in _read_csv_rows_cached(str((base_dir / csv_file).resolve())):
+        if row and row[0].strip().lower() in addresses:
+            print(f"    Found address {row[0]} in {csv_file}")
+            return True
     return False
 
 
@@ -59,11 +64,12 @@ def eth_staker_score(addresses: set[str]) -> int:
 
 def stake_cat_score(addresses: set[str]) -> int:
     """
-    Returns the score for StakeCat solo-staker list (mainnet or gnosis) if any address is present, otherwise 0.
+    Returns the score for StakeCat solo-staker list (mainnet, gnosis, rp) if any address is present, otherwise 0.
     """
-    if is_addresses_in_csv(addresses, "stake-cat-solo-B.csv"):
-        return scores["stake-cat"]
-    if is_addresses_in_csv(addresses, "stake-cat-gnosischain.csv"):
+    is_b = is_addresses_in_csv(addresses, "stake-cat-solo-B.csv")
+    is_gnosis = is_addresses_in_csv(addresses, "stake-cat-gnosischain.csv")
+    is_rp = is_addresses_in_csv(addresses, "stake-cat-rocketpool-solo-stakers.csv")
+    if any([is_b, is_gnosis, is_rp]):
         return scores["stake-cat"]
     return 0
 
@@ -160,7 +166,7 @@ def _csm_mainnet_score(addresses: set[str]) -> int:
         return scores["csm-mainnet"]
     return 0
 
-def _request_performance_report(report_file, retries=3, delay=2):
+def _request_performance_report_uncached(report_file, retries=3, delay=2):
     url = f"https://ipfs.io/ipfs/{report_file}"
     for attempt in range(retries):
         try:
@@ -176,9 +182,15 @@ def _request_performance_report(report_file, retries=3, delay=2):
     raise Exception(f"Failed to fetch report {report_file}")
 
 
+@lru_cache(maxsize=None)
+def _request_performance_report(report_file):
+    """LRU-cached IPFS fetch for performance reports keyed by CID."""
+    return _request_performance_report_uncached(report_file)
+
+
 def _check_csm_performance_logs(addresses: set[str], no_owners_file_name, perf_reports, network_name) -> bool:
     """
-    Returns True if any address is a node operator with all validators above the threshold in all logs.
+    Returns True if any address is a node operator with all validators above the threshold in any logs.
     """
     with open(current_dir / no_owners_file_name, 'r') as f:
         node_operators = json.load(f)
@@ -192,12 +204,12 @@ def _check_csm_performance_logs(addresses: set[str], no_owners_file_name, perf_r
         return False
     print(f"    Found node operator IDs for given addresses on {network_name}:", ", ".join(found_ids))
 
+    # If any operator id for the addresses is eligible, continue
+    eligible = False
     for report in perf_reports:
         data = _request_performance_report(report)
         threshold = data.get('threshold', 0)
         operators = data.get('operators', {})
-        # If any operator id for the addresses is eligible in this log, continue
-        eligible_in_log = False
         for no_id in found_ids:
             no = operators.get(no_id)
             if not no:
@@ -216,11 +228,11 @@ def _check_csm_performance_logs(addresses: set[str], no_owners_file_name, perf_r
                 report_data = datetime.fromtimestamp(data['blockstamp']['block_timestamp'])
                 report_block = data['blockstamp']['block_number']
                 print(f"    {network_name} Node Operator {no_id} is eligible in performance report {report} at {report_data} (block {report_block}).")
-                eligible_in_log = True
+                eligible = True
                 break
-        if not eligible_in_log:
-            return False
-    return True
+            else:
+                print(f"    {network_name} Node Operator {no_id} found in report {report} but does not meet performance threshold.")
+    return eligible
 
 
 def main(addresses: set[str]):

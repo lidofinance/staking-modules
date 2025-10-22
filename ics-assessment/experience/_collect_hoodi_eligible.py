@@ -16,8 +16,9 @@ import requests
 RPC_URL: str = "http://127.0.0.1:8545"
 FEE_DISTRIBUTOR_ADDRESS: str = "0xaCd9820b0A2229a82dc1A0770307ce5522FF3582"
 FROM_BLOCK: int = 4980
-TO_BLOCK: str | int = "latest"
+TO_BLOCK: str | int = 1329775
 OUTPUT_PATH: Path = Path(__file__).parent / "eligible_node_operators_hoodi.json"
+REQUIRED_PERFORMANCE_WINDOW = 53  # days
 
 # Event signature for DistributionLogUpdated(string logCid)
 EVENT_SIGNATURE: str = "DistributionLogUpdated(string)"
@@ -122,7 +123,7 @@ def extract_frame_epochs(report: dict) -> Tuple[Optional[int], Optional[int]]:
 
 def evaluate_eligibility_window(
     reports: List[Tuple[ReportMeta, dict]],
-    min_days: int = 60,
+    min_days: int = REQUIRED_PERFORMANCE_WINDOW,
 ) -> Set[str]:
     """
     Determine operators that accumulate at least min_days of GOOD performance
@@ -214,7 +215,7 @@ def main() -> int:
     # Sort by epoch start
     reports_with_meta.sort(key=lambda x: x[0].start_epoch)
 
-    eligible = evaluate_eligibility_window(reports_with_meta, min_days=60)
+    eligible = evaluate_eligibility_window(reports_with_meta, min_days=REQUIRED_PERFORMANCE_WINDOW)
     write_eligible_file(sorted(eligible), OUTPUT_PATH)
     print(f"Wrote {len(eligible)} eligible operators to {OUTPUT_PATH}")
     return 0

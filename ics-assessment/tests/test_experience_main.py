@@ -58,6 +58,7 @@ def test_eth_staker_score(mod):
 def test_stake_cat_score_either_file(mod):
     # Ensure both files exist; populate only one at a time
     (mod.current_dir / "stake-cat-solo-B.csv").write_text("")
+    (mod.current_dir / "stake-cat-rocketpool-solo-stakers.csv").write_text("")
     (mod.current_dir / "stake-cat-gnosischain.csv").write_text("0xabc\n")
     assert mod.stake_cat_score({"0xabc"}) == mod.scores["stake-cat"]
     # prefer either, so remove and use other file
