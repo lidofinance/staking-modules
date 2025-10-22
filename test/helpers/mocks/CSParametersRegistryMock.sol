@@ -22,7 +22,7 @@ contract CSParametersRegistryMock {
     uint256 public QUEUE_LOWEST_PRIORITY = 5;
 
     uint256 public allowedExitDelay = 1 weeks;
-    uint256 public exitDelayPenalty = 0.1 ether;
+    uint256 public exitDelayFee = 0.1 ether;
     uint256 public maxWithdrawalRequestFee = 1 ether;
 
     mapping(uint256 curveId => MarkedQueueConfig) internal _queueConfigs;
@@ -115,17 +115,14 @@ contract CSParametersRegistryMock {
         return allowedExitDelay;
     }
 
-    function getExitDelayPenalty(
+    function getExitDelayFee(
         uint256 /* curveId */
     ) external view returns (uint256) {
-        return exitDelayPenalty;
+        return exitDelayFee;
     }
 
-    function setExitDelayPenalty(
-        uint256 /* curveId */,
-        uint256 penalty
-    ) external {
-        exitDelayPenalty = penalty;
+    function setExitDelayFee(uint256 /* curveId */, uint256 fee) external {
+        exitDelayFee = fee;
     }
 
     function getMaxWithdrawalRequestFee(

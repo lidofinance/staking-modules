@@ -83,7 +83,7 @@ abstract contract DeployImplementationsBase is DeployBase {
                     blocksWeight: config.defaultBlocksWeight,
                     syncWeight: config.defaultSyncWeight,
                     defaultAllowedExitDelay: config.defaultAllowedExitDelay,
-                    defaultExitDelayPenalty: config.defaultExitDelayPenalty,
+                    defaultExitDelayFee: config.defaultExitDelayFee,
                     defaultMaxWithdrawalRequestFee: config
                         .defaultMaxWithdrawalRequestFee
                 })
@@ -162,9 +162,9 @@ abstract contract DeployImplementationsBase is DeployBase {
                 identifiedCommunityStakersGateBondCurveId,
                 config.identifiedCommunityStakersGateAllowedExitDelay
             );
-            parametersRegistry.setExitDelayPenalty(
+            parametersRegistry.setExitDelayFee(
                 identifiedCommunityStakersGateBondCurveId,
-                config.identifiedCommunityStakersGateExitDelayPenalty
+                config.identifiedCommunityStakersGateExitDelayFee
             );
             parametersRegistry.setMaxWithdrawalRequestFee(
                 identifiedCommunityStakersGateBondCurveId,

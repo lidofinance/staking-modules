@@ -393,11 +393,11 @@ contract StakingRouterIntegrationTest is
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
             .getExitPenaltyInfo(noId, publicKey);
-        uint256 expectedPenalty = parametersRegistry.getExitDelayPenalty(
+        uint256 expectedPenalty = parametersRegistry.getExitDelayFee(
             accounting.getBondCurveId(noId)
         );
 
-        assertTrue(exitPenaltyInfo.delayPenalty.isValue);
-        assertEq(exitPenaltyInfo.delayPenalty.value, expectedPenalty);
+        assertTrue(exitPenaltyInfo.delayFee.isValue);
+        assertEq(exitPenaltyInfo.delayFee.value, expectedPenalty);
     }
 }

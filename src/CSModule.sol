@@ -768,11 +768,9 @@ contract CSModule is
 
             ExitPenaltyInfo memory exitPenaltyInfo = EXIT_PENALTIES
                 .getExitPenaltyInfo(withdrawalInfo.nodeOperatorId, pubkey);
-            if (exitPenaltyInfo.delayPenalty.isValue) {
+            if (exitPenaltyInfo.delayFee.isValue) {
                 unchecked {
-                    feeSum =
-                        exitPenaltyInfo.delayPenalty.value *
-                        penaltyMultiplier;
+                    feeSum = exitPenaltyInfo.delayFee.value * penaltyMultiplier;
                 }
                 chargeWithdrawalRequestFee = true;
             }

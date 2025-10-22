@@ -40,7 +40,7 @@ interface ICSParametersRegistry {
         uint256 blocksWeight;
         uint256 syncWeight;
         uint256 defaultAllowedExitDelay;
-        uint256 defaultExitDelayPenalty;
+        uint256 defaultExitDelayFee;
         uint256 defaultMaxWithdrawalRequestFee;
     }
 
@@ -68,7 +68,7 @@ interface ICSParametersRegistry {
     );
     event DefaultQueueConfigSet(uint256 priority, uint256 maxDeposits);
     event DefaultAllowedExitDelaySet(uint256 delay);
-    event DefaultExitDelayPenaltySet(uint256 penalty);
+    event DefaultExitDelayFeeSet(uint256 penalty);
     event DefaultMaxWithdrawalRequestFeeSet(uint256 fee);
 
     event KeyRemovalChargeSet(
@@ -117,8 +117,8 @@ interface ICSParametersRegistry {
     event QueueConfigUnset(uint256 indexed curveId);
     event AllowedExitDelaySet(uint256 indexed curveId, uint256 delay);
     event AllowedExitDelayUnset(uint256 indexed curveId);
-    event ExitDelayPenaltySet(uint256 indexed curveId, uint256 penalty);
-    event ExitDelayPenaltyUnset(uint256 indexed curveId);
+    event ExitDelayFeeSet(uint256 indexed curveId, uint256 penalty);
+    event ExitDelayFeeUnset(uint256 indexed curveId);
     event MaxWithdrawalRequestFeeSet(uint256 indexed curveId, uint256 fee);
     event MaxWithdrawalRequestFeeUnset(uint256 indexed curveId);
 
@@ -212,9 +212,9 @@ interface ICSParametersRegistry {
     /// @param delay value to be set as default for the allowed exit delay
     function setDefaultAllowedExitDelay(uint256 delay) external;
 
-    /// @notice set default value for exit delay penalty. Default value is used if a specific value is not set for the curveId
-    /// @param penalty value to be set as default for the exit delay penalty
-    function setDefaultExitDelayPenalty(uint256 penalty) external;
+    /// @notice Sets the default value for exit delay penalty. The default value is used if a specific value is not set for the curveId
+    /// @param fee The value to be set as default for the exit delay fee
+    function setDefaultExitDelayFee(uint256 fee) external;
 
     /// @notice set default value for max withdrawal request fee. Default value is used if a specific value is not set for the curveId
     /// @param fee value to be set as default for the max withdrawal request fee
@@ -460,17 +460,17 @@ interface ICSParametersRegistry {
     /// @notice Set exit delay penalty for the curveId
     /// @dev cannot be zero
     /// @param curveId Curve Id to associate exit delay penalty with
-    /// @param penalty exit delay penalty
-    function setExitDelayPenalty(uint256 curveId, uint256 penalty) external;
+    /// @param fee Exit delay fee
+    function setExitDelayFee(uint256 curveId, uint256 fee) external;
 
     /// @notice Unset exit delay penalty for the curveId
-    /// @param curveId Curve Id to unset exit delay penalty for
-    function unsetExitDelayPenalty(uint256 curveId) external;
+    /// @param curveId The curve ID for unsetting the exit delay fee
+    function unsetExitDelayFee(uint256 curveId) external;
 
     /// @notice Get exit delay penalty by the curveId
-    /// @dev `defaultExitDelayPenalty` is returned if the value is not set for the given curveId.
-    /// @param curveId Curve Id to get exit delay penalty for
-    function getExitDelayPenalty(
+    /// @dev `defaultExitDelayFee` is returned if the value is not set for the given curveId.
+    /// @param curveId Curve ID to get the exit delay fee for
+    function getExitDelayFee(
         uint256 curveId
     ) external view returns (uint256 penalty);
 
