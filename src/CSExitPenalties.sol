@@ -73,20 +73,13 @@ contract CSExitPenalties is ICSExitPenalties, ExitTypes {
 
         bytes32 keyPointer = _keyPointer(nodeOperatorId, publicKey);
         ExitPenaltyInfo storage exitPenaltyInfo = _exitPenaltyInfo[keyPointer];
-        if (exitPenaltyInfo.delayPenalty.isValue) {
+        if (exitPenaltyInfo.delayFee.isValue) {
             return;
         }
 
-        uint256 delayPenalty = PARAMETERS_REGISTRY.getExitDelayPenalty(curveId);
-        exitPenaltyInfo.delayPenalty = MarkedUint248(
-            delayPenalty.toUint248(),
-            true
-        );
-        emit ValidatorExitDelayProcessed(
-            nodeOperatorId,
-            publicKey,
-            delayPenalty
-        );
+        uint256 delayFee = PARAMETERS_REGISTRY.getExitDelayFee(curveId);
+        exitPenaltyInfo.delayFee = MarkedUint248(delayFee.toUint248(), true);
+        emit ValidatorExitDelayProcessed(nodeOperatorId, publicKey, delayFee);
     }
 
     /// @inheritdoc ICSExitPenalties
@@ -164,7 +157,7 @@ contract CSExitPenalties is ICSExitPenalties, ExitTypes {
             return false;
         }
         bytes32 keyPointer = _keyPointer(nodeOperatorId, publicKey);
-        bool isPenaltySet = _exitPenaltyInfo[keyPointer].delayPenalty.isValue;
+        bool isPenaltySet = _exitPenaltyInfo[keyPointer].delayFee.isValue;
         return !isPenaltySet;
     }
 

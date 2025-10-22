@@ -721,8 +721,8 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
             deployParams.defaultAllowedExitDelay
         );
         assertEq(
-            parametersRegistry.defaultExitDelayPenalty(),
-            deployParams.defaultExitDelayPenalty
+            parametersRegistry.defaultExitDelayFee(),
+            deployParams.defaultExitDelayFee
         );
         assertEq(
             parametersRegistry.defaultMaxWithdrawalRequestFee(),
@@ -849,10 +849,10 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
             deployParams.identifiedCommunityStakersGateAllowedExitDelay
         );
         assertEq(
-            parametersRegistry.getExitDelayPenalty(
+            parametersRegistry.getExitDelayFee(
                 identifiedCommunityStakersGateCurveId
             ),
-            deployParams.identifiedCommunityStakersGateExitDelayPenalty
+            deployParams.identifiedCommunityStakersGateExitDelayFee
         );
         assertEq(
             parametersRegistry.getMaxWithdrawalRequestFee(
@@ -931,8 +931,8 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
             deployParams.defaultAllowedExitDelay
         );
         assertEq(
-            parametersRegistry.getExitDelayPenalty(legacyEaBondCurveId),
-            deployParams.defaultExitDelayPenalty
+            parametersRegistry.getExitDelayFee(legacyEaBondCurveId),
+            deployParams.defaultExitDelayFee
         );
         assertEq(
             parametersRegistry.getMaxWithdrawalRequestFee(legacyEaBondCurveId),
@@ -976,7 +976,7 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
                 blocksWeight: deployParams.defaultBlocksWeight,
                 syncWeight: deployParams.defaultSyncWeight,
                 defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
-                defaultExitDelayPenalty: deployParams.defaultExitDelayPenalty,
+                defaultExitDelayFee: deployParams.defaultExitDelayFee,
                 defaultMaxWithdrawalRequestFee: deployParams
                     .defaultMaxWithdrawalRequestFee
             })
@@ -1016,7 +1016,7 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
                 blocksWeight: deployParams.defaultBlocksWeight,
                 syncWeight: deployParams.defaultSyncWeight,
                 defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
-                defaultExitDelayPenalty: deployParams.defaultExitDelayPenalty,
+                defaultExitDelayFee: deployParams.defaultExitDelayFee,
                 defaultMaxWithdrawalRequestFee: deployParams
                     .defaultMaxWithdrawalRequestFee
             })

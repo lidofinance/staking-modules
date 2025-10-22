@@ -90,7 +90,7 @@ struct DeployParams {
     uint256 defaultBlocksWeight;
     uint256 defaultSyncWeight;
     uint256 defaultAllowedExitDelay;
-    uint256 defaultExitDelayPenalty;
+    uint256 defaultExitDelayFee;
     uint256 defaultMaxWithdrawalRequestFee;
     // VettedGate
     address identifiedCommunityStakersGateManager;
@@ -113,7 +113,7 @@ struct DeployParams {
     uint256 identifiedCommunityStakersGateBlocksWeight;
     uint256 identifiedCommunityStakersGateSyncWeight;
     uint256 identifiedCommunityStakersGateAllowedExitDelay;
-    uint256 identifiedCommunityStakersGateExitDelayPenalty;
+    uint256 identifiedCommunityStakersGateExitDelayFee;
     uint256 identifiedCommunityStakersGateMaxWithdrawalRequestFee;
     // GateSeal
     address gateSealFactory;
@@ -266,7 +266,7 @@ abstract contract DeployBase is Script {
                     blocksWeight: config.defaultBlocksWeight,
                     syncWeight: config.defaultSyncWeight,
                     defaultAllowedExitDelay: config.defaultAllowedExitDelay,
-                    defaultExitDelayPenalty: config.defaultExitDelayPenalty,
+                    defaultExitDelayFee: config.defaultExitDelayFee,
                     defaultMaxWithdrawalRequestFee: config
                         .defaultMaxWithdrawalRequestFee
                 })
@@ -458,9 +458,9 @@ abstract contract DeployBase is Script {
                 identifiedCommunityStakersGateBondCurveId,
                 config.identifiedCommunityStakersGateAllowedExitDelay
             );
-            parametersRegistry.setExitDelayPenalty(
+            parametersRegistry.setExitDelayFee(
                 identifiedCommunityStakersGateBondCurveId,
-                config.identifiedCommunityStakersGateExitDelayPenalty
+                config.identifiedCommunityStakersGateExitDelayFee
             );
             parametersRegistry.setMaxWithdrawalRequestFee(
                 identifiedCommunityStakersGateBondCurveId,

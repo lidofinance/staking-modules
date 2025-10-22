@@ -43,7 +43,7 @@ contract CSParametersRegistryBaseTest is Test, Utilities, Fixtures {
             blocksWeight: 8,
             syncWeight: 2,
             defaultAllowedExitDelay: 1 days,
-            defaultExitDelayPenalty: 0.05 ether,
+            defaultExitDelayFee: 0.05 ether,
             defaultMaxWithdrawalRequestFee: 0.1 ether
         });
     }
@@ -1770,7 +1770,7 @@ contract CSParametersRegistryAllowedExitDelayTest is
     }
 }
 
-contract CSParametersRegistryExitDelayPenaltyTest is
+contract CSParametersRegistryExitDelayFeeTest is
     CSParametersRegistryBaseTestInitialized,
     ParametersTest
 {
@@ -1778,11 +1778,11 @@ contract CSParametersRegistryExitDelayPenaltyTest is
         uint256 penalty = 1 ether;
 
         vm.expectEmit(address(parametersRegistry));
-        emit ICSParametersRegistry.DefaultExitDelayPenaltySet(penalty);
+        emit ICSParametersRegistry.DefaultExitDelayFeeSet(penalty);
         vm.prank(admin);
-        parametersRegistry.setDefaultExitDelayPenalty(penalty);
+        parametersRegistry.setDefaultExitDelayFee(penalty);
 
-        assertEq(parametersRegistry.defaultExitDelayPenalty(), penalty);
+        assertEq(parametersRegistry.defaultExitDelayFee(), penalty);
     }
 
     function test_setDefault_RevertWhen_notAdmin() public override {
@@ -1791,7 +1791,7 @@ contract CSParametersRegistryExitDelayPenaltyTest is
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
-        parametersRegistry.setDefaultExitDelayPenalty(penalty);
+        parametersRegistry.setDefaultExitDelayFee(penalty);
     }
 
     function test_set() public override {
@@ -1799,9 +1799,9 @@ contract CSParametersRegistryExitDelayPenaltyTest is
         uint256 penalty = 1 ether;
 
         vm.expectEmit(address(parametersRegistry));
-        emit ICSParametersRegistry.ExitDelayPenaltySet(curveId, penalty);
+        emit ICSParametersRegistry.ExitDelayFeeSet(curveId, penalty);
         vm.prank(admin);
-        parametersRegistry.setExitDelayPenalty(curveId, penalty);
+        parametersRegistry.setExitDelayFee(curveId, penalty);
     }
 
     function test_set_RevertWhen_notAdmin() public override {
@@ -1811,7 +1811,7 @@ contract CSParametersRegistryExitDelayPenaltyTest is
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
-        parametersRegistry.setExitDelayPenalty(curveId, penalty);
+        parametersRegistry.setExitDelayFee(curveId, penalty);
     }
 
     function test_unset() public override {
@@ -1819,18 +1819,18 @@ contract CSParametersRegistryExitDelayPenaltyTest is
         uint256 penalty = 1 ether;
 
         vm.prank(admin);
-        parametersRegistry.setExitDelayPenalty(curveId, penalty);
+        parametersRegistry.setExitDelayFee(curveId, penalty);
 
-        uint256 penaltyOut = parametersRegistry.getExitDelayPenalty(curveId);
+        uint256 penaltyOut = parametersRegistry.getExitDelayFee(curveId);
 
         assertEq(penaltyOut, penalty);
 
         vm.prank(admin);
-        parametersRegistry.unsetExitDelayPenalty(curveId);
+        parametersRegistry.unsetExitDelayFee(curveId);
 
-        penaltyOut = parametersRegistry.getExitDelayPenalty(curveId);
+        penaltyOut = parametersRegistry.getExitDelayFee(curveId);
 
-        assertEq(penaltyOut, defaultInitData.defaultExitDelayPenalty);
+        assertEq(penaltyOut, defaultInitData.defaultExitDelayFee);
     }
 
     function test_unset_RevertWhen_notAdmin() public override {
@@ -1839,7 +1839,7 @@ contract CSParametersRegistryExitDelayPenaltyTest is
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
-        parametersRegistry.unsetExitDelayPenalty(curveId);
+        parametersRegistry.unsetExitDelayFee(curveId);
     }
 
     function test_get_usualData() public override {
@@ -1847,18 +1847,18 @@ contract CSParametersRegistryExitDelayPenaltyTest is
         uint256 penalty = 1 ether;
 
         vm.prank(admin);
-        parametersRegistry.setExitDelayPenalty(curveId, penalty);
+        parametersRegistry.setExitDelayFee(curveId, penalty);
 
-        uint256 penaltyOut = parametersRegistry.getExitDelayPenalty(curveId);
+        uint256 penaltyOut = parametersRegistry.getExitDelayFee(curveId);
 
         assertEq(penaltyOut, penalty);
     }
 
     function test_get_defaultData() public view override {
         uint256 curveId = 10;
-        uint256 penaltyOut = parametersRegistry.getExitDelayPenalty(curveId);
+        uint256 penaltyOut = parametersRegistry.getExitDelayFee(curveId);
 
-        assertEq(penaltyOut, defaultInitData.defaultExitDelayPenalty);
+        assertEq(penaltyOut, defaultInitData.defaultExitDelayFee);
     }
 }
 

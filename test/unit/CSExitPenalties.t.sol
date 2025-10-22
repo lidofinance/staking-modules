@@ -89,7 +89,7 @@ contract CSExitPenaltiesTestProcessExitDelayReport is CSExitPenaltiesTestBase {
     function test_processExitDelayReport() public {
         uint256 eligibleToExit = csm.exitDeadlineThreshold(noId) + 1;
         bytes memory publicKey = randomBytes(48);
-        uint256 penalty = parametersRegistry.getExitDelayPenalty(0);
+        uint256 penalty = parametersRegistry.getExitDelayFee(0);
 
         vm.expectEmit(address(exitPenalties));
         emit ICSExitPenalties.ValidatorExitDelayProcessed(
@@ -102,7 +102,7 @@ contract CSExitPenaltiesTestProcessExitDelayReport is CSExitPenaltiesTestBase {
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
             .getExitPenaltyInfo(noId, publicKey);
-        assertEq(exitPenaltyInfo.delayPenalty.value, penalty);
+        assertEq(exitPenaltyInfo.delayFee.value, penalty);
     }
 
     function test_processExitDelayReport_revertWhen_notApplicable() public {
@@ -121,7 +121,7 @@ contract CSExitPenaltiesTestProcessExitDelayReport is CSExitPenaltiesTestBase {
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
             .getExitPenaltyInfo(noId, publicKey);
         assertEq(
-            exitPenaltyInfo.delayPenalty.isValue,
+            exitPenaltyInfo.delayFee.isValue,
             false,
             "Penalty should not be applied"
         );
@@ -130,12 +130,12 @@ contract CSExitPenaltiesTestProcessExitDelayReport is CSExitPenaltiesTestBase {
     function test_processExitDelayReport_ignoreWhen_alreadyReported() public {
         uint256 eligibleToExit = csm.exitDeadlineThreshold(noId) + 1;
         bytes memory publicKey = randomBytes(48);
-        uint256 penalty = parametersRegistry.getExitDelayPenalty(0);
+        uint256 penalty = parametersRegistry.getExitDelayFee(0);
 
         vm.prank(address(csm));
         exitPenalties.processExitDelayReport(noId, publicKey, eligibleToExit);
 
-        parametersRegistry.setExitDelayPenalty(0, penalty + 1);
+        parametersRegistry.setExitDelayFee(0, penalty + 1);
 
         vm.prank(address(csm));
         exitPenalties.processExitDelayReport(
@@ -146,7 +146,7 @@ contract CSExitPenaltiesTestProcessExitDelayReport is CSExitPenaltiesTestBase {
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
             .getExitPenaltyInfo(noId, publicKey);
         assertEq(
-            exitPenaltyInfo.delayPenalty.value,
+            exitPenaltyInfo.delayFee.value,
             penalty,
             "Penalty should not be updated"
         );

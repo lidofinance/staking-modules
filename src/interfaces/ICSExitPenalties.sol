@@ -14,7 +14,7 @@ struct MarkedUint248 {
 }
 
 struct ExitPenaltyInfo {
-    MarkedUint248 delayPenalty;
+    MarkedUint248 delayFee;
     MarkedUint248 strikesPenalty;
     MarkedUint248 withdrawalRequestFee;
 }
@@ -30,7 +30,7 @@ interface ICSExitPenalties is IExitTypes {
     event ValidatorExitDelayProcessed(
         uint256 indexed nodeOperatorId,
         bytes pubkey,
-        uint256 delayPenalty
+        uint256 delayFee
     );
     event TriggeredExitFeeRecorded(
         uint256 indexed nodeOperatorId,

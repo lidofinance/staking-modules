@@ -747,7 +747,6 @@ contract CSModule is
                 pubkey
             );
 
-            uint256 penaltySum;
             // penaltyMultiplier is >= 1
             uint256 penaltyMultiplier = Math.max(
                 withdrawalInfo.exitBalance,
@@ -763,43 +762,43 @@ contract CSModule is
 
             ICSAccounting _accounting = accounting();
             bool chargeWithdrawalRequestFee = false;
-            bool bondCoveredCharges = true;
+
+            uint256 penaltySum;
+            uint256 feeSum;
 
             ExitPenaltyInfo memory exitPenaltyInfo = EXIT_PENALTIES
                 .getExitPenaltyInfo(withdrawalInfo.nodeOperatorId, pubkey);
-            if (exitPenaltyInfo.delayPenalty.isValue) {
-                bondCoveredCharges = _accounting.chargeFee(
-                    withdrawalInfo.nodeOperatorId,
-                    exitPenaltyInfo.delayPenalty.value * penaltyMultiplier
-                );
+            if (exitPenaltyInfo.delayFee.isValue) {
+                unchecked {
+                    feeSum = exitPenaltyInfo.delayFee.value * penaltyMultiplier;
+                }
                 chargeWithdrawalRequestFee = true;
             }
             if (exitPenaltyInfo.strikesPenalty.isValue) {
-                // It is safe to use unchecked for penalty sum because base penalties and fees are limited to uint248 in
+                // It is safe to use unchecked for sum here because base penalties and fees are limited to uint248 in
                 // the MarkedUint248 structures used to store them, and the maximum multiplier is limited to 64, so
                 // `type(uint248).max * 64 < type(uint256).max`.
                 unchecked {
-                    penaltySum +=
+                    penaltySum =
                         exitPenaltyInfo.strikesPenalty.value *
                         penaltyMultiplier;
                 }
                 chargeWithdrawalRequestFee = true;
             }
 
-            // The withdrawal request fee is taken only if the penalty is applied. If no penalty
-            // is applied, the fee has been paid by the node operator on the withdrawal trigger,
-            // or it is the DAO decision to withdraw the validator before the withdrawal request
-            // becomes delayed.
+            // The withdrawal request fee is taken when either a delay was reported or the validator exited due to
+            // strikes. Otherwise, the fee has already been paid by the node operator upon withdrawal trigger, or it is
+            // a DAO decision to withdraw the validator before the withdrawal request becomes delayed.
             if (
-                bondCoveredCharges &&
                 chargeWithdrawalRequestFee &&
                 exitPenaltyInfo.withdrawalRequestFee.value != 0
             ) {
-                // We do not call the method if there is no bond left after the first call to the `chargeFee`.
-                bondCoveredCharges = _accounting.chargeFee(
-                    withdrawalInfo.nodeOperatorId,
-                    exitPenaltyInfo.withdrawalRequestFee.value
-                );
+                // type(uint248).max * (64 + 1) < type(uint256).max
+                unchecked {
+                    // Withdrawal request fee is not scaled because sending a withdrawal request for a validator does
+                    // not depend on the size of a validator.
+                    feeSum += exitPenaltyInfo.withdrawalRequestFee.value;
+                }
             }
 
             if (withdrawalInfo.slashingPenalty > 0) {
@@ -814,15 +813,24 @@ contract CSModule is
                 }
             }
 
+            bool isFullyCoveredByBond = true;
+
+            if (feeSum > 0) {
+                isFullyCoveredByBond = _accounting.chargeFee(
+                    withdrawalInfo.nodeOperatorId,
+                    feeSum
+                );
+            }
+
             if (penaltySum > 0) {
                 // We still call `penalize` even if there's no bond left, for the lock to be created.
-                bondCoveredCharges = _accounting.penalize(
+                isFullyCoveredByBond = _accounting.penalize(
                     withdrawalInfo.nodeOperatorId,
                     penaltySum
                 );
             }
 
-            if (!bondCoveredCharges) {
+            if (!isFullyCoveredByBond) {
                 _onUncompensatedPenalty(withdrawalInfo.nodeOperatorId);
             }
 

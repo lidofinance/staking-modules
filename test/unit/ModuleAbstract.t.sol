@@ -5957,19 +5957,16 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_submitWithdrawals_exitDelayPenalty() public assertInvariants {
+    function test_submitWithdrawals_exitDelayFee() public assertInvariants {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        uint256 exitDelayPenaltyAmount = BOND_SIZE - 1 ether;
+        uint256 exitDelayFeeAmount = BOND_SIZE - 1 ether;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(
-                    uint248(exitDelayPenaltyAmount),
-                    true
-                ),
+                delayFee: MarkedUint248(uint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(0, false),
                 withdrawalRequestFee: MarkedUint248(0, false)
             })
@@ -5990,7 +5987,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             abi.encodeWithSelector(
                 accounting.chargeFee.selector,
                 noId,
-                exitDelayPenaltyAmount
+                exitDelayFeeAmount
             )
         );
         module.submitWithdrawals(withdrawalInfo);
@@ -6002,22 +5999,16 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_submitWithdrawals_hugeExitDelayPenalty()
-        public
-        assertInvariants
-    {
+    function test_submitWithdrawals_hugeExitDelayFee() public assertInvariants {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        uint256 exitDelayPenaltyAmount = BOND_SIZE + 1 ether;
+        uint256 exitDelayFeeAmount = BOND_SIZE + 1 ether;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(
-                    uint248(exitDelayPenaltyAmount),
-                    true
-                ),
+                delayFee: MarkedUint248(uint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(0, false),
                 withdrawalRequestFee: MarkedUint248(0, false)
             })
@@ -6038,7 +6029,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             abi.encodeWithSelector(
                 accounting.chargeFee.selector,
                 noId,
-                exitDelayPenaltyAmount
+                exitDelayFeeAmount
             )
         );
         module.submitWithdrawals(withdrawalInfo);
@@ -6050,7 +6041,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_submitWithdrawals_exitDelayPenaltyWithMultiplier()
+    function test_submitWithdrawals_exitDelayFeeWithMultiplier()
         public
         assertInvariants
     {
@@ -6058,12 +6049,12 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        uint248 penalty = 1 ether;
+        uint248 fee = 1 ether;
         uint256 multiplier = 3;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(penalty, true),
+                delayFee: MarkedUint248(fee, true),
                 strikesPenalty: MarkedUint248(0, false),
                 withdrawalRequestFee: MarkedUint248(0, false)
             })
@@ -6083,13 +6074,13 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             abi.encodeWithSelector(
                 accounting.chargeFee.selector,
                 noId,
-                penalty * multiplier
+                fee * multiplier
             )
         );
         module.submitWithdrawals(withdrawalInfo);
     }
 
-    function test_submitWithdrawals_exitDelayPenaltyAtMaxWithMultiplier()
+    function test_submitWithdrawals_exitDelayFeeAtMaxWithMultiplier()
         public
         assertInvariants
     {
@@ -6097,12 +6088,12 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        uint248 penalty = type(uint248).max;
+        uint248 fee = type(uint248).max;
         uint256 multiplier = module.MAX_PENALTY_MULTIPLIER();
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(penalty, true),
+                delayFee: MarkedUint248(fee, true),
                 strikesPenalty: MarkedUint248(0, false),
                 withdrawalRequestFee: MarkedUint248(0, false)
             })
@@ -6122,7 +6113,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             abi.encodeWithSelector(
                 accounting.chargeFee.selector,
                 noId,
-                penalty * multiplier
+                fee * multiplier
             )
         );
         module.submitWithdrawals(withdrawalInfo);
@@ -6137,7 +6128,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(0, false),
+                delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(
                     uint248(strikesPenaltyAmount),
                     true
@@ -6185,7 +6176,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(0, false),
+                delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(
                     uint248(strikesPenaltyAmount),
                     true
@@ -6234,7 +6225,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(0, false),
+                delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(penalty, true),
                 withdrawalRequestFee: MarkedUint248(0, false)
             })
@@ -6273,7 +6264,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(0, false),
+                delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(penalty, true),
                 withdrawalRequestFee: MarkedUint248(0, false)
             })
@@ -6420,7 +6411,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         module.submitWithdrawals(withdrawalInfo);
     }
 
-    function test_submitWithdrawals_chargeWithdrawalFee_DelayPenalty()
+    function test_submitWithdrawals_chargeWithdrawalFee_DelayFee()
         public
         assertInvariants
     {
@@ -6428,15 +6419,12 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        uint256 exitDelayPenaltyAmount = 0.7 ether;
+        uint256 exitDelayFeeAmount = 0.7 ether;
         uint256 withdrawalRequestFeeAmount = 0.3 ether;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(
-                    uint248(exitDelayPenaltyAmount),
-                    true
-                ),
+                delayFee: MarkedUint248(uint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(0, false),
                 withdrawalRequestFee: MarkedUint248(
                     uint248(withdrawalRequestFeeAmount),
@@ -6460,15 +6448,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             abi.encodeWithSelector(
                 accounting.chargeFee.selector,
                 noId,
-                exitDelayPenaltyAmount
-            )
-        );
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(
-                accounting.chargeFee.selector,
-                noId,
-                withdrawalRequestFeeAmount
+                exitDelayFeeAmount + withdrawalRequestFeeAmount
             )
         );
         module.submitWithdrawals(withdrawalInfo);
@@ -6480,7 +6460,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_submitWithdrawals_chargeWithdrawalFee_hugeDelayPenalty()
+    function test_submitWithdrawals_chargeWithdrawalFee_hugeDelayFee()
         public
         assertInvariants
     {
@@ -6488,15 +6468,12 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        uint256 exitDelayPenaltyAmount = BOND_SIZE + 1 ether;
+        uint256 exitDelayFeeAmount = BOND_SIZE + 1 ether;
         uint256 withdrawalRequestFeeAmount = 0.1 ether;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(
-                    uint248(exitDelayPenaltyAmount),
-                    true
-                ),
+                delayFee: MarkedUint248(uint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(0, false),
                 withdrawalRequestFee: MarkedUint248(
                     uint248(withdrawalRequestFeeAmount),
@@ -6520,16 +6497,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             abi.encodeWithSelector(
                 accounting.chargeFee.selector,
                 noId,
-                exitDelayPenaltyAmount
-            )
-        );
-        // All bond was burned by the first call to `chargeFee`.
-        expectNoCall(
-            address(accounting),
-            abi.encodeWithSelector(
-                accounting.chargeFee.selector,
-                noId,
-                withdrawalRequestFeeAmount
+                exitDelayFeeAmount + withdrawalRequestFeeAmount
             )
         );
         module.submitWithdrawals(withdrawalInfo);
@@ -6541,7 +6509,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_submitWithdrawals_chargeHugeWithdrawalFee_DelayPenalty()
+    function test_submitWithdrawals_chargeHugeWithdrawalFee_DelayFee()
         public
         assertInvariants
     {
@@ -6549,15 +6517,12 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        uint256 exitDelayPenaltyAmount = BOND_SIZE - 1 ether;
+        uint256 exitDelayFeeAmount = BOND_SIZE - 1 ether;
         uint256 withdrawalRequestFeeAmount = BOND_SIZE + 1 ether;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(
-                    uint248(exitDelayPenaltyAmount),
-                    true
-                ),
+                delayFee: MarkedUint248(uint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(0, false),
                 withdrawalRequestFee: MarkedUint248(
                     uint248(withdrawalRequestFeeAmount),
@@ -6581,15 +6546,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             abi.encodeWithSelector(
                 accounting.chargeFee.selector,
                 noId,
-                exitDelayPenaltyAmount
-            )
-        );
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(
-                accounting.chargeFee.selector,
-                noId,
-                withdrawalRequestFeeAmount
+                exitDelayFeeAmount + withdrawalRequestFeeAmount
             )
         );
         module.submitWithdrawals(withdrawalInfo);
@@ -6616,7 +6573,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(0, false),
+                delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(
                     uint248(strikesPenaltyAmount),
                     true
@@ -6676,7 +6633,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(0, false),
+                delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(
                     uint248(strikesPenaltyAmount),
                     true
@@ -6736,7 +6693,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(0, false),
+                delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(
                     uint248(strikesPenaltyAmount),
                     true
@@ -6791,16 +6748,13 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        uint256 exitDelayPenaltyAmount = 0.17 ether;
+        uint256 exitDelayFeeAmount = 0.17 ether;
         uint256 strikesPenaltyAmount = 0.31 ether;
         uint256 withdrawalRequestFeeAmount = 0.42 ether;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(
-                    uint248(exitDelayPenaltyAmount),
-                    true
-                ),
+                delayFee: MarkedUint248(uint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(
                     uint248(strikesPenaltyAmount),
                     true
@@ -6827,7 +6781,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             abi.encodeWithSelector(
                 accounting.chargeFee.selector,
                 noId,
-                exitDelayPenaltyAmount
+                exitDelayFeeAmount + withdrawalRequestFeeAmount
             )
         );
         vm.expectCall(
@@ -6836,14 +6790,6 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 accounting.penalize.selector,
                 noId,
                 strikesPenaltyAmount
-            )
-        );
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(
-                accounting.chargeFee.selector,
-                noId,
-                withdrawalRequestFeeAmount
             )
         );
         module.submitWithdrawals(withdrawalInfo);
@@ -6862,16 +6808,13 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        uint256 exitDelayPenaltyAmount = BOND_SIZE + 17 ether;
+        uint256 exitDelayFeeAmount = BOND_SIZE + 17 ether;
         uint256 strikesPenaltyAmount = BOND_SIZE + 31 ether;
         uint256 withdrawalRequestFeeAmount = BOND_SIZE + 42 ether;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(
-                    uint248(exitDelayPenaltyAmount),
-                    true
-                ),
+                delayFee: MarkedUint248(uint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(
                     uint248(strikesPenaltyAmount),
                     true
@@ -6898,7 +6841,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             abi.encodeWithSelector(
                 accounting.chargeFee.selector,
                 noId,
-                exitDelayPenaltyAmount
+                exitDelayFeeAmount + withdrawalRequestFeeAmount
             )
         );
         vm.expectCall(
@@ -6907,15 +6850,6 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 accounting.penalize.selector,
                 noId,
                 strikesPenaltyAmount
-            )
-        );
-        // All bond was burned by the first call to the `chargeFee`.
-        expectNoCall(
-            address(accounting),
-            abi.encodeWithSelector(
-                accounting.chargeFee.selector,
-                noId,
-                withdrawalRequestFeeAmount
             )
         );
         module.submitWithdrawals(withdrawalInfo);
@@ -6939,7 +6873,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(0, true),
+                delayFee: MarkedUint248(0, true),
                 strikesPenalty: MarkedUint248(0, true),
                 withdrawalRequestFee: MarkedUint248(
                     uint248(withdrawalRequestFeeAmount),
@@ -6987,7 +6921,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(0, true),
+                delayFee: MarkedUint248(0, true),
                 strikesPenalty: MarkedUint248(0, true),
                 withdrawalRequestFee: MarkedUint248(
                     uint248(withdrawalRequestFeeAmount),
@@ -7036,7 +6970,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(0, true),
+                delayFee: MarkedUint248(0, true),
                 strikesPenalty: MarkedUint248(0, true),
                 withdrawalRequestFee: MarkedUint248(withdrawalRequestFee, true)
             })
@@ -7074,7 +7008,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(0, false),
+                delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(0, false),
                 withdrawalRequestFee: MarkedUint248(
                     uint248(withdrawalRequestFeeAmount),
@@ -7123,7 +7057,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayPenalty: MarkedUint248(0, false),
+                delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(0, false),
                 withdrawalRequestFee: MarkedUint248(
                     uint248(withdrawalRequestFeeAmount),

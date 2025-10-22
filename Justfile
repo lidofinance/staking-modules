@@ -108,7 +108,12 @@ gas-report:
     import re
 
     command = "just test-unit --nmt 'testFuzz.+' --gas-report"
-    output = subprocess.check_output(command, shell=True, text=True)
+
+    try:
+        output = subprocess.check_output(command, shell=True, text=True)
+    except subprocess.CalledProcessError as e:
+        print(e.output)
+        raise
 
     lines = output.split('\n')
 
