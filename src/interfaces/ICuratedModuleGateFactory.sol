@@ -3,16 +3,16 @@
 
 pragma solidity 0.8.24;
 
-interface ICuratedModuleExtensionFactory {
-    event CuratedModuleExtensionCreated(address indexed extension);
+interface ICuratedModuleGateFactory {
+    event CuratedModuleGateCreated(address indexed gate);
 
     error ZeroImplementationAddress();
 
-    /// @dev Address of the CuratedModuleExtension implementation to be used for the new instances
-    /// @return address of the CuratedModuleExtension implementation
-    function CURATED_MODULE_EXTENSION_IMPL() external view returns (address);
+    /// @dev Address of the CuratedModuleGate implementation to be used for the new instances
+    /// @return address of the CuratedModuleGate implementation
+    function CURATED_MODULE_GATE_IMPL() external view returns (address);
 
-    /// @dev Creates a new CuratedModuleExtension instance behind the OssifiableProxy based on known implementation address
+    /// @dev Creates a new CuratedModuleGate instance behind the OssifiableProxy based on known implementation address
     /// @param curveId Id of the bond curve to be assigned for the eligible members
     /// @param treeRoot Root of the eligible members Merkle Tree
     /// @param treeCid CID of the eligible members Merkle Tree

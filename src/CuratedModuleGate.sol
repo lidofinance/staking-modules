@@ -10,15 +10,15 @@ import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
 import { PausableUntil } from "./lib/utils/PausableUntil.sol";
 
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
-import { ICuratedModuleExtension } from "./interfaces/ICuratedModuleExtension.sol";
+import { ICuratedModuleGate } from "./interfaces/ICuratedModuleGate.sol";
 import { NodeOperatorManagementProperties } from "./interfaces/ICSModule.sol";
 import { IOperatorsData } from "./interfaces/IOperatorsData.sol";
 import { ICSAccounting } from "./interfaces/ICSAccounting.sol";
 
-/// @notice Merkle-gated extension for Curated Module v2 to create Node Operators
+/// @notice Merkle gate for Curated Module v2 to create Node Operators
 ///         and persist operator metadata (name, description) in a separate storage contract.
-contract CuratedModuleExtension is
-    ICuratedModuleExtension,
+contract CuratedModuleGate is
+    ICuratedModuleGate,
     AccessControlEnumerableUpgradeable,
     PausableUntil,
     AssetRecoverer
@@ -28,22 +28,22 @@ contract CuratedModuleExtension is
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
     bytes32 public constant SET_TREE_ROLE = keccak256("SET_TREE_ROLE");
 
-    /// @inheritdoc ICuratedModuleExtension
+    /// @inheritdoc ICuratedModuleGate
     ICuratedModule public immutable MODULE;
 
-    /// @inheritdoc ICuratedModuleExtension
+    /// @inheritdoc ICuratedModuleGate
     ICSAccounting public immutable ACCOUNTING;
 
-    /// @inheritdoc ICuratedModuleExtension
+    /// @inheritdoc ICuratedModuleGate
     IOperatorsData public immutable OPERATORS_DATA;
 
-    /// @inheritdoc ICuratedModuleExtension
+    /// @inheritdoc ICuratedModuleGate
     bytes32 public treeRoot;
 
-    /// @inheritdoc ICuratedModuleExtension
+    /// @inheritdoc ICuratedModuleGate
     string public treeCid;
 
-    /// @inheritdoc ICuratedModuleExtension
+    /// @inheritdoc ICuratedModuleGate
     uint256 public curveId;
 
     /// @dev Tracks whether an address already consumed its eligibility
@@ -73,17 +73,17 @@ contract CuratedModuleExtension is
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
-    /// @inheritdoc ICuratedModuleExtension
+    /// @inheritdoc ICuratedModuleGate
     function resume() external onlyRole(RESUME_ROLE) {
         _resume();
     }
 
-    /// @inheritdoc ICuratedModuleExtension
+    /// @inheritdoc ICuratedModuleGate
     function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE) {
         _pauseFor(duration);
     }
 
-    /// @inheritdoc ICuratedModuleExtension
+    /// @inheritdoc ICuratedModuleGate
     function createNodeOperator(
         string calldata name,
         string calldata description,
@@ -114,7 +114,7 @@ contract CuratedModuleExtension is
         OPERATORS_DATA.set(nodeOperatorId, name, description);
     }
 
-    /// @inheritdoc ICuratedModuleExtension
+    /// @inheritdoc ICuratedModuleGate
     function setTreeParams(
         bytes32 _treeRoot,
         string calldata _treeCid
@@ -122,17 +122,17 @@ contract CuratedModuleExtension is
         _setTreeParams(_treeRoot, _treeCid);
     }
 
-    /// @inheritdoc ICuratedModuleExtension
+    /// @inheritdoc ICuratedModuleGate
     function getInitializedVersion() external view returns (uint64) {
         return _getInitializedVersion();
     }
 
-    /// @inheritdoc ICuratedModuleExtension
+    /// @inheritdoc ICuratedModuleGate
     function isConsumed(address member) public view returns (bool) {
         return _consumedAddresses[member];
     }
 
-    /// @inheritdoc ICuratedModuleExtension
+    /// @inheritdoc ICuratedModuleGate
     function verifyProof(
         address member,
         bytes32[] calldata proof
@@ -140,7 +140,7 @@ contract CuratedModuleExtension is
         return MerkleProof.verifyCalldata(proof, treeRoot, hashLeaf(member));
     }
 
-    /// @inheritdoc ICuratedModuleExtension
+    /// @inheritdoc ICuratedModuleGate
     function hashLeaf(address member) public pure returns (bytes32) {
         return keccak256(bytes.concat(keccak256(abi.encode(member))));
     }

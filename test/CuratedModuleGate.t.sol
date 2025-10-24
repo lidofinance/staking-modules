@@ -9,17 +9,17 @@ import { Fixtures } from "./helpers/Fixtures.sol";
 import { CSMMock } from "./helpers/mocks/CSMMock.sol";
 import { OperatorsDataMock } from "./helpers/mocks/OperatorsDataMock.sol";
 import { PausableUntil } from "../src/lib/utils/PausableUntil.sol";
-import { CuratedModuleExtension } from "../src/CuratedModuleExtension.sol";
-import { ICuratedModuleExtension } from "../src/interfaces/ICuratedModuleExtension.sol";
+import { CuratedModuleGate } from "../src/CuratedModuleGate.sol";
+import { ICuratedModuleGate } from "../src/interfaces/ICuratedModuleGate.sol";
 import { IOperatorsData, OperatorInfo } from "../src/interfaces/IOperatorsData.sol";
 import { ICSModule, NodeOperatorManagementProperties } from "../src/interfaces/ICSModule.sol";
 import { ICSAccounting } from "../src/interfaces/ICSAccounting.sol";
 import { MerkleTree } from "./helpers/MerkleTree.sol";
 
-contract CuratedModuleExtensionTestBase is Test, Utilities, Fixtures {
+contract CuratedModuleGateTestBase is Test, Utilities, Fixtures {
     CSMMock public module;
     OperatorsDataMock public data;
-    CuratedModuleExtension public ext;
+    CuratedModuleGate public gate;
 
     address public admin;
     address public member;
@@ -54,21 +54,19 @@ contract CuratedModuleExtensionTestBase is Test, Utilities, Fixtures {
         root = tree.root();
         cid = someCIDv0();
 
-        ext = new CuratedModuleExtension(address(module), address(data));
-        _enableInitializers(address(ext));
-        ext.initialize(1, root, cid, admin);
+        gate = new CuratedModuleGate(address(module), address(data));
+        _enableInitializers(address(gate));
+        gate.initialize(1, root, cid, admin);
 
         vm.startPrank(admin);
-        ext.grantRole(ext.SET_TREE_ROLE(), admin);
+        gate.grantRole(gate.SET_TREE_ROLE(), admin);
         vm.stopPrank();
     }
 }
 
-contract CuratedModuleExtensionTest_constructor is
-    CuratedModuleExtensionTestBase
-{
+contract CuratedModuleGateTest_constructor is CuratedModuleGateTestBase {
     function test_constructor() public {
-        CuratedModuleExtension e = new CuratedModuleExtension(
+        CuratedModuleGate e = new CuratedModuleGate(
             address(module),
             address(data)
         );
@@ -77,23 +75,19 @@ contract CuratedModuleExtensionTest_constructor is
     }
 
     function test_constructor_RevertWhen_ZeroModule() public {
-        vm.expectRevert(ICuratedModuleExtension.ZeroModuleAddress.selector);
-        new CuratedModuleExtension(address(0), address(data));
+        vm.expectRevert(ICuratedModuleGate.ZeroModuleAddress.selector);
+        new CuratedModuleGate(address(0), address(data));
     }
 
     function test_constructor_RevertWhen_ZeroOperatorsData() public {
-        vm.expectRevert(
-            ICuratedModuleExtension.ZeroOperatorsDataAddress.selector
-        );
-        new CuratedModuleExtension(address(module), address(0));
+        vm.expectRevert(ICuratedModuleGate.ZeroOperatorsDataAddress.selector);
+        new CuratedModuleGate(address(module), address(0));
     }
 }
 
-contract CuratedModuleExtensionTest_initialize is
-    CuratedModuleExtensionTestBase
-{
+contract CuratedModuleGateTest_initialize is CuratedModuleGateTestBase {
     function test_initialize() public {
-        CuratedModuleExtension e = new CuratedModuleExtension(
+        CuratedModuleGate e = new CuratedModuleGate(
             address(module),
             address(data)
         );
@@ -106,82 +100,80 @@ contract CuratedModuleExtensionTest_initialize is
     }
 
     function test_initialize_RevertWhen_ZeroAdmin() public {
-        CuratedModuleExtension e = new CuratedModuleExtension(
+        CuratedModuleGate e = new CuratedModuleGate(
             address(module),
             address(data)
         );
         _enableInitializers(address(e));
-        vm.expectRevert(ICuratedModuleExtension.ZeroAdminAddress.selector);
+        vm.expectRevert(ICuratedModuleGate.ZeroAdminAddress.selector);
         e.initialize(1, root, cid, address(0));
     }
 
     function test_initialize_RevertWhen_InvalidTreeRoot() public {
-        CuratedModuleExtension e = new CuratedModuleExtension(
+        CuratedModuleGate e = new CuratedModuleGate(
             address(module),
             address(data)
         );
         _enableInitializers(address(e));
-        vm.expectRevert(ICuratedModuleExtension.InvalidTreeRoot.selector);
+        vm.expectRevert(ICuratedModuleGate.InvalidTreeRoot.selector);
         e.initialize(1, bytes32(0), cid, admin);
     }
 
     function test_initialize_RevertWhen_InvalidTreeCid() public {
-        CuratedModuleExtension e = new CuratedModuleExtension(
+        CuratedModuleGate e = new CuratedModuleGate(
             address(module),
             address(data)
         );
         _enableInitializers(address(e));
-        vm.expectRevert(ICuratedModuleExtension.InvalidTreeCid.selector);
+        vm.expectRevert(ICuratedModuleGate.InvalidTreeCid.selector);
         e.initialize(1, root, "", admin);
     }
 }
 
-contract CuratedModuleExtensionTest_setTreeParams is
-    CuratedModuleExtensionTestBase
-{
+contract CuratedModuleGateTest_setTreeParams is CuratedModuleGateTestBase {
     function test_setTreeParams() public {
         bytes32 newRoot = keccak256(abi.encodePacked("root2"));
         string memory newCid = someCIDv0();
 
-        vm.expectEmit(address(ext));
-        emit ICuratedModuleExtension.TreeSet(newRoot, newCid);
+        vm.expectEmit(address(gate));
+        emit ICuratedModuleGate.TreeSet(newRoot, newCid);
         vm.prank(admin);
-        ext.setTreeParams(newRoot, newCid);
+        gate.setTreeParams(newRoot, newCid);
 
-        assertEq(ext.treeRoot(), newRoot);
-        assertEq(keccak256(bytes(ext.treeCid())), keccak256(bytes(newCid)));
+        assertEq(gate.treeRoot(), newRoot);
+        assertEq(keccak256(bytes(gate.treeCid())), keccak256(bytes(newCid)));
     }
 
     function test_setTreeParams_RevertWhen_NoRole() public {
-        expectRoleRevert(stranger, ext.SET_TREE_ROLE());
+        expectRoleRevert(stranger, gate.SET_TREE_ROLE());
         vm.prank(stranger);
-        ext.setTreeParams(keccak256("x"), "cid");
+        gate.setTreeParams(keccak256("x"), "cid");
     }
 
     function test_setTreeParams_RevertWhen_EmptyTreeRoot() public {
         vm.prank(admin);
-        vm.expectRevert(ICuratedModuleExtension.InvalidTreeRoot.selector);
-        ext.setTreeParams(bytes32(0), "cid");
+        vm.expectRevert(ICuratedModuleGate.InvalidTreeRoot.selector);
+        gate.setTreeParams(bytes32(0), "cid");
     }
 
     function test_setTreeParams_RevertWhen_EmptyTreeCid() public {
         vm.prank(admin);
-        vm.expectRevert(ICuratedModuleExtension.InvalidTreeCid.selector);
-        ext.setTreeParams(keccak256("y"), "");
+        vm.expectRevert(ICuratedModuleGate.InvalidTreeCid.selector);
+        gate.setTreeParams(keccak256("y"), "");
     }
 
     function test_setTreeParams_RevertWhen_SameTreeRoot() public {
-        bytes32 root = ext.treeRoot();
+        bytes32 root = gate.treeRoot();
         vm.prank(admin);
-        vm.expectRevert(ICuratedModuleExtension.InvalidTreeRoot.selector);
-        ext.setTreeParams(root, someCIDv0());
+        vm.expectRevert(ICuratedModuleGate.InvalidTreeRoot.selector);
+        gate.setTreeParams(root, someCIDv0());
     }
 
     function test_setTreeParams_RevertWhen_SameTreeCid() public {
-        string memory cid = ext.treeCid();
+        string memory cid = gate.treeCid();
         vm.prank(admin);
-        vm.expectRevert(ICuratedModuleExtension.InvalidTreeCid.selector);
-        ext.setTreeParams(keccak256("z"), cid);
+        vm.expectRevert(ICuratedModuleGate.InvalidTreeCid.selector);
+        gate.setTreeParams(keccak256("z"), cid);
     }
 
     function test_setTreeParams_MakesNewMemberEligible() public {
@@ -192,15 +184,15 @@ contract CuratedModuleExtensionTest_setTreeParams is
         string memory newCid = someCIDv0();
         bytes32[] memory proof = newTree.getProof(0);
 
-        assertFalse(ext.verifyProof(stranger, proof));
+        assertFalse(gate.verifyProof(stranger, proof));
 
         vm.prank(admin);
-        ext.setTreeParams(newRoot, newCid);
+        gate.setTreeParams(newRoot, newCid);
 
-        assertTrue(ext.verifyProof(stranger, proof));
+        assertTrue(gate.verifyProof(stranger, proof));
 
         vm.prank(stranger);
-        uint256 id = ext.createNodeOperator(
+        uint256 id = gate.createNodeOperator(
             "Name2",
             "Desc2",
             address(0),
@@ -209,48 +201,44 @@ contract CuratedModuleExtensionTest_setTreeParams is
         );
 
         assertEq(id, 0);
-        assertTrue(ext.isConsumed(stranger));
+        assertTrue(gate.isConsumed(stranger));
     }
 }
 
-contract CuratedModuleExtensionTest_pauseResume is
-    CuratedModuleExtensionTestBase
-{
+contract CuratedModuleGateTest_pauseResume is CuratedModuleGateTestBase {
     function test_pause_RevertWhen_NoRole() public {
         vm.expectRevert();
-        ext.pauseFor(1);
+        gate.pauseFor(1);
     }
 
     function test_resume_RevertWhen_NoRole() public {
         vm.expectRevert();
-        ext.resume();
+        gate.resume();
     }
 
     function test_pause_HappyPath() public {
         vm.startPrank(admin);
-        ext.grantRole(ext.PAUSE_ROLE(), admin);
-        ext.pauseFor(1);
+        gate.grantRole(gate.PAUSE_ROLE(), admin);
+        gate.pauseFor(1);
         vm.stopPrank();
 
-        assertTrue(ext.isPaused());
+        assertTrue(gate.isPaused());
     }
 
     function test_resume_HappyPath() public {
         vm.startPrank(admin);
-        ext.grantRole(ext.PAUSE_ROLE(), admin);
-        ext.grantRole(ext.RESUME_ROLE(), admin);
-        ext.pauseFor(type(uint256).max);
+        gate.grantRole(gate.PAUSE_ROLE(), admin);
+        gate.grantRole(gate.RESUME_ROLE(), admin);
+        gate.pauseFor(type(uint256).max);
 
-        ext.resume();
+        gate.resume();
         vm.stopPrank();
 
-        assertFalse(ext.isPaused());
+        assertFalse(gate.isPaused());
     }
 }
 
-contract CuratedModuleExtensionTest_createNodeOperator is
-    CuratedModuleExtensionTestBase
-{
+contract CuratedModuleGateTest_createNodeOperator is CuratedModuleGateTestBase {
     function test_createNodeOperator() public {
         bytes32[] memory proof = tree.getProof(0);
 
@@ -280,10 +268,10 @@ contract CuratedModuleExtensionTest_createNodeOperator is
             address(module.ACCOUNTING()),
             abi.encodeWithSelector(ICSAccounting.setBondCurve.selector, 0, 1)
         );
-        vm.expectEmit(address(ext));
-        emit ICuratedModuleExtension.Consumed(member);
+        vm.expectEmit(address(gate));
+        emit ICuratedModuleGate.Consumed(member);
         vm.prank(member);
-        uint256 id = ext.createNodeOperator(
+        uint256 id = gate.createNodeOperator(
             "Name",
             "Description",
             address(0x1111),
@@ -292,42 +280,42 @@ contract CuratedModuleExtensionTest_createNodeOperator is
         );
 
         assertEq(id, 0);
-        assertTrue(ext.isConsumed(member));
+        assertTrue(gate.isConsumed(member));
     }
 
     function test_createNodeOperator_RevertWhen_InvalidProof() public {
         bytes32[] memory emptyProof;
         vm.prank(member);
-        vm.expectRevert(ICuratedModuleExtension.InvalidProof.selector);
-        ext.createNodeOperator("N", "D", address(0), address(0), emptyProof);
+        vm.expectRevert(ICuratedModuleGate.InvalidProof.selector);
+        gate.createNodeOperator("N", "D", address(0), address(0), emptyProof);
     }
 
     function test_createNodeOperator_RevertWhen_AlreadyConsumed() public {
         bytes32[] memory proof = tree.getProof(0);
         vm.prank(member);
-        ext.createNodeOperator("A", "B", address(0), address(0), proof);
+        gate.createNodeOperator("A", "B", address(0), address(0), proof);
 
         vm.prank(member);
-        vm.expectRevert(ICuratedModuleExtension.AlreadyConsumed.selector);
-        ext.createNodeOperator("A", "B", address(0), address(0), proof);
+        vm.expectRevert(ICuratedModuleGate.AlreadyConsumed.selector);
+        gate.createNodeOperator("A", "B", address(0), address(0), proof);
     }
 
     function test_createNodeOperator_RevertWhen_NotMember() public {
         bytes32[] memory proof = tree.getProof(0);
         vm.prank(stranger);
-        vm.expectRevert(ICuratedModuleExtension.InvalidProof.selector);
-        ext.createNodeOperator("N", "D", address(0), address(0), proof);
+        vm.expectRevert(ICuratedModuleGate.InvalidProof.selector);
+        gate.createNodeOperator("N", "D", address(0), address(0), proof);
     }
 
     function test_createNodeOperator_RevertWhen_Paused() public {
         bytes32[] memory proof = tree.getProof(0);
         vm.startPrank(admin);
-        ext.grantRole(ext.PAUSE_ROLE(), admin);
-        ext.pauseFor(1);
+        gate.grantRole(gate.PAUSE_ROLE(), admin);
+        gate.pauseFor(1);
         vm.stopPrank();
 
         vm.prank(member);
         vm.expectRevert(PausableUntil.ResumedExpected.selector);
-        ext.createNodeOperator("N", "D", address(0), address(0), proof);
+        gate.createNodeOperator("N", "D", address(0), address(0), proof);
     }
 }

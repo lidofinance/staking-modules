@@ -5,18 +5,18 @@ pragma solidity 0.8.24;
 import "forge-std/Test.sol";
 import { Utilities } from "./helpers/Utilities.sol";
 
-import { CuratedModuleExtension } from "../src/CuratedModuleExtension.sol";
-import { ICuratedModuleExtension } from "../src/interfaces/ICuratedModuleExtension.sol";
-import { CuratedModuleExtensionFactory } from "../src/CuratedModuleExtensionFactory.sol";
-import { ICuratedModuleExtensionFactory } from "../src/interfaces/ICuratedModuleExtensionFactory.sol";
+import { CuratedModuleGate } from "../src/CuratedModuleGate.sol";
+import { ICuratedModuleGate } from "../src/interfaces/ICuratedModuleGate.sol";
+import { CuratedModuleGateFactory } from "../src/CuratedModuleGateFactory.sol";
+import { ICuratedModuleGateFactory } from "../src/interfaces/ICuratedModuleGateFactory.sol";
 
 import { CSMMock } from "./helpers/mocks/CSMMock.sol";
 import { OperatorsDataMock } from "./helpers/mocks/OperatorsDataMock.sol";
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import { OssifiableProxy } from "../src/lib/proxy/OssifiableProxy.sol";
 
-contract CuratedModuleExtensionFactoryTestBase is Test, Utilities {
-    CuratedModuleExtensionFactory factory;
+contract CuratedModuleGateFactoryTestBase is Test, Utilities {
+    CuratedModuleGateFactory factory;
     CSMMock module;
     OperatorsDataMock data;
     address impl;
@@ -30,50 +30,44 @@ contract CuratedModuleExtensionFactoryTestBase is Test, Utilities {
         admin = nextAddress("admin");
         module = new CSMMock();
         data = new OperatorsDataMock();
-        impl = address(
-            new CuratedModuleExtension(address(module), address(data))
-        );
-        factory = new CuratedModuleExtensionFactory(impl);
+        impl = address(new CuratedModuleGate(address(module), address(data)));
+        factory = new CuratedModuleGateFactory(impl);
         root = bytes32(randomBytes(32));
         cid = "someCid";
         curveId = 1;
     }
 }
 
-contract CuratedModuleExtensionFactoryTest_constructor is
-    CuratedModuleExtensionFactoryTestBase
+contract CuratedModuleGateFactoryTest_constructor is
+    CuratedModuleGateFactoryTestBase
 {
     function test_constructor() public {
-        CuratedModuleExtensionFactory f = new CuratedModuleExtensionFactory(
-            impl
-        );
-        assertEq(f.CURATED_MODULE_EXTENSION_IMPL(), impl);
+        CuratedModuleGateFactory f = new CuratedModuleGateFactory(impl);
+        assertEq(f.CURATED_MODULE_GATE_IMPL(), impl);
     }
 
     function test_constructor_RevertWhen_ZeroImpl() public {
         vm.expectRevert(
-            ICuratedModuleExtensionFactory.ZeroImplementationAddress.selector
+            ICuratedModuleGateFactory.ZeroImplementationAddress.selector
         );
-        new CuratedModuleExtensionFactory(address(0));
+        new CuratedModuleGateFactory(address(0));
     }
 }
 
-contract CuratedModuleExtensionFactoryTest_create is
-    CuratedModuleExtensionFactoryTestBase
+contract CuratedModuleGateFactoryTest_create is
+    CuratedModuleGateFactoryTestBase
 {
     function test_create() public {
         vm.expectEmit(false, false, false, false, address(factory));
-        emit ICuratedModuleExtensionFactory.CuratedModuleExtensionCreated(
-            address(0)
-        );
+        emit ICuratedModuleGateFactory.CuratedModuleGateCreated(address(0));
         address instance = factory.create(curveId, root, cid, admin);
 
-        ICuratedModuleExtension ext = ICuratedModuleExtension(instance);
-        assertEq(ext.curveId(), curveId);
-        assertEq(address(ext.MODULE()), address(module));
-        assertEq(ext.treeRoot(), root);
-        assertEq(ext.treeCid(), cid);
-        assertEq(address(ext.OPERATORS_DATA()), address(data));
+        ICuratedModuleGate gate = ICuratedModuleGate(instance);
+        assertEq(gate.curveId(), curveId);
+        assertEq(address(gate.MODULE()), address(module));
+        assertEq(gate.treeRoot(), root);
+        assertEq(gate.treeCid(), cid);
+        assertEq(address(gate.OPERATORS_DATA()), address(data));
 
         AccessControlEnumerableUpgradeable access = AccessControlEnumerableUpgradeable(
                 instance

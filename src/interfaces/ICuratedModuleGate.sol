@@ -7,9 +7,9 @@ import { ICuratedModule } from "./ICuratedModule.sol";
 import { IOperatorsData } from "./IOperatorsData.sol";
 import { ICSAccounting } from "./ICSAccounting.sol";
 
-/// @title Curated Module Extension Interface
+/// @title Curated Module Gate Interface
 /// @notice Allows eligible addresses to create Node Operators and store metadata.
-interface ICuratedModuleExtension {
+interface ICuratedModuleGate {
     /// @notice Emitted when a new Merkle tree is set
     /// @param treeRoot Root of the Merkle tree
     /// @param treeCid CID of the Merkle tree
@@ -55,11 +55,11 @@ interface ICuratedModuleExtension {
     /// @return treeCid Current Merkle tree CID
     function treeCid() external view returns (string memory);
 
-    /// @notice Pause the extension for a given duration
+    /// @notice Pause the gate for a given duration
     /// @param duration Duration in seconds
     function pauseFor(uint256 duration) external;
 
-    /// @notice Resume the extension
+    /// @notice Resume the gate
     function resume() external;
 
     /// @notice Create an empty Node Operator for the caller if eligible.
