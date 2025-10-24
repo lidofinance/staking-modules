@@ -57,8 +57,6 @@ contract DeployMainnet is DeployBase {
         config.minBondLockPeriod = 4 weeks;
         config.maxBondLockPeriod = 365 days;
         config.bondLockPeriod = 8 weeks;
-        config.bondReserveMinPeriod = 4 weeks;
-        config.enableBondReserve = false;
         config
             .setResetBondCurveAddress = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
         config

@@ -56,8 +56,6 @@ contract DeployLocalDevNet is DeployBase {
         config.minBondLockPeriod = 1 days;
         config.maxBondLockPeriod = 7 days;
         config.bondLockPeriod = 1 days;
-        config.bondReserveMinPeriod = 12 hours;
-        config.enableBondReserve = false;
         config.setResetBondCurveAddress = vm.envAddress(
             "CSM_FIRST_ADMIN_ADDRESS"
         ); // Dev team EOA

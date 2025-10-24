@@ -70,8 +70,7 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
             module: address(csm),
             feeDistributor: address(feeDistributor),
             minBondLockPeriod: accounting.MIN_BOND_LOCK_PERIOD(),
-            maxBondLockPeriod: currentMaxBondLockPeriod + 10,
-            enableBondReserve: accounting.BOND_RESERVE_IS_ENABLED()
+            maxBondLockPeriod: currentMaxBondLockPeriod + 10
         });
         vm.prank(proxy.proxy__getAdmin());
         proxy.proxy__upgradeTo(address(newAccounting));
@@ -89,8 +88,7 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
             module: address(csm),
             feeDistributor: address(feeDistributor),
             minBondLockPeriod: accounting.MIN_BOND_LOCK_PERIOD(),
-            maxBondLockPeriod: currentMaxBondLockPeriod + 10,
-            enableBondReserve: accounting.BOND_RESERVE_IS_ENABLED()
+            maxBondLockPeriod: currentMaxBondLockPeriod + 10
         });
         address contractAdmin = accounting.getRoleMember(
             accounting.DEFAULT_ADMIN_ROLE(),

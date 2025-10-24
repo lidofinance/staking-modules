@@ -43,59 +43,6 @@ contract GetUnbondedKeysCountTest is BondStateBaseTest {
         assertEq(accounting.getUnbondedKeysCount(0), 7);
     }
 
-    function test_WithReserve() public override assertInvariants {
-        _operator({ ongoing: 16, withdrawn: 0 });
-        _deposit({ bond: 33 ether });
-
-        (uint256 curr, uint256 req) = accounting.getBondSummary(0);
-        uint256 reservable = curr - req;
-        assertGt(reservable, 0);
-        _reserve({ amount: reservable });
-
-        assertEq(accounting.getUnbondedKeysCount(0), 0);
-    }
-
-    function test_WithCurveAndReserve() public override assertInvariants {
-        _operator({ ongoing: 16, withdrawn: 0 });
-        _curve(curveWithDiscount);
-        _deposit({ bond: 18 ether });
-
-        (uint256 curr, uint256 req) = accounting.getBondSummary(0);
-        uint256 reservable = curr - req;
-        _reserve({ amount: reservable });
-
-        assertEq(accounting.getUnbondedKeysCount(0), 0);
-    }
-
-    function test_WithLockedAndReserve() public override assertInvariants {
-        _operator({ ongoing: 16, withdrawn: 0 });
-        _lock({ amount: 1 ether });
-        _deposit({ bond: 34 ether });
-
-        (uint256 curr, uint256 req) = accounting.getBondSummary(0);
-        uint256 reservable = curr - req;
-        _reserve({ amount: reservable });
-
-        assertEq(accounting.getUnbondedKeysCount(0), 0);
-    }
-
-    function test_WithCurveAndLockedAndReserve()
-        public
-        override
-        assertInvariants
-    {
-        _operator({ ongoing: 16, withdrawn: 0 });
-        _curve(curveWithDiscount);
-        _lock({ amount: 1 ether });
-        _deposit({ bond: 19 ether });
-
-        (uint256 curr, uint256 req) = accounting.getBondSummary(0);
-        uint256 reservable = curr - req;
-        _reserve({ amount: reservable });
-
-        assertEq(accounting.getUnbondedKeysCount(0), 0);
-    }
-
     function test_WithOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 11.5 ether });
@@ -228,60 +175,6 @@ contract GetUnbondedKeysCountToEjectTest is BondStateBaseTest {
         _curve(curveWithDiscount);
         _lock({ amount: 1 ether });
         assertEq(accounting.getUnbondedKeysCountToEject(0), 6);
-    }
-
-    function test_WithReserve() public override assertInvariants {
-        _operator({ ongoing: 16, withdrawn: 0 });
-        _deposit({ bond: 33 ether });
-
-        (uint256 curr, uint256 req) = accounting.getBondSummary(0);
-        uint256 reservable = curr - req;
-        assertGt(reservable, 0);
-        _reserve({ amount: reservable });
-
-        assertEq(accounting.getUnbondedKeysCountToEject(0), 0);
-    }
-
-    function test_WithCurveAndReserve() public override assertInvariants {
-        _operator({ ongoing: 16, withdrawn: 0 });
-        _curve(curveWithDiscount);
-        _deposit({ bond: 18 ether });
-
-        (uint256 curr, uint256 req) = accounting.getBondSummary(0);
-        uint256 reservable = curr - req;
-        _reserve({ amount: reservable });
-
-        assertEq(accounting.getUnbondedKeysCountToEject(0), 0);
-    }
-
-    function test_WithLockedAndReserve() public override assertInvariants {
-        _operator({ ongoing: 16, withdrawn: 0 });
-        _lock({ amount: 1 ether });
-        _deposit({ bond: 34 ether });
-
-        (uint256 curr, uint256 req) = accounting.getBondSummary(0);
-        uint256 reservable = curr - req;
-        _reserve({ amount: reservable });
-
-        assertEq(accounting.getUnbondedKeysCountToEject(0), 0);
-    }
-
-    function test_WithCurveAndLockedAndReserve()
-        public
-        override
-        assertInvariants
-    {
-        _operator({ ongoing: 16, withdrawn: 0 });
-        _curve(curveWithDiscount);
-        _lock({ amount: 1 ether });
-        _deposit({ bond: 19 ether });
-
-        (uint256 curr, uint256 req) = accounting.getBondSummary(0);
-        uint256 reservable = curr - req;
-        assertGt(reservable, 0);
-        _reserve({ amount: reservable });
-
-        assertEq(accounting.getUnbondedKeysCountToEject(0), 0);
     }
 
     function test_WithOneWithdrawnValidator() public override assertInvariants {

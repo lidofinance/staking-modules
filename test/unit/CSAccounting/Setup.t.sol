@@ -14,8 +14,7 @@ contract ConstructorTest is BaseConstructorTest {
             address(stakingModule),
             address(feeDistributor),
             4 weeks,
-            365 days,
-            true
+            365 days
         );
         assertEq(address(accounting.MODULE()), address(stakingModule));
         assertEq(
@@ -34,8 +33,7 @@ contract ConstructorTest is BaseConstructorTest {
             address(stakingModule),
             address(feeDistributor),
             4 weeks,
-            365 days,
-            true
+            365 days
         );
 
         ICSBondCurve.BondCurveIntervalInput[]
@@ -50,7 +48,6 @@ contract ConstructorTest is BaseConstructorTest {
             curve,
             admin,
             8 weeks,
-            8 weeks,
             testChargePenaltyRecipient
         );
     }
@@ -62,8 +59,7 @@ contract ConstructorTest is BaseConstructorTest {
             address(0),
             address(feeDistributor),
             4 weeks,
-            365 days,
-            true
+            365 days
         );
     }
 
@@ -74,8 +70,7 @@ contract ConstructorTest is BaseConstructorTest {
             address(stakingModule),
             address(0),
             4 weeks,
-            365 days,
-            true
+            365 days
         );
     }
 
@@ -88,8 +83,7 @@ contract ConstructorTest is BaseConstructorTest {
             address(0),
             address(feeDistributor),
             4 weeks,
-            2 weeks,
-            true
+            2 weeks
         );
     }
 
@@ -102,8 +96,7 @@ contract ConstructorTest is BaseConstructorTest {
             address(0),
             address(feeDistributor),
             4 weeks,
-            uint256(type(uint64).max) + 1,
-            true
+            uint256(type(uint64).max) + 1
         );
     }
 
@@ -116,8 +109,7 @@ contract ConstructorTest is BaseConstructorTest {
             address(0),
             address(feeDistributor),
             0,
-            154 days,
-            true
+            154 days
         );
     }
 }
@@ -145,7 +137,6 @@ contract InitTest is BaseInitTest {
             curve,
             admin,
             8 weeks,
-            4 weeks,
             testChargePenaltyRecipient
         );
 
@@ -167,7 +158,6 @@ contract InitTest is BaseInitTest {
             curve,
             address(0),
             8 weeks,
-            4 weeks,
             testChargePenaltyRecipient
         );
     }
@@ -185,13 +175,13 @@ contract InitTest is BaseInitTest {
         vm.expectRevert(
             ICSAccounting.ZeroChargePenaltyRecipientAddress.selector
         );
-        accounting.initialize(curve, admin, 8 weeks, 4 weeks, address(0));
+        accounting.initialize(curve, admin, 8 weeks, address(0));
     }
 
     function test_finalizeUpgradeV3() public {
         _enableInitializers(address(accounting));
 
-        accounting.finalizeUpgradeV3(4 weeks);
+        accounting.finalizeUpgradeV3();
 
         assertEq(accounting.getInitializedVersion(), 3);
     }

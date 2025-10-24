@@ -7,7 +7,6 @@ import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgr
 import { CSBondCore } from "./abstract/CSBondCore.sol";
 import { CSBondCurve } from "./abstract/CSBondCurve.sol";
 import { CSBondLock } from "./abstract/CSBondLock.sol";
-import { BondReserve } from "./abstract/BondReserve.sol";
 import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
 
 import { PausableUntil } from "./lib/utils/PausableUntil.sol";
@@ -17,7 +16,6 @@ import { FeeSplits } from "./lib/FeeSplits.sol";
 import { IStakingModule } from "./interfaces/IStakingModule.sol";
 import { ICSModule, NodeOperatorManagementProperties } from "./interfaces/ICSModule.sol";
 import { ICSAccounting } from "./interfaces/ICSAccounting.sol";
-import { IBondReserve } from "./interfaces/IBondReserve.sol";
 import { ICSFeeDistributor } from "./interfaces/ICSFeeDistributor.sol";
 
 /// @author vgorkavenko
@@ -28,7 +26,6 @@ contract CSAccounting is
     CSBondCore,
     CSBondCurve,
     CSBondLock,
-    BondReserve,
     PausableUntil,
     AccessControlEnumerableUpgradeable,
     AssetRecoverer
@@ -43,7 +40,6 @@ contract CSAccounting is
 
     ICSModule public immutable MODULE;
     ICSFeeDistributor public immutable FEE_DISTRIBUTOR;
-    bool public immutable BOND_RESERVE_IS_ENABLED;
     /// @dev DEPRECATED
     /// @custom:oz-renamed-from feeDistributor
     ICSFeeDistributor internal _feeDistributorOld;
@@ -61,27 +57,17 @@ contract CSAccounting is
         _;
     }
 
-    modifier whenBondReserveIsEnabled() {
-        if (!BOND_RESERVE_IS_ENABLED) {
-            revert BondReserveFeatureDisabled();
-        }
-
-        _;
-    }
-
     /// @param lidoLocator Lido locator contract address
     /// @param module Community Staking Module contract address
     /// @param feeDistributor Fee Distributor contract address
     /// @param minBondLockPeriod Min time in seconds for the bondLock period
     /// @param maxBondLockPeriod Max time in seconds for the bondLock period
-    /// @param enableBondReserve Whether to enable bond reserve feature
     constructor(
         address lidoLocator,
         address module,
         address feeDistributor,
         uint256 minBondLockPeriod,
-        uint256 maxBondLockPeriod,
-        bool enableBondReserve
+        uint256 maxBondLockPeriod
     ) CSBondCore(lidoLocator) CSBondLock(minBondLockPeriod, maxBondLockPeriod) {
         if (module == address(0)) {
             revert ZeroModuleAddress();
@@ -92,7 +78,6 @@ contract CSAccounting is
 
         MODULE = ICSModule(module);
         FEE_DISTRIBUTOR = ICSFeeDistributor(feeDistributor);
-        BOND_RESERVE_IS_ENABLED = enableBondReserve;
 
         _disableInitializers();
     }
@@ -100,19 +85,16 @@ contract CSAccounting is
     /// @param bondCurve Initial bond curve
     /// @param admin Admin role member address
     /// @param bondLockPeriod Bond lock period in seconds
-    /// @param bondReserveMinPeriod Bond reserve minimum period in seconds
     /// @param _chargePenaltyRecipient Recipient of the charge penalty type
     function initialize(
         BondCurveIntervalInput[] calldata bondCurve,
         address admin,
         uint256 bondLockPeriod,
-        uint256 bondReserveMinPeriod,
         address _chargePenaltyRecipient
     ) external reinitializer(3) {
         __AccessControlEnumerable_init();
         __CSBondCurve_init(bondCurve);
         __CSBondLock_init(bondLockPeriod);
-        __BondReserve_init(bondReserveMinPeriod);
 
         if (admin == address(0)) {
             revert ZeroAdminAddress();
@@ -129,11 +111,7 @@ contract CSAccounting is
 
     /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing version 2 deployment.
     ///      If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
-    function finalizeUpgradeV3(
-        uint256 bondReserveMinPeriod
-    ) external reinitializer(3) {
-        __BondReserve_init(bondReserveMinPeriod);
-    }
+    function finalizeUpgradeV3() external reinitializer(3) {}
 
     /// @inheritdoc ICSAccounting
     function resume() external onlyRole(RESUME_ROLE) {
@@ -157,13 +135,6 @@ contract CSAccounting is
         uint256 period
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         CSBondLock._setBondLockPeriod(period);
-    }
-
-    /// @inheritdoc ICSAccounting
-    function setBondReserveMinPeriod(
-        uint256 period
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        BondReserve._setBondReserveMinPeriod(period);
     }
 
     /// @inheritdoc ICSAccounting
@@ -356,51 +327,6 @@ contract CSAccounting is
     }
 
     /// @inheritdoc ICSAccounting
-    function increaseBondReserve(
-        uint256 nodeOperatorId,
-        uint256 newAmount
-    ) external whenResumed whenBondReserveIsEnabled {
-        _checkAndGetEligibleNodeOperatorProperties(nodeOperatorId);
-
-        if (newAmount == 0) {
-            revert InvalidBondReserveAmount();
-        }
-
-        (uint256 current, uint256 required) = getBondSummary(nodeOperatorId);
-        uint256 reserve = BondReserve.getReservedBond(nodeOperatorId);
-        // NOTE: `required` is always >= `reserve` due to fact that `reserve` is a part of `required`
-        if (
-            reserve >= newAmount || current < (required - reserve) + newAmount
-        ) {
-            revert InvalidBondReserveAmount();
-        }
-        BondReserve._setBondReserve(nodeOperatorId, newAmount);
-    }
-
-    /// @inheritdoc ICSAccounting
-    function removeBondReserve(
-        uint256 nodeOperatorId
-    ) external whenResumed whenBondReserveIsEnabled {
-        // Allow for permissionless call if there are no active and depositable keys. In this case, the bond reserve is useless
-        if (MODULE.getNodeOperatorNonWithdrawnKeys(nodeOperatorId) > 0) {
-            _checkAndGetEligibleNodeOperatorProperties(nodeOperatorId);
-        }
-
-        IBondReserve.BondReserveInfo memory r = BondReserve.getBondReserveInfo(
-            nodeOperatorId
-        );
-        if (r.amount == 0) {
-            return;
-        }
-
-        if (!_canRemoveBondReserve(nodeOperatorId, r)) {
-            revert MinReserveTimeHasNotPassed();
-        }
-        BondReserve._setBondReserve(nodeOperatorId, 0);
-        MODULE.updateDepositableValidatorsCount(nodeOperatorId);
-    }
-
-    /// @inheritdoc ICSAccounting
     function lockBondETH(
         uint256 nodeOperatorId,
         uint256 amount
@@ -450,7 +376,6 @@ contract CSAccounting is
                 amount: notBurnedAmount,
                 until: INFINITE_BOND_LOCK_UNTIL
             });
-            _adjustBondReserve(nodeOperatorId);
             applied = true;
         }
     }
@@ -471,7 +396,6 @@ contract CSAccounting is
                 until: INFINITE_BOND_LOCK_UNTIL
             });
         }
-        _adjustBondReserve(nodeOperatorId);
     }
 
     /// @inheritdoc ICSAccounting
@@ -484,7 +408,6 @@ contract CSAccounting is
             amount,
             chargePenaltyRecipient
         );
-        _adjustBondReserve(nodeOperatorId);
     }
 
     /// @inheritdoc ICSAccounting
@@ -615,16 +538,6 @@ contract CSAccounting is
     }
 
     /// @inheritdoc ICSAccounting
-    function canRemoveBondReserve(
-        uint256 nodeOperatorId
-    ) external view whenBondReserveIsEnabled returns (bool) {
-        IBondReserve.BondReserveInfo memory r = BondReserve.getBondReserveInfo(
-            nodeOperatorId
-        );
-        return _canRemoveBondReserve(nodeOperatorId, r);
-    }
-
-    /// @inheritdoc ICSAccounting
     function getBondSummary(
         uint256 nodeOperatorId
     ) public view returns (uint256 current, uint256 required) {
@@ -734,29 +647,6 @@ contract CSAccounting is
         }
     }
 
-    function _adjustBondReserve(uint256 nodeOperatorId) internal {
-        if (!BOND_RESERVE_IS_ENABLED) {
-            return;
-        }
-        uint256 reserved = BondReserve.getReservedBond(nodeOperatorId);
-        if (reserved == 0) {
-            return;
-        }
-        uint256 current = CSBondCore.getBond(nodeOperatorId);
-        if (current < reserved) {
-            /*
-            CURRENT = EXCESS + REQUIRED_FOR_KEYS + RESERVE
-            TOTAL_REQUIRED = REQUIRED_FOR_KEYS + RESERVE + LOCK
-            EXCESS = max(CURRENT - TOTAL_REQUIRED, 0)
-            Shrinking flow: EXCESS -> REQUIRED_FOR_KEYS -> RESERVE
-            ---
-            There is an invariant that RESERVE can't be greater than CURRENT; RESERVE is part of CURRENT.
-            We need to follow this invariant and must shrink RESERVE last.
-        */
-            BondReserve._setBondReserve(nodeOperatorId, current);
-        }
-    }
-
     /// @dev Calculates claimable bond shares accounting for locked bond and withdrawn validators
     function _getClaimableBondShares(
         uint256 nodeOperatorId
@@ -788,9 +678,8 @@ contract CSAccounting is
         uint256 actualLockedBond = CSBondLock.getActualLockedBond(
             nodeOperatorId
         );
-        uint256 reserved = BondReserve.getReservedBond(nodeOperatorId);
 
-        return requiredBondForKeys + actualLockedBond + reserved;
+        return requiredBondForKeys + actualLockedBond;
     }
 
     function _getRequiredBondShares(
@@ -809,12 +698,6 @@ contract CSAccounting is
             nodeOperatorId
         );
         uint256 currentBond = CSBondCore.getBond(nodeOperatorId);
-        {
-            uint256 reservedBond = BondReserve.getReservedBond(nodeOperatorId);
-            // NOTE: `reservedBond` cannot exceed `currentBond` because it can be created
-            // only from the excess bond portion (current - required > 0).
-            currentBond -= reservedBond;
-        }
 
         // Optionally account for locked bond depending on the flag
         if (includeLockedBond) {
@@ -868,16 +751,6 @@ contract CSAccounting is
         if (no.managerAddress != msg.sender && no.rewardAddress != msg.sender) {
             revert SenderIsNotEligible();
         }
-    }
-
-    /// @dev Bond reserve can be removed if a sufficient time has passed or if the Node Operator has no active or depositable keys
-    function _canRemoveBondReserve(
-        uint256 nodeOperatorId,
-        IBondReserve.BondReserveInfo memory r
-    ) internal view returns (bool isRemovable) {
-        isRemovable =
-            block.timestamp >= uint256(r.removableAt) ||
-            MODULE.getNodeOperatorNonWithdrawnKeys(nodeOperatorId) == 0;
     }
 
     function _setChargePenaltyRecipient(

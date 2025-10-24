@@ -60,8 +60,6 @@ contract DeployHoodi is DeployBase {
         config.minBondLockPeriod = 1 days;
         config.maxBondLockPeriod = 365 days;
         config.bondLockPeriod = 8 weeks;
-        config.bondReserveMinPeriod = 4 weeks;
-        config.enableBondReserve = false;
         config
             .setResetBondCurveAddress = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
         config
