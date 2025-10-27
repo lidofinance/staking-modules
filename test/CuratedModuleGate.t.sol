@@ -247,6 +247,7 @@ contract CuratedModuleGateTest_createNodeOperator is CuratedModuleGateTestBase {
             address(data),
             abi.encodeWithSelector(
                 IOperatorsData.set.selector,
+                address(module),
                 0,
                 "Name",
                 "Description"

@@ -4,6 +4,7 @@ pragma solidity 0.8.24;
 
 contract OperatorsDataMock {
     function set(
+        address module,
         uint256 nodeOperatorId,
         string calldata name,
         string calldata description

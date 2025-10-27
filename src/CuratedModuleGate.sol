@@ -112,7 +112,7 @@ contract CuratedModuleGate is
         ACCOUNTING.setBondCurve(nodeOperatorId, curveId);
 
         // Persist metadata in separate storage
-        OPERATORS_DATA.set(nodeOperatorId, name, description);
+        OPERATORS_DATA.set(address(MODULE), nodeOperatorId, name, description);
     }
 
     /// @inheritdoc IMerkleGate
