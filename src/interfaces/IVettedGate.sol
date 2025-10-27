@@ -3,13 +3,12 @@
 
 pragma solidity 0.8.24;
 
+import { IMerkleGate } from "./IMerkleGate.sol";
 import { NodeOperatorManagementProperties } from "./ICSModule.sol";
 import { ICSAccounting } from "./ICSAccounting.sol";
 import { ICSModule } from "./ICSModule.sol";
 
-interface IVettedGate {
-    event TreeSet(bytes32 indexed treeRoot, string treeCid);
-    event Consumed(address indexed member);
+interface IVettedGate is IMerkleGate {
     event ReferrerConsumed(address indexed referrer, uint256 indexed season);
     event ReferralProgramSeasonStarted(
         uint256 indexed season,
@@ -23,10 +22,6 @@ interface IVettedGate {
         uint256 indexed referralNodeOperatorId
     );
 
-    error InvalidProof();
-    error AlreadyConsumed();
-    error InvalidTreeRoot();
-    error InvalidTreeCid();
     error InvalidCurveId();
     error ZeroModuleAddress();
     error ZeroAdminAddress();
@@ -43,8 +38,6 @@ interface IVettedGate {
 
     function RECOVERER_ROLE() external view returns (bytes32);
 
-    function SET_TREE_ROLE() external view returns (bytes32);
-
     function START_REFERRAL_SEASON_ROLE() external view returns (bytes32);
 
     function END_REFERRAL_SEASON_ROLE() external view returns (bytes32);
@@ -54,10 +47,6 @@ interface IVettedGate {
     function ACCOUNTING() external view returns (ICSAccounting);
 
     function curveId() external view returns (uint256);
-
-    function treeRoot() external view returns (bytes32);
-
-    function treeCid() external view returns (string memory);
 
     function isReferralProgramSeasonActive() external view returns (bool);
 
@@ -189,38 +178,10 @@ interface IVettedGate {
         bytes32[] calldata proof
     ) external;
 
-    /// @notice Check is the address is eligible to consume beneficial curve
-    /// @param member Address to check
-    /// @param proof Merkle proof of the beneficial curve eligibility
-    /// @return Boolean flag if the proof is valid or not
-    function verifyProof(
-        address member,
-        bytes32[] calldata proof
-    ) external view returns (bool);
-
-    /// @notice Check if the address has already consumed the curve
-    /// @param member Address to check
-    /// @return Consumed flag
-    function isConsumed(address member) external view returns (bool);
-
     /// @notice Check if the address has already consumed referral program bond curve
     /// @param referrer Address to check
     /// @return Consumed flag
     function isReferrerConsumed(address referrer) external view returns (bool);
-
-    /// @notice Get a hash of a leaf in the Merkle tree
-    /// @param member eligible member address
-    /// @return Hash of the leaf
-    /// @dev Double hash the leaf to prevent second preimage attacks
-    function hashLeaf(address member) external pure returns (bytes32);
-
-    /// @notice Set the root of the eligible members Merkle Tree
-    /// @param _treeRoot New root of the Merkle Tree
-    /// @param _treeCid New CID of the Merkle Tree
-    function setTreeParams(
-        bytes32 _treeRoot,
-        string calldata _treeCid
-    ) external;
 
     /// @notice Get the number of referrals for the given referrer in the current or last season
     /// @param referrer Referrer address
@@ -237,7 +198,4 @@ interface IVettedGate {
         address referrer,
         uint256 season
     ) external view returns (uint256);
-
-    /// @notice Returns the initialized version of the contract
-    function getInitializedVersion() external view returns (uint64);
 }

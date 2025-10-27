@@ -12,6 +12,7 @@ import { PausableUntil } from "./lib/utils/PausableUntil.sol";
 
 import { ICSAccounting } from "./interfaces/ICSAccounting.sol";
 import { ICSModule, NodeOperatorManagementProperties } from "./interfaces/ICSModule.sol";
+import { IMerkleGate } from "./interfaces/IMerkleGate.sol";
 import { IVettedGate } from "./interfaces/IVettedGate.sol";
 
 contract VettedGate is
@@ -288,7 +289,7 @@ contract VettedGate is
         ACCOUNTING.setBondCurve(nodeOperatorId, referralCurveId);
     }
 
-    /// @inheritdoc IVettedGate
+    /// @inheritdoc IMerkleGate
     function setTreeParams(
         bytes32 _treeRoot,
         string calldata _treeCid
@@ -311,7 +312,7 @@ contract VettedGate is
         return _referralCounts[_seasonedAddress(referrer, season)];
     }
 
-    /// @inheritdoc IVettedGate
+    /// @inheritdoc IMerkleGate
     function getInitializedVersion() external view returns (uint64) {
         return _getInitializedVersion();
     }
@@ -321,12 +322,12 @@ contract VettedGate is
         return _consumedReferrers[_seasonedAddress(referrer)];
     }
 
-    /// @inheritdoc IVettedGate
+    /// @inheritdoc IMerkleGate
     function isConsumed(address member) public view returns (bool) {
         return _consumedAddresses[member];
     }
 
-    /// @inheritdoc IVettedGate
+    /// @inheritdoc IMerkleGate
     function verifyProof(
         address member,
         bytes32[] calldata proof
@@ -334,7 +335,7 @@ contract VettedGate is
         return MerkleProof.verifyCalldata(proof, treeRoot, hashLeaf(member));
     }
 
-    /// @inheritdoc IVettedGate
+    /// @inheritdoc IMerkleGate
     function hashLeaf(address member) public pure returns (bytes32) {
         return keccak256(bytes.concat(keccak256(abi.encode(member))));
     }

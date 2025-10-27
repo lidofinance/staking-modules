@@ -10,6 +10,7 @@ import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
 import { PausableUntil } from "./lib/utils/PausableUntil.sol";
 
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
+import { IMerkleGate } from "./interfaces/IMerkleGate.sol";
 import { ICuratedModuleGate } from "./interfaces/ICuratedModuleGate.sol";
 import { NodeOperatorManagementProperties } from "./interfaces/ICSModule.sol";
 import { IOperatorsData } from "./interfaces/IOperatorsData.sol";
@@ -37,10 +38,10 @@ contract CuratedModuleGate is
     /// @inheritdoc ICuratedModuleGate
     IOperatorsData public immutable OPERATORS_DATA;
 
-    /// @inheritdoc ICuratedModuleGate
+    /// @inheritdoc IMerkleGate
     bytes32 public treeRoot;
 
-    /// @inheritdoc ICuratedModuleGate
+    /// @inheritdoc IMerkleGate
     string public treeCid;
 
     /// @inheritdoc ICuratedModuleGate
@@ -114,7 +115,7 @@ contract CuratedModuleGate is
         OPERATORS_DATA.set(nodeOperatorId, name, description);
     }
 
-    /// @inheritdoc ICuratedModuleGate
+    /// @inheritdoc IMerkleGate
     function setTreeParams(
         bytes32 _treeRoot,
         string calldata _treeCid
@@ -122,17 +123,17 @@ contract CuratedModuleGate is
         _setTreeParams(_treeRoot, _treeCid);
     }
 
-    /// @inheritdoc ICuratedModuleGate
+    /// @inheritdoc IMerkleGate
     function getInitializedVersion() external view returns (uint64) {
         return _getInitializedVersion();
     }
 
-    /// @inheritdoc ICuratedModuleGate
+    /// @inheritdoc IMerkleGate
     function isConsumed(address member) public view returns (bool) {
         return _consumedAddresses[member];
     }
 
-    /// @inheritdoc ICuratedModuleGate
+    /// @inheritdoc IMerkleGate
     function verifyProof(
         address member,
         bytes32[] calldata proof
@@ -140,7 +141,7 @@ contract CuratedModuleGate is
         return MerkleProof.verifyCalldata(proof, treeRoot, hashLeaf(member));
     }
 
-    /// @inheritdoc ICuratedModuleGate
+    /// @inheritdoc IMerkleGate
     function hashLeaf(address member) public pure returns (bytes32) {
         return keccak256(bytes.concat(keccak256(abi.encode(member))));
     }
