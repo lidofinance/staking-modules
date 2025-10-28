@@ -340,7 +340,7 @@ contract CSAccounting is
         uint256 nodeOperatorId,
         uint256 amount
     ) external onlyModule {
-        CSBondLock._reduceAmount(nodeOperatorId, amount);
+        CSBondLock._unlock(nodeOperatorId, amount);
     }
 
     /// @inheritdoc ICSAccounting
@@ -354,7 +354,7 @@ contract CSAccounting is
             revert ElRewardsVaultReceiveFailed();
         }
 
-        CSBondLock._reduceAmount(nodeOperatorId, msg.value);
+        CSBondLock._unlock(nodeOperatorId, msg.value);
         emit BondLockCompensated(nodeOperatorId, msg.value);
     }
 

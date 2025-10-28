@@ -106,8 +106,8 @@ abstract contract CSBondLock is ICSBondLock, Initializable {
         });
     }
 
-    /// @dev Reduce the locked bond amount for the given Node Operator without changing the lock period
-    function _reduceAmount(uint256 nodeOperatorId, uint256 amount) internal {
+    /// @dev Unlock the locked bond amount for the given Node Operator without changing the lock period
+    function _unlock(uint256 nodeOperatorId, uint256 amount) internal {
         if (amount == 0) {
             revert InvalidBondLockAmount();
         }
