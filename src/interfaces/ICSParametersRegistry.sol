@@ -306,7 +306,7 @@ interface ICSParametersRegistry {
 
     /// @notice Set default value for QueueConfig. Default value is used if a specific value is not set for the curveId.
     /// @param priority Queue priority.
-    /// @param maxDeposits Maximum number of the fist deposits a Node Operator can get via the priority queue.
+    /// @param maxDeposits Maximum number of the first deposits a Node Operator can get via the priority queue.
     ///                    Ex. with `maxDeposits = 10` the Node Operator сan get keys added to the priority queue
     ///                    until the Node Operator has totalDepositedKeys + enqueued >= 10.
     function setDefaultQueueConfig(
@@ -317,7 +317,7 @@ interface ICSParametersRegistry {
     /// @notice Sets the provided config to the given curve.
     /// @param curveId Curve Id to set the config.
     /// @param priority Queue priority.
-    /// @param maxDeposits Maximum number of the fist deposits a Node Operator can get via the priority queue.
+    /// @param maxDeposits Maximum number of the first deposits a Node Operator can get via the priority queue.
     ///                    Ex. with `maxDeposits = 10` the Node Operator сan get keys added to the priority queue
     ///                    until the Node Operator has totalDepositedKeys + enqueued >= 10.
     function setQueueConfig(
@@ -333,7 +333,7 @@ interface ICSParametersRegistry {
     /// @notice Get the queue config for the given curve.
     /// @param curveId Curve Id to get the queue config for.
     /// @return priority Queue priority.
-    /// @param maxDeposits Maximum number of the fist deposits a Node Operator can get via the priority queue.
+    /// @param maxDeposits Maximum number of the first deposits a Node Operator can get via the priority queue.
     ///                    Ex. with `maxDeposits = 10` the Node Operator сan get keys added to the priority queue
     ///                    until the Node Operator has totalDepositedKeys + enqueued >= 10.
     function getQueueConfig(
