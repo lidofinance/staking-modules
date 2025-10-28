@@ -30,7 +30,7 @@ import { ICSBondCurve } from "../interfaces/ICSBondCurve.sol";
 abstract contract CSBondCurve is ICSBondCurve, Initializable {
     /// @custom:storage-location erc7201:CSBondCurve
     struct CSBondCurveStorage {
-        /// @dev DEPRECATED. DO NOT USE. Preserves storage layout.
+        /// @dev DEPRECATED. DO NOT USE. Preserves storage layout. Previous structure occupied 3 slots per item.
         bytes32[] legacyBondCurves;
         /// @dev Mapping of Node Operator id to bond curve id
         mapping(uint256 nodeOperatorId => uint256 bondCurveId) operatorBondCurveId;
