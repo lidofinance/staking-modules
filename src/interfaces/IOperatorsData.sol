@@ -30,9 +30,11 @@ interface IOperatorsData {
 
     error ZeroAdminAddress();
     error ZeroModuleAddress();
+    error ZeroStakingRouterAddress();
     error NodeOperatorDoesNotExist();
     error NotOwner();
     error OwnerEditsRestricted();
+    error UnknownModule();
 
     /// @return Role id allowed to set metadata
     function SETTER_ROLE() external view returns (bytes32);

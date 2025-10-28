@@ -10,9 +10,11 @@ import { CSMMock } from "./helpers/mocks/CSMMock.sol";
 import { OperatorsData } from "../src/OperatorsData.sol";
 import { IOperatorsData, OperatorInfo } from "../src/interfaces/IOperatorsData.sol";
 import { NodeOperatorManagementProperties } from "../src/interfaces/ICSModule.sol";
+import { StakingRouterMock } from "./helpers/mocks/StakingRouterMock.sol";
 
 contract OperatorsDataTestBase is Test, Utilities {
     CSMMock public module;
+    StakingRouterMock public stakingRouter;
     OperatorsData public data;
 
     address public admin;
@@ -36,8 +38,12 @@ contract OperatorsDataTestBase is Test, Utilities {
                 extendedManagerPermissions: true
             })
         );
+        stakingRouter = new StakingRouterMock();
+        address[] memory modules = new address[](1);
+        modules[0] = address(module);
+        stakingRouter.setModules(modules);
 
-        data = new OperatorsData(admin);
+        data = new OperatorsData(admin, address(stakingRouter));
         vm.startPrank(admin);
         data.grantRole(data.SETTER_ROLE(), setter);
         vm.stopPrank();
@@ -46,13 +52,18 @@ contract OperatorsDataTestBase is Test, Utilities {
 
 contract OperatorsDataTest_constructor is OperatorsDataTestBase {
     function test_constructor_HappyPath() public {
-        OperatorsData d = new OperatorsData(admin);
+        OperatorsData d = new OperatorsData(admin, address(stakingRouter));
         assertEq(d.hasRole(d.DEFAULT_ADMIN_ROLE(), admin), true);
     }
 
     function test_constructor_RevertWhen_ZeroAdmin() public {
         vm.expectRevert(IOperatorsData.ZeroAdminAddress.selector);
-        new OperatorsData(address(0));
+        new OperatorsData(address(0), address(stakingRouter));
+    }
+
+    function test_constructor_RevertWhen_ZeroStakingRouter() public {
+        vm.expectRevert(IOperatorsData.ZeroStakingRouterAddress.selector);
+        new OperatorsData(admin, address(0));
     }
 }
 
@@ -94,6 +105,13 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
         vm.prank(setter);
         vm.expectRevert(IOperatorsData.NodeOperatorDoesNotExist.selector);
         data.set(address(module), 10, "X", "Y");
+    }
+
+    function test_set_RevertWhen_UnknownModule() public {
+        CSMMock unknown = new CSMMock();
+        vm.prank(setter);
+        vm.expectRevert(IOperatorsData.UnknownModule.selector);
+        data.set(address(unknown), 1, "Alpha", "Desc");
     }
 
     function test_set_RevertWhen_ZeroModule() public {
@@ -155,12 +173,31 @@ contract OperatorsDataTest_setByOwner is OperatorsDataTestBase {
         vm.expectRevert(IOperatorsData.ZeroModuleAddress.selector);
         data.setByOwner(address(0), 2, "Name", "Desc");
     }
+
+    function test_setByOwner_RevertWhen_UnknownModule() public {
+        CSMMock unknown = new CSMMock();
+        vm.prank(nodeOperator);
+        vm.expectRevert(IOperatorsData.UnknownModule.selector);
+        data.setByOwner(address(unknown), 2, "Name", "Desc");
+    }
 }
 
 contract OperatorsDataTest_get is OperatorsDataTestBase {
     function test_get_RevertWhen_ZeroModule() public {
         vm.expectRevert(IOperatorsData.ZeroModuleAddress.selector);
         data.get(address(0), 1);
+    }
+
+    function test_get_RevertWhen_UnknownModule() public {
+        CSMMock unknown = new CSMMock();
+        vm.expectRevert(IOperatorsData.UnknownModule.selector);
+        data.get(address(unknown), 1);
+    }
+
+    function test_get_HappyPath_NoDataYet() public {
+        OperatorInfo memory info = data.get(address(module), 1);
+        assertEq(info.name, "");
+        assertEq(info.description, "");
     }
 }
 
@@ -195,8 +232,21 @@ contract OperatorsDataTest_restrictions is OperatorsDataTestBase {
         data.setOwnerRestriction(address(0), 1, true);
     }
 
+    function test_setOwnerRestriction_RevertWhen_UnknownModule() public {
+        CSMMock unknown = new CSMMock();
+        vm.prank(setter);
+        vm.expectRevert(IOperatorsData.UnknownModule.selector);
+        data.setOwnerRestriction(address(unknown), 1, true);
+    }
+
     function test_isOwnerRestricted_RevertWhen_ZeroModule() public {
         vm.expectRevert(IOperatorsData.ZeroModuleAddress.selector);
         data.isOwnerRestricted(address(0), 1);
+    }
+
+    function test_isOwnerRestricted_RevertWhen_UnknownModule() public {
+        CSMMock unknown = new CSMMock();
+        vm.expectRevert(IOperatorsData.UnknownModule.selector);
+        data.isOwnerRestricted(address(unknown), 1);
     }
 }

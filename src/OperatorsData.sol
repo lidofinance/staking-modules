@@ -6,6 +6,7 @@ pragma solidity 0.8.24;
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IOperatorsData, OperatorInfo } from "./interfaces/IOperatorsData.sol";
 import { INodeOperatorOwner } from "./interfaces/INodeOperatorOwner.sol";
+import { IStakingRouter } from "./interfaces/IStakingRouter.sol";
 
 /// @notice Operators metadata storage
 contract OperatorsData is AccessControl, IOperatorsData {
@@ -15,9 +16,14 @@ contract OperatorsData is AccessControl, IOperatorsData {
         internal _operators;
     mapping(address module => mapping(uint256 id => bool))
         internal _ownerRestrictions;
+    mapping(address module => bool) internal _knownModules;
 
-    constructor(address admin) {
+    IStakingRouter public immutable STAKING_ROUTER;
+
+    constructor(address admin, address stakingRouter) {
         if (admin == address(0)) revert ZeroAdminAddress();
+        if (stakingRouter == address(0)) revert ZeroStakingRouterAddress();
+        STAKING_ROUTER = IStakingRouter(payable(stakingRouter));
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
@@ -38,7 +44,7 @@ contract OperatorsData is AccessControl, IOperatorsData {
         string calldata name,
         string calldata description
     ) external {
-        if (module == address(0)) revert ZeroModuleAddress();
+        _ensureKnownModule(module);
         address owner = INodeOperatorOwner(module).getNodeOperatorOwner(
             nodeOperatorId
         );
@@ -54,7 +60,7 @@ contract OperatorsData is AccessControl, IOperatorsData {
         address module,
         uint256 nodeOperatorId
     ) external view returns (OperatorInfo memory info) {
-        if (module == address(0)) revert ZeroModuleAddress();
+        _checkModule(module);
         return _operators[module][nodeOperatorId];
     }
 
@@ -64,6 +70,7 @@ contract OperatorsData is AccessControl, IOperatorsData {
         uint256 nodeOperatorId,
         bool restricted
     ) external onlyRole(SETTER_ROLE) {
+        _ensureKnownModule(module);
         _setRestriction(module, nodeOperatorId, restricted);
     }
 
@@ -72,7 +79,7 @@ contract OperatorsData is AccessControl, IOperatorsData {
         address module,
         uint256 nodeOperatorId
     ) external view returns (bool) {
-        if (module == address(0)) revert ZeroModuleAddress();
+        _checkModule(module);
         return _ownerRestrictions[module][nodeOperatorId];
     }
 
@@ -82,6 +89,7 @@ contract OperatorsData is AccessControl, IOperatorsData {
         string calldata name,
         string calldata description
     ) internal {
+        _ensureKnownModule(module);
         if (!_exists(module, nodeOperatorId)) revert NodeOperatorDoesNotExist();
         _set(module, nodeOperatorId, name, description);
     }
@@ -92,7 +100,6 @@ contract OperatorsData is AccessControl, IOperatorsData {
         string calldata name,
         string calldata description
     ) internal {
-        if (module == address(0)) revert ZeroModuleAddress();
         OperatorInfo storage info = _operators[module][nodeOperatorId];
         info.name = name;
         info.description = description;
@@ -116,5 +123,30 @@ contract OperatorsData is AccessControl, IOperatorsData {
         if (!_exists(module, nodeOperatorId)) revert NodeOperatorDoesNotExist();
         _ownerRestrictions[module][nodeOperatorId] = restricted;
         emit OwnerRestrictionUpdated(module, nodeOperatorId, restricted);
+    }
+
+    function _ensureKnownModule(address module) internal {
+        _checkModule(module);
+        if (!_knownModules[module]) {
+            _knownModules[module] = true;
+        }
+    }
+
+    function _checkModule(address module) internal view {
+        if (module == address(0)) revert ZeroModuleAddress();
+        if (_knownModules[module]) return;
+        if (!_moduleExists(module)) revert UnknownModule();
+    }
+
+    function _moduleExists(address module) internal view returns (bool) {
+        IStakingRouter.StakingModule[] memory modules = STAKING_ROUTER
+            .getStakingModules();
+        uint256 length = modules.length;
+        for (uint256 i = 0; i < length; ++i) {
+            if (modules[i].stakingModuleAddress == module) {
+                return true;
+            }
+        }
+        return false;
     }
 }
