@@ -124,6 +124,11 @@ contract CSEjector is
                 nodeOperatorId: nodeOperatorId,
                 pubkey: pubkey
             });
+            emit VoluntaryEjectionRequested({
+                nodeOperatorId: nodeOperatorId,
+                pubkey: pubkey,
+                refundRecipient: refundRecipient
+            });
         }
 
         // @dev This call might revert if the limits are exceeded on the protocol side.
@@ -179,6 +184,11 @@ contract CSEjector is
                 nodeOperatorId: nodeOperatorId,
                 pubkey: pubkey
             });
+            emit VoluntaryEjectionRequested({
+                nodeOperatorId: nodeOperatorId,
+                pubkey: pubkey,
+                refundRecipient: refundRecipient
+            });
         }
 
         // @dev This call might revert if the limits are exceeded on the protocol side.
@@ -222,6 +232,11 @@ contract CSEjector is
             stakingModuleId: STAKING_MODULE_ID,
             nodeOperatorId: nodeOperatorId,
             pubkey: pubkey
+        });
+        emit BadPerformerEjectionRequested({
+            nodeOperatorId: nodeOperatorId,
+            pubkey: pubkey,
+            refundRecipient: refundRecipient
         });
 
         // @dev This call might revert if the limits are exceeded on the protocol side.
