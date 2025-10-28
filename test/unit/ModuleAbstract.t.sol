@@ -7569,22 +7569,33 @@ abstract contract ModuleStakingRouterAccessControl is ModuleFixtures {
         module.onExitedAndStuckValidatorsCountsUpdated();
     }
 
-    function test_stakingRouterRole_onWithdrawalCredentialsChanged() public {
+    function test_stakingRouterRole_onWithdrawalCredentialsChanged_noDepositable()
+        public
+    {
         bytes32 role = module.STAKING_ROUTER_ROLE();
         vm.prank(admin);
         module.grantRole(role, actor);
 
-        uint256 nonceBefore = module.getNonce();
         vm.prank(actor);
         module.onWithdrawalCredentialsChanged();
-        assertEq(
-            module.getNonce(),
-            nonceBefore + 1,
-            "Module nonce should increment by 1"
-        );
     }
 
-    function test_stakingRouterRole_onWithdrawalCredentialsChanged_revert()
+    function test_stakingRouterRole_onWithdrawalCredentialsChanged_withDepositable()
+        public
+    {
+        uint256 noId = createNodeOperator();
+        bytes32 role = module.STAKING_ROUTER_ROLE();
+        vm.prank(admin);
+        module.grantRole(role, actor);
+
+        vm.expectRevert(
+            ICSModule.DepositQueueHasUnsupportedWithdrawalCredentials.selector
+        );
+        vm.prank(actor);
+        module.onWithdrawalCredentialsChanged();
+    }
+
+    function test_stakingRouterRole_onWithdrawalCredentialsChanged_RoleRevert()
         public
     {
         bytes32 role = module.STAKING_ROUTER_ROLE();

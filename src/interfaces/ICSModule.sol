@@ -88,6 +88,8 @@ interface ICSModule is
     error ZeroSenderAddress();
     error ZeroParametersRegistryAddress();
 
+    error DepositQueueHasUnsupportedWithdrawalCredentials();
+
     event NodeOperatorAdded(
         uint256 indexed nodeOperatorId,
         address indexed managerAddress,
