@@ -151,6 +151,10 @@ abstract contract CSBondLock is ICSBondLock, Initializable {
         if (period < MIN_BOND_LOCK_PERIOD || period > MAX_BOND_LOCK_PERIOD) {
             revert InvalidBondLockPeriod();
         }
+        uint256 currentPeriod = _getCSBondLockStorage().bondLockPeriod;
+        if (currentPeriod == period) {
+            return;
+        }
         _getCSBondLockStorage().bondLockPeriod = period;
         emit BondLockPeriodChanged(period);
     }

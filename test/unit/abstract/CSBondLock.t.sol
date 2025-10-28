@@ -59,6 +59,20 @@ contract CSBondLockTest is Test {
         assertEq(_period, period);
     }
 
+    function test_setBondLockPeriod_samePeriodNoEvent() public {
+        uint256 period = bondLock.getBondLockPeriod();
+
+        vm.recordLogs();
+
+        bondLock.setBondLockPeriod(period);
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        assertEq(entries.length, 0);
+
+        uint256 _period = bondLock.getBondLockPeriod();
+        assertEq(_period, period);
+    }
+
     function test_setBondLockPeriod_RevertWhen_LessThanMin() public {
         uint256 min = bondLock.MIN_BOND_LOCK_PERIOD();
         vm.expectRevert(ICSBondLock.InvalidBondLockPeriod.selector);
