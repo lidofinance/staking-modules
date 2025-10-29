@@ -388,6 +388,7 @@ contract CSModule is
         STETH.transferShares(FEE_DISTRIBUTOR, totalShares);
     }
 
+    /// TODO: Figure out if we can remove the body of this function to save bytecode
     /// @inheritdoc IStakingModule
     function updateExitedValidatorsCount(
         bytes calldata nodeOperatorIds,
@@ -439,6 +440,7 @@ contract CSModule is
         // Nothing to do, rewards are distributed by a performance oracle.
     }
 
+    /// TODO: Figure out if we can remove the body of this function to save bytecode
     /// @inheritdoc IStakingModule
     function unsafeUpdateValidatorsCount(
         uint256 nodeOperatorId,
@@ -513,6 +515,7 @@ contract CSModule is
         _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
 
+        // TODO: consider moving to a helper function
         if (startIndex < no.totalDepositedKeys) {
             revert SigningKeysInvalidOffset();
         }
@@ -570,6 +573,7 @@ contract CSModule is
         });
     }
 
+    /// TODO: Consider moving to the external library to save bytecode
     /// @inheritdoc ICSModule
     function reportELRewardsStealingPenalty(
         uint256 nodeOperatorId,
@@ -599,6 +603,7 @@ contract CSModule is
         });
     }
 
+    /// TODO: Consider moving to the external library to save bytecode
     /// @inheritdoc ICSModule
     function cancelELRewardsStealingPenalty(
         uint256 nodeOperatorId,
@@ -616,6 +621,7 @@ contract CSModule is
         });
     }
 
+    /// TODO: Consider moving to the external library to save bytecode
     /// @inheritdoc ICSModule
     function settleELRewardsStealingPenalty(
         uint256[] calldata nodeOperatorIds,
@@ -647,6 +653,7 @@ contract CSModule is
         }
     }
 
+    /// TODO: Consider moving to the external library to save bytecode
     /// @inheritdoc ICSModule
     function compensateELRewardsStealingPenalty(
         uint256 nodeOperatorId
@@ -672,6 +679,7 @@ contract CSModule is
     ) external onlyRole(VERIFIER_ROLE) {
         _onlyExistingNodeOperator(nodeOperatorId);
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
+        // TODO: consider moving to a helper function
         if (keyIndex >= no.totalDepositedKeys) {
             revert SigningKeysInvalidOffset();
         }
@@ -686,6 +694,7 @@ contract CSModule is
         emit ValidatorSlashingReported(nodeOperatorId, keyIndex, pubkey);
     }
 
+    /// TODO: Consider moving to the external library to save bytecode
     /// @inheritdoc ICSModule
     function submitWithdrawals(
         ValidatorWithdrawalInfo[] calldata withdrawalsInfo
@@ -706,6 +715,7 @@ contract CSModule is
                 withdrawalInfo.nodeOperatorId
             ];
 
+            // TODO: consider moving to a helper function
             if (withdrawalInfo.keyIndex >= no.totalDepositedKeys) {
                 revert SigningKeysInvalidOffset();
             }
@@ -1310,6 +1320,7 @@ contract CSModule is
         return nodeOperatorId < _nodeOperatorsCount;
     }
 
+    /// TODO: Figure out if we can simplify this method by returning sequential IDs only.
     /// @inheritdoc IStakingModule
     function getNodeOperatorIds(
         uint256 offset,
@@ -1357,6 +1368,7 @@ contract CSModule is
             );
     }
 
+    /// TODO: Make this internal
     /// @dev This function is used to get the accounting contract from immutables to save bytecode and for backwards compatibility
     function accounting() public view returns (ICSAccounting) {
         return ACCOUNTING;
@@ -1432,6 +1444,7 @@ contract CSModule is
         _incrementModuleNonce();
     }
 
+    /// TODO: Figure out if we can remove this method
     /// @dev Update exited validators count for a single Node Operator
     /// @dev Allows decrease the count for unsafe updates
     function _updateExitedValidatorsCount(
