@@ -19,17 +19,22 @@ contract CSParametersRegistry is
 {
     using SafeCast for uint256;
 
+    bytes32 public constant NON_CRITICAL_PARAMETERS_MANAGER_ROLE =
+        keccak256("NON_CRITICAL_PARAMETERS_MANAGER_ROLE");
+
     /// @dev Maximal value for basis points (BP)
     ///      1 BP = 0.01%
     uint256 internal constant MAX_BP = 10000;
 
     /// @dev QUEUE_LOWEST_PRIORITY identifies the range of available priorities: [0; QUEUE_LOWEST_PRIORITY].
+    ///      Unused in CuratedModule.sol
     uint256 public immutable QUEUE_LOWEST_PRIORITY;
 
-    ////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
     // State variables below
-    ////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
 
+    /// @dev Key removal charge is not used in Curated Module
     uint256 public defaultKeyRemovalCharge;
     mapping(uint256 curveId => MarkedUint248) internal _keyRemovalCharges;
 
@@ -40,6 +45,7 @@ contract CSParametersRegistry is
     uint256 public defaultKeysLimit;
     mapping(uint256 curveId => MarkedUint248) internal _keysLimits;
 
+    /// @dev Queue config is not used in Curated Module
     QueueConfig public defaultQueueConfig;
     mapping(uint256 curveId => QueueConfig) internal _queueConfigs;
 
@@ -69,7 +75,7 @@ contract CSParametersRegistry is
     mapping(uint256 => uint256) internal _allowedExitDelay;
 
     uint256 public defaultExitDelayFee;
-    mapping(uint256 => MarkedUint248) internal _exitDelayPenalties;
+    mapping(uint256 => MarkedUint248) internal _exitDelayFees;
 
     uint256 public defaultMaxWithdrawalRequestFee;
     mapping(uint256 => MarkedUint248) internal _maxWithdrawalRequestFees;
@@ -93,19 +99,22 @@ contract CSParametersRegistry is
             revert ZeroAdminAddress();
         }
 
-        _setDefaultKeyRemovalCharge(data.keyRemovalCharge);
+        _setDefaultKeyRemovalCharge(data.defaultKeyRemovalCharge);
         _setDefaultElRewardsStealingAdditionalFine(
-            data.elRewardsStealingAdditionalFine
+            data.defaultElRewardsStealingAdditionalFine
         );
-        _setDefaultKeysLimit(data.keysLimit);
-        _setDefaultRewardShare(data.rewardShare);
-        _setDefaultPerformanceLeeway(data.performanceLeeway);
-        _setDefaultStrikesParams(data.strikesLifetime, data.strikesThreshold);
-        _setDefaultBadPerformancePenalty(data.badPerformancePenalty);
+        _setDefaultKeysLimit(data.defaultKeysLimit);
+        _setDefaultRewardShare(data.defaultRewardShare);
+        _setDefaultPerformanceLeeway(data.defaultPerformanceLeeway);
+        _setDefaultStrikesParams(
+            data.defaultStrikesLifetime,
+            data.defaultStrikesThreshold
+        );
+        _setDefaultBadPerformancePenalty(data.defaultBadPerformancePenalty);
         _setDefaultPerformanceCoefficients(
-            data.attestationsWeight,
-            data.blocksWeight,
-            data.syncWeight
+            data.defaultAttestationsWeight,
+            data.defaultBlocksWeight,
+            data.defaultSyncWeight
         );
         _setDefaultQueueConfig(
             data.defaultQueuePriority,
@@ -120,25 +129,37 @@ contract CSParametersRegistry is
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
+    ////////////////////////////////////////////////////////////////////////////////
+    // Setters for default parameters
+    ////////////////////////////////////////////////////////////////////////////////
+
     /// @inheritdoc ICSParametersRegistry
     function setDefaultKeyRemovalCharge(
         uint256 keyRemovalCharge
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) external onlyRole(NON_CRITICAL_PARAMETERS_MANAGER_ROLE) {
         _setDefaultKeyRemovalCharge(keyRemovalCharge);
     }
 
     /// @inheritdoc ICSParametersRegistry
     function setDefaultElRewardsStealingAdditionalFine(
         uint256 fine
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) external onlyRole(NON_CRITICAL_PARAMETERS_MANAGER_ROLE) {
         _setDefaultElRewardsStealingAdditionalFine(fine);
     }
 
     /// @inheritdoc ICSParametersRegistry
     function setDefaultKeysLimit(
         uint256 limit
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) external onlyRole(NON_CRITICAL_PARAMETERS_MANAGER_ROLE) {
         _setDefaultKeysLimit(limit);
+    }
+
+    /// @inheritdoc ICSParametersRegistry
+    function setDefaultQueueConfig(
+        uint256 priority,
+        uint256 maxDeposits
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setDefaultQueueConfig(priority, maxDeposits);
     }
 
     /// @inheritdoc ICSParametersRegistry
@@ -184,14 +205,6 @@ contract CSParametersRegistry is
     }
 
     /// @inheritdoc ICSParametersRegistry
-    function setDefaultQueueConfig(
-        uint256 priority,
-        uint256 maxDeposits
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setDefaultQueueConfig(priority, maxDeposits);
-    }
-
-    /// @inheritdoc ICSParametersRegistry
     function setDefaultAllowedExitDelay(
         uint256 delay
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -212,11 +225,15 @@ contract CSParametersRegistry is
         _setDefaultMaxWithdrawalRequestFee(fee);
     }
 
+    ////////////////////////////////////////////////////////////////////////////////
+    // Setters for per-curve parameters
+    ////////////////////////////////////////////////////////////////////////////////
+
     /// @inheritdoc ICSParametersRegistry
     function setKeyRemovalCharge(
         uint256 curveId,
         uint256 keyRemovalCharge
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) external onlyRole(NON_CRITICAL_PARAMETERS_MANAGER_ROLE) {
         _keyRemovalCharges[curveId] = MarkedUint248(
             keyRemovalCharge.toUint248(),
             true
@@ -225,18 +242,10 @@ contract CSParametersRegistry is
     }
 
     /// @inheritdoc ICSParametersRegistry
-    function unsetKeyRemovalCharge(
-        uint256 curveId
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        delete _keyRemovalCharges[curveId];
-        emit KeyRemovalChargeUnset(curveId);
-    }
-
-    /// @inheritdoc ICSParametersRegistry
     function setElRewardsStealingAdditionalFine(
         uint256 curveId,
         uint256 fine
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) external onlyRole(NON_CRITICAL_PARAMETERS_MANAGER_ROLE) {
         _elRewardsStealingAdditionalFines[curveId] = MarkedUint248(
             fine.toUint248(),
             true
@@ -245,28 +254,26 @@ contract CSParametersRegistry is
     }
 
     /// @inheritdoc ICSParametersRegistry
-    function unsetElRewardsStealingAdditionalFine(
-        uint256 curveId
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        delete _elRewardsStealingAdditionalFines[curveId];
-        emit ElRewardsStealingAdditionalFineUnset(curveId);
-    }
-
-    /// @inheritdoc ICSParametersRegistry
     function setKeysLimit(
         uint256 curveId,
         uint256 limit
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) external onlyRole(NON_CRITICAL_PARAMETERS_MANAGER_ROLE) {
         _keysLimits[curveId] = MarkedUint248(limit.toUint248(), true);
         emit KeysLimitSet(curveId, limit);
     }
 
     /// @inheritdoc ICSParametersRegistry
-    function unsetKeysLimit(
-        uint256 curveId
+    function setQueueConfig(
+        uint256 curveId,
+        uint256 priority,
+        uint256 maxDeposits
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        delete _keysLimits[curveId];
-        emit KeysLimitUnset(curveId);
+        _validateQueueConfig(priority, maxDeposits);
+        _queueConfigs[curveId] = QueueConfig({
+            priority: priority.toUint32(),
+            maxDeposits: maxDeposits.toUint32()
+        });
+        emit QueueConfigSet(curveId, priority, maxDeposits);
     }
 
     /// @inheritdoc ICSParametersRegistry
@@ -283,14 +290,6 @@ contract CSParametersRegistry is
             intervals.push(data[i]);
         }
         emit RewardShareDataSet(curveId, data);
-    }
-
-    /// @inheritdoc ICSParametersRegistry
-    function unsetRewardShareData(
-        uint256 curveId
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        delete _rewardShareData[curveId];
-        emit RewardShareDataUnset(curveId);
     }
 
     /// @inheritdoc ICSParametersRegistry
@@ -312,14 +311,6 @@ contract CSParametersRegistry is
     }
 
     /// @inheritdoc ICSParametersRegistry
-    function unsetPerformanceLeewayData(
-        uint256 curveId
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        delete _performanceLeewayData[curveId];
-        emit PerformanceLeewayDataUnset(curveId);
-    }
-
-    /// @inheritdoc ICSParametersRegistry
     function setStrikesParams(
         uint256 curveId,
         uint256 lifetime,
@@ -334,14 +325,6 @@ contract CSParametersRegistry is
     }
 
     /// @inheritdoc ICSParametersRegistry
-    function unsetStrikesParams(
-        uint256 curveId
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        delete _strikesParams[curveId];
-        emit StrikesParamsUnset(curveId);
-    }
-
-    /// @inheritdoc ICSParametersRegistry
     function setBadPerformancePenalty(
         uint256 curveId,
         uint256 penalty
@@ -351,14 +334,6 @@ contract CSParametersRegistry is
             true
         );
         emit BadPerformancePenaltySet(curveId, penalty);
-    }
-
-    /// @inheritdoc ICSParametersRegistry
-    function unsetBadPerformancePenalty(
-        uint256 curveId
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        delete _badPerformancePenalties[curveId];
-        emit BadPerformancePenaltyUnset(curveId);
     }
 
     /// @inheritdoc ICSParametersRegistry
@@ -387,36 +362,6 @@ contract CSParametersRegistry is
     }
 
     /// @inheritdoc ICSParametersRegistry
-    function unsetPerformanceCoefficients(
-        uint256 curveId
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        delete _performanceCoefficients[curveId];
-        emit PerformanceCoefficientsUnset(curveId);
-    }
-
-    /// @inheritdoc ICSParametersRegistry
-    function setQueueConfig(
-        uint256 curveId,
-        uint256 priority,
-        uint256 maxDeposits
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _validateQueueConfig(priority, maxDeposits);
-        _queueConfigs[curveId] = QueueConfig({
-            priority: priority.toUint32(),
-            maxDeposits: maxDeposits.toUint32()
-        });
-        emit QueueConfigSet(curveId, priority, maxDeposits);
-    }
-
-    /// @inheritdoc ICSParametersRegistry
-    function unsetQueueConfig(
-        uint256 curveId
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        delete _queueConfigs[curveId];
-        emit QueueConfigUnset(curveId);
-    }
-
-    /// @inheritdoc ICSParametersRegistry
     function setAllowedExitDelay(
         uint256 curveId,
         uint256 delay
@@ -427,28 +372,12 @@ contract CSParametersRegistry is
     }
 
     /// @inheritdoc ICSParametersRegistry
-    function unsetAllowedExitDelay(
-        uint256 curveId
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        delete _allowedExitDelay[curveId];
-        emit AllowedExitDelayUnset(curveId);
-    }
-
-    /// @inheritdoc ICSParametersRegistry
     function setExitDelayFee(
         uint256 curveId,
         uint256 penalty
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _exitDelayPenalties[curveId] = MarkedUint248(penalty.toUint248(), true);
+        _exitDelayFees[curveId] = MarkedUint248(penalty.toUint248(), true);
         emit ExitDelayFeeSet(curveId, penalty);
-    }
-
-    /// @inheritdoc ICSParametersRegistry
-    function unsetExitDelayFee(
-        uint256 curveId
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        delete _exitDelayPenalties[curveId];
-        emit ExitDelayFeeUnset(curveId);
     }
 
     /// @inheritdoc ICSParametersRegistry
@@ -463,6 +392,98 @@ contract CSParametersRegistry is
         emit MaxWithdrawalRequestFeeSet(curveId, fee);
     }
 
+    ////////////////////////////////////////////////////////////////////////////////
+    // Unsetters for per-curve parameters
+    ////////////////////////////////////////////////////////////////////////////////
+
+    /// @inheritdoc ICSParametersRegistry
+    function unsetKeyRemovalCharge(
+        uint256 curveId
+    ) external onlyRole(NON_CRITICAL_PARAMETERS_MANAGER_ROLE) {
+        delete _keyRemovalCharges[curveId];
+        emit KeyRemovalChargeUnset(curveId);
+    }
+
+    /// @inheritdoc ICSParametersRegistry
+    function unsetElRewardsStealingAdditionalFine(
+        uint256 curveId
+    ) external onlyRole(NON_CRITICAL_PARAMETERS_MANAGER_ROLE) {
+        delete _elRewardsStealingAdditionalFines[curveId];
+        emit ElRewardsStealingAdditionalFineUnset(curveId);
+    }
+
+    /// @inheritdoc ICSParametersRegistry
+    function unsetKeysLimit(
+        uint256 curveId
+    ) external onlyRole(NON_CRITICAL_PARAMETERS_MANAGER_ROLE) {
+        delete _keysLimits[curveId];
+        emit KeysLimitUnset(curveId);
+    }
+
+    /// @inheritdoc ICSParametersRegistry
+    function unsetQueueConfig(
+        uint256 curveId
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        delete _queueConfigs[curveId];
+        emit QueueConfigUnset(curveId);
+    }
+
+    /// @inheritdoc ICSParametersRegistry
+    function unsetRewardShareData(
+        uint256 curveId
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        delete _rewardShareData[curveId];
+        emit RewardShareDataUnset(curveId);
+    }
+
+    /// @inheritdoc ICSParametersRegistry
+    function unsetPerformanceLeewayData(
+        uint256 curveId
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        delete _performanceLeewayData[curveId];
+        emit PerformanceLeewayDataUnset(curveId);
+    }
+
+    /// @inheritdoc ICSParametersRegistry
+    function unsetStrikesParams(
+        uint256 curveId
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        delete _strikesParams[curveId];
+        emit StrikesParamsUnset(curveId);
+    }
+
+    /// @inheritdoc ICSParametersRegistry
+    function unsetBadPerformancePenalty(
+        uint256 curveId
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        delete _badPerformancePenalties[curveId];
+        emit BadPerformancePenaltyUnset(curveId);
+    }
+
+    /// @inheritdoc ICSParametersRegistry
+    function unsetPerformanceCoefficients(
+        uint256 curveId
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        delete _performanceCoefficients[curveId];
+        emit PerformanceCoefficientsUnset(curveId);
+    }
+
+    /// @inheritdoc ICSParametersRegistry
+    function unsetAllowedExitDelay(
+        uint256 curveId
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        delete _allowedExitDelay[curveId];
+        emit AllowedExitDelayUnset(curveId);
+    }
+
+    /// @inheritdoc ICSParametersRegistry
+    function unsetExitDelayFee(
+        uint256 curveId
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        delete _exitDelayFees[curveId];
+        emit ExitDelayFeeUnset(curveId);
+    }
+
     /// @inheritdoc ICSParametersRegistry
     function unsetMaxWithdrawalRequestFee(
         uint256 curveId
@@ -470,6 +491,10 @@ contract CSParametersRegistry is
         delete _maxWithdrawalRequestFees[curveId];
         emit MaxWithdrawalRequestFeeUnset(curveId);
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // Getters for per-curve parameters
+    ////////////////////////////////////////////////////////////////////////////////
 
     /// @inheritdoc ICSParametersRegistry
     function getKeyRemovalCharge(
@@ -494,6 +519,22 @@ contract CSParametersRegistry is
     ) external view returns (uint256 limit) {
         MarkedUint248 storage data = _keysLimits[curveId];
         return data.isValue ? data.value : defaultKeysLimit;
+    }
+
+    /// @inheritdoc ICSParametersRegistry
+    function getQueueConfig(
+        uint256 curveId
+    ) external view returns (uint32 queuePriority, uint32 maxDeposits) {
+        QueueConfig storage config = _queueConfigs[curveId];
+
+        if (config.maxDeposits == 0) {
+            return (
+                defaultQueueConfig.priority,
+                defaultQueueConfig.maxDeposits
+            );
+        }
+
+        return (config.priority, config.maxDeposits);
     }
 
     /// @inheritdoc ICSParametersRegistry
@@ -574,22 +615,6 @@ contract CSParametersRegistry is
     }
 
     /// @inheritdoc ICSParametersRegistry
-    function getQueueConfig(
-        uint256 curveId
-    ) external view returns (uint32 queuePriority, uint32 maxDeposits) {
-        QueueConfig storage config = _queueConfigs[curveId];
-
-        if (config.maxDeposits == 0) {
-            return (
-                defaultQueueConfig.priority,
-                defaultQueueConfig.maxDeposits
-            );
-        }
-
-        return (config.priority, config.maxDeposits);
-    }
-
-    /// @inheritdoc ICSParametersRegistry
     function getAllowedExitDelay(
         uint256 curveId
     ) external view returns (uint256 delay) {
@@ -603,7 +628,7 @@ contract CSParametersRegistry is
     function getExitDelayFee(
         uint256 curveId
     ) external view returns (uint256 penalty) {
-        MarkedUint248 memory data = _exitDelayPenalties[curveId];
+        MarkedUint248 memory data = _exitDelayFees[curveId];
         return data.isValue ? data.value : defaultExitDelayFee;
     }
 
@@ -619,6 +644,10 @@ contract CSParametersRegistry is
     function getInitializedVersion() external view returns (uint64) {
         return _getInitializedVersion();
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // Internal functions
+    ////////////////////////////////////////////////////////////////////////////////
 
     function _setDefaultKeyRemovalCharge(uint256 keyRemovalCharge) internal {
         defaultKeyRemovalCharge = keyRemovalCharge;

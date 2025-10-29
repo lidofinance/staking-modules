@@ -15,6 +15,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 contract CSParametersRegistryBaseTest is Test, Utilities, Fixtures {
     address internal admin;
+    address internal nonCriticalParamsManager;
     address internal stranger;
     ICSParametersRegistry.InitializationData internal defaultInitData;
 
@@ -23,25 +24,26 @@ contract CSParametersRegistryBaseTest is Test, Utilities, Fixtures {
     function setUp() public virtual {
         admin = nextAddress("ADMIN");
         stranger = nextAddress("STRANGER");
+        nonCriticalParamsManager = nextAddress("NON_CRITICAL_PARAMS_MANAGER");
 
         parametersRegistry = new CSParametersRegistry({
             queueLowestPriority: 5
         });
 
         defaultInitData = ICSParametersRegistry.InitializationData({
-            keyRemovalCharge: 0.05 ether,
-            elRewardsStealingAdditionalFine: 0.1 ether,
-            keysLimit: 100_000,
-            rewardShare: 8000,
-            performanceLeeway: 500,
-            strikesLifetime: 6,
-            strikesThreshold: 3,
+            defaultKeyRemovalCharge: 0.05 ether,
+            defaultElRewardsStealingAdditionalFine: 0.1 ether,
+            defaultKeysLimit: 100_000,
+            defaultRewardShare: 8000,
+            defaultPerformanceLeeway: 500,
+            defaultStrikesLifetime: 6,
+            defaultStrikesThreshold: 3,
             defaultQueuePriority: 0,
             defaultQueueMaxDeposits: 10,
-            badPerformancePenalty: 0.1 ether,
-            attestationsWeight: 54,
-            blocksWeight: 8,
-            syncWeight: 2,
+            defaultBadPerformancePenalty: 0.1 ether,
+            defaultAttestationsWeight: 54,
+            defaultBlocksWeight: 8,
+            defaultSyncWeight: 2,
             defaultAllowedExitDelay: 1 days,
             defaultExitDelayFee: 0.05 ether,
             defaultMaxWithdrawalRequestFee: 0.1 ether
@@ -65,38 +67,38 @@ contract CSParametersRegistryInitTest is CSParametersRegistryBaseTest {
 
         vm.expectEmit(address(parametersRegistry));
         emit ICSParametersRegistry.DefaultKeyRemovalChargeSet(
-            defaultInitData.keyRemovalCharge
+            defaultInitData.defaultKeyRemovalCharge
         );
         vm.expectEmit(address(parametersRegistry));
         emit ICSParametersRegistry.DefaultElRewardsStealingAdditionalFineSet(
-            defaultInitData.elRewardsStealingAdditionalFine
+            defaultInitData.defaultElRewardsStealingAdditionalFine
         );
         vm.expectEmit(address(parametersRegistry));
         emit ICSParametersRegistry.DefaultKeysLimitSet(
-            defaultInitData.keysLimit
+            defaultInitData.defaultKeysLimit
         );
         vm.expectEmit(address(parametersRegistry));
         emit ICSParametersRegistry.DefaultRewardShareSet(
-            defaultInitData.rewardShare
+            defaultInitData.defaultRewardShare
         );
         vm.expectEmit(address(parametersRegistry));
         emit ICSParametersRegistry.DefaultPerformanceLeewaySet(
-            defaultInitData.performanceLeeway
+            defaultInitData.defaultPerformanceLeeway
         );
         vm.expectEmit(address(parametersRegistry));
         emit ICSParametersRegistry.DefaultStrikesParamsSet(
-            defaultInitData.strikesLifetime,
-            defaultInitData.strikesThreshold
+            defaultInitData.defaultStrikesLifetime,
+            defaultInitData.defaultStrikesThreshold
         );
         vm.expectEmit(address(parametersRegistry));
         emit ICSParametersRegistry.DefaultBadPerformancePenaltySet(
-            defaultInitData.badPerformancePenalty
+            defaultInitData.defaultBadPerformancePenalty
         );
         vm.expectEmit(address(parametersRegistry));
         emit ICSParametersRegistry.DefaultPerformanceCoefficientsSet(
-            defaultInitData.attestationsWeight,
-            defaultInitData.blocksWeight,
-            defaultInitData.syncWeight
+            defaultInitData.defaultAttestationsWeight,
+            defaultInitData.defaultBlocksWeight,
+            defaultInitData.defaultSyncWeight
         );
         vm.expectEmit(address(parametersRegistry));
         emit ICSParametersRegistry.DefaultQueueConfigSet(
@@ -107,6 +109,15 @@ contract CSParametersRegistryInitTest is CSParametersRegistryBaseTest {
         emit ICSParametersRegistry.DefaultAllowedExitDelaySet(
             defaultInitData.defaultAllowedExitDelay
         );
+        vm.expectEmit(address(parametersRegistry));
+        emit ICSParametersRegistry.DefaultExitDelayFeeSet(
+            defaultInitData.defaultExitDelayFee
+        );
+        vm.expectEmit(address(parametersRegistry));
+        emit ICSParametersRegistry.DefaultMaxWithdrawalRequestFeeSet(
+            defaultInitData.defaultMaxWithdrawalRequestFee
+        );
+
         parametersRegistry.initialize(admin, defaultInitData);
 
         assertTrue(
@@ -117,30 +128,16 @@ contract CSParametersRegistryInitTest is CSParametersRegistryBaseTest {
         );
         assertEq(
             parametersRegistry.defaultKeyRemovalCharge(),
-            defaultInitData.keyRemovalCharge
+            defaultInitData.defaultKeyRemovalCharge
         );
         assertEq(
             parametersRegistry.defaultElRewardsStealingAdditionalFine(),
-            defaultInitData.elRewardsStealingAdditionalFine
+            defaultInitData.defaultElRewardsStealingAdditionalFine
         );
         assertEq(
             parametersRegistry.defaultKeysLimit(),
-            defaultInitData.keysLimit
+            defaultInitData.defaultKeysLimit
         );
-        assertEq(
-            parametersRegistry.defaultRewardShare(),
-            defaultInitData.rewardShare
-        );
-        assertEq(
-            parametersRegistry.defaultPerformanceLeeway(),
-            defaultInitData.performanceLeeway
-        );
-
-        (uint256 lifetime, uint256 threshold) = parametersRegistry
-            .defaultStrikesParams();
-
-        assertEq(lifetime, defaultInitData.strikesLifetime);
-        assertEq(threshold, defaultInitData.strikesThreshold);
 
         (uint256 priority, uint256 maxDeposits) = parametersRegistry
             .defaultQueueConfig();
@@ -149,8 +146,23 @@ contract CSParametersRegistryInitTest is CSParametersRegistryBaseTest {
         assertEq(maxDeposits, defaultInitData.defaultQueueMaxDeposits);
 
         assertEq(
+            parametersRegistry.defaultRewardShare(),
+            defaultInitData.defaultRewardShare
+        );
+        assertEq(
+            parametersRegistry.defaultPerformanceLeeway(),
+            defaultInitData.defaultPerformanceLeeway
+        );
+
+        (uint256 lifetime, uint256 threshold) = parametersRegistry
+            .defaultStrikesParams();
+
+        assertEq(lifetime, defaultInitData.defaultStrikesLifetime);
+        assertEq(threshold, defaultInitData.defaultStrikesThreshold);
+
+        assertEq(
             parametersRegistry.defaultBadPerformancePenalty(),
-            defaultInitData.badPerformancePenalty
+            defaultInitData.defaultBadPerformancePenalty
         );
 
         (
@@ -159,13 +171,21 @@ contract CSParametersRegistryInitTest is CSParametersRegistryBaseTest {
             uint256 syncOut
         ) = parametersRegistry.defaultPerformanceCoefficients();
 
-        assertEq(attestationsOut, defaultInitData.attestationsWeight);
-        assertEq(blocksOut, defaultInitData.blocksWeight);
-        assertEq(syncOut, defaultInitData.syncWeight);
+        assertEq(attestationsOut, defaultInitData.defaultAttestationsWeight);
+        assertEq(blocksOut, defaultInitData.defaultBlocksWeight);
+        assertEq(syncOut, defaultInitData.defaultSyncWeight);
 
         assertEq(
             parametersRegistry.defaultAllowedExitDelay(),
             defaultInitData.defaultAllowedExitDelay
+        );
+        assertEq(
+            parametersRegistry.defaultExitDelayFee(),
+            defaultInitData.defaultExitDelayFee
+        );
+        assertEq(
+            parametersRegistry.defaultMaxWithdrawalRequestFee(),
+            defaultInitData.defaultMaxWithdrawalRequestFee
         );
 
         assertEq(parametersRegistry.getInitializedVersion(), 1);
@@ -183,7 +203,7 @@ contract CSParametersRegistryInitTest is CSParametersRegistryBaseTest {
         ICSParametersRegistry.InitializationData
             memory customInitData = defaultInitData;
 
-        customInitData.rewardShare = 10001;
+        customInitData.defaultRewardShare = 10001;
 
         vm.expectRevert(ICSParametersRegistry.InvalidRewardShareData.selector);
         parametersRegistry.initialize(admin, customInitData);
@@ -197,7 +217,7 @@ contract CSParametersRegistryInitTest is CSParametersRegistryBaseTest {
         ICSParametersRegistry.InitializationData
             memory customInitData = defaultInitData;
 
-        customInitData.performanceLeeway = 10001;
+        customInitData.defaultPerformanceLeeway = 10001;
 
         vm.expectRevert(
             ICSParametersRegistry.InvalidPerformanceLeewayData.selector
@@ -213,8 +233,8 @@ contract CSParametersRegistryInitTest is CSParametersRegistryBaseTest {
         ICSParametersRegistry.InitializationData
             memory customInitData = defaultInitData;
 
-        customInitData.strikesLifetime = 0;
-        customInitData.strikesThreshold = 1;
+        customInitData.defaultStrikesLifetime = 0;
+        customInitData.defaultStrikesThreshold = 1;
 
         vm.expectRevert(ICSParametersRegistry.InvalidStrikesParams.selector);
         parametersRegistry.initialize(admin, customInitData);
@@ -228,8 +248,8 @@ contract CSParametersRegistryInitTest is CSParametersRegistryBaseTest {
         ICSParametersRegistry.InitializationData
             memory customInitData = defaultInitData;
 
-        customInitData.strikesLifetime = 1;
-        customInitData.strikesThreshold = 0;
+        customInitData.defaultStrikesLifetime = 1;
+        customInitData.defaultStrikesThreshold = 0;
 
         vm.expectRevert(ICSParametersRegistry.InvalidStrikesParams.selector);
         parametersRegistry.initialize(admin, customInitData);
@@ -271,9 +291,9 @@ contract CSParametersRegistryInitTest is CSParametersRegistryBaseTest {
         ICSParametersRegistry.InitializationData
             memory customInitData = defaultInitData;
 
-        customInitData.attestationsWeight = 0;
-        customInitData.blocksWeight = 0;
-        customInitData.syncWeight = 0;
+        customInitData.defaultAttestationsWeight = 0;
+        customInitData.defaultBlocksWeight = 0;
+        customInitData.defaultSyncWeight = 0;
 
         vm.expectRevert(
             ICSParametersRegistry.InvalidPerformanceCoefficients.selector
@@ -285,15 +305,15 @@ contract CSParametersRegistryInitTest is CSParametersRegistryBaseTest {
 abstract contract ParametersTest {
     function test_setDefault() public virtual;
 
-    function test_setDefault_RevertWhen_notAdmin() public virtual;
+    function test_setDefault_RevertWhen_noRole() public virtual;
 
     function test_set() public virtual;
 
-    function test_set_RevertWhen_notAdmin() public virtual;
+    function test_set_RevertWhen_noRole() public virtual;
 
     function test_unset() public virtual;
 
-    function test_unset_RevertWhen_notAdmin() public virtual;
+    function test_unset_RevertWhen_noRole() public virtual;
 
     function test_get_usualData() public virtual;
 
@@ -307,6 +327,12 @@ contract CSParametersRegistryBaseTestInitialized is
         super.setUp();
         _enableInitializers(address(parametersRegistry));
         parametersRegistry.initialize(admin, defaultInitData);
+        vm.startPrank(admin);
+        parametersRegistry.grantRole(
+            parametersRegistry.NON_CRITICAL_PARAMETERS_MANAGER_ROLE(),
+            nonCriticalParamsManager
+        );
+        vm.stopPrank();
     }
 }
 
@@ -333,7 +359,7 @@ contract CSParametersRegistryRewardShareDataTest is
         parametersRegistry.setDefaultRewardShare(rewardShare);
     }
 
-    function test_setDefault_RevertWhen_notAdmin() public override {
+    function test_setDefault_RevertWhen_noRole() public override {
         uint256 rewardShare = 70001;
 
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
@@ -384,7 +410,7 @@ contract CSParametersRegistryRewardShareDataTest is
         assertEq(result[0].value, 777);
     }
 
-    function test_set_RevertWhen_notAdmin() public override {
+    function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         ICSParametersRegistry.KeyNumberValueInterval[]
             memory data = new ICSParametersRegistry.KeyNumberValueInterval[](2);
@@ -490,10 +516,10 @@ contract CSParametersRegistryRewardShareDataTest is
         dataOut = parametersRegistry.getRewardShareData(curveId);
         assertEq(dataOut.length, 1);
         assertEq(dataOut[0].minKeyNumber, 1);
-        assertEq(dataOut[0].value, defaultInitData.rewardShare);
+        assertEq(dataOut[0].value, defaultInitData.defaultRewardShare);
     }
 
-    function test_unset_RevertWhen_notAdmin() public override {
+    function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 1;
 
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
@@ -530,7 +556,7 @@ contract CSParametersRegistryRewardShareDataTest is
 
         assertEq(dataOut.length, 1);
         assertEq(dataOut[0].minKeyNumber, 1);
-        assertEq(dataOut[0].value, defaultInitData.rewardShare);
+        assertEq(dataOut[0].value, defaultInitData.defaultRewardShare);
     }
 }
 
@@ -549,7 +575,7 @@ contract CSParametersRegistryPerformanceLeewayDataTest is
         assertEq(parametersRegistry.defaultPerformanceLeeway(), leeway);
     }
 
-    function test_setDefault_RevertWhen_notAdmin() public override {
+    function test_setDefault_RevertWhen_noRole() public override {
         uint256 leeway = 700;
 
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
@@ -609,7 +635,7 @@ contract CSParametersRegistryPerformanceLeewayDataTest is
         assertEq(result[0].value, 777);
     }
 
-    function test_set_RevertWhen_notAdmin() public override {
+    function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         ICSParametersRegistry.KeyNumberValueInterval[]
             memory data = new ICSParametersRegistry.KeyNumberValueInterval[](2);
@@ -704,10 +730,10 @@ contract CSParametersRegistryPerformanceLeewayDataTest is
 
         assertEq(dataOut.length, 1);
         assertEq(dataOut[0].minKeyNumber, 1);
-        assertEq(dataOut[0].value, defaultInitData.performanceLeeway);
+        assertEq(dataOut[0].value, defaultInitData.defaultPerformanceLeeway);
     }
 
-    function test_unset_RevertWhen_notAdmin() public override {
+    function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 1;
 
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
@@ -748,7 +774,7 @@ contract CSParametersRegistryPerformanceLeewayDataTest is
 
         assertEq(dataOut.length, 1);
         assertEq(dataOut[0].minKeyNumber, 1);
-        assertEq(dataOut[0].value, defaultInitData.performanceLeeway);
+        assertEq(dataOut[0].value, defaultInitData.defaultPerformanceLeeway);
     }
 }
 
@@ -761,16 +787,17 @@ contract CSParametersRegistryKeyRemovalChargeTest is
 
         vm.expectEmit(address(parametersRegistry));
         emit ICSParametersRegistry.DefaultKeyRemovalChargeSet(charge);
-        vm.prank(admin);
+        vm.prank(nonCriticalParamsManager);
         parametersRegistry.setDefaultKeyRemovalCharge(charge);
 
         assertEq(parametersRegistry.defaultKeyRemovalCharge(), charge);
     }
 
-    function test_setDefault_RevertWhen_notAdmin() public override {
+    function test_setDefault_RevertWhen_noRole() public override {
         uint256 charge = 1 ether;
 
-        bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
+        bytes32 role = parametersRegistry
+            .NON_CRITICAL_PARAMETERS_MANAGER_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.setDefaultKeyRemovalCharge(charge);
@@ -782,15 +809,16 @@ contract CSParametersRegistryKeyRemovalChargeTest is
 
         vm.expectEmit(address(parametersRegistry));
         emit ICSParametersRegistry.KeyRemovalChargeSet(curveId, charge);
-        vm.prank(admin);
+        vm.prank(nonCriticalParamsManager);
         parametersRegistry.setKeyRemovalCharge(curveId, charge);
     }
 
-    function test_set_RevertWhen_notAdmin() public override {
+    function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         uint256 charge = 1 ether;
 
-        bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
+        bytes32 role = parametersRegistry
+            .NON_CRITICAL_PARAMETERS_MANAGER_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.setKeyRemovalCharge(curveId, charge);
@@ -800,25 +828,26 @@ contract CSParametersRegistryKeyRemovalChargeTest is
         uint256 curveId = 1;
         uint256 charge = 1 ether;
 
-        vm.prank(admin);
+        vm.prank(nonCriticalParamsManager);
         parametersRegistry.setKeyRemovalCharge(curveId, charge);
 
         uint256 chargeOut = parametersRegistry.getKeyRemovalCharge(curveId);
 
         assertEq(chargeOut, charge);
 
-        vm.prank(admin);
+        vm.prank(nonCriticalParamsManager);
         parametersRegistry.unsetKeyRemovalCharge(curveId);
 
         chargeOut = parametersRegistry.getKeyRemovalCharge(curveId);
 
-        assertEq(chargeOut, defaultInitData.keyRemovalCharge);
+        assertEq(chargeOut, defaultInitData.defaultKeyRemovalCharge);
     }
 
-    function test_unset_RevertWhen_notAdmin() public override {
+    function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 1;
 
-        bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
+        bytes32 role = parametersRegistry
+            .NON_CRITICAL_PARAMETERS_MANAGER_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.unsetKeyRemovalCharge(curveId);
@@ -828,7 +857,7 @@ contract CSParametersRegistryKeyRemovalChargeTest is
         uint256 curveId = 1;
         uint256 charge = 1 ether;
 
-        vm.prank(admin);
+        vm.prank(nonCriticalParamsManager);
         parametersRegistry.setKeyRemovalCharge(curveId, charge);
 
         uint256 chargeOut = parametersRegistry.getKeyRemovalCharge(curveId);
@@ -840,7 +869,7 @@ contract CSParametersRegistryKeyRemovalChargeTest is
         uint256 curveId = 10;
         uint256 chargeOut = parametersRegistry.getKeyRemovalCharge(curveId);
 
-        assertEq(chargeOut, defaultInitData.keyRemovalCharge);
+        assertEq(chargeOut, defaultInitData.defaultKeyRemovalCharge);
     }
 }
 
@@ -855,7 +884,7 @@ contract CSParametersRegistryElRewardsStealingAdditionalFineTest is
         emit ICSParametersRegistry.DefaultElRewardsStealingAdditionalFineSet(
             fine
         );
-        vm.prank(admin);
+        vm.prank(nonCriticalParamsManager);
         parametersRegistry.setDefaultElRewardsStealingAdditionalFine(fine);
 
         assertEq(
@@ -864,10 +893,11 @@ contract CSParametersRegistryElRewardsStealingAdditionalFineTest is
         );
     }
 
-    function test_setDefault_RevertWhen_notAdmin() public override {
+    function test_setDefault_RevertWhen_noRole() public override {
         uint256 fine = 1 ether;
 
-        bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
+        bytes32 role = parametersRegistry
+            .NON_CRITICAL_PARAMETERS_MANAGER_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.setDefaultElRewardsStealingAdditionalFine(fine);
@@ -882,15 +912,16 @@ contract CSParametersRegistryElRewardsStealingAdditionalFineTest is
             curveId,
             fine
         );
-        vm.prank(admin);
+        vm.prank(nonCriticalParamsManager);
         parametersRegistry.setElRewardsStealingAdditionalFine(curveId, fine);
     }
 
-    function test_set_RevertWhen_notAdmin() public override {
+    function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         uint256 fine = 1 ether;
 
-        bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
+        bytes32 role = parametersRegistry
+            .NON_CRITICAL_PARAMETERS_MANAGER_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.setElRewardsStealingAdditionalFine(curveId, fine);
@@ -900,7 +931,7 @@ contract CSParametersRegistryElRewardsStealingAdditionalFineTest is
         uint256 curveId = 1;
         uint256 fine = 1 ether;
 
-        vm.prank(admin);
+        vm.prank(nonCriticalParamsManager);
         parametersRegistry.setElRewardsStealingAdditionalFine(curveId, fine);
 
         uint256 fineOut = parametersRegistry.getElRewardsStealingAdditionalFine(
@@ -909,20 +940,24 @@ contract CSParametersRegistryElRewardsStealingAdditionalFineTest is
 
         assertEq(fineOut, fine);
 
-        vm.prank(admin);
+        vm.prank(nonCriticalParamsManager);
         parametersRegistry.unsetElRewardsStealingAdditionalFine(curveId);
 
         fineOut = parametersRegistry.getElRewardsStealingAdditionalFine(
             curveId
         );
 
-        assertEq(fineOut, defaultInitData.elRewardsStealingAdditionalFine);
+        assertEq(
+            fineOut,
+            defaultInitData.defaultElRewardsStealingAdditionalFine
+        );
     }
 
-    function test_unset_RevertWhen_notAdmin() public override {
+    function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 1;
 
-        bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
+        bytes32 role = parametersRegistry
+            .NON_CRITICAL_PARAMETERS_MANAGER_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.unsetElRewardsStealingAdditionalFine(curveId);
@@ -932,7 +967,7 @@ contract CSParametersRegistryElRewardsStealingAdditionalFineTest is
         uint256 curveId = 1;
         uint256 fine = 1 ether;
 
-        vm.prank(admin);
+        vm.prank(nonCriticalParamsManager);
         parametersRegistry.setElRewardsStealingAdditionalFine(curveId, fine);
 
         uint256 fineOut = parametersRegistry.getElRewardsStealingAdditionalFine(
@@ -948,7 +983,10 @@ contract CSParametersRegistryElRewardsStealingAdditionalFineTest is
             curveId
         );
 
-        assertEq(fineOut, defaultInitData.elRewardsStealingAdditionalFine);
+        assertEq(
+            fineOut,
+            defaultInitData.defaultElRewardsStealingAdditionalFine
+        );
     }
 }
 
@@ -961,16 +999,17 @@ contract CSParametersRegistryKeysLimitTest is
 
         vm.expectEmit(address(parametersRegistry));
         emit ICSParametersRegistry.DefaultKeysLimitSet(limit);
-        vm.prank(admin);
+        vm.prank(nonCriticalParamsManager);
         parametersRegistry.setDefaultKeysLimit(limit);
 
         assertEq(parametersRegistry.defaultKeysLimit(), limit);
     }
 
-    function test_setDefault_RevertWhen_notAdmin() public override {
+    function test_setDefault_RevertWhen_noRole() public override {
         uint256 limit = 1000;
 
-        bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
+        bytes32 role = parametersRegistry
+            .NON_CRITICAL_PARAMETERS_MANAGER_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.setDefaultKeysLimit(limit);
@@ -982,15 +1021,16 @@ contract CSParametersRegistryKeysLimitTest is
 
         vm.expectEmit(address(parametersRegistry));
         emit ICSParametersRegistry.KeysLimitSet(curveId, limit);
-        vm.prank(admin);
+        vm.prank(nonCriticalParamsManager);
         parametersRegistry.setKeysLimit(curveId, limit);
     }
 
-    function test_set_RevertWhen_notAdmin() public override {
+    function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         uint256 limit = 1000;
 
-        bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
+        bytes32 role = parametersRegistry
+            .NON_CRITICAL_PARAMETERS_MANAGER_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.setKeysLimit(curveId, limit);
@@ -1000,25 +1040,26 @@ contract CSParametersRegistryKeysLimitTest is
         uint256 curveId = 1;
         uint256 limit = 1000;
 
-        vm.prank(admin);
+        vm.prank(nonCriticalParamsManager);
         parametersRegistry.setKeysLimit(curveId, limit);
 
         uint256 limitOut = parametersRegistry.getKeysLimit(curveId);
 
         assertEq(limitOut, limit);
 
-        vm.prank(admin);
+        vm.prank(nonCriticalParamsManager);
         parametersRegistry.unsetKeysLimit(curveId);
 
         limitOut = parametersRegistry.getKeysLimit(curveId);
 
-        assertEq(limitOut, defaultInitData.keysLimit);
+        assertEq(limitOut, defaultInitData.defaultKeysLimit);
     }
 
-    function test_unset_RevertWhen_notAdmin() public override {
+    function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 1;
 
-        bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
+        bytes32 role = parametersRegistry
+            .NON_CRITICAL_PARAMETERS_MANAGER_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.unsetKeysLimit(curveId);
@@ -1028,7 +1069,7 @@ contract CSParametersRegistryKeysLimitTest is
         uint256 curveId = 1;
         uint256 limit = 1000;
 
-        vm.prank(admin);
+        vm.prank(nonCriticalParamsManager);
         parametersRegistry.setKeysLimit(curveId, limit);
 
         uint256 limitOut = parametersRegistry.getKeysLimit(curveId);
@@ -1040,7 +1081,7 @@ contract CSParametersRegistryKeysLimitTest is
         uint256 curveId = 10;
         uint256 limitOut = parametersRegistry.getKeysLimit(curveId);
 
-        assertEq(limitOut, defaultInitData.keysLimit);
+        assertEq(limitOut, defaultInitData.defaultKeysLimit);
     }
 }
 
@@ -1082,7 +1123,7 @@ contract CSParametersRegistryStrikesParamsTest is
         parametersRegistry.setDefaultStrikesParams(lifetime, threshold);
     }
 
-    function test_setDefault_RevertWhen_notAdmin() public override {
+    function test_setDefault_RevertWhen_noRole() public override {
         uint256 lifetime = 12;
         uint256 threshold = 6;
 
@@ -1127,7 +1168,7 @@ contract CSParametersRegistryStrikesParamsTest is
         parametersRegistry.setStrikesParams(curveId, lifetime, threshold);
     }
 
-    function test_set_RevertWhen_notAdmin() public override {
+    function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         uint256 lifetime = 3;
         uint256 threshold = 2;
@@ -1159,11 +1200,11 @@ contract CSParametersRegistryStrikesParamsTest is
             curveId
         );
 
-        assertEq(lifetimeOut, defaultInitData.strikesLifetime);
-        assertEq(thresholdOut, defaultInitData.strikesThreshold);
+        assertEq(lifetimeOut, defaultInitData.defaultStrikesLifetime);
+        assertEq(thresholdOut, defaultInitData.defaultStrikesThreshold);
     }
 
-    function test_unset_RevertWhen_notAdmin() public override {
+    function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 1;
 
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
@@ -1192,8 +1233,8 @@ contract CSParametersRegistryStrikesParamsTest is
         (uint256 lifetimeOut, uint256 thresholdOut) = parametersRegistry
             .getStrikesParams(curveId);
 
-        assertEq(lifetimeOut, defaultInitData.strikesLifetime);
-        assertEq(thresholdOut, defaultInitData.strikesThreshold);
+        assertEq(lifetimeOut, defaultInitData.defaultStrikesLifetime);
+        assertEq(thresholdOut, defaultInitData.defaultStrikesThreshold);
     }
 }
 
@@ -1212,7 +1253,7 @@ contract CSParametersRegistryBadPerformancePenaltyTest is
         assertEq(parametersRegistry.defaultBadPerformancePenalty(), penalty);
     }
 
-    function test_setDefault_RevertWhen_notAdmin() public override {
+    function test_setDefault_RevertWhen_noRole() public override {
         uint256 penalty = 1 ether;
 
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
@@ -1233,7 +1274,7 @@ contract CSParametersRegistryBadPerformancePenaltyTest is
         assertEq(parametersRegistry.getBadPerformancePenalty(curveId), penalty);
     }
 
-    function test_set_RevertWhen_notAdmin() public override {
+    function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         uint256 penalty = 1 ether;
 
@@ -1259,10 +1300,10 @@ contract CSParametersRegistryBadPerformancePenaltyTest is
 
         penalty = parametersRegistry.getBadPerformancePenalty(curveId);
 
-        assertEq(penalty, defaultInitData.badPerformancePenalty);
+        assertEq(penalty, defaultInitData.defaultBadPerformancePenalty);
     }
 
-    function test_unset_RevertWhen_notAdmin() public override {
+    function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 1;
 
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
@@ -1287,7 +1328,7 @@ contract CSParametersRegistryBadPerformancePenaltyTest is
         uint256 curveId = 10;
         uint256 penalty = parametersRegistry.getBadPerformancePenalty(curveId);
 
-        assertEq(penalty, defaultInitData.badPerformancePenalty);
+        assertEq(penalty, defaultInitData.defaultBadPerformancePenalty);
     }
 }
 
@@ -1324,7 +1365,7 @@ contract CSParametersRegistryPerformanceCoefficientsTest is
         assertEq(syncOut, sync);
     }
 
-    function test_setDefault_RevertWhen_notAdmin() public override {
+    function test_setDefault_RevertWhen_noRole() public override {
         uint256 attestations = 110;
         uint256 blocks = 25;
         uint256 sync = 10;
@@ -1379,7 +1420,7 @@ contract CSParametersRegistryPerformanceCoefficientsTest is
         );
     }
 
-    function test_set_RevertWhen_notAdmin() public override {
+    function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         uint256 attestations = 100;
         uint256 blocks = 20;
@@ -1444,12 +1485,12 @@ contract CSParametersRegistryPerformanceCoefficientsTest is
         (attestationsOut, blocksOut, syncOut) = parametersRegistry
             .getPerformanceCoefficients(curveId);
 
-        assertEq(attestationsOut, defaultInitData.attestationsWeight);
-        assertEq(blocksOut, defaultInitData.blocksWeight);
-        assertEq(syncOut, defaultInitData.syncWeight);
+        assertEq(attestationsOut, defaultInitData.defaultAttestationsWeight);
+        assertEq(blocksOut, defaultInitData.defaultBlocksWeight);
+        assertEq(syncOut, defaultInitData.defaultSyncWeight);
     }
 
-    function test_unset_RevertWhen_notAdmin() public override {
+    function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 1;
 
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
@@ -1492,9 +1533,9 @@ contract CSParametersRegistryPerformanceCoefficientsTest is
             uint256 syncOut
         ) = parametersRegistry.getPerformanceCoefficients(curveId);
 
-        assertEq(attestationsOut, defaultInitData.attestationsWeight);
-        assertEq(blocksOut, defaultInitData.blocksWeight);
-        assertEq(syncOut, defaultInitData.syncWeight);
+        assertEq(attestationsOut, defaultInitData.defaultAttestationsWeight);
+        assertEq(blocksOut, defaultInitData.defaultBlocksWeight);
+        assertEq(syncOut, defaultInitData.defaultSyncWeight);
     }
 }
 
@@ -1517,7 +1558,7 @@ contract CSParametersRegistryQueueConfigTest is
         assertEq(maxDepositsOut, maxDeposits);
     }
 
-    function test_setDefault_RevertWhen_notAdmin() public override {
+    function test_setDefault_RevertWhen_noRole() public override {
         uint32 priority = 3;
         uint32 maxDeposits = 42;
 
@@ -1566,7 +1607,7 @@ contract CSParametersRegistryQueueConfigTest is
         assertEq(maxDepositsOut, maxDeposits);
     }
 
-    function test_set_RevertWhen_notAdmin() public override {
+    function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 11;
         uint32 priority = 3;
         uint32 maxDeposits = 42;
@@ -1602,7 +1643,7 @@ contract CSParametersRegistryQueueConfigTest is
         assertEq(maxDepositsOut, defaultInitData.defaultQueueMaxDeposits);
     }
 
-    function test_unset_RevertWhen_notAdmin() public override {
+    function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 11;
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
         expectRoleRevert(stranger, role);
@@ -1684,7 +1725,7 @@ contract CSParametersRegistryAllowedExitDelayTest is
         parametersRegistry.setDefaultAllowedExitDelay(delay);
     }
 
-    function test_setDefault_RevertWhen_notAdmin() public override {
+    function test_setDefault_RevertWhen_noRole() public override {
         uint256 delay = 7 days;
 
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
@@ -1712,7 +1753,7 @@ contract CSParametersRegistryAllowedExitDelayTest is
         parametersRegistry.setAllowedExitDelay(curveId, delay);
     }
 
-    function test_set_RevertWhen_notAdmin() public override {
+    function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         uint256 delay = 3 days;
 
@@ -1741,7 +1782,7 @@ contract CSParametersRegistryAllowedExitDelayTest is
         assertEq(delayOut, defaultInitData.defaultAllowedExitDelay);
     }
 
-    function test_unset_RevertWhen_notAdmin() public override {
+    function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 1;
 
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
@@ -1785,7 +1826,7 @@ contract CSParametersRegistryExitDelayFeeTest is
         assertEq(parametersRegistry.defaultExitDelayFee(), penalty);
     }
 
-    function test_setDefault_RevertWhen_notAdmin() public override {
+    function test_setDefault_RevertWhen_noRole() public override {
         uint256 penalty = 1 ether;
 
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
@@ -1804,7 +1845,7 @@ contract CSParametersRegistryExitDelayFeeTest is
         parametersRegistry.setExitDelayFee(curveId, penalty);
     }
 
-    function test_set_RevertWhen_notAdmin() public override {
+    function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         uint256 penalty = 1 ether;
 
@@ -1833,7 +1874,7 @@ contract CSParametersRegistryExitDelayFeeTest is
         assertEq(penaltyOut, defaultInitData.defaultExitDelayFee);
     }
 
-    function test_unset_RevertWhen_notAdmin() public override {
+    function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 1;
 
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
@@ -1877,7 +1918,7 @@ contract CSParametersRegistryMaxWithdrawalRequestFeeTest is
         assertEq(parametersRegistry.defaultMaxWithdrawalRequestFee(), fee);
     }
 
-    function test_setDefault_RevertWhen_notAdmin() public override {
+    function test_setDefault_RevertWhen_noRole() public override {
         uint256 fee = 1 ether;
 
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
@@ -1896,7 +1937,7 @@ contract CSParametersRegistryMaxWithdrawalRequestFeeTest is
         parametersRegistry.setMaxWithdrawalRequestFee(curveId, fee);
     }
 
-    function test_set_RevertWhen_notAdmin() public override {
+    function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         uint256 fee = 1 ether;
 
@@ -1925,7 +1966,7 @@ contract CSParametersRegistryMaxWithdrawalRequestFeeTest is
         assertEq(feeOut, defaultInitData.defaultMaxWithdrawalRequestFee);
     }
 
-    function test_unset_RevertWhen_notAdmin() public override {
+    function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 1;
 
         bytes32 role = parametersRegistry.DEFAULT_ADMIN_ROLE();
