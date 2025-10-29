@@ -8,9 +8,9 @@ import { ICuratedModule } from "./ICuratedModule.sol";
 import { IOperatorsData } from "./IOperatorsData.sol";
 import { ICSAccounting } from "./ICSAccounting.sol";
 
-/// @title Curated Module Gate Interface
+/// @title Curated Gate Interface
 /// @notice Allows eligible addresses to create Node Operators and store metadata.
-interface ICuratedModuleGate is IMerkleGate {
+interface ICuratedGate is IMerkleGate {
     /// Errors
     error InvalidCurveId();
     error ZeroModuleAddress();

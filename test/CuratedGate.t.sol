@@ -9,18 +9,18 @@ import { Fixtures } from "./helpers/Fixtures.sol";
 import { CSMMock } from "./helpers/mocks/CSMMock.sol";
 import { OperatorsDataMock } from "./helpers/mocks/OperatorsDataMock.sol";
 import { PausableUntil } from "../src/lib/utils/PausableUntil.sol";
-import { CuratedModuleGate } from "../src/CuratedModuleGate.sol";
-import { ICuratedModuleGate } from "../src/interfaces/ICuratedModuleGate.sol";
+import { CuratedGate } from "../src/CuratedGate.sol";
+import { ICuratedGate } from "../src/interfaces/ICuratedGate.sol";
 import { IMerkleGate } from "../src/interfaces/IMerkleGate.sol";
 import { IOperatorsData, OperatorInfo } from "../src/interfaces/IOperatorsData.sol";
 import { ICSModule, NodeOperatorManagementProperties } from "../src/interfaces/ICSModule.sol";
 import { ICSAccounting } from "../src/interfaces/ICSAccounting.sol";
 import { MerkleTree } from "./helpers/MerkleTree.sol";
 
-contract CuratedModuleGateTestBase is Test, Utilities, Fixtures {
+contract CuratedGateTestBase is Test, Utilities, Fixtures {
     CSMMock public module;
     OperatorsDataMock public data;
-    CuratedModuleGate public gate;
+    CuratedGate public gate;
 
     address public admin;
     address public member;
@@ -55,7 +55,7 @@ contract CuratedModuleGateTestBase is Test, Utilities, Fixtures {
         root = tree.root();
         cid = someCIDv0();
 
-        gate = new CuratedModuleGate(address(module), address(data));
+        gate = new CuratedGate(address(module), address(data));
         _enableInitializers(address(gate));
         gate.initialize(1, root, cid, admin);
 
@@ -65,33 +65,27 @@ contract CuratedModuleGateTestBase is Test, Utilities, Fixtures {
     }
 }
 
-contract CuratedModuleGateTest_constructor is CuratedModuleGateTestBase {
+contract CuratedGateTest_constructor is CuratedGateTestBase {
     function test_constructor() public {
-        CuratedModuleGate e = new CuratedModuleGate(
-            address(module),
-            address(data)
-        );
+        CuratedGate e = new CuratedGate(address(module), address(data));
         assertEq(address(e.MODULE()), address(module));
         assertEq(address(e.OPERATORS_DATA()), address(data));
     }
 
     function test_constructor_RevertWhen_ZeroModule() public {
-        vm.expectRevert(ICuratedModuleGate.ZeroModuleAddress.selector);
-        new CuratedModuleGate(address(0), address(data));
+        vm.expectRevert(ICuratedGate.ZeroModuleAddress.selector);
+        new CuratedGate(address(0), address(data));
     }
 
     function test_constructor_RevertWhen_ZeroOperatorsData() public {
-        vm.expectRevert(ICuratedModuleGate.ZeroOperatorsDataAddress.selector);
-        new CuratedModuleGate(address(module), address(0));
+        vm.expectRevert(ICuratedGate.ZeroOperatorsDataAddress.selector);
+        new CuratedGate(address(module), address(0));
     }
 }
 
-contract CuratedModuleGateTest_initialize is CuratedModuleGateTestBase {
+contract CuratedGateTest_initialize is CuratedGateTestBase {
     function test_initialize() public {
-        CuratedModuleGate e = new CuratedModuleGate(
-            address(module),
-            address(data)
-        );
+        CuratedGate e = new CuratedGate(address(module), address(data));
         _enableInitializers(address(e));
         e.initialize(1, root, cid, admin);
         assertEq(e.treeRoot(), root);
@@ -101,37 +95,36 @@ contract CuratedModuleGateTest_initialize is CuratedModuleGateTestBase {
     }
 
     function test_initialize_RevertWhen_ZeroAdmin() public {
-        CuratedModuleGate e = new CuratedModuleGate(
-            address(module),
-            address(data)
-        );
+        CuratedGate e = new CuratedGate(address(module), address(data));
         _enableInitializers(address(e));
-        vm.expectRevert(ICuratedModuleGate.ZeroAdminAddress.selector);
+        vm.expectRevert(ICuratedGate.ZeroAdminAddress.selector);
         e.initialize(1, root, cid, address(0));
     }
 
     function test_initialize_RevertWhen_InvalidTreeRoot() public {
-        CuratedModuleGate e = new CuratedModuleGate(
-            address(module),
-            address(data)
-        );
+        CuratedGate e = new CuratedGate(address(module), address(data));
         _enableInitializers(address(e));
         vm.expectRevert(IMerkleGate.InvalidTreeRoot.selector);
         e.initialize(1, bytes32(0), cid, admin);
     }
 
     function test_initialize_RevertWhen_InvalidTreeCid() public {
-        CuratedModuleGate e = new CuratedModuleGate(
-            address(module),
-            address(data)
-        );
+        CuratedGate e = new CuratedGate(address(module), address(data));
         _enableInitializers(address(e));
         vm.expectRevert(IMerkleGate.InvalidTreeCid.selector);
         e.initialize(1, root, "", admin);
     }
+
+    function test_initialize_AllowsDefaultCurveId() public {
+        CuratedGate e = new CuratedGate(address(module), address(data));
+        _enableInitializers(address(e));
+        uint256 defaultCurveId = module.ACCOUNTING().DEFAULT_BOND_CURVE_ID();
+        e.initialize(defaultCurveId, root, cid, admin);
+        assertEq(e.curveId(), defaultCurveId);
+    }
 }
 
-contract CuratedModuleGateTest_setTreeParams is CuratedModuleGateTestBase {
+contract CuratedGateTest_setTreeParams is CuratedGateTestBase {
     function test_setTreeParams() public {
         bytes32 newRoot = keccak256(abi.encodePacked("root2"));
         string memory newCid = someCIDv0();
@@ -206,7 +199,7 @@ contract CuratedModuleGateTest_setTreeParams is CuratedModuleGateTestBase {
     }
 }
 
-contract CuratedModuleGateTest_pauseResume is CuratedModuleGateTestBase {
+contract CuratedGateTest_pauseResume is CuratedGateTestBase {
     function test_pause_RevertWhen_NoRole() public {
         vm.expectRevert();
         gate.pauseFor(1);
@@ -239,7 +232,7 @@ contract CuratedModuleGateTest_pauseResume is CuratedModuleGateTestBase {
     }
 }
 
-contract CuratedModuleGateTest_createNodeOperator is CuratedModuleGateTestBase {
+contract CuratedGateTest_createNodeOperator is CuratedGateTestBase {
     function test_createNodeOperator() public {
         bytes32[] memory proof = tree.getProof(0);
 

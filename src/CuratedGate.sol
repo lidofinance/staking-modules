@@ -11,15 +11,14 @@ import { PausableUntil } from "./lib/utils/PausableUntil.sol";
 
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMerkleGate } from "./interfaces/IMerkleGate.sol";
-import { ICuratedModuleGate } from "./interfaces/ICuratedModuleGate.sol";
+import { ICuratedGate } from "./interfaces/ICuratedGate.sol";
 import { NodeOperatorManagementProperties } from "./interfaces/ICSModule.sol";
 import { IOperatorsData } from "./interfaces/IOperatorsData.sol";
 import { ICSAccounting } from "./interfaces/ICSAccounting.sol";
 
-/// @notice Merkle gate for Curated Module v2 to create Node Operators
-///         and persist operator metadata (name, description) in a separate storage contract.
-contract CuratedModuleGate is
-    ICuratedModuleGate,
+/// @notice Merkle gate for Curated Module v2
+contract CuratedGate is
+    ICuratedGate,
     AccessControlEnumerableUpgradeable,
     PausableUntil,
     AssetRecoverer
@@ -29,13 +28,13 @@ contract CuratedModuleGate is
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
     bytes32 public constant SET_TREE_ROLE = keccak256("SET_TREE_ROLE");
 
-    /// @inheritdoc ICuratedModuleGate
+    /// @inheritdoc ICuratedGate
     ICuratedModule public immutable MODULE;
 
-    /// @inheritdoc ICuratedModuleGate
+    /// @inheritdoc ICuratedGate
     ICSAccounting public immutable ACCOUNTING;
 
-    /// @inheritdoc ICuratedModuleGate
+    /// @inheritdoc ICuratedGate
     IOperatorsData public immutable OPERATORS_DATA;
 
     /// @inheritdoc IMerkleGate
@@ -44,7 +43,7 @@ contract CuratedModuleGate is
     /// @inheritdoc IMerkleGate
     string public treeCid;
 
-    /// @inheritdoc ICuratedModuleGate
+    /// @inheritdoc ICuratedGate
     uint256 public curveId;
 
     /// @dev Tracks whether an address already consumed its eligibility
@@ -67,24 +66,22 @@ contract CuratedModuleGate is
     ) external initializer {
         __AccessControlEnumerable_init();
         if (admin == address(0)) revert ZeroAdminAddress();
-        if (_curveId == ACCOUNTING.DEFAULT_BOND_CURVE_ID())
-            revert InvalidCurveId();
         curveId = _curveId;
         _setTreeParams(_treeRoot, _treeCid);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
-    /// @inheritdoc ICuratedModuleGate
+    /// @inheritdoc ICuratedGate
     function resume() external onlyRole(RESUME_ROLE) {
         _resume();
     }
 
-    /// @inheritdoc ICuratedModuleGate
+    /// @inheritdoc ICuratedGate
     function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE) {
         _pauseFor(duration);
     }
 
-    /// @inheritdoc ICuratedModuleGate
+    /// @inheritdoc ICuratedGate
     function createNodeOperator(
         string calldata name,
         string calldata description,

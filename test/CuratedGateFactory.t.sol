@@ -5,18 +5,18 @@ pragma solidity 0.8.24;
 import "forge-std/Test.sol";
 import { Utilities } from "./helpers/Utilities.sol";
 
-import { CuratedModuleGate } from "../src/CuratedModuleGate.sol";
-import { ICuratedModuleGate } from "../src/interfaces/ICuratedModuleGate.sol";
-import { CuratedModuleGateFactory } from "../src/CuratedModuleGateFactory.sol";
-import { ICuratedModuleGateFactory } from "../src/interfaces/ICuratedModuleGateFactory.sol";
+import { CuratedGate } from "../src/CuratedGate.sol";
+import { ICuratedGate } from "../src/interfaces/ICuratedGate.sol";
+import { CuratedGateFactory } from "../src/CuratedGateFactory.sol";
+import { ICuratedGateFactory } from "../src/interfaces/ICuratedGateFactory.sol";
 
 import { CSMMock } from "./helpers/mocks/CSMMock.sol";
 import { OperatorsDataMock } from "./helpers/mocks/OperatorsDataMock.sol";
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import { OssifiableProxy } from "../src/lib/proxy/OssifiableProxy.sol";
 
-contract CuratedModuleGateFactoryTestBase is Test, Utilities {
-    CuratedModuleGateFactory factory;
+contract CuratedGateFactoryTestBase is Test, Utilities {
+    CuratedGateFactory factory;
     CSMMock module;
     OperatorsDataMock data;
     address impl;
@@ -30,39 +30,33 @@ contract CuratedModuleGateFactoryTestBase is Test, Utilities {
         admin = nextAddress("admin");
         module = new CSMMock();
         data = new OperatorsDataMock();
-        impl = address(new CuratedModuleGate(address(module), address(data)));
-        factory = new CuratedModuleGateFactory(impl);
+        impl = address(new CuratedGate(address(module), address(data)));
+        factory = new CuratedGateFactory(impl);
         root = bytes32(randomBytes(32));
         cid = "someCid";
         curveId = 1;
     }
 }
 
-contract CuratedModuleGateFactoryTest_constructor is
-    CuratedModuleGateFactoryTestBase
-{
+contract CuratedGateFactoryTest_constructor is CuratedGateFactoryTestBase {
     function test_constructor() public {
-        CuratedModuleGateFactory f = new CuratedModuleGateFactory(impl);
-        assertEq(f.CURATED_MODULE_GATE_IMPL(), impl);
+        CuratedGateFactory f = new CuratedGateFactory(impl);
+        assertEq(f.CURATED_GATE_IMPL(), impl);
     }
 
     function test_constructor_RevertWhen_ZeroImpl() public {
-        vm.expectRevert(
-            ICuratedModuleGateFactory.ZeroImplementationAddress.selector
-        );
-        new CuratedModuleGateFactory(address(0));
+        vm.expectRevert(ICuratedGateFactory.ZeroImplementationAddress.selector);
+        new CuratedGateFactory(address(0));
     }
 }
 
-contract CuratedModuleGateFactoryTest_create is
-    CuratedModuleGateFactoryTestBase
-{
+contract CuratedGateFactoryTest_create is CuratedGateFactoryTestBase {
     function test_create() public {
         vm.expectEmit(false, false, false, false, address(factory));
-        emit ICuratedModuleGateFactory.CuratedModuleGateCreated(address(0));
+        emit ICuratedGateFactory.CuratedGateCreated(address(0));
         address instance = factory.create(curveId, root, cid, admin);
 
-        ICuratedModuleGate gate = ICuratedModuleGate(instance);
+        ICuratedGate gate = ICuratedGate(instance);
         assertEq(gate.curveId(), curveId);
         assertEq(address(gate.MODULE()), address(module));
         assertEq(gate.treeRoot(), root);
