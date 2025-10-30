@@ -4,18 +4,18 @@
 pragma solidity 0.8.24;
 
 import { Test } from "forge-std/Test.sol";
-import { Utilities } from "./helpers/Utilities.sol";
-import { Fixtures } from "./helpers/Fixtures.sol";
-import { CSMMock } from "./helpers/mocks/CSMMock.sol";
-import { OperatorsDataMock } from "./helpers/mocks/OperatorsDataMock.sol";
-import { PausableUntil } from "../src/lib/utils/PausableUntil.sol";
-import { CuratedGate } from "../src/CuratedGate.sol";
-import { ICuratedGate } from "../src/interfaces/ICuratedGate.sol";
-import { IMerkleGate } from "../src/interfaces/IMerkleGate.sol";
-import { IOperatorsData, OperatorInfo } from "../src/interfaces/IOperatorsData.sol";
-import { ICSModule, NodeOperatorManagementProperties } from "../src/interfaces/ICSModule.sol";
-import { ICSAccounting } from "../src/interfaces/ICSAccounting.sol";
-import { MerkleTree } from "./helpers/MerkleTree.sol";
+import { Utilities } from "../helpers/Utilities.sol";
+import { Fixtures } from "../helpers/Fixtures.sol";
+import { CSMMock } from "../helpers/mocks/CSMMock.sol";
+import { OperatorsDataMock } from "../helpers/mocks/OperatorsDataMock.sol";
+import { PausableUntil } from "../../src/lib/utils/PausableUntil.sol";
+import { CuratedGate } from "../../src/CuratedGate.sol";
+import { ICuratedGate } from "../../src/interfaces/ICuratedGate.sol";
+import { IMerkleGate } from "../../src/interfaces/IMerkleGate.sol";
+import { IOperatorsData, OperatorInfo } from "../../src/interfaces/IOperatorsData.sol";
+import { ICSModule, NodeOperatorManagementProperties } from "../../src/interfaces/ICSModule.sol";
+import { ICSAccounting } from "../../src/interfaces/ICSAccounting.sol";
+import { MerkleTree } from "../helpers/MerkleTree.sol";
 
 contract CuratedGateTestBase is Test, Utilities, Fixtures {
     CSMMock public module;
@@ -57,11 +57,21 @@ contract CuratedGateTestBase is Test, Utilities, Fixtures {
 
         gate = new CuratedGate(address(module), address(data));
         _enableInitializers(address(gate));
-        gate.initialize(1, root, cid, admin);
+        gate.initialize(curveId(), root, cid, admin);
 
         vm.startPrank(admin);
         gate.grantRole(gate.SET_TREE_ROLE(), admin);
         vm.stopPrank();
+    }
+
+    function curveId() internal view virtual returns (uint256) {
+        return 1;
+    }
+}
+
+contract CuratedGateTestBaseDefaultCurve is CuratedGateTestBase {
+    function curveId() internal view override returns (uint256) {
+        return module.ACCOUNTING().DEFAULT_BOND_CURVE_ID();
     }
 }
 
@@ -242,8 +252,11 @@ contract CuratedGateTest_createNodeOperator is CuratedGateTestBase {
                 IOperatorsData.set.selector,
                 address(module),
                 0,
-                "Name",
-                "Description"
+                OperatorInfo({
+                    name: "Name",
+                    description: "Description",
+                    ownerRestricted: false
+                })
             )
         );
         vm.expectCall(
@@ -312,5 +325,60 @@ contract CuratedGateTest_createNodeOperator is CuratedGateTestBase {
         vm.prank(member);
         vm.expectRevert(PausableUntil.ResumedExpected.selector);
         gate.createNodeOperator("N", "D", address(0), address(0), proof);
+    }
+}
+
+contract CuratedGateTest_createNodeOperator_DefaultCurve is
+    CuratedGateTestBaseDefaultCurve
+{
+    function test_createNodeOperator_DoesNotSetCurveWhenDefault() public {
+        bytes32[] memory proof = tree.getProof(0);
+
+        expectNoCall(
+            address(module.ACCOUNTING()),
+            abi.encodeWithSelector(
+                ICSAccounting.setBondCurve.selector,
+                0,
+                curveId()
+            )
+        );
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICSModule.createNodeOperator.selector,
+                member,
+                NodeOperatorManagementProperties({
+                    managerAddress: address(0x1111),
+                    rewardAddress: address(0x2222),
+                    extendedManagerPermissions: true
+                }),
+                address(0)
+            )
+        );
+        vm.expectCall(
+            address(data),
+            abi.encodeWithSelector(
+                IOperatorsData.set.selector,
+                address(module),
+                0,
+                OperatorInfo({
+                    name: "Name",
+                    description: "Description",
+                    ownerRestricted: false
+                })
+            )
+        );
+
+        vm.prank(member);
+        uint256 id = gate.createNodeOperator(
+            "Name",
+            "Description",
+            address(0x1111),
+            address(0x2222),
+            proof
+        );
+
+        assertEq(id, 0);
+        assertTrue(gate.isConsumed(member));
     }
 }

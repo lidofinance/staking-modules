@@ -3,27 +3,35 @@
 
 pragma solidity 0.8.24;
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { IOperatorsData, OperatorInfo } from "./interfaces/IOperatorsData.sol";
 import { INodeOperatorOwner } from "./interfaces/INodeOperatorOwner.sol";
 import { IStakingRouter } from "./interfaces/IStakingRouter.sol";
 
 /// @notice Operators metadata storage
-contract OperatorsData is AccessControl, IOperatorsData {
+contract OperatorsData is
+    Initializable,
+    AccessControlUpgradeable,
+    IOperatorsData
+{
     bytes32 public constant SETTER_ROLE = keccak256("SETTER_ROLE");
 
     mapping(address module => mapping(uint256 id => OperatorInfo))
         internal _operators;
-    mapping(address module => mapping(uint256 id => bool))
-        internal _ownerRestrictions;
     mapping(address module => bool) internal _knownModules;
 
     IStakingRouter public immutable STAKING_ROUTER;
 
-    constructor(address admin, address stakingRouter) {
-        if (admin == address(0)) revert ZeroAdminAddress();
+    constructor(address stakingRouter) {
         if (stakingRouter == address(0)) revert ZeroStakingRouterAddress();
         STAKING_ROUTER = IStakingRouter(payable(stakingRouter));
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        if (admin == address(0)) revert ZeroAdminAddress();
+        __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
@@ -31,10 +39,23 @@ contract OperatorsData is AccessControl, IOperatorsData {
     function set(
         address module,
         uint256 nodeOperatorId,
-        string calldata name,
-        string calldata description
+        OperatorInfo calldata info
     ) external onlyRole(SETTER_ROLE) {
-        _setWithExistenceCheck(module, nodeOperatorId, name, description);
+        _ensureKnownModule(module);
+        if (!_exists(module, nodeOperatorId)) revert NodeOperatorDoesNotExist();
+
+        OperatorInfo storage stored = _operators[module][nodeOperatorId];
+        stored.name = info.name;
+        stored.description = info.description;
+        stored.ownerRestricted = info.ownerRestricted;
+
+        emit OperatorDataSet({
+            module: module,
+            nodeOperatorId: nodeOperatorId,
+            name: stored.name,
+            description: stored.description,
+            ownerRestricted: stored.ownerRestricted
+        });
     }
 
     /// @inheritdoc IOperatorsData
@@ -50,9 +71,19 @@ contract OperatorsData is AccessControl, IOperatorsData {
         );
         if (owner == address(0)) revert NodeOperatorDoesNotExist();
         if (owner != msg.sender) revert NotOwner();
-        if (_ownerRestrictions[module][nodeOperatorId])
-            revert OwnerEditsRestricted();
-        _set(module, nodeOperatorId, name, description);
+        OperatorInfo storage stored = _operators[module][nodeOperatorId];
+        if (stored.ownerRestricted) revert OwnerEditsRestricted();
+
+        stored.name = name;
+        stored.description = description;
+
+        emit OperatorDataSet({
+            module: module,
+            nodeOperatorId: nodeOperatorId,
+            name: stored.name,
+            description: stored.description,
+            ownerRestricted: stored.ownerRestricted
+        });
     }
 
     /// @inheritdoc IOperatorsData
@@ -65,45 +96,19 @@ contract OperatorsData is AccessControl, IOperatorsData {
     }
 
     /// @inheritdoc IOperatorsData
-    function setOwnerRestriction(
-        address module,
-        uint256 nodeOperatorId,
-        bool restricted
-    ) external onlyRole(SETTER_ROLE) {
-        _ensureKnownModule(module);
-        _setRestriction(module, nodeOperatorId, restricted);
-    }
-
-    /// @inheritdoc IOperatorsData
     function isOwnerRestricted(
         address module,
         uint256 nodeOperatorId
     ) external view returns (bool) {
         _checkModule(module);
-        return _ownerRestrictions[module][nodeOperatorId];
+        return _operators[module][nodeOperatorId].ownerRestricted;
     }
 
-    function _setWithExistenceCheck(
-        address module,
-        uint256 nodeOperatorId,
-        string calldata name,
-        string calldata description
-    ) internal {
-        _ensureKnownModule(module);
-        if (!_exists(module, nodeOperatorId)) revert NodeOperatorDoesNotExist();
-        _set(module, nodeOperatorId, name, description);
-    }
-
-    function _set(
-        address module,
-        uint256 nodeOperatorId,
-        string calldata name,
-        string calldata description
-    ) internal {
-        OperatorInfo storage info = _operators[module][nodeOperatorId];
-        info.name = name;
-        info.description = description;
-        emit OperatorDataSet(module, nodeOperatorId, name, description);
+    function _ensureKnownModule(address module) internal {
+        _checkModule(module);
+        if (!_knownModules[module]) {
+            _knownModules[module] = true;
+        }
     }
 
     function _exists(
@@ -113,23 +118,6 @@ contract OperatorsData is AccessControl, IOperatorsData {
         if (module == address(0)) revert ZeroModuleAddress();
         return
             nodeOperatorId < INodeOperatorOwner(module).getNodeOperatorsCount();
-    }
-
-    function _setRestriction(
-        address module,
-        uint256 nodeOperatorId,
-        bool restricted
-    ) internal {
-        if (!_exists(module, nodeOperatorId)) revert NodeOperatorDoesNotExist();
-        _ownerRestrictions[module][nodeOperatorId] = restricted;
-        emit OwnerRestrictionUpdated(module, nodeOperatorId, restricted);
-    }
-
-    function _ensureKnownModule(address module) internal {
-        _checkModule(module);
-        if (!_knownModules[module]) {
-            _knownModules[module] = true;
-        }
     }
 
     function _checkModule(address module) internal view {

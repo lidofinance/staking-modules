@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
+import { OperatorInfo } from "../../../src/interfaces/IOperatorsData.sol";
+
 contract OperatorsDataMock {
     function set(
         address module,
         uint256 nodeOperatorId,
-        string calldata name,
-        string calldata description
+        OperatorInfo calldata info
     ) external {}
 }

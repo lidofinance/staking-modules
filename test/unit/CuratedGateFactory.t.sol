@@ -3,17 +3,17 @@
 pragma solidity 0.8.24;
 
 import "forge-std/Test.sol";
-import { Utilities } from "./helpers/Utilities.sol";
+import { Utilities } from "../helpers/Utilities.sol";
 
-import { CuratedGate } from "../src/CuratedGate.sol";
-import { ICuratedGate } from "../src/interfaces/ICuratedGate.sol";
-import { CuratedGateFactory } from "../src/CuratedGateFactory.sol";
-import { ICuratedGateFactory } from "../src/interfaces/ICuratedGateFactory.sol";
+import { CuratedGate } from "../../src/CuratedGate.sol";
+import { ICuratedGate } from "../../src/interfaces/ICuratedGate.sol";
+import { CuratedGateFactory } from "../../src/CuratedGateFactory.sol";
+import { ICuratedGateFactory } from "../../src/interfaces/ICuratedGateFactory.sol";
 
-import { CSMMock } from "./helpers/mocks/CSMMock.sol";
-import { OperatorsDataMock } from "./helpers/mocks/OperatorsDataMock.sol";
+import { CSMMock } from "../helpers/mocks/CSMMock.sol";
+import { OperatorsDataMock } from "../helpers/mocks/OperatorsDataMock.sol";
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
-import { OssifiableProxy } from "../src/lib/proxy/OssifiableProxy.sol";
+import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 
 contract CuratedGateFactoryTestBase is Test, Utilities {
     CuratedGateFactory factory;

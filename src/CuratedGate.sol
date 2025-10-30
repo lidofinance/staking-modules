@@ -13,7 +13,7 @@ import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMerkleGate } from "./interfaces/IMerkleGate.sol";
 import { ICuratedGate } from "./interfaces/ICuratedGate.sol";
 import { NodeOperatorManagementProperties } from "./interfaces/ICSModule.sol";
-import { IOperatorsData } from "./interfaces/IOperatorsData.sol";
+import { IOperatorsData, OperatorInfo } from "./interfaces/IOperatorsData.sol";
 import { ICSAccounting } from "./interfaces/ICSAccounting.sol";
 
 /// @notice Merkle gate for Curated Module v2
@@ -106,10 +106,19 @@ contract CuratedGate is
         });
 
         // Apply instance-specific custom curve
-        ACCOUNTING.setBondCurve(nodeOperatorId, curveId);
+        uint256 defaultCurveId = ACCOUNTING.DEFAULT_BOND_CURVE_ID();
+        if (curveId != defaultCurveId) {
+            ACCOUNTING.setBondCurve(nodeOperatorId, curveId);
+        }
 
         // Persist metadata in separate storage
-        OPERATORS_DATA.set(address(MODULE), nodeOperatorId, name, description);
+        OperatorInfo memory metadata = OperatorInfo({
+            name: name,
+            description: description,
+            ownerRestricted: false
+        });
+
+        OPERATORS_DATA.set(address(MODULE), nodeOperatorId, metadata);
     }
 
     /// @inheritdoc IMerkleGate
