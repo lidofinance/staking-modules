@@ -517,6 +517,44 @@ contract MiscTest is BaseTest {
             type(uint256).max
         );
     }
+
+    function test_setCustomRewardsClaimer() public {
+        mock_getNodeOperatorOwner(user);
+
+        vm.expectEmit(address(accounting));
+        emit ICSAccounting.CustomRewardsClaimerSet(0, address(1337));
+        vm.prank(user);
+        accounting.setCustomRewardsClaimer(0, address(1337));
+
+        address claimer = accounting.getCustomRewardsClaimer(0);
+        assertEq(claimer, address(1337));
+    }
+
+    function test_setCustomRewardsClaimer_noEmitOnSameAddress() public {
+        mock_getNodeOperatorOwner(user);
+
+        vm.prank(user);
+        accounting.setCustomRewardsClaimer(0, address(1337));
+
+        address claimer = accounting.getCustomRewardsClaimer(0);
+        assertEq(claimer, address(1337));
+
+        vm.recordLogs();
+        vm.prank(user);
+        accounting.setCustomRewardsClaimer(0, claimer);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 0);
+    }
+
+    function test_setCustomRewardsClaimer_RevertWhen_SenderIsNotEligible()
+        public
+    {
+        mock_getNodeOperatorOwner(user);
+
+        vm.expectRevert(ICSAccounting.SenderIsNotEligible.selector);
+        vm.prank(stranger);
+        accounting.setCustomRewardsClaimer(0, address(1337));
+    }
 }
 
 contract NegativeRebaseTest is BaseTest {
