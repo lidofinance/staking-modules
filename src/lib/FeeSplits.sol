@@ -24,7 +24,7 @@ interface IFeeSplits {
 
 library FeeSplits {
     uint256 internal constant MAX_BP = 10_000;
-    uint256 public constant MAX_FEE_SPLITS = 5;
+    uint256 public constant MAX_FEE_SPLITS = 10;
 
     function setFeeSplits(
         mapping(uint256 => ICSAccounting.FeeSplit[]) storage feeSplitsStorage,
