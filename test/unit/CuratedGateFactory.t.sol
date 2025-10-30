@@ -23,6 +23,7 @@ contract CuratedGateFactoryTestBase is Test, Utilities {
     bytes32 root;
     string cid;
     uint256 curveId;
+    uint256 moduleId;
 
     address admin;
 
@@ -30,7 +31,10 @@ contract CuratedGateFactoryTestBase is Test, Utilities {
         admin = nextAddress("admin");
         module = new CSMMock();
         data = new OperatorsDataMock();
-        impl = address(new CuratedGate(address(module), address(data)));
+        moduleId = 1;
+        impl = address(
+            new CuratedGate(address(module), moduleId, address(data))
+        );
         factory = new CuratedGateFactory(impl);
         root = bytes32(randomBytes(32));
         cid = "someCid";
@@ -59,6 +63,7 @@ contract CuratedGateFactoryTest_create is CuratedGateFactoryTestBase {
         ICuratedGate gate = ICuratedGate(instance);
         assertEq(gate.curveId(), curveId);
         assertEq(address(gate.MODULE()), address(module));
+        assertEq(gate.MODULE_ID(), moduleId);
         assertEq(gate.treeRoot(), root);
         assertEq(gate.treeCid(), cid);
         assertEq(address(gate.OPERATORS_DATA()), address(data));

@@ -18,15 +18,21 @@ interface IOperatorsData {
     /// @param description Long description
     /// @param ownerRestricted Whether owner updates are restricted
     event OperatorDataSet(
-        address indexed module,
+        uint256 indexed moduleId,
+        address module,
         uint256 indexed nodeOperatorId,
         string name,
         string description,
         bool ownerRestricted
     );
 
+    /// @notice Emitted when a module address is cached
+    /// @param moduleId Module id
+    /// @param moduleAddress Module address
+    event ModuleAddressCached(uint256 indexed moduleId, address moduleAddress);
+
     error ZeroAdminAddress();
-    error ZeroModuleAddress();
+    error ZeroModuleId();
     error ZeroStakingRouterAddress();
     error NodeOperatorDoesNotExist();
     error NotOwner();
@@ -37,41 +43,41 @@ interface IOperatorsData {
     function SETTER_ROLE() external view returns (bytes32);
 
     /// @notice Set or update metadata for a Node Operator (callable by SETTER_ROLE)
-    /// @param module Module address
+    /// @param moduleId Module id
     /// @param nodeOperatorId Node Operator id
     /// @param info Metadata payload to persist
     function set(
-        address module,
+        uint256 moduleId,
         uint256 nodeOperatorId,
         OperatorInfo calldata info
     ) external;
 
     /// @notice Set or update metadata by the Node Operator owner
-    /// @param module Module address
+    /// @param moduleId Module id
     /// @param nodeOperatorId Node Operator id
     /// @param name Display name
     /// @param description Long description
     function setByOwner(
-        address module,
+        uint256 moduleId,
         uint256 nodeOperatorId,
         string calldata name,
         string calldata description
     ) external;
 
     /// @notice Get metadata for a Node Operator
-    /// @param module Module address
+    /// @param moduleId Module id
     /// @param nodeOperatorId Node Operator id
     /// @return info Stored metadata struct
     function get(
-        address module,
+        uint256 moduleId,
         uint256 nodeOperatorId
     ) external view returns (OperatorInfo memory info);
 
     /// @notice Check if owner metadata updates are restricted
-    /// @param module Module address
+    /// @param moduleId Module id
     /// @param nodeOperatorId Node Operator id
     function isOwnerRestricted(
-        address module,
+        uint256 moduleId,
         uint256 nodeOperatorId
     ) external view returns (bool);
 }

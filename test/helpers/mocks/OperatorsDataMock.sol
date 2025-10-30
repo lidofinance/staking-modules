@@ -6,7 +6,7 @@ import { OperatorInfo } from "../../../src/interfaces/IOperatorsData.sol";
 
 contract OperatorsDataMock {
     function set(
-        address module,
+        uint256 moduleId,
         uint256 nodeOperatorId,
         OperatorInfo calldata info
     ) external {}

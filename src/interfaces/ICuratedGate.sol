@@ -14,6 +14,7 @@ interface ICuratedGate is IMerkleGate {
     /// Errors
     error InvalidCurveId();
     error ZeroModuleAddress();
+    error ZeroModuleId();
     error ZeroOperatorsDataAddress();
     error ZeroAdminAddress();
 
@@ -25,6 +26,9 @@ interface ICuratedGate is IMerkleGate {
 
     /// @return MODULE Curated module reference
     function MODULE() external view returns (ICuratedModule);
+
+    /// @return MODULE_ID Curated module id cached for OperatorsData integration
+    function MODULE_ID() external view returns (uint256);
 
     /// @return ACCOUNTING Accounting reference
     function ACCOUNTING() external view returns (ICSAccounting);

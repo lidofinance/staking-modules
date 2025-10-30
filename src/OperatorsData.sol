@@ -17,9 +17,10 @@ contract OperatorsData is
 {
     bytes32 public constant SETTER_ROLE = keccak256("SETTER_ROLE");
 
-    mapping(address module => mapping(uint256 id => OperatorInfo))
+    mapping(uint256 moduleId => mapping(uint256 id => OperatorInfo))
         internal _operators;
-    mapping(address module => bool) internal _knownModules;
+    mapping(uint256 moduleId => address moduleAddress)
+        internal _moduleAddresses;
 
     IStakingRouter public immutable STAKING_ROUTER;
 
@@ -32,24 +33,27 @@ contract OperatorsData is
     function initialize(address admin) external initializer {
         if (admin == address(0)) revert ZeroAdminAddress();
         __AccessControl_init();
+
+        _cacheModuleAddresses();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
     /// @inheritdoc IOperatorsData
     function set(
-        address module,
+        uint256 moduleId,
         uint256 nodeOperatorId,
         OperatorInfo calldata info
     ) external onlyRole(SETTER_ROLE) {
-        _ensureKnownModule(module);
+        address module = _resolveModuleAddress(moduleId);
         if (!_exists(module, nodeOperatorId)) revert NodeOperatorDoesNotExist();
 
-        OperatorInfo storage stored = _operators[module][nodeOperatorId];
+        OperatorInfo storage stored = _operators[moduleId][nodeOperatorId];
         stored.name = info.name;
         stored.description = info.description;
         stored.ownerRestricted = info.ownerRestricted;
 
         emit OperatorDataSet({
+            moduleId: moduleId,
             module: module,
             nodeOperatorId: nodeOperatorId,
             name: stored.name,
@@ -60,24 +64,25 @@ contract OperatorsData is
 
     /// @inheritdoc IOperatorsData
     function setByOwner(
-        address module,
+        uint256 moduleId,
         uint256 nodeOperatorId,
         string calldata name,
         string calldata description
     ) external {
-        _ensureKnownModule(module);
+        address module = _resolveModuleAddress(moduleId);
         address owner = INodeOperatorOwner(module).getNodeOperatorOwner(
             nodeOperatorId
         );
         if (owner == address(0)) revert NodeOperatorDoesNotExist();
         if (owner != msg.sender) revert NotOwner();
-        OperatorInfo storage stored = _operators[module][nodeOperatorId];
+        OperatorInfo storage stored = _operators[moduleId][nodeOperatorId];
         if (stored.ownerRestricted) revert OwnerEditsRestricted();
 
         stored.name = name;
         stored.description = description;
 
         emit OperatorDataSet({
+            moduleId: moduleId,
             module: module,
             nodeOperatorId: nodeOperatorId,
             name: stored.name,
@@ -88,53 +93,57 @@ contract OperatorsData is
 
     /// @inheritdoc IOperatorsData
     function get(
-        address module,
+        uint256 moduleId,
         uint256 nodeOperatorId
     ) external view returns (OperatorInfo memory info) {
-        _checkModule(module);
-        return _operators[module][nodeOperatorId];
+        if (moduleId == 0) revert ZeroModuleId();
+        if (_moduleAddresses[moduleId] == address(0)) revert UnknownModule();
+
+        return _operators[moduleId][nodeOperatorId];
     }
 
     /// @inheritdoc IOperatorsData
     function isOwnerRestricted(
-        address module,
+        uint256 moduleId,
         uint256 nodeOperatorId
     ) external view returns (bool) {
-        _checkModule(module);
-        return _operators[module][nodeOperatorId].ownerRestricted;
-    }
+        if (moduleId == 0) revert ZeroModuleId();
+        if (_moduleAddresses[moduleId] == address(0)) revert UnknownModule();
 
-    function _ensureKnownModule(address module) internal {
-        _checkModule(module);
-        if (!_knownModules[module]) {
-            _knownModules[module] = true;
-        }
+        return _operators[moduleId][nodeOperatorId].ownerRestricted;
     }
 
     function _exists(
         address module,
         uint256 nodeOperatorId
     ) internal view returns (bool) {
-        if (module == address(0)) revert ZeroModuleAddress();
         return
             nodeOperatorId < INodeOperatorOwner(module).getNodeOperatorsCount();
     }
 
-    function _checkModule(address module) internal view {
-        if (module == address(0)) revert ZeroModuleAddress();
-        if (_knownModules[module]) return;
-        if (!_moduleExists(module)) revert UnknownModule();
+    function _resolveModuleAddress(
+        uint256 moduleId
+    ) internal returns (address module) {
+        if (moduleId == 0) revert ZeroModuleId();
+        module = _moduleAddresses[moduleId];
+        if (module == address(0)) {
+            // Revert expected from staking router if module is unknown
+            module = STAKING_ROUTER
+                .getStakingModule(moduleId)
+                .stakingModuleAddress;
+            _moduleAddresses[moduleId] = module;
+            emit ModuleAddressCached(moduleId, module);
+        }
     }
 
-    function _moduleExists(address module) internal view returns (bool) {
+    function _cacheModuleAddresses() internal {
         IStakingRouter.StakingModule[] memory modules = STAKING_ROUTER
             .getStakingModules();
         uint256 length = modules.length;
         for (uint256 i = 0; i < length; ++i) {
-            if (modules[i].stakingModuleAddress == module) {
-                return true;
-            }
+            IStakingRouter.StakingModule memory module = modules[i];
+            _moduleAddresses[module.id] = module.stakingModuleAddress;
+            emit ModuleAddressCached(module.id, module.stakingModuleAddress);
         }
-        return false;
     }
 }

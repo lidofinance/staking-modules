@@ -6,10 +6,41 @@ pragma solidity 0.8.24;
 import { IStakingRouter } from "../../../src/interfaces/IStakingRouter.sol";
 
 contract StakingRouterMock {
-    address[] internal _modules;
+    mapping(uint256 => IStakingRouter.StakingModule) internal _modules;
+    uint256[] internal _moduleIds;
+
+    error StakingModuleUnregistered();
 
     function setModules(address[] memory modules) external {
-        _modules = modules;
+        _clearModules();
+        uint256 length = modules.length;
+        for (uint256 i = 0; i < length; ++i) {
+            uint256 moduleId = i + 1; // module ids start at 1
+            IStakingRouter.StakingModule storage moduleData = _modules[
+                moduleId
+            ];
+            moduleData.id = uint24(moduleId);
+            moduleData.stakingModuleAddress = modules[i];
+            _moduleIds.push(moduleId);
+        }
+    }
+
+    function addModule(uint256 moduleId, address module) external {
+        if (moduleId == 0) revert("module id zero");
+        IStakingRouter.StakingModule storage moduleData = _modules[moduleId];
+        moduleData.id = uint24(moduleId);
+        moduleData.stakingModuleAddress = module;
+        bool exists = false;
+        uint256 idsLength = _moduleIds.length;
+        for (uint256 i = 0; i < idsLength; ++i) {
+            if (_moduleIds[i] == moduleId) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) {
+            _moduleIds.push(moduleId);
+        }
     }
 
     function getStakingModules()
@@ -17,10 +48,28 @@ contract StakingRouterMock {
         view
         returns (IStakingRouter.StakingModule[] memory res)
     {
-        address[] memory modules = _modules;
-        res = new IStakingRouter.StakingModule[](modules.length);
-        for (uint256 i = 0; i < modules.length; ++i) {
-            res[i].stakingModuleAddress = modules[i];
+        uint256 length = _moduleIds.length;
+        res = new IStakingRouter.StakingModule[](length);
+        for (uint256 i = 0; i < length; ++i) {
+            res[i] = _modules[_moduleIds[i]];
         }
+    }
+
+    function getStakingModule(
+        uint256 moduleId
+    ) external view returns (IStakingRouter.StakingModule memory) {
+        IStakingRouter.StakingModule memory module = _modules[moduleId];
+        if (module.stakingModuleAddress == address(0)) {
+            revert StakingModuleUnregistered();
+        }
+        return module;
+    }
+
+    function _clearModules() internal {
+        uint256 length = _moduleIds.length;
+        for (uint256 i = 0; i < length; ++i) {
+            delete _modules[_moduleIds[i]];
+        }
+        delete _moduleIds;
     }
 }
