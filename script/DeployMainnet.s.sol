@@ -71,6 +71,8 @@ contract DeployMainnet is DeployBase {
             .elRewardsStealingReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
 
         // CSParameters
+        config
+            .nonCriticalParametersManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
         config.defaultKeyRemovalCharge = 0.02 ether;
         config.defaultElRewardsStealingAdditionalFine = 0.1 ether;
         config.defaultKeysLimit = type(uint256).max;

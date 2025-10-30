@@ -74,6 +74,7 @@ struct DeployParams {
     bytes32 moduleType;
     address elRewardsStealingReporter;
     // CSParameters
+    address nonCriticalParametersManager;
     uint256 queueLowestPriority;
     uint256 defaultKeyRemovalCharge;
     uint256 defaultElRewardsStealingAdditionalFine;
@@ -271,6 +272,11 @@ abstract contract DeployBase is Script {
                         .defaultMaxWithdrawalRequestFee
                 })
             });
+
+            parametersRegistry.grantRole(
+                parametersRegistry.NON_CRITICAL_PARAMETERS_MANAGER_ROLE(),
+                address(deployer)
+            );
 
             CSAccounting accountingImpl = new CSAccounting({
                 lidoLocator: config.lidoLocatorAddress,
@@ -598,6 +604,16 @@ abstract contract DeployBase is Script {
 
             ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             ejector.revokeRole(ejector.DEFAULT_ADMIN_ROLE(), deployer);
+
+            parametersRegistry.revokeRole(
+                parametersRegistry.NON_CRITICAL_PARAMETERS_MANAGER_ROLE(),
+                deployer
+            );
+
+            parametersRegistry.grantRole(
+                parametersRegistry.NON_CRITICAL_PARAMETERS_MANAGER_ROLE(),
+                config.identifiedCommunityStakersGateManager
+            );
 
             parametersRegistry.grantRole(
                 parametersRegistry.DEFAULT_ADMIN_ROLE(),
