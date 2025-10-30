@@ -54,7 +54,7 @@ just test-unit
 For the following tests, make sure that the following variables are set in the `.env` file:
 
 ```bash
-export CHAIN=holesky
+export CHAIN=hoodi
 export RPC_URL=<PUT_YOUR_URL_HERE>
 ```
 
