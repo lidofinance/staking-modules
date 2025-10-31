@@ -4,7 +4,7 @@
 pragma solidity 0.8.24;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import { IOperatorsData, OperatorInfo } from "./interfaces/IOperatorsData.sol";
 import { INodeOperatorOwner } from "./interfaces/INodeOperatorOwner.sol";
@@ -13,9 +13,9 @@ import { IStakingModule } from "./interfaces/IStakingModule.sol";
 
 /// @notice Operators metadata storage
 contract OperatorsData is
+    IOperatorsData,
     Initializable,
-    AccessControlUpgradeable,
-    IOperatorsData
+    AccessControlEnumerableUpgradeable
 {
     bytes32 public constant SETTER_ROLE = keccak256("SETTER_ROLE");
 
@@ -34,7 +34,8 @@ contract OperatorsData is
 
     function initialize(address admin) external initializer {
         if (admin == address(0)) revert ZeroAdminAddress();
-        __AccessControl_init();
+
+        __AccessControlEnumerable_init();
 
         _cacheModuleAddresses();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -60,9 +61,9 @@ contract OperatorsData is
             moduleId: moduleId,
             module: module,
             nodeOperatorId: nodeOperatorId,
-            name: stored.name,
-            description: stored.description,
-            ownerRestricted: stored.ownerRestricted
+            name: info.name,
+            description: info.description,
+            ownerRestricted: info.ownerRestricted
         });
     }
 
@@ -76,7 +77,7 @@ contract OperatorsData is
         address module = _resolveModuleAddress(moduleId);
         address owner = _owner(module, nodeOperatorId);
         if (owner == address(0)) revert NodeOperatorDoesNotExist();
-        if (owner != msg.sender) revert NotOwner();
+        if (owner != msg.sender) revert SenderIsNotEligible();
 
         OperatorInfo storage stored = _operators[moduleId][nodeOperatorId];
         if (stored.ownerRestricted) revert OwnerEditsRestricted();
@@ -88,8 +89,8 @@ contract OperatorsData is
             moduleId: moduleId,
             module: module,
             nodeOperatorId: nodeOperatorId,
-            name: stored.name,
-            description: stored.description,
+            name: name,
+            description: description,
             ownerRestricted: stored.ownerRestricted
         });
     }
@@ -99,8 +100,7 @@ contract OperatorsData is
         uint256 moduleId,
         uint256 nodeOperatorId
     ) external view returns (OperatorInfo memory info) {
-        if (moduleId == 0) revert ZeroModuleId();
-        if (_moduleAddresses[moduleId] == address(0)) revert UnknownModule();
+        _moduleExists(moduleId);
 
         return _operators[moduleId][nodeOperatorId];
     }
@@ -110,8 +110,7 @@ contract OperatorsData is
         uint256 moduleId,
         uint256 nodeOperatorId
     ) external view returns (bool) {
-        if (moduleId == 0) revert ZeroModuleId();
-        if (_moduleAddresses[moduleId] == address(0)) revert UnknownModule();
+        _moduleExists(moduleId);
 
         return _operators[moduleId][nodeOperatorId].ownerRestricted;
     }
@@ -144,6 +143,11 @@ contract OperatorsData is
             _moduleAddresses[moduleId] = module;
             emit ModuleAddressCached(moduleId, module);
         }
+    }
+
+    function _moduleExists(uint256 moduleId) internal view {
+        if (moduleId == 0) revert ZeroModuleId();
+        if (_moduleAddresses[moduleId] == address(0)) revert UnknownModule();
     }
 
     function _cacheModuleAddresses() internal {

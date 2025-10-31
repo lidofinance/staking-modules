@@ -312,7 +312,7 @@ contract OperatorsDataTest_setByOwner is OperatorsDataTestBase {
 
     function test_setByOwner_RevertWhen_NotOwner() public {
         vm.prank(stranger);
-        vm.expectRevert(IOperatorsData.NotOwner.selector);
+        vm.expectRevert(IOperatorsData.SenderIsNotEligible.selector);
         data.setByOwner(moduleId, nodeOperatorId, "Name", "Desc");
     }
 

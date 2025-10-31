@@ -35,7 +35,7 @@ interface IOperatorsData {
     error ZeroModuleId();
     error ZeroStakingRouterAddress();
     error NodeOperatorDoesNotExist();
-    error NotOwner();
+    error SenderIsNotEligible();
     error OwnerEditsRestricted();
     error UnknownModule();
     error ModuleDoesNotSupportNodeOperatorOwnerInterface();

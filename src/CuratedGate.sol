@@ -49,6 +49,8 @@ contract CuratedGate is
     /// @inheritdoc ICuratedGate
     uint256 public curveId;
 
+    bool internal _defaultCurveSet;
+
     /// @dev Tracks whether an address already consumed its eligibility
     mapping(address => bool) internal _consumedAddresses;
 
@@ -69,9 +71,13 @@ contract CuratedGate is
         string calldata _treeCid,
         address admin
     ) external initializer {
-        __AccessControlEnumerable_init();
         if (admin == address(0)) revert ZeroAdminAddress();
+
+        __AccessControlEnumerable_init();
         curveId = _curveId;
+        if (_curveId == ACCOUNTING.DEFAULT_BOND_CURVE_ID()) {
+            _defaultCurveSet = true;
+        }
         _setTreeParams(_treeRoot, _treeCid);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
@@ -111,8 +117,7 @@ contract CuratedGate is
         });
 
         // Apply instance-specific custom curve
-        uint256 defaultCurveId = ACCOUNTING.DEFAULT_BOND_CURVE_ID();
-        if (curveId != defaultCurveId) {
+        if (!_defaultCurveSet) {
             ACCOUNTING.setBondCurve(nodeOperatorId, curveId);
         }
 
