@@ -1201,14 +1201,6 @@ contract CSModule is
         }
     }
 
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override(AccessControlEnumerableUpgradeable) returns (bool) {
-        return
-            interfaceId == type(INodeOperatorOwner).interfaceId ||
-            super.supportsInterface(interfaceId);
-    }
-
     /// @inheritdoc IStakingModule
     /// @notice depositableValidatorsCount depends on:
     ///      - totalVettedKeys
@@ -1382,6 +1374,14 @@ contract CSModule is
     /// @dev This function is used to get the accounting contract from immutables to save bytecode and for backwards compatibility
     function accounting() public view returns (ICSAccounting) {
         return ACCOUNTING;
+    }
+
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override(AccessControlEnumerableUpgradeable) returns (bool) {
+        return
+            interfaceId == type(INodeOperatorOwner).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     function _incrementModuleNonce() internal {

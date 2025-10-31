@@ -115,21 +115,6 @@ contract OperatorsData is
         return _operators[moduleId][nodeOperatorId].ownerRestricted;
     }
 
-    function _nodeOperatorExists(
-        address module,
-        uint256 nodeOperatorId
-    ) internal view returns (bool) {
-        return nodeOperatorId < IStakingModule(module).getNodeOperatorsCount();
-    }
-
-    function _owner(
-        address module,
-        uint256 nodeOperatorId
-    ) internal view returns (address) {
-        _validateModuleInterface(module);
-        return INodeOperatorOwner(module).getNodeOperatorOwner(nodeOperatorId);
-    }
-
     function _resolveModuleAddress(
         uint256 moduleId
     ) internal returns (address module) {
@@ -145,11 +130,6 @@ contract OperatorsData is
         }
     }
 
-    function _moduleExists(uint256 moduleId) internal view {
-        if (moduleId == 0) revert ZeroModuleId();
-        if (_moduleAddresses[moduleId] == address(0)) revert UnknownModule();
-    }
-
     function _cacheModuleAddresses() internal {
         IStakingRouter.StakingModule[] memory modules = STAKING_ROUTER
             .getStakingModules();
@@ -159,6 +139,26 @@ contract OperatorsData is
             _moduleAddresses[module.id] = module.stakingModuleAddress;
             emit ModuleAddressCached(module.id, module.stakingModuleAddress);
         }
+    }
+
+    function _nodeOperatorExists(
+        address module,
+        uint256 nodeOperatorId
+    ) internal view returns (bool) {
+        return nodeOperatorId < IStakingModule(module).getNodeOperatorsCount();
+    }
+
+    function _owner(
+        address module,
+        uint256 nodeOperatorId
+    ) internal view returns (address) {
+        _validateModuleInterface(module);
+        return INodeOperatorOwner(module).getNodeOperatorOwner(nodeOperatorId);
+    }
+
+    function _moduleExists(uint256 moduleId) internal view {
+        if (moduleId == 0) revert ZeroModuleId();
+        if (_moduleAddresses[moduleId] == address(0)) revert UnknownModule();
     }
 
     function _validateModuleInterface(address module) internal view {
