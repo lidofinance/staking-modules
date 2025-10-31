@@ -133,14 +133,35 @@ interface ICSParametersRegistry {
     error InvalidAllowedExitDelay();
     error ZeroQueueLowestPriority();
 
-    /// @notice The lowest priority a deposit queue can be assigned with. This constant is not used in Curated Module
-    function QUEUE_LOWEST_PRIORITY() external view returns (uint256);
-
-    /// @notice Role required to change non-critical parameters
-    function NON_CRITICAL_PARAMETERS_MANAGER_ROLE()
+    /// @notice Role to manage general penalties and charges parameters: key removal charge and EL rewards stealing additional fine
+    function MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE()
         external
         view
         returns (bytes32);
+
+    /// @notice Role to manage keys limit parameter
+    function MANAGE_KEYS_LIMIT_ROLE() external view returns (bytes32);
+
+    /// @notice Role to manage queue config
+    function MANAGE_QUEUE_CONFIG_ROLE() external view returns (bytes32);
+
+    /// @notice Role to manage performance parameters: performance leeway, strikes params, bad performance penalty, performance coefficients
+    function MANAGE_PERFORMANCE_PARAMETERS_ROLE()
+        external
+        view
+        returns (bytes32);
+
+    /// @notice Role to manage reward share parameters
+    function MANAGE_REWARD_SHARE_ROLE() external view returns (bytes32);
+
+    /// @notice Role to manage validator exit related parameters: allowed exit delay, exit delay fee, max withdrawal request fee
+    function MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE()
+        external
+        view
+        returns (bytes32);
+
+    /// @notice The lowest priority a deposit queue can be assigned with. This constant is not used in Curated Module
+    function QUEUE_LOWEST_PRIORITY() external view returns (uint256);
 
     /// @notice Get default value for the key removal charge. This parameter is not used in Curated Module
     function defaultKeyRemovalCharge() external returns (uint256);

@@ -1237,7 +1237,7 @@ contract RemoveKeysTest is IntegrationTestBase {
 
         vm.startPrank(
             parametersRegistry.getRoleMember(
-                parametersRegistry.NON_CRITICAL_PARAMETERS_MANAGER_ROLE(),
+                parametersRegistry.DEFAULT_ADMIN_ROLE(),
                 0
             )
         );
