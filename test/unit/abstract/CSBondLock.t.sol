@@ -30,8 +30,8 @@ contract CSBondLockTestable is CSBondLock(4 weeks, 365 days) {
         _lock(nodeOperatorId, amount);
     }
 
-    function reduceAmount(uint256 nodeOperatorId, uint256 amount) external {
-        _reduceAmount(nodeOperatorId, amount);
+    function unlock(uint256 nodeOperatorId, uint256 amount) external {
+        _unlock(nodeOperatorId, amount);
     }
 
     function remove(uint256 nodeOperatorId) external {
@@ -54,6 +54,20 @@ contract CSBondLockTest is Test {
         emit ICSBondLock.BondLockPeriodChanged(period);
 
         bondLock.setBondLockPeriod(period);
+
+        uint256 _period = bondLock.getBondLockPeriod();
+        assertEq(_period, period);
+    }
+
+    function test_setBondLockPeriod_samePeriodNoEvent() public {
+        uint256 period = bondLock.getBondLockPeriod();
+
+        vm.recordLogs();
+
+        bondLock.setBondLockPeriod(period);
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        assertEq(entries.length, 0);
 
         uint256 _period = bondLock.getBondLockPeriod();
         assertEq(_period, period);
@@ -202,7 +216,7 @@ contract CSBondLockTest is Test {
         bondLock.lock(0, lock);
     }
 
-    function test_reduceAmount_WhenFull() public {
+    function test_unlock_WhenFull() public {
         uint256 noId = 0;
         uint256 amount = 100 ether;
 
@@ -211,14 +225,14 @@ contract CSBondLockTest is Test {
         vm.expectEmit(address(bondLock));
         emit ICSBondLock.BondLockRemoved(noId);
 
-        bondLock.reduceAmount(noId, amount);
+        bondLock.unlock(noId, amount);
 
         CSBondLock.BondLock memory lock = bondLock.getLockedBondInfo(0);
         assertEq(lock.amount, 0);
         assertEq(lock.until, 0);
     }
 
-    function test_reduceAmount_WhenPartial() public {
+    function test_unlock_WhenPartial() public {
         uint256 period = bondLock.getBondLockPeriod();
         uint256 noId = 0;
         uint256 amount = 100 ether;
@@ -234,26 +248,26 @@ contract CSBondLockTest is Test {
         vm.expectEmit(address(bondLock));
         emit ICSBondLock.BondLockChanged(noId, rest, periodWhenLock);
 
-        bondLock.reduceAmount(noId, toRelease);
+        bondLock.unlock(noId, toRelease);
 
         CSBondLock.BondLock memory lock = bondLock.getLockedBondInfo(0);
         assertEq(lock.amount, rest);
         assertEq(lock.until, periodWhenLock);
     }
 
-    function test_reduceAmount_RevertWhen_ZeroAmount() public {
+    function test_unlock_RevertWhen_ZeroAmount() public {
         vm.expectRevert(ICSBondLock.InvalidBondLockAmount.selector);
-        bondLock.reduceAmount(0, 0);
+        bondLock.unlock(0, 0);
     }
 
-    function test_reduceAmount_RevertWhen_GreaterThanLock() public {
+    function test_unlock_RevertWhen_GreaterThanLock() public {
         uint256 noId = 0;
         uint256 amount = 100 ether;
 
         bondLock.lock(noId, amount);
 
         vm.expectRevert(ICSBondLock.InvalidBondLockAmount.selector);
-        bondLock.reduceAmount(noId, amount + 1 ether);
+        bondLock.unlock(noId, amount + 1 ether);
     }
 
     function test_remove() public {

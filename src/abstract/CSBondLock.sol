@@ -106,8 +106,8 @@ abstract contract CSBondLock is ICSBondLock, Initializable {
         });
     }
 
-    /// @dev Reduce the locked bond amount for the given Node Operator without changing the lock period
-    function _reduceAmount(uint256 nodeOperatorId, uint256 amount) internal {
+    /// @dev Unlock the locked bond amount for the given Node Operator without changing the lock period
+    function _unlock(uint256 nodeOperatorId, uint256 amount) internal {
         if (amount == 0) {
             revert InvalidBondLockAmount();
         }
@@ -150,6 +150,10 @@ abstract contract CSBondLock is ICSBondLock, Initializable {
     function _setBondLockPeriod(uint256 period) internal {
         if (period < MIN_BOND_LOCK_PERIOD || period > MAX_BOND_LOCK_PERIOD) {
             revert InvalidBondLockPeriod();
+        }
+        uint256 currentPeriod = _getCSBondLockStorage().bondLockPeriod;
+        if (currentPeriod == period) {
+            return;
         }
         _getCSBondLockStorage().bondLockPeriod = period;
         emit BondLockPeriodChanged(period);

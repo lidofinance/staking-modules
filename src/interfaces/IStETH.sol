@@ -3,10 +3,12 @@
 
 pragma solidity 0.8.24;
 
+import { IERC20Permit } from "./IERC20Permit.sol";
+
 /**
  * @title Interface defining ERC20-compatible StETH token
  */
-interface IStETH {
+interface IStETH is IERC20Permit {
     /**
      * @notice Get stETH amount by the provided shares amount
      * @param _sharesAmount shares amount
@@ -31,8 +33,6 @@ interface IStETH {
      */
     function sharesOf(address _account) external view returns (uint256);
 
-    function balanceOf(address _account) external view returns (uint256);
-
     /**
      * @notice Transfer `_sharesAmount` stETH shares from `_sender` to `_recipient` using allowance.
      */
@@ -49,38 +49,4 @@ interface IStETH {
         address _recipient,
         uint256 _sharesAmount
     ) external returns (uint256);
-
-    /**
-     * @notice Moves `_amount` stETH from the caller's account to the `_recipient` account.
-     */
-    function transfer(
-        address _recipient,
-        uint256 _amount
-    ) external returns (bool);
-
-    /**
-     * @notice Moves `_amount` stETH from the `_sender` account to the `_recipient` account.
-     */
-    function transferFrom(
-        address _sender,
-        address _recipient,
-        uint256 _amount
-    ) external returns (bool);
-
-    function approve(address _spender, uint256 _amount) external returns (bool);
-
-    function permit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external;
-
-    function allowance(
-        address _owner,
-        address _spender
-    ) external view returns (uint256);
 }

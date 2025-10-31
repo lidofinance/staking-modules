@@ -159,6 +159,12 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
                 exitType
             )
         );
+        vm.expectEmit(address(ejector));
+        emit ICSEjector.VoluntaryEjectionRequested({
+            nodeOperatorId: noId,
+            pubkey: pubkey,
+            refundRecipient: refundRecipient
+        });
         ejector.voluntaryEject(noId, keyIndex, 1, refundRecipient);
     }
 
@@ -180,12 +186,11 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
         ValidatorData[] memory expectedExitsData = new ValidatorData[](
             keysCount
         );
+        bytes[] memory emittedPubkeys = new bytes[](keysCount);
         for (uint256 i; i < keysCount; ++i) {
-            expectedExitsData[i] = ValidatorData(
-                0,
-                noId,
-                slice(pubkeys, 48 * i, 48)
-            );
+            bytes memory pubkey = slice(pubkeys, 48 * i, 48);
+            expectedExitsData[i] = ValidatorData(0, noId, pubkey);
+            emittedPubkeys[i] = pubkey;
         }
         uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
 
@@ -198,6 +203,14 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
                 exitType
             )
         );
+        for (uint256 i; i < keysCount; ++i) {
+            vm.expectEmit(address(ejector));
+            emit ICSEjector.VoluntaryEjectionRequested({
+                nodeOperatorId: noId,
+                pubkey: emittedPubkeys[i],
+                refundRecipient: refundRecipient
+            });
+        }
         ejector.voluntaryEject(noId, keyIndex, keysCount, refundRecipient);
     }
 
@@ -396,6 +409,12 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
                 exitType
             )
         );
+        vm.expectEmit(address(ejector));
+        emit ICSEjector.VoluntaryEjectionRequested({
+            nodeOperatorId: noId,
+            pubkey: pubkey,
+            refundRecipient: refundRecipient
+        });
         ejector.voluntaryEjectByArray(noId, indices, refundRecipient);
     }
 
@@ -416,12 +435,11 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
         ValidatorData[] memory expectedExitsData = new ValidatorData[](
             keysCount
         );
+        bytes[] memory emittedPubkeys = new bytes[](keysCount);
         for (uint256 i; i < keysCount; ++i) {
-            expectedExitsData[i] = ValidatorData(
-                0,
-                noId,
-                slice(pubkeys, 48 * i, 48)
-            );
+            bytes memory pubkey = slice(pubkeys, 48 * i, 48);
+            expectedExitsData[i] = ValidatorData(0, noId, pubkey);
+            emittedPubkeys[i] = pubkey;
         }
         uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
 
@@ -438,6 +456,14 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
                 exitType
             )
         );
+        for (uint256 i; i < keysCount; ++i) {
+            vm.expectEmit(address(ejector));
+            emit ICSEjector.VoluntaryEjectionRequested({
+                nodeOperatorId: noId,
+                pubkey: emittedPubkeys[i],
+                refundRecipient: refundRecipient
+            });
+        }
         ejector.voluntaryEjectByArray(noId, indices, refundRecipient);
     }
 
@@ -670,6 +696,12 @@ contract CSEjectorTestEjectBadPerformer is CSEjectorTestBase {
             )
         );
 
+        vm.expectEmit(address(ejector));
+        emit ICSEjector.BadPerformerEjectionRequested({
+            nodeOperatorId: noId,
+            pubkey: pubkey,
+            refundRecipient: refundRecipient
+        });
         vm.prank(address(strikes));
         ejector.ejectBadPerformer(noId, keyIndex, refundRecipient);
     }

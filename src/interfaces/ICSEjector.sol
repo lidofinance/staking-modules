@@ -20,6 +20,18 @@ interface ICSEjector is IExitTypes {
     error SenderIsNotStrikes();
     error NothingToEject();
 
+    event VoluntaryEjectionRequested(
+        uint256 indexed nodeOperatorId,
+        bytes pubkey,
+        address refundRecipient
+    );
+
+    event BadPerformerEjectionRequested(
+        uint256 indexed nodeOperatorId,
+        bytes pubkey,
+        address refundRecipient
+    );
+
     function PAUSE_ROLE() external view returns (bytes32);
 
     function RESUME_ROLE() external view returns (bytes32);
