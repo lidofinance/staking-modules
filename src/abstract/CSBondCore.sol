@@ -22,7 +22,7 @@ import { ICSBondCore } from "../interfaces/ICSBondCore.sol";
 ///  - burn
 ///
 /// Should be inherited by Module contract, or Module-related contract.
-/// Internal non-view methods should be used in Module contract with additional requirements (if any).
+/// Internal non-view methods should be used in Module or Module-related contract with additional requirements (if any).
 ///
 /// @author vgorkavenko
 abstract contract CSBondCore is ICSBondCore {
@@ -129,6 +129,8 @@ abstract contract CSBondCore is ICSBondCore {
 
     /// @dev Claim Node Operator's excess bond shares (stETH) in ETH by requesting withdrawal from the protocol
     ///      As a usual withdrawal request, this claim might be processed on the next stETH rebase
+    ///      Due to direct interaction with Withdrawal Queue, the limits on withdrawal amount from WITHDRAWAL_QUEUE contract are implicitly applied
+    ///      Namely, the method will revert on attempt to claim more stETH than WQ.MAX_STETH_WITHDRAWAL_AMOUNT() and less than WQ.MIN_STETH_WITHDRAWAL_AMOUNT().
     function _claimUnstETH(
         uint256 nodeOperatorId,
         uint256 requestedAmountToClaim,

@@ -17,6 +17,7 @@ import { IStakingModule } from "./interfaces/IStakingModule.sol";
 import { ICSModule, NodeOperatorManagementProperties } from "./interfaces/ICSModule.sol";
 import { ICSAccounting } from "./interfaces/ICSAccounting.sol";
 import { ICSFeeDistributor } from "./interfaces/ICSFeeDistributor.sol";
+import { IERC20Permit } from "./interfaces/IERC20Permit.sol";
 
 /// @author vgorkavenko
 /// @notice This contract stores the Node Operators' bonds in the form of stETH shares,
@@ -206,7 +207,7 @@ contract CSAccounting is
         uint256 stETHAmount,
         PermitInput calldata permit
     ) external whenResumed onlyModule {
-        _unwrapStETHPermitIfRequired(from, permit);
+        _unwrapPermitIfRequired(address(LIDO), from, permit);
         CSBondCore._depositStETH(from, nodeOperatorId, stETHAmount);
     }
 
@@ -217,7 +218,7 @@ contract CSAccounting is
         PermitInput calldata permit
     ) external whenResumed {
         _onlyExistingNodeOperator(nodeOperatorId);
-        _unwrapStETHPermitIfRequired(msg.sender, permit);
+        _unwrapPermitIfRequired(address(LIDO), msg.sender, permit);
         CSBondCore._depositStETH(msg.sender, nodeOperatorId, stETHAmount);
         MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
@@ -229,7 +230,7 @@ contract CSAccounting is
         uint256 wstETHAmount,
         PermitInput calldata permit
     ) external whenResumed onlyModule {
-        _unwrapWstETHPermitIfRequired(from, permit);
+        _unwrapPermitIfRequired(address(WSTETH), from, permit);
         CSBondCore._depositWstETH(from, nodeOperatorId, wstETHAmount);
     }
 
@@ -240,7 +241,7 @@ contract CSAccounting is
         PermitInput calldata permit
     ) external whenResumed {
         _onlyExistingNodeOperator(nodeOperatorId);
-        _unwrapWstETHPermitIfRequired(msg.sender, permit);
+        _unwrapPermitIfRequired(address(WSTETH), msg.sender, permit);
         CSBondCore._depositWstETH(msg.sender, nodeOperatorId, wstETHAmount);
         MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
@@ -342,7 +343,7 @@ contract CSAccounting is
         uint256 nodeOperatorId,
         uint256 amount
     ) external onlyModule {
-        CSBondLock._reduceAmount(nodeOperatorId, amount);
+        CSBondLock._unlock(nodeOperatorId, amount);
     }
 
     /// @inheritdoc ICSAccounting
@@ -356,7 +357,7 @@ contract CSAccounting is
             revert ElRewardsVaultReceiveFailed();
         }
 
-        CSBondLock._reduceAmount(nodeOperatorId, msg.value);
+        CSBondLock._unlock(nodeOperatorId, msg.value);
         emit BondLockCompensated(nodeOperatorId, msg.value);
     }
 
@@ -629,35 +630,16 @@ contract CSAccounting is
         }
     }
 
-    function _unwrapStETHPermitIfRequired(
+    function _unwrapPermitIfRequired(
+        address token,
         address from,
         PermitInput calldata permit
     ) internal {
         if (
             permit.value > 0 &&
-            LIDO.allowance(from, address(this)) < permit.value
+            IERC20Permit(token).allowance(from, address(this)) < permit.value
         ) {
-            LIDO.permit({
-                owner: from,
-                spender: address(this),
-                value: permit.value,
-                deadline: permit.deadline,
-                v: permit.v,
-                r: permit.r,
-                s: permit.s
-            });
-        }
-    }
-
-    function _unwrapWstETHPermitIfRequired(
-        address from,
-        PermitInput calldata permit
-    ) internal {
-        if (
-            permit.value > 0 &&
-            WSTETH.allowance(from, address(this)) < permit.value
-        ) {
-            WSTETH.permit({
+            IERC20Permit(token).permit({
                 owner: from,
                 spender: address(this),
                 value: permit.value,
