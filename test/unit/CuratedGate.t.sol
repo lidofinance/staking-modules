@@ -16,6 +16,7 @@ import { IOperatorsData, OperatorInfo } from "../../src/interfaces/IOperatorsDat
 import { ICSModule, NodeOperatorManagementProperties } from "../../src/interfaces/ICSModule.sol";
 import { ICSAccounting } from "../../src/interfaces/ICSAccounting.sol";
 import { MerkleTree } from "../helpers/MerkleTree.sol";
+import { IAssetRecovererLib } from "../../src/lib/AssetRecovererLib.sol";
 
 contract CuratedGateTestBase is Test, Utilities, Fixtures {
     CSMMock public module;
@@ -240,6 +241,21 @@ contract CuratedGateTest_setTreeParams is CuratedGateTestBase {
     }
 }
 
+contract CuratedGateTest_getInitializedVersion is CuratedGateTestBase {
+    function test_getInitializedVersion() public {
+        assertEq(gate.getInitializedVersion(), 1);
+    }
+}
+
+contract CuratedGateTest_hashLeaf is CuratedGateTestBase {
+    function test_hashLeaf() public {
+        bytes32 expected = keccak256(
+            bytes.concat(keccak256(abi.encode(member)))
+        );
+        assertEq(gate.hashLeaf(member), expected);
+    }
+}
+
 contract CuratedGateTest_pauseResume is CuratedGateTestBase {
     function test_pause_RevertWhen_NoRole() public {
         vm.expectRevert();
@@ -411,5 +427,32 @@ contract CuratedGateTest_createNodeOperator_DefaultCurve is
 
         assertEq(id, 0);
         assertTrue(gate.isConsumed(member));
+    }
+}
+
+contract CuratedGateTest_recover is CuratedGateTestBase {
+    function test_recoverEther_RevertWhen_NoRecovererRole() public {
+        expectRoleRevert(stranger, gate.RECOVERER_ROLE());
+        vm.prank(stranger);
+        gate.recoverEther();
+    }
+
+    function test_recoverEther_HappyPath() public {
+        uint256 amount = 1 ether;
+        vm.deal(address(gate), amount);
+        uint256 adminBalanceBefore = admin.balance;
+
+        bytes32 role = gate.RECOVERER_ROLE();
+        vm.prank(admin);
+        gate.grantRole(role, admin);
+
+        vm.expectEmit(address(gate));
+        emit IAssetRecovererLib.EtherRecovered(admin, amount);
+
+        vm.prank(admin);
+        gate.recoverEther();
+
+        assertEq(address(gate).balance, 0);
+        assertEq(admin.balance, adminBalanceBefore + amount);
     }
 }
