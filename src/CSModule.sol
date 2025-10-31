@@ -858,14 +858,15 @@ contract CSModule is
 
     /// @inheritdoc IStakingModule
     /// @dev Changing the WC means that the current deposit data in the queue is not valid anymore and can't be deposited.
-    ///      DSM will unvet current keys due to nonce change.
-    ///      The key removal charge should be reset to 0 manually by the DAO to allow Node Operators to remove the keys without any charge.
-    ///      After keys removal the DAO should set the new key removal charge.
+    ///      If there are depositable validators in the queue, the method should revert to prevent deposits with invalid
+    ///      withdrawal credentials.
     function onWithdrawalCredentialsChanged()
         external
         onlyRole(STAKING_ROUTER_ROLE)
     {
-        _incrementModuleNonce();
+        if (_depositableValidatorsCount > 0) {
+            revert DepositQueueHasUnsupportedWithdrawalCredentials();
+        }
     }
 
     /// @inheritdoc IStakingModule
