@@ -435,10 +435,11 @@ contract CSAccounting is
         address rewardsClaimer
     ) external {
         _onlyNodeOperatorOwner(nodeOperatorId);
-        if (rewardsClaimer != _rewardsClaimers[nodeOperatorId]) {
-            _rewardsClaimers[nodeOperatorId] = rewardsClaimer;
-            emit CustomRewardsClaimerSet(nodeOperatorId, rewardsClaimer);
+        if (rewardsClaimer == _rewardsClaimers[nodeOperatorId]) {
+            revert SameAddress();
         }
+        _rewardsClaimers[nodeOperatorId] = rewardsClaimer;
+        emit CustomRewardsClaimerSet(nodeOperatorId, rewardsClaimer);
     }
 
     /// @inheritdoc AssetRecoverer

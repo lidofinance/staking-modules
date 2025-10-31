@@ -530,20 +530,15 @@ contract MiscTest is BaseTest {
         assertEq(claimer, address(1337));
     }
 
-    function test_setCustomRewardsClaimer_noEmitOnSameAddress() public {
+    function test_setCustomRewardsClaimer_RevertWhen_SameAddress() public {
         mock_getNodeOperatorOwner(user);
 
-        vm.prank(user);
+        vm.startPrank(user);
         accounting.setCustomRewardsClaimer(0, address(1337));
 
-        address claimer = accounting.getCustomRewardsClaimer(0);
-        assertEq(claimer, address(1337));
-
-        vm.recordLogs();
-        vm.prank(user);
-        accounting.setCustomRewardsClaimer(0, claimer);
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        assertEq(logs.length, 0);
+        vm.expectRevert(ICSAccounting.SameAddress.selector);
+        accounting.setCustomRewardsClaimer(0, address(1337));
+        vm.stopPrank();
     }
 
     function test_setCustomRewardsClaimer_RevertWhen_SenderIsNotEligible()

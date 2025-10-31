@@ -45,6 +45,7 @@ interface ICSAccounting is
     error NodeOperatorDoesNotExist();
     error ElRewardsVaultReceiveFailed();
     error InvalidBondCurvesLength();
+    error SameAddress();
 
     function PAUSE_ROLE() external view returns (bytes32);
 
