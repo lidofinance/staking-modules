@@ -6,7 +6,7 @@ pragma solidity 0.8.24;
 import { Test } from "forge-std/Test.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 
-import { CSMMock } from "../helpers/mocks/CSMMock.sol";
+import { CSMMock, NodeOperatorOwnerNo165Mock } from "../helpers/mocks/CSMMock.sol";
 import { OperatorsData } from "../../src/OperatorsData.sol";
 import { IOperatorsData, OperatorInfo } from "../../src/interfaces/IOperatorsData.sol";
 import { NodeOperatorManagementProperties } from "../../src/interfaces/ICSModule.sol";
@@ -35,6 +35,7 @@ contract OperatorsDataTestBase is Test, Utilities, Fixtures {
         nodeOperatorId = 0;
 
         module = new CSMMock();
+        module.mock_setNodeOperatorsCount(3);
         // Owner is determined by managementProperties: when extended=true -> manager is owner, else reward
         module.mock_setNodeOperatorManagementProperties(
             NodeOperatorManagementProperties({
@@ -160,13 +161,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
 
     function test_set_cacheModuleAddress() public {
         CSMMock newModule = new CSMMock();
-        newModule.mock_setNodeOperatorManagementProperties(
-            NodeOperatorManagementProperties({
-                managerAddress: nodeOperator,
-                rewardAddress: nodeOperator,
-                extendedManagerPermissions: true
-            })
-        );
+        newModule.mock_setNodeOperatorsCount(3);
         stakingRouter.addModule(moduleId + 1, address(newModule));
 
         vm.prank(setter);
@@ -344,6 +339,23 @@ contract OperatorsDataTest_setByOwner is OperatorsDataTestBase {
         vm.prank(nodeOperator);
         vm.expectRevert(StakingRouterMock.StakingModuleUnregistered.selector);
         data.setByOwner(moduleId + 1, nodeOperatorId, "Name", "Desc");
+    }
+
+    function test_setByOwner_RevertWhen_ModuleMissingINodeOperatorOwnerInterface()
+        public
+    {
+        NodeOperatorOwnerNo165Mock moduleNo165 = new NodeOperatorOwnerNo165Mock(
+            nodeOperator
+        );
+        stakingRouter.addModule(moduleId + 1, address(moduleNo165));
+
+        vm.prank(setter);
+        vm.expectRevert(
+            IOperatorsData
+                .ModuleDoesNotSupportNodeOperatorOwnerInterface
+                .selector
+        );
+        data.setByOwner(moduleId + 1, nodeOperatorId, "Alpha", "Desc");
     }
 }
 

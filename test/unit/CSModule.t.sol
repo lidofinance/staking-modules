@@ -411,6 +411,8 @@ contract CSMOnRewardsMinted is ModuleOnRewardsMinted, CSMCommon {}
 
 contract CSMRecoverERC20 is ModuleRecoverERC20, CSMCommon {}
 
+contract CSMSupportsInterface is ModuleSupportsInterface, CSMCommon {}
+
 contract CSMMisc is ModuleMisc, CSMCommon {}
 
 contract CSMExitDeadlineThreshold is ModuleExitDeadlineThreshold, CSMCommon {}

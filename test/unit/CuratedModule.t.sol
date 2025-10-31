@@ -386,6 +386,8 @@ contract CuratedOnRewardsMinted is ModuleOnRewardsMinted, CuratedCommon {
 
 contract CuratedRecoverERC20 is ModuleRecoverERC20, CuratedCommon {}
 
+contract CuratedSupportsInterface is ModuleSupportsInterface, CuratedCommon {}
+
 //contract CuratedMisc is ModuleMisc, CuratedCommon {}
 contract CuratedExitDeadlineThreshold is
     ModuleExitDeadlineThreshold,

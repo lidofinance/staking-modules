@@ -5,9 +5,11 @@ pragma solidity 0.8.24;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import { IOperatorsData, OperatorInfo } from "./interfaces/IOperatorsData.sol";
 import { INodeOperatorOwner } from "./interfaces/INodeOperatorOwner.sol";
 import { IStakingRouter } from "./interfaces/IStakingRouter.sol";
+import { IStakingModule } from "./interfaces/IStakingModule.sol";
 
 /// @notice Operators metadata storage
 contract OperatorsData is
@@ -45,8 +47,9 @@ contract OperatorsData is
         OperatorInfo calldata info
     ) external onlyRole(SETTER_ROLE) {
         address module = _resolveModuleAddress(moduleId);
-        address owner = _owner(module, nodeOperatorId);
-        if (owner == address(0)) revert NodeOperatorDoesNotExist();
+        if (!_nodeOperatorExists(module, nodeOperatorId)) {
+            revert NodeOperatorDoesNotExist();
+        }
 
         OperatorInfo storage stored = _operators[moduleId][nodeOperatorId];
         stored.name = info.name;
@@ -74,6 +77,7 @@ contract OperatorsData is
         address owner = _owner(module, nodeOperatorId);
         if (owner == address(0)) revert NodeOperatorDoesNotExist();
         if (owner != msg.sender) revert NotOwner();
+
         OperatorInfo storage stored = _operators[moduleId][nodeOperatorId];
         if (stored.ownerRestricted) revert OwnerEditsRestricted();
 
@@ -112,10 +116,18 @@ contract OperatorsData is
         return _operators[moduleId][nodeOperatorId].ownerRestricted;
     }
 
+    function _nodeOperatorExists(
+        address module,
+        uint256 nodeOperatorId
+    ) internal view returns (bool) {
+        return nodeOperatorId < IStakingModule(module).getNodeOperatorsCount();
+    }
+
     function _owner(
         address module,
         uint256 nodeOperatorId
     ) internal view returns (address) {
+        _validateModuleInterface(module);
         return INodeOperatorOwner(module).getNodeOperatorOwner(nodeOperatorId);
     }
 
@@ -142,6 +154,17 @@ contract OperatorsData is
             IStakingRouter.StakingModule memory module = modules[i];
             _moduleAddresses[module.id] = module.stakingModuleAddress;
             emit ModuleAddressCached(module.id, module.stakingModuleAddress);
+        }
+    }
+
+    function _validateModuleInterface(address module) internal view {
+        if (
+            !ERC165Checker.supportsInterface(
+                module,
+                type(INodeOperatorOwner).interfaceId
+            )
+        ) {
+            revert ModuleDoesNotSupportNodeOperatorOwnerInterface();
         }
     }
 }

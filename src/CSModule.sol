@@ -17,6 +17,7 @@ import { ICSAccounting } from "./interfaces/ICSAccounting.sol";
 import { ICSExitPenalties } from "./interfaces/ICSExitPenalties.sol";
 import { ICSModule, NodeOperator, NodeOperatorManagementProperties, ValidatorWithdrawalInfo } from "./interfaces/ICSModule.sol";
 import { ExitPenaltyInfo } from "./interfaces/ICSExitPenalties.sol";
+import { INodeOperatorOwner } from "./interfaces/INodeOperatorOwner.sol";
 
 import { PausableUntil } from "./lib/utils/PausableUntil.sol";
 import { QueueLib, Batch } from "./lib/QueueLib.sol";
@@ -1197,6 +1198,14 @@ contract CSModule is
         unchecked {
             return no.totalAddedKeys - no.totalWithdrawnKeys;
         }
+    }
+
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override(AccessControlEnumerableUpgradeable) returns (bool) {
+        return
+            interfaceId == type(INodeOperatorOwner).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     /// @inheritdoc IStakingModule

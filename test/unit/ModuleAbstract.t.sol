@@ -26,6 +26,7 @@ import { INOAddresses } from "src/lib/NOAddresses.sol";
 import { CSBondLock } from "src/abstract/CSBondLock.sol";
 import { ICSExitPenalties, ExitPenaltyInfo, MarkedUint248 } from "src/interfaces/ICSExitPenalties.sol";
 import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
+import { INodeOperatorOwner } from "src/interfaces/INodeOperatorOwner.sol";
 
 abstract contract ModuleFixtures is
     Test,
@@ -8265,6 +8266,24 @@ abstract contract ModuleRecoverERC20 is ModuleFixtures {
 
         assertEq(token.balanceOf(address(module)), 0);
         assertEq(token.balanceOf(stranger), 1000);
+    }
+}
+
+abstract contract ModuleSupportsInterface is ModuleFixtures {
+    function test_supportsInterface_ReturnsTrueForINodeOperatorOwner()
+        public
+        view
+    {
+        assertTrue(
+            module.supportsInterface(type(INodeOperatorOwner).interfaceId)
+        );
+    }
+
+    function test_supportsInterface_ReturnsFalseForUnknownInterface()
+        public
+        view
+    {
+        assertFalse(module.supportsInterface(bytes4(uint32(0xdeadbeef))));
     }
 }
 

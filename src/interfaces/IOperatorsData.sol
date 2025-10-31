@@ -38,6 +38,7 @@ interface IOperatorsData {
     error NotOwner();
     error OwnerEditsRestricted();
     error UnknownModule();
+    error ModuleDoesNotSupportNodeOperatorOwnerInterface();
 
     /// @return Role id allowed to set metadata
     function SETTER_ROLE() external view returns (bytes32);
@@ -57,6 +58,7 @@ interface IOperatorsData {
     /// @param nodeOperatorId Node Operator id
     /// @param name Display name
     /// @param description Long description
+    /// @dev Reverts if module does not support INodeOperatorOwner interface
     function setByOwner(
         uint256 moduleId,
         uint256 nodeOperatorId,
