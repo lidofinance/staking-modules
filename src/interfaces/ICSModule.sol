@@ -3,16 +3,17 @@
 
 pragma solidity 0.8.24;
 
-import { IStakingModule } from "./IStakingModule.sol";
-import { ICSAccounting } from "./ICSAccounting.sol";
-import { IQueueLib } from "../lib/QueueLib.sol";
-import { INOAddresses } from "../lib/NOAddresses.sol";
-import { IAssetRecovererLib } from "../lib/AssetRecovererLib.sol";
 import { Batch } from "../lib/QueueLib.sol";
-import { ILidoLocator } from "./ILidoLocator.sol";
-import { IStETH } from "./IStETH.sol";
-import { ICSParametersRegistry } from "./ICSParametersRegistry.sol";
+import { IAssetRecovererLib } from "../lib/AssetRecovererLib.sol";
+import { ICSAccounting } from "./ICSAccounting.sol";
 import { ICSExitPenalties } from "./ICSExitPenalties.sol";
+import { ICSParametersRegistry } from "./ICSParametersRegistry.sol";
+import { ILidoLocator } from "./ILidoLocator.sol";
+import { INOAddresses } from "../lib/NOAddresses.sol";
+import { IQueueLib } from "../lib/QueueLib.sol";
+import { IStETH } from "./IStETH.sol";
+import { IStakingModule } from "./IStakingModule.sol";
+import { INodeOperatorOwner } from "./INodeOperatorOwner.sol";
 
 struct NodeOperator {
     // All the counters below are used together e.g. in the _updateDepositableValidatorsCount
@@ -57,7 +58,8 @@ interface ICSModule is
     IQueueLib,
     INOAddresses,
     IAssetRecovererLib,
-    IStakingModule
+    IStakingModule,
+    INodeOperatorOwner
 {
     error CannotAddKeys();
     error NodeOperatorDoesNotExist();

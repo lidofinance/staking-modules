@@ -45,7 +45,8 @@ contract OperatorsData is
         OperatorInfo calldata info
     ) external onlyRole(SETTER_ROLE) {
         address module = _resolveModuleAddress(moduleId);
-        if (!_exists(module, nodeOperatorId)) revert NodeOperatorDoesNotExist();
+        address owner = _owner(module, nodeOperatorId);
+        if (owner == address(0)) revert NodeOperatorDoesNotExist();
 
         OperatorInfo storage stored = _operators[moduleId][nodeOperatorId];
         stored.name = info.name;
@@ -70,9 +71,7 @@ contract OperatorsData is
         string calldata description
     ) external {
         address module = _resolveModuleAddress(moduleId);
-        address owner = INodeOperatorOwner(module).getNodeOperatorOwner(
-            nodeOperatorId
-        );
+        address owner = _owner(module, nodeOperatorId);
         if (owner == address(0)) revert NodeOperatorDoesNotExist();
         if (owner != msg.sender) revert NotOwner();
         OperatorInfo storage stored = _operators[moduleId][nodeOperatorId];
@@ -113,12 +112,11 @@ contract OperatorsData is
         return _operators[moduleId][nodeOperatorId].ownerRestricted;
     }
 
-    function _exists(
+    function _owner(
         address module,
         uint256 nodeOperatorId
-    ) internal view returns (bool) {
-        return
-            nodeOperatorId < INodeOperatorOwner(module).getNodeOperatorsCount();
+    ) internal view returns (address) {
+        return INodeOperatorOwner(module).getNodeOperatorOwner(nodeOperatorId);
     }
 
     function _resolveModuleAddress(

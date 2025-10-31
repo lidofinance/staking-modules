@@ -8,6 +8,4 @@ interface INodeOperatorOwner {
     function getNodeOperatorOwner(
         uint256 nodeOperatorId
     ) external view returns (address);
-
-    function getNodeOperatorsCount() external view returns (uint256);
 }

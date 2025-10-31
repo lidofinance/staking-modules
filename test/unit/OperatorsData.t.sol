@@ -24,6 +24,7 @@ contract OperatorsDataTestBase is Test, Utilities, Fixtures {
     address public nodeOperator;
     address public stranger;
     uint256 public moduleId;
+    uint256 public nodeOperatorId;
 
     function setUp() public virtual {
         admin = nextAddress("ADMIN");
@@ -31,9 +32,9 @@ contract OperatorsDataTestBase is Test, Utilities, Fixtures {
         nodeOperator = nextAddress("OWNER_A");
         stranger = nextAddress("STRANGER");
         moduleId = 1;
+        nodeOperatorId = 0;
 
         module = new CSMMock();
-        module.mock_setNodeOperatorsCount(3);
         // Owner is determined by managementProperties: when extended=true -> manager is owner, else reward
         module.mock_setNodeOperatorManagementProperties(
             NodeOperatorManagementProperties({
@@ -108,14 +109,14 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
         emit IOperatorsData.OperatorDataSet(
             moduleId,
             address(module),
-            1,
+            nodeOperatorId,
             "Alpha",
             "The first",
             false
         );
         data.set(
             moduleId,
-            1,
+            nodeOperatorId,
             OperatorInfo({
                 name: "Alpha",
                 description: "The first",
@@ -123,7 +124,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
             })
         );
 
-        OperatorInfo memory info = data.get(moduleId, 1);
+        OperatorInfo memory info = data.get(moduleId, nodeOperatorId);
         assertEq(info.name, "Alpha");
         assertEq(info.description, "The first");
         assertFalse(info.ownerRestricted);
@@ -133,7 +134,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
         vm.startPrank(setter);
         data.set(
             moduleId,
-            1,
+            nodeOperatorId,
             OperatorInfo({
                 name: "Alpha",
                 description: "v1",
@@ -142,7 +143,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
         );
         data.set(
             moduleId,
-            1,
+            nodeOperatorId,
             OperatorInfo({
                 name: "Alpha2",
                 description: "v2",
@@ -151,7 +152,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
         );
         vm.stopPrank();
 
-        OperatorInfo memory info = data.get(moduleId, 1);
+        OperatorInfo memory info = data.get(moduleId, nodeOperatorId);
         assertEq(info.name, "Alpha2");
         assertEq(info.description, "v2");
         assertTrue(info.ownerRestricted);
@@ -159,7 +160,13 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
 
     function test_set_cacheModuleAddress() public {
         CSMMock newModule = new CSMMock();
-        newModule.mock_setNodeOperatorsCount(3);
+        newModule.mock_setNodeOperatorManagementProperties(
+            NodeOperatorManagementProperties({
+                managerAddress: nodeOperator,
+                rewardAddress: nodeOperator,
+                extendedManagerPermissions: true
+            })
+        );
         stakingRouter.addModule(moduleId + 1, address(newModule));
 
         vm.prank(setter);
@@ -170,7 +177,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
         );
         data.set(
             moduleId + 1,
-            2,
+            nodeOperatorId,
             OperatorInfo({
                 name: "Beta",
                 description: "Second",
@@ -178,7 +185,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
             })
         );
 
-        OperatorInfo memory info = data.get(moduleId + 1, 2);
+        OperatorInfo memory info = data.get(moduleId + 1, nodeOperatorId);
         assertEq(info.name, "Beta");
         assertEq(info.description, "Second");
         assertTrue(info.ownerRestricted);
@@ -189,7 +196,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
         vm.prank(stranger);
         data.set(
             moduleId,
-            1,
+            nodeOperatorId,
             OperatorInfo({
                 name: "Alpha",
                 description: "Desc",
@@ -217,7 +224,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
         vm.expectRevert(StakingRouterMock.StakingModuleUnregistered.selector);
         data.set(
             moduleId + 1,
-            1,
+            nodeOperatorId,
             OperatorInfo({
                 name: "Alpha",
                 description: "Desc",
@@ -231,7 +238,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
         vm.expectRevert(IOperatorsData.ZeroModuleId.selector);
         data.set(
             0,
-            1,
+            nodeOperatorId,
             OperatorInfo({
                 name: "Alpha",
                 description: "Desc",
@@ -248,14 +255,14 @@ contract OperatorsDataTest_setByOwner is OperatorsDataTestBase {
         emit IOperatorsData.OperatorDataSet(
             moduleId,
             address(module),
-            2,
+            nodeOperatorId,
             "OwnerName",
             "OwnerDesc",
             false
         );
-        data.setByOwner(moduleId, 2, "OwnerName", "OwnerDesc");
+        data.setByOwner(moduleId, nodeOperatorId, "OwnerName", "OwnerDesc");
 
-        OperatorInfo memory info = data.get(moduleId, 2);
+        OperatorInfo memory info = data.get(moduleId, nodeOperatorId);
         assertEq(info.name, "OwnerName");
         assertEq(info.description, "OwnerDesc");
         assertFalse(info.ownerRestricted);
@@ -278,9 +285,9 @@ contract OperatorsDataTest_setByOwner is OperatorsDataTestBase {
             address(newModule)
         );
         vm.prank(nodeOperator);
-        data.setByOwner(moduleId + 1, 2, "OwnerName", "OwnerDesc");
+        data.setByOwner(moduleId + 1, nodeOperatorId, "OwnerName", "OwnerDesc");
 
-        OperatorInfo memory info = data.get(moduleId + 1, 2);
+        OperatorInfo memory info = data.get(moduleId + 1, nodeOperatorId);
         assertEq(info.name, "OwnerName");
         assertEq(info.description, "OwnerDesc");
         assertFalse(info.ownerRestricted);
@@ -292,26 +299,26 @@ contract OperatorsDataTest_setByOwner is OperatorsDataTestBase {
         emit IOperatorsData.OperatorDataSet(
             moduleId,
             address(module),
-            2,
+            nodeOperatorId,
             "",
             "",
             true
         );
         data.set(
             moduleId,
-            2,
+            nodeOperatorId,
             OperatorInfo({ name: "", description: "", ownerRestricted: true })
         );
 
         vm.prank(nodeOperator);
         vm.expectRevert(IOperatorsData.OwnerEditsRestricted.selector);
-        data.setByOwner(moduleId, 2, "Name", "Desc");
+        data.setByOwner(moduleId, nodeOperatorId, "Name", "Desc");
     }
 
     function test_setByOwner_RevertWhen_NotOwner() public {
         vm.prank(stranger);
         vm.expectRevert(IOperatorsData.NotOwner.selector);
-        data.setByOwner(moduleId, 2, "Name", "Desc");
+        data.setByOwner(moduleId, nodeOperatorId, "Name", "Desc");
     }
 
     function test_setByOwner_RevertWhen_NodeOperatorDoesNotExist() public {
@@ -330,24 +337,24 @@ contract OperatorsDataTest_setByOwner is OperatorsDataTestBase {
     function test_setByOwner_RevertWhen_ZeroModule() public {
         vm.prank(nodeOperator);
         vm.expectRevert(IOperatorsData.ZeroModuleId.selector);
-        data.setByOwner(0, 2, "Name", "Desc");
+        data.setByOwner(0, nodeOperatorId, "Name", "Desc");
     }
 
     function test_setByOwner_RevertWhen_UnregisteredModule() public {
         vm.prank(nodeOperator);
         vm.expectRevert(StakingRouterMock.StakingModuleUnregistered.selector);
-        data.setByOwner(moduleId + 1, 2, "Name", "Desc");
+        data.setByOwner(moduleId + 1, nodeOperatorId, "Name", "Desc");
     }
 }
 
 contract OperatorsDataTest_get is OperatorsDataTestBase {
     function test_get_RevertWhen_ZeroModule() public {
         vm.expectRevert(IOperatorsData.ZeroModuleId.selector);
-        data.get(0, 1);
+        data.get(0, nodeOperatorId);
     }
 
     function test_get_HappyPath_NoDataYet() public {
-        OperatorInfo memory info = data.get(moduleId, 1);
+        OperatorInfo memory info = data.get(moduleId, nodeOperatorId);
         assertEq(info.name, "");
         assertEq(info.description, "");
         assertFalse(info.ownerRestricted);
@@ -359,7 +366,7 @@ contract OperatorsDataTest_restrictions is OperatorsDataTestBase {
         vm.prank(setter);
         data.set(
             moduleId,
-            1,
+            nodeOperatorId,
             OperatorInfo({
                 name: "Alpha",
                 description: "Desc",
@@ -367,14 +374,14 @@ contract OperatorsDataTest_restrictions is OperatorsDataTestBase {
             })
         );
 
-        assertTrue(data.isOwnerRestricted(moduleId, 1));
-        OperatorInfo memory info = data.get(moduleId, 1);
+        assertTrue(data.isOwnerRestricted(moduleId, nodeOperatorId));
+        OperatorInfo memory info = data.get(moduleId, nodeOperatorId);
         assertTrue(info.ownerRestricted);
 
         vm.prank(setter);
         data.set(
             moduleId,
-            1,
+            nodeOperatorId,
             OperatorInfo({
                 name: "Alpha2",
                 description: "Desc2",
@@ -382,24 +389,24 @@ contract OperatorsDataTest_restrictions is OperatorsDataTestBase {
             })
         );
 
-        assertFalse(data.isOwnerRestricted(moduleId, 1));
-        info = data.get(moduleId, 1);
+        assertFalse(data.isOwnerRestricted(moduleId, nodeOperatorId));
+        info = data.get(moduleId, nodeOperatorId);
         assertEq(info.name, "Alpha2");
         assertEq(info.description, "Desc2");
         assertFalse(info.ownerRestricted);
     }
 
     function test_isOwnerRestricted_DefaultFalse() public {
-        assertFalse(data.isOwnerRestricted(moduleId, 1));
+        assertFalse(data.isOwnerRestricted(moduleId, nodeOperatorId));
     }
 
     function test_isOwnerRestricted_RevertWhen_ZeroModule() public {
         vm.expectRevert(IOperatorsData.ZeroModuleId.selector);
-        data.isOwnerRestricted(0, 1);
+        data.isOwnerRestricted(0, nodeOperatorId);
     }
 
     function test_isOwnerRestricted_RevertWhen_UnknownModule() public {
         vm.expectRevert(IOperatorsData.UnknownModule.selector);
-        data.isOwnerRestricted(moduleId + 1, 1);
+        data.isOwnerRestricted(moduleId + 1, nodeOperatorId);
     }
 }
