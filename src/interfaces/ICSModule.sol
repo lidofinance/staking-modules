@@ -143,20 +143,6 @@ interface ICSModule is
     );
 
     event KeyRemovalChargeApplied(uint256 indexed nodeOperatorId);
-    event ELRewardsStealingPenaltyReported(
-        uint256 indexed nodeOperatorId,
-        bytes32 proposedBlockHash,
-        uint256 stolenAmount
-    );
-    event ELRewardsStealingPenaltyCancelled(
-        uint256 indexed nodeOperatorId,
-        uint256 amount
-    );
-    event ELRewardsStealingPenaltyCompensated(
-        uint256 indexed nodeOperatorId,
-        uint256 amount
-    );
-    event ELRewardsStealingPenaltySettled(uint256 indexed nodeOperatorId);
 
     function PAUSE_ROLE() external view returns (bytes32);
 
