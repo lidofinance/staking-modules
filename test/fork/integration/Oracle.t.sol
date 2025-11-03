@@ -26,10 +26,10 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
     modifier assertInvariants() {
         _;
         vm.pauseGasMetering();
-        uint256 noCount = csm.getNodeOperatorsCount();
-        assertModuleKeys(csm);
-        assertModuleEnqueuedCount(csm);
-        assertModuleUnusedStorageSlots(csm);
+        uint256 noCount = module.getNodeOperatorsCount();
+        assertModuleKeys(module);
+        assertModuleEnqueuedCount(module);
+        assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
         assertAccountingBurnerApproval(
             lido,
@@ -48,23 +48,23 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
 
-        vm.startPrank(csm.getRoleMember(csm.DEFAULT_ADMIN_ROLE(), 0));
-        csm.grantRole(csm.RESUME_ROLE(), address(this));
-        csm.grantRole(csm.DEFAULT_ADMIN_ROLE(), address(this));
+        vm.startPrank(module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0));
+        module.grantRole(module.RESUME_ROLE(), address(this));
+        module.grantRole(module.DEFAULT_ADMIN_ROLE(), address(this));
         vm.stopPrank();
 
         feesTree = new MerkleTree();
         strikesTree = new MerkleTree();
 
-        if (csm.isPaused()) {
-            csm.resume();
+        if (module.isPaused()) {
+            module.resume();
         }
 
         hugeDeposit();
 
         refundRecipient = nextAddress("refundRecipient");
         uint256 keysCount;
-        uint256 moduleId = findCSModule();
+        uint256 moduleId = findModule();
         (nodeOperatorId, keysCount) = getDepositableNodeOperator(nextAddress());
         vm.prank(locator.depositSecurityModule());
         lido.deposit(keysCount, moduleId, "");
@@ -180,10 +180,10 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
     function test_reportStrikes() public assertInvariants {
         uint256 distributed = 0;
         feesTree.pushLeaf(abi.encode(type(uint64).max, 0));
-        uint256 keyIndex = csm.getNodeOperatorTotalDepositedKeys(
+        uint256 keyIndex = module.getNodeOperatorTotalDepositedKeys(
             nodeOperatorId
         ) - 1;
-        bytes memory key = csm.getSigningKeys(nodeOperatorId, keyIndex, 1);
+        bytes memory key = module.getSigningKeys(nodeOperatorId, keyIndex, 1);
 
         (, uint256 threshold) = parametersRegistry.getStrikesParams(
             accounting.getBondCurveId(nodeOperatorId)

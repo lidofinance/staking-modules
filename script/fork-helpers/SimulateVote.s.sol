@@ -4,7 +4,6 @@
 pragma solidity 0.8.24;
 
 import "forge-std/Script.sol";
-import { DeploymentFixtures } from "test/helpers/Fixtures.sol";
 
 import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 import { CSModule } from "../../src/CSModule.sol";
@@ -25,9 +24,14 @@ import { CommonScriptUtils } from "../utils/Common.sol";
 import { ForkHelpersCommon } from "./Common.sol";
 import { DeployParams } from "../DeployBase.s.sol";
 
-contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
+contract SimulateVote is Script, ForkHelpersCommon {
+    error WrongModuleType();
+
     function addModule() external {
         _setUp();
+        if (moduleType != ModuleType.Community) {
+            revert WrongModuleType();
+        }
 
         IStakingRouter stakingRouter = IStakingRouter(locator.stakingRouter());
         IBurner burner = IBurner(locator.burner());
@@ -41,14 +45,9 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
         );
         vm.label(agent, "agent");
 
-        address csmAdmin = _prepareAdmin(address(csm));
+        address moduleAdmin = _prepareAdmin(address(module));
         address burnerAdmin = _prepareAdmin(address(burner));
         address twgAdmin = _prepareAdmin(address(twg));
-
-        vm.startBroadcast(csmAdmin);
-        csm.grantRole(csm.DEFAULT_ADMIN_ROLE(), agent);
-        hashConsensus.grantRole(hashConsensus.DEFAULT_ADMIN_ROLE(), agent);
-        vm.stopBroadcast();
 
         vm.startBroadcast(burnerAdmin);
         burner.grantRole(burner.DEFAULT_ADMIN_ROLE(), agent);
@@ -63,7 +62,7 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
         // 1. Add CommunityStaking module
         stakingRouter.addStakingModule({
             _name: "community-staking-v1",
-            _stakingModuleAddress: address(csm),
+            _stakingModuleAddress: address(module),
             _stakeShareLimit: 2000, // 20%
             _priorityExitShareThreshold: 2500, // 25%
             _stakingModuleFee: 800, // 8%
@@ -79,12 +78,70 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
         // 3. twg role
         twg.grantRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), address(ejector));
         // 4. Grant resume to agent
-        csm.grantRole(csm.RESUME_ROLE(), agent);
+        module.grantRole(module.RESUME_ROLE(), agent);
         // 5. Resume CSM
-        csm.resume();
+        module.resume();
         // 6. Revoke resume
-        csm.revokeRole(csm.RESUME_ROLE(), agent);
+        module.revokeRole(module.RESUME_ROLE(), agent);
         // 7. Update initial epoch
+        hashConsensus.updateInitialEpoch(47480);
+
+        vm.stopBroadcast();
+    }
+
+    function addCuratedModule() external {
+        initializeFromDeployment();
+        if (moduleType != ModuleType.Curated) {
+            revert WrongModuleType();
+        }
+
+        IStakingRouter stakingRouter = IStakingRouter(locator.stakingRouter());
+        IBurner burner = IBurner(locator.burner());
+        ITriggerableWithdrawalsGateway twg = ITriggerableWithdrawalsGateway(
+            locator.triggerableWithdrawalsGateway()
+        );
+
+        address agent = stakingRouter.getRoleMember(
+            stakingRouter.STAKING_MODULE_MANAGE_ROLE(),
+            0
+        );
+        vm.label(agent, "agent");
+
+        address curatedAdmin = _prepareAdmin(address(curatedModule));
+        address burnerAdmin = _prepareAdmin(address(burner));
+        address twgAdmin = _prepareAdmin(address(twg));
+
+        vm.startBroadcast(burnerAdmin);
+        burner.grantRole(burner.DEFAULT_ADMIN_ROLE(), agent);
+        vm.stopBroadcast();
+
+        vm.startBroadcast(twgAdmin);
+        twg.grantRole(twg.DEFAULT_ADMIN_ROLE(), agent);
+        vm.stopBroadcast();
+
+        vm.startBroadcast(agent);
+
+        stakingRouter.addStakingModule({
+            _name: "curated-onchain-v1",
+            _stakingModuleAddress: address(curatedModule),
+            _stakeShareLimit: 2000, // 20%
+            _priorityExitShareThreshold: 2500, // 25%
+            _stakingModuleFee: 800, // 8%
+            _treasuryFee: 200, // 2%
+            _maxDepositsPerBlock: 30,
+            _minDepositBlockDistance: 25
+        });
+
+        burner.grantRole(
+            burner.REQUEST_BURN_SHARES_ROLE(),
+            address(accounting)
+        );
+
+        twg.grantRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), address(ejector));
+
+        curatedModule.grantRole(curatedModule.RESUME_ROLE(), agent);
+        curatedModule.resume();
+        curatedModule.revokeRole(curatedModule.RESUME_ROLE(), agent);
         hashConsensus.updateInitialEpoch(47480);
 
         vm.stopBroadcast();
@@ -125,15 +182,15 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
         //                 deployParams.identifiedCommunityStakersGateBondCurve
         //             );
 
-        //     address admin = _prepareAdmin(deploymentConfig.csm);
+        //     address admin = _prepareAdmin(deploymentConfig.module);
 
-        //     OssifiableProxy csmProxy = OssifiableProxy(
-        //         payable(deploymentConfig.csm)
+        //     OssifiableProxy moduleProxy = OssifiableProxy(
+        //         payable(deploymentConfig.module)
         //     );
-        //     vm.startBroadcast(_prepareProxyAdmin(address(csmProxy)));
+        //     vm.startBroadcast(_prepareProxyAdmin(address(moduleProxy)));
         //     {
-        //         csmProxy.proxy__upgradeTo(deploymentConfig.csmImpl);
-        //         CSModule(deploymentConfig.csm).finalizeUpgradeV2();
+        //         moduleProxy.proxy__upgradeTo(deploymentConfig.moduleImpl);
+        //         CSModule(deploymentConfig.module).finalizeUpgradeV2();
         //     }
         //     vm.stopBroadcast();
         //     OssifiableProxy accountingProxy = OssifiableProxy(
@@ -172,19 +229,19 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
         //     }
         //     vm.stopBroadcast();
 
-        //     csm = CSModule(deploymentConfig.csm);
+        //     module = CSModule(deploymentConfig.module);
         //     accounting = CSAccounting(deploymentConfig.accounting);
         //     oracle = CSFeeOracle(deploymentConfig.oracle);
 
         //     vm.startBroadcast(admin);
 
-        //     accounting.revokeRole(accounting.SET_BOND_CURVE_ROLE(), address(csm));
-        //     csm.grantRole(
-        //         csm.CREATE_NODE_OPERATOR_ROLE(),
+        //     accounting.revokeRole(accounting.SET_BOND_CURVE_ROLE(), address(module));
+        //     module.grantRole(
+        //         module.CREATE_NODE_OPERATOR_ROLE(),
         //         deploymentConfig.permissionlessGate
         //     );
-        //     csm.grantRole(
-        //         csm.CREATE_NODE_OPERATOR_ROLE(),
+        //     module.grantRole(
+        //         module.CREATE_NODE_OPERATOR_ROLE(),
         //         deploymentConfig.vettedGate
         //     );
         //     accounting.grantRole(
@@ -198,14 +255,14 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
 
         //     accounting.revokeRole(accounting.MANAGE_BOND_CURVES_ROLE(), admin);
 
-        //     csm.revokeRole(csm.VERIFIER_ROLE(), address(deploymentConfig.verifier));
-        //     csm.grantRole(
-        //         csm.VERIFIER_ROLE(),
+        //     module.revokeRole(module.VERIFIER_ROLE(), address(deploymentConfig.verifier));
+        //     module.grantRole(
+        //         module.VERIFIER_ROLE(),
         //         address(deploymentConfig.verifierV2)
         //     );
         //     TODO: Grant VERIFIER_ROLE on CSModule to EasyTrack executor.
 
-        //     csm.revokeRole(csm.PAUSE_ROLE(), address(deploymentConfig.gateSeal));
+        //     module.revokeRole(module.PAUSE_ROLE(), address(deploymentConfig.gateSeal));
         //     accounting.revokeRole(
         //         accounting.PAUSE_ROLE(),
         //         address(deploymentConfig.gateSeal)
@@ -215,7 +272,7 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
         //         address(deploymentConfig.gateSeal)
         //     );
 
-        //     csm.grantRole(csm.PAUSE_ROLE(), address(deploymentConfig.gateSealV2));
+        //     module.grantRole(module.PAUSE_ROLE(), address(deploymentConfig.gateSealV2));
         //     accounting.grantRole(
         //         accounting.PAUSE_ROLE(),
         //         address(deploymentConfig.gateSealV2)
@@ -225,8 +282,8 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
         //         address(deploymentConfig.gateSealV2)
         //     );
 
-        //     csm.grantRole(csm.PAUSE_ROLE(), deployParams.resealManager);
-        //     csm.grantRole(csm.RESUME_ROLE(), deployParams.resealManager);
+        //     module.grantRole(module.PAUSE_ROLE(), deployParams.resealManager);
+        //     module.grantRole(module.RESUME_ROLE(), deployParams.resealManager);
         //     accounting.grantRole(
         //         accounting.PAUSE_ROLE(),
         //         deployParams.resealManager
@@ -238,14 +295,14 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
         //     oracle.grantRole(oracle.PAUSE_ROLE(), deployParams.resealManager);
         //     oracle.grantRole(oracle.RESUME_ROLE(), deployParams.resealManager);
 
-        //     accounting.revokeRole(keccak256("RESET_BOND_CURVE_ROLE"), address(csm));
-        //     address csmCommittee = accounting.getRoleMember(
+        //     accounting.revokeRole(keccak256("RESET_BOND_CURVE_ROLE"), address(module));
+        //     address moduleCommittee = accounting.getRoleMember(
         //         keccak256("RESET_BOND_CURVE_ROLE"),
         //         0
         //     );
         //     accounting.revokeRole(
         //         keccak256("RESET_BOND_CURVE_ROLE"),
-        //         address(csmCommittee)
+        //         address(moduleCommittee)
         //     );
 
         //     vm.stopBroadcast();

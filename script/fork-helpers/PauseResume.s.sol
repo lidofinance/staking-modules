@@ -8,13 +8,13 @@ import { DeploymentFixtures } from "test/helpers/Fixtures.sol";
 import { ForkHelpersCommon } from "./Common.sol";
 
 contract PauseResume is Script, DeploymentFixtures, ForkHelpersCommon {
-    address internal csmAdmin;
+    address internal moduleAdmin;
     address internal accountingAdmin;
 
     modifier broadcastCSMAdmin() {
         _setUp();
-        csmAdmin = _prepareAdmin(address(csm));
-        vm.startBroadcast(csmAdmin);
+        moduleAdmin = _prepareAdmin(address(module));
+        vm.startBroadcast(moduleAdmin);
         _;
         vm.stopBroadcast();
     }
@@ -28,17 +28,17 @@ contract PauseResume is Script, DeploymentFixtures, ForkHelpersCommon {
     }
 
     function pauseCSM() external broadcastCSMAdmin {
-        csm.grantRole(csm.PAUSE_ROLE(), csmAdmin);
-        csm.pauseFor(type(uint256).max);
+        module.grantRole(module.PAUSE_ROLE(), moduleAdmin);
+        module.pauseFor(type(uint256).max);
 
-        assertTrue(csm.isPaused());
+        assertTrue(module.isPaused());
     }
 
     function resumeCSM() external broadcastCSMAdmin {
-        csm.grantRole(csm.RESUME_ROLE(), csmAdmin);
-        csm.resume();
+        module.grantRole(module.RESUME_ROLE(), moduleAdmin);
+        module.resume();
 
-        assertFalse(csm.isPaused());
+        assertFalse(module.isPaused());
     }
 
     function pauseAccounting() external broadcastAccountingAdmin {

@@ -31,7 +31,12 @@ import { CSEjector } from "../../src/CSEjector.sol";
 import { CSExitPenalties } from "../../src/CSExitPenalties.sol";
 import { CSStrikes } from "../../src/CSStrikes.sol";
 import { CSVerifier } from "../../src/CSVerifier.sol";
+import { CuratedModule } from "../../src/CuratedModule.sol";
+import { OperatorsData } from "../../src/OperatorsData.sol";
+import { CuratedGateFactory } from "../../src/CuratedGateFactory.sol";
 import { DeployParams } from "../../script/DeployBase.s.sol";
+import { CuratedDeployParams } from "../../script/curated/DeployBase.s.sol";
+import { GIndex } from "../../src/lib/GIndex.sol";
 import { IACL } from "../../src/interfaces/IACL.sol";
 import { IKernel } from "../../src/interfaces/IKernel.sol";
 import { Utilities } from "./Utilities.sol";
@@ -97,6 +102,42 @@ contract DeploymentHelpers is Test {
         uint256 VOTE_PREV_BLOCK;
     }
 
+    // Intersection of DeployParams and CuratedDeployParams
+    struct CommonDeployParams {
+        address lidoLocatorAddress;
+        address aragonAgent;
+        address proxyAdmin;
+        address easyTrackEVMScriptExecutor;
+        address generalDelayedPenaltyReporter;
+        address resealManager;
+        address secondAdminAddress;
+        address chargePenaltyRecipient;
+        address setResetBondCurveAddress;
+        uint256 stakingModuleId;
+        bytes32 moduleType;
+        uint256 queueLowestPriority;
+        uint256 bondLockPeriod;
+        uint256 minBondLockPeriod;
+        uint256 maxBondLockPeriod;
+        uint256 secondsPerSlot;
+        uint256 slotsPerEpoch;
+        uint256 clGenesisTime;
+        uint256 oracleReportEpochsPerFrame;
+        uint256 fastLaneLengthSlots;
+        uint256 consensusVersion;
+        address[] oracleMembers;
+        uint256 hashConsensusQuorum;
+        GIndex gIFirstWithdrawal;
+        GIndex gIFirstValidator;
+        GIndex gIFirstHistoricalSummary;
+        GIndex gIFirstBlockRootInSummary;
+        GIndex gIFirstBalanceNode;
+        GIndex gIFirstPendingConsolidation;
+        uint256 verifierFirstSupportedSlot;
+        uint256 capellaSlot;
+        uint256[2][] defaultBondCurve;
+    }
+
     struct DeploymentConfig {
         uint256 chainId;
         address csm;
@@ -128,6 +169,33 @@ contract DeploymentHelpers is Test {
         address gateSealV2;
     }
 
+    struct CuratedDeploymentConfig {
+        uint256 chainId;
+        address curatedModule;
+        address curatedModuleImpl;
+        address parametersRegistry;
+        address parametersRegistryImpl;
+        address accounting;
+        address accountingImpl;
+        address oracle;
+        address oracleImpl;
+        address feeDistributor;
+        address feeDistributorImpl;
+        address exitPenalties;
+        address exitPenaltiesImpl;
+        address ejector;
+        address strikes;
+        address strikesImpl;
+        address verifier;
+        address hashConsensus;
+        address operatorsData;
+        address operatorsDataImpl;
+        address curatedGateFactory;
+        address[] curatedGates;
+        address gateSeal;
+        address lidoLocator;
+    }
+
     function envVars() public returns (Env memory) {
         Env memory env = Env(
             vm.envOr("RPC_URL", string("")),
@@ -145,10 +213,10 @@ contract DeploymentHelpers is Test {
         deploymentConfig.chainId = vm.parseJsonUint(config, ".ChainId");
 
         deploymentConfig.csm = vm.parseJsonAddress(config, ".CSModule");
-        vm.label(deploymentConfig.csm, "csm");
+        vm.label(deploymentConfig.csm, "module");
 
         deploymentConfig.csmImpl = vm.parseJsonAddress(config, ".CSModuleImpl");
-        vm.label(deploymentConfig.csmImpl, "csmImpl");
+        vm.label(deploymentConfig.csmImpl, "moduleImpl");
 
         /// Optional for v1 compatibility (upgrade tests). Removed in v2
         if (vm.keyExistsJson(config, ".CSEarlyAdoption")) {
@@ -297,6 +365,157 @@ contract DeploymentHelpers is Test {
         vm.label(deploymentConfig.gateSeal, "GateSeal");
     }
 
+    function parseCuratedDeploymentConfig(
+        string memory config
+    ) public returns (CuratedDeploymentConfig memory deploymentConfig) {
+        deploymentConfig.chainId = vm.parseJsonUint(config, ".ChainId");
+
+        deploymentConfig.curatedModule = vm.parseJsonAddress(
+            config,
+            ".CuratedModule"
+        );
+        vm.label(deploymentConfig.curatedModule, "curatedModule");
+
+        deploymentConfig.curatedModuleImpl = vm.parseJsonAddress(
+            config,
+            ".CuratedModuleImpl"
+        );
+        vm.label(deploymentConfig.curatedModuleImpl, "curatedModuleImpl");
+
+        deploymentConfig.parametersRegistry = vm.parseJsonAddress(
+            config,
+            ".CSParametersRegistry"
+        );
+        vm.label(
+            deploymentConfig.parametersRegistry,
+            "curatedParametersRegistry"
+        );
+
+        deploymentConfig.parametersRegistryImpl = vm.parseJsonAddress(
+            config,
+            ".CSParametersRegistryImpl"
+        );
+        vm.label(
+            deploymentConfig.parametersRegistryImpl,
+            "curatedParametersRegistryImpl"
+        );
+
+        deploymentConfig.accounting = vm.parseJsonAddress(
+            config,
+            ".CSAccounting"
+        );
+        vm.label(deploymentConfig.accounting, "curatedAccounting");
+
+        deploymentConfig.accountingImpl = vm.parseJsonAddress(
+            config,
+            ".CSAccountingImpl"
+        );
+        vm.label(deploymentConfig.accountingImpl, "curatedAccountingImpl");
+
+        deploymentConfig.oracle = vm.parseJsonAddress(config, ".CSFeeOracle");
+        vm.label(deploymentConfig.oracle, "curatedOracle");
+
+        deploymentConfig.oracleImpl = vm.parseJsonAddress(
+            config,
+            ".CSFeeOracleImpl"
+        );
+        vm.label(deploymentConfig.oracleImpl, "curatedOracleImpl");
+
+        deploymentConfig.feeDistributor = vm.parseJsonAddress(
+            config,
+            ".CSFeeDistributor"
+        );
+        vm.label(deploymentConfig.feeDistributor, "curatedFeeDistributor");
+
+        deploymentConfig.feeDistributorImpl = vm.parseJsonAddress(
+            config,
+            ".CSFeeDistributorImpl"
+        );
+        vm.label(
+            deploymentConfig.feeDistributorImpl,
+            "curatedFeeDistributorImpl"
+        );
+
+        deploymentConfig.exitPenalties = vm.parseJsonAddress(
+            config,
+            ".CSExitPenalties"
+        );
+        vm.label(deploymentConfig.exitPenalties, "curatedExitPenalties");
+
+        deploymentConfig.exitPenaltiesImpl = vm.parseJsonAddress(
+            config,
+            ".CSExitPenaltiesImpl"
+        );
+        vm.label(
+            deploymentConfig.exitPenaltiesImpl,
+            "curatedExitPenaltiesImpl"
+        );
+
+        deploymentConfig.ejector = vm.parseJsonAddress(config, ".CSEjector");
+        vm.label(deploymentConfig.ejector, "curatedEjector");
+
+        deploymentConfig.strikes = vm.parseJsonAddress(config, ".CSStrikes");
+        vm.label(deploymentConfig.strikes, "curatedStrikes");
+
+        deploymentConfig.strikesImpl = vm.parseJsonAddress(
+            config,
+            ".CSStrikesImpl"
+        );
+        vm.label(deploymentConfig.strikesImpl, "curatedStrikesImpl");
+
+        deploymentConfig.verifier = vm.parseJsonAddress(config, ".CSVerifier");
+        vm.label(deploymentConfig.verifier, "curatedVerifier");
+
+        deploymentConfig.hashConsensus = vm.parseJsonAddress(
+            config,
+            ".HashConsensus"
+        );
+        vm.label(deploymentConfig.hashConsensus, "curatedHashConsensus");
+
+        deploymentConfig.operatorsData = vm.parseJsonAddress(
+            config,
+            ".OperatorsData"
+        );
+        vm.label(deploymentConfig.operatorsData, "operatorsData");
+
+        deploymentConfig.operatorsDataImpl = vm.parseJsonAddress(
+            config,
+            ".OperatorsDataImpl"
+        );
+        vm.label(deploymentConfig.operatorsDataImpl, "operatorsDataImpl");
+
+        deploymentConfig.curatedGateFactory = vm.parseJsonAddress(
+            config,
+            ".CuratedGateFactory"
+        );
+        vm.label(deploymentConfig.curatedGateFactory, "curatedGateFactory");
+
+        if (vm.keyExistsJson(config, ".CuratedGates")) {
+            deploymentConfig.curatedGates = vm.parseJsonAddressArray(
+                config,
+                ".CuratedGates"
+            );
+            uint256 gatesLength = deploymentConfig.curatedGates.length;
+            for (uint256 i = 0; i < gatesLength; ++i) {
+                vm.label(deploymentConfig.curatedGates[i], "curatedGate");
+            }
+        }
+
+        if (vm.keyExistsJson(config, ".GateSeal")) {
+            deploymentConfig.gateSeal = vm.parseJsonAddress(
+                config,
+                ".GateSeal"
+            );
+            vm.label(deploymentConfig.gateSeal, "curatedGateSeal");
+        }
+
+        deploymentConfig.lidoLocator = vm.parseJsonAddress(
+            config,
+            ".LidoLocator"
+        );
+        vm.label(deploymentConfig.lidoLocator, "curatedLidoLocator");
+    }
+
     function parseDeployParams(
         string memory deployConfigPath
     ) internal view returns (DeployParams memory) {
@@ -308,6 +527,197 @@ contract DeploymentHelpers is Test {
             );
     }
 
+    function updateCuratedDeployParams(
+        CuratedDeployParams storage dst,
+        string memory deployConfigPath
+    ) internal {
+        string memory config = vm.readFile(deployConfigPath);
+        CuratedDeployParams memory src = abi.decode(
+            vm.parseJsonBytes(config, ".DeployParams"),
+            (CuratedDeployParams)
+        );
+        // copy every value separately to avoid `Unimplemented feature` error from solc when copying memory array of structs into storage
+        // Lido addresses
+        dst.lidoLocatorAddress = src.lidoLocatorAddress;
+        dst.aragonAgent = src.aragonAgent;
+        dst.easyTrackEVMScriptExecutor = src.easyTrackEVMScriptExecutor;
+        dst.proxyAdmin = src.proxyAdmin;
+
+        // Oracle
+        dst.secondsPerSlot = src.secondsPerSlot;
+        dst.slotsPerEpoch = src.slotsPerEpoch;
+        dst.clGenesisTime = src.clGenesisTime;
+        dst.oracleReportEpochsPerFrame = src.oracleReportEpochsPerFrame;
+        dst.fastLaneLengthSlots = src.fastLaneLengthSlots;
+        dst.consensusVersion = src.consensusVersion;
+
+        for (uint256 i; i < src.oracleMembers.length; ++i) {
+            dst.oracleMembers.push(src.oracleMembers[i]);
+        }
+
+        dst.hashConsensusQuorum = src.hashConsensusQuorum;
+
+        // Verifier
+        dst.slotsPerHistoricalRoot = src.slotsPerHistoricalRoot;
+        dst.gIFirstWithdrawal = src.gIFirstWithdrawal;
+        dst.gIFirstValidator = src.gIFirstValidator;
+        dst.gIFirstHistoricalSummary = src.gIFirstHistoricalSummary;
+        dst.gIFirstBlockRootInSummary = src.gIFirstBlockRootInSummary;
+        dst.gIFirstBalanceNode = src.gIFirstBalanceNode;
+        dst.gIFirstPendingConsolidation = src.gIFirstPendingConsolidation;
+        dst.verifierFirstSupportedSlot = src.verifierFirstSupportedSlot;
+        dst.capellaSlot = src.capellaSlot;
+
+        // Accounting
+        for (uint256 i; i < src.defaultBondCurve.length; ++i) {
+            dst.defaultBondCurve.push(src.defaultBondCurve[i]);
+        }
+
+        dst.minBondLockPeriod = src.minBondLockPeriod;
+        dst.maxBondLockPeriod = src.maxBondLockPeriod;
+        dst.bondLockPeriod = src.bondLockPeriod;
+        dst.setResetBondCurveAddress = src.setResetBondCurveAddress;
+        dst.chargePenaltyRecipient = src.chargePenaltyRecipient;
+
+        // Module
+        dst.stakingModuleId = src.stakingModuleId;
+        dst.moduleType = src.moduleType;
+        dst.generalDelayedPenaltyReporter = src.generalDelayedPenaltyReporter;
+
+        // CSParameters
+        dst.queueLowestPriority = src.queueLowestPriority;
+        dst.defaultKeyRemovalCharge = src.defaultKeyRemovalCharge;
+        dst.defaultGeneralDelayedPenaltyAdditionalFine = src
+            .defaultGeneralDelayedPenaltyAdditionalFine;
+        dst.defaultKeysLimit = src.defaultKeysLimit;
+        dst.defaultAvgPerfLeewayBP = src.defaultAvgPerfLeewayBP;
+        dst.defaultRewardShareBP = src.defaultRewardShareBP;
+        dst.defaultStrikesLifetimeFrames = src.defaultStrikesLifetimeFrames;
+        dst.defaultStrikesThreshold = src.defaultStrikesThreshold;
+        dst.defaultQueuePriority = src.defaultQueuePriority;
+        dst.defaultQueueMaxDeposits = src.defaultQueueMaxDeposits;
+        dst.defaultBadPerformancePenalty = src.defaultBadPerformancePenalty;
+        dst.defaultAttestationsWeight = src.defaultAttestationsWeight;
+        dst.defaultBlocksWeight = src.defaultBlocksWeight;
+        dst.defaultSyncWeight = src.defaultSyncWeight;
+        dst.defaultAllowedExitDelay = src.defaultAllowedExitDelay;
+        dst.defaultExitDelayFee = src.defaultExitDelayFee;
+        dst.defaultMaxWithdrawalRequestFee = src.defaultMaxWithdrawalRequestFee;
+
+        // Curated gates
+        for (uint256 i; i < src.curatedGates.length; ++i) {
+            dst.curatedGates.push(src.curatedGates[i]);
+        }
+
+        // GateSeal
+        dst.gateSealFactory = src.gateSealFactory;
+        dst.sealingCommittee = src.sealingCommittee;
+        dst.sealDuration = src.sealDuration;
+        dst.sealExpiryTimestamp = src.sealExpiryTimestamp;
+
+        // DG
+        dst.resealManager = src.resealManager;
+
+        // Testnet stuff
+        dst.secondAdminAddress = src.secondAdminAddress;
+    }
+
+    function parseCommonDeployParams(
+        string memory config
+    ) internal view returns (CommonDeployParams memory params) {
+        if (bytes(config).length == 0) {
+            return params;
+        }
+
+        if (vm.keyExistsJson(config, ".CuratedModule")) {
+            CuratedDeployParams memory decoded = abi.decode(
+                vm.parseJsonBytes(config, ".CuratedDeployParams"),
+                (CuratedDeployParams)
+            );
+            params.lidoLocatorAddress = decoded.lidoLocatorAddress;
+            params.aragonAgent = decoded.aragonAgent;
+            params.proxyAdmin = decoded.proxyAdmin;
+            params.easyTrackEVMScriptExecutor = decoded
+                .easyTrackEVMScriptExecutor;
+            params.generalDelayedPenaltyReporter = decoded
+                .generalDelayedPenaltyReporter;
+            params.resealManager = decoded.resealManager;
+            params.secondAdminAddress = decoded.secondAdminAddress;
+            params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
+            params.setResetBondCurveAddress = decoded.setResetBondCurveAddress;
+            params.stakingModuleId = decoded.stakingModuleId;
+            params.moduleType = decoded.moduleType;
+            params.queueLowestPriority = decoded.queueLowestPriority;
+            params.bondLockPeriod = decoded.bondLockPeriod;
+            params.minBondLockPeriod = decoded.minBondLockPeriod;
+            params.maxBondLockPeriod = decoded.maxBondLockPeriod;
+            params.secondsPerSlot = decoded.secondsPerSlot;
+            params.slotsPerEpoch = decoded.slotsPerEpoch;
+            params.clGenesisTime = decoded.clGenesisTime;
+            params.oracleReportEpochsPerFrame = decoded
+                .oracleReportEpochsPerFrame;
+            params.fastLaneLengthSlots = decoded.fastLaneLengthSlots;
+            params.consensusVersion = decoded.consensusVersion;
+            params.oracleMembers = decoded.oracleMembers;
+            params.hashConsensusQuorum = decoded.hashConsensusQuorum;
+            params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
+            params.gIFirstValidator = decoded.gIFirstValidator;
+            params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
+            params.gIFirstBlockRootInSummary = decoded
+                .gIFirstBlockRootInSummary;
+            params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
+            params.gIFirstPendingConsolidation = decoded
+                .gIFirstPendingConsolidation;
+            params.verifierFirstSupportedSlot = decoded
+                .verifierFirstSupportedSlot;
+            params.capellaSlot = decoded.capellaSlot;
+            params.defaultBondCurve = decoded.defaultBondCurve;
+        } else {
+            DeployParams memory decoded = abi.decode(
+                vm.parseJsonBytes(config, ".DeployParams"),
+                (DeployParams)
+            );
+            params.lidoLocatorAddress = decoded.lidoLocatorAddress;
+            params.aragonAgent = decoded.aragonAgent;
+            params.proxyAdmin = decoded.proxyAdmin;
+            params.easyTrackEVMScriptExecutor = decoded
+                .easyTrackEVMScriptExecutor;
+            params.generalDelayedPenaltyReporter = decoded
+                .generalDelayedPenaltyReporter;
+            params.resealManager = decoded.resealManager;
+            params.secondAdminAddress = decoded.secondAdminAddress;
+            params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
+            params.setResetBondCurveAddress = decoded.setResetBondCurveAddress;
+            params.stakingModuleId = decoded.stakingModuleId;
+            params.moduleType = decoded.moduleType;
+            params.queueLowestPriority = decoded.queueLowestPriority;
+            params.bondLockPeriod = decoded.bondLockPeriod;
+            params.minBondLockPeriod = decoded.minBondLockPeriod;
+            params.maxBondLockPeriod = decoded.maxBondLockPeriod;
+            params.secondsPerSlot = decoded.secondsPerSlot;
+            params.slotsPerEpoch = decoded.slotsPerEpoch;
+            params.clGenesisTime = decoded.clGenesisTime;
+            params.oracleReportEpochsPerFrame = decoded
+                .oracleReportEpochsPerFrame;
+            params.fastLaneLengthSlots = decoded.fastLaneLengthSlots;
+            params.consensusVersion = decoded.consensusVersion;
+            params.oracleMembers = decoded.oracleMembers;
+            params.hashConsensusQuorum = decoded.hashConsensusQuorum;
+            params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
+            params.gIFirstValidator = decoded.gIFirstValidator;
+            params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
+            params.gIFirstBlockRootInSummary = decoded
+                .gIFirstBlockRootInSummary;
+            params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
+            params.gIFirstPendingConsolidation = decoded
+                .gIFirstPendingConsolidation;
+            params.verifierFirstSupportedSlot = decoded
+                .verifierFirstSupportedSlot;
+            params.capellaSlot = decoded.capellaSlot;
+            params.defaultBondCurve = decoded.defaultBondCurve;
+        }
+    }
+
     function _isEmpty(string memory s) internal pure returns (bool) {
         return
             keccak256(abi.encodePacked(s)) == keccak256(abi.encodePacked(""));
@@ -315,8 +725,15 @@ contract DeploymentHelpers is Test {
 }
 
 contract DeploymentFixtures is StdCheats, DeploymentHelpers {
-    CSModule public csm;
-    CSModule public csmImpl;
+    enum ModuleType {
+        Unknown,
+        Community,
+        Curated
+    }
+
+    ModuleType public moduleType;
+    CSModule public module;
+    CSModule public moduleImpl;
     CSParametersRegistry public parametersRegistry;
     CSParametersRegistry public parametersRegistryImpl;
     PermissionlessGate public permissionlessGate;
@@ -343,19 +760,36 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
     ILido public lido;
     IGateSeal public gateSeal;
     IBurner public burner;
+    CuratedModule public curatedModule;
+    CuratedModule public curatedModuleImpl;
+    OperatorsData public operatorsData;
+    CuratedGateFactory public curatedGateFactory;
+    address[] public curatedGates;
 
-    error CSModuleNotFound();
+    error ModuleNotFound();
 
     function initializeFromDeployment() public {
         Env memory env = envVars();
         string memory config = vm.readFile(env.DEPLOY_CONFIG);
+        delete curatedGates;
+
+        if (vm.keyExistsJson(config, ".CuratedModule")) {
+            _initializeCurated(config);
+        } else {
+            _initializeCommunity(config);
+        }
+    }
+
+    function _initializeCommunity(string memory config) internal {
         DeploymentConfig memory deploymentConfig = parseDeploymentConfig(
             config
         );
         assertEq(deploymentConfig.chainId, block.chainid, "ChainId mismatch");
 
-        csm = CSModule(deploymentConfig.csm);
-        csmImpl = CSModule(deploymentConfig.csmImpl);
+        moduleType = ModuleType.Community;
+
+        module = CSModule(deploymentConfig.csm);
+        moduleImpl = CSModule(deploymentConfig.csmImpl);
         parametersRegistry = CSParametersRegistry(
             deploymentConfig.parametersRegistry
         );
@@ -379,9 +813,9 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
         feeDistributorImpl = CSFeeDistributor(
             deploymentConfig.feeDistributorImpl
         );
-        ejector = CSEjector(payable(deploymentConfig.ejector));
         exitPenalties = CSExitPenalties(deploymentConfig.exitPenalties);
         exitPenaltiesImpl = CSExitPenalties(deploymentConfig.exitPenaltiesImpl);
+        ejector = CSEjector(payable(deploymentConfig.ejector));
         strikes = CSStrikes(deploymentConfig.strikes);
         strikesImpl = CSStrikes(deploymentConfig.strikesImpl);
         verifier = CSVerifier(
@@ -400,6 +834,56 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
                 : deploymentConfig.gateSealV2
         );
         burner = IBurner(locator.burner());
+    }
+
+    function _initializeCurated(string memory config) internal {
+        CuratedDeploymentConfig
+            memory deploymentConfig = parseCuratedDeploymentConfig(config);
+        assertEq(deploymentConfig.chainId, block.chainid, "ChainId mismatch");
+
+        moduleType = ModuleType.Curated;
+        curatedModule = CuratedModule(deploymentConfig.curatedModule);
+        curatedModuleImpl = CuratedModule(deploymentConfig.curatedModuleImpl);
+        module = CSModule(deploymentConfig.curatedModule);
+        moduleImpl = CSModule(deploymentConfig.curatedModuleImpl);
+        parametersRegistry = CSParametersRegistry(
+            deploymentConfig.parametersRegistry
+        );
+        parametersRegistryImpl = CSParametersRegistry(
+            deploymentConfig.parametersRegistryImpl
+        );
+        permissionlessGate = PermissionlessGate(address(0));
+        vettedGateFactory = VettedGateFactory(address(0));
+        vettedGate = VettedGate(address(0));
+        vettedGateImpl = VettedGate(address(0));
+        earlyAdoption = address(0);
+        accounting = CSAccounting(deploymentConfig.accounting);
+        accountingImpl = CSAccounting(deploymentConfig.accountingImpl);
+        oracle = CSFeeOracle(deploymentConfig.oracle);
+        oracleImpl = CSFeeOracle(deploymentConfig.oracleImpl);
+        feeDistributor = CSFeeDistributor(deploymentConfig.feeDistributor);
+        feeDistributorImpl = CSFeeDistributor(
+            deploymentConfig.feeDistributorImpl
+        );
+        exitPenalties = CSExitPenalties(deploymentConfig.exitPenalties);
+        exitPenaltiesImpl = CSExitPenalties(deploymentConfig.exitPenaltiesImpl);
+        ejector = CSEjector(payable(deploymentConfig.ejector));
+        strikes = CSStrikes(deploymentConfig.strikes);
+        strikesImpl = CSStrikes(deploymentConfig.strikesImpl);
+        verifier = CSVerifier(deploymentConfig.verifier);
+        hashConsensus = HashConsensus(deploymentConfig.hashConsensus);
+        locator = ILidoLocator(deploymentConfig.lidoLocator);
+        lido = ILido(locator.lido());
+        stakingRouter = IStakingRouter(locator.stakingRouter());
+        wstETH = IWstETH(IWithdrawalQueue(locator.withdrawalQueue()).WSTETH());
+        gateSeal = IGateSeal(deploymentConfig.gateSeal);
+        burner = IBurner(locator.burner());
+
+        operatorsData = OperatorsData(deploymentConfig.operatorsData);
+        curatedGateFactory = CuratedGateFactory(
+            deploymentConfig.curatedGateFactory
+        );
+        curatedGates = deploymentConfig.curatedGates;
     }
 
     function handleStakingLimit() public {
@@ -436,16 +920,16 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
         lido.submit{ value: 1e7 ether }(address(0));
     }
 
-    function findCSModule() internal view returns (uint256) {
+    function findModule() internal view returns (uint256) {
         uint256[] memory ids = stakingRouter.getStakingModuleIds();
         for (uint256 i = ids.length - 1; i > 0; i--) {
-            IStakingRouter.StakingModule memory module = stakingRouter
+            IStakingRouter.StakingModule memory moduleInfo = stakingRouter
                 .getStakingModule(ids[i]);
-            if (module.stakingModuleAddress == address(csm)) {
+            if (moduleInfo.stakingModuleAddress == address(module)) {
                 return ids[i];
             }
         }
-        revert CSModuleNotFound();
+        revert ModuleNotFound();
     }
 
     function addNodeOperator(
@@ -476,10 +960,10 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
     function getDepositableNodeOperator(
         address nodeOperatorAddress
     ) internal returns (uint256 noId, uint256 keysCount) {
-        csm.cleanDepositQueue({ maxItems: 2 * csm.getNonce() });
-        for (uint256 i = 0; i <= csm.QUEUE_LOWEST_PRIORITY(); ++i) {
-            (uint128 head, ) = csm.depositQueuePointers(i);
-            Batch batch = csm.depositQueueItem(i, head);
+        module.cleanDepositQueue({ maxItems: 2 * module.getNonce() });
+        for (uint256 i = 0; i <= module.QUEUE_LOWEST_PRIORITY(); ++i) {
+            (uint128 head, ) = module.depositQueuePointers(i);
+            Batch batch = module.depositQueueItem(i, head);
             if (!batch.isNil()) {
                 return (batch.noId(), batch.keys());
             }
@@ -492,19 +976,19 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
         address nodeOperatorAddress,
         uint256 keysCount
     ) internal returns (uint256 noId) {
-        uint256 nosCount = csm.getNodeOperatorsCount();
+        uint256 nosCount = module.getNodeOperatorsCount();
         for (; noId < nosCount; ++noId) {
-            NodeOperator memory no = csm.getNodeOperator(noId);
+            NodeOperator memory no = module.getNodeOperator(noId);
             if (no.totalDepositedKeys - no.totalWithdrawnKeys >= keysCount) {
                 return noId;
             }
         }
         noId = addNodeOperator(nodeOperatorAddress, keysCount);
-        (, , uint256 depositableValidatorsCount) = csm
+        (, , uint256 depositableValidatorsCount) = module
             .getStakingModuleSummary();
         vm.startPrank(address(stakingRouter));
         // potentially time-consuming or reverting due to block/tx gas limit
-        csm.obtainDepositData(depositableValidatorsCount, "");
+        module.obtainDepositData(depositableValidatorsCount, "");
         vm.stopPrank();
     }
 
@@ -512,14 +996,14 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
         address nodeOperatorAddress,
         uint256 keysCount
     ) internal returns (uint256 noId, uint256 startIndex) {
-        uint256 nosCount = csm.getNodeOperatorsCount();
+        uint256 nosCount = module.getNodeOperatorsCount();
         for (; noId < nosCount; ++noId) {
-            NodeOperator memory no = csm.getNodeOperator(noId);
+            NodeOperator memory no = module.getNodeOperator(noId);
             uint256 activeKeys = no.totalDepositedKeys - no.totalWithdrawnKeys;
             if (activeKeys >= keysCount) {
                 uint256 sequentialKeys = 0;
                 for (uint256 i = 0; i < no.totalDepositedKeys; ++i) {
-                    if (!csm.isValidatorWithdrawn(noId, i)) {
+                    if (!module.isValidatorWithdrawn(noId, i)) {
                         sequentialKeys++;
                     } else {
                         sequentialKeys = 0;
@@ -531,11 +1015,11 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
             }
         }
         noId = addNodeOperator(nodeOperatorAddress, keysCount);
-        (, , uint256 depositableValidatorsCount) = csm
+        (, , uint256 depositableValidatorsCount) = module
             .getStakingModuleSummary();
         vm.startPrank(address(stakingRouter));
         // potentially time-consuming or reverting due to block/tx gas limit
-        csm.obtainDepositData(depositableValidatorsCount, "");
+        module.obtainDepositData(depositableValidatorsCount, "");
         vm.stopPrank();
         return (noId, 0);
     }

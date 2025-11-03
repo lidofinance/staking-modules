@@ -21,45 +21,51 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
     }
 
     function test_CSModuleUpgradeTo() public {
-        OssifiableProxy proxy = OssifiableProxy(payable(address(csm)));
+        OssifiableProxy proxy = OssifiableProxy(payable(address(module)));
         CSModule newModule = new CSModule({
             moduleType: "CSMv2",
-            lidoLocator: address(csm.LIDO_LOCATOR()),
-            parametersRegistry: address(csm.PARAMETERS_REGISTRY()),
-            _accounting: address(csm.ACCOUNTING()),
-            exitPenalties: address(csm.EXIT_PENALTIES())
+            lidoLocator: address(module.LIDO_LOCATOR()),
+            parametersRegistry: address(module.PARAMETERS_REGISTRY()),
+            _accounting: address(module.ACCOUNTING()),
+            exitPenalties: address(module.EXIT_PENALTIES())
         });
         vm.prank(proxy.proxy__getAdmin());
         proxy.proxy__upgradeTo(address(newModule));
-        assertEq(csm.getType(), "CSMv2");
+        assertEq(module.getType(), "CSMv2");
     }
 
     function test_CSModuleUpgradeToAndCall() public {
-        OssifiableProxy proxy = OssifiableProxy(payable(address(csm)));
+        OssifiableProxy proxy = OssifiableProxy(payable(address(module)));
         CSModule newModule = new CSModule({
             moduleType: "CSMv2",
-            lidoLocator: address(csm.LIDO_LOCATOR()),
-            parametersRegistry: address(csm.PARAMETERS_REGISTRY()),
-            _accounting: address(csm.ACCOUNTING()),
-            exitPenalties: address(csm.EXIT_PENALTIES())
+            lidoLocator: address(module.LIDO_LOCATOR()),
+            parametersRegistry: address(module.PARAMETERS_REGISTRY()),
+            _accounting: address(module.ACCOUNTING()),
+            exitPenalties: address(module.EXIT_PENALTIES())
         });
-        address contractAdmin = csm.getRoleMember(csm.DEFAULT_ADMIN_ROLE(), 0);
+        address contractAdmin = module.getRoleMember(
+            module.DEFAULT_ADMIN_ROLE(),
+            0
+        );
         vm.startPrank(contractAdmin);
-        csm.grantRole(csm.RESUME_ROLE(), address(proxy.proxy__getAdmin()));
-        csm.grantRole(csm.PAUSE_ROLE(), address(proxy.proxy__getAdmin()));
+        module.grantRole(
+            module.RESUME_ROLE(),
+            address(proxy.proxy__getAdmin())
+        );
+        module.grantRole(module.PAUSE_ROLE(), address(proxy.proxy__getAdmin()));
         vm.stopPrank();
-        if (!csm.isPaused()) {
+        if (!module.isPaused()) {
             vm.prank(proxy.proxy__getAdmin());
-            csm.pauseFor(100500);
+            module.pauseFor(100500);
         }
-        assertTrue(csm.isPaused());
+        assertTrue(module.isPaused());
         vm.prank(proxy.proxy__getAdmin());
         proxy.proxy__upgradeToAndCall(
             address(newModule),
             abi.encodeWithSelector(newModule.resume.selector, 1)
         );
-        assertEq(csm.getType(), "CSMv2");
-        assertFalse(csm.isPaused());
+        assertEq(module.getType(), "CSMv2");
+        assertFalse(module.isPaused());
     }
 
     function test_CSAccountingUpgradeTo() public {
@@ -67,7 +73,7 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
         uint256 currentMaxBondLockPeriod = accounting.MAX_BOND_LOCK_PERIOD();
         CSAccounting newAccounting = new CSAccounting({
             lidoLocator: address(accounting.LIDO_LOCATOR()),
-            module: address(csm),
+            module: address(module),
             feeDistributor: address(feeDistributor),
             minBondLockPeriod: accounting.MIN_BOND_LOCK_PERIOD(),
             maxBondLockPeriod: currentMaxBondLockPeriod + 10
@@ -85,7 +91,7 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
         uint256 currentMaxBondLockPeriod = accounting.MAX_BOND_LOCK_PERIOD();
         CSAccounting newAccounting = new CSAccounting({
             lidoLocator: address(accounting.LIDO_LOCATOR()),
-            module: address(csm),
+            module: address(module),
             feeDistributor: address(feeDistributor),
             minBondLockPeriod: accounting.MIN_BOND_LOCK_PERIOD(),
             maxBondLockPeriod: currentMaxBondLockPeriod + 10

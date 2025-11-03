@@ -49,6 +49,8 @@ anvil_rpc_url := "http://" + anvil_host + ":" + anvil_port
 
 disable_code_size_limit := if env("DISABLE_CODE_SIZE_LIMIT", "") != "" { "--disable-code-size-limit" } else { "" }
 
+import "curated.just"
+
 default: clean deps build test-all
 
 build *args:

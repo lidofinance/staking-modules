@@ -27,8 +27,8 @@ contract EjectionTest is Test, Utilities, DeploymentFixtures {
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
 
-        if (csm.isPaused()) {
-            csm.resume();
+        if (module.isPaused()) {
+            module.resume();
         }
     }
 
@@ -55,7 +55,7 @@ contract EjectionTest is Test, Utilities, DeploymentFixtures {
         );
 
         uint256 initialBalance = 1 ether;
-        address operatorOwner = csm.getNodeOperatorOwner(nodeOperatorId);
+        address operatorOwner = module.getNodeOperatorOwner(nodeOperatorId);
         vm.deal(operatorOwner, initialBalance);
         uint256 expectedFee = IWithdrawalVault(locator.withdrawalVault())
             .getWithdrawalRequestFee();
@@ -65,7 +65,11 @@ contract EjectionTest is Test, Utilities, DeploymentFixtures {
         bytes[] memory pubkeys = new bytes[](keysCount);
 
         for (uint256 i = 0; i < keysCount; i++) {
-            pubkeys[i] = csm.getSigningKeys(nodeOperatorId, startFrom + i, 1);
+            pubkeys[i] = module.getSigningKeys(
+                nodeOperatorId,
+                startFrom + i,
+                1
+            );
         }
         for (uint256 i = 0; i < keysCount; i++) {
             vm.expectEmit(withdrawalVault);
@@ -73,7 +77,7 @@ contract EjectionTest is Test, Utilities, DeploymentFixtures {
                 _prepareWithdrawalRequestData(pubkeys[i])
             );
             vm.expectCall(
-                address(csm),
+                address(module),
                 abi.encodeWithSelector(
                     IStakingModule.onValidatorExitTriggered.selector,
                     nodeOperatorId,
@@ -104,7 +108,7 @@ contract EjectionTest is Test, Utilities, DeploymentFixtures {
         nodeOperatorId = getDepositedNodeOperator(nextAddress(), keysCount);
 
         uint256 initialBalance = 1 ether;
-        address operatorOwner = csm.getNodeOperatorOwner(nodeOperatorId);
+        address operatorOwner = module.getNodeOperatorOwner(nodeOperatorId);
         vm.deal(operatorOwner, initialBalance);
         uint256 expectedFee = IWithdrawalVault(locator.withdrawalVault())
             .getWithdrawalRequestFee();
@@ -118,12 +122,12 @@ contract EjectionTest is Test, Utilities, DeploymentFixtures {
             uint256 i;
             uint256 keyIndex;
             while (i < keysCount) {
-                if (csm.isValidatorWithdrawn(nodeOperatorId, keyIndex)) {
+                if (module.isValidatorWithdrawn(nodeOperatorId, keyIndex)) {
                     keyIndex++;
                     continue;
                 }
                 keyIds[i] = keyIndex;
-                pubkeys[i] = csm.getSigningKeys(nodeOperatorId, keyIndex, 1);
+                pubkeys[i] = module.getSigningKeys(nodeOperatorId, keyIndex, 1);
                 i++;
                 keyIndex++;
             }
@@ -135,7 +139,7 @@ contract EjectionTest is Test, Utilities, DeploymentFixtures {
                 _prepareWithdrawalRequestData(pubkeys[i])
             );
             vm.expectCall(
-                address(csm),
+                address(module),
                 abi.encodeWithSelector(
                     IStakingModule.onValidatorExitTriggered.selector,
                     nodeOperatorId,

@@ -45,10 +45,10 @@ contract IntegrationTestBase is
     modifier assertInvariants() {
         _;
         vm.pauseGasMetering();
-        uint256 noCount = csm.getNodeOperatorsCount();
-        assertModuleKeys(csm);
-        assertModuleEnqueuedCount(csm);
-        assertModuleUnusedStorageSlots(csm);
+        uint256 noCount = module.getNodeOperatorsCount();
+        assertModuleKeys(module);
+        assertModuleEnqueuedCount(module);
+        assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
         assertAccountingBurnerApproval(
             lido,
@@ -67,11 +67,11 @@ contract IntegrationTestBase is
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
 
-        vm.startPrank(csm.getRoleMember(csm.DEFAULT_ADMIN_ROLE(), 0));
-        csm.grantRole(csm.DEFAULT_ADMIN_ROLE(), address(this));
+        vm.startPrank(module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0));
+        module.grantRole(module.DEFAULT_ADMIN_ROLE(), address(this));
         vm.stopPrank();
 
-        vm.startPrank(vettedGate.getRoleMember(csm.DEFAULT_ADMIN_ROLE(), 0));
+        vm.startPrank(vettedGate.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0));
         vettedGate.grantRole(vettedGate.SET_TREE_ROLE(), address(this));
         vm.stopPrank();
 
@@ -1083,7 +1083,7 @@ contract AddValidatorKeysTest is IntegrationTestBase {
 
         vm.startPrank(nodeOperator);
         vm.startSnapshotGas("CSM.addValidatorKeysETH");
-        csm.addValidatorKeysETH{ value: amount }(
+        module.addValidatorKeysETH{ value: amount }(
             nodeOperator,
             defaultNoId,
             keysCount,
@@ -1093,7 +1093,7 @@ contract AddValidatorKeysTest is IntegrationTestBase {
         vm.stopSnapshotGas();
         vm.stopPrank();
 
-        NodeOperator memory no = csm.getNodeOperator(defaultNoId);
+        NodeOperator memory no = module.getNodeOperator(defaultNoId);
         assertEq(no.totalAddedKeys, initialKeysCount + keysCount);
     }
 
@@ -1109,7 +1109,7 @@ contract AddValidatorKeysTest is IntegrationTestBase {
         );
 
         vm.startSnapshotGas("CSM.addValidatorKeysStETH");
-        csm.addValidatorKeysStETH(
+        module.addValidatorKeysStETH(
             nodeOperator,
             defaultNoId,
             keysCount,
@@ -1126,7 +1126,7 @@ contract AddValidatorKeysTest is IntegrationTestBase {
         vm.stopSnapshotGas();
         vm.stopPrank();
 
-        NodeOperator memory no = csm.getNodeOperator(defaultNoId);
+        NodeOperator memory no = module.getNodeOperator(defaultNoId);
         assertEq(no.totalAddedKeys, initialKeysCount + keysCount);
     }
 
@@ -1149,7 +1149,7 @@ contract AddValidatorKeysTest is IntegrationTestBase {
         );
 
         vm.startSnapshotGas("CSM.addValidatorKeysWstETH");
-        csm.addValidatorKeysWstETH(
+        module.addValidatorKeysWstETH(
             nodeOperator,
             defaultNoId,
             keysCount,
@@ -1166,7 +1166,7 @@ contract AddValidatorKeysTest is IntegrationTestBase {
         vm.stopSnapshotGas();
         vm.stopPrank();
 
-        NodeOperator memory no = csm.getNodeOperator(defaultNoId);
+        NodeOperator memory no = module.getNodeOperator(defaultNoId);
         assertEq(no.totalAddedKeys, initialKeysCount + keysCount);
     }
 }
@@ -1218,11 +1218,11 @@ contract RemoveKeysTest is IntegrationTestBase {
 
         vm.startPrank(nodeOperator);
         vm.startSnapshotGas("CSM.removeKeys");
-        csm.removeKeys(defaultNoId, initialKeysCount - keysCount, keysCount);
+        module.removeKeys(defaultNoId, initialKeysCount - keysCount, keysCount);
         vm.stopSnapshotGas();
         vm.stopPrank();
 
-        NodeOperator memory no = csm.getNodeOperator(defaultNoId);
+        NodeOperator memory no = module.getNodeOperator(defaultNoId);
         assertEq(no.totalAddedKeys, initialKeysCount - keysCount);
 
         (uint256 bondAfter, ) = accounting.getBondSummary(defaultNoId);
@@ -1249,11 +1249,11 @@ contract RemoveKeysTest is IntegrationTestBase {
 
         vm.startPrank(nodeOperator);
         vm.startSnapshotGas("CSM.removeKeys");
-        csm.removeKeys(defaultNoId, initialKeysCount - keysCount, keysCount);
+        module.removeKeys(defaultNoId, initialKeysCount - keysCount, keysCount);
         vm.stopSnapshotGas();
         vm.stopPrank();
 
-        NodeOperator memory no = csm.getNodeOperator(defaultNoId);
+        NodeOperator memory no = module.getNodeOperator(defaultNoId);
         assertEq(no.totalAddedKeys, initialKeysCount - keysCount);
 
         (uint256 bondAfter, ) = accounting.getBondSummary(defaultNoId);
@@ -1283,7 +1283,7 @@ contract RemoveKeysTest is IntegrationTestBase {
         });
 
         vm.prank(address(stakingRouter));
-        csm.decreaseVettedSigningKeysCount(
+        module.decreaseVettedSigningKeysCount(
             bytes.concat(bytes8(uint64(noId))),
             bytes.concat(bytes16(uint128(keysCount - 1)))
         );
@@ -1298,7 +1298,7 @@ contract RemoveKeysTest is IntegrationTestBase {
 
         vm.startPrank(nodeOperator);
         vm.startSnapshotGas("CSM.addValidatorKeysETH");
-        csm.addValidatorKeysETH{ value: amount }(
+        module.addValidatorKeysETH{ value: amount }(
             nodeOperator,
             noId,
             additionalKeysCount,
@@ -1312,7 +1312,7 @@ contract RemoveKeysTest is IntegrationTestBase {
 
         vm.startPrank(nodeOperator);
         vm.startSnapshotGas("CSM.removeKeys");
-        csm.removeKeys(
+        module.removeKeys(
             noId,
             keysCount - keysCountToRemove - 1,
             keysCountToRemove
@@ -1320,7 +1320,7 @@ contract RemoveKeysTest is IntegrationTestBase {
         vm.stopSnapshotGas();
         vm.stopPrank();
 
-        NodeOperator memory no = csm.getNodeOperator(noId);
+        NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(
             no.totalAddedKeys,
             keysCount + additionalKeysCount - keysCountToRemove
@@ -1340,13 +1340,13 @@ contract ObtainDepositDataTest is IntegrationTestBase {
             keysToDeposit,
             curveId
         );
-        address nodeOperatorAddress = csm
+        address nodeOperatorAddress = module
             .getNodeOperatorManagementProperties(noId)
             .managerAddress;
         vm.deal(nodeOperatorAddress, amount);
 
         vm.startPrank(nodeOperatorAddress);
-        csm.addValidatorKeysETH{ value: amount }(
+        module.addValidatorKeysETH{ value: amount }(
             nodeOperatorAddress,
             noId,
             keysToDeposit,
@@ -1361,7 +1361,7 @@ contract ObtainDepositDataTest is IntegrationTestBase {
         uint256 keysWithPriority
     ) internal {
         uint256 curveId = accounting.getBondCurveId(noId);
-        NodeOperator memory no = csm.getNodeOperator(noId);
+        NodeOperator memory no = module.getNodeOperator(noId);
         address agent = stakingRouter.getRoleMember(
             stakingRouter.DEFAULT_ADMIN_ROLE(),
             0

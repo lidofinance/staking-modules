@@ -34,10 +34,10 @@ contract ClaimRewardsTest is
     modifier assertInvariants() {
         _;
         vm.pauseGasMetering();
-        uint256 noCount = csm.getNodeOperatorsCount();
-        assertModuleKeys(csm);
-        assertModuleEnqueuedCount(csm);
-        assertModuleUnusedStorageSlots(csm);
+        uint256 noCount = module.getNodeOperatorsCount();
+        assertModuleKeys(module);
+        assertModuleEnqueuedCount(module);
+        assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
         assertAccountingBurnerApproval(
             lido,
@@ -56,8 +56,8 @@ contract ClaimRewardsTest is
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
 
-        vm.startPrank(csm.getRoleMember(csm.DEFAULT_ADMIN_ROLE(), 0));
-        csm.grantRole(csm.DEFAULT_ADMIN_ROLE(), address(this));
+        vm.startPrank(module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0));
+        module.grantRole(module.DEFAULT_ADMIN_ROLE(), address(this));
         vm.stopPrank();
 
         handleStakingLimit();

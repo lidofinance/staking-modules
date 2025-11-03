@@ -33,6 +33,14 @@ library Json {
     function set(
         JsonObj memory obj,
         string memory key,
+        address[] memory value
+    ) internal {
+        obj.str = vm.serializeAddress(obj.ref, key, value);
+    }
+
+    function set(
+        JsonObj memory obj,
+        string memory key,
         uint256 value
     ) internal {
         obj.str = vm.serializeUint(obj.ref, key, value);

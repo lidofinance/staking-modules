@@ -38,7 +38,7 @@ contract VettedGateFactoryTest is MiscTest {
 
         VettedGate gate = VettedGate(instance);
         assertEq(gate.curveId(), curveId);
-        assertEq(address(gate.MODULE()), address(csm));
+        assertEq(address(gate.MODULE()), address(module));
         assertEq(gate.treeRoot(), root);
         assertEq(gate.treeCid(), cid);
         assertEq(gate.getRoleMemberCount(gate.DEFAULT_ADMIN_ROLE()), 1);

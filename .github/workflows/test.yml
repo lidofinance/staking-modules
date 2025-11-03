@@ -141,6 +141,12 @@ jobs:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
+      - name: Run local integration tests for Curated Deployment
+        run: just test-curated-local
+        env:
+          CHAIN: mainnet
+          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+
       # TODO: Enable when new upgrade tests are ready
       # - name: Run post-vote tests after upgrade
       #   run: just test-upgrade --no-match-contract=VoteChangesTest

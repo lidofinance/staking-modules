@@ -34,114 +34,132 @@ using QueueLib for QueueLib.Queue;
 
 contract CSModuleInvariants is InvariantsBase {
     function test_keys() public noGasMetering {
-        assertModuleKeys(csm);
+        assertModuleKeys(module);
     }
 
     function test_enqueuedCount() public noGasMetering {
-        assertModuleEnqueuedCount(csm);
+        assertModuleEnqueuedCount(module);
     }
 
     function test_unusedStorageSlots() public noGasMetering {
-        assertModuleUnusedStorageSlots(csm);
+        assertModuleUnusedStorageSlots(module);
     }
 
     function test_roles() public view {
         assertEq(
-            csm.getRoleMemberCount(csm.DEFAULT_ADMIN_ROLE()),
+            module.getRoleMemberCount(module.DEFAULT_ADMIN_ROLE()),
             adminsCount,
             "default admin"
         );
         assertTrue(
-            csm.hasRole(csm.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent),
+            module.hasRole(
+                module.DEFAULT_ADMIN_ROLE(),
+                deployParams.aragonAgent
+            ),
             "default admin address"
         );
 
-        assertEq(csm.getRoleMemberCount(csm.PAUSE_ROLE()), 2, "pause");
+        assertEq(module.getRoleMemberCount(module.PAUSE_ROLE()), 2, "pause");
         assertTrue(
-            csm.hasRole(csm.PAUSE_ROLE(), address(gateSeal)),
+            module.hasRole(module.PAUSE_ROLE(), address(gateSeal)),
             "pause address"
         );
         assertTrue(
-            csm.hasRole(csm.PAUSE_ROLE(), deployParams.resealManager),
+            module.hasRole(module.PAUSE_ROLE(), deployParams.resealManager),
             "pause address"
         );
 
-        assertEq(csm.getRoleMemberCount(csm.RESUME_ROLE()), 1, "resume");
+        assertEq(module.getRoleMemberCount(module.RESUME_ROLE()), 1, "resume");
         assertTrue(
-            csm.hasRole(csm.RESUME_ROLE(), deployParams.resealManager),
+            module.hasRole(module.RESUME_ROLE(), deployParams.resealManager),
             "resume address"
         );
 
         assertEq(
-            csm.getRoleMemberCount(csm.STAKING_ROUTER_ROLE()),
+            module.getRoleMemberCount(module.STAKING_ROUTER_ROLE()),
             1,
             "staking router"
         );
         assertTrue(
-            csm.hasRole(
-                csm.STAKING_ROUTER_ROLE(),
+            module.hasRole(
+                module.STAKING_ROUTER_ROLE(),
                 address(locator.stakingRouter())
             ),
             "staking router address"
         );
 
         assertEq(
-            csm.getRoleMemberCount(csm.REPORT_GENERAL_DELAYED_PENALTY_ROLE()),
+            module.getRoleMemberCount(
+                module.REPORT_GENERAL_DELAYED_PENALTY_ROLE()
+            ),
             1,
             "report general delayed penalty"
         );
         assertTrue(
-            csm.hasRole(
-                csm.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
+            module.hasRole(
+                module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
                 deployParams.generalDelayedPenaltyReporter
             ),
             "report general delayed penalty address"
         );
 
         assertEq(
-            csm.getRoleMemberCount(csm.SETTLE_GENERAL_DELAYED_PENALTY_ROLE()),
+            module.getRoleMemberCount(
+                module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE()
+            ),
             1,
             "settle general delayed penalty"
         );
         assertTrue(
-            csm.hasRole(
-                csm.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(),
+            module.hasRole(
+                module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(),
                 deployParams.easyTrackEVMScriptExecutor
             ),
             "settle general delayed penalty address"
         );
 
-        assertEq(csm.getRoleMemberCount(csm.VERIFIER_ROLE()), 1, "verifier");
         assertEq(
-            csm.getRoleMember(csm.VERIFIER_ROLE(), 0),
+            module.getRoleMemberCount(module.VERIFIER_ROLE()),
+            1,
+            "verifier"
+        );
+        assertEq(
+            module.getRoleMember(module.VERIFIER_ROLE(), 0),
             address(verifier),
             "verifier address"
         );
 
         assertEq(
-            csm.getRoleMemberCount(csm.CREATE_NODE_OPERATOR_ROLE()),
+            module.getRoleMemberCount(module.CREATE_NODE_OPERATOR_ROLE()),
             2,
             "create node operator"
         );
         assertTrue(
-            csm.hasRole(
-                csm.CREATE_NODE_OPERATOR_ROLE(),
+            module.hasRole(
+                module.CREATE_NODE_OPERATOR_ROLE(),
                 address(permissionlessGate)
             ),
             "create node operator address"
         );
         assertTrue(
-            csm.hasRole(csm.CREATE_NODE_OPERATOR_ROLE(), address(vettedGate)),
+            module.hasRole(
+                module.CREATE_NODE_OPERATOR_ROLE(),
+                address(vettedGate)
+            ),
             "create node operator address"
         );
 
-        assertEq(csm.getRoleMemberCount(csm.RECOVERER_ROLE()), 0, "recoverer");
+        assertEq(
+            module.getRoleMemberCount(module.RECOVERER_ROLE()),
+            0,
+            "recoverer"
+        );
     }
 }
 
 contract CSAccountingInvariants is InvariantsBase {
     function test_sharesAccounting() public noGasMetering {
-        uint256 noCount = csm.getNodeOperatorsCount();
+        uint256 noCount = module.getNodeOperatorsCount();
         assertAccountingTotalBondShares(noCount, lido, accounting);
     }
 

@@ -25,10 +25,10 @@ contract StakingRouterIntegrationTest is
     modifier assertInvariants() {
         _;
         vm.pauseGasMetering();
-        uint256 noCount = csm.getNodeOperatorsCount();
-        assertModuleKeys(csm);
-        assertModuleEnqueuedCount(csm);
-        assertModuleUnusedStorageSlots(csm);
+        uint256 noCount = module.getNodeOperatorsCount();
+        assertModuleKeys(module);
+        assertModuleEnqueuedCount(module);
+        assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
         assertAccountingBurnerApproval(
             lido,
@@ -47,8 +47,8 @@ contract StakingRouterIntegrationTest is
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
 
-        vm.startPrank(csm.getRoleMember(csm.DEFAULT_ADMIN_ROLE(), 0));
-        csm.grantRole(csm.DEFAULT_ADMIN_ROLE(), address(this));
+        vm.startPrank(module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0));
+        module.grantRole(module.DEFAULT_ADMIN_ROLE(), address(this));
         vm.stopPrank();
 
         agent = stakingRouter.getRoleMember(
@@ -74,7 +74,7 @@ contract StakingRouterIntegrationTest is
         );
         vm.stopPrank();
 
-        moduleId = findCSModule();
+        moduleId = findModule();
     }
 
     function lidoDepositWithNoGasMetering(uint256 keysCount) internal {
@@ -86,36 +86,36 @@ contract StakingRouterIntegrationTest is
     }
 
     function test_connectCSMToRouter() public view {
-        IStakingRouter.StakingModule memory module = stakingRouter
+        IStakingRouter.StakingModule memory moduleInfo = stakingRouter
             .getStakingModule(moduleId);
-        assertTrue(module.stakingModuleAddress == address(csm));
+        assertTrue(moduleInfo.stakingModuleAddress == address(module));
     }
 
     function test_validStakingModuleId() public view {
-        IStakingRouter.StakingModule memory module = stakingRouter
+        IStakingRouter.StakingModule memory moduleInfo = stakingRouter
             .getStakingModule(ejector.STAKING_MODULE_ID());
-        assertEq(module.stakingModuleAddress, address(csm));
+        assertEq(moduleInfo.stakingModuleAddress, address(module));
     }
 
     function test_RouterDeposit() public assertInvariants {
         (uint256 noId, uint256 keysCount) = getDepositableNodeOperator(
             nextAddress()
         );
-        uint256 depositedKeysBefore = csm
+        uint256 depositedKeysBefore = module
             .getNodeOperator(noId)
             .totalDepositedKeys;
 
         hugeDeposit();
 
         lidoDepositWithNoGasMetering(keysCount);
-        NodeOperator memory no = csm.getNodeOperator(noId);
+        NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalDepositedKeys, depositedKeysBefore + keysCount);
     }
 
     function test_routerDepositOneBatch() public assertInvariants {
         hugeDeposit();
         uint256 keysCount = 30;
-        (, , uint256 depositableValidatorsCount) = csm
+        (, , uint256 depositableValidatorsCount) = module
             .getStakingModuleSummary();
         if (depositableValidatorsCount < keysCount) {
             addNodeOperator(
@@ -138,7 +138,7 @@ contract StakingRouterIntegrationTest is
         vm.startPrank(dummy);
         vm.deal(dummy, ethToStake);
         uint256 rewardsShares = lido.submit{ value: ethToStake }(address(0));
-        lido.transferShares(address(csm), rewardsShares);
+        lido.transferShares(address(module), rewardsShares);
         vm.stopPrank();
 
         uint256[] memory moduleIds = new uint256[](1);
@@ -148,12 +148,12 @@ contract StakingRouterIntegrationTest is
 
         vm.prank(agent);
         vm.expectCall(
-            address(csm),
-            abi.encodeCall(csm.onRewardsMinted, (rewardsShares))
+            address(module),
+            abi.encodeCall(module.onRewardsMinted, (rewardsShares))
         );
         stakingRouter.reportRewardsMinted(moduleIds, rewards);
 
-        assertEq(lido.sharesOf(address(csm)), 0);
+        assertEq(lido.sharesOf(address(module)), 0);
         assertEq(
             lido.sharesOf(address(feeDistributor)),
             prevShares + rewardsShares
@@ -176,7 +176,7 @@ contract StakingRouterIntegrationTest is
             ,
             ,
 
-        ) = csm.getNodeOperatorSummary(noId);
+        ) = module.getNodeOperatorSummary(noId);
         assertEq(targetLimitMode, 1);
         assertEq(targetValidatorsCount, 2);
     }
@@ -188,7 +188,7 @@ contract StakingRouterIntegrationTest is
         (uint256 noId, uint256 keysCount) = getDepositableNodeOperator(
             nextAddress()
         );
-        uint256 exitedKeysBefore = csm.getNodeOperator(noId).totalExitedKeys;
+        uint256 exitedKeysBefore = module.getNodeOperator(noId).totalExitedKeys;
 
         hugeDeposit();
 
@@ -202,7 +202,7 @@ contract StakingRouterIntegrationTest is
             bytes.concat(bytes16(uint128(newExited)))
         );
 
-        NodeOperator memory no = csm.getNodeOperator(noId);
+        NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalExitedKeys, newExited);
     }
 
@@ -218,7 +218,7 @@ contract StakingRouterIntegrationTest is
 
         lidoDepositWithNoGasMetering(keysCount);
 
-        uint256 exitedKeysBefore = csm.getNodeOperator(noId).totalExitedKeys;
+        uint256 exitedKeysBefore = module.getNodeOperator(noId).totalExitedKeys;
         uint256 newExited = exitedKeysBefore + 1;
         vm.prank(agent);
         stakingRouter.reportStakingModuleExitedValidatorsCountByNodeOperator(
@@ -247,10 +247,10 @@ contract StakingRouterIntegrationTest is
         (uint256 noId, uint256 keysCount) = getDepositableNodeOperator(
             nextAddress()
         );
-        uint256 depositedValidatorsBefore = csm
+        uint256 depositedValidatorsBefore = module
             .getNodeOperator(noId)
             .totalDepositedKeys;
-        uint256 depositableValidatorsCount = csm
+        uint256 depositableValidatorsCount = module
             .getNodeOperator(noId)
             .depositableValidatorsCount;
 
@@ -292,7 +292,7 @@ contract StakingRouterIntegrationTest is
             (noId, keysCount) = getDepositableNodeOperator(nextAddress());
             lidoDepositWithNoGasMetering(keysCount);
             /// we need to be sure there are more than 1 keys for further checks
-            if (csm.getNodeOperator(noId).totalDepositedKeys > 1) {
+            if (module.getNodeOperator(noId).totalDepositedKeys > 1) {
                 break;
             }
         }
@@ -328,7 +328,7 @@ contract StakingRouterIntegrationTest is
             correction
         );
 
-        NodeOperator memory no = csm.getNodeOperator(noId);
+        NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalExitedKeys, unsafeExited);
     }
 
@@ -352,7 +352,7 @@ contract StakingRouterIntegrationTest is
         );
         vm.stopSnapshotGas();
 
-        NodeOperator memory no = csm.getNodeOperator(noId);
+        NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalVettedKeys, newVetted);
         assertEq(no.depositableValidatorsCount, newVetted);
     }
@@ -360,11 +360,11 @@ contract StakingRouterIntegrationTest is
     function test_reportValidatorExitDelay() public assertInvariants {
         uint256 totalKeys = 1;
         uint256 noId = addNodeOperator(nextAddress(), totalKeys);
-        bytes memory publicKey = csm.getSigningKeys(noId, 0, 1);
+        bytes memory publicKey = module.getSigningKeys(noId, 0, 1);
         uint256 curveId = accounting.getBondCurveId(noId);
         uint256 exitDelay = parametersRegistry.getAllowedExitDelay(curveId);
         assertFalse(
-            csm.isValidatorExitDelayPenaltyApplicable(
+            module.isValidatorExitDelayPenaltyApplicable(
                 noId,
                 12345,
                 publicKey,
@@ -373,7 +373,7 @@ contract StakingRouterIntegrationTest is
         );
         exitDelay += 1;
         assertTrue(
-            csm.isValidatorExitDelayPenaltyApplicable(
+            module.isValidatorExitDelayPenaltyApplicable(
                 noId,
                 12345,
                 publicKey,

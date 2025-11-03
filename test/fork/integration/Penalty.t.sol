@@ -34,10 +34,10 @@ contract PenaltyIntegrationTest is
     modifier assertInvariants() {
         _;
         vm.pauseGasMetering();
-        uint256 noCount = csm.getNodeOperatorsCount();
-        assertModuleKeys(csm);
-        assertModuleEnqueuedCount(csm);
-        assertModuleUnusedStorageSlots(csm);
+        uint256 noCount = module.getNodeOperatorsCount();
+        assertModuleKeys(module);
+        assertModuleEnqueuedCount(module);
+        assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
         assertAccountingBurnerApproval(
             lido,
@@ -56,10 +56,16 @@ contract PenaltyIntegrationTest is
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
 
-        vm.startPrank(csm.getRoleMember(csm.DEFAULT_ADMIN_ROLE(), 0));
-        csm.grantRole(csm.DEFAULT_ADMIN_ROLE(), address(this));
-        csm.grantRole(csm.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), address(this));
-        csm.grantRole(csm.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(), address(this));
+        vm.startPrank(module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0));
+        module.grantRole(module.DEFAULT_ADMIN_ROLE(), address(this));
+        module.grantRole(
+            module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
+            address(this)
+        );
+        module.grantRole(
+            module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(),
+            address(this)
+        );
         vm.stopPrank();
 
         handleStakingLimit();
@@ -97,11 +103,11 @@ contract PenaltyIntegrationTest is
 
         (uint256 bondBefore, ) = accounting.getBondSummaryShares(defaultNoId);
 
-        csm.reportGeneralDelayedPenalty(
+        module.reportGeneralDelayedPenalty(
             defaultNoId,
             bytes32(abi.encode(1)),
             amount -
-                csm
+                module
                     .PARAMETERS_REGISTRY()
                     .getGeneralDelayedPenaltyAdditionalFine(
                         accounting.getBondCurveId(defaultNoId)
@@ -112,7 +118,7 @@ contract PenaltyIntegrationTest is
         uint256[] memory idsToSettle = new uint256[](1);
         idsToSettle[0] = defaultNoId;
 
-        csm.settleGeneralDelayedPenalty(
+        module.settleGeneralDelayedPenalty(
             idsToSettle,
             UintArr(type(uint256).max)
         );

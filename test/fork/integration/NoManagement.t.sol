@@ -67,17 +67,17 @@ contract NoAddressesBasicPermissionsTest is NoManagementBaseTest {
             extended
         );
         vm.prank(nodeOperator);
-        vm.startSnapshotGas("csm.proposeNodeOperatorManagerAddressChange");
-        csm.proposeNodeOperatorManagerAddressChange(noId, newManager);
+        vm.startSnapshotGas("module.proposeNodeOperatorManagerAddressChange");
+        module.proposeNodeOperatorManagerAddressChange(noId, newManager);
         vm.stopSnapshotGas();
 
         vm.prank(newManager);
-        vm.startSnapshotGas("csm.confirmNodeOperatorManagerAddressChange");
-        csm.confirmNodeOperatorManagerAddressChange(noId);
+        vm.startSnapshotGas("module.confirmNodeOperatorManagerAddressChange");
+        module.confirmNodeOperatorManagerAddressChange(noId);
         vm.stopSnapshotGas();
 
         assertEq(
-            csm.getNodeOperatorManagementProperties(noId).managerAddress,
+            module.getNodeOperatorManagementProperties(noId).managerAddress,
             newManager
         );
     }
@@ -91,17 +91,17 @@ contract NoAddressesBasicPermissionsTest is NoManagementBaseTest {
             extended
         );
         vm.prank(nodeOperator);
-        vm.startSnapshotGas("csm.proposeNodeOperatorRewardAddressChange");
-        csm.proposeNodeOperatorRewardAddressChange(noId, newReward);
+        vm.startSnapshotGas("module.proposeNodeOperatorRewardAddressChange");
+        module.proposeNodeOperatorRewardAddressChange(noId, newReward);
         vm.stopSnapshotGas();
 
         vm.prank(newReward);
-        vm.startSnapshotGas("csm.confirmNodeOperatorRewardAddressChange");
-        csm.confirmNodeOperatorRewardAddressChange(noId);
+        vm.startSnapshotGas("module.confirmNodeOperatorRewardAddressChange");
+        module.confirmNodeOperatorRewardAddressChange(noId);
         vm.stopSnapshotGas();
 
         assertEq(
-            csm.getNodeOperatorManagementProperties(noId).rewardAddress,
+            module.getNodeOperatorManagementProperties(noId).rewardAddress,
             newReward
         );
     }
@@ -120,12 +120,12 @@ contract NoAddressesPermissionsTest is NoManagementBaseTest {
         uint256 noId = _createNodeOperator(someManager, nodeOperator, false);
 
         vm.prank(nodeOperator);
-        vm.startSnapshotGas("csm.resetNodeOperatorManagerAddress");
-        csm.resetNodeOperatorManagerAddress(noId);
+        vm.startSnapshotGas("module.resetNodeOperatorManagerAddress");
+        module.resetNodeOperatorManagerAddress(noId);
         vm.stopSnapshotGas();
 
         assertEq(
-            csm.getNodeOperatorManagementProperties(noId).managerAddress,
+            module.getNodeOperatorManagementProperties(noId).managerAddress,
             nodeOperator
         );
     }
@@ -135,12 +135,12 @@ contract NoAddressesPermissionsTest is NoManagementBaseTest {
 
         uint256 noId = _createNodeOperator(nodeOperator, nodeOperator, true);
         vm.prank(nodeOperator);
-        vm.startSnapshotGas("csm.changeNodeOperatorRewardAddress");
-        csm.changeNodeOperatorRewardAddress(noId, newReward);
+        vm.startSnapshotGas("module.changeNodeOperatorRewardAddress");
+        module.changeNodeOperatorRewardAddress(noId, newReward);
         vm.stopSnapshotGas();
 
         assertEq(
-            csm.getNodeOperatorManagementProperties(noId).rewardAddress,
+            module.getNodeOperatorManagementProperties(noId).rewardAddress,
             newReward
         );
     }

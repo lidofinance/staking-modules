@@ -19,8 +19,8 @@ contract NodeOperators is
 {
     modifier broadcastPenaltyReporter() {
         _setUp();
-        address penaltyReporter = csm.getRoleMember(
-            csm.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
+        address penaltyReporter = module.getRoleMember(
+            module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
             0
         );
         _setBalance(penaltyReporter);
@@ -31,8 +31,8 @@ contract NodeOperators is
 
     modifier broadcastPenaltySettler() {
         _setUp();
-        address penaltySettler = csm.getRoleMember(
-            csm.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(),
+        address penaltySettler = module.getRoleMember(
+            module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(),
             0
         );
         _setBalance(penaltySettler);
@@ -68,7 +68,7 @@ contract NodeOperators is
 
     modifier broadcastManager(uint256 noId) {
         _setUp();
-        address nodeOperator = csm.getNodeOperator(noId).managerAddress;
+        address nodeOperator = module.getNodeOperator(noId).managerAddress;
         _setBalance(nodeOperator);
         vm.startBroadcast(nodeOperator);
         _;
@@ -77,7 +77,9 @@ contract NodeOperators is
 
     modifier broadcastProposedManager(uint256 noId) {
         _setUp();
-        address nodeOperator = csm.getNodeOperator(noId).proposedManagerAddress;
+        address nodeOperator = module
+            .getNodeOperator(noId)
+            .proposedManagerAddress;
         _setBalance(nodeOperator);
         vm.startBroadcast(nodeOperator);
         _;
@@ -86,7 +88,7 @@ contract NodeOperators is
 
     modifier broadcastReward(uint256 noId) {
         _setUp();
-        address nodeOperator = csm.getNodeOperator(noId).managerAddress;
+        address nodeOperator = module.getNodeOperator(noId).managerAddress;
         _setBalance(nodeOperator);
         vm.startBroadcast(nodeOperator);
         _;
@@ -95,7 +97,9 @@ contract NodeOperators is
 
     modifier broadcastProposedReward(uint256 noId) {
         _setUp();
-        address nodeOperator = csm.getNodeOperator(noId).proposedRewardAddress;
+        address nodeOperator = module
+            .getNodeOperator(noId)
+            .proposedRewardAddress;
         _setBalance(nodeOperator);
         vm.startBroadcast(nodeOperator);
         _;
@@ -106,26 +110,26 @@ contract NodeOperators is
         uint256 noId,
         address managerAddress
     ) external broadcastManager(noId) {
-        csm.proposeNodeOperatorManagerAddressChange(noId, managerAddress);
+        module.proposeNodeOperatorManagerAddressChange(noId, managerAddress);
     }
 
     function proposeRewardAddress(
         uint256 noId,
         address rewardAddress
     ) external broadcastReward(noId) {
-        csm.proposeNodeOperatorRewardAddressChange(noId, rewardAddress);
+        module.proposeNodeOperatorRewardAddressChange(noId, rewardAddress);
     }
 
     function confirmManagerAddress(
         uint256 noId
     ) external broadcastProposedManager(noId) {
-        csm.confirmNodeOperatorManagerAddressChange(noId);
+        module.confirmNodeOperatorManagerAddressChange(noId);
     }
 
     function confirmRewardAddress(
         uint256 noId
     ) external broadcastProposedReward(noId) {
-        csm.confirmNodeOperatorRewardAddressChange(noId);
+        module.confirmNodeOperatorRewardAddressChange(noId);
     }
 
     function addKeys(
@@ -135,7 +139,7 @@ contract NodeOperators is
         uint256 amount = accounting.getRequiredBondForNextKeys(noId, keysCount);
         bytes memory keys = randomBytes(48 * keysCount);
         bytes memory signatures = randomBytes(96 * keysCount);
-        csm.addValidatorKeysETH{ value: amount }(
+        module.addValidatorKeysETH{ value: amount }(
             msg.sender,
             noId,
             keysCount,
@@ -145,16 +149,17 @@ contract NodeOperators is
     }
 
     function deposit(uint256 depositCount) external broadcastStakingRouter {
-        (, , uint256 depositableValidatorsCount) = csm
+        (, , uint256 depositableValidatorsCount) = module
             .getStakingModuleSummary();
         if (depositCount > depositableValidatorsCount) {
             depositCount = depositableValidatorsCount;
         }
-        (, uint256 totalDepositedValidators, ) = csm.getStakingModuleSummary();
+        (, uint256 totalDepositedValidators, ) = module
+            .getStakingModuleSummary();
 
-        csm.obtainDepositData(depositCount, "");
+        module.obtainDepositData(depositCount, "");
 
-        (, uint256 totalDepositedValidatorsAfter, ) = csm
+        (, uint256 totalDepositedValidatorsAfter, ) = module
             .getStakingModuleSummary();
         assertEq(
             totalDepositedValidatorsAfter,
@@ -166,31 +171,31 @@ contract NodeOperators is
         uint256 noId,
         uint256 keyIndex
     ) external broadcastManager(noId) {
-        csm.removeKeys(noId, keyIndex, 1);
+        module.removeKeys(noId, keyIndex, 1);
     }
 
     function unvet(
         uint256 noId,
         uint256 vettedKeysCount
     ) external broadcastStakingRouter {
-        csm.decreaseVettedSigningKeysCount(
+        module.decreaseVettedSigningKeysCount(
             bytes.concat(bytes8(uint64(noId))),
             bytes.concat(bytes16(uint128(vettedKeysCount)))
         );
 
-        assertEq(csm.getNodeOperator(noId).totalVettedKeys, vettedKeysCount);
+        assertEq(module.getNodeOperator(noId).totalVettedKeys, vettedKeysCount);
     }
 
     function exit(
         uint256 noId,
         uint256 exitedKeysCount
     ) external broadcastStakingRouter {
-        csm.updateExitedValidatorsCount(
+        module.updateExitedValidatorsCount(
             bytes.concat(bytes8(uint64(noId))),
             bytes.concat(bytes16(uint128(exitedKeysCount)))
         );
 
-        assertEq(csm.getNodeOperator(noId).totalExitedKeys, exitedKeysCount);
+        assertEq(module.getNodeOperator(noId).totalExitedKeys, exitedKeysCount);
     }
 
     function withdraw(
@@ -199,7 +204,9 @@ contract NodeOperators is
         uint256 exitBalance,
         uint256 slashingPenalty
     ) external broadcastVerifier {
-        uint256 withdrawnBefore = csm.getNodeOperator(noId).totalWithdrawnKeys;
+        uint256 withdrawnBefore = module
+            .getNodeOperator(noId)
+            .totalWithdrawnKeys;
 
         ValidatorWithdrawalInfo[]
             memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
@@ -209,11 +216,11 @@ contract NodeOperators is
             exitBalance,
             slashingPenalty
         );
-        csm.submitWithdrawals(withdrawalInfo);
+        module.submitWithdrawals(withdrawalInfo);
 
-        assertTrue(csm.isValidatorWithdrawn(noId, keyIndex));
+        assertTrue(module.isValidatorWithdrawn(noId, keyIndex));
         assertEq(
-            csm.getNodeOperator(noId).totalWithdrawnKeys,
+            module.getNodeOperator(noId).totalWithdrawnKeys,
             withdrawnBefore + 1
         );
     }
@@ -223,9 +230,9 @@ contract NodeOperators is
         uint256 targetLimitMode,
         uint256 limit
     ) external broadcastStakingRouter {
-        csm.updateTargetValidatorsLimits(noId, targetLimitMode, limit);
+        module.updateTargetValidatorsLimits(noId, targetLimitMode, limit);
 
-        NodeOperator memory no = csm.getNodeOperator(noId);
+        NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.targetLimit, limit);
         assertEq(no.targetLimitMode, targetLimitMode);
     }
@@ -236,7 +243,7 @@ contract NodeOperators is
     ) external broadcastPenaltyReporter {
         uint256 lockedBefore = accounting.getActualLockedBond(noId);
 
-        csm.reportGeneralDelayedPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
             bytes32(abi.encode(1)),
             amount,
@@ -248,7 +255,7 @@ contract NodeOperators is
             lockedAfter,
             lockedBefore +
                 amount +
-                csm
+                module
                     .PARAMETERS_REGISTRY()
                     .getGeneralDelayedPenaltyAdditionalFine(
                         accounting.getBondCurveId(noId)
@@ -262,7 +269,7 @@ contract NodeOperators is
     ) external broadcastPenaltyReporter {
         uint256 lockedBefore = accounting.getActualLockedBond(noId);
 
-        csm.cancelGeneralDelayedPenalty(noId, amount);
+        module.cancelGeneralDelayedPenalty(noId, amount);
 
         uint256 lockedAfter = accounting.getActualLockedBond(noId);
         assertEq(lockedAfter, lockedBefore - amount);
@@ -275,7 +282,7 @@ contract NodeOperators is
         noIds[0] = noId;
         uint256[] memory maxAmounts = new uint256[](1);
         maxAmounts[0] = type(uint256).max; // Set to max to settle
-        csm.settleGeneralDelayedPenalty(noIds, maxAmounts);
+        module.settleGeneralDelayedPenalty(noIds, maxAmounts);
 
         assertEq(accounting.getActualLockedBond(noId), 0);
     }
@@ -286,7 +293,7 @@ contract NodeOperators is
     ) external broadcastStranger {
         uint256 lockedBefore = accounting.getActualLockedBond(noId);
 
-        csm.compensateGeneralDelayedPenalty{ value: amount }(noId);
+        module.compensateGeneralDelayedPenalty{ value: amount }(noId);
 
         assertEq(accounting.getActualLockedBond(noId), lockedBefore - amount);
     }
@@ -300,7 +307,7 @@ contract NodeOperators is
         IVEBO vebo = IVEBO(locator.validatorsExitBusOracle());
         bytes memory data;
 
-        bytes3 moduleId = bytes3(uint24(_getCSMId()));
+        bytes3 moduleId = bytes3(uint24(_getModuleId()));
         bytes5 nodeOpId = bytes5(uint40(noId));
         bytes8 _validatorIndex = bytes8(uint64(validatorIndex));
 
@@ -351,17 +358,17 @@ contract NodeOperators is
         _setBalance(address(veboSubmitter));
     }
 
-    error CSMNotFound();
+    error NodeOperatorsModuleNotFound();
 
-    function _getCSMId() internal view returns (uint256) {
+    function _getModuleId() internal view returns (uint256) {
         uint256[] memory ids = stakingRouter.getStakingModuleIds();
         for (uint256 i = ids.length - 1; i > 0; i--) {
-            IStakingRouter.StakingModule memory module = stakingRouter
+            IStakingRouter.StakingModule memory moduleInfo = stakingRouter
                 .getStakingModule(ids[i]);
-            if (module.stakingModuleAddress == address(csm)) {
+            if (moduleInfo.stakingModuleAddress == address(module)) {
                 return ids[i];
             }
         }
-        revert CSMNotFound();
+        revert NodeOperatorsModuleNotFound();
     }
 }

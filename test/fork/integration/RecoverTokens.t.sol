@@ -31,10 +31,10 @@ contract RecoverIntegrationTest is
     modifier assertInvariants() {
         _;
         vm.pauseGasMetering();
-        uint256 noCount = csm.getNodeOperatorsCount();
-        assertModuleKeys(csm);
-        assertModuleEnqueuedCount(csm);
-        assertModuleUnusedStorageSlots(csm);
+        uint256 noCount = module.getNodeOperatorsCount();
+        assertModuleKeys(module);
+        assertModuleEnqueuedCount(module);
+        assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
         assertAccountingBurnerApproval(
             lido,
@@ -56,8 +56,8 @@ contract RecoverIntegrationTest is
         recoverer = nextAddress("Recoverer");
         user = nextAddress("User");
 
-        vm.startPrank(csm.getRoleMember(csm.DEFAULT_ADMIN_ROLE(), 0));
-        csm.grantRole(csm.RECOVERER_ROLE(), recoverer);
+        vm.startPrank(module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0));
+        module.grantRole(module.RECOVERER_ROLE(), recoverer);
         vm.stopPrank();
 
         handleStakingLimit();
@@ -88,11 +88,11 @@ contract RecoverIntegrationTest is
         vm.deal(user, amount);
         uint256 shares = lido.submit{ value: amount }(address(0));
         uint256 amountStETH = lido.getPooledEthByShares(shares);
-        lido.transfer(address(csm), amountStETH);
+        lido.transfer(address(module), amountStETH);
         vm.stopPrank();
 
         vm.prank(recoverer);
-        csm.recoverERC20(address(lido), amountStETH);
+        module.recoverERC20(address(lido), amountStETH);
 
         assertApproxEqAbs(lido.balanceOf(recoverer), amountStETH, 2 wei);
     }
@@ -100,13 +100,13 @@ contract RecoverIntegrationTest is
     function test_recoverETH_fromCSM() public assertInvariants {
         assertEq(recoverer.balance, 0);
 
-        uint256 contractBalance = address(csm).balance;
+        uint256 contractBalance = address(module).balance;
 
         uint256 amount = 1 ether;
-        vm.deal(address(csm), amount);
+        vm.deal(address(module), amount);
 
         vm.prank(recoverer);
-        csm.recoverEther();
+        module.recoverEther();
 
         assertEq(recoverer.balance, contractBalance + amount);
     }
@@ -120,11 +120,11 @@ contract RecoverIntegrationTest is
         uint256 shares = lido.submit{ value: amount }(address(0));
         lido.approve(address(wstETH), type(uint256).max);
         uint256 amountWstETH = wstETH.wrap(lido.getPooledEthByShares(shares));
-        wstETH.transfer(address(csm), amountWstETH);
+        wstETH.transfer(address(module), amountWstETH);
         vm.stopPrank();
 
         vm.prank(recoverer);
-        csm.recoverERC20(address(wstETH), amountWstETH);
+        module.recoverERC20(address(wstETH), amountWstETH);
 
         assertEq(wstETH.balanceOf(recoverer), amountWstETH);
     }

@@ -14,14 +14,14 @@ contract GateSealTest is Test, Utilities, DeploymentFixtures {
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
 
-        vm.startPrank(csm.getRoleMember(csm.DEFAULT_ADMIN_ROLE(), 0));
-        csm.grantRole(csm.DEFAULT_ADMIN_ROLE(), address(this));
+        vm.startPrank(module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0));
+        module.grantRole(module.DEFAULT_ADMIN_ROLE(), address(this));
         vm.stopPrank();
     }
 
     function test_sealAll() public {
         address[] memory sealables = new address[](5);
-        sealables[0] = address(csm);
+        sealables[0] = address(module);
         sealables[1] = address(accounting);
         sealables[2] = address(oracle);
         sealables[3] = address(verifier);
@@ -30,7 +30,7 @@ contract GateSealTest is Test, Utilities, DeploymentFixtures {
         vm.prank(gateSeal.get_sealing_committee());
         gateSeal.seal(sealables);
 
-        assertTrue(csm.isPaused());
+        assertTrue(module.isPaused());
         assertTrue(accounting.isPaused());
         assertTrue(oracle.isPaused());
         assertTrue(verifier.isPaused());
@@ -39,11 +39,11 @@ contract GateSealTest is Test, Utilities, DeploymentFixtures {
 
     function test_sealCSM() public {
         address[] memory sealables = new address[](1);
-        sealables[0] = address(csm);
+        sealables[0] = address(module);
         vm.prank(gateSeal.get_sealing_committee());
         gateSeal.seal(sealables);
 
-        assertTrue(csm.isPaused());
+        assertTrue(module.isPaused());
         assertFalse(accounting.isPaused());
         assertFalse(oracle.isPaused());
         assertFalse(verifier.isPaused());
@@ -57,7 +57,7 @@ contract GateSealTest is Test, Utilities, DeploymentFixtures {
         gateSeal.seal(sealables);
 
         assertTrue(accounting.isPaused());
-        assertFalse(csm.isPaused());
+        assertFalse(module.isPaused());
         assertFalse(oracle.isPaused());
         assertFalse(verifier.isPaused());
         assertFalse(vettedGate.isPaused());
@@ -70,7 +70,7 @@ contract GateSealTest is Test, Utilities, DeploymentFixtures {
         gateSeal.seal(sealables);
 
         assertTrue(oracle.isPaused());
-        assertFalse(csm.isPaused());
+        assertFalse(module.isPaused());
         assertFalse(accounting.isPaused());
         assertFalse(verifier.isPaused());
         assertFalse(vettedGate.isPaused());
@@ -83,7 +83,7 @@ contract GateSealTest is Test, Utilities, DeploymentFixtures {
         gateSeal.seal(sealables);
 
         assertTrue(verifier.isPaused());
-        assertFalse(csm.isPaused());
+        assertFalse(module.isPaused());
         assertFalse(accounting.isPaused());
         assertFalse(oracle.isPaused());
         assertFalse(vettedGate.isPaused());
@@ -96,7 +96,7 @@ contract GateSealTest is Test, Utilities, DeploymentFixtures {
         gateSeal.seal(sealables);
 
         assertTrue(vettedGate.isPaused());
-        assertFalse(csm.isPaused());
+        assertFalse(module.isPaused());
         assertFalse(accounting.isPaused());
         assertFalse(oracle.isPaused());
         assertFalse(verifier.isPaused());
