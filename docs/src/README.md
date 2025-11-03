@@ -105,7 +105,7 @@ export RPC_URL=http://127.0.0.1:8545
 export DEPLOY_CONFIG=./artifacts/local/deploy-hoodi.json
 ```
 
-The result of deployment is `./artifacts/local/deploy-holesky.json` deployment config, which is required for integration testing
+The result of deployment is `./artifacts/local/deploy-hoodi.json` deployment config, which is required for integration testing
 
 Verify deploy by running `deployment` tests.
 Note that these are meant to be run only right after deployment, so they don't supposed to be green after any actions in the contracts
