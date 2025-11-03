@@ -74,7 +74,6 @@ struct DeployParams {
     bytes32 moduleType;
     address elRewardsStealingReporter;
     // CSParameters
-    address nonCriticalParametersManager;
     uint256 queueLowestPriority;
     uint256 defaultKeyRemovalCharge;
     uint256 defaultElRewardsStealingAdditionalFine;
