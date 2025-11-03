@@ -31,6 +31,10 @@ interface ICSAccounting is
 
     event BondLockCompensated(uint256 indexed nodeOperatorId, uint256 amount);
     event ChargePenaltyRecipientSet(address chargePenaltyRecipient);
+    event CustomRewardsClaimerSet(
+        uint256 indexed nodeOperatorId,
+        address rewardsClaimer
+    );
 
     error SenderIsNotModule();
     error SenderIsNotEligible();
@@ -41,6 +45,7 @@ interface ICSAccounting is
     error NodeOperatorDoesNotExist();
     error ElRewardsVaultReceiveFailed();
     error InvalidBondCurvesLength();
+    error SameAddress();
 
     function PAUSE_ROLE() external view returns (bytes32);
 
@@ -111,6 +116,23 @@ interface ICSAccounting is
         uint256 curveId,
         BondCurveIntervalInput[] calldata bondCurve
     ) external;
+
+    /// @notice Set custom rewards claimer for the given Node Operator. This address will be able to claim rewards on behalf of the Node Operator.
+    ///         The rewards will be transferred to the Node Operator's reward address as usual.
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @param rewardsClaimer Address allowed to claim rewards on behalf of the Node Operator
+    function setCustomRewardsClaimer(
+        uint256 nodeOperatorId,
+        address rewardsClaimer
+    ) external;
+
+    /// @notice Get the custom rewards claimer for the given Node Operator. This address is allowed to claim rewards on behalf of the Node Operator.
+    ///         The rewards are still transferred to the Node Operator's reward address as usual.
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @return rewardsClaimer Address allowed to claim rewards on behalf of the Node Operator
+    function getCustomRewardsClaimer(
+        uint256 nodeOperatorId
+    ) external view returns (address);
 
     /// @notice Get the required bond in ETH (inc. missed and excess) for the given Node Operator to upload new deposit data
     /// @param nodeOperatorId ID of the Node Operator
