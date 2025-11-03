@@ -50,6 +50,9 @@ contract CSAccounting is
     mapping(uint256 nodeOperatorId => uint256 pendingSharesToSplit)
         internal _pendingSharesToSplit;
 
+    mapping(uint256 nodeOperatorId => address rewardsClaimer)
+        internal _rewardsClaimers;
+
     modifier onlyModule() {
         if (msg.sender != address(MODULE)) {
             revert SenderIsNotModule();
@@ -426,6 +429,19 @@ contract CSAccounting is
         MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
+    /// @inheritdoc ICSAccounting
+    function setCustomRewardsClaimer(
+        uint256 nodeOperatorId,
+        address rewardsClaimer
+    ) external {
+        _onlyNodeOperatorOwner(nodeOperatorId);
+        if (rewardsClaimer == _rewardsClaimers[nodeOperatorId]) {
+            revert SameAddress();
+        }
+        _rewardsClaimers[nodeOperatorId] = rewardsClaimer;
+        emit CustomRewardsClaimerSet(nodeOperatorId, rewardsClaimer);
+    }
+
     /// @inheritdoc AssetRecoverer
     function recoverERC20(address token, uint256 amount) external override {
         _onlyRecoverer();
@@ -458,6 +474,13 @@ contract CSAccounting is
         uint256 nodeOperatorId
     ) external view returns (FeeSplit[] memory) {
         return _feeSplits[nodeOperatorId];
+    }
+
+    /// @inheritdoc ICSAccounting
+    function getCustomRewardsClaimer(
+        uint256 nodeOperatorId
+    ) external view returns (address) {
+        return _rewardsClaimers[nodeOperatorId];
     }
 
     /// @inheritdoc ICSAccounting
@@ -731,7 +754,9 @@ contract CSAccounting is
         }
 
         if (no.managerAddress != msg.sender && no.rewardAddress != msg.sender) {
-            revert SenderIsNotEligible();
+            if (_rewardsClaimers[nodeOperatorId] != msg.sender) {
+                revert SenderIsNotEligible();
+            }
         }
     }
 

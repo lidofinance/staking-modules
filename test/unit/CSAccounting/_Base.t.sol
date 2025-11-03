@@ -348,10 +348,12 @@ abstract contract RewardsBaseTest is BondStateBaseTest {
     uint256 unstETHSharesAsFee;
 
     address internal rewardAddress;
+    address internal rewardsClaimer;
 
     function setUp() public override {
         super.setUp();
         rewardAddress = nextAddress("reward address");
+        rewardsClaimer = nextAddress("rewards claimer");
         mock_getNodeOperatorManagementProperties(user, rewardAddress, false);
     }
 
@@ -379,6 +381,8 @@ abstract contract ClaimRewardsBaseTest is RewardsBaseTest {
     function test_ExcessBondWithoutProof() public virtual;
 
     function test_SenderIsRewardAddress() public virtual;
+
+    function test_SenderIsRewardsClaimer() public virtual;
 
     function test_RevertWhen_SenderIsNotEligible() public virtual;
 

@@ -522,6 +522,47 @@ contract ClaimStETHRewardsTest is ClaimRewardsBaseTest {
         );
     }
 
+    function test_SenderIsRewardsClaimer() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 32 ether });
+        _rewards({ fee: 0.1 ether });
+
+        mock_getNodeOperatorOwner(rewardAddress);
+        vm.prank(rewardAddress);
+        accounting.setCustomRewardsClaimer(leaf.nodeOperatorId, rewardsClaimer);
+
+        uint256 bondSharesBefore = accounting.getBondShares(0);
+        vm.prank(rewardsClaimer);
+        accounting.claimRewardsStETH(
+            leaf.nodeOperatorId,
+            UINT256_MAX,
+            leaf.shares,
+            leaf.proof
+        );
+        uint256 bondSharesAfter = accounting.getBondShares(0);
+
+        assertEq(
+            stETH.balanceOf(rewardAddress),
+            stETHAsFee,
+            "reward address balance should be equal to fee reward"
+        );
+        assertEq(
+            bondSharesAfter,
+            bondSharesBefore,
+            "bond shares after claim should be equal to before"
+        );
+        assertEq(
+            stETH.sharesOf(address(accounting)),
+            bondSharesBefore,
+            "bond manager after claim should be equal to before"
+        );
+        assertEq(
+            accounting.totalBondShares(),
+            bondSharesBefore,
+            "total bond shares after claim should be equal to before"
+        );
+    }
+
     function test_RevertWhen_SenderIsNotEligible() public override {
         // Ensure there is claimable amount to trigger eligibility check
         _operator({ ongoing: 16, withdrawn: 0 });
@@ -1076,6 +1117,54 @@ contract ClaimWstETHRewardsTest is ClaimRewardsBaseTest {
         );
     }
 
+    function test_SenderIsRewardsClaimer() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 32 ether });
+        _rewards({ fee: 0.1 ether });
+
+        mock_getNodeOperatorOwner(rewardAddress);
+        vm.prank(rewardAddress);
+        accounting.setCustomRewardsClaimer(leaf.nodeOperatorId, rewardsClaimer);
+
+        uint256 bondSharesBefore = accounting.getBondShares(0);
+        vm.prank(rewardsClaimer);
+        accounting.claimRewardsWstETH(
+            leaf.nodeOperatorId,
+            UINT256_MAX,
+            leaf.shares,
+            leaf.proof
+        );
+        uint256 bondSharesAfter = accounting.getBondShares(0);
+
+        assertApproxEqAbs(
+            wstETH.balanceOf(rewardAddress),
+            wstETHAsFee,
+            1 wei,
+            "reward address balance should be equal to fee reward"
+        );
+        assertApproxEqAbs(
+            bondSharesAfter,
+            bondSharesBefore,
+            1 wei,
+            "bond shares after claim should be equal to before"
+        );
+        assertEq(
+            wstETH.balanceOf(address(accounting)),
+            0,
+            "bond manager wstETH balance should be 0"
+        );
+        assertEq(
+            stETH.sharesOf(address(accounting)),
+            bondSharesAfter,
+            "bond manager after claim should be equal to after"
+        );
+        assertEq(
+            accounting.totalBondShares(),
+            bondSharesAfter,
+            "total bond shares after claim should be equal to after"
+        );
+    }
+
     function test_SenderIsRewardAddress() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
         _deposit({ bond: 32 ether });
@@ -1569,6 +1658,43 @@ contract ClaimRewardsUnstETHTest is ClaimRewardsBaseTest {
             accounting.totalBondShares(),
             bondSharesAfter,
             "total bond shares should be equal to after"
+        );
+    }
+
+    function test_SenderIsRewardsClaimer() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 32 ether });
+        _rewards({ fee: 0.1 ether });
+
+        mock_getNodeOperatorOwner(rewardAddress);
+        vm.prank(rewardAddress);
+        accounting.setCustomRewardsClaimer(leaf.nodeOperatorId, rewardsClaimer);
+
+        uint256 bondSharesBefore = accounting.getBondShares(0);
+        vm.prank(rewardsClaimer);
+        accounting.claimRewardsUnstETH(
+            leaf.nodeOperatorId,
+            UINT256_MAX,
+            leaf.shares,
+            leaf.proof
+        );
+        uint256 bondSharesAfter = accounting.getBondShares(0);
+
+        assertApproxEqAbs(
+            bondSharesAfter,
+            bondSharesBefore,
+            1 wei,
+            "bond shares after claim should be equal to before"
+        );
+        assertEq(
+            stETH.sharesOf(rewardAddress),
+            0,
+            "rewardAddress shares should be 0"
+        );
+        assertEq(
+            accounting.totalBondShares(),
+            bondSharesAfter,
+            "total bond shares should not change"
         );
     }
 
