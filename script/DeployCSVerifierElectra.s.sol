@@ -88,34 +88,6 @@ abstract contract DeployCSVerifier is Script {
     }
 }
 
-contract DeployCSVerifierHolesky is DeployCSVerifier {
-    constructor() {
-        config = Config({
-            withdrawalVault: 0xF0179dEC45a37423EAD4FaD5fCb136197872EAd9,
-            module: 0x4562c3e63c2e586cD1651B958C22F88135aCAd4f,
-            slotsPerEpoch: 32,
-            slotsPerHistoricalRoot: 8192, // @see https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#time-parameters
-            gIFirstWithdrawalPrev: GIndices.FIRST_WITHDRAWAL_DENEB,
-            gIFirstWithdrawalCurr: GIndices.FIRST_WITHDRAWAL_ELECTRA,
-            gIFirstValidatorPrev: GIndices.FIRST_VALIDATOR_DENEB,
-            gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
-            gIFirstHistoricalSummaryPrev: GIndices
-                .FIRST_HISTORICAL_SUMMARY_DENEB,
-            gIFirstHistoricalSummaryCurr: GIndices
-                .FIRST_HISTORICAL_SUMMARY_ELECTRA,
-            gIFirstBlockRootInSummaryPrev: GIndices
-                .FIRST_BLOCK_ROOT_IN_SUMMARY_DENEB,
-            gIFirstBlockRootInSummaryCurr: GIndices
-                .FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
-            firstSupportedSlot: Slot.wrap(950272), // 29_696 * 32, @see https://github.com/eth-clients/holesky/blob/main/metadata/config.yaml#L38
-            pivotSlot: Slot.wrap(3710976), // 115_968 * 32, @see https://github.com/eth-clients/holesky/blob/main/metadata/config.yaml#L42
-            capellaSlot: Slot.wrap(8192), // 256 * 32, @see https://github.com/eth-clients/holesky/blob/main/metadata/config.yaml#L34
-            admin: 0xE92329EC7ddB11D25e25b3c21eeBf11f15eB325d, // Aragon Agent
-            chainName: "holesky"
-        });
-    }
-}
-
 contract DeployCSVerifierHoodi is DeployCSVerifier {
     constructor() {
         config = Config({
