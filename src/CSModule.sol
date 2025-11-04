@@ -22,6 +22,7 @@ import { PausableUntil } from "./lib/utils/PausableUntil.sol";
 import { QueueLib, Batch } from "./lib/QueueLib.sol";
 import { ValidatorCountsReport } from "./lib/ValidatorCountsReport.sol";
 import { NOAddresses } from "./lib/NOAddresses.sol";
+import { GeneralPenalty } from "./lib/GeneralPenaltyLib.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "./lib/TransientUintUintMapLib.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
 
@@ -573,7 +574,6 @@ contract CSModule is
         });
     }
 
-    /// TODO: Consider moving to the external library to save bytecode
     /// @inheritdoc ICSModule
     function reportELRewardsStealingPenalty(
         uint256 nodeOperatorId,
@@ -581,47 +581,22 @@ contract CSModule is
         uint256 amount
     ) external onlyRole(REPORT_EL_REWARDS_STEALING_PENALTY_ROLE) {
         _onlyExistingNodeOperator(nodeOperatorId);
-        if (amount == 0) {
-            revert InvalidAmount();
-        }
-
-        uint256 curveId = _getBondCurveId(nodeOperatorId);
-        uint256 additionalFine = PARAMETERS_REGISTRY
-            .getElRewardsStealingAdditionalFine(curveId);
-        accounting().lockBondETH(nodeOperatorId, amount + additionalFine);
-
-        emit ELRewardsStealingPenaltyReported(
+        GeneralPenalty.reportELRewardsStealingPenalty(
             nodeOperatorId,
             blockHash,
             amount
         );
-
-        // Nonce should be updated if depositableValidators change
-        _updateDepositableValidatorsCount({
-            nodeOperatorId: nodeOperatorId,
-            incrementNonceIfUpdated: true
-        });
     }
 
-    /// TODO: Consider moving to the external library to save bytecode
     /// @inheritdoc ICSModule
     function cancelELRewardsStealingPenalty(
         uint256 nodeOperatorId,
         uint256 amount
     ) external onlyRole(REPORT_EL_REWARDS_STEALING_PENALTY_ROLE) {
         _onlyExistingNodeOperator(nodeOperatorId);
-        accounting().releaseLockedBondETH(nodeOperatorId, amount);
-
-        emit ELRewardsStealingPenaltyCancelled(nodeOperatorId, amount);
-
-        // Nonce should be updated if depositableValidators change
-        _updateDepositableValidatorsCount({
-            nodeOperatorId: nodeOperatorId,
-            incrementNonceIfUpdated: true
-        });
+        GeneralPenalty.cancelELRewardsStealingPenalty(nodeOperatorId, amount);
     }
 
-    /// TODO: Consider moving to the external library to save bytecode
     /// @inheritdoc ICSModule
     function settleELRewardsStealingPenalty(
         uint256[] calldata nodeOperatorIds,
@@ -630,18 +605,17 @@ contract CSModule is
         if (nodeOperatorIds.length != maxAmounts.length) {
             revert InvalidInput();
         }
-        ICSAccounting _accounting = accounting();
+
         for (uint256 i; i < nodeOperatorIds.length; ++i) {
             uint256 nodeOperatorId = nodeOperatorIds[i];
             _onlyExistingNodeOperator(nodeOperatorId);
 
-            uint256 locked = _accounting.getActualLockedBond(nodeOperatorId);
-            if (locked == 0 || locked > maxAmounts[i]) {
-                continue; // skip this NO if the locked bond is greater than the max amount or there is no locked bond
-            }
+            bool settled = GeneralPenalty.settleELRewardsStealingPenalty(
+                nodeOperatorId,
+                maxAmounts[i]
+            );
 
-            _accounting.settleLockedBondETH(nodeOperatorId);
-            emit ELRewardsStealingPenaltySettled(nodeOperatorId);
+            if (!settled) continue;
 
             _onUncompensatedPenalty(nodeOperatorId);
 
@@ -653,23 +627,12 @@ contract CSModule is
         }
     }
 
-    /// TODO: Consider moving to the external library to save bytecode
     /// @inheritdoc ICSModule
     function compensateELRewardsStealingPenalty(
         uint256 nodeOperatorId
     ) external payable {
         _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
-        accounting().compensateLockedBondETH{ value: msg.value }(
-            nodeOperatorId
-        );
-
-        emit ELRewardsStealingPenaltyCompensated(nodeOperatorId, msg.value);
-
-        // Nonce should be updated if depositableValidators change
-        _updateDepositableValidatorsCount({
-            nodeOperatorId: nodeOperatorId,
-            incrementNonceIfUpdated: true
-        });
+        GeneralPenalty.compensateELRewardsStealingPenalty(nodeOperatorId);
     }
 
     /// @inheritdoc ICSModule
