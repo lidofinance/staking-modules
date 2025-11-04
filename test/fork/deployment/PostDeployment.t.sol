@@ -954,21 +954,23 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
         parametersRegistry.initialize({
             admin: deployParams.aragonAgent,
             data: ICSParametersRegistry.InitializationData({
-                keyRemovalCharge: deployParams.defaultKeyRemovalCharge,
-                elRewardsStealingAdditionalFine: deployParams
+                defaultKeyRemovalCharge: deployParams.defaultKeyRemovalCharge,
+                defaultElRewardsStealingAdditionalFine: deployParams
                     .defaultElRewardsStealingAdditionalFine,
-                keysLimit: deployParams.defaultKeysLimit,
-                rewardShare: deployParams.defaultRewardShareBP,
-                performanceLeeway: deployParams.defaultAvgPerfLeewayBP,
-                strikesLifetime: deployParams.defaultStrikesLifetimeFrames,
-                strikesThreshold: deployParams.defaultStrikesThreshold,
+                defaultKeysLimit: deployParams.defaultKeysLimit,
+                defaultRewardShare: deployParams.defaultRewardShareBP,
+                defaultPerformanceLeeway: deployParams.defaultAvgPerfLeewayBP,
+                defaultStrikesLifetime: deployParams
+                    .defaultStrikesLifetimeFrames,
+                defaultStrikesThreshold: deployParams.defaultStrikesThreshold,
                 defaultQueuePriority: deployParams.defaultQueuePriority,
                 defaultQueueMaxDeposits: deployParams.defaultQueueMaxDeposits,
-                badPerformancePenalty: deployParams
+                defaultBadPerformancePenalty: deployParams
                     .defaultBadPerformancePenalty,
-                attestationsWeight: deployParams.defaultAttestationsWeight,
-                blocksWeight: deployParams.defaultBlocksWeight,
-                syncWeight: deployParams.defaultSyncWeight,
+                defaultAttestationsWeight: deployParams
+                    .defaultAttestationsWeight,
+                defaultBlocksWeight: deployParams.defaultBlocksWeight,
+                defaultSyncWeight: deployParams.defaultSyncWeight,
                 defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
                 defaultExitDelayFee: deployParams.defaultExitDelayFee,
                 defaultMaxWithdrawalRequestFee: deployParams
@@ -994,21 +996,23 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
         parametersRegistryImpl.initialize({
             admin: deployParams.aragonAgent,
             data: ICSParametersRegistry.InitializationData({
-                keyRemovalCharge: deployParams.defaultKeyRemovalCharge,
-                elRewardsStealingAdditionalFine: deployParams
+                defaultKeyRemovalCharge: deployParams.defaultKeyRemovalCharge,
+                defaultElRewardsStealingAdditionalFine: deployParams
                     .defaultElRewardsStealingAdditionalFine,
-                keysLimit: deployParams.defaultKeysLimit,
-                rewardShare: deployParams.defaultRewardShareBP,
-                performanceLeeway: deployParams.defaultAvgPerfLeewayBP,
-                strikesLifetime: deployParams.defaultStrikesLifetimeFrames,
-                strikesThreshold: deployParams.defaultStrikesThreshold,
+                defaultKeysLimit: deployParams.defaultKeysLimit,
+                defaultRewardShare: deployParams.defaultRewardShareBP,
+                defaultPerformanceLeeway: deployParams.defaultAvgPerfLeewayBP,
+                defaultStrikesLifetime: deployParams
+                    .defaultStrikesLifetimeFrames,
+                defaultStrikesThreshold: deployParams.defaultStrikesThreshold,
                 defaultQueuePriority: deployParams.defaultQueuePriority,
                 defaultQueueMaxDeposits: deployParams.defaultQueueMaxDeposits,
-                badPerformancePenalty: deployParams
+                defaultBadPerformancePenalty: deployParams
                     .defaultBadPerformancePenalty,
-                attestationsWeight: deployParams.defaultAttestationsWeight,
-                blocksWeight: deployParams.defaultBlocksWeight,
-                syncWeight: deployParams.defaultSyncWeight,
+                defaultAttestationsWeight: deployParams
+                    .defaultAttestationsWeight,
+                defaultBlocksWeight: deployParams.defaultBlocksWeight,
+                defaultSyncWeight: deployParams.defaultSyncWeight,
                 defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
                 defaultExitDelayFee: deployParams.defaultExitDelayFee,
                 defaultMaxWithdrawalRequestFee: deployParams

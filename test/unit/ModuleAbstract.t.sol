@@ -23,6 +23,7 @@ import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
 import { IStakingModule } from "src/interfaces/IStakingModule.sol";
 import { SigningKeys } from "src/lib/SigningKeys.sol";
 import { INOAddresses } from "src/lib/NOAddresses.sol";
+import { IGeneralPenalty } from "src/lib/GeneralPenaltyLib.sol";
 import { CSBondLock } from "src/abstract/CSBondLock.sol";
 import { ICSExitPenalties, ExitPenaltyInfo, MarkedUint248 } from "src/interfaces/ICSExitPenalties.sol";
 import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
@@ -5109,7 +5110,7 @@ abstract contract ModuleReportELRewardsStealingPenalty is ModuleFixtures {
         uint256 nonce = module.getNonce();
 
         vm.expectEmit(address(module));
-        emit ICSModule.ELRewardsStealingPenaltyReported(
+        emit IGeneralPenalty.ELRewardsStealingPenaltyReported(
             noId,
             blockhash(block.number),
             BOND_SIZE / 2
@@ -5234,7 +5235,7 @@ abstract contract ModuleCancelELRewardsStealingPenalty is ModuleFixtures {
         uint256 nonce = module.getNonce();
 
         vm.expectEmit(address(module));
-        emit ICSModule.ELRewardsStealingPenaltyCancelled(
+        emit IGeneralPenalty.ELRewardsStealingPenaltyCancelled(
             noId,
             BOND_SIZE /
                 2 +
@@ -5271,7 +5272,10 @@ abstract contract ModuleCancelELRewardsStealingPenalty is ModuleFixtures {
         uint256 nonce = module.getNonce();
 
         vm.expectEmit(address(module));
-        emit ICSModule.ELRewardsStealingPenaltyCancelled(noId, BOND_SIZE / 2);
+        emit IGeneralPenalty.ELRewardsStealingPenaltyCancelled(
+            noId,
+            BOND_SIZE / 2
+        );
         module.cancelELRewardsStealingPenalty(noId, BOND_SIZE / 2);
 
         uint256 lockedBond = accounting.getActualLockedBond(noId);
@@ -5302,7 +5306,7 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         );
 
         vm.expectEmit(address(module));
-        emit ICSModule.ELRewardsStealingPenaltySettled(noId);
+        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(noId);
         module.settleELRewardsStealingPenalty(
             UintArr(noId),
             UintArr(type(uint256).max)
@@ -5406,9 +5410,9 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         );
 
         vm.expectEmit(address(module));
-        emit ICSModule.ELRewardsStealingPenaltySettled(firstNoId);
+        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(firstNoId);
         vm.expectEmit(address(module));
-        emit ICSModule.ELRewardsStealingPenaltySettled(secondNoId);
+        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(secondNoId);
         module.settleELRewardsStealingPenalty(
             UintArr(firstNoId, secondNoId),
             UintArr(type(uint256).max, type(uint256).max)
@@ -5447,7 +5451,7 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         );
 
         vm.expectEmit(address(module));
-        emit ICSModule.ELRewardsStealingPenaltySettled(secondNoId);
+        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(secondNoId);
         module.settleELRewardsStealingPenalty(
             idsToSettle,
             UintArr(amount, type(uint256).max)
@@ -5539,7 +5543,7 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         );
 
         vm.expectEmit(address(module));
-        emit ICSModule.ELRewardsStealingPenaltySettled(secondNoId);
+        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(secondNoId);
         module.settleELRewardsStealingPenalty(
             UintArr(firstNoId, secondNoId),
             UintArr(type(uint256).max, type(uint256).max)
@@ -5575,7 +5579,7 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         );
 
         vm.expectEmit(address(module));
-        emit ICSModule.ELRewardsStealingPenaltySettled(secondNoId);
+        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(secondNoId);
         module.settleELRewardsStealingPenalty(
             idsToSettle,
             UintArr(type(uint256).max, type(uint256).max, type(uint256).max)
@@ -5654,7 +5658,7 @@ abstract contract ModuleSettleELRewardsStealingPenaltyAdvanced is
         );
 
         vm.expectEmit(address(module));
-        emit ICSModule.ELRewardsStealingPenaltySettled(secondNoId);
+        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(secondNoId);
         module.settleELRewardsStealingPenalty(
             UintArr(firstNoId, secondNoId),
             UintArr(type(uint256).max, type(uint256).max)
@@ -5685,7 +5689,7 @@ abstract contract ModuleSettleELRewardsStealingPenaltyAdvanced is
             amount
         );
         vm.expectEmit(address(module));
-        emit ICSModule.ELRewardsStealingPenaltySettled(noId);
+        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(noId);
         module.settleELRewardsStealingPenalty(
             UintArr(noId),
             UintArr(type(uint256).max)
@@ -5709,7 +5713,10 @@ abstract contract ModuleCompensateELRewardsStealingPenalty is ModuleFixtures {
         uint256 nonce = module.getNonce();
 
         vm.expectEmit(address(module));
-        emit ICSModule.ELRewardsStealingPenaltyCompensated(noId, amount + fine);
+        emit IGeneralPenalty.ELRewardsStealingPenaltyCompensated(
+            noId,
+            amount + fine
+        );
 
         vm.expectCall(
             address(accounting),
@@ -5745,7 +5752,7 @@ abstract contract ModuleCompensateELRewardsStealingPenalty is ModuleFixtures {
         uint256 nonce = module.getNonce();
 
         vm.expectEmit(address(module));
-        emit ICSModule.ELRewardsStealingPenaltyCompensated(noId, amount);
+        emit IGeneralPenalty.ELRewardsStealingPenaltyCompensated(noId, amount);
 
         vm.expectCall(
             address(accounting),
