@@ -91,11 +91,9 @@ contract CSParametersRegistry is
     mapping(uint256 => MarkedUint248) internal _maxWithdrawalRequestFees;
 
     modifier onlyRoleMemberOrAdmin(bytes32 role) {
-        if (
-            !(hasRole(role, _msgSender()) ||
-                hasRole(getRoleAdmin(role), _msgSender()))
-        ) {
-            revert AccessControlUnauthorizedAccount(_msgSender(), role);
+        address sender = msg.sender;
+        if (!(hasRole(role, sender) || hasRole(getRoleAdmin(role), sender))) {
+            revert AccessControlUnauthorizedAccount(sender, role);
         }
         _;
     }
