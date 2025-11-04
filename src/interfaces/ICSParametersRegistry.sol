@@ -25,25 +25,6 @@ interface ICSParametersRegistry {
         uint32 syncWeight;
     }
 
-    struct InitializationData {
-        uint256 keyRemovalCharge;
-        uint256 elRewardsStealingAdditionalFine;
-        uint256 keysLimit;
-        uint256 rewardShare;
-        uint256 performanceLeeway;
-        uint256 strikesLifetime;
-        uint256 strikesThreshold;
-        uint256 defaultQueuePriority;
-        uint256 defaultQueueMaxDeposits;
-        uint256 badPerformancePenalty;
-        uint256 attestationsWeight;
-        uint256 blocksWeight;
-        uint256 syncWeight;
-        uint256 defaultAllowedExitDelay;
-        uint256 defaultExitDelayFee;
-        uint256 defaultMaxWithdrawalRequestFee;
-    }
-
     /// @dev Defines a value interval starting from `minKeyNumber`.
     ///      All keys with number >= `minKeyNumber` are assigned the corresponding `value`
     ///      until the next interval begins. Intervals must be sorted by ascending `minKeyNumber`
@@ -52,6 +33,25 @@ interface ICSParametersRegistry {
     struct KeyNumberValueInterval {
         uint256 minKeyNumber;
         uint256 value;
+    }
+
+    struct InitializationData {
+        uint256 defaultKeyRemovalCharge;
+        uint256 defaultElRewardsStealingAdditionalFine;
+        uint256 defaultKeysLimit;
+        uint256 defaultRewardShare;
+        uint256 defaultPerformanceLeeway;
+        uint256 defaultStrikesLifetime;
+        uint256 defaultStrikesThreshold;
+        uint256 defaultQueuePriority;
+        uint256 defaultQueueMaxDeposits;
+        uint256 defaultBadPerformancePenalty;
+        uint256 defaultAttestationsWeight;
+        uint256 defaultBlocksWeight;
+        uint256 defaultSyncWeight;
+        uint256 defaultAllowedExitDelay;
+        uint256 defaultExitDelayFee;
+        uint256 defaultMaxWithdrawalRequestFee;
     }
 
     event DefaultKeyRemovalChargeSet(uint256 value);
@@ -80,6 +80,11 @@ interface ICSParametersRegistry {
         uint256 fine
     );
     event KeysLimitSet(uint256 indexed curveId, uint256 limit);
+    event QueueConfigSet(
+        uint256 indexed curveId,
+        uint256 priority,
+        uint256 maxDeposits
+    );
     event RewardShareDataSet(
         uint256 indexed curveId,
         KeyNumberValueInterval[] data
@@ -100,26 +105,21 @@ interface ICSParametersRegistry {
         uint256 blocksWeight,
         uint256 syncWeight
     );
+    event AllowedExitDelaySet(uint256 indexed curveId, uint256 delay);
+    event ExitDelayFeeSet(uint256 indexed curveId, uint256 penalty);
+    event MaxWithdrawalRequestFeeSet(uint256 indexed curveId, uint256 fee);
 
     event KeyRemovalChargeUnset(uint256 indexed curveId);
     event ElRewardsStealingAdditionalFineUnset(uint256 indexed curveId);
     event KeysLimitUnset(uint256 indexed curveId);
+    event QueueConfigUnset(uint256 indexed curveId);
     event RewardShareDataUnset(uint256 indexed curveId);
     event PerformanceLeewayDataUnset(uint256 indexed curveId);
     event StrikesParamsUnset(uint256 indexed curveId);
     event BadPerformancePenaltyUnset(uint256 indexed curveId);
     event PerformanceCoefficientsUnset(uint256 indexed curveId);
-    event QueueConfigSet(
-        uint256 indexed curveId,
-        uint256 priority,
-        uint256 maxDeposits
-    );
-    event QueueConfigUnset(uint256 indexed curveId);
-    event AllowedExitDelaySet(uint256 indexed curveId, uint256 delay);
     event AllowedExitDelayUnset(uint256 indexed curveId);
-    event ExitDelayFeeSet(uint256 indexed curveId, uint256 penalty);
     event ExitDelayFeeUnset(uint256 indexed curveId);
-    event MaxWithdrawalRequestFeeSet(uint256 indexed curveId, uint256 fee);
     event MaxWithdrawalRequestFeeUnset(uint256 indexed curveId);
 
     error InvalidRewardShareData();
@@ -133,45 +133,120 @@ interface ICSParametersRegistry {
     error InvalidAllowedExitDelay();
     error ZeroQueueLowestPriority();
 
-    /// @notice The lowest priority a deposit queue can be assigned with.
+    /// @notice Role to manage general penalties and charges parameters: key removal charge and EL rewards stealing additional fine
+    function MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE()
+        external
+        view
+        returns (bytes32);
+
+    /// @notice Role to manage keys limit parameter
+    function MANAGE_KEYS_LIMIT_ROLE() external view returns (bytes32);
+
+    /// @notice Role to manage queue config
+    function MANAGE_QUEUE_CONFIG_ROLE() external view returns (bytes32);
+
+    /// @notice Role to manage performance parameters: performance leeway, strikes params, bad performance penalty, performance coefficients
+    function MANAGE_PERFORMANCE_PARAMETERS_ROLE()
+        external
+        view
+        returns (bytes32);
+
+    /// @notice Role to manage reward share parameters
+    function MANAGE_REWARD_SHARE_ROLE() external view returns (bytes32);
+
+    /// @notice Role to manage validator exit related parameters: allowed exit delay, exit delay fee, max withdrawal request fee
+    function MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE()
+        external
+        view
+        returns (bytes32);
+
+    /// @notice The lowest priority a deposit queue can be assigned with. This constant is not used in Curated Module
     function QUEUE_LOWEST_PRIORITY() external view returns (uint256);
 
-    /// @notice Set default value for the key removal charge. Default value is used if a specific value is not set for the curveId
-    /// @param keyRemovalCharge value to be set as default for the key removal charge
-    function setDefaultKeyRemovalCharge(uint256 keyRemovalCharge) external;
-
-    /// @notice Get default value for the key removal charge
+    /// @notice Get default value for the key removal charge. This parameter is not used in Curated Module
     function defaultKeyRemovalCharge() external returns (uint256);
-
-    /// @notice Set default value for the EL rewards stealing additional fine. Default value is used if a specific value is not set for the curveId
-    /// @param fine value to be set as default for the EL rewards stealing additional fine
-    function setDefaultElRewardsStealingAdditionalFine(uint256 fine) external;
 
     /// @notice Get default value for the EL rewards stealing additional fine
     function defaultElRewardsStealingAdditionalFine()
         external
         returns (uint256);
 
+    /// @notice Get default value for the keys limit
+    function defaultKeysLimit() external returns (uint256);
+
+    /// @notice Get default value for QueueConfig. This parameter is not used in Curated Module
+    /// @return priority Default queue priority
+    /// @return maxDeposits Default maximum number of the first deposits a Node Operator can get via the priority queue
+    function defaultQueueConfig()
+        external
+        returns (uint32 priority, uint32 maxDeposits);
+
+    /// @notice Get default value for the reward share
+    function defaultRewardShare() external returns (uint256);
+
+    /// @notice Get default value for the performance leeway
+    function defaultPerformanceLeeway() external returns (uint256);
+
+    /// @notice Get default value for the strikes lifetime (frames count) and threshold (integer)
+    /// @return lifetime The default number of CSM Performance Oracle frames to store strikes values
+    /// @return threshold The default strikes value leading to validator force ejection.
+    function defaultStrikesParams()
+        external
+        returns (uint32 lifetime, uint32 threshold);
+
+    /// @notice Get default value for the bad performance penalty
+    function defaultBadPerformancePenalty() external returns (uint256);
+
+    /// @notice Get default value for the performance coefficients
+    /// @return attestationsWeight Attestations effectiveness weight
+    /// @return blocksWeight Block proposals effectiveness weight
+    /// @return syncWeight Sync participation effectiveness weight
+    function defaultPerformanceCoefficients()
+        external
+        returns (
+            uint32 attestationsWeight,
+            uint32 blocksWeight,
+            uint32 syncWeight
+        );
+
+    /// @notice Get default value for the allowed exit delay
+    function defaultAllowedExitDelay() external returns (uint256);
+
+    /// @notice Get default value for exit delay penalty
+    function defaultExitDelayFee() external returns (uint256);
+
+    /// @notice Get default value for max withdrawal request fee
+    function defaultMaxWithdrawalRequestFee() external returns (uint256);
+
+    /// @notice Set default value for the key removal charge. Default value is used if a specific value is not set for the curveId. This parameter is not used in Curated Module
+    /// @param keyRemovalCharge value to be set as default for the key removal charge
+    function setDefaultKeyRemovalCharge(uint256 keyRemovalCharge) external;
+
+    /// @notice Set default value for the EL rewards stealing additional fine. Default value is used if a specific value is not set for the curveId
+    /// @param fine value to be set as default for the EL rewards stealing additional fine
+    function setDefaultElRewardsStealingAdditionalFine(uint256 fine) external;
+
     /// @notice Set default value for the keys limit. Default value is used if a specific value is not set for the curveId
     /// @param limit value to be set as default for the keys limit
     function setDefaultKeysLimit(uint256 limit) external;
 
-    /// @notice Get default value for the key removal charge
-    function defaultKeysLimit() external returns (uint256);
+    /// @notice Set default value for QueueConfig. Default value is used if a specific value is not set for the curveId. This parameter is not used in Curated Module
+    /// @param priority Queue priority.
+    /// @param maxDeposits Maximum number of the first deposits a Node Operator can get via the priority queue.
+    ///                    Ex. with `maxDeposits = 10` the Node Operator сan get keys added to the priority queue
+    ///                    until the Node Operator has totalDepositedKeys + enqueued >= 10.
+    function setDefaultQueueConfig(
+        uint256 priority,
+        uint256 maxDeposits
+    ) external;
 
     /// @notice Set default value for the reward share. Default value is used if a specific value is not set for the curveId
     /// @param share value to be set as default for the reward share
     function setDefaultRewardShare(uint256 share) external;
 
-    /// @notice Get default value for the reward share
-    function defaultRewardShare() external returns (uint256);
-
     /// @notice Set default value for the performance leeway. Default value is used if a specific value is not set for the curveId
     /// @param leeway value to be set as default for the performance leeway
     function setDefaultPerformanceLeeway(uint256 leeway) external;
-
-    /// @notice Get default value for the performance leeway
-    function defaultPerformanceLeeway() external returns (uint256);
 
     /// @notice Set default values for the strikes lifetime and threshold. Default values are used if specific values are not set for the curveId
     /// @param lifetime The default number of CSM Performance Oracle frames to store strikes values
@@ -181,17 +256,9 @@ interface ICSParametersRegistry {
         uint256 threshold
     ) external;
 
-    /// @notice Get default value for the strikes lifetime (frames count) and threshold (integer)
-    /// @return lifetime The default number of CSM Performance Oracle frames to store strikes values
-    /// @return threshold The default strikes value leading to validator force ejection.
-    function defaultStrikesParams() external returns (uint32, uint32);
-
     /// @notice Set default value for the bad performance penalty. Default value is used if a specific value is not set for the curveId
     /// @param penalty value to be set as default for the bad performance penalty
     function setDefaultBadPerformancePenalty(uint256 penalty) external;
-
-    /// @notice Get default value for the bad performance penalty
-    function defaultBadPerformancePenalty() external returns (uint256);
 
     /// @notice Set default values for the performance coefficients. Default values are used if specific values are not set for the curveId
     /// @param attestationsWeight value to be set as default for the attestations effectiveness weight
@@ -202,11 +269,6 @@ interface ICSParametersRegistry {
         uint256 blocksWeight,
         uint256 syncWeight
     ) external;
-
-    /// @notice Get default value for the performance coefficients
-    function defaultPerformanceCoefficients()
-        external
-        returns (uint32, uint32, uint32);
 
     /// @notice set default value for allowed delay before the exit was initiated exit delay in seconds. Default value is used if a specific value is not set for the curveId
     /// @param delay value to be set as default for the allowed exit delay
@@ -220,10 +282,7 @@ interface ICSParametersRegistry {
     /// @param fee value to be set as default for the max withdrawal request fee
     function setDefaultMaxWithdrawalRequestFee(uint256 fee) external;
 
-    /// @notice Get default value for the allowed exit delay
-    function defaultAllowedExitDelay() external returns (uint256);
-
-    /// @notice Set key removal charge for the curveId.
+    /// @notice Set key removal charge for the curveId. This parameter is not used in Curated Module
     /// @param curveId Curve Id to associate key removal charge with
     /// @param keyRemovalCharge Key removal charge
     function setKeyRemovalCharge(
@@ -231,11 +290,11 @@ interface ICSParametersRegistry {
         uint256 keyRemovalCharge
     ) external;
 
-    /// @notice Unset key removal charge for the curveId
+    /// @notice Unset key removal charge for the curveId. This parameter is not used in Curated Module
     /// @param curveId Curve Id to unset custom key removal charge for
     function unsetKeyRemovalCharge(uint256 curveId) external;
 
-    /// @notice Get key removal charge by the curveId. A charge is taken from the bond for each removed key from CSM
+    /// @notice Get key removal charge by the curveId. A charge is taken from the bond for each removed key from CSM. This parameter is not used in Curated Module
     /// @dev `defaultKeyRemovalCharge` is returned if the value is not set for the given curveId.
     /// @param curveId Curve Id to get key removal charge for
     /// @return keyRemovalCharge Key removal charge
@@ -280,6 +339,32 @@ interface ICSParametersRegistry {
         uint256 curveId
     ) external view returns (uint256 limit);
 
+    /// @notice Sets the provided config to the given curve. This parameter is not used in Curated Module
+    /// @param curveId Curve Id to set the config.
+    /// @param priority Queue priority.
+    /// @param maxDeposits Maximum number of the first deposits a Node Operator can get via the priority queue.
+    ///                    Ex. with `maxDeposits = 10` the Node Operator сan get keys added to the priority queue
+    ///                    until the Node Operator has totalDepositedKeys + enqueued >= 10.
+    function setQueueConfig(
+        uint256 curveId,
+        uint256 priority,
+        uint256 maxDeposits
+    ) external;
+
+    /// @notice Set the given curve's config to the default one. This parameter is not used in Curated Module
+    /// @param curveId Curve Id to unset custom config.
+    function unsetQueueConfig(uint256 curveId) external;
+
+    /// @notice Get the queue config for the given curve. This parameter is not used in Curated Module
+    /// @param curveId Curve Id to get the queue config for.
+    /// @return priority Queue priority.
+    /// @param maxDeposits Maximum number of the first deposits a Node Operator can get via the priority queue.
+    ///                    Ex. with `maxDeposits = 10` the Node Operator сan get keys added to the priority queue
+    ///                    until the Node Operator has totalDepositedKeys + enqueued >= 10.
+    function getQueueConfig(
+        uint256 curveId
+    ) external view returns (uint32 priority, uint32 maxDeposits);
+
     /// @notice Set reward share parameters for the curveId
     /// @dev KeyNumberValueInterval = [[1, 10000], [11, 8000], [51, 5000]] stands for
     ///      100% rewards for the first 10 keys, 80% rewards for the keys 11-50, and 50% rewards for the keys > 50
@@ -303,42 +388,6 @@ interface ICSParametersRegistry {
     function getRewardShareData(
         uint256 curveId
     ) external view returns (KeyNumberValueInterval[] memory data);
-
-    /// @notice Set default value for QueueConfig. Default value is used if a specific value is not set for the curveId.
-    /// @param priority Queue priority.
-    /// @param maxDeposits Maximum number of the first deposits a Node Operator can get via the priority queue.
-    ///                    Ex. with `maxDeposits = 10` the Node Operator сan get keys added to the priority queue
-    ///                    until the Node Operator has totalDepositedKeys + enqueued >= 10.
-    function setDefaultQueueConfig(
-        uint256 priority,
-        uint256 maxDeposits
-    ) external;
-
-    /// @notice Sets the provided config to the given curve.
-    /// @param curveId Curve Id to set the config.
-    /// @param priority Queue priority.
-    /// @param maxDeposits Maximum number of the first deposits a Node Operator can get via the priority queue.
-    ///                    Ex. with `maxDeposits = 10` the Node Operator сan get keys added to the priority queue
-    ///                    until the Node Operator has totalDepositedKeys + enqueued >= 10.
-    function setQueueConfig(
-        uint256 curveId,
-        uint256 priority,
-        uint256 maxDeposits
-    ) external;
-
-    /// @notice Set the given curve's config to the default one.
-    /// @param curveId Curve Id to unset custom config.
-    function unsetQueueConfig(uint256 curveId) external;
-
-    /// @notice Get the queue config for the given curve.
-    /// @param curveId Curve Id to get the queue config for.
-    /// @return priority Queue priority.
-    /// @param maxDeposits Maximum number of the first deposits a Node Operator can get via the priority queue.
-    ///                    Ex. with `maxDeposits = 10` the Node Operator сan get keys added to the priority queue
-    ///                    until the Node Operator has totalDepositedKeys + enqueued >= 10.
-    function getQueueConfig(
-        uint256 curveId
-    ) external view returns (uint32 priority, uint32 maxDeposits);
 
     /// @notice Set performance leeway parameters for the curveId
     /// @dev Returns [[1, defaultPerformanceLeeway]] if no intervals are set for the given curveId.

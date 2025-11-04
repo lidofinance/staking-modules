@@ -68,20 +68,21 @@ abstract contract DeployImplementationsBase is DeployBase {
             parametersRegistry.initialize({
                 admin: deployer,
                 data: ICSParametersRegistry.InitializationData({
-                    keyRemovalCharge: config.defaultKeyRemovalCharge,
-                    elRewardsStealingAdditionalFine: config
+                    defaultKeyRemovalCharge: config.defaultKeyRemovalCharge,
+                    defaultElRewardsStealingAdditionalFine: config
                         .defaultElRewardsStealingAdditionalFine,
-                    keysLimit: config.defaultKeysLimit,
-                    rewardShare: config.defaultRewardShareBP,
-                    performanceLeeway: config.defaultAvgPerfLeewayBP,
-                    strikesLifetime: config.defaultStrikesLifetimeFrames,
-                    strikesThreshold: config.defaultStrikesThreshold,
+                    defaultKeysLimit: config.defaultKeysLimit,
+                    defaultRewardShare: config.defaultRewardShareBP,
+                    defaultPerformanceLeeway: config.defaultAvgPerfLeewayBP,
+                    defaultStrikesLifetime: config.defaultStrikesLifetimeFrames,
+                    defaultStrikesThreshold: config.defaultStrikesThreshold,
                     defaultQueuePriority: config.defaultQueuePriority,
                     defaultQueueMaxDeposits: config.defaultQueueMaxDeposits,
-                    badPerformancePenalty: config.defaultBadPerformancePenalty,
-                    attestationsWeight: config.defaultAttestationsWeight,
-                    blocksWeight: config.defaultBlocksWeight,
-                    syncWeight: config.defaultSyncWeight,
+                    defaultBadPerformancePenalty: config
+                        .defaultBadPerformancePenalty,
+                    defaultAttestationsWeight: config.defaultAttestationsWeight,
+                    defaultBlocksWeight: config.defaultBlocksWeight,
+                    defaultSyncWeight: config.defaultSyncWeight,
                     defaultAllowedExitDelay: config.defaultAllowedExitDelay,
                     defaultExitDelayFee: config.defaultExitDelayFee,
                     defaultMaxWithdrawalRequestFee: config
