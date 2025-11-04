@@ -150,12 +150,12 @@ interface ICSModule is
 
     function STAKING_ROUTER_ROLE() external view returns (bytes32);
 
-    function REPORT_EL_REWARDS_STEALING_PENALTY_ROLE()
+    function REPORT_GENERAL_DELAYED_PENALTY_ROLE()
         external
         view
         returns (bytes32);
 
-    function SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE()
+    function SETTLE_GENERAL_DELAYED_PENALTY_ROLE()
         external
         view
         returns (bytes32);
@@ -271,38 +271,40 @@ interface ICSModule is
         ICSAccounting.PermitInput memory permit
     ) external;
 
-    /// @notice Report EL rewards stealing for the given Node Operator
-    /// @notice The final locked amount will be equal to the stolen funds plus EL stealing additional fine
+    /// @notice Report general delayed penalty for the given Node Operator
+    /// @notice The final locked amount will be equal to the penalty amount plus additional fine
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param blockHash Execution layer block hash of the proposed block with EL rewards stealing
-    /// @param amount Amount of stolen EL rewards in ETH
-    function reportELRewardsStealingPenalty(
+    /// @param penaltyType Type of the penalty
+    /// @param amount Penalty amount in ETH
+    /// @param details Additional details about the penalty
+    function reportGeneralDelayedPenalty(
         uint256 nodeOperatorId,
-        bytes32 blockHash,
-        uint256 amount
+        bytes32 penaltyType,
+        uint256 amount,
+        string calldata details
     ) external;
 
-    /// @notice Compensate EL rewards stealing penalty for the given Node Operator to prevent further validator exits
+    /// @notice Compensate general delayed penalty for the given Node Operator to prevent further validator exits
     /// @dev Can only be called by the Node Operator manager
     /// @param nodeOperatorId ID of the Node Operator
-    function compensateELRewardsStealingPenalty(
+    function compensateGeneralDelayedPenalty(
         uint256 nodeOperatorId
     ) external payable;
 
-    /// @notice Cancel previously reported and not settled EL rewards stealing penalty for the given Node Operator
+    /// @notice Cancel previously reported and not settled general delayed penalty for the given Node Operator
     /// @notice The funds will be unlocked
     /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Amount of penalty to cancel
-    function cancelELRewardsStealingPenalty(
+    function cancelGeneralDelayedPenalty(
         uint256 nodeOperatorId,
         uint256 amount
     ) external;
 
     /// @notice Settles locked bond and sets the target limit to 0 or the given Node Operators
-    /// @dev SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE role is expected to be assigned to Easy Track
+    /// @dev SETTLE_GENERAL_DELAYED_PENALTY_ROLE role is expected to be assigned to Easy Track
     /// @param nodeOperatorIds IDs of the Node Operators
     /// @param maxAmounts Maximum amounts to settle for each Node Operator
-    function settleELRewardsStealingPenalty(
+    function settleGeneralDelayedPenalty(
         uint256[] memory nodeOperatorIds,
         uint256[] memory maxAmounts
     ) external;

@@ -11,6 +11,7 @@ struct MarkedQueueConfig {
 
 contract CSParametersRegistryMock {
     uint256 public keyRemovalCharge = 0.01 ether;
+    uint256 public additionalFine = 0.1 ether;
 
     uint256 public keysLimit = 100_000;
 
@@ -50,10 +51,17 @@ contract CSParametersRegistryMock {
         keysLimit = limit;
     }
 
-    function getElRewardsStealingAdditionalFine(
+    function setGeneralDelayedPenaltyAdditionalFine(
+        uint256 /* curveId */,
+        uint256 fine
+    ) external {
+        additionalFine = fine;
+    }
+
+    function getGeneralDelayedPenaltyAdditionalFine(
         uint256 /* curveId */
-    ) external pure returns (uint256) {
-        return 0.1 ether;
+    ) external view returns (uint256) {
+        return additionalFine;
     }
 
     function getStrikesParams(

@@ -4343,10 +4343,11 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
 
         module.obtainDepositData(3, "");
 
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            BOND_SIZE / 2
+            bytes32(abi.encode(1)),
+            BOND_SIZE / 2,
+            "Test penalty"
         );
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
@@ -5100,8 +5101,8 @@ abstract contract ModuleUnsafeUpdateValidatorsCount is ModuleFixtures {
     }
 }
 
-abstract contract ModuleReportELRewardsStealingPenalty is ModuleFixtures {
-    function test_reportELRewardsStealingPenalty_HappyPath()
+abstract contract ModuleReportGeneralDelayedPenalty is ModuleFixtures {
+    function test_reportGeneralDelayedPenalty_HappyPath()
         public
         assertInvariants
     {
@@ -5109,15 +5110,17 @@ abstract contract ModuleReportELRewardsStealingPenalty is ModuleFixtures {
         uint256 nonce = module.getNonce();
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.ELRewardsStealingPenaltyReported(
+        emit IGeneralPenalty.GeneralDelayedPenaltyReported(
             noId,
-            blockhash(block.number),
-            BOND_SIZE / 2
+            bytes32(abi.encode(1)),
+            BOND_SIZE / 2,
+            "Test penalty"
         );
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            BOND_SIZE / 2
+            bytes32(abi.encode(1)),
+            BOND_SIZE / 2,
+            "Test penalty"
         );
 
         uint256 lockedBond = accounting.getActualLockedBond(noId);
@@ -5125,39 +5128,58 @@ abstract contract ModuleReportELRewardsStealingPenalty is ModuleFixtures {
             lockedBond,
             BOND_SIZE /
                 2 +
-                module.PARAMETERS_REGISTRY().getElRewardsStealingAdditionalFine(
-                    0
-                )
+                module
+                    .PARAMETERS_REGISTRY()
+                    .getGeneralDelayedPenaltyAdditionalFine(0)
         );
         assertEq(module.getNonce(), nonce + 1);
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.depositableValidatorsCount, 0);
     }
 
-    function test_reportELRewardsStealingPenalty_RevertWhen_NoNodeOperator()
+    function test_reportGeneralDelayedPenalty_RevertWhen_NoNodeOperator()
         public
     {
         vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             0,
-            blockhash(block.number),
-            1 ether
+            bytes32(abi.encode(1)),
+            1 ether,
+            "Test penalty"
         );
     }
 
-    function test_reportELRewardsStealingPenalty_RevertWhen_ZeroAmount()
+    function test_reportGeneralDelayedPenalty_RevertWhen_ZeroAmountAndZeroAdditionalFine()
         public
     {
         uint256 noId = createNodeOperator();
+        module.PARAMETERS_REGISTRY().setGeneralDelayedPenaltyAdditionalFine(
+            0,
+            0
+        );
         vm.expectRevert(ICSModule.InvalidAmount.selector);
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            0 ether
+            bytes32(abi.encode(1)),
+            0 ether,
+            "Test penalty"
         );
     }
 
-    function test_reportELRewardsStealingPenalty_NoNonceChange()
+    function test_reportGeneralDelayedPenalty_RevertWhen_ZeroPenaltyType()
+        public
+    {
+        uint256 noId = createNodeOperator();
+        vm.expectRevert(IGeneralPenalty.ZeroPenaltyType.selector);
+        module.reportGeneralDelayedPenalty(
+            noId,
+            bytes32(0),
+            0 ether,
+            "Test penalty"
+        );
+    }
+
+    function test_reportGeneralDelayedPenalty_NoNonceChange()
         public
         assertInvariants
     {
@@ -5169,26 +5191,28 @@ abstract contract ModuleReportELRewardsStealingPenalty is ModuleFixtures {
 
         uint256 nonce = module.getNonce();
 
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            BOND_SIZE / 2
+            bytes32(abi.encode(1)),
+            BOND_SIZE / 2,
+            "Test penalty"
         );
 
         assertEq(module.getNonce(), nonce);
     }
 
-    function test_reportELRewardsStealingPenalty_EnqueueAfterUnlock()
+    function test_reportGeneralDelayedPenalty_EnqueueAfterUnlock()
         public
         assertInvariants
     {
         uint256 noId = createNodeOperator();
         uint256 nonce = module.getNonce();
 
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            BOND_SIZE / 2
+            bytes32(abi.encode(1)),
+            BOND_SIZE / 2,
+            "Test penalty"
         );
 
         uint256 lockedBond = accounting.getActualLockedBond(noId);
@@ -5196,9 +5220,9 @@ abstract contract ModuleReportELRewardsStealingPenalty is ModuleFixtures {
             lockedBond,
             BOND_SIZE /
                 2 +
-                module.PARAMETERS_REGISTRY().getElRewardsStealingAdditionalFine(
-                    0
-                )
+                module
+                    .PARAMETERS_REGISTRY()
+                    .getGeneralDelayedPenaltyAdditionalFine(0)
         );
         assertEq(module.getNonce(), nonce + 1);
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -5218,37 +5242,38 @@ abstract contract ModuleReportELRewardsStealingPenalty is ModuleFixtures {
     }
 }
 
-abstract contract ModuleCancelELRewardsStealingPenalty is ModuleFixtures {
-    function test_cancelELRewardsStealingPenalty_HappyPath()
+abstract contract ModuleCancelGeneralDelayedPenalty is ModuleFixtures {
+    function test_cancelGeneralDelayedPenalty_HappyPath()
         public
         assertInvariants
     {
         uint256 noId = createNodeOperator();
 
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            BOND_SIZE / 2
+            bytes32(abi.encode(1)),
+            BOND_SIZE / 2,
+            "Test penalty"
         );
 
         uint256 nonce = module.getNonce();
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.ELRewardsStealingPenaltyCancelled(
+        emit IGeneralPenalty.GeneralDelayedPenaltyCancelled(
             noId,
             BOND_SIZE /
                 2 +
-                module.PARAMETERS_REGISTRY().getElRewardsStealingAdditionalFine(
-                    0
-                )
+                module
+                    .PARAMETERS_REGISTRY()
+                    .getGeneralDelayedPenaltyAdditionalFine(0)
         );
-        module.cancelELRewardsStealingPenalty(
+        module.cancelGeneralDelayedPenalty(
             noId,
             BOND_SIZE /
                 2 +
-                module.PARAMETERS_REGISTRY().getElRewardsStealingAdditionalFine(
-                    0
-                )
+                module
+                    .PARAMETERS_REGISTRY()
+                    .getGeneralDelayedPenaltyAdditionalFine(0)
         );
 
         uint256 lockedBond = accounting.getActualLockedBond(noId);
@@ -5256,57 +5281,61 @@ abstract contract ModuleCancelELRewardsStealingPenalty is ModuleFixtures {
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function test_cancelELRewardsStealingPenalty_Partial()
+    function test_cancelGeneralDelayedPenalty_Partial()
         public
         assertInvariants
     {
         uint256 noId = createNodeOperator();
 
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            BOND_SIZE / 2
+            bytes32(abi.encode(1)),
+            BOND_SIZE / 2,
+            "Test penalty"
         );
 
         uint256 nonce = module.getNonce();
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.ELRewardsStealingPenaltyCancelled(
+        emit IGeneralPenalty.GeneralDelayedPenaltyCancelled(
             noId,
             BOND_SIZE / 2
         );
-        module.cancelELRewardsStealingPenalty(noId, BOND_SIZE / 2);
+        module.cancelGeneralDelayedPenalty(noId, BOND_SIZE / 2);
 
         uint256 lockedBond = accounting.getActualLockedBond(noId);
         assertEq(
             lockedBond,
-            module.PARAMETERS_REGISTRY().getElRewardsStealingAdditionalFine(0)
+            module.PARAMETERS_REGISTRY().getGeneralDelayedPenaltyAdditionalFine(
+                0
+            )
         );
         // nonce should not change due to no changes in the depositable validators
         assertEq(module.getNonce(), nonce);
     }
 
-    function test_cancelELRewardsStealingPenalty_RevertWhen_NoNodeOperator()
+    function test_cancelGeneralDelayedPenalty_RevertWhen_NoNodeOperator()
         public
     {
         vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
-        module.cancelELRewardsStealingPenalty(0, 1 ether);
+        module.cancelGeneralDelayedPenalty(0, 1 ether);
     }
 }
 
-abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
-    function test_settleELRewardsStealingPenalty() public assertInvariants {
+abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
+    function test_settleGeneralDelayedPenalty() public assertInvariants {
         uint256 noId = createNodeOperator();
         uint256 amount = 1 ether;
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            amount
+            bytes32(abi.encode(1)),
+            amount,
+            "Test penalty"
         );
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(noId);
-        module.settleELRewardsStealingPenalty(
+        emit IGeneralPenalty.GeneralDelayedPenaltySettled(noId);
+        module.settleGeneralDelayedPenalty(
             UintArr(noId),
             UintArr(type(uint256).max)
         );
@@ -5330,7 +5359,7 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         );
     }
 
-    function test_settleELRewardsStealingPenalty_revertWhen_InvalidInput()
+    function test_settleGeneralDelayedPenalty_revertWhen_InvalidInput()
         public
         assertInvariants
     {
@@ -5338,17 +5367,18 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         uint256 amount = 1 ether;
         uint256[] memory idsToSettle = new uint256[](1);
         idsToSettle[0] = noId;
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            amount
+            bytes32(abi.encode(1)),
+            amount,
+            "Test penalty"
         );
 
         vm.expectRevert(ICSModule.InvalidInput.selector);
-        module.settleELRewardsStealingPenalty(idsToSettle, new uint256[](0));
+        module.settleGeneralDelayedPenalty(idsToSettle, new uint256[](0));
     }
 
-    function test_settleELRewardsStealingPenalty_lockedGreaterThanAllowedToSettle()
+    function test_settleGeneralDelayedPenalty_lockedGreaterThanAllowedToSettle()
         public
         assertInvariants
     {
@@ -5356,23 +5386,24 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         uint256 amount = 1 ether;
         uint256[] memory idsToSettle = new uint256[](1);
         idsToSettle[0] = noId;
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            amount
+            bytes32(abi.encode(1)),
+            amount,
+            "Test penalty"
         );
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
         uint256 depositableValidatorsCountBefore = summary
             .depositableValidatorsCount;
 
-        module.settleELRewardsStealingPenalty(idsToSettle, UintArr(amount));
+        module.settleGeneralDelayedPenalty(idsToSettle, UintArr(amount));
         CSBondLock.BondLock memory lock = accounting.getLockedBondInfo(noId);
         assertEq(
             lock.amount,
             amount +
-                module.PARAMETERS_REGISTRY().getElRewardsStealingAdditionalFine(
-                    0
-                )
+                module
+                    .PARAMETERS_REGISTRY()
+                    .getGeneralDelayedPenaltyAdditionalFine(0)
         );
         assertEq(lock.until, accounting.getBondLockPeriod() + block.timestamp);
 
@@ -5391,28 +5422,30 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         );
     }
 
-    function test_settleELRewardsStealingPenalty_multipleNOs()
+    function test_settleGeneralDelayedPenalty_multipleNOs()
         public
         assertInvariants
     {
         uint256 firstNoId = createNodeOperator();
         uint256 secondNoId = createNodeOperator();
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             firstNoId,
-            blockhash(block.number),
-            1 ether
+            bytes32(abi.encode(1)),
+            1 ether,
+            "Test penalty"
         );
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             secondNoId,
-            blockhash(block.number),
-            BOND_SIZE
+            bytes32(abi.encode(1)),
+            BOND_SIZE,
+            "Test penalty"
         );
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(firstNoId);
+        emit IGeneralPenalty.GeneralDelayedPenaltySettled(firstNoId);
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(secondNoId);
-        module.settleELRewardsStealingPenalty(
+        emit IGeneralPenalty.GeneralDelayedPenaltySettled(secondNoId);
+        module.settleGeneralDelayedPenalty(
             UintArr(firstNoId, secondNoId),
             UintArr(type(uint256).max, type(uint256).max)
         );
@@ -5428,7 +5461,7 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         assertEq(lock.until, 0);
     }
 
-    function test_settleELRewardsStealingPenalty_multipleNOs_oneWithLockedGreaterThanAllowedToSettle()
+    function test_settleGeneralDelayedPenalty_multipleNOs_oneWithLockedGreaterThanAllowedToSettle()
         public
         assertInvariants
     {
@@ -5438,20 +5471,22 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         idsToSettle[0] = firstNoId;
         idsToSettle[1] = secondNoId;
         uint256 amount = 1 ether;
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             firstNoId,
-            blockhash(block.number),
-            amount
+            bytes32(abi.encode(1)),
+            amount,
+            "Test penalty"
         );
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             secondNoId,
-            blockhash(block.number),
-            BOND_SIZE
+            bytes32(abi.encode(1)),
+            BOND_SIZE,
+            "Test penalty"
         );
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(secondNoId);
-        module.settleELRewardsStealingPenalty(
+        emit IGeneralPenalty.GeneralDelayedPenaltySettled(secondNoId);
+        module.settleGeneralDelayedPenalty(
             idsToSettle,
             UintArr(amount, type(uint256).max)
         );
@@ -5462,9 +5497,9 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         assertEq(
             lock.amount,
             amount +
-                module.PARAMETERS_REGISTRY().getElRewardsStealingAdditionalFine(
-                    0
-                )
+                module
+                    .PARAMETERS_REGISTRY()
+                    .getGeneralDelayedPenaltyAdditionalFine(0)
         );
         assertEq(lock.until, accounting.getBondLockPeriod() + block.timestamp);
 
@@ -5473,15 +5508,12 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         assertEq(lock.until, 0);
     }
 
-    function test_settleELRewardsStealingPenalty_NoLock()
-        public
-        assertInvariants
-    {
+    function test_settleGeneralDelayedPenalty_NoLock() public assertInvariants {
         uint256 noId = createNodeOperator();
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
         uint256 depositableValidatorsCountBefore = summary
             .depositableValidatorsCount;
-        module.settleELRewardsStealingPenalty(
+        module.settleGeneralDelayedPenalty(
             UintArr(noId),
             UintArr(type(uint256).max)
         );
@@ -5505,14 +5537,14 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         );
     }
 
-    function test_settleELRewardsStealingPenalty_multipleNOs_NoLock()
+    function test_settleGeneralDelayedPenalty_multipleNOs_NoLock()
         public
         assertInvariants
     {
         uint256 firstNoId = createNodeOperator();
         uint256 secondNoId = createNodeOperator();
 
-        module.settleELRewardsStealingPenalty(
+        module.settleGeneralDelayedPenalty(
             UintArr(firstNoId, secondNoId),
             UintArr(type(uint256).max, type(uint256).max)
         );
@@ -5529,21 +5561,22 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         assertEq(secondLock.until, 0);
     }
 
-    function test_settleELRewardsStealingPenalty_multipleNOs_oneWithNoLock()
+    function test_settleGeneralDelayedPenalty_multipleNOs_oneWithNoLock()
         public
     {
         uint256 firstNoId = createNodeOperator();
         uint256 secondNoId = createNodeOperator();
 
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             secondNoId,
-            blockhash(block.number),
-            1 ether
+            bytes32(abi.encode(1)),
+            1 ether,
+            "Test penalty"
         );
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(secondNoId);
-        module.settleELRewardsStealingPenalty(
+        emit IGeneralPenalty.GeneralDelayedPenaltySettled(secondNoId);
+        module.settleGeneralDelayedPenalty(
             UintArr(firstNoId, secondNoId),
             UintArr(type(uint256).max, type(uint256).max)
         );
@@ -5560,7 +5593,7 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         assertEq(secondLock.until, 0);
     }
 
-    function test_settleELRewardsStealingPenalty_withDuplicates() public {
+    function test_settleGeneralDelayedPenalty_withDuplicates() public {
         uint256 firstNoId = createNodeOperator();
         uint256 secondNoId = createNodeOperator();
         uint256[] memory idsToSettle = new uint256[](3);
@@ -5571,15 +5604,16 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
         uint256 bondBalanceBefore = accounting.getBond(secondNoId);
 
         uint256 lockAmount = 1 ether;
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             secondNoId,
-            blockhash(block.number),
-            lockAmount
+            bytes32(abi.encode(1)),
+            lockAmount,
+            "Test penalty"
         );
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(secondNoId);
-        module.settleELRewardsStealingPenalty(
+        emit IGeneralPenalty.GeneralDelayedPenaltySettled(secondNoId);
+        module.settleGeneralDelayedPenalty(
             idsToSettle,
             UintArr(type(uint256).max, type(uint256).max, type(uint256).max)
         );
@@ -5595,42 +5629,41 @@ abstract contract ModuleSettleELRewardsStealingPenaltyBasic is ModuleFixtures {
             bondBalanceAfter,
             bondBalanceBefore -
                 lockAmount -
-                module.PARAMETERS_REGISTRY().getElRewardsStealingAdditionalFine(
-                    0
-                )
+                module
+                    .PARAMETERS_REGISTRY()
+                    .getGeneralDelayedPenaltyAdditionalFine(0)
         );
     }
 
-    function test_settleELRewardsStealingPenalty_RevertWhen_NoExistingNodeOperator()
+    function test_settleGeneralDelayedPenalty_RevertWhen_NoExistingNodeOperator()
         public
     {
         uint256 noId = createNodeOperator();
 
         vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
-        module.settleELRewardsStealingPenalty(
+        module.settleGeneralDelayedPenalty(
             UintArr(noId + 1),
             UintArr(type(uint256).max)
         );
     }
 }
 
-abstract contract ModuleSettleELRewardsStealingPenaltyAdvanced is
-    ModuleFixtures
-{
-    function test_settleELRewardsStealingPenalty_PeriodIsExpired() public {
+abstract contract ModuleSettleGeneralDelayedPenaltyAdvanced is ModuleFixtures {
+    function test_settleGeneralDelayedPenalty_PeriodIsExpired() public {
         uint256 noId = createNodeOperator();
         uint256 period = accounting.getBondLockPeriod();
         uint256 amount = 1 ether;
 
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            amount
+            bytes32(abi.encode(1)),
+            amount,
+            "Test penalty"
         );
 
         vm.warp(block.timestamp + period + 1 seconds);
 
-        module.settleELRewardsStealingPenalty(
+        module.settleGeneralDelayedPenalty(
             UintArr(noId),
             UintArr(type(uint256).max)
         );
@@ -5638,27 +5671,27 @@ abstract contract ModuleSettleELRewardsStealingPenaltyAdvanced is
         assertEq(accounting.getActualLockedBond(noId), 0);
     }
 
-    function test_settleELRewardsStealingPenalty_multipleNOs_oneExpired()
-        public
-    {
+    function test_settleGeneralDelayedPenalty_multipleNOs_oneExpired() public {
         uint256 period = accounting.getBondLockPeriod();
         uint256 firstNoId = createNodeOperator(2);
         uint256 secondNoId = createNodeOperator(2);
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             firstNoId,
-            blockhash(block.number),
-            1 ether
+            bytes32(abi.encode(1)),
+            1 ether,
+            "Test penalty"
         );
         vm.warp(block.timestamp + period + 1 seconds);
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             secondNoId,
-            blockhash(block.number),
-            BOND_SIZE
+            bytes32(abi.encode(1)),
+            BOND_SIZE,
+            "Test penalty"
         );
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(secondNoId);
-        module.settleELRewardsStealingPenalty(
+        emit IGeneralPenalty.GeneralDelayedPenaltySettled(secondNoId);
+        module.settleGeneralDelayedPenalty(
             UintArr(firstNoId, secondNoId),
             UintArr(type(uint256).max, type(uint256).max)
         );
@@ -5672,47 +5705,46 @@ abstract contract ModuleSettleELRewardsStealingPenaltyAdvanced is
         assertEq(lock.until, 0);
     }
 
-    function test_settleELRewardsStealingPenalty_NoBond()
-        public
-        assertInvariants
-    {
+    function test_settleGeneralDelayedPenalty_NoBond() public assertInvariants {
         uint256 noId = createNodeOperator();
         uint256 amount = accounting.getBond(noId) + 1 ether;
 
         // penalize all current bond to make an edge case when there is no bond but a new lock is applied
         penalize(noId, amount);
 
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            amount
+            bytes32(abi.encode(1)),
+            amount,
+            "Test penalty"
         );
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(noId);
-        module.settleELRewardsStealingPenalty(
+        emit IGeneralPenalty.GeneralDelayedPenaltySettled(noId);
+        module.settleGeneralDelayedPenalty(
             UintArr(noId),
             UintArr(type(uint256).max)
         );
     }
 }
 
-abstract contract ModuleCompensateELRewardsStealingPenalty is ModuleFixtures {
-    function test_compensateELRewardsStealingPenalty() public assertInvariants {
+abstract contract ModuleCompensateGeneralDelayedPenalty is ModuleFixtures {
+    function test_compensateGeneralDelayedPenalty() public assertInvariants {
         uint256 noId = createNodeOperator();
         uint256 amount = 1 ether;
         uint256 fine = module
             .PARAMETERS_REGISTRY()
-            .getElRewardsStealingAdditionalFine(0);
-        module.reportELRewardsStealingPenalty(
+            .getGeneralDelayedPenaltyAdditionalFine(0);
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            amount
+            bytes32(abi.encode(1)),
+            amount,
+            "Test penalty"
         );
 
         uint256 nonce = module.getNonce();
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.ELRewardsStealingPenaltyCompensated(
+        emit IGeneralPenalty.GeneralDelayedPenaltyCompensated(
             noId,
             amount + fine
         );
@@ -5726,14 +5758,14 @@ abstract contract ModuleCompensateELRewardsStealingPenalty is ModuleFixtures {
         );
         vm.deal(nodeOperator, amount + fine);
         vm.prank(nodeOperator);
-        module.compensateELRewardsStealingPenalty{ value: amount + fine }(noId);
+        module.compensateGeneralDelayedPenalty{ value: amount + fine }(noId);
 
         CSBondLock.BondLock memory lock = accounting.getLockedBondInfo(noId);
         assertEq(lock.amount, 0);
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function test_compensateELRewardsStealingPenalty_Partial()
+    function test_compensateGeneralDelayedPenalty_Partial()
         public
         assertInvariants
     {
@@ -5741,17 +5773,18 @@ abstract contract ModuleCompensateELRewardsStealingPenalty is ModuleFixtures {
         uint256 amount = 1 ether;
         uint256 fine = module
             .PARAMETERS_REGISTRY()
-            .getElRewardsStealingAdditionalFine(0);
-        module.reportELRewardsStealingPenalty(
+            .getGeneralDelayedPenaltyAdditionalFine(0);
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            amount
+            bytes32(abi.encode(1)),
+            amount,
+            "Test penalty"
         );
 
         uint256 nonce = module.getNonce();
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.ELRewardsStealingPenaltyCompensated(noId, amount);
+        emit IGeneralPenalty.GeneralDelayedPenaltyCompensated(noId, amount);
 
         vm.expectCall(
             address(accounting),
@@ -5762,25 +5795,26 @@ abstract contract ModuleCompensateELRewardsStealingPenalty is ModuleFixtures {
         );
         vm.deal(nodeOperator, amount);
         vm.prank(nodeOperator);
-        module.compensateELRewardsStealingPenalty{ value: amount }(noId);
+        module.compensateGeneralDelayedPenalty{ value: amount }(noId);
 
         CSBondLock.BondLock memory lock = accounting.getLockedBondInfo(noId);
         assertEq(lock.amount, fine);
         assertEq(module.getNonce(), nonce);
     }
 
-    function test_compensateELRewardsStealingPenalty_depositableValidatorsChanged()
+    function test_compensateGeneralDelayedPenalty_depositableValidatorsChanged()
         public
     {
         uint256 noId = createNodeOperator(2);
         uint256 amount = 1 ether;
         uint256 fine = module
             .PARAMETERS_REGISTRY()
-            .getElRewardsStealingAdditionalFine(0);
-        module.reportELRewardsStealingPenalty(
+            .getGeneralDelayedPenaltyAdditionalFine(0);
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            amount
+            bytes32(abi.encode(1)),
+            amount,
+            "Test penalty"
         );
         module.obtainDepositData(1, "");
         uint256 depositableBefore = module
@@ -5789,7 +5823,7 @@ abstract contract ModuleCompensateELRewardsStealingPenalty is ModuleFixtures {
 
         vm.deal(nodeOperator, amount + fine);
         vm.prank(nodeOperator);
-        module.compensateELRewardsStealingPenalty{ value: amount + fine }(noId);
+        module.compensateGeneralDelayedPenalty{ value: amount + fine }(noId);
         uint256 depositableAfter = module
             .getNodeOperator(noId)
             .depositableValidatorsCount;
@@ -5800,19 +5834,19 @@ abstract contract ModuleCompensateELRewardsStealingPenalty is ModuleFixtures {
         _assertQueueState(module.QUEUE_LOWEST_PRIORITY(), exp);
     }
 
-    function test_compensateELRewardsStealingPenalty_RevertWhen_NoNodeOperator()
+    function test_compensateGeneralDelayedPenalty_RevertWhen_NoNodeOperator()
         public
     {
         vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
-        module.compensateELRewardsStealingPenalty{ value: 1 ether }(0);
+        module.compensateGeneralDelayedPenalty{ value: 1 ether }(0);
     }
 
-    function test_compensateELRewardsStealingPenalty_RevertWhen_NotManager()
+    function test_compensateGeneralDelayedPenalty_RevertWhen_NotManager()
         public
     {
         uint256 noId = createNodeOperator();
         vm.expectRevert(ICSModule.SenderIsNotEligible.selector);
-        module.compensateELRewardsStealingPenalty{ value: 1 ether }(noId);
+        module.compensateGeneralDelayedPenalty{ value: 1 ether }(noId);
     }
 }
 
@@ -7383,53 +7417,55 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         );
     }
 
-    function test_reportELRewardsStealingPenaltyRole() public {
+    function test_reportGeneralDelayedPenaltyRole() public {
         uint256 noId = createNodeOperator();
-        bytes32 role = module.REPORT_EL_REWARDS_STEALING_PENALTY_ROLE();
+        bytes32 role = module.REPORT_GENERAL_DELAYED_PENALTY_ROLE();
         vm.prank(admin);
         module.grantRole(role, actor);
 
         vm.prank(actor);
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            1 ether
+            bytes32(abi.encode(1)),
+            1 ether,
+            "Test penalty"
         );
     }
 
-    function test_reportELRewardsStealingPenaltyRole_revert() public {
+    function test_reportGeneralDelayedPenaltyRole_revert() public {
         uint256 noId = createNodeOperator();
-        bytes32 role = module.REPORT_EL_REWARDS_STEALING_PENALTY_ROLE();
+        bytes32 role = module.REPORT_GENERAL_DELAYED_PENALTY_ROLE();
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            1 ether
+            bytes32(abi.encode(1)),
+            1 ether,
+            "Test penalty"
         );
     }
 
-    function test_settleELRewardsStealingPenaltyRole() public {
+    function test_settleGeneralDelayedPenaltyRole() public {
         uint256 noId = createNodeOperator();
-        bytes32 role = module.SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE();
+        bytes32 role = module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE();
         vm.prank(admin);
         module.grantRole(role, actor);
 
         vm.prank(actor);
-        module.settleELRewardsStealingPenalty(
+        module.settleGeneralDelayedPenalty(
             UintArr(noId),
             UintArr(type(uint256).max)
         );
     }
 
-    function test_settleELRewardsStealingPenaltyRole_revert() public {
+    function test_settleGeneralDelayedPenaltyRole_revert() public {
         uint256 noId = createNodeOperator();
-        bytes32 role = module.SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE();
+        bytes32 role = module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE();
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        module.settleELRewardsStealingPenalty(
+        module.settleGeneralDelayedPenalty(
             UintArr(noId),
             UintArr(type(uint256).max)
         );
@@ -7590,7 +7626,7 @@ abstract contract ModuleStakingRouterAccessControl is ModuleFixtures {
     function test_stakingRouterRole_onWithdrawalCredentialsChanged_withDepositable()
         public
     {
-        uint256 noId = createNodeOperator();
+        createNodeOperator();
         bytes32 role = module.STAKING_ROUTER_ROLE();
         vm.prank(admin);
         module.grantRole(role, actor);
@@ -7767,39 +7803,41 @@ abstract contract ModuleDepositableValidatorsCount is ModuleFixtures {
         assertEq(getStakingModuleSummary().depositableValidatorsCount, 2);
     }
 
-    function test_depositableValidatorsCountChanges_OnReportStealing()
+    function test_depositableValidatorsCountChanges_OnReportGeneralDelayedPenalty()
         public
         assertInvariants
     {
         uint256 noId = createNodeOperator(7);
         module.obtainDepositData(4, "");
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            (BOND_SIZE * 3) / 2
+            bytes32(abi.encode(1)),
+            (BOND_SIZE * 3) / 2,
+            "Test penalty"
         ); // Lock bond to unbond 2 validators.
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 1);
         assertEq(getStakingModuleSummary().depositableValidatorsCount, 1);
     }
 
-    function test_depositableValidatorsCountChanges_OnReleaseStealingPenalty()
+    function test_depositableValidatorsCountChanges_OnReleaseGeneralDelayedPenalty()
         public
     {
         uint256 noId = createNodeOperator(7);
         module.obtainDepositData(4, "");
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
-        module.reportELRewardsStealingPenalty(
+        module.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            BOND_SIZE
-        ); // Lock bond to unbond 2 validators (there's stealing fine).
+            bytes32(abi.encode(1)),
+            BOND_SIZE,
+            "Test penalty"
+        ); // Lock bond to unbond 2 validators (there's additional fine).
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 1);
-        module.cancelELRewardsStealingPenalty(
+        module.cancelGeneralDelayedPenalty(
             noId,
             accounting.getLockedBondInfo(noId).amount
         );
-        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3); // Stealing fine is applied so
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
         assertEq(getStakingModuleSummary().depositableValidatorsCount, 3);
     }
 

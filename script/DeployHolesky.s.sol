@@ -88,11 +88,11 @@ contract DeployHolesky is DeployBase {
         );
         config.moduleType = "community-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
         config
-            .elRewardsStealingReporter = 0xc4DAB3a3ef68C6DFd8614a870D64D475bA44F164; // Dev team EOA
+            .generalDelayedPenaltyReporter = 0xc4DAB3a3ef68C6DFd8614a870D64D475bA44F164; // Dev team EOA
 
         // CSParameters
         config.defaultKeyRemovalCharge = 0.02 ether;
-        config.defaultElRewardsStealingAdditionalFine = 0.1 ether;
+        config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
         config.defaultKeysLimit = type(uint256).max;
         config.defaultAvgPerfLeewayBP = 300;
         config.defaultRewardShareBP = 5834; // 58.34% of 6% = 3.5% of the total
@@ -123,7 +123,7 @@ contract DeployHolesky is DeployBase {
         // Parameters for Identified Community Staker type
         config.identifiedCommunityStakersGateKeyRemovalCharge = 0.01 ether;
         config
-            .identifiedCommunityStakersGateELRewardsStealingAdditionalFine = 0.05 ether;
+            .identifiedCommunityStakersGateGeneralDelayedPenaltyAdditionalFine = 0.05 ether;
         config.identifiedCommunityStakersGateKeysLimit = type(uint248).max;
         config.identifiedCommunityStakersGateAvgPerfLeewayData.push([1, 500]);
         config.identifiedCommunityStakersGateAvgPerfLeewayData.push([151, 300]);

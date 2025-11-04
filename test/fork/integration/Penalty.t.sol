@@ -58,14 +58,8 @@ contract PenaltyIntegrationTest is
 
         vm.startPrank(csm.getRoleMember(csm.DEFAULT_ADMIN_ROLE(), 0));
         csm.grantRole(csm.DEFAULT_ADMIN_ROLE(), address(this));
-        csm.grantRole(
-            csm.REPORT_EL_REWARDS_STEALING_PENALTY_ROLE(),
-            address(this)
-        );
-        csm.grantRole(
-            csm.SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE(),
-            address(this)
-        );
+        csm.grantRole(csm.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), address(this));
+        csm.grantRole(csm.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(), address(this));
         vm.stopPrank();
 
         handleStakingLimit();
@@ -96,26 +90,29 @@ contract PenaltyIntegrationTest is
         });
     }
 
-    function test_elRewardsStealingPenalty() public assertInvariants {
+    function test_generalDelayedPenalty() public assertInvariants {
         uint256 amount = 1 ether;
 
         uint256 amountShares = lido.getSharesByPooledEth(amount);
 
         (uint256 bondBefore, ) = accounting.getBondSummaryShares(defaultNoId);
 
-        csm.reportELRewardsStealingPenalty(
+        csm.reportGeneralDelayedPenalty(
             defaultNoId,
-            blockhash(block.number),
+            bytes32(abi.encode(1)),
             amount -
-                csm.PARAMETERS_REGISTRY().getElRewardsStealingAdditionalFine(
-                    accounting.getBondCurveId(defaultNoId)
-                )
+                csm
+                    .PARAMETERS_REGISTRY()
+                    .getGeneralDelayedPenaltyAdditionalFine(
+                        accounting.getBondCurveId(defaultNoId)
+                    ),
+            "Test penalty"
         );
 
         uint256[] memory idsToSettle = new uint256[](1);
         idsToSettle[0] = defaultNoId;
 
-        csm.settleELRewardsStealingPenalty(
+        csm.settleGeneralDelayedPenalty(
             idsToSettle,
             UintArr(type(uint256).max)
         );
