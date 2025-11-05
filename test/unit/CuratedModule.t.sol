@@ -71,11 +71,11 @@ contract CuratedCommon is ModuleFixtures {
         module.grantRole(module.STAKING_ROUTER_ROLE(), address(this));
         module.grantRole(module.STAKING_ROUTER_ROLE(), stakingRouter);
         module.grantRole(
-            module.SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE(),
+            module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(),
             address(this)
         );
         module.grantRole(
-            module.REPORT_EL_REWARDS_STEALING_PENALTY_ROLE(),
+            module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
             address(this)
         );
         module.grantRole(module.VERIFIER_ROLE(), address(this));
@@ -355,25 +355,25 @@ contract CuratedUpdateTargetValidatorsLimits is
 
 //contract CuratedUpdateExitedValidatorsCount is ModuleUpdateExitedValidatorsCount, CuratedCommon {}
 //contract CuratedUnsafeUpdateValidatorsCount is ModuleUnsafeUpdateValidatorsCount, CuratedCommon {}
-//contract CuratedReportELRewardsStealingPenalty is ModuleReportELRewardsStealingPenalty, CuratedCommon {}
-contract CuratedCancelELRewardsStealingPenalty is
-    ModuleCancelELRewardsStealingPenalty,
+//contract CuratedReportGeneralDelayedPenalty is ModuleReportGeneralDelayedPenalty, CuratedCommon {}
+contract CuratedCancelGeneralDelayedPenalty is
+    ModuleCancelGeneralDelayedPenalty,
     CuratedCommon
 {
 
 }
 
-contract CuratedSettleELRewardsStealingPenaltyBasic is
-    ModuleSettleELRewardsStealingPenaltyBasic,
+contract CuratedSettleGeneralDelayedPenaltyBasic is
+    ModuleSettleGeneralDelayedPenaltyBasic,
     CuratedCommon
 {}
 
-contract CuratedSettleELRewardsStealingPenaltyAdvanced is
-    ModuleSettleELRewardsStealingPenaltyAdvanced,
+contract CuratedSettleGeneralDelayedPenaltyAdvanced is
+    ModuleSettleGeneralDelayedPenaltyAdvanced,
     CuratedCommon
 {}
 
-//contract CuratedCompensateELRewardsStealingPenalty is ModuleCompensateELRewardsStealingPenalty, CuratedCommon {}
+//contract CuratedCompensateGeneralDelayedPenalty is ModuleCompensateGeneralDelayedPenalty, CuratedCommon {}
 //contract CuratedSubmitWithdrawals is ModuleSubmitWithdrawals, CuratedCommon {}
 //contract CuratedGetStakingModuleSummary is ModuleGetStakingModuleSummary, CuratedCommon {}
 //contract CuratedAccessControl is ModuleAccessControl, CuratedCommonNoRoles {}

@@ -20,7 +20,7 @@ contract NodeOperators is
     modifier broadcastPenaltyReporter() {
         _setUp();
         address penaltyReporter = csm.getRoleMember(
-            csm.REPORT_EL_REWARDS_STEALING_PENALTY_ROLE(),
+            csm.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
             0
         );
         _setBalance(penaltyReporter);
@@ -32,7 +32,7 @@ contract NodeOperators is
     modifier broadcastPenaltySettler() {
         _setUp();
         address penaltySettler = csm.getRoleMember(
-            csm.SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE(),
+            csm.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(),
             0
         );
         _setBalance(penaltySettler);
@@ -230,16 +230,17 @@ contract NodeOperators is
         assertEq(no.targetLimitMode, targetLimitMode);
     }
 
-    function reportStealing(
+    function reportGeneralDelayedPenalty(
         uint256 noId,
         uint256 amount
     ) external broadcastPenaltyReporter {
         uint256 lockedBefore = accounting.getActualLockedBond(noId);
 
-        csm.reportELRewardsStealingPenalty(
+        csm.reportGeneralDelayedPenalty(
             noId,
-            blockhash(block.number),
-            amount
+            bytes32(abi.encode(1)),
+            amount,
+            "Test penalty"
         );
 
         uint256 lockedAfter = accounting.getActualLockedBond(noId);
@@ -247,41 +248,45 @@ contract NodeOperators is
             lockedAfter,
             lockedBefore +
                 amount +
-                csm.PARAMETERS_REGISTRY().getElRewardsStealingAdditionalFine(
-                    accounting.getBondCurveId(noId)
-                )
+                csm
+                    .PARAMETERS_REGISTRY()
+                    .getGeneralDelayedPenaltyAdditionalFine(
+                        accounting.getBondCurveId(noId)
+                    )
         );
     }
 
-    function cancelStealing(
+    function cancelGeneralDelayedPenalty(
         uint256 noId,
         uint256 amount
     ) external broadcastPenaltyReporter {
         uint256 lockedBefore = accounting.getActualLockedBond(noId);
 
-        csm.cancelELRewardsStealingPenalty(noId, amount);
+        csm.cancelGeneralDelayedPenalty(noId, amount);
 
         uint256 lockedAfter = accounting.getActualLockedBond(noId);
         assertEq(lockedAfter, lockedBefore - amount);
     }
 
-    function settleStealing(uint256 noId) external broadcastPenaltySettler {
+    function settleGeneralDelayedPenalty(
+        uint256 noId
+    ) external broadcastPenaltySettler {
         uint256[] memory noIds = new uint256[](1);
         noIds[0] = noId;
         uint256[] memory maxAmounts = new uint256[](1);
         maxAmounts[0] = type(uint256).max; // Set to max to settle
-        csm.settleELRewardsStealingPenalty(noIds, maxAmounts);
+        csm.settleGeneralDelayedPenalty(noIds, maxAmounts);
 
         assertEq(accounting.getActualLockedBond(noId), 0);
     }
 
-    function compensateStealing(
+    function compensateGeneralDelayedPenalty(
         uint256 noId,
         uint256 amount
     ) external broadcastStranger {
         uint256 lockedBefore = accounting.getActualLockedBond(noId);
 
-        csm.compensateELRewardsStealingPenalty{ value: amount }(noId);
+        csm.compensateGeneralDelayedPenalty{ value: amount }(noId);
 
         assertEq(accounting.getActualLockedBond(noId), lockedBefore - amount);
     }

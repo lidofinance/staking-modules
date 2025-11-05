@@ -37,7 +37,7 @@ interface ICSParametersRegistry {
 
     struct InitializationData {
         uint256 defaultKeyRemovalCharge;
-        uint256 defaultElRewardsStealingAdditionalFine;
+        uint256 defaultGeneralDelayedPenaltyAdditionalFine;
         uint256 defaultKeysLimit;
         uint256 defaultRewardShare;
         uint256 defaultPerformanceLeeway;
@@ -55,7 +55,7 @@ interface ICSParametersRegistry {
     }
 
     event DefaultKeyRemovalChargeSet(uint256 value);
-    event DefaultElRewardsStealingAdditionalFineSet(uint256 value);
+    event DefaultGeneralDelayedPenaltyAdditionalFineSet(uint256 value);
     event DefaultKeysLimitSet(uint256 value);
     event DefaultRewardShareSet(uint256 value);
     event DefaultPerformanceLeewaySet(uint256 value);
@@ -75,7 +75,7 @@ interface ICSParametersRegistry {
         uint256 indexed curveId,
         uint256 keyRemovalCharge
     );
-    event ElRewardsStealingAdditionalFineSet(
+    event GeneralDelayedPenaltyAdditionalFineSet(
         uint256 indexed curveId,
         uint256 fine
     );
@@ -110,7 +110,7 @@ interface ICSParametersRegistry {
     event MaxWithdrawalRequestFeeSet(uint256 indexed curveId, uint256 fee);
 
     event KeyRemovalChargeUnset(uint256 indexed curveId);
-    event ElRewardsStealingAdditionalFineUnset(uint256 indexed curveId);
+    event GeneralDelayedPenaltyAdditionalFineUnset(uint256 indexed curveId);
     event KeysLimitUnset(uint256 indexed curveId);
     event QueueConfigUnset(uint256 indexed curveId);
     event RewardShareDataUnset(uint256 indexed curveId);
@@ -133,7 +133,7 @@ interface ICSParametersRegistry {
     error InvalidAllowedExitDelay();
     error ZeroQueueLowestPriority();
 
-    /// @notice Role to manage general penalties and charges parameters: key removal charge and EL rewards stealing additional fine
+    /// @notice Role to manage general penalties and charges parameters: key removal charge and general delayed penalty additional fine
     function MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE()
         external
         view
@@ -166,8 +166,8 @@ interface ICSParametersRegistry {
     /// @notice Get default value for the key removal charge. This parameter is not used in Curated Module
     function defaultKeyRemovalCharge() external returns (uint256);
 
-    /// @notice Get default value for the EL rewards stealing additional fine
-    function defaultElRewardsStealingAdditionalFine()
+    /// @notice Get default value for the general delayed penalty additional fine
+    function defaultGeneralDelayedPenaltyAdditionalFine()
         external
         returns (uint256);
 
@@ -222,9 +222,11 @@ interface ICSParametersRegistry {
     /// @param keyRemovalCharge value to be set as default for the key removal charge
     function setDefaultKeyRemovalCharge(uint256 keyRemovalCharge) external;
 
-    /// @notice Set default value for the EL rewards stealing additional fine. Default value is used if a specific value is not set for the curveId
-    /// @param fine value to be set as default for the EL rewards stealing additional fine
-    function setDefaultElRewardsStealingAdditionalFine(uint256 fine) external;
+    /// @notice Set default value for the general delayed penalty additional fine. Default value is used if a specific value is not set for the curveId
+    /// @param fine value to be set as default for the general delayed penalty additional fine
+    function setDefaultGeneralDelayedPenaltyAdditionalFine(
+        uint256 fine
+    ) external;
 
     /// @notice Set default value for the keys limit. Default value is used if a specific value is not set for the curveId
     /// @param limit value to be set as default for the keys limit
@@ -302,23 +304,23 @@ interface ICSParametersRegistry {
         uint256 curveId
     ) external view returns (uint256 keyRemovalCharge);
 
-    /// @notice Set EL rewards stealing additional fine for the curveId.
-    /// @param curveId Curve Id to associate EL rewards stealing additional fine limit with
-    /// @param fine EL rewards stealing additional fine
-    function setElRewardsStealingAdditionalFine(
+    /// @notice Set general delayed penalty additional fine for the curveId.
+    /// @param curveId Curve Id to associate general delayed penalty additional fine limit with
+    /// @param fine General delayed penalty additional fine
+    function setGeneralDelayedPenaltyAdditionalFine(
         uint256 curveId,
         uint256 fine
     ) external;
 
-    /// @notice Unset EL rewards stealing additional fine for the curveId
-    /// @param curveId Curve Id to unset custom EL rewards stealing additional fine for
-    function unsetElRewardsStealingAdditionalFine(uint256 curveId) external;
+    /// @notice Unset general delayed penalty additional fine for the curveId
+    /// @param curveId Curve Id to unset custom general delayed penalty additional fine for
+    function unsetGeneralDelayedPenaltyAdditionalFine(uint256 curveId) external;
 
-    /// @notice Get EL rewards stealing additional fine by the curveId. Additional fine is added to the EL rewards stealing penalty by CSM
-    /// @dev `defaultElRewardsStealingAdditionalFine` is returned if the value is not set for the given curveId.
-    /// @param curveId Curve Id to get EL rewards stealing additional fine for
-    /// @return fine EL rewards stealing additional fine
-    function getElRewardsStealingAdditionalFine(
+    /// @notice Get general delayed penalty additional fine by the curveId. Additional fine is added to the general delayed penalty by CSM
+    /// @dev `defaultGeneralDelayedPenaltyAdditionalFine` is returned if the value is not set for the given curveId.
+    /// @param curveId Curve Id to get general delayed penalty additional fine for
+    /// @return fine General delayed penalty additional fine
+    function getGeneralDelayedPenaltyAdditionalFine(
         uint256 curveId
     ) external view returns (uint256 fine);
 

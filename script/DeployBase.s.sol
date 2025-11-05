@@ -72,11 +72,11 @@ struct DeployParams {
     // Module
     uint256 stakingModuleId;
     bytes32 moduleType;
-    address elRewardsStealingReporter;
+    address generalDelayedPenaltyReporter;
     // CSParameters
     uint256 queueLowestPriority;
     uint256 defaultKeyRemovalCharge;
-    uint256 defaultElRewardsStealingAdditionalFine;
+    uint256 defaultGeneralDelayedPenaltyAdditionalFine;
     uint256 defaultKeysLimit;
     uint256 defaultAvgPerfLeewayBP;
     uint256 defaultRewardShareBP;
@@ -99,7 +99,7 @@ struct DeployParams {
     uint256[2][] identifiedCommunityStakersGateBondCurve;
     // Parameters for Identified Community Staker type
     uint256 identifiedCommunityStakersGateKeyRemovalCharge;
-    uint256 identifiedCommunityStakersGateELRewardsStealingAdditionalFine;
+    uint256 identifiedCommunityStakersGateGeneralDelayedPenaltyAdditionalFine;
     uint256 identifiedCommunityStakersGateKeysLimit;
     uint256[2][] identifiedCommunityStakersGateAvgPerfLeewayData;
     uint256[2][] identifiedCommunityStakersGateRewardShareData;
@@ -251,8 +251,8 @@ abstract contract DeployBase is Script {
                 admin: deployer,
                 data: ICSParametersRegistry.InitializationData({
                     defaultKeyRemovalCharge: config.defaultKeyRemovalCharge,
-                    defaultElRewardsStealingAdditionalFine: config
-                        .defaultElRewardsStealingAdditionalFine,
+                    defaultGeneralDelayedPenaltyAdditionalFine: config
+                        .defaultGeneralDelayedPenaltyAdditionalFine,
                     defaultKeysLimit: config.defaultKeysLimit,
                     defaultRewardShare: config.defaultRewardShareBP,
                     defaultPerformanceLeeway: config.defaultAvgPerfLeewayBP,
@@ -411,10 +411,10 @@ abstract contract DeployBase is Script {
                 identifiedCommunityStakersGateBondCurveId,
                 config.identifiedCommunityStakersGateKeyRemovalCharge
             );
-            parametersRegistry.setElRewardsStealingAdditionalFine(
+            parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(
                 identifiedCommunityStakersGateBondCurveId,
                 config
-                    .identifiedCommunityStakersGateELRewardsStealingAdditionalFine
+                    .identifiedCommunityStakersGateGeneralDelayedPenaltyAdditionalFine
             );
             parametersRegistry.setKeysLimit(
                 identifiedCommunityStakersGateBondCurveId,
@@ -571,11 +571,11 @@ abstract contract DeployBase is Script {
             );
             csm.grantRole(csm.CREATE_NODE_OPERATOR_ROLE(), address(vettedGate));
             csm.grantRole(
-                csm.REPORT_EL_REWARDS_STEALING_PENALTY_ROLE(),
-                config.elRewardsStealingReporter
+                csm.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
+                config.generalDelayedPenaltyReporter
             );
             csm.grantRole(
-                csm.SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE(),
+                csm.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(),
                 config.easyTrackEVMScriptExecutor
             );
 

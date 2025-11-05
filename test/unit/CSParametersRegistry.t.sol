@@ -31,7 +31,7 @@ contract CSParametersRegistryBaseTest is Test, Utilities, Fixtures {
 
         defaultInitData = ICSParametersRegistry.InitializationData({
             defaultKeyRemovalCharge: 0.05 ether,
-            defaultElRewardsStealingAdditionalFine: 0.1 ether,
+            defaultGeneralDelayedPenaltyAdditionalFine: 0.1 ether,
             defaultKeysLimit: 100_000,
             defaultRewardShare: 8000,
             defaultPerformanceLeeway: 500,
@@ -69,9 +69,10 @@ contract CSParametersRegistryInitTest is CSParametersRegistryBaseTest {
             defaultInitData.defaultKeyRemovalCharge
         );
         vm.expectEmit(address(parametersRegistry));
-        emit ICSParametersRegistry.DefaultElRewardsStealingAdditionalFineSet(
-            defaultInitData.defaultElRewardsStealingAdditionalFine
-        );
+        emit ICSParametersRegistry
+            .DefaultGeneralDelayedPenaltyAdditionalFineSet(
+                defaultInitData.defaultGeneralDelayedPenaltyAdditionalFine
+            );
         vm.expectEmit(address(parametersRegistry));
         emit ICSParametersRegistry.DefaultKeysLimitSet(
             defaultInitData.defaultKeysLimit
@@ -130,8 +131,8 @@ contract CSParametersRegistryInitTest is CSParametersRegistryBaseTest {
             defaultInitData.defaultKeyRemovalCharge
         );
         assertEq(
-            parametersRegistry.defaultElRewardsStealingAdditionalFine(),
-            defaultInitData.defaultElRewardsStealingAdditionalFine
+            parametersRegistry.defaultGeneralDelayedPenaltyAdditionalFine(),
+            defaultInitData.defaultGeneralDelayedPenaltyAdditionalFine
         );
         assertEq(
             parametersRegistry.defaultKeysLimit(),
@@ -977,7 +978,7 @@ contract CSParametersRegistryKeyRemovalChargeTest is
     }
 }
 
-contract CSParametersRegistryElRewardsStealingAdditionalFineTest is
+contract CSParametersRegistryGeneralDelayedPenaltyAdditionalFineTest is
     CSParametersRegistryBaseTestInitialized,
     ParametersTest
 {
@@ -1006,7 +1007,7 @@ contract CSParametersRegistryElRewardsStealingAdditionalFineTest is
             .MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
-        parametersRegistry.setDefaultElRewardsStealingAdditionalFine(fine);
+        parametersRegistry.setDefaultGeneralDelayedPenaltyAdditionalFine(fine);
     }
 
     function test_set() public override {
@@ -1025,7 +1026,10 @@ contract CSParametersRegistryElRewardsStealingAdditionalFineTest is
             .MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
-        parametersRegistry.setElRewardsStealingAdditionalFine(curveId, fine);
+        parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(
+            curveId,
+            fine
+        );
     }
 
     function test_unset() public override {
@@ -1043,7 +1047,7 @@ contract CSParametersRegistryElRewardsStealingAdditionalFineTest is
             .MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
-        parametersRegistry.unsetElRewardsStealingAdditionalFine(curveId);
+        parametersRegistry.unsetGeneralDelayedPenaltyAdditionalFine(curveId);
     }
 
     function test_get_usualData() public override {
@@ -1051,24 +1055,25 @@ contract CSParametersRegistryElRewardsStealingAdditionalFineTest is
         uint256 fine = 1 ether;
 
         vm.prank(admin);
-        parametersRegistry.setElRewardsStealingAdditionalFine(curveId, fine);
-
-        uint256 fineOut = parametersRegistry.getElRewardsStealingAdditionalFine(
-            curveId
+        parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(
+            curveId,
+            fine
         );
+
+        uint256 fineOut = parametersRegistry
+            .getGeneralDelayedPenaltyAdditionalFine(curveId);
 
         assertEq(fineOut, fine);
     }
 
     function test_get_defaultData() public view override {
         uint256 curveId = 10;
-        uint256 fineOut = parametersRegistry.getElRewardsStealingAdditionalFine(
-            curveId
-        );
+        uint256 fineOut = parametersRegistry
+            .getGeneralDelayedPenaltyAdditionalFine(curveId);
 
         assertEq(
             fineOut,
-            defaultInitData.defaultElRewardsStealingAdditionalFine
+            defaultInitData.defaultGeneralDelayedPenaltyAdditionalFine
         );
     }
 
@@ -1076,14 +1081,13 @@ contract CSParametersRegistryElRewardsStealingAdditionalFineTest is
         uint256 fine = 1 ether;
 
         vm.expectEmit(address(parametersRegistry));
-        emit ICSParametersRegistry.DefaultElRewardsStealingAdditionalFineSet(
-            fine
-        );
+        emit ICSParametersRegistry
+            .DefaultGeneralDelayedPenaltyAdditionalFineSet(fine);
         vm.prank(from);
-        parametersRegistry.setDefaultElRewardsStealingAdditionalFine(fine);
+        parametersRegistry.setDefaultGeneralDelayedPenaltyAdditionalFine(fine);
 
         assertEq(
-            parametersRegistry.defaultElRewardsStealingAdditionalFine(),
+            parametersRegistry.defaultGeneralDelayedPenaltyAdditionalFine(),
             fine
         );
     }
@@ -1093,12 +1097,15 @@ contract CSParametersRegistryElRewardsStealingAdditionalFineTest is
         uint256 fine = 1 ether;
 
         vm.expectEmit(address(parametersRegistry));
-        emit ICSParametersRegistry.ElRewardsStealingAdditionalFineSet(
+        emit ICSParametersRegistry.GeneralDelayedPenaltyAdditionalFineSet(
             curveId,
             fine
         );
         vm.prank(from);
-        parametersRegistry.setElRewardsStealingAdditionalFine(curveId, fine);
+        parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(
+            curveId,
+            fine
+        );
     }
 
     function _test_unset(address from) internal {
@@ -1106,24 +1113,26 @@ contract CSParametersRegistryElRewardsStealingAdditionalFineTest is
         uint256 fine = 1 ether;
 
         vm.prank(from);
-        parametersRegistry.setElRewardsStealingAdditionalFine(curveId, fine);
-
-        uint256 fineOut = parametersRegistry.getElRewardsStealingAdditionalFine(
-            curveId
+        parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(
+            curveId,
+            fine
         );
+
+        uint256 fineOut = parametersRegistry
+            .getGeneralDelayedPenaltyAdditionalFine(curveId);
 
         assertEq(fineOut, fine);
 
         vm.prank(from);
-        parametersRegistry.unsetElRewardsStealingAdditionalFine(curveId);
+        parametersRegistry.unsetGeneralDelayedPenaltyAdditionalFine(curveId);
 
-        fineOut = parametersRegistry.getElRewardsStealingAdditionalFine(
+        fineOut = parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(
             curveId
         );
 
         assertEq(
             fineOut,
-            defaultInitData.defaultElRewardsStealingAdditionalFine
+            defaultInitData.defaultGeneralDelayedPenaltyAdditionalFine
         );
     }
 }

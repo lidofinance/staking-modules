@@ -8,30 +8,34 @@ import { ICSAccounting } from "../interfaces/ICSAccounting.sol";
 /// Library for General Penalty logic
 /// @dev the only use of this to be a library is to save CSModule contract size via delegatecalls
 interface IGeneralPenalty {
-    event ELRewardsStealingPenaltyReported(
+    event GeneralDelayedPenaltyReported(
         uint256 indexed nodeOperatorId,
-        bytes32 proposedBlockHash,
-        uint256 stolenAmount
+        bytes32 indexed penaltyType,
+        uint256 amount,
+        string details
     );
-    event ELRewardsStealingPenaltyCancelled(
-        uint256 indexed nodeOperatorId,
-        uint256 amount
-    );
-    event ELRewardsStealingPenaltyCompensated(
+    event GeneralDelayedPenaltyCancelled(
         uint256 indexed nodeOperatorId,
         uint256 amount
     );
-    event ELRewardsStealingPenaltySettled(uint256 indexed nodeOperatorId);
+    event GeneralDelayedPenaltyCompensated(
+        uint256 indexed nodeOperatorId,
+        uint256 amount
+    );
+    event GeneralDelayedPenaltySettled(uint256 indexed nodeOperatorId);
+
+    error ZeroPenaltyType();
 }
 
 library GeneralPenalty {
-    function reportELRewardsStealingPenalty(
+    function reportGeneralDelayedPenalty(
         uint256 nodeOperatorId,
-        bytes32 blockHash,
-        uint256 amount
+        bytes32 penaltyType,
+        uint256 amount,
+        string calldata details
     ) external {
-        if (amount == 0) {
-            revert ICSModule.InvalidAmount();
+        if (penaltyType == bytes32(0)) {
+            revert IGeneralPenalty.ZeroPenaltyType();
         }
 
         ICSModule module = ICSModule(address(this));
@@ -40,20 +44,27 @@ library GeneralPenalty {
         uint256 curveId = accounting.getBondCurveId(nodeOperatorId);
         uint256 additionalFine = module
             .PARAMETERS_REGISTRY()
-            .getElRewardsStealingAdditionalFine(curveId);
+            .getGeneralDelayedPenaltyAdditionalFine(curveId);
 
-        accounting.lockBondETH(nodeOperatorId, amount + additionalFine);
+        uint256 totalAmount = amount + additionalFine;
 
-        emit IGeneralPenalty.ELRewardsStealingPenaltyReported(
+        if (totalAmount == 0) {
+            revert ICSModule.InvalidAmount();
+        }
+
+        accounting.lockBondETH(nodeOperatorId, totalAmount);
+
+        emit IGeneralPenalty.GeneralDelayedPenaltyReported(
             nodeOperatorId,
-            blockHash,
-            amount
+            penaltyType,
+            amount,
+            details
         );
 
         module.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
-    function cancelELRewardsStealingPenalty(
+    function cancelGeneralDelayedPenalty(
         uint256 nodeOperatorId,
         uint256 amount
     ) external {
@@ -62,7 +73,7 @@ library GeneralPenalty {
 
         accounting.releaseLockedBondETH(nodeOperatorId, amount);
 
-        emit IGeneralPenalty.ELRewardsStealingPenaltyCancelled(
+        emit IGeneralPenalty.GeneralDelayedPenaltyCancelled(
             nodeOperatorId,
             amount
         );
@@ -70,7 +81,7 @@ library GeneralPenalty {
         module.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
-    function settleELRewardsStealingPenalty(
+    function settleGeneralDelayedPenalty(
         uint256 nodeOperatorId,
         uint256 maxAmount
     ) external returns (bool) {
@@ -81,20 +92,18 @@ library GeneralPenalty {
         }
 
         accounting.settleLockedBondETH(nodeOperatorId);
-        emit IGeneralPenalty.ELRewardsStealingPenaltySettled(nodeOperatorId);
+        emit IGeneralPenalty.GeneralDelayedPenaltySettled(nodeOperatorId);
 
         return true;
     }
 
-    function compensateELRewardsStealingPenalty(
-        uint256 nodeOperatorId
-    ) external {
+    function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external {
         ICSModule module = ICSModule(address(this));
         ICSAccounting accounting = module.ACCOUNTING();
 
         accounting.compensateLockedBondETH{ value: msg.value }(nodeOperatorId);
 
-        emit IGeneralPenalty.ELRewardsStealingPenaltyCompensated(
+        emit IGeneralPenalty.GeneralDelayedPenaltyCompensated(
             nodeOperatorId,
             msg.value
         );

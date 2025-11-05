@@ -68,11 +68,11 @@ contract DeployMainnet is DeployBase {
         );
         config.moduleType = "community-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
         config
-            .elRewardsStealingReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
+            .generalDelayedPenaltyReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
 
         // CSParameters
         config.defaultKeyRemovalCharge = 0.02 ether;
-        config.defaultElRewardsStealingAdditionalFine = 0.1 ether;
+        config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
         config.defaultKeysLimit = type(uint256).max;
         config.defaultAvgPerfLeewayBP = 300;
         config.defaultRewardShareBP = 5834; // 58.34% of 6% = 3.5% of the total
@@ -104,7 +104,7 @@ contract DeployMainnet is DeployBase {
         // Parameters for Identified Community Staker type
         config.identifiedCommunityStakersGateKeyRemovalCharge = 0.01 ether;
         config
-            .identifiedCommunityStakersGateELRewardsStealingAdditionalFine = 0.05 ether;
+            .identifiedCommunityStakersGateGeneralDelayedPenaltyAdditionalFine = 0.05 ether;
         config.identifiedCommunityStakersGateKeysLimit = type(uint248).max;
         config.identifiedCommunityStakersGateAvgPerfLeewayData.push([1, 500]);
         config.identifiedCommunityStakersGateAvgPerfLeewayData.push([151, 300]);

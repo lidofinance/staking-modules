@@ -70,11 +70,11 @@ contract DeployHoodi is DeployBase {
         );
         config.moduleType = "community-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
         config
-            .elRewardsStealingReporter = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
+            .generalDelayedPenaltyReporter = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
 
         // CSParameters
         config.defaultKeyRemovalCharge = 0.02 ether;
-        config.defaultElRewardsStealingAdditionalFine = 0.1 ether;
+        config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
         config.defaultKeysLimit = type(uint256).max;
         config.defaultAvgPerfLeewayBP = 300;
         config.defaultRewardShareBP = 5834; // 58.34% of 6% = 3.5% of the total
@@ -106,7 +106,7 @@ contract DeployHoodi is DeployBase {
         // Parameters for Identified Community Staker type
         config.identifiedCommunityStakersGateKeyRemovalCharge = 0.01 ether;
         config
-            .identifiedCommunityStakersGateELRewardsStealingAdditionalFine = 0.05 ether;
+            .identifiedCommunityStakersGateGeneralDelayedPenaltyAdditionalFine = 0.05 ether;
         config.identifiedCommunityStakersGateKeysLimit = type(uint248).max;
         config.identifiedCommunityStakersGateAvgPerfLeewayData.push([1, 500]);
         config.identifiedCommunityStakersGateAvgPerfLeewayData.push([151, 300]);

@@ -65,13 +65,13 @@ contract DeployLocalDevNet is DeployBase {
         // Module
         config.stakingModuleId = vm.envUint("CSM_STAKING_MODULE_ID");
         config.moduleType = "community-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
-        config.elRewardsStealingReporter = vm.envAddress(
+        config.generalDelayedPenaltyReporter = vm.envAddress(
             "CSM_FIRST_ADMIN_ADDRESS"
         ); // Dev team EOA
 
         // CSParameters
         config.defaultKeyRemovalCharge = 0.05 ether;
-        config.defaultElRewardsStealingAdditionalFine = 0.1 ether;
+        config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
         config.defaultKeysLimit = type(uint256).max;
         config.defaultAvgPerfLeewayBP = 450;
         config.defaultRewardShareBP = 10000;
@@ -108,7 +108,7 @@ contract DeployLocalDevNet is DeployBase {
         // TODO: Set proper values bellow
         config.identifiedCommunityStakersGateKeyRemovalCharge = 0.01 ether;
         config
-            .identifiedCommunityStakersGateELRewardsStealingAdditionalFine = 0.05 ether;
+            .identifiedCommunityStakersGateGeneralDelayedPenaltyAdditionalFine = 0.05 ether;
         config.identifiedCommunityStakersGateKeysLimit = type(uint248).max;
         config.identifiedCommunityStakersGateAvgPerfLeewayData.push([1, 500]);
         config.identifiedCommunityStakersGateRewardShareData.push([1, 10000]);
