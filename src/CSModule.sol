@@ -39,10 +39,12 @@ contract CSModule is
     bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
     bytes32 public constant STAKING_ROUTER_ROLE =
         keccak256("STAKING_ROUTER_ROLE");
-    bytes32 public constant REPORT_EL_REWARDS_STEALING_PENALTY_ROLE =
-        keccak256("REPORT_EL_REWARDS_STEALING_PENALTY_ROLE");
-    bytes32 public constant SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE =
-        keccak256("SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE");
+    // TODO: Revoke old role (REPORT_GENERAL_DELAYED_PENALTY_ROLE) and grant new role in the upgrade vote
+    bytes32 public constant REPORT_GENERAL_DELAYED_PENALTY_ROLE =
+        keccak256("REPORT_GENERAL_DELAYED_PENALTY_ROLE");
+    // TODO: Revoke old role (SETTLE_GENERAL_DELAYED_PENALTY_ROLE) and grant new role in the upgrade vote
+    bytes32 public constant SETTLE_GENERAL_DELAYED_PENALTY_ROLE =
+        keccak256("SETTLE_GENERAL_DELAYED_PENALTY_ROLE");
     bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
     bytes32 public constant SUBMIT_WITHDRAWALS_ROLE =
         keccak256("SUBMIT_WITHDRAWALS_ROLE");
@@ -575,33 +577,35 @@ contract CSModule is
     }
 
     /// @inheritdoc ICSModule
-    function reportELRewardsStealingPenalty(
+    function reportGeneralDelayedPenalty(
         uint256 nodeOperatorId,
-        bytes32 blockHash,
-        uint256 amount
-    ) external onlyRole(REPORT_EL_REWARDS_STEALING_PENALTY_ROLE) {
+        bytes32 penaltyType,
+        uint256 amount,
+        string calldata details
+    ) external onlyRole(REPORT_GENERAL_DELAYED_PENALTY_ROLE) {
         _onlyExistingNodeOperator(nodeOperatorId);
-        GeneralPenalty.reportELRewardsStealingPenalty(
+        GeneralPenalty.reportGeneralDelayedPenalty(
             nodeOperatorId,
-            blockHash,
-            amount
+            penaltyType,
+            amount,
+            details
         );
     }
 
     /// @inheritdoc ICSModule
-    function cancelELRewardsStealingPenalty(
+    function cancelGeneralDelayedPenalty(
         uint256 nodeOperatorId,
         uint256 amount
-    ) external onlyRole(REPORT_EL_REWARDS_STEALING_PENALTY_ROLE) {
+    ) external onlyRole(REPORT_GENERAL_DELAYED_PENALTY_ROLE) {
         _onlyExistingNodeOperator(nodeOperatorId);
-        GeneralPenalty.cancelELRewardsStealingPenalty(nodeOperatorId, amount);
+        GeneralPenalty.cancelGeneralDelayedPenalty(nodeOperatorId, amount);
     }
 
     /// @inheritdoc ICSModule
-    function settleELRewardsStealingPenalty(
+    function settleGeneralDelayedPenalty(
         uint256[] calldata nodeOperatorIds,
         uint256[] calldata maxAmounts
-    ) external onlyRole(SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE) {
+    ) external onlyRole(SETTLE_GENERAL_DELAYED_PENALTY_ROLE) {
         if (nodeOperatorIds.length != maxAmounts.length) {
             revert InvalidInput();
         }
@@ -610,7 +614,7 @@ contract CSModule is
             uint256 nodeOperatorId = nodeOperatorIds[i];
             _onlyExistingNodeOperator(nodeOperatorId);
 
-            bool settled = GeneralPenalty.settleELRewardsStealingPenalty(
+            bool settled = GeneralPenalty.settleGeneralDelayedPenalty(
                 nodeOperatorId,
                 maxAmounts[i]
             );
@@ -628,11 +632,11 @@ contract CSModule is
     }
 
     /// @inheritdoc ICSModule
-    function compensateELRewardsStealingPenalty(
+    function compensateGeneralDelayedPenalty(
         uint256 nodeOperatorId
     ) external payable {
         _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
-        GeneralPenalty.compensateELRewardsStealingPenalty(nodeOperatorId);
+        GeneralPenalty.compensateGeneralDelayedPenalty(nodeOperatorId);
     }
 
     /// @inheritdoc ICSModule
@@ -825,6 +829,7 @@ contract CSModule is
     ///      withdrawal credentials.
     function onWithdrawalCredentialsChanged()
         external
+        view
         onlyRole(STAKING_ROUTER_ROLE)
     {
         if (_depositableValidatorsCount > 0) {

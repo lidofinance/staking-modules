@@ -65,11 +65,11 @@ contract CSMCommon is ModuleFixtures {
         module.grantRole(module.STAKING_ROUTER_ROLE(), address(this));
         module.grantRole(module.STAKING_ROUTER_ROLE(), stakingRouter);
         module.grantRole(
-            module.SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE(),
+            module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(),
             address(this)
         );
         module.grantRole(
-            module.REPORT_EL_REWARDS_STEALING_PENALTY_ROLE(),
+            module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
             address(this)
         );
         module.grantRole(module.VERIFIER_ROLE(), address(this));
@@ -358,28 +358,28 @@ contract CSMUnsafeUpdateValidatorsCount is
     CSMCommon
 {}
 
-contract CSMReportELRewardsStealingPenalty is
-    ModuleReportELRewardsStealingPenalty,
+contract CSMReportGeneralDelayedPenalty is
+    ModuleReportGeneralDelayedPenalty,
     CSMCommon
 {}
 
-contract CSMCancelELRewardsStealingPenalty is
-    ModuleCancelELRewardsStealingPenalty,
+contract CSMCancelGeneralDelayedPenalty is
+    ModuleCancelGeneralDelayedPenalty,
     CSMCommon
 {}
 
-contract CSMSettleELRewardsStealingPenaltyBasic is
-    ModuleSettleELRewardsStealingPenaltyBasic,
+contract CSMSettleGeneralDelayedPenaltyBasic is
+    ModuleSettleGeneralDelayedPenaltyBasic,
     CSMCommon
 {}
 
-contract CSMSettleELRewardsStealingPenaltyAdvanced is
-    ModuleSettleELRewardsStealingPenaltyAdvanced,
+contract CSMSettleGeneralDelayedPenaltyAdvanced is
+    ModuleSettleGeneralDelayedPenaltyAdvanced,
     CSMCommon
 {}
 
-contract CSMCompensateELRewardsStealingPenalty is
-    ModuleCompensateELRewardsStealingPenalty,
+contract CSMCompensateGeneralDelayedPenalty is
+    ModuleCompensateGeneralDelayedPenalty,
     CSMCommon
 {}
 

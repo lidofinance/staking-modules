@@ -69,8 +69,8 @@ abstract contract DeployImplementationsBase is DeployBase {
                 admin: deployer,
                 data: ICSParametersRegistry.InitializationData({
                     defaultKeyRemovalCharge: config.defaultKeyRemovalCharge,
-                    defaultElRewardsStealingAdditionalFine: config
-                        .defaultElRewardsStealingAdditionalFine,
+                    defaultGeneralDelayedPenaltyAdditionalFine: config
+                        .defaultGeneralDelayedPenaltyAdditionalFine,
                     defaultKeysLimit: config.defaultKeysLimit,
                     defaultRewardShare: config.defaultRewardShareBP,
                     defaultPerformanceLeeway: config.defaultAvgPerfLeewayBP,
@@ -117,10 +117,10 @@ abstract contract DeployImplementationsBase is DeployBase {
                 identifiedCommunityStakersGateBondCurveId,
                 config.identifiedCommunityStakersGateKeyRemovalCharge
             );
-            parametersRegistry.setElRewardsStealingAdditionalFine(
+            parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(
                 identifiedCommunityStakersGateBondCurveId,
                 config
-                    .identifiedCommunityStakersGateELRewardsStealingAdditionalFine
+                    .identifiedCommunityStakersGateGeneralDelayedPenaltyAdditionalFine
             );
             parametersRegistry.setKeysLimit(
                 identifiedCommunityStakersGateBondCurveId,

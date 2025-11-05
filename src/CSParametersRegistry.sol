@@ -48,9 +48,9 @@ contract CSParametersRegistry is
     uint256 public defaultKeyRemovalCharge;
     mapping(uint256 curveId => MarkedUint248) internal _keyRemovalCharges;
 
-    uint256 public defaultElRewardsStealingAdditionalFine;
+    uint256 public defaultGeneralDelayedPenaltyAdditionalFine;
     mapping(uint256 curveId => MarkedUint248)
-        internal _elRewardsStealingAdditionalFines;
+        internal _generalDelayedPenaltyAdditionalFines;
 
     uint256 public defaultKeysLimit;
     mapping(uint256 curveId => MarkedUint248) internal _keysLimits;
@@ -118,8 +118,8 @@ contract CSParametersRegistry is
         }
 
         _setDefaultKeyRemovalCharge(data.defaultKeyRemovalCharge);
-        _setDefaultElRewardsStealingAdditionalFine(
-            data.defaultElRewardsStealingAdditionalFine
+        _setDefaultGeneralDelayedPenaltyAdditionalFine(
+            data.defaultGeneralDelayedPenaltyAdditionalFine
         );
         _setDefaultKeysLimit(data.defaultKeysLimit);
         _setDefaultRewardShare(data.defaultRewardShare);
@@ -162,13 +162,13 @@ contract CSParametersRegistry is
     }
 
     /// @inheritdoc ICSParametersRegistry
-    function setDefaultElRewardsStealingAdditionalFine(
+    function setDefaultGeneralDelayedPenaltyAdditionalFine(
         uint256 fine
     )
         external
         onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE)
     {
-        _setDefaultElRewardsStealingAdditionalFine(fine);
+        _setDefaultGeneralDelayedPenaltyAdditionalFine(fine);
     }
 
     /// @inheritdoc ICSParametersRegistry
@@ -269,18 +269,18 @@ contract CSParametersRegistry is
     }
 
     /// @inheritdoc ICSParametersRegistry
-    function setElRewardsStealingAdditionalFine(
+    function setGeneralDelayedPenaltyAdditionalFine(
         uint256 curveId,
         uint256 fine
     )
         external
         onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE)
     {
-        _elRewardsStealingAdditionalFines[curveId] = MarkedUint248(
+        _generalDelayedPenaltyAdditionalFines[curveId] = MarkedUint248(
             fine.toUint248(),
             true
         );
-        emit ElRewardsStealingAdditionalFineSet(curveId, fine);
+        emit GeneralDelayedPenaltyAdditionalFineSet(curveId, fine);
     }
 
     /// @inheritdoc ICSParametersRegistry
@@ -438,14 +438,14 @@ contract CSParametersRegistry is
     }
 
     /// @inheritdoc ICSParametersRegistry
-    function unsetElRewardsStealingAdditionalFine(
+    function unsetGeneralDelayedPenaltyAdditionalFine(
         uint256 curveId
     )
         external
         onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE)
     {
-        delete _elRewardsStealingAdditionalFines[curveId];
-        emit ElRewardsStealingAdditionalFineUnset(curveId);
+        delete _generalDelayedPenaltyAdditionalFines[curveId];
+        emit GeneralDelayedPenaltyAdditionalFineUnset(curveId);
     }
 
     /// @inheritdoc ICSParametersRegistry
@@ -541,12 +541,16 @@ contract CSParametersRegistry is
     }
 
     /// @inheritdoc ICSParametersRegistry
-    function getElRewardsStealingAdditionalFine(
+    function getGeneralDelayedPenaltyAdditionalFine(
         uint256 curveId
     ) external view returns (uint256 fine) {
-        MarkedUint248 storage data = _elRewardsStealingAdditionalFines[curveId];
+        MarkedUint248 storage data = _generalDelayedPenaltyAdditionalFines[
+            curveId
+        ];
         return
-            data.isValue ? data.value : defaultElRewardsStealingAdditionalFine;
+            data.isValue
+                ? data.value
+                : defaultGeneralDelayedPenaltyAdditionalFine;
     }
 
     /// @inheritdoc ICSParametersRegistry
@@ -690,9 +694,11 @@ contract CSParametersRegistry is
         emit DefaultKeyRemovalChargeSet(keyRemovalCharge);
     }
 
-    function _setDefaultElRewardsStealingAdditionalFine(uint256 fine) internal {
-        defaultElRewardsStealingAdditionalFine = fine;
-        emit DefaultElRewardsStealingAdditionalFineSet(fine);
+    function _setDefaultGeneralDelayedPenaltyAdditionalFine(
+        uint256 fine
+    ) internal {
+        defaultGeneralDelayedPenaltyAdditionalFine = fine;
+        emit DefaultGeneralDelayedPenaltyAdditionalFineSet(fine);
     }
 
     function _setDefaultKeysLimit(uint256 limit) internal {

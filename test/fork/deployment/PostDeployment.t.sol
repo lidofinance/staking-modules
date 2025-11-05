@@ -98,27 +98,23 @@ contract CSModuleDeploymentTest is DeploymentBaseTest {
 
         assertTrue(
             csm.hasRole(
-                csm.REPORT_EL_REWARDS_STEALING_PENALTY_ROLE(),
-                address(deployParams.elRewardsStealingReporter)
+                csm.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
+                address(deployParams.generalDelayedPenaltyReporter)
             )
         );
         assertEq(
-            csm.getRoleMemberCount(
-                csm.REPORT_EL_REWARDS_STEALING_PENALTY_ROLE()
-            ),
+            csm.getRoleMemberCount(csm.REPORT_GENERAL_DELAYED_PENALTY_ROLE()),
             1
         );
 
         assertTrue(
             csm.hasRole(
-                csm.SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE(),
+                csm.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(),
                 address(deployParams.easyTrackEVMScriptExecutor)
             )
         );
         assertEq(
-            csm.getRoleMemberCount(
-                csm.SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE()
-            ),
+            csm.getRoleMemberCount(csm.SETTLE_GENERAL_DELAYED_PENALTY_ROLE()),
             1
         );
 
@@ -672,8 +668,8 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
             deployParams.defaultKeyRemovalCharge
         );
         assertEq(
-            parametersRegistry.defaultElRewardsStealingAdditionalFine(),
-            deployParams.defaultElRewardsStealingAdditionalFine
+            parametersRegistry.defaultGeneralDelayedPenaltyAdditionalFine(),
+            deployParams.defaultGeneralDelayedPenaltyAdditionalFine
         );
         assertEq(
             parametersRegistry.defaultKeysLimit(),
@@ -733,11 +729,11 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
             deployParams.identifiedCommunityStakersGateKeyRemovalCharge
         );
         assertEq(
-            parametersRegistry.getElRewardsStealingAdditionalFine(
+            parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(
                 identifiedCommunityStakersGateCurveId
             ),
             deployParams
-                .identifiedCommunityStakersGateELRewardsStealingAdditionalFine
+                .identifiedCommunityStakersGateGeneralDelayedPenaltyAdditionalFine
         );
         assertEq(
             parametersRegistry.getKeysLimit(
@@ -861,10 +857,10 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
             deployParams.defaultKeyRemovalCharge
         );
         assertEq(
-            parametersRegistry.getElRewardsStealingAdditionalFine(
+            parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(
                 legacyEaBondCurveId
             ),
-            deployParams.defaultElRewardsStealingAdditionalFine
+            deployParams.defaultGeneralDelayedPenaltyAdditionalFine
         );
         assertEq(
             parametersRegistry.getKeysLimit(legacyEaBondCurveId),
@@ -955,8 +951,8 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
             admin: deployParams.aragonAgent,
             data: ICSParametersRegistry.InitializationData({
                 defaultKeyRemovalCharge: deployParams.defaultKeyRemovalCharge,
-                defaultElRewardsStealingAdditionalFine: deployParams
-                    .defaultElRewardsStealingAdditionalFine,
+                defaultGeneralDelayedPenaltyAdditionalFine: deployParams
+                    .defaultGeneralDelayedPenaltyAdditionalFine,
                 defaultKeysLimit: deployParams.defaultKeysLimit,
                 defaultRewardShare: deployParams.defaultRewardShareBP,
                 defaultPerformanceLeeway: deployParams.defaultAvgPerfLeewayBP,
@@ -997,8 +993,8 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
             admin: deployParams.aragonAgent,
             data: ICSParametersRegistry.InitializationData({
                 defaultKeyRemovalCharge: deployParams.defaultKeyRemovalCharge,
-                defaultElRewardsStealingAdditionalFine: deployParams
-                    .defaultElRewardsStealingAdditionalFine,
+                defaultGeneralDelayedPenaltyAdditionalFine: deployParams
+                    .defaultGeneralDelayedPenaltyAdditionalFine,
                 defaultKeysLimit: deployParams.defaultKeysLimit,
                 defaultRewardShare: deployParams.defaultRewardShareBP,
                 defaultPerformanceLeeway: deployParams.defaultAvgPerfLeewayBP,
