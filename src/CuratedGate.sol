@@ -125,7 +125,7 @@ contract CuratedGate is
         OperatorInfo memory metadata = OperatorInfo({
             name: name,
             description: description,
-            ownerRestricted: false
+            ownerEditsRestricted: false
         });
 
         OPERATORS_DATA.set(MODULE_ID, nodeOperatorId, metadata);

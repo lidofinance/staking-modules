@@ -7,7 +7,7 @@ pragma solidity 0.8.24;
 struct OperatorInfo {
     string name;
     string description;
-    bool ownerRestricted;
+    bool ownerEditsRestricted;
 }
 
 /// @title Operators Data Interface
@@ -16,14 +16,14 @@ interface IOperatorsData {
     /// @param nodeOperatorId Id of the Node Operator
     /// @param name Display name
     /// @param description Long description
-    /// @param ownerRestricted Whether owner updates are restricted
+    /// @param ownerEditsRestricted Whether owner updates are restricted
     event OperatorDataSet(
         uint256 indexed moduleId,
         address module,
         uint256 indexed nodeOperatorId,
         string name,
         string description,
-        bool ownerRestricted
+        bool ownerEditsRestricted
     );
 
     /// @notice Emitted when a module address is cached
@@ -78,7 +78,7 @@ interface IOperatorsData {
     /// @notice Check if owner metadata updates are restricted
     /// @param moduleId Module id
     /// @param nodeOperatorId Node Operator id
-    function isOwnerRestricted(
+    function isOwnerEditsRestricted(
         uint256 moduleId,
         uint256 nodeOperatorId
     ) external view returns (bool);

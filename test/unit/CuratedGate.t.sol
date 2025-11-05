@@ -302,7 +302,7 @@ contract CuratedGateTest_createNodeOperator is CuratedGateTestBase {
                 OperatorInfo({
                     name: "Name",
                     description: "Description",
-                    ownerRestricted: false
+                    ownerEditsRestricted: false
                 })
             )
         );
@@ -411,7 +411,7 @@ contract CuratedGateTest_createNodeOperator_DefaultCurve is
                 OperatorInfo({
                     name: "Name",
                     description: "Description",
-                    ownerRestricted: false
+                    ownerEditsRestricted: false
                 })
             )
         );

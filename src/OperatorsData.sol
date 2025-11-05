@@ -55,7 +55,7 @@ contract OperatorsData is
         OperatorInfo storage stored = _operators[moduleId][nodeOperatorId];
         stored.name = info.name;
         stored.description = info.description;
-        stored.ownerRestricted = info.ownerRestricted;
+        stored.ownerEditsRestricted = info.ownerEditsRestricted;
 
         emit OperatorDataSet({
             moduleId: moduleId,
@@ -63,7 +63,7 @@ contract OperatorsData is
             nodeOperatorId: nodeOperatorId,
             name: info.name,
             description: info.description,
-            ownerRestricted: info.ownerRestricted
+            ownerEditsRestricted: info.ownerEditsRestricted
         });
     }
 
@@ -80,8 +80,8 @@ contract OperatorsData is
         if (owner != msg.sender) revert SenderIsNotEligible();
 
         OperatorInfo storage stored = _operators[moduleId][nodeOperatorId];
-        bool ownerRestricted = stored.ownerRestricted;
-        if (ownerRestricted) revert OwnerEditsRestricted();
+        bool ownerEditsRestricted = stored.ownerEditsRestricted;
+        if (ownerEditsRestricted) revert OwnerEditsRestricted();
 
         stored.name = name;
         stored.description = description;
@@ -92,7 +92,7 @@ contract OperatorsData is
             nodeOperatorId: nodeOperatorId,
             name: name,
             description: description,
-            ownerRestricted: ownerRestricted
+            ownerEditsRestricted: ownerEditsRestricted
         });
     }
 
@@ -107,13 +107,13 @@ contract OperatorsData is
     }
 
     /// @inheritdoc IOperatorsData
-    function isOwnerRestricted(
+    function isOwnerEditsRestricted(
         uint256 moduleId,
         uint256 nodeOperatorId
     ) external view returns (bool) {
         _moduleExists(moduleId);
 
-        return _operators[moduleId][nodeOperatorId].ownerRestricted;
+        return _operators[moduleId][nodeOperatorId].ownerEditsRestricted;
     }
 
     function _resolveModuleAddress(

@@ -4,6 +4,7 @@
 pragma solidity 0.8.24;
 
 import { Test } from "forge-std/Test.sol";
+import { Vm } from "forge-std/Vm.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 
 import { CSMMock, NodeOperatorOwnerNo165Mock } from "../helpers/mocks/CSMMock.sol";
@@ -121,14 +122,14 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
             OperatorInfo({
                 name: "Alpha",
                 description: "The first",
-                ownerRestricted: false
+                ownerEditsRestricted: false
             })
         );
 
         OperatorInfo memory info = data.get(moduleId, nodeOperatorId);
         assertEq(info.name, "Alpha");
         assertEq(info.description, "The first");
-        assertFalse(info.ownerRestricted);
+        assertFalse(info.ownerEditsRestricted);
     }
 
     function test_set_OverwriteAllowed() public {
@@ -139,7 +140,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
             OperatorInfo({
                 name: "Alpha",
                 description: "v1",
-                ownerRestricted: false
+                ownerEditsRestricted: false
             })
         );
         data.set(
@@ -148,7 +149,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
             OperatorInfo({
                 name: "Alpha2",
                 description: "v2",
-                ownerRestricted: true
+                ownerEditsRestricted: true
             })
         );
         vm.stopPrank();
@@ -156,7 +157,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
         OperatorInfo memory info = data.get(moduleId, nodeOperatorId);
         assertEq(info.name, "Alpha2");
         assertEq(info.description, "v2");
-        assertTrue(info.ownerRestricted);
+        assertTrue(info.ownerEditsRestricted);
     }
 
     function test_set_cacheModuleAddress() public {
@@ -176,14 +177,14 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
             OperatorInfo({
                 name: "Beta",
                 description: "Second",
-                ownerRestricted: true
+                ownerEditsRestricted: true
             })
         );
 
         OperatorInfo memory info = data.get(moduleId + 1, nodeOperatorId);
         assertEq(info.name, "Beta");
         assertEq(info.description, "Second");
-        assertTrue(info.ownerRestricted);
+        assertTrue(info.ownerEditsRestricted);
     }
 
     function test_set_RevertWhen_NoRole() public {
@@ -195,7 +196,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
             OperatorInfo({
                 name: "Alpha",
                 description: "Desc",
-                ownerRestricted: false
+                ownerEditsRestricted: false
             })
         );
     }
@@ -209,7 +210,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
             OperatorInfo({
                 name: "X",
                 description: "Y",
-                ownerRestricted: false
+                ownerEditsRestricted: false
             })
         );
     }
@@ -223,7 +224,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
             OperatorInfo({
                 name: "Alpha",
                 description: "Desc",
-                ownerRestricted: false
+                ownerEditsRestricted: false
             })
         );
     }
@@ -237,7 +238,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
             OperatorInfo({
                 name: "Alpha",
                 description: "Desc",
-                ownerRestricted: false
+                ownerEditsRestricted: false
             })
         );
     }
@@ -260,7 +261,7 @@ contract OperatorsDataTest_setByOwner is OperatorsDataTestBase {
         OperatorInfo memory info = data.get(moduleId, nodeOperatorId);
         assertEq(info.name, "OwnerName");
         assertEq(info.description, "OwnerDesc");
-        assertFalse(info.ownerRestricted);
+        assertFalse(info.ownerEditsRestricted);
     }
 
     function test_setByOwner_cacheModuleAddress() public {
@@ -285,7 +286,7 @@ contract OperatorsDataTest_setByOwner is OperatorsDataTestBase {
         OperatorInfo memory info = data.get(moduleId + 1, nodeOperatorId);
         assertEq(info.name, "OwnerName");
         assertEq(info.description, "OwnerDesc");
-        assertFalse(info.ownerRestricted);
+        assertFalse(info.ownerEditsRestricted);
     }
 
     function test_setByOwner_RevertWhen_Restricted() public {
@@ -302,7 +303,11 @@ contract OperatorsDataTest_setByOwner is OperatorsDataTestBase {
         data.set(
             moduleId,
             nodeOperatorId,
-            OperatorInfo({ name: "", description: "", ownerRestricted: true })
+            OperatorInfo({
+                name: "",
+                description: "",
+                ownerEditsRestricted: true
+            })
         );
 
         vm.prank(nodeOperator);
@@ -369,7 +374,7 @@ contract OperatorsDataTest_get is OperatorsDataTestBase {
         OperatorInfo memory info = data.get(moduleId, nodeOperatorId);
         assertEq(info.name, "");
         assertEq(info.description, "");
-        assertFalse(info.ownerRestricted);
+        assertFalse(info.ownerEditsRestricted);
     }
 }
 
@@ -382,13 +387,13 @@ contract OperatorsDataTest_restrictions is OperatorsDataTestBase {
             OperatorInfo({
                 name: "Alpha",
                 description: "Desc",
-                ownerRestricted: true
+                ownerEditsRestricted: true
             })
         );
 
-        assertTrue(data.isOwnerRestricted(moduleId, nodeOperatorId));
+        assertTrue(data.isOwnerEditsRestricted(moduleId, nodeOperatorId));
         OperatorInfo memory info = data.get(moduleId, nodeOperatorId);
-        assertTrue(info.ownerRestricted);
+        assertTrue(info.ownerEditsRestricted);
 
         vm.prank(setter);
         data.set(
@@ -397,28 +402,28 @@ contract OperatorsDataTest_restrictions is OperatorsDataTestBase {
             OperatorInfo({
                 name: "Alpha2",
                 description: "Desc2",
-                ownerRestricted: false
+                ownerEditsRestricted: false
             })
         );
 
-        assertFalse(data.isOwnerRestricted(moduleId, nodeOperatorId));
+        assertFalse(data.isOwnerEditsRestricted(moduleId, nodeOperatorId));
         info = data.get(moduleId, nodeOperatorId);
         assertEq(info.name, "Alpha2");
         assertEq(info.description, "Desc2");
-        assertFalse(info.ownerRestricted);
+        assertFalse(info.ownerEditsRestricted);
     }
 
-    function test_isOwnerRestricted_DefaultFalse() public {
-        assertFalse(data.isOwnerRestricted(moduleId, nodeOperatorId));
+    function test_isOwnerEditsRestricted_DefaultFalse() public {
+        assertFalse(data.isOwnerEditsRestricted(moduleId, nodeOperatorId));
     }
 
-    function test_isOwnerRestricted_RevertWhen_ZeroModule() public {
+    function test_isOwnerEditsRestricted_RevertWhen_ZeroModule() public {
         vm.expectRevert(IOperatorsData.ZeroModuleId.selector);
-        data.isOwnerRestricted(0, nodeOperatorId);
+        data.isOwnerEditsRestricted(0, nodeOperatorId);
     }
 
-    function test_isOwnerRestricted_RevertWhen_UnknownModule() public {
+    function test_isOwnerEditsRestricted_RevertWhen_UnknownModule() public {
         vm.expectRevert(IOperatorsData.UnknownModule.selector);
-        data.isOwnerRestricted(moduleId + 1, nodeOperatorId);
+        data.isOwnerEditsRestricted(moduleId + 1, nodeOperatorId);
     }
 }
