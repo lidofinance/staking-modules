@@ -80,7 +80,8 @@ contract OperatorsData is
         if (owner != msg.sender) revert SenderIsNotEligible();
 
         OperatorInfo storage stored = _operators[moduleId][nodeOperatorId];
-        if (stored.ownerRestricted) revert OwnerEditsRestricted();
+        bool ownerRestricted = stored.ownerRestricted;
+        if (ownerRestricted) revert OwnerEditsRestricted();
 
         stored.name = name;
         stored.description = description;
@@ -91,7 +92,7 @@ contract OperatorsData is
             nodeOperatorId: nodeOperatorId,
             name: name,
             description: description,
-            ownerRestricted: stored.ownerRestricted
+            ownerRestricted: ownerRestricted
         });
     }
 
