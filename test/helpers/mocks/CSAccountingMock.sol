@@ -5,6 +5,7 @@ pragma solidity 0.8.24;
 
 import { ICSAccounting } from "../../../src/interfaces/ICSAccounting.sol";
 import { ICSBondLock } from "../../../src/interfaces/ICSBondLock.sol";
+import { ICSBondCurve } from "../../../src/interfaces/ICSBondCurve.sol";
 import { ICSModule } from "../../../src/interfaces/ICSModule.sol";
 import { IWstETH } from "../../../src/interfaces/IWstETH.sol";
 import { ILido } from "../../../src/interfaces/ILido.sol";
@@ -21,6 +22,8 @@ contract CSAccountingMock {
 
     mapping(uint256 nodeOperatorId => uint256 bondCurveId) operatorBondCurveId;
     uint256[] bondCurves;
+
+    uint256 internal _nextCurveId = 1;
 
     ICSModule public MODULE;
     IWstETH public wstETH;
@@ -128,6 +131,13 @@ contract CSAccountingMock {
 
     function updateBondCurve(uint256 curveId, uint256 _bond) external {
         bondCurves[curveId] = _bond;
+    }
+
+    function addBondCurve(
+        ICSBondCurve.BondCurveIntervalInput[] calldata
+    ) external returns (uint256 curveId) {
+        curveId = _nextCurveId;
+        _nextCurveId += 1;
     }
 
     function penalize(
