@@ -825,20 +825,6 @@ contract CSModule is
     }
 
     /// @inheritdoc IStakingModule
-    /// @dev Changing the WC means that the current deposit data in the queue is not valid anymore and can't be deposited.
-    ///      If there are depositable validators in the queue, the method should revert to prevent deposits with invalid
-    ///      withdrawal credentials.
-    function onWithdrawalCredentialsChanged()
-        external
-        view
-        onlyRole(STAKING_ROUTER_ROLE)
-    {
-        if (_depositableValidatorsCount > 0) {
-            revert DepositQueueHasUnsupportedWithdrawalCredentials();
-        }
-    }
-
-    /// @inheritdoc IStakingModule
     function reportValidatorExitDelay(
         uint256 nodeOperatorId,
         uint256,
@@ -868,6 +854,19 @@ contract CSModule is
             withdrawalRequestPaidFee,
             exitType
         );
+    }
+
+    /// @inheritdoc IStakingModule
+    /// @dev Changing the WC means that the current deposit data in the queue is not valid anymore and can't be deposited.
+    ///      If there are depositable validators in the queue, the method should revert to prevent deposits with invalid
+    ///      withdrawal credentials.
+    function onWithdrawalCredentialsChanged()
+        external
+        onlyRole(STAKING_ROUTER_ROLE)
+    {
+        if (_depositableValidatorsCount > 0) {
+            revert DepositQueueHasUnsupportedWithdrawalCredentials();
+        }
     }
 
     /// @inheritdoc IStakingModule

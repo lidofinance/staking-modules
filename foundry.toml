@@ -73,7 +73,6 @@ exclude_lints = [
     "mixed-case-variable",
     "named-struct-fields",
     "pascal-case-struct",
-    "unwrapped-modifier-logic",
     "erc20-unchecked-transfer",
     "incorrect-shift",
     "unsafe-typecast",

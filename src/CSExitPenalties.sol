@@ -24,18 +24,12 @@ contract CSExitPenalties is ICSExitPenalties, ExitTypes {
     mapping(bytes32 keyPointer => ExitPenaltyInfo) private _exitPenaltyInfo;
 
     modifier onlyModule() {
-        if (msg.sender != address(MODULE)) {
-            revert SenderIsNotModule();
-        }
-
+        _onlyModule();
         _;
     }
 
     modifier onlyStrikes() {
-        if (msg.sender != STRIKES) {
-            revert SenderIsNotStrikes();
-        }
-
+        _onlyStrikes();
         _;
     }
 
@@ -168,6 +162,18 @@ contract CSExitPenalties is ICSExitPenalties, ExitTypes {
     ) external view returns (ExitPenaltyInfo memory) {
         bytes32 keyPointer = _keyPointer(nodeOperatorId, publicKey);
         return _exitPenaltyInfo[keyPointer];
+    }
+
+    function _onlyModule() internal view {
+        if (msg.sender != address(MODULE)) {
+            revert SenderIsNotModule();
+        }
+    }
+
+    function _onlyStrikes() internal view {
+        if (msg.sender != STRIKES) {
+            revert SenderIsNotStrikes();
+        }
     }
 
     function _keyPointer(
