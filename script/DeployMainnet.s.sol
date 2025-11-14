@@ -5,7 +5,6 @@ pragma solidity 0.8.24;
 
 import { DeployBase } from "./DeployBase.s.sol";
 import { GIndices } from "./constants/GIndices.sol";
-import { ICSBondCurve } from "../src/interfaces/ICSBondCurve.sol";
 
 contract DeployMainnet is DeployBase {
     constructor() DeployBase("mainnet", 1) {

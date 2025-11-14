@@ -8,9 +8,7 @@ import "../../../src/interfaces/IWithdrawalVault.sol";
 import "forge-std/Test.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 import { IStakingModule } from "../../../src/interfaces/IStakingModule.sol";
-import { ITriggerableWithdrawalsGateway } from "../../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { IWithdrawalVault } from "../../../src/interfaces/IWithdrawalVault.sol";
-import { NodeOperatorManagementProperties } from "../../../src/interfaces/ICSModule.sol";
 import { Utilities } from "../../helpers/Utilities.sol";
 
 contract EjectionTest is Test, Utilities, DeploymentFixtures {

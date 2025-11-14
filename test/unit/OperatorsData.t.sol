@@ -4,7 +4,6 @@
 pragma solidity 0.8.24;
 
 import { Test } from "forge-std/Test.sol";
-import { Vm } from "forge-std/Vm.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 
 import { CSMMock, NodeOperatorOwnerNo165Mock } from "../helpers/mocks/CSMMock.sol";

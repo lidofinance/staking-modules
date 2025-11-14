@@ -4,6 +4,8 @@
 pragma solidity 0.8.24;
 
 import "./_Base.t.sol";
+import { StETHMock } from "../../helpers/mocks/StETHMock.sol";
+import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
 
 // Combined deposit tests: ETH, stETH, wstETH (both regular and permissionless)
 

@@ -3,15 +3,12 @@
 pragma solidity 0.8.24;
 
 import "forge-std/Test.sol";
-import { stdJson } from "forge-std/StdJson.sol";
 
 import { ICSVerifier } from "src/interfaces/ICSVerifier.sol";
 import { ICSModule, ValidatorWithdrawalInfo } from "src/interfaces/ICSModule.sol";
-import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 
 import { CSVerifier } from "src/CSVerifier.sol";
-import { pack } from "src/lib/GIndex.sol";
 import { Slot } from "src/lib/Types.sol";
 import { SSZ } from "src/lib/SSZ.sol";
 

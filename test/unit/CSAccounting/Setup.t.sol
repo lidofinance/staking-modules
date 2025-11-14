@@ -4,6 +4,9 @@
 pragma solidity 0.8.24;
 
 import "./_Base.t.sol";
+import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
+import { ICSBondLock } from "src/interfaces/ICSBondLock.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 // Combined setup tests: constructor and initialization
 

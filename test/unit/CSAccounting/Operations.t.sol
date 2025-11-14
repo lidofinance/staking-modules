@@ -4,6 +4,11 @@
 pragma solidity 0.8.24;
 
 import "./_Base.t.sol";
+import { IBurner } from "src/interfaces/IBurner.sol";
+import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
+import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
+import { ERC20Testable } from "../../helpers/ERCTestable.sol";
+import { IFeeSplits, FeeSplits } from "src/lib/FeeSplits.sol";
 
 // Combined operational tests: asset recovery, fees, penalties, scenarios
 

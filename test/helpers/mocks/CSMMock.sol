@@ -5,7 +5,6 @@ pragma solidity 0.8.24;
 import { NodeOperatorManagementProperties, NodeOperator } from "../../../src/interfaces/ICSModule.sol";
 import { ICSAccounting } from "../../../src/interfaces/ICSAccounting.sol";
 import { ICSParametersRegistry } from "../../../src/interfaces/ICSParametersRegistry.sol";
-import { ILidoLocator } from "../../../src/interfaces/ILidoLocator.sol";
 import { CSParametersRegistryMock } from "./CSParametersRegistryMock.sol";
 import { CSAccountingMock } from "./CSAccountingMock.sol";
 import { WstETHMock } from "./WstETHMock.sol";

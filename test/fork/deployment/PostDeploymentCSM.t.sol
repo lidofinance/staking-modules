@@ -9,7 +9,6 @@ import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 import { DeployParams } from "../../../script/DeployBase.s.sol";
 import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
-import { CSModule } from "../../../src/CSModule.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { ICSParametersRegistry } from "../../../src/interfaces/ICSParametersRegistry.sol";
 import { CSParametersRegistry } from "../../../src/CSParametersRegistry.sol";

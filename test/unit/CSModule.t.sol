@@ -7,10 +7,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { CSModule } from "src/CSModule.sol";
 import { ICSBondCurve } from "src/interfaces/ICSBondCurve.sol";
 import { CSParametersRegistryMock } from "../helpers/mocks/CSParametersRegistryMock.sol";
-import { Batch, QueueLib, IQueueLib } from "src/lib/QueueLib.sol";
-import { SigningKeys } from "src/lib/SigningKeys.sol";
-import { ICSModule, NodeOperator } from "src/interfaces/ICSModule.sol";
-import { TransientUintUintMap, TransientUintUintMapLib } from "src/lib/TransientUintUintMapLib.sol";
+import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
 import { CSAccountingMock } from "../helpers/mocks/CSAccountingMock.sol";
 import { Stub } from "../helpers/mocks/Stub.sol";

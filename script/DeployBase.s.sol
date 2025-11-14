@@ -32,7 +32,6 @@ import { GIndex } from "../src/lib/GIndex.sol";
 import { Slot } from "../src/lib/Types.sol";
 import { VettedGateFactory } from "../src/VettedGateFactory.sol";
 import { CSExitPenalties } from "../src/CSExitPenalties.sol";
-import { IGateSeal } from "../src/interfaces/IGateSeal.sol";
 import { IStakingRouter } from "../src/interfaces/IStakingRouter.sol";
 
 struct DeployParams {

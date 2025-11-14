@@ -5,12 +5,11 @@ pragma solidity 0.8.24;
 
 import "forge-std/Test.sol";
 
-import { ICSModule, NodeOperator } from "../../../src/interfaces/ICSModule.sol";
+import { NodeOperator } from "../../../src/interfaces/ICSModule.sol";
 import { IStakingRouter } from "../../../src/interfaces/IStakingRouter.sol";
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
-import { Batch } from "../../../src/lib/QueueLib.sol";
 import { ExitPenaltyInfo } from "../../../src/interfaces/ICSExitPenalties.sol";
 
 contract StakingRouterIntegrationTest is

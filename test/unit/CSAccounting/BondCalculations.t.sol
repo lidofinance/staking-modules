@@ -4,6 +4,8 @@
 pragma solidity 0.8.24;
 
 import "./_Base.t.sol";
+import { IBurner } from "src/interfaces/IBurner.sol";
+import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
 
 // Combined bond tests: curves, claimable, locking, required bonds, summaries
 
