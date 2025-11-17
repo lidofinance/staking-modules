@@ -519,7 +519,6 @@ contract CSModule is
         _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
 
-        // TODO: consider moving to a helper function
         if (startIndex < no.totalDepositedKeys) {
             revert SigningKeysInvalidOffset();
         }
@@ -647,7 +646,6 @@ contract CSModule is
     ) external onlyRole(VERIFIER_ROLE) {
         _onlyExistingNodeOperator(nodeOperatorId);
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
-        // TODO: consider moving to a helper function
         if (keyIndex >= no.totalDepositedKeys) {
             revert SigningKeysInvalidOffset();
         }
@@ -683,7 +681,6 @@ contract CSModule is
                 withdrawalInfo.nodeOperatorId
             ];
 
-            // TODO: consider moving to a helper function
             if (withdrawalInfo.keyIndex >= no.totalDepositedKeys) {
                 revert SigningKeysInvalidOffset();
             }
