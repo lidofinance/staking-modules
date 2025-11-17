@@ -62,7 +62,7 @@ contract CSStrikes is
         }
 
         MODULE = ICSModule(module);
-        ACCOUNTING = MODULE.accounting();
+        ACCOUNTING = MODULE.ACCOUNTING();
         EXIT_PENALTIES = ICSExitPenalties(exitPenalties);
         ORACLE = oracle;
         PARAMETERS_REGISTRY = ICSParametersRegistry(parametersRegistry);

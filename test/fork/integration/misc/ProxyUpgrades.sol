@@ -26,7 +26,7 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
             moduleType: "CSMv2",
             lidoLocator: address(module.LIDO_LOCATOR()),
             parametersRegistry: address(module.PARAMETERS_REGISTRY()),
-            _accounting: address(module.ACCOUNTING()),
+            accounting: address(module.ACCOUNTING()),
             exitPenalties: address(module.EXIT_PENALTIES())
         });
         vm.prank(proxy.proxy__getAdmin());
@@ -40,7 +40,7 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
             moduleType: "CSMv2",
             lidoLocator: address(module.LIDO_LOCATOR()),
             parametersRegistry: address(module.PARAMETERS_REGISTRY()),
-            _accounting: address(module.ACCOUNTING()),
+            accounting: address(module.ACCOUNTING()),
             exitPenalties: address(module.EXIT_PENALTIES())
         });
         address contractAdmin = module.getRoleMember(

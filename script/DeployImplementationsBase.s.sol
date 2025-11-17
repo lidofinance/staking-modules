@@ -192,7 +192,7 @@ abstract contract DeployImplementationsBase is DeployBase {
                 moduleType: config.moduleType,
                 lidoLocator: config.lidoLocatorAddress,
                 parametersRegistry: address(parametersRegistry),
-                _accounting: address(accounting),
+                accounting: address(accounting),
                 exitPenalties: address(exitPenalties)
             });
 

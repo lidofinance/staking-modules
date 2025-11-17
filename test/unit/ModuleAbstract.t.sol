@@ -7353,7 +7353,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
         _enableInitializers(address(csm));
@@ -7374,7 +7374,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
         bytes32 role = csm.DEFAULT_ADMIN_ROLE();
@@ -8749,7 +8749,7 @@ abstract contract ModuleCreateNodeOperators is ModuleFixtures {
                 }),
                 address(0)
             );
-            uint256 amount = module.accounting().getRequiredBondForNextKeys(
+            uint256 amount = module.ACCOUNTING().getRequiredBondForNextKeys(
                 noId,
                 keysCount
             );

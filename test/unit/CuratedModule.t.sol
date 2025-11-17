@@ -164,7 +164,6 @@ contract CuratedInitialize is CuratedCommon {
             address(parametersRegistry)
         );
         assertEq(address(module.ACCOUNTING()), address(accounting));
-        assertEq(address(module.accounting()), address(accounting));
         assertEq(address(module.EXIT_PENALTIES()), address(exitPenalties));
     }
 

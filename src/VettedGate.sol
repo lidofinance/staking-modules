@@ -72,7 +72,7 @@ contract VettedGate is
         }
 
         MODULE = ICSModule(module);
-        ACCOUNTING = ICSAccounting(MODULE.accounting());
+        ACCOUNTING = ICSAccounting(MODULE.ACCOUNTING());
 
         _disableInitializers();
     }

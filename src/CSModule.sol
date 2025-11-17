@@ -113,7 +113,7 @@ contract CSModule is
         bytes32 moduleType,
         address lidoLocator,
         address parametersRegistry,
-        address _accounting,
+        address accounting,
         address exitPenalties
     ) {
         if (lidoLocator == address(0)) {
@@ -124,7 +124,7 @@ contract CSModule is
             revert ZeroParametersRegistryAddress();
         }
 
-        if (_accounting == address(0)) {
+        if (accounting == address(0)) {
             revert ZeroAccountingAddress();
         }
 
@@ -137,7 +137,7 @@ contract CSModule is
         STETH = IStETH(LIDO_LOCATOR.lido());
         PARAMETERS_REGISTRY = ICSParametersRegistry(parametersRegistry);
         QUEUE_LOWEST_PRIORITY = PARAMETERS_REGISTRY.QUEUE_LOWEST_PRIORITY();
-        ACCOUNTING = ICSAccounting(_accounting);
+        ACCOUNTING = ICSAccounting(accounting);
         EXIT_PENALTIES = ICSExitPenalties(exitPenalties);
         FEE_DISTRIBUTOR = address(ACCOUNTING.FEE_DISTRIBUTOR());
 
@@ -239,17 +239,17 @@ contract CSModule is
     ) external payable whenResumed {
         _checkCanAddKeys(nodeOperatorId, from);
 
-        ICSAccounting _accounting = accounting();
+        ICSAccounting accounting = _accounting();
 
         if (
             msg.value <
-            _accounting.getRequiredBondForNextKeys(nodeOperatorId, keysCount)
+            accounting.getRequiredBondForNextKeys(nodeOperatorId, keysCount)
         ) {
             revert InvalidAmount();
         }
 
         if (msg.value != 0) {
-            _accounting.depositETH{ value: msg.value }(from, nodeOperatorId);
+            accounting.depositETH{ value: msg.value }(from, nodeOperatorId);
         }
 
         _addKeysAndUpdateDepositableValidatorsCount(
@@ -271,15 +271,15 @@ contract CSModule is
     ) external whenResumed {
         _checkCanAddKeys(nodeOperatorId, from);
 
-        ICSAccounting _accounting = accounting();
+        ICSAccounting accounting = _accounting();
 
-        uint256 amount = _accounting.getRequiredBondForNextKeys(
+        uint256 amount = accounting.getRequiredBondForNextKeys(
             nodeOperatorId,
             keysCount
         );
 
         if (amount != 0) {
-            _accounting.depositStETH(from, nodeOperatorId, amount, permit);
+            accounting.depositStETH(from, nodeOperatorId, amount, permit);
         }
 
         _addKeysAndUpdateDepositableValidatorsCount(
@@ -301,15 +301,15 @@ contract CSModule is
     ) external whenResumed {
         _checkCanAddKeys(nodeOperatorId, from);
 
-        ICSAccounting _accounting = accounting();
+        ICSAccounting accounting = _accounting();
 
-        uint256 amount = _accounting.getRequiredBondForNextKeysWstETH(
+        uint256 amount = accounting.getRequiredBondForNextKeysWstETH(
             nodeOperatorId,
             keysCount
         );
 
         if (amount != 0) {
-            _accounting.depositWstETH(from, nodeOperatorId, amount, permit);
+            accounting.depositWstETH(from, nodeOperatorId, amount, permit);
         }
 
         _addKeysAndUpdateDepositableValidatorsCount(
@@ -541,7 +541,7 @@ contract CSModule is
         bool isFullyCharged = true;
 
         if (amountToCharge != 0) {
-            isFullyCharged = accounting().chargeFee(
+            isFullyCharged = _accounting().chargeFee(
                 nodeOperatorId,
                 amountToCharge
             );
@@ -735,7 +735,6 @@ contract CSModule is
                 penaltyMultiplier
             );
 
-            ICSAccounting _accounting = accounting();
             bool chargeWithdrawalRequestFee = false;
 
             uint256 penaltySum;
@@ -788,10 +787,11 @@ contract CSModule is
                 }
             }
 
+            ICSAccounting accounting = _accounting();
             bool isFullyCoveredByBond = true;
 
             if (feeSum > 0) {
-                isFullyCoveredByBond = _accounting.chargeFee(
+                isFullyCoveredByBond = accounting.chargeFee(
                     withdrawalInfo.nodeOperatorId,
                     feeSum
                 );
@@ -799,7 +799,7 @@ contract CSModule is
 
             if (penaltySum > 0) {
                 // We still call `penalize` even if there's no bond left, for the lock to be created.
-                isFullyCoveredByBond = _accounting.penalize(
+                isFullyCoveredByBond = accounting.penalize(
                     withdrawalInfo.nodeOperatorId,
                     penaltySum
                 );
@@ -1192,7 +1192,7 @@ contract CSModule is
     {
         _onlyExistingNodeOperator(nodeOperatorId);
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
-        uint256 totalUnbondedKeys = accounting().getUnbondedKeysCountToEject(
+        uint256 totalUnbondedKeys = _accounting().getUnbondedKeysCountToEject(
             nodeOperatorId
         );
         uint256 totalNonDepositedKeys = no.totalAddedKeys -
@@ -1336,12 +1336,6 @@ contract CSModule is
             );
     }
 
-    /// TODO: Make this internal
-    /// @dev This function is used to get the accounting contract from immutables to save bytecode and for backwards compatibility
-    function accounting() public view returns (ICSAccounting) {
-        return ACCOUNTING;
-    }
-
     function supportsInterface(
         bytes4 interfaceId
     ) public view override(AccessControlEnumerableUpgradeable) returns (bool) {
@@ -1464,7 +1458,7 @@ contract CSModule is
 
         uint32 totalDepositedKeys = no.totalDepositedKeys;
         uint256 newCount = no.totalVettedKeys - totalDepositedKeys;
-        uint256 unbondedKeys = accounting().getUnbondedKeysCount(
+        uint256 unbondedKeys = _accounting().getUnbondedKeysCount(
             nodeOperatorId
         );
 
@@ -1680,7 +1674,12 @@ contract CSModule is
     function _getBondCurveId(
         uint256 nodeOperatorId
     ) internal view returns (uint256) {
-        return accounting().getBondCurveId(nodeOperatorId);
+        return _accounting().getBondCurveId(nodeOperatorId);
+    }
+
+    /// @dev This function is used to get the accounting contract from immutables to save bytecode.
+    function _accounting() internal view returns (ICSAccounting) {
+        return ACCOUNTING;
     }
 
     function _onlyRecoverer() internal view override {

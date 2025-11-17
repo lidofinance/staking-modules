@@ -48,7 +48,7 @@ contract CSMCommon is ModuleFixtures {
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
 
@@ -115,7 +115,7 @@ contract CSMCommonNoRoles is ModuleFixtures {
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
 
@@ -146,7 +146,7 @@ contract CsmInitialize is CSMCommon {
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
         assertEq(csm.getType(), "community-staking-module");
@@ -156,7 +156,6 @@ contract CsmInitialize is CSMCommon {
             address(parametersRegistry)
         );
         assertEq(address(csm.ACCOUNTING()), address(accounting));
-        assertEq(address(csm.accounting()), address(accounting));
         assertEq(address(csm.EXIT_PENALTIES()), address(exitPenalties));
     }
 
@@ -166,7 +165,7 @@ contract CsmInitialize is CSMCommon {
             moduleType: "community-staking-module",
             lidoLocator: address(0),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
     }
@@ -179,7 +178,7 @@ contract CsmInitialize is CSMCommon {
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(0),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
     }
@@ -190,7 +189,7 @@ contract CsmInitialize is CSMCommon {
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(0),
+            accounting: address(0),
             exitPenalties: address(exitPenalties)
         });
     }
@@ -201,7 +200,7 @@ contract CsmInitialize is CSMCommon {
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(0)
         });
     }
@@ -211,7 +210,7 @@ contract CsmInitialize is CSMCommon {
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
 
@@ -224,7 +223,7 @@ contract CsmInitialize is CSMCommon {
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
 
@@ -241,7 +240,7 @@ contract CsmInitialize is CSMCommon {
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
 
@@ -255,7 +254,7 @@ contract CsmInitialize is CSMCommon {
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
         _enableInitializers(address(csm));
