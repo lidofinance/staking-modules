@@ -1287,7 +1287,6 @@ contract CSModule is
         return nodeOperatorId < _nodeOperatorsCount;
     }
 
-    /// TODO: Figure out if we can simplify this method by returning sequential IDs only.
     /// @inheritdoc IStakingModule
     function getNodeOperatorIds(
         uint256 offset,
@@ -1295,15 +1294,17 @@ contract CSModule is
     ) external view returns (uint256[] memory nodeOperatorIds) {
         uint256 nodeOperatorsCount = _nodeOperatorsCount;
         if (offset >= nodeOperatorsCount || limit == 0) {
-            return new uint256[](0);
+            return nodeOperatorIds;
         }
 
-        uint256 idsCount = limit < nodeOperatorsCount - offset
-            ? limit
-            : nodeOperatorsCount - offset;
-        nodeOperatorIds = new uint256[](idsCount);
-        for (uint256 i = 0; i < nodeOperatorIds.length; ++i) {
-            nodeOperatorIds[i] = offset + i;
+        unchecked {
+            uint256 idsCount = nodeOperatorsCount - offset;
+            if (idsCount > limit) idsCount = limit;
+
+            nodeOperatorIds = new uint256[](idsCount);
+            for (uint256 i; i < idsCount; ++i) {
+                nodeOperatorIds[i] = offset++;
+            }
         }
     }
 
