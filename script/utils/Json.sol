@@ -12,7 +12,7 @@ struct JsonObj {
 
 // @see https://github.com/nomoixyz/vulcan/blob/main/src/_internal/Json.sol
 library Json {
-    Vm internal constant vm =
+    Vm internal constant VM =
         Vm(address(bytes20(uint160(uint256(keccak256("hevm cheat code"))))));
 
     function newObj(
@@ -27,7 +27,7 @@ library Json {
         string memory key,
         address value
     ) internal {
-        obj.str = vm.serializeAddress(obj.ref, key, value);
+        obj.str = VM.serializeAddress(obj.ref, key, value);
     }
 
     function set(
@@ -35,7 +35,7 @@ library Json {
         string memory key,
         address[] memory value
     ) internal {
-        obj.str = vm.serializeAddress(obj.ref, key, value);
+        obj.str = VM.serializeAddress(obj.ref, key, value);
     }
 
     function set(
@@ -43,7 +43,7 @@ library Json {
         string memory key,
         uint256 value
     ) internal {
-        obj.str = vm.serializeUint(obj.ref, key, value);
+        obj.str = VM.serializeUint(obj.ref, key, value);
     }
 
     function set(
@@ -51,7 +51,7 @@ library Json {
         string memory key,
         bytes memory value
     ) internal {
-        obj.str = vm.serializeBytes(obj.ref, key, value);
+        obj.str = VM.serializeBytes(obj.ref, key, value);
     }
 
     function set(
@@ -59,7 +59,7 @@ library Json {
         string memory key,
         string memory value
     ) internal {
-        obj.str = vm.serializeString(obj.ref, key, value);
+        obj.str = VM.serializeString(obj.ref, key, value);
     }
 }
 

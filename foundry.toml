@@ -76,8 +76,6 @@ exclude_lints = [
     "erc20-unchecked-transfer",
     "incorrect-shift",
     "unsafe-cheatcode",
-    "screaming-snake-case-const",
-    "screaming-snake-case-immutable",
     "unchecked-call",
     "divide-before-multiply",
 ]
