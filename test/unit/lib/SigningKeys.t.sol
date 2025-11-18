@@ -320,7 +320,14 @@ contract SigningKeysSaveTest is SigningKeysTestBase {
         (
             bytes memory pubkeys,
             bytes memory signatures
-        ) = keysSignaturesWithZeroKey(keysCount, uint16(startIndex), offset);
+        ) = keysSignaturesWithZeroKey(
+                keysCount,
+                // Utilities helper accepts uint16 start indexes; fuzzed values are bounded by the helper,
+                // so truncating to 16 bits is intentional.
+                // forge-lint: disable-next-line(unsafe-typecast)
+                uint16(startIndex),
+                offset
+            );
 
         vm.expectRevert(SigningKeys.EmptyKey.selector);
         signingKeys.saveKeysSigs(

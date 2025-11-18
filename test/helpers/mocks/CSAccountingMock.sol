@@ -91,16 +91,22 @@ contract CSAccountingMock {
     }
 
     function lockBondETH(uint256 nodeOperatorId, uint256 amount) external {
+        // Production storage keeps bond lock amounts/timestamps in uint128,
+        // and the mock only ever touches small ether values, so the cast is safe.
+        // forge-lint: disable-next-line(unsafe-typecast)
         bondLock[nodeOperatorId].amount += uint128(amount);
-        bondLock[nodeOperatorId].until = uint128(
-            block.timestamp + DEFAULT_BOND_LOCK_PERIOD
-        );
+        uint256 unlockTs = block.timestamp + DEFAULT_BOND_LOCK_PERIOD;
+        // forge-lint: disable-next-line(unsafe-typecast)
+        uint128 unlockAt = uint128(unlockTs);
+        bondLock[nodeOperatorId].until = unlockAt;
     }
 
     function releaseLockedBondETH(
         uint256 nodeOperatorId,
         uint256 amount
     ) external {
+        // Bond lock amounts mirror production's uint128 slot, so truncation cannot happen.
+        // forge-lint: disable-next-line(unsafe-typecast)
         bondLock[nodeOperatorId].amount -= uint128(amount);
     }
 
@@ -121,6 +127,8 @@ contract CSAccountingMock {
     }
 
     function compensateLockedBondETH(uint256 nodeOperatorId) external payable {
+        // Compensation values are bounded by msg.value (<= uint128 in tests), matching storage type.
+        // forge-lint: disable-next-line(unsafe-typecast)
         bondLock[nodeOperatorId].amount -= uint128(msg.value);
         if (bondLock[nodeOperatorId].amount < 0) {
             bondLock[nodeOperatorId].until = 0;

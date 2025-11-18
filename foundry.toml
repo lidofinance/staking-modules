@@ -75,7 +75,6 @@ exclude_lints = [
     "pascal-case-struct",
     "erc20-unchecked-transfer",
     "incorrect-shift",
-    "unsafe-typecast",
     "unaliased-plain-import",
     "unsafe-cheatcode",
     "screaming-snake-case-const",

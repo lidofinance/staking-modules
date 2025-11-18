@@ -490,7 +490,9 @@ contract CSModule is
                 revert InvalidVetKeysPointer();
             }
 
-            // @dev No need to safe cast due to conditions above
+            // NodeOperator#totalVettedKeys is stored as uint32 and the bounds above guarantee
+            // `vettedSigningKeysCount` never exceeds module limits, so this cast is safe.
+            // forge-lint: disable-next-line(unsafe-typecast)
             no.totalVettedKeys = uint32(vettedSigningKeysCount);
             emit VettedSigningKeysCountChanged(
                 nodeOperatorId,
@@ -549,11 +551,13 @@ contract CSModule is
             emit KeyRemovalChargeApplied(nodeOperatorId);
         }
 
-        // @dev No need to safe cast due to checks in the func above
+        // Added/vetted signing key counters are uint32 fields and `newTotalSigningKeys`
+        // is derived from the same counters, so it always fits.
+        // forge-lint: disable-next-line(unsafe-typecast)
         no.totalAddedKeys = uint32(newTotalSigningKeys);
         emit TotalSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
 
-        // @dev No need to safe cast due to checks in the func above
+        // forge-lint: disable-next-line(unsafe-typecast)
         no.totalVettedKeys = uint32(newTotalSigningKeys);
         emit VettedSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
 
@@ -927,14 +931,16 @@ contract CSModule is
                     // covers the case when no depositable keys on the Node Operator have been left.
                     if (depositsLeft > keysCount || keysCount == keysInBatch) {
                         // NOTE: `enqueuedCount` >= keysInBatch invariant should be checked.
-                        // @dev No need to safe cast due to internal logic
+                        // Enqueued counters are uint32 values; `keysInBatch` is sourced
+                        // from the same field and thus cannot exceed the range.
+                        // forge-lint: disable-next-line(unsafe-typecast)
                         no.enqueuedCount -= uint32(keysInBatch);
                         // We've consumed all the keys in the batch, so we dequeue it.
                         queue.dequeue();
                     } else {
                         // This branch covers the case when we stop in the middle of the batch.
                         // We release the amount of keys consumed only, the rest will be kept.
-                        // @dev No need to safe cast due to internal logic
+                        // forge-lint: disable-next-line(unsafe-typecast)
                         no.enqueuedCount -= uint32(keysCount);
                         // NOTE: `keysInBatch` can't be less than `keysCount` at this point.
                         // We update the batch with the remaining keys.
@@ -960,9 +966,12 @@ contract CSModule is
 
                     // It's impossible in practice to reach the limit of these variables.
                     loadedKeysCount += keysCount;
-                    // @dev No need to safe cast due to internal logic
+                    // Deposited key counters are uint32 fields and `keysCount` originates
+                    // from the same bounded values, so truncation cannot occur.
+                    // forge-lint: disable-next-line(unsafe-typecast)
+                    uint32 keysCount32 = uint32(keysCount);
                     uint32 totalDepositedKeys = no.totalDepositedKeys +
-                        uint32(keysCount);
+                        keysCount32;
                     no.totalDepositedKeys = totalDepositedKeys;
 
                     emit DepositedSigningKeysCountChanged(
@@ -971,10 +980,8 @@ contract CSModule is
                     );
 
                     // No need for `_updateDepositableValidatorsCount` call since we update the number directly.
-                    // `keysCount` is min of `depositableValidatorsCount` and `depositsLeft`.
-                    // @dev No need to safe cast due to internal logic
                     uint32 newCount = no.depositableValidatorsCount -
-                        uint32(keysCount);
+                        keysCount32;
                     no.depositableValidatorsCount = newCount;
                     emit DepositableSigningKeysCountChanged(noId, newCount);
 
@@ -991,8 +998,10 @@ contract CSModule is
         }
 
         unchecked {
-            // @dev depositsCount can not overflow in practice due to memory and gas limits
+            // Deposits counts are capped by queue length (< 2^32) and the storage slots are uint64.
+            // forge-lint: disable-next-line(unsafe-typecast)
             _depositableValidatorsCount -= uint64(depositsCount);
+            // forge-lint: disable-next-line(unsafe-typecast)
             _totalDepositedValidators += uint64(depositsCount);
         }
 
@@ -1395,7 +1404,8 @@ contract CSModule is
             uint32 totalVettedKeys = no.totalVettedKeys;
             // Optimistic vetting takes place.
             if (totalAddedKeys == totalVettedKeys) {
-                // @dev No need to safe cast due to internal logic
+                // Both operands are <= totalAddedKeys (< 2^32 by design), so the result fits uint32.
+                // forge-lint: disable-next-line(unsafe-typecast)
                 totalVettedKeys = totalVettedKeys + uint32(keysCount);
                 no.totalVettedKeys = totalVettedKeys;
                 emit VettedSigningKeysCountChanged(
@@ -1404,7 +1414,8 @@ contract CSModule is
                 );
             }
 
-            // @dev No need to safe cast due to internal logic
+            // Added key counters are uint32 slots; newTotalAddedKeys shares the same bounds.
+            // forge-lint: disable-next-line(unsafe-typecast)
             no.totalAddedKeys = uint32(newTotalAddedKeys);
 
             emit TotalSigningKeysCountChanged(
@@ -1444,11 +1455,16 @@ contract CSModule is
 
         unchecked {
             // @dev Invariant sum(no.totalExitedKeys for no in nos) == _totalExitedValidators.
+            // `_totalExitedValidators` accumulates the same uint32 per-operator counts, so pushing
+            // the new value through uint64 preserves the exact result.
+            // forge-lint: disable-next-item(unsafe-typecast)
             _totalExitedValidators =
                 (_totalExitedValidators - totalExitedKeys) +
                 uint64(exitedValidatorsCount);
         }
-        // @dev No need to safe cast due to conditions above
+        // Each node operator stores its exited count in a uint32 slot; `exitedValidatorsCount`
+        // is validated against `totalDepositedKeys` (also uint32), so the cast is safe.
+        // forge-lint: disable-next-line(unsafe-typecast)
         no.totalExitedKeys = uint32(exitedValidatorsCount);
 
         emit ExitedSigningKeysCountChanged(
@@ -1493,14 +1509,16 @@ contract CSModule is
 
         if (no.depositableValidatorsCount != newCount) {
             // Updating the global counter.
-            // @dev No need to safe cast due to internal logic
             unchecked {
                 _depositableValidatorsCount =
                     _depositableValidatorsCount -
                     no.depositableValidatorsCount +
+                    // Each term is bounded by uint32 counts, so fitting into uint64 is safe.
+                    // forge-lint: disable-next-line(unsafe-typecast)
                     uint64(newCount);
             }
-            // @dev No need to safe cast due to internal logic
+            // NodeOperator.depositableValidatorsCount is uint32, and newCount is derived from the same bounds.
+            // forge-lint: disable-next-line(unsafe-typecast)
             no.depositableValidatorsCount = uint32(newCount);
             emit DepositableSigningKeysCountChanged(nodeOperatorId, newCount);
             if (incrementNonceIfUpdated) {
@@ -1607,8 +1625,11 @@ contract CSModule is
         //     return;
         // }
 
-        // @dev No need to safe cast due to conditions above
+        // `targetLimitMode` is validated against FORCED_TARGET_LIMIT_MODE_ID (fits uint8).
+        // forge-lint: disable-next-line(unsafe-typecast)
         no.targetLimitMode = uint8(targetLimitMode);
+        // `targetLimit` is explicitly bounded by type(uint32).max above.
+        // forge-lint: disable-next-line(unsafe-typecast)
         no.targetLimit = uint32(targetLimit);
 
         emit TargetValidatorsCountChanged(

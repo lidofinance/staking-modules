@@ -123,6 +123,8 @@ contract CSParametersRegistryMock {
 
         if (!config.isValue) {
             // NOTE: To preserve the old corpus of tests.
+            // The mock caps QUEUE_LOWEST_PRIORITY at 5, so squeezing it into uint32 is safe.
+            // forge-lint: disable-next-line(unsafe-typecast)
             return (uint32(QUEUE_LOWEST_PRIORITY), type(uint32).max);
         }
 

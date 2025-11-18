@@ -1276,7 +1276,10 @@ contract RemoveKeysTest is IntegrationTestBase {
 
         vm.prank(address(stakingRouter));
         module.decreaseVettedSigningKeysCount(
+            // Node/operator identifiers fit 64 bits and key counts are tiny (<100) in this suite.
+            // forge-lint: disable-next-line(unsafe-typecast)
             bytes.concat(bytes8(uint64(noId))),
+            // forge-lint: disable-next-line(unsafe-typecast)
             bytes.concat(bytes16(uint128(keysCount - 1)))
         );
 
@@ -1362,7 +1365,11 @@ contract ObtainDepositDataTest is IntegrationTestBase {
         parametersRegistry.setQueueConfig(
             curveId,
             0,
-            no.totalDepositedKeys + no.enqueuedCount + uint32(keysWithPriority)
+            no.totalDepositedKeys +
+                no.enqueuedCount +
+                // Queue sizes are bounded well below 2^32; we only stuff a handful of keys in tests.
+                // forge-lint: disable-next-line(unsafe-typecast)
+                uint32(keysWithPriority)
         );
         vm.stopPrank();
     }
