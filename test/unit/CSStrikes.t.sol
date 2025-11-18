@@ -5,9 +5,9 @@ pragma solidity 0.8.24;
 
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-import "../helpers/mocks/EjectorMock.sol";
+import { EjectorMock } from "../helpers/mocks/EjectorMock.sol";
 
-import "forge-std/Test.sol";
+import { Test, Vm } from "forge-std/Test.sol";
 import { CSStrikes } from "src/CSStrikes.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
 import { ICSEjector } from "src/interfaces/ICSEjector.sol";

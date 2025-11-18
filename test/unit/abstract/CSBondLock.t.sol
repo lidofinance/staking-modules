@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test, Vm } from "forge-std/Test.sol";
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 

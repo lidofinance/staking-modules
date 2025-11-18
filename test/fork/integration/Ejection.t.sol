@@ -3,9 +3,9 @@
 
 pragma solidity 0.8.24;
 
-import "../../../src/interfaces/IWithdrawalVault.sol";
+import { IWithdrawalVault } from "../../../src/interfaces/IWithdrawalVault.sol";
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 import { IStakingModule } from "../../../src/interfaces/IStakingModule.sol";
 import { IWithdrawalVault } from "../../../src/interfaces/IWithdrawalVault.sol";

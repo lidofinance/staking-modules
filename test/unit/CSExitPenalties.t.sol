@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test, Vm } from "forge-std/Test.sol";
 import { CSExitPenalties } from "src/CSExitPenalties.sol";
 import { ICSExitPenalties, ExitPenaltyInfo } from "src/interfaces/ICSExitPenalties.sol";
 import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";

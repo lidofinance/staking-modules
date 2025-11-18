@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test, StdStorage, stdStorage } from "forge-std/Test.sol";
 
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 

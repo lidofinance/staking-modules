@@ -3,10 +3,10 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Script.sol";
+import { Script } from "forge-std/Script.sol";
 import { DeploymentFixtures } from "test/helpers/Fixtures.sol";
 import { ForkHelpersCommon } from "./Common.sol";
-import "../../src/interfaces/IVEBO.sol";
+import { IVEBO } from "../../src/interfaces/IVEBO.sol";
 import { Utilities } from "../../test/helpers/Utilities.sol";
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 import { NodeOperator, ValidatorWithdrawalInfo } from "../../src/interfaces/ICSModule.sol";

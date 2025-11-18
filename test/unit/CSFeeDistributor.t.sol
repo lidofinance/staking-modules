@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test, StdStorage, Vm, stdStorage } from "forge-std/Test.sol";
 
 import { CSFeeDistributor } from "src/CSFeeDistributor.sol";
 import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";

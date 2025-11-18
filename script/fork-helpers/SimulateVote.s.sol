@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Script.sol";
+import { Script } from "forge-std/Script.sol";
 
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 import { ITriggerableWithdrawalsGateway } from "../../src/interfaces/ITriggerableWithdrawalsGateway.sol";

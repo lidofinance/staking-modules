@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { CSEjector } from "src/CSEjector.sol";
 import { ICSEjector } from "src/interfaces/ICSEjector.sol";

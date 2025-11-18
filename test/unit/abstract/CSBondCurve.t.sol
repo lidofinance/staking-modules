@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 

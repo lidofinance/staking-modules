@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
 import { CSParametersRegistry } from "src/CSParametersRegistry.sol";
 import { ICSParametersRegistry } from "src/interfaces/ICSParametersRegistry.sol";

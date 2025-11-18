@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Script.sol";
+import { Script } from "forge-std/Script.sol";
 import { DeploymentFixtures } from "test/helpers/Fixtures.sol";
 import { ForkHelpersCommon } from "./Common.sol";
 

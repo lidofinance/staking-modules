@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
-import "forge-std/console.sol";
-
+import { Test } from "forge-std/Test.sol";
 import { Batch, createBatch, QueueLib, IQueueLib } from "src/lib/QueueLib.sol";
 import { NodeOperator } from "src/interfaces/ICSModule.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "src/lib/TransientUintUintMapLib.sol";

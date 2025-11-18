@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Script.sol";
+import { Script, VmSafe } from "forge-std/Script.sol";
 
 import { HashConsensus } from "../../src/lib/base-oracle/HashConsensus.sol";
 import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";

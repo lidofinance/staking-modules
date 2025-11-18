@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
-import "src/lib/utils/Versioned.sol";
+import { Versioned } from "src/lib/utils/Versioned.sol";
 import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
 
 contract VersionedTest is Test {

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
-import "src/lib/proxy/OssifiableProxy.sol";
+import { Test } from "forge-std/Test.sol";
+import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
 import { Utilities } from "../../../helpers/Utilities.sol";
 import { ERC1967Utils } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 

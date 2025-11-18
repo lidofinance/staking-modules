@@ -2,16 +2,16 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
 import { CuratedModule } from "src/CuratedModule.sol";
 import { Stub } from "../helpers/mocks/Stub.sol";
 import { CSParametersRegistryMock } from "../helpers/mocks/CSParametersRegistryMock.sol";
 import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
+import { ICSModule, INOAddresses, NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/ICSModule.sol";
 import { ICSBondCurve } from "src/interfaces/ICSBondCurve.sol";
 import { CSAccountingMock } from "../helpers/mocks/CSAccountingMock.sol";
 import { CSModule } from "src/CSModule.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "./ModuleAbstract.t.sol";
+import { ModuleAddValidatorKeysNegative, ModuleCancelGeneralDelayedPenalty, ModuleChangeNodeOperatorRewardAddress, ModuleConfirmNodeOperatorManagerAddressChange, ModuleConfirmNodeOperatorRewardAddressChange, ModuleCreateNodeOperator, ModuleCreateNodeOperators, ModuleExitDeadlineThreshold, ModuleFixtures, ModuleFuzz, ModuleGetNodeOperator, ModuleGetSigningKeys, ModuleGetSigningKeysWithSignatures, ModuleIsValidatorExitDelayPenaltyApplicable, ModuleOnRewardsMinted, ModuleOnValidatorExitTriggered, ModulePauseAffectingTest, ModulePauseTest, ModuleProposeNodeOperatorManagerAddressChange, ModuleProposeNodeOperatorRewardAddressChange, ModuleRecoverERC20, ModuleRemoveKeys, ModuleRemoveKeysChargeFee, ModuleReportValidatorExitDelay, ModuleResetNodeOperatorManagerAddress, ModuleSettleGeneralDelayedPenaltyAdvanced, ModuleSettleGeneralDelayedPenaltyBasic, ModuleSupportsInterface, ModuleUpdateTargetValidatorsLimits, ModuleVetKeys } from "./ModuleAbstract.t.sol";
 
 // TODO uncomment all the commented tests after implementing obtainDepositData
 
@@ -145,8 +145,6 @@ contract CuratedCommonNoRoles is ModuleFixtures {
 contract CuratedFuzz is ModuleFuzz, CuratedCommon {}
 
 contract CuratedInitialize is CuratedCommon {
-    using stdStorage for StdStorage;
-
     function test_constructor() public {
         CuratedModule module = new CuratedModule({
             moduleType: "curated-module",

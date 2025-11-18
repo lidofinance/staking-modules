@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test, Vm } from "forge-std/Test.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
 import { InvariantAsserts } from "../helpers/InvariantAsserts.sol";
+import { console } from "forge-std/console.sol";
 import { ICSModule, NodeOperator, NodeOperatorManagementProperties, ValidatorWithdrawalInfo } from "src/interfaces/ICSModule.sol";
 import { CSAccountingMock } from "../helpers/mocks/CSAccountingMock.sol";
 import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
@@ -172,7 +173,7 @@ abstract contract ModuleFixtures is
         uint256 secondNoId
     ) internal pure returns (bytes memory) {
         // Both ids share the same bound, letting us pack them into 16 bytes.
-        // forge-lint: disable-next-line(unsafe-typecast)
+        // forge-lint: disable-next-item(unsafe-typecast)
         return
             bytes.concat(bytes8(uint64(firstNoId)), bytes8(uint64(secondNoId)));
     }

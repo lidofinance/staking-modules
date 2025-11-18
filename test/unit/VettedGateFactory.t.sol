@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { VettedGate } from "src/VettedGate.sol";
 import { VettedGateFactory } from "src/VettedGateFactory.sol";
 import { IVettedGateFactory } from "src/interfaces/IVettedGateFactory.sol";

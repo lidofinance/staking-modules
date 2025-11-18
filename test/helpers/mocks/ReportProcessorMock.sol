@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.24;
 
-import "../../../src/lib/base-oracle/interfaces/IReportAsyncProcessor.sol";
+import { IReportAsyncProcessor } from "../../../src/lib/base-oracle/interfaces/IReportAsyncProcessor.sol";
 
 contract ReportProcessorMock is IReportAsyncProcessor {
     uint256 internal _consensusVersion;

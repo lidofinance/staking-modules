@@ -3,7 +3,7 @@
 pragma solidity 0.8.24;
 
 import { CommonBase, Vm } from "forge-std/Base.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 /// @author madlabman

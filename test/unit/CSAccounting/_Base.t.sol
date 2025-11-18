@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
 import { ICSModule, NodeOperatorManagementProperties } from "src/interfaces/ICSModule.sol";
 import { IStakingModule } from "src/interfaces/IStakingModule.sol";
