@@ -69,10 +69,14 @@ deps-dev:
 lint-solhint:
     yarn lint:solhint
 
+lint-foundry *args:
+    forge lint {{args}}
+
 lint-fix:
     yarn lint:fix
 
 lint:
+    just lint-foundry
     yarn lint:check
 
 test-all:
