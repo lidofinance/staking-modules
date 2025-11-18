@@ -62,6 +62,7 @@ contract BaseOracleTest is Test, Utilities {
         oracle.grantRole(oracle.MANAGE_CONSENSUS_CONTRACT_ROLE(), admin);
         oracle.grantRole(oracle.MANAGE_CONSENSUS_VERSION_ROLE(), admin);
         vm.stopPrank();
+        // forge-lint: disable-next-item(divide-before-multiply) this is intentional here
         initialRefSlot =
             ((oracle.getTime() - GENESIS_TIME) /
                 SECONDS_PER_SLOT /

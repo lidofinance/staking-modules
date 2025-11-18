@@ -165,7 +165,8 @@ contract OssifiableProxyTest is Test, Utilities {
         vm.prank(admin);
         vm.expectEmit(address(proxy));
         emit InitializableImplementationStub.FallbackIsFired();
-        payable(address(proxy)).call{ value: 1 ether }("");
+        (bool success, ) = payable(address(proxy)).call{ value: 1 ether }("");
+        assertTrue(success, "call failed");
         assertEq(address(proxy).balance, 1 ether);
     }
 

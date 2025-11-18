@@ -76,8 +76,6 @@ exclude_lints = [
     "erc20-unchecked-transfer",
     "incorrect-shift",
     "unsafe-cheatcode",
-    "unchecked-call",
-    "divide-before-multiply",
 ]
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/crates/config
