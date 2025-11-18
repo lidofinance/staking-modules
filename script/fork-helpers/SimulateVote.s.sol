@@ -25,6 +25,11 @@ import { ForkHelpersCommon } from "./Common.sol";
 import { DeployParams } from "../DeployBase.s.sol";
 
 contract SimulateVote is Script, ForkHelpersCommon {
+    bytes32 internal constant REPORT_EL_REWARDS_STEALING_PENALTY_ROLE =
+        keccak256("REPORT_EL_REWARDS_STEALING_PENALTY_ROLE");
+    bytes32 internal constant SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE =
+        keccak256("SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE");
+
     error WrongModuleType();
 
     function addModule() external {
@@ -248,6 +253,32 @@ contract SimulateVote is Script, ForkHelpersCommon {
         //         accounting.SET_BOND_CURVE_ROLE(),
         //         deploymentConfig.vettedGate
         //     );
+
+        // address generalDelayedPenaltyReporter = module.getRoleMember(
+        //     REPORT_EL_REWARDS_STEALING_PENALTY_ROLE,
+        //     1
+        // );
+        // module.revokeRole(
+        //     REPORT_EL_REWARDS_STEALING_PENALTY_ROLE,
+        //     generalDelayedPenaltyReporter
+        // );
+        // module.grantRole(
+        //     REPORT_GENERAL_DELAYED_PENALTY_ROLE,
+        //     generalDelayedPenaltyReporter
+        // );
+        //
+        // address generalDelayedPenaltySettler = module.getRoleMember(
+        //     SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE,
+        //     1
+        // );
+        // module.revokeRole(
+        //     SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE,
+        //     generalDelayedPenaltySettler
+        // );
+        // module.grantRole(
+        //     SETTLE_GENERAL_DELAYED_PENALTY_ROLE,
+        //     generalDelayedPenaltySettler
+        // );
 
         //     accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), admin);
 

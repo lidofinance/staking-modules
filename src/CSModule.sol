@@ -40,10 +40,8 @@ contract CSModule is
     bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
     bytes32 public constant STAKING_ROUTER_ROLE =
         keccak256("STAKING_ROUTER_ROLE");
-    // TODO: Revoke old role (REPORT_GENERAL_DELAYED_PENALTY_ROLE) and grant new role in the upgrade vote
     bytes32 public constant REPORT_GENERAL_DELAYED_PENALTY_ROLE =
         keccak256("REPORT_GENERAL_DELAYED_PENALTY_ROLE");
-    // TODO: Revoke old role (SETTLE_GENERAL_DELAYED_PENALTY_ROLE) and grant new role in the upgrade vote
     bytes32 public constant SETTLE_GENERAL_DELAYED_PENALTY_ROLE =
         keccak256("SETTLE_GENERAL_DELAYED_PENALTY_ROLE");
     bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
