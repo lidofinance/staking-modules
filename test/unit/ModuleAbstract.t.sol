@@ -183,13 +183,13 @@ abstract contract ModuleFixtures is
     ) internal pure returns (bytes memory) {
         // Test amounts are tiny (< 2 ether or a handful of keys) and trivially fit in 128 bits.
         // forge-lint: disable-next-line(unsafe-typecast)
-        return _encodeUint128Value(value);
+        return bytes.concat(bytes16(uint128(value)));
     }
 
     function _toUint248(uint256 value) internal pure returns (uint248) {
         // All penalty/fee figures come from BOND_SIZE (2 ether) so uint248 is ample.
         // forge-lint: disable-next-line(unsafe-typecast)
-        return _toUint248(value);
+        return uint248(value);
     }
 
     function uploadMoreKeys(

@@ -26,7 +26,7 @@ contract StakingRouterIntegrationTest is
     ) internal pure returns (bytes memory) {
         // Node operator IDs are bounded by uint32 in production, so 64 bits are more than enough.
         // forge-lint: disable-next-line(unsafe-typecast)
-        return _encodeNodeOperatorId(noId);
+        return bytes.concat(bytes8(uint64(noId)));
     }
 
     function _encodeUint128Value(
@@ -34,7 +34,7 @@ contract StakingRouterIntegrationTest is
     ) internal pure returns (bytes memory) {
         // Bond- and exit-related counters never exceed uint128 during tests.
         // forge-lint: disable-next-line(unsafe-typecast)
-        return _encodeUint128Value(value);
+        return bytes.concat(bytes16(uint128(value)));
     }
 
     modifier assertInvariants() {
