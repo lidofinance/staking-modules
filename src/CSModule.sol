@@ -390,7 +390,6 @@ contract CSModule is
         STETH.transferShares(FEE_DISTRIBUTOR, totalShares);
     }
 
-    /// TODO: Figure out if we can remove the body of this function to save bytecode
     /// @inheritdoc IStakingModule
     function updateExitedValidatorsCount(
         bytes calldata nodeOperatorIds,
