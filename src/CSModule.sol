@@ -15,8 +15,7 @@ import { IStETH } from "./interfaces/IStETH.sol";
 import { ICSParametersRegistry } from "./interfaces/ICSParametersRegistry.sol";
 import { ICSAccounting } from "./interfaces/ICSAccounting.sol";
 import { ICSExitPenalties } from "./interfaces/ICSExitPenalties.sol";
-import { ICSModule, NodeOperator, NodeOperatorManagementProperties, ValidatorWithdrawalInfo } from "./interfaces/ICSModule.sol";
-import { ExitPenaltyInfo } from "./interfaces/ICSExitPenalties.sol";
+import { ICSModule, NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "./interfaces/ICSModule.sol";
 import { INodeOperatorOwner } from "./interfaces/INodeOperatorOwner.sol";
 
 import { PausableUntil } from "./lib/utils/PausableUntil.sol";
@@ -26,6 +25,7 @@ import { NOAddresses } from "./lib/NOAddresses.sol";
 import { GeneralPenalty } from "./lib/GeneralPenaltyLib.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "./lib/TransientUintUintMapLib.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
+import { WithdrawnValidatorLib } from "./lib/WithdrawnValidatorLib.sol";
 
 contract CSModule is
     ICSModule,
@@ -50,10 +50,6 @@ contract CSModule is
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
     bytes32 public constant CREATE_NODE_OPERATOR_ROLE =
         keccak256("CREATE_NODE_OPERATOR_ROLE");
-
-    uint256 public constant MIN_ACTIVATION_BALANCE = 32 ether;
-    uint256 public constant PENALTY_QUOTIENT = 32 ether;
-    uint256 public constant MAX_PENALTY_MULTIPLIER = 64;
 
     // @dev see IStakingModule.sol
     uint8 private constant FORCED_TARGET_LIMIT_MODE_ID = 2;
@@ -661,160 +657,57 @@ contract CSModule is
         emit ValidatorSlashingReported(nodeOperatorId, keyIndex, pubkey);
     }
 
-    /// TODO: Consider moving to the external library to save bytecode
     /// @inheritdoc ICSModule
-    function submitWithdrawals(
-        ValidatorWithdrawalInfo[] calldata withdrawalsInfo
+    function reportWithdrawnValidators(
+        WithdrawnValidatorInfo[] calldata validatorInfos
     ) external onlyRole(SUBMIT_WITHDRAWALS_ROLE) {
         bool anySubmission = false;
 
-        for (uint256 i; i < withdrawalsInfo.length; ++i) {
-            ValidatorWithdrawalInfo memory withdrawalInfo = withdrawalsInfo[i];
+        for (uint256 i; i < validatorInfos.length; ++i) {
+            WithdrawnValidatorInfo calldata info = validatorInfos[i];
+            _onlyExistingNodeOperator(info.nodeOperatorId);
 
-            // For slashed validator this value should reflect pre-slashing, hence non-zero balance.
-            // For non-slashed validator it will reflect the withdrawal amount, hence it cannot be zero either.
-            if (withdrawalInfo.exitBalance == 0) {
-                revert ZeroExitBalance();
-            }
-
-            _onlyExistingNodeOperator(withdrawalInfo.nodeOperatorId);
-            NodeOperator storage no = _nodeOperators[
-                withdrawalInfo.nodeOperatorId
-            ];
-
-            if (withdrawalInfo.keyIndex >= no.totalDepositedKeys) {
-                revert SigningKeysInvalidOffset();
-            }
-
-            uint256 pointer = _keyPointer(
-                withdrawalInfo.nodeOperatorId,
-                withdrawalInfo.keyIndex
-            );
+            uint256 pointer = _keyPointer(info.nodeOperatorId, info.keyIndex);
             if (_isValidatorWithdrawn[pointer]) {
                 continue;
             }
-
-            if (
-                withdrawalInfo.slashingPenalty > 0 &&
-                !_isValidatorSlashed[pointer]
-            ) {
+            if (info.isSlashed && !_isValidatorSlashed[pointer]) {
                 revert SlashingPenaltyIsNotApplicable();
             }
 
-            anySubmission = true;
+            if (info.slashingPenalty > 0 && !info.isSlashed) {
+                revert InvalidWithdrawnValidatorInfo();
+            }
 
-            _isValidatorWithdrawn[pointer] = true;
+            // For slashed validator this value should reflect pre-slashing, hence non-zero balance.
+            // For non-slashed validator it will reflect the withdrawal amount, hence it cannot be zero either.
+            if (info.exitBalance == 0) {
+                revert ZeroExitBalance();
+            }
+
+            NodeOperator storage no = _nodeOperators[info.nodeOperatorId];
+
+            if (info.keyIndex >= no.totalDepositedKeys) {
+                revert SigningKeysInvalidOffset();
+            }
+
             unchecked {
                 ++no.totalWithdrawnKeys;
             }
 
-            bytes memory pubkey = SigningKeys.loadKeys(
-                withdrawalInfo.nodeOperatorId,
-                withdrawalInfo.keyIndex,
-                1
-            );
-
-            // solhint-disable-next-line func-named-parameters
-            emit WithdrawalSubmitted(
-                withdrawalInfo.nodeOperatorId,
-                withdrawalInfo.keyIndex,
-                withdrawalInfo.exitBalance,
-                withdrawalInfo.slashingPenalty,
-                pubkey
-            );
-
-            // penaltyMultiplier is >= 1
-            uint256 penaltyMultiplier = Math.max(
-                withdrawalInfo.exitBalance,
-                MIN_ACTIVATION_BALANCE
-            ) / PENALTY_QUOTIENT;
-            // It's rather unlikely that the value will exceed 64 because anything above maximum effective balance of a
-            // validator will likely be withdrawn while it waits for a withdrawal. The introduced limit makes it
-            // possible to use unchecked blocks below and acts as an additional limiting factor.
-            penaltyMultiplier = Math.min(
-                MAX_PENALTY_MULTIPLIER,
-                penaltyMultiplier
-            );
-
-            bool chargeWithdrawalRequestFee = false;
-
-            uint256 penaltySum;
-            uint256 feeSum;
-
-            ExitPenaltyInfo memory exitPenaltyInfo = EXIT_PENALTIES
-                .getExitPenaltyInfo(withdrawalInfo.nodeOperatorId, pubkey);
-            if (exitPenaltyInfo.delayFee.isValue) {
-                unchecked {
-                    feeSum = exitPenaltyInfo.delayFee.value * penaltyMultiplier;
-                }
-                chargeWithdrawalRequestFee = true;
-            }
-            if (exitPenaltyInfo.strikesPenalty.isValue) {
-                // It is safe to use unchecked for sum here because base penalties and fees are limited to uint248 in
-                // the MarkedUint248 structures used to store them, and the maximum multiplier is limited to 64, so
-                // `type(uint248).max * 64 < type(uint256).max`.
-                unchecked {
-                    penaltySum =
-                        exitPenaltyInfo.strikesPenalty.value *
-                        penaltyMultiplier;
-                }
-                chargeWithdrawalRequestFee = true;
-            }
-
-            // The withdrawal request fee is taken when either a delay was reported or the validator exited due to
-            // strikes. Otherwise, the fee has already been paid by the node operator upon withdrawal trigger, or it is
-            // a DAO decision to withdraw the validator before the withdrawal request becomes delayed.
-            if (
-                chargeWithdrawalRequestFee &&
-                exitPenaltyInfo.withdrawalRequestFee.value != 0
-            ) {
-                // type(uint248).max * (64 + 1) < type(uint256).max
-                unchecked {
-                    // Withdrawal request fee is not scaled because sending a withdrawal request for a validator does
-                    // not depend on the size of a validator.
-                    feeSum += exitPenaltyInfo.withdrawalRequestFee.value;
-                }
-            }
-
-            if (withdrawalInfo.slashingPenalty > 0) {
-                // Slashing penalty doesn't scale because all the losses are already accounted.
-                penaltySum += withdrawalInfo.slashingPenalty;
-            } else if (withdrawalInfo.exitBalance < MIN_ACTIVATION_BALANCE) {
-                // type(uint248).max * 64 + 32 * 10**18 < type(uint256).max
-                unchecked {
-                    penaltySum +=
-                        MIN_ACTIVATION_BALANCE -
-                        withdrawalInfo.exitBalance;
-                }
-            }
-
-            ICSAccounting accounting = _accounting();
-            bool isFullyCoveredByBond = true;
-
-            if (feeSum > 0) {
-                isFullyCoveredByBond = accounting.chargeFee(
-                    withdrawalInfo.nodeOperatorId,
-                    feeSum
-                );
-            }
-
-            if (penaltySum > 0) {
-                // We still call `penalize` even if there's no bond left, for the lock to be created.
-                isFullyCoveredByBond = accounting.penalize(
-                    withdrawalInfo.nodeOperatorId,
-                    penaltySum
-                );
-            }
-
-            if (!isFullyCoveredByBond) {
-                _onUncompensatedPenalty(withdrawalInfo.nodeOperatorId);
+            bool bondCoversPenalties = WithdrawnValidatorLib.process(info);
+            if (!bondCoversPenalties) {
+                _onUncompensatedPenalty(info.nodeOperatorId);
             }
 
             // Nonce will be updated below even if depositable count was not changed
             _updateDepositableValidatorsCount({
-                nodeOperatorId: withdrawalInfo.nodeOperatorId,
+                nodeOperatorId: info.nodeOperatorId,
                 incrementNonceIfUpdated: false
             });
+
+            _isValidatorWithdrawn[pointer] = true;
+            anySubmission = true;
         }
 
         if (anySubmission) {

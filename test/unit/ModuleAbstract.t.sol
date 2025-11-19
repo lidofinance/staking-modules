@@ -2,35 +2,39 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import { Test, Vm } from "forge-std/Test.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
-import { Utilities } from "../helpers/Utilities.sol";
+
+import { console } from "forge-std/console.sol";
+import { Test, Vm } from "forge-std/Test.sol";
+
+import { Batch } from "src/lib/QueueLib.sol";
+import { CSBondLock } from "src/abstract/CSBondLock.sol";
+import { CSModule } from "src/CSModule.sol";
+import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
+import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
+import { ICSExitPenalties, ExitPenaltyInfo, MarkedUint248 } from "src/interfaces/ICSExitPenalties.sol";
+import { ICSModule, NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/ICSModule.sol";
+import { IGeneralPenalty } from "src/lib/GeneralPenaltyLib.sol";
+import { ILidoLocator } from "src/interfaces/ILidoLocator.sol";
+import { INOAddresses } from "src/lib/NOAddresses.sol";
+import { INodeOperatorOwner } from "src/interfaces/INodeOperatorOwner.sol";
+import { IStakingModule } from "src/interfaces/IStakingModule.sol";
+import { IWithdrawalQueue } from "src/interfaces/IWithdrawalQueue.sol";
+import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
+import { SigningKeys } from "src/lib/SigningKeys.sol";
+import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
+
+import { CSAccountingMock } from "../helpers/mocks/CSAccountingMock.sol";
+import { CSParametersRegistryMock } from "../helpers/mocks/CSParametersRegistryMock.sol";
+import { ERC20Testable } from "../helpers/ERCTestable.sol";
+import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
 import { InvariantAsserts } from "../helpers/InvariantAsserts.sol";
-import { console } from "forge-std/console.sol";
-import { ICSModule, NodeOperator, NodeOperatorManagementProperties, ValidatorWithdrawalInfo } from "src/interfaces/ICSModule.sol";
-import { CSAccountingMock } from "../helpers/mocks/CSAccountingMock.sol";
-import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
-import { CSParametersRegistryMock } from "../helpers/mocks/CSParametersRegistryMock.sol";
 import { LidoLocatorMock } from "../helpers/mocks/LidoLocatorMock.sol";
 import { LidoMock } from "../helpers/mocks/LidoMock.sol";
-import { WstETHMock } from "../helpers/mocks/WstETHMock.sol";
-import { CSModule } from "src/CSModule.sol";
 import { Stub } from "../helpers/mocks/Stub.sol";
-import { Batch } from "src/lib/QueueLib.sol";
-import { ERC20Testable } from "../helpers/ERCTestable.sol";
-import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
-import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
-import { IStakingModule } from "src/interfaces/IStakingModule.sol";
-import { ILidoLocator } from "src/interfaces/ILidoLocator.sol";
-import { IWithdrawalQueue } from "src/interfaces/IWithdrawalQueue.sol";
-import { SigningKeys } from "src/lib/SigningKeys.sol";
-import { INOAddresses } from "src/lib/NOAddresses.sol";
-import { IGeneralPenalty } from "src/lib/GeneralPenaltyLib.sol";
-import { CSBondLock } from "src/abstract/CSBondLock.sol";
-import { ICSExitPenalties, ExitPenaltyInfo, MarkedUint248 } from "src/interfaces/ICSExitPenalties.sol";
-import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
-import { INodeOperatorOwner } from "src/interfaces/INodeOperatorOwner.sol";
+import { Utilities } from "../helpers/Utilities.sol";
+import { WstETHMock } from "../helpers/mocks/WstETHMock.sol";
 
 abstract contract ModuleFixtures is
     Test,
@@ -209,15 +213,16 @@ abstract contract ModuleFixtures is
     }
 
     function withdrawKey(uint256 noId, uint256 /* keyIndex */) internal {
-        ValidatorWithdrawalInfo[]
-            memory withdrawalsInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalsInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            0,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
-        );
-        module.submitWithdrawals(withdrawalsInfo);
+        WithdrawnValidatorInfo[]
+            memory withdrawalsInfo = new WithdrawnValidatorInfo[](1);
+        withdrawalsInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+        module.reportWithdrawnValidators(withdrawalsInfo);
     }
 
     // Checks that the queue is in the expected state starting from its head.
@@ -3189,19 +3194,21 @@ abstract contract ModuleQueueOps is ModuleFixtures {
         module.obtainDepositData(2, "");
         module.cleanDepositQueue(1);
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            0,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectEmit(address(module));
         emit ICSModule.BatchEnqueued(module.QUEUE_LOWEST_PRIORITY(), noId, 1);
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
     }
 }
 
@@ -4213,17 +4220,19 @@ abstract contract ModuleGetNodeOperatorNonWithdrawnKeys is ModuleFixtures {
         uint256 noId = createNodeOperator(3);
         module.obtainDepositData(3, "");
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            0,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
 
-        module.submitWithdrawals(withdrawalInfo);
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        module.reportWithdrawnValidators(exitInfo);
         uint256 keys = module.getNodeOperatorNonWithdrawnKeys(noId);
         assertEq(keys, 2);
     }
@@ -6009,32 +6018,34 @@ abstract contract ModuleCompensateGeneralDelayedPenalty is ModuleFixtures {
 }
 
 abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
-    function test_submitWithdrawals() public assertInvariants {
+    function test_reportWithdrawnValidators() public assertInvariants {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
         (bytes memory pubkey, ) = module.obtainDepositData(1, "");
 
         uint256 nonce = module.getNonce();
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectEmit(address(module));
         emit ICSModule.WithdrawalSubmitted(
             noId,
             keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
+            WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
             0,
             pubkey
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6047,7 +6058,10 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function test_submitWithdrawals_changeNonce() public assertInvariants {
+    function test_reportWithdrawnValidators_changeNonce()
+        public
+        assertInvariants
+    {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator(2);
         (bytes memory pubkey, ) = module.obtainDepositData(1, "");
@@ -6056,25 +6070,28 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         uint256 balanceShortage = BOND_SIZE - 1 ether;
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE() - balanceShortage,
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE -
+                balanceShortage,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectEmit(address(module));
         emit ICSModule.WithdrawalSubmitted(
             noId,
             keyIndex,
-            module.MIN_ACTIVATION_BALANCE() - balanceShortage,
+            WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE - balanceShortage,
             0,
             pubkey
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6085,22 +6102,28 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function test_submitWithdrawals_lowExitBalance() public assertInvariants {
+    function test_reportWithdrawnValidators_lowExitBalance()
+        public
+        assertInvariants
+    {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
         uint256 balanceShortage = BOND_SIZE - 1 ether;
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE() - balanceShortage,
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE -
+                balanceShortage,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6110,7 +6133,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 balanceShortage
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6119,7 +6142,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_submitWithdrawals_superLowExitBalance()
+    function test_reportWithdrawnValidators_superLowExitBalance()
         public
         assertInvariants
     {
@@ -6129,15 +6152,18 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         uint256 balanceShortage = BOND_SIZE + 1 ether;
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE() - balanceShortage,
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE -
+                balanceShortage,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6147,7 +6173,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 balanceShortage
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6156,7 +6182,10 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_submitWithdrawals_exitDelayFee() public assertInvariants {
+    function test_reportWithdrawnValidators_exitDelayFee()
+        public
+        assertInvariants
+    {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
@@ -6171,15 +6200,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6189,7 +6220,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 exitDelayFeeAmount
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6198,7 +6229,10 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_submitWithdrawals_hugeExitDelayFee() public assertInvariants {
+    function test_reportWithdrawnValidators_hugeExitDelayFee()
+        public
+        assertInvariants
+    {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
@@ -6213,15 +6247,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6231,7 +6267,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 exitDelayFeeAmount
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6240,7 +6276,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_submitWithdrawals_exitDelayFeeWithMultiplier()
+    function test_reportWithdrawnValidators_exitDelayFeeWithMultiplier()
         public
         assertInvariants
     {
@@ -6259,14 +6295,18 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE() * multiplier + 1 ether,
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE *
+                multiplier +
+                1 ether,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6276,10 +6316,10 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 fee * multiplier
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
     }
 
-    function test_submitWithdrawals_exitDelayFeeAtMaxWithMultiplier()
+    function test_reportWithdrawnValidators_exitDelayFeeAtMaxWithMultiplier()
         public
         assertInvariants
     {
@@ -6288,7 +6328,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         module.obtainDepositData(1, "");
 
         uint248 fee = type(uint248).max;
-        uint256 multiplier = module.MAX_PENALTY_MULTIPLIER();
+        uint256 multiplier = WithdrawnValidatorLib.MAX_PENALTY_MULTIPLIER;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
@@ -6298,14 +6338,18 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE() * multiplier + 1000 ether,
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE *
+                multiplier +
+                1000 ether,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6315,10 +6359,13 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 fee * multiplier
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
     }
 
-    function test_submitWithdrawals_strikesPenalty() public assertInvariants {
+    function test_reportWithdrawnValidators_strikesPenalty()
+        public
+        assertInvariants
+    {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
@@ -6336,15 +6383,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6354,7 +6403,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 strikesPenaltyAmount
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6363,7 +6412,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_submitWithdrawals_hugeStrikesPenalty()
+    function test_reportWithdrawnValidators_hugeStrikesPenalty()
         public
         assertInvariants
     {
@@ -6384,15 +6433,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6402,7 +6453,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 strikesPenaltyAmount
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6411,7 +6462,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_submitWithdrawals_strikesPenaltyWithMultiplier()
+    function test_reportWithdrawnValidators_strikesPenaltyWithMultiplier()
         public
         assertInvariants
     {
@@ -6430,14 +6481,18 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE() * multiplier + 1 ether,
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE *
+                multiplier +
+                1 ether,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6447,10 +6502,10 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 penalty * multiplier
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
     }
 
-    function test_submitWithdrawals_strikesPenaltyAtMaxWithMultiplier()
+    function test_reportWithdrawnValidators_strikesPenaltyAtMaxWithMultiplier()
         public
         assertInvariants
     {
@@ -6459,7 +6514,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         module.obtainDepositData(1, "");
 
         uint248 penalty = type(uint248).max;
-        uint256 multiplier = module.MAX_PENALTY_MULTIPLIER();
+        uint256 multiplier = WithdrawnValidatorLib.MAX_PENALTY_MULTIPLIER;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
@@ -6469,14 +6524,18 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE() * multiplier + 1000 ether,
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE *
+                multiplier +
+                1000 ether,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6486,10 +6545,10 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 penalty * multiplier
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
     }
 
-    function test_submitWithdrawals_slashingPenaltyApplied()
+    function test_reportWithdrawnValidators_slashingPenaltyApplied()
         public
         assertInvariants
     {
@@ -6500,14 +6559,16 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         uint256 slashingPenalty = 5 ether;
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            slashingPenalty
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: slashingPenalty,
+            isSlashed: true
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6517,10 +6578,10 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 slashingPenalty
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
     }
 
-    function test_submitWithdrawals_slashingPenaltyOverridesExitBalancePenalty()
+    function test_reportWithdrawnValidators_slashingPenaltyOverridesExitBalancePenalty()
         public
         assertInvariants
     {
@@ -6531,14 +6592,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         uint256 slashingPenalty = 5 ether;
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE() - 11 ether,
-            slashingPenalty
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE -
+                11 ether,
+            slashingPenalty: slashingPenalty,
+            isSlashed: true
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6548,10 +6612,10 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 slashingPenalty
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
     }
 
-    function test_submitWithdrawals_slashingPenaltyNotScaled()
+    function test_reportWithdrawnValidators_slashingPenaltyNotScaled()
         public
         assertInvariants
     {
@@ -6563,14 +6627,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 slashingPenalty = 7 ether;
         uint256 multiplier = 5;
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE() * multiplier,
-            slashingPenalty
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE *
+                multiplier,
+            slashingPenalty: slashingPenalty,
+            isSlashed: true
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6580,10 +6647,10 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 slashingPenalty
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
     }
 
-    function test_submitWithdrawals_slashingPenalty_RevertWhenNotReported()
+    function test_reportWithdrawnValidators_slashingPenalty_RevertWhenNotReported()
         public
         assertInvariants
     {
@@ -6593,24 +6660,26 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         uint256 slashingPenalty = 5 ether;
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            slashingPenalty
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: slashingPenalty,
+            isSlashed: true
+        });
 
         vm.expectRevert(
             ICSModule.SlashingPenaltyIsNotApplicable.selector,
             address(module)
         );
 
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
     }
 
-    function test_submitWithdrawals_chargeWithdrawalFee_DelayFee()
+    function test_reportWithdrawnValidators_chargeWithdrawalFee_DelayFee()
         public
         assertInvariants
     {
@@ -6632,15 +6701,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6650,7 +6721,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 exitDelayFeeAmount + withdrawalRequestFeeAmount
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6659,7 +6730,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_submitWithdrawals_chargeWithdrawalFee_hugeDelayFee()
+    function test_reportWithdrawnValidators_chargeWithdrawalFee_hugeDelayFee()
         public
         assertInvariants
     {
@@ -6681,15 +6752,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6699,7 +6772,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 exitDelayFeeAmount + withdrawalRequestFeeAmount
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6708,7 +6781,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_submitWithdrawals_chargeHugeWithdrawalFee_DelayFee()
+    function test_reportWithdrawnValidators_chargeHugeWithdrawalFee_DelayFee()
         public
         assertInvariants
     {
@@ -6730,15 +6803,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6748,7 +6823,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 exitDelayFeeAmount + withdrawalRequestFeeAmount
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6757,7 +6832,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_submitWithdrawals_chargeWithdrawalFee_StrikesPenalty()
+    function test_reportWithdrawnValidators_chargeWithdrawalFee_StrikesPenalty()
         public
         assertInvariants
     {
@@ -6784,15 +6859,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6810,7 +6887,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 withdrawalRequestFeeAmount
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6819,7 +6896,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_submitWithdrawals_chargeWithdrawalFee_HugeStrikesPenalty()
+    function test_reportWithdrawnValidators_chargeWithdrawalFee_HugeStrikesPenalty()
         public
         assertInvariants
     {
@@ -6844,15 +6921,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6870,7 +6949,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 withdrawalRequestFeeAmount
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6879,7 +6958,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_submitWithdrawals_chargeHugeWithdrawalFee_StrikesPenalty()
+    function test_reportWithdrawnValidators_chargeHugeWithdrawalFee_StrikesPenalty()
         public
         assertInvariants
     {
@@ -6904,15 +6983,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6930,7 +7011,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 withdrawalRequestFeeAmount
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6939,7 +7020,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_submitWithdrawals_chargeWithdrawalFee_DelayAndStrikesPenalties()
+    function test_reportWithdrawnValidators_chargeWithdrawalFee_DelayAndStrikesPenalties()
         public
         assertInvariants
     {
@@ -6965,15 +7046,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -6991,7 +7074,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 strikesPenaltyAmount
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -7000,7 +7083,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_submitWithdrawals_chargeWithdrawalFee_DelayAndStrikesPenalties_AllHuge()
+    function test_reportWithdrawnValidators_chargeWithdrawalFee_DelayAndStrikesPenalties_AllHuge()
         public
     {
         uint256 keyIndex = 0;
@@ -7025,15 +7108,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -7051,7 +7136,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 strikesPenaltyAmount
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -7060,7 +7145,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_submitWithdrawals_chargeWithdrawalFee_zeroPenaltyValue()
+    function test_reportWithdrawnValidators_chargeWithdrawalFee_zeroPenaltyValue()
         public
         assertInvariants
     {
@@ -7081,15 +7166,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -7099,7 +7186,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 withdrawalRequestFeeAmount
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -7108,7 +7195,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_submitWithdrawals_chargeHugeWithdrawalFee_zeroPenaltyValue()
+    function test_reportWithdrawnValidators_chargeHugeWithdrawalFee_zeroPenaltyValue()
         public
         assertInvariants
     {
@@ -7129,15 +7216,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -7147,7 +7236,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 withdrawalRequestFeeAmount
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -7156,7 +7245,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_submitWithdrawals_chargeWithdrawalFeeNotScaled()
+    function test_reportWithdrawnValidators_chargeWithdrawalFeeNotScaled()
         public
         assertInvariants
     {
@@ -7175,14 +7264,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE() * multiplier,
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE *
+                multiplier,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectCall(
             address(accounting),
@@ -7192,10 +7284,10 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 withdrawalRequestFee
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
     }
 
-    function test_submitWithdrawals_dontChargeWithdrawalFee_noPenalties()
+    function test_reportWithdrawnValidators_dontChargeWithdrawalFee_noPenalties()
         public
         assertInvariants
     {
@@ -7216,15 +7308,17 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         expectNoCall(
             address(accounting),
@@ -7234,7 +7328,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 withdrawalRequestFeeAmount
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -7243,7 +7337,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_submitWithdrawals_dontChargeWithdrawalFee_exitBalancePenalty()
+    function test_reportWithdrawnValidators_dontChargeWithdrawalFee_exitBalancePenalty()
         public
         assertInvariants
     {
@@ -7265,15 +7359,18 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             })
         );
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            keyIndex,
-            module.MIN_ACTIVATION_BALANCE() - balanceShortage,
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE -
+                balanceShortage,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         expectNoCall(
             address(accounting),
@@ -7283,7 +7380,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 withdrawalRequestFeeAmount
             )
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -7292,21 +7389,31 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_submitWithdrawals_unbondedKeys() public assertInvariants {
+    function test_reportWithdrawnValidators_unbondedKeys()
+        public
+        assertInvariants
+    {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator(2);
         module.obtainDepositData(1, "");
         uint256 nonce = module.getNonce();
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(noId, keyIndex, 1 ether, 0);
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
+        );
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: 1 ether,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function test_submitWithdrawals_RevertWhen_ZeroExitBalance()
+    function test_reportWithdrawnValidators_RevertWhen_ZeroExitBalance()
         public
         assertInvariants
     {
@@ -7314,57 +7421,83 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(noId, keyIndex, 0, 0);
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
+        );
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: 0,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectRevert(ICSModule.ZeroExitBalance.selector);
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
     }
 
-    function test_submitWithdrawals_RevertWhen_NoNodeOperator()
+    function test_reportWithdrawnValidators_RevertWhen_NoNodeOperator()
         public
         assertInvariants
     {
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(0, 0, 32 ether, 0);
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
+        );
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: 0,
+            keyIndex: 0,
+            exitBalance: 32 ether,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
     }
 
-    function test_submitWithdrawals_RevertWhen_InvalidKeyIndexOffset()
+    function test_reportWithdrawnValidators_RevertWhen_InvalidKeyIndexOffset()
         public
         assertInvariants
     {
         uint256 noId = createNodeOperator();
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(noId, 0, 32 ether, 0);
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
+        );
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 32 ether,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.expectRevert(ICSModule.SigningKeysInvalidOffset.selector);
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
     }
 
-    function test_submitWithdrawals_alreadyWithdrawn() public assertInvariants {
+    function test_reportWithdrawnValidators_alreadyWithdrawn()
+        public
+        assertInvariants
+    {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            0,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
         );
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         uint256 nonceBefore = module.getNonce();
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
         assertEq(
             module.getNonce(),
             nonceBefore,
@@ -7372,7 +7505,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         );
     }
 
-    function test_submitWithdrawals_nonceIncrementsOnceForManyWithdrawals()
+    function test_reportWithdrawnValidators_nonceIncrementsOnceForManyWithdrawals()
         public
         assertInvariants
     {
@@ -7380,17 +7513,19 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         module.obtainDepositData(3, "");
         uint256 nonceBefore = module.getNonce();
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](3);
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            3
+        );
         for (uint256 i = 0; i < 3; ++i) {
-            withdrawalInfo[i] = ValidatorWithdrawalInfo(
-                noId,
-                i,
-                module.MIN_ACTIVATION_BALANCE(),
-                0
-            );
+            exitInfo[i] = WithdrawnValidatorInfo({
+                nodeOperatorId: noId,
+                keyIndex: i,
+                exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+                slashingPenalty: 0,
+                isSlashed: false
+            });
         }
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
         assertEq(
             module.getNonce(),
             nonceBefore + 1,
@@ -7652,7 +7787,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         module.onValidatorSlashed(noId, 0);
     }
 
-    function test_submitWithdrawalsRole() public {
+    function test_reportWithdrawnValidatorsRole() public {
         uint256 noId = createNodeOperator();
         bytes32 role = module.SUBMIT_WITHDRAWALS_ROLE();
 
@@ -7662,25 +7797,39 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         module.obtainDepositData(1, "");
         vm.stopPrank();
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(noId, 0, 1 ether, 0);
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
+        );
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 1 ether,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.prank(actor);
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
     }
 
-    function test_submitWithdrawalsRole_revert() public {
+    function test_reportWithdrawnValidatorsRole_revert() public {
         uint256 noId = createNodeOperator();
         bytes32 role = module.SUBMIT_WITHDRAWALS_ROLE();
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(noId, 0, 1 ether, 0);
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
+        );
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 1 ether,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
     }
 
     function test_recovererRole() public {
@@ -7934,29 +8083,34 @@ abstract contract ModuleDepositableValidatorsCount is ModuleFixtures {
 
         penalize(noId, BOND_SIZE * 3);
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](3);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
-            noId,
-            0,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            3
         );
-        withdrawalInfo[1] = ValidatorWithdrawalInfo(
-            noId,
-            1,
-            module.MIN_ACTIVATION_BALANCE(),
-            0
-        );
-        withdrawalInfo[2] = ValidatorWithdrawalInfo(
-            noId,
-            2,
-            module.MIN_ACTIVATION_BALANCE() - BOND_SIZE,
-            0
-        ); // Large CL balance drop, that doesn't change the unbonded count.
+        exitInfo[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+        exitInfo[1] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 1,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+        exitInfo[2] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 2,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE -
+                BOND_SIZE,
+            slashingPenalty: 0,
+            isSlashed: false
+        }); // Large CL balance drop, that doesn't change the unbonded count.
 
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 0);
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 2);
         assertEq(getStakingModuleSummary().depositableValidatorsCount, 2);
     }

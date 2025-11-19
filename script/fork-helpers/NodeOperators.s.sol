@@ -9,7 +9,7 @@ import { ForkHelpersCommon } from "./Common.sol";
 import { IVEBO } from "../../src/interfaces/IVEBO.sol";
 import { Utilities } from "../../test/helpers/Utilities.sol";
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
-import { NodeOperator, ValidatorWithdrawalInfo } from "../../src/interfaces/ICSModule.sol";
+import { NodeOperator, WithdrawnValidatorInfo } from "../../src/interfaces/ICSModule.sol";
 
 contract NodeOperators is
     Script,
@@ -208,15 +208,17 @@ contract NodeOperators is
             .getNodeOperator(noId)
             .totalWithdrawnKeys;
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
+        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
+            1
+        );
+        exitInfo[0] = WithdrawnValidatorInfo(
             noId,
             keyIndex,
             exitBalance,
-            slashingPenalty
+            slashingPenalty,
+            slashingPenalty > 0
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(exitInfo);
 
         assertTrue(module.isValidatorWithdrawn(noId, keyIndex));
         assertEq(
