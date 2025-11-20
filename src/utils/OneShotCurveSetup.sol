@@ -6,12 +6,12 @@ pragma solidity 0.8.24;
 import { ICSBondCurve } from "../interfaces/ICSBondCurve.sol";
 import { ICSAccounting } from "../interfaces/ICSAccounting.sol";
 import { ICSParametersRegistry } from "../interfaces/ICSParametersRegistry.sol";
-import { IBondCurveOneTimeDeployer } from "../interfaces/IBondCurveOneTimeDeployer.sol";
+import { IOneShotCurveSetup } from "../interfaces/IOneShotCurveSetup.sol";
 
 /// @notice Helper that atomically deploys a new bond curve together with its parameter overrides.
 /// @dev The contract is intentionally single-use: once `execute` finishes successfully it
 ///      stores the emitted `curveId` for reference.
-contract BondCurveOneTimeDeployer is IBondCurveOneTimeDeployer {
+contract OneShotCurveSetup is IOneShotCurveSetup {
     ICSAccounting public immutable ACCOUNTING;
     ICSParametersRegistry public immutable REGISTRY;
 

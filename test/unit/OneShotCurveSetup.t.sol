@@ -5,15 +5,15 @@ pragma solidity 0.8.24;
 
 import "forge-std/Test.sol";
 
-import { BondCurveOneTimeDeployer } from "src/utils/BondCurveOneTimeDeployer.sol";
-import { IBondCurveOneTimeDeployer } from "src/interfaces/IBondCurveOneTimeDeployer.sol";
+import { OneShotCurveSetup } from "src/utils/OneShotCurveSetup.sol";
+import { IOneShotCurveSetup } from "src/interfaces/IOneShotCurveSetup.sol";
 import { ICSBondCurve } from "src/interfaces/ICSBondCurve.sol";
 import { ICSParametersRegistry } from "src/interfaces/ICSParametersRegistry.sol";
 import { CSAccountingMock } from "../helpers/mocks/CSAccountingMock.sol";
 import { CSParametersRegistryMock } from "../helpers/mocks/CSParametersRegistryMock.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 
-contract BondCurveOneTimeDeployerTest is Test, Utilities {
+contract OneShotCurveSetupTest is Test, Utilities {
     CSAccountingMock internal accounting;
     CSParametersRegistryMock internal registry;
 
@@ -28,40 +28,34 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     }
 
     function test_constructor_revertWhen_ZeroAccountingAddress() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
+        IOneShotCurveSetup.ConstructorParams
             memory params = _paramsWithAllOverrides();
 
-        vm.expectRevert(
-            IBondCurveOneTimeDeployer.ZeroAccountingAddress.selector
-        );
-        new BondCurveOneTimeDeployer(address(0), address(registry), params);
+        vm.expectRevert(IOneShotCurveSetup.ZeroAccountingAddress.selector);
+        new OneShotCurveSetup(address(0), address(registry), params);
     }
 
     function test_constructor_revertWhen_ZeroRegistryAddress() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
+        IOneShotCurveSetup.ConstructorParams
             memory params = _paramsWithAllOverrides();
 
-        vm.expectRevert(IBondCurveOneTimeDeployer.ZeroRegistryAddress.selector);
-        new BondCurveOneTimeDeployer(address(accounting), address(0), params);
+        vm.expectRevert(IOneShotCurveSetup.ZeroRegistryAddress.selector);
+        new OneShotCurveSetup(address(accounting), address(0), params);
     }
 
     function test_constructor_revertWhen_EmptyBondCurve() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
+        IOneShotCurveSetup.ConstructorParams
             memory params = _paramsWithAllOverrides();
         delete params.bondCurve;
 
-        vm.expectRevert(IBondCurveOneTimeDeployer.EmptyBondCurve.selector);
-        new BondCurveOneTimeDeployer(
-            address(accounting),
-            address(registry),
-            params
-        );
+        vm.expectRevert(IOneShotCurveSetup.EmptyBondCurve.selector);
+        new OneShotCurveSetup(address(accounting), address(registry), params);
     }
 
     function test_execute() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
+        IOneShotCurveSetup.ConstructorParams
             memory params = _paramsWithAllOverrides();
-        BondCurveOneTimeDeployer deployer = new BondCurveOneTimeDeployer(
+        OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             params
@@ -73,7 +67,7 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
         _expectAllOverrideCalls(expectedCurveId, params);
 
         vm.expectEmit(address(deployer));
-        emit IBondCurveOneTimeDeployer.BondCurveDeployed(expectedCurveId);
+        emit IOneShotCurveSetup.BondCurveDeployed(expectedCurveId);
 
         uint256 curveId = deployer.execute();
         assertEq(curveId, expectedCurveId);
@@ -82,7 +76,7 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     }
 
     function test_execute_partialOverrides() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
+        IOneShotCurveSetup.ConstructorParams
             memory params = _paramsWithAllOverrides();
         params.keyRemovalCharge.isSet = false;
         params.rewardShareData.isSet = false;
@@ -94,7 +88,7 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
         params.exitDelayFee.isSet = false;
         params.maxWithdrawalRequestFee.isSet = false;
 
-        BondCurveOneTimeDeployer deployer = new BondCurveOneTimeDeployer(
+        OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             params
@@ -187,11 +181,10 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     }
 
     function test_execute_setsKeyRemovalCharge() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
-            memory params = _baseParams();
+        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
         params.keyRemovalCharge = _scalarOverride(11);
 
-        BondCurveOneTimeDeployer deployer = new BondCurveOneTimeDeployer(
+        OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             params
@@ -211,11 +204,10 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     }
 
     function test_execute_setsGeneralDelayedPenaltyFine() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
-            memory params = _baseParams();
+        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
         params.generalDelayedPenaltyFine = _scalarOverride(12);
 
-        BondCurveOneTimeDeployer deployer = new BondCurveOneTimeDeployer(
+        OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             params
@@ -237,11 +229,10 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     }
 
     function test_execute_setsKeysLimit() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
-            memory params = _baseParams();
+        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
         params.keysLimit = _scalarOverride(99);
 
-        BondCurveOneTimeDeployer deployer = new BondCurveOneTimeDeployer(
+        OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             params
@@ -261,11 +252,10 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     }
 
     function test_execute_setsQueueConfig() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
-            memory params = _baseParams();
+        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
         params.queueConfig = _queueOverride(7, 13);
 
-        BondCurveOneTimeDeployer deployer = new BondCurveOneTimeDeployer(
+        OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             params
@@ -286,11 +276,10 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     }
 
     function test_execute_setsRewardShareData() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
-            memory params = _baseParams();
+        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
         params.rewardShareData = _intervalOverride(7777);
 
-        BondCurveOneTimeDeployer deployer = new BondCurveOneTimeDeployer(
+        OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             params
@@ -310,11 +299,10 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     }
 
     function test_execute_setsPerformanceLeewayData() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
-            memory params = _baseParams();
+        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
         params.performanceLeewayData = _intervalOverride(5555);
 
-        BondCurveOneTimeDeployer deployer = new BondCurveOneTimeDeployer(
+        OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             params
@@ -334,11 +322,10 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     }
 
     function test_execute_setsStrikesParams() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
-            memory params = _baseParams();
+        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
         params.strikesParams = _strikesOverride(9, 3);
 
-        BondCurveOneTimeDeployer deployer = new BondCurveOneTimeDeployer(
+        OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             params
@@ -359,11 +346,10 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     }
 
     function test_execute_setsBadPerformancePenalty() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
-            memory params = _baseParams();
+        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
         params.badPerformancePenalty = _scalarOverride(21);
 
-        BondCurveOneTimeDeployer deployer = new BondCurveOneTimeDeployer(
+        OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             params
@@ -383,15 +369,14 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     }
 
     function test_execute_setsPerformanceCoefficients() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
-            memory params = _baseParams();
+        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
         params.performanceCoefficients = _performanceCoefficientsOverride(
             1,
             2,
             3
         );
 
-        BondCurveOneTimeDeployer deployer = new BondCurveOneTimeDeployer(
+        OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             params
@@ -413,11 +398,10 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     }
 
     function test_execute_setsAllowedExitDelay() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
-            memory params = _baseParams();
+        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
         params.allowedExitDelay = _scalarOverride(100);
 
-        BondCurveOneTimeDeployer deployer = new BondCurveOneTimeDeployer(
+        OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             params
@@ -437,11 +421,10 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     }
 
     function test_execute_setsExitDelayFee() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
-            memory params = _baseParams();
+        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
         params.exitDelayFee = _scalarOverride(101);
 
-        BondCurveOneTimeDeployer deployer = new BondCurveOneTimeDeployer(
+        OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             params
@@ -461,11 +444,10 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     }
 
     function test_execute_setsMaxWithdrawalRequestFee() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
-            memory params = _baseParams();
+        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
         params.maxWithdrawalRequestFee = _scalarOverride(202);
 
-        BondCurveOneTimeDeployer deployer = new BondCurveOneTimeDeployer(
+        OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             params
@@ -485,7 +467,7 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     }
 
     function test_execute_revertWhen_AlreadyExecuted() external {
-        BondCurveOneTimeDeployer deployer = new BondCurveOneTimeDeployer(
+        OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             _paramsWithAllOverrides()
@@ -493,15 +475,15 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
 
         deployer.execute();
 
-        vm.expectRevert(IBondCurveOneTimeDeployer.AlreadyExecuted.selector);
+        vm.expectRevert(IOneShotCurveSetup.AlreadyExecuted.selector);
         deployer.execute();
     }
 
     function test_constructor() external {
-        IBondCurveOneTimeDeployer.ConstructorParams
+        IOneShotCurveSetup.ConstructorParams
             memory params = _paramsWithAllOverrides();
 
-        BondCurveOneTimeDeployer deployer = new BondCurveOneTimeDeployer(
+        OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             params
@@ -513,7 +495,7 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
 
     function _expectAllOverrideCalls(
         uint256 expectedCurveId,
-        IBondCurveOneTimeDeployer.ConstructorParams memory params
+        IOneShotCurveSetup.ConstructorParams memory params
     ) internal {
         vm.expectCall(
             address(registry),
@@ -622,20 +604,22 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     function _paramsWithAllOverrides()
         internal
         pure
-        returns (IBondCurveOneTimeDeployer.ConstructorParams memory params)
+        returns (IOneShotCurveSetup.ConstructorParams memory params)
     {
         params.bondCurve = _bondCurve();
-        params.keyRemovalCharge = IBondCurveOneTimeDeployer.ScalarOverride({
+        params.keyRemovalCharge = IOneShotCurveSetup.ScalarOverride({
             isSet: true,
             value: 1
         });
-        params.generalDelayedPenaltyFine = IBondCurveOneTimeDeployer
-            .ScalarOverride({ isSet: true, value: 2 });
-        params.keysLimit = IBondCurveOneTimeDeployer.ScalarOverride({
+        params.generalDelayedPenaltyFine = IOneShotCurveSetup.ScalarOverride({
+            isSet: true,
+            value: 2
+        });
+        params.keysLimit = IOneShotCurveSetup.ScalarOverride({
             isSet: true,
             value: 42
         });
-        params.queueConfig = IBondCurveOneTimeDeployer.QueueConfigOverride({
+        params.queueConfig = IOneShotCurveSetup.QueueConfigOverride({
             isSet: true,
             priority: 3,
             maxDeposits: 5
@@ -643,36 +627,40 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
 
         params.rewardShareData = _intervalOverride(10000);
         params.performanceLeewayData = _intervalOverride(8000);
-        params.strikesParams = IBondCurveOneTimeDeployer.StrikesOverride({
+        params.strikesParams = IOneShotCurveSetup.StrikesOverride({
             isSet: true,
             lifetime: 4,
             threshold: 2
         });
-        params.badPerformancePenalty = IBondCurveOneTimeDeployer
-            .ScalarOverride({ isSet: true, value: 5 });
-        params.performanceCoefficients = IBondCurveOneTimeDeployer
+        params.badPerformancePenalty = IOneShotCurveSetup.ScalarOverride({
+            isSet: true,
+            value: 5
+        });
+        params.performanceCoefficients = IOneShotCurveSetup
             .PerformanceCoefficientsOverride({
                 isSet: true,
                 attestationsWeight: 1,
                 blocksWeight: 2,
                 syncWeight: 3
             });
-        params.allowedExitDelay = IBondCurveOneTimeDeployer.ScalarOverride({
+        params.allowedExitDelay = IOneShotCurveSetup.ScalarOverride({
             isSet: true,
             value: 6
         });
-        params.exitDelayFee = IBondCurveOneTimeDeployer.ScalarOverride({
+        params.exitDelayFee = IOneShotCurveSetup.ScalarOverride({
             isSet: true,
             value: 7
         });
-        params.maxWithdrawalRequestFee = IBondCurveOneTimeDeployer
-            .ScalarOverride({ isSet: true, value: 8 });
+        params.maxWithdrawalRequestFee = IOneShotCurveSetup.ScalarOverride({
+            isSet: true,
+            value: 8
+        });
     }
 
     function _baseParams()
         internal
         pure
-        returns (IBondCurveOneTimeDeployer.ConstructorParams memory params)
+        returns (IOneShotCurveSetup.ConstructorParams memory params)
     {
         params.bondCurve = _bondCurve();
     }
@@ -699,7 +687,7 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
         internal
         pure
         returns (
-            IBondCurveOneTimeDeployer.KeyNumberValueIntervalsOverride
+            IOneShotCurveSetup.KeyNumberValueIntervalsOverride
                 memory overrideData
         )
     {
@@ -718,7 +706,7 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     )
         internal
         pure
-        returns (IBondCurveOneTimeDeployer.ScalarOverride memory overrideData)
+        returns (IOneShotCurveSetup.ScalarOverride memory overrideData)
     {
         overrideData.isSet = true;
         overrideData.value = value;
@@ -730,9 +718,7 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     )
         internal
         pure
-        returns (
-            IBondCurveOneTimeDeployer.QueueConfigOverride memory overrideData
-        )
+        returns (IOneShotCurveSetup.QueueConfigOverride memory overrideData)
     {
         overrideData.isSet = true;
         overrideData.priority = priority;
@@ -745,7 +731,7 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
     )
         internal
         pure
-        returns (IBondCurveOneTimeDeployer.StrikesOverride memory overrideData)
+        returns (IOneShotCurveSetup.StrikesOverride memory overrideData)
     {
         overrideData.isSet = true;
         overrideData.lifetime = lifetime;
@@ -760,7 +746,7 @@ contract BondCurveOneTimeDeployerTest is Test, Utilities {
         internal
         pure
         returns (
-            IBondCurveOneTimeDeployer.PerformanceCoefficientsOverride
+            IOneShotCurveSetup.PerformanceCoefficientsOverride
                 memory overrideData
         )
     {

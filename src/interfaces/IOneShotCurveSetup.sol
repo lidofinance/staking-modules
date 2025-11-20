@@ -7,8 +7,8 @@ import { ICSAccounting } from "./ICSAccounting.sol";
 import { ICSBondCurve } from "./ICSBondCurve.sol";
 import { ICSParametersRegistry } from "./ICSParametersRegistry.sol";
 
-/// @title One-time deployer for a bond curve plus per-curve parameter overrides.
-interface IBondCurveOneTimeDeployer {
+/// @title One-shot setup helper for a bond curve plus per-curve parameter overrides.
+interface IOneShotCurveSetup {
     struct ScalarOverride {
         bool isSet;
         uint256 value;
@@ -54,7 +54,7 @@ interface IBondCurveOneTimeDeployer {
         ScalarOverride maxWithdrawalRequestFee;
     }
 
-    /// @dev Emitted once the curve deployment completes successfully.
+    /// @dev Emitted once the curve setup completes successfully.
     event BondCurveDeployed(uint256 indexed curveId);
 
     error AlreadyExecuted();
