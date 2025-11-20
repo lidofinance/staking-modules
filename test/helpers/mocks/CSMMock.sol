@@ -19,7 +19,8 @@ contract CSMMock is Utilities, Fixtures {
     NodeOperator internal mockNodeOperator;
     uint256 internal nodeOperatorsCount;
     uint256 internal nodeOperatorTotalDepositedKeys;
-    bool internal isValidatorWithdrawnMock;
+    mapping(uint256 => mapping(uint256 => bool))
+        internal isValidatorWithdrawnByKey;
     IAccounting public immutable ACCOUNTING;
     IParametersRegistry public immutable PARAMETERS_REGISTRY;
     LidoLocatorMock public immutable LIDO_LOCATOR;
@@ -82,15 +83,19 @@ contract CSMMock is Utilities, Fixtures {
                 : managementProperties.rewardAddress;
     }
 
-    function mock_setIsValidatorWithdrawn(bool value) external {
-        isValidatorWithdrawnMock = value;
+    function mock_setIsValidatorWithdrawn(
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        bool value
+    ) external {
+        isValidatorWithdrawnByKey[nodeOperatorId][keyIndex] = value;
     }
 
     function isValidatorWithdrawn(
-        uint256,
-        uint256
+        uint256 nodeOperatorId,
+        uint256 keyIndex
     ) external view returns (bool) {
-        return isValidatorWithdrawnMock;
+        return isValidatorWithdrawnByKey[nodeOperatorId][keyIndex];
     }
 
     function mock_setNodeOperatorsCount(uint256 count) external {
