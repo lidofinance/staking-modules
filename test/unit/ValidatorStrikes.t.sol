@@ -221,6 +221,14 @@ contract ValidatorStrikesTest is ValidatorStrikesTestBase {
         assertEq(address(strikes.ejector()), ejector);
     }
 
+    function test_setEjector_RevertWhen_notAdmin() public {
+        ejector = address(new EjectorMock(address(module)));
+
+        expectRoleRevert(stranger, strikes.DEFAULT_ADMIN_ROLE());
+        vm.prank(stranger);
+        strikes.setEjector(ejector);
+    }
+
     function test_setEjector_RevertWhen_ZeroEjectorAddress() public {
         vm.expectRevert(IValidatorStrikes.ZeroEjectorAddress.selector);
         vm.prank(admin);
@@ -376,6 +384,37 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
     }
 
     Leaf[] internal leaves;
+
+    function _singleLeaf(
+        uint256 leafIndex
+    )
+        internal
+        view
+        returns (
+            Leaf memory leaf,
+            IValidatorStrikes.KeyStrikes[] memory keyStrikesList,
+            bytes32[] memory proof,
+            bool[] memory proofFlags
+        )
+    {
+        leaf = leaves[leafIndex];
+        keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
+        keyStrikesList[0] = leaf.keyStrikes;
+        proof = tree.getProof(leafIndex);
+        proofFlags = new bool[](proof.length);
+    }
+
+    function _mockModule(Leaf memory leaf) internal {
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICSModule.getSigningKeys.selector,
+                leaf.keyStrikes.nodeOperatorId,
+                leaf.keyStrikes.keyIndex
+            ),
+            abi.encode(leaf.pubkey)
+        );
+    }
 
     function setUp() public {
         stranger = nextAddress("STRANGER");
@@ -693,24 +732,14 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         public
         withTreeOfLeavesCount(3)
     {
-        Leaf memory leaf = leaves[0];
+        (
+            Leaf memory leaf,
+            IValidatorStrikes.KeyStrikes[] memory keyStrikesList,
+            bytes32[] memory proof,
+            bool[] memory proofFlags
+        ) = _singleLeaf(0);
 
-        IValidatorStrikes.KeyStrikes[]
-            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
-        keyStrikesList[0] = leaf.keyStrikes;
-
-        bytes32[] memory proof = tree.getProof(0);
-        bool[] memory proofFlags = new bool[](proof.length);
-
-        vm.mockCall(
-            address(module),
-            abi.encodeWithSelector(
-                ICSModule.getSigningKeys.selector,
-                leaf.keyStrikes.nodeOperatorId,
-                leaf.keyStrikes.keyIndex
-            ),
-            abi.encode(leaf.pubkey)
-        );
+        _mockModule(leaf);
         vm.expectCall(
             address(ejector),
             abi.encodeWithSelector(
@@ -726,6 +755,144 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
             proof,
             proofFlags,
             address(0)
+        );
+    }
+
+    function test_processBadPerformanceProof_valuePerKeyForwarded()
+        public
+        withTreeOfLeavesCount(2)
+    {
+        uint256[] memory indicies = UintArr(0, 1);
+
+        IValidatorStrikes.KeyStrikes[]
+            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](
+                indicies.length
+            );
+        (bytes32[] memory proof, bool[] memory proofFlags) = tree.getMultiProof(
+            indicies
+        );
+
+        for (uint256 i; i < indicies.length; i++) {
+            Leaf memory leaf = leaves[indicies[i]];
+            keyStrikesList[i] = leaf.keyStrikes;
+            vm.mockCall(
+                address(module),
+                abi.encodeWithSelector(
+                    ICSModule.getSigningKeys.selector,
+                    leaf.keyStrikes.nodeOperatorId,
+                    leaf.keyStrikes.keyIndex
+                ),
+                abi.encode(leaf.pubkey)
+            );
+            vm.expectCall(
+                address(exitPenalties),
+                abi.encodeWithSelector(
+                    IExitPenalties.processStrikesReport.selector,
+                    leaf.keyStrikes.nodeOperatorId,
+                    leaf.pubkey
+                )
+            );
+        }
+
+        uint256 msgValue = 4 ether;
+        uint256 valuePerKey = msgValue / keyStrikesList.length;
+        for (uint256 i; i < keyStrikesList.length; ++i) {
+            vm.expectCall(
+                address(ejector),
+                valuePerKey,
+                abi.encodeWithSelector(
+                    IEjector.ejectBadPerformer.selector,
+                    keyStrikesList[i].nodeOperatorId,
+                    keyStrikesList[i].keyIndex,
+                    refundRecipient
+                )
+            );
+        }
+
+        this.processBadPerformanceProof{ value: msgValue }(
+            keyStrikesList,
+            proof,
+            proofFlags,
+            refundRecipient
+        );
+    }
+
+    function test_processBadPerformanceProof_strikesAtThreshold()
+        public
+        withTreeOfLeavesCount(1)
+    {
+        (
+            Leaf memory leaf,
+            IValidatorStrikes.KeyStrikes[] memory keyStrikesList,
+            bytes32[] memory proof,
+            bool[] memory proofFlags
+        ) = _singleLeaf(0);
+
+        uint256 threshold;
+        for (uint256 i; i < leaf.keyStrikes.data.length; ++i) {
+            threshold += leaf.keyStrikes.data[i];
+        }
+        module.PARAMETERS_REGISTRY().setStrikesParams(0, 6, threshold);
+
+        _mockModule(leaf);
+        vm.expectCall(
+            address(exitPenalties),
+            abi.encodeWithSelector(
+                IExitPenalties.processStrikesReport.selector,
+                leaf.keyStrikes.nodeOperatorId,
+                leaf.pubkey
+            )
+        );
+        vm.expectCall(
+            address(ejector),
+            abi.encodeWithSelector(
+                IEjector.ejectBadPerformer.selector,
+                leaf.keyStrikes.nodeOperatorId,
+                leaf.keyStrikes.keyIndex,
+                refundRecipient
+            )
+        );
+
+        this.processBadPerformanceProof{ value: 1 }(
+            keyStrikesList,
+            proof,
+            proofFlags,
+            refundRecipient
+        );
+    }
+
+    function test_processBadPerformanceProof_RevertWhen_TreeNotSet() public {
+        Leaf memory leaf;
+        leaf.keyStrikes = IValidatorStrikes.KeyStrikes({
+            nodeOperatorId: 1,
+            keyIndex: 0,
+            data: UintArr(1, 1, 1)
+        });
+        (leaf.pubkey, ) = keysSignatures(1);
+
+        IValidatorStrikes.KeyStrikes[]
+            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
+        keyStrikesList[0] = leaf.keyStrikes;
+
+        bytes32[] memory proof = new bytes32[](0);
+        bool[] memory proofFlags = new bool[](0);
+
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICSModule.getSigningKeys.selector,
+                leaf.keyStrikes.nodeOperatorId,
+                leaf.keyStrikes.keyIndex
+            ),
+            abi.encode(leaf.pubkey)
+        );
+
+        vm.expectRevert(IValidatorStrikes.InvalidProof.selector);
+        this.processBadPerformanceProof{ value: 1 }(
+            keyStrikesList,
+            proof,
+            proofFlags,
+            refundRecipient
         );
     }
 
@@ -802,26 +969,21 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         public
         withTreeOfLeavesCount(3)
     {
-        Leaf memory leaf = leaves[0];
+        (
+            Leaf memory leaf,
+            IValidatorStrikes.KeyStrikes[] memory keyStrikesList,
+            bytes32[] memory proof,
+            bool[] memory proofFlags
+        ) = _singleLeaf(0);
 
-        IValidatorStrikes.KeyStrikes[]
-            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
-        keyStrikesList[0] = leaf.keyStrikes;
+        uint256 threshold;
+        for (uint256 i; i < leaf.keyStrikes.data.length; ++i) {
+            threshold += leaf.keyStrikes.data[i];
+        }
 
-        bytes32[] memory proof = tree.getProof(0);
-        bool[] memory proofFlags = new bool[](proof.length);
+        module.PARAMETERS_REGISTRY().setStrikesParams(0, 6, threshold + 1);
 
-        module.PARAMETERS_REGISTRY().setStrikesParams(0, 6, 100501);
-
-        vm.mockCall(
-            address(module),
-            abi.encodeWithSelector(
-                ICSModule.getSigningKeys.selector,
-                leaf.keyStrikes.nodeOperatorId,
-                leaf.keyStrikes.keyIndex
-            ),
-            abi.encode(leaf.pubkey)
-        );
+        _mockModule(leaf);
 
         vm.expectRevert(IValidatorStrikes.NotEnoughStrikesToEject.selector);
         this.processBadPerformanceProof{ value: 1 }(
