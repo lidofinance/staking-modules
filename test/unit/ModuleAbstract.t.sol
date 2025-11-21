@@ -21,6 +21,8 @@ import { ERC20Testable } from "../helpers/ERCTestable.sol";
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
 import { IStakingModule } from "src/interfaces/IStakingModule.sol";
+import { ILidoLocator } from "src/interfaces/ILidoLocator.sol";
+import { IWithdrawalQueue } from "src/interfaces/IWithdrawalQueue.sol";
 import { SigningKeys } from "src/lib/SigningKeys.sol";
 import { INOAddresses } from "src/lib/NOAddresses.sol";
 import { IGeneralPenalty } from "src/lib/GeneralPenaltyLib.sol";
@@ -797,103 +799,6 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
         assertEq(no.depositableValidatorsCount, 0);
     }
 
-    function test_AddValidatorKeysWstETH_createNodeOperatorRole()
-        public
-        assertInvariants
-        brutalizeMemory
-    {
-        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), stranger);
-
-        vm.prank(stranger);
-        uint256 noId = module.createNodeOperator(
-            nodeOperator,
-            NodeOperatorManagementProperties({
-                managerAddress: address(0),
-                rewardAddress: address(0),
-                extendedManagerPermissions: false
-            }),
-            address(0)
-        );
-        uint256 toWrap = BOND_SIZE + 1 wei;
-        vm.deal(nodeOperator, toWrap);
-        vm.startPrank(nodeOperator);
-        stETH.submit{ value: toWrap }(address(0));
-        stETH.approve(address(wstETH), UINT256_MAX);
-        wstETH.wrap(toWrap);
-        vm.stopPrank();
-        (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
-        uint256 nonce = module.getNonce();
-
-        vm.prank(stranger);
-        module.addValidatorKeysWstETH(
-            nodeOperator,
-            noId,
-            1,
-            keys,
-            signatures,
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
-        );
-        assertEq(module.getNonce(), nonce + 1);
-    }
-
-    function test_AddValidatorKeysWstETH_createNodeOperatorRole_MultipleOperators()
-        public
-        assertInvariants
-        brutalizeMemory
-    {
-        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), stranger);
-
-        uint256[] memory ids = new uint256[](3);
-        for (uint256 i; i < ids.length; i++) {
-            vm.prank(stranger);
-            ids[i] = module.createNodeOperator(
-                nodeOperator,
-                NodeOperatorManagementProperties({
-                    managerAddress: address(0),
-                    rewardAddress: address(0),
-                    extendedManagerPermissions: false
-                }),
-                address(0)
-            );
-        }
-        shuffle(ids);
-
-        for (uint256 i; i < ids.length; i++) {
-            uint256 toWrap = BOND_SIZE + 2 wei;
-            vm.deal(nodeOperator, toWrap);
-            vm.startPrank(nodeOperator);
-            stETH.submit{ value: toWrap }(address(0));
-            stETH.approve(address(wstETH), UINT256_MAX);
-            wstETH.wrap(toWrap);
-            vm.stopPrank();
-            (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
-            uint256 nonce = module.getNonce();
-
-            vm.prank(stranger);
-            module.addValidatorKeysWstETH(
-                nodeOperator,
-                ids[i],
-                1,
-                keys,
-                signatures,
-                ICSAccounting.PermitInput({
-                    value: 0,
-                    deadline: 0,
-                    v: 0,
-                    r: 0,
-                    s: 0
-                })
-            );
-            assertEq(module.getNonce(), nonce + 1);
-        }
-    }
-
     function test_AddValidatorKeysWstETH_withPermit()
         public
         assertInvariants
@@ -1059,96 +964,6 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
         assertEq(no.depositableValidatorsCount, 0);
     }
 
-    function test_AddValidatorKeysStETH_createNodeOperatorRole()
-        public
-        assertInvariants
-        brutalizeMemory
-    {
-        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), stranger);
-
-        vm.prank(stranger);
-        uint256 noId = module.createNodeOperator(
-            nodeOperator,
-            NodeOperatorManagementProperties({
-                managerAddress: address(0),
-                rewardAddress: address(0),
-                extendedManagerPermissions: false
-            }),
-            address(0)
-        );
-        (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
-
-        vm.deal(nodeOperator, BOND_SIZE + 1 wei);
-        vm.prank(nodeOperator);
-        stETH.submit{ value: BOND_SIZE + 1 wei }(address(0));
-        uint256 nonce = module.getNonce();
-
-        vm.prank(stranger);
-        module.addValidatorKeysStETH(
-            nodeOperator,
-            noId,
-            1,
-            keys,
-            signatures,
-            ICSAccounting.PermitInput({
-                value: BOND_SIZE,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
-        );
-        assertEq(module.getNonce(), nonce + 1);
-    }
-
-    function test_AddValidatorKeysStETH_createNodeOperatorRole_MultipleOperators()
-        public
-        assertInvariants
-        brutalizeMemory
-    {
-        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), stranger);
-
-        uint256[] memory ids = new uint256[](3);
-        for (uint256 i; i < ids.length; i++) {
-            vm.prank(stranger);
-            ids[i] = module.createNodeOperator(
-                nodeOperator,
-                NodeOperatorManagementProperties({
-                    managerAddress: address(0),
-                    rewardAddress: address(0),
-                    extendedManagerPermissions: false
-                }),
-                address(0)
-            );
-        }
-        shuffle(ids);
-
-        for (uint256 i; i < ids.length; i++) {
-            (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
-            vm.deal(nodeOperator, BOND_SIZE + 1 wei);
-            vm.prank(nodeOperator);
-            stETH.submit{ value: BOND_SIZE + 1 wei }(address(0));
-            uint256 nonce = module.getNonce();
-
-            vm.prank(stranger);
-            module.addValidatorKeysStETH(
-                nodeOperator,
-                ids[i],
-                1,
-                keys,
-                signatures,
-                ICSAccounting.PermitInput({
-                    value: BOND_SIZE,
-                    deadline: 0,
-                    v: 0,
-                    r: 0,
-                    s: 0
-                })
-            );
-            assertEq(module.getNonce(), nonce + 1);
-        }
-    }
-
     function test_AddValidatorKeysStETH_withPermit()
         public
         assertInvariants
@@ -1293,44 +1108,6 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
         assertEq(no.depositableValidatorsCount, 0);
     }
 
-    function test_AddValidatorKeysETH_createNodeOperatorRole_MultipleOperators()
-        public
-    {
-        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), stranger);
-
-        uint256[] memory ids = new uint256[](3);
-        for (uint256 i; i < ids.length; i++) {
-            vm.prank(stranger);
-            ids[i] = module.createNodeOperator(
-                stranger,
-                NodeOperatorManagementProperties({
-                    managerAddress: address(0),
-                    rewardAddress: address(0),
-                    extendedManagerPermissions: false
-                }),
-                address(0)
-            );
-        }
-        shuffle(ids);
-
-        for (uint256 i; i < ids.length; i++) {
-            (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
-            uint256 required = accounting.getRequiredBondForNextKeys(ids[i], 1);
-            vm.deal(stranger, required);
-            uint256 nonce = module.getNonce();
-
-            vm.prank(stranger);
-            module.addValidatorKeysETH{ value: required }(
-                nodeOperator,
-                ids[i],
-                1,
-                keys,
-                signatures
-            );
-            assertEq(module.getNonce(), nonce + 1);
-        }
-    }
-
     function test_AddValidatorKeysETH_withMoreEthThanRequired()
         public
         assertInvariants
@@ -1360,18 +1137,459 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
         );
         assertEq(module.getNonce(), nonce + 1);
     }
+}
 
-    function test_AddValidatorKeysETH_RevertWhenCalledFromAnotherExtension()
+contract GateWithTestCapabilities is Test, Utilities {
+    ICSModule private module;
+    ICSAccounting private accounting;
+
+    WstETHMock private wstETH;
+    LidoMock private stETH;
+
+    constructor(ICSModule _module) {
+        module = _module;
+        accounting = module.ACCOUNTING();
+        ILidoLocator locator = module.LIDO_LOCATOR();
+        stETH = LidoMock(locator.lido());
+        wstETH = WstETHMock(
+            IWithdrawalQueue(locator.withdrawalQueue()).WSTETH()
+        );
+        stETH.approve(address(wstETH), UINT256_MAX);
+    }
+
+    function createNodeOperatorWithKeysWithETHBond(
+        address owner,
+        uint256 keyCount,
+        bytes memory keys,
+        bytes memory sigs
+    ) external returns (uint256 noId) {
+        noId = module.createNodeOperator({
+            from: owner,
+            managementProperties: NodeOperatorManagementProperties({
+                managerAddress: owner,
+                rewardAddress: owner,
+                extendedManagerPermissions: false
+            }),
+            referrer: address(0)
+        });
+
+        uint256 required = accounting.getRequiredBondForNextKeys(
+            noId,
+            keyCount
+        );
+        vm.deal(address(this), required);
+
+        uint256 nonce = module.getNonce();
+
+        module.addValidatorKeysETH{ value: required }(
+            owner,
+            noId,
+            keyCount,
+            keys,
+            sigs
+        );
+
+        assertEq(module.getNonce(), ++nonce);
+    }
+
+    function batchCreateNodeOperatorWithKeysWithETHBond(
+        address owner,
+        uint256 operatorCount,
+        uint256 operatorKeyCount,
+        bytes memory keys,
+        bytes memory sigs
+    ) external returns (uint256[] memory ids) {
+        ids = new uint256[](operatorCount);
+        for (uint256 i; i < ids.length; i++) {
+            ids[i] = module.createNodeOperator(
+                owner,
+                NodeOperatorManagementProperties({
+                    managerAddress: owner,
+                    rewardAddress: owner,
+                    extendedManagerPermissions: false
+                }),
+                address(0)
+            );
+        }
+        uint256 firstId = ids[0];
+        shuffle(ids);
+
+        uint256 nonce = module.getNonce();
+
+        for (uint256 i; i < ids.length; i++) {
+            bytes memory _keys = slice(
+                keys,
+                ids[i] - firstId * 48,
+                operatorKeyCount * 48
+            );
+            bytes memory _sigs = slice(
+                sigs,
+                ids[i] - firstId * 96,
+                operatorKeyCount * 96
+            );
+
+            uint256 required = accounting.getRequiredBondForNextKeys(
+                ids[i],
+                operatorKeyCount
+            );
+            vm.deal(address(this), required);
+
+            module.addValidatorKeysETH{ value: required }(
+                owner,
+                ids[i],
+                operatorKeyCount,
+                _keys,
+                _sigs
+            );
+
+            assertEq(module.getNonce(), ++nonce);
+        }
+    }
+
+    function createNodeOperatorWithKeysWithStETHBond(
+        address owner,
+        uint256 keyCount,
+        bytes memory keys,
+        bytes memory sigs
+    ) external returns (uint256 noId) {
+        noId = module.createNodeOperator({
+            from: owner,
+            managementProperties: NodeOperatorManagementProperties({
+                managerAddress: owner,
+                rewardAddress: owner,
+                extendedManagerPermissions: false
+            }),
+            referrer: address(0)
+        });
+
+        uint256 required = accounting.getRequiredBondForNextKeys(
+            noId,
+            keyCount
+        );
+        uint256 toWrap = required + 1 wei;
+        vm.deal(address(this), toWrap);
+        stETH.submit{ value: toWrap }(address(0));
+
+        uint256 nonce = module.getNonce();
+
+        module.addValidatorKeysStETH(
+            owner,
+            noId,
+            keyCount,
+            keys,
+            sigs,
+            ICSAccounting.PermitInput({
+                value: 0,
+                deadline: 0,
+                v: 0,
+                r: 0,
+                s: 0
+            })
+        );
+
+        assertEq(module.getNonce(), ++nonce);
+    }
+
+    function batchCreateNodeOperatorWithKeysWithStETHBond(
+        address owner,
+        uint256 operatorCount,
+        uint256 operatorKeyCount,
+        bytes memory keys,
+        bytes memory sigs
+    ) external returns (uint256[] memory ids) {
+        ids = new uint256[](operatorCount);
+        for (uint256 i; i < ids.length; i++) {
+            ids[i] = module.createNodeOperator(
+                owner,
+                NodeOperatorManagementProperties({
+                    managerAddress: owner,
+                    rewardAddress: owner,
+                    extendedManagerPermissions: false
+                }),
+                address(0)
+            );
+        }
+        uint256 firstId = ids[0];
+        shuffle(ids);
+
+        uint256 nonce = module.getNonce();
+
+        for (uint256 i; i < ids.length; i++) {
+            bytes memory _keys = slice(
+                keys,
+                ids[i] - firstId * 48,
+                operatorKeyCount * 48
+            );
+            bytes memory _sigs = slice(
+                sigs,
+                ids[i] - firstId * 96,
+                operatorKeyCount * 96
+            );
+
+            uint256 required = accounting.getRequiredBondForNextKeys(
+                ids[i],
+                operatorKeyCount
+            );
+            uint256 ethAmountToSend = required + 1 wei;
+            vm.deal(address(this), ethAmountToSend);
+            stETH.submit{ value: ethAmountToSend }(address(0));
+
+            module.addValidatorKeysStETH(
+                owner,
+                ids[i],
+                operatorKeyCount,
+                _keys,
+                _sigs,
+                ICSAccounting.PermitInput({
+                    value: 0,
+                    deadline: 0,
+                    v: 0,
+                    r: 0,
+                    s: 0
+                })
+            );
+
+            assertEq(module.getNonce(), ++nonce);
+        }
+    }
+
+    function createNodeOperatorWithKeysWithWstETHBond(
+        address owner,
+        uint256 keyCount,
+        bytes memory keys,
+        bytes memory sigs
+    ) external returns (uint256 noId) {
+        noId = module.createNodeOperator({
+            from: owner,
+            managementProperties: NodeOperatorManagementProperties({
+                managerAddress: owner,
+                rewardAddress: owner,
+                extendedManagerPermissions: false
+            }),
+            referrer: address(0)
+        });
+
+        uint256 required = accounting.getRequiredBondForNextKeys(
+            noId,
+            keyCount
+        );
+        uint256 toWrap = required + 1 wei;
+        vm.deal(address(this), toWrap);
+
+        stETH.submit{ value: toWrap }(address(0));
+        wstETH.wrap(toWrap);
+
+        module.addValidatorKeysWstETH(
+            owner,
+            noId,
+            keyCount,
+            keys,
+            sigs,
+            ICSAccounting.PermitInput({
+                value: 0,
+                deadline: 0,
+                v: 0,
+                r: 0,
+                s: 0
+            })
+        );
+    }
+
+    function batchCreateNodeOperatorWithKeysWithWstETHBond(
+        address owner,
+        uint256 operatorCount,
+        uint256 operatorKeyCount,
+        bytes memory keys,
+        bytes memory sigs
+    ) external returns (uint256[] memory ids) {
+        ids = new uint256[](operatorCount);
+        for (uint256 i; i < ids.length; i++) {
+            ids[i] = module.createNodeOperator(
+                owner,
+                NodeOperatorManagementProperties({
+                    managerAddress: owner,
+                    rewardAddress: owner,
+                    extendedManagerPermissions: false
+                }),
+                address(0)
+            );
+        }
+        uint256 firstId = ids[0];
+        shuffle(ids);
+
+        uint256 nonce = module.getNonce();
+
+        for (uint256 i; i < ids.length; i++) {
+            bytes memory _keys = slice(
+                keys,
+                ids[i] - firstId * 48,
+                operatorKeyCount * 48
+            );
+            bytes memory _sigs = slice(
+                sigs,
+                ids[i] - firstId * 96,
+                operatorKeyCount * 96
+            );
+
+            uint256 required = accounting.getRequiredBondForNextKeys(
+                ids[i],
+                operatorKeyCount
+            );
+
+            uint256 toWrap = required + 1 wei;
+            vm.deal(address(this), toWrap);
+            stETH.submit{ value: toWrap }(address(0));
+            wstETH.wrap(toWrap);
+
+            module.addValidatorKeysWstETH(
+                owner,
+                ids[i],
+                operatorKeyCount,
+                _keys,
+                _sigs,
+                ICSAccounting.PermitInput({
+                    value: 0,
+                    deadline: 0,
+                    v: 0,
+                    r: 0,
+                    s: 0
+                })
+            );
+
+            assertEq(module.getNonce(), ++nonce);
+        }
+    }
+}
+
+abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
+    GateWithTestCapabilities internal gate;
+
+    // Using a modifier to avoid overriding setUp.
+    modifier withGate() {
+        gate = new GateWithTestCapabilities(module);
+        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), address(gate));
+        _;
+    }
+
+    function test_GateAddValidatorKeysETH()
+        public
+        assertInvariants
+        brutalizeMemory
+        withGate
+    {
+        uint256 keyCount = 3;
+        (bytes memory keys, bytes memory sigs) = keysSignatures(keyCount);
+        gate.createNodeOperatorWithKeysWithETHBond(
+            nodeOperator,
+            keyCount,
+            keys,
+            sigs
+        );
+    }
+
+    function test_GateAddValidatorKeysETH_MultipleOperators()
+        public
+        assertInvariants
+        brutalizeMemory
+        withGate
+    {
+        uint256 operatorCount = 3;
+        uint256 operatorKeyCount = 1;
+        uint256 keyCount = operatorCount * operatorKeyCount;
+
+        (bytes memory keys, bytes memory sigs) = keysSignatures(keyCount);
+        gate.batchCreateNodeOperatorWithKeysWithETHBond(
+            nodeOperator,
+            operatorCount,
+            operatorKeyCount,
+            keys,
+            sigs
+        );
+    }
+
+    function test_GateAddValidatorKeysStETH()
+        public
+        assertInvariants
+        brutalizeMemory
+        withGate
+    {
+        uint256 keyCount = 3;
+        (bytes memory keys, bytes memory sigs) = keysSignatures(keyCount);
+        gate.createNodeOperatorWithKeysWithStETHBond(
+            nodeOperator,
+            keyCount,
+            keys,
+            sigs
+        );
+    }
+
+    function test_GateAddValidatorKeysStETH_MultipleOperators()
+        public
+        assertInvariants
+        brutalizeMemory
+        withGate
+    {
+        uint256 operatorCount = 3;
+        uint256 operatorKeyCount = 1;
+        uint256 keyCount = operatorCount * operatorKeyCount;
+
+        (bytes memory keys, bytes memory sigs) = keysSignatures(keyCount);
+        gate.batchCreateNodeOperatorWithKeysWithStETHBond(
+            nodeOperator,
+            operatorCount,
+            operatorKeyCount,
+            keys,
+            sigs
+        );
+    }
+
+    function test_GateAddValidatorKeysWstETH()
+        public
+        assertInvariants
+        brutalizeMemory
+        withGate
+    {
+        uint256 keyCount = 3;
+        (bytes memory keys, bytes memory sigs) = keysSignatures(keyCount);
+        gate.createNodeOperatorWithKeysWithWstETHBond(
+            nodeOperator,
+            keyCount,
+            keys,
+            sigs
+        );
+    }
+
+    function test_AddValidatorKeysWstETH_MultipleOperators()
+        public
+        assertInvariants
+        brutalizeMemory
+        withGate
+    {
+        uint256 operatorCount = 3;
+        uint256 operatorKeyCount = 1;
+        uint256 keyCount = operatorCount * operatorKeyCount;
+
+        (bytes memory keys, bytes memory sigs) = keysSignatures(keyCount);
+        gate.batchCreateNodeOperatorWithKeysWithWstETHBond(
+            nodeOperator,
+            operatorCount,
+            operatorKeyCount,
+            keys,
+            sigs
+        );
+    }
+
+    function test_AddValidatorKeysETH_RevertWhenCalledFromAnotherGate()
         public
         assertInvariants
     {
-        address extensionOne = nextAddress("EXTENSION_ONE");
-        address extensionTwo = nextAddress("EXTENSION_TWO");
+        address gateOne = nextAddress("GATE_ONE");
+        address gateTwo = nextAddress("GATE_TWO");
 
-        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), extensionOne);
-        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), extensionTwo);
+        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), gateOne);
+        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), gateTwo);
 
-        vm.prank(extensionOne);
+        vm.prank(gateOne);
         uint256 noId = module.createNodeOperator({
             from: nodeOperator,
             managementProperties: NodeOperatorManagementProperties({
@@ -1384,12 +1602,12 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
 
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
         uint256 required = accounting.getRequiredBondForNextKeys(noId, 1);
-        vm.deal(extensionTwo, required);
+        vm.deal(gateTwo, required);
 
         {
             vm.expectRevert(ICSModule.CannotAddKeys.selector);
 
-            vm.prank(extensionTwo);
+            vm.prank(gateTwo);
             module.addValidatorKeysETH{ value: required }(
                 nodeOperator,
                 noId,
@@ -1400,17 +1618,17 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
         }
     }
 
-    function test_AddValidatorKeysStETH_RevertWhenCalledFromAnotherExtension()
+    function test_AddValidatorKeysStETH_RevertWhenCalledFromAnotherGate()
         public
         assertInvariants
     {
-        address extensionOne = nextAddress("EXTENSION_ONE");
-        address extensionTwo = nextAddress("EXTENSION_TWO");
+        address gateOne = nextAddress("GATE_ONE");
+        address gateTwo = nextAddress("GATE_TWO");
 
-        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), extensionOne);
-        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), extensionTwo);
+        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), gateOne);
+        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), gateTwo);
 
-        vm.prank(extensionOne);
+        vm.prank(gateOne);
         uint256 noId = module.createNodeOperator({
             from: nodeOperator,
             managementProperties: NodeOperatorManagementProperties({
@@ -1425,7 +1643,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
         {
             vm.expectRevert(ICSModule.CannotAddKeys.selector);
 
-            vm.prank(extensionTwo);
+            vm.prank(gateTwo);
             module.addValidatorKeysStETH(
                 nodeOperator,
                 noId,
@@ -1443,17 +1661,17 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
         }
     }
 
-    function test_AddValidatorKeysWstETH_RevertWhenCalledFromAnotherExtension()
+    function test_AddValidatorKeysWstETH_RevertWhenCalledFromAnotherGate()
         public
         assertInvariants
     {
-        address extensionOne = nextAddress("EXTENSION_ONE");
-        address extensionTwo = nextAddress("EXTENSION_TWO");
+        address gateOne = nextAddress("GATE_ONE");
+        address gateTwo = nextAddress("GATE_TWO");
 
-        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), extensionOne);
-        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), extensionTwo);
+        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), gateOne);
+        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), gateTwo);
 
-        vm.prank(extensionOne);
+        vm.prank(gateOne);
         uint256 noId = module.createNodeOperator({
             from: nodeOperator,
             managementProperties: NodeOperatorManagementProperties({
@@ -1468,7 +1686,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
         {
             vm.expectRevert(ICSModule.CannotAddKeys.selector);
 
-            vm.prank(extensionTwo);
+            vm.prank(gateTwo);
             module.addValidatorKeysWstETH(
                 nodeOperator,
                 noId,
@@ -1486,95 +1704,53 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
         }
     }
 
-    function test_AddValidatorKeysETH_RevertWhenCalledTwice()
+    function test_GateAddValidatorKeysETH_RevertWhenCalledTwice()
         public
         assertInvariants
+        withGate
     {
-        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), stranger);
-
-        vm.prank(stranger);
-        uint256 noId = module.createNodeOperator({
-            from: nodeOperator,
-            managementProperties: NodeOperatorManagementProperties({
-                managerAddress: nodeOperator,
-                rewardAddress: nodeOperator,
-                extendedManagerPermissions: false
-            }),
-            referrer: address(0)
-        });
-
-        (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
-        uint256 required = accounting.getRequiredBondForNextKeys(noId, 1);
-        vm.deal(stranger, required);
-
-        vm.prank(stranger);
-        module.addValidatorKeysETH{ value: required }(
+        (bytes memory keys, bytes memory sigs) = keysSignatures(1);
+        uint256 noId = gate.createNodeOperatorWithKeysWithETHBond(
             nodeOperator,
-            noId,
             1,
             keys,
-            signatures
+            sigs
         );
+
+        (keys, sigs) = keysSignatures(1, 1);
 
         {
             vm.expectRevert(ICSModule.CannotAddKeys.selector);
 
-            vm.prank(stranger);
-            module.addValidatorKeysETH(nodeOperator, noId, 1, keys, signatures);
+            vm.prank(address(gate));
+            module.addValidatorKeysETH(nodeOperator, noId, 1, keys, sigs);
         }
     }
 
-    function test_AddValidatorKeysStETH_RevertWhenCalledTwice()
+    function test_GateAddValidatorKeysStETH_RevertWhenCalledTwice()
         public
         assertInvariants
+        withGate
     {
-        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), stranger);
-
-        vm.prank(stranger);
-        uint256 noId = module.createNodeOperator({
-            from: nodeOperator,
-            managementProperties: NodeOperatorManagementProperties({
-                managerAddress: nodeOperator,
-                rewardAddress: nodeOperator,
-                extendedManagerPermissions: false
-            }),
-            referrer: address(0)
-        });
-
-        (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
-        uint256 required = accounting.getRequiredBondForNextKeys(noId, 1);
-        uint256 toWrap = required + 1 wei;
-        vm.deal(stranger, toWrap);
-
-        vm.prank(stranger);
-        stETH.submit{ value: toWrap }(address(0));
-
-        vm.prank(stranger);
-        module.addValidatorKeysStETH(
+        (bytes memory keys, bytes memory sigs) = keysSignatures(1);
+        uint256 noId = gate.createNodeOperatorWithKeysWithStETHBond(
             nodeOperator,
-            noId,
             1,
             keys,
-            signatures,
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            sigs
         );
 
+        (keys, sigs) = keysSignatures(1, 1);
         {
             vm.expectRevert(ICSModule.CannotAddKeys.selector);
 
-            vm.prank(stranger);
+            vm.prank(address(gate));
             module.addValidatorKeysStETH(
                 nodeOperator,
                 noId,
                 1,
                 keys,
-                signatures,
+                sigs,
                 ICSAccounting.PermitInput({
                     value: 0,
                     deadline: 0,
@@ -1586,60 +1762,31 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
         }
     }
 
-    function test_AddValidatorKeysWstETH_RevertWhenCalledTwice()
+    function test_GateAddValidatorKeysWstETH_RevertWhenCalledTwice()
         public
         assertInvariants
+        withGate
     {
-        module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), stranger);
-
-        vm.prank(stranger);
-        uint256 noId = module.createNodeOperator({
-            from: nodeOperator,
-            managementProperties: NodeOperatorManagementProperties({
-                managerAddress: nodeOperator,
-                rewardAddress: nodeOperator,
-                extendedManagerPermissions: false
-            }),
-            referrer: address(0)
-        });
-
-        (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
-        uint256 required = accounting.getRequiredBondForNextKeys(noId, 1);
-        uint256 toWrap = required + 1 wei;
-        vm.deal(stranger, toWrap);
-
-        vm.startPrank(stranger);
-        stETH.submit{ value: toWrap }(address(0));
-        stETH.approve(address(wstETH), UINT256_MAX);
-        wstETH.wrap(toWrap);
-        vm.stopPrank();
-
-        vm.prank(stranger);
-        module.addValidatorKeysWstETH(
+        (bytes memory keys, bytes memory sigs) = keysSignatures(1);
+        uint256 noId = gate.createNodeOperatorWithKeysWithWstETHBond(
             nodeOperator,
-            noId,
             1,
             keys,
-            signatures,
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            sigs
         );
+
+        (keys, sigs) = keysSignatures(1, 1);
 
         {
             vm.expectRevert(ICSModule.CannotAddKeys.selector);
 
-            vm.prank(stranger);
+            vm.prank(address(gate));
             module.addValidatorKeysWstETH(
                 nodeOperator,
                 noId,
                 1,
                 keys,
-                signatures,
+                sigs,
                 ICSAccounting.PermitInput({
                     value: 0,
                     deadline: 0,

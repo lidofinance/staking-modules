@@ -272,6 +272,11 @@ contract CSMCreateNodeOperator is ModuleCreateNodeOperator, CSMCommon {}
 
 contract CSMAddValidatorKeys is ModuleAddValidatorKeys, CSMCommon {}
 
+contract CSMAddValidatorKeysViaGate is
+    ModuleAddValidatorKeysViaGate,
+    CSMCommon
+{}
+
 contract CSMAddValidatorKeysNegative is
     ModuleAddValidatorKeysNegative,
     CSMCommon
