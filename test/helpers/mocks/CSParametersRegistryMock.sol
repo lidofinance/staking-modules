@@ -3,6 +3,8 @@
 
 pragma solidity 0.8.24;
 
+import { ICSParametersRegistry } from "../../../src/interfaces/ICSParametersRegistry.sol";
+
 struct MarkedQueueConfig {
     uint32 priority;
     uint32 maxDeposits;
@@ -94,15 +96,25 @@ contract CSParametersRegistryMock {
 
     function setQueueConfig(
         uint256 curveId,
-        uint32 priority,
-        uint32 maxDeposits
+        uint256 priority,
+        uint256 maxDeposits
     ) external {
         _queueConfigs[curveId] = MarkedQueueConfig({
-            priority: priority,
-            maxDeposits: maxDeposits,
+            priority: uint32(priority),
+            maxDeposits: uint32(maxDeposits),
             isValue: true
         });
     }
+
+    function setRewardShareData(
+        uint256,
+        ICSParametersRegistry.KeyNumberValueInterval[] calldata
+    ) external {}
+
+    function setPerformanceLeewayData(
+        uint256,
+        ICSParametersRegistry.KeyNumberValueInterval[] calldata
+    ) external {}
 
     function getQueueConfig(
         uint256 curveId
@@ -121,6 +133,10 @@ contract CSParametersRegistryMock {
         uint256 /* curveId */
     ) external view returns (uint256) {
         return allowedExitDelay;
+    }
+
+    function setAllowedExitDelay(uint256, uint256 delay) external {
+        allowedExitDelay = delay;
     }
 
     function getExitDelayFee(
@@ -145,4 +161,11 @@ contract CSParametersRegistryMock {
     ) external {
         maxWithdrawalRequestFee = _maxWithdrawalRequestFee;
     }
+
+    function setPerformanceCoefficients(
+        uint256,
+        uint256,
+        uint256,
+        uint256
+    ) external {}
 }
