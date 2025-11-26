@@ -160,32 +160,6 @@ abstract contract ModuleFixtures is
             );
     }
 
-    function _encodeNodeOperatorId(
-        uint256 noId
-    ) internal pure returns (bytes memory) {
-        // Node operator ids are sequential and bounded (< 2^32), so squeezing into 64 bits matches production encoding.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        return bytes.concat(bytes8(uint64(noId)));
-    }
-
-    function _encodeNodeOperatorPair(
-        uint256 firstNoId,
-        uint256 secondNoId
-    ) internal pure returns (bytes memory) {
-        // Both ids share the same bound, letting us pack them into 16 bytes.
-        // forge-lint: disable-next-item(unsafe-typecast)
-        return
-            bytes.concat(bytes8(uint64(firstNoId)), bytes8(uint64(secondNoId)));
-    }
-
-    function _encodeUint128Value(
-        uint256 value
-    ) internal pure returns (bytes memory) {
-        // Test amounts are tiny (< 2 ether or a handful of keys) and trivially fit in 128 bits.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        return bytes.concat(bytes16(uint128(value)));
-    }
-
     function _toUint248(uint256 value) internal pure returns (uint248) {
         // All penalty/fee figures come from BOND_SIZE (2 ether) so uint248 is ample.
         // forge-lint: disable-next-line(unsafe-typecast)

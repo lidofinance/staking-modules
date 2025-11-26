@@ -11,7 +11,8 @@ import { ICSBondCurve } from "src/interfaces/ICSBondCurve.sol";
 import { CSAccountingMock } from "../helpers/mocks/CSAccountingMock.sol";
 import { CSModule } from "src/CSModule.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { ModuleAddValidatorKeysNegative, ModuleCancelGeneralDelayedPenalty, ModuleChangeNodeOperatorRewardAddress, ModuleConfirmNodeOperatorManagerAddressChange, ModuleConfirmNodeOperatorRewardAddressChange, ModuleCreateNodeOperator, ModuleCreateNodeOperators, ModuleExitDeadlineThreshold, ModuleFixtures, ModuleFuzz, ModuleGetNodeOperator, ModuleGetSigningKeys, ModuleGetSigningKeysWithSignatures, ModuleIsValidatorExitDelayPenaltyApplicable, ModuleOnRewardsMinted, ModuleOnValidatorExitTriggered, ModulePauseAffectingTest, ModulePauseTest, ModuleProposeNodeOperatorManagerAddressChange, ModuleProposeNodeOperatorRewardAddressChange, ModuleRecoverERC20, ModuleRemoveKeys, ModuleRemoveKeysChargeFee, ModuleReportValidatorExitDelay, ModuleResetNodeOperatorManagerAddress, ModuleSettleGeneralDelayedPenaltyAdvanced, ModuleSettleGeneralDelayedPenaltyBasic, ModuleSupportsInterface, ModuleUpdateTargetValidatorsLimits, ModuleVetKeys } from "./ModuleAbstract.t.sol";
+// forge-lint: disable-next-line(unaliased-plain-import)
+import "./ModuleAbstract.t.sol";
 
 // TODO uncomment all the commented tests after implementing obtainDepositData
 

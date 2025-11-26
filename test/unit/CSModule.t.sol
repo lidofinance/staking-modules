@@ -10,7 +10,8 @@ import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
 import { CSAccountingMock } from "../helpers/mocks/CSAccountingMock.sol";
 import { Stub } from "../helpers/mocks/Stub.sol";
-import { ModuleAccessControl, ModuleAddValidatorKeys, ModuleAddValidatorKeysNegative, ModuleCancelGeneralDelayedPenalty, ModuleChangeNodeOperatorRewardAddress, ModuleCompensateGeneralDelayedPenalty, ModuleConfirmNodeOperatorManagerAddressChange, ModuleConfirmNodeOperatorRewardAddressChange, ModuleCreateNodeOperator, ModuleCreateNodeOperators, ModuleDecreaseVettedSigningKeysCount, ModuleDepositableValidatorsCount, ModuleExitDeadlineThreshold, ModuleOnValidatorExitTriggered, ModuleFixtures, ModuleFuzz, ModuleGetNodeOperator, ModuleGetNodeOperatorNonWithdrawnKeys, ModuleGetNodeOperatorSummary, ModuleGetSigningKeys, ModuleGetSigningKeysWithSignatures, ModuleGetStakingModuleSummary, ModuleIsValidatorExitDelayPenaltyApplicable, ModuleMisc, ModuleObtainDepositData, ModuleOnRewardsMinted, ModulePauseAffectingTest, ModulePauseTest, ModulePriorityQueue, ModuleProposeNodeOperatorManagerAddressChange, ModuleProposeNodeOperatorRewardAddressChange, ModuleQueueOps, ModuleRecoverERC20, ModuleRemoveKeys, ModuleRemoveKeysChargeFee, ModuleRemoveKeysReverts, ModuleNodeOperatorStateAfterUpdateCurve, ModuleReportGeneralDelayedPenalty, ModuleReportValidatorExitDelay, ModuleResetNodeOperatorManagerAddress, ModuleSettleGeneralDelayedPenaltyAdvanced, ModuleSettleGeneralDelayedPenaltyBasic, ModuleStakingRouterAccessControl, ModuleSubmitWithdrawals, ModuleSupportsInterface, ModuleUnsafeUpdateValidatorsCount, ModuleUpdateExitedValidatorsCount, ModuleUpdateTargetValidatorsLimits, ModuleVetKeys } from "./ModuleAbstract.t.sol";
+// forge-lint: disable-next-line(unaliased-plain-import)
+import "./ModuleAbstract.t.sol";
 
 contract CSMCommon is ModuleFixtures {
     function setUp() public virtual {

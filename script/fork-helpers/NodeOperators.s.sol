@@ -17,22 +17,6 @@ contract NodeOperators is
     ForkHelpersCommon,
     Utilities
 {
-    function _encodeNodeOperatorId(
-        uint256 noId
-    ) internal pure returns (bytes memory) {
-        // Node operator IDs are bounded by uint32 in production; 64 bits comfortably fit all values.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        return bytes.concat(bytes8(uint64(noId)));
-    }
-
-    function _encodeUint128Value(
-        uint256 value
-    ) internal pure returns (bytes memory) {
-        // Exit counters and related amounts used here stay well below 2^128.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        return bytes.concat(bytes16(uint128(value)));
-    }
-
     modifier broadcastPenaltyReporter() {
         _setUp();
         address penaltyReporter = module.getRoleMember(

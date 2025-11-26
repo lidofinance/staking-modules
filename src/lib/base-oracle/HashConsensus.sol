@@ -1181,7 +1181,7 @@ contract HashConsensus is
         for (uint256 i = 0; i < variantsLength; ++i) {
             uint256 iSupport = _reportVariants[i].support;
             if (iSupport >= quorum) {
-                // `i` is bounded by `_reportVariantsLength` (uint256), so it fits into int256.
+                // Variant count cannot exceed member count (a tiny set in practice), so this cast is safe.
                 // forge-lint: disable-next-line(unsafe-typecast)
                 variantIndex = int256(i);
                 report = _reportVariants[i].hash;

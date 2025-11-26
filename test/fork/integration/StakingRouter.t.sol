@@ -21,22 +21,6 @@ contract StakingRouterIntegrationTest is
     address internal agent;
     uint256 internal moduleId;
 
-    function _encodeNodeOperatorId(
-        uint256 noId
-    ) internal pure returns (bytes memory) {
-        // Node operator IDs are bounded by uint32 in production, so 64 bits are more than enough.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        return bytes.concat(bytes8(uint64(noId)));
-    }
-
-    function _encodeUint128Value(
-        uint256 value
-    ) internal pure returns (bytes memory) {
-        // Bond- and exit-related counters never exceed uint128 during tests.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        return bytes.concat(bytes16(uint128(value)));
-    }
-
     modifier assertInvariants() {
         _;
         vm.pauseGasMetering();

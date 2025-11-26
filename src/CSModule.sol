@@ -490,8 +490,8 @@ contract CSModule is
                 revert InvalidVetKeysPointer();
             }
 
-            // NodeOperator#totalVettedKeys is stored as uint32 and the bounds above guarantee
-            // `vettedSigningKeysCount` never exceeds module limits, so this cast is safe.
+            // NodeOperator.totalVettedKeys and totalDepositedKeys are uint32 slots; the checks above keep
+            // `vettedSigningKeysCount` within those limits, so this cast is safe.
             // forge-lint: disable-next-line(unsafe-typecast)
             no.totalVettedKeys = uint32(vettedSigningKeysCount);
             emit VettedSigningKeysCountChanged(
@@ -551,8 +551,8 @@ contract CSModule is
             emit KeyRemovalChargeApplied(nodeOperatorId);
         }
 
-        // Added/vetted signing key counters are uint32 fields and `newTotalSigningKeys`
-        // is derived from the same counters, so it always fits.
+        // Added/vetted signing key counters are uint32 fields; newTotalSigningKeys is strictly
+        // less than no.totalAddedKeys, so it always fits.
         // forge-lint: disable-next-line(unsafe-typecast)
         no.totalAddedKeys = uint32(newTotalSigningKeys);
         emit TotalSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
@@ -923,9 +923,16 @@ contract CSModule is
                     uint256 keysInBatch = item.keys();
                     NodeOperator storage no = _nodeOperators[noId];
 
-                    uint256 keysCount = Math.min(
-                        Math.min(no.depositableValidatorsCount, keysInBatch),
-                        depositsLeft
+                    // Keys are bounded by queue/depositable counts (uint32 slots), so this fits the storage types.
+                    // forge-lint: disable-next-line(unsafe-typecast)
+                    uint32 keysCount = uint32(
+                        Math.min(
+                            Math.min(
+                                no.depositableValidatorsCount,
+                                keysInBatch
+                            ),
+                            depositsLeft
+                        )
                     );
                     // `depositsLeft` is non-zero at this point all the time, so the check `depositsLeft > keysCount`
                     // covers the case when no depositable keys on the Node Operator have been left.
@@ -940,8 +947,7 @@ contract CSModule is
                     } else {
                         // This branch covers the case when we stop in the middle of the batch.
                         // We release the amount of keys consumed only, the rest will be kept.
-                        // forge-lint: disable-next-line(unsafe-typecast)
-                        no.enqueuedCount -= uint32(keysCount);
+                        no.enqueuedCount -= keysCount;
                         // NOTE: `keysInBatch` can't be less than `keysCount` at this point.
                         // We update the batch with the remaining keys.
                         item = item.setKeys(keysInBatch - keysCount);
@@ -966,12 +972,8 @@ contract CSModule is
 
                     // It's impossible in practice to reach the limit of these variables.
                     loadedKeysCount += keysCount;
-                    // Deposited key counters are uint32 fields and `keysCount` originates
-                    // from the same bounded values, so truncation cannot occur.
-                    // forge-lint: disable-next-line(unsafe-typecast)
-                    uint32 keysCount32 = uint32(keysCount);
                     uint32 totalDepositedKeys = no.totalDepositedKeys +
-                        keysCount32;
+                        keysCount;
                     no.totalDepositedKeys = totalDepositedKeys;
 
                     emit DepositedSigningKeysCountChanged(
@@ -980,8 +982,7 @@ contract CSModule is
                     );
 
                     // No need for `_updateDepositableValidatorsCount` call since we update the number directly.
-                    uint32 newCount = no.depositableValidatorsCount -
-                        keysCount32;
+                    uint32 newCount = no.depositableValidatorsCount - keysCount;
                     no.depositableValidatorsCount = newCount;
                     emit DepositableSigningKeysCountChanged(noId, newCount);
 
@@ -1404,7 +1405,7 @@ contract CSModule is
             uint32 totalVettedKeys = no.totalVettedKeys;
             // Optimistic vetting takes place.
             if (totalAddedKeys == totalVettedKeys) {
-                // Both operands are <= totalAddedKeys (< 2^32 by design), so the result fits uint32.
+                // Sum stays <= totalAddedKeys (< 2^32 by design), so the result fits uint32.
                 // forge-lint: disable-next-line(unsafe-typecast)
                 totalVettedKeys = totalVettedKeys + uint32(keysCount);
                 no.totalVettedKeys = totalVettedKeys;
@@ -1414,7 +1415,8 @@ contract CSModule is
                 );
             }
 
-            // Added key counters are uint32 slots; newTotalAddedKeys shares the same bounds.
+            // Added key counters are uint32 slots; hitting 2^32 keys would require unreachable bond
+            // capital and calldata, so newTotalAddedKeys stays within the slot bounds.
             // forge-lint: disable-next-line(unsafe-typecast)
             no.totalAddedKeys = uint32(newTotalAddedKeys);
 
