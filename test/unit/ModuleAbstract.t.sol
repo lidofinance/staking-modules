@@ -6017,8 +6017,11 @@ abstract contract ModuleCompensateGeneralDelayedPenalty is ModuleFixtures {
     }
 }
 
-abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
-    function test_reportWithdrawnValidators() public assertInvariants {
+abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
+    function test_reportWithdrawnValidators_NoPenalties()
+        public
+        assertInvariants
+    {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
         (bytes memory pubkey, ) = module.obtainDepositData(1, "");
@@ -6303,7 +6306,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             keyIndex: keyIndex,
             exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE *
                 multiplier +
-                1 ether,
+                1 ether -
+                1 wei,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -6327,8 +6331,10 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        uint248 fee = type(uint248).max;
-        uint256 multiplier = WithdrawnValidatorLib.MAX_PENALTY_MULTIPLIER;
+        // (1 << (256 - log2(2048))) - 1
+        uint248 fee = (1 << 245) - 1;
+        uint256 multiplier = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE /
+            WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
@@ -6489,7 +6495,8 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             keyIndex: keyIndex,
             exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE *
                 multiplier +
-                1 ether,
+                1 ether -
+                1 wei,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -6513,8 +6520,10 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        uint248 penalty = type(uint248).max;
-        uint256 multiplier = WithdrawnValidatorLib.MAX_PENALTY_MULTIPLIER;
+        // (1 << (256 - log2(2048))) - 1
+        uint248 penalty = (1 << 245) - 1;
+        uint256 multiplier = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE /
+            WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({

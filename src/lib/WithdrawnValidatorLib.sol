@@ -13,9 +13,13 @@ import { SigningKeys } from "./SigningKeys.sol";
 
 /// @dev A library to extract a part of the code from the the CSModule contract.
 library WithdrawnValidatorLib {
+    uint256 public constant MAX_EFFECTIVE_BALANCE = 2048 ether;
     uint256 public constant MIN_ACTIVATION_BALANCE = 32 ether;
-    uint256 public constant PENALTY_QUOTIENT = 32 ether;
-    uint256 public constant MAX_PENALTY_MULTIPLIER = 64;
+
+    uint256 public constant PENALTY_QUOTIENT = 1 ether;
+    /// @dev Acts as the denominator to calculate the scaled penalty.
+    uint256 public constant PENALTY_SCALE =
+        MIN_ACTIVATION_BALANCE / PENALTY_QUOTIENT;
 
     function process(
         WithdrawnValidatorInfo calldata validatorInfo
@@ -45,10 +49,12 @@ library WithdrawnValidatorLib {
         );
     }
 
+    // NOTE: The function might revert if the penalty recorded in the `penaltyInfo` is large enough. As of now, it
+    // should be greater than 2^245, which is about 5.6 * 10^55 ethers.
     function _fulfilExitObligations(
         WithdrawnValidatorInfo calldata validatorInfo,
         ExitPenaltyInfo memory penaltyInfo
-    ) private returns (bool bondCoversPenalties) {
+    ) internal returns (bool bondCoversPenalties) {
         bool chargeWithdrawalRequestFee = false;
 
         uint256 penaltyMultiplier = _getPenaltyMultiplier(validatorInfo);
@@ -56,21 +62,18 @@ library WithdrawnValidatorLib {
         uint256 feeSum;
 
         if (penaltyInfo.delayFee.isValue) {
-            unchecked {
-                feeSum = penaltyInfo.delayFee.value * penaltyMultiplier;
-            }
+            feeSum = _scalePenaltyByMultiplier(
+                penaltyInfo.delayFee.value,
+                penaltyMultiplier
+            );
             chargeWithdrawalRequestFee = true;
         }
 
         if (penaltyInfo.strikesPenalty.isValue) {
-            // It is safe to use unchecked for sum here because base penalties and fees are limited to uint248 in
-            // the MarkedUint248 structures used to store them, and the maximum multiplier is limited to 64, so
-            // `type(uint248).max * 64 < type(uint256).max`.
-            unchecked {
-                penaltySum =
-                    penaltyInfo.strikesPenalty.value *
-                    penaltyMultiplier;
-            }
+            penaltySum = _scalePenaltyByMultiplier(
+                penaltyInfo.strikesPenalty.value,
+                penaltyMultiplier
+            );
             chargeWithdrawalRequestFee = true;
         }
 
@@ -81,24 +84,16 @@ library WithdrawnValidatorLib {
             chargeWithdrawalRequestFee &&
             penaltyInfo.withdrawalRequestFee.value != 0
         ) {
-            // type(uint248).max * (64 + 1) < type(uint256).max
-            unchecked {
-                // Withdrawal request fee is not scaled because sending a withdrawal request for a validator does
-                // not depend on the size of a validator.
-                feeSum += penaltyInfo.withdrawalRequestFee.value;
-            }
+            // Withdrawal request fee is not scaled because sending a withdrawal request for a validator does
+            // not depend on the size of a validator.
+            feeSum += penaltyInfo.withdrawalRequestFee.value;
         }
 
         if (validatorInfo.isSlashed) {
             // Slashing penalty doesn't scale because all the losses are already accounted.
             penaltySum += validatorInfo.slashingPenalty;
         } else if (validatorInfo.exitBalance < MIN_ACTIVATION_BALANCE) {
-            // type(uint248).max * 64 + 32 * 10**18 < type(uint256).max
-            unchecked {
-                penaltySum +=
-                    MIN_ACTIVATION_BALANCE -
-                    validatorInfo.exitBalance;
-            }
+            penaltySum += MIN_ACTIVATION_BALANCE - validatorInfo.exitBalance;
         }
 
         ICSAccounting accounting = ICSModule(address(this)).ACCOUNTING();
@@ -121,16 +116,20 @@ library WithdrawnValidatorLib {
         }
     }
 
+    /// @dev Acts as the numerator to calculate the scaled penalty.
     function _getPenaltyMultiplier(
         WithdrawnValidatorInfo memory validatorInfo
-    ) private pure returns (uint256 penaltyMultiplier) {
-        // penaltyMultiplier is >= 1
-        penaltyMultiplier =
-            Math.max(validatorInfo.exitBalance, MIN_ACTIVATION_BALANCE) /
-            PENALTY_QUOTIENT;
-        // It's rather unlikely that the value will exceed 64 because anything above maximum effective balance of a
-        // validator will likely be withdrawn while it waits for a withdrawal. The introduced limit makes it
-        // possible to use unchecked blocks above and acts as an additional limiting factor.
-        penaltyMultiplier = Math.min(MAX_PENALTY_MULTIPLIER, penaltyMultiplier);
+    ) internal pure returns (uint256 penaltyMultiplier) {
+        uint256 exitBalance = validatorInfo.exitBalance;
+        exitBalance = Math.max(MIN_ACTIVATION_BALANCE, exitBalance);
+        exitBalance = Math.min(MAX_EFFECTIVE_BALANCE, exitBalance);
+        penaltyMultiplier = exitBalance / PENALTY_QUOTIENT;
+    }
+
+    function _scalePenaltyByMultiplier(
+        uint256 penalty,
+        uint256 multiplier
+    ) internal pure returns (uint256) {
+        return (penalty * multiplier) / PENALTY_SCALE;
     }
 }

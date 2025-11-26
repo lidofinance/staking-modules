@@ -258,7 +258,8 @@ interface ICSParametersRegistry {
         uint256 threshold
     ) external;
 
-    /// @notice Set default value for the bad performance penalty. Default value is used if a specific value is not set for the curveId
+    /// @notice Set the default value for the bad performance penalty for a single 32 ether validator
+    /// This value is used if a specific value is not set for the curveId
     /// @param penalty value to be set as default for the bad performance penalty
     function setDefaultBadPerformancePenalty(uint256 penalty) external;
 
@@ -276,7 +277,8 @@ interface ICSParametersRegistry {
     /// @param delay value to be set as default for the allowed exit delay
     function setDefaultAllowedExitDelay(uint256 delay) external;
 
-    /// @notice Sets the default value for exit delay penalty. The default value is used if a specific value is not set for the curveId
+    /// @notice Set the default value for exit delay penalty for a single 32 ether validator
+    /// This value is used if a specific value is not set for the curveId
     /// @param fee The value to be set as default for the exit delay fee
     function setDefaultExitDelayFee(uint256 fee) external;
 
@@ -439,7 +441,7 @@ interface ICSParametersRegistry {
         uint256 curveId
     ) external view returns (uint256 lifetime, uint256 threshold);
 
-    /// @notice Set bad performance penalty for the curveId
+    /// @notice Set the bad performance penalty for the curveId for a single 32 ether validator
     /// @param curveId Curve Id to associate bad performance penalty with
     /// @param penalty Bad performance penalty
     function setBadPerformancePenalty(
@@ -451,7 +453,7 @@ interface ICSParametersRegistry {
     /// @param curveId Curve Id to unset custom bad performance penalty for
     function unsetBadPerformancePenalty(uint256 curveId) external;
 
-    /// @notice Get bad performance penalty by the curveId
+    /// @notice Get bad performance penalty for a single 32 ether validator by the curveId
     /// @dev `defaultBadPerformancePenalty` is returned if the value is not set for the given curveId.
     /// @param curveId Curve Id to get bad performance penalty for
     /// @return penalty Bad performance penalty
@@ -508,7 +510,7 @@ interface ICSParametersRegistry {
         uint256 curveId
     ) external view returns (uint256 delay);
 
-    /// @notice Set exit delay penalty for the curveId
+    /// @notice Set the exit delay penalty for a single 32 ether validator for the given curveId
     /// @dev cannot be zero
     /// @param curveId Curve Id to associate exit delay penalty with
     /// @param fee Exit delay fee
@@ -518,7 +520,7 @@ interface ICSParametersRegistry {
     /// @param curveId The curve ID for unsetting the exit delay fee
     function unsetExitDelayFee(uint256 curveId) external;
 
-    /// @notice Get exit delay penalty by the curveId
+    /// @notice Get exit delay penalty for a single 32 ether validator by the curveId
     /// @dev `defaultExitDelayFee` is returned if the value is not set for the given curveId.
     /// @param curveId Curve ID to get the exit delay fee for
     function getExitDelayFee(
