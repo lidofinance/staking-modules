@@ -100,7 +100,10 @@ contract CSParametersRegistryMock {
         uint256 maxDeposits
     ) external {
         _queueConfigs[curveId] = MarkedQueueConfig({
+            // Both values are tiny in tests (priority <= QUEUE_LOWEST_PRIORITY, maxDeposits <= keysLimit < 2^32), so the truncating cast is safe.
+            // forge-lint: disable-next-line(unsafe-typecast)
             priority: uint32(priority),
+            // forge-lint: disable-next-line(unsafe-typecast)
             maxDeposits: uint32(maxDeposits),
             isValue: true
         });
