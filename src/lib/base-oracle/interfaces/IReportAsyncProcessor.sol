@@ -63,4 +63,7 @@ interface IReportAsyncProcessor {
     /// one returned from this function.
     ///
     function getConsensusVersion() external view returns (uint256);
+
+    /// @notice Returns the address of the consensus contract.
+    function getConsensusContract() external view returns (address);
 }

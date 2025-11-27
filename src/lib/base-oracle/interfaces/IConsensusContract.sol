@@ -20,4 +20,9 @@ interface IConsensusContract {
         );
 
     function getInitialRefSlot() external view returns (uint256);
+
+    function setFrameConfig(
+        uint256 epochsPerFrame,
+        uint256 fastLaneLengthSlots
+    ) external;
 }
