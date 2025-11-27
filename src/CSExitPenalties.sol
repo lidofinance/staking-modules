@@ -46,7 +46,7 @@ contract CSExitPenalties is ICSExitPenalties, ExitTypes {
 
         MODULE = ICSModule(module);
         PARAMETERS_REGISTRY = ICSParametersRegistry(parametersRegistry);
-        ACCOUNTING = MODULE.accounting();
+        ACCOUNTING = MODULE.ACCOUNTING();
         STRIKES = strikes;
     }
 

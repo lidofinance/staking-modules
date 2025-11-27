@@ -60,7 +60,7 @@ contract CuratedGate is
         if (operatorsData == address(0)) revert ZeroOperatorsDataAddress();
         MODULE = ICuratedModule(module);
         MODULE_ID = moduleId;
-        ACCOUNTING = MODULE.accounting();
+        ACCOUNTING = MODULE.ACCOUNTING();
         OPERATORS_DATA = IOperatorsData(operatorsData);
         _disableInitializers();
     }

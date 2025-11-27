@@ -191,9 +191,6 @@ interface ICSModule is
 
     function QUEUE_LOWEST_PRIORITY() external view returns (uint256);
 
-    /// @notice Returns the address of the accounting contract
-    function accounting() external view returns (ICSAccounting);
-
     /// @notice Pause creation of the Node Operators and keys upload for `duration` seconds.
     ///         Existing NO management and reward claims are still available.
     ///         To pause reward claims use pause method on CSAccounting

@@ -9,16 +9,21 @@ library ValidatorCountsReport {
     function safeCountOperators(
         bytes calldata ids,
         bytes calldata counts
-    ) internal pure returns (uint256) {
-        if (
-            counts.length / 16 != ids.length / 8 ||
-            ids.length % 8 != 0 ||
-            counts.length % 16 != 0
-        ) {
-            revert InvalidReportData();
+    ) internal pure returns (uint256 len) {
+        bool ok;
+
+        assembly ("memory-safe") {
+            len := div(ids.length, 8)
+
+            ok := and(
+                eq(ids.length, mul(len, 8)),
+                eq(counts.length, mul(len, 16))
+            )
         }
 
-        return ids.length / 8;
+        if (!ok) {
+            revert InvalidReportData();
+        }
     }
 
     function next(

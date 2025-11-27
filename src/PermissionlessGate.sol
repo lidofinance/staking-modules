@@ -36,7 +36,7 @@ contract PermissionlessGate is
         }
 
         MODULE = ICSModule(module);
-        CURVE_ID = MODULE.accounting().DEFAULT_BOND_CURVE_ID();
+        CURVE_ID = MODULE.ACCOUNTING().DEFAULT_BOND_CURVE_ID();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
