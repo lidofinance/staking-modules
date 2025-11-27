@@ -208,17 +208,16 @@ contract NodeOperators is
             .getNodeOperator(noId)
             .totalWithdrawnKeys;
 
-        WithdrawnValidatorInfo[] memory exitInfo = new WithdrawnValidatorInfo[](
-            1
-        );
-        exitInfo[0] = WithdrawnValidatorInfo(
+        WithdrawnValidatorInfo[]
+            memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo(
             noId,
             keyIndex,
             exitBalance,
             slashingPenalty,
             slashingPenalty > 0
         );
-        module.reportWithdrawnValidators(exitInfo);
+        module.reportWithdrawnValidators(validatorInfos);
 
         assertTrue(module.isValidatorWithdrawn(noId, keyIndex));
         assertEq(
