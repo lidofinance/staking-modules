@@ -54,18 +54,12 @@ contract CSFeeDistributor is
     address public rebateRecipient;
 
     modifier onlyAccounting() {
-        if (msg.sender != ACCOUNTING) {
-            revert SenderIsNotAccounting();
-        }
-
+        _onlyAccounting();
         _;
     }
 
     modifier onlyOracle() {
-        if (msg.sender != ORACLE) {
-            revert SenderIsNotOracle();
-        }
-
+        _onlyOracle();
         _;
     }
 
@@ -308,6 +302,18 @@ contract CSFeeDistributor is
 
         rebateRecipient = _rebateRecipient;
         emit RebateRecipientSet(_rebateRecipient);
+    }
+
+    function _onlyAccounting() internal view {
+        if (msg.sender != ACCOUNTING) {
+            revert SenderIsNotAccounting();
+        }
+    }
+
+    function _onlyOracle() internal view {
+        if (msg.sender != ORACLE) {
+            revert SenderIsNotOracle();
+        }
     }
 
     function _onlyRecoverer() internal view override {

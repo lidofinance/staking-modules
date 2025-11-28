@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
 import { OneShotCurveSetup } from "src/utils/OneShotCurveSetup.sol";
 import { IOneShotCurveSetup } from "src/interfaces/IOneShotCurveSetup.sol";

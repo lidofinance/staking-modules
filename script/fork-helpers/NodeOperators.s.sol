@@ -3,10 +3,10 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Script.sol";
+import { Script } from "forge-std/Script.sol";
 import { DeploymentFixtures } from "test/helpers/Fixtures.sol";
 import { ForkHelpersCommon } from "./Common.sol";
-import "../../src/interfaces/IVEBO.sol";
+import { IVEBO } from "../../src/interfaces/IVEBO.sol";
 import { Utilities } from "../../test/helpers/Utilities.sol";
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 import { NodeOperator, ValidatorWithdrawalInfo } from "../../src/interfaces/ICSModule.sol";
@@ -179,8 +179,8 @@ contract NodeOperators is
         uint256 vettedKeysCount
     ) external broadcastStakingRouter {
         module.decreaseVettedSigningKeysCount(
-            bytes.concat(bytes8(uint64(noId))),
-            bytes.concat(bytes16(uint128(vettedKeysCount)))
+            _encodeNodeOperatorId(noId),
+            _encodeUint128Value(vettedKeysCount)
         );
 
         assertEq(module.getNodeOperator(noId).totalVettedKeys, vettedKeysCount);
@@ -191,8 +191,8 @@ contract NodeOperators is
         uint256 exitedKeysCount
     ) external broadcastStakingRouter {
         module.updateExitedValidatorsCount(
-            bytes.concat(bytes8(uint64(noId))),
-            bytes.concat(bytes16(uint128(exitedKeysCount)))
+            _encodeNodeOperatorId(noId),
+            _encodeUint128Value(exitedKeysCount)
         );
 
         assertEq(module.getNodeOperator(noId).totalExitedKeys, exitedKeysCount);
@@ -308,7 +308,11 @@ contract NodeOperators is
         bytes memory data;
 
         bytes3 moduleId = bytes3(uint24(_getModuleId()));
+        // Node operator ids stay below 2^40 (queue limit), mirroring production encoding.
+        // forge-lint: disable-next-line(unsafe-typecast)
         bytes5 nodeOpId = bytes5(uint40(noId));
+        // Validator indices are limited by the number of keys in the queue (< 2^32), so 64 bits suffice.
+        // forge-lint: disable-next-line(unsafe-typecast)
         bytes8 _validatorIndex = bytes8(uint64(validatorIndex));
 
         (, uint256 refSlot, , ) = vebo.getConsensusReport();

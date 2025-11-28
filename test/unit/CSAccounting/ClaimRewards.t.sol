@@ -3,7 +3,9 @@
 
 pragma solidity 0.8.24;
 
-import "./_Base.t.sol";
+import { ClaimRewardsBaseTest } from "./_Base.t.sol";
+import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
+import { ICSModule } from "src/interfaces/ICSModule.sol";
 
 // Combined claim rewards tests: stETH, wstETH, unstETH
 

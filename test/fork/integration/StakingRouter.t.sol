@@ -3,14 +3,13 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
-import { ICSModule, NodeOperator } from "../../../src/interfaces/ICSModule.sol";
+import { NodeOperator } from "../../../src/interfaces/ICSModule.sol";
 import { IStakingRouter } from "../../../src/interfaces/IStakingRouter.sol";
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
-import { Batch } from "../../../src/lib/QueueLib.sol";
 import { ExitPenaltyInfo } from "../../../src/interfaces/ICSExitPenalties.sol";
 
 contract StakingRouterIntegrationTest is
@@ -198,8 +197,8 @@ contract StakingRouterIntegrationTest is
         vm.prank(agent);
         stakingRouter.reportStakingModuleExitedValidatorsCountByNodeOperator(
             moduleId,
-            bytes.concat(bytes8(uint64(noId))),
-            bytes.concat(bytes16(uint128(newExited)))
+            _encodeNodeOperatorId(noId),
+            _encodeUint128Value(newExited)
         );
 
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -223,8 +222,8 @@ contract StakingRouterIntegrationTest is
         vm.prank(agent);
         stakingRouter.reportStakingModuleExitedValidatorsCountByNodeOperator(
             moduleId,
-            bytes.concat(bytes8(uint64(noId))),
-            bytes.concat(bytes16(uint128(newExited)))
+            _encodeNodeOperatorId(noId),
+            _encodeUint128Value(newExited)
         );
 
         IStakingRouter.StakingModuleSummary memory summary = stakingRouter
@@ -261,8 +260,8 @@ contract StakingRouterIntegrationTest is
         vm.prank(agent);
         stakingRouter.reportStakingModuleExitedValidatorsCountByNodeOperator(
             moduleId,
-            bytes.concat(bytes8(uint64(noId))),
-            bytes.concat(bytes16(uint128(exited)))
+            _encodeNodeOperatorId(noId),
+            _encodeUint128Value(exited)
         );
 
         IStakingRouter.NodeOperatorSummary memory summary = stakingRouter
@@ -301,8 +300,8 @@ contract StakingRouterIntegrationTest is
         vm.prank(agent);
         stakingRouter.reportStakingModuleExitedValidatorsCountByNodeOperator(
             moduleId,
-            bytes.concat(bytes8(uint64(noId))),
-            bytes.concat(bytes16(uint128(exited)))
+            _encodeNodeOperatorId(noId),
+            _encodeUint128Value(exited)
         );
 
         IStakingRouter.StakingModule memory moduleInfo = stakingRouter
@@ -347,8 +346,8 @@ contract StakingRouterIntegrationTest is
         vm.startSnapshotGas("CSM.decreaseVettedSigningKeysCount");
         stakingRouter.decreaseStakingModuleVettedKeysCountByNodeOperator(
             moduleId,
-            bytes.concat(bytes8(uint64(noId))),
-            bytes.concat(bytes16(uint128(newVetted)))
+            _encodeNodeOperatorId(noId),
+            _encodeUint128Value(newVetted)
         );
         vm.stopSnapshotGas();
 

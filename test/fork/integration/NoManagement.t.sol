@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
@@ -52,10 +52,14 @@ contract NoManagementBaseTest is Test, Utilities, DeploymentFixtures {
 }
 
 contract NoAddressesBasicPermissionsTest is NoManagementBaseTest {
-    bool internal immutable extended;
+    bool internal immutable EXTENDED;
 
     constructor() {
-        extended = false;
+        EXTENDED = _extended();
+    }
+
+    function _extended() internal pure virtual returns (bool) {
+        return false;
     }
 
     function test_changeManagerAddresses() public {
@@ -64,7 +68,7 @@ contract NoAddressesBasicPermissionsTest is NoManagementBaseTest {
         uint256 noId = _createNodeOperator(
             nodeOperator,
             nodeOperator,
-            extended
+            EXTENDED
         );
         vm.prank(nodeOperator);
         vm.startSnapshotGas("module.proposeNodeOperatorManagerAddressChange");
@@ -88,7 +92,7 @@ contract NoAddressesBasicPermissionsTest is NoManagementBaseTest {
         uint256 noId = _createNodeOperator(
             nodeOperator,
             nodeOperator,
-            extended
+            EXTENDED
         );
         vm.prank(nodeOperator);
         vm.startSnapshotGas("module.proposeNodeOperatorRewardAddressChange");
@@ -108,8 +112,8 @@ contract NoAddressesBasicPermissionsTest is NoManagementBaseTest {
 }
 
 contract NoAddressesExtendedPermissionsTest is NoAddressesBasicPermissionsTest {
-    constructor() {
-        extended = true;
+    function _extended() internal pure override returns (bool) {
+        return true;
     }
 }
 

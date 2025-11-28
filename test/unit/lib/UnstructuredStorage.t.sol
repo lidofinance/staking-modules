@@ -4,7 +4,7 @@
 // Source: https://github.com/lidofinance/core/blob/0d4231ee8a5289248e49e96747d6b95fa5b0afcc/test/0.8.9/unstructuredStorage.t.sol
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
 import { UnstructuredStorage } from "src/lib/UnstructuredStorage.sol";
 

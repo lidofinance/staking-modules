@@ -4,9 +4,6 @@
 pragma solidity 0.8.24;
 
 import { DeployBase } from "./DeployBase.s.sol";
-import { GIndex } from "../src/lib/GIndex.sol";
-
-import { HashConsensus } from "../src/lib/base-oracle/HashConsensus.sol";
 import { CSModule } from "../src/CSModule.sol";
 import { CSAccounting } from "../src/CSAccounting.sol";
 import { CSFeeDistributor } from "../src/CSFeeDistributor.sol";
@@ -26,9 +23,7 @@ import { OssifiableProxy } from "../src/lib/proxy/OssifiableProxy.sol";
 import { JsonObj, Json } from "./utils/Json.sol";
 import { Dummy } from "./utils/Dummy.sol";
 import { CommonScriptUtils } from "./utils/Common.sol";
-import { GIndex } from "../src/lib/GIndex.sol";
 import { Slot } from "../src/lib/Types.sol";
-import { DeployBase } from "./DeployBase.s.sol";
 
 abstract contract DeployImplementationsBase is DeployBase {
     address public gateSealV2;

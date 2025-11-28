@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.24;
-import "../../../src/interfaces/IStETH.sol";
+import { IStETH } from "../../../src/interfaces/IStETH.sol";
 
 contract BurnerMock {
     address public STETH;

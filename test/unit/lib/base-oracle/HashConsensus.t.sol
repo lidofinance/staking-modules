@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
-import "src/lib/base-oracle/HashConsensus.sol";
+import { Test, Vm } from "forge-std/Test.sol";
+import { HashConsensus } from "src/lib/base-oracle/HashConsensus.sol";
 import { ReportProcessorMock } from "../../../helpers/mocks/ReportProcessorMock.sol";
 import { Utilities } from "../../../helpers/Utilities.sol";
 

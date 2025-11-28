@@ -3,18 +3,16 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
-import "../../helpers/Fixtures.sol";
-import "../../helpers/MerkleTree.sol";
+import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
+import { MerkleTree } from "../../helpers/MerkleTree.sol";
 
 import { ICSStrikes } from "../../../src/interfaces/ICSStrikes.sol";
 import { ICSFeeOracle } from "../../../src/interfaces/ICSFeeOracle.sol";
 import { ICSExitPenalties, ExitPenaltyInfo } from "../../../src/interfaces/ICSExitPenalties.sol";
-import { NodeOperatorManagementProperties } from "../../../src/interfaces/ICSModule.sol";
 import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
 import { Utilities } from "../../helpers/Utilities.sol";
-import { Batch } from "../../../src/lib/QueueLib.sol";
 import { IWithdrawalVault } from "../../../src/interfaces/IWithdrawalVault.sol";
 
 contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {

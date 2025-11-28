@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
 import { OssifiableProxy } from "../../../../src/lib/proxy/OssifiableProxy.sol";
 import { CSModule } from "../../../../src/CSModule.sol";

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import { ICSEjector } from "../../../src/interfaces/ICSEjector.sol";
 import { ICSAccounting } from "../../../src/interfaces/ICSAccounting.sol";
 import { ICSModule } from "../../../src/interfaces/ICSModule.sol";
 

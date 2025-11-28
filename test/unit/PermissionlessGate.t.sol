@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "../helpers/Utilities.sol";
-import "forge-std/Test.sol";
+import { Utilities } from "../helpers/Utilities.sol";
+import { Test } from "forge-std/Test.sol";
 import { PermissionlessGate } from "src/PermissionlessGate.sol";
 import { IPermissionlessGate } from "src/interfaces/IPermissionlessGate.sol";
 import { CSMMock } from "../helpers/mocks/CSMMock.sol";

@@ -3,11 +3,11 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
-import "src/lib/base-oracle/BaseOracle.sol";
-import "src/lib/UnstructuredStorage.sol";
+import { Test, Vm } from "forge-std/Test.sol";
+import { BaseOracle } from "src/lib/base-oracle/BaseOracle.sol";
+import { UnstructuredStorage } from "src/lib/UnstructuredStorage.sol";
 import { Utilities, hasLog } from "../../../helpers/Utilities.sol";
-import "../../../helpers/mocks/ConsensusContractMock.sol";
+import { MockConsensusContract } from "../../../helpers/mocks/ConsensusContractMock.sol";
 
 struct ConsensusReport {
     bytes32 hash;
@@ -62,6 +62,7 @@ contract BaseOracleTest is Test, Utilities {
         oracle.grantRole(oracle.MANAGE_CONSENSUS_CONTRACT_ROLE(), admin);
         oracle.grantRole(oracle.MANAGE_CONSENSUS_VERSION_ROLE(), admin);
         vm.stopPrank();
+        // forge-lint: disable-next-item(divide-before-multiply) this is intentional here
         initialRefSlot =
             ((oracle.getTime() - GENESIS_TIME) /
                 SECONDS_PER_SLOT /

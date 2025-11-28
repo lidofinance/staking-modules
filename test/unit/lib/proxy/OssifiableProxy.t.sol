@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
-import "src/lib/proxy/OssifiableProxy.sol";
+import { Test } from "forge-std/Test.sol";
+import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
 import { Utilities } from "../../../helpers/Utilities.sol";
 import { ERC1967Utils } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 
@@ -165,7 +165,8 @@ contract OssifiableProxyTest is Test, Utilities {
         vm.prank(admin);
         vm.expectEmit(address(proxy));
         emit InitializableImplementationStub.FallbackIsFired();
-        payable(address(proxy)).call{ value: 1 ether }("");
+        (bool success, ) = payable(address(proxy)).call{ value: 1 ether }("");
+        assertTrue(success, "call failed");
         assertEq(address(proxy).balance, 1 ether);
     }
 

@@ -703,6 +703,7 @@ contract HashConsensus is
             config.epochsPerFrame *
             SLOTS_PER_EPOCH;
 
+        // forge-lint: disable-next-item(unsafe-typecast)
         return
             ConsensusFrame({
                 index: frameIndex,
@@ -1005,7 +1006,8 @@ contract HashConsensus is
         uint256 variantsLength;
 
         if (_reportingState.lastReportRefSlot != slot) {
-            // first report for a new slot => clear report variants
+            // Capped by the check at the beginning of the func
+            // forge-lint: disable-next-line(unsafe-typecast)
             _reportingState.lastReportRefSlot = uint64(slot);
             variantsLength = 0;
         } else {
@@ -1049,6 +1051,7 @@ contract HashConsensus is
         }
 
         _memberStates[memberIndex] = MemberState({
+            // forge-lint: disable-next-line(unsafe-typecast)
             lastReportRefSlot: uint64(slot),
             lastReportVariantIndex: varIndex
         });
@@ -1072,7 +1075,10 @@ contract HashConsensus is
             _reportingState.lastConsensusRefSlot != frame.refSlot ||
             _reportingState.lastConsensusVariantIndex != variantIndex
         ) {
+            // Consensus frames come from the same slot counter, so uint64 is sufficient.
+            // forge-lint: disable-next-line(unsafe-typecast)
             _reportingState.lastConsensusRefSlot = uint64(frame.refSlot);
+            // forge-lint: disable-next-line(unsafe-typecast)
             _reportingState.lastConsensusVariantIndex = uint64(variantIndex);
             emit ConsensusReached(frame.refSlot, report, support);
             _submitReportForProcessing(frame, report);
@@ -1145,6 +1151,7 @@ contract HashConsensus is
             _consensusReached(
                 frame,
                 consensusReport,
+                // forge-lint: disable-next-line(unsafe-typecast)
                 uint256(consensusVariantIndex),
                 support
             );
@@ -1174,6 +1181,8 @@ contract HashConsensus is
         for (uint256 i = 0; i < variantsLength; ++i) {
             uint256 iSupport = _reportVariants[i].support;
             if (iSupport >= quorum) {
+                // Variant count cannot exceed member count (a tiny set in practice), so this cast is safe.
+                // forge-lint: disable-next-line(unsafe-typecast)
                 variantIndex = int256(i);
                 report = _reportVariants[i].hash;
                 support = iSupport;

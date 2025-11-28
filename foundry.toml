@@ -66,5 +66,16 @@ build_info = true
 
 [lint]
 lint_on_build = false
+exclude_lints = [
+    # Temporarily silence all existing lint findings; we will re-enable them one by one.
+    "asm-keccak256",
+    "mixed-case-function",
+    "mixed-case-variable",
+    "named-struct-fields",
+    "pascal-case-struct",
+    "erc20-unchecked-transfer",
+    "incorrect-shift",
+    "unsafe-cheatcode",
+]
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/crates/config

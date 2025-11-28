@@ -91,10 +91,7 @@ contract CSParametersRegistry is
     mapping(uint256 => MarkedUint248) internal _maxWithdrawalRequestFees;
 
     modifier onlyRoleMemberOrAdmin(bytes32 role) {
-        address sender = msg.sender;
-        if (!(hasRole(role, sender) || hasRole(getRoleAdmin(role), sender))) {
-            revert AccessControlUnauthorizedAccount(sender, role);
-        }
+        _onlyRoleMemberOrAdmin(role);
         _;
     }
 
@@ -789,6 +786,13 @@ contract CSParametersRegistry is
     function _setDefaultMaxWithdrawalRequestFee(uint256 fee) internal {
         defaultMaxWithdrawalRequestFee = fee;
         emit DefaultMaxWithdrawalRequestFeeSet(fee);
+    }
+
+    function _onlyRoleMemberOrAdmin(bytes32 role) internal view {
+        address sender = msg.sender;
+        if (!(hasRole(role, sender) || hasRole(getRoleAdmin(role), sender))) {
+            revert AccessControlUnauthorizedAccount(sender, role);
+        }
     }
 
     function _validateQueueConfig(

@@ -19,6 +19,8 @@ contract StakingRouterMock {
             IStakingRouter.StakingModule storage moduleData = _modules[
                 moduleId
             ];
+            // Test IDs grow sequentially from 1, so they never exceed the uint24 field used on mainnet.
+            // forge-lint: disable-next-line(unsafe-typecast)
             moduleData.id = uint24(moduleId);
             moduleData.stakingModuleAddress = modules[i];
             _moduleIds.push(moduleId);
@@ -28,6 +30,8 @@ contract StakingRouterMock {
     function addModule(uint256 moduleId, address module) external {
         if (moduleId == 0) revert("module id zero");
         IStakingRouter.StakingModule storage moduleData = _modules[moduleId];
+        // Module identifiers are constrained to the same uint24 range as production.
+        // forge-lint: disable-next-line(unsafe-typecast)
         moduleData.id = uint24(moduleId);
         moduleData.stakingModuleAddress = module;
         bool exists = false;

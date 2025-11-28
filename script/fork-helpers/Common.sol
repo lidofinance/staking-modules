@@ -3,8 +3,8 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Script.sol";
-import "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
+import { Script } from "forge-std/Script.sol";
+import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import { DeploymentFixtures } from "test/helpers/Fixtures.sol";
 import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 

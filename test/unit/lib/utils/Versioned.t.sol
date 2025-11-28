@@ -2,17 +2,17 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
-import "src/lib/utils/Versioned.sol";
+import { Versioned } from "src/lib/utils/Versioned.sol";
 import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
 
 contract VersionedTest is Test {
     VersionedImpl impl;
     VersionedImpl consumer;
 
-    uint256 constant initialVersion = 0;
-    uint256 constant petrifiedVersion = type(uint256).max;
+    uint256 constant INITIAL_VERSION = 0;
+    uint256 constant PETRIFIED_VERSION = type(uint256).max;
 
     function setUp() public {
         impl = new VersionedImpl();
@@ -24,7 +24,7 @@ contract VersionedTest is Test {
     }
 
     function test_constructor_PetrifiesImplementation() public view {
-        assertEq(impl.getContractVersion(), petrifiedVersion);
+        assertEq(impl.getContractVersion(), PETRIFIED_VERSION);
     }
 
     function test_getContractVersionPosition_ReturnsStorageSlotPosition()
@@ -41,11 +41,11 @@ contract VersionedTest is Test {
         public
         view
     {
-        assertEq(consumer.getPetrifiedVersionMark(), petrifiedVersion);
+        assertEq(consumer.getPetrifiedVersionMark(), PETRIFIED_VERSION);
     }
 
     function test_checkContractVersion_PassesIfVersionsMatch() public view {
-        consumer.checkContractVersion(initialVersion);
+        consumer.checkContractVersion(INITIAL_VERSION);
     }
 
     function test_checkContractVersion_RevertsIfVersionsDoNotMatch() public {
@@ -53,7 +53,7 @@ contract VersionedTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(
                 Versioned.UnexpectedContractVersion.selector,
-                initialVersion,
+                INITIAL_VERSION,
                 expectedVersion
             )
         );
@@ -78,13 +78,13 @@ contract VersionedTest is Test {
     }
 
     function test_updateContractVersion_UpdatesIncrementally() public {
-        uint256 newVersion = initialVersion + 1;
+        uint256 newVersion = INITIAL_VERSION + 1;
         consumer.updateContractVersion(newVersion);
         assertEq(consumer.getContractVersion(), newVersion);
     }
 
     function test_updateContractVersion_RevertsIfNotIncremental() public {
-        uint256 newVersion = initialVersion + 2;
+        uint256 newVersion = INITIAL_VERSION + 2;
         vm.expectRevert(Versioned.InvalidContractVersionIncrement.selector);
         consumer.updateContractVersion(newVersion);
     }

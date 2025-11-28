@@ -3,7 +3,9 @@
 
 pragma solidity 0.8.24;
 
-import "./_Base.t.sol";
+import { BaseTest } from "./_Base.t.sol";
+import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
+import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 
 contract PauseTest is BaseTest {
     function test_notPausedByDefault() public view {

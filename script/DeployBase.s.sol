@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Script.sol";
+import { Script, VmSafe } from "forge-std/Script.sol";
 
 import { HashConsensus } from "../src/lib/base-oracle/HashConsensus.sol";
 import { OssifiableProxy } from "../src/lib/proxy/OssifiableProxy.sol";
@@ -32,7 +32,6 @@ import { GIndex } from "../src/lib/GIndex.sol";
 import { Slot } from "../src/lib/Types.sol";
 import { VettedGateFactory } from "../src/VettedGateFactory.sol";
 import { CSExitPenalties } from "../src/CSExitPenalties.sol";
-import { IGateSeal } from "../src/interfaces/IGateSeal.sol";
 import { IStakingRouter } from "../src/interfaces/IStakingRouter.sol";
 
 struct DeployParams {

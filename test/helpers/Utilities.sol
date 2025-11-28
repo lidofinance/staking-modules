@@ -3,7 +3,7 @@
 pragma solidity 0.8.24;
 
 import { CommonBase, Vm } from "forge-std/Base.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 /// @author madlabman
@@ -90,6 +90,32 @@ contract Utilities is CommonBase {
             signatures = bytes.concat(signatures, sign);
         }
         return (keys, signatures);
+    }
+
+    function _encodeNodeOperatorId(
+        uint256 noId
+    ) internal pure returns (bytes memory) {
+        // Node operator ids are sequential and bounded (< 2^32), so squeezing into 64 bits matches production encoding.
+        // forge-lint: disable-next-line(unsafe-typecast)
+        return bytes.concat(bytes8(uint64(noId)));
+    }
+
+    function _encodeNodeOperatorPair(
+        uint256 firstNoId,
+        uint256 secondNoId
+    ) internal pure returns (bytes memory) {
+        // Both ids share the same bound, letting us pack them into 16 bytes.
+        // forge-lint: disable-next-item(unsafe-typecast)
+        return
+            bytes.concat(bytes8(uint64(firstNoId)), bytes8(uint64(secondNoId)));
+    }
+
+    function _encodeUint128Value(
+        uint256 value
+    ) internal pure returns (bytes memory) {
+        // Test amounts are tiny (< 2 ether or a handful of keys) and trivially fit in 128 bits.
+        // forge-lint: disable-next-line(unsafe-typecast)
+        return bytes.concat(bytes16(uint128(value)));
     }
 
     function randomBytes(uint256 length) public returns (bytes memory b) {

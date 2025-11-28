@@ -77,8 +77,12 @@ function createBatch(
     uint256 nodeOperatorId,
     uint256 keysCount
 ) pure returns (Batch item) {
-    // NOTE: No need to safe cast due to internal logic.
+    // Queue slots reserve 64 bits for node operator IDs; upstream module numbers are capped well
+    // below that limit, so truncation cannot occur.
+    // forge-lint: disable-next-line(unsafe-typecast)
     nodeOperatorId = uint64(nodeOperatorId);
+    // Keys per batch are also capped by module key pointers (uint32), so they comfortably fit 64 bits.
+    // forge-lint: disable-next-line(unsafe-typecast)
     keysCount = uint64(keysCount);
 
     assembly {

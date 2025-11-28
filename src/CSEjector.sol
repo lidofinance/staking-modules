@@ -31,10 +31,7 @@ contract CSEjector is
     address public immutable STRIKES;
 
     modifier onlyStrikes() {
-        if (msg.sender != STRIKES) {
-            revert SenderIsNotStrikes();
-        }
-
+        _onlyStrikes();
         _;
     }
 
@@ -255,6 +252,12 @@ contract CSEjector is
             ITriggerableWithdrawalsGateway(
                 MODULE.LIDO_LOCATOR().triggerableWithdrawalsGateway()
             );
+    }
+
+    function _onlyStrikes() internal view {
+        if (msg.sender != STRIKES) {
+            revert SenderIsNotStrikes();
+        }
     }
 
     /// @dev Verifies that the sender is the owner of the node operator

@@ -3,19 +3,11 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
 import { NodeOperator, NodeOperatorManagementProperties } from "../../../src/interfaces/ICSModule.sol";
-import { CSModule } from "../../../src/CSModule.sol";
-import { Batch, IQueueLib } from "../../../src/lib/QueueLib.sol";
-import { CSAccounting } from "../../../src/CSAccounting.sol";
-import { IWstETH } from "../../../src/interfaces/IWstETH.sol";
 import { ILido } from "../../../src/interfaces/ILido.sol";
-import { ILidoLocator } from "../../../src/interfaces/ILidoLocator.sol";
 import { ICSAccounting } from "../../../src/interfaces/ICSAccounting.sol";
-import { ICSParametersRegistry } from "../../../src/interfaces/ICSParametersRegistry.sol";
-import { IVettedGate } from "../../../src/interfaces/IVettedGate.sol";
-import { ICSBondCurve } from "../../../src/interfaces/ICSBondCurve.sol";
 import { Utilities } from "../../helpers/Utilities.sol";
 import { PermitHelper } from "../../helpers/Permit.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
@@ -97,18 +89,18 @@ contract IntegrationTestBase is
 }
 
 contract PermissionlessCreateNodeOperatorTest is IntegrationTestBase {
-    uint256 internal immutable keysCount;
+    uint256 internal immutable KEYS_COUNT;
 
     constructor() {
-        keysCount = 1;
+        KEYS_COUNT = 1;
     }
 
     function test_createNodeOperatorETH() public assertInvariants {
         (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
+            KEYS_COUNT
         );
         uint256 amount = accounting.getBondAmountByKeysCount(
-            keysCount,
+            KEYS_COUNT,
             permissionlessGate.CURVE_ID()
         );
         vm.deal(nodeOperator, amount);
@@ -120,7 +112,7 @@ contract PermissionlessCreateNodeOperatorTest is IntegrationTestBase {
         vm.startPrank(nodeOperator);
         vm.startSnapshotGas("PermissionlessGate.addNodeOperatorETH");
         uint256 noId = permissionlessGate.addNodeOperatorETH{ value: amount }({
-            keysCount: keysCount,
+            keysCount: KEYS_COUNT,
             publicKeys: keys,
             signatures: signatures,
             managementProperties: NodeOperatorManagementProperties({
@@ -150,18 +142,18 @@ contract PermissionlessCreateNodeOperatorTest is IntegrationTestBase {
         lido.approve(address(accounting), type(uint256).max);
 
         (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
+            KEYS_COUNT
         );
         uint256 shares = lido.getSharesByPooledEth(
             accounting.getBondAmountByKeysCount(
-                keysCount,
+                KEYS_COUNT,
                 permissionlessGate.CURVE_ID()
             )
         );
 
         vm.startSnapshotGas("PermissionlessGate.addNodeOperatorStETH");
         uint256 noId = permissionlessGate.addNodeOperatorStETH({
-            keysCount: keysCount,
+            keysCount: KEYS_COUNT,
             publicKeys: keys,
             signatures: signatures,
             managementProperties: NodeOperatorManagementProperties({
@@ -198,11 +190,11 @@ contract PermissionlessCreateNodeOperatorTest is IntegrationTestBase {
         wstETH.approve(address(accounting), type(uint256).max);
 
         (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
+            KEYS_COUNT
         );
         uint256 wstETHAmount = wstETH.wrap(
             accounting.getBondAmountByKeysCount(
-                keysCount,
+                KEYS_COUNT,
                 permissionlessGate.CURVE_ID()
             )
         );
@@ -213,7 +205,7 @@ contract PermissionlessCreateNodeOperatorTest is IntegrationTestBase {
 
         vm.startSnapshotGas("PermissionlessGate.addNodeOperatorWstETH");
         uint256 noId = permissionlessGate.addNodeOperatorWstETH({
-            keysCount: keysCount,
+            keysCount: KEYS_COUNT,
             publicKeys: keys,
             signatures: signatures,
             managementProperties: NodeOperatorManagementProperties({
@@ -245,7 +237,7 @@ contract PermissionlessCreateNodeOperator10KeysTest is
     PermissionlessCreateNodeOperatorTest
 {
     constructor() {
-        keysCount = 10;
+        KEYS_COUNT = 10;
     }
 }
 
@@ -519,7 +511,7 @@ contract PermissionlessCreateNodeOperator10KeysTest is
 // }
 
 contract VettedGateMiscTest is IntegrationTestBase {
-    uint256 internal constant keysCount = 2;
+    uint256 internal constant KEYS_COUNT = 2;
 
     // function test_claimBondCurve() public assertInvariants {
     //     (bytes memory keys, bytes memory signatures) = keysSignatures(
@@ -1042,10 +1034,10 @@ contract DepositTest is IntegrationTestBase {
 contract AddValidatorKeysTest is IntegrationTestBase {
     uint256 internal defaultNoId;
     uint256 internal initialKeysCount = 2;
-    uint256 internal immutable keysCount;
+    uint256 internal immutable KEYS_COUNT;
 
     constructor() {
-        keysCount = 1;
+        KEYS_COUNT = 1;
     }
 
     function setUp() public override {
@@ -1076,9 +1068,9 @@ contract AddValidatorKeysTest is IntegrationTestBase {
 
     function test_addValidatorKeysETH() public assertInvariants {
         (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
+            KEYS_COUNT
         );
-        uint256 amount = accounting.getBondAmountByKeysCount(keysCount, 0);
+        uint256 amount = accounting.getBondAmountByKeysCount(KEYS_COUNT, 0);
         vm.deal(nodeOperator, amount);
 
         vm.startPrank(nodeOperator);
@@ -1086,7 +1078,7 @@ contract AddValidatorKeysTest is IntegrationTestBase {
         module.addValidatorKeysETH{ value: amount }(
             nodeOperator,
             defaultNoId,
-            keysCount,
+            KEYS_COUNT,
             keys,
             signatures
         );
@@ -1094,7 +1086,7 @@ contract AddValidatorKeysTest is IntegrationTestBase {
         vm.stopPrank();
 
         NodeOperator memory no = module.getNodeOperator(defaultNoId);
-        assertEq(no.totalAddedKeys, initialKeysCount + keysCount);
+        assertEq(no.totalAddedKeys, initialKeysCount + KEYS_COUNT);
     }
 
     function test_addValidatorKeysStETH() public assertInvariants {
@@ -1105,14 +1097,14 @@ contract AddValidatorKeysTest is IntegrationTestBase {
         lido.approve(address(accounting), type(uint256).max);
 
         (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
+            KEYS_COUNT
         );
 
         vm.startSnapshotGas("CSM.addValidatorKeysStETH");
         module.addValidatorKeysStETH(
             nodeOperator,
             defaultNoId,
-            keysCount,
+            KEYS_COUNT,
             keys,
             signatures,
             ICSAccounting.PermitInput({
@@ -1127,7 +1119,7 @@ contract AddValidatorKeysTest is IntegrationTestBase {
         vm.stopPrank();
 
         NodeOperator memory no = module.getNodeOperator(defaultNoId);
-        assertEq(no.totalAddedKeys, initialKeysCount + keysCount);
+        assertEq(no.totalAddedKeys, initialKeysCount + KEYS_COUNT);
     }
 
     function test_addValidatorKeysWstETH() public assertInvariants {
@@ -1139,11 +1131,11 @@ contract AddValidatorKeysTest is IntegrationTestBase {
         wstETH.approve(address(accounting), type(uint256).max);
 
         (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
+            KEYS_COUNT
         );
         wstETH.wrap(
             accounting.getBondAmountByKeysCount(
-                keysCount,
+                KEYS_COUNT,
                 permissionlessGate.CURVE_ID()
             )
         );
@@ -1152,7 +1144,7 @@ contract AddValidatorKeysTest is IntegrationTestBase {
         module.addValidatorKeysWstETH(
             nodeOperator,
             defaultNoId,
-            keysCount,
+            KEYS_COUNT,
             keys,
             signatures,
             ICSAccounting.PermitInput({
@@ -1167,13 +1159,13 @@ contract AddValidatorKeysTest is IntegrationTestBase {
         vm.stopPrank();
 
         NodeOperator memory no = module.getNodeOperator(defaultNoId);
-        assertEq(no.totalAddedKeys, initialKeysCount + keysCount);
+        assertEq(no.totalAddedKeys, initialKeysCount + KEYS_COUNT);
     }
 }
 
 contract AddValidatorKeys10KeysTest is AddValidatorKeysTest {
     constructor() {
-        keysCount = 10;
+        KEYS_COUNT = 10;
     }
 }
 
@@ -1284,7 +1276,10 @@ contract RemoveKeysTest is IntegrationTestBase {
 
         vm.prank(address(stakingRouter));
         module.decreaseVettedSigningKeysCount(
+            // Node/operator identifiers fit 64 bits and key counts are tiny (<100) in this suite.
+            // forge-lint: disable-next-line(unsafe-typecast)
             bytes.concat(bytes8(uint64(noId))),
+            // forge-lint: disable-next-line(unsafe-typecast)
             bytes.concat(bytes16(uint128(keysCount - 1)))
         );
 
@@ -1370,7 +1365,11 @@ contract ObtainDepositDataTest is IntegrationTestBase {
         parametersRegistry.setQueueConfig(
             curveId,
             0,
-            no.totalDepositedKeys + no.enqueuedCount + uint32(keysWithPriority)
+            no.totalDepositedKeys +
+                no.enqueuedCount +
+                // Queue sizes are bounded well below 2^32; we only stuff a handful of keys in tests.
+                // forge-lint: disable-next-line(unsafe-typecast)
+                uint32(keysWithPriority)
         );
         vm.stopPrank();
     }

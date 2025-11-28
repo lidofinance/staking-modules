@@ -3,7 +3,12 @@
 
 pragma solidity 0.8.24;
 
-import "./_Base.t.sol";
+import { BaseTest, BondStateBaseTest, FailedReceiverStub, GetRequiredBondBaseTest, GetRequiredBondForKeysBaseTest, RewardsBaseTest } from "./_Base.t.sol";
+import { CSAccounting } from "src/CSAccounting.sol";
+import { ICSBondCurve } from "src/interfaces/ICSBondCurve.sol";
+import { ICSModule } from "src/interfaces/ICSModule.sol";
+import { IBurner } from "src/interfaces/IBurner.sol";
+import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
 
 // Combined bond tests: curves, claimable, locking, required bonds, summaries
 

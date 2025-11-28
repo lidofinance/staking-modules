@@ -3,9 +3,8 @@
 
 pragma solidity 0.8.24;
 
-import "../../../src/lib/base-oracle/interfaces/IConsensusContract.sol";
-import { IReportAsyncProcessor } from "../../../src/lib/base-oracle/interfaces/IReportAsyncProcessor.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IConsensusContract } from "../../../src/lib/base-oracle/interfaces/IConsensusContract.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 contract MockConsensusContract is IConsensusContract {
     using SafeCast for uint256;

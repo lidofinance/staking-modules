@@ -35,10 +35,7 @@ contract CSStrikes is
     string public treeCid;
 
     modifier onlyOracle() {
-        if (msg.sender != ORACLE) {
-            revert SenderIsNotOracle();
-        }
-
+        _onlyOracle();
         _;
     }
 
@@ -251,5 +248,11 @@ contract CSStrikes is
             keyStrikes.keyIndex,
             refundRecipient
         );
+    }
+
+    function _onlyOracle() internal view {
+        if (msg.sender != ORACLE) {
+            revert SenderIsNotOracle();
+        }
     }
 }

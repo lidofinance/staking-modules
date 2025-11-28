@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { CSEjector } from "src/CSEjector.sol";
 import { ICSEjector } from "src/interfaces/ICSEjector.sol";
@@ -25,8 +25,8 @@ contract CSEjectorTestBase is Test, Utilities, Fixtures {
     address internal stranger;
     address internal admin;
     address internal refundRecipient;
-    uint256 internal constant noId = 0;
-    uint256 internal constant stakingModuleId = 0;
+    uint256 internal constant NO_ID = 0;
+    uint256 internal constant STAKING_MODULE_ID = 0;
 
     function setUp() public {
         csm = new CSMMock();
@@ -42,7 +42,7 @@ contract CSEjectorTestBase is Test, Utilities, Fixtures {
         ejector = new CSEjector(
             address(csm),
             address(strikes),
-            stakingModuleId,
+            STAKING_MODULE_ID,
             admin
         );
     }
@@ -53,11 +53,11 @@ contract CSEjectorTestMisc is CSEjectorTestBase {
         ejector = new CSEjector(
             address(csm),
             address(strikes),
-            stakingModuleId,
+            STAKING_MODULE_ID,
             admin
         );
         assertEq(address(ejector.MODULE()), address(csm));
-        assertEq(ejector.STAKING_MODULE_ID(), stakingModuleId);
+        assertEq(ejector.STAKING_MODULE_ID(), STAKING_MODULE_ID);
         assertEq(ejector.STRIKES(), address(strikes));
         assertEq(ejector.getRoleMemberCount(ejector.DEFAULT_ADMIN_ROLE()), 1);
         assertEq(ejector.getRoleMember(ejector.DEFAULT_ADMIN_ROLE(), 0), admin);
@@ -65,12 +65,12 @@ contract CSEjectorTestMisc is CSEjectorTestBase {
 
     function test_constructor_RevertWhen_ZeroModuleAddress() public {
         vm.expectRevert(ICSEjector.ZeroModuleAddress.selector);
-        new CSEjector(address(0), address(strikes), stakingModuleId, admin);
+        new CSEjector(address(0), address(strikes), STAKING_MODULE_ID, admin);
     }
 
     function test_constructor_RevertWhen_ZeroStrikesAddress() public {
         vm.expectRevert(ICSEjector.ZeroStrikesAddress.selector);
-        new CSEjector(address(csm), address(0), stakingModuleId, admin);
+        new CSEjector(address(csm), address(0), STAKING_MODULE_ID, admin);
     }
 
     function test_constructor_RevertWhen_ZeroAdminAddress() public {
@@ -78,7 +78,7 @@ contract CSEjectorTestMisc is CSEjectorTestBase {
         new CSEjector(
             address(csm),
             address(strikes),
-            stakingModuleId,
+            STAKING_MODULE_ID,
             address(0)
         );
     }
@@ -147,7 +147,7 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
         );
 
         ValidatorData[] memory expectedExitsData = new ValidatorData[](1);
-        expectedExitsData[0] = ValidatorData(0, noId, pubkey);
+        expectedExitsData[0] = ValidatorData(0, NO_ID, pubkey);
         uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
 
         vm.expectCall(
@@ -161,11 +161,11 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
         );
         vm.expectEmit(address(ejector));
         emit ICSEjector.VoluntaryEjectionRequested({
-            nodeOperatorId: noId,
+            nodeOperatorId: NO_ID,
             pubkey: pubkey,
             refundRecipient: refundRecipient
         });
-        ejector.voluntaryEject(noId, keyIndex, 1, refundRecipient);
+        ejector.voluntaryEject(NO_ID, keyIndex, 1, refundRecipient);
     }
 
     function test_voluntaryEject_multipleSequentialKeys() public {
@@ -189,7 +189,7 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
         bytes[] memory emittedPubkeys = new bytes[](keysCount);
         for (uint256 i; i < keysCount; ++i) {
             bytes memory pubkey = slice(pubkeys, 48 * i, 48);
-            expectedExitsData[i] = ValidatorData(0, noId, pubkey);
+            expectedExitsData[i] = ValidatorData(0, NO_ID, pubkey);
             emittedPubkeys[i] = pubkey;
         }
         uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
@@ -206,12 +206,12 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
         for (uint256 i; i < keysCount; ++i) {
             vm.expectEmit(address(ejector));
             emit ICSEjector.VoluntaryEjectionRequested({
-                nodeOperatorId: noId,
+                nodeOperatorId: NO_ID,
                 pubkey: emittedPubkeys[i],
                 refundRecipient: refundRecipient
             });
         }
-        ejector.voluntaryEject(noId, keyIndex, keysCount, refundRecipient);
+        ejector.voluntaryEject(NO_ID, keyIndex, keysCount, refundRecipient);
     }
 
     function test_voluntaryEject_refund() public {
@@ -228,7 +228,7 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
 
         vm.prank(nodeOperator);
         ejector.voluntaryEject{ value: 1 ether }(
-            noId,
+            NO_ID,
             keyIndex,
             1,
             nodeOperator
@@ -251,7 +251,12 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
         vm.deal(nodeOperator, 1 ether);
 
         vm.prank(nodeOperator);
-        ejector.voluntaryEject{ value: 1 ether }(noId, keyIndex, 1, address(0));
+        ejector.voluntaryEject{ value: 1 ether }(
+            NO_ID,
+            keyIndex,
+            1,
+            address(0)
+        );
         uint256 expectedRefund = (1 ether * twg.MOCK_REFUND_PERCENTAGE_BP()) /
             10000;
         assertEq(nodeOperator.balance, expectedRefund);
@@ -261,7 +266,7 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
         uint256 keyIndex = 0;
 
         vm.expectRevert(ICSEjector.NodeOperatorDoesNotExist.selector);
-        ejector.voluntaryEject(noId, keyIndex, 1, address(0));
+        ejector.voluntaryEject(NO_ID, keyIndex, 1, address(0));
     }
 
     function test_voluntaryEject_revertWhen_NothingToEject() public {
@@ -278,7 +283,7 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
         );
 
         vm.expectRevert(ICSEjector.NothingToEject.selector);
-        ejector.voluntaryEject(noId, keyIndex, 0, refundRecipient);
+        ejector.voluntaryEject(NO_ID, keyIndex, 0, refundRecipient);
     }
 
     function test_voluntaryEject_revertWhen_senderIsNotEligible() public {
@@ -291,7 +296,7 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
         );
 
         vm.expectRevert(ICSEjector.SenderIsNotEligible.selector);
-        ejector.voluntaryEject(noId, keyIndex, 1, address(0));
+        ejector.voluntaryEject(NO_ID, keyIndex, 1, address(0));
     }
 
     function test_voluntaryEject_revertWhen_senderIsNotEligible_managerAddress()
@@ -306,7 +311,7 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
         );
 
         vm.expectRevert(ICSEjector.SenderIsNotEligible.selector);
-        ejector.voluntaryEject(noId, keyIndex, 1, address(0));
+        ejector.voluntaryEject(NO_ID, keyIndex, 1, address(0));
     }
 
     function test_voluntaryEject_revertWhen_senderIsNotEligible_extendedManager_fromRewardAddress()
@@ -321,7 +326,7 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
         );
 
         vm.expectRevert(ICSEjector.SenderIsNotEligible.selector);
-        ejector.voluntaryEject(noId, keyIndex, 1, address(0));
+        ejector.voluntaryEject(NO_ID, keyIndex, 1, address(0));
     }
 
     function test_voluntaryEject_revertWhen_signingKeysInvalidOffset() public {
@@ -338,7 +343,7 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
         );
 
         vm.expectRevert(ICSEjector.SigningKeysInvalidOffset.selector);
-        ejector.voluntaryEject(noId, keyIndex, 1, address(0));
+        ejector.voluntaryEject(NO_ID, keyIndex, 1, address(0));
     }
 
     function test_voluntaryEject_revertWhen_signingKeysInvalidOffset_nonDepositedKey()
@@ -357,7 +362,7 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
         );
 
         vm.expectRevert(ICSEjector.SigningKeysInvalidOffset.selector);
-        ejector.voluntaryEject(noId, keyIndex, 1, address(0));
+        ejector.voluntaryEject(NO_ID, keyIndex, 1, address(0));
     }
 
     function test_voluntaryEject_revertWhen_alreadyWithdrawn() public {
@@ -375,7 +380,7 @@ contract CSEjectorTestVoluntaryEject is CSEjectorTestBase {
         );
 
         vm.expectRevert(ICSEjector.AlreadyWithdrawn.selector);
-        ejector.voluntaryEject(noId, keyIndex, 1, address(0));
+        ejector.voluntaryEject(NO_ID, keyIndex, 1, address(0));
     }
 }
 
@@ -395,7 +400,7 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
         );
 
         ValidatorData[] memory expectedExitsData = new ValidatorData[](1);
-        expectedExitsData[0] = ValidatorData(0, noId, pubkey);
+        expectedExitsData[0] = ValidatorData(0, NO_ID, pubkey);
         uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
 
         uint256[] memory indices = new uint256[](1);
@@ -411,11 +416,11 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
         );
         vm.expectEmit(address(ejector));
         emit ICSEjector.VoluntaryEjectionRequested({
-            nodeOperatorId: noId,
+            nodeOperatorId: NO_ID,
             pubkey: pubkey,
             refundRecipient: refundRecipient
         });
-        ejector.voluntaryEjectByArray(noId, indices, refundRecipient);
+        ejector.voluntaryEjectByArray(NO_ID, indices, refundRecipient);
     }
 
     function test_voluntaryEjectByArray_MultipleKeys() public {
@@ -438,7 +443,7 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
         bytes[] memory emittedPubkeys = new bytes[](keysCount);
         for (uint256 i; i < keysCount; ++i) {
             bytes memory pubkey = slice(pubkeys, 48 * i, 48);
-            expectedExitsData[i] = ValidatorData(0, noId, pubkey);
+            expectedExitsData[i] = ValidatorData(0, NO_ID, pubkey);
             emittedPubkeys[i] = pubkey;
         }
         uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
@@ -459,12 +464,12 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
         for (uint256 i; i < keysCount; ++i) {
             vm.expectEmit(address(ejector));
             emit ICSEjector.VoluntaryEjectionRequested({
-                nodeOperatorId: noId,
+                nodeOperatorId: NO_ID,
                 pubkey: emittedPubkeys[i],
                 refundRecipient: refundRecipient
             });
         }
-        ejector.voluntaryEjectByArray(noId, indices, refundRecipient);
+        ejector.voluntaryEjectByArray(NO_ID, indices, refundRecipient);
     }
 
     function test_voluntaryEjectByArray_refund() public {
@@ -484,7 +489,7 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
 
         vm.prank(nodeOperator);
         ejector.voluntaryEjectByArray{ value: 1 ether }(
-            noId,
+            NO_ID,
             indices,
             nodeOperator
         );
@@ -510,7 +515,7 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
 
         vm.prank(nodeOperator);
         ejector.voluntaryEjectByArray{ value: 1 ether }(
-            noId,
+            NO_ID,
             indices,
             address(0)
         );
@@ -533,7 +538,7 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
         indices[0] = keyIndex;
 
         vm.expectRevert(ICSEjector.SenderIsNotEligible.selector);
-        ejector.voluntaryEjectByArray(noId, indices, address(0));
+        ejector.voluntaryEjectByArray(NO_ID, indices, address(0));
     }
 
     function test_voluntaryEjectByArray_revertWhen_NothingToEject() public {
@@ -549,7 +554,7 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
 
         uint256[] memory indices = new uint256[](0);
         vm.expectRevert(ICSEjector.NothingToEject.selector);
-        ejector.voluntaryEjectByArray(noId, indices, refundRecipient);
+        ejector.voluntaryEjectByArray(NO_ID, indices, refundRecipient);
     }
 
     function test_voluntaryEjectByArray_revertWhen_NodeOperatorDoesNotExist()
@@ -561,7 +566,7 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
         indices[0] = keyIndex;
 
         vm.expectRevert(ICSEjector.NodeOperatorDoesNotExist.selector);
-        ejector.voluntaryEjectByArray(noId, indices, address(0));
+        ejector.voluntaryEjectByArray(NO_ID, indices, address(0));
     }
 
     function test_voluntaryEjectByArray_revertWhen_senderIsNotEligible_managerAddress()
@@ -578,7 +583,7 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
         indices[0] = keyIndex;
 
         vm.expectRevert(ICSEjector.SenderIsNotEligible.selector);
-        ejector.voluntaryEjectByArray(noId, indices, address(0));
+        ejector.voluntaryEjectByArray(NO_ID, indices, address(0));
     }
 
     function test_voluntaryEjectByArray_revertWhen_senderIsNotEligible_extendedManager_fromRewardAddress()
@@ -595,7 +600,7 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
         indices[0] = keyIndex;
 
         vm.expectRevert(ICSEjector.SenderIsNotEligible.selector);
-        ejector.voluntaryEjectByArray(noId, indices, address(0));
+        ejector.voluntaryEjectByArray(NO_ID, indices, address(0));
     }
 
     function test_voluntaryEjectByArray_revertWhen_signingKeysInvalidOffset()
@@ -616,7 +621,7 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
         indices[0] = keyIndex;
 
         vm.expectRevert(ICSEjector.SigningKeysInvalidOffset.selector);
-        ejector.voluntaryEjectByArray(noId, indices, address(0));
+        ejector.voluntaryEjectByArray(NO_ID, indices, address(0));
     }
 
     function test_voluntaryEjectByArray_revertWhen_signingKeysInvalidOffset_nonDepositedKey()
@@ -637,7 +642,7 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
         indices[0] = keyIndex;
 
         vm.expectRevert(ICSEjector.SigningKeysInvalidOffset.selector);
-        ejector.voluntaryEjectByArray(noId, indices, address(0));
+        ejector.voluntaryEjectByArray(NO_ID, indices, address(0));
     }
 
     function test_voluntaryEjectByArray_revertWhen_onPause() public {
@@ -651,7 +656,7 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
         vm.stopPrank();
 
         vm.expectRevert(PausableUntil.ResumedExpected.selector);
-        ejector.voluntaryEjectByArray(noId, indices, address(0));
+        ejector.voluntaryEjectByArray(NO_ID, indices, address(0));
     }
 
     function test_voluntaryEjectByArray_revertWhen_alreadyWithdrawn() public {
@@ -671,7 +676,7 @@ contract CSEjectorTestVoluntaryEjectByArray is CSEjectorTestBase {
         indices[0] = keyIndex;
 
         vm.expectRevert(ICSEjector.AlreadyWithdrawn.selector);
-        ejector.voluntaryEjectByArray(noId, indices, address(0));
+        ejector.voluntaryEjectByArray(NO_ID, indices, address(0));
     }
 }
 
@@ -683,7 +688,7 @@ contract CSEjectorTestEjectBadPerformer is CSEjectorTestBase {
         csm.mock_setNodeOperatorTotalDepositedKeys(1);
 
         ValidatorData[] memory expectedExitsData = new ValidatorData[](1);
-        expectedExitsData[0] = ValidatorData(0, noId, pubkey);
+        expectedExitsData[0] = ValidatorData(0, NO_ID, pubkey);
         uint256 exitType = ejector.STRIKES_EXIT_TYPE_ID();
 
         vm.expectCall(
@@ -698,12 +703,12 @@ contract CSEjectorTestEjectBadPerformer is CSEjectorTestBase {
 
         vm.expectEmit(address(ejector));
         emit ICSEjector.BadPerformerEjectionRequested({
-            nodeOperatorId: noId,
+            nodeOperatorId: NO_ID,
             pubkey: pubkey,
             refundRecipient: refundRecipient
         });
         vm.prank(address(strikes));
-        ejector.ejectBadPerformer(noId, keyIndex, refundRecipient);
+        ejector.ejectBadPerformer(NO_ID, keyIndex, refundRecipient);
     }
 
     function test_ejectBadPerformer_revertWhen_SigningKeysInvalidOffset()
@@ -715,7 +720,7 @@ contract CSEjectorTestEjectBadPerformer is CSEjectorTestBase {
 
         vm.prank(address(strikes));
         vm.expectRevert(ICSEjector.SigningKeysInvalidOffset.selector);
-        ejector.ejectBadPerformer(noId, keyIndex, refundRecipient);
+        ejector.ejectBadPerformer(NO_ID, keyIndex, refundRecipient);
     }
 
     function test_ejectBadPerformer_revertWhen_onPause() public {
@@ -727,7 +732,7 @@ contract CSEjectorTestEjectBadPerformer is CSEjectorTestBase {
 
         vm.prank(address(strikes));
         vm.expectRevert(PausableUntil.ResumedExpected.selector);
-        ejector.ejectBadPerformer(noId, keyIndex, refundRecipient);
+        ejector.ejectBadPerformer(NO_ID, keyIndex, refundRecipient);
     }
 
     function test_ejectBadPerformer_revertWhen_notStrikes() public {
@@ -735,7 +740,7 @@ contract CSEjectorTestEjectBadPerformer is CSEjectorTestBase {
 
         vm.prank(stranger);
         vm.expectRevert(ICSEjector.SenderIsNotStrikes.selector);
-        ejector.ejectBadPerformer(noId, keyIndex, refundRecipient);
+        ejector.ejectBadPerformer(NO_ID, keyIndex, refundRecipient);
     }
 
     function test_ejectBadPerformer_revertWhen_alreadyWithdrawn() public {
@@ -746,7 +751,7 @@ contract CSEjectorTestEjectBadPerformer is CSEjectorTestBase {
 
         vm.prank(address(strikes));
         vm.expectRevert(ICSEjector.AlreadyWithdrawn.selector);
-        ejector.ejectBadPerformer(noId, keyIndex, refundRecipient);
+        ejector.ejectBadPerformer(NO_ID, keyIndex, refundRecipient);
     }
 
     function test_triggerableWithdrawalsGateway() public view {

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test, Vm } from "forge-std/Test.sol";
 import { CSExitPenalties } from "src/CSExitPenalties.sol";
 import { ICSExitPenalties, ExitPenaltyInfo } from "src/interfaces/ICSExitPenalties.sol";
 import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
@@ -20,7 +20,7 @@ contract CSExitPenaltiesTestBase is Test, Utilities, Fixtures {
     address internal admin;
     ICSAccounting internal accounting;
     CSParametersRegistryMock internal parametersRegistry;
-    uint256 internal constant noId = 0;
+    uint256 internal constant NO_ID = 0;
 
     function setUp() public {
         csm = new CSMMock();
@@ -87,26 +87,26 @@ contract CSExitPenaltiesTestMisc is CSExitPenaltiesTestBase {
 
 contract CSExitPenaltiesTestProcessExitDelayReport is CSExitPenaltiesTestBase {
     function test_processExitDelayReport() public {
-        uint256 eligibleToExit = csm.exitDeadlineThreshold(noId) + 1;
+        uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID) + 1;
         bytes memory publicKey = randomBytes(48);
         uint256 penalty = parametersRegistry.getExitDelayFee(0);
 
         vm.expectEmit(address(exitPenalties));
         emit ICSExitPenalties.ValidatorExitDelayProcessed(
-            noId,
+            NO_ID,
             publicKey,
             penalty
         );
         vm.prank(address(csm));
-        exitPenalties.processExitDelayReport(noId, publicKey, eligibleToExit);
+        exitPenalties.processExitDelayReport(NO_ID, publicKey, eligibleToExit);
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(noId, publicKey);
+            .getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(exitPenaltyInfo.delayFee.value, penalty);
     }
 
     function test_processExitDelayReport_revertWhen_notApplicable() public {
-        uint256 eligibleToExit = csm.exitDeadlineThreshold(noId) + 1;
+        uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID) + 1;
         bytes memory publicKey = randomBytes(48);
 
         vm.prank(address(csm));
@@ -114,12 +114,12 @@ contract CSExitPenaltiesTestProcessExitDelayReport is CSExitPenaltiesTestBase {
             ICSExitPenalties.ValidatorExitDelayNotApplicable.selector
         );
         exitPenalties.processExitDelayReport(
-            noId,
+            NO_ID,
             publicKey,
             eligibleToExit - 1 seconds
         );
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(noId, publicKey);
+            .getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(
             exitPenaltyInfo.delayFee.isValue,
             false,
@@ -128,23 +128,23 @@ contract CSExitPenaltiesTestProcessExitDelayReport is CSExitPenaltiesTestBase {
     }
 
     function test_processExitDelayReport_ignoreWhen_alreadyReported() public {
-        uint256 eligibleToExit = csm.exitDeadlineThreshold(noId) + 1;
+        uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID) + 1;
         bytes memory publicKey = randomBytes(48);
         uint256 penalty = parametersRegistry.getExitDelayFee(0);
 
         vm.prank(address(csm));
-        exitPenalties.processExitDelayReport(noId, publicKey, eligibleToExit);
+        exitPenalties.processExitDelayReport(NO_ID, publicKey, eligibleToExit);
 
         parametersRegistry.setExitDelayFee(0, penalty + 1);
 
         vm.prank(address(csm));
         exitPenalties.processExitDelayReport(
-            noId,
+            NO_ID,
             publicKey,
             eligibleToExit + 1
         );
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(noId, publicKey);
+            .getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(
             exitPenaltyInfo.delayFee.value,
             penalty,
@@ -153,12 +153,12 @@ contract CSExitPenaltiesTestProcessExitDelayReport is CSExitPenaltiesTestBase {
     }
 
     function test_processExitDelayReport_revertWhen_SenderIsNotModule() public {
-        uint256 eligibleToExit = csm.exitDeadlineThreshold(noId) + 1;
+        uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID) + 1;
         bytes memory publicKey = randomBytes(48);
 
         vm.prank(stranger);
         vm.expectRevert(ICSExitPenalties.SenderIsNotModule.selector);
-        exitPenalties.processExitDelayReport(noId, publicKey, eligibleToExit);
+        exitPenalties.processExitDelayReport(NO_ID, publicKey, eligibleToExit);
     }
 }
 
@@ -170,17 +170,17 @@ contract CSExitPenaltiesTestProcessTriggeredExit is CSExitPenaltiesTestBase {
 
         vm.expectEmit(address(exitPenalties));
         emit ICSExitPenalties.TriggeredExitFeeRecorded(
-            noId,
+            NO_ID,
             exitType,
             publicKey,
             paidFee,
             paidFee
         );
         vm.prank(address(csm));
-        exitPenalties.processTriggeredExit(noId, publicKey, paidFee, exitType);
+        exitPenalties.processTriggeredExit(NO_ID, publicKey, paidFee, exitType);
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(noId, publicKey);
+            .getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(exitPenaltyInfo.withdrawalRequestFee.value, paidFee);
     }
 
@@ -193,17 +193,17 @@ contract CSExitPenaltiesTestProcessTriggeredExit is CSExitPenaltiesTestBase {
 
         vm.expectEmit(address(exitPenalties));
         emit ICSExitPenalties.TriggeredExitFeeRecorded(
-            noId,
+            NO_ID,
             exitType,
             publicKey,
             paidFee,
             0
         );
         vm.prank(address(csm));
-        exitPenalties.processTriggeredExit(noId, publicKey, paidFee, exitType);
+        exitPenalties.processTriggeredExit(NO_ID, publicKey, paidFee, exitType);
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(noId, publicKey);
+            .getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(exitPenaltyInfo.withdrawalRequestFee.isValue, true);
         assertEq(exitPenaltyInfo.withdrawalRequestFee.value, 0);
     }
@@ -216,13 +216,13 @@ contract CSExitPenaltiesTestProcessTriggeredExit is CSExitPenaltiesTestBase {
         vm.recordLogs();
 
         vm.prank(address(csm));
-        exitPenalties.processTriggeredExit(noId, publicKey, paidFee, exitType);
+        exitPenalties.processTriggeredExit(NO_ID, publicKey, paidFee, exitType);
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
         assertEq(entries.length, 0);
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(noId, publicKey);
+            .getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(exitPenaltyInfo.withdrawalRequestFee.value, 0);
     }
 
@@ -234,7 +234,7 @@ contract CSExitPenaltiesTestProcessTriggeredExit is CSExitPenaltiesTestBase {
 
         vm.prank(address(csm));
         exitPenalties.processTriggeredExit(
-            noId,
+            NO_ID,
             publicKey,
             initialPaidFee,
             exitType
@@ -244,7 +244,7 @@ contract CSExitPenaltiesTestProcessTriggeredExit is CSExitPenaltiesTestBase {
 
         vm.prank(address(csm));
         exitPenalties.processTriggeredExit(
-            noId,
+            NO_ID,
             publicKey,
             newPaidFee,
             exitType
@@ -254,7 +254,7 @@ contract CSExitPenaltiesTestProcessTriggeredExit is CSExitPenaltiesTestBase {
         assertEq(entries.length, 0);
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(noId, publicKey);
+            .getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(
             exitPenaltyInfo.withdrawalRequestFee.value,
             initialPaidFee,
@@ -269,10 +269,10 @@ contract CSExitPenaltiesTestProcessTriggeredExit is CSExitPenaltiesTestBase {
         uint256 exitType = exitPenalties.VOLUNTARY_EXIT_TYPE_ID() + 1;
 
         vm.prank(address(csm));
-        exitPenalties.processTriggeredExit(noId, publicKey, paidFee, exitType);
+        exitPenalties.processTriggeredExit(NO_ID, publicKey, paidFee, exitType);
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(noId, publicKey);
+            .getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(
             exitPenaltyInfo.withdrawalRequestFee.value,
             maxFee,
@@ -287,7 +287,7 @@ contract CSExitPenaltiesTestProcessTriggeredExit is CSExitPenaltiesTestBase {
 
         vm.prank(stranger);
         vm.expectRevert(ICSExitPenalties.SenderIsNotModule.selector);
-        exitPenalties.processTriggeredExit(noId, publicKey, paidFee, exitType);
+        exitPenalties.processTriggeredExit(NO_ID, publicKey, paidFee, exitType);
     }
 }
 
@@ -297,12 +297,16 @@ contract CSExitPenaltiesTestProcessStrikesReport is CSExitPenaltiesTestBase {
         uint256 penalty = parametersRegistry.getBadPerformancePenalty(0);
 
         vm.expectEmit(address(exitPenalties));
-        emit ICSExitPenalties.StrikesPenaltyProcessed(noId, publicKey, penalty);
+        emit ICSExitPenalties.StrikesPenaltyProcessed(
+            NO_ID,
+            publicKey,
+            penalty
+        );
         vm.prank(address(strikes));
-        exitPenalties.processStrikesReport(noId, publicKey);
+        exitPenalties.processStrikesReport(NO_ID, publicKey);
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(noId, publicKey);
+            .getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(exitPenaltyInfo.strikesPenalty.value, penalty);
     }
 
@@ -311,19 +315,19 @@ contract CSExitPenaltiesTestProcessStrikesReport is CSExitPenaltiesTestBase {
         uint256 penalty = parametersRegistry.getBadPerformancePenalty(0);
 
         vm.prank(address(strikes));
-        exitPenalties.processStrikesReport(noId, publicKey);
+        exitPenalties.processStrikesReport(NO_ID, publicKey);
 
         parametersRegistry.setBadPerformancePenalty(0, penalty + 1);
 
         vm.recordLogs();
         vm.prank(address(strikes));
-        exitPenalties.processStrikesReport(noId, publicKey);
+        exitPenalties.processStrikesReport(NO_ID, publicKey);
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
         assertEq(entries.length, 0);
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(noId, publicKey);
+            .getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(
             exitPenaltyInfo.strikesPenalty.value,
             penalty,
@@ -335,7 +339,7 @@ contract CSExitPenaltiesTestProcessStrikesReport is CSExitPenaltiesTestBase {
         bytes memory publicKey = randomBytes(48);
         vm.prank(stranger);
         vm.expectRevert(ICSExitPenalties.SenderIsNotStrikes.selector);
-        exitPenalties.processStrikesReport(noId, publicKey);
+        exitPenalties.processStrikesReport(NO_ID, publicKey);
     }
 }
 
@@ -343,12 +347,12 @@ contract CSExitPenaltiesTestIsValidatorExitDelayPenaltyApplicable is
     CSExitPenaltiesTestBase
 {
     function test_isValidatorExitDelayPenaltyApplicable_notDelayedYet() public {
-        uint256 eligibleToExit = csm.exitDeadlineThreshold(noId);
+        uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID);
         bytes memory publicKey = randomBytes(48);
 
         vm.prank(address(csm));
         bool applicable = exitPenalties.isValidatorExitDelayPenaltyApplicable(
-            noId,
+            NO_ID,
             publicKey,
             eligibleToExit
         );
@@ -356,12 +360,12 @@ contract CSExitPenaltiesTestIsValidatorExitDelayPenaltyApplicable is
     }
 
     function test_isValidatorExitDelayPenaltyApplicable_delayed() public {
-        uint256 eligibleToExit = csm.exitDeadlineThreshold(noId) + 1;
+        uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID) + 1;
         bytes memory publicKey = randomBytes(48);
 
         vm.prank(address(csm));
         bool applicable = exitPenalties.isValidatorExitDelayPenaltyApplicable(
-            noId,
+            NO_ID,
             publicKey,
             eligibleToExit
         );
@@ -371,15 +375,15 @@ contract CSExitPenaltiesTestIsValidatorExitDelayPenaltyApplicable is
     function test_isValidatorExitDelayPenaltyApplicable_alreadyReported()
         public
     {
-        uint256 eligibleToExit = csm.exitDeadlineThreshold(noId) + 1;
+        uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID) + 1;
         bytes memory publicKey = randomBytes(48);
 
         vm.prank(address(csm));
-        exitPenalties.processExitDelayReport(noId, publicKey, eligibleToExit);
+        exitPenalties.processExitDelayReport(NO_ID, publicKey, eligibleToExit);
 
         vm.prank(address(csm));
         bool applicable = exitPenalties.isValidatorExitDelayPenaltyApplicable(
-            noId,
+            NO_ID,
             publicKey,
             eligibleToExit
         );
@@ -389,13 +393,13 @@ contract CSExitPenaltiesTestIsValidatorExitDelayPenaltyApplicable is
     function test_isValidatorExitDelayPenaltyApplicable_revertWhen_SenderIsNotModule()
         public
     {
-        uint256 eligibleToExit = csm.exitDeadlineThreshold(noId) + 1;
+        uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID) + 1;
         bytes memory publicKey = randomBytes(48);
 
         vm.prank(stranger);
         vm.expectRevert(ICSExitPenalties.SenderIsNotModule.selector);
         exitPenalties.isValidatorExitDelayPenaltyApplicable(
-            noId,
+            NO_ID,
             publicKey,
             eligibleToExit
         );

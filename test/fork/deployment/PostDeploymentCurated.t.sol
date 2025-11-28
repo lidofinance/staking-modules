@@ -3,12 +3,11 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 import { CuratedGate } from "../../../src/CuratedGate.sol";
-import { CuratedGateFactory } from "../../../src/CuratedGateFactory.sol";
 import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
 import { CuratedDeployParams, CuratedGateConfig } from "../../../script/curated/DeployBase.s.sol";
 

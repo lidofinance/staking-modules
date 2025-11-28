@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test, Vm } from "forge-std/Test.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
 import { InvariantAsserts } from "../helpers/InvariantAsserts.sol";
+import { console } from "forge-std/console.sol";
 import { ICSModule, NodeOperator, NodeOperatorManagementProperties, ValidatorWithdrawalInfo } from "src/interfaces/ICSModule.sol";
 import { CSAccountingMock } from "../helpers/mocks/CSAccountingMock.sol";
 import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
@@ -161,6 +162,12 @@ abstract contract ModuleFixtures is
             );
     }
 
+    function _toUint248(uint256 value) internal pure returns (uint248) {
+        // All penalty/fee figures come from BOND_SIZE (2 ether) so uint248 is ample.
+        // forge-lint: disable-next-line(unsafe-typecast)
+        return uint248(value);
+    }
+
     function uploadMoreKeys(
         uint256 noId,
         uint256 keysCount,
@@ -189,15 +196,15 @@ abstract contract ModuleFixtures is
 
     function unvetKeys(uint256 noId, uint256 to) internal {
         module.decreaseVettedSigningKeysCount(
-            bytes.concat(bytes8(uint64(noId))),
-            bytes.concat(bytes16(uint128(to)))
+            _encodeNodeOperatorId(noId),
+            _encodeUint128Value(to)
         );
     }
 
     function setExited(uint256 noId, uint256 to) internal {
         module.updateExitedValidatorsCount(
-            bytes.concat(bytes8(uint64(noId))),
-            bytes.concat(bytes16(uint128(to)))
+            _encodeNodeOperatorId(noId),
+            _encodeUint128Value(to)
         );
     }
 
@@ -3514,9 +3521,12 @@ abstract contract ModuleDecreaseVettedSigningKeysCount is ModuleFixtures {
         emit ICSModule.VettedSigningKeysCountDecreased(secondNoId);
 
         module.decreaseVettedSigningKeysCount(
-            bytes.concat(bytes8(uint64(firstNoId)), bytes8(uint64(secondNoId))),
+            _encodeNodeOperatorPair(firstNoId, secondNoId),
             bytes.concat(
+                // Each vetted value mirrors the uint128 field used on-chain, so truncation is safe.
+                // forge-lint: disable-next-line(unsafe-typecast)
                 bytes16(uint128(newVettedFirst)),
+                // forge-lint: disable-next-line(unsafe-typecast)
                 bytes16(uint128(newVettedSecond))
             )
         );
@@ -3544,8 +3554,8 @@ abstract contract ModuleDecreaseVettedSigningKeysCount is ModuleFixtures {
 
         vm.expectRevert();
         module.decreaseVettedSigningKeysCount(
-            bytes.concat(bytes8(uint64(firstNoId)), bytes8(uint64(secondNoId))),
-            bytes.concat(bytes16(uint128(newVettedFirst)))
+            _encodeNodeOperatorPair(firstNoId, secondNoId),
+            _encodeUint128Value(newVettedFirst)
         );
     }
 
@@ -6155,7 +6165,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(uint248(exitDelayFeeAmount), true),
+                delayFee: MarkedUint248(_toUint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(0, false),
                 withdrawalRequestFee: MarkedUint248(0, false)
             })
@@ -6197,7 +6207,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(uint248(exitDelayFeeAmount), true),
+                delayFee: MarkedUint248(_toUint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(0, false),
                 withdrawalRequestFee: MarkedUint248(0, false)
             })
@@ -6319,7 +6329,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(
-                    uint248(strikesPenaltyAmount),
+                    _toUint248(strikesPenaltyAmount),
                     true
                 ),
                 withdrawalRequestFee: MarkedUint248(0, false)
@@ -6367,7 +6377,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(
-                    uint248(strikesPenaltyAmount),
+                    _toUint248(strikesPenaltyAmount),
                     true
                 ),
                 withdrawalRequestFee: MarkedUint248(0, false)
@@ -6613,10 +6623,10 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(uint248(exitDelayFeeAmount), true),
+                delayFee: MarkedUint248(_toUint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(0, false),
                 withdrawalRequestFee: MarkedUint248(
-                    uint248(withdrawalRequestFeeAmount),
+                    _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
             })
@@ -6662,10 +6672,10 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(uint248(exitDelayFeeAmount), true),
+                delayFee: MarkedUint248(_toUint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(0, false),
                 withdrawalRequestFee: MarkedUint248(
-                    uint248(withdrawalRequestFeeAmount),
+                    _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
             })
@@ -6711,10 +6721,10 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(uint248(exitDelayFeeAmount), true),
+                delayFee: MarkedUint248(_toUint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(0, false),
                 withdrawalRequestFee: MarkedUint248(
-                    uint248(withdrawalRequestFeeAmount),
+                    _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
             })
@@ -6764,11 +6774,11 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(
-                    uint248(strikesPenaltyAmount),
+                    _toUint248(strikesPenaltyAmount),
                     true
                 ),
                 withdrawalRequestFee: MarkedUint248(
-                    uint248(withdrawalRequestFeeAmount),
+                    _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
             })
@@ -6824,11 +6834,11 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(
-                    uint248(strikesPenaltyAmount),
+                    _toUint248(strikesPenaltyAmount),
                     true
                 ),
                 withdrawalRequestFee: MarkedUint248(
-                    uint248(withdrawalRequestFeeAmount),
+                    _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
             })
@@ -6884,11 +6894,11 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(
-                    uint248(strikesPenaltyAmount),
+                    _toUint248(strikesPenaltyAmount),
                     true
                 ),
                 withdrawalRequestFee: MarkedUint248(
-                    uint248(withdrawalRequestFeeAmount),
+                    _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
             })
@@ -6943,13 +6953,13 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(uint248(exitDelayFeeAmount), true),
+                delayFee: MarkedUint248(_toUint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(
-                    uint248(strikesPenaltyAmount),
+                    _toUint248(strikesPenaltyAmount),
                     true
                 ),
                 withdrawalRequestFee: MarkedUint248(
-                    uint248(withdrawalRequestFeeAmount),
+                    _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
             })
@@ -7003,13 +7013,13 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(uint248(exitDelayFeeAmount), true),
+                delayFee: MarkedUint248(_toUint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(
-                    uint248(strikesPenaltyAmount),
+                    _toUint248(strikesPenaltyAmount),
                     true
                 ),
                 withdrawalRequestFee: MarkedUint248(
-                    uint248(withdrawalRequestFeeAmount),
+                    _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
             })
@@ -7065,7 +7075,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 delayFee: MarkedUint248(0, true),
                 strikesPenalty: MarkedUint248(0, true),
                 withdrawalRequestFee: MarkedUint248(
-                    uint248(withdrawalRequestFeeAmount),
+                    _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
             })
@@ -7113,7 +7123,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 delayFee: MarkedUint248(0, true),
                 strikesPenalty: MarkedUint248(0, true),
                 withdrawalRequestFee: MarkedUint248(
-                    uint248(withdrawalRequestFeeAmount),
+                    _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
             })
@@ -7200,7 +7210,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(0, false),
                 withdrawalRequestFee: MarkedUint248(
-                    uint248(withdrawalRequestFeeAmount),
+                    _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
             })
@@ -7249,7 +7259,7 @@ abstract contract ModuleSubmitWithdrawals is ModuleFixtures {
                 delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(0, false),
                 withdrawalRequestFee: MarkedUint248(
-                    uint248(withdrawalRequestFeeAmount),
+                    _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
             })

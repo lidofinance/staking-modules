@@ -3,23 +3,11 @@
 
 pragma solidity 0.8.24;
 
-import "forge-std/Script.sol";
-
-import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
-import { CSModule } from "../../src/CSModule.sol";
-import { CSAccounting } from "../../src/CSAccounting.sol";
-import { CSFeeOracle } from "../../src/CSFeeOracle.sol";
-import { CSFeeDistributor } from "../../src/CSFeeDistributor.sol";
-import { CSEjector } from "../../src/CSEjector.sol";
-import { CSParametersRegistry } from "../../src/CSParametersRegistry.sol";
+import { Script } from "forge-std/Script.sol";
 
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 import { ITriggerableWithdrawalsGateway } from "../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
-import { ICSBondCurve } from "../../src/interfaces/ICSBondCurve.sol";
 import { IBurner } from "../../src/interfaces/IBurner.sol";
-import { ICSParametersRegistry } from "../../src/interfaces/ICSParametersRegistry.sol";
-
-import { CommonScriptUtils } from "../utils/Common.sol";
 
 import { ForkHelpersCommon } from "./Common.sol";
 import { DeployParams } from "../DeployBase.s.sol";

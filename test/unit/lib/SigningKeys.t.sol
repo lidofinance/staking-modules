@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
-import "forge-std/console.sol";
-
+import { Test, stdError } from "forge-std/Test.sol";
 import { IStakingModule } from "src/interfaces/IStakingModule.sol";
 import { SigningKeys } from "src/lib/SigningKeys.sol";
 import { Utilities } from "../../helpers/Utilities.sol";
@@ -320,7 +318,14 @@ contract SigningKeysSaveTest is SigningKeysTestBase {
         (
             bytes memory pubkeys,
             bytes memory signatures
-        ) = keysSignaturesWithZeroKey(keysCount, uint16(startIndex), offset);
+        ) = keysSignaturesWithZeroKey(
+                keysCount,
+                // Utilities helper accepts uint16 start indexes; fuzzed values are bounded by the helper,
+                // so truncating to 16 bits is intentional.
+                // forge-lint: disable-next-line(unsafe-typecast)
+                uint16(startIndex),
+                offset
+            );
 
         vm.expectRevert(SigningKeys.EmptyKey.selector);
         signingKeys.saveKeysSigs(

@@ -3,23 +3,21 @@
 
 pragma solidity 0.8.24;
 
-import "../../../src/interfaces/IWithdrawalVault.sol";
+import { IWithdrawalVault } from "../../../src/interfaces/IWithdrawalVault.sol";
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 import { IStakingModule } from "../../../src/interfaces/IStakingModule.sol";
-import { ITriggerableWithdrawalsGateway } from "../../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { IWithdrawalVault } from "../../../src/interfaces/IWithdrawalVault.sol";
-import { NodeOperatorManagementProperties } from "../../../src/interfaces/ICSModule.sol";
 import { Utilities } from "../../helpers/Utilities.sol";
 
 contract EjectionTest is Test, Utilities, DeploymentFixtures {
     uint256 internal nodeOperatorId;
 
-    uint256 internal immutable keysCount;
+    uint256 internal immutable KEYS_COUNT;
 
     constructor() {
-        keysCount = 1;
+        KEYS_COUNT = 1;
     }
 
     function setUp() public {
@@ -51,7 +49,7 @@ contract EjectionTest is Test, Utilities, DeploymentFixtures {
             startFrom
         ) = getDepositedNodeOperatorWithSequentialActiveKeys(
             nextAddress(),
-            keysCount
+            KEYS_COUNT
         );
 
         uint256 initialBalance = 1 ether;
@@ -62,16 +60,16 @@ contract EjectionTest is Test, Utilities, DeploymentFixtures {
 
         uint256 VOLUNTARY_EXIT_TYPE_ID = ejector.VOLUNTARY_EXIT_TYPE_ID();
         address withdrawalVault = locator.withdrawalVault();
-        bytes[] memory pubkeys = new bytes[](keysCount);
+        bytes[] memory pubkeys = new bytes[](KEYS_COUNT);
 
-        for (uint256 i = 0; i < keysCount; i++) {
+        for (uint256 i = 0; i < KEYS_COUNT; i++) {
             pubkeys[i] = module.getSigningKeys(
                 nodeOperatorId,
                 startFrom + i,
                 1
             );
         }
-        for (uint256 i = 0; i < keysCount; i++) {
+        for (uint256 i = 0; i < KEYS_COUNT; i++) {
             vm.expectEmit(withdrawalVault);
             emit IWithdrawalVault.WithdrawalRequestAdded(
                 _prepareWithdrawalRequestData(pubkeys[i])
@@ -93,19 +91,19 @@ contract EjectionTest is Test, Utilities, DeploymentFixtures {
         ejector.voluntaryEject{ value: initialBalance }(
             nodeOperatorId,
             startFrom,
-            keysCount,
+            KEYS_COUNT,
             operatorOwner
         );
         vm.stopSnapshotGas();
 
         vm.assertEq(
             operatorOwner.balance,
-            initialBalance - expectedFee * keysCount
+            initialBalance - expectedFee * KEYS_COUNT
         );
     }
 
     function test_voluntaryEjectByArray() public {
-        nodeOperatorId = getDepositedNodeOperator(nextAddress(), keysCount);
+        nodeOperatorId = getDepositedNodeOperator(nextAddress(), KEYS_COUNT);
 
         uint256 initialBalance = 1 ether;
         address operatorOwner = module.getNodeOperatorOwner(nodeOperatorId);
@@ -115,13 +113,13 @@ contract EjectionTest is Test, Utilities, DeploymentFixtures {
 
         uint256 VOLUNTARY_EXIT_TYPE_ID = ejector.VOLUNTARY_EXIT_TYPE_ID();
         address withdrawalVault = locator.withdrawalVault();
-        bytes[] memory pubkeys = new bytes[](keysCount);
-        uint256[] memory keyIds = new uint256[](keysCount);
+        bytes[] memory pubkeys = new bytes[](KEYS_COUNT);
+        uint256[] memory keyIds = new uint256[](KEYS_COUNT);
 
         {
             uint256 i;
             uint256 keyIndex;
-            while (i < keysCount) {
+            while (i < KEYS_COUNT) {
                 if (module.isValidatorWithdrawn(nodeOperatorId, keyIndex)) {
                     keyIndex++;
                     continue;
@@ -133,7 +131,7 @@ contract EjectionTest is Test, Utilities, DeploymentFixtures {
             }
         }
 
-        for (uint256 i = 0; i < keysCount; i++) {
+        for (uint256 i = 0; i < KEYS_COUNT; i++) {
             vm.expectEmit(withdrawalVault);
             emit IWithdrawalVault.WithdrawalRequestAdded(
                 _prepareWithdrawalRequestData(pubkeys[i])
@@ -160,13 +158,13 @@ contract EjectionTest is Test, Utilities, DeploymentFixtures {
 
         vm.assertEq(
             operatorOwner.balance,
-            initialBalance - expectedFee * keysCount
+            initialBalance - expectedFee * KEYS_COUNT
         );
     }
 }
 
 contract EjectionTest10Keys is EjectionTest {
     constructor() {
-        keysCount = 10;
+        KEYS_COUNT = 10;
     }
 }

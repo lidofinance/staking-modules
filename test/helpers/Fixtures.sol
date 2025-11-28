@@ -9,7 +9,7 @@ import { LidoLocatorMock } from "./mocks/LidoLocatorMock.sol";
 import { BurnerMock } from "./mocks/BurnerMock.sol";
 import { WithdrawalQueueMock } from "./mocks/WithdrawalQueueMock.sol";
 import { Stub } from "./mocks/Stub.sol";
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 import { ILido } from "../../src/interfaces/ILido.sol";
 import { IBurner } from "../../src/interfaces/IBurner.sol";

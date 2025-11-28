@@ -2,15 +2,14 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import "forge-std/Test.sol";
+import { Test, Vm } from "forge-std/Test.sol";
 import { VettedGate } from "src/VettedGate.sol";
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { IVettedGate } from "src/interfaces/IVettedGate.sol";
 import { IMerkleGate } from "src/interfaces/IMerkleGate.sol";
-import { ICSModule, NodeOperatorManagementProperties, NodeOperator } from "src/interfaces/ICSModule.sol";
+import { ICSModule, NodeOperatorManagementProperties } from "src/interfaces/ICSModule.sol";
 import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
 import { Utilities } from "../helpers/Utilities.sol";
-import { Stub } from "../helpers/mocks/Stub.sol";
 import { MerkleTree } from "../helpers/MerkleTree.sol";
 import { CSMMock } from "../helpers/mocks/CSMMock.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";

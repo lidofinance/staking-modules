@@ -3,7 +3,8 @@
 
 pragma solidity 0.8.24;
 
-import "./_Base.t.sol";
+import { BondStateBaseTest } from "./_Base.t.sol";
+import { ICSBondCurve } from "src/interfaces/ICSBondCurve.sol";
 
 // Combined keys count tests: unbonded and ejection
 

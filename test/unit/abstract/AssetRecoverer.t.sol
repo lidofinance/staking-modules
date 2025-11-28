@@ -5,11 +5,10 @@ pragma solidity 0.8.24;
 
 import { Test } from "forge-std/Test.sol";
 import { AssetRecoverer } from "src/abstract/AssetRecoverer.sol";
-import { AssetRecovererLib, IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
+import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
 import { Utilities } from "../../helpers/Utilities.sol";
 import { ERC1155Holder } from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import { ERC20Testable, ERC721Testable, ERC1155Testable } from "../../helpers/ERCTestable.sol";
-import { LidoLocatorMock } from "../../helpers/mocks/LidoLocatorMock.sol";
 
 contract AssetRecovererTestable is AssetRecoverer, ERC1155Holder {
     address public recoverer;
