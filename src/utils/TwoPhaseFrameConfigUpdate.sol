@@ -6,10 +6,10 @@ pragma solidity 0.8.24;
 import { IReportAsyncProcessor } from "../lib/base-oracle/interfaces/IReportAsyncProcessor.sol";
 import { IConsensusContract } from "../lib/base-oracle/interfaces/IConsensusContract.sol";
 
-/// @notice Helper to perform two-phase frame configuration update
-///        in `HashConsensus` contract used by `CSFeeOracle`.
-///        Phase2 cannot be executed until Phase1 is completed.
-///        The main case of the contract is to offset report windows.
+/// @notice A helper to offset CSM Oracle report cadence (e.g., move report window by N slots).
+///         This is achieved via a two-phase frame configuration update
+///         in `HashConsensus` contract used by `CSFeeOracle`.
+///         Phase2 cannot be executed until Phase1 is completed.
 /// @dev The contract should have `MANAGE_FRAME_CONFIG_ROLE` role granted in the
 ///      `HashConsensus` contract in order to be able to call `setFrameConfig`.
 ///      The role should be revoked after both phases are executed.
