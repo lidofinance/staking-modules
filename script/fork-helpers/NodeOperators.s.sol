@@ -198,6 +198,10 @@ contract NodeOperators is
         assertEq(module.getNodeOperator(noId).totalExitedKeys, exitedKeysCount);
     }
 
+    function slash(uint256 noId, uint256 keyIndex) external broadcastVerifier {
+        module.onValidatorSlashed(noId, keyIndex);
+    }
+
     function withdraw(
         uint256 noId,
         uint256 keyIndex,

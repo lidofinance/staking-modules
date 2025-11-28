@@ -28,6 +28,9 @@ pause-accounting:
 resume-accounting:
     just _impersonate-script PauseResume --sig="resumeAccounting"
 
+grant-role role where who:
+    just _impersonate-script Roles --sig="grantRole\(bytes32,address,address\)" -- {{role}} {{where}} {{who}}
+
 propose-reward noId address:
     just _impersonate-script NodeOperators --sig="proposeRewardAddress\(uint256,address\)" -- {{noId}} {{address}}
 
