@@ -3,6 +3,8 @@
 
 pragma solidity 0.8.24;
 
+import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.sol";
+
 import { IReportAsyncProcessor } from "../lib/base-oracle/interfaces/IReportAsyncProcessor.sol";
 import { IConsensusContract } from "../lib/base-oracle/interfaces/IConsensusContract.sol";
 
@@ -103,6 +105,11 @@ contract TwoPhaseFrameConfigUpdate {
         uint256 phase1ExpirationSlot = phase1ExpectedProcessingRefSlot +
             (phase1Config.newEpochsPerFrame * slotsPerEpoch);
 
+        uint256 currentSlot = _getCurrentSlot();
+        if (currentSlot >= phase1ExpirationSlot) {
+            revert PhaseExpired(currentSlot, phase1ExpirationSlot);
+        }
+
         // Calculate pivot ref slot for phase 2 (based on phase 1 completion)
         uint256 phase2ExpectedProcessingRefSlot = phase1ExpectedProcessingRefSlot +
                 (phase2Config.reportsToProcess *
@@ -154,6 +161,24 @@ contract TwoPhaseFrameConfigUpdate {
 
         phase2.executed = true;
         emit Phase2Executed();
+
+        _renounceRole();
+    }
+
+    /// @dev Fallback to renounce the role if phases are expired.
+    function renounceRoleWhenExpired() external {
+        bool phase1Expired = _isPhaseExpired(phase1);
+        bool phase2Expired = _isPhaseExpired(phase2);
+        if (phase1Expired || phase2Expired) {
+            _renounceRole();
+        }
+    }
+
+    function _renounceRole() internal {
+        IAccessControl(address(HASH_CONSENSUS)).renounceRole(
+            HASH_CONSENSUS.MANAGE_FRAME_CONFIG_ROLE(),
+            address(this)
+        );
     }
 
     function getPhaseConfigs()

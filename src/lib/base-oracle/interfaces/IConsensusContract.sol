@@ -3,6 +3,8 @@
 pragma solidity 0.8.24;
 
 interface IConsensusContract {
+    function MANAGE_FRAME_CONFIG_ROLE() external view returns (bytes32);
+
     function getIsMember(address addr) external view returns (bool);
 
     function getCurrentFrame()
