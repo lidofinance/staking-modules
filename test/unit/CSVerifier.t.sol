@@ -14,7 +14,7 @@ import { Slot } from "src/lib/Types.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 
 import { ICSVerifier } from "src/interfaces/ICSVerifier.sol";
-import { ICSModule, ValidatorWithdrawalInfo } from "src/interfaces/ICSModule.sol";
+import { ICSModule, WithdrawnValidatorInfo } from "src/interfaces/ICSModule.sol";
 
 import { GIndices } from "script/constants/GIndices.sol";
 
@@ -420,19 +420,20 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
     }
 
     function test_processWithdrawalProof_HappyPath() public {
-        ValidatorWithdrawalInfo[]
-            memory withdrawals = new ValidatorWithdrawalInfo[](1);
-        withdrawals[0] = ValidatorWithdrawalInfo({
+        WithdrawnValidatorInfo[]
+            memory withdrawals = new WithdrawnValidatorInfo[](1);
+        withdrawals[0] = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
             exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0
+            slashingPenalty: 0,
+            isSlashed: false
         });
 
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.submitWithdrawals.selector,
+                ICSModule.reportWithdrawnValidators.selector,
                 withdrawals
             )
         );
@@ -650,7 +651,9 @@ contract CSVerifierWithdrawalTest is CSVerifierTestBase {
 
         vm.mockCall(
             address(module),
-            abi.encodeWithSelector(ICSModule.submitWithdrawals.selector),
+            abi.encodeWithSelector(
+                ICSModule.reportWithdrawnValidators.selector
+            ),
             ""
         );
     }
@@ -904,19 +907,20 @@ contract CSVerifierConsolidationTest is CSVerifierTestBase {
     }
 
     function test_processConsolidationProof_HappyPath() public {
-        ValidatorWithdrawalInfo[]
-            memory withdrawals = new ValidatorWithdrawalInfo[](1);
-        withdrawals[0] = ValidatorWithdrawalInfo({
+        WithdrawnValidatorInfo[]
+            memory withdrawals = new WithdrawnValidatorInfo[](1);
+        withdrawals[0] = WithdrawnValidatorInfo({
             nodeOperatorId: fixture.data.validator.nodeOperatorId,
             keyIndex: fixture.data.validator.keyIndex,
             exitBalance: fixture.balanceWei,
-            slashingPenalty: 0
+            slashingPenalty: 0,
+            isSlashed: false
         });
 
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.submitWithdrawals.selector,
+                ICSModule.reportWithdrawnValidators.selector,
                 withdrawals
             )
         );
@@ -1030,7 +1034,9 @@ contract CSVerifierConsolidationTest is CSVerifierTestBase {
 
         vm.mockCall(
             address(module),
-            abi.encodeWithSelector(ICSModule.submitWithdrawals.selector),
+            abi.encodeWithSelector(
+                ICSModule.reportWithdrawnValidators.selector
+            ),
             ""
         );
     }

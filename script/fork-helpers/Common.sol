@@ -37,7 +37,10 @@ contract ForkHelpersCommon is Script, DeploymentFixtures {
     }
 
     function _setBalance(address account) internal {
-        uint256 expectedBalance = 1 ether;
+        _setBalance(account, 1 ether);
+    }
+
+    function _setBalance(address account, uint256 expectedBalance) internal {
         if (account.balance < expectedBalance) {
             vm.rpc(
                 "anvil_setBalance",

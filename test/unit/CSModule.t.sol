@@ -382,7 +382,10 @@ contract CSMCompensateGeneralDelayedPenalty is
     CSMCommon
 {}
 
-contract CSMSubmitWithdrawals is ModuleSubmitWithdrawals, CSMCommon {}
+contract CSMReportWithdrawnValidators is
+    ModuleReportWithdrawnValidators,
+    CSMCommon
+{}
 
 contract CSMGetStakingModuleSummary is
     ModuleGetStakingModuleSummary,
