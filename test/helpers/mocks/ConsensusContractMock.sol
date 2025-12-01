@@ -16,6 +16,18 @@ contract MockConsensusContract is IConsensusContract {
     address internal _reportProcessor;
 
     mapping(address => uint256) internal _memberIndices1b;
+    mapping(bytes32 => mapping(address => bool)) private _roles;
+
+    event RoleGranted(
+        bytes32 indexed role,
+        address indexed account,
+        address indexed sender
+    );
+    event RoleRevoked(
+        bytes32 indexed role,
+        address indexed account,
+        address indexed sender
+    );
 
     struct ConsensusFrame {
         uint256 index;
@@ -32,6 +44,10 @@ contract MockConsensusContract is IConsensusContract {
     FrameConfig internal _frameConfig;
     ConsensusFrame internal _consensusFrame;
     uint256 internal _initialRefSlot;
+
+    // Test utility variables
+    uint256 public lastSetEpochsPerFrame;
+    uint256 public lastSetFastLaneLengthSlots;
 
     constructor(
         uint256 slotsPerEpoch,
@@ -101,13 +117,40 @@ contract MockConsensusContract is IConsensusContract {
     function getFrameConfig()
         external
         view
-        returns (uint256 initialEpoch, uint256 epochsPerFrame)
+        returns (
+            uint256 initialEpoch,
+            uint256 epochsPerFrame,
+            uint256 fastLaneLengthSlots
+        )
     {
-        return (_frameConfig.initialEpoch, _frameConfig.epochsPerFrame);
+        return (
+            _frameConfig.initialEpoch,
+            _frameConfig.epochsPerFrame,
+            _frameConfig.fastLaneLengthSlots
+        );
     }
 
     function getInitialRefSlot() external view returns (uint256) {
         return _initialRefSlot;
+    }
+
+    function MANAGE_FRAME_CONFIG_ROLE() external pure returns (bytes32) {
+        return keccak256("MANAGE_FRAME_CONFIG_ROLE");
+    }
+
+    function setFrameConfig(
+        uint256 epochsPerFrame,
+        uint256 fastLaneLengthSlots
+    ) external {
+        _frameConfig.epochsPerFrame = epochsPerFrame.toUint64();
+        _frameConfig.fastLaneLengthSlots = fastLaneLengthSlots.toUint64();
+        lastSetEpochsPerFrame = epochsPerFrame;
+        lastSetFastLaneLengthSlots = fastLaneLengthSlots;
+    }
+
+    function resetTestState() external {
+        lastSetEpochsPerFrame = 0;
+        lastSetFastLaneLengthSlots = 0;
     }
 
     function _setFrameConfig(
@@ -120,5 +163,29 @@ contract MockConsensusContract is IConsensusContract {
             epochsPerFrame.toUint64(),
             fastLaneLengthSlots.toUint64()
         );
+    }
+
+    // AccessControl methods for role management
+    function grantRole(bytes32 role, address account) external {
+        _roles[role][account] = true;
+        emit RoleGranted(role, account, msg.sender);
+    }
+
+    function renounceRole(bytes32 role, address account) external {
+        require(msg.sender == account, "Can only renounce own role");
+        _roles[role][account] = false;
+        emit RoleRevoked(role, account, msg.sender);
+    }
+
+    function revokeRole(bytes32 role, address account) external {
+        _roles[role][account] = false;
+        emit RoleRevoked(role, account, msg.sender);
+    }
+
+    function hasRole(
+        bytes32 role,
+        address account
+    ) external view returns (bool) {
+        return _roles[role][account];
     }
 }

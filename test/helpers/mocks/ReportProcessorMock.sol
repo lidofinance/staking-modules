@@ -7,6 +7,7 @@ import { IReportAsyncProcessor } from "../../../src/lib/base-oracle/interfaces/I
 
 contract ReportProcessorMock is IReportAsyncProcessor {
     uint256 internal _consensusVersion;
+    address internal _consensusContract;
 
     struct SubmitReportCall {
         bytes32 report;
@@ -30,6 +31,10 @@ contract ReportProcessorMock is IReportAsyncProcessor {
 
     function setConsensusVersion(uint256 consensusVersion) external {
         _consensusVersion = consensusVersion;
+    }
+
+    function setConsensusContract(address consensusContract) external {
+        _consensusContract = consensusContract;
     }
 
     function setLastProcessingStartedRefSlot(uint256 refSlot) external {
@@ -62,6 +67,10 @@ contract ReportProcessorMock is IReportAsyncProcessor {
 
     function getConsensusVersion() external view returns (uint256) {
         return _consensusVersion;
+    }
+
+    function getConsensusContract() external view returns (address) {
+        return _consensusContract;
     }
 
     function submitConsensusReport(
