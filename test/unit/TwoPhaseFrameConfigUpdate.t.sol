@@ -52,6 +52,17 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         return expectedSlot + (epochsPerFrame * SLOTS_PER_EPOCH);
     }
 
+    function calculateExpirationSlot(
+        uint256 expectedSlot,
+        uint256 epochsPerFrame1,
+        uint256 epochsPerFrame2
+    ) internal pure returns (uint256) {
+        uint256 minEpochs = epochsPerFrame1 < epochsPerFrame2
+            ? epochsPerFrame1
+            : epochsPerFrame2;
+        return expectedSlot + (minEpochs * SLOTS_PER_EPOCH);
+    }
+
     function setUp() public {
         address mockMember = address(0x1234);
         mockConsensus = new MockConsensusContract(
@@ -223,8 +234,9 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             reportsToProcess: phase1Config.reportsToProcess,
             epochsPerFrame: DEFAULT_EPOCHS_PER_FRAME
         });
-        uint256 phase1DeadlineSlot = calculateDeadlineSlot(
+        uint256 phase1DeadlineSlot = calculateExpirationSlot(
             phase1ExpectedSlot,
+            DEFAULT_EPOCHS_PER_FRAME,
             dayToEpochs(1)
         );
 
@@ -350,10 +362,11 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         });
         mockFeeOracle.setLastProcessingStartedRefSlot(phase1ExpectedSlot);
 
-        uint256 deadlineSlot = calculateDeadlineSlot({
-            expectedSlot: phase1ExpectedSlot,
-            epochsPerFrame: phase1Config.newEpochsPerFrame
-        });
+        uint256 deadlineSlot = calculateExpirationSlot(
+            phase1ExpectedSlot,
+            DEFAULT_EPOCHS_PER_FRAME,
+            phase1Config.newEpochsPerFrame
+        );
         vm.warp((deadlineSlot + 1) * SECONDS_PER_SLOT);
 
         vm.expectRevert(
@@ -549,10 +562,11 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         );
         mockFeeOracle.setLastProcessingStartedRefSlot(phase2ExpectedSlot);
 
-        // Calculate deadline: expected slot + frame duration
-        uint256 deadlineSlot = calculateDeadlineSlot(
+        // Calculate deadline: expected slot + min frame duration
+        uint256 deadlineSlot = calculateExpirationSlot(
             phase2ExpectedSlot,
-            dayToEpochs(2)
+            dayToEpochs(1), // phase1 epochs
+            dayToEpochs(2) // phase2 epochs
         );
         uint256 deadlineTimestamp = deadlineSlot * SECONDS_PER_SLOT;
         vm.warp(deadlineTimestamp);
@@ -598,9 +612,10 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             1,
             DEFAULT_EPOCHS_PER_FRAME
         );
-        uint256 phase1DeadlineSlot = calculateDeadlineSlot(
+        uint256 phase1DeadlineSlot = calculateExpirationSlot(
             phase1ExpectedSlot,
-            DEFAULT_EPOCHS_PER_FRAME
+            DEFAULT_EPOCHS_PER_FRAME,
+            dayToEpochs(1)
         );
         vm.warp(phase1DeadlineSlot * SECONDS_PER_SLOT);
 
@@ -648,9 +663,10 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             2,
             EPOCHS_PER_DAY
         );
-        uint256 phase2DeadlineSlot = calculateDeadlineSlot(
+        uint256 phase2DeadlineSlot = calculateExpirationSlot(
             phase2ExpectedSlot,
-            dayToEpochs(2)
+            dayToEpochs(1), // phase1 epochs
+            dayToEpochs(2) // phase2 epochs
         );
         vm.warp(phase2DeadlineSlot * SECONDS_PER_SLOT);
 
@@ -805,9 +821,10 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             1,
             DEFAULT_EPOCHS_PER_FRAME
         );
-        uint256 phase1DeadlineSlot = calculateDeadlineSlot(
+        uint256 phase1DeadlineSlot = calculateExpirationSlot(
             phase1ExpectedSlot,
-            DEFAULT_EPOCHS_PER_FRAME
+            DEFAULT_EPOCHS_PER_FRAME,
+            dayToEpochs(1)
         );
 
         // Past phase 1 deadline
@@ -827,9 +844,10 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             2,
             EPOCHS_PER_DAY
         );
-        uint256 phase2DeadlineSlot = calculateDeadlineSlot(
+        uint256 phase2DeadlineSlot = calculateExpirationSlot(
             phase2ExpectedSlot,
-            dayToEpochs(2)
+            dayToEpochs(1), // phase1 epochs
+            dayToEpochs(2) // phase2 epochs
         );
 
         // Test phase 2 expiration independently
@@ -848,5 +866,52 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         (phase1Expired, phase2Expired) = updater.getExpirationStatus();
         assertFalse(phase1Expired);
         assertFalse(phase2Expired);
+    }
+
+    function test_expirationSlotCalculation() public {
+        // Test that expiration slots use minimum of current and new frame durations
+
+        // Case 1: Phase 1 with new frame smaller than current (1 day < 13 days)
+        TwoPhaseFrameConfigUpdate.PhaseConfig
+            memory phase1Config = createPhaseConfig(1, 1, 10); // 1 day frame
+        TwoPhaseFrameConfigUpdate.PhaseConfig
+            memory phase2Config = createPhaseConfig(1, 28, 20); // 28 day frame
+
+        uint256 fromRefSlot = epochEndSlot(1);
+        mockLastProcessingRefSlot(fromRefSlot);
+        createUpdater(phase1Config, phase2Config);
+
+        (, uint256 phase1ExpirationSlot, , , ) = updater.phase1();
+        (, uint256 phase2ExpirationSlot, , , ) = updater.phase2();
+
+        // Phase 1 expected slot
+        uint256 phase1ExpectedSlot = calculateExpectedSlot(
+            fromRefSlot,
+            1,
+            DEFAULT_EPOCHS_PER_FRAME
+        );
+        // Phase 1 expiration should use min(DEFAULT_EPOCHS_PER_FRAME=2925, dayToEpochs(1)=225) = 225
+        uint256 expectedPhase1Expiration = phase1ExpectedSlot +
+            (dayToEpochs(1) * SLOTS_PER_EPOCH);
+        assertEq(
+            phase1ExpirationSlot,
+            expectedPhase1Expiration,
+            "Phase 1 should use minimum frame duration (1 day)"
+        );
+
+        // Phase 2 expected slot
+        uint256 phase2ExpectedSlot = calculateExpectedSlot(
+            phase1ExpectedSlot,
+            1,
+            dayToEpochs(1)
+        );
+        // Phase 2 expiration should use min(dayToEpochs(1)=225, dayToEpochs(28)=6300) = 225
+        uint256 expectedPhase2Expiration = phase2ExpectedSlot +
+            (dayToEpochs(1) * SLOTS_PER_EPOCH);
+        assertEq(
+            phase2ExpirationSlot,
+            expectedPhase2Expiration,
+            "Phase 2 should use minimum frame duration (1 day)"
+        );
     }
 }

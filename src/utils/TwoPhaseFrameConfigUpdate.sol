@@ -101,9 +101,13 @@ contract TwoPhaseFrameConfigUpdate {
                 currentEpochsPerFrame *
                 slotsPerEpoch);
 
-        // Calculate deadline for phase 1 (when next frame with new config would start)
+        // Calculate deadline for phase 1 (before next original frame report processing or next frame with new config would have report)
+        uint256 minPhase1EpochsPerFrame = currentEpochsPerFrame <
+            phase1Config.newEpochsPerFrame
+            ? currentEpochsPerFrame
+            : phase1Config.newEpochsPerFrame;
         uint256 phase1ExpirationSlot = phase1ExpectedProcessingRefSlot +
-            (phase1Config.newEpochsPerFrame * slotsPerEpoch);
+            (minPhase1EpochsPerFrame * slotsPerEpoch);
 
         uint256 currentSlot = _getCurrentSlot();
         if (currentSlot >= phase1ExpirationSlot) {
@@ -116,9 +120,13 @@ contract TwoPhaseFrameConfigUpdate {
                     phase1Config.newEpochsPerFrame *
                     slotsPerEpoch);
 
-        // Calculate deadline for phase 2 (when next frame with phase2 config would start)
+        // Calculate deadline for phase 2 (before next phase 1 frame report processing or next frame with new config would have report)
+        uint256 minPhase2EpochsPerFrame = phase1Config.newEpochsPerFrame <
+            phase2Config.newEpochsPerFrame
+            ? phase1Config.newEpochsPerFrame
+            : phase2Config.newEpochsPerFrame;
         uint256 phase2ExpirationSlot = phase2ExpectedProcessingRefSlot +
-            (phase2Config.newEpochsPerFrame * slotsPerEpoch);
+            (minPhase2EpochsPerFrame * slotsPerEpoch);
 
         phase1 = PhaseState({
             expectedProcessingRefSlot: phase1ExpectedProcessingRefSlot,
