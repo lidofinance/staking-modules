@@ -56,11 +56,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         vm.prank(roleAdmin);
         hashConsensus.grantRole(manageFrameRole, address(updater));
 
-        (
-            uint256 currentInitialEpoch,
-            uint256 currentEpochsPerFrame,
-            uint256 currentFastLaneSlots
-        ) = hashConsensus.getFrameConfig();
+        (, uint256 currentEpochsPerFrame, ) = hashConsensus.getFrameConfig();
         (uint256 currentFrameRefSlot, ) = hashConsensus.getCurrentFrame();
 
         (

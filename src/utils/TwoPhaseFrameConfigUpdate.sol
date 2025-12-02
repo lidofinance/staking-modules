@@ -101,7 +101,7 @@ contract TwoPhaseFrameConfigUpdate {
                 currentEpochsPerFrame *
                 slotsPerEpoch);
 
-        // Calculate deadline for phase 1 (before next original frame report processing or next frame with new config would have report)
+        // Calculate deadline for phase 1 (before next original frame report processing or next frame with new possible config)
         uint256 minPhase1EpochsPerFrame = currentEpochsPerFrame <
             phase1Config.newEpochsPerFrame
             ? currentEpochsPerFrame
@@ -120,7 +120,7 @@ contract TwoPhaseFrameConfigUpdate {
                     phase1Config.newEpochsPerFrame *
                     slotsPerEpoch);
 
-        // Calculate deadline for phase 2 (before next phase 1 frame report processing or next frame with new config would have report)
+        // Calculate deadline for phase 2 (before next phase 1 frame report processing or next possible frame with new config)
         uint256 minPhase2EpochsPerFrame = phase1Config.newEpochsPerFrame <
             phase2Config.newEpochsPerFrame
             ? phase1Config.newEpochsPerFrame
