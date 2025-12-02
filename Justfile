@@ -103,6 +103,10 @@ test-deployment-full-afterVote *args:
 test-integration *args:
     forge test --match-path 'test/fork/integration/*' -vvv --show-progress {{args}}
 
+# Run tests for utility contracts
+test-utils *args:
+    forge test --match-path 'test/fork/utils/*' -vvv --show-progress {{args}}
+
 # Run tests applicable after the module upgrade vote. Does not include deployment tests
 test-post-upgrade *args:
     forge test --match-path='test/fork/*' --no-match-path 'test/fork/deployment/*' -vvv --show-progress {{args}}
@@ -341,6 +345,22 @@ test-v2-only-deploy *args:
     export DEPLOY_CONFIG=./artifacts/local/upgrade-{{chain}}.json
 
     just test-deployment-v2-only-scratch {{args}}
+
+    just kill-fork
+
+# Run tests on fork with current state
+test-current *args:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    just make-fork --silent &
+    while ! echo exit | nc {{anvil_host}} {{anvil_port}} > /dev/null; do sleep 1; done
+
+    export RPC_URL={{anvil_rpc_url}}
+
+    export DEPLOY_CONFIG={{deploy_config_path}}
+
+    just test-utils
 
     just kill-fork
 

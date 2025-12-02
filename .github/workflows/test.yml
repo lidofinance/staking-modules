@@ -130,6 +130,12 @@ jobs:
       - name: Run unit-tests
         run: just test-unit
 
+      - name: Run tests for current state on fork
+        run: just test-current
+        env:
+          CHAIN: mainnet
+          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+
       - name: Run local deployment tests for scratch deploy
         run: just test-full-deploy
         env:

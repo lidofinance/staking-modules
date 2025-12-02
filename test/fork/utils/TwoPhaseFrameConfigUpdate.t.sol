@@ -37,7 +37,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         initializeFromDeployment();
     }
 
-    function test_realWorldScenario_TwoPhaseFrameShift24To28Days() public {
+    function test_shift24To28DaysFrameSize() public {
         (, , uint256 genesisTime) = hashConsensus.getChainConfig();
 
         TwoPhaseFrameConfigUpdate.PhaseConfig
@@ -56,7 +56,37 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         vm.prank(roleAdmin);
         hashConsensus.grantRole(manageFrameRole, address(updater));
 
-        (uint256 phase1ExpectedProcessingRefSlot, , , , ) = updater.phase1();
+        (
+            uint256 currentInitialEpoch,
+            uint256 currentEpochsPerFrame,
+            uint256 currentFastLaneSlots
+        ) = hashConsensus.getFrameConfig();
+        (uint256 currentFrameRefSlot, ) = hashConsensus.getCurrentFrame();
+
+        (
+            uint256 phase1ExpectedProcessingRefSlot,
+            uint256 phase1ExpirationSlot,
+            ,
+            ,
+
+        ) = updater.phase1();
+
+        uint256 calculatedPhase1ExpectedProcessingRefSlot = currentFrameRefSlot +
+                (currentEpochsPerFrame * SLOTS_PER_EPOCH);
+        assertEq(
+            phase1ExpectedProcessingRefSlot,
+            calculatedPhase1ExpectedProcessingRefSlot,
+            "Phase 1 expected slot should align with current frame end"
+        );
+
+        uint256 calculatedPhase1ExpirationSlot = calculatedPhase1ExpectedProcessingRefSlot +
+                (dayToEpochs(24) * SLOTS_PER_EPOCH);
+        assertEq(
+            phase1ExpirationSlot,
+            calculatedPhase1ExpirationSlot,
+            "Phase 1 expiration should be current frame end + frame size"
+        );
+
         vm.mockCall(
             address(oracle),
             abi.encodeWithSignature("getLastProcessingRefSlot()"),
@@ -139,12 +169,12 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
                 "Phase 2 expected slot should align with Phase 1 first frame"
             );
 
-            uint256 expectedPhase2ExpirationSlot = phase1FirstFrameRefSlot +
-                (dayToEpochs(28) * SLOTS_PER_EPOCH);
+            uint256 calculatedPhase2ExpirationSlot = phase1FirstFrameRefSlot +
+                (dayToEpochs(24) * SLOTS_PER_EPOCH);
             assertEq(
                 phase2ExpirationSlot,
-                expectedPhase2ExpirationSlot,
-                "Phase 2 expiration should be Phase 1 first frame + 28 days"
+                calculatedPhase2ExpirationSlot,
+                "Phase 2 expiration should be Phase 1 first frame ref slot + frame size"
             );
         }
 
