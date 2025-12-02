@@ -2,9 +2,9 @@
 # Fork helper scripts
 ####
 
-# Gets bond curve info from CSAccounting
+# Gets bond curve info from Accounting
 get-curve-info id:
-    cast call --rpc-url=$RPC_URL $(jq -r '.CSAccounting' ./artifacts/{{chain}}/deploy-{{chain}}.json) \
+    cast call --rpc-url=$RPC_URL $(jq -r '.Accounting' ./artifacts/{{chain}}/deploy-{{chain}}.json) \
          'getCurveInfo' {{id}}
 
 vote-add-module:

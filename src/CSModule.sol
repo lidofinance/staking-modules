@@ -12,9 +12,9 @@ import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
 import { IStakingModule } from "./interfaces/IStakingModule.sol";
 import { ILidoLocator } from "./interfaces/ILidoLocator.sol";
 import { IStETH } from "./interfaces/IStETH.sol";
-import { ICSParametersRegistry } from "./interfaces/ICSParametersRegistry.sol";
-import { ICSAccounting } from "./interfaces/ICSAccounting.sol";
-import { ICSExitPenalties } from "./interfaces/ICSExitPenalties.sol";
+import { IParametersRegistry } from "./interfaces/IParametersRegistry.sol";
+import { IAccounting } from "./interfaces/IAccounting.sol";
+import { IExitPenalties } from "./interfaces/IExitPenalties.sol";
 import { ICSModule, NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "./interfaces/ICSModule.sol";
 import { INodeOperatorOwner } from "./interfaces/INodeOperatorOwner.sol";
 
@@ -60,9 +60,9 @@ contract CSModule is
     bytes32 private immutable MODULE_TYPE;
     ILidoLocator public immutable LIDO_LOCATOR;
     IStETH public immutable STETH;
-    ICSParametersRegistry public immutable PARAMETERS_REGISTRY;
-    ICSAccounting public immutable ACCOUNTING;
-    ICSExitPenalties public immutable EXIT_PENALTIES;
+    IParametersRegistry public immutable PARAMETERS_REGISTRY;
+    IAccounting public immutable ACCOUNTING;
+    IExitPenalties public immutable EXIT_PENALTIES;
     address public immutable FEE_DISTRIBUTOR;
 
     /// @dev QUEUE_LOWEST_PRIORITY identifies the range of available priorities: [0; QUEUE_LOWEST_PRIORITY].
@@ -83,7 +83,7 @@ contract CSModule is
 
     /// @dev Unused. Nullified in the finalizeUpgradeV2
     /// @custom:oz-renamed-from accounting
-    ICSAccounting internal _accountingOld;
+    IAccounting internal _accountingOld;
 
     /// @dev Unused. Nullified in v2 upgrade
     /// @custom:oz-renamed-from earlyAdoption
@@ -129,10 +129,10 @@ contract CSModule is
         MODULE_TYPE = moduleType;
         LIDO_LOCATOR = ILidoLocator(lidoLocator);
         STETH = IStETH(LIDO_LOCATOR.lido());
-        PARAMETERS_REGISTRY = ICSParametersRegistry(parametersRegistry);
+        PARAMETERS_REGISTRY = IParametersRegistry(parametersRegistry);
         QUEUE_LOWEST_PRIORITY = PARAMETERS_REGISTRY.QUEUE_LOWEST_PRIORITY();
-        ACCOUNTING = ICSAccounting(accounting);
-        EXIT_PENALTIES = ICSExitPenalties(exitPenalties);
+        ACCOUNTING = IAccounting(accounting);
+        EXIT_PENALTIES = IExitPenalties(exitPenalties);
         FEE_DISTRIBUTOR = address(ACCOUNTING.FEE_DISTRIBUTOR());
 
         _disableInitializers();
@@ -149,7 +149,7 @@ contract CSModule is
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(STAKING_ROUTER_ROLE, address(LIDO_LOCATOR.stakingRouter()));
 
-        // CSM is on pause initially and should be resumed during the vote
+        // Module is on pause initially and should be resumed during the vote
         _pauseFor(PausableUntil.PAUSE_INFINITELY);
     }
 
@@ -233,7 +233,7 @@ contract CSModule is
     ) external payable whenResumed {
         _checkCanAddKeys(nodeOperatorId, from);
 
-        ICSAccounting accounting = _accounting();
+        IAccounting accounting = _accounting();
 
         if (
             msg.value <
@@ -261,11 +261,11 @@ contract CSModule is
         uint256 keysCount,
         bytes calldata publicKeys,
         bytes calldata signatures,
-        ICSAccounting.PermitInput calldata permit
+        IAccounting.PermitInput calldata permit
     ) external whenResumed {
         _checkCanAddKeys(nodeOperatorId, from);
 
-        ICSAccounting accounting = _accounting();
+        IAccounting accounting = _accounting();
 
         uint256 amount = accounting.getRequiredBondForNextKeys(
             nodeOperatorId,
@@ -291,11 +291,11 @@ contract CSModule is
         uint256 keysCount,
         bytes calldata publicKeys,
         bytes calldata signatures,
-        ICSAccounting.PermitInput calldata permit
+        IAccounting.PermitInput calldata permit
     ) external whenResumed {
         _checkCanAddKeys(nodeOperatorId, from);
 
-        ICSAccounting accounting = _accounting();
+        IAccounting accounting = _accounting();
 
         uint256 amount = accounting.getRequiredBondForNextKeysWstETH(
             nodeOperatorId,
@@ -430,7 +430,7 @@ contract CSModule is
     }
 
     /// @inheritdoc IStakingModule
-    /// @dev This method is not used in CSM, hence it does nothing
+    /// @dev This method is not used in the module, hence it does nothing
     /// @dev NOTE: No role checks because of empty body to save bytecode.
     function onExitedAndStuckValidatorsCountsUpdated() external {
         // solhint-disable-previous-line no-empty-blocks
@@ -1590,7 +1590,7 @@ contract CSModule is
     }
 
     /// @dev This function is used to get the accounting contract from immutables to save bytecode.
-    function _accounting() internal view returns (ICSAccounting) {
+    function _accounting() internal view returns (IAccounting) {
         return ACCOUNTING;
     }
 

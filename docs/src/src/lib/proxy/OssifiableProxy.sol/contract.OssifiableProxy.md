@@ -1,5 +1,5 @@
 # OssifiableProxy
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/lib/proxy/OssifiableProxy.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/lib/proxy/OssifiableProxy.sol)
 
 **Inherits:**
 ERC1967Proxy
@@ -11,17 +11,17 @@ adding admin functionality
 ## Functions
 ### onlyAdmin
 
-*Validates that proxy is not ossified and that method is called by the admin
-of the proxy*
+Validates that proxy is not ossified and that method is called by the admin
+of the proxy
 
 
 ```solidity
-modifier onlyAdmin();
+modifier onlyAdmin() ;
 ```
 
 ### constructor
 
-*Initializes the upgradeable proxy with the initial implementation and admin*
+Initializes the upgradeable proxy with the initial implementation and admin
 
 
 ```solidity
@@ -127,6 +127,13 @@ Returns whether the implementation is locked forever
 
 ```solidity
 function proxy__getIsOssified() external view returns (bool);
+```
+
+### _onlyAdmin
+
+
+```solidity
+function _onlyAdmin() internal view;
 ```
 
 ## Events

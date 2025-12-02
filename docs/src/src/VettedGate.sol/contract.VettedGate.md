@@ -1,102 +1,102 @@
 # VettedGate
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/VettedGate.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/VettedGate.sol)
 
 **Inherits:**
-[IVettedGate](/src/interfaces/IVettedGate.sol/interface.IVettedGate.md), AccessControlEnumerableUpgradeable, [PausableUntil](/src/lib/utils/PausableUntil.sol/contract.PausableUntil.md), [AssetRecoverer](/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
+[IVettedGate](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IVettedGate.sol/interface.IVettedGate.md), AccessControlEnumerableUpgradeable, [PausableUntil](/Users/dgusakov/projects/community-staking-module/docs/src/src/lib/utils/PausableUntil.sol/contract.PausableUntil.md), [AssetRecoverer](/Users/dgusakov/projects/community-staking-module/docs/src/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
 
 
 ## State Variables
 ### PAUSE_ROLE
 
 ```solidity
-bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
+bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE")
 ```
 
 
 ### RESUME_ROLE
 
 ```solidity
-bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
+bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE")
 ```
 
 
 ### RECOVERER_ROLE
 
 ```solidity
-bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
+bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE")
 ```
 
 
 ### SET_TREE_ROLE
 
 ```solidity
-bytes32 public constant SET_TREE_ROLE = keccak256("SET_TREE_ROLE");
+bytes32 public constant SET_TREE_ROLE = keccak256("SET_TREE_ROLE")
 ```
 
 
 ### START_REFERRAL_SEASON_ROLE
 
 ```solidity
-bytes32 public constant START_REFERRAL_SEASON_ROLE = keccak256("START_REFERRAL_SEASON_ROLE");
+bytes32 public constant START_REFERRAL_SEASON_ROLE = keccak256("START_REFERRAL_SEASON_ROLE")
 ```
 
 
 ### END_REFERRAL_SEASON_ROLE
 
 ```solidity
-bytes32 public constant END_REFERRAL_SEASON_ROLE = keccak256("END_REFERRAL_SEASON_ROLE");
+bytes32 public constant END_REFERRAL_SEASON_ROLE = keccak256("END_REFERRAL_SEASON_ROLE")
 ```
 
 
 ### MODULE
-*Address of the Staking Module*
+Address of the Staking Module
 
 
 ```solidity
-ICSModule public immutable MODULE;
+ICSModule public immutable MODULE
 ```
 
 
 ### ACCOUNTING
-*Address of the CS Accounting*
+Address of the CS Accounting
 
 
 ```solidity
-ICSAccounting public immutable ACCOUNTING;
+IAccounting public immutable ACCOUNTING
 ```
 
 
 ### curveId
-*Id of the bond curve to be assigned for the eligible members*
+Id of the bond curve to be assigned for the eligible members
 
 
 ```solidity
-uint256 public curveId;
+uint256 public curveId
 ```
 
 
 ### treeRoot
-*Root of the eligible members Merkle Tree*
+Root of the eligible members Merkle Tree
 
 
 ```solidity
-bytes32 public treeRoot;
+bytes32 public treeRoot
 ```
 
 
 ### treeCid
-*CID of the eligible members Merkle Tree*
+CID of the eligible members Merkle Tree
 
 
 ```solidity
-string public treeCid;
+string public treeCid
 ```
 
 
 ### _consumedAddresses
 
 ```solidity
-mapping(address => bool) internal _consumedAddresses;
+mapping(address => bool) internal _consumedAddresses
 ```
 
 
@@ -105,48 +105,48 @@ Optional referral program ///
 
 
 ```solidity
-bool public isReferralProgramSeasonActive;
+bool public isReferralProgramSeasonActive
 ```
 
 
 ### referralProgramSeasonNumber
 
 ```solidity
-uint256 public referralProgramSeasonNumber;
+uint256 public referralProgramSeasonNumber
 ```
 
 
 ### referralCurveId
-*Id of the bond curve for referral program*
+Id of the bond curve for referral program
 
 
 ```solidity
-uint256 public referralCurveId;
+uint256 public referralCurveId
 ```
 
 
 ### referralsThreshold
-*Number of referrals required for bond curve claim*
+Number of referrals required for bond curve claim
 
 
 ```solidity
-uint256 public referralsThreshold;
+uint256 public referralsThreshold
 ```
 
 
 ### _referralCounts
-*Referral counts for referrers for seasons*
+Referral counts for referrers for seasons
 
 
 ```solidity
-mapping(bytes32 => uint256) internal _referralCounts;
+mapping(bytes32 => uint256) internal _referralCounts
 ```
 
 
 ### _consumedReferrers
 
 ```solidity
-mapping(bytes32 => bool) internal _consumedReferrers;
+mapping(bytes32 => bool) internal _consumedReferrers
 ```
 
 
@@ -155,7 +155,7 @@ mapping(bytes32 => bool) internal _consumedReferrers;
 
 
 ```solidity
-constructor(address module);
+constructor(address module) ;
 ```
 
 ### initialize
@@ -277,7 +277,7 @@ function addNodeOperatorStETH(
     bytes calldata publicKeys,
     bytes calldata signatures,
     NodeOperatorManagementProperties calldata managementProperties,
-    ICSAccounting.PermitInput calldata permit,
+    IAccounting.PermitInput calldata permit,
     bytes32[] calldata proof,
     address referrer
 ) external whenResumed returns (uint256 nodeOperatorId);
@@ -290,7 +290,7 @@ function addNodeOperatorStETH(
 |`publicKeys`|`bytes`|Public keys to submit|
 |`signatures`|`bytes`|Signatures of `(deposit_message_root, domain)` tuples https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#signingdata|
 |`managementProperties`|`NodeOperatorManagementProperties`|Optional. Management properties to be used for the Node Operator. managerAddress: Used as `managerAddress` for the Node Operator. If not passed `msg.sender` will be used. rewardAddress: Used as `rewardAddress` for the Node Operator. If not passed `msg.sender` will be used. extendedManagerPermissions: Flag indicating that `managerAddress` will be able to change `rewardAddress`. If set to true `resetNodeOperatorManagerAddress` method will be disabled|
-|`permit`|`ICSAccounting.PermitInput`|Optional. Permit to use stETH as bond|
+|`permit`|`IAccounting.PermitInput`|Optional. Permit to use stETH as bond|
 |`proof`|`bytes32[]`|Merkle proof of the sender being eligible to join via the gate|
 |`referrer`|`address`|Optional. Referrer address. Should be passed when Node Operator is created using partners integration|
 
@@ -315,7 +315,7 @@ function addNodeOperatorWstETH(
     bytes calldata publicKeys,
     bytes calldata signatures,
     NodeOperatorManagementProperties calldata managementProperties,
-    ICSAccounting.PermitInput calldata permit,
+    IAccounting.PermitInput calldata permit,
     bytes32[] calldata proof,
     address referrer
 ) external whenResumed returns (uint256 nodeOperatorId);
@@ -328,7 +328,7 @@ function addNodeOperatorWstETH(
 |`publicKeys`|`bytes`|Public keys to submit|
 |`signatures`|`bytes`|Signatures of `(deposit_message_root, domain)` tuples https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#signingdata|
 |`managementProperties`|`NodeOperatorManagementProperties`|Optional. Management properties to be used for the Node Operator. managerAddress: Used as `managerAddress` for the Node Operator. If not passed `msg.sender` will be used. rewardAddress: Used as `rewardAddress` for the Node Operator. If not passed `msg.sender` will be used. extendedManagerPermissions: Flag indicating that `managerAddress` will be able to change `rewardAddress`. If set to true `resetNodeOperatorManagerAddress` method will be disabled|
-|`permit`|`ICSAccounting.PermitInput`|Optional. Permit to use wstETH as bond|
+|`permit`|`IAccounting.PermitInput`|Optional. Permit to use wstETH as bond|
 |`proof`|`bytes32[]`|Merkle proof of the sender being eligible to join via the gate|
 |`referrer`|`address`|Optional. Referrer address. Should be passed when Node Operator is created using partners integration|
 
@@ -345,8 +345,8 @@ Claim the bond curve for the eligible Node Operator.
 msg.sender is marked as consumed and will not be able to create Node Operators or claim the beneficial curve
 via a particular instance of VettedGate.
 
-*Should be called by the reward address of the Node Operator
-In case of the extended manager permissions, should be called by the manager address*
+Should be called by the reward address of the Node Operator
+In case of the extended manager permissions, should be called by the manager address
 
 
 ```solidity
@@ -378,7 +378,7 @@ function claimReferrerBondCurve(uint256 nodeOperatorId, bytes32[] calldata proof
 
 ### setTreeParams
 
-Set the root of the eligible members Merkle Tree
+Update Merkle tree params
 
 
 ```solidity
@@ -388,8 +388,8 @@ function setTreeParams(bytes32 _treeRoot, string calldata _treeCid) external onl
 
 |Name|Type|Description|
 |----|----|-----------|
-|`_treeRoot`|`bytes32`|New root of the Merkle Tree|
-|`_treeCid`|`string`|New CID of the Merkle Tree|
+|`_treeRoot`|`bytes32`|New root|
+|`_treeCid`|`string`|New CID|
 
 
 ### getReferralsCount
@@ -437,7 +437,7 @@ function getReferralsCount(address referrer, uint256 season) external view retur
 
 ### getInitializedVersion
 
-Returns the initialized version of the contract
+Initialized version for upgradeable tooling
 
 
 ```solidity
@@ -467,69 +467,30 @@ function isReferrerConsumed(address referrer) external view returns (bool);
 
 ### isConsumed
 
-Check if the address has already consumed the curve
+Returns whether a member already consumed eligibility
 
 
 ```solidity
 function isConsumed(address member) public view returns (bool);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`member`|`address`|Address to check|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|Consumed flag|
-
 
 ### verifyProof
 
-Check is the address is eligible to consume beneficial curve
+Verify proof for a member against current tree
 
 
 ```solidity
 function verifyProof(address member, bytes32[] calldata proof) public view returns (bool);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`member`|`address`|Address to check|
-|`proof`|`bytes32[]`|Merkle proof of the beneficial curve eligibility|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|Boolean flag if the proof is valid or not|
-
 
 ### hashLeaf
 
-Get a hash of a leaf in the Merkle tree
-
-*Double hash the leaf to prevent second preimage attacks*
+Hash leaf encoding for addresses in the Merkle tree
 
 
 ```solidity
 function hashLeaf(address member) public pure returns (bytes32);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`member`|`address`|eligible member address|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bytes32`|Hash of the leaf|
-
 
 ### _consume
 
@@ -561,7 +522,7 @@ function _seasonedAddress(address referrer) internal view returns (bytes32);
 
 ### _onlyNodeOperatorOwner
 
-*Verifies that the sender is the owner of the node operator*
+Verifies that the sender is the owner of the node operator
 
 
 ```solidity

@@ -2,16 +2,16 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import { ICSAccounting } from "../interfaces/ICSAccounting.sol";
+import { IAccounting } from "../interfaces/IAccounting.sol";
 import { ILido } from "../interfaces/ILido.sol";
-import { ICSFeeDistributor } from "../interfaces/ICSFeeDistributor.sol";
+import { IFeeDistributor } from "../interfaces/IFeeDistributor.sol";
 
 /// Library for managing FeeSplits
-/// @dev the only use of this to be a library is to save CSAccounting contract size via delegatecalls
+/// @dev the only use of this to be a library is to save Accounting contract size via delegatecalls
 interface IFeeSplits {
     event FeeSplitsSet(
         uint256 indexed nodeOperatorId,
-        ICSAccounting.FeeSplit[] feeSplits
+        IAccounting.FeeSplit[] feeSplits
     );
 
     error PendingSharesExist();
@@ -27,13 +27,13 @@ library FeeSplits {
     uint256 public constant MAX_FEE_SPLITS = 10;
 
     function setFeeSplits(
-        mapping(uint256 => ICSAccounting.FeeSplit[]) storage feeSplitsStorage,
+        mapping(uint256 => IAccounting.FeeSplit[]) storage feeSplitsStorage,
         mapping(uint256 => uint256) storage pendingSharesToSplitStorage,
-        ICSFeeDistributor feeDistributor,
+        IFeeDistributor feeDistributor,
         uint256 nodeOperatorId,
         uint256 cumulativeFeeShares,
         bytes32[] calldata rewardsProof,
-        ICSAccounting.FeeSplit[] calldata feeSplits
+        IAccounting.FeeSplit[] calldata feeSplits
     ) external {
         uint256 len = feeSplits.length;
         if (len > MAX_FEE_SPLITS) {
@@ -56,7 +56,7 @@ library FeeSplits {
 
         uint256 totalShare = 0;
         for (uint256 i = 0; i < len; ++i) {
-            ICSAccounting.FeeSplit calldata fs = feeSplits[i];
+            IAccounting.FeeSplit calldata fs = feeSplits[i];
             if (fs.recipient == address(0)) {
                 revert IFeeSplits.ZeroSplitRecipient();
             }
@@ -70,7 +70,7 @@ library FeeSplits {
             revert IFeeSplits.TooManySplitShares();
         }
 
-        ICSAccounting.FeeSplit[] storage dst = feeSplitsStorage[nodeOperatorId];
+        IAccounting.FeeSplit[] storage dst = feeSplitsStorage[nodeOperatorId];
         delete feeSplitsStorage[nodeOperatorId];
         for (uint256 i = 0; i < len; i++) {
             dst.push(feeSplits[i]);
@@ -80,7 +80,7 @@ library FeeSplits {
     }
 
     function splitAndTransferFees(
-        mapping(uint256 => ICSAccounting.FeeSplit[]) storage feeSplitsStorage,
+        mapping(uint256 => IAccounting.FeeSplit[]) storage feeSplitsStorage,
         mapping(uint256 => uint256) storage pendingSharesToSplitStorage,
         ILido lido,
         uint256 nodeOperatorId,
@@ -96,12 +96,12 @@ library FeeSplits {
             maxSharesToSplit = pending;
         }
 
-        ICSAccounting.FeeSplit[] storage splits = feeSplitsStorage[
+        IAccounting.FeeSplit[] storage splits = feeSplitsStorage[
             nodeOperatorId
         ];
         uint256 len = splits.length;
         for (uint256 i; i < len; ++i) {
-            ICSAccounting.FeeSplit storage feeSplit = splits[i];
+            IAccounting.FeeSplit storage feeSplit = splits[i];
             // NOTE: Due to rounding error, final operator's part might contain some dust.
             //      There is a known issue that the transfer amount may differ slightly depending on when the split was made due to `pending` accumulation.
             uint256 amount = (maxSharesToSplit * feeSplit.share) / MAX_BP;
@@ -118,7 +118,7 @@ library FeeSplits {
     }
 
     function hasSplits(
-        mapping(uint256 => ICSAccounting.FeeSplit[]) storage feeSplitsStorage,
+        mapping(uint256 => IAccounting.FeeSplit[]) storage feeSplitsStorage,
         uint256 nodeOperatorId
     ) external view returns (bool) {
         return feeSplitsStorage[nodeOperatorId].length != 0;

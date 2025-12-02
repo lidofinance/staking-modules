@@ -150,8 +150,8 @@ contract SimulateVote is Script, ForkHelpersCommon {
         //
         // TODO: uncomment and change when v2 -> v3 upgrade flow is ready
         //
-        //     ICSBondCurve.BondCurveIntervalInput[][]
-        //         memory bondCurves = new ICSBondCurve.BondCurveIntervalInput[][](
+        //     IBondCurve.BondCurveIntervalInput[][]
+        //         memory bondCurves = new IBondCurve.BondCurveIntervalInput[][](
         //             2 + deployParams.extraBondCurves.length
         //         );
         //     bondCurves[0] = CommonScriptUtils.arraysToBondCurveIntervalsInputs(
@@ -169,7 +169,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
         //         }
         //     }
 
-        //     ICSBondCurve.BondCurveIntervalInput[]
+        //     IBondCurve.BondCurveIntervalInput[]
         //         memory identifiedCommunityStakersGateBondCurve = CommonScriptUtils
         //             .arraysToBondCurveIntervalsInputs(
         //                 deployParams.identifiedCommunityStakersGateBondCurve
@@ -192,7 +192,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
         //     vm.startBroadcast(_prepareProxyAdmin(address(accountingProxy)));
         //     {
         //         accountingProxy.proxy__upgradeTo(deploymentConfig.accountingImpl);
-        //         CSAccounting(deploymentConfig.accounting).finalizeUpgradeV3();
+        //         Accounting(deploymentConfig.accounting).finalizeUpgradeV3();
         //     }
         //     vm.stopBroadcast();
 
@@ -202,7 +202,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
         //     vm.startBroadcast(_prepareProxyAdmin(address(oracleProxy)));
         //     {
         //         oracleProxy.proxy__upgradeTo(deploymentConfig.oracleImpl);
-        //         CSFeeOracle(deploymentConfig.oracle).finalizeUpgradeV2({
+        //         FeeOracle(deploymentConfig.oracle).finalizeUpgradeV2({
         //             consensusVersion: 3
         //         });
         //     }
@@ -216,15 +216,15 @@ contract SimulateVote is Script, ForkHelpersCommon {
         //         feeDistributorProxy.proxy__upgradeTo(
         //             deploymentConfig.feeDistributorImpl
         //         );
-        //         CSFeeDistributor(deploymentConfig.feeDistributor).finalizeUpgradeV2(
+        //         FeeDistributor(deploymentConfig.feeDistributor).finalizeUpgradeV2(
         //             admin
         //         );
         //     }
         //     vm.stopBroadcast();
 
         //     module = CSModule(deploymentConfig.module);
-        //     accounting = CSAccounting(deploymentConfig.accounting);
-        //     oracle = CSFeeOracle(deploymentConfig.oracle);
+        //     accounting = Accounting(deploymentConfig.accounting);
+        //     oracle = FeeOracle(deploymentConfig.oracle);
 
         //     vm.startBroadcast(admin);
 

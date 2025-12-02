@@ -3,22 +3,22 @@
 
 pragma solidity 0.8.24;
 
-import { ICSBondCurve } from "../interfaces/ICSBondCurve.sol";
-import { ICSAccounting } from "../interfaces/ICSAccounting.sol";
-import { ICSParametersRegistry } from "../interfaces/ICSParametersRegistry.sol";
+import { IBondCurve } from "../interfaces/IBondCurve.sol";
+import { IAccounting } from "../interfaces/IAccounting.sol";
+import { IParametersRegistry } from "../interfaces/IParametersRegistry.sol";
 import { IOneShotCurveSetup } from "../interfaces/IOneShotCurveSetup.sol";
 
 /// @notice Helper that atomically deploys a new bond curve together with its parameter overrides.
 /// @dev The contract is intentionally single-use: once `execute` finishes successfully it
 ///      stores the emitted `curveId` for reference.
 contract OneShotCurveSetup is IOneShotCurveSetup {
-    ICSAccounting public immutable ACCOUNTING;
-    ICSParametersRegistry public immutable REGISTRY;
+    IAccounting public immutable ACCOUNTING;
+    IParametersRegistry public immutable REGISTRY;
 
     bool public executed;
     uint256 public deployedCurveId;
 
-    ICSBondCurve.BondCurveIntervalInput[] public bondCurve;
+    IBondCurve.BondCurveIntervalInput[] public bondCurve;
 
     ScalarOverride public keyRemovalChargeOverride;
     ScalarOverride public generalDelayedPenaltyFineOverride;
@@ -48,8 +48,8 @@ contract OneShotCurveSetup is IOneShotCurveSetup {
             revert EmptyBondCurve();
         }
 
-        ACCOUNTING = ICSAccounting(accounting_);
-        REGISTRY = ICSParametersRegistry(registry_);
+        ACCOUNTING = IAccounting(accounting_);
+        REGISTRY = IParametersRegistry(registry_);
 
         _storeBondCurve(params.bondCurve);
         keyRemovalChargeOverride = params.keyRemovalCharge;
@@ -155,7 +155,7 @@ contract OneShotCurveSetup is IOneShotCurveSetup {
     }
 
     function _storeBondCurve(
-        ICSBondCurve.BondCurveIntervalInput[] memory source
+        IBondCurve.BondCurveIntervalInput[] memory source
     ) internal {
         for (uint256 i = 0; i < source.length; ++i) {
             bondCurve.push(source[i]);

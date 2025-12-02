@@ -8,11 +8,11 @@ import { console } from "forge-std/console.sol";
 import { Test, Vm } from "forge-std/Test.sol";
 
 import { Batch } from "src/lib/QueueLib.sol";
-import { CSBondLock } from "src/abstract/CSBondLock.sol";
+import { BondLock } from "src/abstract/BondLock.sol";
 import { CSModule } from "src/CSModule.sol";
 import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
-import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
-import { ICSExitPenalties, ExitPenaltyInfo, MarkedUint248 } from "src/interfaces/ICSExitPenalties.sol";
+import { IAccounting } from "src/interfaces/IAccounting.sol";
+import { IExitPenalties, ExitPenaltyInfo, MarkedUint248 } from "src/interfaces/IExitPenalties.sol";
 import { ICSModule, NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/ICSModule.sol";
 import { IGeneralPenalty } from "src/lib/GeneralPenaltyLib.sol";
 import { ILidoLocator } from "src/interfaces/ILidoLocator.sol";
@@ -24,8 +24,8 @@ import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { SigningKeys } from "src/lib/SigningKeys.sol";
 import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 
-import { CSAccountingMock } from "../helpers/mocks/CSAccountingMock.sol";
-import { CSParametersRegistryMock } from "../helpers/mocks/CSParametersRegistryMock.sol";
+import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
+import { ParametersRegistryMock } from "../helpers/mocks/ParametersRegistryMock.sol";
 import { ERC20Testable } from "../helpers/ERCTestable.sol";
 import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
@@ -56,9 +56,9 @@ abstract contract ModuleFixtures is
     WstETHMock public wstETH;
     LidoMock public stETH;
     CSModule public module;
-    CSAccountingMock public accounting;
+    AccountingMock public accounting;
     Stub public feeDistributor;
-    CSParametersRegistryMock public parametersRegistry;
+    ParametersRegistryMock public parametersRegistry;
     ExitPenaltiesMock public exitPenalties;
 
     address internal actor;
@@ -510,13 +510,7 @@ abstract contract ModulePauseAffectingTest is ModuleFixtures {
             keysCount,
             keys,
             signatures,
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 
@@ -533,13 +527,7 @@ abstract contract ModulePauseAffectingTest is ModuleFixtures {
             keysCount,
             keys,
             signatures,
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 }
@@ -712,13 +700,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             1,
             keys,
             signatures,
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
         assertEq(module.getNonce(), nonce + 1);
     }
@@ -754,13 +736,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             1,
             keys,
             signatures,
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 
@@ -798,13 +774,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             1,
             keys,
             signatures,
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
         assertEq(module.getNonce(), nonce + 1);
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -838,7 +808,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             1,
             keys,
             signatures,
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: wstETHAmount,
                 deadline: type(uint256).max,
                 // mock permit signature
@@ -881,7 +851,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             1,
             keys,
             signatures,
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: BOND_SIZE,
                 deadline: 0,
                 v: 0,
@@ -921,7 +891,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             1,
             keys,
             signatures,
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: BOND_SIZE,
                 deadline: 0,
                 v: 0,
@@ -963,7 +933,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             1,
             keys,
             signatures,
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: BOND_SIZE,
                 deadline: 0,
                 v: 0,
@@ -1003,7 +973,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             1,
             keys,
             signatures,
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: required,
                 deadline: type(uint256).max,
                 // mock permit signature
@@ -1153,7 +1123,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
 
 contract GateWithTestCapabilities is Test, Utilities {
     ICSModule private module;
-    ICSAccounting private accounting;
+    IAccounting private accounting;
 
     WstETHMock private wstETH;
     LidoMock private stETH;
@@ -1290,13 +1260,7 @@ contract GateWithTestCapabilities is Test, Utilities {
             keyCount,
             keys,
             sigs,
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
 
         assertEq(module.getNonce(), ++nonce);
@@ -1352,7 +1316,7 @@ contract GateWithTestCapabilities is Test, Utilities {
                 operatorKeyCount,
                 _keys,
                 _sigs,
-                ICSAccounting.PermitInput({
+                IAccounting.PermitInput({
                     value: 0,
                     deadline: 0,
                     v: 0,
@@ -1397,13 +1361,7 @@ contract GateWithTestCapabilities is Test, Utilities {
             keyCount,
             keys,
             sigs,
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 
@@ -1459,7 +1417,7 @@ contract GateWithTestCapabilities is Test, Utilities {
                 operatorKeyCount,
                 _keys,
                 _sigs,
-                ICSAccounting.PermitInput({
+                IAccounting.PermitInput({
                     value: 0,
                     deadline: 0,
                     v: 0,
@@ -1662,7 +1620,7 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
                 1,
                 keys,
                 signatures,
-                ICSAccounting.PermitInput({
+                IAccounting.PermitInput({
                     value: 0,
                     deadline: 0,
                     v: 0,
@@ -1705,7 +1663,7 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
                 1,
                 keys,
                 signatures,
-                ICSAccounting.PermitInput({
+                IAccounting.PermitInput({
                     value: 0,
                     deadline: 0,
                     v: 0,
@@ -1763,7 +1721,7 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
                 1,
                 keys,
                 sigs,
-                ICSAccounting.PermitInput({
+                IAccounting.PermitInput({
                     value: 0,
                     deadline: 0,
                     v: 0,
@@ -1799,7 +1757,7 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
                 1,
                 keys,
                 sigs,
-                ICSAccounting.PermitInput({
+                IAccounting.PermitInput({
                     value: 0,
                     deadline: 0,
                     v: 0,
@@ -1960,13 +1918,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
             1,
             new bytes(0),
             new bytes(0),
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 
@@ -1987,13 +1939,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
             1,
             new bytes(0),
             new bytes(0),
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 
@@ -2013,13 +1959,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
             0,
             new bytes(0),
             new bytes(0),
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 
@@ -2041,7 +1981,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
             keysCount,
             keys,
             new bytes(0),
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: BOND_SIZE,
                 deadline: 0,
                 v: 0,
@@ -2073,7 +2013,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
             keysCount,
             keys,
             signatures,
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: BOND_SIZE,
                 deadline: 0,
                 v: 0,
@@ -2124,7 +2064,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
             1,
             keys,
             signatures,
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: BOND_SIZE,
                 deadline: 0,
                 v: 0,
@@ -2154,13 +2094,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
             1,
             new bytes(0),
             new bytes(0),
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 
@@ -2185,13 +2119,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
             1,
             new bytes(0),
             new bytes(0),
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 
@@ -2214,13 +2142,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
             0,
             new bytes(0),
             new bytes(0),
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 
@@ -2244,13 +2166,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
             keysCount,
             keys,
             new bytes(0),
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 
@@ -2278,13 +2194,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
             keysCount,
             keys,
             signatures,
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 
@@ -2310,13 +2220,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
             1,
             keys,
             signatures,
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 }
@@ -5505,7 +5409,7 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
             UintArr(type(uint256).max)
         );
 
-        CSBondLock.BondLock memory lock = accounting.getLockedBondInfo(noId);
+        BondLock.BondLockData memory lock = accounting.getLockedBondInfo(noId);
         assertEq(lock.amount, 0 ether);
         assertEq(lock.until, 0);
 
@@ -5562,7 +5466,7 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
             .depositableValidatorsCount;
 
         module.settleGeneralDelayedPenalty(idsToSettle, UintArr(amount));
-        CSBondLock.BondLock memory lock = accounting.getLockedBondInfo(noId);
+        BondLock.BondLockData memory lock = accounting.getLockedBondInfo(noId);
         assertEq(
             lock.amount,
             amount +
@@ -5615,7 +5519,7 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
             UintArr(type(uint256).max, type(uint256).max)
         );
 
-        CSBondLock.BondLock memory lock = accounting.getLockedBondInfo(
+        BondLock.BondLockData memory lock = accounting.getLockedBondInfo(
             firstNoId
         );
         assertEq(lock.amount, 0 ether);
@@ -5656,7 +5560,7 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
             UintArr(amount, type(uint256).max)
         );
 
-        CSBondLock.BondLock memory lock = accounting.getLockedBondInfo(
+        BondLock.BondLockData memory lock = accounting.getLockedBondInfo(
             firstNoId
         );
         assertEq(
@@ -5683,7 +5587,7 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
             UintArr(type(uint256).max)
         );
 
-        CSBondLock.BondLock memory lock = accounting.getLockedBondInfo(noId);
+        BondLock.BondLockData memory lock = accounting.getLockedBondInfo(noId);
         assertEq(lock.amount, 0 ether);
         assertEq(lock.until, 0);
 
@@ -5714,12 +5618,12 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
             UintArr(type(uint256).max, type(uint256).max)
         );
 
-        CSBondLock.BondLock memory firstLock = accounting.getLockedBondInfo(
+        BondLock.BondLockData memory firstLock = accounting.getLockedBondInfo(
             firstNoId
         );
         assertEq(firstLock.amount, 0 ether);
         assertEq(firstLock.until, 0);
-        CSBondLock.BondLock memory secondLock = accounting.getLockedBondInfo(
+        BondLock.BondLockData memory secondLock = accounting.getLockedBondInfo(
             secondNoId
         );
         assertEq(secondLock.amount, 0 ether);
@@ -5746,12 +5650,12 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
             UintArr(type(uint256).max, type(uint256).max)
         );
 
-        CSBondLock.BondLock memory firstLock = accounting.getLockedBondInfo(
+        BondLock.BondLockData memory firstLock = accounting.getLockedBondInfo(
             firstNoId
         );
         assertEq(firstLock.amount, 0 ether);
         assertEq(firstLock.until, 0);
-        CSBondLock.BondLock memory secondLock = accounting.getLockedBondInfo(
+        BondLock.BondLockData memory secondLock = accounting.getLockedBondInfo(
             secondNoId
         );
         assertEq(secondLock.amount, 0 ether);
@@ -5785,7 +5689,7 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
 
         uint256 bondBalanceAfter = accounting.getBond(secondNoId);
 
-        CSBondLock.BondLock memory currentLock = accounting.getLockedBondInfo(
+        BondLock.BondLockData memory currentLock = accounting.getLockedBondInfo(
             secondNoId
         );
         assertEq(currentLock.amount, 0 ether);
@@ -5863,7 +5767,7 @@ abstract contract ModuleSettleGeneralDelayedPenaltyAdvanced is ModuleFixtures {
 
         assertEq(accounting.getActualLockedBond(firstNoId), 0);
 
-        CSBondLock.BondLock memory lock = accounting.getLockedBondInfo(
+        BondLock.BondLockData memory lock = accounting.getLockedBondInfo(
             secondNoId
         );
         assertEq(lock.amount, 0 ether);
@@ -5925,7 +5829,7 @@ abstract contract ModuleCompensateGeneralDelayedPenalty is ModuleFixtures {
         vm.prank(nodeOperator);
         module.compensateGeneralDelayedPenalty{ value: amount + fine }(noId);
 
-        CSBondLock.BondLock memory lock = accounting.getLockedBondInfo(noId);
+        BondLock.BondLockData memory lock = accounting.getLockedBondInfo(noId);
         assertEq(lock.amount, 0);
         assertEq(module.getNonce(), nonce + 1);
     }
@@ -5962,7 +5866,7 @@ abstract contract ModuleCompensateGeneralDelayedPenalty is ModuleFixtures {
         vm.prank(nodeOperator);
         module.compensateGeneralDelayedPenalty{ value: amount }(noId);
 
-        CSBondLock.BondLock memory lock = accounting.getLockedBondInfo(noId);
+        BondLock.BondLockData memory lock = accounting.getLockedBondInfo(noId);
         assertEq(lock.amount, fine);
         assertEq(module.getNonce(), nonce);
     }
@@ -8903,7 +8807,7 @@ abstract contract ModuleIsValidatorExitDelayPenaltyApplicable is
         vm.expectCall(
             address(exitPenalties),
             abi.encodeWithSelector(
-                ICSExitPenalties.isValidatorExitDelayPenaltyApplicable.selector,
+                IExitPenalties.isValidatorExitDelayPenaltyApplicable.selector,
                 noId,
                 publicKey,
                 eligibleToExit
@@ -8928,7 +8832,7 @@ abstract contract ModuleIsValidatorExitDelayPenaltyApplicable is
         vm.expectCall(
             address(exitPenalties),
             abi.encodeWithSelector(
-                ICSExitPenalties.isValidatorExitDelayPenaltyApplicable.selector,
+                IExitPenalties.isValidatorExitDelayPenaltyApplicable.selector,
                 noId,
                 publicKey,
                 eligibleToExit
@@ -8953,7 +8857,7 @@ abstract contract ModuleReportValidatorExitDelay is ModuleFixtures {
         vm.expectCall(
             address(exitPenalties),
             abi.encodeWithSelector(
-                ICSExitPenalties.processExitDelayReport.selector,
+                IExitPenalties.processExitDelayReport.selector,
                 noId,
                 publicKey,
                 exitDeadlineThreshold
@@ -8992,7 +8896,7 @@ abstract contract ModuleOnValidatorExitTriggered is ModuleFixtures {
         vm.expectCall(
             address(exitPenalties),
             abi.encodeWithSelector(
-                ICSExitPenalties.processTriggeredExit.selector,
+                IExitPenalties.processTriggeredExit.selector,
                 noId,
                 publicKey,
                 paidFee,

@@ -3,10 +3,10 @@
 
 pragma solidity 0.8.24;
 import { NodeOperatorManagementProperties, NodeOperator } from "../../../src/interfaces/ICSModule.sol";
-import { ICSAccounting } from "../../../src/interfaces/ICSAccounting.sol";
-import { ICSParametersRegistry } from "../../../src/interfaces/ICSParametersRegistry.sol";
-import { CSParametersRegistryMock } from "./CSParametersRegistryMock.sol";
-import { CSAccountingMock } from "./CSAccountingMock.sol";
+import { IAccounting } from "../../../src/interfaces/IAccounting.sol";
+import { IParametersRegistry } from "../../../src/interfaces/IParametersRegistry.sol";
+import { ParametersRegistryMock } from "./ParametersRegistryMock.sol";
+import { AccountingMock } from "./AccountingMock.sol";
 import { WstETHMock } from "./WstETHMock.sol";
 import { LidoMock } from "./LidoMock.sol";
 import { Utilities } from "../Utilities.sol";
@@ -20,21 +20,21 @@ contract CSMMock is Utilities, Fixtures {
     uint256 internal nodeOperatorsCount;
     uint256 internal nodeOperatorTotalDepositedKeys;
     bool internal isValidatorWithdrawnMock;
-    ICSAccounting public immutable ACCOUNTING;
-    ICSParametersRegistry public immutable PARAMETERS_REGISTRY;
+    IAccounting public immutable ACCOUNTING;
+    IParametersRegistry public immutable PARAMETERS_REGISTRY;
     LidoLocatorMock public immutable LIDO_LOCATOR;
     NodeOperatorManagementProperties internal managementProperties;
 
     constructor() {
-        PARAMETERS_REGISTRY = ICSParametersRegistry(
-            address(new CSParametersRegistryMock())
+        PARAMETERS_REGISTRY = IParametersRegistry(
+            address(new ParametersRegistryMock())
         );
         WstETHMock wstETH;
         LidoMock lido;
         (LIDO_LOCATOR, wstETH, lido, , ) = initLido();
-        ACCOUNTING = ICSAccounting(
+        ACCOUNTING = IAccounting(
             address(
-                new CSAccountingMock(
+                new AccountingMock(
                     2 ether,
                     address(wstETH),
                     address(lido),
@@ -44,7 +44,7 @@ contract CSMMock is Utilities, Fixtures {
         );
     }
 
-    function accounting() external view returns (ICSAccounting) {
+    function accounting() external view returns (IAccounting) {
         return ACCOUNTING;
     }
 
@@ -133,7 +133,7 @@ contract CSMMock is Utilities, Fixtures {
         uint256 keysCount,
         bytes memory publicKeys,
         bytes memory signatures,
-        ICSAccounting.PermitInput memory permit
+        IAccounting.PermitInput memory permit
     ) external {}
 
     function addValidatorKeysWstETH(
@@ -142,7 +142,7 @@ contract CSMMock is Utilities, Fixtures {
         uint256 keysCount,
         bytes memory publicKeys,
         bytes memory signatures,
-        ICSAccounting.PermitInput memory permit
+        IAccounting.PermitInput memory permit
     ) external {}
 
     function getSigningKeys(

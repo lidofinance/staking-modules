@@ -4,11 +4,11 @@ pragma solidity 0.8.24;
 
 import { CuratedModule } from "src/CuratedModule.sol";
 import { Stub } from "../helpers/mocks/Stub.sol";
-import { CSParametersRegistryMock } from "../helpers/mocks/CSParametersRegistryMock.sol";
+import { ParametersRegistryMock } from "../helpers/mocks/ParametersRegistryMock.sol";
 import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
 import { ICSModule, INOAddresses, NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/ICSModule.sol";
-import { ICSBondCurve } from "src/interfaces/ICSBondCurve.sol";
-import { CSAccountingMock } from "../helpers/mocks/CSAccountingMock.sol";
+import { IBondCurve } from "src/interfaces/IBondCurve.sol";
+import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
 import { CSModule } from "src/CSModule.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 // forge-lint: disable-next-line(unaliased-plain-import)
@@ -30,16 +30,16 @@ contract CuratedCommon is ModuleFixtures {
         (locator, wstETH, stETH, , ) = initLido();
 
         feeDistributor = new Stub();
-        parametersRegistry = new CSParametersRegistryMock();
+        parametersRegistry = new ParametersRegistryMock();
         exitPenalties = new ExitPenaltiesMock();
 
-        ICSBondCurve.BondCurveIntervalInput[]
-            memory curve = new ICSBondCurve.BondCurveIntervalInput[](1);
-        curve[0] = ICSBondCurve.BondCurveIntervalInput({
+        IBondCurve.BondCurveIntervalInput[]
+            memory curve = new IBondCurve.BondCurveIntervalInput[](1);
+        curve[0] = IBondCurve.BondCurveIntervalInput({
             minKeysCount: 1,
             trend: BOND_SIZE
         });
-        accounting = new CSAccountingMock(
+        accounting = new AccountingMock(
             BOND_SIZE,
             address(wstETH),
             address(stETH),
@@ -101,15 +101,15 @@ contract CuratedCommonNoRoles is ModuleFixtures {
         (locator, wstETH, stETH, , ) = initLido();
 
         feeDistributor = new Stub();
-        parametersRegistry = new CSParametersRegistryMock();
+        parametersRegistry = new ParametersRegistryMock();
         exitPenalties = new ExitPenaltiesMock();
-        ICSBondCurve.BondCurveIntervalInput[]
-            memory curve = new ICSBondCurve.BondCurveIntervalInput[](1);
-        curve[0] = ICSBondCurve.BondCurveIntervalInput({
+        IBondCurve.BondCurveIntervalInput[]
+            memory curve = new IBondCurve.BondCurveIntervalInput[](1);
+        curve[0] = IBondCurve.BondCurveIntervalInput({
             minKeysCount: 1,
             trend: BOND_SIZE
         });
-        accounting = new CSAccountingMock(
+        accounting = new AccountingMock(
             BOND_SIZE,
             address(wstETH),
             address(stETH),

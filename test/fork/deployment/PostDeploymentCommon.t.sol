@@ -9,13 +9,13 @@ import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
 import { CSModule } from "../../../src/CSModule.sol";
-import { CSAccounting } from "../../../src/CSAccounting.sol";
+import { Accounting } from "../../../src/Accounting.sol";
 import { HashConsensus } from "../../../src/lib/base-oracle/HashConsensus.sol";
-import { CSFeeDistributor } from "../../../src/CSFeeDistributor.sol";
-import { CSFeeOracle } from "../../../src/CSFeeOracle.sol";
-import { CSStrikes } from "../../../src/CSStrikes.sol";
+import { FeeDistributor } from "../../../src/FeeDistributor.sol";
+import { FeeOracle } from "../../../src/FeeOracle.sol";
+import { ValidatorStrikes } from "../../../src/ValidatorStrikes.sol";
 import { IWithdrawalQueue } from "../../../src/interfaces/IWithdrawalQueue.sol";
-import { ICSBondCurve } from "../../../src/interfaces/ICSBondCurve.sol";
+import { IBondCurve } from "../../../src/interfaces/IBondCurve.sol";
 import { BaseOracle } from "../../../src/lib/base-oracle/BaseOracle.sol";
 import { GIndex } from "../../../src/lib/GIndex.sol";
 import { Slot } from "../../../src/lib/Types.sol";
@@ -166,7 +166,7 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
     }
 }
 
-contract CSAccountingDeploymentTest is DeploymentBaseTest {
+contract AccountingDeploymentTest is DeploymentBaseTest {
     function test_state_scratch_onlyFull() public view {
         assertEq(accounting.totalBondShares(), 0);
     }
@@ -287,12 +287,12 @@ contract CSAccountingDeploymentTest is DeploymentBaseTest {
     }
 
     function test_proxy_onlyFull() public {
-        ICSBondCurve.BondCurveIntervalInput[]
-            memory defaultBondCurve = new ICSBondCurve.BondCurveIntervalInput[](
+        IBondCurve.BondCurveIntervalInput[]
+            memory defaultBondCurve = new IBondCurve.BondCurveIntervalInput[](
                 deployParams.defaultBondCurve.length
             );
         for (uint256 i = 0; i < deployParams.defaultBondCurve.length; i++) {
-            defaultBondCurve[i] = ICSBondCurve.BondCurveIntervalInput({
+            defaultBondCurve[i] = IBondCurve.BondCurveIntervalInput({
                 minKeysCount: deployParams.defaultBondCurve[i][0],
                 trend: deployParams.defaultBondCurve[i][1]
             });
@@ -312,7 +312,7 @@ contract CSAccountingDeploymentTest is DeploymentBaseTest {
         assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
         assertFalse(proxy.proxy__getIsOssified());
 
-        CSAccounting accountingImpl = CSAccounting(
+        Accounting accountingImpl = Accounting(
             proxy.proxy__getImplementation()
         );
         vm.expectRevert(Initializable.InvalidInitialization.selector);
@@ -325,7 +325,7 @@ contract CSAccountingDeploymentTest is DeploymentBaseTest {
     }
 }
 
-contract CSFeeDistributorDeploymentTest is DeploymentBaseTest {
+contract FeeDistributorDeploymentTest is DeploymentBaseTest {
     function test_state_scratch_onlyFull() public view {
         assertEq(feeDistributor.totalClaimableShares(), 0);
         assertEq(feeDistributor.pendingSharesToDistribute(), 0);
@@ -382,7 +382,7 @@ contract CSFeeDistributorDeploymentTest is DeploymentBaseTest {
         assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
         assertFalse(proxy.proxy__getIsOssified());
 
-        CSFeeDistributor distributorImpl = CSFeeDistributor(
+        FeeDistributor distributorImpl = FeeDistributor(
             proxy.proxy__getImplementation()
         );
         vm.expectRevert(Initializable.InvalidInitialization.selector);
@@ -393,7 +393,7 @@ contract CSFeeDistributorDeploymentTest is DeploymentBaseTest {
     }
 }
 
-contract CSFeeOracleDeploymentTest is DeploymentBaseTest {
+contract FeeOracleDeploymentTest is DeploymentBaseTest {
     function test_state_scratch_onlyFull() public view {
         (
             bytes32 hash,
@@ -477,7 +477,7 @@ contract CSFeeOracleDeploymentTest is DeploymentBaseTest {
         assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
         assertFalse(proxy.proxy__getIsOssified());
 
-        CSFeeOracle oracleImpl = CSFeeOracle(proxy.proxy__getImplementation());
+        FeeOracle oracleImpl = FeeOracle(proxy.proxy__getImplementation());
         vm.expectRevert(Versioned.NonZeroContractVersionOnInit.selector);
         oracleImpl.initialize({
             admin: address(deployParams.aragonAgent),
@@ -581,7 +581,7 @@ contract HashConsensusDeploymentTest is DeploymentBaseTest {
     }
 }
 
-contract CSVerifierDeploymentTest is DeploymentBaseTest {
+contract VerifierDeploymentTest is DeploymentBaseTest {
     function test_state() public view {
         assertFalse(verifier.isPaused());
     }
@@ -653,7 +653,7 @@ contract CSVerifierDeploymentTest is DeploymentBaseTest {
     }
 }
 
-contract CSStrikesDeploymentTest is DeploymentBaseTest {
+contract ValidatorStrikesDeploymentTest is DeploymentBaseTest {
     function test_state_scratch() public view {
         assertEq(strikes.treeRoot(), bytes32(0));
         assertEq(keccak256(abi.encodePacked(strikes.treeCid())), keccak256(""));
@@ -701,7 +701,9 @@ contract CSStrikesDeploymentTest is DeploymentBaseTest {
         assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
         assertFalse(proxy.proxy__getIsOssified());
 
-        CSStrikes strikesImpl = CSStrikes(proxy.proxy__getImplementation());
+        ValidatorStrikes strikesImpl = ValidatorStrikes(
+            proxy.proxy__getImplementation()
+        );
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         strikesImpl.initialize({
             admin: deployParams.aragonAgent,
@@ -710,7 +712,7 @@ contract CSStrikesDeploymentTest is DeploymentBaseTest {
     }
 }
 
-contract CSEjectorDeploymentTest is DeploymentBaseTest {
+contract EjectorDeploymentTest is DeploymentBaseTest {
     function test_state() public view {
         assertFalse(ejector.isPaused());
     }
@@ -745,7 +747,7 @@ contract CSEjectorDeploymentTest is DeploymentBaseTest {
     }
 }
 
-contract CSExitPenaltiesDeploymentTest is DeploymentBaseTest {
+contract ExitPenaltiesDeploymentTest is DeploymentBaseTest {
     function test_immutables() public view {
         assertEq(address(exitPenaltiesImpl.MODULE()), address(module));
         assertEq(

@@ -2,7 +2,7 @@
 
 # Contents
 - [AssetRecoverer](AssetRecoverer.sol/abstract.AssetRecoverer.md)
-- [CSBondCore](CSBondCore.sol/abstract.CSBondCore.md)
-- [CSBondCurve](CSBondCurve.sol/abstract.CSBondCurve.md)
-- [CSBondLock](CSBondLock.sol/abstract.CSBondLock.md)
+- [BondCore](BondCore.sol/abstract.BondCore.md)
+- [BondCurve](BondCurve.sol/abstract.BondCurve.md)
+- [BondLock](BondLock.sol/abstract.BondLock.md)
 - [ExitTypes](ExitTypes.sol/abstract.ExitTypes.md)

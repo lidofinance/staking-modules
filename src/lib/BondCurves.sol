@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import { ICSBondCurve } from "../interfaces/ICSBondCurve.sol";
-import { CSBondCurve } from "../abstract/CSBondCurve.sol";
+import { IBondCurve } from "../interfaces/IBondCurve.sol";
+import { BondCurve } from "../abstract/BondCurve.sol";
 
 interface IBondCurves {
     error InvalidBondCurveLength();
@@ -19,12 +19,12 @@ library BondCurves {
 
     /// @dev Add a new bond curve to the array
     function addBondCurve(
-        CSBondCurve.CSBondCurveStorage storage bondCurvesStorage,
-        ICSBondCurve.BondCurveIntervalInput[] calldata intervals
+        BondCurve.BondCurveStorage storage bondCurvesStorage,
+        IBondCurve.BondCurveIntervalInput[] calldata intervals
     ) external returns (uint256 curveId) {
         _check(intervals);
         curveId = bondCurvesStorage.bondCurves.length;
-        ICSBondCurve.BondCurve storage bondCurve = bondCurvesStorage
+        IBondCurve.BondCurveData storage bondCurve = bondCurvesStorage
             .bondCurves
             .push();
         _addIntervals(bondCurve, intervals);
@@ -32,13 +32,13 @@ library BondCurves {
 
     /// @dev Update existing bond curve
     function updateBondCurve(
-        CSBondCurve.CSBondCurveStorage storage bondCurvesStorage,
+        BondCurve.BondCurveStorage storage bondCurvesStorage,
         uint256 curveId,
-        ICSBondCurve.BondCurveIntervalInput[] calldata intervals
+        IBondCurve.BondCurveIntervalInput[] calldata intervals
     ) external {
         unchecked {
             if (curveId > bondCurvesStorage.bondCurves.length - 1) {
-                revert ICSBondCurve.InvalidBondCurveId();
+                revert IBondCurve.InvalidBondCurveId();
             }
         }
 
@@ -48,11 +48,11 @@ library BondCurves {
     }
 
     function getBondAmountByKeysCount(
-        CSBondCurve.CSBondCurveStorage storage bondCurvesStorage,
+        BondCurve.BondCurveStorage storage bondCurvesStorage,
         uint256 keys,
         uint256 curveId
     ) external view returns (uint256) {
-        ICSBondCurve.BondCurveInterval[] storage intervals = bondCurvesStorage
+        IBondCurve.BondCurveInterval[] storage intervals = bondCurvesStorage
             .bondCurves[curveId]
             .intervals;
         if (keys == 0) {
@@ -70,7 +70,7 @@ library BondCurves {
                     low = mid;
                 }
             }
-            ICSBondCurve.BondCurveInterval storage interval = intervals[low];
+            IBondCurve.BondCurveInterval storage interval = intervals[low];
             return
                 interval.minBond +
                 (keys - interval.minKeysCount) *
@@ -79,11 +79,11 @@ library BondCurves {
     }
 
     function getKeysCountByBondAmount(
-        CSBondCurve.CSBondCurveStorage storage bondCurvesStorage,
+        BondCurve.BondCurveStorage storage bondCurvesStorage,
         uint256 amount,
         uint256 curveId
     ) external view returns (uint256) {
-        ICSBondCurve.BondCurveInterval[] storage intervals = bondCurvesStorage
+        IBondCurve.BondCurveInterval[] storage intervals = bondCurvesStorage
             .bondCurves[curveId]
             .intervals;
 
@@ -104,7 +104,7 @@ library BondCurves {
                 }
             }
 
-            ICSBondCurve.BondCurveInterval storage interval;
+            IBondCurve.BondCurveInterval storage interval;
 
             //
             // Imagine we have:
@@ -129,10 +129,10 @@ library BondCurves {
     }
 
     function _addIntervals(
-        ICSBondCurve.BondCurve storage bondCurve,
-        ICSBondCurve.BondCurveIntervalInput[] calldata intervals
+        IBondCurve.BondCurveData storage bondCurve,
+        IBondCurve.BondCurveIntervalInput[] calldata intervals
     ) internal {
-        ICSBondCurve.BondCurveInterval storage interval = bondCurve
+        IBondCurve.BondCurveInterval storage interval = bondCurve
             .intervals
             .push();
 
@@ -141,7 +141,7 @@ library BondCurves {
         interval.minBond = intervals[0].trend;
 
         for (uint256 i = 1; i < intervals.length; ++i) {
-            ICSBondCurve.BondCurveInterval storage prev = interval;
+            IBondCurve.BondCurveInterval storage prev = interval;
             interval = bondCurve.intervals.push();
             interval.minKeysCount = intervals[i].minKeysCount;
             interval.trend = intervals[i].trend;
@@ -154,7 +154,7 @@ library BondCurves {
     }
 
     function _check(
-        ICSBondCurve.BondCurveIntervalInput[] calldata intervals
+        IBondCurve.BondCurveIntervalInput[] calldata intervals
     ) internal pure {
         if (
             intervals.length < MIN_CURVE_LENGTH ||

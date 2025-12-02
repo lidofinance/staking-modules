@@ -4,14 +4,14 @@ pragma solidity 0.8.24;
 
 import { Test } from "forge-std/Test.sol";
 import { IStETH } from "../../src/interfaces/IStETH.sol";
-import { CSFeeDistributor } from "../../src/CSFeeDistributor.sol";
+import { FeeDistributor } from "../../src/FeeDistributor.sol";
 import { CSModule } from "../../src/CSModule.sol";
 import { NodeOperator } from "../../src/interfaces/ICSModule.sol";
 import { Batch } from "../../src/lib/QueueLib.sol";
-import { CSAccounting } from "../../src/CSAccounting.sol";
-import { CSStrikes } from "../../src/CSStrikes.sol";
+import { Accounting } from "../../src/Accounting.sol";
+import { ValidatorStrikes } from "../../src/ValidatorStrikes.sol";
 import { console } from "forge-std/console.sol";
-import { CSFeeOracle } from "../../src/CSFeeOracle.sol";
+import { FeeOracle } from "../../src/FeeOracle.sol";
 
 contract InvariantAsserts is Test {
     bool internal _skipped;
@@ -174,7 +174,7 @@ contract InvariantAsserts is Test {
     function assertAccountingTotalBondShares(
         uint256 nodeOperatorsCount,
         IStETH steth,
-        CSAccounting accounting
+        Accounting accounting
     ) public {
         if (skipInvariants()) {
             return;
@@ -212,7 +212,7 @@ contract InvariantAsserts is Test {
     }
 
     function assertAccountingUnusedStorageSlots(
-        CSAccounting /* accounting */
+        Accounting /* accounting */
     ) public {
         if (skipInvariants()) {
             return;
@@ -229,7 +229,7 @@ contract InvariantAsserts is Test {
 
     function assertFeeDistributorClaimableShares(
         IStETH lido,
-        CSFeeDistributor feeDistributor
+        FeeDistributor feeDistributor
     ) public {
         if (skipInvariants()) {
             return;
@@ -241,7 +241,7 @@ contract InvariantAsserts is Test {
         );
     }
 
-    function assertFeeDistributorTree(CSFeeDistributor feeDistributor) public {
+    function assertFeeDistributorTree(FeeDistributor feeDistributor) public {
         if (skipInvariants()) {
             return;
         }
@@ -260,7 +260,7 @@ contract InvariantAsserts is Test {
         }
     }
 
-    function assertFeeOracleUnusedStorageSlots(CSFeeOracle feeOracle) public {
+    function assertFeeOracleUnusedStorageSlots(FeeOracle feeOracle) public {
         if (skipInvariants()) {
             return;
         }
@@ -274,7 +274,7 @@ contract InvariantAsserts is Test {
         assertEq(value, bytes32(0), "assert _avgPerfLeewayBP is empty");
     }
 
-    function assertStrikesTree(CSStrikes strikes) public {
+    function assertStrikesTree(ValidatorStrikes strikes) public {
         if (skipInvariants()) {
             return;
         }

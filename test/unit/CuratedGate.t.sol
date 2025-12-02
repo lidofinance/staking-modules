@@ -14,7 +14,7 @@ import { ICuratedGate } from "../../src/interfaces/ICuratedGate.sol";
 import { IMerkleGate } from "../../src/interfaces/IMerkleGate.sol";
 import { IOperatorsData, OperatorInfo } from "../../src/interfaces/IOperatorsData.sol";
 import { ICSModule, NodeOperatorManagementProperties } from "../../src/interfaces/ICSModule.sol";
-import { ICSAccounting } from "../../src/interfaces/ICSAccounting.sol";
+import { IAccounting } from "../../src/interfaces/IAccounting.sol";
 import { MerkleTree } from "../helpers/MerkleTree.sol";
 import { IAssetRecovererLib } from "../../src/lib/AssetRecovererLib.sol";
 
@@ -321,7 +321,7 @@ contract CuratedGateTest_createNodeOperator is CuratedGateTestBase {
         );
         vm.expectCall(
             address(module.ACCOUNTING()),
-            abi.encodeWithSelector(ICSAccounting.setBondCurve.selector, 0, 1)
+            abi.encodeWithSelector(IAccounting.setBondCurve.selector, 0, 1)
         );
         vm.expectEmit(address(gate));
         emit IMerkleGate.Consumed(member);
@@ -384,7 +384,7 @@ contract CuratedGateTest_createNodeOperator_DefaultCurve is
         expectNoCall(
             address(module.ACCOUNTING()),
             abi.encodeWithSelector(
-                ICSAccounting.setBondCurve.selector,
+                IAccounting.setBondCurve.selector,
                 0,
                 curveId()
             )

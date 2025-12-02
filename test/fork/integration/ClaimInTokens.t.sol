@@ -104,7 +104,7 @@ contract ClaimRewardsTest is
         assertTrue(excessBondShares > 0, "Excess bond should be > 0");
 
         vm.prank(nodeOperator);
-        vm.startSnapshotGas("CSAccounting.claimRewardsStETH_excessBond");
+        vm.startSnapshotGas("Accounting.claimRewardsStETH_excessBond");
         uint256 claimedShares = accounting.claimRewardsStETH(
             defaultNoId,
             type(uint256).max,
@@ -169,7 +169,7 @@ contract ClaimRewardsTest is
         );
 
         vm.prank(nodeOperator);
-        vm.startSnapshotGas("CSAccounting.claimRewardsWstETH_excessBond");
+        vm.startSnapshotGas("Accounting.claimRewardsWstETH_excessBond");
         uint256 claimedWstETH = accounting.claimRewardsWstETH(
             defaultNoId,
             type(uint256).max,
@@ -239,7 +239,7 @@ contract ClaimRewardsTest is
         assertTrue(excessBondShares > 0, "Excess bond should be > 0");
 
         vm.prank(nodeOperator);
-        vm.startSnapshotGas("CSAccounting.claimRewardsUnstETH_excessBond");
+        vm.startSnapshotGas("Accounting.claimRewardsUnstETH_excessBond");
         uint256 claimedRequestId = accounting.claimRewardsUnstETH(
             defaultNoId,
             type(uint256).max,
@@ -320,7 +320,7 @@ contract ClaimRewardsTest is
         );
 
         vm.prank(nodeOperator);
-        vm.startSnapshotGas("CSAccounting.claimRewardsStETH_proof");
+        vm.startSnapshotGas("Accounting.claimRewardsStETH_proof");
         uint256 claimedShares = accounting.claimRewardsStETH(
             defaultNoId,
             type(uint256).max,
@@ -389,7 +389,7 @@ contract ClaimRewardsTest is
         );
 
         vm.prank(nodeOperator);
-        vm.startSnapshotGas("CSAccounting.claimRewardsWstETH_proof");
+        vm.startSnapshotGas("Accounting.claimRewardsWstETH_proof");
         uint256 claimedWstETHAmount = accounting.claimRewardsWstETH(
             defaultNoId,
             type(uint256).max,
@@ -465,7 +465,7 @@ contract ClaimRewardsTest is
         uint256 accountingSharesBefore = lido.sharesOf(address(accounting));
 
         vm.prank(nodeOperator);
-        vm.startSnapshotGas("CSAccounting.claimRewardsUnstETH_proof");
+        vm.startSnapshotGas("Accounting.claimRewardsUnstETH_proof");
         uint256 claimedRequestId = accounting.claimRewardsUnstETH(
             defaultNoId,
             type(uint256).max,

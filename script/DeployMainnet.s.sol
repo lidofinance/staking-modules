@@ -69,7 +69,7 @@ contract DeployMainnet is DeployBase {
         config
             .generalDelayedPenaltyReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
 
-        // CSParameters
+        // ParametersRegistry
         config.defaultKeyRemovalCharge = 0.02 ether;
         config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
         config.defaultKeysLimit = type(uint256).max;

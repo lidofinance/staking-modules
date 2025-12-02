@@ -10,8 +10,8 @@ import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 import { DeployParams } from "../../../script/DeployBase.s.sol";
 import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { ICSParametersRegistry } from "../../../src/interfaces/ICSParametersRegistry.sol";
-import { CSParametersRegistry } from "../../../src/CSParametersRegistry.sol";
+import { IParametersRegistry } from "../../../src/interfaces/IParametersRegistry.sol";
+import { ParametersRegistry } from "../../../src/ParametersRegistry.sol";
 import { VettedGate } from "../../../src/VettedGate.sol";
 
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
@@ -51,7 +51,7 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
     }
 }
 
-contract CSAccountingDeploymentTest is DeploymentBaseTest {
+contract AccountingDeploymentTest is DeploymentBaseTest {
     function test_roles_onlyFull() public view {
         assertTrue(
             accounting.hasRole(
@@ -62,7 +62,7 @@ contract CSAccountingDeploymentTest is DeploymentBaseTest {
     }
 }
 
-contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
+contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
     function test_immutables() public view {
         assertEq(
             parametersRegistryImpl.QUEUE_LOWEST_PRIORITY(),
@@ -150,7 +150,7 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
             deployParams.identifiedCommunityStakersGateKeysLimit
         );
 
-        ICSParametersRegistry.KeyNumberValueInterval[]
+        IParametersRegistry.KeyNumberValueInterval[]
             memory rewardShareData = parametersRegistry.getRewardShareData(
                 identifiedCommunityStakersGateCurveId
             );
@@ -168,7 +168,7 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
                 deployParams.identifiedCommunityStakersGateRewardShareData[i][1]
             );
         }
-        ICSParametersRegistry.KeyNumberValueInterval[]
+        IParametersRegistry.KeyNumberValueInterval[]
             memory performanceLeewayData = parametersRegistry
                 .getPerformanceLeewayData(
                     identifiedCommunityStakersGateCurveId
@@ -275,7 +275,7 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
             deployParams.defaultKeysLimit
         );
 
-        ICSParametersRegistry.KeyNumberValueInterval[]
+        IParametersRegistry.KeyNumberValueInterval[]
             memory legacyEaRewardShareData = parametersRegistry
                 .getRewardShareData(legacyEaBondCurveId);
         assertEq(legacyEaRewardShareData.length, 1);
@@ -284,7 +284,7 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
             legacyEaRewardShareData[0].value,
             deployParams.defaultRewardShareBP
         );
-        ICSParametersRegistry.KeyNumberValueInterval[]
+        IParametersRegistry.KeyNumberValueInterval[]
             memory legacyEaPerformanceLeewayData = parametersRegistry
                 .getPerformanceLeewayData(legacyEaBondCurveId);
         assertEq(legacyEaPerformanceLeewayData.length, 1);
@@ -357,7 +357,7 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         parametersRegistry.initialize({
             admin: deployParams.aragonAgent,
-            data: ICSParametersRegistry.InitializationData({
+            data: IParametersRegistry.InitializationData({
                 defaultKeyRemovalCharge: deployParams.defaultKeyRemovalCharge,
                 defaultGeneralDelayedPenaltyAdditionalFine: deployParams
                     .defaultGeneralDelayedPenaltyAdditionalFine,
@@ -393,13 +393,13 @@ contract CSParametersRegistryDeploymentTest is DeploymentBaseTest {
         assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
         assertFalse(proxy.proxy__getIsOssified());
 
-        CSParametersRegistry parametersRegistryImpl = CSParametersRegistry(
+        ParametersRegistry parametersRegistryImpl = ParametersRegistry(
             proxy.proxy__getImplementation()
         );
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         parametersRegistryImpl.initialize({
             admin: deployParams.aragonAgent,
-            data: ICSParametersRegistry.InitializationData({
+            data: IParametersRegistry.InitializationData({
                 defaultKeyRemovalCharge: deployParams.defaultKeyRemovalCharge,
                 defaultGeneralDelayedPenaltyAdditionalFine: deployParams
                     .defaultGeneralDelayedPenaltyAdditionalFine,

@@ -1,5 +1,5 @@
 # IStakingModule
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/interfaces/IStakingModule.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IStakingModule.sol)
 
 
 ## Functions
@@ -7,10 +7,10 @@
 
 Handles tracking and penalization logic for a validator that remains active beyond its eligible exit window.
 
-*This function is called by the StakingRouter to report the current exit-related status of a validator
+This function is called by the StakingRouter to report the current exit-related status of a validator
 belonging to a specific node operator. It accepts a validator's public key, associated
 with the duration (in seconds) it was eligible to exit but has not exited.
-This data could be used to trigger penalties for the node operator if the validator has exceeded the allowed exit window.*
+This data could be used to trigger penalties for the node operator if the validator has exceeded the allowed exit window.
 
 
 ```solidity
@@ -35,8 +35,8 @@ function reportValidatorExitDelay(
 
 Handles the triggerable exit event for a validator belonging to a specific node operator.
 
-*This function is called by the StakingRouter when a validator is exited using the triggerable
-exit request on the Execution Layer (EL).*
+This function is called by the StakingRouter when a validator is exited using the triggerable
+exit request on the Execution Layer (EL).
 
 
 ```solidity
@@ -193,9 +193,9 @@ Below is the typical list of actions that requires an update of the nonce:
 5. a node operator's deposit data is used for the deposit
 Note: Depending on the StakingModule implementation above list might be extended
 
-*In some scenarios, it's allowed to update nonce without actual change of the deposit
+In some scenarios, it's allowed to update nonce without actual change of the deposit
 data subset, but it MUST NOT lead to the DOS of the staking module via continuous
-update of the nonce by the malicious actor*
+update of the nonce by the malicious actor
 
 
 ```solidity
@@ -240,8 +240,8 @@ function getNodeOperatorIsActive(uint256 nodeOperatorId) external view returns (
 Returns up to `limit` node operator ids starting from the `offset`. The order of
 the returned ids is not defined and might change between calls.
 
-*This view must not revert in case of invalid data passed. When `offset` exceeds the
-total node operators count or when `limit` is equal to 0 MUST be returned empty array.*
+This view must not revert in case of invalid data passed. When `offset` exceeds the
+total node operators count or when `limit` is equal to 0 MUST be returned empty array.
 
 
 ```solidity
@@ -252,8 +252,8 @@ function getNodeOperatorIds(uint256 offset, uint256 limit) external view returns
 
 Called by StakingRouter to signal that stETH rewards were minted for this module.
 
-*IMPORTANT: this method SHOULD revert with empty error data ONLY because of "out of gas".
-Details about error data: https://docs.soliditylang.org/en/v0.8.9/control-structures.html#error-handling-assert-require-revert-and-exceptions*
+IMPORTANT: this method SHOULD revert with empty error data ONLY because of "out of gas".
+Details about error data: https://docs.soliditylang.org/en/v0.8.9/control-structures.html#error-handling-assert-require-revert-and-exceptions
 
 
 ```solidity
@@ -338,7 +338,7 @@ function unsafeUpdateValidatorsCount(uint256 _nodeOperatorId, uint256 _exitedVal
 Obtains deposit data to be used by StakingRouter to deposit to the Ethereum Deposit
 contract
 
-*The method MUST revert when the staking module has not enough deposit data items*
+The method MUST revert when the staking module has not enough deposit data items
 
 
 ```solidity
@@ -370,8 +370,8 @@ operator in this module has actually received any updated counts as a result of 
 but given that the total number of exited validators returned from getStakingModuleSummary
 is the same as StakingRouter expects based on the total count received from the oracle.
 
-*IMPORTANT: this method SHOULD revert with empty error data ONLY because of "out of gas".
-Details about error data: https://docs.soliditylang.org/en/v0.8.9/control-structures.html#error-handling-assert-require-revert-and-exceptions*
+IMPORTANT: this method SHOULD revert with empty error data ONLY because of "out of gas".
+Details about error data: https://docs.soliditylang.org/en/v0.8.9/control-structures.html#error-handling-assert-require-revert-and-exceptions
 
 
 ```solidity
@@ -382,11 +382,11 @@ function onExitedAndStuckValidatorsCountsUpdated() external;
 
 Called by StakingRouter when withdrawal credentials are changed.
 
-*This method MUST discard all StakingModule's unused deposit data cause they become
-invalid after the withdrawal credentials are changed*
+This method MUST discard all StakingModule's unused deposit data cause they become
+invalid after the withdrawal credentials are changed
 
-*IMPORTANT: this method SHOULD revert with empty error data ONLY because of "out of gas".
-Details about error data: https://docs.soliditylang.org/en/v0.8.9/control-structures.html#error-handling-assert-require-revert-and-exceptions*
+IMPORTANT: this method SHOULD revert with empty error data ONLY because of "out of gas".
+Details about error data: https://docs.soliditylang.org/en/v0.8.9/control-structures.html#error-handling-assert-require-revert-and-exceptions
 
 
 ```solidity
@@ -395,7 +395,7 @@ function onWithdrawalCredentialsChanged() external;
 
 ## Events
 ### NonceChanged
-*Event to be emitted on StakingModule's nonce change*
+Event to be emitted on StakingModule's nonce change
 
 
 ```solidity
@@ -403,7 +403,7 @@ event NonceChanged(uint256 nonce);
 ```
 
 ### SigningKeyAdded
-*Event to be emitted when a signing key is added to the StakingModule*
+Event to be emitted when a signing key is added to the StakingModule
 
 
 ```solidity
@@ -411,7 +411,7 @@ event SigningKeyAdded(uint256 indexed nodeOperatorId, bytes pubkey);
 ```
 
 ### SigningKeyRemoved
-*Event to be emitted when a signing key is removed from the StakingModule*
+Event to be emitted when a signing key is removed from the StakingModule
 
 
 ```solidity

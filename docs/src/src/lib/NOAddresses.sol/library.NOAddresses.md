@@ -1,5 +1,5 @@
 # NOAddresses
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/lib/NOAddresses.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/lib/NOAddresses.sol)
 
 
 ## Functions
@@ -92,8 +92,10 @@ Should be called from the reward address
 
 
 ```solidity
-function resetNodeOperatorManagerAddress(mapping(uint256 => NodeOperator) storage nodeOperators, uint256 nodeOperatorId)
-    external;
+function resetNodeOperatorManagerAddress(
+    mapping(uint256 => NodeOperator) storage nodeOperators,
+    uint256 nodeOperatorId
+) external;
 ```
 **Parameters**
 
@@ -123,5 +125,30 @@ function changeNodeOperatorRewardAddress(
 |`nodeOperators`|`mapping(uint256 => NodeOperator)`||
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
 |`newAddress`|`address`|New reward address|
+
+
+### changeNodeOperatorAddresses
+
+Change both reward and manager addresses of a node operator.
+
+XXX: Use with caution! No check of the caller.
+
+
+```solidity
+function changeNodeOperatorAddresses(
+    mapping(uint256 => NodeOperator) storage nodeOperators,
+    uint256 nodeOperatorId,
+    address newManagerAddress,
+    address newRewardAddress
+) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperators`|`mapping(uint256 => NodeOperator)`||
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
+|`newManagerAddress`|`address`|New manager address|
+|`newRewardAddress`|`address`|New reward address|
 
 

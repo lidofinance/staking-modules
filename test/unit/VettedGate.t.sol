@@ -8,7 +8,7 @@ import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { IVettedGate } from "src/interfaces/IVettedGate.sol";
 import { IMerkleGate } from "src/interfaces/IMerkleGate.sol";
 import { ICSModule, NodeOperatorManagementProperties } from "src/interfaces/ICSModule.sol";
-import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
+import { IAccounting } from "src/interfaces/IAccounting.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 import { MerkleTree } from "../helpers/MerkleTree.sol";
 import { CSMMock } from "../helpers/mocks/CSMMock.sol";
@@ -366,7 +366,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: 0,
                 deadline: 0,
                 v: 0,
@@ -400,7 +400,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: 0,
                 deadline: 0,
                 v: 0,
@@ -506,7 +506,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: 0,
                 deadline: 0,
                 v: 0,
@@ -528,7 +528,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: 0,
                 deadline: 0,
                 v: 0,
@@ -554,7 +554,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: 0,
                 deadline: 0,
                 v: 0,
@@ -585,7 +585,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: 0,
                 deadline: 0,
                 v: 0,
@@ -611,7 +611,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: 0,
                 deadline: 0,
                 v: 0,
@@ -633,7 +633,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: 0,
                 deadline: 0,
                 v: 0,
@@ -659,7 +659,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: 0,
                 deadline: 0,
                 v: 0,
@@ -690,7 +690,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: 0,
                 deadline: 0,
                 v: 0,
@@ -713,7 +713,7 @@ contract VettedGateTest is VettedGateTestBase {
         vm.expectCall(
             address(vettedGate.ACCOUNTING()),
             abi.encodeWithSelector(
-                ICSAccounting.setBondCurve.selector,
+                IAccounting.setBondCurve.selector,
                 0,
                 vettedGate.curveId()
             )
@@ -1045,7 +1045,7 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
         vm.expectCall(
             address(vettedGate.ACCOUNTING()),
             abi.encodeWithSelector(
-                ICSAccounting.setBondCurve.selector,
+                IAccounting.setBondCurve.selector,
                 0,
                 vettedGate.referralCurveId()
             )
@@ -1074,7 +1074,7 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
         vm.expectCall(
             address(vettedGate.ACCOUNTING()),
             abi.encodeWithSelector(
-                ICSAccounting.setBondCurve.selector,
+                IAccounting.setBondCurve.selector,
                 0,
                 vettedGate.referralCurveId()
             )
@@ -1121,7 +1121,7 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
         vm.expectCall(
             address(vettedGate.ACCOUNTING()),
             abi.encodeWithSelector(
-                ICSAccounting.setBondCurve.selector,
+                IAccounting.setBondCurve.selector,
                 0,
                 vettedGate.referralCurveId()
             )
@@ -1150,7 +1150,7 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
         vm.expectCall(
             address(vettedGate.ACCOUNTING()),
             abi.encodeWithSelector(
-                ICSAccounting.setBondCurve.selector,
+                IAccounting.setBondCurve.selector,
                 0,
                 vettedGate.referralCurveId()
             )

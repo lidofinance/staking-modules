@@ -1,8 +1,8 @@
 # HashConsensus
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/lib/base-oracle/HashConsensus.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/lib/base-oracle/HashConsensus.sol)
 
 **Inherits:**
-[IConsensusContract](/src/lib/base-oracle/interfaces/IConsensusContract.sol/interface.IConsensusContract.md), AccessControlEnumerableUpgradeable
+[IConsensusContract](/Users/dgusakov/projects/community-staking-module/docs/src/src/lib/base-oracle/interfaces/IConsensusContract.sol/interface.IConsensusContract.md), AccessControlEnumerableUpgradeable
 
 A contract managing oracle members committee and allowing the members to reach
 consensus on a hash for each reporting frame.
@@ -26,7 +26,7 @@ change the quorum by calling addMember, removeMember, and setQuorum functions.
 
 
 ```solidity
-bytes32 public constant MANAGE_MEMBERS_AND_QUORUM_ROLE = keccak256("MANAGE_MEMBERS_AND_QUORUM_ROLE");
+bytes32 public constant MANAGE_MEMBERS_AND_QUORUM_ROLE = keccak256("MANAGE_MEMBERS_AND_QUORUM_ROLE")
 ```
 
 
@@ -37,7 +37,7 @@ of the MANAGE_QUORUM_ROLE.
 
 
 ```solidity
-bytes32 public constant DISABLE_CONSENSUS_ROLE = keccak256("DISABLE_CONSENSUS_ROLE");
+bytes32 public constant DISABLE_CONSENSUS_ROLE = keccak256("DISABLE_CONSENSUS_ROLE")
 ```
 
 
@@ -47,7 +47,7 @@ and fast lane reporting interval length by calling setFrameConfig.
 
 
 ```solidity
-bytes32 public constant MANAGE_FRAME_CONFIG_ROLE = keccak256("MANAGE_FRAME_CONFIG_ROLE");
+bytes32 public constant MANAGE_FRAME_CONFIG_ROLE = keccak256("MANAGE_FRAME_CONFIG_ROLE")
 ```
 
 
@@ -57,7 +57,7 @@ length by calling setFastLaneLengthSlots.
 
 
 ```solidity
-bytes32 public constant MANAGE_FAST_LANE_CONFIG_ROLE = keccak256("MANAGE_FAST_LANE_CONFIG_ROLE");
+bytes32 public constant MANAGE_FAST_LANE_CONFIG_ROLE = keccak256("MANAGE_FAST_LANE_CONFIG_ROLE")
 ```
 
 
@@ -67,35 +67,35 @@ contract by calling setReportProcessor.
 
 
 ```solidity
-bytes32 public constant MANAGE_REPORT_PROCESSOR_ROLE = keccak256("MANAGE_REPORT_PROCESSOR_ROLE");
+bytes32 public constant MANAGE_REPORT_PROCESSOR_ROLE = keccak256("MANAGE_REPORT_PROCESSOR_ROLE")
 ```
 
 
 ### UNREACHABLE_QUORUM
-*A quorum value that effectively disables the oracle.*
+A quorum value that effectively disables the oracle.
 
 
 ```solidity
-uint256 internal constant UNREACHABLE_QUORUM = type(uint256).max;
+uint256 internal constant UNREACHABLE_QUORUM = type(uint256).max
 ```
 
 
 ### ZERO_HASH
 
 ```solidity
-bytes32 internal constant ZERO_HASH = bytes32(0);
+bytes32 internal constant ZERO_HASH = bytes32(0)
 ```
 
 
 ### DEADLINE_SLOT_OFFSET
-*An offset from the processing deadline slot of the previous frame (i.e. the last slot
+An offset from the processing deadline slot of the previous frame (i.e. the last slot
 at which a report for the prev. frame can be submitted and its processing started) to the
 reference slot of the next frame (equal to the last slot of the previous frame).
-frame[i].reportProcessingDeadlineSlot := frame[i + 1].refSlot - DEADLINE_SLOT_OFFSET*
+frame[i].reportProcessingDeadlineSlot := frame[i + 1].refSlot - DEADLINE_SLOT_OFFSET
 
 
 ```solidity
-uint256 internal constant DEADLINE_SLOT_OFFSET = 0;
+uint256 internal constant DEADLINE_SLOT_OFFSET = 0
 ```
 
 
@@ -104,104 +104,104 @@ Chain specification
 
 
 ```solidity
-uint64 internal immutable SLOTS_PER_EPOCH;
+uint64 internal immutable SLOTS_PER_EPOCH
 ```
 
 
 ### SECONDS_PER_SLOT
 
 ```solidity
-uint64 internal immutable SECONDS_PER_SLOT;
+uint64 internal immutable SECONDS_PER_SLOT
 ```
 
 
 ### GENESIS_TIME
 
 ```solidity
-uint64 internal immutable GENESIS_TIME;
+uint64 internal immutable GENESIS_TIME
 ```
 
 
 ### _frameConfig
-*Reporting frame configuration*
+Reporting frame configuration
 
 
 ```solidity
-FrameConfig internal _frameConfig;
+FrameConfig internal _frameConfig
 ```
 
 
 ### _memberStates
-*Oracle committee members states array*
+Oracle committee members states array
 
 
 ```solidity
-MemberState[] internal _memberStates;
+MemberState[] internal _memberStates
 ```
 
 
 ### _memberAddresses
-*Oracle committee members' addresses array*
+Oracle committee members' addresses array
 
 
 ```solidity
-address[] internal _memberAddresses;
+address[] internal _memberAddresses
 ```
 
 
 ### _memberIndices1b
-*Mapping from an oracle committee member address to the 1-based index in the
-members array*
+Mapping from an oracle committee member address to the 1-based index in the
+members array
 
 
 ```solidity
-mapping(address => uint256) internal _memberIndices1b;
+mapping(address => uint256) internal _memberIndices1b
 ```
 
 
 ### _reportingState
-*A structure containing the last reference slot any report was received for, the last
-reference slot consensus report was achieved for, and the last consensus variant index*
+A structure containing the last reference slot any report was received for, the last
+reference slot consensus report was achieved for, and the last consensus variant index
 
 
 ```solidity
-ReportingState internal _reportingState;
+ReportingState internal _reportingState
 ```
 
 
 ### _quorum
-*Oracle committee members quorum value, must be larger than totalMembers // 2*
+Oracle committee members quorum value, must be larger than totalMembers // 2
 
 
 ```solidity
-uint256 internal _quorum;
+uint256 internal _quorum
 ```
 
 
 ### _reportVariants
-*Mapping from a report variant index to the ReportVariant structure*
+Mapping from a report variant index to the ReportVariant structure
 
 
 ```solidity
-mapping(uint256 => ReportVariant) internal _reportVariants;
+mapping(uint256 => ReportVariant) internal _reportVariants
 ```
 
 
 ### _reportVariantsLength
-*The number of report variants*
+The number of report variants
 
 
 ```solidity
-uint256 internal _reportVariantsLength;
+uint256 internal _reportVariantsLength
 ```
 
 
 ### _reportProcessor
-*The address of the report processor contract*
+The address of the report processor contract
 
 
 ```solidity
-address internal _reportProcessor;
+address internal _reportProcessor
 ```
 
 
@@ -221,7 +221,7 @@ constructor(
     uint256 fastLaneLengthSlots,
     address admin,
     address reportProcessor
-);
+) ;
 ```
 
 ### getChainConfig
@@ -234,7 +234,10 @@ given a timestamp.
 
 
 ```solidity
-function getChainConfig() external view returns (uint256 slotsPerEpoch, uint256 secondsPerSlot, uint256 genesisTime);
+function getChainConfig()
+    external
+    view
+    returns (uint256 slotsPerEpoch, uint256 secondsPerSlot, uint256 genesisTime);
 ```
 
 ### getFrameConfig
@@ -680,7 +683,7 @@ function _setFastLaneLengthSlots(uint256 fastLaneLengthSlots) internal;
 
 ### _getFastLaneSubset
 
-*Returns start and past-end indices (mod totalMembers) of the fast lane members subset.*
+Returns start and past-end indices (mod totalMembers) of the fast lane members subset.
 
 
 ```solidity
@@ -692,8 +695,8 @@ function _getFastLaneSubset(uint256 frameIndex, uint256 totalMembers)
 
 ### _isFastLaneMember
 
-*Tests whether the member with the given `index` is in the fast lane subset for the
-given reporting `frameIndex`.*
+Tests whether the member with the given `index` is in the fast lane subset for the
+given reporting `frameIndex`.
 
 
 ```solidity
@@ -991,17 +994,21 @@ struct FrameConfig {
 ```
 
 ### ConsensusFrame
-*Oracle reporting is divided into frames, each lasting the same number of slots.
+Oracle reporting is divided into frames, each lasting the same number of slots.
 The start slot of the next frame is always the next slot after the end slot of the previous
 frame.
 Each frame also has a reference slot: if the oracle report contains any data derived from
-onchain data, the onchain data should be sampled at the reference slot.*
+onchain data, the onchain data should be sampled at the reference slot.
 
 
 ```solidity
 struct ConsensusFrame {
+    // frame index; increments by 1 with each frame but resets to zero on frame size change
     uint256 index;
+    // the slot at which to read the state around which consensus is being reached;
+    // if the slot contains a block, the state should include all changes from that block
     uint256 refSlot;
+    // the last slot at which a report can be reported and processed
     uint256 reportProcessingDeadlineSlot;
 }
 ```
@@ -1010,8 +1017,11 @@ struct ConsensusFrame {
 
 ```solidity
 struct ReportingState {
+    // the last reference slot any report was received for
     uint64 lastReportRefSlot;
+    // the last reference slot a consensus was reached for
     uint64 lastConsensusRefSlot;
+    // the last consensus variant index
     uint64 lastConsensusVariantIndex;
 }
 ```
@@ -1020,7 +1030,9 @@ struct ReportingState {
 
 ```solidity
 struct MemberState {
+    // the last reference slot a report from this member was received for
     uint64 lastReportRefSlot;
+    // the variant index of the last report from this member
     uint64 lastReportVariantIndex;
 }
 ```
@@ -1029,7 +1041,9 @@ struct MemberState {
 
 ```solidity
 struct ReportVariant {
+    // the reported hash
     bytes32 hash;
+    // how many unique members from the current set reported this hash in the current frame
     uint64 support;
 }
 ```
@@ -1038,12 +1052,22 @@ struct ReportVariant {
 
 ```solidity
 struct MemberConsensusState {
+    /// @notice Current frame's reference slot.
     uint256 currentFrameRefSlot;
+    /// @notice Consensus report for the current frame, if any. Zero bytes otherwise.
     bytes32 currentFrameConsensusReport;
+    /// @notice Whether the provided address is a member of the oracle committee.
     bool isMember;
+    /// @notice Whether the oracle committee member is in the fast lane members subset
+    /// of the current reporting frame. See `getIsFastLaneMember`.
     bool isFastLane;
+    /// @notice Whether the oracle committee member is allowed to submit a report at
+    /// the moment of the call.
     bool canReport;
+    /// @notice The last reference slot for which the member submitted a report.
     uint256 lastMemberReportRefSlot;
+    /// @notice The hash reported by the member for the current frame, if any.
+    /// Zero bytes otherwise.
     bytes32 currentFrameMemberReport;
 }
 ```

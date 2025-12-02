@@ -7,9 +7,9 @@ import { Test } from "forge-std/Test.sol";
 
 import { OssifiableProxy } from "../../../../src/lib/proxy/OssifiableProxy.sol";
 import { CSModule } from "../../../../src/CSModule.sol";
-import { CSAccounting } from "../../../../src/CSAccounting.sol";
-import { CSFeeDistributor } from "../../../../src/CSFeeDistributor.sol";
-import { CSFeeOracle } from "../../../../src/CSFeeOracle.sol";
+import { Accounting } from "../../../../src/Accounting.sol";
+import { FeeDistributor } from "../../../../src/FeeDistributor.sol";
+import { FeeOracle } from "../../../../src/FeeOracle.sol";
 import { Utilities } from "../../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../../helpers/Fixtures.sol";
 
@@ -68,10 +68,10 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
         assertFalse(module.isPaused());
     }
 
-    function test_CSAccountingUpgradeTo() public {
+    function test_AccountingUpgradeTo() public {
         OssifiableProxy proxy = OssifiableProxy(payable(address(accounting)));
         uint256 currentMaxBondLockPeriod = accounting.MAX_BOND_LOCK_PERIOD();
-        CSAccounting newAccounting = new CSAccounting({
+        Accounting newAccounting = new Accounting({
             lidoLocator: address(accounting.LIDO_LOCATOR()),
             module: address(module),
             feeDistributor: address(feeDistributor),
@@ -86,10 +86,10 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
         );
     }
 
-    function test_CSAccountingUpgradeToAndCall() public {
+    function test_AccountingUpgradeToAndCall() public {
         OssifiableProxy proxy = OssifiableProxy(payable(address(accounting)));
         uint256 currentMaxBondLockPeriod = accounting.MAX_BOND_LOCK_PERIOD();
-        CSAccounting newAccounting = new CSAccounting({
+        Accounting newAccounting = new Accounting({
             lidoLocator: address(accounting.LIDO_LOCATOR()),
             module: address(module),
             feeDistributor: address(feeDistributor),
@@ -119,9 +119,9 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
         assertTrue(accounting.isPaused());
     }
 
-    function test_CSFeeOracleUpgradeTo() public {
+    function test_FeeOracleUpgradeTo() public {
         OssifiableProxy proxy = OssifiableProxy(payable(address(oracle)));
-        CSFeeOracle newFeeOracle = new CSFeeOracle({
+        FeeOracle newFeeOracle = new FeeOracle({
             feeDistributor: address(feeDistributor),
             strikes: address(strikes),
             secondsPerSlot: oracle.SECONDS_PER_SLOT(),
@@ -132,9 +132,9 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
         assertEq(oracle.GENESIS_TIME(), block.timestamp);
     }
 
-    function test_CSFeeOracleUpgradeToAndCall() public {
+    function test_FeeOracleUpgradeToAndCall() public {
         OssifiableProxy proxy = OssifiableProxy(payable(address(oracle)));
-        CSFeeOracle newFeeOracle = new CSFeeOracle({
+        FeeOracle newFeeOracle = new FeeOracle({
             feeDistributor: address(feeDistributor),
             strikes: address(strikes),
             secondsPerSlot: oracle.SECONDS_PER_SLOT(),
@@ -157,11 +157,11 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
         assertTrue(oracle.isPaused());
     }
 
-    function test_CSFeeDistributorUpgradeTo() public {
+    function test_FeeDistributorUpgradeTo() public {
         OssifiableProxy proxy = OssifiableProxy(
             payable(address(feeDistributor))
         );
-        CSFeeDistributor newFeeDistributor = new CSFeeDistributor({
+        FeeDistributor newFeeDistributor = new FeeDistributor({
             stETH: locator.lido(),
             accounting: address(1337),
             oracle: address(oracle)
@@ -171,5 +171,5 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
         assertEq(feeDistributor.ACCOUNTING(), address(1337));
     }
 
-    // upgradeToAndCall test seems useless for CSFeeDistributor
+    // upgradeToAndCall test seems useless for FeeDistributor
 }

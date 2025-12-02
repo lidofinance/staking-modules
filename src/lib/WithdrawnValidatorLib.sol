@@ -6,8 +6,8 @@ pragma solidity 0.8.24;
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { ICSModule, WithdrawnValidatorInfo } from "../interfaces/ICSModule.sol";
-import { ExitPenaltyInfo } from "../interfaces/ICSExitPenalties.sol";
-import { ICSAccounting } from "../interfaces/ICSAccounting.sol";
+import { ExitPenaltyInfo } from "../interfaces/IExitPenalties.sol";
+import { IAccounting } from "../interfaces/IAccounting.sol";
 
 import { SigningKeys } from "./SigningKeys.sol";
 
@@ -96,7 +96,7 @@ library WithdrawnValidatorLib {
             penaltySum += MIN_ACTIVATION_BALANCE - validatorInfo.exitBalance;
         }
 
-        ICSAccounting accounting = ICSModule(address(this)).ACCOUNTING();
+        IAccounting accounting = ICSModule(address(this)).ACCOUNTING();
 
         bondCoversPenalties = true;
 

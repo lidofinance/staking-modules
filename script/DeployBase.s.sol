@@ -8,22 +8,22 @@ import { Script, VmSafe } from "forge-std/Script.sol";
 import { HashConsensus } from "../src/lib/base-oracle/HashConsensus.sol";
 import { OssifiableProxy } from "../src/lib/proxy/OssifiableProxy.sol";
 import { CSModule } from "../src/CSModule.sol";
-import { CSAccounting } from "../src/CSAccounting.sol";
-import { CSFeeDistributor } from "../src/CSFeeDistributor.sol";
-import { CSEjector } from "../src/CSEjector.sol";
-import { CSStrikes } from "../src/CSStrikes.sol";
-import { CSFeeOracle } from "../src/CSFeeOracle.sol";
-import { CSVerifier } from "../src/CSVerifier.sol";
-import { ICSVerifier } from "../src/interfaces/ICSVerifier.sol";
+import { Accounting } from "../src/Accounting.sol";
+import { FeeDistributor } from "../src/FeeDistributor.sol";
+import { Ejector } from "../src/Ejector.sol";
+import { ValidatorStrikes } from "../src/ValidatorStrikes.sol";
+import { FeeOracle } from "../src/FeeOracle.sol";
+import { Verifier } from "../src/Verifier.sol";
+import { IVerifier } from "../src/interfaces/IVerifier.sol";
 import { PermissionlessGate } from "../src/PermissionlessGate.sol";
 import { VettedGate } from "../src/VettedGate.sol";
-import { CSParametersRegistry } from "../src/CSParametersRegistry.sol";
+import { ParametersRegistry } from "../src/ParametersRegistry.sol";
 
 import { ILidoLocator } from "../src/interfaces/ILidoLocator.sol";
 import { IGateSealFactory } from "../src/interfaces/IGateSealFactory.sol";
 import { BaseOracle } from "../src/lib/base-oracle/BaseOracle.sol";
-import { ICSParametersRegistry } from "../src/interfaces/ICSParametersRegistry.sol";
-import { ICSBondCurve } from "../src/interfaces/ICSBondCurve.sol";
+import { IParametersRegistry } from "../src/interfaces/IParametersRegistry.sol";
+import { IBondCurve } from "../src/interfaces/IBondCurve.sol";
 
 import { JsonObj, Json } from "./utils/Json.sol";
 import { Dummy } from "./utils/Dummy.sol";
@@ -31,7 +31,7 @@ import { CommonScriptUtils } from "./utils/Common.sol";
 import { GIndex } from "../src/lib/GIndex.sol";
 import { Slot } from "../src/lib/Types.sol";
 import { VettedGateFactory } from "../src/VettedGateFactory.sol";
-import { CSExitPenalties } from "../src/CSExitPenalties.sol";
+import { ExitPenalties } from "../src/ExitPenalties.sol";
 import { IStakingRouter } from "../src/interfaces/IStakingRouter.sol";
 
 struct DeployParams {
@@ -72,7 +72,7 @@ struct DeployParams {
     uint256 stakingModuleId;
     bytes32 moduleType;
     address generalDelayedPenaltyReporter;
-    // CSParameters
+    // ParametersRegistry
     uint256 queueLowestPriority;
     uint256 defaultKeyRemovalCharge;
     uint256 defaultGeneralDelayedPenaltyAdditionalFine;
@@ -134,19 +134,19 @@ abstract contract DeployBase is Script {
 
     address internal deployer;
     CSModule public csm;
-    CSAccounting public accounting;
-    CSFeeOracle public oracle;
-    CSFeeDistributor public feeDistributor;
-    CSExitPenalties public exitPenalties;
-    CSEjector public ejector;
-    CSStrikes public strikes;
-    CSVerifier public verifier;
+    Accounting public accounting;
+    FeeOracle public oracle;
+    FeeDistributor public feeDistributor;
+    ExitPenalties public exitPenalties;
+    Ejector public ejector;
+    ValidatorStrikes public strikes;
+    Verifier public verifier;
     address public gateSeal;
     PermissionlessGate public permissionlessGate;
     VettedGateFactory public vettedGateFactory;
     VettedGate public vettedGate;
     HashConsensus public hashConsensus;
-    CSParametersRegistry public parametersRegistry;
+    ParametersRegistry public parametersRegistry;
 
     error ChainIdMismatch(uint256 actual, uint256 expected);
     error HashConsensusMismatch();
@@ -194,10 +194,10 @@ abstract contract DeployBase is Script {
         vm.label(deployer, "DEPLOYER");
 
         {
-            CSParametersRegistry parametersRegistryImpl = new CSParametersRegistry(
-                    config.queueLowestPriority
-                );
-            parametersRegistry = CSParametersRegistry(
+            ParametersRegistry parametersRegistryImpl = new ParametersRegistry(
+                config.queueLowestPriority
+            );
+            parametersRegistry = ParametersRegistry(
                 _deployProxy(config.proxyAdmin, address(parametersRegistryImpl))
             );
 
@@ -205,28 +205,26 @@ abstract contract DeployBase is Script {
 
             csm = CSModule(_deployProxy(deployer, address(dummyImpl)));
 
-            accounting = CSAccounting(
-                _deployProxy(deployer, address(dummyImpl))
-            );
+            accounting = Accounting(_deployProxy(deployer, address(dummyImpl)));
 
-            oracle = CSFeeOracle(_deployProxy(deployer, address(dummyImpl)));
+            oracle = FeeOracle(_deployProxy(deployer, address(dummyImpl)));
 
-            CSFeeDistributor feeDistributorImpl = new CSFeeDistributor({
+            FeeDistributor feeDistributorImpl = new FeeDistributor({
                 stETH: locator.lido(),
                 accounting: address(accounting),
                 oracle: address(oracle)
             });
-            feeDistributor = CSFeeDistributor(
+            feeDistributor = FeeDistributor(
                 _deployProxy(config.proxyAdmin, address(feeDistributorImpl))
             );
 
             // prettier-ignore
-            verifier = new CSVerifier({
+            verifier = new Verifier({
                 withdrawalAddress: locator.withdrawalVault(),
                 module: address(csm),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
                 slotsPerHistoricalRoot: uint64(config.slotsPerHistoricalRoot),
-                gindices: ICSVerifier.GIndices({
+                gindices: IVerifier.GIndices({
                     gIFirstWithdrawalPrev: config.gIFirstWithdrawal,
                     gIFirstWithdrawalCurr: config.gIFirstWithdrawal,
                     gIFirstValidatorPrev: config.gIFirstValidator,
@@ -248,7 +246,7 @@ abstract contract DeployBase is Script {
 
             parametersRegistry.initialize({
                 admin: deployer,
-                data: ICSParametersRegistry.InitializationData({
+                data: IParametersRegistry.InitializationData({
                     defaultKeyRemovalCharge: config.defaultKeyRemovalCharge,
                     defaultGeneralDelayedPenaltyAdditionalFine: config
                         .defaultGeneralDelayedPenaltyAdditionalFine,
@@ -271,7 +269,7 @@ abstract contract DeployBase is Script {
                 })
             });
 
-            CSAccounting accountingImpl = new CSAccounting({
+            Accounting accountingImpl = new Accounting({
                 lidoLocator: config.lidoLocatorAddress,
                 module: address(csm),
                 feeDistributor: address(feeDistributor),
@@ -287,7 +285,7 @@ abstract contract DeployBase is Script {
                 accountingProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
-            ICSBondCurve.BondCurveIntervalInput[]
+            IBondCurve.BondCurveIntervalInput[]
                 memory defaultBondCurve = CommonScriptUtils
                     .arraysToBondCurveIntervalsInputs(config.defaultBondCurve);
             accounting.initialize({
@@ -302,14 +300,14 @@ abstract contract DeployBase is Script {
                 address(deployer)
             );
 
-            ICSBondCurve.BondCurveIntervalInput[]
+            IBondCurve.BondCurveIntervalInput[]
                 memory legacyEaBondCurve = CommonScriptUtils
                     .arraysToBondCurveIntervalsInputs(config.legacyEaBondCurve);
             accounting.addBondCurve(legacyEaBondCurve);
 
             if (config.extraBondCurves.length > 0) {
                 for (uint256 i = 0; i < config.extraBondCurves.length; i++) {
-                    ICSBondCurve.BondCurveIntervalInput[]
+                    IBondCurve.BondCurveIntervalInput[]
                         memory extraBondCurve = CommonScriptUtils
                             .arraysToBondCurveIntervalsInputs(
                                 config.extraBondCurves[i]
@@ -318,7 +316,7 @@ abstract contract DeployBase is Script {
                 }
             }
 
-            ICSBondCurve.BondCurveIntervalInput[]
+            IBondCurve.BondCurveIntervalInput[]
                 memory identifiedCommunityStakersGateBondCurve = CommonScriptUtils
                     .arraysToBondCurveIntervalsInputs(
                         config.identifiedCommunityStakersGateBondCurve
@@ -330,7 +328,7 @@ abstract contract DeployBase is Script {
                 address(deployer)
             );
 
-            exitPenalties = CSExitPenalties(
+            exitPenalties = ExitPenalties(
                 _deployProxy(deployer, address(dummyImpl))
             );
 
@@ -352,18 +350,18 @@ abstract contract DeployBase is Script {
 
             csm.initialize({ admin: deployer });
 
-            CSStrikes strikesImpl = new CSStrikes({
+            ValidatorStrikes strikesImpl = new ValidatorStrikes({
                 module: address(csm),
                 oracle: address(oracle),
                 exitPenalties: address(exitPenalties),
                 parametersRegistry: address(parametersRegistry)
             });
 
-            strikes = CSStrikes(
+            strikes = ValidatorStrikes(
                 _deployProxy(config.proxyAdmin, address(strikesImpl))
             );
 
-            CSExitPenalties exitPenaltiesImpl = new CSExitPenalties(
+            ExitPenalties exitPenaltiesImpl = new ExitPenalties(
                 address(csm),
                 address(parametersRegistry),
                 address(strikes)
@@ -377,7 +375,7 @@ abstract contract DeployBase is Script {
                 exitPenaltiesProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
-            ejector = new CSEjector(
+            ejector = new Ejector(
                 address(csm),
                 address(strikes),
                 config.stakingModuleId,
@@ -497,7 +495,7 @@ abstract contract DeployBase is Script {
                 address(deployer)
             );
 
-            CSFeeOracle oracleImpl = new CSFeeOracle({
+            FeeOracle oracleImpl = new FeeOracle({
                 feeDistributor: address(feeDistributor),
                 strikes: address(strikes),
                 secondsPerSlot: config.secondsPerSlot,
@@ -674,24 +672,24 @@ abstract contract DeployBase is Script {
             deployJson.set("ChainId", chainId);
             deployJson.set("CSModule", address(csm));
             deployJson.set("CSModuleImpl", address(csmImpl));
-            deployJson.set("CSParametersRegistry", address(parametersRegistry));
+            deployJson.set("ParametersRegistry", address(parametersRegistry));
             deployJson.set(
-                "CSParametersRegistryImpl",
+                "ParametersRegistryImpl",
                 address(parametersRegistryImpl)
             );
-            deployJson.set("CSAccounting", address(accounting));
-            deployJson.set("CSAccountingImpl", address(accountingImpl));
-            deployJson.set("CSFeeOracle", address(oracle));
-            deployJson.set("CSFeeOracleImpl", address(oracleImpl));
-            deployJson.set("CSFeeDistributor", address(feeDistributor));
-            deployJson.set("CSFeeDistributorImpl", address(feeDistributorImpl));
-            deployJson.set("CSExitPenalties", address(exitPenalties));
-            deployJson.set("CSExitPenaltiesImpl", address(exitPenaltiesImpl));
-            deployJson.set("CSEjector", address(ejector));
-            deployJson.set("CSStrikes", address(strikes));
-            deployJson.set("CSStrikesImpl", address(strikesImpl));
+            deployJson.set("Accounting", address(accounting));
+            deployJson.set("AccountingImpl", address(accountingImpl));
+            deployJson.set("FeeOracle", address(oracle));
+            deployJson.set("FeeOracleImpl", address(oracleImpl));
+            deployJson.set("FeeDistributor", address(feeDistributor));
+            deployJson.set("FeeDistributorImpl", address(feeDistributorImpl));
+            deployJson.set("ExitPenalties", address(exitPenalties));
+            deployJson.set("ExitPenaltiesImpl", address(exitPenaltiesImpl));
+            deployJson.set("Ejector", address(ejector));
+            deployJson.set("ValidatorStrikes", address(strikes));
+            deployJson.set("ValidatorStrikesImpl", address(strikesImpl));
             deployJson.set("HashConsensus", address(hashConsensus));
-            deployJson.set("CSVerifier", address(verifier));
+            deployJson.set("Verifier", address(verifier));
             deployJson.set("PermissionlessGate", address(permissionlessGate));
             deployJson.set("VettedGateFactory", address(vettedGateFactory));
             deployJson.set("VettedGate", address(vettedGate));

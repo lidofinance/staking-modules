@@ -1,25 +1,26 @@
 # NodeOperator
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/interfaces/ICSModule.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/ICSModule.sol)
 
 
 ```solidity
 struct NodeOperator {
-    uint32 totalAddedKeys;
-    uint32 totalWithdrawnKeys;
-    uint32 totalDepositedKeys;
-    uint32 totalVettedKeys;
-    uint32 stuckValidatorsCount;
-    uint32 depositableValidatorsCount;
-    uint32 targetLimit;
-    uint8 targetLimitMode;
-    uint32 totalExitedKeys;
-    uint32 enqueuedCount;
-    address managerAddress;
-    address proposedManagerAddress;
-    address rewardAddress;
-    address proposedRewardAddress;
-    bool extendedManagerPermissions;
-    bool usedPriorityQueue;
+// All the counters below are used together e.g. in the _updateDepositableValidatorsCount
+/* 1 */ uint32 totalAddedKeys; // @dev increased and decreased when removed
+/* 1 */ uint32 totalWithdrawnKeys; // @dev only increased
+/* 1 */ uint32 totalDepositedKeys; // @dev only increased
+/* 1 */ uint32 totalVettedKeys; // @dev both increased and decreased
+/* 1 */ uint32 stuckValidatorsCount; // @dev both increased and decreased
+/* 1 */ uint32 depositableValidatorsCount; // @dev any value
+/* 1 */ uint32 targetLimit;
+/* 1 */ uint8 targetLimitMode;
+/* 2 */ uint32 totalExitedKeys; // @dev only increased except for the unsafe updates
+/* 2 */ uint32 enqueuedCount; // Tracks how many places are occupied by the node operator's keys in the queue.
+/* 2 */ address managerAddress;
+/* 3 */ address proposedManagerAddress;
+/* 4 */ address rewardAddress;
+/* 5 */ address proposedRewardAddress;
+/* 5 */ bool extendedManagerPermissions;
+/* 5 */ bool usedPriorityQueue; // @dev no longer used, left for the storage layout compatibility
 }
 ```
 

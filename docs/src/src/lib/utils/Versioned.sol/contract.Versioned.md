@@ -1,26 +1,26 @@
 # Versioned
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/lib/utils/Versioned.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/lib/utils/Versioned.sol)
 
 
 ## State Variables
 ### CONTRACT_VERSION_POSITION
-*Storage slot: uint256 version
+Storage slot: uint256 version
 Version of the initialized contract storage.
 The version stored in CONTRACT_VERSION_POSITION equals to:
 - 0 right after the deployment, before an initializer is invoked (and only at that moment);
 - N after calling initialize(), where N is the initially deployed contract version;
-- N after upgrading contract by calling finalizeUpgrade_vN().*
+- N after upgrading contract by calling finalizeUpgrade_vN().
 
 
 ```solidity
-bytes32 internal constant CONTRACT_VERSION_POSITION = keccak256("lido.Versioned.contractVersion");
+bytes32 internal constant CONTRACT_VERSION_POSITION = keccak256("lido.Versioned.contractVersion")
 ```
 
 
 ### PETRIFIED_VERSION_MARK
 
 ```solidity
-uint256 internal constant PETRIFIED_VERSION_MARK = type(uint256).max;
+uint256 internal constant PETRIFIED_VERSION_MARK = type(uint256).max
 ```
 
 
@@ -29,7 +29,7 @@ uint256 internal constant PETRIFIED_VERSION_MARK = type(uint256).max;
 
 
 ```solidity
-constructor();
+constructor() ;
 ```
 
 ### getContractVersion
@@ -43,7 +43,7 @@ function getContractVersion() public view returns (uint256);
 
 ### _initializeContractVersionTo
 
-*Sets the contract version to N. Should be called from the initialize() function.*
+Sets the contract version to N. Should be called from the initialize() function.
 
 
 ```solidity
@@ -52,7 +52,7 @@ function _initializeContractVersionTo(uint256 version) internal;
 
 ### _updateContractVersion
 
-*Updates the contract version. Should be called from a finalizeUpgrade_vN() function.*
+Updates the contract version. Should be called from a finalizeUpgrade_vN() function.
 
 
 ```solidity

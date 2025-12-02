@@ -1,5 +1,5 @@
 # PausableUntil
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/lib/utils/PausableUntil.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/lib/utils/PausableUntil.sol)
 
 
 ## State Variables
@@ -8,7 +8,7 @@ Contract resume/pause control storage slot
 
 
 ```solidity
-bytes32 internal constant RESUME_SINCE_TIMESTAMP_POSITION = keccak256("lido.PausableUntil.resumeSinceTimestamp");
+bytes32 internal constant RESUME_SINCE_TIMESTAMP_POSITION = keccak256("lido.PausableUntil.resumeSinceTimestamp")
 ```
 
 
@@ -17,7 +17,7 @@ Special value for the infinite pause
 
 
 ```solidity
-uint256 public constant PAUSE_INFINITELY = type(uint256).max;
+uint256 public constant PAUSE_INFINITELY = type(uint256).max
 ```
 
 
@@ -28,7 +28,7 @@ Reverts when resumed
 
 
 ```solidity
-modifier whenPaused();
+modifier whenPaused() ;
 ```
 
 ### whenResumed
@@ -37,7 +37,7 @@ Reverts when paused
 
 
 ```solidity
-modifier whenResumed();
+modifier whenResumed() ;
 ```
 
 ### getResumeSinceTimestamp

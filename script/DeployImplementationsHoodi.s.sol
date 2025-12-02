@@ -6,10 +6,10 @@ pragma solidity 0.8.24;
 import { DeployImplementationsBase } from "./DeployImplementationsBase.s.sol";
 import { HashConsensus } from "../src/lib/base-oracle/HashConsensus.sol";
 import { CSModule } from "../src/CSModule.sol";
-import { CSAccounting } from "../src/CSAccounting.sol";
-import { CSFeeDistributor } from "../src/CSFeeDistributor.sol";
-import { CSFeeOracle } from "../src/CSFeeOracle.sol";
-import { CSVerifier } from "../src/CSVerifier.sol";
+import { Accounting } from "../src/Accounting.sol";
+import { FeeDistributor } from "../src/FeeDistributor.sol";
+import { FeeOracle } from "../src/FeeOracle.sol";
+import { Verifier } from "../src/Verifier.sol";
 import { DeploymentHelpers } from "../test/helpers/Fixtures.sol";
 import { DeployHoodi } from "./DeployHoodi.s.sol";
 
@@ -32,11 +32,11 @@ contract DeployImplementationsHoodi is
 
         csm = CSModule(deploymentConfig.csm);
         earlyAdoption = deploymentConfig.earlyAdoption;
-        accounting = CSAccounting(deploymentConfig.accounting);
-        oracle = CSFeeOracle(deploymentConfig.oracle);
-        feeDistributor = CSFeeDistributor(deploymentConfig.feeDistributor);
+        accounting = Accounting(deploymentConfig.accounting);
+        oracle = FeeOracle(deploymentConfig.oracle);
+        feeDistributor = FeeDistributor(deploymentConfig.feeDistributor);
         hashConsensus = HashConsensus(deploymentConfig.hashConsensus);
-        verifier = CSVerifier(deploymentConfig.verifier);
+        verifier = Verifier(deploymentConfig.verifier);
         gateSeal = deploymentConfig.gateSeal;
 
         _deploy();

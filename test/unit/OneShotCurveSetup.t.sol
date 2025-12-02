@@ -7,24 +7,24 @@ import { Test } from "forge-std/Test.sol";
 
 import { OneShotCurveSetup } from "src/utils/OneShotCurveSetup.sol";
 import { IOneShotCurveSetup } from "src/interfaces/IOneShotCurveSetup.sol";
-import { ICSBondCurve } from "src/interfaces/ICSBondCurve.sol";
-import { ICSParametersRegistry } from "src/interfaces/ICSParametersRegistry.sol";
-import { CSAccountingMock } from "../helpers/mocks/CSAccountingMock.sol";
-import { CSParametersRegistryMock } from "../helpers/mocks/CSParametersRegistryMock.sol";
+import { IBondCurve } from "src/interfaces/IBondCurve.sol";
+import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
+import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
+import { ParametersRegistryMock } from "../helpers/mocks/ParametersRegistryMock.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 
 contract OneShotCurveSetupTest is Test, Utilities {
-    CSAccountingMock internal accounting;
-    CSParametersRegistryMock internal registry;
+    AccountingMock internal accounting;
+    ParametersRegistryMock internal registry;
 
     function setUp() public {
-        accounting = new CSAccountingMock(
+        accounting = new AccountingMock(
             1 ether,
             address(0),
             address(0),
             address(0)
         );
-        registry = new CSParametersRegistryMock();
+        registry = new ParametersRegistryMock();
     }
 
     function test_constructor_revertWhen_ZeroAccountingAddress() external {
@@ -98,13 +98,13 @@ contract OneShotCurveSetupTest is Test, Utilities {
         expectNoCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setKeyRemovalCharge.selector
+                ParametersRegistryMock.setKeyRemovalCharge.selector
             )
         );
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock
+                ParametersRegistryMock
                     .setGeneralDelayedPenaltyAdditionalFine
                     .selector,
                 1,
@@ -114,7 +114,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setKeysLimit.selector,
+                ParametersRegistryMock.setKeysLimit.selector,
                 1,
                 params.keysLimit.value
             )
@@ -122,7 +122,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setQueueConfig.selector,
+                ParametersRegistryMock.setQueueConfig.selector,
                 1,
                 params.queueConfig.priority,
                 params.queueConfig.maxDeposits
@@ -131,49 +131,49 @@ contract OneShotCurveSetupTest is Test, Utilities {
         expectNoCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setRewardShareData.selector
+                ParametersRegistryMock.setRewardShareData.selector
             )
         );
         expectNoCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setPerformanceLeewayData.selector
+                ParametersRegistryMock.setPerformanceLeewayData.selector
             )
         );
         expectNoCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setStrikesParams.selector
+                ParametersRegistryMock.setStrikesParams.selector
             )
         );
         expectNoCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setBadPerformancePenalty.selector
+                ParametersRegistryMock.setBadPerformancePenalty.selector
             )
         );
         expectNoCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setPerformanceCoefficients.selector
+                ParametersRegistryMock.setPerformanceCoefficients.selector
             )
         );
         expectNoCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setAllowedExitDelay.selector
+                ParametersRegistryMock.setAllowedExitDelay.selector
             )
         );
         expectNoCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setExitDelayFee.selector
+                ParametersRegistryMock.setExitDelayFee.selector
             )
         );
         expectNoCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setMaxWithdrawalRequestFee.selector
+                ParametersRegistryMock.setMaxWithdrawalRequestFee.selector
             )
         );
 
@@ -194,7 +194,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setKeyRemovalCharge.selector,
+                ParametersRegistryMock.setKeyRemovalCharge.selector,
                 1,
                 params.keyRemovalCharge.value
             )
@@ -217,7 +217,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock
+                ParametersRegistryMock
                     .setGeneralDelayedPenaltyAdditionalFine
                     .selector,
                 1,
@@ -242,7 +242,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setKeysLimit.selector,
+                ParametersRegistryMock.setKeysLimit.selector,
                 1,
                 params.keysLimit.value
             )
@@ -265,7 +265,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setQueueConfig.selector,
+                ParametersRegistryMock.setQueueConfig.selector,
                 1,
                 params.queueConfig.priority,
                 params.queueConfig.maxDeposits
@@ -289,7 +289,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setRewardShareData.selector,
+                ParametersRegistryMock.setRewardShareData.selector,
                 1,
                 params.rewardShareData.data
             )
@@ -312,7 +312,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setPerformanceLeewayData.selector,
+                ParametersRegistryMock.setPerformanceLeewayData.selector,
                 1,
                 params.performanceLeewayData.data
             )
@@ -335,7 +335,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setStrikesParams.selector,
+                ParametersRegistryMock.setStrikesParams.selector,
                 1,
                 params.strikesParams.lifetime,
                 params.strikesParams.threshold
@@ -359,7 +359,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setBadPerformancePenalty.selector,
+                ParametersRegistryMock.setBadPerformancePenalty.selector,
                 1,
                 params.badPerformancePenalty.value
             )
@@ -386,7 +386,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setPerformanceCoefficients.selector,
+                ParametersRegistryMock.setPerformanceCoefficients.selector,
                 1,
                 params.performanceCoefficients.attestationsWeight,
                 params.performanceCoefficients.blocksWeight,
@@ -411,7 +411,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setAllowedExitDelay.selector,
+                ParametersRegistryMock.setAllowedExitDelay.selector,
                 1,
                 params.allowedExitDelay.value
             )
@@ -434,7 +434,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setExitDelayFee.selector,
+                ParametersRegistryMock.setExitDelayFee.selector,
                 1,
                 params.exitDelayFee.value
             )
@@ -457,7 +457,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setMaxWithdrawalRequestFee.selector,
+                ParametersRegistryMock.setMaxWithdrawalRequestFee.selector,
                 1,
                 params.maxWithdrawalRequestFee.value
             )
@@ -500,7 +500,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setKeyRemovalCharge.selector,
+                ParametersRegistryMock.setKeyRemovalCharge.selector,
                 expectedCurveId,
                 params.keyRemovalCharge.value
             )
@@ -508,7 +508,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock
+                ParametersRegistryMock
                     .setGeneralDelayedPenaltyAdditionalFine
                     .selector,
                 expectedCurveId,
@@ -518,7 +518,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setKeysLimit.selector,
+                ParametersRegistryMock.setKeysLimit.selector,
                 expectedCurveId,
                 params.keysLimit.value
             )
@@ -526,7 +526,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setQueueConfig.selector,
+                ParametersRegistryMock.setQueueConfig.selector,
                 expectedCurveId,
                 params.queueConfig.priority,
                 params.queueConfig.maxDeposits
@@ -535,7 +535,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setRewardShareData.selector,
+                ParametersRegistryMock.setRewardShareData.selector,
                 expectedCurveId,
                 params.rewardShareData.data
             )
@@ -543,7 +543,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setPerformanceLeewayData.selector,
+                ParametersRegistryMock.setPerformanceLeewayData.selector,
                 expectedCurveId,
                 params.performanceLeewayData.data
             )
@@ -551,7 +551,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setStrikesParams.selector,
+                ParametersRegistryMock.setStrikesParams.selector,
                 expectedCurveId,
                 params.strikesParams.lifetime,
                 params.strikesParams.threshold
@@ -560,7 +560,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setBadPerformancePenalty.selector,
+                ParametersRegistryMock.setBadPerformancePenalty.selector,
                 expectedCurveId,
                 params.badPerformancePenalty.value
             )
@@ -568,7 +568,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setPerformanceCoefficients.selector,
+                ParametersRegistryMock.setPerformanceCoefficients.selector,
                 expectedCurveId,
                 params.performanceCoefficients.attestationsWeight,
                 params.performanceCoefficients.blocksWeight,
@@ -578,7 +578,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setAllowedExitDelay.selector,
+                ParametersRegistryMock.setAllowedExitDelay.selector,
                 expectedCurveId,
                 params.allowedExitDelay.value
             )
@@ -586,7 +586,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setExitDelayFee.selector,
+                ParametersRegistryMock.setExitDelayFee.selector,
                 expectedCurveId,
                 params.exitDelayFee.value
             )
@@ -594,7 +594,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                CSParametersRegistryMock.setMaxWithdrawalRequestFee.selector,
+                ParametersRegistryMock.setMaxWithdrawalRequestFee.selector,
                 expectedCurveId,
                 params.maxWithdrawalRequestFee.value
             )
@@ -668,14 +668,14 @@ contract OneShotCurveSetupTest is Test, Utilities {
     function _bondCurve()
         internal
         pure
-        returns (ICSBondCurve.BondCurveIntervalInput[] memory curve)
+        returns (IBondCurve.BondCurveIntervalInput[] memory curve)
     {
-        curve = new ICSBondCurve.BondCurveIntervalInput[](2);
-        curve[0] = ICSBondCurve.BondCurveIntervalInput({
+        curve = new IBondCurve.BondCurveIntervalInput[](2);
+        curve[0] = IBondCurve.BondCurveIntervalInput({
             minKeysCount: 1,
             trend: 1 ether
         });
-        curve[1] = ICSBondCurve.BondCurveIntervalInput({
+        curve[1] = IBondCurve.BondCurveIntervalInput({
             minKeysCount: 11,
             trend: 1.5 ether
         });
@@ -692,10 +692,8 @@ contract OneShotCurveSetupTest is Test, Utilities {
         )
     {
         overrideData.isSet = true;
-        overrideData.data = new ICSParametersRegistry.KeyNumberValueInterval[](
-            1
-        );
-        overrideData.data[0] = ICSParametersRegistry.KeyNumberValueInterval({
+        overrideData.data = new IParametersRegistry.KeyNumberValueInterval[](1);
+        overrideData.data[0] = IParametersRegistry.KeyNumberValueInterval({
             minKeyNumber: 1,
             value: value
         });
@@ -757,7 +755,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
     }
 
     function _expectBondCurveAddition(
-        ICSBondCurve.BondCurveIntervalInput[] memory curve
+        IBondCurve.BondCurveIntervalInput[] memory curve
     ) internal {
         vm.expectCall(
             address(accounting),

@@ -1,5 +1,5 @@
 # IStakingRouter
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/interfaces/IStakingRouter.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IStakingRouter.sol)
 
 
 ## Functions
@@ -632,7 +632,9 @@ event StakingModuleFeesSet(
 ### StakingModuleMaxDepositsPerBlockSet
 
 ```solidity
-event StakingModuleMaxDepositsPerBlockSet(uint256 indexed stakingModuleId, uint256 maxDepositsPerBlock, address setBy);
+event StakingModuleMaxDepositsPerBlockSet(
+    uint256 indexed stakingModuleId, uint256 maxDepositsPerBlock, address setBy
+);
 ```
 
 ### StakingModuleMinDepositBlockDistanceSet
@@ -763,7 +765,9 @@ error NonZeroContractVersionOnInit();
 ### ReportedExitedValidatorsExceedDeposited
 
 ```solidity
-error ReportedExitedValidatorsExceedDeposited(uint256 reportedExitedValidatorsCount, uint256 depositedValidatorsCount);
+error ReportedExitedValidatorsExceedDeposited(
+    uint256 reportedExitedValidatorsCount, uint256 depositedValidatorsCount
+);
 ```
 
 ### StakingModuleAddressExists

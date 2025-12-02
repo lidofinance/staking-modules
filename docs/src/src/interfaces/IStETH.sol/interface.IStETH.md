@@ -1,5 +1,8 @@
 # IStETH
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/interfaces/IStETH.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IStETH.sol)
+
+**Inherits:**
+[IERC20Permit](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IERC20Permit.sol/interface.IERC20Permit.md)
 
 
 ## Functions
@@ -7,7 +10,7 @@
 
 Get stETH amount by the provided shares amount
 
-*dual to `getSharesByPooledEth`.*
+dual to `getSharesByPooledEth`.
 
 
 ```solidity
@@ -24,7 +27,7 @@ function getPooledEthByShares(uint256 _sharesAmount) external view returns (uint
 
 Get shares amount by the provided stETH amount
 
-*dual to `getPooledEthByShares`.*
+dual to `getPooledEthByShares`.
 
 
 ```solidity
@@ -52,13 +55,6 @@ function sharesOf(address _account) external view returns (uint256);
 |`_account`|`address`|provided account address.|
 
 
-### balanceOf
-
-
-```solidity
-function balanceOf(address _account) external view returns (uint256);
-```
-
 ### transferSharesFrom
 
 Transfer `_sharesAmount` stETH shares from `_sender` to `_recipient` using allowance.
@@ -75,45 +71,5 @@ Moves `_sharesAmount` token shares from the caller's account to the `_recipient`
 
 ```solidity
 function transferShares(address _recipient, uint256 _sharesAmount) external returns (uint256);
-```
-
-### transfer
-
-Moves `_amount` stETH from the caller's account to the `_recipient` account.
-
-
-```solidity
-function transfer(address _recipient, uint256 _amount) external returns (bool);
-```
-
-### transferFrom
-
-Moves `_amount` stETH from the `_sender` account to the `_recipient` account.
-
-
-```solidity
-function transferFrom(address _sender, address _recipient, uint256 _amount) external returns (bool);
-```
-
-### approve
-
-
-```solidity
-function approve(address _spender, uint256 _amount) external returns (bool);
-```
-
-### permit
-
-
-```solidity
-function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
-    external;
-```
-
-### allowance
-
-
-```solidity
-function allowance(address _owner, address _spender) external view returns (uint256);
 ```
 

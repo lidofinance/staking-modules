@@ -1,5 +1,5 @@
 # SigningKeys
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/lib/SigningKeys.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/lib/SigningKeys.sol)
 
 **Author:**
 KRogLA
@@ -9,28 +9,28 @@ KRogLA
 ### SIGNING_KEYS_POSITION
 
 ```solidity
-bytes32 internal constant SIGNING_KEYS_POSITION = keccak256("lido.CommunityStakingModule.signingKeysPosition");
+bytes32 internal constant SIGNING_KEYS_POSITION = keccak256("lido.CommunityStakingModule.signingKeysPosition")
 ```
 
 
 ### PUBKEY_LENGTH
 
 ```solidity
-uint64 internal constant PUBKEY_LENGTH = 48;
+uint64 internal constant PUBKEY_LENGTH = 48
 ```
 
 
 ### SIGNATURE_LENGTH
 
 ```solidity
-uint64 internal constant SIGNATURE_LENGTH = 96;
+uint64 internal constant SIGNATURE_LENGTH = 96
 ```
 
 
 ## Functions
 ### saveKeysSigs
 
-*store operator keys to storage*
+store operator keys to storage
 
 
 ```solidity
@@ -61,7 +61,7 @@ function saveKeysSigs(
 
 ### removeKeysSigs
 
-*remove operator keys from storage*
+remove operator keys from storage
 
 
 ```solidity
@@ -87,9 +87,9 @@ function removeKeysSigs(uint256 nodeOperatorId, uint256 startIndex, uint256 keys
 
 ### loadKeysSigs
 
-*Load operator's keys and signatures from the storage to the given in-memory arrays.*
+Load operator's keys and signatures from the storage to the given in-memory arrays.
 
-*The function doesn't check for `pubkeys` and `signatures` out of boundaries access.*
+The function doesn't check for `pubkeys` and `signatures` out of boundaries access.
 
 
 ```solidity

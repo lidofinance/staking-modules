@@ -71,7 +71,7 @@ contract DeployHoodi is DeployBase {
         config
             .generalDelayedPenaltyReporter = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
 
-        // CSParameters
+        // ParametersRegistry
         config.defaultKeyRemovalCharge = 0.02 ether;
         config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
         config.defaultKeysLimit = type(uint256).max;

@@ -1,8 +1,50 @@
 # ITriggerableWithdrawalsGateway
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/interfaces/ITriggerableWithdrawalsGateway.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/ITriggerableWithdrawalsGateway.sol)
 
 
 ## Functions
+### ADD_FULL_WITHDRAWAL_REQUEST_ROLE
+
+
+```solidity
+function ADD_FULL_WITHDRAWAL_REQUEST_ROLE() external view returns (bytes32);
+```
+
+### DEFAULT_ADMIN_ROLE
+
+
+```solidity
+function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
+```
+
+### getRoleMember
+
+
+```solidity
+function getRoleMember(bytes32 role, uint256 index) external view returns (address);
+```
+
+### grantRole
+
+
+```solidity
+function grantRole(bytes32 role, address account) external;
+```
+
+### revokeRole
+
+
+```solidity
+function revokeRole(bytes32 role, address account) external;
+```
+
+### hasRole
+
+
+```solidity
+function hasRole(bytes32 role, address account) external view returns (bool);
+```
+
 ### triggerFullWithdrawals
 
 Reverts if:
@@ -10,8 +52,8 @@ Reverts if:
 - The total fee value sent is insufficient to cover all provided TW requests.
 - There is not enough limit quota left in the current frame to process all requests.
 
-*Submits Triggerable Withdrawal Requests to the Withdrawal Vault as full withdrawal requests
-for the specified validator public keys.*
+Submits Triggerable Withdrawal Requests to the Withdrawal Vault as full withdrawal requests
+for the specified validator public keys.
 
 
 ```solidity

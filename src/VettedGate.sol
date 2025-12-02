@@ -10,7 +10,7 @@ import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
 
 import { PausableUntil } from "./lib/utils/PausableUntil.sol";
 
-import { ICSAccounting } from "./interfaces/ICSAccounting.sol";
+import { IAccounting } from "./interfaces/IAccounting.sol";
 import { ICSModule, NodeOperatorManagementProperties } from "./interfaces/ICSModule.sol";
 import { IMerkleGate } from "./interfaces/IMerkleGate.sol";
 import { IVettedGate } from "./interfaces/IVettedGate.sol";
@@ -33,8 +33,8 @@ contract VettedGate is
     /// @dev Address of the Staking Module
     ICSModule public immutable MODULE;
 
-    /// @dev Address of the CS Accounting
-    ICSAccounting public immutable ACCOUNTING;
+    /// @dev Address of the Accounting
+    IAccounting public immutable ACCOUNTING;
 
     /// @dev Id of the bond curve to be assigned for the eligible members
     uint256 public curveId;
@@ -72,7 +72,7 @@ contract VettedGate is
         }
 
         MODULE = ICSModule(module);
-        ACCOUNTING = ICSAccounting(MODULE.ACCOUNTING());
+        ACCOUNTING = IAccounting(MODULE.ACCOUNTING());
 
         _disableInitializers();
     }
@@ -189,7 +189,7 @@ contract VettedGate is
         bytes calldata publicKeys,
         bytes calldata signatures,
         NodeOperatorManagementProperties calldata managementProperties,
-        ICSAccounting.PermitInput calldata permit,
+        IAccounting.PermitInput calldata permit,
         bytes32[] calldata proof,
         address referrer
     ) external whenResumed returns (uint256 nodeOperatorId) {
@@ -219,7 +219,7 @@ contract VettedGate is
         bytes calldata publicKeys,
         bytes calldata signatures,
         NodeOperatorManagementProperties calldata managementProperties,
-        ICSAccounting.PermitInput calldata permit,
+        IAccounting.PermitInput calldata permit,
         bytes32[] calldata proof,
         address referrer
     ) external whenResumed returns (uint256 nodeOperatorId) {

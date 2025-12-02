@@ -1,17 +1,17 @@
 # AssetRecoverer
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/abstract/AssetRecoverer.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/abstract/AssetRecoverer.sol)
 
 Assets can be sent only to the `msg.sender`
 
-*Abstract contract providing mechanisms for recovering various asset types (ETH, ERC20, ERC721, ERC1155) from a contract.
-This contract is designed to allow asset recovery by an authorized address by implementing the onlyRecovererRole guardian*
+Abstract contract providing mechanisms for recovering various asset types (ETH, ERC20, ERC721, ERC1155) from a contract.
+This contract is designed to allow asset recovery by an authorized address by implementing the onlyRecovererRole guardian
 
 
 ## Functions
 ### recoverEther
 
-*Allows sender to recover Ether held by the contract
-Emits an EtherRecovered event upon success*
+Allows sender to recover Ether held by the contract
+Emits an EtherRecovered event upon success
 
 
 ```solidity
@@ -20,7 +20,7 @@ function recoverEther() external;
 
 ### recoverERC20
 
-*Allows sender to recover ERC20 tokens held by the contract*
+Allows sender to recover ERC20 tokens held by the contract
 
 
 ```solidity
@@ -36,7 +36,7 @@ function recoverERC20(address token, uint256 amount) external virtual;
 
 ### recoverERC721
 
-*Allows sender to recover ERC721 tokens held by the contract*
+Allows sender to recover ERC721 tokens held by the contract
 
 
 ```solidity
@@ -52,7 +52,7 @@ function recoverERC721(address token, uint256 tokenId) external;
 
 ### recoverERC1155
 
-*Allows sender to recover ERC1155 tokens held by the contract.*
+Allows sender to recover ERC1155 tokens held by the contract.
 
 
 ```solidity
@@ -68,8 +68,8 @@ function recoverERC1155(address token, uint256 tokenId) external;
 
 ### _onlyRecoverer
 
-*Guardian to restrict access to the recover methods.
-Should be implemented by the inheriting contract*
+Guardian to restrict access to the recover methods.
+Should be implemented by the inheriting contract
 
 
 ```solidity
