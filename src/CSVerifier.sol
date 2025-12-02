@@ -11,7 +11,7 @@ import { GIndex } from "./lib/GIndex.sol";
 import { SSZ } from "./lib/SSZ.sol";
 
 import { ICSVerifier } from "./interfaces/ICSVerifier.sol";
-import { ICSModule, ValidatorWithdrawalInfo } from "./interfaces/ICSModule.sol";
+import { ICSModule, WithdrawnValidatorInfo } from "./interfaces/ICSModule.sol";
 
 /// @notice Convert withdrawal amount to wei
 /// @param withdrawal Withdrawal struct
@@ -96,9 +96,6 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
 
     /// @dev Staking module contract.
     ICSModule public immutable MODULE;
-
-    /// @dev Placeholder for slashing penalty value in ValidatorWithdrawalInfo.
-    uint256 internal constant NO_SLASHING_PENALTY = 0;
 
     /// @dev The previous and current forks can be essentially the same.
     constructor(
@@ -281,13 +278,14 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
             data.withdrawalBlock.header
         );
 
-        _submitSingleWithdrawal(
-            ValidatorWithdrawalInfo(
-                data.validator.nodeOperatorId,
-                data.validator.keyIndex,
-                withdrawalAmount,
-                NO_SLASHING_PENALTY
-            )
+        _reportSingleValidator(
+            WithdrawnValidatorInfo({
+                nodeOperatorId: data.validator.nodeOperatorId,
+                keyIndex: data.validator.keyIndex,
+                exitBalance: withdrawalAmount,
+                slashingPenalty: 0,
+                isSlashed: false
+            })
         );
     }
 
@@ -341,13 +339,14 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
             data.withdrawalBlock.header
         );
 
-        _submitSingleWithdrawal(
-            ValidatorWithdrawalInfo(
-                data.validator.nodeOperatorId,
-                data.validator.keyIndex,
-                withdrawalAmount,
-                NO_SLASHING_PENALTY
-            )
+        _reportSingleValidator(
+            WithdrawnValidatorInfo({
+                nodeOperatorId: data.validator.nodeOperatorId,
+                keyIndex: data.validator.keyIndex,
+                exitBalance: withdrawalAmount,
+                slashingPenalty: 0,
+                isSlashed: false
+            })
         );
     }
 
@@ -443,23 +442,24 @@ contract CSVerifier is ICSVerifier, AccessControlEnumerable, PausableUntil {
             proof: data.balance.proof
         });
 
-        _submitSingleWithdrawal(
-            ValidatorWithdrawalInfo(
-                data.validator.nodeOperatorId,
-                data.validator.keyIndex,
-                gweiToWei(balanceGwei),
-                NO_SLASHING_PENALTY
-            )
+        _reportSingleValidator(
+            WithdrawnValidatorInfo({
+                nodeOperatorId: data.validator.nodeOperatorId,
+                keyIndex: data.validator.keyIndex,
+                exitBalance: gweiToWei(balanceGwei),
+                slashingPenalty: 0,
+                isSlashed: false
+            })
         );
     }
 
-    function _submitSingleWithdrawal(
-        ValidatorWithdrawalInfo memory info
+    function _reportSingleValidator(
+        WithdrawnValidatorInfo memory info
     ) internal {
-        ValidatorWithdrawalInfo[]
-            memory withdrawalsInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalsInfo[0] = info;
-        MODULE.submitWithdrawals(withdrawalsInfo);
+        WithdrawnValidatorInfo[]
+            memory validatorExits = new WithdrawnValidatorInfo[](1);
+        validatorExits[0] = info;
+        MODULE.reportWithdrawnValidators(validatorExits);
     }
 
     function _getParentBlockRoot(

@@ -161,7 +161,7 @@ interface ICSVerifier {
 
     /// @notice Verify withdrawal proof and report withdrawal to the module for valid proofs
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
-    /// determining the exact penalty amounts and calling the `ICSModule.submitWithdrawals` method via an EasyTrack
+    /// determining the exact penalty amounts and calling the `ICSModule.reportWithdrawnValidators` method via an EasyTrack
     /// motion.
     /// @param data @see ProcessWithdrawalInput
     function processWithdrawalProof(
@@ -170,7 +170,7 @@ interface ICSVerifier {
 
     /// @notice Verify withdrawal proof against historical summaries data and report withdrawal to the module for valid proofs
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
-    /// determining the exact penalty amounts and calling the `ICSModule.submitWithdrawals` method via an EasyTrack
+    /// determining the exact penalty amounts and calling the `ICSModule.reportWithdrawnValidators` method via an EasyTrack
     /// motion.
     /// @param data @see ProcessHistoricalWithdrawalInput
     function processHistoricalWithdrawalProof(

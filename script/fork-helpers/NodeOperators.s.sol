@@ -9,7 +9,7 @@ import { ForkHelpersCommon } from "./Common.sol";
 import { IVEBO } from "../../src/interfaces/IVEBO.sol";
 import { Utilities } from "../../test/helpers/Utilities.sol";
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
-import { NodeOperator, ValidatorWithdrawalInfo } from "../../src/interfaces/ICSModule.sol";
+import { NodeOperator, WithdrawnValidatorInfo } from "../../src/interfaces/ICSModule.sol";
 
 contract NodeOperators is
     Script,
@@ -198,6 +198,10 @@ contract NodeOperators is
         assertEq(module.getNodeOperator(noId).totalExitedKeys, exitedKeysCount);
     }
 
+    function slash(uint256 noId, uint256 keyIndex) external broadcastVerifier {
+        module.onValidatorSlashed(noId, keyIndex);
+    }
+
     function withdraw(
         uint256 noId,
         uint256 keyIndex,
@@ -208,15 +212,16 @@ contract NodeOperators is
             .getNodeOperator(noId)
             .totalWithdrawnKeys;
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(
+        WithdrawnValidatorInfo[]
+            memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo(
             noId,
             keyIndex,
             exitBalance,
-            slashingPenalty
+            slashingPenalty,
+            slashingPenalty > 0
         );
-        module.submitWithdrawals(withdrawalInfo);
+        module.reportWithdrawnValidators(validatorInfos);
 
         assertTrue(module.isValidatorWithdrawn(noId, keyIndex));
         assertEq(

@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
 import { Test } from "forge-std/Test.sol";
 
 import { ICSVerifier } from "src/interfaces/ICSVerifier.sol";
-import { ICSModule, ValidatorWithdrawalInfo } from "src/interfaces/ICSModule.sol";
+import { ICSModule, WithdrawnValidatorInfo } from "src/interfaces/ICSModule.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 
 import { CSVerifier } from "src/CSVerifier.sol";
@@ -72,7 +72,9 @@ contract CSVerifierHistoricalBase is Test, Utilities {
 
         vm.mockCall(
             address(module),
-            abi.encodeWithSelector(ICSModule.submitWithdrawals.selector),
+            abi.encodeWithSelector(
+                ICSModule.reportWithdrawnValidators.selector
+            ),
             ""
         );
     }
@@ -126,19 +128,20 @@ contract CSVerifierHistoricalTest is CSVerifierHistoricalBase {
     }
 
     function test_processHistoricalWithdrawalProof_HappyPath() public {
-        ValidatorWithdrawalInfo[]
-            memory withdrawals = new ValidatorWithdrawalInfo[](1);
-        withdrawals[0] = ValidatorWithdrawalInfo({
+        WithdrawnValidatorInfo[]
+            memory withdrawals = new WithdrawnValidatorInfo[](1);
+        withdrawals[0] = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
             exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0
+            slashingPenalty: 0,
+            isSlashed: false
         });
 
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.submitWithdrawals.selector,
+                ICSModule.reportWithdrawnValidators.selector,
                 withdrawals
             )
         );
@@ -315,19 +318,20 @@ contract CSVerifierCrossForkHistoricalTest is CSVerifierHistoricalBase {
     }
 
     function test_processHistoricalWithdrawalProof_HappyPath() public {
-        ValidatorWithdrawalInfo[]
-            memory withdrawals = new ValidatorWithdrawalInfo[](1);
-        withdrawals[0] = ValidatorWithdrawalInfo({
+        WithdrawnValidatorInfo[]
+            memory withdrawals = new WithdrawnValidatorInfo[](1);
+        withdrawals[0] = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
             exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0
+            slashingPenalty: 0,
+            isSlashed: false
         });
 
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.submitWithdrawals.selector,
+                ICSModule.reportWithdrawnValidators.selector,
                 withdrawals
             )
         );
@@ -373,19 +377,20 @@ contract CSVerifierCrossForkHistoricalAtPivotSlotTest is
     }
 
     function test_processHistoricalWithdrawalProof_HappyPath() public {
-        ValidatorWithdrawalInfo[]
-            memory withdrawals = new ValidatorWithdrawalInfo[](1);
-        withdrawals[0] = ValidatorWithdrawalInfo({
+        WithdrawnValidatorInfo[]
+            memory withdrawals = new WithdrawnValidatorInfo[](1);
+        withdrawals[0] = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
             exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0
+            slashingPenalty: 0,
+            isSlashed: false
         });
 
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.submitWithdrawals.selector,
+                ICSModule.reportWithdrawnValidators.selector,
                 withdrawals
             )
         );

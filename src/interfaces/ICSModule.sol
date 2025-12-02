@@ -41,16 +41,17 @@ struct NodeOperatorManagementProperties {
     bool extendedManagerPermissions;
 }
 
-struct ValidatorWithdrawalInfo {
+struct WithdrawnValidatorInfo {
     uint256 nodeOperatorId;
     // Index of the withdrawn key in the Node Operator's keys storage.
     uint256 keyIndex;
     // Balance to be used to calculate penalties. For a regular withdrawal of a validator it's the withdrawal amount.
     // For a slashed validator it's its balance before slashing. The balance will be used to scale incurred penalties.
     uint256 exitBalance;
-    // Amount of ETH/stETH to penalize Node Operator due to slashing. If the value is non-zero, it means the validator
-    // was slashed.
+    // Amount of ETH/stETH to penalize Node Operator due to slashing.
     uint256 slashingPenalty;
+    // Whether the validator has been slashed.
+    bool isSlashed;
 }
 
 /// @title Lido's Community Staking Module interface
@@ -70,6 +71,7 @@ interface ICSModule is
     error ZeroExitBalance();
     error SlashingPenaltyIsNotApplicable();
     error ValidatorSlashingAlreadyReported();
+    error InvalidWithdrawnValidatorInfo();
 
     error InvalidInput();
     error NotEnoughKeys();
@@ -169,10 +171,6 @@ interface ICSModule is
     function RECOVERER_ROLE() external view returns (bytes32);
 
     function CREATE_NODE_OPERATOR_ROLE() external view returns (bytes32);
-
-    function MIN_ACTIVATION_BALANCE() external view returns (uint256);
-
-    function PENALTY_QUOTIENT() external view returns (uint256);
 
     function LIDO_LOCATOR() external view returns (ILidoLocator);
 
@@ -454,12 +452,19 @@ interface ICSModule is
         uint256 keyIndex
     ) external;
 
-    /// @notice Report Node Operator's keys as withdrawn and settle withdrawn amount
+    /// @notice Report Node Operator's keys as withdrawn and charge penalties associated with exit if any.
+    ///         A validator is considered withdrawn in the following cases:
+    ///         - if it's an exit of a non-slashed validator, when a withdrawal of the validator is included in a beacon
+    ///           block;
+    ///         - if it's an exit of a slashed validator, when the committee reports such a validator as withdrawn; note
+    ///           that it can happen earlier than the actual withdrawal is included on the beacon chain if the committee
+    ///           decides it can account for all penalties in advance;
+    ///         - if it's a consolidated validator, when the corresponding pending consolidation is processed and the
+    ///           balance of the validator has been moved to another validator.
     /// @notice Called by `CSVerifier` contract.
-    ///         See `CSVerifier.processWithdrawalProof` to use this method permissionless
-    /// @param withdrawalsInfo An array for the validator withdrawals info structs
-    function submitWithdrawals(
-        ValidatorWithdrawalInfo[] calldata withdrawalsInfo
+    /// @param validatorInfos An array WithdrawnValidatorInfo structs
+    function reportWithdrawnValidators(
+        WithdrawnValidatorInfo[] calldata validatorInfos
     ) external;
 
     /// @notice Checks if a validator was reported as slashed
