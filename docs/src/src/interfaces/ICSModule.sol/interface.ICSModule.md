@@ -1,8 +1,8 @@
 # ICSModule
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/interfaces/ICSModule.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/ICSModule.sol)
 
 **Inherits:**
-[IQueueLib](/src/lib/QueueLib.sol/interface.IQueueLib.md), [INOAddresses](/src/lib/NOAddresses.sol/interface.INOAddresses.md), [IAssetRecovererLib](/src/lib/AssetRecovererLib.sol/interface.IAssetRecovererLib.md), [IStakingModule](/src/interfaces/IStakingModule.sol/interface.IStakingModule.md)
+[IQueueLib](/Users/dgusakov/projects/community-staking-module/docs/src/src/lib/QueueLib.sol/interface.IQueueLib.md), [INOAddresses](/Users/dgusakov/projects/community-staking-module/docs/src/src/lib/NOAddresses.sol/interface.INOAddresses.md), [IAssetRecovererLib](/Users/dgusakov/projects/community-staking-module/docs/src/src/lib/AssetRecovererLib.sol/interface.IAssetRecovererLib.md), [IStakingModule](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IStakingModule.sol/interface.IStakingModule.md), [INodeOperatorOwner](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/INodeOperatorOwner.sol/interface.INodeOperatorOwner.md)
 
 
 ## Functions
@@ -27,18 +27,18 @@ function RESUME_ROLE() external view returns (bytes32);
 function STAKING_ROUTER_ROLE() external view returns (bytes32);
 ```
 
-### REPORT_EL_REWARDS_STEALING_PENALTY_ROLE
+### REPORT_GENERAL_DELAYED_PENALTY_ROLE
 
 
 ```solidity
-function REPORT_EL_REWARDS_STEALING_PENALTY_ROLE() external view returns (bytes32);
+function REPORT_GENERAL_DELAYED_PENALTY_ROLE() external view returns (bytes32);
 ```
 
-### SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE
+### SETTLE_GENERAL_DELAYED_PENALTY_ROLE
 
 
 ```solidity
-function SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE() external view returns (bytes32);
+function SETTLE_GENERAL_DELAYED_PENALTY_ROLE() external view returns (bytes32);
 ```
 
 ### VERIFIER_ROLE
@@ -46,6 +46,13 @@ function SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE() external view returns (bytes3
 
 ```solidity
 function VERIFIER_ROLE() external view returns (bytes32);
+```
+
+### SUBMIT_WITHDRAWALS_ROLE
+
+
+```solidity
+function SUBMIT_WITHDRAWALS_ROLE() external view returns (bytes32);
 ```
 
 ### RECOVERER_ROLE
@@ -60,13 +67,6 @@ function RECOVERER_ROLE() external view returns (bytes32);
 
 ```solidity
 function CREATE_NODE_OPERATOR_ROLE() external view returns (bytes32);
-```
-
-### DEPOSIT_SIZE
-
-
-```solidity
-function DEPOSIT_SIZE() external view returns (uint256);
 ```
 
 ### LIDO_LOCATOR
@@ -87,21 +87,21 @@ function STETH() external view returns (IStETH);
 
 
 ```solidity
-function PARAMETERS_REGISTRY() external view returns (ICSParametersRegistry);
+function PARAMETERS_REGISTRY() external view returns (IParametersRegistry);
 ```
 
 ### ACCOUNTING
 
 
 ```solidity
-function ACCOUNTING() external view returns (ICSAccounting);
+function ACCOUNTING() external view returns (IAccounting);
 ```
 
 ### EXIT_PENALTIES
 
 
 ```solidity
-function EXIT_PENALTIES() external view returns (ICSExitPenalties);
+function EXIT_PENALTIES() external view returns (IExitPenalties);
 ```
 
 ### FEE_DISTRIBUTOR
@@ -118,27 +118,11 @@ function FEE_DISTRIBUTOR() external view returns (address);
 function QUEUE_LOWEST_PRIORITY() external view returns (uint256);
 ```
 
-### QUEUE_LEGACY_PRIORITY
-
-
-```solidity
-function QUEUE_LEGACY_PRIORITY() external view returns (uint256);
-```
-
-### accounting
-
-Returns the address of the accounting contract
-
-
-```solidity
-function accounting() external view returns (ICSAccounting);
-```
-
 ### pauseFor
 
 Pause creation of the Node Operators and keys upload for `duration` seconds.
 Existing NO management and reward claims are still available.
-To pause reward claims use pause method on CSAccounting
+To pause reward claims use pause method on Accounting
 
 
 ```solidity
@@ -230,7 +214,7 @@ function addValidatorKeysStETH(
     uint256 keysCount,
     bytes memory publicKeys,
     bytes memory signatures,
-    ICSAccounting.PermitInput memory permit
+    IAccounting.PermitInput memory permit
 ) external;
 ```
 **Parameters**
@@ -242,7 +226,7 @@ function addValidatorKeysStETH(
 |`keysCount`|`uint256`|Signing keys count|
 |`publicKeys`|`bytes`|Public keys to submit|
 |`signatures`|`bytes`|Signatures of `(deposit_message_root, domain)` tuples https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#signingdata|
-|`permit`|`ICSAccounting.PermitInput`|Optional. Permit to use stETH as bond|
+|`permit`|`IAccounting.PermitInput`|Optional. Permit to use stETH as bond|
 
 
 ### addValidatorKeysWstETH
@@ -259,7 +243,7 @@ function addValidatorKeysWstETH(
     uint256 keysCount,
     bytes memory publicKeys,
     bytes memory signatures,
-    ICSAccounting.PermitInput memory permit
+    IAccounting.PermitInput memory permit
 ) external;
 ```
 **Parameters**
@@ -271,37 +255,43 @@ function addValidatorKeysWstETH(
 |`keysCount`|`uint256`|Signing keys count|
 |`publicKeys`|`bytes`|Public keys to submit|
 |`signatures`|`bytes`|Signatures of `(deposit_message_root, domain)` tuples https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#signingdata|
-|`permit`|`ICSAccounting.PermitInput`|Optional. Permit to use wstETH as bond|
+|`permit`|`IAccounting.PermitInput`|Optional. Permit to use wstETH as bond|
 
 
-### reportELRewardsStealingPenalty
+### reportGeneralDelayedPenalty
 
-Report EL rewards stealing for the given Node Operator
+Report general delayed penalty for the given Node Operator
 
-The final locked amount will be equal to the stolen funds plus EL stealing additional fine
+The final locked amount will be equal to the penalty amount plus additional fine
 
 
 ```solidity
-function reportELRewardsStealingPenalty(uint256 nodeOperatorId, bytes32 blockHash, uint256 amount) external;
+function reportGeneralDelayedPenalty(
+    uint256 nodeOperatorId,
+    bytes32 penaltyType,
+    uint256 amount,
+    string calldata details
+) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`blockHash`|`bytes32`|Execution layer block hash of the proposed block with EL rewards stealing|
-|`amount`|`uint256`|Amount of stolen EL rewards in ETH|
+|`penaltyType`|`bytes32`|Type of the penalty|
+|`amount`|`uint256`|Penalty amount in ETH|
+|`details`|`string`|Additional details about the penalty|
 
 
-### compensateELRewardsStealingPenalty
+### compensateGeneralDelayedPenalty
 
-Compensate EL rewards stealing penalty for the given Node Operator to prevent further validator exits
+Compensate general delayed penalty for the given Node Operator to prevent further validator exits
 
-*Can only be called by the Node Operator manager*
+Can only be called by the Node Operator manager
 
 
 ```solidity
-function compensateELRewardsStealingPenalty(uint256 nodeOperatorId) external payable;
+function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external payable;
 ```
 **Parameters**
 
@@ -310,15 +300,15 @@ function compensateELRewardsStealingPenalty(uint256 nodeOperatorId) external pay
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
 
 
-### cancelELRewardsStealingPenalty
+### cancelGeneralDelayedPenalty
 
-Cancel previously reported and not settled EL rewards stealing penalty for the given Node Operator
+Cancel previously reported and not settled general delayed penalty for the given Node Operator
 
 The funds will be unlocked
 
 
 ```solidity
-function cancelELRewardsStealingPenalty(uint256 nodeOperatorId, uint256 amount) external;
+function cancelGeneralDelayedPenalty(uint256 nodeOperatorId, uint256 amount) external;
 ```
 **Parameters**
 
@@ -328,21 +318,22 @@ function cancelELRewardsStealingPenalty(uint256 nodeOperatorId, uint256 amount) 
 |`amount`|`uint256`|Amount of penalty to cancel|
 
 
-### settleELRewardsStealingPenalty
+### settleGeneralDelayedPenalty
 
-Settle locked bond for the given Node Operators
+Settles locked bond and sets the target limit to 0 or the given Node Operators
 
-*SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE role is expected to be assigned to Easy Track*
+SETTLE_GENERAL_DELAYED_PENALTY_ROLE role is expected to be assigned to Easy Track
 
 
 ```solidity
-function settleELRewardsStealingPenalty(uint256[] memory nodeOperatorIds) external;
+function settleGeneralDelayedPenalty(uint256[] memory nodeOperatorIds, uint256[] memory maxAmounts) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorIds`|`uint256[]`|IDs of the Node Operators|
+|`maxAmounts`|`uint256[]`|Maximum amounts to settle for each Node Operator|
 
 
 ### proposeNodeOperatorManagerAddressChange
@@ -489,7 +480,7 @@ function depositQueueItem(uint256 queuePriority, uint128 index) external view re
 
 Clean the deposit queue from batches with no depositable keys
 
-*Use **eth_call** to check how many items will be removed*
+Use **eth_call** to check how many items will be removed
 
 
 ```solidity
@@ -514,39 +505,14 @@ function cleanDepositQueue(uint256 maxItems) external returns (uint256 removed, 
 Update depositable validators data and enqueue all unqueued keys for the given Node Operator.
 Unqueued stands for vetted but not enqueued keys.
 
-*The following rules are applied:
+The following rules are applied:
 - Unbonded keys can not be depositable
 - Unvetted keys can not be depositable
-- Depositable keys count should respect targetLimit value*
+- Depositable keys count should respect targetLimit value
 
 
 ```solidity
 function updateDepositableValidatorsCount(uint256 nodeOperatorId) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`nodeOperatorId`|`uint256`|ID of the Node Operator|
-
-
-### migrateToPriorityQueue
-
-Performs a one-time migration of allocated seats from the legacy or default queue to a priority queue
-for an eligible node operator. This is possible, e.g., in the following scenario: A node
-operator uploaded keys before CSM v2 and have no deposits due to a long queue.
-After the CSM v2 release, the node operator has claimed the ICS or other priority node operator type.
-This node operator type gives the node operator the ability to get several deposits through
-the priority queue. So, by calling the migration method, the node operator can obtain seats
-in the priority queue, even though they already have seats in the legacy queue.
-The method can also be used by the node operators who joined CSM v2 permissionlessly after the release
-and had their node operator type upgraded to ICS or another priority type.
-The method does not remove the old queue items. Hence, the node operator can upload additional keys that
-will take the place of the migrated keys in the original queue.
-
-
-```solidity
-function migrateToPriorityQueue(uint256 nodeOperatorId) external;
 ```
 **Parameters**
 
@@ -716,22 +682,69 @@ function getSigningKeysWithSignatures(uint256 nodeOperatorId, uint256 startIndex
 |`signatures`|`bytes`|Signatures of `(deposit_message_root, domain)` tuples https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#signingdata|
 
 
-### submitWithdrawals
+### onValidatorSlashed
 
-Report Node Operator's keys as withdrawn and settle withdrawn amount
+Report Node Operator's key as slashed.
 
-Called by `CSVerifier` contract.
-See `CSVerifier.processWithdrawalProof` to use this method permissionless
+Called by `Verifier` contract. See `Verifier.processSlashedProof`.
 
 
 ```solidity
-function submitWithdrawals(ValidatorWithdrawalInfo[] calldata withdrawalsInfo) external;
+function onValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`withdrawalsInfo`|`ValidatorWithdrawalInfo[]`|An array for the validator withdrawals info structs|
+|`nodeOperatorId`|`uint256`|The ID of the Node Operator|
+|`keyIndex`|`uint256`|The index of the validator key that was slashed|
+
+
+### reportWithdrawnValidators
+
+Report Node Operator's keys as withdrawn and charge penalties associated with exit if any.
+A validator is considered withdrawn in the following cases:
+- if it's an exit of a non-slashed validator, when a withdrawal of the validator is included in a beacon
+block;
+- if it's an exit of a slashed validator, when the committee reports such a validator as withdrawn; note
+that it can happen earlier than the actual withdrawal is included on the beacon chain if the committee
+decides it can account for all penalties in advance;
+- if it's a consolidated validator, when the corresponding pending consolidation is processed and the
+balance of the validator has been moved to another validator.
+
+Called by `Verifier` contract.
+
+
+```solidity
+function reportWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`validatorInfos`|`WithdrawnValidatorInfo[]`|An array WithdrawnValidatorInfo structs|
+
+
+### isValidatorSlashed
+
+Checks if a validator was reported as slashed
+
+
+```solidity
+function isValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|The ID of the node operator|
+|`keyIndex`|`uint256`|The index of the validator key|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|bool True if a validator was reported as slashed|
 
 
 ### isValidatorWithdrawn
@@ -841,7 +854,15 @@ event TargetValidatorsCountChanged(
 ### WithdrawalSubmitted
 
 ```solidity
-event WithdrawalSubmitted(uint256 indexed nodeOperatorId, uint256 keyIndex, uint256 amount, bytes pubkey);
+event WithdrawalSubmitted(
+    uint256 indexed nodeOperatorId, uint256 keyIndex, uint256 exitBalance, uint256 slashingPenalty, bytes pubkey
+);
+```
+
+### ValidatorSlashingReported
+
+```solidity
+event ValidatorSlashingReported(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
 ```
 
 ### BatchEnqueued
@@ -854,30 +875,6 @@ event BatchEnqueued(uint256 indexed queuePriority, uint256 indexed nodeOperatorI
 
 ```solidity
 event KeyRemovalChargeApplied(uint256 indexed nodeOperatorId);
-```
-
-### ELRewardsStealingPenaltyReported
-
-```solidity
-event ELRewardsStealingPenaltyReported(uint256 indexed nodeOperatorId, bytes32 proposedBlockHash, uint256 stolenAmount);
-```
-
-### ELRewardsStealingPenaltyCancelled
-
-```solidity
-event ELRewardsStealingPenaltyCancelled(uint256 indexed nodeOperatorId, uint256 amount);
-```
-
-### ELRewardsStealingPenaltyCompensated
-
-```solidity
-event ELRewardsStealingPenaltyCompensated(uint256 indexed nodeOperatorId, uint256 amount);
-```
-
-### ELRewardsStealingPenaltySettled
-
-```solidity
-event ELRewardsStealingPenaltySettled(uint256 indexed nodeOperatorId);
 ```
 
 ## Errors
@@ -915,6 +912,30 @@ error ExitedKeysHigherThanTotalDeposited();
 
 ```solidity
 error ExitedKeysDecrease();
+```
+
+### ZeroExitBalance
+
+```solidity
+error ZeroExitBalance();
+```
+
+### SlashingPenaltyIsNotApplicable
+
+```solidity
+error SlashingPenaltyIsNotApplicable();
+```
+
+### ValidatorSlashingAlreadyReported
+
+```solidity
+error ValidatorSlashingAlreadyReported();
+```
+
+### InvalidWithdrawnValidatorInfo
+
+```solidity
+error InvalidWithdrawnValidatorInfo();
 ```
 
 ### InvalidInput
@@ -1005,5 +1026,11 @@ error ZeroSenderAddress();
 
 ```solidity
 error ZeroParametersRegistryAddress();
+```
+
+### DepositQueueHasUnsupportedWithdrawalCredentials
+
+```solidity
+error DepositQueueHasUnsupportedWithdrawalCredentials();
 ```
 

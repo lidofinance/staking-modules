@@ -1,4 +1,4 @@
-// The script can be used to find the gindicies required for CSVerifier deployment.
+// The script can be used to find the gindicies required for Verifier deployment.
 
 import { concatGindices } from "@chainsafe/persistent-merkle-tree";
 import { ssz } from "@lodestar/types";
@@ -79,7 +79,7 @@ for (const fork of ["electra"]) {
   console.log();
 }
 
-// Analog of the GIndex.pack (lib used in CSVerifier)
+// Analog of the GIndex.pack (lib used in Verifier)
 // @param {bigint} gI
 // @param {number} limit
 // @return {bigint}

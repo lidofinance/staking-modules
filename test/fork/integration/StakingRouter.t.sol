@@ -10,7 +10,7 @@ import { IStakingRouter } from "../../../src/interfaces/IStakingRouter.sol";
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
-import { ExitPenaltyInfo } from "../../../src/interfaces/ICSExitPenalties.sol";
+import { ExitPenaltyInfo } from "../../../src/interfaces/IExitPenalties.sol";
 
 contract StakingRouterIntegrationTest is
     Test,

@@ -6,7 +6,7 @@ pragma solidity 0.8.24;
 import { IMerkleGate } from "./IMerkleGate.sol";
 import { ICuratedModule } from "./ICuratedModule.sol";
 import { IOperatorsData } from "./IOperatorsData.sol";
-import { ICSAccounting } from "./ICSAccounting.sol";
+import { IAccounting } from "./IAccounting.sol";
 
 /// @title Curated Gate Interface
 /// @notice Allows eligible addresses to create Node Operators and store metadata.
@@ -31,7 +31,7 @@ interface ICuratedGate is IMerkleGate {
     function MODULE_ID() external view returns (uint256);
 
     /// @return ACCOUNTING Accounting reference
-    function ACCOUNTING() external view returns (ICSAccounting);
+    function ACCOUNTING() external view returns (IAccounting);
 
     /// @return OPERATORS_DATA Operators metadata storage reference
     function OPERATORS_DATA() external view returns (IOperatorsData);

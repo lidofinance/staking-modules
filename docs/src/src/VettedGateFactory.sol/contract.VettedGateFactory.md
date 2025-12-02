@@ -1,15 +1,15 @@
 # VettedGateFactory
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/VettedGateFactory.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/VettedGateFactory.sol)
 
 **Inherits:**
-[IVettedGateFactory](/src/interfaces/IVettedGateFactory.sol/interface.IVettedGateFactory.md)
+[IVettedGateFactory](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IVettedGateFactory.sol/interface.IVettedGateFactory.md)
 
 
 ## State Variables
 ### VETTED_GATE_IMPL
 
 ```solidity
-address public immutable VETTED_GATE_IMPL;
+address public immutable VETTED_GATE_IMPL
 ```
 
 
@@ -18,12 +18,12 @@ address public immutable VETTED_GATE_IMPL;
 
 
 ```solidity
-constructor(address vettedGateImpl);
+constructor(address vettedGateImpl) ;
 ```
 
 ### create
 
-*Creates a new VettedGate instance behind the OssifiableProxy based on known implementation address*
+Creates a new VettedGate instance behind the OssifiableProxy based on known implementation address
 
 
 ```solidity

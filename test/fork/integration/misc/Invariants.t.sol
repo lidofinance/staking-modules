@@ -156,7 +156,7 @@ contract CSModuleInvariants is InvariantsBase {
     }
 }
 
-contract CSAccountingInvariants is InvariantsBase {
+contract AccountingInvariants is InvariantsBase {
     function test_sharesAccounting() public noGasMetering {
         uint256 noCount = module.getNodeOperatorsCount();
         assertAccountingTotalBondShares(noCount, lido, accounting);
@@ -251,7 +251,7 @@ contract CSAccountingInvariants is InvariantsBase {
     }
 }
 
-contract CSFeeDistributorInvariants is InvariantsBase {
+contract FeeDistributorInvariants is InvariantsBase {
     function test_claimableShares() public {
         assertFeeDistributorClaimableShares(lido, feeDistributor);
     }
@@ -283,7 +283,7 @@ contract CSFeeDistributorInvariants is InvariantsBase {
     }
 }
 
-contract CSFeeOracleInvariant is InvariantsBase {
+contract FeeOracleInvariant is InvariantsBase {
     function test_unusedStorageSlots() public noGasMetering {
         assertFeeOracleUnusedStorageSlots(oracle);
     }

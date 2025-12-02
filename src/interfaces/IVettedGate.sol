@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
 
 import { IMerkleGate } from "./IMerkleGate.sol";
 import { NodeOperatorManagementProperties } from "./ICSModule.sol";
-import { ICSAccounting } from "./ICSAccounting.sol";
+import { IAccounting } from "./IAccounting.sol";
 import { ICSModule } from "./ICSModule.sol";
 
 interface IVettedGate is IMerkleGate {
@@ -44,7 +44,7 @@ interface IVettedGate is IMerkleGate {
 
     function MODULE() external view returns (ICSModule);
 
-    function ACCOUNTING() external view returns (ICSAccounting);
+    function ACCOUNTING() external view returns (IAccounting);
 
     function curveId() external view returns (uint256);
 
@@ -125,7 +125,7 @@ interface IVettedGate is IMerkleGate {
         bytes memory publicKeys,
         bytes memory signatures,
         NodeOperatorManagementProperties memory managementProperties,
-        ICSAccounting.PermitInput memory permit,
+        IAccounting.PermitInput memory permit,
         bytes32[] memory proof,
         address referrer
     ) external returns (uint256 nodeOperatorId);
@@ -153,7 +153,7 @@ interface IVettedGate is IMerkleGate {
         bytes memory publicKeys,
         bytes memory signatures,
         NodeOperatorManagementProperties memory managementProperties,
-        ICSAccounting.PermitInput memory permit,
+        IAccounting.PermitInput memory permit,
         bytes32[] memory proof,
         address referrer
     ) external returns (uint256 nodeOperatorId);

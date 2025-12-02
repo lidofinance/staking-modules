@@ -8,7 +8,7 @@ import { PermissionlessGate } from "src/PermissionlessGate.sol";
 import { IPermissionlessGate } from "src/interfaces/IPermissionlessGate.sol";
 import { CSMMock } from "../helpers/mocks/CSMMock.sol";
 import { NodeOperatorManagementProperties } from "src/interfaces/ICSModule.sol";
-import { ICSAccounting } from "src/interfaces/ICSAccounting.sol";
+import { IAccounting } from "src/interfaces/IAccounting.sol";
 
 contract PermissionlessGateTest is Test, Utilities {
     PermissionlessGate public gate;
@@ -69,7 +69,7 @@ contract PermissionlessGateTest is Test, Utilities {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: 0,
                 deadline: 0,
                 v: 0,
@@ -91,7 +91,7 @@ contract PermissionlessGateTest is Test, Utilities {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: 0,
                 deadline: 0,
                 v: 0,

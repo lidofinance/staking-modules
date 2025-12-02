@@ -1,9 +1,9 @@
 # INOAddresses
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/lib/NOAddresses.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/lib/NOAddresses.sol)
 
 Library for changing and reset node operator's manager and reward addresses
 
-*the only use of this to be a library is to save CSModule contract size via delegatecalls*
+the only use of this to be a library is to save CSModule contract size via delegatecalls
 
 
 ## Events
@@ -74,6 +74,12 @@ error SenderIsNotProposedAddress();
 
 ```solidity
 error MethodCallIsNotAllowed();
+```
+
+### ZeroManagerAddress
+
+```solidity
+error ZeroManagerAddress();
 ```
 
 ### ZeroRewardAddress

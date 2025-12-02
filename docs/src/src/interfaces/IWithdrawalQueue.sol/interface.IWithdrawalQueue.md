@@ -1,5 +1,5 @@
 # IWithdrawalQueue
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/interfaces/IWithdrawalQueue.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IWithdrawalQueue.sol)
 
 
 ## Functions
@@ -38,7 +38,7 @@ function MIN_STETH_WITHDRAWAL_AMOUNT() external view returns (uint256);
 maximum amount of stETH that is possible to withdraw by a single request
 Prevents accumulating too much funds per single request fulfillment in the future.
 
-*To withdraw larger amounts, it's recommended to split it to several requests*
+To withdraw larger amounts, it's recommended to split it to several requests
 
 
 ```solidity
@@ -91,11 +91,17 @@ function onOracleReport(bool _isBunkerModeNow, uint256 _bunkerStartTimestamp, ui
 
 ```solidity
 struct WithdrawalRequestStatus {
+    /// @notice stETH token amount that was locked on withdrawal queue for this request
     uint256 amountOfStETH;
+    /// @notice amount of stETH shares locked on withdrawal queue for this request
     uint256 amountOfShares;
+    /// @notice address that can claim or transfer this request
     address owner;
+    /// @notice timestamp of when the request was created, in seconds
     uint256 timestamp;
+    /// @notice true, if request is finalized
     bool isFinalized;
+    /// @notice true, if request is claimed. Request is claimable if (isFinalized && !isClaimed)
     bool isClaimed;
 }
 ```

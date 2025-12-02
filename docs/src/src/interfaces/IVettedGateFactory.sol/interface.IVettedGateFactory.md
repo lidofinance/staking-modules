@@ -1,11 +1,11 @@
 # IVettedGateFactory
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/interfaces/IVettedGateFactory.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IVettedGateFactory.sol)
 
 
 ## Functions
 ### VETTED_GATE_IMPL
 
-*address of the VettedGate implementation to be used for the new instances*
+address of the VettedGate implementation to be used for the new instances
 
 
 ```solidity
@@ -20,7 +20,7 @@ function VETTED_GATE_IMPL() external view returns (address);
 
 ### create
 
-*Creates a new VettedGate instance behind the OssifiableProxy based on known implementation address*
+Creates a new VettedGate instance behind the OssifiableProxy based on known implementation address
 
 
 ```solidity

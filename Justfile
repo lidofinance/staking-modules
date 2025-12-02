@@ -190,11 +190,11 @@ oz-upgrades:
 
     npx @openzeppelin/upgrades-core validate --contract=CSModule --reference=v1:CSModule --referenceBuildInfoDirs=out/v1 \
         --unsafeAllowLinkedLibraries --unsafeAllow=constructor,state-variable-immutable || true
-    npx @openzeppelin/upgrades-core validate --contract=CSAccounting --reference=v1:CSAccounting --referenceBuildInfoDirs=out/v1 \
+    npx @openzeppelin/upgrades-core validate --contract=Accounting --reference=v1:Accounting --referenceBuildInfoDirs=out/v1 \
         --unsafeAllowLinkedLibraries --unsafeAllow=constructor,state-variable-immutable || true
-    npx @openzeppelin/upgrades-core validate --contract=CSFeeOracle --reference=v1:CSFeeOracle --referenceBuildInfoDirs=out/v1 \
+    npx @openzeppelin/upgrades-core validate --contract=FeeOracle --reference=v1:FeeOracle --referenceBuildInfoDirs=out/v1 \
         --unsafeAllowLinkedLibraries --unsafeAllow=constructor,state-variable-immutable || true
-    npx @openzeppelin/upgrades-core validate --contract=CSFeeDistributor --reference=v1:CSFeeDistributor --referenceBuildInfoDirs=out/v1 \
+    npx @openzeppelin/upgrades-core validate --contract=FeeDistributor --reference=v1:FeeDistributor --referenceBuildInfoDirs=out/v1 \
         --unsafeAllowLinkedLibraries --unsafeAllow=constructor,state-variable-immutable || true
 
     rm -rf "$TMP_DIR"

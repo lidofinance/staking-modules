@@ -3,7 +3,7 @@
 pragma solidity 0.8.24;
 
 import { ICSModule } from "../interfaces/ICSModule.sol";
-import { ICSAccounting } from "../interfaces/ICSAccounting.sol";
+import { IAccounting } from "../interfaces/IAccounting.sol";
 
 /// Library for General Penalty logic
 /// @dev the only use of this to be a library is to save CSModule contract size via delegatecalls
@@ -39,7 +39,7 @@ library GeneralPenalty {
         }
 
         ICSModule module = ICSModule(address(this));
-        ICSAccounting accounting = module.ACCOUNTING();
+        IAccounting accounting = module.ACCOUNTING();
 
         uint256 curveId = accounting.getBondCurveId(nodeOperatorId);
         uint256 additionalFine = module
@@ -69,7 +69,7 @@ library GeneralPenalty {
         uint256 amount
     ) external {
         ICSModule module = ICSModule(address(this));
-        ICSAccounting accounting = module.ACCOUNTING();
+        IAccounting accounting = module.ACCOUNTING();
 
         accounting.releaseLockedBondETH(nodeOperatorId, amount);
 
@@ -85,7 +85,7 @@ library GeneralPenalty {
         uint256 nodeOperatorId,
         uint256 maxAmount
     ) external returns (bool) {
-        ICSAccounting accounting = ICSModule(address(this)).ACCOUNTING();
+        IAccounting accounting = ICSModule(address(this)).ACCOUNTING();
         uint256 locked = accounting.getActualLockedBond(nodeOperatorId);
         if (locked == 0 || locked > maxAmount) {
             return false; // skip this NO if the locked bond is greater than the max amount or there is no locked bond
@@ -99,7 +99,7 @@ library GeneralPenalty {
 
     function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external {
         ICSModule module = ICSModule(address(this));
-        ICSAccounting accounting = module.ACCOUNTING();
+        IAccounting accounting = module.ACCOUNTING();
 
         accounting.compensateLockedBondETH{ value: msg.value }(nodeOperatorId);
 

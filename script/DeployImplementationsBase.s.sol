@@ -5,19 +5,19 @@ pragma solidity 0.8.24;
 
 import { DeployBase } from "./DeployBase.s.sol";
 import { CSModule } from "../src/CSModule.sol";
-import { CSAccounting } from "../src/CSAccounting.sol";
-import { CSFeeDistributor } from "../src/CSFeeDistributor.sol";
-import { CSExitPenalties } from "../src/CSExitPenalties.sol";
-import { CSEjector } from "../src/CSEjector.sol";
-import { CSStrikes } from "../src/CSStrikes.sol";
-import { CSFeeOracle } from "../src/CSFeeOracle.sol";
-import { CSVerifier } from "../src/CSVerifier.sol";
+import { Accounting } from "../src/Accounting.sol";
+import { FeeDistributor } from "../src/FeeDistributor.sol";
+import { ExitPenalties } from "../src/ExitPenalties.sol";
+import { Ejector } from "../src/Ejector.sol";
+import { ValidatorStrikes } from "../src/ValidatorStrikes.sol";
+import { FeeOracle } from "../src/FeeOracle.sol";
+import { Verifier } from "../src/Verifier.sol";
 import { PermissionlessGate } from "../src/PermissionlessGate.sol";
 import { VettedGateFactory } from "../src/VettedGateFactory.sol";
 import { VettedGate } from "../src/VettedGate.sol";
-import { CSParametersRegistry } from "../src/CSParametersRegistry.sol";
-import { ICSParametersRegistry } from "../src/interfaces/ICSParametersRegistry.sol";
-import { ICSVerifier } from "../src/interfaces/ICSVerifier.sol";
+import { ParametersRegistry } from "../src/ParametersRegistry.sol";
+import { IParametersRegistry } from "../src/interfaces/IParametersRegistry.sol";
+import { IVerifier } from "../src/interfaces/IVerifier.sol";
 import { OssifiableProxy } from "../src/lib/proxy/OssifiableProxy.sol";
 
 import { JsonObj, Json } from "./utils/Json.sol";
@@ -27,7 +27,7 @@ import { Slot } from "../src/lib/Types.sol";
 
 abstract contract DeployImplementationsBase is DeployBase {
     address public gateSealV2;
-    CSVerifier public verifierV2;
+    Verifier public verifierV2;
     address public earlyAdoption;
 
     bytes32 internal constant LEGACY_QUEUE_SLOT = bytes32(uint256(1));
@@ -54,15 +54,15 @@ abstract contract DeployImplementationsBase is DeployBase {
         vm.label(deployer, "DEPLOYER");
 
         {
-            CSParametersRegistry parametersRegistryImpl = new CSParametersRegistry(
-                    config.queueLowestPriority
-                );
-            parametersRegistry = CSParametersRegistry(
+            ParametersRegistry parametersRegistryImpl = new ParametersRegistry(
+                config.queueLowestPriority
+            );
+            parametersRegistry = ParametersRegistry(
                 _deployProxy(config.proxyAdmin, address(parametersRegistryImpl))
             );
             parametersRegistry.initialize({
                 admin: deployer,
-                data: ICSParametersRegistry.InitializationData({
+                data: IParametersRegistry.InitializationData({
                     defaultKeyRemovalCharge: config.defaultKeyRemovalCharge,
                     defaultGeneralDelayedPenaltyAdditionalFine: config
                         .defaultGeneralDelayedPenaltyAdditionalFine,
@@ -85,7 +85,7 @@ abstract contract DeployImplementationsBase is DeployBase {
                 })
             });
 
-            CSAccounting accountingImpl = new CSAccounting({
+            Accounting accountingImpl = new Accounting({
                 lidoLocator: config.lidoLocatorAddress,
                 module: address(csm),
                 feeDistributor: address(feeDistributor),
@@ -171,7 +171,7 @@ abstract contract DeployImplementationsBase is DeployBase {
             );
             vettedGateProxy.proxy__changeAdmin(config.proxyAdmin);
 
-            CSFeeDistributor feeDistributorImpl = new CSFeeDistributor({
+            FeeDistributor feeDistributorImpl = new FeeDistributor({
                 stETH: locator.lido(),
                 accounting: address(accounting),
                 oracle: address(oracle)
@@ -179,7 +179,7 @@ abstract contract DeployImplementationsBase is DeployBase {
 
             Dummy dummyImpl = new Dummy();
 
-            exitPenalties = CSExitPenalties(
+            exitPenalties = ExitPenalties(
                 _deployProxy(deployer, address(dummyImpl))
             );
 
@@ -191,25 +191,25 @@ abstract contract DeployImplementationsBase is DeployBase {
                 exitPenalties: address(exitPenalties)
             });
 
-            CSStrikes strikesImpl = new CSStrikes({
+            ValidatorStrikes strikesImpl = new ValidatorStrikes({
                 module: address(csm),
                 oracle: address(oracle),
                 exitPenalties: address(exitPenalties),
                 parametersRegistry: address(parametersRegistry)
             });
 
-            strikes = CSStrikes(
+            strikes = ValidatorStrikes(
                 _deployProxy(config.proxyAdmin, address(strikesImpl))
             );
 
-            CSFeeOracle oracleImpl = new CSFeeOracle({
+            FeeOracle oracleImpl = new FeeOracle({
                 feeDistributor: address(feeDistributor),
                 strikes: address(strikes),
                 secondsPerSlot: config.secondsPerSlot,
                 genesisTime: config.clGenesisTime
             });
 
-            CSExitPenalties exitPenaltiesImpl = new CSExitPenalties(
+            ExitPenalties exitPenaltiesImpl = new ExitPenalties(
                 address(csm),
                 address(parametersRegistry),
                 address(strikes)
@@ -221,7 +221,7 @@ abstract contract DeployImplementationsBase is DeployBase {
             exitPenaltiesProxy.proxy__upgradeTo(address(exitPenaltiesImpl));
             exitPenaltiesProxy.proxy__changeAdmin(config.proxyAdmin);
 
-            ejector = new CSEjector(
+            ejector = new Ejector(
                 address(csm),
                 address(strikes),
                 config.stakingModuleId,
@@ -231,12 +231,12 @@ abstract contract DeployImplementationsBase is DeployBase {
             strikes.initialize(deployer, address(ejector));
 
             // prettier-ignore
-            verifierV2 = new CSVerifier({
+            verifierV2 = new Verifier({
                 withdrawalAddress: locator.withdrawalVault(),
                 module: address(csm),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
                 slotsPerHistoricalRoot: uint64(config.slotsPerHistoricalRoot),
-                gindices: ICSVerifier.GIndices({
+                gindices: IVerifier.GIndices({
                     gIFirstWithdrawalPrev: config.gIFirstWithdrawal,
                     gIFirstWithdrawalCurr: config.gIFirstWithdrawal,
                     gIFirstValidatorPrev: config.gIFirstValidator,
@@ -340,25 +340,25 @@ abstract contract DeployImplementationsBase is DeployBase {
             deployJson.set("ChainId", chainId);
             deployJson.set("CSModule", address(csm));
             deployJson.set("CSModuleImpl", address(csmImpl));
-            deployJson.set("CSParametersRegistry", address(parametersRegistry));
+            deployJson.set("ParametersRegistry", address(parametersRegistry));
             deployJson.set(
-                "CSParametersRegistryImpl",
+                "ParametersRegistryImpl",
                 address(parametersRegistryImpl)
             );
-            deployJson.set("CSAccounting", address(accounting));
-            deployJson.set("CSAccountingImpl", address(accountingImpl));
-            deployJson.set("CSFeeOracle", address(oracle));
-            deployJson.set("CSFeeOracleImpl", address(oracleImpl));
-            deployJson.set("CSFeeDistributor", address(feeDistributor));
-            deployJson.set("CSFeeDistributorImpl", address(feeDistributorImpl));
-            deployJson.set("CSExitPenalties", address(exitPenalties));
-            deployJson.set("CSExitPenaltiesImpl", address(exitPenaltiesImpl));
-            deployJson.set("CSEjector", address(ejector));
-            deployJson.set("CSStrikes", address(strikes));
-            deployJson.set("CSStrikesImpl", address(strikesImpl));
+            deployJson.set("Accounting", address(accounting));
+            deployJson.set("AccountingImpl", address(accountingImpl));
+            deployJson.set("FeeOracle", address(oracle));
+            deployJson.set("FeeOracleImpl", address(oracleImpl));
+            deployJson.set("FeeDistributor", address(feeDistributor));
+            deployJson.set("FeeDistributorImpl", address(feeDistributorImpl));
+            deployJson.set("ExitPenalties", address(exitPenalties));
+            deployJson.set("ExitPenaltiesImpl", address(exitPenaltiesImpl));
+            deployJson.set("Ejector", address(ejector));
+            deployJson.set("ValidatorStrikes", address(strikes));
+            deployJson.set("ValidatorStrikesImpl", address(strikesImpl));
             deployJson.set("HashConsensus", address(hashConsensus));
-            deployJson.set("CSVerifier", address(verifier));
-            deployJson.set("CSVerifierV2", address(verifierV2));
+            deployJson.set("Verifier", address(verifier));
+            deployJson.set("VerifierV2", address(verifierV2));
             deployJson.set("PermissionlessGate", address(permissionlessGate));
             deployJson.set("VettedGateFactory", address(vettedGateFactory));
             deployJson.set("VettedGate", address(vettedGate));

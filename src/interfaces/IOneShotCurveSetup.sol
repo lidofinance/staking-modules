@@ -3,9 +3,9 @@
 
 pragma solidity 0.8.24;
 
-import { ICSAccounting } from "./ICSAccounting.sol";
-import { ICSBondCurve } from "./ICSBondCurve.sol";
-import { ICSParametersRegistry } from "./ICSParametersRegistry.sol";
+import { IAccounting } from "./IAccounting.sol";
+import { IBondCurve } from "./IBondCurve.sol";
+import { IParametersRegistry } from "./IParametersRegistry.sol";
 
 /// @title One-shot setup helper for a bond curve plus per-curve parameter overrides.
 interface IOneShotCurveSetup {
@@ -35,11 +35,11 @@ interface IOneShotCurveSetup {
 
     struct KeyNumberValueIntervalsOverride {
         bool isSet;
-        ICSParametersRegistry.KeyNumberValueInterval[] data;
+        IParametersRegistry.KeyNumberValueInterval[] data;
     }
 
     struct ConstructorParams {
-        ICSBondCurve.BondCurveIntervalInput[] bondCurve;
+        IBondCurve.BondCurveIntervalInput[] bondCurve;
         ScalarOverride keyRemovalCharge;
         ScalarOverride generalDelayedPenaltyFine;
         ScalarOverride keysLimit;
@@ -63,10 +63,10 @@ interface IOneShotCurveSetup {
     error EmptyBondCurve();
 
     /// @notice Bond accounting contract that receives the new curve.
-    function ACCOUNTING() external view returns (ICSAccounting);
+    function ACCOUNTING() external view returns (IAccounting);
 
     /// @notice Parameters registry whose per-curve overrides are configured.
-    function REGISTRY() external view returns (ICSParametersRegistry);
+    function REGISTRY() external view returns (IParametersRegistry);
 
     /// @notice Whether `execute()` already ran.
     function executed() external view returns (bool);

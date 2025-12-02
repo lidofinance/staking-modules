@@ -5,9 +5,9 @@ pragma solidity 0.8.24;
 
 import { Batch } from "../lib/QueueLib.sol";
 import { IAssetRecovererLib } from "../lib/AssetRecovererLib.sol";
-import { ICSAccounting } from "./ICSAccounting.sol";
-import { ICSExitPenalties } from "./ICSExitPenalties.sol";
-import { ICSParametersRegistry } from "./ICSParametersRegistry.sol";
+import { IAccounting } from "./IAccounting.sol";
+import { IExitPenalties } from "./IExitPenalties.sol";
+import { IParametersRegistry } from "./IParametersRegistry.sol";
 import { ILidoLocator } from "./ILidoLocator.sol";
 import { INOAddresses } from "../lib/NOAddresses.sol";
 import { IQueueLib } from "../lib/QueueLib.sol";
@@ -176,14 +176,11 @@ interface ICSModule is
 
     function STETH() external view returns (IStETH);
 
-    function PARAMETERS_REGISTRY()
-        external
-        view
-        returns (ICSParametersRegistry);
+    function PARAMETERS_REGISTRY() external view returns (IParametersRegistry);
 
-    function ACCOUNTING() external view returns (ICSAccounting);
+    function ACCOUNTING() external view returns (IAccounting);
 
-    function EXIT_PENALTIES() external view returns (ICSExitPenalties);
+    function EXIT_PENALTIES() external view returns (IExitPenalties);
 
     function FEE_DISTRIBUTOR() external view returns (address);
 
@@ -191,7 +188,7 @@ interface ICSModule is
 
     /// @notice Pause creation of the Node Operators and keys upload for `duration` seconds.
     ///         Existing NO management and reward claims are still available.
-    ///         To pause reward claims use pause method on CSAccounting
+    ///         To pause reward claims use pause method on Accounting
     /// @param duration Duration of the pause in seconds
     function pauseFor(uint256 duration) external;
 
@@ -247,7 +244,7 @@ interface ICSModule is
         uint256 keysCount,
         bytes memory publicKeys,
         bytes memory signatures,
-        ICSAccounting.PermitInput memory permit
+        IAccounting.PermitInput memory permit
     ) external;
 
     /// @notice Add new keys to the existing Node Operator using wstETH as a bond
@@ -265,7 +262,7 @@ interface ICSModule is
         uint256 keysCount,
         bytes memory publicKeys,
         bytes memory signatures,
-        ICSAccounting.PermitInput memory permit
+        IAccounting.PermitInput memory permit
     ) external;
 
     /// @notice Report general delayed penalty for the given Node Operator
@@ -444,7 +441,7 @@ interface ICSModule is
     ) external view returns (bytes memory keys, bytes memory signatures);
 
     /// @notice Report Node Operator's key as slashed.
-    /// @notice Called by `CSVerifier` contract. See `CSVerifier.processSlashedProof`.
+    /// @notice Called by `Verifier` contract. See `Verifier.processSlashedProof`.
     /// @param nodeOperatorId The ID of the Node Operator
     /// @param keyIndex The index of the validator key that was slashed
     function onValidatorSlashed(
@@ -461,7 +458,7 @@ interface ICSModule is
     ///           decides it can account for all penalties in advance;
     ///         - if it's a consolidated validator, when the corresponding pending consolidation is processed and the
     ///           balance of the validator has been moved to another validator.
-    /// @notice Called by `CSVerifier` contract.
+    /// @notice Called by `Verifier` contract.
     /// @param validatorInfos An array WithdrawnValidatorInfo structs
     function reportWithdrawnValidators(
         WithdrawnValidatorInfo[] calldata validatorInfos

@@ -1,5 +1,5 @@
 # QueueLib
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/lib/QueueLib.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/lib/QueueLib.sol)
 
 **Author:**
 madlabman
@@ -55,8 +55,11 @@ function at(Queue storage self, uint128 index) internal view returns (Batch);
 
 ```solidity
 struct Queue {
+    // Pointer to the item to be dequeued.
     uint128 head;
+    // Tracks the total number of batches ever enqueued.
     uint128 tail;
+    // Mapping saves a little in costs and allows easily fallback to a zeroed batch on out-of-bounds access.
     mapping(uint128 => Batch) queue;
 }
 ```

@@ -1,78 +1,78 @@
 # CSModule
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/CSModule.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/CSModule.sol)
 
 **Inherits:**
-[ICSModule](/src/interfaces/ICSModule.sol/interface.ICSModule.md), Initializable, AccessControlEnumerableUpgradeable, [PausableUntil](/src/lib/utils/PausableUntil.sol/contract.PausableUntil.md), [AssetRecoverer](/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
+[ICSModule](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/ICSModule.sol/interface.ICSModule.md), Initializable, AccessControlEnumerableUpgradeable, [PausableUntil](/Users/dgusakov/projects/community-staking-module/docs/src/src/lib/utils/PausableUntil.sol/contract.PausableUntil.md), [AssetRecoverer](/Users/dgusakov/projects/community-staking-module/docs/src/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
 
 
 ## State Variables
 ### PAUSE_ROLE
 
 ```solidity
-bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
+bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE")
 ```
 
 
 ### RESUME_ROLE
 
 ```solidity
-bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
+bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE")
 ```
 
 
 ### STAKING_ROUTER_ROLE
 
 ```solidity
-bytes32 public constant STAKING_ROUTER_ROLE = keccak256("STAKING_ROUTER_ROLE");
+bytes32 public constant STAKING_ROUTER_ROLE = keccak256("STAKING_ROUTER_ROLE")
 ```
 
 
-### REPORT_EL_REWARDS_STEALING_PENALTY_ROLE
+### REPORT_GENERAL_DELAYED_PENALTY_ROLE
 
 ```solidity
-bytes32 public constant REPORT_EL_REWARDS_STEALING_PENALTY_ROLE = keccak256("REPORT_EL_REWARDS_STEALING_PENALTY_ROLE");
+bytes32 public constant REPORT_GENERAL_DELAYED_PENALTY_ROLE = keccak256("REPORT_GENERAL_DELAYED_PENALTY_ROLE")
 ```
 
 
-### SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE
+### SETTLE_GENERAL_DELAYED_PENALTY_ROLE
 
 ```solidity
-bytes32 public constant SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE = keccak256("SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE");
+bytes32 public constant SETTLE_GENERAL_DELAYED_PENALTY_ROLE = keccak256("SETTLE_GENERAL_DELAYED_PENALTY_ROLE")
 ```
 
 
 ### VERIFIER_ROLE
 
 ```solidity
-bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
+bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE")
+```
+
+
+### SUBMIT_WITHDRAWALS_ROLE
+
+```solidity
+bytes32 public constant SUBMIT_WITHDRAWALS_ROLE = keccak256("SUBMIT_WITHDRAWALS_ROLE")
 ```
 
 
 ### RECOVERER_ROLE
 
 ```solidity
-bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
+bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE")
 ```
 
 
 ### CREATE_NODE_OPERATOR_ROLE
 
 ```solidity
-bytes32 public constant CREATE_NODE_OPERATOR_ROLE = keccak256("CREATE_NODE_OPERATOR_ROLE");
-```
-
-
-### DEPOSIT_SIZE
-
-```solidity
-uint256 public constant DEPOSIT_SIZE = 32 ether;
+bytes32 public constant CREATE_NODE_OPERATOR_ROLE = keccak256("CREATE_NODE_OPERATOR_ROLE")
 ```
 
 
 ### FORCED_TARGET_LIMIT_MODE_ID
 
 ```solidity
-uint8 private constant FORCED_TARGET_LIMIT_MODE_ID = 2;
+uint8 private constant FORCED_TARGET_LIMIT_MODE_ID = 2
 ```
 
 
@@ -80,74 +80,65 @@ uint8 private constant FORCED_TARGET_LIMIT_MODE_ID = 2;
 
 ```solidity
 bytes32 private constant OPERATORS_CREATED_IN_TX_MAP_TSLOT =
-    0x1b07bc0838fdc4254cbabb5dd0c94d936f872c6758547168d513d8ad1dc3a500;
+    0x1b07bc0838fdc4254cbabb5dd0c94d936f872c6758547168d513d8ad1dc3a500
 ```
 
 
 ### MODULE_TYPE
 
 ```solidity
-bytes32 private immutable MODULE_TYPE;
+bytes32 private immutable MODULE_TYPE
 ```
 
 
 ### LIDO_LOCATOR
 
 ```solidity
-ILidoLocator public immutable LIDO_LOCATOR;
+ILidoLocator public immutable LIDO_LOCATOR
 ```
 
 
 ### STETH
 
 ```solidity
-IStETH public immutable STETH;
+IStETH public immutable STETH
 ```
 
 
 ### PARAMETERS_REGISTRY
 
 ```solidity
-ICSParametersRegistry public immutable PARAMETERS_REGISTRY;
+IParametersRegistry public immutable PARAMETERS_REGISTRY
 ```
 
 
 ### ACCOUNTING
 
 ```solidity
-ICSAccounting public immutable ACCOUNTING;
+IAccounting public immutable ACCOUNTING
 ```
 
 
 ### EXIT_PENALTIES
 
 ```solidity
-ICSExitPenalties public immutable EXIT_PENALTIES;
+IExitPenalties public immutable EXIT_PENALTIES
 ```
 
 
 ### FEE_DISTRIBUTOR
 
 ```solidity
-address public immutable FEE_DISTRIBUTOR;
+address public immutable FEE_DISTRIBUTOR
 ```
 
 
 ### QUEUE_LOWEST_PRIORITY
-*QUEUE_LOWEST_PRIORITY identifies the range of available priorities: [0; QUEUE_LOWEST_PRIORITY].*
+QUEUE_LOWEST_PRIORITY identifies the range of available priorities: [0; QUEUE_LOWEST_PRIORITY].
 
 
 ```solidity
-uint256 public immutable QUEUE_LOWEST_PRIORITY;
-```
-
-
-### QUEUE_LEGACY_PRIORITY
-*QUEUE_LEGACY_PRIORITY is the priority for the CSM v1 queue.*
-
-
-```solidity
-uint256 public immutable QUEUE_LEGACY_PRIORITY;
+uint256 public immutable QUEUE_LOWEST_PRIORITY
 ```
 
 
@@ -159,115 +150,113 @@ uint256 public immutable QUEUE_LEGACY_PRIORITY;
 
 
 ```solidity
-mapping(uint256 queuePriority => QueueLib.Queue queue) internal _queueByPriority;
+mapping(uint256 queuePriority => QueueLib.Queue queue) internal _queueByPriority
 ```
 
 
 ### _legacyQueue
-*Legacy queue (priority=QUEUE_LEGACY_PRIORITY), that should be removed in the future once there are no more batches in it.*
+Unused
 
 **Note:**
 oz-renamed-from: depositQueue
 
 
 ```solidity
-QueueLib.Queue internal _legacyQueue;
+QueueLib.Queue internal _legacyQueue
 ```
 
 
 ### _accountingOld
-*Unused. Nullified in the finalizeUpgradeV2*
+Unused. Nullified in the finalizeUpgradeV2
 
 **Note:**
 oz-renamed-from: accounting
 
 
 ```solidity
-ICSAccounting internal _accountingOld;
+IAccounting internal _accountingOld
 ```
 
 
 ### _earlyAdoption
-*Unused. Nullified in the finalizeUpgradeV2*
+Unused. Nullified in v2 upgrade
 
 **Note:**
 oz-renamed-from: earlyAdoption
 
 
 ```solidity
-address internal _earlyAdoption;
+address internal _earlyAdoption
 ```
 
 
 ### _publicRelease
-*deprecated. Nullified in the finalizeUpgradeV2*
+deprecated. Nullified in v2 upgrade
 
 **Note:**
 oz-renamed-from: publicRelease
 
 
 ```solidity
-bool internal _publicRelease;
+bool internal _publicRelease
 ```
 
 
 ### _nonce
 
 ```solidity
-uint256 private _nonce;
+uint256 private _nonce
 ```
 
 
 ### _nodeOperators
 
 ```solidity
-mapping(uint256 => NodeOperator) private _nodeOperators;
+mapping(uint256 => NodeOperator) internal _nodeOperators
 ```
 
 
 ### _isValidatorWithdrawn
-*see _keyPointer function for details of noKeyIndexPacked structure*
+see _keyPointer function for details of noKeyIndexPacked structure
 
 
 ```solidity
-mapping(uint256 noKeyIndexPacked => bool) private _isValidatorWithdrawn;
+mapping(uint256 noKeyIndexPacked => bool) private _isValidatorWithdrawn
 ```
 
 
 ### _isValidatorSlashed
-*DEPRECATED! No writes expected after CSM v2*
-
 
 ```solidity
-mapping(uint256 noKeyIndexPacked => bool) private _isValidatorSlashed;
+mapping(uint256 noKeyIndexPacked => bool) private _isValidatorSlashed
 ```
 
 
 ### _totalDepositedValidators
 
 ```solidity
-uint64 private _totalDepositedValidators;
+uint64 private _totalDepositedValidators
 ```
 
 
 ### _totalExitedValidators
 
 ```solidity
-uint64 private _totalExitedValidators;
+uint64 private _totalExitedValidators
 ```
 
 
 ### _depositableValidatorsCount
 
 ```solidity
-uint64 private _depositableValidatorsCount;
+uint64 private _depositableValidatorsCount
 ```
 
 
 ### _nodeOperatorsCount
 
 ```solidity
-uint64 private _nodeOperatorsCount;
+uint64 private _nodeOperatorsCount
 ```
 
 
@@ -280,9 +269,9 @@ constructor(
     bytes32 moduleType,
     address lidoLocator,
     address parametersRegistry,
-    address _accounting,
+    address accounting,
     address exitPenalties
-);
+) ;
 ```
 
 ### initialize
@@ -296,8 +285,8 @@ function initialize(address admin) external reinitializer(2);
 
 ### finalizeUpgradeV2
 
-*This method is expected to be called only when the contract is upgraded from version 1 to version 2 for the existing version 1 deployment.
-If the version 2 contract is deployed from scratch, the `initialize` method should be used instead.*
+This method is expected to be called only when the contract is upgraded from version 1 to version 2 for the existing version 1 deployment.
+If the version 2 contract is deployed from scratch, the `initialize` method should be used instead.
 
 
 ```solidity
@@ -317,7 +306,7 @@ function resume() external onlyRole(RESUME_ROLE);
 
 Pause creation of the Node Operators and keys upload for `duration` seconds.
 Existing NO management and reward claims are still available.
-To pause reward claims use pause method on CSAccounting
+To pause reward claims use pause method on Accounting
 
 
 ```solidity
@@ -389,7 +378,7 @@ function addValidatorKeysStETH(
     uint256 keysCount,
     bytes calldata publicKeys,
     bytes calldata signatures,
-    ICSAccounting.PermitInput calldata permit
+    IAccounting.PermitInput calldata permit
 ) external whenResumed;
 ```
 **Parameters**
@@ -401,7 +390,7 @@ function addValidatorKeysStETH(
 |`keysCount`|`uint256`|Signing keys count|
 |`publicKeys`|`bytes`|Public keys to submit|
 |`signatures`|`bytes`|Signatures of `(deposit_message_root, domain)` tuples https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#signingdata|
-|`permit`|`ICSAccounting.PermitInput`|Optional. Permit to use stETH as bond|
+|`permit`|`IAccounting.PermitInput`|Optional. Permit to use stETH as bond|
 
 
 ### addValidatorKeysWstETH
@@ -416,7 +405,7 @@ function addValidatorKeysWstETH(
     uint256 keysCount,
     bytes calldata publicKeys,
     bytes calldata signatures,
-    ICSAccounting.PermitInput calldata permit
+    IAccounting.PermitInput calldata permit
 ) external whenResumed;
 ```
 **Parameters**
@@ -428,7 +417,7 @@ function addValidatorKeysWstETH(
 |`keysCount`|`uint256`|Signing keys count|
 |`publicKeys`|`bytes`|Public keys to submit|
 |`signatures`|`bytes`|Signatures of `(deposit_message_root, domain)` tuples https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#signingdata|
-|`permit`|`ICSAccounting.PermitInput`|Optional. Permit to use wstETH as bond|
+|`permit`|`IAccounting.PermitInput`|Optional. Permit to use wstETH as bond|
 
 
 ### proposeNodeOperatorManagerAddressChange
@@ -531,7 +520,7 @@ function changeNodeOperatorRewardAddress(uint256 nodeOperatorId, address newAddr
 
 Called by StakingRouter to signal that stETH rewards were minted for this module.
 
-*Passes through the minted stETH shares to the fee distributor*
+Passes through the minted stETH shares to the fee distributor
 
 
 ```solidity
@@ -590,9 +579,9 @@ operator in this module has actually received any updated counts as a result of 
 but given that the total number of exited validators returned from getStakingModuleSummary
 is the same as StakingRouter expects based on the total count received from the oracle.
 
-*This method is not used in CSM, hence it does nothing*
+This method is not used in CSM, hence it does nothing
 
-*NOTE: No role checks because of empty body to save bytecode.*
+NOTE: No role checks because of empty body to save bytecode.
 
 
 ```solidity
@@ -601,8 +590,7 @@ function onExitedAndStuckValidatorsCountsUpdated() external;
 
 ### unsafeUpdateValidatorsCount
 
-Unsafely updates the number of validators in the EXITED/STUCK states for node operator with given id
-'unsafely' means that this method can both increase and decrease exited and stuck counters
+TODO: Figure out if we can remove the body of this function to save bytecode
 
 
 ```solidity
@@ -661,10 +649,10 @@ function removeKeys(uint256 nodeOperatorId, uint256 startIndex, uint256 keysCoun
 Update depositable validators data and enqueue all unqueued keys for the given Node Operator.
 Unqueued stands for vetted but not enqueued keys.
 
-*The following rules are applied:
+The following rules are applied:
 - Unbonded keys can not be depositable
 - Unvetted keys can not be depositable
-- Depositable keys count should respect targetLimit value*
+- Depositable keys count should respect targetLimit value
 
 
 ```solidity
@@ -677,59 +665,38 @@ function updateDepositableValidatorsCount(uint256 nodeOperatorId) external;
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
 
 
-### migrateToPriorityQueue
+### reportGeneralDelayedPenalty
 
-Performs a one-time migration of allocated seats from the legacy or default queue to a priority queue
-for an eligible node operator. This is possible, e.g., in the following scenario: A node
-operator uploaded keys before CSM v2 and have no deposits due to a long queue.
-After the CSM v2 release, the node operator has claimed the ICS or other priority node operator type.
-This node operator type gives the node operator the ability to get several deposits through
-the priority queue. So, by calling the migration method, the node operator can obtain seats
-in the priority queue, even though they already have seats in the legacy queue.
-The method can also be used by the node operators who joined CSM v2 permissionlessly after the release
-and had their node operator type upgraded to ICS or another priority type.
-The method does not remove the old queue items. Hence, the node operator can upload additional keys that
-will take the place of the migrated keys in the original queue.
+Report general delayed penalty for the given Node Operator
 
 
 ```solidity
-function migrateToPriorityQueue(uint256 nodeOperatorId) external;
+function reportGeneralDelayedPenalty(
+    uint256 nodeOperatorId,
+    bytes32 penaltyType,
+    uint256 amount,
+    string calldata details
+) external onlyRole(REPORT_GENERAL_DELAYED_PENALTY_ROLE);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
+|`penaltyType`|`bytes32`|Type of the penalty|
+|`amount`|`uint256`|Penalty amount in ETH|
+|`details`|`string`|Additional details about the penalty|
 
 
-### reportELRewardsStealingPenalty
+### cancelGeneralDelayedPenalty
 
-Report EL rewards stealing for the given Node Operator
-
-
-```solidity
-function reportELRewardsStealingPenalty(uint256 nodeOperatorId, bytes32 blockHash, uint256 amount)
-    external
-    onlyRole(REPORT_EL_REWARDS_STEALING_PENALTY_ROLE);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`blockHash`|`bytes32`|Execution layer block hash of the proposed block with EL rewards stealing|
-|`amount`|`uint256`|Amount of stolen EL rewards in ETH|
-
-
-### cancelELRewardsStealingPenalty
-
-Cancel previously reported and not settled EL rewards stealing penalty for the given Node Operator
+Cancel previously reported and not settled general delayed penalty for the given Node Operator
 
 
 ```solidity
-function cancelELRewardsStealingPenalty(uint256 nodeOperatorId, uint256 amount)
+function cancelGeneralDelayedPenalty(uint256 nodeOperatorId, uint256 amount)
     external
-    onlyRole(REPORT_EL_REWARDS_STEALING_PENALTY_ROLE);
+    onlyRole(REPORT_GENERAL_DELAYED_PENALTY_ROLE);
 ```
 **Parameters**
 
@@ -739,34 +706,35 @@ function cancelELRewardsStealingPenalty(uint256 nodeOperatorId, uint256 amount)
 |`amount`|`uint256`|Amount of penalty to cancel|
 
 
-### settleELRewardsStealingPenalty
+### settleGeneralDelayedPenalty
 
-Settle locked bond for the given Node Operators
+Settles locked bond and sets the target limit to 0 or the given Node Operators
 
-*SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE role is expected to be assigned to Easy Track*
+SETTLE_GENERAL_DELAYED_PENALTY_ROLE role is expected to be assigned to Easy Track
 
 
 ```solidity
-function settleELRewardsStealingPenalty(uint256[] calldata nodeOperatorIds)
+function settleGeneralDelayedPenalty(uint256[] calldata nodeOperatorIds, uint256[] calldata maxAmounts)
     external
-    onlyRole(SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE);
+    onlyRole(SETTLE_GENERAL_DELAYED_PENALTY_ROLE);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorIds`|`uint256[]`|IDs of the Node Operators|
+|`maxAmounts`|`uint256[]`|Maximum amounts to settle for each Node Operator|
 
 
-### compensateELRewardsStealingPenalty
+### compensateGeneralDelayedPenalty
 
-Compensate EL rewards stealing penalty for the given Node Operator to prevent further validator exits
+Compensate general delayed penalty for the given Node Operator to prevent further validator exits
 
-*Can only be called by the Node Operator manager*
+Can only be called by the Node Operator manager
 
 
 ```solidity
-function compensateELRewardsStealingPenalty(uint256 nodeOperatorId) external payable;
+function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external payable;
 ```
 **Parameters**
 
@@ -775,49 +743,62 @@ function compensateELRewardsStealingPenalty(uint256 nodeOperatorId) external pay
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
 
 
-### submitWithdrawals
+### onValidatorSlashed
 
-Report Node Operator's keys as withdrawn and settle withdrawn amount
+Report Node Operator's key as slashed.
 
 
 ```solidity
-function submitWithdrawals(ValidatorWithdrawalInfo[] calldata withdrawalsInfo) external onlyRole(VERIFIER_ROLE);
+function onValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external onlyRole(VERIFIER_ROLE);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`withdrawalsInfo`|`ValidatorWithdrawalInfo[]`|An array for the validator withdrawals info structs|
+|`nodeOperatorId`|`uint256`|The ID of the Node Operator|
+|`keyIndex`|`uint256`|The index of the validator key that was slashed|
 
 
-### onWithdrawalCredentialsChanged
+### reportWithdrawnValidators
 
-Called by StakingRouter when withdrawal credentials are changed.
-
-*Changing the WC means that the current deposit data in the queue is not valid anymore and can't be deposited.
-DSM will unvet current keys due to nonce change.
-The key removal charge should be reset to 0 manually by the DAO to allow Node Operators to remove the keys without any charge.
-After keys removal the DAO should set the new key removal charge.*
+Report Node Operator's keys as withdrawn and charge penalties associated with exit if any.
+A validator is considered withdrawn in the following cases:
+- if it's an exit of a non-slashed validator, when a withdrawal of the validator is included in a beacon
+block;
+- if it's an exit of a slashed validator, when the committee reports such a validator as withdrawn; note
+that it can happen earlier than the actual withdrawal is included on the beacon chain if the committee
+decides it can account for all penalties in advance;
+- if it's a consolidated validator, when the corresponding pending consolidation is processed and the
+balance of the validator has been moved to another validator.
 
 
 ```solidity
-function onWithdrawalCredentialsChanged() external onlyRole(STAKING_ROUTER_ROLE);
+function reportWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos)
+    external
+    onlyRole(SUBMIT_WITHDRAWALS_ROLE);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`validatorInfos`|`WithdrawnValidatorInfo[]`|An array WithdrawnValidatorInfo structs|
+
 
 ### reportValidatorExitDelay
 
 Handles tracking and penalization logic for a validator that remains active beyond its eligible exit window.
 
-*This function is called by the StakingRouter to report the current exit-related status of a validator
+This function is called by the StakingRouter to report the current exit-related status of a validator
 belonging to a specific node operator. It accepts a validator's public key, associated
 with the duration (in seconds) it was eligible to exit but has not exited.
-This data could be used to trigger penalties for the node operator if the validator has exceeded the allowed exit window.*
+This data could be used to trigger penalties for the node operator if the validator has exceeded the allowed exit window.
 
 
 ```solidity
 function reportValidatorExitDelay(
     uint256 nodeOperatorId,
     uint256,
+    /* proofSlotTimestamp */
     bytes calldata publicKey,
     uint256 eligibleToExitInSec
 ) external onlyRole(STAKING_ROUTER_ROLE);
@@ -836,8 +817,8 @@ function reportValidatorExitDelay(
 
 Handles the triggerable exit event for a validator belonging to a specific node operator.
 
-*This function is called by the StakingRouter when a validator is exited using the triggerable
-exit request on the Execution Layer (EL).*
+This function is called by the StakingRouter when a validator is exited using the triggerable
+exit request on the Execution Layer (EL).
 
 
 ```solidity
@@ -858,21 +839,38 @@ function onValidatorExitTriggered(
 |`exitType`|`uint256`||
 
 
+### onWithdrawalCredentialsChanged
+
+Called by StakingRouter when withdrawal credentials are changed.
+
+Changing the WC means that the current deposit data in the queue is not valid anymore and can't be deposited.
+If there are depositable validators in the queue, the method should revert to prevent deposits with invalid
+withdrawal credentials.
+
+
+```solidity
+function onWithdrawalCredentialsChanged() external onlyRole(STAKING_ROUTER_ROLE);
+```
+
 ### obtainDepositData
 
 Get the next `depositsCount` of depositable keys with signatures from the queue
 
-*The method does not update depositable keys count for the Node Operators before the queue processing start.
+The method does not update depositable keys count for the Node Operators before the queue processing start.
 Hence, in the rare cases of negative stETH rebase the method might return unbonded keys. This is a trade-off
 between the gas cost and the correctness of the data. Due to module design, any unbonded keys will be requested
-to exit by VEBO.*
+to exit by VEBO.
 
-*Second param `depositCalldata` is not used*
+Second param `depositCalldata` is not used
 
 
 ```solidity
-function obtainDepositData(uint256 depositsCount, bytes calldata)
+function obtainDepositData(
+    uint256 depositsCount,
+    bytes calldata /* depositCalldata */
+)
     external
+    virtual
     onlyRole(STAKING_ROUTER_ROLE)
     returns (bytes memory publicKeys, bytes memory signatures);
 ```
@@ -895,7 +893,7 @@ function obtainDepositData(uint256 depositsCount, bytes calldata)
 
 Clean the deposit queue from batches with no depositable keys
 
-*Use **eth_call** to check how many items will be removed*
+Use **eth_call** to check how many items will be removed
 
 
 ```solidity
@@ -966,6 +964,28 @@ function depositQueueItem(uint256 queuePriority, uint128 index) external view re
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`Batch`|Deposit queue item from the priority queue|
+
+
+### isValidatorSlashed
+
+Checks if a validator was reported as slashed
+
+
+```solidity
+function isValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|The ID of the node operator|
+|`keyIndex`|`uint256`|The index of the validator key|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|bool True if a validator was reported as slashed|
 
 
 ### isValidatorWithdrawn
@@ -1164,7 +1184,10 @@ Get Node Operator total deposited keys
 
 
 ```solidity
-function getNodeOperatorTotalDepositedKeys(uint256 nodeOperatorId) external view returns (uint256 totalDepositedKeys);
+function getNodeOperatorTotalDepositedKeys(uint256 nodeOperatorId)
+    external
+    view
+    returns (uint256 totalDepositedKeys);
 ```
 **Parameters**
 
@@ -1243,9 +1266,9 @@ Below is the typical list of actions that requires an update of the nonce:
 5. a node operator's deposit data is used for the deposit
 Note: Depending on the StakingModule implementation above list might be extended
 
-*In some scenarios, it's allowed to update nonce without actual change of the deposit
+In some scenarios, it's allowed to update nonce without actual change of the deposit
 data subset, but it MUST NOT lead to the DOS of the staking module via continuous
-update of the nonce by the malicious actor*
+update of the nonce by the malicious actor
 
 
 ```solidity
@@ -1290,12 +1313,15 @@ function getNodeOperatorIsActive(uint256 nodeOperatorId) external view returns (
 Returns up to `limit` node operator ids starting from the `offset`. The order of
 the returned ids is not defined and might change between calls.
 
-*This view must not revert in case of invalid data passed. When `offset` exceeds the
-total node operators count or when `limit` is equal to 0 MUST be returned empty array.*
+This view must not revert in case of invalid data passed. When `offset` exceeds the
+total node operators count or when `limit` is equal to 0 MUST be returned empty array.
 
 
 ```solidity
-function getNodeOperatorIds(uint256 offset, uint256 limit) external view returns (uint256[] memory nodeOperatorIds);
+function getNodeOperatorIds(uint256 offset, uint256 limit)
+    external
+    view
+    returns (uint256[] memory nodeOperatorIds);
 ```
 
 ### isValidatorExitDelayPenaltyApplicable
@@ -1307,6 +1333,7 @@ Determines whether a validator's exit status should be updated and will have an 
 function isValidatorExitDelayPenaltyApplicable(
     uint256 nodeOperatorId,
     uint256,
+    /* proofSlotTimestamp */
     bytes calldata publicKey,
     uint256 eligibleToExitInSec
 ) external view returns (bool);
@@ -1348,13 +1375,15 @@ function exitDeadlineThreshold(uint256 nodeOperatorId) external view returns (ui
 |`<none>`|`uint256`|The exit deadline threshold in seconds.|
 
 
-### accounting
-
-*This function is used to get the accounting contract from immutables to save bytecode and for backwards compatibility*
+### supportsInterface
 
 
 ```solidity
-function accounting() public view returns (ICSAccounting);
+function supportsInterface(bytes4 interfaceId)
+    public
+    view
+    override(AccessControlEnumerableUpgradeable)
+    returns (bool);
 ```
 
 ### _incrementModuleNonce
@@ -1362,6 +1391,13 @@ function accounting() public view returns (ICSAccounting);
 
 ```solidity
 function _incrementModuleNonce() internal;
+```
+
+### _onUncompensatedPenalty
+
+
+```solidity
+function _onUncompensatedPenalty(uint256 nodeOperatorId) internal;
 ```
 
 ### _addKeysAndUpdateDepositableValidatorsCount
@@ -1378,9 +1414,11 @@ function _addKeysAndUpdateDepositableValidatorsCount(
 
 ### _updateExitedValidatorsCount
 
-*Update exited validators count for a single Node Operator*
+TODO: Figure out if we can remove this method
 
-*Allows decrease the count for unsafe updates*
+Update exited validators count for a single Node Operator
+
+Allows decrease the count for unsafe updates
 
 
 ```solidity
@@ -1423,22 +1461,18 @@ function _recordOperatorCreator(uint256 nodeOperatorId) internal;
 function _forgetOperatorCreator(uint256 nodeOperatorId) internal;
 ```
 
+### _setTargetLimit
+
+
+```solidity
+function _setTargetLimit(uint256 nodeOperatorId, uint256 targetLimitMode, uint256 targetLimit) internal;
+```
+
 ### _getOperatorCreator
 
 
 ```solidity
 function _getOperatorCreator(uint256 nodeOperatorId) internal view returns (address);
-```
-
-### _getQueue
-
-*Acts as a proxy to `_queueByPriority` till `_legacyQueue` deprecation.*
-
-*TODO: Remove the method in the next major release.*
-
-
-```solidity
-function _getQueue(uint256 priority) internal view returns (QueueLib.Queue storage q);
 ```
 
 ### _checkCanAddKeys
@@ -1476,6 +1510,15 @@ function _onlyValidIndexRange(uint256 nodeOperatorId, uint256 startIndex, uint25
 function _getBondCurveId(uint256 nodeOperatorId) internal view returns (uint256);
 ```
 
+### _accounting
+
+This function is used to get the accounting contract from immutables to save bytecode.
+
+
+```solidity
+function _accounting() internal view returns (IAccounting);
+```
+
 ### _onlyRecoverer
 
 
@@ -1485,7 +1528,7 @@ function _onlyRecoverer() internal view override;
 
 ### _keyPointer
 
-*Both nodeOperatorId and keyIndex are limited to uint64 by the contract*
+Both nodeOperatorId and keyIndex are limited to uint64 by the contract
 
 
 ```solidity

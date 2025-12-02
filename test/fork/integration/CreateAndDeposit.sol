@@ -7,7 +7,7 @@ import { Test } from "forge-std/Test.sol";
 
 import { NodeOperator, NodeOperatorManagementProperties } from "../../../src/interfaces/ICSModule.sol";
 import { ILido } from "../../../src/interfaces/ILido.sol";
-import { ICSAccounting } from "../../../src/interfaces/ICSAccounting.sol";
+import { IAccounting } from "../../../src/interfaces/IAccounting.sol";
 import { Utilities } from "../../helpers/Utilities.sol";
 import { PermitHelper } from "../../helpers/Permit.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
@@ -161,7 +161,7 @@ contract PermissionlessCreateNodeOperatorTest is IntegrationTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            permit: ICSAccounting.PermitInput({
+            permit: IAccounting.PermitInput({
                 value: 0,
                 deadline: 0,
                 v: 0,
@@ -213,7 +213,7 @@ contract PermissionlessCreateNodeOperatorTest is IntegrationTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            permit: ICSAccounting.PermitInput({
+            permit: IAccounting.PermitInput({
                 value: 0,
                 deadline: 0,
                 v: 0,
@@ -347,7 +347,7 @@ contract PermissionlessCreateNodeOperator10KeysTest is
 //                 rewardAddress: address(0),
 //                 extendedManagerPermissions: false
 //             }),
-//             permit: ICSAccounting.PermitInput({
+//             permit: IAccounting.PermitInput({
 //                 value: 0,
 //                 deadline: 0,
 //                 v: 0,
@@ -394,7 +394,7 @@ contract PermissionlessCreateNodeOperator10KeysTest is
 //                 rewardAddress: address(0),
 //                 extendedManagerPermissions: false
 //             }),
-//             permit: ICSAccounting.PermitInput({
+//             permit: IAccounting.PermitInput({
 //                 value: 0,
 //                 deadline: 0,
 //                 v: 0,
@@ -439,7 +439,7 @@ contract PermissionlessCreateNodeOperator10KeysTest is
 //                 rewardAddress: address(0),
 //                 extendedManagerPermissions: false
 //             }),
-//             permit: ICSAccounting.PermitInput({
+//             permit: IAccounting.PermitInput({
 //                 value: 0,
 //                 deadline: 0,
 //                 v: 0,
@@ -485,7 +485,7 @@ contract PermissionlessCreateNodeOperator10KeysTest is
 //                 rewardAddress: address(0),
 //                 extendedManagerPermissions: false
 //             }),
-//             permit: ICSAccounting.PermitInput({
+//             permit: IAccounting.PermitInput({
 //                 value: 0,
 //                 deadline: 0,
 //                 v: 0,
@@ -642,15 +642,15 @@ contract VettedGateMiscTest is IntegrationTestBase {
     //     vm.stopPrank();
 
     //     // Start a new referral season
-    //     ICSBondCurve.BondCurveIntervalInput[]
-    //         memory referralBondCurve = new ICSBondCurve.BondCurveIntervalInput[](
+    //     IBondCurve.BondCurveIntervalInput[]
+    //         memory referralBondCurve = new IBondCurve.BondCurveIntervalInput[](
     //             2
     //         );
-    //     referralBondCurve[0] = ICSBondCurve.BondCurveIntervalInput({
+    //     referralBondCurve[0] = IBondCurve.BondCurveIntervalInput({
     //         minKeysCount: 1,
     //         trend: 1.2 ether
     //     });
-    //     referralBondCurve[1] = ICSBondCurve.BondCurveIntervalInput({
+    //     referralBondCurve[1] = IBondCurve.BondCurveIntervalInput({
     //         minKeysCount: 2,
     //         trend: 1 ether
     //     });
@@ -757,15 +757,15 @@ contract VettedGateMiscTest is IntegrationTestBase {
     //     vm.stopPrank();
 
     //     // Start a new referral season
-    //     ICSBondCurve.BondCurveIntervalInput[]
-    //         memory referralBondCurve = new ICSBondCurve.BondCurveIntervalInput[](
+    //     IBondCurve.BondCurveIntervalInput[]
+    //         memory referralBondCurve = new IBondCurve.BondCurveIntervalInput[](
     //             2
     //         );
-    //     referralBondCurve[0] = ICSBondCurve.BondCurveIntervalInput({
+    //     referralBondCurve[0] = IBondCurve.BondCurveIntervalInput({
     //         minKeysCount: 1,
     //         trend: 1.2 ether
     //     });
-    //     referralBondCurve[1] = ICSBondCurve.BondCurveIntervalInput({
+    //     referralBondCurve[1] = IBondCurve.BondCurveIntervalInput({
     //         minKeysCount: 2,
     //         trend: 1 ether
     //     });
@@ -884,13 +884,7 @@ contract DepositTest is IntegrationTestBase {
         accounting.depositStETH(
             defaultNoId,
             32 ether,
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
         vm.stopSnapshotGas();
 
@@ -935,13 +929,7 @@ contract DepositTest is IntegrationTestBase {
         accounting.depositWstETH(
             defaultNoId,
             wstETHAmount,
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
         vm.stopSnapshotGas();
 
@@ -972,7 +960,7 @@ contract DepositTest is IntegrationTestBase {
         accounting.depositStETH(
             defaultNoId,
             32 ether,
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: 32 ether,
                 deadline: type(uint256).max,
                 v: v,
@@ -1015,7 +1003,7 @@ contract DepositTest is IntegrationTestBase {
         accounting.depositWstETH(
             defaultNoId,
             wstETHAmount,
-            ICSAccounting.PermitInput({
+            IAccounting.PermitInput({
                 value: wstETHAmount + 10 wei,
                 deadline: type(uint256).max,
                 v: v,
@@ -1107,13 +1095,7 @@ contract AddValidatorKeysTest is IntegrationTestBase {
             KEYS_COUNT,
             keys,
             signatures,
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
         vm.stopSnapshotGas();
         vm.stopPrank();
@@ -1147,13 +1129,7 @@ contract AddValidatorKeysTest is IntegrationTestBase {
             KEYS_COUNT,
             keys,
             signatures,
-            ICSAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
         );
         vm.stopSnapshotGas();
         vm.stopPrank();

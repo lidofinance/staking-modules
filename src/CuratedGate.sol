@@ -14,7 +14,7 @@ import { IMerkleGate } from "./interfaces/IMerkleGate.sol";
 import { ICuratedGate } from "./interfaces/ICuratedGate.sol";
 import { NodeOperatorManagementProperties } from "./interfaces/ICSModule.sol";
 import { IOperatorsData, OperatorInfo } from "./interfaces/IOperatorsData.sol";
-import { ICSAccounting } from "./interfaces/ICSAccounting.sol";
+import { IAccounting } from "./interfaces/IAccounting.sol";
 
 /// @notice Merkle gate for Curated Module v2
 contract CuratedGate is
@@ -35,7 +35,7 @@ contract CuratedGate is
     uint256 public immutable MODULE_ID;
 
     /// @inheritdoc ICuratedGate
-    ICSAccounting public immutable ACCOUNTING;
+    IAccounting public immutable ACCOUNTING;
 
     /// @inheritdoc ICuratedGate
     IOperatorsData public immutable OPERATORS_DATA;

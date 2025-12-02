@@ -1,5 +1,5 @@
 # IVEBO
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/interfaces/IVEBO.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IVEBO.sol)
 
 
 ## Functions
@@ -74,10 +74,30 @@ function submitReportData(ReportData calldata data, uint256 contractVersion) ext
 
 ```solidity
 struct ReportData {
+    ///
+    /// Oracle consensus info
+    ///
+
+    /// @dev Version of the oracle consensus rules. Current version expected
+    /// by the oracle can be obtained by calling getConsensusVersion().
     uint256 consensusVersion;
+    /// @dev Reference slot for which the report was calculated. If the slot
+    /// contains a block, the state being reported should include all state
+    /// changes resulting from that block. The epoch containing the slot
+    /// should be finalized prior to calculating the report.
     uint256 refSlot;
+    ///
+    /// Requests data
+    ///
+
+    /// @dev Total number of validator exit requests in this report. Must not be greater
+    /// than limit checked in OracleReportSanityChecker.checkExitBusOracleReport.
     uint256 requestsCount;
+    /// @dev Format of the validator exit requests data. Currently, only the
+    /// DATA_FORMAT_LIST=1 is supported.
     uint256 dataFormat;
+    /// @dev Validator exit requests data. Can differ based on the data format,
+    /// see the constant defining a specific data format below for more info.
     bytes data;
 }
 ```

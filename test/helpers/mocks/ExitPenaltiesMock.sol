@@ -3,16 +3,16 @@
 pragma solidity 0.8.24;
 
 import { ICSModule } from "../../../src/interfaces/ICSModule.sol";
-import { ICSAccounting } from "../../../src/interfaces/ICSAccounting.sol";
-import { ICSExitPenalties } from "../../../src/interfaces/ICSExitPenalties.sol";
-import { ICSParametersRegistry } from "../../../src/interfaces/ICSParametersRegistry.sol";
-import { ExitPenaltyInfo } from "../../../src/interfaces/ICSExitPenalties.sol";
+import { IAccounting } from "../../../src/interfaces/IAccounting.sol";
+import { IExitPenalties } from "../../../src/interfaces/IExitPenalties.sol";
+import { IParametersRegistry } from "../../../src/interfaces/IParametersRegistry.sol";
+import { ExitPenaltyInfo } from "../../../src/interfaces/IExitPenalties.sol";
 import { ExitTypes } from "../../../src/abstract/ExitTypes.sol";
 
-contract ExitPenaltiesMock is ICSExitPenalties, ExitTypes {
+contract ExitPenaltiesMock is IExitPenalties, ExitTypes {
     ICSModule public MODULE;
-    ICSAccounting public ACCOUNTING;
-    ICSParametersRegistry public immutable PARAMETERS_REGISTRY;
+    IAccounting public ACCOUNTING;
+    IParametersRegistry public immutable PARAMETERS_REGISTRY;
     ExitPenaltyInfo internal penaltyInfo;
     bool applicable;
 

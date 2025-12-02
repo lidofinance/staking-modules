@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.24;
 import { ICSModule, NodeOperatorManagementProperties } from "./ICSModule.sol";
-import { ICSAccounting } from "./ICSAccounting.sol";
+import { IAccounting } from "./IAccounting.sol";
 
 interface IPermissionlessGate {
     error ZeroModuleAddress();
@@ -56,7 +56,7 @@ interface IPermissionlessGate {
         bytes memory publicKeys,
         bytes memory signatures,
         NodeOperatorManagementProperties memory managementProperties,
-        ICSAccounting.PermitInput memory permit,
+        IAccounting.PermitInput memory permit,
         address referrer
     ) external returns (uint256 nodeOperatorId);
 
@@ -80,7 +80,7 @@ interface IPermissionlessGate {
         bytes memory publicKeys,
         bytes memory signatures,
         NodeOperatorManagementProperties memory managementProperties,
-        ICSAccounting.PermitInput memory permit,
+        IAccounting.PermitInput memory permit,
         address referrer
     ) external returns (uint256 nodeOperatorId);
 }

@@ -1,8 +1,8 @@
 # ILido
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/interfaces/ILido.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/ILido.sol)
 
 **Inherits:**
-[IStETH](/src/interfaces/IStETH.sol/interface.IStETH.md)
+[IStETH](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IStETH.sol/interface.IStETH.md)
 
 
 ## Functions

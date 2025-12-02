@@ -7,7 +7,7 @@ import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensio
 
 import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
 
-import { ICSAccounting } from "./interfaces/ICSAccounting.sol";
+import { IAccounting } from "./interfaces/IAccounting.sol";
 import { ICSModule, NodeOperatorManagementProperties } from "./interfaces/ICSModule.sol";
 import { IPermissionlessGate } from "./interfaces/IPermissionlessGate.sol";
 
@@ -70,7 +70,7 @@ contract PermissionlessGate is
         bytes calldata publicKeys,
         bytes calldata signatures,
         NodeOperatorManagementProperties calldata managementProperties,
-        ICSAccounting.PermitInput calldata permit,
+        IAccounting.PermitInput calldata permit,
         address referrer
     ) external returns (uint256 nodeOperatorId) {
         nodeOperatorId = MODULE.createNodeOperator({
@@ -95,7 +95,7 @@ contract PermissionlessGate is
         bytes calldata publicKeys,
         bytes calldata signatures,
         NodeOperatorManagementProperties calldata managementProperties,
-        ICSAccounting.PermitInput calldata permit,
+        IAccounting.PermitInput calldata permit,
         address referrer
     ) external returns (uint256 nodeOperatorId) {
         nodeOperatorId = MODULE.createNodeOperator({

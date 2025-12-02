@@ -1,5 +1,5 @@
 # IPermissionlessGate
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/interfaces/IPermissionlessGate.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IPermissionlessGate.sol)
 
 
 ## Functions
@@ -70,7 +70,7 @@ function addNodeOperatorStETH(
     bytes memory publicKeys,
     bytes memory signatures,
     NodeOperatorManagementProperties memory managementProperties,
-    ICSAccounting.PermitInput memory permit,
+    IAccounting.PermitInput memory permit,
     address referrer
 ) external returns (uint256 nodeOperatorId);
 ```
@@ -82,7 +82,7 @@ function addNodeOperatorStETH(
 |`publicKeys`|`bytes`|Public keys to submit|
 |`signatures`|`bytes`|Signatures of `(deposit_message_root, domain)` tuples https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#signingdata|
 |`managementProperties`|`NodeOperatorManagementProperties`|Optional. Management properties to be used for the Node Operator. managerAddress: Used as `managerAddress` for the Node Operator. If not passed `msg.sender` will be used. rewardAddress: Used as `rewardAddress` for the Node Operator. If not passed `msg.sender` will be used. extendedManagerPermissions: Flag indicating that `managerAddress` will be able to change `rewardAddress`. If set to true `resetNodeOperatorManagerAddress` method will be disabled|
-|`permit`|`ICSAccounting.PermitInput`|Optional. Permit to use stETH as bond|
+|`permit`|`IAccounting.PermitInput`|Optional. Permit to use stETH as bond|
 |`referrer`|`address`|Optional. Referrer address. Should be passed when Node Operator is created using partners integration|
 
 **Returns**
@@ -106,7 +106,7 @@ function addNodeOperatorWstETH(
     bytes memory publicKeys,
     bytes memory signatures,
     NodeOperatorManagementProperties memory managementProperties,
-    ICSAccounting.PermitInput memory permit,
+    IAccounting.PermitInput memory permit,
     address referrer
 ) external returns (uint256 nodeOperatorId);
 ```
@@ -118,7 +118,7 @@ function addNodeOperatorWstETH(
 |`publicKeys`|`bytes`|Public keys to submit|
 |`signatures`|`bytes`|Signatures of `(deposit_message_root, domain)` tuples https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#signingdata|
 |`managementProperties`|`NodeOperatorManagementProperties`|Optional. Management properties to be used for the Node Operator. managerAddress: Used as `managerAddress` for the Node Operator. If not passed `msg.sender` will be used. rewardAddress: Used as `rewardAddress` for the Node Operator. If not passed `msg.sender` will be used. extendedManagerPermissions: Flag indicating that `managerAddress` will be able to change `rewardAddress`. If set to true `resetNodeOperatorManagerAddress` method will be disabled|
-|`permit`|`ICSAccounting.PermitInput`|Optional. Permit to use wstETH as bond|
+|`permit`|`IAccounting.PermitInput`|Optional. Permit to use wstETH as bond|
 |`referrer`|`address`|Optional. Referrer address. Should be passed when Node Operator is created using partners integration|
 
 **Returns**

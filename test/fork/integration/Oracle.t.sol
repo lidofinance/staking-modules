@@ -8,9 +8,9 @@ import { Test } from "forge-std/Test.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 import { MerkleTree } from "../../helpers/MerkleTree.sol";
 
-import { ICSStrikes } from "../../../src/interfaces/ICSStrikes.sol";
-import { ICSFeeOracle } from "../../../src/interfaces/ICSFeeOracle.sol";
-import { ICSExitPenalties, ExitPenaltyInfo } from "../../../src/interfaces/ICSExitPenalties.sol";
+import { IValidatorStrikes } from "../../../src/interfaces/IValidatorStrikes.sol";
+import { IFeeOracle } from "../../../src/interfaces/IFeeOracle.sol";
+import { IExitPenalties, ExitPenaltyInfo } from "../../../src/interfaces/IExitPenalties.sol";
 import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
 import { Utilities } from "../../helpers/Utilities.sol";
 import { IWithdrawalVault } from "../../../src/interfaces/IWithdrawalVault.sol";
@@ -114,12 +114,12 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
         bytes32 feesTreeRoot,
         uint256 distributedShares,
         bytes32 strikesTreeRoot
-    ) public returns (ICSFeeOracle.ReportData memory data) {
+    ) public returns (IFeeOracle.ReportData memory data) {
         uint256 consensusVersion = oracle.getConsensusVersion();
         waitForNextRefSlot();
         (uint256 refSlot, ) = hashConsensus.getCurrentFrame();
 
-        data = ICSFeeOracle.ReportData({
+        data = IFeeOracle.ReportData({
             consensusVersion: consensusVersion,
             refSlot: refSlot,
             treeRoot: feesTreeRoot,
@@ -151,7 +151,7 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
             abi.encode(nodeOperatorId + 1, randomBytes(48), strikesData)
         );
 
-        ICSFeeOracle.ReportData memory data = prepareReport(
+        IFeeOracle.ReportData memory data = prepareReport(
             feesTree.root(),
             distributed,
             strikesTree.root()
@@ -159,7 +159,7 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
         uint256 contractVersion = oracle.getContractVersion();
         (address[] memory addresses, ) = hashConsensus.getMembers();
         vm.startPrank(addresses[0]);
-        vm.startSnapshotGas("CSFeeOracle.submitReportData_fees");
+        vm.startSnapshotGas("FeeOracle.submitReportData_fees");
         oracle.submitReportData(data, contractVersion);
         vm.stopSnapshotGas();
         vm.stopPrank();
@@ -195,7 +195,7 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
             abi.encode(nodeOperatorId + 1, randomBytes(48), strikesData)
         );
 
-        ICSFeeOracle.ReportData memory data = prepareReport(
+        IFeeOracle.ReportData memory data = prepareReport(
             feesTree.root(),
             distributed,
             strikesTree.root()
@@ -203,7 +203,7 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
         uint256 contractVersion = oracle.getContractVersion();
         (address[] memory addresses, ) = hashConsensus.getMembers();
         vm.startPrank(addresses[0]);
-        vm.startSnapshotGas("CSFeeOracle.submitReportData_strikes");
+        vm.startSnapshotGas("FeeOracle.submitReportData_strikes");
         oracle.submitReportData(data, contractVersion);
         vm.stopSnapshotGas();
         vm.stopPrank();
@@ -220,9 +220,9 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
             locator.withdrawalVault()
         ).getWithdrawalRequestFee();
 
-        ICSStrikes.KeyStrikes[]
-            memory keyStrikesList = new ICSStrikes.KeyStrikes[](1);
-        keyStrikesList[0] = ICSStrikes.KeyStrikes({
+        IValidatorStrikes.KeyStrikes[]
+            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
+        keyStrikesList[0] = IValidatorStrikes.KeyStrikes({
             nodeOperatorId: nodeOperatorId,
             keyIndex: keyIndex,
             data: strikesData
@@ -230,13 +230,13 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
         bool[] memory proofFlags = new bool[](proof.length);
 
         vm.expectEmit(address(exitPenalties));
-        emit ICSExitPenalties.StrikesPenaltyProcessed(
+        emit IExitPenalties.StrikesPenaltyProcessed(
             nodeOperatorId,
             key,
             penalty
         );
         vm.prank(refundRecipient);
-        vm.startSnapshotGas("CSStrikes.processBadPerformanceProof");
+        vm.startSnapshotGas("ValidatorStrikes.processBadPerformanceProof");
         this.processBadPerformanceProof{ value: 1 ether }(
             keyStrikesList,
             proof,
@@ -260,7 +260,7 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
     }
 
     function processBadPerformanceProof(
-        ICSStrikes.KeyStrikes[] calldata keyStrikes,
+        IValidatorStrikes.KeyStrikes[] calldata keyStrikes,
         bytes32[] calldata proof,
         bool[] calldata proofFlags,
         address _refundRecipient

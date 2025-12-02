@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import { ICSAccounting } from "../../../src/interfaces/ICSAccounting.sol";
+import { IAccounting } from "../../../src/interfaces/IAccounting.sol";
 import { ICSModule } from "../../../src/interfaces/ICSModule.sol";
 
 contract EjectorMock {
     ICSModule public MODULE;
-    ICSAccounting public ACCOUNTING;
+    IAccounting public ACCOUNTING;
 
     constructor(address _module) {
         MODULE = ICSModule(_module);
