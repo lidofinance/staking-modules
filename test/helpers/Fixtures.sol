@@ -218,83 +218,71 @@ contract DeploymentHelpers is Test {
         deploymentConfig.csmImpl = vm.parseJsonAddress(config, ".CSModuleImpl");
         vm.label(deploymentConfig.csmImpl, "moduleImpl");
 
-        /// Optional for v1 compatibility (upgrade tests). Removed in v2
-        if (vm.keyExistsJson(config, ".CSEarlyAdoption")) {
-            deploymentConfig.earlyAdoption = vm.parseJsonAddress(
-                config,
-                ".CSEarlyAdoption"
-            );
-            vm.label(deploymentConfig.earlyAdoption, "earlyAdoption");
-        }
+        deploymentConfig.permissionlessGate = vm.parseJsonAddress(
+            config,
+            ".PermissionlessGate"
+        );
+        vm.label(deploymentConfig.permissionlessGate, "permissionlessGate");
 
-        /// Optional, new in v2. Gates and other stuff not present in v1 deployment configs
-        if (vm.keyExistsJson(config, ".PermissionlessGate")) {
-            deploymentConfig.permissionlessGate = vm.parseJsonAddress(
-                config,
-                ".PermissionlessGate"
-            );
-            vm.label(deploymentConfig.permissionlessGate, "permissionlessGate");
+        deploymentConfig.vettedGateFactory = vm.parseJsonAddress(
+            config,
+            ".VettedGateFactory"
+        );
+        vm.label(deploymentConfig.vettedGateFactory, "vettedGateFactory");
 
-            deploymentConfig.vettedGateFactory = vm.parseJsonAddress(
-                config,
-                ".VettedGateFactory"
-            );
-            vm.label(deploymentConfig.vettedGateFactory, "vettedGateFactory");
+        deploymentConfig.vettedGate = vm.parseJsonAddress(
+            config,
+            ".VettedGate"
+        );
+        vm.label(deploymentConfig.vettedGate, "vettedGate");
 
-            deploymentConfig.vettedGate = vm.parseJsonAddress(
-                config,
-                ".VettedGate"
-            );
-            vm.label(deploymentConfig.vettedGate, "vettedGate");
+        deploymentConfig.vettedGateImpl = vm.parseJsonAddress(
+            config,
+            ".VettedGateImpl"
+        );
+        vm.label(deploymentConfig.vettedGateImpl, "vettedGateImpl");
 
-            deploymentConfig.vettedGateImpl = vm.parseJsonAddress(
-                config,
-                ".VettedGateImpl"
-            );
-            vm.label(deploymentConfig.vettedGateImpl, "vettedGateImpl");
+        deploymentConfig.parametersRegistry = vm.parseJsonAddress(
+            config,
+            ".ParametersRegistry"
+        );
+        vm.label(deploymentConfig.parametersRegistry, "parametersRegistry");
 
-            deploymentConfig.parametersRegistry = vm.parseJsonAddress(
-                config,
-                ".ParametersRegistry"
-            );
-            vm.label(deploymentConfig.parametersRegistry, "parametersRegistry");
+        deploymentConfig.parametersRegistryImpl = vm.parseJsonAddress(
+            config,
+            ".ParametersRegistryImpl"
+        );
+        vm.label(
+            deploymentConfig.parametersRegistryImpl,
+            "parametersRegistryImpl"
+        );
 
-            deploymentConfig.parametersRegistryImpl = vm.parseJsonAddress(
-                config,
-                ".ParametersRegistryImpl"
-            );
-            vm.label(
-                deploymentConfig.parametersRegistryImpl,
-                "parametersRegistryImpl"
-            );
+        deploymentConfig.exitPenalties = vm.parseJsonAddress(
+            config,
+            ".ExitPenalties"
+        );
+        vm.label(deploymentConfig.exitPenalties, "exitPenalties");
 
-            deploymentConfig.exitPenalties = vm.parseJsonAddress(
-                config,
-                ".ExitPenalties"
-            );
-            vm.label(deploymentConfig.exitPenalties, "exitPenalties");
+        deploymentConfig.exitPenaltiesImpl = vm.parseJsonAddress(
+            config,
+            ".ExitPenaltiesImpl"
+        );
+        vm.label(deploymentConfig.exitPenaltiesImpl, "exitPenaltiesImpl");
 
-            deploymentConfig.exitPenaltiesImpl = vm.parseJsonAddress(
-                config,
-                ".ExitPenaltiesImpl"
-            );
-            vm.label(deploymentConfig.exitPenaltiesImpl, "exitPenaltiesImpl");
+        deploymentConfig.strikes = vm.parseJsonAddress(
+            config,
+            ".ValidatorStrikes"
+        );
+        vm.label(deploymentConfig.strikes, "strikes");
 
-            deploymentConfig.strikes = vm.parseJsonAddress(
-                config,
-                ".ValidatorStrikes"
-            );
-            vm.label(deploymentConfig.strikes, "strikes");
+        deploymentConfig.strikesImpl = vm.parseJsonAddress(
+            config,
+            ".ValidatorStrikesImpl"
+        );
+        vm.label(deploymentConfig.strikesImpl, "strikesImpl");
 
-            deploymentConfig.strikesImpl = vm.parseJsonAddress(
-                config,
-                ".ValidatorStrikesImpl"
-            );
-            vm.label(deploymentConfig.strikesImpl, "strikesImpl");
-
-            deploymentConfig.ejector = vm.parseJsonAddress(config, ".Ejector");
-            vm.label(deploymentConfig.strikes, "ejector");
-        }
+        deploymentConfig.ejector = vm.parseJsonAddress(config, ".Ejector");
+        vm.label(deploymentConfig.ejector, "ejector");
 
         deploymentConfig.accounting = vm.parseJsonAddress(
             config,

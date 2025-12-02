@@ -26,7 +26,7 @@ import { IBondCore } from "../interfaces/IBondCore.sol";
 ///
 /// @author vgorkavenko
 abstract contract BondCore is IBondCore {
-    /// @custom:storage-location erc7201:BondCore
+    /// @custom:storage-location erc7201:CSBondCore
     struct BondCoreStorage {
         mapping(uint256 nodeOperatorId => uint256 shares) bondShares;
         uint256 totalBondShares;

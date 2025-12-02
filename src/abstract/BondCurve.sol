@@ -28,7 +28,7 @@ import { IBondCurve } from "../interfaces/IBondCurve.sol";
 ///
 /// @author vgorkavenko
 abstract contract BondCurve is IBondCurve, Initializable {
-    /// @custom:storage-location erc7201:BondCurve
+    /// @custom:storage-location erc7201:CSBondCurve
     struct BondCurveStorage {
         /// @dev DEPRECATED. DO NOT USE. Preserves storage layout. Previous structure occupied 3 slots per item.
         bytes32[] legacyBondCurves;

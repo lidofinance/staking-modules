@@ -30,7 +30,7 @@ import { IBondLock } from "../interfaces/IBondLock.sol";
 abstract contract BondLock is IBondLock, Initializable {
     using SafeCast for uint256;
 
-    /// @custom:storage-location erc7201:BondLock
+    /// @custom:storage-location erc7201:CSBondLock
     struct BondLockStorage {
         /// @dev Default bond lock period for all locks
         ///      After this period the bond lock is removed and no longer valid
