@@ -72,7 +72,7 @@ struct DeployParams {
     uint256 stakingModuleId;
     bytes32 moduleType;
     address generalDelayedPenaltyReporter;
-    // CSParameters
+    // ParametersRegistry
     uint256 queueLowestPriority;
     uint256 defaultKeyRemovalCharge;
     uint256 defaultGeneralDelayedPenaltyAdditionalFine;

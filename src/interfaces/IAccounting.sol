@@ -104,7 +104,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     /// @dev If the curve is updated to a curve with higher values for any point,
     ///      Extensive checks and actions should be performed by the method caller to avoid
     ///      inconsistency in the keys accounting. A manual update of the depositable validators count
-    ///      in CSM might be required to ensure that the keys pointers are consistent.
+    ///      in staking module might be required to ensure that the keys pointers are consistent.
     /// @param curveId Bond curve ID to update
     /// @param bondCurve Bond curve definition
     function updateBondCurve(
@@ -224,7 +224,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     ) external view returns (uint256);
 
     /// @notice Unwrap the user's wstETH and deposit stETH to the bond for the given Node Operator
-    /// @dev Called by CSM exclusively. CSM should check node operator existence and update depositable validators count
+    /// @dev Called by staking module exclusively. Staking module should check node operator existence and update depositable validators count
     /// @param from Address to unwrap wstETH from
     /// @param nodeOperatorId ID of the Node Operator
     /// @param wstETHAmount Amount of wstETH to deposit
@@ -248,7 +248,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     ) external;
 
     /// @notice Deposit user's stETH to the bond for the given Node Operator
-    /// @dev Called by CSM exclusively. CSM should check node operator existence and update depositable validators count
+    /// @dev Called by staking module exclusively. Staking module should check node operator existence and update depositable validators count
     /// @param from Address to deposit stETH from.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param stETHAmount Amount of stETH to deposit
@@ -272,7 +272,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     ) external;
 
     /// @notice Stake user's ETH with Lido and deposit stETH to the bond
-    /// @dev Called by CSM exclusively. CSM should check node operator existence and update depositable validators count
+    /// @dev Called by staking module exclusively. Staking module should check node operator existence and update depositable validators count
     /// @param from Address to stake ETH and deposit stETH from
     /// @param nodeOperatorId ID of the Node Operator
     function depositETH(address from, uint256 nodeOperatorId) external payable;
@@ -332,13 +332,13 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     ) external returns (uint256 requestId);
 
     /// @notice Lock bond in ETH for the given Node Operator
-    /// @dev Called by CSM exclusively
+    /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Amount to lock in ETH (stETH)
     function lockBondETH(uint256 nodeOperatorId, uint256 amount) external;
 
     /// @notice Release locked bond in ETH for the given Node Operator
-    /// @dev Called by CSM exclusively
+    /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Amount to release in ETH (stETH)
     function releaseLockedBondETH(
@@ -347,19 +347,19 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     ) external;
 
     /// @notice Settle locked bond ETH for the given Node Operator
-    /// @dev Called by CSM exclusively
+    /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator
     function settleLockedBondETH(
         uint256 nodeOperatorId
     ) external returns (bool);
 
     /// @notice Compensate locked bond ETH for the given Node Operator
-    /// @dev Called by CSM exclusively
+    /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator
     function compensateLockedBondETH(uint256 nodeOperatorId) external payable;
 
     /// @notice Set the bond curve for the given Node Operator
-    /// @dev Updates depositable validators count in CSM to ensure key pointers consistency
+    /// @dev Updates depositable validators count in staking module to ensure key pointers consistency
     /// @param nodeOperatorId ID of the Node Operator
     /// @param curveId ID of the bond curve to set
     function setBondCurve(uint256 nodeOperatorId, uint256 curveId) external;

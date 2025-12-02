@@ -57,7 +57,7 @@ interface IValidatorStrikes {
     /// @param _ejector Address of the Ejector contract
     function setEjector(address _ejector) external;
 
-    /// @notice Report multiple CSM keys as bad performing
+    /// @notice Report multiple keys as bad performing
     /// @param keyStrikesList List of KeyStrikes structs
     /// @param proof Multi-proof of the strikes
     /// @param proofFlags Flags to process the multi-proof, see OZ `processMultiProof`

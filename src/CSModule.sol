@@ -149,7 +149,7 @@ contract CSModule is
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(STAKING_ROUTER_ROLE, address(LIDO_LOCATOR.stakingRouter()));
 
-        // CSM is on pause initially and should be resumed during the vote
+        // Module is on pause initially and should be resumed during the vote
         _pauseFor(PausableUntil.PAUSE_INFINITELY);
     }
 
@@ -430,7 +430,7 @@ contract CSModule is
     }
 
     /// @inheritdoc IStakingModule
-    /// @dev This method is not used in CSM, hence it does nothing
+    /// @dev This method is not used in the module, hence it does nothing
     /// @dev NOTE: No role checks because of empty body to save bytecode.
     function onExitedAndStuckValidatorsCountsUpdated() external {
         // solhint-disable-previous-line no-empty-blocks

@@ -85,7 +85,7 @@ interface IExitPenalties is IExitTypes {
     ) external;
 
     /// @notice Determines whether a validator exit status should be updated and will have affect on Node Operator.
-    /// @dev called only by CSM
+    /// @dev called only by the module
     /// @param nodeOperatorId The ID of the node operator.
     /// @param publicKey Validator's public key.
     /// @param eligibleToExitInSec The number of seconds the validator was eligible to exit but did not.

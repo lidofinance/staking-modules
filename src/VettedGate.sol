@@ -33,7 +33,7 @@ contract VettedGate is
     /// @dev Address of the Staking Module
     ICSModule public immutable MODULE;
 
-    /// @dev Address of the CS Accounting
+    /// @dev Address of the Accounting
     IAccounting public immutable ACCOUNTING;
 
     /// @dev Id of the bond curve to be assigned for the eligible members

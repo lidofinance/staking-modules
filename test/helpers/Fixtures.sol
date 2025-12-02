@@ -572,7 +572,7 @@ contract DeploymentHelpers is Test {
         dst.moduleType = src.moduleType;
         dst.generalDelayedPenaltyReporter = src.generalDelayedPenaltyReporter;
 
-        // CSParameters
+        // ParametersRegistry
         dst.queueLowestPriority = src.queueLowestPriority;
         dst.defaultKeyRemovalCharge = src.defaultKeyRemovalCharge;
         dst.defaultGeneralDelayedPenaltyAdditionalFine = src

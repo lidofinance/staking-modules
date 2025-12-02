@@ -67,7 +67,7 @@ contract DeployMainnet is DeployBase {
         config
             .generalDelayedPenaltyReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider
 
-        // CSParameters TODO reconsider
+        // ParametersRegistry TODO reconsider
         config.defaultKeyRemovalCharge = 0;
         config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
         config.defaultKeysLimit = type(uint256).max;

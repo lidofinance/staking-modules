@@ -188,7 +188,7 @@ interface IParametersRegistry {
     function defaultPerformanceLeeway() external returns (uint256);
 
     /// @notice Get default value for the strikes lifetime (frames count) and threshold (integer)
-    /// @return lifetime The default number of CSM Performance Oracle frames to store strikes values
+    /// @return lifetime The default number of Performance Oracle frames to store strikes values
     /// @return threshold The default strikes value leading to validator force ejection.
     function defaultStrikesParams()
         external
@@ -251,7 +251,7 @@ interface IParametersRegistry {
     function setDefaultPerformanceLeeway(uint256 leeway) external;
 
     /// @notice Set default values for the strikes lifetime and threshold. Default values are used if specific values are not set for the curveId
-    /// @param lifetime The default number of CSM Performance Oracle frames to store strikes values
+    /// @param lifetime The default number of Performance Oracle frames to store strikes values
     /// @param threshold The default strikes value leading to validator force ejection.
     function setDefaultStrikesParams(
         uint256 lifetime,
@@ -298,7 +298,7 @@ interface IParametersRegistry {
     /// @param curveId Curve Id to unset custom key removal charge for
     function unsetKeyRemovalCharge(uint256 curveId) external;
 
-    /// @notice Get key removal charge by the curveId. A charge is taken from the bond for each removed key from CSM. This parameter is not used in Curated Module
+    /// @notice Get key removal charge by the curveId. A charge is taken from the bond for each removed key from the module. This parameter is not used in Curated Module
     /// @dev `defaultKeyRemovalCharge` is returned if the value is not set for the given curveId.
     /// @param curveId Curve Id to get key removal charge for
     /// @return keyRemovalCharge Key removal charge
@@ -420,7 +420,7 @@ interface IParametersRegistry {
 
     /// @notice Set performance strikes lifetime and threshold for the curveId
     /// @param curveId Curve Id to associate performance strikes lifetime and threshold with
-    /// @param lifetime Number of CSM Performance Oracle frames to store strikes values
+    /// @param lifetime Number of Performance Oracle frames to store strikes values
     /// @param threshold The strikes value leading to validator force ejection
     function setStrikesParams(
         uint256 curveId,
@@ -435,7 +435,7 @@ interface IParametersRegistry {
     /// @notice Get performance strikes lifetime and threshold by the curveId
     /// @dev `defaultStrikesParams` are returned if the value is not set for the given curveId
     /// @param curveId Curve Id to get performance strikes lifetime and threshold for
-    /// @return lifetime Number of CSM Performance Oracle frames to store strikes values
+    /// @return lifetime Number of Performance Oracle frames to store strikes values
     /// @return threshold The strikes value leading to validator force ejection
     function getStrikesParams(
         uint256 curveId
