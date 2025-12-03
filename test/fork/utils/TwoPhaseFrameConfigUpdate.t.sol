@@ -37,13 +37,13 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         initializeFromDeployment();
     }
 
-    function test_shift24To28DaysFrameSize() public {
+    function test_shiftReportWindow() public {
         (, , uint256 genesisTime) = hashConsensus.getChainConfig();
 
         TwoPhaseFrameConfigUpdate.PhaseConfig
-            memory phase1Config = createPhaseConfig(1, 24, 0); // 24-day phase
+            memory phase1Config = createPhaseConfig(1, 31, 300); // 31-day phase, 1h fast lane
         TwoPhaseFrameConfigUpdate.PhaseConfig
-            memory phase2Config = createPhaseConfig(1, 28, 0); // 28-day phase
+            memory phase2Config = createPhaseConfig(1, 28, 300); // 28-day phase, 1h fast lane
 
         updater = new TwoPhaseFrameConfigUpdate(
             address(oracle),
@@ -52,8 +52,9 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         );
 
         bytes32 manageFrameRole = hashConsensus.MANAGE_FRAME_CONFIG_ROLE();
-        address roleAdmin = hashConsensus.getRoleMember(0x00, 0);
-        vm.prank(roleAdmin);
+        bytes32 adminRole = hashConsensus.getRoleAdmin(manageFrameRole);
+        address admin = hashConsensus.getRoleMember(adminRole, 0);
+        vm.prank(admin);
         hashConsensus.grantRole(manageFrameRole, address(updater));
 
         (, uint256 currentEpochsPerFrame, ) = hashConsensus.getFrameConfig();
@@ -76,7 +77,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         );
 
         uint256 calculatedPhase1ExpirationSlot = calculatedPhase1ExpectedProcessingRefSlot +
-                (dayToEpochs(24) * SLOTS_PER_EPOCH);
+                (currentEpochsPerFrame * SLOTS_PER_EPOCH);
         assertEq(
             phase1ExpirationSlot,
             calculatedPhase1ExpirationSlot,
@@ -119,15 +120,15 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
             );
             assertEq(
                 phase1EpochsPerFrame,
-                dayToEpochs(24),
-                "Phase 1 should set 24-day frames"
+                dayToEpochs(31),
+                "Phase 1 should set 31-day frames"
             );
-            assertEq(phase1FastLaneSlots, 0, "Fast lane slots should be 0");
+            assertEq(phase1FastLaneSlots, 300, "Fast lane slots should be 300");
         }
 
-        // Calculate Phase 1 first frame ref slot (after 24-day frame)
+        // Calculate Phase 1 first frame ref slot (after 31-day frame)
         uint256 calculatedPhase1FirstFrameRefSlot = phase1ExpectedProcessingRefSlot +
-                (dayToEpochs(24) * SLOTS_PER_EPOCH);
+                (dayToEpochs(31) * SLOTS_PER_EPOCH);
 
         vm.mockCall(
             address(oracle),
@@ -166,11 +167,11 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
             );
 
             uint256 calculatedPhase2ExpirationSlot = phase1FirstFrameRefSlot +
-                (dayToEpochs(24) * SLOTS_PER_EPOCH);
+                (dayToEpochs(28) * SLOTS_PER_EPOCH);
             assertEq(
                 phase2ExpirationSlot,
                 calculatedPhase2ExpirationSlot,
-                "Phase 2 expiration should be Phase 1 first frame ref slot + frame size"
+                "Phase 2 expiration should be Phase 1 first frame ref slot + Phase 2 frame size"
             );
         }
 
@@ -195,7 +196,11 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
                 dayToEpochs(28),
                 "Phase 2 should restore 28-day frames"
             );
-            assertEq(phase2FastLaneSlots, 0, "Fast lane slots should remain 0");
+            assertEq(
+                phase2FastLaneSlots,
+                300,
+                "Fast lane slots should remain 300"
+            );
         }
 
         {
@@ -211,6 +216,73 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         assertFalse(
             hashConsensus.hasRole(manageFrameRole, address(updater)),
             "Role should be renounced after phase 2"
+        );
+    }
+
+    function test_constructorRevertsFastLanePeriodCannotBeLongerThanFrame()
+        public
+    {
+        // Test Phase 1 fast lane longer than frame
+        TwoPhaseFrameConfigUpdate.PhaseConfig
+            memory phase1Config = createPhaseConfig(
+                1,
+                1,
+                dayToEpochs(1) * SLOTS_PER_EPOCH + 1
+            );
+        TwoPhaseFrameConfigUpdate.PhaseConfig
+            memory phase2Config = createPhaseConfig(1, 1, 300);
+
+        vm.expectRevert(
+            TwoPhaseFrameConfigUpdate
+                .FastLanePeriodCannotBeLongerThanFrame
+                .selector
+        );
+        new TwoPhaseFrameConfigUpdate(
+            address(oracle),
+            phase1Config,
+            phase2Config
+        );
+
+        // Test Phase 2 fast lane longer than frame
+        phase1Config = createPhaseConfig(1, 1, 300);
+        phase2Config = createPhaseConfig(
+            1,
+            2,
+            2 * dayToEpochs(1) * SLOTS_PER_EPOCH + 1
+        );
+
+        vm.expectRevert(
+            TwoPhaseFrameConfigUpdate
+                .FastLanePeriodCannotBeLongerThanFrame
+                .selector
+        );
+        new TwoPhaseFrameConfigUpdate(
+            address(oracle),
+            phase1Config,
+            phase2Config
+        );
+
+        // Test both phases with fast lane longer than frame
+        phase1Config = createPhaseConfig(
+            1,
+            3,
+            3 * dayToEpochs(1) * SLOTS_PER_EPOCH + 1
+        );
+        phase2Config = createPhaseConfig(
+            1,
+            4,
+            4 * dayToEpochs(1) * SLOTS_PER_EPOCH + 1
+        );
+
+        vm.expectRevert(
+            TwoPhaseFrameConfigUpdate
+                .FastLanePeriodCannotBeLongerThanFrame
+                .selector
+        );
+        new TwoPhaseFrameConfigUpdate(
+            address(oracle),
+            phase1Config,
+            phase2Config
         );
     }
 }

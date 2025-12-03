@@ -8,10 +8,19 @@ import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.so
 import { IReportAsyncProcessor } from "../lib/base-oracle/interfaces/IReportAsyncProcessor.sol";
 import { IConsensusContract } from "../lib/base-oracle/interfaces/IConsensusContract.sol";
 
-/// @notice A helper to offset CSM Oracle report cadence (e.g., move report window by N slots).
+/// @notice A helper to offset CSM\CM Oracle report cadence (e.g., move report window by N epochs).
 ///         This is achieved via a two-phase frame configuration update
-///         in `HashConsensus` contract used by `CSFeeOracle`.
-///         Phase2 cannot be executed until Phase1 is completed.
+///         in HashConsensus contract used by Oracle:
+///         - Phase 1: set new frame size (shorter or longer than original) and fast lane length
+///                    after Oracle has processed a defined number of reports with the original frame config.
+///         - Phase 2: set the original frame size and fast lane length
+///                    after Oracle has processed a defined number of reports with the phase 1 config.
+///         As a result, the Oracle report window is shifted by the difference between
+///         the original and phase 1 frame sizes.
+///         ---
+///         Due to off-chain Oracle sanity checks, frame config can be changed only when
+///         Oracle has no missing reports at the moment and before current or possible (by executed phase) frame reference slot.
+///         In other words, only between reports processing for two consecutive frames.
 /// @dev The contract should have `MANAGE_FRAME_CONFIG_ROLE` role granted in the
 ///      `HashConsensus` contract in order to be able to call `setFrameConfig`.
 ///      The role should be revoked after both phases are executed.
@@ -53,6 +62,8 @@ contract TwoPhaseFrameConfigUpdate {
     error ZeroEpochsPerFrame();
     error ZeroReportsPassedToEnableUpdate();
     error ZeroFromRefSlot();
+    error FastLanePeriodCannotBeLongerThanFrame();
+
     error Phase1AlreadyExecuted();
     error Phase2AlreadyExecuted();
     error Phase1NotExecuted();
@@ -93,6 +104,20 @@ contract TwoPhaseFrameConfigUpdate {
 
         if (lastProcessingRefSlot == 0) {
             revert ZeroFromRefSlot();
+        }
+
+        if (
+            phase1Config.newFastLaneLengthSlots >
+            phase1Config.newEpochsPerFrame * slotsPerEpoch
+        ) {
+            revert FastLanePeriodCannotBeLongerThanFrame();
+        }
+
+        if (
+            phase2Config.newFastLaneLengthSlots >
+            phase2Config.newEpochsPerFrame * slotsPerEpoch
+        ) {
+            revert FastLanePeriodCannotBeLongerThanFrame();
         }
 
         // Calculate pivot ref slot for phase 1 (based on last processing ref slot at deployment time)
