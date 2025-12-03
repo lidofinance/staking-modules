@@ -172,7 +172,8 @@ contract TwoPhaseFrameConfigUpdate {
 
     /// @dev Can only be called when oracle is at the expected pivot ref slot for phase 1.
     function executePhase1() external {
-        _validatePhaseExecution(phase1, true);
+        _ensurePhase1NotExecuted();
+        _ensurePhaseAlignment(phase1);
 
         HASH_CONSENSUS.setFrameConfig(
             phase1.newEpochsPerFrame,
@@ -185,7 +186,9 @@ contract TwoPhaseFrameConfigUpdate {
 
     /// @dev Can only be called after phase1 is executed and when oracle is at the expected pivot ref slot for phase 2.
     function executePhase2() external {
-        _validatePhaseExecution(phase2, false);
+        _ensurePhase1Executed();
+        _ensurePhase2NotExecuted();
+        _ensurePhaseAlignment(phase2);
 
         HASH_CONSENSUS.setFrameConfig(
             phase2.newEpochsPerFrame,
@@ -223,11 +226,14 @@ contract TwoPhaseFrameConfigUpdate {
     }
 
     function isReadyForPhase1() external view returns (bool ready) {
-        return _isPhaseReady(phase1, true);
+        return _canExecutePhase(phase1);
     }
 
     function isReadyForPhase2() external view returns (bool ready) {
-        return _isPhaseReady(phase2, false);
+        if (!phase1.executed) {
+            return false;
+        }
+        return _canExecutePhase(phase2);
     }
 
     function getExpirationStatus()
@@ -244,61 +250,94 @@ contract TwoPhaseFrameConfigUpdate {
         return (block.timestamp - genesisTime) / secondsPerSlot;
     }
 
-    function _validatePhaseExecution(
-        PhaseState storage phaseState,
-        bool isPhase1
-    ) internal view {
-        if (isPhase1 && phase1.executed) {
-            revert Phase1AlreadyExecuted();
-        }
-        if (!isPhase1) {
-            if (!phase1.executed) {
-                revert Phase1NotExecuted();
-            }
-            if (phase2.executed) {
-                revert Phase2AlreadyExecuted();
-            }
+    function _isPhaseExpired(
+        PhaseState storage phaseState
+    ) internal view returns (bool expired) {
+        return !phaseState.executed && !_isBeforeExpiration(phaseState);
+    }
+
+    function _canExecutePhase(
+        PhaseState storage phaseState
+    ) internal view returns (bool) {
+        if (phaseState.executed) {
+            return false;
         }
 
-        uint256 lastProcessingRefSlot = FEE_ORACLE.getLastProcessingRefSlot();
-        if (lastProcessingRefSlot != phaseState.expectedProcessingRefSlot) {
+        return
+            _hasExpectedRefSlot(phaseState) && _isBeforeExpiration(phaseState);
+    }
+
+    function _ensurePhaseAlignment(
+        PhaseState storage phaseState
+    ) internal view {
+        _ensureExpectedRefSlot(phaseState);
+        _ensureNotExpired(phaseState);
+    }
+
+    function _ensurePhase1Executed() internal view {
+        if (!phase1.executed) {
+            revert Phase1NotExecuted();
+        }
+    }
+
+    function _ensurePhase1NotExecuted() internal view {
+        if (phase1.executed) {
+            revert Phase1AlreadyExecuted();
+        }
+    }
+
+    function _ensurePhase2NotExecuted() internal view {
+        if (phase2.executed) {
+            revert Phase2AlreadyExecuted();
+        }
+    }
+
+    function _ensureExpectedRefSlot(
+        PhaseState storage phaseState
+    ) internal view {
+        (bool matches, uint256 lastProcessingRefSlot) = _refSlotMatches(
+            phaseState
+        );
+        if (!matches) {
             revert UnexpectedRefSlot(
                 phaseState.expectedProcessingRefSlot,
                 lastProcessingRefSlot
             );
         }
+    }
 
-        uint256 currentSlot = _getCurrentSlot();
-        if (currentSlot >= phaseState.expirationSlot) {
+    function _ensureNotExpired(PhaseState storage phaseState) internal view {
+        (bool isBefore, uint256 currentSlot) = _beforeExpiration(phaseState);
+        if (!isBefore) {
             revert PhaseExpired(currentSlot, phaseState.expirationSlot);
         }
     }
 
-    function _isPhaseReady(
-        PhaseState storage phaseState,
-        bool isPhase1
-    ) internal view returns (bool ready) {
-        if (phaseState.executed) {
-            return false;
-        }
-
-        if (!isPhase1 && !phase1.executed) {
-            return false;
-        }
-
-        uint256 lastProcessingRefSlot = FEE_ORACLE.getLastProcessingRefSlot();
-        uint256 currentSlot = _getCurrentSlot();
-
-        return
-            lastProcessingRefSlot == phaseState.expectedProcessingRefSlot &&
-            currentSlot < phaseState.expirationSlot;
+    function _hasExpectedRefSlot(
+        PhaseState storage phaseState
+    ) internal view returns (bool) {
+        (bool matches, ) = _refSlotMatches(phaseState);
+        return matches;
     }
 
-    function _isPhaseExpired(
+    function _isBeforeExpiration(
         PhaseState storage phaseState
-    ) internal view returns (bool expired) {
-        return
-            !phaseState.executed &&
-            _getCurrentSlot() >= phaseState.expirationSlot;
+    ) internal view returns (bool) {
+        (bool isBefore, ) = _beforeExpiration(phaseState);
+        return isBefore;
+    }
+
+    function _refSlotMatches(
+        PhaseState storage phaseState
+    ) internal view returns (bool matches, uint256 lastProcessingRefSlot) {
+        lastProcessingRefSlot = FEE_ORACLE.getLastProcessingRefSlot();
+        matches = lastProcessingRefSlot == phaseState.expectedProcessingRefSlot;
+    }
+
+    function _beforeExpiration(
+        PhaseState storage phaseState
+    ) internal view returns (bool isBefore, uint256 currentSlot) {
+        currentSlot = _getCurrentSlot();
+        isBefore = currentSlot < phaseState.expirationSlot;
     }
 }
