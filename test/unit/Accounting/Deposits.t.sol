@@ -3,11 +3,13 @@
 
 pragma solidity 0.8.24;
 
-import { BaseTest } from "./_Base.t.sol";
+import { IAccounting } from "src/interfaces/IAccounting.sol";
+import { IBaseModule } from "src/interfaces/IBaseModule.sol";
+
 import { StETHMock } from "../../helpers/mocks/StETHMock.sol";
 import { WstETHMock } from "../../helpers/mocks/WstETHMock.sol";
-import { IAccounting } from "src/interfaces/IAccounting.sol";
-import { ICSModule } from "src/interfaces/ICSModule.sol";
+
+import { BaseTest } from "./_Base.t.sol";
 
 // Combined deposit tests: ETH, stETH, wstETH (both regular and permissionless)
 
@@ -648,7 +650,7 @@ contract DepositEthPermissionlessTest is BaseTest {
         vm.expectCall(
             address(accounting.MODULE()),
             abi.encodeWithSelector(
-                ICSModule.updateDepositableValidatorsCount.selector,
+                IBaseModule.updateDepositableValidatorsCount.selector,
                 0
             )
         );
@@ -719,7 +721,7 @@ contract DepositStEthPermissionlessTest is BaseTest {
         vm.expectCall(
             address(accounting.MODULE()),
             abi.encodeWithSelector(
-                ICSModule.updateDepositableValidatorsCount.selector,
+                IBaseModule.updateDepositableValidatorsCount.selector,
                 0
             )
         );
@@ -998,7 +1000,7 @@ contract DepositWstEthPermissionlessTest is BaseTest {
         vm.expectCall(
             address(accounting.MODULE()),
             abi.encodeWithSelector(
-                ICSModule.updateDepositableValidatorsCount.selector,
+                IBaseModule.updateDepositableValidatorsCount.selector,
                 0
             )
         );

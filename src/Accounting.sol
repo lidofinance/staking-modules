@@ -14,7 +14,7 @@ import { AssetRecovererLib } from "./lib/AssetRecovererLib.sol";
 import { FeeSplits } from "./lib/FeeSplits.sol";
 
 import { IStakingModule } from "./interfaces/IStakingModule.sol";
-import { ICSModule, NodeOperatorManagementProperties } from "./interfaces/ICSModule.sol";
+import { IBaseModule, NodeOperatorManagementProperties } from "./interfaces/IBaseModule.sol";
 import { IAccounting } from "./interfaces/IAccounting.sol";
 import { IFeeDistributor } from "./interfaces/IFeeDistributor.sol";
 import { IERC20Permit } from "./interfaces/IERC20Permit.sol";
@@ -39,7 +39,7 @@ contract Accounting is
         keccak256("SET_BOND_CURVE_ROLE");
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
 
-    ICSModule public immutable MODULE;
+    IBaseModule public immutable MODULE;
     IFeeDistributor public immutable FEE_DISTRIBUTOR;
     /// @dev DEPRECATED
     /// @custom:oz-renamed-from feeDistributor
@@ -77,7 +77,7 @@ contract Accounting is
             revert ZeroFeeDistributorAddress();
         }
 
-        MODULE = ICSModule(module);
+        MODULE = IBaseModule(module);
         FEE_DISTRIBUTOR = IFeeDistributor(feeDistributor);
 
         _disableInitializers();

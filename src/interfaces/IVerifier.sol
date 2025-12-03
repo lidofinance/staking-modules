@@ -5,7 +5,8 @@ pragma solidity 0.8.24;
 
 import { BeaconBlockHeader, PendingConsolidation, Slot, Validator, Withdrawal } from "../lib/Types.sol";
 import { GIndex } from "../lib/GIndex.sol";
-import { ICSModule } from "./ICSModule.sol";
+
+import { IBaseModule } from "./IBaseModule.sol";
 
 interface IVerifier {
     struct GIndices {
@@ -146,7 +147,7 @@ interface IVerifier {
 
     function WITHDRAWAL_ADDRESS() external view returns (address);
 
-    function MODULE() external view returns (ICSModule);
+    function MODULE() external view returns (IBaseModule);
 
     /// @notice Pause write methods calls for `duration` seconds
     /// @param duration Duration of the pause in seconds
@@ -161,7 +162,7 @@ interface IVerifier {
 
     /// @notice Verify withdrawal proof and report withdrawal to the module for valid proofs
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
-    /// determining the exact penalty amounts and calling the `ICSModule.reportWithdrawnValidators` method via an EasyTrack
+    /// determining the exact penalty amounts and calling the `IBaseModule.reportWithdrawnValidators` method via an EasyTrack
     /// motion.
     /// @param data @see ProcessWithdrawalInput
     function processWithdrawalProof(
@@ -170,7 +171,7 @@ interface IVerifier {
 
     /// @notice Verify withdrawal proof against historical summaries data and report withdrawal to the module for valid proofs
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
-    /// determining the exact penalty amounts and calling the `ICSModule.reportWithdrawnValidators` method via an EasyTrack
+    /// determining the exact penalty amounts and calling the `IBaseModule.reportWithdrawnValidators` method via an EasyTrack
     /// motion.
     /// @param data @see ProcessHistoricalWithdrawalInput
     function processHistoricalWithdrawalProof(

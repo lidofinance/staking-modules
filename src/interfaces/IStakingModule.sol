@@ -227,3 +227,31 @@ interface IStakingModule {
     ///      Details about error data: https://docs.soliditylang.org/en/v0.8.9/control-structures.html#error-handling-assert-require-revert-and-exceptions
     function onWithdrawalCredentialsChanged() external;
 }
+
+interface IStakingModuleV2 {
+    /// @notice Method to get from module public keys for top up and amount that should be topped up. Module also verify that keys belong to module and revert if got wrong data
+    /// @param depositAmount Deposit amount for top up
+    /// @param packedPubkeys Packed list of pubkeys
+    /// @param keyIndices List of keys' indices
+    /// @param operatorIds List of operator indices
+    /// @param topUpLimitsGwei List of gwei amount that can be deposited to key based on Cl data and SR logic
+    function obtainDepositData(
+        uint256 depositAmount,
+        bytes calldata packedPubkeys,
+        uint256[] calldata keyIndices,
+        uint256[] calldata operatorIds,
+        uint256[] calldata topUpLimitsGwei
+    )
+        external
+        returns (bytes[] memory publicKeys, uint256[] memory allocations);
+
+    /// @notice Method called Third phase not
+    /// @param operatorIds Indices of operators
+    /// @param balances Effective and pending balances
+    /// @param refSlot Accounting oracle ref slot
+    function updateOperatorBalances(
+        bytes calldata operatorIds,
+        bytes calldata balances,
+        uint256 refSlot
+    ) external;
+}

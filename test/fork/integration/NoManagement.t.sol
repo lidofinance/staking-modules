@@ -5,9 +5,10 @@ pragma solidity 0.8.24;
 
 import { Test } from "forge-std/Test.sol";
 
+import { NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
+
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { NodeOperatorManagementProperties } from "../../../src/interfaces/ICSModule.sol";
 
 contract NoManagementBaseTest is Test, Utilities, DeploymentFixtures {
     address public nodeOperator;

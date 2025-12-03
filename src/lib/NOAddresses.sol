@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import { NodeOperator, ICSModule } from "../interfaces/ICSModule.sol";
+import { NodeOperator, IBaseModule } from "../interfaces/IBaseModule.sol";
 
 /// Library for changing and reset node operator's manager and reward addresses
 /// @dev the only use of this to be a library is to save CSModule contract size via delegatecalls
@@ -53,7 +53,7 @@ library NOAddresses {
         address managerAddress = no.managerAddress;
 
         if (managerAddress == address(0)) {
-            revert ICSModule.NodeOperatorDoesNotExist();
+            revert IBaseModule.NodeOperatorDoesNotExist();
         }
 
         if (managerAddress != msg.sender) {
@@ -90,7 +90,7 @@ library NOAddresses {
         address oldManagerAddress = no.managerAddress;
 
         if (oldManagerAddress == address(0)) {
-            revert ICSModule.NodeOperatorDoesNotExist();
+            revert IBaseModule.NodeOperatorDoesNotExist();
         }
 
         if (no.proposedManagerAddress != msg.sender) {
@@ -119,7 +119,7 @@ library NOAddresses {
         address rewardAddress = no.rewardAddress;
 
         if (rewardAddress == address(0)) {
-            revert ICSModule.NodeOperatorDoesNotExist();
+            revert IBaseModule.NodeOperatorDoesNotExist();
         }
 
         if (rewardAddress != msg.sender) {
@@ -156,7 +156,7 @@ library NOAddresses {
         address oldRewardAddress = no.rewardAddress;
 
         if (oldRewardAddress == address(0)) {
-            revert ICSModule.NodeOperatorDoesNotExist();
+            revert IBaseModule.NodeOperatorDoesNotExist();
         }
 
         if (no.proposedRewardAddress != msg.sender) {
@@ -184,7 +184,7 @@ library NOAddresses {
         address rewardAddress = no.rewardAddress;
 
         if (rewardAddress == address(0)) {
-            revert ICSModule.NodeOperatorDoesNotExist();
+            revert IBaseModule.NodeOperatorDoesNotExist();
         }
 
         if (no.extendedManagerPermissions) {
@@ -237,7 +237,7 @@ library NOAddresses {
         address managerAddress = no.managerAddress;
 
         if (managerAddress == address(0)) {
-            revert ICSModule.NodeOperatorDoesNotExist();
+            revert IBaseModule.NodeOperatorDoesNotExist();
         }
 
         if (!no.extendedManagerPermissions) {
@@ -278,7 +278,7 @@ library NOAddresses {
         address oldRewardAddress = no.rewardAddress;
 
         if (oldManagerAddress == address(0)) {
-            revert ICSModule.NodeOperatorDoesNotExist();
+            revert IBaseModule.NodeOperatorDoesNotExist();
         }
 
         if (newManagerAddress == address(0)) {

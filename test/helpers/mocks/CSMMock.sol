@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.24;
-import { NodeOperatorManagementProperties, NodeOperator } from "../../../src/interfaces/ICSModule.sol";
+import { NodeOperatorManagementProperties, NodeOperator } from "../../../src/interfaces/IBaseModule.sol";
 import { IAccounting } from "../../../src/interfaces/IAccounting.sol";
 import { IParametersRegistry } from "../../../src/interfaces/IParametersRegistry.sol";
 import { ParametersRegistryMock } from "./ParametersRegistryMock.sol";

@@ -3,15 +3,16 @@
 pragma solidity 0.8.24;
 
 import { Test } from "forge-std/Test.sol";
-import { IStETH } from "../../src/interfaces/IStETH.sol";
-import { FeeDistributor } from "../../src/FeeDistributor.sol";
-import { CSModule } from "../../src/CSModule.sol";
-import { NodeOperator } from "../../src/interfaces/ICSModule.sol";
-import { Batch } from "../../src/lib/QueueLib.sol";
-import { Accounting } from "../../src/Accounting.sol";
-import { ValidatorStrikes } from "../../src/ValidatorStrikes.sol";
 import { console } from "forge-std/console.sol";
-import { FeeOracle } from "../../src/FeeOracle.sol";
+
+import { IStETH } from "src/interfaces/IStETH.sol";
+import { FeeDistributor } from "src/FeeDistributor.sol";
+import { ICSModule } from "src/interfaces/ICSModule.sol";
+import { NodeOperator, IBaseModule } from "src/interfaces/IBaseModule.sol";
+import { Batch } from "src/lib/QueueLib.sol";
+import { Accounting } from "src/Accounting.sol";
+import { ValidatorStrikes } from "src/ValidatorStrikes.sol";
+import { FeeOracle } from "src/FeeOracle.sol";
 
 contract InvariantAsserts is Test {
     bool internal _skipped;
@@ -36,7 +37,7 @@ contract InvariantAsserts is Test {
         }
     }
 
-    function assertModuleKeys(CSModule csm) public {
+    function assertModuleKeys(IBaseModule csm) public {
         if (skipInvariants()) {
             return;
         }
@@ -125,7 +126,7 @@ contract InvariantAsserts is Test {
 
     mapping(uint256 => uint256) batchKeys;
 
-    function assertModuleEnqueuedCount(CSModule csm) public {
+    function assertModuleEnqueuedCount(ICSModule csm) public {
         if (skipInvariants()) {
             return;
         }
@@ -157,18 +158,28 @@ contract InvariantAsserts is Test {
         }
     }
 
-    function assertModuleUnusedStorageSlots(CSModule csm) public {
+    function assertModuleUnusedStorageSlots(IBaseModule module) public {
+        // @see ModuleLinearStorage.
+
         if (skipInvariants()) {
             return;
         }
+
         bytes32 value;
+
+        value = vm.load(address(module), bytes32(uint256(1)));
+        assertEq(value, bytes32(0), "assert slot(1) is empty");
+
         // _accountingOld
-        value = vm.load(address(csm), bytes32(uint256(2)));
-        assertEq(value, bytes32(0), "assert _accountingOld is empty");
+        value = vm.load(address(module), bytes32(uint256(2)));
+        assertEq(value, bytes32(0), "assert slot(2) is empty");
 
         // _earlyAdoption
-        value = vm.load(address(csm), bytes32(uint256(3)));
-        assertEq(value, bytes32(0), "assert _earlyAdoption is empty");
+        value = vm.load(address(module), bytes32(uint256(3)));
+        assertEq(value, bytes32(0), "assert slot(3) is empty");
+
+        value = vm.load(address(module), bytes32(uint256(4)));
+        assertEq(value, bytes32(0), "assert slot(4) is empty");
     }
 
     function assertAccountingTotalBondShares(

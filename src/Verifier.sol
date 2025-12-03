@@ -11,7 +11,7 @@ import { GIndex } from "./lib/GIndex.sol";
 import { SSZ } from "./lib/SSZ.sol";
 
 import { IVerifier } from "./interfaces/IVerifier.sol";
-import { ICSModule, WithdrawnValidatorInfo } from "./interfaces/ICSModule.sol";
+import { IBaseModule, WithdrawnValidatorInfo } from "./interfaces/IBaseModule.sol";
 
 /// @notice Convert withdrawal amount to wei
 /// @param withdrawal Withdrawal struct
@@ -95,7 +95,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
     address public immutable WITHDRAWAL_ADDRESS;
 
     /// @dev Staking module contract.
-    ICSModule public immutable MODULE;
+    IBaseModule public immutable MODULE;
 
     /// @dev The previous and current forks can be essentially the same.
     constructor(
@@ -138,7 +138,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         }
 
         WITHDRAWAL_ADDRESS = withdrawalAddress;
-        MODULE = ICSModule(module);
+        MODULE = IBaseModule(module);
 
         SLOTS_PER_EPOCH = slotsPerEpoch;
         SLOTS_PER_HISTORICAL_ROOT = slotsPerHistoricalRoot;

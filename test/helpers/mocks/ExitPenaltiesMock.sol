@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import { ICSModule } from "../../../src/interfaces/ICSModule.sol";
+import { IBaseModule } from "../../../src/interfaces/IBaseModule.sol";
 import { IAccounting } from "../../../src/interfaces/IAccounting.sol";
 import { IExitPenalties } from "../../../src/interfaces/IExitPenalties.sol";
 import { IParametersRegistry } from "../../../src/interfaces/IParametersRegistry.sol";
@@ -10,7 +10,7 @@ import { ExitPenaltyInfo } from "../../../src/interfaces/IExitPenalties.sol";
 import { ExitTypes } from "../../../src/abstract/ExitTypes.sol";
 
 contract ExitPenaltiesMock is IExitPenalties, ExitTypes {
-    ICSModule public MODULE;
+    IBaseModule public MODULE;
     IAccounting public ACCOUNTING;
     IParametersRegistry public immutable PARAMETERS_REGISTRY;
     ExitPenaltyInfo internal penaltyInfo;

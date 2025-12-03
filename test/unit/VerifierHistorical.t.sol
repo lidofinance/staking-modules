@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
 import { Test } from "forge-std/Test.sol";
 
 import { IVerifier } from "src/interfaces/IVerifier.sol";
-import { ICSModule, WithdrawnValidatorInfo } from "src/interfaces/ICSModule.sol";
+import { IBaseModule, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 
 import { Verifier } from "src/Verifier.sol";
@@ -66,14 +66,14 @@ contract VerifierHistoricalBase is Test, Utilities {
 
         vm.mockCall(
             address(module),
-            abi.encodeWithSelector(ICSModule.getSigningKeys.selector, 0, 0),
+            abi.encodeWithSelector(IBaseModule.getSigningKeys.selector, 0, 0),
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.reportWithdrawnValidators.selector
+                IBaseModule.reportWithdrawnValidators.selector
             ),
             ""
         );
@@ -141,7 +141,7 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.reportWithdrawnValidators.selector,
+                IBaseModule.reportWithdrawnValidators.selector,
                 withdrawals
             )
         );
@@ -212,7 +212,7 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.getSigningKeys.selector,
+                IBaseModule.getSigningKeys.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex
             ),
@@ -331,7 +331,7 @@ contract VerifierCrossForkHistoricalTest is VerifierHistoricalBase {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.reportWithdrawnValidators.selector,
+                IBaseModule.reportWithdrawnValidators.selector,
                 withdrawals
             )
         );
@@ -388,7 +388,7 @@ contract VerifierCrossForkHistoricalAtPivotSlotTest is VerifierHistoricalBase {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.reportWithdrawnValidators.selector,
+                IBaseModule.reportWithdrawnValidators.selector,
                 withdrawals
             )
         );

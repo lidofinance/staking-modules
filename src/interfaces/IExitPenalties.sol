@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
 
 import { IAccounting } from "./IAccounting.sol";
 import { IParametersRegistry } from "./IParametersRegistry.sol";
-import { ICSModule } from "./ICSModule.sol";
+import { IBaseModule } from "./IBaseModule.sol";
 import { IExitTypes } from "./IExitTypes.sol";
 
 struct MarkedUint248 {
@@ -45,7 +45,7 @@ interface IExitPenalties is IExitTypes {
         uint256 strikesPenalty
     );
 
-    function MODULE() external view returns (ICSModule);
+    function MODULE() external view returns (IBaseModule);
 
     function ACCOUNTING() external view returns (IAccounting);
 

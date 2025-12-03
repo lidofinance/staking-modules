@@ -3,15 +3,17 @@
 
 pragma solidity 0.8.24;
 
-import { BaseTest } from "./_Base.t.sol";
 import { Accounting } from "src/Accounting.sol";
 import { IBurner } from "src/interfaces/IBurner.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
-import { ICSModule } from "src/interfaces/ICSModule.sol";
+import { IBaseModule } from "src/interfaces/IBaseModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
-import { ERC20Testable } from "../../helpers/ERCTestable.sol";
 import { IFeeSplits, FeeSplits } from "src/lib/FeeSplits.sol";
+
+import { ERC20Testable } from "../../helpers/ERCTestable.sol";
+
+import { BaseTest } from "./_Base.t.sol";
 
 // Combined operational tests: asset recovery, fees, penalties, scenarios
 
@@ -791,7 +793,7 @@ contract PullFeeRewardsTest is BaseTest {
         vm.expectCall(
             address(accounting.MODULE()),
             abi.encodeWithSelector(
-                ICSModule.updateDepositableValidatorsCount.selector,
+                IBaseModule.updateDepositableValidatorsCount.selector,
                 0
             )
         );
@@ -860,7 +862,7 @@ contract PullFeeRewardsTest is BaseTest {
         vm.expectCall(
             address(accounting.MODULE()),
             abi.encodeWithSelector(
-                ICSModule.updateDepositableValidatorsCount.selector,
+                IBaseModule.updateDepositableValidatorsCount.selector,
                 0
             )
         );
@@ -922,7 +924,7 @@ contract PullFeeRewardsTest is BaseTest {
         vm.expectCall(
             address(accounting.MODULE()),
             abi.encodeWithSelector(
-                ICSModule.updateDepositableValidatorsCount.selector,
+                IBaseModule.updateDepositableValidatorsCount.selector,
                 0
             )
         );
@@ -982,7 +984,7 @@ contract PullFeeRewardsTest is BaseTest {
         vm.expectCall(
             address(accounting.MODULE()),
             abi.encodeWithSelector(
-                ICSModule.updateDepositableValidatorsCount.selector,
+                IBaseModule.updateDepositableValidatorsCount.selector,
                 0
             )
         );
@@ -1041,7 +1043,7 @@ contract PullFeeRewardsTest is BaseTest {
         vm.expectCall(
             address(accounting.MODULE()),
             abi.encodeWithSelector(
-                ICSModule.updateDepositableValidatorsCount.selector,
+                IBaseModule.updateDepositableValidatorsCount.selector,
                 0
             )
         );
@@ -1115,7 +1117,7 @@ contract PullFeeRewardsTest is BaseTest {
         vm.expectCall(
             address(accounting.MODULE()),
             abi.encodeWithSelector(
-                ICSModule.updateDepositableValidatorsCount.selector,
+                IBaseModule.updateDepositableValidatorsCount.selector,
                 0
             )
         );

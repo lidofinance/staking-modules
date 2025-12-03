@@ -4,9 +4,8 @@
 pragma solidity 0.8.24;
 
 import { IMerkleGate } from "./IMerkleGate.sol";
-import { NodeOperatorManagementProperties } from "./ICSModule.sol";
+import { IBaseModule, NodeOperatorManagementProperties } from "./IBaseModule.sol";
 import { IAccounting } from "./IAccounting.sol";
-import { ICSModule } from "./ICSModule.sol";
 
 interface IVettedGate is IMerkleGate {
     event ReferrerConsumed(address indexed referrer, uint256 indexed season);
@@ -42,7 +41,7 @@ interface IVettedGate is IMerkleGate {
 
     function END_REFERRAL_SEASON_ROLE() external view returns (bytes32);
 
-    function MODULE() external view returns (ICSModule);
+    function MODULE() external view returns (IBaseModule);
 
     function ACCOUNTING() external view returns (IAccounting);
 

@@ -13,7 +13,7 @@ import { Fixtures } from "../helpers/Fixtures.sol";
 import { IEjector } from "src/interfaces/IEjector.sol";
 import { IExitPenalties } from "src/interfaces/IExitPenalties.sol";
 
-import { ICSModule } from "src/interfaces/ICSModule.sol";
+import { IBaseModule } from "src/interfaces/IBaseModule.sol";
 import { IValidatorStrikes } from "src/interfaces/IValidatorStrikes.sol";
 import { InvariantAsserts } from "../helpers/InvariantAsserts.sol";
 import { MerkleTree } from "../helpers/MerkleTree.sol";
@@ -408,7 +408,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.getSigningKeys.selector,
+                IBaseModule.getSigningKeys.selector,
                 leaf.keyStrikes.nodeOperatorId,
                 leaf.keyStrikes.keyIndex
             ),
@@ -693,15 +693,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         for (uint256 i; i < indicies.length; i++) {
             Leaf memory leaf = leaves[indicies[i]];
             keyStrikesList[i] = leaf.keyStrikes;
-            vm.mockCall(
-                address(module),
-                abi.encodeWithSelector(
-                    ICSModule.getSigningKeys.selector,
-                    leaf.keyStrikes.nodeOperatorId,
-                    leaf.keyStrikes.keyIndex
-                ),
-                abi.encode(leaf.pubkey)
-            );
+            _mockModule(leaf);
             vm.expectCall(
                 address(ejector),
                 abi.encodeWithSelector(
@@ -775,15 +767,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         for (uint256 i; i < indicies.length; i++) {
             Leaf memory leaf = leaves[indicies[i]];
             keyStrikesList[i] = leaf.keyStrikes;
-            vm.mockCall(
-                address(module),
-                abi.encodeWithSelector(
-                    ICSModule.getSigningKeys.selector,
-                    leaf.keyStrikes.nodeOperatorId,
-                    leaf.keyStrikes.keyIndex
-                ),
-                abi.encode(leaf.pubkey)
-            );
+            _mockModule(leaf);
             vm.expectCall(
                 address(exitPenalties),
                 abi.encodeWithSelector(
@@ -835,6 +819,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         module.PARAMETERS_REGISTRY().setStrikesParams(0, 6, threshold);
 
         _mockModule(leaf);
+
         vm.expectCall(
             address(exitPenalties),
             abi.encodeWithSelector(
@@ -877,15 +862,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         bytes32[] memory proof = new bytes32[](0);
         bool[] memory proofFlags = new bool[](0);
 
-        vm.mockCall(
-            address(module),
-            abi.encodeWithSelector(
-                ICSModule.getSigningKeys.selector,
-                leaf.keyStrikes.nodeOperatorId,
-                leaf.keyStrikes.keyIndex
-            ),
-            abi.encode(leaf.pubkey)
-        );
+        _mockModule(leaf);
 
         vm.expectRevert(IValidatorStrikes.InvalidProof.selector);
         this.processBadPerformanceProof{ value: 1 }(
@@ -919,15 +896,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         for (uint256 i; i < indicies.length; i++) {
             Leaf memory leaf = leaves[indicies[i]];
             keyStrikesList[i] = leaf.keyStrikes;
-            vm.mockCall(
-                address(module),
-                abi.encodeWithSelector(
-                    ICSModule.getSigningKeys.selector,
-                    leaf.keyStrikes.nodeOperatorId,
-                    leaf.keyStrikes.keyIndex
-                ),
-                abi.encode(leaf.pubkey)
-            );
+            _mockModule(leaf);
         }
 
         {
@@ -1028,15 +997,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         for (uint256 i; i < indicies.length; i++) {
             Leaf memory leaf = leaves[indicies[i]];
             keyStrikesList[i] = leaf.keyStrikes;
-            vm.mockCall(
-                address(module),
-                abi.encodeWithSelector(
-                    ICSModule.getSigningKeys.selector,
-                    leaf.keyStrikes.nodeOperatorId,
-                    leaf.keyStrikes.keyIndex
-                ),
-                abi.encode(leaf.pubkey)
-            );
+            _mockModule(leaf);
         }
         vm.expectRevert(IValidatorStrikes.ValueNotEvenlyDivisible.selector);
         this.processBadPerformanceProof{ value: 11 wei }(
@@ -1064,15 +1025,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         for (uint256 i; i < indicies.length; i++) {
             Leaf memory leaf = leaves[indicies[i]];
             keyStrikesList[i] = leaf.keyStrikes;
-            vm.mockCall(
-                address(module),
-                abi.encodeWithSelector(
-                    ICSModule.getSigningKeys.selector,
-                    leaf.keyStrikes.nodeOperatorId,
-                    leaf.keyStrikes.keyIndex
-                ),
-                abi.encode(leaf.pubkey)
-            );
+            _mockModule(leaf);
         }
         vm.expectRevert(IValidatorStrikes.ZeroMsgValue.selector);
         this.processBadPerformanceProof{ value: 0 }(
@@ -1100,15 +1053,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         for (uint256 i; i < indicies.length; i++) {
             Leaf memory leaf = leaves[indicies[i]];
             keyStrikesList[i] = leaf.keyStrikes;
-            vm.mockCall(
-                address(module),
-                abi.encodeWithSelector(
-                    ICSModule.getSigningKeys.selector,
-                    leaf.keyStrikes.nodeOperatorId,
-                    leaf.keyStrikes.keyIndex
-                ),
-                abi.encode(leaf.pubkey)
-            );
+            _mockModule(leaf);
             vm.expectCall(
                 address(ejector),
                 abi.encodeWithSelector(

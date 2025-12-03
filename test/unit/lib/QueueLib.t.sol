@@ -4,7 +4,7 @@ pragma solidity 0.8.24;
 
 import { Test } from "forge-std/Test.sol";
 import { Batch, createBatch, QueueLib, IQueueLib } from "src/lib/QueueLib.sol";
-import { NodeOperator } from "src/interfaces/ICSModule.sol";
+import { NodeOperator } from "src/interfaces/IBaseModule.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "src/lib/TransientUintUintMapLib.sol";
 
 // Wrap the library internal methods to make an actual call to them.

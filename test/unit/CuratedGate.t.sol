@@ -13,7 +13,7 @@ import { CuratedGate } from "../../src/CuratedGate.sol";
 import { ICuratedGate } from "../../src/interfaces/ICuratedGate.sol";
 import { IMerkleGate } from "../../src/interfaces/IMerkleGate.sol";
 import { IOperatorsData, OperatorInfo } from "../../src/interfaces/IOperatorsData.sol";
-import { ICSModule, NodeOperatorManagementProperties } from "../../src/interfaces/ICSModule.sol";
+import { IBaseModule, NodeOperatorManagementProperties } from "../../src/interfaces/IBaseModule.sol";
 import { IAccounting } from "../../src/interfaces/IAccounting.sol";
 import { MerkleTree } from "../helpers/MerkleTree.sol";
 import { IAssetRecovererLib } from "../../src/lib/AssetRecovererLib.sol";
@@ -309,7 +309,7 @@ contract CuratedGateTest_createNodeOperator is CuratedGateTestBase {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.createNodeOperator.selector,
+                IBaseModule.createNodeOperator.selector,
                 member,
                 NodeOperatorManagementProperties({
                     managerAddress: address(0x1111),
@@ -392,7 +392,7 @@ contract CuratedGateTest_createNodeOperator_DefaultCurve is
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.createNodeOperator.selector,
+                IBaseModule.createNodeOperator.selector,
                 member,
                 NodeOperatorManagementProperties({
                     managerAddress: address(0x1111),

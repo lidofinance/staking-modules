@@ -3,9 +3,10 @@
 
 pragma solidity 0.8.24;
 
-import { ClaimRewardsBaseTest } from "./_Base.t.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
-import { ICSModule } from "src/interfaces/ICSModule.sol";
+import { IBaseModule } from "src/interfaces/IBaseModule.sol";
+
+import { ClaimRewardsBaseTest } from "./_Base.t.sol";
 
 // Combined claim rewards tests: stETH, wstETH, unstETH
 
@@ -19,7 +20,7 @@ contract ClaimStETHRewardsTest is ClaimRewardsBaseTest {
         vm.expectCall(
             address(accounting.MODULE()),
             abi.encodeWithSelector(
-                ICSModule.updateDepositableValidatorsCount.selector,
+                IBaseModule.updateDepositableValidatorsCount.selector,
                 0
             )
         );
@@ -614,7 +615,7 @@ contract ClaimWstETHRewardsTest is ClaimRewardsBaseTest {
         vm.expectCall(
             address(accounting.MODULE()),
             abi.encodeWithSelector(
-                ICSModule.updateDepositableValidatorsCount.selector,
+                IBaseModule.updateDepositableValidatorsCount.selector,
                 0
             )
         );
@@ -1252,7 +1253,7 @@ contract ClaimRewardsUnstETHTest is ClaimRewardsBaseTest {
         vm.expectCall(
             address(accounting.MODULE()),
             abi.encodeWithSelector(
-                ICSModule.updateDepositableValidatorsCount.selector,
+                IBaseModule.updateDepositableValidatorsCount.selector,
                 0
             )
         );

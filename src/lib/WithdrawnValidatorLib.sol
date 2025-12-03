@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { ICSModule, WithdrawnValidatorInfo } from "../interfaces/ICSModule.sol";
+import { IBaseModule, WithdrawnValidatorInfo } from "../interfaces/IBaseModule.sol";
 import { ExitPenaltyInfo } from "../interfaces/IExitPenalties.sol";
 import { IAccounting } from "../interfaces/IAccounting.sol";
 
@@ -30,7 +30,7 @@ library WithdrawnValidatorLib {
             1
         );
 
-        ExitPenaltyInfo memory penaltyInfo = ICSModule(address(this))
+        ExitPenaltyInfo memory penaltyInfo = IBaseModule(address(this))
             .EXIT_PENALTIES()
             .getExitPenaltyInfo(validatorInfo.nodeOperatorId, pubkey);
 
@@ -40,7 +40,7 @@ library WithdrawnValidatorLib {
         );
 
         // solhint-disable-next-line func-named-parameters
-        emit ICSModule.WithdrawalSubmitted(
+        emit IBaseModule.ValidatorWithdrawn(
             validatorInfo.nodeOperatorId,
             validatorInfo.keyIndex,
             validatorInfo.exitBalance,
@@ -96,7 +96,7 @@ library WithdrawnValidatorLib {
             penaltySum += MIN_ACTIVATION_BALANCE - validatorInfo.exitBalance;
         }
 
-        IAccounting accounting = ICSModule(address(this)).ACCOUNTING();
+        IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
 
         bondCoversPenalties = true;
 

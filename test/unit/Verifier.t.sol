@@ -14,7 +14,7 @@ import { Slot } from "src/lib/Types.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 
 import { IVerifier } from "src/interfaces/IVerifier.sol";
-import { ICSModule, WithdrawnValidatorInfo } from "src/interfaces/ICSModule.sol";
+import { IBaseModule, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 
 import { GIndices } from "script/constants/GIndices.sol";
 
@@ -433,7 +433,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.reportWithdrawnValidators.selector,
+                IBaseModule.reportWithdrawnValidators.selector,
                 withdrawals
             )
         );
@@ -501,7 +501,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.getSigningKeys.selector,
+                IBaseModule.getSigningKeys.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex
             ),
@@ -645,14 +645,14 @@ contract VerifierWithdrawalTest is VerifierTestBase {
 
         vm.mockCall(
             address(module),
-            abi.encodeWithSelector(ICSModule.getSigningKeys.selector, 0, 0),
+            abi.encodeWithSelector(IBaseModule.getSigningKeys.selector, 0, 0),
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.reportWithdrawnValidators.selector
+                IBaseModule.reportWithdrawnValidators.selector
             ),
             ""
         );
@@ -735,7 +735,7 @@ contract VerifierSlashingTest is VerifierTestBase {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.onValidatorSlashed.selector,
+                IBaseModule.onValidatorSlashed.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex
             )
@@ -817,7 +817,7 @@ contract VerifierSlashingTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.getSigningKeys.selector,
+                IBaseModule.getSigningKeys.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex
             ),
@@ -826,7 +826,7 @@ contract VerifierSlashingTest is VerifierTestBase {
 
         vm.mockCall(
             address(module),
-            abi.encodeWithSelector(ICSModule.onValidatorSlashed.selector),
+            abi.encodeWithSelector(IBaseModule.onValidatorSlashed.selector),
             ""
         );
     }
@@ -920,7 +920,7 @@ contract VerifierConsolidationTest is VerifierTestBase {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.reportWithdrawnValidators.selector,
+                IBaseModule.reportWithdrawnValidators.selector,
                 withdrawals
             )
         );
@@ -1025,7 +1025,7 @@ contract VerifierConsolidationTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.getSigningKeys.selector,
+                IBaseModule.getSigningKeys.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex
             ),
@@ -1035,7 +1035,7 @@ contract VerifierConsolidationTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                ICSModule.reportWithdrawnValidators.selector
+                IBaseModule.reportWithdrawnValidators.selector
             ),
             ""
         );

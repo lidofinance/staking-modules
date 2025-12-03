@@ -4,12 +4,15 @@
 pragma solidity 0.8.24;
 
 import { Script } from "forge-std/Script.sol";
+
+import { IVEBO } from "src/interfaces/IVEBO.sol";
+import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
+import { NodeOperator, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
+
 import { DeploymentFixtures } from "test/helpers/Fixtures.sol";
+import { Utilities } from "test/helpers/Utilities.sol";
+
 import { ForkHelpersCommon } from "./Common.sol";
-import { IVEBO } from "../../src/interfaces/IVEBO.sol";
-import { Utilities } from "../../test/helpers/Utilities.sol";
-import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
-import { NodeOperator, WithdrawnValidatorInfo } from "../../src/interfaces/ICSModule.sol";
 
 contract NodeOperators is
     Script,

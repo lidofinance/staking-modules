@@ -3,12 +3,13 @@
 
 pragma solidity 0.8.24;
 
+import { IAssetRecovererLib } from "../lib/AssetRecovererLib.sol";
+
 import { IBondCore } from "./IBondCore.sol";
 import { IBondCurve } from "./IBondCurve.sol";
 import { IBondLock } from "./IBondLock.sol";
 import { IFeeDistributor } from "./IFeeDistributor.sol";
-import { IAssetRecovererLib } from "../lib/AssetRecovererLib.sol";
-import { ICSModule } from "./ICSModule.sol";
+import { IBaseModule } from "./IBaseModule.sol";
 
 interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     struct PermitInput {
@@ -52,7 +53,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
 
     function RECOVERER_ROLE() external view returns (bytes32);
 
-    function MODULE() external view returns (ICSModule);
+    function MODULE() external view returns (IBaseModule);
 
     function FEE_DISTRIBUTOR() external view returns (IFeeDistributor);
 
@@ -290,7 +291,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     /// @param rewardsProof Merkle proof of the rewards
     /// @return shares Amount of stETH shares claimed
     /// @dev It's impossible to use single-leaf proof via this method, so this case should be treated carefully by
-    /// off-chain tooling, e.g. to make sure a tree has at least 2 leafs.
+    /// off-chain tooling, e.g. to make sure a tree has at least 2 leaves.
     function claimRewardsStETH(
         uint256 nodeOperatorId,
         uint256 stETHAmount,
@@ -306,7 +307,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     /// @param rewardsProof Merkle proof of the rewards
     /// @return claimedWstETHAmount Amount of wstETH claimed
     /// @dev It's impossible to use single-leaf proof via this method, so this case should be treated carefully by
-    /// off-chain tooling, e.g. to make sure a tree has at least 2 leafs.
+    /// off-chain tooling, e.g. to make sure a tree has at least 2 leaves.
     function claimRewardsWstETH(
         uint256 nodeOperatorId,
         uint256 wstETHAmount,
@@ -323,7 +324,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     /// @param rewardsProof Merkle proof of the rewards
     /// @return requestId Withdrawal NFT ID
     /// @dev It's impossible to use single-leaf proof via this method, so this case should be treated carefully by
-    /// off-chain tooling, e.g. to make sure a tree has at least 2 leafs.
+    /// off-chain tooling, e.g. to make sure a tree has at least 2 leaves.
     function claimRewardsUnstETH(
         uint256 nodeOperatorId,
         uint256 stETHAmount,

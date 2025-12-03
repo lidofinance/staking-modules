@@ -5,8 +5,9 @@ pragma solidity 0.8.24;
 
 import { Test } from "forge-std/Test.sol";
 
-import { NodeOperatorManagementProperties } from "../../../src/interfaces/ICSModule.sol";
-import { IWithdrawalQueue } from "../../../src/interfaces/IWithdrawalQueue.sol";
+import { NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
+import { IWithdrawalQueue } from "src/interfaces/IWithdrawalQueue.sol";
+
 import { Utilities } from "../../helpers/Utilities.sol";
 import { PermitHelper } from "../../helpers/Permit.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";

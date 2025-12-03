@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import { ICSModule } from "../interfaces/ICSModule.sol";
+import { IBaseModule } from "../interfaces/IBaseModule.sol";
 import { IAccounting } from "../interfaces/IAccounting.sol";
 
 /// Library for General Penalty logic
@@ -39,7 +39,7 @@ library GeneralPenalty {
             revert IGeneralPenalty.ZeroPenaltyType();
         }
 
-        ICSModule module = ICSModule(address(this));
+        IBaseModule module = IBaseModule(address(this));
         IAccounting accounting = module.ACCOUNTING();
 
         uint256 curveId = accounting.getBondCurveId(nodeOperatorId);
@@ -50,7 +50,7 @@ library GeneralPenalty {
         uint256 totalAmount = amount + additionalFine;
 
         if (totalAmount == 0) {
-            revert ICSModule.InvalidAmount();
+            revert IBaseModule.InvalidAmount();
         }
 
         accounting.lockBondETH(nodeOperatorId, totalAmount);
@@ -70,7 +70,7 @@ library GeneralPenalty {
         uint256 nodeOperatorId,
         uint256 amount
     ) external {
-        ICSModule module = ICSModule(address(this));
+        IBaseModule module = IBaseModule(address(this));
         IAccounting accounting = module.ACCOUNTING();
 
         accounting.releaseLockedBondETH(nodeOperatorId, amount);
@@ -87,7 +87,7 @@ library GeneralPenalty {
         uint256 nodeOperatorId,
         uint256 maxAmount
     ) external returns (bool) {
-        IAccounting accounting = ICSModule(address(this)).ACCOUNTING();
+        IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
         uint256 locked = accounting.getActualLockedBond(nodeOperatorId);
         if (locked == 0 || locked > maxAmount) {
             return false; // skip this NO if the locked bond is greater than the max amount or there is no locked bond
@@ -100,7 +100,7 @@ library GeneralPenalty {
     }
 
     function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external {
-        ICSModule module = ICSModule(address(this));
+        IBaseModule module = IBaseModule(address(this));
         IAccounting accounting = module.ACCOUNTING();
 
         accounting.compensateLockedBondETH{ value: msg.value }(nodeOperatorId);

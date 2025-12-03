@@ -10,13 +10,13 @@ import { ExitTypes } from "./abstract/ExitTypes.sol";
 
 import { IAccounting } from "./interfaces/IAccounting.sol";
 import { IExitPenalties, MarkedUint248, ExitPenaltyInfo } from "./interfaces/IExitPenalties.sol";
-import { ICSModule } from "./interfaces/ICSModule.sol";
+import { IBaseModule } from "./interfaces/IBaseModule.sol";
 import { IParametersRegistry } from "./interfaces/IParametersRegistry.sol";
 
 contract ExitPenalties is IExitPenalties, ExitTypes {
     using SafeCast for uint256;
 
-    ICSModule public immutable MODULE;
+    IBaseModule public immutable MODULE;
     IParametersRegistry public immutable PARAMETERS_REGISTRY;
     IAccounting public immutable ACCOUNTING;
     address public immutable STRIKES;
@@ -44,7 +44,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
             revert ZeroStrikesAddress();
         }
 
-        MODULE = ICSModule(module);
+        MODULE = IBaseModule(module);
         PARAMETERS_REGISTRY = IParametersRegistry(parametersRegistry);
         ACCOUNTING = MODULE.ACCOUNTING();
         STRIKES = strikes;

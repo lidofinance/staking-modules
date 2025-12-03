@@ -95,6 +95,8 @@ contract ParametersRegistry is
         _;
     }
 
+    // TODO: queueLowestPriority does not make sense for the CuratedModule, so setting to 0 might mean it's not used and
+    // we can revert in other methods.
     constructor(uint256 queueLowestPriority) {
         if (queueLowestPriority == 0) {
             revert ZeroQueueLowestPriority();

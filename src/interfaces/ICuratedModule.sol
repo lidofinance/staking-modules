@@ -3,9 +3,10 @@
 
 pragma solidity 0.8.24;
 
-import { ICSModule } from "./ICSModule.sol";
+import { IBaseModule } from "./IBaseModule.sol";
+import { IStakingModuleV2 } from "./IStakingModule.sol";
 
-interface ICuratedModule is ICSModule {
+interface ICuratedModule is IBaseModule, IStakingModuleV2 {
     error NotImplemented();
 
     function OPERATOR_ADDRESSES_ADMIN_ROLE() external view returns (bytes32);
@@ -19,4 +20,17 @@ interface ICuratedModule is ICSModule {
         address newManagerAddress,
         address newRewardAddress
     ) external;
+
+    /// @notice  Method to get list of operators and amount of Eth that can be topped up to operator from depositAmount
+    /// @param depositAmount Amount of Eth that can be deposited to module
+    function getDepositsAllocation(
+        uint256 depositAmount
+    )
+        external
+        view
+        returns (
+            uint256 allocated,
+            uint256[] memory operatorIds,
+            uint256[] memory allocations
+        );
 }

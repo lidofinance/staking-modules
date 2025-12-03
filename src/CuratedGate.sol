@@ -12,7 +12,7 @@ import { PausableUntil } from "./lib/utils/PausableUntil.sol";
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMerkleGate } from "./interfaces/IMerkleGate.sol";
 import { ICuratedGate } from "./interfaces/ICuratedGate.sol";
-import { NodeOperatorManagementProperties } from "./interfaces/ICSModule.sol";
+import { NodeOperatorManagementProperties } from "./interfaces/IBaseModule.sol";
 import { IOperatorsData, OperatorInfo } from "./interfaces/IOperatorsData.sol";
 import { IAccounting } from "./interfaces/IAccounting.sol";
 

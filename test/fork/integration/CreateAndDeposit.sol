@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
 
 import { Test } from "forge-std/Test.sol";
 
-import { NodeOperator, NodeOperatorManagementProperties } from "../../../src/interfaces/ICSModule.sol";
+import { NodeOperator, NodeOperatorManagementProperties } from "../../../src/interfaces/IBaseModule.sol";
 import { ILido } from "../../../src/interfaces/ILido.sol";
 import { IAccounting } from "../../../src/interfaces/IAccounting.sol";
 import { Utilities } from "../../helpers/Utilities.sol";

@@ -6,7 +6,7 @@ pragma solidity 0.8.24;
 import { BaseTest, BondStateBaseTest, FailedReceiverStub, GetRequiredBondBaseTest, GetRequiredBondForKeysBaseTest, RewardsBaseTest } from "./_Base.t.sol";
 import { Accounting } from "src/Accounting.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
-import { ICSModule } from "src/interfaces/ICSModule.sol";
+import { IBaseModule } from "src/interfaces/IBaseModule.sol";
 import { IBurner } from "src/interfaces/IBurner.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
 
@@ -93,7 +93,7 @@ contract BondCurveTest is BaseTest {
         vm.expectCall(
             address(accounting.MODULE()),
             abi.encodeWithSelector(
-                ICSModule.updateDepositableValidatorsCount.selector,
+                IBaseModule.updateDepositableValidatorsCount.selector,
                 0
             )
         );

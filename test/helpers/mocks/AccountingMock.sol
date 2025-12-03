@@ -3,13 +3,13 @@
 
 pragma solidity 0.8.24;
 
-import { IAccounting } from "../../../src/interfaces/IAccounting.sol";
-import { IBondLock } from "../../../src/interfaces/IBondLock.sol";
-import { IBondCurve } from "../../../src/interfaces/IBondCurve.sol";
-import { ICSModule } from "../../../src/interfaces/ICSModule.sol";
-import { IWstETH } from "../../../src/interfaces/IWstETH.sol";
-import { ILido } from "../../../src/interfaces/ILido.sol";
-import { IFeeDistributor } from "../../../src/interfaces/IFeeDistributor.sol";
+import { IAccounting } from "src/interfaces/IAccounting.sol";
+import { IBondLock } from "src/interfaces/IBondLock.sol";
+import { IBondCurve } from "src/interfaces/IBondCurve.sol";
+import { IBaseModule } from "src/interfaces/IBaseModule.sol";
+import { IWstETH } from "src/interfaces/IWstETH.sol";
+import { ILido } from "src/interfaces/ILido.sol";
+import { IFeeDistributor } from "src/interfaces/IFeeDistributor.sol";
 
 contract AccountingMock {
     uint256 public constant DEFAULT_BOND_CURVE_ID = 0;
@@ -28,7 +28,7 @@ contract AccountingMock {
 
     uint256 internal _nextCurveId = 1;
 
-    ICSModule public MODULE;
+    IBaseModule public MODULE;
     IWstETH public wstETH;
     IFeeDistributor public FEE_DISTRIBUTOR;
 
@@ -44,7 +44,7 @@ contract AccountingMock {
         FEE_DISTRIBUTOR = IFeeDistributor(_feeDistributor);
     }
 
-    function setModule(ICSModule _module) external {
+    function setModule(IBaseModule _module) external {
         MODULE = _module;
     }
 

@@ -5,11 +5,12 @@ pragma solidity 0.8.24;
 
 import { Test } from "forge-std/Test.sol";
 
-import { ICSModule, NodeOperatorManagementProperties } from "src/interfaces/ICSModule.sol";
+import { IBaseModule, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { IStakingModule } from "src/interfaces/IStakingModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 
 import { Accounting } from "src/Accounting.sol";
+
 import { Stub } from "../../helpers/mocks/Stub.sol";
 import { LidoMock } from "../../helpers/mocks/LidoMock.sol";
 import { WstETHMock } from "../../helpers/mocks/WstETHMock.sol";
@@ -77,7 +78,7 @@ contract AccountingFixtures is Test, Fixtures, Utilities, InvariantAsserts {
         vm.mockCall(
             address(stakingModule),
             abi.encodeWithSelector(
-                ICSModule.getNodeOperatorNonWithdrawnKeys.selector,
+                IBaseModule.getNodeOperatorNonWithdrawnKeys.selector,
                 0
             ),
             abi.encode(returnValue)
@@ -88,7 +89,7 @@ contract AccountingFixtures is Test, Fixtures, Utilities, InvariantAsserts {
         vm.mockCall(
             address(stakingModule),
             abi.encodeWithSelector(
-                ICSModule.updateDepositableValidatorsCount.selector,
+                IBaseModule.updateDepositableValidatorsCount.selector,
                 0
             ),
             ""
@@ -98,7 +99,10 @@ contract AccountingFixtures is Test, Fixtures, Utilities, InvariantAsserts {
     function mock_getNodeOperatorOwner(address owner) internal {
         vm.mockCall(
             address(stakingModule),
-            abi.encodeWithSelector(ICSModule.getNodeOperatorOwner.selector, 0),
+            abi.encodeWithSelector(
+                IBaseModule.getNodeOperatorOwner.selector,
+                0
+            ),
             abi.encode(owner)
         );
     }
@@ -111,7 +115,7 @@ contract AccountingFixtures is Test, Fixtures, Utilities, InvariantAsserts {
         vm.mockCall(
             address(stakingModule),
             abi.encodeWithSelector(
-                ICSModule.getNodeOperatorManagementProperties.selector,
+                IBaseModule.getNodeOperatorManagementProperties.selector,
                 0
             ),
             abi.encode(

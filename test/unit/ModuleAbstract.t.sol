@@ -1,19 +1,19 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.24;
 
-import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+pragma solidity 0.8.24;
 
 import { console } from "forge-std/console.sol";
 import { Test, Vm } from "forge-std/Test.sol";
 
 import { Batch } from "src/lib/QueueLib.sol";
+import { BaseModule } from "src/abstract/BaseModule.sol";
 import { BondLock } from "src/abstract/BondLock.sol";
-import { CSModule } from "src/CSModule.sol";
 import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
 import { IExitPenalties, ExitPenaltyInfo, MarkedUint248 } from "src/interfaces/IExitPenalties.sol";
-import { ICSModule, NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/ICSModule.sol";
+import { IBaseModule, NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
+import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { IGeneralPenalty } from "src/lib/GeneralPenaltyLib.sol";
 import { ILidoLocator } from "src/interfaces/ILidoLocator.sol";
 import { INOAddresses } from "src/lib/NOAddresses.sol";
@@ -42,8 +42,10 @@ abstract contract ModuleFixtures is
     Utilities,
     InvariantAsserts
 {
-    using Strings for uint256;
-    using Strings for uint128;
+    enum ModuleType {
+        Community,
+        Curated
+    }
 
     struct BatchInfo {
         uint256 nodeOperatorId;
@@ -55,7 +57,7 @@ abstract contract ModuleFixtures is
     LidoLocatorMock public locator;
     WstETHMock public wstETH;
     LidoMock public stETH;
-    CSModule public module;
+    BaseModule public module;
     AccountingMock public accounting;
     Stub public feeDistributor;
     ParametersRegistryMock public parametersRegistry;
@@ -92,11 +94,14 @@ abstract contract ModuleFixtures is
     modifier assertInvariants() {
         _;
         vm.pauseGasMetering();
-        assertModuleEnqueuedCount(module);
-        assertModuleKeys(module);
-        assertModuleUnusedStorageSlots(module);
+        _moduleInvariants();
         vm.resumeGasMetering();
     }
+
+    // TODO: Consider ditching the function override and use moduleType instead.
+    function _moduleInvariants() internal virtual;
+
+    function moduleType() internal pure virtual returns (ModuleType);
 
     function createNodeOperator() internal returns (uint256) {
         return createNodeOperator(nodeOperator, 1);
@@ -223,116 +228,6 @@ abstract contract ModuleFixtures is
             isSlashed: false
         });
         module.reportWithdrawnValidators(withdrawalsInfo);
-    }
-
-    // Checks that the queue is in the expected state starting from its head.
-    function _assertQueueState(
-        uint256 priority,
-        BatchInfo[] memory exp
-    ) internal view {
-        (uint128 curr, ) = module.depositQueuePointers(priority); // queue.head
-
-        for (uint256 i = 0; i < exp.length; ++i) {
-            BatchInfo memory b = exp[i];
-            Batch item = module.depositQueueItem(priority, curr);
-
-            assertFalse(
-                item.isNil(),
-                string.concat(
-                    "unexpected end of queue with priority=",
-                    priority.toString(),
-                    " at index ",
-                    i.toString()
-                )
-            );
-
-            curr = item.next();
-            uint256 noId = item.noId();
-            uint256 keysInBatch = item.keys();
-
-            assertEq(
-                noId,
-                b.nodeOperatorId,
-                string.concat(
-                    "unexpected `nodeOperatorId` at queue with priority=",
-                    priority.toString(),
-                    " at index ",
-                    i.toString()
-                )
-            );
-            assertEq(
-                keysInBatch,
-                b.count,
-                string.concat(
-                    "unexpected `count` at queue with priority=",
-                    priority.toString(),
-                    " at index ",
-                    i.toString()
-                )
-            );
-        }
-
-        assertTrue(
-            module.depositQueueItem(priority, curr).isNil(),
-            string.concat(
-                "unexpected tail of queue with priority=",
-                priority.toString()
-            )
-        );
-    }
-
-    function _assertQueueIsEmpty() internal view {
-        for (uint256 p = 0; p <= module.QUEUE_LOWEST_PRIORITY(); ++p) {
-            (uint128 curr, ) = module.depositQueuePointers(p); // queue.head
-            assertTrue(
-                module.depositQueueItem(p, curr).isNil(),
-                string.concat(
-                    "queue with priority=",
-                    p.toString(),
-                    " is not empty"
-                )
-            );
-        }
-    }
-
-    function _printQueue() internal view {
-        for (uint256 p = 0; p <= module.QUEUE_LOWEST_PRIORITY(); ++p) {
-            (uint128 curr, ) = module.depositQueuePointers(p);
-
-            for (;;) {
-                Batch item = module.depositQueueItem(p, curr);
-                if (item.isNil()) {
-                    break;
-                }
-
-                uint256 noId = item.noId();
-                uint256 keysInBatch = item.keys();
-
-                console.log(
-                    string.concat(
-                        "queue.priority=",
-                        p.toString(),
-                        "[",
-                        curr.toString(),
-                        "]={noId:",
-                        noId.toString(),
-                        ",count:",
-                        keysInBatch.toString(),
-                        "}"
-                    )
-                );
-
-                curr = item.next();
-            }
-        }
-    }
-
-    function _isQueueDirty(uint256 maxItems) internal returns (bool) {
-        // XXX: Mimic a **eth_call** to avoid state changes.
-        uint256 snapshot = vm.snapshotState();
-        (uint256 toRemove, ) = module.cleanDepositQueue(maxItems);
-        vm.revertToState(snapshot);
-        return toRemove > 0;
     }
 
     function getNodeOperatorSummary(
@@ -536,7 +431,12 @@ abstract contract ModuleCreateNodeOperator is ModuleFixtures {
     function test_createNodeOperator() public assertInvariants {
         uint256 nonce = module.getNonce();
         vm.expectEmit(address(module));
-        emit ICSModule.NodeOperatorAdded(0, nodeOperator, nodeOperator, false);
+        emit IBaseModule.NodeOperatorAdded(
+            0,
+            nodeOperator,
+            nodeOperator,
+            false
+        );
 
         uint256 nodeOperatorId = module.createNodeOperator(
             nodeOperator,
@@ -560,7 +460,7 @@ abstract contract ModuleCreateNodeOperator is ModuleFixtures {
         address reward = address(42);
 
         vm.expectEmit(address(module));
-        emit ICSModule.NodeOperatorAdded(0, manager, reward, false);
+        emit IBaseModule.NodeOperatorAdded(0, manager, reward, false);
         module.createNodeOperator(
             nodeOperator,
             NodeOperatorManagementProperties({
@@ -585,7 +485,7 @@ abstract contract ModuleCreateNodeOperator is ModuleFixtures {
         address reward = address(42);
 
         vm.expectEmit(address(module));
-        emit ICSModule.NodeOperatorAdded(0, manager, reward, true);
+        emit IBaseModule.NodeOperatorAdded(0, manager, reward, true);
         module.createNodeOperator(
             nodeOperator,
             NodeOperatorManagementProperties({
@@ -605,14 +505,14 @@ abstract contract ModuleCreateNodeOperator is ModuleFixtures {
     function test_createNodeOperator_withReferrer() public assertInvariants {
         {
             vm.expectEmit(address(module));
-            emit ICSModule.NodeOperatorAdded(
+            emit IBaseModule.NodeOperatorAdded(
                 0,
                 nodeOperator,
                 nodeOperator,
                 false
             );
             vm.expectEmit(address(module));
-            emit ICSModule.ReferrerSet(0, address(154));
+            emit IBaseModule.ReferrerSet(0, address(154));
         }
         module.createNodeOperator(
             nodeOperator,
@@ -626,7 +526,7 @@ abstract contract ModuleCreateNodeOperator is ModuleFixtures {
     }
 
     function test_createNodeOperator_RevertWhen_ZeroSenderAddress() public {
-        vm.expectRevert(ICSModule.ZeroSenderAddress.selector);
+        vm.expectRevert(IBaseModule.ZeroSenderAddress.selector);
         module.createNodeOperator(
             address(0),
             NodeOperatorManagementProperties({
@@ -686,13 +586,15 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             vm.expectEmit(address(module));
             emit IStakingModule.SigningKeyAdded(noId, keys);
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 2);
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(
-                module.QUEUE_LOWEST_PRIORITY(),
-                noId,
-                1
-            );
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
+            if (moduleType() == ModuleType.Community) {
+                vm.expectEmit(address(module));
+                emit ICSModule.BatchEnqueued(
+                    ICSModule(address(module)).QUEUE_LOWEST_PRIORITY(),
+                    noId,
+                    1
+                );
+            }
         }
         module.addValidatorKeysWstETH(
             nodeOperator,
@@ -728,7 +630,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             vm.expectEmit(address(module));
             emit IStakingModule.SigningKeyAdded(noId, keys);
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 2);
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
         }
         module.addValidatorKeysWstETH(
             nodeOperator,
@@ -766,7 +668,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             vm.expectEmit(address(module));
             emit IStakingModule.SigningKeyAdded(noId, keys);
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 2);
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
         }
         module.addValidatorKeysWstETH(
             nodeOperator,
@@ -800,7 +702,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             vm.expectEmit(address(module));
             emit IStakingModule.SigningKeyAdded(noId, keys);
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 2);
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
         }
         module.addValidatorKeysWstETH(
             nodeOperator,
@@ -837,13 +739,15 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             vm.expectEmit(address(module));
             emit IStakingModule.SigningKeyAdded(noId, keys);
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 2);
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(
-                module.QUEUE_LOWEST_PRIORITY(),
-                noId,
-                1
-            );
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
+            if (moduleType() == ModuleType.Community) {
+                vm.expectEmit(address(module));
+                emit ICSModule.BatchEnqueued(
+                    ICSModule(address(module)).QUEUE_LOWEST_PRIORITY(),
+                    noId,
+                    1
+                );
+            }
         }
         module.addValidatorKeysStETH(
             nodeOperator,
@@ -883,7 +787,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             vm.expectEmit(address(module));
             emit IStakingModule.SigningKeyAdded(noId, keys);
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 2);
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
         }
         module.addValidatorKeysStETH(
             nodeOperator,
@@ -925,7 +829,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             vm.expectEmit(address(module));
             emit IStakingModule.SigningKeyAdded(noId, keys);
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 2);
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
         }
         module.addValidatorKeysStETH(
             nodeOperator,
@@ -964,7 +868,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             vm.expectEmit(address(module));
             emit IStakingModule.SigningKeyAdded(noId, keys);
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 2);
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
         }
         vm.prank(nodeOperator);
         module.addValidatorKeysStETH(
@@ -1001,13 +905,15 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             vm.expectEmit(address(module));
             emit IStakingModule.SigningKeyAdded(noId, keys);
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 2);
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(
-                module.QUEUE_LOWEST_PRIORITY(),
-                noId,
-                1
-            );
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
+            if (moduleType() == ModuleType.Community) {
+                vm.expectEmit(address(module));
+                emit ICSModule.BatchEnqueued(
+                    ICSModule(address(module)).QUEUE_LOWEST_PRIORITY(),
+                    noId,
+                    1
+                );
+            }
         }
         vm.prank(nodeOperator);
         module.addValidatorKeysETH{ value: required }(
@@ -1040,7 +946,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             vm.expectEmit(address(module));
             emit IStakingModule.SigningKeyAdded(noId, keys);
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 2);
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
         }
         vm.prank(nodeOperator);
         module.addValidatorKeysETH{ value: required }(
@@ -1076,7 +982,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             vm.expectEmit(address(module));
             emit IStakingModule.SigningKeyAdded(noId, keys);
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 2);
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
         }
         module.addValidatorKeysETH{ value: required }(
             nodeOperator,
@@ -1108,7 +1014,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             vm.expectEmit(address(module));
             emit IStakingModule.SigningKeyAdded(noId, keys);
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 2);
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
         }
         module.addValidatorKeysETH{ value: deposit }(
             nodeOperator,
@@ -1122,13 +1028,13 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
 }
 
 contract GateWithTestCapabilities is Test, Utilities {
-    ICSModule private module;
+    IBaseModule private module;
     IAccounting private accounting;
 
     WstETHMock private wstETH;
     LidoMock private stETH;
 
-    constructor(ICSModule _module) {
+    constructor(IBaseModule _module) {
         module = _module;
         accounting = module.ACCOUNTING();
         ILidoLocator locator = module.LIDO_LOCATOR();
@@ -1575,7 +1481,7 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
         vm.deal(gateTwo, required);
 
         {
-            vm.expectRevert(ICSModule.CannotAddKeys.selector);
+            vm.expectRevert(IBaseModule.CannotAddKeys.selector);
 
             vm.prank(gateTwo);
             module.addValidatorKeysETH{ value: required }(
@@ -1611,7 +1517,7 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
 
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
         {
-            vm.expectRevert(ICSModule.CannotAddKeys.selector);
+            vm.expectRevert(IBaseModule.CannotAddKeys.selector);
 
             vm.prank(gateTwo);
             module.addValidatorKeysStETH(
@@ -1654,7 +1560,7 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
 
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
         {
-            vm.expectRevert(ICSModule.CannotAddKeys.selector);
+            vm.expectRevert(IBaseModule.CannotAddKeys.selector);
 
             vm.prank(gateTwo);
             module.addValidatorKeysWstETH(
@@ -1690,7 +1596,7 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
         (keys, sigs) = keysSignatures(1, 1);
 
         {
-            vm.expectRevert(ICSModule.CannotAddKeys.selector);
+            vm.expectRevert(IBaseModule.CannotAddKeys.selector);
 
             vm.prank(address(gate));
             module.addValidatorKeysETH(nodeOperator, noId, 1, keys, sigs);
@@ -1712,7 +1618,7 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
 
         (keys, sigs) = keysSignatures(1, 1);
         {
-            vm.expectRevert(ICSModule.CannotAddKeys.selector);
+            vm.expectRevert(IBaseModule.CannotAddKeys.selector);
 
             vm.prank(address(gate));
             module.addValidatorKeysStETH(
@@ -1748,7 +1654,7 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
         (keys, sigs) = keysSignatures(1, 1);
 
         {
-            vm.expectRevert(ICSModule.CannotAddKeys.selector);
+            vm.expectRevert(IBaseModule.CannotAddKeys.selector);
 
             vm.prank(address(gate));
             module.addValidatorKeysWstETH(
@@ -1785,7 +1691,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
         uint256 noId = module.getNodeOperatorsCount() - 1;
         uint256 required = accounting.getRequiredBondForNextKeys(0, 1);
         vm.deal(stranger, required);
-        vm.expectRevert(ICSModule.SenderIsNotEligible.selector);
+        vm.expectRevert(IBaseModule.SenderIsNotEligible.selector);
         vm.prank(stranger);
         module.addValidatorKeysETH{ value: required }(
             stranger,
@@ -1804,7 +1710,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
         module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), stranger);
         vm.stopPrank();
 
-        vm.expectRevert(ICSModule.CannotAddKeys.selector);
+        vm.expectRevert(IBaseModule.CannotAddKeys.selector);
         vm.prank(stranger);
         module.addValidatorKeysETH{ value: required }(
             nodeOperator,
@@ -1891,7 +1797,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
 
         parametersRegistry.setKeysLimit(0, 1);
 
-        vm.expectRevert(ICSModule.KeysLimitExceeded.selector);
+        vm.expectRevert(IBaseModule.KeysLimitExceeded.selector);
         vm.prank(nodeOperator);
         module.addValidatorKeysETH{ value: required }(
             nodeOperator,
@@ -1910,7 +1816,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
         vm.prank(nodeOperator);
         stETH.submit{ value: BOND_SIZE + 1 wei }(address(0));
 
-        vm.expectRevert(ICSModule.SenderIsNotEligible.selector);
+        vm.expectRevert(IBaseModule.SenderIsNotEligible.selector);
         vm.prank(stranger);
         module.addValidatorKeysStETH(
             stranger,
@@ -1931,7 +1837,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
         module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), stranger);
         vm.stopPrank();
 
-        vm.expectRevert(ICSModule.CannotAddKeys.selector);
+        vm.expectRevert(IBaseModule.CannotAddKeys.selector);
         vm.prank(stranger);
         module.addValidatorKeysStETH(
             nodeOperator,
@@ -2033,7 +1939,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
         uint256 required = accounting.getRequiredBondForNextKeys(0, 1);
         vm.deal(nodeOperator, required - 1 ether);
 
-        vm.expectRevert(ICSModule.InvalidAmount.selector);
+        vm.expectRevert(IBaseModule.InvalidAmount.selector);
         vm.prank(nodeOperator);
         module.addValidatorKeysETH{ value: required - 1 ether }(
             nodeOperator,
@@ -2057,7 +1963,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
 
         parametersRegistry.setKeysLimit(0, 1);
 
-        vm.expectRevert(ICSModule.KeysLimitExceeded.selector);
+        vm.expectRevert(IBaseModule.KeysLimitExceeded.selector);
         module.addValidatorKeysStETH(
             nodeOperator,
             noId,
@@ -2086,7 +1992,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
         wstETH.wrap(toWrap);
         vm.stopPrank();
 
-        vm.expectRevert(ICSModule.SenderIsNotEligible.selector);
+        vm.expectRevert(IBaseModule.SenderIsNotEligible.selector);
         vm.prank(stranger);
         module.addValidatorKeysWstETH(
             stranger,
@@ -2111,7 +2017,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
         module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), stranger);
         vm.stopPrank();
 
-        vm.expectRevert(ICSModule.CannotAddKeys.selector);
+        vm.expectRevert(IBaseModule.CannotAddKeys.selector);
         vm.prank(stranger);
         module.addValidatorKeysWstETH(
             nodeOperator,
@@ -2213,7 +2119,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
 
         parametersRegistry.setKeysLimit(0, 1);
 
-        vm.expectRevert(ICSModule.KeysLimitExceeded.selector);
+        vm.expectRevert(IBaseModule.KeysLimitExceeded.selector);
         module.addValidatorKeysWstETH(
             nodeOperator,
             noId,
@@ -2234,7 +2140,7 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
             .getSigningKeysWithSignatures(nodeOperatorId, 0, 1);
 
         vm.expectEmit(address(module));
-        emit ICSModule.DepositableSigningKeysCountChanged(nodeOperatorId, 0);
+        emit IBaseModule.DepositableSigningKeysCountChanged(nodeOperatorId, 0);
         (bytes memory obtainedKeys, bytes memory obtainedSignatures) = module
             .obtainDepositData(1, "");
         assertEq(obtainedKeys, keys);
@@ -2250,11 +2156,11 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         uint256 thirdId = createNodeOperator(1);
 
         vm.expectEmit(address(module));
-        emit ICSModule.DepositableSigningKeysCountChanged(firstId, 0);
+        emit IBaseModule.DepositableSigningKeysCountChanged(firstId, 0);
         vm.expectEmit(address(module));
-        emit ICSModule.DepositableSigningKeysCountChanged(secondId, 0);
+        emit IBaseModule.DepositableSigningKeysCountChanged(secondId, 0);
         vm.expectEmit(address(module));
-        emit ICSModule.DepositableSigningKeysCountChanged(thirdId, 0);
+        emit IBaseModule.DepositableSigningKeysCountChanged(thirdId, 0);
         module.obtainDepositData(6, "");
     }
 
@@ -2265,7 +2171,7 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
             .getSigningKeysWithSignatures(noId, 0, keysCount);
 
         vm.expectEmit(address(module));
-        emit ICSModule.DepositedSigningKeysCountChanged(noId, keysCount);
+        emit IBaseModule.DepositedSigningKeysCountChanged(noId, keysCount);
         (bytes memory depositedKeys, bytes memory depositedSignatures) = module
             .obtainDepositData(keysCount, "");
 
@@ -2318,7 +2224,7 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         uint256 noId = createNodeOperator(7);
 
         vm.expectEmit(address(module));
-        emit ICSModule.DepositedSigningKeysCountChanged(noId, 3);
+        emit IBaseModule.DepositedSigningKeysCountChanged(noId, 3);
         module.obtainDepositData(3, "");
 
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -2331,7 +2237,7 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         public
         assertInvariants
     {
-        vm.expectRevert(ICSModule.NotEnoughKeys.selector);
+        vm.expectRevert(IBaseModule.NotEnoughKeys.selector);
         module.obtainDepositData(1, "");
     }
 
@@ -2400,6 +2306,23 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         assertEq(no.totalDepositedKeys, totalKeys - random);
         assertEq(no.depositableValidatorsCount, random);
     }
+
+    function test_stakingRouterRole_obtainDepositData() public {
+        bytes32 role = module.STAKING_ROUTER_ROLE();
+        vm.prank(admin);
+        module.grantRole(role, actor);
+
+        vm.prank(actor);
+        module.obtainDepositData(0, "");
+    }
+
+    function test_stakingRouterRole_obtainDepositData_revert() public {
+        bytes32 role = module.STAKING_ROUTER_ROLE();
+
+        vm.prank(stranger);
+        expectRoleRevert(stranger, role);
+        module.obtainDepositData(0, "");
+    }
 }
 
 abstract contract ModuleProposeNodeOperatorManagerAddressChange is
@@ -2447,7 +2370,7 @@ abstract contract ModuleProposeNodeOperatorManagerAddressChange is
     function test_proposeNodeOperatorManagerAddressChange_RevertWhen_NoNodeOperator()
         public
     {
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.proposeNodeOperatorManagerAddressChange(0, stranger);
     }
 
@@ -2510,7 +2433,7 @@ abstract contract ModuleConfirmNodeOperatorManagerAddressChange is
     function test_confirmNodeOperatorManagerAddressChange_RevertWhen_NoNodeOperator()
         public
     {
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.confirmNodeOperatorManagerAddressChange(0);
     }
 
@@ -2581,7 +2504,7 @@ abstract contract ModuleProposeNodeOperatorRewardAddressChange is
     function test_proposeNodeOperatorRewardAddressChange_RevertWhen_NoNodeOperator()
         public
     {
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.proposeNodeOperatorRewardAddressChange(0, stranger);
     }
 
@@ -2644,7 +2567,7 @@ abstract contract ModuleConfirmNodeOperatorRewardAddressChange is
     function test_confirmNodeOperatorRewardAddressChange_RevertWhen_NoNodeOperator()
         public
     {
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.confirmNodeOperatorRewardAddressChange(0);
     }
 
@@ -2717,7 +2640,7 @@ abstract contract ModuleResetNodeOperatorManagerAddress is ModuleFixtures {
     function test_resetNodeOperatorManagerAddress_RevertWhen_NoNodeOperator()
         public
     {
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.resetNodeOperatorManagerAddress(0);
     }
 
@@ -2786,7 +2709,7 @@ abstract contract ModuleChangeNodeOperatorRewardAddress is ModuleFixtures {
     function test_changeNodeOperatorRewardAddress_RevertWhen_NoNodeOperator()
         public
     {
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         vm.prank(nodeOperator);
         module.changeNodeOperatorRewardAddress(0, stranger);
     }
@@ -2843,18 +2766,11 @@ abstract contract ModuleVetKeys is ModuleFixtures {
         uint256 noId = createNodeOperator(2);
 
         vm.expectEmit(address(module));
-        emit ICSModule.VettedSigningKeysCountChanged(noId, 3);
-        vm.expectEmit(address(module));
-        emit ICSModule.BatchEnqueued(module.QUEUE_LOWEST_PRIORITY(), noId, 1);
+        emit IBaseModule.VettedSigningKeysCountChanged(noId, 3);
         uploadMoreKeys(noId, 1);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalVettedKeys, 3);
-
-        BatchInfo[] memory exp = new BatchInfo[](2);
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 2 });
-        exp[1] = BatchInfo({ nodeOperatorId: noId, count: 1 });
-        _assertQueueState(module.QUEUE_LOWEST_PRIORITY(), exp);
     }
 
     function test_vetKeys_Counters() public assertInvariants {
@@ -2877,513 +2793,13 @@ abstract contract ModuleVetKeys is ModuleFixtures {
         assertEq(no.totalVettedKeys, 4);
 
         vm.expectEmit(address(module));
-        emit ICSModule.VettedSigningKeysCountChanged(noId, 5); // 7 - 2 removed at the next step.
+        emit IBaseModule.VettedSigningKeysCountChanged(noId, 5); // 7 - 2 removed at the next step.
 
         vm.prank(nodeOperator);
         module.removeKeys(noId, 4, 2); // Remove keys 4 and 5.
 
         no = module.getNodeOperator(noId);
         assertEq(no.totalVettedKeys, 5);
-    }
-}
-
-abstract contract ModuleQueueOps is ModuleFixtures {
-    uint256 internal constant LOOKUP_DEPTH = 150; // derived from maxDepositsPerBlock
-
-    function test_emptyQueueIsClean() public assertInvariants {
-        bool isDirty = _isQueueDirty(LOOKUP_DEPTH);
-        assertFalse(isDirty, "queue should be clean");
-    }
-
-    function test_queueIsDirty_WhenHasBatchOfNonDepositableOperator()
-        public
-        assertInvariants
-    {
-        uint256 noId = createNodeOperator({ keysCount: 2 });
-        unvetKeys({ noId: noId, to: 0 }); // One of the ways to set `depositableValidatorsCount` to 0.
-
-        bool isDirty = _isQueueDirty(LOOKUP_DEPTH);
-        assertTrue(isDirty, "queue should be dirty");
-    }
-
-    function test_queueIsDirty_WhenHasBatchWithNoDepositableKeys()
-        public
-        assertInvariants
-    {
-        uint256 noId = createNodeOperator({ keysCount: 2 });
-        uploadMoreKeys(noId, 1);
-        unvetKeys({ noId: noId, to: 2 });
-        bool isDirty = _isQueueDirty(LOOKUP_DEPTH);
-        assertTrue(isDirty, "queue should be dirty");
-    }
-
-    function test_queueIsClean_AfterCleanup() public assertInvariants {
-        uint256 noId = createNodeOperator({ keysCount: 2 });
-        uploadMoreKeys(noId, 1);
-        unvetKeys({ noId: noId, to: 2 });
-
-        (uint256 toRemove, ) = module.cleanDepositQueue(LOOKUP_DEPTH);
-        assertEq(toRemove, 1, "should remove 1 batch");
-
-        bool isDirty = _isQueueDirty(LOOKUP_DEPTH);
-        assertFalse(isDirty, "queue should be clean");
-    }
-
-    function test_cleanup_emptyQueue() public assertInvariants {
-        _assertQueueIsEmpty();
-
-        (uint256 toRemove, ) = module.cleanDepositQueue(LOOKUP_DEPTH);
-        assertEq(toRemove, 0, "queue should be clean");
-    }
-
-    function test_cleanup_zeroMaxItems() public assertInvariants {
-        (uint256 removed, uint256 lastRemovedAtDepth) = module
-            .cleanDepositQueue(0);
-        assertEq(removed, 0, "should not remove any batches");
-        assertEq(lastRemovedAtDepth, 0, "lastRemovedAtDepth should be 0");
-    }
-
-    function test_cleanup_WhenMultipleInvalidBatchesInRow()
-        public
-        assertInvariants
-    {
-        createNodeOperator({ keysCount: 3 });
-        createNodeOperator({ keysCount: 5 });
-        createNodeOperator({ keysCount: 1 });
-
-        uploadMoreKeys(1, 2);
-
-        unvetKeys({ noId: 1, to: 2 });
-        unvetKeys({ noId: 2, to: 0 });
-
-        uint256 toRemove;
-
-        // Operator noId=1 has 1 dangling batch after unvetting.
-        // Operator noId=2 is unvetted.
-        (toRemove, ) = module.cleanDepositQueue(LOOKUP_DEPTH);
-        assertEq(toRemove, 2, "should remove 2 batch");
-
-        // let's check the state of the queue
-        BatchInfo[] memory exp = new BatchInfo[](2);
-        exp[0] = BatchInfo({ nodeOperatorId: 0, count: 3 });
-        exp[1] = BatchInfo({ nodeOperatorId: 1, count: 5 });
-        _assertQueueState(module.QUEUE_LOWEST_PRIORITY(), exp);
-
-        (toRemove, ) = module.cleanDepositQueue(LOOKUP_DEPTH);
-        assertEq(toRemove, 0, "queue should be clean");
-    }
-
-    function test_cleanup_WhenAllBatchesInvalid() public assertInvariants {
-        createNodeOperator({ keysCount: 2 });
-        createNodeOperator({ keysCount: 2 });
-        unvetKeys({ noId: 0, to: 0 });
-        unvetKeys({ noId: 1, to: 0 });
-
-        (uint256 toRemove, ) = module.cleanDepositQueue(LOOKUP_DEPTH);
-        assertEq(toRemove, 2, "should remove all batches");
-
-        _assertQueueIsEmpty();
-    }
-
-    function test_cleanup_ToVisitCounterIsCorrect() public {
-        createNodeOperator({ keysCount: 3 }); // noId: 0
-        createNodeOperator({ keysCount: 5 }); // noId: 1
-        createNodeOperator({ keysCount: 1 }); // noId: 2
-        createNodeOperator({ keysCount: 4 }); // noId: 3
-        createNodeOperator({ keysCount: 2 }); // noId: 4
-
-        uploadMoreKeys({ noId: 1, keysCount: 2 });
-        uploadMoreKeys({ noId: 3, keysCount: 2 });
-        uploadMoreKeys({ noId: 4, keysCount: 2 });
-
-        unvetKeys({ noId: 1, to: 2 });
-        unvetKeys({ noId: 2, to: 0 });
-
-        // Items marked with * below are supposed to be removed.
-        // (0;3) (1;5) *(2;1) (3;4) (4;2) *(1;2) (3;2) (4;2)
-
-        uint256 snapshot = vm.snapshotState();
-
-        {
-            (uint256 toRemove, uint256 toVisit) = module.cleanDepositQueue({
-                maxItems: 10
-            });
-            assertEq(toRemove, 2, "toRemove != 2");
-            assertEq(toVisit, 6, "toVisit != 6");
-        }
-
-        vm.revertToState(snapshot);
-
-        {
-            (uint256 toRemove, uint256 toVisit) = module.cleanDepositQueue({
-                maxItems: 6
-            });
-            assertEq(toRemove, 2, "toRemove != 2");
-            assertEq(toVisit, 6, "toVisit != 6");
-        }
-    }
-
-    function test_updateDepositableValidatorsCount_NothingToDo()
-        public
-        assertInvariants
-    {
-        // `updateDepositableValidatorsCount` will be called on creating a node operator and uploading a key.
-        uint256 noId = createNodeOperator();
-
-        (, , uint256 depositableBefore) = module.getStakingModuleSummary();
-        uint256 nonceBefore = module.getNonce();
-
-        vm.recordLogs();
-        module.updateDepositableValidatorsCount(noId);
-
-        (, , uint256 depositableAfter) = module.getStakingModuleSummary();
-        uint256 nonceAfter = module.getNonce();
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-
-        assertEq(depositableBefore, depositableAfter);
-        assertEq(nonceBefore, nonceAfter);
-        assertEq(logs.length, 0);
-    }
-
-    function test_updateDepositableValidatorsCount_NonExistingOperator()
-        public
-        assertInvariants
-    {
-        (, , uint256 depositableBefore) = module.getStakingModuleSummary();
-        uint256 nonceBefore = module.getNonce();
-
-        vm.recordLogs();
-        module.updateDepositableValidatorsCount(100500);
-
-        (, , uint256 depositableAfter) = module.getStakingModuleSummary();
-        uint256 nonceAfter = module.getNonce();
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-
-        assertEq(depositableBefore, depositableAfter);
-        assertEq(nonceBefore, nonceAfter);
-        assertEq(logs.length, 0);
-    }
-
-    function test_queueNormalized_WhenSkippedKeysAndTargetValidatorsLimitRaised()
-        public
-    {
-        uint256 noId = createNodeOperator(7);
-        module.updateTargetValidatorsLimits({
-            nodeOperatorId: noId,
-            targetLimitMode: 1,
-            targetLimit: 0
-        });
-        module.cleanDepositQueue(1);
-
-        vm.expectEmit(address(module));
-        emit ICSModule.BatchEnqueued(module.QUEUE_LOWEST_PRIORITY(), noId, 7);
-
-        module.updateTargetValidatorsLimits({
-            nodeOperatorId: noId,
-            targetLimitMode: 1,
-            targetLimit: 7
-        });
-    }
-
-    function test_queueNormalized_WhenWithdrawalChangesDepositable()
-        public
-        assertInvariants
-    {
-        uint256 noId = createNodeOperator(7);
-        module.updateTargetValidatorsLimits({
-            nodeOperatorId: noId,
-            targetLimitMode: 1,
-            targetLimit: 2
-        });
-        module.obtainDepositData(2, "");
-        module.cleanDepositQueue(1);
-
-        WithdrawnValidatorInfo[]
-            memory validatorInfos = new WithdrawnValidatorInfo[](1);
-
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 0,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-
-        vm.expectEmit(address(module));
-        emit ICSModule.BatchEnqueued(module.QUEUE_LOWEST_PRIORITY(), noId, 1);
-        module.reportWithdrawnValidators(validatorInfos);
-    }
-}
-
-abstract contract ModulePriorityQueue is ModuleFixtures {
-    uint256 constant LOOKUP_DEPTH = 150;
-
-    uint32 constant MAX_DEPOSITS = 10;
-
-    function test_enqueueToPriorityQueue_LessThanMaxDeposits() public {
-        uint256 noId = createNodeOperator(0);
-
-        _assertQueueIsEmptyByPriority(PRIORITY_QUEUE);
-        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-
-        {
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(PRIORITY_QUEUE, noId, 8);
-
-            uploadMoreKeys(noId, 8);
-        }
-
-        _assertQueueIsEmptyByPriority(REGULAR_QUEUE);
-
-        BatchInfo[] memory exp = new BatchInfo[](1);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 8 });
-        _assertQueueState(PRIORITY_QUEUE, exp);
-    }
-
-    function test_enqueueToPriorityQueue_MoreThanMaxDeposits() public {
-        uint256 noId = createNodeOperator(0);
-
-        _assertQueueIsEmptyByPriority(PRIORITY_QUEUE);
-        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-
-        {
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(PRIORITY_QUEUE, noId, 10);
-
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(REGULAR_QUEUE, noId, 5);
-
-            uploadMoreKeys(noId, 15);
-        }
-
-        BatchInfo[] memory exp = new BatchInfo[](1);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 10 });
-        _assertQueueState(PRIORITY_QUEUE, exp);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 5 });
-        _assertQueueState(REGULAR_QUEUE, exp);
-    }
-
-    function test_enqueueToPriorityQueue_AlreadyEnqueuedLessThanMaxDeposits()
-        public
-    {
-        uint256 noId = createNodeOperator(0);
-
-        _assertQueueIsEmptyByPriority(PRIORITY_QUEUE);
-        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-
-        uploadMoreKeys(noId, 8);
-
-        {
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(PRIORITY_QUEUE, noId, 2);
-
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(REGULAR_QUEUE, noId, 10);
-
-            uploadMoreKeys(noId, 12);
-        }
-
-        BatchInfo[] memory exp = new BatchInfo[](2);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 8 });
-        exp[1] = BatchInfo({ nodeOperatorId: noId, count: 2 });
-        _assertQueueState(PRIORITY_QUEUE, exp);
-
-        exp = new BatchInfo[](1);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 10 });
-        _assertQueueState(REGULAR_QUEUE, exp);
-    }
-
-    function test_enqueueToPriorityQueue_AlreadyEnqueuedMoreThanMaxDeposits()
-        public
-    {
-        uint256 noId = createNodeOperator(0);
-
-        _assertQueueIsEmptyByPriority(PRIORITY_QUEUE);
-        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-
-        uploadMoreKeys(noId, 12);
-
-        {
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(REGULAR_QUEUE, noId, 12);
-
-            uploadMoreKeys(noId, 12);
-        }
-
-        BatchInfo[] memory exp = new BatchInfo[](1);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 10 });
-        _assertQueueState(PRIORITY_QUEUE, exp);
-
-        exp = new BatchInfo[](2);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 2 });
-        exp[1] = BatchInfo({ nodeOperatorId: noId, count: 12 });
-        _assertQueueState(REGULAR_QUEUE, exp);
-    }
-
-    function test_enqueueToPriorityQueue_EnqueuedWithDepositedLessThanMaxDeposits()
-        public
-    {
-        uint256 noId = createNodeOperator(0);
-
-        _assertQueueIsEmptyByPriority(PRIORITY_QUEUE);
-        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-
-        uploadMoreKeys(noId, 8);
-        module.obtainDepositData(3, ""); // no.enqueuedCount == 5
-
-        {
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(PRIORITY_QUEUE, noId, 2);
-
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(REGULAR_QUEUE, noId, 10);
-
-            uploadMoreKeys(noId, 12);
-        }
-
-        BatchInfo[] memory exp = new BatchInfo[](2);
-
-        // The batch was partially consumed by the obtainDepositData call.
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 5 });
-        exp[1] = BatchInfo({ nodeOperatorId: noId, count: 2 });
-        _assertQueueState(PRIORITY_QUEUE, exp);
-
-        exp = new BatchInfo[](1);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 10 });
-        _assertQueueState(REGULAR_QUEUE, exp);
-    }
-
-    function test_enqueueToPriorityQueue_EnqueuedWithDepositedMoreThanMaxDeposits()
-        public
-    {
-        uint256 noId = createNodeOperator(0);
-
-        _assertQueueIsEmptyByPriority(PRIORITY_QUEUE);
-        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-
-        uploadMoreKeys(noId, 12);
-        module.obtainDepositData(3, ""); // no.enqueuedCount == 9
-
-        {
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(REGULAR_QUEUE, noId, 12);
-
-            uploadMoreKeys(noId, 12);
-        }
-
-        BatchInfo[] memory exp = new BatchInfo[](1);
-
-        // The batch was partially consumed by the obtainDepositData call.
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 7 });
-        _assertQueueState(PRIORITY_QUEUE, exp);
-
-        exp = new BatchInfo[](2);
-
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 2 });
-        exp[1] = BatchInfo({ nodeOperatorId: noId, count: 12 });
-        _assertQueueState(REGULAR_QUEUE, exp);
-    }
-
-    function test_queueCleanupWorksAcrossQueues() public {
-        _assertQueueIsEmptyByPriority(PRIORITY_QUEUE);
-        _enablePriorityQueue(PRIORITY_QUEUE, MAX_DEPOSITS);
-
-        uint256 noId = createNodeOperator(0);
-
-        uploadMoreKeys(noId, 2);
-        uploadMoreKeys(noId, 10);
-        uploadMoreKeys(noId, 10);
-        // [2] [8] | ... | [2] [10]
-
-        unvetKeys({ noId: noId, to: 2 });
-
-        (uint256 toRemove, ) = module.cleanDepositQueue(LOOKUP_DEPTH);
-        assertEq(toRemove, 3, "should remove 3 batches");
-
-        bool isDirty = _isQueueDirty(LOOKUP_DEPTH);
-        assertFalse(isDirty, "queue should be clean");
-    }
-
-    function test_queueCleanupReturnsCorrectDepth() public {
-        uint256 noIdOne = createNodeOperator(0);
-        uint256 noIdTwo = createNodeOperator(0);
-
-        _enablePriorityQueue(0, 10);
-        uploadMoreKeys(noIdOne, 2);
-        uploadMoreKeys(noIdOne, 10);
-        uploadMoreKeys(noIdOne, 10);
-
-        _enablePriorityQueue(1, 10);
-        uploadMoreKeys(noIdTwo, 2);
-        uploadMoreKeys(noIdTwo, 8);
-        uploadMoreKeys(noIdTwo, 2);
-
-        unvetKeys({ noId: noIdTwo, to: 2 });
-
-        // [0,2] [0,8] | [1,2] [1,8] | ... | [0,2] [0,10] [1,2]
-        //     1     2       3     4             5      6     7
-        //                         ^                          ^ removed
-
-        uint256 snapshot;
-
-        {
-            snapshot = vm.snapshotState();
-            (uint256 toRemove, uint256 lastRemovedAtDepth) = module
-                .cleanDepositQueue(3);
-            vm.revertToState(snapshot);
-            assertEq(toRemove, 0, "should remove 0 batch(es)");
-            assertEq(lastRemovedAtDepth, 0, "the depth should be 0");
-        }
-
-        {
-            snapshot = vm.snapshotState();
-            (uint256 toRemove, uint256 lastRemovedAtDepth) = module
-                .cleanDepositQueue(4);
-            vm.revertToState(snapshot);
-            assertEq(toRemove, 1, "should remove 1 batch(es)");
-            assertEq(lastRemovedAtDepth, 4, "the depth should be 4");
-        }
-
-        {
-            snapshot = vm.snapshotState();
-            (uint256 toRemove, uint256 lastRemovedAtDepth) = module
-                .cleanDepositQueue(7);
-            vm.revertToState(snapshot);
-            assertEq(toRemove, 2, "should remove 2 batch(es)");
-            assertEq(lastRemovedAtDepth, 7, "the depth should be 7");
-        }
-
-        {
-            snapshot = vm.snapshotState();
-            (uint256 toRemove, uint256 lastRemovedAtDepth) = module
-                .cleanDepositQueue(100_500);
-            vm.revertToState(snapshot);
-            assertEq(toRemove, 2, "should remove 2 batch(es)");
-            assertEq(lastRemovedAtDepth, 7, "the depth should be 7");
-        }
-    }
-
-    function _enablePriorityQueue(
-        uint32 priority,
-        uint32 maxDeposits
-    ) internal {
-        parametersRegistry.setQueueConfig({
-            curveId: 0,
-            priority: priority,
-            maxDeposits: maxDeposits
-        });
-    }
-
-    function _assertQueueIsEmptyByPriority(uint32 priority) internal view {
-        _assertQueueState(priority, new BatchInfo[](0));
     }
 }
 
@@ -3396,9 +2812,9 @@ abstract contract ModuleDecreaseVettedSigningKeysCount is ModuleFixtures {
         uint256 nonce = module.getNonce();
 
         vm.expectEmit(address(module));
-        emit ICSModule.VettedSigningKeysCountChanged(noId, 1);
+        emit IBaseModule.VettedSigningKeysCountChanged(noId, 1);
         vm.expectEmit(address(module));
-        emit ICSModule.VettedSigningKeysCountDecreased(noId);
+        emit IBaseModule.VettedSigningKeysCountDecreased(noId);
         unvetKeys({ noId: noId, to: 1 });
 
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -3418,17 +2834,20 @@ abstract contract ModuleDecreaseVettedSigningKeysCount is ModuleFixtures {
         uint256 newVettedSecond = 3;
 
         vm.expectEmit(address(module));
-        emit ICSModule.VettedSigningKeysCountChanged(firstNoId, newVettedFirst);
+        emit IBaseModule.VettedSigningKeysCountChanged(
+            firstNoId,
+            newVettedFirst
+        );
         vm.expectEmit(address(module));
-        emit ICSModule.VettedSigningKeysCountDecreased(firstNoId);
+        emit IBaseModule.VettedSigningKeysCountDecreased(firstNoId);
 
         vm.expectEmit(address(module));
-        emit ICSModule.VettedSigningKeysCountChanged(
+        emit IBaseModule.VettedSigningKeysCountChanged(
             secondNoId,
             newVettedSecond
         );
         vm.expectEmit(address(module));
-        emit ICSModule.VettedSigningKeysCountDecreased(secondNoId);
+        emit IBaseModule.VettedSigningKeysCountDecreased(secondNoId);
 
         module.decreaseVettedSigningKeysCount(
             _encodeNodeOperatorPair(firstNoId, secondNoId),
@@ -3475,7 +2894,7 @@ abstract contract ModuleDecreaseVettedSigningKeysCount is ModuleFixtures {
         uint256 noId = createNodeOperator(10);
         uint256 newVetted = 10;
 
-        vm.expectRevert(ICSModule.InvalidVetKeysPointer.selector);
+        vm.expectRevert(IBaseModule.InvalidVetKeysPointer.selector);
         unvetKeys(noId, newVetted);
     }
 
@@ -3485,7 +2904,7 @@ abstract contract ModuleDecreaseVettedSigningKeysCount is ModuleFixtures {
         uint256 noId = createNodeOperator(10);
         uint256 newVetted = 15;
 
-        vm.expectRevert(ICSModule.InvalidVetKeysPointer.selector);
+        vm.expectRevert(IBaseModule.InvalidVetKeysPointer.selector);
         unvetKeys(noId, newVetted);
     }
 
@@ -3496,7 +2915,7 @@ abstract contract ModuleDecreaseVettedSigningKeysCount is ModuleFixtures {
         module.obtainDepositData(5, "");
         uint256 newVetted = 4;
 
-        vm.expectRevert(ICSModule.InvalidVetKeysPointer.selector);
+        vm.expectRevert(IBaseModule.InvalidVetKeysPointer.selector);
         unvetKeys(noId, newVetted);
     }
 
@@ -3506,7 +2925,7 @@ abstract contract ModuleDecreaseVettedSigningKeysCount is ModuleFixtures {
         uint256 noId = createNodeOperator(10);
         uint256 newVetted = 15;
 
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         unvetKeys(noId + 1, newVetted);
     }
 }
@@ -3545,7 +2964,7 @@ abstract contract ModuleGetSigningKeys is ModuleFixtures {
             signatures: randomBytes(96)
         });
 
-        vm.expectRevert(ICSModule.SigningKeysInvalidOffset.selector);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
         module.getSigningKeys({
             nodeOperatorId: noId,
             startIndex: 0,
@@ -3586,7 +3005,7 @@ abstract contract ModuleGetSigningKeys is ModuleFixtures {
         assertInvariants
         brutalizeMemory
     {
-        vm.expectRevert(ICSModule.SigningKeysInvalidOffset.selector);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
         module.getSigningKeys(0, 0, 1);
     }
 }
@@ -3633,7 +3052,7 @@ abstract contract ModuleGetSigningKeysWithSignatures is ModuleFixtures {
             signatures: signatures
         });
 
-        vm.expectRevert(ICSModule.SigningKeysInvalidOffset.selector);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
         module.getSigningKeysWithSignatures({
             nodeOperatorId: noId,
             startIndex: 0,
@@ -3686,7 +3105,7 @@ abstract contract ModuleGetSigningKeysWithSignatures is ModuleFixtures {
         assertInvariants
         brutalizeMemory
     {
-        vm.expectRevert(ICSModule.SigningKeysInvalidOffset.selector);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
         module.getSigningKeysWithSignatures(0, 0, 1);
     }
 }
@@ -3714,7 +3133,7 @@ abstract contract ModuleRemoveKeys is ModuleFixtures {
             emit IStakingModule.SigningKeyRemoved(noId, key0);
 
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 4);
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 4);
         }
         module.removeKeys({
             nodeOperatorId: noId,
@@ -3734,7 +3153,7 @@ abstract contract ModuleRemoveKeys is ModuleFixtures {
             emit IStakingModule.SigningKeyRemoved(noId, key1);
 
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 3);
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 3);
         }
         module.removeKeys({
             nodeOperatorId: noId,
@@ -3753,7 +3172,7 @@ abstract contract ModuleRemoveKeys is ModuleFixtures {
             emit IStakingModule.SigningKeyRemoved(noId, key2);
 
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 2);
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
         }
         module.removeKeys({
             nodeOperatorId: noId,
@@ -3798,7 +3217,7 @@ abstract contract ModuleRemoveKeys is ModuleFixtures {
             emit IStakingModule.SigningKeyRemoved(noId, key0);
 
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 3);
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 3);
         }
 
         module.removeKeys({
@@ -3844,7 +3263,7 @@ abstract contract ModuleRemoveKeys is ModuleFixtures {
             emit IStakingModule.SigningKeyRemoved(noId, key1);
 
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 3);
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 3);
         }
 
         module.removeKeys({
@@ -3890,7 +3309,7 @@ abstract contract ModuleRemoveKeys is ModuleFixtures {
             emit IStakingModule.SigningKeyRemoved(noId, key3);
 
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 3);
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 3);
         }
 
         module.removeKeys({
@@ -3924,7 +3343,7 @@ abstract contract ModuleRemoveKeys is ModuleFixtures {
 
         {
             vm.expectEmit(address(module));
-            emit ICSModule.TotalSigningKeysCountChanged(noId, 0);
+            emit IBaseModule.TotalSigningKeysCountChanged(noId, 0);
         }
 
         module.removeKeys({
@@ -3976,7 +3395,7 @@ abstract contract ModuleRemoveKeysChargeFee is ModuleFixtures {
         );
 
         vm.expectEmit(address(module));
-        emit ICSModule.KeyRemovalChargeApplied(noId);
+        emit IBaseModule.KeyRemovalChargeApplied(noId);
 
         vm.prank(nodeOperator);
         module.removeKeys(noId, 1, 2);
@@ -4022,7 +3441,7 @@ abstract contract ModuleRemoveKeysChargeFee is ModuleFixtures {
         for (uint256 i = 0; i < entries.length; i++) {
             assertNotEq(
                 entries[i].topics[0],
-                ICSModule.KeyRemovalChargeApplied.selector
+                IBaseModule.KeyRemovalChargeApplied.selector
             );
         }
 
@@ -4039,7 +3458,7 @@ abstract contract ModuleRemoveKeysReverts is ModuleFixtures {
         public
         assertInvariants
     {
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.removeKeys({ nodeOperatorId: 0, startIndex: 0, keysCount: 1 });
     }
 
@@ -4071,7 +3490,7 @@ abstract contract ModuleRemoveKeysReverts is ModuleFixtures {
 
         module.obtainDepositData(1, "");
 
-        vm.expectRevert(ICSModule.SigningKeysInvalidOffset.selector);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
         module.removeKeys({
             nodeOperatorId: noId,
             startIndex: 0,
@@ -4086,7 +3505,7 @@ abstract contract ModuleRemoveKeysReverts is ModuleFixtures {
         });
 
         vm.prank(stranger);
-        vm.expectRevert(ICSModule.SenderIsNotEligible.selector);
+        vm.expectRevert(IBaseModule.SenderIsNotEligible.selector);
         module.removeKeys({
             nodeOperatorId: noId,
             startIndex: 0,
@@ -4806,7 +4225,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         uint256 nonce = module.getNonce();
 
         vm.expectEmit(address(module));
-        emit ICSModule.TargetValidatorsCountChanged(noId, 1, 1);
+        emit IBaseModule.TargetValidatorsCountChanged(noId, 1, 1);
         module.updateTargetValidatorsLimits(noId, 1, 1);
         assertEq(module.getNonce(), nonce + 1);
     }
@@ -4818,7 +4237,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         uint256 noId = createNodeOperator();
 
         vm.expectEmit(address(module));
-        emit ICSModule.TargetValidatorsCountChanged(noId, 1, 1);
+        emit IBaseModule.TargetValidatorsCountChanged(noId, 1, 1);
         module.updateTargetValidatorsLimits(noId, 1, 1);
         module.updateTargetValidatorsLimits(noId, 1, 1);
 
@@ -4833,7 +4252,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
     {
         uint256 noId = createNodeOperator();
         vm.expectEmit(address(module));
-        emit ICSModule.TargetValidatorsCountChanged(noId, 1, 0);
+        emit IBaseModule.TargetValidatorsCountChanged(noId, 1, 0);
         module.updateTargetValidatorsLimits(noId, 1, 0);
     }
 
@@ -4845,7 +4264,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 2, 10);
 
         vm.expectEmit(address(module));
-        emit ICSModule.TargetValidatorsCountChanged(noId, 0, 0);
+        emit IBaseModule.TargetValidatorsCountChanged(noId, 0, 0);
         module.updateTargetValidatorsLimits(noId, 0, 0);
 
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -4860,7 +4279,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 0, 10);
 
         vm.expectEmit(address(module));
-        emit ICSModule.TargetValidatorsCountChanged(noId, 1, 10);
+        emit IBaseModule.TargetValidatorsCountChanged(noId, 1, 10);
         module.updateTargetValidatorsLimits(noId, 1, 10);
     }
 
@@ -4872,7 +4291,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 0, 10);
 
         vm.expectEmit(address(module));
-        emit ICSModule.TargetValidatorsCountChanged(noId, 2, 10);
+        emit IBaseModule.TargetValidatorsCountChanged(noId, 2, 10);
         module.updateTargetValidatorsLimits(noId, 2, 10);
     }
 
@@ -4884,7 +4303,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 1, 10);
 
         vm.expectEmit(address(module));
-        emit ICSModule.TargetValidatorsCountChanged(noId, 0, 0);
+        emit IBaseModule.TargetValidatorsCountChanged(noId, 0, 0);
         module.updateTargetValidatorsLimits(noId, 0, 10);
     }
 
@@ -4896,7 +4315,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 1, 10);
 
         vm.expectEmit(address(module));
-        emit ICSModule.TargetValidatorsCountChanged(noId, 0, 0);
+        emit IBaseModule.TargetValidatorsCountChanged(noId, 0, 0);
         module.updateTargetValidatorsLimits(noId, 0, 0);
     }
 
@@ -4908,7 +4327,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 2, 10);
 
         vm.expectEmit(address(module));
-        emit ICSModule.TargetValidatorsCountChanged(noId, 0, 0);
+        emit IBaseModule.TargetValidatorsCountChanged(noId, 0, 0);
         module.updateTargetValidatorsLimits(noId, 0, 10);
     }
 
@@ -4920,7 +4339,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 2, 10);
 
         vm.expectEmit(address(module));
-        emit ICSModule.TargetValidatorsCountChanged(noId, 0, 0);
+        emit IBaseModule.TargetValidatorsCountChanged(noId, 0, 0);
         module.updateTargetValidatorsLimits(noId, 0, 0);
     }
 
@@ -4931,7 +4350,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 2, 10);
 
         vm.expectEmit(address(module));
-        emit ICSModule.TargetValidatorsCountChanged(noId, 1, 5);
+        emit IBaseModule.TargetValidatorsCountChanged(noId, 1, 5);
         module.updateTargetValidatorsLimits(noId, 1, 5);
     }
 
@@ -4942,7 +4361,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 1, 10);
 
         vm.expectEmit(address(module));
-        emit ICSModule.TargetValidatorsCountChanged(noId, 2, 5);
+        emit IBaseModule.TargetValidatorsCountChanged(noId, 2, 5);
         module.updateTargetValidatorsLimits(noId, 2, 5);
     }
 
@@ -4959,7 +4378,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
     function test_updateTargetValidatorsLimits_RevertWhen_NoNodeOperator()
         public
     {
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.updateTargetValidatorsLimits(0, 1, 1);
     }
 
@@ -4967,7 +4386,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         public
     {
         createNodeOperator(1);
-        vm.expectRevert(ICSModule.InvalidInput.selector);
+        vm.expectRevert(IBaseModule.InvalidInput.selector);
         module.updateTargetValidatorsLimits(
             0,
             1,
@@ -4979,7 +4398,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         public
     {
         createNodeOperator(1);
-        vm.expectRevert(ICSModule.InvalidInput.selector);
+        vm.expectRevert(IBaseModule.InvalidInput.selector);
         module.updateTargetValidatorsLimits(0, 3, 1);
     }
 }
@@ -4994,7 +4413,7 @@ abstract contract ModuleUpdateExitedValidatorsCount is ModuleFixtures {
         uint256 nonce = module.getNonce();
 
         vm.expectEmit(address(module));
-        emit ICSModule.ExitedSigningKeysCountChanged(noId, 1);
+        emit IBaseModule.ExitedSigningKeysCountChanged(noId, 1);
         module.updateExitedValidatorsCount(
             bytes.concat(bytes8(0x0000000000000000)),
             bytes.concat(bytes16(0x00000000000000000000000000000001))
@@ -5009,7 +4428,7 @@ abstract contract ModuleUpdateExitedValidatorsCount is ModuleFixtures {
     function test_updateExitedValidatorsCount_RevertWhen_NoNodeOperator()
         public
     {
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.updateExitedValidatorsCount(
             bytes.concat(bytes8(0x0000000000000000)),
             bytes.concat(bytes16(0x00000000000000000000000000000001))
@@ -5021,7 +4440,9 @@ abstract contract ModuleUpdateExitedValidatorsCount is ModuleFixtures {
     {
         createNodeOperator(1);
 
-        vm.expectRevert(ICSModule.ExitedKeysHigherThanTotalDeposited.selector);
+        vm.expectRevert(
+            IBaseModule.ExitedKeysHigherThanTotalDeposited.selector
+        );
         module.updateExitedValidatorsCount(
             bytes.concat(bytes8(0x0000000000000000)),
             bytes.concat(bytes16(0x00000000000000000000000000000001))
@@ -5039,7 +4460,7 @@ abstract contract ModuleUpdateExitedValidatorsCount is ModuleFixtures {
             bytes.concat(bytes16(0x00000000000000000000000000000001))
         );
 
-        vm.expectRevert(ICSModule.ExitedKeysDecrease.selector);
+        vm.expectRevert(IBaseModule.ExitedKeysDecrease.selector);
         module.updateExitedValidatorsCount(
             bytes.concat(bytes8(0x0000000000000000)),
             bytes.concat(bytes16(0x00000000000000000000000000000000))
@@ -5079,7 +4500,7 @@ abstract contract ModuleUnsafeUpdateValidatorsCount is ModuleFixtures {
         uint256 nonce = module.getNonce();
 
         vm.expectEmit(address(module));
-        emit ICSModule.ExitedSigningKeysCountChanged(noId, 1);
+        emit IBaseModule.ExitedSigningKeysCountChanged(noId, 1);
         module.unsafeUpdateValidatorsCount({
             nodeOperatorId: noId,
             exitedValidatorsKeysCount: 1
@@ -5099,7 +4520,7 @@ abstract contract ModuleUnsafeUpdateValidatorsCount is ModuleFixtures {
     function test_unsafeUpdateValidatorsCount_RevertWhen_NoNodeOperator()
         public
     {
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.unsafeUpdateValidatorsCount({
             nodeOperatorId: 100500,
             exitedValidatorsKeysCount: 1
@@ -5122,7 +4543,9 @@ abstract contract ModuleUnsafeUpdateValidatorsCount is ModuleFixtures {
     {
         uint256 noId = createNodeOperator(1);
 
-        vm.expectRevert(ICSModule.ExitedKeysHigherThanTotalDeposited.selector);
+        vm.expectRevert(
+            IBaseModule.ExitedKeysHigherThanTotalDeposited.selector
+        );
         module.unsafeUpdateValidatorsCount({
             nodeOperatorId: noId,
             exitedValidatorsKeysCount: 100500
@@ -5213,7 +4636,7 @@ abstract contract ModuleReportGeneralDelayedPenalty is ModuleFixtures {
     function test_reportGeneralDelayedPenalty_RevertWhen_NoNodeOperator()
         public
     {
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.reportGeneralDelayedPenalty(
             0,
             bytes32(abi.encode(1)),
@@ -5230,7 +4653,7 @@ abstract contract ModuleReportGeneralDelayedPenalty is ModuleFixtures {
             0,
             0
         );
-        vm.expectRevert(ICSModule.InvalidAmount.selector);
+        vm.expectRevert(IBaseModule.InvalidAmount.selector);
         module.reportGeneralDelayedPenalty(
             noId,
             bytes32(abi.encode(1)),
@@ -5274,7 +4697,7 @@ abstract contract ModuleReportGeneralDelayedPenalty is ModuleFixtures {
         assertEq(module.getNonce(), nonce);
     }
 
-    function test_reportGeneralDelayedPenalty_EnqueueAfterUnlock()
+    function test_reportGeneralDelayedPenalty_UpdateDepositableAfterUnlock()
         public
         assertInvariants
     {
@@ -5306,8 +4729,14 @@ abstract contract ModuleReportGeneralDelayedPenalty is ModuleFixtures {
 
         vm.warp(accounting.getBondLockPeriod() + 1);
 
-        vm.expectEmit(address(module));
-        emit ICSModule.BatchEnqueued(module.QUEUE_LOWEST_PRIORITY(), noId, 1);
+        if (moduleType() == ModuleType.Community) {
+            vm.expectEmit(address(module));
+            emit ICSModule.BatchEnqueued(
+                ICSModule(address(module)).QUEUE_LOWEST_PRIORITY(),
+                noId,
+                1
+            );
+        }
         module.updateDepositableValidatorsCount(noId);
 
         no = module.getNodeOperator(noId);
@@ -5390,7 +4819,7 @@ abstract contract ModuleCancelGeneralDelayedPenalty is ModuleFixtures {
     function test_cancelGeneralDelayedPenalty_RevertWhen_NoNodeOperator()
         public
     {
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.cancelGeneralDelayedPenalty(0, 1 ether);
     }
 }
@@ -5447,7 +4876,7 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
             "Test penalty"
         );
 
-        vm.expectRevert(ICSModule.InvalidInput.selector);
+        vm.expectRevert(IBaseModule.InvalidInput.selector);
         module.settleGeneralDelayedPenalty(idsToSettle, new uint256[](0));
     }
 
@@ -5713,7 +5142,7 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
     {
         uint256 noId = createNodeOperator();
 
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.settleGeneralDelayedPenalty(
             UintArr(noId + 1),
             UintArr(type(uint256).max)
@@ -5901,16 +5330,12 @@ abstract contract ModuleCompensateGeneralDelayedPenalty is ModuleFixtures {
             .getNodeOperator(noId)
             .depositableValidatorsCount;
         assertEq(depositableAfter, depositableBefore + 1);
-
-        BatchInfo[] memory exp = new BatchInfo[](1);
-        exp[0] = BatchInfo({ nodeOperatorId: noId, count: 1 });
-        _assertQueueState(module.QUEUE_LOWEST_PRIORITY(), exp);
     }
 
     function test_compensateGeneralDelayedPenalty_RevertWhen_NoNodeOperator()
         public
     {
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.compensateGeneralDelayedPenalty{ value: 1 ether }(0);
     }
 
@@ -5918,7 +5343,7 @@ abstract contract ModuleCompensateGeneralDelayedPenalty is ModuleFixtures {
         public
     {
         uint256 noId = createNodeOperator();
-        vm.expectRevert(ICSModule.SenderIsNotEligible.selector);
+        vm.expectRevert(IBaseModule.SenderIsNotEligible.selector);
         module.compensateGeneralDelayedPenalty{ value: 1 ether }(noId);
     }
 }
@@ -5946,7 +5371,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         });
 
         vm.expectEmit(address(module));
-        emit ICSModule.WithdrawalSubmitted(
+        emit IBaseModule.ValidatorWithdrawn(
             noId,
             keyIndex,
             WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
@@ -5991,7 +5416,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         });
 
         vm.expectEmit(address(module));
-        emit ICSModule.WithdrawalSubmitted(
+        emit IBaseModule.ValidatorWithdrawn(
             noId,
             keyIndex,
             WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE - balanceShortage,
@@ -6571,7 +5996,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         });
 
         vm.expectRevert(
-            ICSModule.SlashingPenaltyIsNotApplicable.selector,
+            IBaseModule.SlashingPenaltyIsNotApplicable.selector,
             address(module)
         );
 
@@ -7316,7 +6741,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             isSlashed: false
         });
 
-        vm.expectRevert(ICSModule.ZeroExitBalance.selector);
+        vm.expectRevert(IBaseModule.ZeroExitBalance.selector);
         module.reportWithdrawnValidators(validatorInfos);
     }
 
@@ -7334,7 +6759,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             isSlashed: false
         });
 
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.reportWithdrawnValidators(validatorInfos);
     }
 
@@ -7354,7 +6779,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             isSlashed: false
         });
 
-        vm.expectRevert(ICSModule.SigningKeysInvalidOffset.selector);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
         module.reportWithdrawnValidators(validatorInfos);
     }
 
@@ -7420,7 +6845,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         bytes memory pubkey = module.getSigningKeys(noId, keyIndex, 1);
 
         vm.expectEmit(address(module));
-        emit ICSModule.ValidatorSlashingReported(noId, keyIndex, pubkey);
+        emit IBaseModule.ValidatorSlashingReported(noId, keyIndex, pubkey);
 
         module.onValidatorSlashed(noId, keyIndex);
         assertTrue(module.isValidatorSlashed(noId, keyIndex));
@@ -7433,21 +6858,21 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         module.onValidatorSlashed(noId, keyIndex);
         vm.expectRevert(
-            ICSModule.ValidatorSlashingAlreadyReported.selector,
+            IBaseModule.ValidatorSlashingAlreadyReported.selector,
             address(module)
         );
         module.onValidatorSlashed(noId, keyIndex);
     }
 
     function test_onValidatorSlashed_RevertWhen_OperatorDoesNotExist() public {
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.onValidatorSlashed(0, 0);
     }
 
     function test_onValidatorSlashed_RevertWhen_InvalidKeyIndex() public {
         uint256 noId = createNodeOperator(1);
 
-        vm.expectRevert(ICSModule.SigningKeysInvalidOffset.selector);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
         module.onValidatorSlashed(noId, 0);
     }
 }
@@ -7519,9 +6944,52 @@ abstract contract ModuleGetStakingModuleSummary is ModuleFixtures {
     }
 }
 
+contract MyModule is BaseModule {
+    error NotImplementedInTest();
+
+    constructor(
+        bytes32 moduleType,
+        address lidoLocator,
+        address parametersRegistry,
+        address accounting,
+        address exitPenalties
+    )
+        BaseModule(
+            moduleType,
+            lidoLocator,
+            parametersRegistry,
+            accounting,
+            exitPenalties
+        )
+    {
+        _disableInitializers();
+    }
+
+    function obtainDepositData(
+        uint256 depositsCount,
+        bytes calldata depositCalldata
+    )
+        external
+        virtual
+        returns (bytes memory publicKeys, bytes memory signatures)
+    {
+        revert NotImplementedInTest();
+    }
+
+    function _onOperatorDepositableChange(
+        uint256 nodeOperatorId
+    ) internal override {
+        revert NotImplementedInTest();
+    }
+
+    function onWithdrawalCredentialsChanged() external {
+        revert NotImplementedInTest();
+    }
+}
+
 abstract contract ModuleAccessControl is ModuleFixtures {
     function test_adminRole() public {
-        CSModule csm = new CSModule({
+        MyModule csm = new MyModule({
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
@@ -7542,7 +7010,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
     }
 
     function test_adminRole_revert() public {
-        CSModule csm = new CSModule({
+        MyModule csm = new MyModule({
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
@@ -7816,9 +7284,15 @@ abstract contract ModuleStakingRouterAccessControl is ModuleFixtures {
         vm.prank(admin);
         module.grantRole(role, actor);
 
-        vm.expectRevert(
-            ICSModule.DepositQueueHasUnsupportedWithdrawalCredentials.selector
-        );
+        if (moduleType() == ModuleType.Community) {
+            vm.expectRevert(
+                ICSModule
+                    .DepositQueueHasUnsupportedWithdrawalCredentials
+                    .selector
+            );
+        } else {
+            vm.expectRevert(); // TODO: Fill in the correct error for the CuratedModule.
+        }
         vm.prank(actor);
         module.onWithdrawalCredentialsChanged();
     }
@@ -7831,23 +7305,6 @@ abstract contract ModuleStakingRouterAccessControl is ModuleFixtures {
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
         module.onWithdrawalCredentialsChanged();
-    }
-
-    function test_stakingRouterRole_obtainDepositData() public {
-        bytes32 role = module.STAKING_ROUTER_ROLE();
-        vm.prank(admin);
-        module.grantRole(role, actor);
-
-        vm.prank(actor);
-        module.obtainDepositData(0, "");
-    }
-
-    function test_stakingRouterRole_obtainDepositData_revert() public {
-        bytes32 role = module.STAKING_ROUTER_ROLE();
-
-        vm.prank(stranger);
-        expectRoleRevert(stranger, role);
-        module.obtainDepositData(0, "");
     }
 
     function test_stakingRouterRole_unsafeUpdateValidatorsCountRole() public {
@@ -8793,7 +8250,7 @@ abstract contract ModuleExitDeadlineThreshold is ModuleFixtures {
         assertInvariants
     {
         uint256 noId = 0;
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.exitDeadlineThreshold(noId);
     }
 }
@@ -8880,7 +8337,7 @@ abstract contract ModuleReportValidatorExitDelay is ModuleFixtures {
         bytes memory publicKey = randomBytes(48);
         uint256 exitDelay = parametersRegistry.allowedExitDelay();
 
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.reportValidatorExitDelay(
             noId,
             block.timestamp,
@@ -8916,7 +8373,7 @@ abstract contract ModuleOnValidatorExitTriggered is ModuleFixtures {
         uint256 paidFee = 0.1 ether;
         uint256 exitType = 1;
 
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.onValidatorExitTriggered(noId, publicKey, paidFee, exitType);
     }
 }

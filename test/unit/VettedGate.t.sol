@@ -3,12 +3,14 @@
 pragma solidity 0.8.24;
 
 import { Test, Vm } from "forge-std/Test.sol";
+
 import { VettedGate } from "src/VettedGate.sol";
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { IVettedGate } from "src/interfaces/IVettedGate.sol";
 import { IMerkleGate } from "src/interfaces/IMerkleGate.sol";
-import { ICSModule, NodeOperatorManagementProperties } from "src/interfaces/ICSModule.sol";
+import { IBaseModule, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
+
 import { Utilities } from "../helpers/Utilities.sol";
 import { MerkleTree } from "../helpers/MerkleTree.sol";
 import { CSMMock } from "../helpers/mocks/CSMMock.sol";
@@ -109,7 +111,7 @@ contract VettedGateTest is VettedGateTestBase {
         assertEq(address(vettedGate.MODULE()), csm);
         assertEq(
             address(vettedGate.ACCOUNTING()),
-            address(ICSModule(csm).ACCOUNTING())
+            address(IBaseModule(csm).ACCOUNTING())
         );
     }
 

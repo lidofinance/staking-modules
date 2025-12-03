@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.24;
 
-import { NodeOperator } from "../interfaces/ICSModule.sol";
 import { TransientUintUintMap } from "./TransientUintUintMapLib.sol";
+import { NodeOperator } from "../interfaces/IBaseModule.sol";
 
 // Batch is an uint256 as it's the internal data type used by solidity.
 // Batch is a packed value, consisting of the following fields:
@@ -94,6 +94,7 @@ function createBatch(
 using { noId, keys, setKeys, setNext, next, isNil, unwrap } for Batch global;
 using QueueLib for QueueLib.Queue;
 
+/// @dev Helps expose the errors to the ICSModule interface.
 interface IQueueLib {
     error QueueIsEmpty();
     error QueueLookupNoLimit();

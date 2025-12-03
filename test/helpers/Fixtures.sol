@@ -16,7 +16,7 @@ import { IBurner } from "../../src/interfaces/IBurner.sol";
 import { ILidoLocator } from "../../src/interfaces/ILidoLocator.sol";
 import { IWstETH } from "../../src/interfaces/IWstETH.sol";
 import { IGateSeal } from "../../src/interfaces/IGateSeal.sol";
-import { NodeOperator, NodeOperatorManagementProperties } from "../../src/interfaces/ICSModule.sol";
+import { NodeOperator, NodeOperatorManagementProperties } from "../../src/interfaces/IBaseModule.sol";
 import { HashConsensus } from "../../src/lib/base-oracle/HashConsensus.sol";
 import { IWithdrawalQueue } from "../../src/interfaces/IWithdrawalQueue.sol";
 import { CSModule } from "../../src/CSModule.sol";

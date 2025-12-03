@@ -8,7 +8,7 @@ import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensio
 import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
 
 import { IAccounting } from "./interfaces/IAccounting.sol";
-import { ICSModule, NodeOperatorManagementProperties } from "./interfaces/ICSModule.sol";
+import { IBaseModule, NodeOperatorManagementProperties } from "./interfaces/IBaseModule.sol";
 import { IPermissionlessGate } from "./interfaces/IPermissionlessGate.sol";
 
 /// @title PermissionlessGate
@@ -25,7 +25,7 @@ contract PermissionlessGate is
     uint256 public immutable CURVE_ID;
 
     /// @dev Address of the Staking Module
-    ICSModule public immutable MODULE;
+    IBaseModule public immutable MODULE;
 
     constructor(address module, address admin) {
         if (module == address(0)) {
@@ -35,7 +35,7 @@ contract PermissionlessGate is
             revert ZeroAdminAddress();
         }
 
-        MODULE = ICSModule(module);
+        MODULE = IBaseModule(module);
         CURVE_ID = MODULE.ACCOUNTING().DEFAULT_BOND_CURVE_ID();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);

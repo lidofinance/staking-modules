@@ -7,7 +7,7 @@ import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { Ejector } from "src/Ejector.sol";
 import { IEjector } from "src/interfaces/IEjector.sol";
 import { ITriggerableWithdrawalsGateway, ValidatorData } from "src/interfaces/ITriggerableWithdrawalsGateway.sol";
-import { NodeOperatorManagementProperties } from "src/interfaces/ICSModule.sol";
+import { NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 import { CSMMock } from "../helpers/mocks/CSMMock.sol";

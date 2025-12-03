@@ -6,7 +6,7 @@ import { CuratedModule } from "src/CuratedModule.sol";
 import { Stub } from "../helpers/mocks/Stub.sol";
 import { ParametersRegistryMock } from "../helpers/mocks/ParametersRegistryMock.sol";
 import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
-import { ICSModule, INOAddresses, NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/ICSModule.sol";
+import { IBaseModule, INOAddresses, NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
 import { CSModule } from "src/CSModule.sol";
@@ -19,11 +19,16 @@ import "./ModuleAbstract.t.sol";
 contract CuratedCommon is ModuleFixtures {
     CuratedModule cm;
 
+    function moduleType() internal pure override returns (ModuleType) {
+        return ModuleType.Curated;
+    }
+
     function setUp() public virtual {
         nodeOperator = nextAddress("NODE_OPERATOR");
         stranger = nextAddress("STRANGER");
         strangerNumberTwo = nextAddress("STRANGER_TWO");
         admin = nextAddress("ADMIN");
+        actor = nextAddress("ACTOR");
         testChargePenaltyRecipient = nextAddress("CHARGERECIPIENT");
         stakingRouter = nextAddress("STAKING_ROUTER");
 
@@ -46,15 +51,13 @@ contract CuratedCommon is ModuleFixtures {
             address(feeDistributor)
         );
 
-        module = CSModule(
-            new CuratedModule({
-                moduleType: "curated-module",
-                lidoLocator: address(locator),
-                parametersRegistry: address(parametersRegistry),
-                _accounting: address(accounting),
-                exitPenalties: address(exitPenalties)
-            })
-        );
+        module = new CuratedModule({
+            moduleType: "curated-module",
+            lidoLocator: address(locator),
+            parametersRegistry: address(parametersRegistry),
+            accounting: address(accounting),
+            exitPenalties: address(exitPenalties)
+        });
         cm = CuratedModule(address(module));
 
         accounting.setModule(module);
@@ -62,6 +65,18 @@ contract CuratedCommon is ModuleFixtures {
         _enableInitializers(address(module));
         module.initialize({ admin: admin });
 
+        vm.startPrank(admin);
+        {
+            module.grantRole(module.RESUME_ROLE(), address(admin));
+            module.resume();
+            module.revokeRole(module.RESUME_ROLE(), address(admin));
+        }
+        vm.stopPrank();
+
+        _setupRolesForTests();
+    }
+
+    function _setupRolesForTests() internal virtual {
         vm.startPrank(admin);
         module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), address(this));
         module.grantRole(module.PAUSE_ROLE(), address(this));
@@ -80,62 +95,18 @@ contract CuratedCommon is ModuleFixtures {
         module.grantRole(module.VERIFIER_ROLE(), address(this));
         module.grantRole(module.SUBMIT_WITHDRAWALS_ROLE(), address(this));
         vm.stopPrank();
+    }
 
-        module.resume();
-
-        // Just to make sure we configured defaults properly and check things properly.
-        assertNotEq(PRIORITY_QUEUE, module.QUEUE_LOWEST_PRIORITY());
-        REGULAR_QUEUE = uint32(module.QUEUE_LOWEST_PRIORITY());
+    function _moduleInvariants() internal override {
+        assertModuleKeys(module);
+        assertModuleUnusedStorageSlots(module);
     }
 }
 
-contract CuratedCommonNoRoles is ModuleFixtures {
-    function setUp() public virtual {
-        nodeOperator = nextAddress("NODE_OPERATOR");
-        stranger = nextAddress("STRANGER");
-        admin = nextAddress("ADMIN");
-        actor = nextAddress("ACTOR");
-        testChargePenaltyRecipient = nextAddress("CHARGERECIPIENT");
-        stakingRouter = nextAddress("STAKING_ROUTER");
-
-        (locator, wstETH, stETH, , ) = initLido();
-
-        feeDistributor = new Stub();
-        parametersRegistry = new ParametersRegistryMock();
-        exitPenalties = new ExitPenaltiesMock();
-        IBondCurve.BondCurveIntervalInput[]
-            memory curve = new IBondCurve.BondCurveIntervalInput[](1);
-        curve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: BOND_SIZE
-        });
-        accounting = new AccountingMock(
-            BOND_SIZE,
-            address(wstETH),
-            address(stETH),
-            address(feeDistributor)
-        );
-
-        module = CSModule(
-            new CuratedModule({
-                moduleType: "curated-module",
-                lidoLocator: address(locator),
-                parametersRegistry: address(parametersRegistry),
-                _accounting: address(accounting),
-                exitPenalties: address(exitPenalties)
-            })
-        );
-
-        accounting.setModule(module);
-
-        _enableInitializers(address(module));
-        module.initialize({ admin: admin });
-
+contract CuratedCommonNoRoles is CuratedCommon {
+    function _setupRolesForTests() internal override {
         vm.startPrank(admin);
         {
-            module.grantRole(module.RESUME_ROLE(), address(admin));
-            module.resume();
-            module.revokeRole(module.RESUME_ROLE(), address(admin));
             // NOTE: Needed for the `createNodeOperator` helper.
             module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), address(this));
         }
@@ -151,7 +122,7 @@ contract CuratedInitialize is CuratedCommon {
             moduleType: "curated-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
         assertEq(module.getType(), "curated-module");
@@ -165,12 +136,12 @@ contract CuratedInitialize is CuratedCommon {
     }
 
     function test_constructor_RevertWhen_ZeroLocator() public {
-        vm.expectRevert(ICSModule.ZeroLocatorAddress.selector);
+        vm.expectRevert(IBaseModule.ZeroLocatorAddress.selector);
         new CuratedModule({
             moduleType: "curated-module",
             lidoLocator: address(0),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
     }
@@ -178,34 +149,34 @@ contract CuratedInitialize is CuratedCommon {
     function test_constructor_RevertWhen_ZeroParametersRegistryAddress()
         public
     {
-        vm.expectRevert(ICSModule.ZeroParametersRegistryAddress.selector);
+        vm.expectRevert(IBaseModule.ZeroParametersRegistryAddress.selector);
         new CuratedModule({
             moduleType: "curated-module",
             lidoLocator: address(locator),
             parametersRegistry: address(0),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
     }
 
     function test_constructor_RevertWhen_ZeroAccountingAddress() public {
-        vm.expectRevert(ICSModule.ZeroAccountingAddress.selector);
+        vm.expectRevert(IBaseModule.ZeroAccountingAddress.selector);
         new CuratedModule({
             moduleType: "curated-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(0),
+            accounting: address(0),
             exitPenalties: address(exitPenalties)
         });
     }
 
     function test_constructor_RevertWhen_ZeroExitPenaltiesAddress() public {
-        vm.expectRevert(ICSModule.ZeroExitPenaltiesAddress.selector);
+        vm.expectRevert(IBaseModule.ZeroExitPenaltiesAddress.selector);
         new CuratedModule({
             moduleType: "curated-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(0)
         });
     }
@@ -215,7 +186,7 @@ contract CuratedInitialize is CuratedCommon {
             moduleType: "curated-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
 
@@ -228,7 +199,7 @@ contract CuratedInitialize is CuratedCommon {
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
 
@@ -245,27 +216,13 @@ contract CuratedInitialize is CuratedCommon {
             moduleType: "curated-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
+            accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
 
         _enableInitializers(address(module));
-        vm.expectRevert(ICSModule.ZeroAdminAddress.selector);
+        vm.expectRevert(IBaseModule.ZeroAdminAddress.selector);
         module.initialize({ admin: address(0) });
-    }
-
-    function test_finalizeUpgradeV2() public {
-        CuratedModule module = new CuratedModule({
-            moduleType: "curated-module",
-            lidoLocator: address(locator),
-            parametersRegistry: address(parametersRegistry),
-            _accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
-        });
-        _enableInitializers(address(module));
-
-        module.finalizeUpgradeV2();
-        assertEq(module.getInitializedVersion(), 2);
     }
 }
 
@@ -652,7 +609,7 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         address manager = nextAddress();
         address rewards = nextAddress();
 
-        vm.expectRevert(ICSModule.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         cm.changeNodeOperatorAddresses(0, manager, rewards);
     }
 

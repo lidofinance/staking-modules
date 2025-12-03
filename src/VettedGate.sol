@@ -11,7 +11,7 @@ import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
 import { PausableUntil } from "./lib/utils/PausableUntil.sol";
 
 import { IAccounting } from "./interfaces/IAccounting.sol";
-import { ICSModule, NodeOperatorManagementProperties } from "./interfaces/ICSModule.sol";
+import { IBaseModule, NodeOperatorManagementProperties } from "./interfaces/IBaseModule.sol";
 import { IMerkleGate } from "./interfaces/IMerkleGate.sol";
 import { IVettedGate } from "./interfaces/IVettedGate.sol";
 
@@ -31,7 +31,7 @@ contract VettedGate is
         keccak256("END_REFERRAL_SEASON_ROLE");
 
     /// @dev Address of the Staking Module
-    ICSModule public immutable MODULE;
+    IBaseModule public immutable MODULE;
 
     /// @dev Address of the Accounting
     IAccounting public immutable ACCOUNTING;
@@ -71,7 +71,7 @@ contract VettedGate is
             revert ZeroModuleAddress();
         }
 
-        MODULE = ICSModule(module);
+        MODULE = IBaseModule(module);
         ACCOUNTING = IAccounting(MODULE.ACCOUNTING());
 
         _disableInitializers();

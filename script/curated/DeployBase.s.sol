@@ -395,7 +395,7 @@ abstract contract DeployBase is Script {
                 moduleType: config.moduleType,
                 lidoLocator: config.lidoLocatorAddress,
                 parametersRegistry: address(parametersRegistry),
-                _accounting: address(accounting),
+                accounting: address(accounting),
                 exitPenalties: address(exitPenalties)
             });
 

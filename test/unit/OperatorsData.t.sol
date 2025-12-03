@@ -4,15 +4,17 @@
 pragma solidity 0.8.24;
 
 import { Test } from "forge-std/Test.sol";
-import { Utilities } from "../helpers/Utilities.sol";
+
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
+import { OperatorsData } from "src/OperatorsData.sol";
+import { IOperatorsData, OperatorInfo } from "src/interfaces/IOperatorsData.sol";
+import { NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 
 import { CSMMock, NodeOperatorOwnerNo165Mock } from "../helpers/mocks/CSMMock.sol";
-import { OperatorsData } from "../../src/OperatorsData.sol";
-import { IOperatorsData, OperatorInfo } from "../../src/interfaces/IOperatorsData.sol";
-import { NodeOperatorManagementProperties } from "../../src/interfaces/ICSModule.sol";
 import { StakingRouterMock } from "../helpers/mocks/StakingRouterMock.sol";
+import { Utilities } from "../helpers/Utilities.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract OperatorsDataTestBase is Test, Utilities, Fixtures {
     CSMMock public module;

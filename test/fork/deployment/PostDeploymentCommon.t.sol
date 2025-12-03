@@ -62,10 +62,6 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
             address(parametersRegistry)
         );
         assertEq(address(moduleImpl.STETH()), address(lido));
-        assertEq(
-            moduleImpl.QUEUE_LOWEST_PRIORITY(),
-            deployParams.queueLowestPriority
-        );
         assertEq(address(moduleImpl.ACCOUNTING()), address(accounting));
         assertEq(address(moduleImpl.EXIT_PENALTIES()), address(exitPenalties));
         assertEq(
