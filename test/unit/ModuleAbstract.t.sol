@@ -5177,12 +5177,16 @@ abstract contract ModuleReportGeneralDelayedPenalty is ModuleFixtures {
     {
         uint256 noId = createNodeOperator();
         uint256 nonce = module.getNonce();
+        uint256 fine = module
+            .PARAMETERS_REGISTRY()
+            .getGeneralDelayedPenaltyAdditionalFine(0);
 
         vm.expectEmit(address(module));
         emit IGeneralPenalty.GeneralDelayedPenaltyReported(
             noId,
             bytes32(abi.encode(1)),
             BOND_SIZE / 2,
+            fine,
             "Test penalty"
         );
         module.reportGeneralDelayedPenalty(
