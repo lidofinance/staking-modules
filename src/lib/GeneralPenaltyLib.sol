@@ -12,6 +12,7 @@ interface IGeneralPenalty {
         uint256 indexed nodeOperatorId,
         bytes32 indexed penaltyType,
         uint256 amount,
+        uint256 additionalFine,
         string details
     );
     event GeneralDelayedPenaltyCancelled(
@@ -54,12 +55,13 @@ library GeneralPenalty {
 
         accounting.lockBondETH(nodeOperatorId, totalAmount);
 
-        emit IGeneralPenalty.GeneralDelayedPenaltyReported(
-            nodeOperatorId,
-            penaltyType,
-            amount,
-            details
-        );
+        emit IGeneralPenalty.GeneralDelayedPenaltyReported({
+            nodeOperatorId: nodeOperatorId,
+            penaltyType: penaltyType,
+            amount: amount,
+            additionalFine: additionalFine,
+            details: details
+        });
 
         module.updateDepositableValidatorsCount(nodeOperatorId);
     }
