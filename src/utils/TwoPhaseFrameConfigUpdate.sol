@@ -11,12 +11,12 @@ import { IConsensusContract } from "../lib/base-oracle/interfaces/IConsensusCont
 /// @notice A helper to offset Oracle report cadence (e.g., move report window by N epochs).
 ///         This is achieved via a two-phase frame configuration update
 ///         in HashConsensus contract used by Oracle:
-///         - Phase 1: set new frame size (shorter or longer than original) and fast lane length
-///                    after Oracle has processed a defined number of reports with the original frame config.
-///         - Phase 2: set the original frame size and remains Phase 1 fast lane length
-///                    after Oracle has processed a defined number of reports with the phase 1 config.
+///         - Offset phase: set transitional frame size (shorter or longer than original) and fast lane length
+///                        after Oracle has processed a defined number of reports with the original frame config.
+///         - Restore phase: set the original frame size while keeping offset fast lane length
+///                        after Oracle has processed a defined number of reports with the offset config.
 ///         As a result, the Oracle report window is shifted by the difference between
-///         the original and phase 1 frame sizes.
+///         the original and transitional frame sizes.
 ///         ---
 ///         Due to off-chain Oracle sanity checks, frame config can be changed only when
 ///         Oracle has no missing reports at the moment and before current or possible (by executed phase) frame reference slot.
@@ -26,13 +26,13 @@ import { IConsensusContract } from "../lib/base-oracle/interfaces/IConsensusCont
 ///      The role should be revoked after both phases are executed.
 contract TwoPhaseFrameConfigUpdate {
     struct PhasesConfig {
-        /// @notice Reports to process from `lastProcessingRefSlot` at deployment to enable phase1.
-        uint256 beforePhase1ReportsToProcess;
-        /// @notice Reports to process after phase1 completion to enable phase2.
-        uint256 afterPhase1ReportsToProcess;
-        /// @notice Phase1 epochs per frame.
-        uint256 transitionalEpochsPerFrame;
-        /// @notice Phase1 fast lane length in slots.
+        /// @notice Reports to process from `lastProcessingRefSlot` at deployment to enable the offset phase.
+        uint256 beforeOffsetPhaseReportsToProcess;
+        /// @notice Reports to process after offset phase completion to enable the restore phase.
+        uint256 beforeRestorePhaseReportsToProcess;
+        /// @notice Offset phase epochs per frame.
+        uint256 offsetPhaseEpochsPerFrame;
+        /// @notice Offset fast lane length in slots (kept for restore).
         uint256 finalFastLaneLengthSlots;
     }
 
@@ -56,11 +56,11 @@ contract TwoPhaseFrameConfigUpdate {
     uint256 public immutable GENESIS_TIME;
     uint256 public immutable SLOTS_PER_EPOCH;
 
-    PhaseState public phase1;
-    PhaseState public phase2;
+    PhaseState public offsetPhase;
+    PhaseState public restorePhase;
 
-    event Phase1Executed();
-    event Phase2Executed();
+    event OffsetPhaseExecuted();
+    event RestorePhaseExecuted();
 
     error ZeroFeeOracleAddress();
     error ZeroEpochsPerFrame();
@@ -68,9 +68,9 @@ contract TwoPhaseFrameConfigUpdate {
     error ZeroFromRefSlot();
     error FastLanePeriodCannotBeLongerThanFrame();
 
-    error Phase1AlreadyExecuted();
-    error Phase2AlreadyExecuted();
-    error Phase1NotExecuted();
+    error OffsetPhaseAlreadyExecuted();
+    error RestorePhaseAlreadyExecuted();
+    error OffsetPhaseNotExecuted();
     error PhaseExpired(uint256 currentRefSlot, uint256 deadlineRefSlot);
     error UnexpectedRefSlot(uint256 expected, uint256 actual);
 
@@ -79,15 +79,15 @@ contract TwoPhaseFrameConfigUpdate {
             revert ZeroFeeOracleAddress();
         }
 
-        if (phasesConfig.beforePhase1ReportsToProcess == 0) {
+        if (phasesConfig.beforeOffsetPhaseReportsToProcess == 0) {
             revert ZeroReportsPassedToEnableUpdate();
         }
 
-        if (phasesConfig.afterPhase1ReportsToProcess == 0) {
+        if (phasesConfig.beforeRestorePhaseReportsToProcess == 0) {
             revert ZeroReportsPassedToEnableUpdate();
         }
 
-        if (phasesConfig.transitionalEpochsPerFrame == 0) {
+        if (phasesConfig.offsetPhaseEpochsPerFrame == 0) {
             revert ZeroEpochsPerFrame();
         }
 
@@ -116,64 +116,64 @@ contract TwoPhaseFrameConfigUpdate {
             slotsPerEpoch
         );
         _ensureFastLaneFitsFrame(
-            phasesConfig.transitionalEpochsPerFrame,
+            phasesConfig.offsetPhaseEpochsPerFrame,
             phasesConfig.finalFastLaneLengthSlots,
             slotsPerEpoch
         );
 
-        // Calculate pivot ref slot for phase 1 (based on last processing ref slot at deployment time)
-        uint256 phase1ExpectedProcessingRefSlot = lastProcessingRefSlot +
-            (phasesConfig.beforePhase1ReportsToProcess *
+        // Calculate pivot ref slot for the offset phase (based on last processing ref slot at deployment time)
+        uint256 offsetExpectedProcessingRefSlot = lastProcessingRefSlot +
+            (phasesConfig.beforeOffsetPhaseReportsToProcess *
                 currentEpochsPerFrame *
                 slotsPerEpoch);
 
-        // Calculate deadline for phase 1 (before next original frame report processing or next frame with new possible config)
-        uint256 phase1ExpirationSlot = phase1ExpectedProcessingRefSlot +
+        // Calculate deadline for the offset phase (before next original frame report processing or next frame with new possible config)
+        uint256 offsetExpirationSlot = offsetExpectedProcessingRefSlot +
             (_min(
                 currentEpochsPerFrame,
-                phasesConfig.transitionalEpochsPerFrame
+                phasesConfig.offsetPhaseEpochsPerFrame
             ) * slotsPerEpoch);
 
         uint256 currentSlot = _getCurrentSlot();
-        if (currentSlot >= phase1ExpirationSlot) {
-            revert PhaseExpired(currentSlot, phase1ExpirationSlot);
+        if (currentSlot >= offsetExpirationSlot) {
+            revert PhaseExpired(currentSlot, offsetExpirationSlot);
         }
 
-        // Calculate pivot ref slot for phase 2 (based on phase 1 completion)
-        uint256 phase2ExpectedProcessingRefSlot = phase1ExpectedProcessingRefSlot +
-                (phasesConfig.afterPhase1ReportsToProcess *
-                    phasesConfig.transitionalEpochsPerFrame *
+        // Calculate pivot ref slot for the restore phase (based on offset phase completion)
+        uint256 restoreExpectedProcessingRefSlot = offsetExpectedProcessingRefSlot +
+                (phasesConfig.beforeRestorePhaseReportsToProcess *
+                    phasesConfig.offsetPhaseEpochsPerFrame *
                     slotsPerEpoch);
 
-        // Calculate deadline for phase 2 (before next phase 1 frame report processing or next possible frame with new config)
-        uint256 phase2ExpirationSlot = phase2ExpectedProcessingRefSlot +
+        // Calculate deadline for the restore phase (before next offset-phase frame report processing or next possible frame with new config)
+        uint256 restoreExpirationSlot = restoreExpectedProcessingRefSlot +
             (_min(
-                phasesConfig.transitionalEpochsPerFrame,
+                phasesConfig.offsetPhaseEpochsPerFrame,
                 currentEpochsPerFrame
             ) * slotsPerEpoch);
 
-        phase1 = PhaseState({
-            expectedProcessingRefSlot: phase1ExpectedProcessingRefSlot,
-            expirationSlot: phase1ExpirationSlot,
-            epochsPerFrame: phasesConfig.transitionalEpochsPerFrame,
+        offsetPhase = PhaseState({
+            expectedProcessingRefSlot: offsetExpectedProcessingRefSlot,
+            expirationSlot: offsetExpirationSlot,
+            epochsPerFrame: phasesConfig.offsetPhaseEpochsPerFrame,
             fastLaneLengthSlots: phasesConfig.finalFastLaneLengthSlots,
             executed: false
         });
 
-        phase2 = PhaseState({
-            expectedProcessingRefSlot: phase2ExpectedProcessingRefSlot,
-            expirationSlot: phase2ExpirationSlot,
+        restorePhase = PhaseState({
+            expectedProcessingRefSlot: restoreExpectedProcessingRefSlot,
+            expirationSlot: restoreExpirationSlot,
             epochsPerFrame: currentEpochsPerFrame,
             fastLaneLengthSlots: phasesConfig.finalFastLaneLengthSlots,
             executed: false
         });
     }
 
-    /// @dev Can only be called when oracle is at the expected pivot ref slot for phase 1.
-    function executePhase1() external {
-        PhaseState storage p = phase1;
+    /// @dev Executes the offset phase when oracle is at the expected pivot ref slot but before expiration.
+    function executeOffsetPhase() external {
+        PhaseState storage p = offsetPhase;
         if (p.executed) {
-            revert Phase1AlreadyExecuted();
+            revert OffsetPhaseAlreadyExecuted();
         }
         _ensurePhaseAlignment(p);
 
@@ -183,17 +183,18 @@ contract TwoPhaseFrameConfigUpdate {
         HASH_CONSENSUS.setFrameConfig(epochsPerFrame, fastLaneLength);
 
         p.executed = true;
-        emit Phase1Executed();
+        emit OffsetPhaseExecuted();
     }
 
-    /// @dev Can only be called after phase1 is executed and when oracle is at the expected pivot ref slot for phase 2.
-    function executePhase2() external {
-        if (!phase1.executed) {
-            revert Phase1NotExecuted();
+    /// @dev Executes the restore phase after offset phase is executed
+    ///      and oracle is at the expected pivot ref slot but before expiration.
+    function executeRestorePhase() external {
+        if (!offsetPhase.executed) {
+            revert OffsetPhaseNotExecuted();
         }
-        PhaseState storage p = phase2;
+        PhaseState storage p = restorePhase;
         if (p.executed) {
-            revert Phase2AlreadyExecuted();
+            revert RestorePhaseAlreadyExecuted();
         }
         _ensurePhaseAlignment(p);
 
@@ -203,7 +204,7 @@ contract TwoPhaseFrameConfigUpdate {
         HASH_CONSENSUS.setFrameConfig(epochsPerFrame, fastLaneLength);
 
         p.executed = true;
-        emit Phase2Executed();
+        emit RestorePhaseExecuted();
 
         _renounceRole();
     }
@@ -211,9 +212,15 @@ contract TwoPhaseFrameConfigUpdate {
     /// @dev Fallback to renounce the role if phases are expired.
     function renounceRoleWhenExpired() external {
         uint256 currentSlot = _getCurrentSlot();
-        bool phase1Expired = _isPhaseExpiredAtSlot(phase1, currentSlot);
-        bool phase2Expired = _isPhaseExpiredAtSlot(phase2, currentSlot);
-        if (phase1Expired || phase2Expired) {
+        bool offsetPhaseExpired = _isPhaseExpiredAtSlot(
+            offsetPhase,
+            currentSlot
+        );
+        bool restorePhaseExpired = _isPhaseExpiredAtSlot(
+            restorePhase,
+            currentSlot
+        );
+        if (offsetPhaseExpired || restorePhaseExpired) {
             _renounceRole();
         }
     }
@@ -228,33 +235,36 @@ contract TwoPhaseFrameConfigUpdate {
     function getPhaseConfigs()
         external
         view
-        returns (PhaseState memory phase1Config, PhaseState memory phase2Config)
+        returns (
+            PhaseState memory offsetConfig,
+            PhaseState memory restoreConfig
+        )
     {
-        return (phase1, phase2);
+        return (offsetPhase, restorePhase);
     }
 
-    function isReadyForPhase1() external view returns (bool ready) {
+    function isReadyForOffsetPhase() external view returns (bool ready) {
         uint256 currentSlot = _getCurrentSlot();
-        return _canExecutePhaseAtSlot(phase1, currentSlot);
+        return _canExecutePhaseAtSlot(offsetPhase, currentSlot);
     }
 
-    function isReadyForPhase2() external view returns (bool ready) {
-        if (!phase1.executed) {
+    function isReadyForRestorePhase() external view returns (bool ready) {
+        if (!offsetPhase.executed) {
             return false;
         }
         uint256 currentSlot = _getCurrentSlot();
-        return _canExecutePhaseAtSlot(phase2, currentSlot);
+        return _canExecutePhaseAtSlot(restorePhase, currentSlot);
     }
 
     function getExpirationStatus()
         external
         view
-        returns (bool phase1Expired, bool phase2Expired)
+        returns (bool offsetExpired, bool restoreExpired)
     {
         uint256 currentSlot = _getCurrentSlot();
         return (
-            _isPhaseExpiredAtSlot(phase1, currentSlot),
-            _isPhaseExpiredAtSlot(phase2, currentSlot)
+            _isPhaseExpiredAtSlot(offsetPhase, currentSlot),
+            _isPhaseExpiredAtSlot(restorePhase, currentSlot)
         );
     }
 
