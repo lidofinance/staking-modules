@@ -18,16 +18,18 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         return dayCount * EPOCHS_PER_DAY;
     }
 
-    function createPhaseConfig(
-        uint256 reportsToProcess,
+    function createPhasesConfig(
+        uint256 beforePhase1ReportsToProcess,
+        uint256 afterPhase1ReportsToProcess,
         uint256 daysPerFrame,
         uint256 fastLaneSlots
-    ) internal pure returns (TwoPhaseFrameConfigUpdate.PhaseConfig memory) {
+    ) internal pure returns (TwoPhaseFrameConfigUpdate.PhasesConfig memory) {
         return
-            TwoPhaseFrameConfigUpdate.PhaseConfig({
-                reportsToProcess: reportsToProcess,
-                newEpochsPerFrame: dayToEpochs(daysPerFrame),
-                newFastLaneLengthSlots: fastLaneSlots
+            TwoPhaseFrameConfigUpdate.PhasesConfig({
+                beforePhase1ReportsToProcess: beforePhase1ReportsToProcess,
+                afterPhase1ReportsToProcess: afterPhase1ReportsToProcess,
+                transitionalEpochsPerFrame: dayToEpochs(daysPerFrame),
+                finalFastLaneLengthSlots: fastLaneSlots
             });
     }
 
@@ -40,16 +42,10 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
     function test_shiftReportWindow() public {
         (, , uint256 genesisTime) = hashConsensus.getChainConfig();
 
-        TwoPhaseFrameConfigUpdate.PhaseConfig
-            memory phase1Config = createPhaseConfig(1, 31, 300); // 31-day phase, 1h fast lane
-        TwoPhaseFrameConfigUpdate.PhaseConfig
-            memory phase2Config = createPhaseConfig(1, 28, 300); // 28-day phase, 1h fast lane
+        TwoPhaseFrameConfigUpdate.PhasesConfig
+            memory phasesConfig = createPhasesConfig(1, 1, 31, 300); // 31-day phase, 1h fast lane
 
-        updater = new TwoPhaseFrameConfigUpdate(
-            address(oracle),
-            phase1Config,
-            phase2Config
-        );
+        updater = new TwoPhaseFrameConfigUpdate(address(oracle), phasesConfig);
 
         bytes32 manageFrameRole = hashConsensus.MANAGE_FRAME_CONFIG_ROLE();
         bytes32 adminRole = hashConsensus.getRoleAdmin(manageFrameRole);
@@ -156,8 +152,8 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
             (
                 uint256 phase2ExpectedProcessingRefSlot,
                 uint256 phase2ExpirationSlot,
-                ,
-                ,
+                uint256 phase2EpochsPerFrame,
+                uint256 phase2FastLaneSlots,
 
             ) = updater.phase2();
             assertEq(
@@ -167,11 +163,22 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
             );
 
             uint256 calculatedPhase2ExpirationSlot = phase1FirstFrameRefSlot +
-                (dayToEpochs(28) * SLOTS_PER_EPOCH);
+                (currentEpochsPerFrame * SLOTS_PER_EPOCH);
             assertEq(
                 phase2ExpirationSlot,
                 calculatedPhase2ExpirationSlot,
                 "Phase 2 expiration should be Phase 1 first frame ref slot + Phase 2 frame size"
+            );
+
+            assertEq(
+                phase2EpochsPerFrame,
+                currentEpochsPerFrame,
+                "Phase 2 should keep current frame length"
+            );
+            assertEq(
+                phase2FastLaneSlots,
+                300,
+                "Fast lane slots should reuse phase1 fast lane"
             );
         }
 
@@ -226,16 +233,10 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
             uint256 genesisTime
         ) = hashConsensus.getChainConfig();
 
-        TwoPhaseFrameConfigUpdate.PhaseConfig
-            memory phase1Config = createPhaseConfig(1, 31, 300);
-        TwoPhaseFrameConfigUpdate.PhaseConfig
-            memory phase2Config = createPhaseConfig(1, 28, 300);
+        TwoPhaseFrameConfigUpdate.PhasesConfig
+            memory phasesConfig = createPhasesConfig(1, 1, 31, 300);
 
-        updater = new TwoPhaseFrameConfigUpdate(
-            address(oracle),
-            phase1Config,
-            phase2Config
-        );
+        updater = new TwoPhaseFrameConfigUpdate(address(oracle), phasesConfig);
 
         bytes32 manageFrameRole = hashConsensus.MANAGE_FRAME_CONFIG_ROLE();
         bytes32 adminRole = hashConsensus.getRoleAdmin(manageFrameRole);
@@ -263,16 +264,10 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
             uint256 genesisTime
         ) = hashConsensus.getChainConfig();
 
-        TwoPhaseFrameConfigUpdate.PhaseConfig
-            memory phase1Config = createPhaseConfig(1, 31, 300);
-        TwoPhaseFrameConfigUpdate.PhaseConfig
-            memory phase2Config = createPhaseConfig(1, 28, 300);
+        TwoPhaseFrameConfigUpdate.PhasesConfig
+            memory phasesConfig = createPhasesConfig(1, 1, 31, 300);
 
-        updater = new TwoPhaseFrameConfigUpdate(
-            address(oracle),
-            phase1Config,
-            phase2Config
-        );
+        updater = new TwoPhaseFrameConfigUpdate(address(oracle), phasesConfig);
 
         bytes32 manageFrameRole = hashConsensus.MANAGE_FRAME_CONFIG_ROLE();
         bytes32 adminRole = hashConsensus.getRoleAdmin(manageFrameRole);

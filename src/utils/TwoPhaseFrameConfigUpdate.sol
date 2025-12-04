@@ -13,7 +13,7 @@ import { IConsensusContract } from "../lib/base-oracle/interfaces/IConsensusCont
 ///         in HashConsensus contract used by Oracle:
 ///         - Phase 1: set new frame size (shorter or longer than original) and fast lane length
 ///                    after Oracle has processed a defined number of reports with the original frame config.
-///         - Phase 2: set the original frame size and fast lane length
+///         - Phase 2: set the original frame size and remains Phase 1 fast lane length
 ///                    after Oracle has processed a defined number of reports with the phase 1 config.
 ///         As a result, the Oracle report window is shifted by the difference between
 ///         the original and phase 1 frame sizes.
@@ -25,14 +25,15 @@ import { IConsensusContract } from "../lib/base-oracle/interfaces/IConsensusCont
 ///      `HashConsensus` contract in order to be able to call `setFrameConfig`.
 ///      The role should be revoked after both phases are executed.
 contract TwoPhaseFrameConfigUpdate {
-    struct PhaseConfig {
-        /// @notice Number of reports that must be processed by the oracle
-        ///         to enable this phase execution.
-        ///         For phase1: from `lastProcessingRefSlot` at deployment time.
-        ///         For phase2: from phase1 completion.
-        uint256 reportsToProcess;
-        uint256 newEpochsPerFrame;
-        uint256 newFastLaneLengthSlots;
+    struct PhasesConfig {
+        /// @notice Reports to process from `lastProcessingRefSlot` at deployment to enable phase1.
+        uint256 beforePhase1ReportsToProcess;
+        /// @notice Reports to process after phase1 completion to enable phase2.
+        uint256 afterPhase1ReportsToProcess;
+        /// @notice Phase1 epochs per frame.
+        uint256 transitionalEpochsPerFrame;
+        /// @notice Phase1 fast lane length in slots.
+        uint256 finalFastLaneLengthSlots;
     }
 
     struct PhaseState {
@@ -44,8 +45,8 @@ contract TwoPhaseFrameConfigUpdate {
         ///         This phase expires when current slot (calculated from block.timestamp)
         ///         is greater than or equal to this value.
         uint256 expirationSlot;
-        uint256 newEpochsPerFrame;
-        uint256 newFastLaneLengthSlots;
+        uint256 epochsPerFrame;
+        uint256 fastLaneLengthSlots;
         bool executed;
     }
 
@@ -73,28 +74,20 @@ contract TwoPhaseFrameConfigUpdate {
     error PhaseExpired(uint256 currentRefSlot, uint256 deadlineRefSlot);
     error UnexpectedRefSlot(uint256 expected, uint256 actual);
 
-    constructor(
-        address feeOracle,
-        PhaseConfig memory phase1Config,
-        PhaseConfig memory phase2Config
-    ) {
+    constructor(address feeOracle, PhasesConfig memory phasesConfig) {
         if (feeOracle == address(0)) {
             revert ZeroFeeOracleAddress();
         }
 
-        if (phase1Config.reportsToProcess == 0) {
+        if (phasesConfig.beforePhase1ReportsToProcess == 0) {
             revert ZeroReportsPassedToEnableUpdate();
         }
 
-        if (phase2Config.reportsToProcess == 0) {
+        if (phasesConfig.afterPhase1ReportsToProcess == 0) {
             revert ZeroReportsPassedToEnableUpdate();
         }
 
-        if (phase1Config.newEpochsPerFrame == 0) {
-            revert ZeroEpochsPerFrame();
-        }
-
-        if (phase2Config.newEpochsPerFrame == 0) {
+        if (phasesConfig.transitionalEpochsPerFrame == 0) {
             revert ZeroEpochsPerFrame();
         }
 
@@ -118,26 +111,28 @@ contract TwoPhaseFrameConfigUpdate {
         }
 
         _ensureFastLaneFitsFrame(
-            phase1Config.newEpochsPerFrame,
-            phase1Config.newFastLaneLengthSlots,
+            currentEpochsPerFrame,
+            phasesConfig.finalFastLaneLengthSlots,
             slotsPerEpoch
         );
         _ensureFastLaneFitsFrame(
-            phase2Config.newEpochsPerFrame,
-            phase2Config.newFastLaneLengthSlots,
+            phasesConfig.transitionalEpochsPerFrame,
+            phasesConfig.finalFastLaneLengthSlots,
             slotsPerEpoch
         );
 
         // Calculate pivot ref slot for phase 1 (based on last processing ref slot at deployment time)
         uint256 phase1ExpectedProcessingRefSlot = lastProcessingRefSlot +
-            (phase1Config.reportsToProcess *
+            (phasesConfig.beforePhase1ReportsToProcess *
                 currentEpochsPerFrame *
                 slotsPerEpoch);
 
         // Calculate deadline for phase 1 (before next original frame report processing or next frame with new possible config)
         uint256 phase1ExpirationSlot = phase1ExpectedProcessingRefSlot +
-            (_min(currentEpochsPerFrame, phase1Config.newEpochsPerFrame) *
-                slotsPerEpoch);
+            (_min(
+                currentEpochsPerFrame,
+                phasesConfig.transitionalEpochsPerFrame
+            ) * slotsPerEpoch);
 
         uint256 currentSlot = _getCurrentSlot();
         if (currentSlot >= phase1ExpirationSlot) {
@@ -146,30 +141,30 @@ contract TwoPhaseFrameConfigUpdate {
 
         // Calculate pivot ref slot for phase 2 (based on phase 1 completion)
         uint256 phase2ExpectedProcessingRefSlot = phase1ExpectedProcessingRefSlot +
-                (phase2Config.reportsToProcess *
-                    phase1Config.newEpochsPerFrame *
+                (phasesConfig.afterPhase1ReportsToProcess *
+                    phasesConfig.transitionalEpochsPerFrame *
                     slotsPerEpoch);
 
         // Calculate deadline for phase 2 (before next phase 1 frame report processing or next possible frame with new config)
         uint256 phase2ExpirationSlot = phase2ExpectedProcessingRefSlot +
             (_min(
-                phase1Config.newEpochsPerFrame,
-                phase2Config.newEpochsPerFrame
+                phasesConfig.transitionalEpochsPerFrame,
+                currentEpochsPerFrame
             ) * slotsPerEpoch);
 
         phase1 = PhaseState({
             expectedProcessingRefSlot: phase1ExpectedProcessingRefSlot,
             expirationSlot: phase1ExpirationSlot,
-            newEpochsPerFrame: phase1Config.newEpochsPerFrame,
-            newFastLaneLengthSlots: phase1Config.newFastLaneLengthSlots,
+            epochsPerFrame: phasesConfig.transitionalEpochsPerFrame,
+            fastLaneLengthSlots: phasesConfig.finalFastLaneLengthSlots,
             executed: false
         });
 
         phase2 = PhaseState({
             expectedProcessingRefSlot: phase2ExpectedProcessingRefSlot,
             expirationSlot: phase2ExpirationSlot,
-            newEpochsPerFrame: phase2Config.newEpochsPerFrame,
-            newFastLaneLengthSlots: phase2Config.newFastLaneLengthSlots,
+            epochsPerFrame: currentEpochsPerFrame,
+            fastLaneLengthSlots: phasesConfig.finalFastLaneLengthSlots,
             executed: false
         });
     }
@@ -182,8 +177,8 @@ contract TwoPhaseFrameConfigUpdate {
         }
         _ensurePhaseAlignment(p);
 
-        uint256 epochsPerFrame = p.newEpochsPerFrame;
-        uint256 fastLaneLength = p.newFastLaneLengthSlots;
+        uint256 epochsPerFrame = p.epochsPerFrame;
+        uint256 fastLaneLength = p.fastLaneLengthSlots;
 
         HASH_CONSENSUS.setFrameConfig(epochsPerFrame, fastLaneLength);
 
@@ -202,8 +197,8 @@ contract TwoPhaseFrameConfigUpdate {
         }
         _ensurePhaseAlignment(p);
 
-        uint256 epochsPerFrame = p.newEpochsPerFrame;
-        uint256 fastLaneLength = p.newFastLaneLengthSlots;
+        uint256 epochsPerFrame = p.epochsPerFrame;
+        uint256 fastLaneLength = p.fastLaneLengthSlots;
 
         HASH_CONSENSUS.setFrameConfig(epochsPerFrame, fastLaneLength);
 
