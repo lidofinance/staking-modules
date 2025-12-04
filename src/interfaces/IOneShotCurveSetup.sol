@@ -52,6 +52,7 @@ interface IOneShotCurveSetup {
         ScalarOverride allowedExitDelay;
         ScalarOverride exitDelayFee;
         ScalarOverride maxWithdrawalRequestFee;
+        ScalarOverride depositAllocationWeight;
     }
 
     /// @dev Emitted once the curve setup completes successfully.

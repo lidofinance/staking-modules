@@ -147,17 +147,32 @@ contract AccountingMock {
         }
     }
 
-    function setBondCurve(uint256 nodeOperatorId, uint256 curveId) external {}
+    function setBondCurve(uint256 nodeOperatorId, uint256 curveId) external {
+        uint256 len = bondCurves.length;
+        if (curveId >= len) {
+            uint256 filler = len == 0 ? 0 : bondCurves[0];
+            while (len <= curveId) {
+                bondCurves.push(filler);
+                ++len;
+            }
+        }
+        operatorBondCurveId[nodeOperatorId] = curveId;
+    }
 
     function updateBondCurve(uint256 curveId, uint256 _bond) external {
         bondCurves[curveId] = _bond;
     }
 
     function addBondCurve(
-        IBondCurve.BondCurveIntervalInput[] calldata
+        IBondCurve.BondCurveIntervalInput[] calldata curve
     ) external returns (uint256 curveId) {
-        curveId = _nextCurveId;
-        _nextCurveId += 1;
+        curveId = bondCurves.length;
+        uint256 trend = bondCurves[0];
+        if (curve.length > 0) {
+            trend = curve[0].trend;
+        }
+        bondCurves.push(trend);
+        _nextCurveId = bondCurves.length;
     }
 
     function penalize(

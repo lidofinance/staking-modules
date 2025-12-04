@@ -164,6 +164,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
             deployParams = parseDeployParams(env.DEPLOY_CONFIG);
         }
         address admin = _prepareAdmin(deploymentConfig.csm);
+        address parametersRegistryAdmin = _prepareAdmin(
+            address(parametersRegistry)
+        );
         IBurner burner = IBurner(locator.burner());
         address burnerAdmin = _prepareAdmin(address(burner));
 
@@ -189,6 +192,13 @@ contract SimulateVote is Script, ForkHelpersCommon {
             // 3. Upgrade ParametersRegistry implementation
             parametersRegistryProxy.proxy__upgradeTo(
                 deploymentConfig.parametersRegistryImpl
+            );
+            vm.stopBroadcast();
+        }
+        {
+            vm.startBroadcast(parametersRegistryAdmin);
+            parametersRegistry.setDefaultDepositAllocationWeight(
+                deployParams.defaultDepositAllocationWeight
             );
             vm.stopBroadcast();
         }

@@ -1,0 +1,398 @@
+// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity 0.8.33;
+
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { IAccounting } from "../../interfaces/IAccounting.sol";
+import { IBaseModule } from "../../interfaces/IBaseModule.sol";
+import { IParametersRegistry } from "../../interfaces/IParametersRegistry.sol";
+import { NodeOperator } from "../../interfaces/IBaseModule.sol";
+import { AllocationState, DepositAllocatorGreedy } from "./DepositAllocatorGreedy.sol";
+import { DepositPouringMath } from "./DepositPouringMath.sol";
+
+/// @notice Curated deposit allocation helpers (external library for bytecode savings).
+/// @dev Invariants assumed by this library:
+///      - totalWithdrawnKeys <= totalDepositedKeys per operator.
+///      - each operatorId < operatorsCount.
+library CuratedDepositAllocator {
+    uint256 internal constant MAX_EFFECTIVE_BALANCE = 2048 ether;
+    struct DepositableOperatorsData {
+        uint256[] weights;
+        uint256[] currents;
+        uint256[] capacities;
+        uint256[] operatorIds;
+        uint256 count;
+        uint256 weightSum;
+        uint256 totalAmount;
+    }
+
+    uint256 internal constant DEPOSIT_STEP = 1;
+    uint256 internal constant TOPUP_STEP = 1 ether;
+
+    /// @notice Allocate new validator deposits across curated operators.
+    /// @dev Input preparation and iteration behavior:
+    ///      - Only operators with capacity > 0 and non-zero allocation weight are included.
+    ///      - Current amounts are derived from deposited minus withdrawn keys (active keys).
+    ///      - Operators that hit their capacity here will have capacity == 0 next call and
+    ///        will be excluded; remaining operators’ effective weights increase.
+    /// @dev Returns compact arrays containing only operators with non-zero allocations.
+    /// @param nodeOperators Node operator storage mapping from the module.
+    /// @param operatorsCount Total operators count in the module.
+    /// @param depositsCount Number of validator deposits to allocate.
+    /// @return allocated Number of deposits actually allocated.
+    /// @return operatorIds Operator ids for allocated operators.
+    /// @return allocations Per-operator allocations aligned to operatorIds.
+    function allocateDeposits(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint256 operatorsCount,
+        uint256 depositsCount
+    )
+        external
+        view
+        returns (
+            uint256 allocated,
+            uint256[] memory operatorIds,
+            uint256[] memory allocations
+        )
+    {
+        if (depositsCount == 0 || operatorsCount == 0) {
+            return (0, new uint256[](0), new uint256[](0));
+        }
+
+        (
+            DepositableOperatorsData memory data,
+            uint256 totalCapacity,
+            uint256 weightedCapacity
+        ) = _collectDepositableOperatorsData(nodeOperators, operatorsCount);
+
+        if (
+            data.count == 0 ||
+            totalCapacity < depositsCount ||
+            weightedCapacity < depositsCount
+        ) {
+            return (0, new uint256[](0), new uint256[](0));
+        }
+
+        _truncateDepositable(data);
+
+        uint256[] memory eligibleAllocations;
+        (allocated, eligibleAllocations) = _computeAllocations({
+            currentAmounts: data.currents,
+            capacities: data.capacities,
+            weights: data.weights,
+            step: DEPOSIT_STEP,
+            allocationAmount: depositsCount,
+            weightSum: data.weightSum,
+            totalAmount: data.totalAmount
+        });
+
+        uint256 nonZeroCount;
+        for (uint256 i; i < data.count; ++i) {
+            if (eligibleAllocations[i] != 0) {
+                ++nonZeroCount;
+            }
+        }
+
+        operatorIds = new uint256[](nonZeroCount);
+        allocations = new uint256[](nonZeroCount);
+        uint256 outIdx;
+        for (uint256 i; i < data.count; ++i) {
+            uint256 allocation = eligibleAllocations[i];
+            if (allocation == 0) continue;
+            operatorIds[outIdx] = data.operatorIds[i];
+            allocations[outIdx] = allocation;
+            ++outIdx;
+        }
+    }
+
+    /// @notice Allocate top-up deposit amount across curated operators.
+    /// @dev Input preparation and iteration behavior:
+    ///      - Duplicated operator ids are not expected (caller guarantees uniqueness).
+    ///      - Only operators with non-zero allocation weight are included.
+    ///      - Shares are computed across all eligible operators in the module
+    ///        (non-zero weight, non-zero top-up capacity),
+    ///        so a subset cannot bias its share by omitting other eligible operators.
+    ///      - Per-operator capacity is computed as:
+    ///        (active validators * 2048 ETH) - current operator balance, floored at zero.
+    ///      - Per-key top-up limits are *not* used as caps for allocation; they are
+    ///        applied later per-key and may leave unallocated remainder.
+    ///      - Operators that receive zero remaining balance in the module on later
+    ///        iterations will be excluded by capacity == 0 at the module level.
+    /// @param nodeOperatorBalances Per-operator balance (in wei) from Accounting oracle.
+    /// @param operatorsCount Total operators count in the module.
+    /// @param depositAmount Total top-up amount in wei to allocate.
+    /// @param operatorIds Key owner operator ids for this top-up request.
+    /// @return allocatedOperatorIds Operator ids for allocated operators.
+    /// @return allocations Per-operator allocations aligned to allocatedOperatorIds.
+    function allocateTopUps(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        mapping(uint256 => uint256) storage nodeOperatorBalances,
+        uint256 operatorsCount,
+        uint256 depositAmount,
+        uint256[] calldata operatorIds
+    )
+        external
+        view
+        returns (
+            uint256[] memory allocatedOperatorIds,
+            uint256[] memory allocations
+        )
+    {
+        uint256 keysCount = operatorIds.length;
+        if (depositAmount == 0 || keysCount == 0) {
+            return (new uint256[](0), new uint256[](0));
+        }
+
+        // operatorsCount > 0 is guaranteed by the caller.
+
+        DepositableOperatorsData
+            memory data = _collectTopUpEligibleOperatorsData(
+                nodeOperators,
+                nodeOperatorBalances,
+                operatorIds,
+                operatorsCount
+            );
+        if (data.count == 0) {
+            return (new uint256[](0), new uint256[](0));
+        }
+
+        _truncateDepositable(data);
+
+        (, uint256[] memory eligibleAllocations) = _computeAllocations({
+            currentAmounts: data.currents,
+            capacities: data.capacities,
+            weights: data.weights,
+            step: TOPUP_STEP,
+            allocationAmount: depositAmount,
+            weightSum: data.weightSum,
+            totalAmount: data.totalAmount
+        });
+
+        uint256 nonZeroCount;
+        for (uint256 i; i < data.count; ++i) {
+            if (eligibleAllocations[i] != 0) {
+                ++nonZeroCount;
+            }
+        }
+
+        allocatedOperatorIds = new uint256[](nonZeroCount);
+        allocations = new uint256[](nonZeroCount);
+        uint256 outIdx;
+        for (uint256 i; i < data.count; ++i) {
+            uint256 allocation = eligibleAllocations[i];
+            if (allocation == 0) continue;
+            allocatedOperatorIds[outIdx] = data.operatorIds[i];
+            allocations[outIdx] = allocation;
+            ++outIdx;
+        }
+    }
+
+    /// @dev Builds AllocationState and runs the configured allocator in-memory.
+    ///      Expects arrays already filtered/truncated to eligible operators.
+    function _computeAllocations(
+        uint256[] memory currentAmounts,
+        uint256[] memory capacities,
+        uint256[] memory weights,
+        uint256 step,
+        uint256 allocationAmount,
+        uint256 weightSum,
+        uint256 totalAmount
+    ) internal pure returns (uint256 allocated, uint256[] memory allocations) {
+        uint256 n = weights.length;
+        // allocationAmount > 0, n > 0, and step > 0 are guaranteed by the callers.
+
+        AllocationState memory state;
+        state.shares = new uint256[](n);
+        state.amounts = currentAmounts;
+        state.capacities = capacities;
+        state.totalAmount = totalAmount;
+
+        unchecked {
+            // weightSum > 0 is guaranteed by the collectors for any non-empty input.
+            for (uint256 i; i < n; ++i) {
+                if (weights[i] == 0) {
+                    continue;
+                }
+                state.shares[i] = Math.mulDiv(
+                    weights[i],
+                    DepositPouringMath.S_SCALE,
+                    weightSum
+                );
+            }
+        }
+
+        uint256 remainder;
+        uint256[] memory allocUnits;
+        (, allocUnits, remainder) = DepositAllocatorGreedy._allocate(
+            state,
+            allocationAmount,
+            step
+        );
+
+        allocated = allocationAmount - remainder;
+        allocations = allocUnits;
+    }
+
+    /// @dev Collect eligible operators for deposit allocation.
+    ///      Filters out zero capacity and zero-weight operators.
+    function _collectDepositableOperatorsData(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint256 operatorsCount
+    )
+        internal
+        view
+        returns (
+            DepositableOperatorsData memory data,
+            uint256 totalCapacity,
+            uint256 weightedCapacity
+        )
+    {
+        data.weights = new uint256[](operatorsCount);
+        data.currents = new uint256[](operatorsCount);
+        data.capacities = new uint256[](operatorsCount);
+        data.operatorIds = new uint256[](operatorsCount);
+
+        IParametersRegistry parametersRegistry = IBaseModule(address(this))
+            .PARAMETERS_REGISTRY();
+        IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
+
+        uint256 eligibleCount;
+        unchecked {
+            for (uint256 i; i < operatorsCount; ++i) {
+                NodeOperator storage no = nodeOperators[i];
+                uint256 capacity = no.depositableValidatorsCount;
+                if (capacity == 0) continue;
+
+                totalCapacity += capacity;
+                uint256 weight = parametersRegistry.getDepositAllocationWeight(
+                    accounting.getBondCurveId(i)
+                );
+                if (weight == 0) continue;
+
+                data.weights[eligibleCount] = weight;
+                data.currents[eligibleCount] =
+                    no.totalDepositedKeys -
+                    no.totalWithdrawnKeys;
+                data.capacities[eligibleCount] = capacity;
+                data.operatorIds[eligibleCount] = i;
+                weightedCapacity += capacity;
+                data.weightSum += weight;
+                data.totalAmount += data.currents[eligibleCount];
+                ++eligibleCount;
+            }
+        }
+
+        data.count = eligibleCount;
+    }
+
+    /// @dev Collect eligible operators for top-up allocation.
+    ///      Duplicates in operatorIds are disallowed and must be filtered by the caller.
+    function _collectTopUpEligibleOperatorsData(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        mapping(uint256 => uint256) storage nodeOperatorBalances,
+        uint256[] calldata operatorIds,
+        uint256 operatorsCount
+    ) internal view returns (DepositableOperatorsData memory data) {
+        data.weights = new uint256[](operatorIds.length);
+        data.currents = new uint256[](operatorIds.length);
+        data.capacities = new uint256[](operatorIds.length);
+        data.operatorIds = new uint256[](operatorIds.length);
+
+        (data.weightSum, data.totalAmount) = _collectTopUpGlobalTotals(
+            nodeOperators,
+            nodeOperatorBalances,
+            operatorsCount
+        );
+
+        IParametersRegistry parametersRegistry = IBaseModule(address(this))
+            .PARAMETERS_REGISTRY();
+        IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
+
+        uint256 eligibleCount;
+        uint256 n = operatorIds.length;
+        for (uint256 i; i < n; ++i) {
+            uint256 operatorId = operatorIds[i];
+
+            // Collect only requested operators; allocation still uses the global share baseline.
+            // there's double capacity calculation here, but it's probably not expensive in practice.
+            NodeOperator storage no = nodeOperators[operatorId];
+            uint256 capacity = _topUpCapacity(
+                no,
+                nodeOperatorBalances[operatorId]
+            );
+            if (capacity == 0) continue;
+
+            uint256 weight = parametersRegistry.getDepositAllocationWeight(
+                accounting.getBondCurveId(operatorId)
+            );
+            if (weight == 0) continue;
+
+            data.weights[eligibleCount] = weight;
+            data.currents[eligibleCount] = nodeOperatorBalances[operatorId];
+            data.capacities[eligibleCount] = capacity;
+            data.operatorIds[eligibleCount] = operatorId;
+            ++eligibleCount;
+        }
+
+        data.count = eligibleCount;
+    }
+
+    function _collectTopUpGlobalTotals(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        mapping(uint256 => uint256) storage nodeOperatorBalances,
+        uint256 operatorsCount
+    ) internal view returns (uint256 weightSum, uint256 totalAmount) {
+        IParametersRegistry parametersRegistry = IBaseModule(address(this))
+            .PARAMETERS_REGISTRY();
+        IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
+
+        // Build global share baseline across all eligible operators (non-zero weight + capacity).
+        for (uint256 i; i < operatorsCount; ++i) {
+            uint256 capacity = _topUpCapacity(
+                nodeOperators[i],
+                nodeOperatorBalances[i]
+            );
+            if (capacity == 0) continue;
+            uint256 weight = parametersRegistry.getDepositAllocationWeight(
+                accounting.getBondCurveId(i)
+            );
+            if (weight == 0) continue;
+            weightSum += weight;
+            totalAmount += nodeOperatorBalances[i];
+        }
+    }
+
+    /// @dev Maximum top-up capacity for an operator:
+    ///      (active validators * 2048 ETH) - current balance, floored at zero.
+    function _topUpCapacity(
+        NodeOperator storage no,
+        uint256 balanceWei
+    ) internal view returns (uint256 capacity) {
+        uint256 activeKeys = no.totalDepositedKeys - no.totalWithdrawnKeys;
+        if (activeKeys == 0) return 0;
+        uint256 maxTotal = activeKeys * MAX_EFFECTIVE_BALANCE;
+        if (balanceWei >= maxTotal) return 0;
+        unchecked {
+            capacity = maxTotal - balanceWei;
+        }
+    }
+
+    /// @dev Shrinks eligible arrays to the collected eligible count.
+    function _truncateDepositable(
+        DepositableOperatorsData memory data
+    ) internal pure {
+        uint256 count = data.count;
+        if (count == data.weights.length) return;
+        uint256[] memory weights = data.weights;
+        uint256[] memory currents = data.currents;
+        uint256[] memory capacities = data.capacities;
+        uint256[] memory operatorIds = data.operatorIds;
+        assembly {
+            mstore(weights, count)
+            mstore(currents, count)
+            mstore(capacities, count)
+            mstore(operatorIds, count)
+        }
+    }
+}

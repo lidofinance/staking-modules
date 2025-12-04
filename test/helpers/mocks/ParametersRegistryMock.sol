@@ -27,8 +27,11 @@ contract ParametersRegistryMock {
     uint256 public allowedExitDelay = 1 weeks;
     uint256 public exitDelayFee = 0.1 ether;
     uint256 public maxWithdrawalRequestFee = 1 ether;
+    uint256 public depositAllocationWeight = 1;
 
     mapping(uint256 curveId => MarkedQueueConfig) internal _queueConfigs;
+    mapping(uint256 curveId => uint256) internal _depositAllocationWeights;
+    mapping(uint256 curveId => bool) internal _hasDepositAllocationWeight;
 
     function getKeyRemovalCharge(
         uint256 /* curveId */
@@ -165,6 +168,36 @@ contract ParametersRegistryMock {
         uint256 _maxWithdrawalRequestFee
     ) external {
         maxWithdrawalRequestFee = _maxWithdrawalRequestFee;
+    }
+
+    function defaultDepositAllocationWeight() external view returns (uint256) {
+        return depositAllocationWeight;
+    }
+
+    function getDepositAllocationWeight(
+        uint256 curveId
+    ) external view returns (uint256) {
+        if (_hasDepositAllocationWeight[curveId]) {
+            return _depositAllocationWeights[curveId];
+        }
+        return depositAllocationWeight;
+    }
+
+    function setDepositAllocationWeight(
+        uint256 curveId,
+        uint256 weight
+    ) external {
+        _hasDepositAllocationWeight[curveId] = true;
+        _depositAllocationWeights[curveId] = weight;
+    }
+
+    function unsetDepositAllocationWeight(uint256 curveId) external {
+        delete _depositAllocationWeights[curveId];
+        _hasDepositAllocationWeight[curveId] = false;
+    }
+
+    function setDefaultDepositAllocationWeight(uint256 weight) external {
+        depositAllocationWeight = weight;
     }
 
     function setPerformanceCoefficients(

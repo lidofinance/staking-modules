@@ -51,6 +51,7 @@ struct GateCurveParams {
     uint256 allowedExitDelay;
     uint256 exitDelayFee;
     uint256 maxWithdrawalRequestFee;
+    uint256 depositAllocationWeight;
 }
 
 struct CuratedGateConfig {
@@ -114,6 +115,8 @@ struct CuratedDeployParams {
     uint256 defaultAllowedExitDelay;
     uint256 defaultExitDelayFee;
     uint256 defaultMaxWithdrawalRequestFee;
+    uint256 defaultDepositAllocationWeight;
+    uint256 identifiedCommunityStakersGateDepositAllocationWeight;
     // Curated gates
     CuratedGateConfig[] curatedGates;
     // GateSeal
@@ -274,7 +277,9 @@ abstract contract DeployBase is Script {
                     defaultAllowedExitDelay: config.defaultAllowedExitDelay,
                     defaultExitDelayFee: config.defaultExitDelayFee,
                     defaultMaxWithdrawalRequestFee: config
-                        .defaultMaxWithdrawalRequestFee
+                        .defaultMaxWithdrawalRequestFee,
+                    defaultDepositAllocationWeight: config
+                        .defaultDepositAllocationWeight
                 })
             });
 
@@ -381,6 +386,12 @@ abstract contract DeployBase is Script {
                     curveId,
                     params.maxWithdrawalRequestFee
                 );
+                if (params.depositAllocationWeight != 0) {
+                    parametersRegistry.setDepositAllocationWeight(
+                        curveId,
+                        params.depositAllocationWeight
+                    );
+                }
             }
             accounting.revokeRole(
                 accounting.MANAGE_BOND_CURVES_ROLE(),

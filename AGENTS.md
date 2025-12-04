@@ -1,0 +1,45 @@
+# Repository Guidelines
+
+## Project Structure & Module Organization
+
+- `src/`: Solidity contracts (Solc 0.8.24).
+- `test/`: Forge tests (`*.t.sol`), plus `test/fork/*` for fork/integration and deployment tests.
+- `script/`: Forge scripts (deploy/verify, per-chain variants).
+- `artifacts/`, `broadcast/`, `out/`, `cache/`: build, deploy, and fork outputs.
+- `lib/`, `node_modules/`: dependencies; see `remappings.txt`.
+- `docs/`, `digest/`: documentation and design notes.
+
+## Build, Test, and Development Commands
+
+- `just deps`: install production deps; `just deps-dev`: dev deps + husky.
+- `just`: clean, deps, build, and run all tests.
+- `just build`: Forge build (skips tests/scripts); `forge build` works too.
+- `just test-unit`: unit tests only; `just test-all`: unit + fork suites.
+- `just test-local`: spins up anvil fork, deploys, runs deployment+integration tests.
+- `just coverage` | `just coverage-lcov`: coverage (LCOV saved; see `lcov.html`).
+- Linting: `yarn lint:check` (prettier + solhint), `yarn lint:fix`, `yarn lint:solhint`.
+
+## Coding Style & Naming Conventions
+
+- Formatting: Prettier + `prettier-plugin-solidity` (Solidity `printWidth=80`, `tabWidth=4`, spaces only).
+- Linting: Solhint (`.solhint.json`) with `solhint:recommended` and `solhint-plugin-lido-csm`.
+- Versions: enforce `pragma solidity ^0.8.24` (`compiler-version` rule).
+- Naming: contracts/libraries `CamelCase` (e.g., `CSModule`, `AssetRecovererLib`), interfaces `IName` (rule: `interface-starts-with-i`).
+- Conventions: prefer custom errors, calldata parameters, and struct packing (gas rules). Immutable vars styled as constants.
+
+## Testing Guidelines
+
+- Framework: Foundry/Forge with fuzzing (`fuzz.runs=256`).
+- Structure: unit tests in `test/*.t.sol`; fork suites under `test/fork/*` (deployment/integration).
+- Run: `just test-unit` for fast cycles; `CHAIN`/`RPC_URL` required for fork tests. Example: `export CHAIN=holesky && export RPC_URL=<https-url>`.
+- Coverage: `just coverage-lcov` produces LCOV output (commit if relevant).
+
+## Commit & Pull Request Guidelines
+
+- Commits: Conventional Commits. Examples: `feat: add validator key rotation`, `fix: resolve bond calculation overflow`.
+- PRs: clear description, linked issues, rationale, test coverage notes, storage layout impacts (if any), and gas impact (attach `GAS.md` when updated). Ensure CI green and `yarn lint:check` passes.
+
+## Security & Configuration Tips
+
+- Never commit keys; use `.env` from `.env.sample`. For forks: `ANVIL_IP_ADDR`, `ANVIL_PORT`, `RPC_URL`, `CHAIN`.
+- Pin Foundry to version in `.foundryref`. Use `just make-fork`/`just kill-fork` to manage local forks.

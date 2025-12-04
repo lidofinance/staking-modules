@@ -120,6 +120,8 @@ contract DeploymentHelpers is Test {
         uint256 stakingModuleId;
         bytes32 moduleType;
         uint256 queueLowestPriority;
+        uint256 defaultDepositAllocationWeight;
+        uint256 identifiedCommunityStakersGateDepositAllocationWeight;
         uint256 bondLockPeriod;
         uint256 minBondLockPeriod;
         uint256 maxBondLockPeriod;
@@ -608,6 +610,9 @@ contract DeploymentHelpers is Test {
         dst.defaultAllowedExitDelay = src.defaultAllowedExitDelay;
         dst.defaultExitDelayFee = src.defaultExitDelayFee;
         dst.defaultMaxWithdrawalRequestFee = src.defaultMaxWithdrawalRequestFee;
+        dst.defaultDepositAllocationWeight = src.defaultDepositAllocationWeight;
+        dst.identifiedCommunityStakersGateDepositAllocationWeight = src
+            .identifiedCommunityStakersGateDepositAllocationWeight;
 
         // Curated gates
         for (uint256 i; i < src.curatedGates.length; ++i) {
@@ -720,6 +725,11 @@ contract DeploymentHelpers is Test {
                 .verifierFirstSupportedSlot;
             params.capellaSlot = decoded.capellaSlot;
             params.defaultBondCurve = decoded.defaultBondCurve;
+            params.defaultDepositAllocationWeight = decoded
+                .defaultDepositAllocationWeight;
+            params
+                .identifiedCommunityStakersGateDepositAllocationWeight = decoded
+                .identifiedCommunityStakersGateDepositAllocationWeight;
         }
     }
 

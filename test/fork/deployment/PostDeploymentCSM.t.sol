@@ -406,7 +406,9 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
                 defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
                 defaultExitDelayFee: deployParams.defaultExitDelayFee,
                 defaultMaxWithdrawalRequestFee: deployParams
-                    .defaultMaxWithdrawalRequestFee
+                    .defaultMaxWithdrawalRequestFee,
+                defaultDepositAllocationWeight: deployParams
+                    .defaultDepositAllocationWeight
             })
         });
 
@@ -448,7 +450,9 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
                 defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
                 defaultExitDelayFee: deployParams.defaultExitDelayFee,
                 defaultMaxWithdrawalRequestFee: deployParams
-                    .defaultMaxWithdrawalRequestFee
+                    .defaultMaxWithdrawalRequestFee,
+                defaultDepositAllocationWeight: deployParams
+                    .defaultDepositAllocationWeight
             })
         });
     }

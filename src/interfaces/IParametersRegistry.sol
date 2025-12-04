@@ -52,6 +52,7 @@ interface IParametersRegistry {
         uint256 defaultAllowedExitDelay;
         uint256 defaultExitDelayFee;
         uint256 defaultMaxWithdrawalRequestFee;
+        uint256 defaultDepositAllocationWeight;
     }
 
     event DefaultKeyRemovalChargeSet(uint256 value);
@@ -70,6 +71,7 @@ interface IParametersRegistry {
     event DefaultAllowedExitDelaySet(uint256 delay);
     event DefaultExitDelayFeeSet(uint256 penalty);
     event DefaultMaxWithdrawalRequestFeeSet(uint256 fee);
+    event DefaultDepositAllocationWeightSet(uint256 weight);
 
     event KeyRemovalChargeSet(
         uint256 indexed curveId,
@@ -108,6 +110,7 @@ interface IParametersRegistry {
     event AllowedExitDelaySet(uint256 indexed curveId, uint256 delay);
     event ExitDelayFeeSet(uint256 indexed curveId, uint256 penalty);
     event MaxWithdrawalRequestFeeSet(uint256 indexed curveId, uint256 fee);
+    event DepositAllocationWeightSet(uint256 indexed curveId, uint256 weight);
 
     event KeyRemovalChargeUnset(uint256 indexed curveId);
     event GeneralDelayedPenaltyAdditionalFineUnset(uint256 indexed curveId);
@@ -121,6 +124,7 @@ interface IParametersRegistry {
     event AllowedExitDelayUnset(uint256 indexed curveId);
     event ExitDelayFeeUnset(uint256 indexed curveId);
     event MaxWithdrawalRequestFeeUnset(uint256 indexed curveId);
+    event DepositAllocationWeightUnset(uint256 indexed curveId);
 
     error InvalidRewardShareData();
     error InvalidPerformanceLeewayData();
@@ -159,6 +163,9 @@ interface IParametersRegistry {
         external
         view
         returns (bytes32);
+
+    /// @notice Role to manage operator allocation weights for share-target allocation deposits
+    function MANAGE_ALLOCATION_WEIGHTS_ROLE() external view returns (bytes32);
 
     /// @notice The lowest priority a deposit queue can be assigned with. This constant is not used in Curated Module
     function QUEUE_LOWEST_PRIORITY() external view returns (uint256);
@@ -217,6 +224,9 @@ interface IParametersRegistry {
 
     /// @notice Get default value for max withdrawal request fee
     function defaultMaxWithdrawalRequestFee() external returns (uint256);
+
+    /// @notice Get default value for operator allocation weight
+    function defaultDepositAllocationWeight() external returns (uint256);
 
     /// @notice Set default value for the key removal charge. Default value is used if a specific value is not set for the curveId. This parameter is not used in Curated Module
     /// @param keyRemovalCharge value to be set as default for the key removal charge
@@ -285,6 +295,10 @@ interface IParametersRegistry {
     /// @notice set default value for max withdrawal request fee. Default value is used if a specific value is not set for the curveId
     /// @param fee value to be set as default for the max withdrawal request fee
     function setDefaultMaxWithdrawalRequestFee(uint256 fee) external;
+
+    /// @notice Set default value for operator allocation weight. Default value is used if a specific value is not set for the curveId
+    /// @param weight value to be set as default for the operator allocation weight
+    function setDefaultDepositAllocationWeight(uint256 weight) external;
 
     /// @notice Set key removal charge for the curveId. This parameter is not used in Curated Module
     /// @param curveId Curve Id to associate key removal charge with
@@ -532,9 +546,21 @@ interface IParametersRegistry {
     /// @param fee max withdrawal request fee
     function setMaxWithdrawalRequestFee(uint256 curveId, uint256 fee) external;
 
+    /// @notice Set operator allocation weight for the curveId
+    /// @param curveId Curve Id to associate operator allocation weight with
+    /// @param weight Operator allocation weight
+    function setDepositAllocationWeight(
+        uint256 curveId,
+        uint256 weight
+    ) external;
+
     /// @notice Unset max withdrawal request fee for the curveId
     /// @param curveId Curve Id to unset max withdrawal request fee for
     function unsetMaxWithdrawalRequestFee(uint256 curveId) external;
+
+    /// @notice Unset operator allocation weight for the curveId
+    /// @param curveId Curve Id to unset operator allocation weight for
+    function unsetDepositAllocationWeight(uint256 curveId) external;
 
     /// @notice Get max withdrawal request fee by the curveId
     /// @dev `defaultMaxWithdrawalRequestFee` is returned if the value is not set for the given curveId.
@@ -542,6 +568,13 @@ interface IParametersRegistry {
     function getMaxWithdrawalRequestFee(
         uint256 curveId
     ) external view returns (uint256 fee);
+
+    /// @notice Get operator allocation weight by the curveId
+    /// @dev `defaultDepositAllocationWeight` is returned if the value is not set for the given curveId.
+    /// @param curveId Curve Id to get operator allocation weight for
+    function getDepositAllocationWeight(
+        uint256 curveId
+    ) external view returns (uint256 weight);
 
     /// @notice Returns the initialized version of the contract
     function getInitializedVersion() external view returns (uint64);

@@ -43,7 +43,8 @@ contract ParametersRegistryBaseTest is Test, Utilities, Fixtures {
             defaultSyncWeight: 2,
             defaultAllowedExitDelay: 1 days,
             defaultExitDelayFee: 0.05 ether,
-            defaultMaxWithdrawalRequestFee: 0.1 ether
+            defaultMaxWithdrawalRequestFee: 0.1 ether,
+            defaultDepositAllocationWeight: 1
         });
     }
 }
@@ -96,6 +97,10 @@ contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
             defaultInitData.defaultAttestationsWeight,
             defaultInitData.defaultBlocksWeight,
             defaultInitData.defaultSyncWeight
+        );
+        vm.expectEmit(address(parametersRegistry));
+        emit IParametersRegistry.DefaultDepositAllocationWeightSet(
+            defaultInitData.defaultDepositAllocationWeight
         );
         vm.expectEmit(address(parametersRegistry));
         emit IParametersRegistry.DefaultQueueConfigSet(
@@ -183,6 +188,10 @@ contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
         assertEq(
             parametersRegistry.defaultMaxWithdrawalRequestFee(),
             defaultInitData.defaultMaxWithdrawalRequestFee
+        );
+        assertEq(
+            parametersRegistry.defaultDepositAllocationWeight(),
+            defaultInitData.defaultDepositAllocationWeight
         );
 
         assertEq(parametersRegistry.getInitializedVersion(), 1);
@@ -2393,5 +2402,129 @@ contract ParametersRegistryMaxWithdrawalRequestFeeTest is
         feeOut = parametersRegistry.getMaxWithdrawalRequestFee(curveId);
 
         assertEq(feeOut, defaultInitData.defaultMaxWithdrawalRequestFee);
+    }
+}
+
+contract ParametersRegistryDepositAllocationWeightTest is
+    ParametersRegistryBaseTestInitialized,
+    ParametersTest
+{
+    function setUp() public virtual override {
+        super.setUp();
+        vm.startPrank(admin);
+        parametersRegistry.grantRole(
+            parametersRegistry.MANAGE_ALLOCATION_WEIGHTS_ROLE(),
+            roleMember
+        );
+        vm.stopPrank();
+    }
+
+    function test_setDefault() public override {
+        _test_set_default(roleMember);
+    }
+
+    function test_setDefault_FromRoleAdmin() public override {
+        _test_set_default(admin);
+    }
+
+    function test_setDefault_RevertWhen_noRole() public override {
+        uint256 weight = 42;
+
+        bytes32 role = parametersRegistry.MANAGE_ALLOCATION_WEIGHTS_ROLE();
+        expectRoleRevert(stranger, role);
+        vm.prank(stranger);
+        parametersRegistry.setDefaultDepositAllocationWeight(weight);
+    }
+
+    function test_set() public override {
+        _test_set(roleMember);
+    }
+
+    function test_set_FromRoleAdmin() public override {
+        _test_set(admin);
+    }
+
+    function test_set_RevertWhen_noRole() public override {
+        uint256 curveId = 1;
+        uint256 weight = 77;
+
+        bytes32 role = parametersRegistry.MANAGE_ALLOCATION_WEIGHTS_ROLE();
+        expectRoleRevert(stranger, role);
+        vm.prank(stranger);
+        parametersRegistry.setDepositAllocationWeight(curveId, weight);
+    }
+
+    function test_unset() public override {
+        _test_unset(roleMember);
+    }
+
+    function test_unset_FromRoleAdmin() public override {
+        _test_unset(admin);
+    }
+
+    function test_unset_RevertWhen_noRole() public override {
+        uint256 curveId = 1;
+
+        bytes32 role = parametersRegistry.MANAGE_ALLOCATION_WEIGHTS_ROLE();
+        expectRoleRevert(stranger, role);
+        vm.prank(stranger);
+        parametersRegistry.unsetDepositAllocationWeight(curveId);
+    }
+
+    function test_get_usualData() public override {
+        uint256 curveId = 2;
+        uint256 weight = 11;
+
+        vm.prank(admin);
+        parametersRegistry.setDepositAllocationWeight(curveId, weight);
+
+        uint256 out = parametersRegistry.getDepositAllocationWeight(curveId);
+
+        assertEq(out, weight);
+    }
+
+    function test_get_defaultData() public view override {
+        uint256 curveId = 10;
+        uint256 out = parametersRegistry.getDepositAllocationWeight(curveId);
+
+        assertEq(out, defaultInitData.defaultDepositAllocationWeight);
+    }
+
+    function _test_set_default(address from) internal {
+        uint256 weight = 9;
+
+        vm.expectEmit(address(parametersRegistry));
+        emit IParametersRegistry.DefaultDepositAllocationWeightSet(weight);
+        vm.prank(from);
+        parametersRegistry.setDefaultDepositAllocationWeight(weight);
+
+        assertEq(parametersRegistry.defaultDepositAllocationWeight(), weight);
+    }
+
+    function _test_set(address from) internal {
+        uint256 curveId = 3;
+        uint256 weight = 15;
+
+        vm.expectEmit(address(parametersRegistry));
+        emit IParametersRegistry.DepositAllocationWeightSet(curveId, weight);
+        vm.prank(from);
+        parametersRegistry.setDepositAllocationWeight(curveId, weight);
+    }
+
+    function _test_unset(address from) internal {
+        uint256 curveId = 4;
+        uint256 weight = 21;
+
+        vm.prank(from);
+        parametersRegistry.setDepositAllocationWeight(curveId, weight);
+
+        uint256 out = parametersRegistry.getDepositAllocationWeight(curveId);
+        assertEq(out, weight);
+
+        vm.prank(from);
+        parametersRegistry.unsetDepositAllocationWeight(curveId);
+
+        out = parametersRegistry.getDepositAllocationWeight(curveId);
+        assertEq(out, defaultInitData.defaultDepositAllocationWeight);
     }
 }

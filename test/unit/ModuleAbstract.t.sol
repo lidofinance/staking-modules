@@ -53,6 +53,7 @@ abstract contract ModuleFixtures is
     }
 
     uint256 public constant BOND_SIZE = 2 ether;
+    uint256 internal constant KEYS_UPLOAD_BATCH = 50;
 
     LidoLocatorMock public locator;
     WstETHMock public wstETH;
@@ -197,10 +198,21 @@ abstract contract ModuleFixtures is
     }
 
     function uploadMoreKeys(uint256 noId, uint256 keysCount) internal {
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
-        );
-        uploadMoreKeys(noId, keysCount, keys, signatures);
+        uint256 remaining = keysCount;
+        uint256 startIndex;
+
+        while (remaining > 0) {
+            uint256 batch = remaining > KEYS_UPLOAD_BATCH
+                ? KEYS_UPLOAD_BATCH
+                : remaining;
+            (bytes memory keys, bytes memory signatures) = keysSignatures(
+                batch,
+                startIndex
+            );
+            uploadMoreKeys(noId, batch, keys, signatures);
+            remaining -= batch;
+            startIndex += batch;
+        }
     }
 
     function unvetKeys(uint256 noId, uint256 to) internal {
@@ -7387,6 +7399,7 @@ abstract contract ModuleStakingRouterAccessControl is ModuleFixtures {
 
     function test_stakingRouterRole_onWithdrawalCredentialsChanged_noDepositable()
         public
+        virtual
     {
         bytes32 role = module.STAKING_ROUTER_ROLE();
         vm.prank(admin);
@@ -7488,31 +7501,24 @@ abstract contract ModuleDepositableValidatorsCount is ModuleFixtures {
         createNodeOperator(2);
         module.obtainDepositData(4, "");
 
-        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
-        assertEq(getStakingModuleSummary().depositableValidatorsCount, 5);
+        uint256 depositableBefore = module
+            .getNodeOperator(noId)
+            .depositableValidatorsCount;
+        uint256 totalDepositableBefore = getStakingModuleSummary()
+            .depositableValidatorsCount;
         module.unsafeUpdateValidatorsCount({
             nodeOperatorId: noId,
             exitedValidatorsKeysCount: 1
         });
-        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
-        assertEq(getStakingModuleSummary().depositableValidatorsCount, 5);
-    }
-
-    function test_depositableValidatorsCountDoesntChange_OnUnsafeUpdateStuckValidators()
-        public
-    {
-        uint256 noId = createNodeOperator(7);
-        createNodeOperator(2);
-        module.obtainDepositData(4, "");
-
-        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
-        assertEq(getStakingModuleSummary().depositableValidatorsCount, 5);
-        module.unsafeUpdateValidatorsCount({
-            nodeOperatorId: noId,
-            exitedValidatorsKeysCount: 0
-        });
-        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
-        assertEq(getStakingModuleSummary().depositableValidatorsCount, 5);
+        // values are the same
+        assertEq(
+            module.getNodeOperator(noId).depositableValidatorsCount,
+            depositableBefore
+        );
+        assertEq(
+            getStakingModuleSummary().depositableValidatorsCount,
+            totalDepositableBefore
+        );
     }
 
     function test_depositableValidatorsCountChanges_OnUnvetKeys()
@@ -8109,6 +8115,9 @@ abstract contract ModuleSupportsInterface is ModuleFixtures {
 }
 
 abstract contract ModuleMisc is ModuleFixtures {
+    function test_getInitializedVersion() public view virtual {
+        assertEq(module.getInitializedVersion(), 3);
+    }
     function test_getActiveNodeOperatorsCount_OneOperator()
         public
         assertInvariants
