@@ -342,8 +342,8 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(
                 TwoPhaseFrameConfigUpdate.UnexpectedRefSlot.selector,
-                expectedOffsetPhaseSlot,
-                wrongSlot
+                wrongSlot,
+                expectedOffsetPhaseSlot
             )
         );
         updater.executeOffsetPhase();
@@ -367,7 +367,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         updater.executeOffsetPhase();
 
         vm.expectRevert(
-            TwoPhaseFrameConfigUpdate.OffsetPhaseAlreadyExecuted.selector
+            TwoPhaseFrameConfigUpdate.PhaseAlreadyExecuted.selector
         );
         updater.executeOffsetPhase();
     }
@@ -523,8 +523,8 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(
                 TwoPhaseFrameConfigUpdate.UnexpectedRefSlot.selector,
-                restoreExpectedSlot,
-                wrongSlot
+                wrongSlot,
+                restoreExpectedSlot
             )
         );
         updater.executeRestorePhase();
@@ -556,7 +556,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         updater.executeRestorePhase();
 
         vm.expectRevert(
-            TwoPhaseFrameConfigUpdate.RestorePhaseAlreadyExecuted.selector
+            TwoPhaseFrameConfigUpdate.PhaseAlreadyExecuted.selector
         );
         updater.executeRestorePhase();
     }
@@ -731,7 +731,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         );
     }
 
-    function test_getPhaseConfigs() public {
+    function test_phaseStatesInitialized() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
             memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // restorePhase uses defaults
 
@@ -741,9 +741,19 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         createUpdater(phasesConfig);
 
         (
-            TwoPhaseFrameConfigUpdate.PhaseState memory offsetPhaseState,
-            TwoPhaseFrameConfigUpdate.PhaseState memory restorePhaseState
-        ) = updater.getPhaseConfigs();
+            uint256 offsetExpectedProcessingRefSlot,
+            ,
+            uint256 offsetEpochsPerFrame,
+            uint256 offsetFastLaneLengthSlots,
+            bool offsetExecuted
+        ) = updater.offsetPhase();
+        (
+            uint256 restoreExpectedProcessingRefSlot,
+            ,
+            uint256 restoreEpochsPerFrame,
+            uint256 restoreFastLaneLengthSlots,
+            bool restoreExecuted
+        ) = updater.restorePhase();
 
         uint256 expectedOffsetPhaseSlot = calculateExpectedSlot(
             fromRefSlot,
@@ -756,27 +766,21 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             EPOCHS_PER_DAY
         );
 
+        assertEq(offsetExpectedProcessingRefSlot, expectedOffsetPhaseSlot);
+        assertEq(offsetEpochsPerFrame, EPOCHS_PER_DAY); // offsetPhase config uses 1 day (225 epochs)
         assertEq(
-            offsetPhaseState.expectedProcessingRefSlot,
-            expectedOffsetPhaseSlot
-        );
-        assertEq(offsetPhaseState.epochsPerFrame, EPOCHS_PER_DAY); // offsetPhase config uses 1 day (225 epochs)
-        assertEq(
-            offsetPhaseState.fastLaneLengthSlots,
+            offsetFastLaneLengthSlots,
             phasesConfig.finalFastLaneLengthSlots
         );
-        assertFalse(offsetPhaseState.executed);
+        assertFalse(offsetExecuted);
 
+        assertEq(restoreExpectedProcessingRefSlot, expectedRestorePhaseSlot);
+        assertEq(restoreEpochsPerFrame, DEFAULT_EPOCHS_PER_FRAME);
         assertEq(
-            restorePhaseState.expectedProcessingRefSlot,
-            expectedRestorePhaseSlot
-        );
-        assertEq(restorePhaseState.epochsPerFrame, DEFAULT_EPOCHS_PER_FRAME);
-        assertEq(
-            restorePhaseState.fastLaneLengthSlots,
+            restoreFastLaneLengthSlots,
             phasesConfig.finalFastLaneLengthSlots
         );
-        assertFalse(restorePhaseState.executed);
+        assertFalse(restoreExecuted);
     }
 
     function test_readinessStates() public {

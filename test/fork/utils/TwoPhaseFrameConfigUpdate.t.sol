@@ -221,17 +221,12 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         }
 
         {
-            (
-                TwoPhaseFrameConfigUpdate.PhaseState memory offsetPhaseState,
-                TwoPhaseFrameConfigUpdate.PhaseState memory restorePhaseState
-            ) = updater.getPhaseConfigs();
+            (, , , , bool offsetPhaseExecuted) = updater.offsetPhase();
+            (, , , , bool restorePhaseExecuted) = updater.restorePhase();
 
+            assertTrue(offsetPhaseExecuted, "Offset phase should be executed");
             assertTrue(
-                offsetPhaseState.executed,
-                "Offset phase should be executed"
-            );
-            assertTrue(
-                restorePhaseState.executed,
+                restorePhaseExecuted,
                 "Restore phase should be executed"
             );
         }

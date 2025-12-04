@@ -68,11 +68,10 @@ contract TwoPhaseFrameConfigUpdate {
     error ZeroFromRefSlot();
     error FastLanePeriodCannotBeLongerThanFrame();
 
-    error OffsetPhaseAlreadyExecuted();
-    error RestorePhaseAlreadyExecuted();
+    error PhaseAlreadyExecuted();
     error OffsetPhaseNotExecuted();
     error PhaseExpired(uint256 currentRefSlot, uint256 deadlineRefSlot);
-    error UnexpectedRefSlot(uint256 expected, uint256 actual);
+    error UnexpectedRefSlot(uint256 actual, uint256 expected);
 
     constructor(address oracle, PhasesConfig memory phasesConfig) {
         if (oracle == address(0)) {
@@ -167,18 +166,14 @@ contract TwoPhaseFrameConfigUpdate {
 
     /// @dev Executes the offset phase when oracle is at the expected pivot ref slot but before expiration.
     function executeOffsetPhase() external {
-        PhaseState storage p = offsetPhase;
-        if (p.executed) {
-            revert OffsetPhaseAlreadyExecuted();
-        }
-        _ensurePhaseAlignment(p);
+        PhaseState storage phase = offsetPhase;
+        _validate(phase);
+        HASH_CONSENSUS.setFrameConfig(
+            phase.epochsPerFrame,
+            phase.fastLaneLengthSlots
+        );
 
-        uint256 epochsPerFrame = p.epochsPerFrame;
-        uint256 fastLaneLength = p.fastLaneLengthSlots;
-
-        HASH_CONSENSUS.setFrameConfig(epochsPerFrame, fastLaneLength);
-
-        p.executed = true;
+        phase.executed = true;
         emit OffsetPhaseExecuted();
     }
 
@@ -188,18 +183,14 @@ contract TwoPhaseFrameConfigUpdate {
         if (!offsetPhase.executed) {
             revert OffsetPhaseNotExecuted();
         }
-        PhaseState storage p = restorePhase;
-        if (p.executed) {
-            revert RestorePhaseAlreadyExecuted();
-        }
-        _ensurePhaseAlignment(p);
+        PhaseState storage phase = restorePhase;
+        _validate(phase);
+        HASH_CONSENSUS.setFrameConfig(
+            phase.epochsPerFrame,
+            phase.fastLaneLengthSlots
+        );
 
-        uint256 epochsPerFrame = p.epochsPerFrame;
-        uint256 fastLaneLength = p.fastLaneLengthSlots;
-
-        HASH_CONSENSUS.setFrameConfig(epochsPerFrame, fastLaneLength);
-
-        p.executed = true;
+        phase.executed = true;
         emit RestorePhaseExecuted();
 
         _renounceRole();
@@ -208,40 +199,21 @@ contract TwoPhaseFrameConfigUpdate {
     /// @dev Fallback to renounce the role if phases are expired.
     function renounceRoleWhenExpired() external {
         uint256 currentSlot = _getCurrentSlot();
-        bool offsetPhaseExpired = _isPhaseExpiredAtSlot(
-            offsetPhase,
-            currentSlot
-        );
-        bool restorePhaseExpired = _isPhaseExpiredAtSlot(
-            restorePhase,
-            currentSlot
-        );
-        if (offsetPhaseExpired || restorePhaseExpired) {
+
+        // If offset phase is expired, both phases cannot be executed anymore
+        if (_isExpired(offsetPhase, currentSlot)) {
+            _renounceRole();
+            return;
+        }
+
+        if (_isExpired(restorePhase, currentSlot)) {
             _renounceRole();
         }
     }
 
-    function _renounceRole() internal {
-        IAccessControl(address(HASH_CONSENSUS)).renounceRole(
-            HASH_CONSENSUS.MANAGE_FRAME_CONFIG_ROLE(),
-            address(this)
-        );
-    }
-
-    function getPhaseConfigs()
-        external
-        view
-        returns (
-            PhaseState memory offsetConfig,
-            PhaseState memory restoreConfig
-        )
-    {
-        return (offsetPhase, restorePhase);
-    }
-
     function isReadyForOffsetPhase() external view returns (bool ready) {
         uint256 currentSlot = _getCurrentSlot();
-        return _canExecutePhaseAtSlot(offsetPhase, currentSlot);
+        return _isReady(offsetPhase, currentSlot);
     }
 
     function isReadyForRestorePhase() external view returns (bool ready) {
@@ -249,7 +221,7 @@ contract TwoPhaseFrameConfigUpdate {
             return false;
         }
         uint256 currentSlot = _getCurrentSlot();
-        return _canExecutePhaseAtSlot(restorePhase, currentSlot);
+        return _isReady(restorePhase, currentSlot);
     }
 
     function getExpirationStatus()
@@ -259,82 +231,67 @@ contract TwoPhaseFrameConfigUpdate {
     {
         uint256 currentSlot = _getCurrentSlot();
         return (
-            _isPhaseExpiredAtSlot(offsetPhase, currentSlot),
-            _isPhaseExpiredAtSlot(restorePhase, currentSlot)
+            _isExpired(offsetPhase, currentSlot),
+            _isExpired(restorePhase, currentSlot)
         );
+    }
+
+    function _renounceRole() internal {
+        IAccessControl(address(HASH_CONSENSUS)).renounceRole(
+            HASH_CONSENSUS.MANAGE_FRAME_CONFIG_ROLE(),
+            address(this)
+        );
+    }
+
+    function _validate(PhaseState storage phaseState) internal view {
+        if (phaseState.executed) {
+            revert PhaseAlreadyExecuted();
+        }
+
+        (
+            bool hasExpectedRefSlot,
+            uint256 lastProcessingRefSlot
+        ) = _hasExpectedRefSlot(phaseState);
+        if (!hasExpectedRefSlot) {
+            revert UnexpectedRefSlot(
+                lastProcessingRefSlot,
+                phaseState.expectedProcessingRefSlot
+            );
+        }
+
+        uint256 currentSlot = _getCurrentSlot();
+        uint256 expirationSlot = phaseState.expirationSlot;
+        if (currentSlot >= expirationSlot) {
+            revert PhaseExpired(currentSlot, expirationSlot);
+        }
     }
 
     function _getCurrentSlot() internal view returns (uint256 currentSlot) {
         return (block.timestamp - GENESIS_TIME) / SECONDS_PER_SLOT;
     }
 
-    function _isPhaseExpiredAtSlot(
+    function _isReady(
+        PhaseState storage phaseState,
+        uint256 currentSlot
+    ) internal view returns (bool ready) {
+        if (phaseState.executed || currentSlot >= phaseState.expirationSlot) {
+            return false;
+        }
+        (ready, ) = _hasExpectedRefSlot(phaseState);
+    }
+
+    function _isExpired(
         PhaseState storage phaseState,
         uint256 currentSlot
     ) internal view returns (bool expired) {
         return !phaseState.executed && currentSlot >= phaseState.expirationSlot;
     }
 
-    function _canExecutePhaseAtSlot(
-        PhaseState storage phaseState,
-        uint256 currentSlot
-    ) internal view returns (bool) {
-        if (phaseState.executed) {
-            return false;
-        }
-
-        return
-            _hasExpectedRefSlot(phaseState) &&
-            _isBeforeExpirationAtSlot(phaseState, currentSlot);
-    }
-
-    function _ensurePhaseAlignment(
-        PhaseState storage phaseState
-    ) internal view {
-        _ensureExpectedRefSlot(phaseState);
-        _ensureNotExpired(phaseState);
-    }
-
-    function _ensureExpectedRefSlot(
-        PhaseState storage phaseState
-    ) internal view {
-        (bool matches, uint256 lastProcessingRefSlot) = _refSlotMatches(
-            phaseState
-        );
-        if (!matches) {
-            revert UnexpectedRefSlot(
-                phaseState.expectedProcessingRefSlot,
-                lastProcessingRefSlot
-            );
-        }
-    }
-
-    function _ensureNotExpired(PhaseState storage phaseState) internal view {
-        uint256 currentSlot = _getCurrentSlot();
-        if (!_isBeforeExpirationAtSlot(phaseState, currentSlot)) {
-            revert PhaseExpired(currentSlot, phaseState.expirationSlot);
-        }
-    }
-
     function _hasExpectedRefSlot(
-        PhaseState storage phaseState
-    ) internal view returns (bool) {
-        (bool matches, ) = _refSlotMatches(phaseState);
-        return matches;
-    }
-
-    function _refSlotMatches(
         PhaseState storage phaseState
     ) internal view returns (bool matches, uint256 lastProcessingRefSlot) {
         lastProcessingRefSlot = ORACLE.getLastProcessingRefSlot();
         matches = lastProcessingRefSlot == phaseState.expectedProcessingRefSlot;
-    }
-
-    function _isBeforeExpirationAtSlot(
-        PhaseState storage phaseState,
-        uint256 currentSlot
-    ) internal view returns (bool) {
-        return currentSlot < phaseState.expirationSlot;
     }
 
     function _ensureFastLaneFitsFrame(
