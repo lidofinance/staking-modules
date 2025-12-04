@@ -219,6 +219,68 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         );
     }
 
+    function test_constructor_RevertWhen_FastLanePeriodTooLong() public {
+        // Phase 1 fast lane longer than frame
+        TwoPhaseFrameConfigUpdate.PhaseConfig
+            memory phase1Config = createPhaseConfig(
+                1,
+                1,
+                dayToEpochs(1) * SLOTS_PER_EPOCH + 1
+            );
+        TwoPhaseFrameConfigUpdate.PhaseConfig
+            memory phase2Config = createPhaseConfig(1, 1, 300);
+        vm.expectRevert(
+            TwoPhaseFrameConfigUpdate
+                .FastLanePeriodCannotBeLongerThanFrame
+                .selector
+        );
+        new TwoPhaseFrameConfigUpdate(
+            address(mockFeeOracle),
+            phase1Config,
+            phase2Config
+        );
+
+        // Phase 2 fast lane longer than frame
+        phase1Config = createPhaseConfig(1, 1, 300);
+        phase2Config = createPhaseConfig(
+            1,
+            2,
+            2 * dayToEpochs(1) * SLOTS_PER_EPOCH + 1
+        );
+        vm.expectRevert(
+            TwoPhaseFrameConfigUpdate
+                .FastLanePeriodCannotBeLongerThanFrame
+                .selector
+        );
+        new TwoPhaseFrameConfigUpdate(
+            address(mockFeeOracle),
+            phase1Config,
+            phase2Config
+        );
+
+        // Both phases with fast lane longer than frame
+        phase1Config = createPhaseConfig(
+            1,
+            3,
+            3 * dayToEpochs(1) * SLOTS_PER_EPOCH + 1
+        );
+        phase2Config = createPhaseConfig(
+            1,
+            4,
+            4 * dayToEpochs(1) * SLOTS_PER_EPOCH + 1
+        );
+        vm.expectRevert(
+            TwoPhaseFrameConfigUpdate
+                .FastLanePeriodCannotBeLongerThanFrame
+                .selector
+        );
+        new TwoPhaseFrameConfigUpdate(
+            address(mockFeeOracle),
+            phase1Config,
+            phase2Config
+        );
+    }
+
     function test_constructor_RevertWhen_Phase1AlreadyExpired() public {
         TwoPhaseFrameConfigUpdate.PhaseConfig
             memory phase1Config = createPhaseConfig(1, 1, 10); // 1 report, 1 day, 10 fast lane slots

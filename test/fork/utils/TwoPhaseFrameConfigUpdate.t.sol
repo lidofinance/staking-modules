@@ -219,70 +219,93 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         );
     }
 
-    function test_constructorRevertsFastLanePeriodCannotBeLongerThanFrame()
-        public
-    {
-        // Test Phase 1 fast lane longer than frame
+    function test_renounceRoleWhenPhase1Expired() public {
+        (
+            uint256 slotsPerEpoch,
+            uint256 secondsPerSlot,
+            uint256 genesisTime
+        ) = hashConsensus.getChainConfig();
+
         TwoPhaseFrameConfigUpdate.PhaseConfig
-            memory phase1Config = createPhaseConfig(
-                1,
-                1,
-                dayToEpochs(1) * SLOTS_PER_EPOCH + 1
-            );
+            memory phase1Config = createPhaseConfig(1, 31, 300);
         TwoPhaseFrameConfigUpdate.PhaseConfig
-            memory phase2Config = createPhaseConfig(1, 1, 300);
+            memory phase2Config = createPhaseConfig(1, 28, 300);
 
-        vm.expectRevert(
-            TwoPhaseFrameConfigUpdate
-                .FastLanePeriodCannotBeLongerThanFrame
-                .selector
-        );
-        new TwoPhaseFrameConfigUpdate(
+        updater = new TwoPhaseFrameConfigUpdate(
             address(oracle),
             phase1Config,
             phase2Config
         );
 
-        // Test Phase 2 fast lane longer than frame
-        phase1Config = createPhaseConfig(1, 1, 300);
-        phase2Config = createPhaseConfig(
-            1,
-            2,
-            2 * dayToEpochs(1) * SLOTS_PER_EPOCH + 1
-        );
+        bytes32 manageFrameRole = hashConsensus.MANAGE_FRAME_CONFIG_ROLE();
+        bytes32 adminRole = hashConsensus.getRoleAdmin(manageFrameRole);
+        address admin = hashConsensus.getRoleMember(adminRole, 0);
+        vm.prank(admin);
+        hashConsensus.grantRole(manageFrameRole, address(updater));
 
-        vm.expectRevert(
-            TwoPhaseFrameConfigUpdate
-                .FastLanePeriodCannotBeLongerThanFrame
-                .selector
+        (, uint256 phase1ExpirationSlot, , , ) = updater.phase1();
+
+        // Warp past phase 1 expiration without executing any phases
+        vm.warp(genesisTime + (phase1ExpirationSlot + 1) * secondsPerSlot);
+
+        updater.renounceRoleWhenExpired();
+
+        assertFalse(
+            hashConsensus.hasRole(manageFrameRole, address(updater)),
+            "Role should be renounced when phase 1 expired"
         );
-        new TwoPhaseFrameConfigUpdate(
+    }
+
+    function test_renounceRoleWhenPhase2ExpiredAfterPhase1() public {
+        (
+            uint256 slotsPerEpoch,
+            uint256 secondsPerSlot,
+            uint256 genesisTime
+        ) = hashConsensus.getChainConfig();
+
+        TwoPhaseFrameConfigUpdate.PhaseConfig
+            memory phase1Config = createPhaseConfig(1, 31, 300);
+        TwoPhaseFrameConfigUpdate.PhaseConfig
+            memory phase2Config = createPhaseConfig(1, 28, 300);
+
+        updater = new TwoPhaseFrameConfigUpdate(
             address(oracle),
             phase1Config,
             phase2Config
         );
 
-        // Test both phases with fast lane longer than frame
-        phase1Config = createPhaseConfig(
-            1,
-            3,
-            3 * dayToEpochs(1) * SLOTS_PER_EPOCH + 1
-        );
-        phase2Config = createPhaseConfig(
-            1,
-            4,
-            4 * dayToEpochs(1) * SLOTS_PER_EPOCH + 1
+        bytes32 manageFrameRole = hashConsensus.MANAGE_FRAME_CONFIG_ROLE();
+        bytes32 adminRole = hashConsensus.getRoleAdmin(manageFrameRole);
+        address admin = hashConsensus.getRoleMember(adminRole, 0);
+        vm.prank(admin);
+        hashConsensus.grantRole(manageFrameRole, address(updater));
+
+        (uint256 phase1ExpectedProcessingRefSlot, , , , ) = updater.phase1();
+
+        // Mock oracle ref slot to allow phase 1 execution
+        vm.mockCall(
+            address(oracle),
+            abi.encodeWithSignature("getLastProcessingRefSlot()"),
+            abi.encode(phase1ExpectedProcessingRefSlot)
         );
 
-        vm.expectRevert(
-            TwoPhaseFrameConfigUpdate
-                .FastLanePeriodCannotBeLongerThanFrame
-                .selector
+        // Warp into the phase 1 frame window
+        vm.warp(
+            genesisTime + (phase1ExpectedProcessingRefSlot + 1) * secondsPerSlot
         );
-        new TwoPhaseFrameConfigUpdate(
-            address(oracle),
-            phase1Config,
-            phase2Config
+
+        updater.executePhase1();
+
+        (, uint256 phase2ExpirationSlot, , , ) = updater.phase2();
+
+        // Warp past phase 2 expiration without executing it
+        vm.warp(genesisTime + (phase2ExpirationSlot + 1) * secondsPerSlot);
+
+        updater.renounceRoleWhenExpired();
+
+        assertFalse(
+            hashConsensus.hasRole(manageFrameRole, address(updater)),
+            "Role should be renounced when phase 2 expired after phase 1 execution"
         );
     }
 }
