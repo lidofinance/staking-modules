@@ -46,8 +46,8 @@ jobs:
         run: cargo install "just@$JUST_TAG"
         if: steps.get-cache.outputs.cache-hit != 'true'
 
-  test:
-    name: Integration & Invariant tests
+  regression-tests:
+    name: Regression tests
     runs-on: ubuntu-latest
     needs: bootstrap
     steps:
@@ -55,13 +55,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set FOUNDRY_VERSION
-        run: echo "FOUNDRY_VERSION=$(head .foundryref)" >> "$GITHUB_ENV"
-
       - uses: actions/cache@v4
         with:
           path: ${{ needs.bootstrap.outputs.cache-path }}
           key: ${{ needs.bootstrap.outputs.cache-key }}
+
+      - name: Set FOUNDRY_VERSION
+        run: echo "FOUNDRY_VERSION=$(head .foundryref)" >> "$GITHUB_ENV"
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -78,17 +78,22 @@ jobs:
       - name: Install dependencies
         run: just deps
 
-      # TODO: Remove `continue-on-error` after making the contracts fit.
-      - name: Build
-        run: just build --sizes
-        continue-on-error: true
-
-      - name: Run post-vote tests
-        run: just test-post-voting
+      - name: Start mainnet fork
         env:
-          CHAIN: mainnet
-          DEPLOY_CONFIG: ./artifacts/mainnet/deploy-mainnet.json
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+        run: just make-fork &
+
+      - name: Run regression tests
+        uses: ./.github/actions/regression-tests
+        with:
+          repository: ${{ github.repository }}
+          ref: v2.0 # Run the stable v2.0 release tests
+          path: community-staking-module-v2
+          rpc_url: http://127.0.0.1:8545
+
+      - name: Kill fork
+        if: always()
+        run: just kill-fork
 
       - name: Echo embeds to the env variable
         if: ${{ failure() && (github.event_name == 'schedule' || inputs.notify) }}

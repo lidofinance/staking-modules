@@ -1,0 +1,82 @@
+name: "Regression tests"
+description: "Checkout and run regression tests for community-staking-module"
+
+inputs:
+  rpc_url:
+    description: "RPC URL injected as RPC_URL env for fork tests."
+    required: true
+  repository:
+    description: "Repository to checkout (owner/repo)."
+    required: false
+    default: "lidofinance/community-staking-module"
+  ref:
+    description: "Git ref of the repository to test."
+    required: false
+    default: "main"
+  path:
+    description: "Path to checkout the repository."
+    required: false
+    default: "community-staking-module"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout community-staking-module
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ inputs.repository }}
+        ref: ${{ inputs.ref }}
+        path: ${{ inputs.path }}
+
+    - name: Set env vars
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: |
+        echo "FOUNDRY_VERSION=$(head .foundryref)" >> "$GITHUB_ENV"
+        echo "JUST_TAG=1.24.0" >> "$GITHUB_ENV"
+
+    - name: Cache just
+      id: just-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/bin/
+        key: cargobin-${{ runner.os }}-just-${{ env.JUST_TAG }}
+
+    - name: Install just
+      shell: bash
+      run: |
+        if ! command -v just >/dev/null 2>&1; then
+          cargo install "just@${JUST_TAG}"
+        fi
+
+    - name: Install Foundry
+      uses: foundry-rs/foundry-toolchain@v1
+      with:
+        version: ${{ env.FOUNDRY_VERSION }}
+
+    - name: Install node
+      uses: actions/setup-node@v4
+      with:
+        node-version-file: "${{ inputs.path }}/.nvmrc"
+        cache: yarn
+        cache-dependency-path: "${{ inputs.path }}/**/yarn.lock"
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: just deps
+
+    - name: Build
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: just build
+
+    - name: Run regression tests
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: just test-integration
+      env:
+        RPC_URL: ${{ inputs.rpc_url }}
+        CHAIN: mainnet
+        DEPLOY_CONFIG: ./artifacts/mainnet/upgrade-v2-mainnet.json
+        FOUNDRY_PROFILE: ci
