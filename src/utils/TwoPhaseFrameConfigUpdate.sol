@@ -8,7 +8,7 @@ import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.so
 import { IReportAsyncProcessor } from "../lib/base-oracle/interfaces/IReportAsyncProcessor.sol";
 import { IConsensusContract } from "../lib/base-oracle/interfaces/IConsensusContract.sol";
 
-/// @notice A helper to offset CSM\CM Oracle report cadence (e.g., move report window by N epochs).
+/// @notice A helper to offset Oracle report cadence (e.g., move report window by N epochs).
 ///         This is achieved via a two-phase frame configuration update
 ///         in HashConsensus contract used by Oracle:
 ///         - Phase 1: set new frame size (shorter or longer than original) and fast lane length
