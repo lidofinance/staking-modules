@@ -10,7 +10,7 @@ import { MockConsensusContract } from "../helpers/mocks/ConsensusContractMock.so
 
 contract TwoPhaseFrameConfigUpdateTest is Test {
     TwoPhaseFrameConfigUpdate public updater;
-    ReportProcessorMock public mockFeeOracle;
+    ReportProcessorMock public mockOracle;
     MockConsensusContract public mockConsensus;
 
     // Network constants
@@ -71,33 +71,33 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             0, // fastLaneLengthSlots
             mockMember
         );
-        mockFeeOracle = new ReportProcessorMock(1);
-        mockFeeOracle.setConsensusContract(address(mockConsensus));
+        mockOracle = new ReportProcessorMock(1);
+        mockOracle.setConsensusContract(address(mockConsensus));
     }
 
     function mockLastProcessingRefSlot(uint256 lastProcessingRefSlot) internal {
-        mockFeeOracle.setLastProcessingStartedRefSlot(lastProcessingRefSlot);
+        mockOracle.setLastProcessingStartedRefSlot(lastProcessingRefSlot);
     }
 
     function createUpdater(
         TwoPhaseFrameConfigUpdate.PhasesConfig memory phasesConfig
     ) internal {
         updater = new TwoPhaseFrameConfigUpdate(
-            address(mockFeeOracle),
+            address(mockOracle),
             phasesConfig
         );
     }
 
     function createPhasesConfig(
-        uint256 beforeOffsetPhaseReportsToProcess,
-        uint256 beforeRestorePhaseReportsToProcess,
+        uint256 reportsToProcessBeforeOffsetPhase,
+        uint256 reportsToProcessBeforeRestorePhase,
         uint256 daysPerFrame,
         uint256 fastLaneSlots
     ) internal pure returns (TwoPhaseFrameConfigUpdate.PhasesConfig memory) {
         return
             TwoPhaseFrameConfigUpdate.PhasesConfig({
-                beforeOffsetPhaseReportsToProcess: beforeOffsetPhaseReportsToProcess,
-                beforeRestorePhaseReportsToProcess: beforeRestorePhaseReportsToProcess,
+                reportsToProcessBeforeOffsetPhase: reportsToProcessBeforeOffsetPhase,
+                reportsToProcessBeforeRestorePhase: reportsToProcessBeforeRestorePhase,
                 offsetPhaseEpochsPerFrame: dayToEpochs(daysPerFrame),
                 finalFastLaneLengthSlots: fastLaneSlots
             });
@@ -123,7 +123,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         mockLastProcessingRefSlot(fromRefSlot);
         createUpdater(phasesConfig);
 
-        assertEq(address(updater.FEE_ORACLE()), address(mockFeeOracle));
+        assertEq(address(updater.ORACLE()), address(mockOracle));
         assertEq(address(updater.HASH_CONSENSUS()), address(mockConsensus));
 
         (uint256 offsetExpectedProcessingRefSlot, , , , ) = updater
@@ -148,39 +148,37 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         TwoPhaseFrameConfigUpdate.PhasesConfig
             memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // restorePhase uses defaults
 
-        // Zero fee oracle address
-        vm.expectRevert(
-            TwoPhaseFrameConfigUpdate.ZeroFeeOracleAddress.selector
-        );
+        // Zero oracle address
+        vm.expectRevert(TwoPhaseFrameConfigUpdate.ZeroOracleAddress.selector);
         new TwoPhaseFrameConfigUpdate(address(0), phasesConfig);
 
         // Zero from ref slot
-        mockFeeOracle.setLastProcessingStartedRefSlot(0);
+        mockOracle.setLastProcessingStartedRefSlot(0);
         vm.expectRevert(TwoPhaseFrameConfigUpdate.ZeroFromRefSlot.selector);
-        new TwoPhaseFrameConfigUpdate(address(mockFeeOracle), phasesConfig);
+        new TwoPhaseFrameConfigUpdate(address(mockOracle), phasesConfig);
 
         // Zero reportsToProcess for offsetPhase
         uint256 testDay = 10;
-        mockFeeOracle.setLastProcessingStartedRefSlot(epochEndSlot(testDay));
-        phasesConfig.beforeOffsetPhaseReportsToProcess = 0;
+        mockOracle.setLastProcessingStartedRefSlot(epochEndSlot(testDay));
+        phasesConfig.reportsToProcessBeforeOffsetPhase = 0;
         vm.expectRevert(
             TwoPhaseFrameConfigUpdate.ZeroReportsPassedToEnableUpdate.selector
         );
-        new TwoPhaseFrameConfigUpdate(address(mockFeeOracle), phasesConfig);
+        new TwoPhaseFrameConfigUpdate(address(mockOracle), phasesConfig);
 
         // Zero reportsToProcess for restorePhase
-        phasesConfig.beforeOffsetPhaseReportsToProcess = 1;
-        phasesConfig.beforeRestorePhaseReportsToProcess = 0;
+        phasesConfig.reportsToProcessBeforeOffsetPhase = 1;
+        phasesConfig.reportsToProcessBeforeRestorePhase = 0;
         vm.expectRevert(
             TwoPhaseFrameConfigUpdate.ZeroReportsPassedToEnableUpdate.selector
         );
-        new TwoPhaseFrameConfigUpdate(address(mockFeeOracle), phasesConfig);
+        new TwoPhaseFrameConfigUpdate(address(mockOracle), phasesConfig);
 
         // Zero epochsPerFrame for offsetPhase
-        phasesConfig.beforeRestorePhaseReportsToProcess = 2;
+        phasesConfig.reportsToProcessBeforeRestorePhase = 2;
         phasesConfig.offsetPhaseEpochsPerFrame = 0;
         vm.expectRevert(TwoPhaseFrameConfigUpdate.ZeroEpochsPerFrame.selector);
-        new TwoPhaseFrameConfigUpdate(address(mockFeeOracle), phasesConfig);
+        new TwoPhaseFrameConfigUpdate(address(mockOracle), phasesConfig);
     }
 
     function test_constructor_RevertWhen_FastLanePeriodTooLong() public {
@@ -199,7 +197,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
                 .FastLanePeriodCannotBeLongerThanFrame
                 .selector
         );
-        new TwoPhaseFrameConfigUpdate(address(mockFeeOracle), phasesConfig);
+        new TwoPhaseFrameConfigUpdate(address(mockOracle), phasesConfig);
     }
 
     function test_constructor_DefaultsRestorePhaseConfig() public {
@@ -222,13 +220,13 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
         // offsetExpected = fromRef + 1 report * currentEpochsPerFrame * slotsPerEpoch
         uint256 offsetExpectedProcessingRefSlot = fromRefSlot +
-            (phasesConfig.beforeOffsetPhaseReportsToProcess *
+            (phasesConfig.reportsToProcessBeforeOffsetPhase *
                 DEFAULT_EPOCHS_PER_FRAME *
                 SLOTS_PER_EPOCH);
 
         // restorePhase expected uses offsetPhase frame length
         uint256 expectedRestorePhaseProcessingRefSlot = offsetExpectedProcessingRefSlot +
-                (phasesConfig.beforeRestorePhaseReportsToProcess *
+                (phasesConfig.reportsToProcessBeforeRestorePhase *
                     phasesConfig.offsetPhaseEpochsPerFrame *
                     SLOTS_PER_EPOCH);
         assertEq(
@@ -271,7 +269,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
         uint256 offsetExpectedSlot = calculateExpectedSlot({
             fromRefSlot: fromRefSlot,
-            reportsToProcess: phasesConfig.beforeOffsetPhaseReportsToProcess,
+            reportsToProcess: phasesConfig.reportsToProcessBeforeOffsetPhase,
             epochsPerFrame: DEFAULT_EPOCHS_PER_FRAME
         });
         uint256 offsetDeadlineSlot = calculateExpirationSlot(
@@ -290,7 +288,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
                 offsetDeadlineSlot
             )
         );
-        new TwoPhaseFrameConfigUpdate(address(mockFeeOracle), phasesConfig);
+        new TwoPhaseFrameConfigUpdate(address(mockOracle), phasesConfig);
     }
 
     function test_executeOffsetPhase_Success() public {
@@ -305,10 +303,10 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         // Calculate expected offset phase slot
         uint256 offsetExpectedSlot = calculateExpectedSlot({
             fromRefSlot: fromRefSlot,
-            reportsToProcess: phasesConfig.beforeOffsetPhaseReportsToProcess,
+            reportsToProcess: phasesConfig.reportsToProcessBeforeOffsetPhase,
             epochsPerFrame: DEFAULT_EPOCHS_PER_FRAME
         });
-        mockFeeOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
+        mockOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
 
         assertTrue(updater.isReadyForOffsetPhase());
         assertFalse(updater.isReadyForRestorePhase());
@@ -335,11 +333,11 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
         uint256 expectedOffsetPhaseSlot = calculateExpectedSlot({
             fromRefSlot: fromRefSlot,
-            reportsToProcess: phasesConfig.beforeOffsetPhaseReportsToProcess,
+            reportsToProcess: phasesConfig.reportsToProcessBeforeOffsetPhase,
             epochsPerFrame: DEFAULT_EPOCHS_PER_FRAME
         });
         uint256 wrongSlot = 7000;
-        mockFeeOracle.setLastProcessingStartedRefSlot(wrongSlot);
+        mockOracle.setLastProcessingStartedRefSlot(wrongSlot);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -362,10 +360,10 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
         uint256 offsetExpectedSlot = calculateExpectedSlot({
             fromRefSlot: fromRefSlot,
-            reportsToProcess: phasesConfig.beforeOffsetPhaseReportsToProcess,
+            reportsToProcess: phasesConfig.reportsToProcessBeforeOffsetPhase,
             epochsPerFrame: DEFAULT_EPOCHS_PER_FRAME
         });
-        mockFeeOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
+        mockOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
         updater.executeOffsetPhase();
 
         vm.expectRevert(
@@ -385,10 +383,10 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
         uint256 offsetExpectedSlot = calculateExpectedSlot({
             fromRefSlot: fromRefSlot,
-            reportsToProcess: phasesConfig.beforeOffsetPhaseReportsToProcess,
+            reportsToProcess: phasesConfig.reportsToProcessBeforeOffsetPhase,
             epochsPerFrame: DEFAULT_EPOCHS_PER_FRAME
         });
-        mockFeeOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
+        mockOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
 
         uint256 deadlineSlot = calculateExpirationSlot(
             offsetExpectedSlot,
@@ -428,7 +426,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             1,
             DEFAULT_EPOCHS_PER_FRAME
         );
-        mockFeeOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
+        mockOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
         updater.executeOffsetPhase();
 
         // Execute Restore phase
@@ -437,7 +435,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             2,
             EPOCHS_PER_DAY
         );
-        mockFeeOracle.setLastProcessingStartedRefSlot(restoreExpectedSlot);
+        mockOracle.setLastProcessingStartedRefSlot(restoreExpectedSlot);
 
         assertTrue(updater.isReadyForRestorePhase());
         vm.expectEmit(address(updater));
@@ -487,7 +485,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             2,
             EPOCHS_PER_DAY
         );
-        mockFeeOracle.setLastProcessingStartedRefSlot(restoreExpectedSlot);
+        mockOracle.setLastProcessingStartedRefSlot(restoreExpectedSlot);
 
         vm.expectRevert(
             TwoPhaseFrameConfigUpdate.OffsetPhaseNotExecuted.selector
@@ -511,7 +509,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             1,
             DEFAULT_EPOCHS_PER_FRAME
         );
-        mockFeeOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
+        mockOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
         updater.executeOffsetPhase();
 
         uint256 restoreExpectedSlot = calculateExpectedSlot(
@@ -520,7 +518,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             EPOCHS_PER_DAY
         );
         uint256 wrongSlot = 16000; // Some arbitrary wrong slot
-        mockFeeOracle.setLastProcessingStartedRefSlot(wrongSlot);
+        mockOracle.setLastProcessingStartedRefSlot(wrongSlot);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -546,7 +544,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             1,
             DEFAULT_EPOCHS_PER_FRAME
         );
-        mockFeeOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
+        mockOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
         updater.executeOffsetPhase();
 
         uint256 restoreExpectedSlot = calculateExpectedSlot(
@@ -554,7 +552,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             2,
             EPOCHS_PER_DAY
         );
-        mockFeeOracle.setLastProcessingStartedRefSlot(restoreExpectedSlot);
+        mockOracle.setLastProcessingStartedRefSlot(restoreExpectedSlot);
         updater.executeRestorePhase();
 
         vm.expectRevert(
@@ -577,7 +575,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             1,
             DEFAULT_EPOCHS_PER_FRAME
         );
-        mockFeeOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
+        mockOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
         updater.executeOffsetPhase();
 
         uint256 restoreExpectedSlot = calculateExpectedSlot(
@@ -585,7 +583,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             2,
             EPOCHS_PER_DAY
         );
-        mockFeeOracle.setLastProcessingStartedRefSlot(restoreExpectedSlot);
+        mockOracle.setLastProcessingStartedRefSlot(restoreExpectedSlot);
 
         // Calculate deadline: expected slot + min frame duration
         uint256 deadlineSlot = calculateExpirationSlot(
@@ -675,7 +673,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             1,
             DEFAULT_EPOCHS_PER_FRAME
         );
-        mockFeeOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
+        mockOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
         updater.executeOffsetPhase();
 
         // Calculate when restore phase expires and set time past that
@@ -800,7 +798,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             1,
             DEFAULT_EPOCHS_PER_FRAME
         );
-        mockFeeOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
+        mockOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
         assertTrue(updater.isReadyForOffsetPhase());
         assertFalse(updater.isReadyForRestorePhase());
 
@@ -815,7 +813,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             2,
             EPOCHS_PER_DAY
         );
-        mockFeeOracle.setLastProcessingStartedRefSlot(restoreExpectedSlot);
+        mockOracle.setLastProcessingStartedRefSlot(restoreExpectedSlot);
         assertFalse(updater.isReadyForOffsetPhase());
         assertTrue(updater.isReadyForRestorePhase());
 
@@ -860,7 +858,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         // Execute offset phase (reset time first to before any deadlines)
         uint256 safeTime = offsetExpectedSlot * SECONDS_PER_SLOT;
         vm.warp(safeTime);
-        mockFeeOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
+        mockOracle.setLastProcessingStartedRefSlot(offsetExpectedSlot);
         updater.executeOffsetPhase();
 
         // Calculate restore phase deadline
@@ -883,7 +881,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
         // Execute restore phase (reset time first)
         vm.warp(restoreExpectedSlot * SECONDS_PER_SLOT);
-        mockFeeOracle.setLastProcessingStartedRefSlot(restoreExpectedSlot);
+        mockOracle.setLastProcessingStartedRefSlot(restoreExpectedSlot);
         updater.executeRestorePhase();
 
         // Neither expired (both executed)

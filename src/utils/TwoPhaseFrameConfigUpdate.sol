@@ -27,9 +27,9 @@ import { IConsensusContract } from "../lib/base-oracle/interfaces/IConsensusCont
 contract TwoPhaseFrameConfigUpdate {
     struct PhasesConfig {
         /// @notice Reports to process from `lastProcessingRefSlot` at deployment to enable the offset phase.
-        uint256 beforeOffsetPhaseReportsToProcess;
+        uint256 reportsToProcessBeforeOffsetPhase;
         /// @notice Reports to process after offset phase completion to enable the restore phase.
-        uint256 beforeRestorePhaseReportsToProcess;
+        uint256 reportsToProcessBeforeRestorePhase;
         /// @notice Offset phase epochs per frame.
         uint256 offsetPhaseEpochsPerFrame;
         /// @notice Offset fast lane length in slots (kept for restore).
@@ -38,7 +38,7 @@ contract TwoPhaseFrameConfigUpdate {
 
     struct PhaseState {
         /// @notice Expected oracle's last processing ref slot for phase execution.
-        ///         This phase can be executed when FEE_ORACLE.getLastProcessingRefSlot()
+        ///         This phase can be executed when ORACLE.getLastProcessingRefSlot()
         ///         equals this value (i.e., oracle has processed the expected number of reports).
         uint256 expectedProcessingRefSlot;
         /// @notice Slot when this phase expires.
@@ -50,7 +50,7 @@ contract TwoPhaseFrameConfigUpdate {
         bool executed;
     }
 
-    IReportAsyncProcessor public immutable FEE_ORACLE;
+    IReportAsyncProcessor public immutable ORACLE;
     IConsensusContract public immutable HASH_CONSENSUS;
     uint256 public immutable SECONDS_PER_SLOT;
     uint256 public immutable GENESIS_TIME;
@@ -62,7 +62,7 @@ contract TwoPhaseFrameConfigUpdate {
     event OffsetPhaseExecuted();
     event RestorePhaseExecuted();
 
-    error ZeroFeeOracleAddress();
+    error ZeroOracleAddress();
     error ZeroEpochsPerFrame();
     error ZeroReportsPassedToEnableUpdate();
     error ZeroFromRefSlot();
@@ -74,16 +74,16 @@ contract TwoPhaseFrameConfigUpdate {
     error PhaseExpired(uint256 currentRefSlot, uint256 deadlineRefSlot);
     error UnexpectedRefSlot(uint256 expected, uint256 actual);
 
-    constructor(address feeOracle, PhasesConfig memory phasesConfig) {
-        if (feeOracle == address(0)) {
-            revert ZeroFeeOracleAddress();
+    constructor(address oracle, PhasesConfig memory phasesConfig) {
+        if (oracle == address(0)) {
+            revert ZeroOracleAddress();
         }
 
-        if (phasesConfig.beforeOffsetPhaseReportsToProcess == 0) {
+        if (phasesConfig.reportsToProcessBeforeOffsetPhase == 0) {
             revert ZeroReportsPassedToEnableUpdate();
         }
 
-        if (phasesConfig.beforeRestorePhaseReportsToProcess == 0) {
+        if (phasesConfig.reportsToProcessBeforeRestorePhase == 0) {
             revert ZeroReportsPassedToEnableUpdate();
         }
 
@@ -91,8 +91,8 @@ contract TwoPhaseFrameConfigUpdate {
             revert ZeroEpochsPerFrame();
         }
 
-        FEE_ORACLE = IReportAsyncProcessor(feeOracle);
-        HASH_CONSENSUS = IConsensusContract(FEE_ORACLE.getConsensusContract());
+        ORACLE = IReportAsyncProcessor(oracle);
+        HASH_CONSENSUS = IConsensusContract(ORACLE.getConsensusContract());
 
         (
             uint256 slotsPerEpoch,
@@ -104,35 +104,33 @@ contract TwoPhaseFrameConfigUpdate {
         GENESIS_TIME = genesisTime;
 
         (, uint256 currentEpochsPerFrame, ) = HASH_CONSENSUS.getFrameConfig();
-        uint256 lastProcessingRefSlot = FEE_ORACLE.getLastProcessingRefSlot();
+        uint256 lastProcessingRefSlot = ORACLE.getLastProcessingRefSlot();
 
         if (lastProcessingRefSlot == 0) {
             revert ZeroFromRefSlot();
         }
 
+        uint256 minEpochsPerFrame = currentEpochsPerFrame <
+            phasesConfig.offsetPhaseEpochsPerFrame
+            ? currentEpochsPerFrame
+            : phasesConfig.offsetPhaseEpochsPerFrame;
+
         _ensureFastLaneFitsFrame(
-            currentEpochsPerFrame,
-            phasesConfig.finalFastLaneLengthSlots,
-            slotsPerEpoch
-        );
-        _ensureFastLaneFitsFrame(
-            phasesConfig.offsetPhaseEpochsPerFrame,
+            minEpochsPerFrame,
             phasesConfig.finalFastLaneLengthSlots,
             slotsPerEpoch
         );
 
         // Calculate pivot ref slot for the offset phase (based on last processing ref slot at deployment time)
         uint256 offsetExpectedProcessingRefSlot = lastProcessingRefSlot +
-            (phasesConfig.beforeOffsetPhaseReportsToProcess *
+            (phasesConfig.reportsToProcessBeforeOffsetPhase *
                 currentEpochsPerFrame *
                 slotsPerEpoch);
 
         // Calculate deadline for the offset phase (before next original frame report processing or next frame with new possible config)
         uint256 offsetExpirationSlot = offsetExpectedProcessingRefSlot +
-            (_min(
-                currentEpochsPerFrame,
-                phasesConfig.offsetPhaseEpochsPerFrame
-            ) * slotsPerEpoch);
+            minEpochsPerFrame *
+            slotsPerEpoch;
 
         uint256 currentSlot = _getCurrentSlot();
         if (currentSlot >= offsetExpirationSlot) {
@@ -141,16 +139,14 @@ contract TwoPhaseFrameConfigUpdate {
 
         // Calculate pivot ref slot for the restore phase (based on offset phase completion)
         uint256 restoreExpectedProcessingRefSlot = offsetExpectedProcessingRefSlot +
-                (phasesConfig.beforeRestorePhaseReportsToProcess *
+                (phasesConfig.reportsToProcessBeforeRestorePhase *
                     phasesConfig.offsetPhaseEpochsPerFrame *
                     slotsPerEpoch);
 
         // Calculate deadline for the restore phase (before next offset-phase frame report processing or next possible frame with new config)
         uint256 restoreExpirationSlot = restoreExpectedProcessingRefSlot +
-            (_min(
-                phasesConfig.offsetPhaseEpochsPerFrame,
-                currentEpochsPerFrame
-            ) * slotsPerEpoch);
+            minEpochsPerFrame *
+            slotsPerEpoch;
 
         offsetPhase = PhaseState({
             expectedProcessingRefSlot: offsetExpectedProcessingRefSlot,
@@ -330,7 +326,7 @@ contract TwoPhaseFrameConfigUpdate {
     function _refSlotMatches(
         PhaseState storage phaseState
     ) internal view returns (bool matches, uint256 lastProcessingRefSlot) {
-        lastProcessingRefSlot = FEE_ORACLE.getLastProcessingRefSlot();
+        lastProcessingRefSlot = ORACLE.getLastProcessingRefSlot();
         matches = lastProcessingRefSlot == phaseState.expectedProcessingRefSlot;
     }
 
@@ -349,9 +345,5 @@ contract TwoPhaseFrameConfigUpdate {
         if (fastLaneLengthSlots > epochsPerFrame * slotsPerEpoch) {
             revert FastLanePeriodCannotBeLongerThanFrame();
         }
-    }
-
-    function _min(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a < b ? a : b;
     }
 }

@@ -19,15 +19,15 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
     }
 
     function createPhasesConfig(
-        uint256 beforeOffsetPhaseReportsToProcess,
-        uint256 beforeRestorePhaseReportsToProcess,
+        uint256 reportsToProcessBeforeOffsetPhase,
+        uint256 reportsToProcessBeforeRestorePhase,
         uint256 daysPerFrame,
         uint256 fastLaneSlots
     ) internal pure returns (TwoPhaseFrameConfigUpdate.PhasesConfig memory) {
         return
             TwoPhaseFrameConfigUpdate.PhasesConfig({
-                beforeOffsetPhaseReportsToProcess: beforeOffsetPhaseReportsToProcess,
-                beforeRestorePhaseReportsToProcess: beforeRestorePhaseReportsToProcess,
+                reportsToProcessBeforeOffsetPhase: reportsToProcessBeforeOffsetPhase,
+                reportsToProcessBeforeRestorePhase: reportsToProcessBeforeRestorePhase,
                 offsetPhaseEpochsPerFrame: dayToEpochs(daysPerFrame),
                 finalFastLaneLengthSlots: fastLaneSlots
             });
