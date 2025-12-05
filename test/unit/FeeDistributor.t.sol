@@ -138,6 +138,14 @@ contract FeeDistributorInitTest is FeeDistributorTestBase {
         feeDistributor.initialize(address(this), address(0));
     }
 
+    function test_initialize_RevertWhen_calledTwice() public {
+        _enableInitializers(address(feeDistributor));
+        feeDistributor.initialize(address(this), rebateRecipient);
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        feeDistributor.initialize(address(this), rebateRecipient);
+    }
+
     function test_finalizeUpgradeV2() public {
         _enableInitializers(address(feeDistributor));
 
@@ -154,6 +162,14 @@ contract FeeDistributorInitTest is FeeDistributorTestBase {
 
         vm.expectRevert(IFeeDistributor.ZeroRebateRecipientAddress.selector);
         feeDistributor.finalizeUpgradeV2(address(0));
+    }
+
+    function test_finalizeUpgradeV2_RevertWhen_calledTwice() public {
+        _enableInitializers(address(feeDistributor));
+        feeDistributor.finalizeUpgradeV2(rebateRecipient);
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        feeDistributor.finalizeUpgradeV2(rebateRecipient);
     }
 }
 
@@ -211,13 +227,17 @@ contract FeeDistributorTest is FeeDistributorTestBase {
         emit IFeeDistributor.OperatorFeeDistributed(nodeOperatorId, shares);
 
         vm.prank(address(accounting));
-        feeDistributor.distributeFees({
+        uint256 returned = feeDistributor.distributeFees({
             proof: proof,
             nodeOperatorId: nodeOperatorId,
             cumulativeFeeShares: shares
         });
 
+        assertEq(returned, shares);
         assertEq(stETH.sharesOf(address(accounting)), shares);
+        assertEq(feeDistributor.distributedShares(nodeOperatorId), shares);
+        assertEq(feeDistributor.totalClaimableShares(), 0);
+        assertEq(feeDistributor.pendingSharesToDistribute(), 0);
     }
 
     function test_getFeesToDistribute_notDistributedYet()
@@ -309,6 +329,35 @@ contract FeeDistributorTest is FeeDistributorTestBase {
         });
     }
 
+    function test_getFeesToDistribute_RevertWhen_InvalidProofContents() public {
+        uint256 nodeOperatorId = 42;
+        uint256 shares = 100;
+        uint256 refSlot = 154;
+        tree.pushLeaf(abi.encode(nodeOperatorId, shares));
+        tree.pushLeaf(abi.encode(type(uint64).max, 0));
+        bytes32[] memory proof = tree.getProof(0);
+        bytes32 root = tree.root();
+
+        stETH.mintShares(address(feeDistributor), shares);
+        vm.prank(oracle);
+        feeDistributor.processOracleReport(
+            root,
+            someCIDv0(),
+            someCIDv0(),
+            shares,
+            0,
+            refSlot
+        );
+
+        // tamper the proof leaf by changing cumulativeFeeShares
+        vm.expectRevert(IFeeDistributor.InvalidProof.selector);
+        feeDistributor.getFeesToDistribute({
+            proof: proof,
+            nodeOperatorId: nodeOperatorId,
+            cumulativeFeeShares: shares + 1
+        });
+    }
+
     function test_getHistoricalDistributionData() public {
         uint256 shares = 100;
         uint256 rebate = 10;
@@ -357,6 +406,9 @@ contract FeeDistributorTest is FeeDistributorTestBase {
             refSlot
         );
 
+        uint256 initialHistoryLength = feeDistributor
+            .distributionDataHistoryCount();
+
         shares = 120;
         rebate = 10;
         refSlot = 155;
@@ -376,6 +428,7 @@ contract FeeDistributorTest is FeeDistributorTestBase {
         );
 
         uint256 historyLength = feeDistributor.distributionDataHistoryCount();
+        assertEq(historyLength, initialHistoryLength + 1);
 
         IFeeDistributor.DistributionData memory data = feeDistributor
             .getHistoricalDistributionData(historyLength - 1);
@@ -386,6 +439,10 @@ contract FeeDistributorTest is FeeDistributorTestBase {
         assertEq(data.logCid, logCid);
         assertEq(data.distributed, shares);
         assertEq(data.rebate, rebate);
+
+        // previous record remains intact
+        data = feeDistributor.getHistoricalDistributionData(historyLength - 2);
+        assertEq(data.refSlot, 154);
     }
 
     function test_hashLeaf() public assertInvariants {
@@ -669,6 +726,17 @@ contract FeeDistributorTest is FeeDistributorTestBase {
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
         assertEq(entries.length, 2);
+
+        IFeeDistributor.DistributionData memory last = feeDistributor
+            .getHistoricalDistributionData(
+                feeDistributor.distributionDataHistoryCount() - 1
+            );
+        assertEq(last.treeRoot, treeRootOld);
+        assertEq(last.treeCid, treeCidOld);
+        assertEq(last.logCid, logCid);
+        assertEq(last.distributed, shares);
+        assertEq(last.rebate, rebate);
+        assertEq(last.refSlot, refSlot);
 
         assertEq(feeDistributor.treeRoot(), treeRootOld);
         assertEq(feeDistributor.treeCid(), treeCidOld);
@@ -1062,5 +1130,17 @@ contract FeeDistributorAssetRecovererTest is FeeDistributorTestBase {
         vm.prank(recoverer);
         vm.expectRevert(IAssetRecovererLib.NotAllowedToRecover.selector);
         feeDistributor.recoverERC20(address(stETH), 1000);
+    }
+
+    function test_recoverERC721_RevertWhen_Unauthorized() public {
+        expectRoleRevert(stranger, feeDistributor.RECOVERER_ROLE());
+        vm.prank(stranger);
+        feeDistributor.recoverERC721(address(1), 1);
+    }
+
+    function test_recoverERC1155_RevertWhen_Unauthorized() public {
+        expectRoleRevert(stranger, feeDistributor.RECOVERER_ROLE());
+        vm.prank(stranger);
+        feeDistributor.recoverERC1155(address(1), 1);
     }
 }
