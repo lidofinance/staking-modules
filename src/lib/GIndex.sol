@@ -81,21 +81,16 @@ function concat(GIndex lhs, GIndex rhs) pure returns (GIndex) {
         pack((lindex << rhsMSbIndex) | (rindex ^ (1 << rhsMSbIndex)), pow(rhs));
 }
 
-/// @dev From Solady LibBit, see https://github.com/Vectorized/solady/blob/main/src/utils/LibBit.sol.
 /// @dev Find last set.
 /// Returns the index of the most significant bit of `x`,
 /// counting from the least significant bit position.
 /// If `x` is zero, returns 256.
 function fls(uint256 x) pure returns (uint256 r) {
+    if (x == 0) {
+        return 256;
+    }
+
     assembly ("memory-safe") {
-        // prettier-ignore
-        r := or(shl(8, iszero(x)), shl(7, lt(0xffffffffffffffffffffffffffffffff, x)))
-        r := or(r, shl(6, lt(0xffffffffffffffff, shr(r, x))))
-        r := or(r, shl(5, lt(0xffffffff, shr(r, x))))
-        r := or(r, shl(4, lt(0xffff, shr(r, x))))
-        r := or(r, shl(3, lt(0xff, shr(r, x))))
-        // prettier-ignore
-        r := or(r, byte(and(0x1f, shr(shr(r, x), 0x8421084210842108cc6318c6db6d54be)),
-                0x0706060506020504060203020504030106050205030304010505030400000000))
+        r := sub(255, clz(x))
     }
 }

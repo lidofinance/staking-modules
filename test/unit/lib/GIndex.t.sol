@@ -4,6 +4,8 @@ pragma solidity 0.8.31;
 
 import { Test } from "forge-std/Test.sol";
 
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+
 import { GIndex, pack, IndexOutOfRange, fls } from "src/lib/GIndex.sol";
 
 // Wrap the library internal methods to make an actual call to them.
@@ -23,6 +25,8 @@ contract Library {
 }
 
 contract GIndexTest is Test {
+    using Strings for uint256;
+
     GIndex internal ZERO = GIndex.wrap(bytes32(0));
     GIndex internal ROOT =
         GIndex.wrap(
@@ -31,8 +35,6 @@ contract GIndexTest is Test {
     GIndex internal MAX = GIndex.wrap(bytes32(type(uint256).max));
 
     Library internal lib;
-
-    error Log2Undefined();
 
     function setUp() public {
         lib = new Library();
@@ -327,17 +329,28 @@ contract GIndexTest is Test {
         assertEq(lib.shl(lib.shr(gI, shift), shift).unwrap(), gI.unwrap());
     }
 
-    function test_fls() public pure {
+    function test_fls() public {
         for (uint256 i = 1; i < 255; i++) {
-            assertEq(fls((1 << i) - 1), i - 1);
-            assertEq(fls((1 << i)), i);
-            assertEq(fls((1 << i) + 1), i);
+            uint256 n;
+
+            n = (1 << i) - 1;
+            assertEq(fls(n), i - 1, string.concat("fls(", n.toString(), ")"));
+
+            n = (1 << i);
+            assertEq(fls(n), i, string.concat("fls(", n.toString(), ")"));
+
+            n = (1 << i) + 1;
+            assertEq(fls(n), i, string.concat("fls(", n.toString(), ")"));
         }
 
-        assertEq(fls(3), 1); // 0011
-        assertEq(fls(7), 2); // 0101
-        assertEq(fls(10), 3); // 1010
-        assertEq(fls(300), 8); // 0001 0010 1100
-        assertEq(fls(0), 256);
+        assertEq(fls(0), 256, "fls(0)");
+        assertEq(fls(3), 1, "fls(3)"); // 0011
+        assertEq(fls(7), 2, "fls(7)"); // 0101
+        assertEq(fls(10), 3, "fls(10)"); // 1010
+        assertEq(fls(300), 8, "fls(300)"); // 0001 0010 1100
+
+        vm.startSnapshotGas("GIndex.fls");
+        fls(31337);
+        vm.stopSnapshotGas();
     }
 }
