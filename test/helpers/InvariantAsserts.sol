@@ -167,6 +167,7 @@ contract InvariantAsserts is Test {
 
         bytes32 value;
 
+        // _legacyQueue
         value = vm.load(address(module), bytes32(uint256(1)));
         assertEq(value, bytes32(0), "assert slot(1) is empty");
 
