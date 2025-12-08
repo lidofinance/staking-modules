@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
 // See contracts/COMPILERS.md
-pragma solidity 0.8.24;
+pragma solidity 0.8.31;
 
 import { IStakingModule } from "../interfaces/IStakingModule.sol";
 

@@ -1,6 +1,6 @@
 [profile.default]
-solc = "0.8.24"
-evm_version = "cancun"
+solc = "0.8.31"
+evm_version = "osaka"
 optimizer = true
 optimizer_runs = 0 # REVISE IN THE FUTURE
 bytecode_hash = "none" # The metadata hash removed from the bytecode (not the metadata itself).
