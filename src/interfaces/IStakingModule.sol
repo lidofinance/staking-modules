@@ -230,28 +230,30 @@ interface IStakingModule {
 
 interface IStakingModuleV2 {
     /// @notice Method to get from module public keys for top up and amount that should be topped up. Module also verify that keys belong to module and revert if got wrong data
-    /// @param depositAmount Deposit amount for top up
+    /// @param depositAmount Deposit amount for top up in gwei
     /// @param packedPubkeys Packed list of pubkeys
     /// @param keyIndices List of keys' indices
     /// @param operatorIds List of operator indices
-    /// @param topUpLimitsGwei List of gwei amount that can be deposited to key based on Cl data and SR logic
+    /// @param topUpLimits List of gwei amount that can be deposited to key based on Cl data and SR logic
     function obtainDepositData(
         uint256 depositAmount,
         bytes calldata packedPubkeys,
         uint256[] calldata keyIndices,
         uint256[] calldata operatorIds,
-        uint256[] calldata topUpLimitsGwei
+        uint256[] calldata topUpLimits
     )
         external
         returns (bytes[] memory publicKeys, uint256[] memory allocations);
 
     /// @notice Method called Third phase not
     /// @param operatorIds Indices of operators
-    /// @param balances Effective and pending balances
+    /// @param validatorsBalancesGwei Total validator balance nominated in Gwei
+    /// @param pendingBalancesGwei Total validator pending balance nominated in Gwei
     /// @param refSlot Accounting oracle ref slot
     function updateOperatorBalances(
-        bytes calldata operatorIds,
-        bytes calldata balances,
+        uint256[] calldata operatorIds,
+        uint256[] calldata validatorsBalancesGwei,
+        uint256[] calldata pendingBalancesGwei,
         uint256 refSlot
     ) external;
 }

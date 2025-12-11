@@ -16,7 +16,7 @@ import { NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo 
 import { IBaseModule } from "../interfaces/IBaseModule.sol";
 import { INodeOperatorOwner } from "../interfaces/INodeOperatorOwner.sol";
 
-import { QueueLib } from "../lib/QueueLib.sol";
+import { DepositQueueLib } from "../lib/DepositQueueLib.sol";
 import { SigningKeys } from "../lib/SigningKeys.sol";
 import { GeneralPenalty } from "../lib/GeneralPenaltyLib.sol";
 import { PausableUntil } from "../lib/utils/PausableUntil.sol";
@@ -29,8 +29,8 @@ import { AssetRecoverer } from "./AssetRecoverer.sol";
 
 abstract contract ModuleLinearStorage {
     /// @dev Having this mapping here to preserve the current layout of the storage of the CSModule.
-    mapping(uint256 queuePriority => QueueLib.Queue queue)
-        internal _queueByPriority;
+    mapping(uint256 priority => DepositQueueLib.Queue queue)
+        internal _depositQueueByPriority;
 
     bytes32 internal __freeSlot1;
     bytes32 internal __freeSlot2;
@@ -119,7 +119,7 @@ abstract contract BaseModule is
     }
 
     /// @notice initialize the module from scratch
-    function initialize(address admin) external reinitializer(2) {
+    function _initialize(address admin) internal {
         if (admin == address(0)) {
             revert ZeroAdminAddress();
         }
@@ -741,21 +741,6 @@ abstract contract BaseModule is
     /// @inheritdoc IStakingModule
     function getType() external view returns (bytes32) {
         return MODULE_TYPE;
-    }
-
-    /// @inheritdoc IStakingModule
-    function getStakingModuleSummary()
-        external
-        view
-        returns (
-            uint256 totalExitedValidators,
-            uint256 totalDepositedValidators,
-            uint256 depositableValidatorsCount
-        )
-    {
-        totalExitedValidators = _totalExitedValidators;
-        totalDepositedValidators = _totalDepositedValidators;
-        depositableValidatorsCount = _depositableValidatorsCount;
     }
 
     /// @inheritdoc IBaseModule

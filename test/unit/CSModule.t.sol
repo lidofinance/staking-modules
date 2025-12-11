@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
+
 pragma solidity 0.8.31;
 
 import { CommonBase } from "forge-std/Base.sol";
@@ -10,6 +11,7 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { CSModule } from "src/CSModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { ParametersRegistryMock } from "../helpers/mocks/ParametersRegistryMock.sol";
+import { ITopUpQueueLib } from "src/lib/TopUpQueueLib.sol";
 import { ICSModule } from "src/interfaces/ICSModule.sol";
 
 import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
@@ -22,12 +24,11 @@ contract CSMCommon is ModuleFixtures {
     using Strings for uint256;
     using Strings for uint128;
 
+    CSModule csm;
+    uint32 topUpQueueLimit;
+
     function moduleType() internal pure override returns (ModuleType) {
         return ModuleType.Community;
-    }
-
-    function getModule() internal view virtual returns (ICSModule) {
-        return ICSModule(address(module));
     }
 
     function setUp() public virtual {
@@ -65,11 +66,12 @@ contract CSMCommon is ModuleFixtures {
             accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
+        csm = CSModule(address(module));
 
         accounting.setModule(module);
 
         _enableInitializers(address(module));
-        module.initialize({ admin: admin });
+        csm.initialize({ admin: admin, topUpQueueLimit: topUpQueueLimit });
 
         vm.startPrank(admin);
         {
@@ -82,8 +84,8 @@ contract CSMCommon is ModuleFixtures {
         _setupRolesForTests();
 
         // Just to make sure we configured defaults properly and check things properly.
-        assertNotEq(PRIORITY_QUEUE, getModule().QUEUE_LOWEST_PRIORITY());
-        REGULAR_QUEUE = uint32(getModule().QUEUE_LOWEST_PRIORITY());
+        assertNotEq(PRIORITY_QUEUE, csm.QUEUE_LOWEST_PRIORITY());
+        REGULAR_QUEUE = uint32(csm.QUEUE_LOWEST_PRIORITY());
     }
 
     function _setupRolesForTests() internal virtual {
@@ -108,7 +110,7 @@ contract CSMCommon is ModuleFixtures {
     }
 
     function _moduleInvariants() internal override {
-        assertModuleEnqueuedCount(getModule());
+        assertModuleEnqueuedCount(csm);
         assertModuleKeys(module);
         assertModuleUnusedStorageSlots(module);
     }
@@ -118,11 +120,11 @@ contract CSMCommon is ModuleFixtures {
         uint256 priority,
         BatchInfo[] memory exp
     ) internal view {
-        (uint128 curr, ) = getModule().depositQueuePointers(priority); // queue.head
+        (uint128 curr, ) = csm.depositQueuePointers(priority); // queue.head
 
         for (uint256 i = 0; i < exp.length; ++i) {
             BatchInfo memory b = exp[i];
-            Batch item = getModule().depositQueueItem(priority, curr);
+            Batch item = csm.depositQueueItem(priority, curr);
 
             assertFalse(
                 item.isNil(),
@@ -161,7 +163,7 @@ contract CSMCommon is ModuleFixtures {
         }
 
         assertTrue(
-            getModule().depositQueueItem(priority, curr).isNil(),
+            csm.depositQueueItem(priority, curr).isNil(),
             string.concat(
                 "unexpected tail of queue with priority=",
                 priority.toString()
@@ -170,10 +172,10 @@ contract CSMCommon is ModuleFixtures {
     }
 
     function _assertQueueIsEmpty() internal view {
-        for (uint256 p = 0; p <= getModule().QUEUE_LOWEST_PRIORITY(); ++p) {
-            (uint128 curr, ) = getModule().depositQueuePointers(p); // queue.head
+        for (uint256 p = 0; p <= csm.QUEUE_LOWEST_PRIORITY(); ++p) {
+            (uint128 curr, ) = csm.depositQueuePointers(p); // queue.head
             assertTrue(
-                getModule().depositQueueItem(p, curr).isNil(),
+                csm.depositQueueItem(p, curr).isNil(),
                 string.concat(
                     "queue with priority=",
                     p.toString(),
@@ -184,11 +186,11 @@ contract CSMCommon is ModuleFixtures {
     }
 
     function _printQueue() internal view {
-        for (uint256 p = 0; p <= getModule().QUEUE_LOWEST_PRIORITY(); ++p) {
-            (uint128 curr, ) = getModule().depositQueuePointers(p);
+        for (uint256 p = 0; p <= csm.QUEUE_LOWEST_PRIORITY(); ++p) {
+            (uint128 curr, ) = csm.depositQueuePointers(p);
 
             for (;;) {
-                Batch item = getModule().depositQueueItem(p, curr);
+                Batch item = csm.depositQueueItem(p, curr);
                 if (item.isNil()) {
                     break;
                 }
@@ -218,9 +220,30 @@ contract CSMCommon is ModuleFixtures {
     function _isQueueDirty(uint256 maxItems) internal returns (bool) {
         // XXX: Mimic a **eth_call** to avoid state changes.
         uint256 snapshot = vm.snapshotState();
-        (uint256 toRemove, ) = getModule().cleanDepositQueue(maxItems);
+        (uint256 toRemove, ) = csm.cleanDepositQueue(maxItems);
         vm.revertToState(snapshot);
         return toRemove > 0;
+    }
+
+    function _getTopUpQueueActive() internal view returns (bool active) {
+        (active, , ) = csm.getTopUpQueue();
+    }
+
+    function _getTopUpQueueLimit() internal view returns (uint256 limit) {
+        (, limit, ) = csm.getTopUpQueue();
+    }
+
+    function _getTopUpQueueLength() internal view returns (uint256 length) {
+        (, , length) = csm.getTopUpQueue();
+    }
+
+    function _getTopUpQueueCapacity() internal view returns (uint256) {
+        (, uint256 limit, uint256 length) = csm.getTopUpQueue();
+
+        if (limit > length) {
+            return limit - length;
+        }
+        return 0;
     }
 }
 
@@ -312,7 +335,7 @@ contract CsmInitialize is CSMCommon {
         });
 
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        csm.initialize({ admin: address(this) });
+        csm.initialize({ admin: address(this), topUpQueueLimit: 0 });
     }
 
     function test_initialize() public {
@@ -325,11 +348,11 @@ contract CsmInitialize is CSMCommon {
         });
 
         _enableInitializers(address(csm));
-        csm.initialize({ admin: address(this) });
+        csm.initialize({ admin: address(this), topUpQueueLimit: 0 });
         assertTrue(csm.hasRole(csm.DEFAULT_ADMIN_ROLE(), address(this)));
         assertEq(csm.getRoleMemberCount(csm.DEFAULT_ADMIN_ROLE()), 1);
         assertTrue(csm.isPaused());
-        assertEq(csm.getInitializedVersion(), 2);
+        assertEq(csm.getInitializedVersion(), 3);
     }
 
     function test_initialize_RevertWhen_ZeroAdminAddress() public {
@@ -343,7 +366,7 @@ contract CsmInitialize is CSMCommon {
 
         _enableInitializers(address(csm));
         vm.expectRevert(IBaseModule.ZeroAdminAddress.selector);
-        csm.initialize({ admin: address(0) });
+        csm.initialize({ admin: address(0), topUpQueueLimit: 0 });
     }
 }
 
@@ -366,6 +389,428 @@ contract CSMAddValidatorKeysNegative is
 {}
 
 contract CSMObtainDepositData is ModuleObtainDepositData, CSMCommon {}
+
+contract CSMTopUpQueue is CSMCommon {
+    function setUp() public override {
+        // Enabling the queue.
+        topUpQueueLimit = 32;
+
+        super.setUp();
+
+        vm.startPrank(admin);
+        csm.grantRole(csm.MANAGE_TOP_UP_QUEUE_ROLE(), address(this));
+        vm.stopPrank();
+    }
+
+    function test_topUpQueueDisablesUponInitializationWithZeroLimit() public {
+        csm = new CSModule({
+            moduleType: "community-staking-module",
+            lidoLocator: address(locator),
+            parametersRegistry: address(parametersRegistry),
+            accounting: address(accounting),
+            exitPenalties: address(exitPenalties)
+        });
+
+        _enableInitializers(address(csm));
+        csm.initialize({ admin: address(this), topUpQueueLimit: 0 });
+
+        assertFalse(_getTopUpQueueActive());
+    }
+
+    function test_newDepositsScheduleTopUps() public {
+        createNodeOperator(2);
+        createNodeOperator(2);
+        createNodeOperator(2);
+
+        csm.obtainDepositData(3, "");
+
+        assertEq(_getTopUpQueueLength(), 3);
+
+        uint256 noId;
+        uint256 keyIndex;
+
+        (noId, keyIndex) = csm.getTopUpQueueItem(0);
+        assertEq(noId, 0);
+        assertEq(keyIndex, 0);
+
+        (noId, keyIndex) = csm.getTopUpQueueItem(1);
+        assertEq(noId, 0);
+        assertEq(keyIndex, 1);
+
+        (noId, keyIndex) = csm.getTopUpQueueItem(2);
+        assertEq(noId, 1);
+        assertEq(keyIndex, 0);
+
+        csm.obtainDepositData(3, "");
+
+        assertEq(_getTopUpQueueLength(), 6);
+
+        (noId, keyIndex) = csm.getTopUpQueueItem(0);
+        assertEq(noId, 0);
+        assertEq(keyIndex, 0);
+
+        (noId, keyIndex) = csm.getTopUpQueueItem(1);
+        assertEq(noId, 0);
+        assertEq(keyIndex, 1);
+
+        (noId, keyIndex) = csm.getTopUpQueueItem(2);
+        assertEq(noId, 1);
+        assertEq(keyIndex, 0);
+
+        (noId, keyIndex) = csm.getTopUpQueueItem(3);
+        assertEq(noId, 1);
+        assertEq(keyIndex, 1);
+
+        (noId, keyIndex) = csm.getTopUpQueueItem(4);
+        assertEq(noId, 2);
+        assertEq(keyIndex, 0);
+
+        (noId, keyIndex) = csm.getTopUpQueueItem(5);
+        assertEq(noId, 2);
+        assertEq(keyIndex, 1);
+    }
+
+    function test_noNewDepositsWhenTopUpQueueHasNoCapacity() public {
+        csm.setTopUpQueueLimit(3);
+
+        createNodeOperator(4);
+        csm.obtainDepositData(2, "");
+
+        vm.expectRevert(ITopUpQueueLib.TopUpQueueIsFull.selector);
+        csm.obtainDepositData(2, "");
+
+        csm.obtainDepositData(1, "");
+
+        vm.expectRevert(ITopUpQueueLib.TopUpQueueIsFull.selector);
+        csm.obtainDepositData(1, "");
+    }
+
+    function test_depositsAllowedWhenTopUpQueueCapacityRestored() public {
+        csm.setTopUpQueueLimit(3);
+        assertEq(_getTopUpQueueCapacity(), 3);
+
+        createNodeOperator(5);
+        csm.obtainDepositData(3, "");
+        assertEq(_getTopUpQueueCapacity(), 0);
+
+        vm.expectRevert(ITopUpQueueLib.TopUpQueueIsFull.selector);
+        csm.obtainDepositData(1, "");
+
+        csm.setTopUpQueueLimit(4);
+        assertEq(_getTopUpQueueCapacity(), 1);
+        csm.obtainDepositData(1, "");
+
+        assertEq(_getTopUpQueueCapacity(), 0);
+        csm.obtainDepositData({
+            depositAmount: 0,
+            packedPubkeys: csm.getSigningKeys(0, 0, 1),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(0)
+        });
+        assertEq(_getTopUpQueueCapacity(), 1);
+        csm.obtainDepositData(1, "");
+    }
+
+    function test_moduleDepositableLimitedByTopUpQueueCapacity() public {
+        createNodeOperator(10);
+
+        uint256 depositable;
+
+        (, , depositable) = csm.getStakingModuleSummary();
+        assertEq(depositable, 10);
+
+        csm.setTopUpQueueLimit(3);
+        (, , depositable) = csm.getStakingModuleSummary();
+        assertEq(depositable, 3);
+
+        csm.setTopUpQueueLimit(8);
+        (, , depositable) = csm.getStakingModuleSummary();
+        assertEq(depositable, 8);
+    }
+
+    function test_topUp_RevertWhenDepositQueueDisabled() public {
+        csm = new CSModule({
+            moduleType: "community-staking-module",
+            lidoLocator: address(locator),
+            parametersRegistry: address(parametersRegistry),
+            accounting: address(accounting),
+            exitPenalties: address(exitPenalties)
+        });
+
+        _enableInitializers(address(csm));
+        csm.initialize({ admin: address(this), topUpQueueLimit: 0 });
+
+        vm.expectRevert(ICSModule.TopUpQueueDisabled.selector);
+        csm.obtainDepositData(0, hex"", UintArr(), UintArr(), UintArr());
+    }
+
+    function test_topUp_nonceDoesNotChangeWhenNoKeysProvided() public {
+        uint256 nonceBefore = csm.getNonce();
+        csm.obtainDepositData(0, hex"", UintArr(), UintArr(), UintArr());
+        assertEq(csm.getNonce(), nonceBefore);
+    }
+
+    function test_topUp_DepositAmountBelowTopUpLimit() public {
+        createNodeOperator(2);
+        csm.obtainDepositData(2, "");
+
+        assertEq(_getTopUpQueueLength(), 2);
+
+        bytes memory keys = csm.getSigningKeys(0, 0, 1);
+        csm.obtainDepositData({
+            depositAmount: 3,
+            packedPubkeys: keys,
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(4)
+        });
+
+        assertEq(_getTopUpQueueLength(), 2);
+
+        uint256 noId;
+        uint256 keyIndex;
+
+        (noId, keyIndex) = csm.getTopUpQueueItem(0);
+        assertEq(noId, 0);
+        assertEq(keyIndex, 0);
+    }
+
+    function test_topUp_DepositAmountAboveTopUpLimit() public {
+        createNodeOperator(2);
+        csm.obtainDepositData(2, "");
+
+        assertEq(_getTopUpQueueLength(), 2);
+
+        bytes memory keys = csm.getSigningKeys(0, 0, 1);
+        csm.obtainDepositData({
+            depositAmount: 4,
+            packedPubkeys: keys,
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(3)
+        });
+
+        assertEq(_getTopUpQueueLength(), 1);
+
+        uint256 noId;
+        uint256 keyIndex;
+
+        (noId, keyIndex) = csm.getTopUpQueueItem(0);
+        assertEq(noId, 0);
+        assertEq(keyIndex, 1);
+    }
+
+    function test_topUp_RemovesFullKeys() public {
+        createNodeOperator(2);
+        csm.obtainDepositData(2, "");
+
+        assertEq(_getTopUpQueueLength(), 2);
+
+        bytes memory keys = csm.getSigningKeys(0, 0, 1);
+        csm.obtainDepositData({
+            depositAmount: 0,
+            packedPubkeys: keys,
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(0)
+        });
+
+        assertEq(_getTopUpQueueLength(), 1);
+
+        uint256 noId;
+        uint256 keyIndex;
+
+        (noId, keyIndex) = csm.getTopUpQueueItem(0);
+        assertEq(noId, 0);
+        assertEq(keyIndex, 1);
+    }
+
+    function test_topUp_nonceIncrementsWhenKeysProvided() public {
+        createNodeOperator(1);
+        csm.obtainDepositData(1, "");
+
+        uint256 nonceBefore = csm.getNonce();
+
+        bytes memory keys = csm.getSigningKeys(0, 0, 1);
+        csm.obtainDepositData({
+            depositAmount: 0,
+            packedPubkeys: keys,
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(0)
+        });
+
+        assertEq(csm.getNonce(), nonceBefore + 1);
+    }
+
+    function test_topUp_RevertWhenTriesToSkipNotFullKey() public {
+        createNodeOperator(2);
+        csm.obtainDepositData(2, "");
+
+        bytes memory keys = csm.getSigningKeys(0, 0, 2);
+        vm.expectRevert(ICSModule.InvalidTopUpOrder.selector);
+        csm.obtainDepositData({
+            depositAmount: 0,
+            packedPubkeys: keys,
+            keyIndices: UintArr(0, 1),
+            operatorIds: UintArr(0, 0),
+            topUpLimits: UintArr(0, 4)
+        });
+    }
+
+    function test_topUp_RevertWhenTheSameKeyTwiceAboveDepositAmount() public {
+        createNodeOperator(2);
+        csm.obtainDepositData(2, "");
+
+        bytes memory keys = bytes.concat(
+            csm.getSigningKeys(0, 0, 1),
+            csm.getSigningKeys(0, 0, 1)
+        );
+        vm.expectRevert(ICSModule.InvalidTopUpOrder.selector);
+        csm.obtainDepositData({
+            depositAmount: 3,
+            packedPubkeys: keys,
+            keyIndices: UintArr(0, 0),
+            operatorIds: UintArr(0, 0),
+            topUpLimits: UintArr(4, 4)
+        });
+    }
+
+    function test_topUp_RevertWhenNextItemDoesNotMatch() public {
+        createNodeOperator(2);
+        csm.obtainDepositData(2, "");
+
+        bytes memory keys = bytes.concat(
+            csm.getSigningKeys(0, 1, 1),
+            csm.getSigningKeys(0, 1, 1)
+        );
+
+        // Operator ID mismatch
+        vm.expectRevert(ICSModule.InvalidTopUpOrder.selector);
+        csm.obtainDepositData({
+            depositAmount: 3,
+            packedPubkeys: keys,
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(1),
+            topUpLimits: UintArr(4)
+        });
+
+        // Operator key index mismatch
+        vm.expectRevert(ICSModule.InvalidTopUpOrder.selector);
+        csm.obtainDepositData({
+            depositAmount: 3,
+            packedPubkeys: keys,
+            keyIndices: UintArr(1),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(4)
+        });
+
+        vm.expectRevert(ICSModule.InvalidSigningKey.selector);
+        csm.obtainDepositData({
+            depositAmount: 3,
+            packedPubkeys: keys,
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(4)
+        });
+    }
+
+    function test_getKeysForTopUp_ReturnsExpectedKeys() public {
+        createNodeOperator(2);
+        createNodeOperator(2);
+        createNodeOperator(2);
+
+        bytes[] memory keys;
+        assertEq(csm.getKeysForTopUp(3), keys);
+
+        csm.obtainDepositData(3, "");
+        csm.obtainDepositData(3, "");
+
+        keys = new bytes[](3);
+        keys[0] = csm.getSigningKeys(0, 0, 1);
+        keys[1] = csm.getSigningKeys(0, 1, 1);
+        keys[2] = csm.getSigningKeys(1, 0, 1);
+
+        assertEq(csm.getKeysForTopUp(3), keys);
+
+        keys = new bytes[](6);
+        keys[0] = csm.getSigningKeys(0, 0, 1);
+        keys[1] = csm.getSigningKeys(0, 1, 1);
+        keys[2] = csm.getSigningKeys(1, 0, 1);
+        keys[3] = csm.getSigningKeys(1, 1, 1);
+        keys[4] = csm.getSigningKeys(2, 0, 1);
+        keys[5] = csm.getSigningKeys(2, 1, 1);
+
+        assertEq(csm.getKeysForTopUp(6), keys);
+        assertEq(csm.getKeysForTopUp(7), keys);
+
+        csm.obtainDepositData({
+            depositAmount: 3,
+            packedPubkeys: bytes.concat(keys[0], keys[1], keys[2]),
+            keyIndices: UintArr(0, 1, 0),
+            operatorIds: UintArr(0, 0, 1),
+            topUpLimits: UintArr(1, 1, 1)
+        });
+
+        keys = new bytes[](3);
+        keys[0] = csm.getSigningKeys(1, 1, 1);
+        keys[1] = csm.getSigningKeys(2, 0, 1);
+        keys[2] = csm.getSigningKeys(2, 1, 1);
+
+        assertEq(csm.getKeysForTopUp(3), keys);
+    }
+
+    function test_getKeysForTopUp_RevertWhenQueueDisabled() public {
+        csm = new CSModule({
+            moduleType: "community-staking-module",
+            lidoLocator: address(locator),
+            parametersRegistry: address(parametersRegistry),
+            accounting: address(accounting),
+            exitPenalties: address(exitPenalties)
+        });
+
+        _enableInitializers(address(csm));
+        csm.initialize({ admin: address(this), topUpQueueLimit: 0 });
+
+        vm.expectRevert(ICSModule.TopUpQueueDisabled.selector);
+        csm.getKeysForTopUp(0);
+    }
+
+    function testFuzz_setTopUpQueueLimit(uint32 limit) public {
+        csm.setTopUpQueueLimit(limit);
+        assertEq(_getTopUpQueueLimit(), limit);
+    }
+
+    function test_setTopUpQueueLimit_incrementsNonce() public {
+        uint256 nonceBefore = csm.getNonce();
+        csm.setTopUpQueueLimit(0);
+        assertEq(csm.getNonce(), nonceBefore + 1);
+    }
+
+    function testFuzz_setTopUpQueueLimitToZero() public {
+        assertGt(_getTopUpQueueLimit(), 0);
+        csm.setTopUpQueueLimit(0);
+        assertEq(_getTopUpQueueLimit(), 0);
+    }
+
+    function test_setTopUpQueueLimit_RevertWhenTopUpQueueDisabled() public {
+        csm = new CSModule({
+            moduleType: "community-staking-module",
+            lidoLocator: address(locator),
+            parametersRegistry: address(parametersRegistry),
+            accounting: address(accounting),
+            exitPenalties: address(exitPenalties)
+        });
+
+        _enableInitializers(address(csm));
+        csm.initialize({ admin: address(this), topUpQueueLimit: 0 });
+        csm.grantRole(csm.MANAGE_TOP_UP_QUEUE_ROLE(), address(this));
+
+        vm.expectRevert(ICSModule.TopUpQueueDisabled.selector);
+        csm.setTopUpQueueLimit(0);
+    }
+}
 
 contract CSMProposeNodeOperatorManagerAddressChange is
     ModuleProposeNodeOperatorManagerAddressChange,
@@ -399,7 +844,7 @@ contract CSMChangeNodeOperatorRewardAddress is
 
 contract CSMVetKeys is ModuleVetKeys, CSMCommon {}
 
-abstract contract CSMQueueOps is CSMCommon {
+contract CSMQueueOps is CSMCommon {
     uint256 internal constant LOOKUP_DEPTH = 150; // derived from maxDepositsPerBlock
 
     function test_emptyQueueIsClean() public assertInvariants {
@@ -434,7 +879,7 @@ abstract contract CSMQueueOps is CSMCommon {
         uploadMoreKeys(noId, 1);
         unvetKeys({ noId: noId, to: 2 });
 
-        (uint256 toRemove, ) = getModule().cleanDepositQueue(LOOKUP_DEPTH);
+        (uint256 toRemove, ) = csm.cleanDepositQueue(LOOKUP_DEPTH);
         assertEq(toRemove, 1, "should remove 1 batch");
 
         bool isDirty = _isQueueDirty(LOOKUP_DEPTH);
@@ -444,13 +889,14 @@ abstract contract CSMQueueOps is CSMCommon {
     function test_cleanup_emptyQueue() public assertInvariants {
         _assertQueueIsEmpty();
 
-        (uint256 toRemove, ) = getModule().cleanDepositQueue(LOOKUP_DEPTH);
+        (uint256 toRemove, ) = csm.cleanDepositQueue(LOOKUP_DEPTH);
         assertEq(toRemove, 0, "queue should be clean");
     }
 
     function test_cleanup_zeroMaxItems() public assertInvariants {
-        (uint256 removed, uint256 lastRemovedAtDepth) = getModule()
-            .cleanDepositQueue(0);
+        (uint256 removed, uint256 lastRemovedAtDepth) = csm.cleanDepositQueue(
+            0
+        );
         assertEq(removed, 0, "should not remove any batches");
         assertEq(lastRemovedAtDepth, 0, "lastRemovedAtDepth should be 0");
     }
@@ -472,16 +918,16 @@ abstract contract CSMQueueOps is CSMCommon {
 
         // Operator noId=1 has 1 dangling batch after unvetting.
         // Operator noId=2 is unvetted.
-        (toRemove, ) = getModule().cleanDepositQueue(LOOKUP_DEPTH);
+        (toRemove, ) = csm.cleanDepositQueue(LOOKUP_DEPTH);
         assertEq(toRemove, 2, "should remove 2 batch");
 
         // let's check the state of the queue
         BatchInfo[] memory exp = new BatchInfo[](2);
         exp[0] = BatchInfo({ nodeOperatorId: 0, count: 3 });
         exp[1] = BatchInfo({ nodeOperatorId: 1, count: 5 });
-        _assertQueueState(getModule().QUEUE_LOWEST_PRIORITY(), exp);
+        _assertQueueState(csm.QUEUE_LOWEST_PRIORITY(), exp);
 
-        (toRemove, ) = getModule().cleanDepositQueue(LOOKUP_DEPTH);
+        (toRemove, ) = csm.cleanDepositQueue(LOOKUP_DEPTH);
         assertEq(toRemove, 0, "queue should be clean");
     }
 
@@ -491,7 +937,7 @@ abstract contract CSMQueueOps is CSMCommon {
         unvetKeys({ noId: 0, to: 0 });
         unvetKeys({ noId: 1, to: 0 });
 
-        (uint256 toRemove, ) = getModule().cleanDepositQueue(LOOKUP_DEPTH);
+        (uint256 toRemove, ) = csm.cleanDepositQueue(LOOKUP_DEPTH);
         assertEq(toRemove, 2, "should remove all batches");
 
         _assertQueueIsEmpty();
@@ -517,8 +963,9 @@ abstract contract CSMQueueOps is CSMCommon {
         uint256 snapshot = vm.snapshotState();
 
         {
-            (uint256 toRemove, uint256 toVisit) = getModule()
-                .cleanDepositQueue({ maxItems: 10 });
+            (uint256 toRemove, uint256 toVisit) = csm.cleanDepositQueue({
+                maxItems: 10
+            });
             assertEq(toRemove, 2, "toRemove != 2");
             assertEq(toVisit, 6, "toVisit != 6");
         }
@@ -526,8 +973,9 @@ abstract contract CSMQueueOps is CSMCommon {
         vm.revertToState(snapshot);
 
         {
-            (uint256 toRemove, uint256 toVisit) = getModule()
-                .cleanDepositQueue({ maxItems: 6 });
+            (uint256 toRemove, uint256 toVisit) = csm.cleanDepositQueue({
+                maxItems: 6
+            });
             assertEq(toRemove, 2, "toRemove != 2");
             assertEq(toVisit, 6, "toVisit != 6");
         }
@@ -583,14 +1031,10 @@ abstract contract CSMQueueOps is CSMCommon {
             targetLimitMode: 1,
             targetLimit: 0
         });
-        getModule().cleanDepositQueue(1);
+        csm.cleanDepositQueue(1);
 
         vm.expectEmit(address(module));
-        emit ICSModule.BatchEnqueued(
-            getModule().QUEUE_LOWEST_PRIORITY(),
-            noId,
-            7
-        );
+        emit ICSModule.BatchEnqueued(csm.QUEUE_LOWEST_PRIORITY(), noId, 7);
 
         module.updateTargetValidatorsLimits({
             nodeOperatorId: noId,
@@ -610,7 +1054,7 @@ abstract contract CSMQueueOps is CSMCommon {
             targetLimit: 2
         });
         module.obtainDepositData(2, "");
-        getModule().cleanDepositQueue(1);
+        csm.cleanDepositQueue(1);
 
         WithdrawnValidatorInfo[]
             memory validatorInfos = new WithdrawnValidatorInfo[](1);
@@ -624,16 +1068,12 @@ abstract contract CSMQueueOps is CSMCommon {
         });
 
         vm.expectEmit(address(module));
-        emit ICSModule.BatchEnqueued(
-            getModule().QUEUE_LOWEST_PRIORITY(),
-            noId,
-            1
-        );
+        emit ICSModule.BatchEnqueued(csm.QUEUE_LOWEST_PRIORITY(), noId, 1);
         module.reportWithdrawnValidators(validatorInfos);
     }
 }
 
-abstract contract CSMPriorityQueue is CSMCommon {
+contract CSMPriorityQueue is CSMCommon {
     uint256 constant LOOKUP_DEPTH = 150;
 
     uint32 constant MAX_DEPOSITS = 10;
@@ -823,7 +1263,7 @@ abstract contract CSMPriorityQueue is CSMCommon {
 
         unvetKeys({ noId: noId, to: 2 });
 
-        (uint256 toRemove, ) = getModule().cleanDepositQueue(LOOKUP_DEPTH);
+        (uint256 toRemove, ) = csm.cleanDepositQueue(LOOKUP_DEPTH);
         assertEq(toRemove, 3, "should remove 3 batches");
 
         bool isDirty = _isQueueDirty(LOOKUP_DEPTH);
@@ -854,7 +1294,7 @@ abstract contract CSMPriorityQueue is CSMCommon {
 
         {
             snapshot = vm.snapshotState();
-            (uint256 toRemove, uint256 lastRemovedAtDepth) = getModule()
+            (uint256 toRemove, uint256 lastRemovedAtDepth) = csm
                 .cleanDepositQueue(3);
             vm.revertToState(snapshot);
             assertEq(toRemove, 0, "should remove 0 batch(es)");
@@ -863,7 +1303,7 @@ abstract contract CSMPriorityQueue is CSMCommon {
 
         {
             snapshot = vm.snapshotState();
-            (uint256 toRemove, uint256 lastRemovedAtDepth) = getModule()
+            (uint256 toRemove, uint256 lastRemovedAtDepth) = csm
                 .cleanDepositQueue(4);
             vm.revertToState(snapshot);
             assertEq(toRemove, 1, "should remove 1 batch(es)");
@@ -872,7 +1312,7 @@ abstract contract CSMPriorityQueue is CSMCommon {
 
         {
             snapshot = vm.snapshotState();
-            (uint256 toRemove, uint256 lastRemovedAtDepth) = getModule()
+            (uint256 toRemove, uint256 lastRemovedAtDepth) = csm
                 .cleanDepositQueue(7);
             vm.revertToState(snapshot);
             assertEq(toRemove, 2, "should remove 2 batch(es)");
@@ -881,7 +1321,7 @@ abstract contract CSMPriorityQueue is CSMCommon {
 
         {
             snapshot = vm.snapshotState();
-            (uint256 toRemove, uint256 lastRemovedAtDepth) = getModule()
+            (uint256 toRemove, uint256 lastRemovedAtDepth) = csm
                 .cleanDepositQueue(100_500);
             vm.revertToState(snapshot);
             assertEq(toRemove, 2, "should remove 2 batch(es)");
@@ -982,12 +1422,60 @@ contract CSMGetStakingModuleSummary is
     CSMCommon
 {}
 
-contract CSMAccessControl is ModuleAccessControl, CSMCommonNoRoles {}
+contract CSMAccessControl is ModuleAccessControl, CSMCommonNoRoles {
+    function setUp() public override {
+        topUpQueueLimit = 32;
+
+        super.setUp();
+    }
+
+    function test_manageTopUpQueueRole() public {
+        uint256 noId = createNodeOperator();
+        bytes32 role = csm.MANAGE_TOP_UP_QUEUE_ROLE();
+        vm.prank(admin);
+        csm.grantRole(role, actor);
+
+        vm.prank(actor);
+        csm.setTopUpQueueLimit(33);
+    }
+
+    function test_manageTopUpQueueRole_revert() public {
+        uint256 noId = createNodeOperator();
+        bytes32 role = csm.MANAGE_TOP_UP_QUEUE_ROLE();
+
+        vm.prank(stranger);
+        expectRoleRevert(stranger, role);
+        csm.setTopUpQueueLimit(33);
+    }
+}
 
 contract CSMStakingRouterAccessControl is
     ModuleStakingRouterAccessControl,
     CSMCommonNoRoles
-{}
+{
+    function setUp() public override {
+        topUpQueueLimit = 32;
+
+        super.setUp();
+    }
+
+    function test_stakingRouterRole_topUps() public {
+        bytes32 role = csm.STAKING_ROUTER_ROLE();
+        vm.prank(admin);
+        csm.grantRole(role, actor);
+
+        vm.prank(actor);
+        csm.obtainDepositData(0, hex"", UintArr(), UintArr(), UintArr());
+    }
+
+    function test_stakingRouterRole_topUps_revert() public {
+        bytes32 role = module.STAKING_ROUTER_ROLE();
+
+        vm.prank(stranger);
+        expectRoleRevert(stranger, role);
+        csm.obtainDepositData(0, hex"", UintArr(), UintArr(), UintArr());
+    }
+}
 
 contract CSMDepositableValidatorsCount is
     ModuleDepositableValidatorsCount,
@@ -1005,7 +1493,11 @@ contract CSMRecoverERC20 is ModuleRecoverERC20, CSMCommon {}
 
 contract CSMSupportsInterface is ModuleSupportsInterface, CSMCommon {}
 
-contract CSMMisc is ModuleMisc, CSMCommon {}
+contract CSMMisc is ModuleMisc, CSMCommon {
+    function test_getInitializedVersion() public view {
+        assertEq(module.getInitializedVersion(), 3);
+    }
+}
 
 contract CSMExitDeadlineThreshold is ModuleExitDeadlineThreshold, CSMCommon {}
 

@@ -6,7 +6,7 @@ pragma solidity 0.8.31;
 import { console } from "forge-std/console.sol";
 import { Test, Vm } from "forge-std/Test.sol";
 
-import { Batch } from "src/lib/QueueLib.sol";
+import { Batch } from "src/lib/DepositQueueLib.sol";
 import { BaseModule } from "src/abstract/BaseModule.sol";
 import { BondLock } from "src/abstract/BondLock.sol";
 import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
@@ -6985,44 +6985,60 @@ contract MyModule is BaseModule {
     function onWithdrawalCredentialsChanged() external {
         revert NotImplementedInTest();
     }
+
+    function getStakingModuleSummary()
+        external
+        view
+        returns (
+            uint256 totalExitedValidators,
+            uint256 totalDepositedValidators,
+            uint256 depositableValidatorsCount
+        )
+    {
+        revert NotImplementedInTest();
+    }
+
+    function helper_grantRole(bytes32 role, address who) external {
+        _grantRole(role, who);
+    }
 }
 
 abstract contract ModuleAccessControl is ModuleFixtures {
     function test_adminRole() public {
-        MyModule csm = new MyModule({
+        MyModule module = new MyModule({
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
-        _enableInitializers(address(csm));
-        csm.initialize(actor);
+        module.helper_grantRole(module.DEFAULT_ADMIN_ROLE(), admin);
+        bytes32 role = module.DEFAULT_ADMIN_ROLE();
+        vm.prank(admin);
+        module.grantRole(role, stranger);
+        assertTrue(module.hasRole(role, stranger));
 
-        bytes32 role = csm.DEFAULT_ADMIN_ROLE();
-        vm.prank(actor);
-        csm.grantRole(role, stranger);
-        assertTrue(csm.hasRole(role, stranger));
-
-        vm.prank(actor);
-        csm.revokeRole(role, stranger);
-        assertFalse(csm.hasRole(role, stranger));
+        vm.prank(admin);
+        module.revokeRole(role, stranger);
+        assertFalse(module.hasRole(role, stranger));
     }
 
     function test_adminRole_revert() public {
-        MyModule csm = new MyModule({
+        MyModule module = new MyModule({
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
             exitPenalties: address(exitPenalties)
         });
-        bytes32 role = csm.DEFAULT_ADMIN_ROLE();
-        bytes32 adminRole = csm.DEFAULT_ADMIN_ROLE();
+        module.helper_grantRole(module.DEFAULT_ADMIN_ROLE(), admin);
+
+        bytes32 adminRole = module.DEFAULT_ADMIN_ROLE();
+        bytes32 role = module.DEFAULT_ADMIN_ROLE();
 
         vm.startPrank(stranger);
         expectRoleRevert(stranger, adminRole);
-        csm.grantRole(role, stranger);
+        module.grantRole(role, stranger);
     }
 
     function test_createNodeOperatorRole() public {
@@ -7989,10 +8005,6 @@ abstract contract ModuleSupportsInterface is ModuleFixtures {
 }
 
 abstract contract ModuleMisc is ModuleFixtures {
-    function test_getInitializedVersion() public view {
-        assertEq(module.getInitializedVersion(), 2);
-    }
-
     function test_getActiveNodeOperatorsCount_OneOperator()
         public
         assertInvariants

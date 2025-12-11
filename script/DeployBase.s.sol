@@ -72,6 +72,7 @@ struct DeployParams {
     uint256 stakingModuleId;
     bytes32 moduleType;
     address generalDelayedPenaltyReporter;
+    uint32 topUpQueueLimit;
     // ParametersRegistry
     uint256 queueLowestPriority;
     uint256 defaultKeyRemovalCharge;
@@ -348,7 +349,10 @@ abstract contract DeployBase is Script {
                 csmProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
-            csm.initialize({ admin: deployer });
+            csm.initialize({
+                admin: deployer,
+                topUpQueueLimit: config.topUpQueueLimit
+            });
 
             ValidatorStrikes strikesImpl = new ValidatorStrikes({
                 module: address(csm),

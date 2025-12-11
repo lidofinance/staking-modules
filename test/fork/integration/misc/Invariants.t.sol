@@ -5,11 +5,11 @@ pragma solidity 0.8.31;
 
 import { Test } from "forge-std/Test.sol";
 
+import { DeployParams } from "script/DeployBase.s.sol";
+
 import { Utilities } from "../../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../../helpers/Fixtures.sol";
-import { QueueLib } from "../../../../src/lib/QueueLib.sol";
 import { InvariantAsserts } from "../../../helpers/InvariantAsserts.sol";
-import { DeployParams } from "../../../../script/DeployBase.s.sol";
 
 contract InvariantsBase is
     Test,
@@ -28,8 +28,6 @@ contract InvariantsBase is
         adminsCount = block.chainid == 1 ? 1 : 2;
     }
 }
-
-using QueueLib for QueueLib.Queue;
 
 contract CSModuleInvariants is InvariantsBase {
     function test_keys() public noGasMetering {

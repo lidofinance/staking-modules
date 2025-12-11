@@ -5,6 +5,8 @@ pragma solidity 0.8.31;
 
 import { Test } from "forge-std/Test.sol";
 
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
@@ -20,7 +22,6 @@ import { BaseOracle } from "../../../src/lib/base-oracle/BaseOracle.sol";
 import { GIndex } from "../../../src/lib/GIndex.sol";
 import { Slot } from "../../../src/lib/Types.sol";
 import { Versioned } from "../../../src/lib/utils/Versioned.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     CommonDeployParams internal deployParams;
@@ -45,10 +46,6 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
 
     function test_state_afterVote() public view {
         assertFalse(module.isPaused());
-    }
-
-    function test_state_onlyFull() public view {
-        assertEq(module.getInitializedVersion(), 2);
     }
 
     function test_immutables() public view {
@@ -144,21 +141,6 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         );
 
         assertEq(module.getRoleMemberCount(module.RECOVERER_ROLE()), 0);
-    }
-
-    function test_proxy_onlyFull() public {
-        vm.expectRevert(Initializable.InvalidInitialization.selector);
-        module.initialize({ admin: deployParams.aragonAgent });
-
-        OssifiableProxy proxy = OssifiableProxy(payable(address(module)));
-
-        assertEq(proxy.proxy__getImplementation(), address(moduleImpl));
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
-        assertFalse(proxy.proxy__getIsOssified());
-
-        CSModule moduleImpl = CSModule(proxy.proxy__getImplementation());
-        vm.expectRevert(Initializable.InvalidInitialization.selector);
-        moduleImpl.initialize({ admin: deployParams.aragonAgent });
     }
 }
 

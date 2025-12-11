@@ -4,22 +4,44 @@
 pragma solidity 0.8.31;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { BaseModule } from "./abstract/BaseModule.sol";
 
-import { IStakingModule } from "./interfaces/IStakingModule.sol";
+import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.sol";
 import { NodeOperator } from "./interfaces/IBaseModule.sol";
 import { ICSModule } from "./interfaces/ICSModule.sol";
 
 import { TransientUintUintMap, TransientUintUintMapLib } from "./lib/TransientUintUintMapLib.sol";
-import { QueueLib, Batch } from "./lib/QueueLib.sol";
+import { TopUpQueueLib, TopUpQueueItem, newTopUpQueueItem } from "./lib/TopUpQueueLib.sol";
+import { PackedPubkeys } from "./lib/PackedPubkeys.sol";
+import { DepositQueueLib, Batch } from "./lib/DepositQueueLib.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
 
 contract CSModule is ICSModule, BaseModule {
-    using QueueLib for QueueLib.Queue;
+    using DepositQueueLib for DepositQueueLib.Queue;
+    using TopUpQueueLib for TopUpQueueLib.Queue;
+    using PackedPubkeys for bytes;
+    using SafeCast for uint256;
 
-    /// @dev QUEUE_LOWEST_PRIORITY identifies the range of available priorities: [0; QUEUE_LOWEST_PRIORITY].
+    /// @custom:storage-location erc7201:CSModule
+    struct CSModuleStorage {
+        TopUpQueueLib.Queue topUpQueue;
+    }
+
     uint256 public immutable QUEUE_LOWEST_PRIORITY;
+
+    bytes32 public constant MANAGE_TOP_UP_QUEUE_ROLE =
+        keccak256("MANAGE_TOP_UP_QUEUE_ROLE");
+
+    // keccak256(abi.encode(uint256(keccak256("CSModule")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant CSMODULE_STORAGE_LOCATION =
+        0x48912ff6aecfe3259bdc07bbe67306543da3ba7172b1471bf49b659c3f4c6d00;
+
+    modifier onlyActiveTopUpQueue() {
+        _onlyActiveTopUpQueue();
+        _;
+    }
 
     constructor(
         bytes32 moduleType,
@@ -40,6 +62,23 @@ contract CSModule is ICSModule, BaseModule {
         _disableInitializers();
     }
 
+    function initialize(
+        address admin,
+        uint32 topUpQueueLimit
+    ) external reinitializer(3) {
+        BaseModule._initialize(admin);
+
+        _initTopUpQueue(topUpQueueLimit);
+    }
+
+    /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing version 2 deployment.
+    ///      If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
+    function finalizeUpgradeV3(
+        uint32 topUpQueueLimit
+    ) external reinitializer(3) {
+        _initTopUpQueue(topUpQueueLimit);
+    }
+
     /// @inheritdoc IStakingModule
     /// @notice Get the next `depositsCount` of depositable keys with signatures from the queue
     /// @dev The method does not update depositable keys count for the Node Operators before the queue processing start.
@@ -53,9 +92,11 @@ contract CSModule is ICSModule, BaseModule {
     )
         external
         virtual
-        onlyRole(STAKING_ROUTER_ROLE)
         returns (bytes memory publicKeys, bytes memory signatures)
     {
+        // NOTE: Function call doesn't leave an unreachable item on the stack.
+        _checkRole(STAKING_ROUTER_ROLE);
+
         (publicKeys, signatures) = SigningKeys.initKeysSigsBuf(depositsCount);
         if (depositsCount == 0) {
             return (publicKeys, signatures);
@@ -64,8 +105,9 @@ contract CSModule is ICSModule, BaseModule {
         uint256 depositsLeft = depositsCount;
         uint256 loadedKeysCount = 0;
 
-        QueueLib.Queue storage queue;
-        // Note: The highest priority to start iterations with. Priorities are ordered like 0, 1, 2, ...
+        bool topUpQueueActive = _topUpQueue().active;
+        DepositQueueLib.Queue storage depositQueue;
+        // NOTE: The highest priority to start iterations with. Priorities are ordered like 0, 1, 2, ...
         uint256 priority = 0;
 
         while (true) {
@@ -73,22 +115,21 @@ contract CSModule is ICSModule, BaseModule {
                 break;
             }
 
-            queue = _queueByPriority[priority];
+            depositQueue = _depositQueueByPriority[priority];
             unchecked {
-                // Note: unused below
+                // NOTE: unused below
                 ++priority;
             }
 
             for (
-                Batch item = queue.peek();
+                Batch item = depositQueue.peek();
                 !item.isNil();
-                item = queue.peek()
+                item = depositQueue.peek()
             ) {
                 // NOTE: see the `enqueuedCount` note below.
                 unchecked {
-                    uint256 noId = item.noId();
+                    NodeOperator storage no = _nodeOperators[item.noId()];
                     uint256 keysInBatch = item.keys();
-                    NodeOperator storage no = _nodeOperators[noId];
 
                     // Keys are bounded by queue/depositable counts (uint32 slots), so this fits the storage types.
                     // forge-lint: disable-next-line(unsafe-typecast)
@@ -110,7 +151,7 @@ contract CSModule is ICSModule, BaseModule {
                         // forge-lint: disable-next-line(unsafe-typecast)
                         no.enqueuedCount -= uint32(keysInBatch);
                         // We've consumed all the keys in the batch, so we dequeue it.
-                        queue.dequeue();
+                        depositQueue.dequeue();
                     } else {
                         // This branch covers the case when we stop in the middle of the batch.
                         // We release the amount of keys consumed only, the rest will be kept.
@@ -119,12 +160,28 @@ contract CSModule is ICSModule, BaseModule {
                         // We update the batch with the remaining keys.
                         item = item.setKeys(keysInBatch - keysCount);
                         // Store the updated batch back to the queue.
-                        queue.queue[queue.head] = item;
+                        depositQueue.queue[depositQueue.head] = item;
                     }
 
                     // Note: This condition is located here to allow for the correct removal of the batch for the Node Operators with no depositable keys
                     if (keysCount == 0) {
                         continue;
+                    }
+
+                    uint32 noId = uint32(item.noId());
+
+                    if (topUpQueueActive) {
+                        uint32 keyIndexBase = no.totalDepositedKeys;
+                        for (uint32 i; i < keysCount; i++) {
+                            _topUpQueue().enqueue(
+                                newTopUpQueueItem(
+                                    // The ids are assigned sequentially, so noId can't exceed uint32 in practice.
+                                    // forge-lint: disable-next-line(unsafe-typecast)
+                                    noId,
+                                    keyIndexBase + i
+                                )
+                            );
+                        }
                     }
 
                     // solhint-disable-next-line func-named-parameters
@@ -176,6 +233,107 @@ contract CSModule is ICSModule, BaseModule {
         _incrementModuleNonce();
     }
 
+    /// @inheritdoc IStakingModuleV2
+    function obtainDepositData(
+        uint256 depositAmount,
+        bytes calldata packedPubkeys,
+        uint256[] calldata keyIndices,
+        uint256[] calldata operatorIds,
+        uint256[] calldata topUpLimits
+    )
+        external
+        onlyActiveTopUpQueue
+        returns (bytes[] memory publicKeys, uint256[] memory allocations)
+    {
+        // NOTE: Function call doesn't leave an unreachable item on the stack.
+        _checkRole(STAKING_ROUTER_ROLE);
+
+        if (keyIndices.length == 0) {
+            return (publicKeys, allocations);
+        }
+
+        publicKeys = new bytes[](keyIndices.length);
+        allocations = new uint256[](keyIndices.length);
+
+        for (uint256 i; i < keyIndices.length; i++) {
+            TopUpQueueItem item = _topUpQueue().peek();
+
+            if (operatorIds[i] != item.noId()) {
+                revert InvalidTopUpOrder();
+            }
+
+            if (keyIndices[i] != item.keyIndex()) {
+                revert InvalidTopUpOrder();
+            }
+
+            {
+                bytes memory key = packedPubkeys.at(i);
+                _verifyModuleKey(item.noId(), item.keyIndex(), key);
+
+                publicKeys[i] = key;
+            }
+
+            uint256 keyTopUpLimit = topUpLimits[i];
+
+            if (depositAmount == 0 && keyTopUpLimit > 0) {
+                revert InvalidTopUpOrder();
+            }
+
+            allocations[i] = Math.min(keyTopUpLimit, depositAmount);
+            depositAmount -= allocations[i];
+
+            if (allocations[i] == keyTopUpLimit) {
+                // NOTE: also works for allocations[i] == depositAmount == 0.
+                _topUpQueue().dequeue();
+            }
+        }
+
+        _incrementModuleNonce();
+    }
+
+    /// @inheritdoc ICSModule
+    function setTopUpQueueLimit(
+        uint256 limit
+    ) external onlyActiveTopUpQueue onlyRole(MANAGE_TOP_UP_QUEUE_ROLE) {
+        _topUpQueue().limit = limit.toUint32();
+        emit TopUpQueueLimitSet(limit);
+        _incrementModuleNonce();
+    }
+
+    /// @inheritdoc ICSModule
+    function getTopUpQueue()
+        external
+        view
+        returns (bool active, uint256 limit, uint256 length)
+    {
+        TopUpQueueLib.Queue storage q = _topUpQueue();
+        active = q.active;
+        limit = q.limit;
+        length = q.length();
+    }
+
+    /// @inheritdoc ICSModule
+    function getTopUpQueueItem(
+        uint256 index
+    ) external view returns (uint256 nodeOperatorId, uint256 keyIndex) {
+        TopUpQueueLib.Queue storage q = _topUpQueue();
+        TopUpQueueItem item = q.at(index);
+        nodeOperatorId = item.noId();
+        keyIndex = item.keyIndex();
+    }
+
+    /// @inheritdoc IStakingModuleV2
+    function updateOperatorBalances(
+        uint256[] calldata,
+        uint256[] calldata,
+        uint256[] calldata,
+        uint256
+    ) external {
+        // NOTE: The function does nothing in CSM, since the information about the operator balances is not used in the
+        // module. If it becomes needed in the future, the method should be implemented and the oracle should deliver
+        // the actual balances.
+    }
+
     /// @inheritdoc IStakingModule
     /// @dev Changing the WC means that the current deposit data in the queue is not valid anymore and can't be deposited.
     ///      If there are depositable validators in the queue, the method should revert to prevent deposits with invalid
@@ -189,11 +347,34 @@ contract CSModule is ICSModule, BaseModule {
         }
     }
 
+    /// @inheritdoc IStakingModule
+    function getStakingModuleSummary()
+        external
+        view
+        returns (
+            uint256 totalExitedValidators,
+            uint256 totalDepositedValidators,
+            uint256 depositableValidatorsCount
+        )
+    {
+        totalExitedValidators = _totalExitedValidators;
+        totalDepositedValidators = _totalDepositedValidators;
+        depositableValidatorsCount = _depositableValidatorsCount;
+        if (_topUpQueue().active) {
+            depositableValidatorsCount = Math.min(
+                depositableValidatorsCount,
+                _topUpQueue().capacity()
+            );
+        }
+    }
+
     /// @inheritdoc ICSModule
     function depositQueuePointers(
         uint256 queuePriority
     ) external view returns (uint128 head, uint128 tail) {
-        QueueLib.Queue storage q = _queueByPriority[queuePriority];
+        DepositQueueLib.Queue storage q = _depositQueueByPriority[
+            queuePriority
+        ];
         return (q.head, q.tail);
     }
 
@@ -202,7 +383,7 @@ contract CSModule is ICSModule, BaseModule {
         uint256 queuePriority,
         uint128 index
     ) external view returns (Batch) {
-        return _queueByPriority[queuePriority].at(index);
+        return _depositQueueByPriority[queuePriority].at(index);
     }
 
     /// @inheritdoc ICSModule
@@ -220,7 +401,7 @@ contract CSModule is ICSModule, BaseModule {
         // the same operator across multiple queues.
         TransientUintUintMap queueLookup = TransientUintUintMapLib.create();
 
-        QueueLib.Queue storage queue;
+        DepositQueueLib.Queue storage queue;
 
         uint256 totalVisited = 0;
         // Note: The highest priority to start iterations with. Priorities are ordered like 0, 1, 2, ...
@@ -231,7 +412,7 @@ contract CSModule is ICSModule, BaseModule {
                 break;
             }
 
-            queue = _queueByPriority[priority];
+            queue = _depositQueueByPriority[priority];
             unchecked {
                 ++priority;
             }
@@ -272,6 +453,19 @@ contract CSModule is ICSModule, BaseModule {
                 totalVisited += visitedPerQueue;
                 maxItems -= visitedPerQueue;
             }
+        }
+    }
+
+    /// @inheritdoc ICSModule
+    function getKeysForTopUp(
+        uint256 keyCount
+    ) external view onlyActiveTopUpQueue returns (bytes[] memory pubkeys) {
+        keyCount = Math.min(keyCount, _topUpQueue().length());
+        pubkeys = new bytes[](keyCount);
+
+        for (uint256 i; i < keyCount; i++) {
+            TopUpQueueItem item = _topUpQueue().at(i);
+            pubkeys[i] = SigningKeys.loadKeys(item.noId(), item.keyIndex(), 1);
         }
     }
 
@@ -327,8 +521,50 @@ contract CSModule is ICSModule, BaseModule {
     ) internal {
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
         no.enqueuedCount += count;
-        QueueLib.Queue storage q = _queueByPriority[queuePriority];
+        DepositQueueLib.Queue storage q = _depositQueueByPriority[
+            queuePriority
+        ];
         q.enqueue(nodeOperatorId, count);
         emit BatchEnqueued(queuePriority, nodeOperatorId, count);
+    }
+
+    function _verifyModuleKey(
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        bytes memory key
+    ) internal view {
+        bytes memory keyFromStorage = SigningKeys.loadKeys(
+            nodeOperatorId,
+            keyIndex,
+            1
+        );
+
+        if (keccak256(key) != keccak256(keyFromStorage)) {
+            revert InvalidSigningKey();
+        }
+    }
+
+    function _initTopUpQueue(uint32 topUpQueueLimit) internal {
+        if (topUpQueueLimit > 0) {
+            _topUpQueue().limit = topUpQueueLimit;
+            _topUpQueue().active = true;
+        }
+    }
+
+    function _onlyActiveTopUpQueue() internal view {
+        if (!_topUpQueue().active) {
+            revert TopUpQueueDisabled();
+        }
+    }
+
+    function _topUpQueue() internal view returns (TopUpQueueLib.Queue storage) {
+        CSModuleStorage storage $ = _storage();
+        return $.topUpQueue;
+    }
+
+    function _storage() internal pure returns (CSModuleStorage storage $) {
+        assembly ("memory-safe") {
+            $.slot := CSMODULE_STORAGE_LOCATION
+        }
     }
 }

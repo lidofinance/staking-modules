@@ -5,14 +5,17 @@ pragma solidity 0.8.31;
 
 import { Test } from "forge-std/Test.sol";
 
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
+import { DeployParams } from "script/DeployBase.s.sol";
+import { ICSModule } from "src/interfaces/ICSModule.sol";
+import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
+import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
+import { ParametersRegistry } from "src/ParametersRegistry.sol";
+import { VettedGate } from "src/VettedGate.sol";
+
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { DeployParams } from "../../../script/DeployBase.s.sol";
-import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { IParametersRegistry } from "../../../src/interfaces/IParametersRegistry.sol";
-import { ParametersRegistry } from "../../../src/ParametersRegistry.sol";
-import { VettedGate } from "../../../src/VettedGate.sol";
 
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     DeployParams internal deployParams;
@@ -31,6 +34,10 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
 }
 
 contract ModuleDeploymentTest is DeploymentBaseTest {
+    function test_state_onlyFull() public view {
+        assertEq(module.getInitializedVersion(), 3);
+    }
+
     function test_roles_onlyFull() public view {
         assertEq(
             module.getRoleMemberCount(module.CREATE_NODE_OPERATOR_ROLE()),
@@ -48,6 +55,27 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
                 address(permissionlessGate)
             )
         );
+    }
+
+    function test_proxy_onlyFull() public {
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        module.initialize({
+            admin: deployParams.aragonAgent,
+            topUpQueueLimit: 0
+        });
+
+        OssifiableProxy proxy = OssifiableProxy(payable(address(module)));
+
+        assertEq(proxy.proxy__getImplementation(), address(moduleImpl));
+        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
+        assertFalse(proxy.proxy__getIsOssified());
+
+        ICSModule moduleImpl = ICSModule(proxy.proxy__getImplementation());
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        moduleImpl.initialize({
+            admin: deployParams.aragonAgent,
+            topUpQueueLimit: 0
+        });
     }
 }
 

@@ -1,9 +1,10 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
+
 pragma solidity 0.8.31;
 
 import { Test } from "forge-std/Test.sol";
-import { Batch, createBatch, QueueLib, IQueueLib } from "src/lib/QueueLib.sol";
+import { Batch, createBatch, DepositQueueLib, IDepositQueueLib } from "src/lib/DepositQueueLib.sol";
 import { NodeOperator } from "src/interfaces/IBaseModule.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "src/lib/TransientUintUintMapLib.sol";
 
@@ -11,9 +12,9 @@ import { TransientUintUintMap, TransientUintUintMapLib } from "src/lib/Transient
 // Supposed to be used with `expectRevert` cheatcode and to pass
 // calldata arguments.
 contract Library {
-    using QueueLib for QueueLib.Queue;
+    using DepositQueueLib for DepositQueueLib.Queue;
 
-    QueueLib.Queue internal q;
+    DepositQueueLib.Queue internal q;
     mapping(uint256 => NodeOperator) internal nodeOperators;
 
     function tail() public view returns (uint128) {
@@ -58,7 +59,7 @@ contract Library {
     }
 }
 
-contract QueueLibTest is Test {
+contract DepositQueueLibTest is Test {
     using { eq } for Batch;
 
     Library q;
@@ -145,7 +146,7 @@ contract QueueLibTest is Test {
 
     function test_dequeue_revertWhen_QueueIsEmpty() public {
         assertTrue(q.peek().isNil());
-        vm.expectRevert(IQueueLib.QueueIsEmpty.selector);
+        vm.expectRevert(IDepositQueueLib.DepositQueueIsEmpty.selector);
         q.dequeue();
     }
 
@@ -155,7 +156,7 @@ contract QueueLibTest is Test {
         operatorData.enqueuedCount = 1;
         q.setNodeOperator(1, operatorData);
 
-        vm.expectRevert(IQueueLib.QueueLookupNoLimit.selector);
+        vm.expectRevert(IDepositQueueLib.DepositQueueLookupNoLimit.selector);
         q.clean(0);
     }
 }

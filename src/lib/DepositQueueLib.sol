@@ -92,20 +92,20 @@ function createBatch(
 }
 
 using { noId, keys, setKeys, setNext, next, isNil, unwrap } for Batch global;
-using QueueLib for QueueLib.Queue;
+using DepositQueueLib for DepositQueueLib.Queue;
 
 /// @dev Helps expose the errors to the ICSModule interface.
-interface IQueueLib {
-    error QueueIsEmpty();
-    error QueueLookupNoLimit();
+interface IDepositQueueLib {
+    error DepositQueueIsEmpty();
+    error DepositQueueLookupNoLimit();
 }
 
 /// @author madlabman
-library QueueLib {
+library DepositQueueLib {
     struct Queue {
         // Pointer to the item to be dequeued.
         uint128 head;
-        // Tracks the total number of batches ever enqueued.
+        // Tracks the index to enqueue an item to.
         uint128 tail;
         // Mapping saves a little in costs and allows easily fallback to a zeroed batch on out-of-bounds access.
         mapping(uint128 => Batch) queue;
@@ -135,7 +135,7 @@ library QueueLib {
         reachedOutOfQueue = false;
 
         if (maxItems == 0) {
-            revert IQueueLib.QueueLookupNoLimit();
+            revert IDepositQueueLib.DepositQueueLookupNoLimit();
         }
 
         Batch prevItem;
@@ -216,7 +216,7 @@ library QueueLib {
         item = peek(self);
 
         if (item.isNil()) {
-            revert IQueueLib.QueueIsEmpty();
+            revert IDepositQueueLib.DepositQueueIsEmpty();
         }
 
         self.head = item.next();

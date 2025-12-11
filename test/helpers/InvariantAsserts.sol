@@ -9,7 +9,7 @@ import { IStETH } from "src/interfaces/IStETH.sol";
 import { FeeDistributor } from "src/FeeDistributor.sol";
 import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { NodeOperator, IBaseModule } from "src/interfaces/IBaseModule.sol";
-import { Batch } from "src/lib/QueueLib.sol";
+import { Batch } from "src/lib/DepositQueueLib.sol";
 import { Accounting } from "src/Accounting.sol";
 import { ValidatorStrikes } from "src/ValidatorStrikes.sol";
 import { FeeOracle } from "src/FeeOracle.sol";

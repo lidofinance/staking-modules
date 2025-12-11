@@ -5,11 +5,15 @@ pragma solidity 0.8.31;
 
 import { Test } from "forge-std/Test.sol";
 
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
+import { CuratedDeployParams, CuratedGateConfig } from "script/curated/DeployBase.s.sol";
+import { CuratedGate } from "src/CuratedGate.sol";
+import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
+import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
+
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { CuratedGate } from "../../../src/CuratedGate.sol";
-import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
-import { CuratedDeployParams, CuratedGateConfig } from "../../../script/curated/DeployBase.s.sol";
 
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     CuratedDeployParams internal deployParams;
@@ -31,6 +35,10 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
 }
 
 contract ModuleDeploymentTest is DeploymentBaseTest {
+    function test_state_onlyFull() public view {
+        assertEq(module.getInitializedVersion(), 1);
+    }
+
     function test_roles_onlyFull() public view {
         bytes32 role = module.CREATE_NODE_OPERATOR_ROLE();
         uint256 gatesCount = curatedGates.length;
@@ -42,6 +50,25 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
                 "gate missing module role"
             );
         }
+    }
+
+    function test_proxy_onlyFull() public {
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        curatedModule.initialize({ admin: deployParams.aragonAgent });
+
+        OssifiableProxy proxy = OssifiableProxy(
+            payable(address(curatedModule))
+        );
+
+        assertEq(proxy.proxy__getImplementation(), address(moduleImpl));
+        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
+        assertFalse(proxy.proxy__getIsOssified());
+
+        ICuratedModule moduleImpl = ICuratedModule(
+            proxy.proxy__getImplementation()
+        );
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        moduleImpl.initialize({ admin: deployParams.aragonAgent });
     }
 }
 

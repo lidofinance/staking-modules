@@ -3,27 +3,39 @@
 
 pragma solidity 0.8.31;
 
-import { IQueueLib, Batch } from "../lib/QueueLib.sol";
+import { ITopUpQueueLib } from "../lib/TopUpQueueLib.sol";
+import { IDepositQueueLib, Batch } from "../lib/DepositQueueLib.sol";
 
 import { IBaseModule } from "./IBaseModule.sol";
+import { IStakingModuleV2 } from "./IStakingModule.sol";
 
 /// @title Lido's Community Staking Module interface
 interface ICSModule is
     IBaseModule,
-    /* IStakingModuleV2 */
-    IQueueLib
+    IStakingModuleV2,
+    IDepositQueueLib,
+    ITopUpQueueLib
 {
     event BatchEnqueued(
         uint256 indexed queuePriority,
         uint256 indexed nodeOperatorId,
         uint256 count
     );
+    event TopUpQueueLimitSet(uint256 limit);
 
     error NotEligibleForPriorityQueue();
     error PriorityQueueAlreadyUsed();
     error PriorityQueueMaxDepositsUsed();
     error NoQueuedKeysToMigrate();
     error DepositQueueHasUnsupportedWithdrawalCredentials();
+    error TopUpQueueDisabled();
+    error InvalidSigningKey();
+    error InvalidTopUpOrder();
+
+    /// @notice Initializes the contract.
+    /// @param admin An address to grant the DEFAULT_ADMIN_ROLE to.
+    /// @param topUpQueueLimit The limit of the top-up queue.
+    function initialize(address admin, uint32 topUpQueueLimit) external;
 
     /// @notice Clean the deposit queue from batches with no depositable keys
     /// @dev Use **eth_call** to check how many items will be removed
@@ -34,15 +46,28 @@ interface ICSModule is
         uint256 maxItems
     ) external returns (uint256 removed, uint256 lastRemovedAtDepth);
 
-    // /// @notice Fetches up to `keysCount` validator public keys from the front of the top-up queue.
-    // /// @dev If the queue contains fewer than `keysCount` entries, all available keys are returned.
-    // /// @dev The keys are returned in the same order as they appear in the queue.
-    // /// @param keysCount The maximum number of keys to retrieve.
-    // /// @return pubkeys The list of validator public keys returned from the queue.
-    // function getKeysForTopUp(
-    //     uint256 keysCount
-    // ) external view returns (bytes[] memory pubkeys);
+    /// @notice Set the top-up queue capacity limit.
+    /// @param limit How many items may sit in the top-up queue at most.
+    function setTopUpQueueLimit(uint256 limit) external;
 
+    /// @notice Returns the top-up queue stats.
+    /// @return active Whether the queue was activated upon initialization of the module.
+    /// @return limit How many items may sit in the top-up queue at most.
+    /// @return length How many items are in the queue.
+    function getTopUpQueue()
+        external
+        view
+        returns (bool active, uint256 limit, uint256 length);
+
+    /// @notice Returns the top-up queue item by the given index.
+    /// @param index The index of the item to retrieve.
+    /// @return nodeOperatorId Node operator ID.
+    /// @return keyIndex Index of key in the deposited keys array.
+    function getTopUpQueueItem(
+        uint256 index
+    ) external view returns (uint256 nodeOperatorId, uint256 keyIndex);
+
+    /// @notice Returns the number reserved for the lowest queue priority.
     function QUEUE_LOWEST_PRIORITY() external view returns (uint256);
 
     /// @notice Get the pointers to the head and tail of queue with the given priority.
@@ -61,4 +86,13 @@ interface ICSModule is
         uint256 queuePriority,
         uint128 index
     ) external view returns (Batch);
+
+    /// @notice Fetches up to `keyCount` validator public keys from the top-up queue.
+    /// @dev If the queue contains fewer than `keyCount` entries, all available keys are returned.
+    /// @dev The keys are returned in the same order as they appear in the queue.
+    /// @param keyCount The maximum number of keys to retrieve.
+    /// @return pubkeys The list of validator public keys returned from the queue.
+    function getKeysForTopUp(
+        uint256 keyCount
+    ) external view returns (bytes[] memory pubkeys);
 }

@@ -9,6 +9,10 @@ import { IStakingModuleV2 } from "./IStakingModule.sol";
 interface ICuratedModule is IBaseModule, IStakingModuleV2 {
     error NotImplemented();
 
+    /// @notice Initializes the contract.
+    /// @param admin An address to grant the DEFAULT_ADMIN_ROLE to.
+    function initialize(address admin) external;
+
     function OPERATOR_ADDRESSES_ADMIN_ROLE() external view returns (bytes32);
 
     /// @notice Change both reward and manager addresses of a node operator.
