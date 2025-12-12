@@ -13,10 +13,10 @@ import requests
 # ----------------------------
 
 # Fill these constants before running the script.
-RPC_URL: str = "http://127.0.0.1:8545"
+RPC_URL: str = "https://ethereum-hoodi-rpc.publicnode.com/" # Hoodi RPC endpoint
 FEE_DISTRIBUTOR_ADDRESS: str = "0xaCd9820b0A2229a82dc1A0770307ce5522FF3582"
 FROM_BLOCK: int = 4980
-TO_BLOCK: str | int = 1329775
+TO_BLOCK: str = "latest"
 OUTPUT_PATH: Path = Path(__file__).parent / "eligible_node_operators_hoodi.json"
 REQUIRED_PERFORMANCE_WINDOW = 53  # days
 
@@ -24,21 +24,40 @@ REQUIRED_PERFORMANCE_WINDOW = 53  # days
 EVENT_SIGNATURE: str = "DistributionLogUpdated(string)"
 
 
-def fetch_cids_via_getlogs(w3: Web3, address: str, from_block: int, to_block: int | str) -> List[Tuple[int, str]]:
-    topic0 = Web3.keccak(text=EVENT_SIGNATURE).hex()
+def fetch_cids_via_getlogs(w3: Web3, address: str, from_block: int, to_block: int | str, chunk_size: int = 50000) -> List[Tuple[int, str]]:
+    topic0 = "0x" + Web3.keccak(text=EVENT_SIGNATURE).hex()
     addr = Web3.to_checksum_address(address)
-    logs = w3.eth.get_logs({
-        "address": addr,
-        "topics": [topic0],
-        "fromBlock": from_block,
-        "toBlock": to_block,
-    })
+
+    # Resolve "latest" to actual block number and cap at chain head
+    chain_head = w3.eth.block_number
+    if to_block == "latest":
+        to_block = chain_head
+    else:
+        to_block = min(int(to_block), chain_head)
+    print(f"Chain head: {chain_head}, fetching up to block {to_block}")
+
     out: List[Tuple[int, str]] = []
-    for log in logs:
-        cid: str = w3.codec.decode(["string"], log.get("data"))[0]
-        out.append((log["blockNumber"], cid))
+    current_from = from_block
+
+    while current_from <= to_block:
+        current_to = min(current_from + chunk_size - 1, to_block)
+        print(f"Fetching logs from block {current_from} to {current_to}...")
+
+        logs = w3.eth.get_logs({
+            "address": addr,
+            "topics": [topic0],
+            "fromBlock": Web3.to_hex(current_from),
+            "toBlock": Web3.to_hex(current_to),
+        })
+
+        for log in logs:
+            cid: str = w3.codec.decode(["string"], log.get("data"))[0]
+            out.append((log["blockNumber"], cid))
+
+        current_from = current_to + 1
+
     out.sort(key=lambda x: x[0])
-    print(f"Fetched {len(out)} logs from block {from_block} to {to_block}")
+    print(f"Fetched {len(out)} total logs from block {from_block} to {to_block}")
     return out
 
 
@@ -136,7 +155,7 @@ def evaluate_eligibility_window(
     - GOOD frame: operator present and all relevant validators pass (v1/v2 rules)
       -> add frame duration to the cumulative sum.
     - BAD frame: any validator fails -> add 0, do not reset.
-    - EMPTY frame: operator absent or has zero validators -> add 0, do not reset.
+    - EMPTY frame: operator absent or hasca zero validators -> add 0, do not reset.
 
     Eligibility is achieved when the cumulative sum of GOOD frame durations
     reaches at least min_days.
