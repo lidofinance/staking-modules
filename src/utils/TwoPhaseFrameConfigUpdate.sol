@@ -15,8 +15,11 @@ import { IConsensusContract } from "../lib/base-oracle/interfaces/IConsensusCont
 ///         lane after the Oracle has started to process a defined number of reports with the original frame config.
 ///         - Restore phase: set the original frame size and the desired fast lane length after the Oracle has
 ///         started to process a defined number of reports with the transitional config.
-///         As a result, the Oracle report window is shifted by the difference between
-///         the original and the transitional frame sizes.
+///         As a result, the Oracle report window is shifted by the following calculation:
+///          - If currentEpochsPerFrame > offsetPhaseEpochsPerFrame:
+///            `shift = reportsToProcessBeforeRestorePhase * (currentEpochsPerFrame - offsetPhaseEpochsPerFrame)`
+///          - If offsetPhaseEpochsPerFrame > currentEpochsPerFrame:
+///            `shift = reportsToProcessBeforeRestorePhase * (offsetPhaseEpochsPerFrame - currentEpochsPerFrame)`
 ///         ---
 ///         Due to the CSM Oracle off-chain sanity checks, the frame config cannot be changed if there is a missing
 ///         report. Also, the frame config for the CSM oracle should not be changed such that the new reference slot is
@@ -25,9 +28,9 @@ import { IConsensusContract } from "../lib/base-oracle/interfaces/IConsensusCont
 ///         `HashConsensus` contract in order to be able to call `setFrameConfig`.
 contract TwoPhaseFrameConfigUpdate {
     struct PhasesConfig {
-        /// @notice Reports to start processing from the `lastProcessingRefSlot` (as of deployment) to enable the offset phase.
+        /// @notice Reports to complete main phase in report processing from the `lastProcessingRefSlot` (as of deployment) to enable the offset phase.
         uint256 reportsToProcessBeforeOffsetPhase;
-        /// @notice Reports to start processing after the offset phase completion to enable the restore phase.
+        /// @notice Reports to complete main phase in report processing after the offset phase completion to enable the restore phase.
         uint256 reportsToProcessBeforeRestorePhase;
         /// @notice Offset phase epochs per frame.
         uint256 offsetPhaseEpochsPerFrame;
@@ -38,7 +41,7 @@ contract TwoPhaseFrameConfigUpdate {
     struct PhaseState {
         /// @notice Expected oracle's last processing ref slot for phase execution.
         ///         This phase can be executed when ORACLE.getLastProcessingRefSlot()
-        ///         equals this value (i.e., oracle has started to process the expected number of reports).
+        ///         equals this value (i.e., oracle has completed the expected number of main phases in report processing).
         uint256 expectedProcessingRefSlot;
         /// @notice Slot when this phase expires.
         ///         This phase expires when the current slot (calculated from block.timestamp)
