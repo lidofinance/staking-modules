@@ -29,7 +29,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
                 reportsToProcessBeforeOffsetPhase: reportsToProcessBeforeOffsetPhase,
                 reportsToProcessBeforeRestorePhase: reportsToProcessBeforeRestorePhase,
                 offsetPhaseEpochsPerFrame: dayToEpochs(daysPerFrame),
-                finalFastLaneLengthSlots: fastLaneSlots
+                restorePhaseFastLaneLengthSlots: fastLaneSlots
             });
     }
 
@@ -124,8 +124,8 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
             );
             assertEq(
                 offsetPhaseFastLaneSlots,
-                300,
-                "Fast lane slots should be 300"
+                0,
+                "Fast lane slots should be 0 on offset phase"
             );
         }
 
