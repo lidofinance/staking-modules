@@ -12,7 +12,7 @@ import { IConsensusContract } from "../lib/base-oracle/interfaces/IConsensusCont
 /// @notice A helper to offset the Oracle report schedule (e.g., move the report window by N epochs).
 ///         This is achieved via a two-phase frame configuration update in the HashConsensus contract used by the Oracle:
 ///         - Offset phase: set a transitional frame size (shorter or longer than the original) and disable the fast
-///         lane after the Oracle has started to process a defined number of reports with the original frame config.
+///         lane after the Oracle has completed main phase in report processing for a defined number of reports with the original frame config.
 ///         - Restore phase: set the original frame size and the desired fast lane length after the Oracle has
 ///         started to process a defined number of reports with the transitional config.
 ///         As a result, the Oracle report window is shifted by the following calculation:
