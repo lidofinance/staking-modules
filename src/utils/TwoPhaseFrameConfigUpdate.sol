@@ -14,7 +14,7 @@ import { IConsensusContract } from "../lib/base-oracle/interfaces/IConsensusCont
 ///         - Offset phase: set a transitional frame size (shorter or longer than the original) and disable the fast
 ///         lane after the Oracle has completed main phase in report processing for a defined number of reports with the original frame config.
 ///         - Restore phase: set the original frame size and the desired fast lane length after the Oracle has
-///         started to process a defined number of reports with the transitional config.
+///         completed main phase in report processing for a defined number of reports with the transitional config.
 ///         As a result, the Oracle report window is shifted by the following calculation:
 ///          - If currentEpochsPerFrame > offsetPhaseEpochsPerFrame:
 ///            `shift = reportsToProcessBeforeRestorePhase * (currentEpochsPerFrame - offsetPhaseEpochsPerFrame)`
