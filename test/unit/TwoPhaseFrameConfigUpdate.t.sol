@@ -200,7 +200,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         new TwoPhaseFrameConfigUpdate(address(mockOracle), phasesConfig);
     }
 
-    function test_constructor_RevertWhen_CurrentReportProcessingIsNotStarted()
+    function test_constructor_RevertWhen_CurrentReportMainPhaseIsNotCompleted()
         public
     {
         TwoPhaseFrameConfigUpdate.PhasesConfig
@@ -218,7 +218,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
         vm.expectRevert(
             TwoPhaseFrameConfigUpdate
-                .CurrentReportProcessingIsNotStarted
+                .CurrentReportMainPhaseIsNotCompleted
                 .selector
         );
         new TwoPhaseFrameConfigUpdate(address(mockOracle), phasesConfig);

@@ -70,7 +70,7 @@ contract TwoPhaseFrameConfigUpdate {
     error ZeroOracleAddress();
     error ZeroEpochsPerFrame();
     error ZeroReportsToEnableUpdate();
-    error CurrentReportProcessingIsNotStarted();
+    error CurrentReportMainPhaseIsNotCompleted();
     error FastLanePeriodCannotBeLongerThanFrame();
     error FastLaneTooShort();
     error NoneOfPhasesExpired();
@@ -114,7 +114,7 @@ contract TwoPhaseFrameConfigUpdate {
 
         (uint256 currentRefSlot, ) = HASH_CONSENSUS.getCurrentFrame();
         if (currentRefSlot != lastProcessingRefSlot) {
-            revert CurrentReportProcessingIsNotStarted();
+            revert CurrentReportMainPhaseIsNotCompleted();
         }
 
         // Typically, the Lido oracles wait for ref slot finalization, which takes at least 2 epochs.
