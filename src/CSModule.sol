@@ -255,8 +255,9 @@ contract CSModule is ICSModule, BaseModule {
         publicKeys = new bytes[](keyIndices.length);
         allocations = new uint256[](keyIndices.length);
 
+        uint256 itemsSkipped = 0;
         for (uint256 i; i < keyIndices.length; i++) {
-            TopUpQueueItem item = _topUpQueue().peek();
+            TopUpQueueItem item = _topUpQueue().at(/* 0 + */ itemsSkipped);
 
             if (operatorIds[i] != item.noId()) {
                 revert InvalidTopUpOrder();
@@ -273,18 +274,15 @@ contract CSModule is ICSModule, BaseModule {
                 publicKeys[i] = key;
             }
 
-            uint256 keyTopUpLimit = topUpLimits[i];
-
-            if (depositAmount == 0 && keyTopUpLimit > 0) {
-                revert InvalidTopUpOrder();
+            if (depositAmount > 0) {
+                allocations[i] = Math.min(topUpLimits[i], depositAmount);
+                depositAmount -= allocations[i];
             }
 
-            allocations[i] = Math.min(keyTopUpLimit, depositAmount);
-            depositAmount -= allocations[i];
-
-            if (allocations[i] == keyTopUpLimit) {
-                // NOTE: also works for allocations[i] == depositAmount == 0.
+            if (itemsSkipped == 0 && allocations[i] == topUpLimits[i]) {
                 _topUpQueue().dequeue();
+            } else {
+                itemsSkipped++;
             }
         }
 

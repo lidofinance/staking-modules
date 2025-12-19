@@ -67,16 +67,6 @@ library TopUpQueueLib {
         self.head++;
     }
 
-    function peek(
-        Queue storage self
-    ) internal view returns (TopUpQueueItem item) {
-        if (self.length() == 0) {
-            revert ITopUpQueueLib.TopUpQueueIsEmpty();
-        }
-
-        item = self.items[self.head];
-    }
-
     function capacity(Queue storage self) internal view returns (uint256) {
         uint256 len = self.length();
         if (self.limit > len) {

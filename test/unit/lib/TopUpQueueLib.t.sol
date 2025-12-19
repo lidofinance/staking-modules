@@ -26,10 +26,6 @@ contract Library {
         q.dequeue();
     }
 
-    function peek() external view returns (TopUpQueueItem) {
-        return q.peek();
-    }
-
     function at(uint256 index) external view returns (TopUpQueueItem) {
         return q.at(index);
     }
@@ -81,13 +77,13 @@ contract TopUpQueueLibTest is Test, Utilities {
         q.enqueue(b);
         q.enqueue(c);
 
-        assertTrue(q.peek().eq(a));
+        assertTrue(q.at(0).eq(a));
         q.dequeue();
 
-        assertTrue(q.peek().eq(b));
+        assertTrue(q.at(0).eq(b));
         q.dequeue();
 
-        assertTrue(q.peek().eq(c));
+        assertTrue(q.at(0).eq(c));
         q.dequeue();
     }
 
@@ -102,11 +98,6 @@ contract TopUpQueueLibTest is Test, Utilities {
     function test_dequeue_RevertWhenQueueEmpty() public {
         vm.expectRevert(ITopUpQueueLib.TopUpQueueIsEmpty.selector);
         q.dequeue();
-    }
-
-    function test_peek_RevertWhenQueueEmpty() public {
-        vm.expectRevert(ITopUpQueueLib.TopUpQueueIsEmpty.selector);
-        q.peek();
     }
 
     function test_length() public {

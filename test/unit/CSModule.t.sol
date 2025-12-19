@@ -558,7 +558,6 @@ contract CSMTopUpQueue is CSMCommon {
         assertEq(_getTopUpQueueLength(), 3);
 
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
-        vm.startSnapshotGas("CSM.obtainDepositData`topUps`");
         (bytes[] memory keys, uint256[] memory allocations) = csm
             .obtainDepositData({
                 depositAmount: 5,
@@ -567,7 +566,6 @@ contract CSMTopUpQueue is CSMCommon {
                 operatorIds: UintArr(0, 0),
                 topUpLimits: UintArr(3, 3)
             });
-        vm.stopSnapshotGas();
 
         assertEq(_getTopUpQueueLength(), 2);
         assertEq(allocations, UintArr(3, 2));
@@ -609,6 +607,35 @@ contract CSMTopUpQueue is CSMCommon {
         (noId, keyIndex) = csm.getTopUpQueueItem(0);
         assertEq(noId, 0);
         assertEq(keyIndex, 2);
+    }
+
+    function test_topUp_NotFullKeysAboveDepositAmount() public {
+        createNodeOperator(3);
+        csm.obtainDepositData(3, "");
+
+        bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 3);
+        (bytes[] memory keys, uint256[] memory allocations) = csm
+            .obtainDepositData({
+                depositAmount: 1,
+                packedPubkeys: packedPubkeys,
+                keyIndices: UintArr(0, 1, 2),
+                operatorIds: UintArr(0, 0, 0),
+                topUpLimits: UintArr(1, 4, 0)
+            });
+
+        assertEq(keys[0], slice(packedPubkeys, 0 * 48, 48));
+        assertEq(keys[1], slice(packedPubkeys, 1 * 48, 48));
+        assertEq(keys[2], slice(packedPubkeys, 2 * 48, 48));
+        assertEq(allocations, UintArr(1, 0, 0));
+
+        assertEq(_getTopUpQueueLength(), 2);
+
+        uint256 noId;
+        uint256 keyIndex;
+
+        (noId, keyIndex) = csm.getTopUpQueueItem(0);
+        assertEq(noId, 0);
+        assertEq(keyIndex, 1);
     }
 
     function test_topUp_RemovesFullKeys() public {
@@ -659,33 +686,18 @@ contract CSMTopUpQueue is CSMCommon {
         assertEq(csm.getNonce(), nonceBefore + 1);
     }
 
-    function test_topUp_RevertWhenTriesToSkipNotFullKey() public {
-        createNodeOperator(2);
-        csm.obtainDepositData(2, "");
-
-        bytes memory keys = csm.getSigningKeys(0, 0, 2);
-        vm.expectRevert(ICSModule.InvalidTopUpOrder.selector);
-        csm.obtainDepositData({
-            depositAmount: 0,
-            packedPubkeys: keys,
-            keyIndices: UintArr(0, 1),
-            operatorIds: UintArr(0, 0),
-            topUpLimits: UintArr(0, 4)
-        });
-    }
-
     function test_topUp_RevertWhenTheSameKeyTwiceAboveDepositAmount() public {
         createNodeOperator(2);
         csm.obtainDepositData(2, "");
 
-        bytes memory keys = bytes.concat(
+        bytes memory packedPubkeys = bytes.concat(
             csm.getSigningKeys(0, 0, 1),
             csm.getSigningKeys(0, 0, 1)
         );
         vm.expectRevert(ICSModule.InvalidTopUpOrder.selector);
         csm.obtainDepositData({
             depositAmount: 3,
-            packedPubkeys: keys,
+            packedPubkeys: packedPubkeys,
             keyIndices: UintArr(0, 0),
             operatorIds: UintArr(0, 0),
             topUpLimits: UintArr(4, 4)
