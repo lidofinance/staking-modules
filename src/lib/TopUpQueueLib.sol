@@ -17,14 +17,15 @@ function newTopUpQueueItem(
 
 function noId(TopUpQueueItem self) pure returns (uint32 n) {
     assembly ("memory-safe") {
+        // Take the first 32 bits.
         n := shr(32, self)
     }
 }
 
 function keyIndex(TopUpQueueItem self) pure returns (uint32 n) {
     assembly ("memory-safe") {
-        n := shl(32, self)
-        n := shr(32, n)
+        // Downcast to uint32 leaves the last 32 bits only.
+        n := self
     }
 }
 
