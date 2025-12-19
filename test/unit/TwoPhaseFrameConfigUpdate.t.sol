@@ -77,6 +77,11 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
     function mockLastProcessingRefSlot(uint256 lastProcessingRefSlot) internal {
         mockOracle.setLastProcessingStartedRefSlot(lastProcessingRefSlot);
+        mockConsensus.setCurrentFrame(
+            0,
+            lastProcessingRefSlot,
+            lastProcessingRefSlot + 100
+        );
     }
 
     function createUpdater(
@@ -99,14 +104,14 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
                 reportsToProcessBeforeOffsetPhase: reportsToProcessBeforeOffsetPhase,
                 reportsToProcessBeforeRestorePhase: reportsToProcessBeforeRestorePhase,
                 offsetPhaseEpochsPerFrame: dayToEpochs(daysPerFrame),
-                finalFastLaneLengthSlots: fastLaneSlots
+                restorePhaseFastLaneLengthSlots: fastLaneSlots
             });
     }
 
     function test_constructor_Success() public {
         uint256 offsetReportsToProcess = 1;
         uint256 offsetDaysPerFrame = 1;
-        uint256 offsetFastLaneSlots = 10;
+        uint256 offsetFastLaneSlots = 64;
 
         uint256 restoreReportsToProcess = 2;
 
@@ -144,53 +149,112 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         assertFalse(restorePhaseExecuted);
     }
 
-    function test_constructor_RevertWhen_InvalidParams() public {
+    function test_constructor_RevertWhen_ZeroOracleAddress() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // restorePhase uses defaults
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64);
 
-        // Zero oracle address
         vm.expectRevert(TwoPhaseFrameConfigUpdate.ZeroOracleAddress.selector);
         new TwoPhaseFrameConfigUpdate(address(0), phasesConfig);
+    }
 
-        // Zero from ref slot
-        mockOracle.setLastProcessingStartedRefSlot(0);
-        vm.expectRevert(TwoPhaseFrameConfigUpdate.ZeroFromRefSlot.selector);
-        new TwoPhaseFrameConfigUpdate(address(mockOracle), phasesConfig);
+    function test_constructor_RevertWhen_ZeroReportsToProcessBeforeOffsetPhase()
+        public
+    {
+        TwoPhaseFrameConfigUpdate.PhasesConfig
+            memory phasesConfig = createPhasesConfig(0, 2, 1, 64); // Zero reportsToProcess for offsetPhase
 
-        // Zero reportsToProcess for offsetPhase
         uint256 testDay = 10;
-        mockOracle.setLastProcessingStartedRefSlot(epochEndSlot(testDay));
-        phasesConfig.reportsToProcessBeforeOffsetPhase = 0;
+        mockLastProcessingRefSlot(epochEndSlot(testDay));
+
         vm.expectRevert(
-            TwoPhaseFrameConfigUpdate.ZeroReportsPassedToEnableUpdate.selector
+            TwoPhaseFrameConfigUpdate.ZeroReportsToEnableUpdate.selector
         );
         new TwoPhaseFrameConfigUpdate(address(mockOracle), phasesConfig);
+    }
 
-        // Zero reportsToProcess for restorePhase
-        phasesConfig.reportsToProcessBeforeOffsetPhase = 1;
-        phasesConfig.reportsToProcessBeforeRestorePhase = 0;
+    function test_constructor_RevertWhen_ZeroReportsToProcessBeforeRestorePhase()
+        public
+    {
+        TwoPhaseFrameConfigUpdate.PhasesConfig
+            memory phasesConfig = createPhasesConfig(1, 0, 1, 64); // Zero reportsToProcess for restorePhase
+
+        uint256 testDay = 10;
+        mockLastProcessingRefSlot(epochEndSlot(testDay));
+
         vm.expectRevert(
-            TwoPhaseFrameConfigUpdate.ZeroReportsPassedToEnableUpdate.selector
+            TwoPhaseFrameConfigUpdate.ZeroReportsToEnableUpdate.selector
         );
         new TwoPhaseFrameConfigUpdate(address(mockOracle), phasesConfig);
+    }
 
-        // Zero epochsPerFrame for offsetPhase
-        phasesConfig.reportsToProcessBeforeRestorePhase = 2;
+    function test_constructor_RevertWhen_ZeroEpochsPerFrame() public {
+        TwoPhaseFrameConfigUpdate.PhasesConfig
+            memory phasesConfig = createPhasesConfig(1, 2, 0, 64); // Zero epochsPerFrame for offsetPhase
+
+        uint256 testDay = 10;
+        mockLastProcessingRefSlot(epochEndSlot(testDay));
+
         phasesConfig.offsetPhaseEpochsPerFrame = 0;
+
         vm.expectRevert(TwoPhaseFrameConfigUpdate.ZeroEpochsPerFrame.selector);
+        new TwoPhaseFrameConfigUpdate(address(mockOracle), phasesConfig);
+    }
+
+    function test_constructor_RevertWhen_CurrentReportMainPhaseIsNotCompleted()
+        public
+    {
+        TwoPhaseFrameConfigUpdate.PhasesConfig
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64);
+
+        uint256 lastProcessingRefSlot = epochEndSlot(1);
+        uint256 differentCurrentRefSlot = epochEndSlot(2);
+
+        mockOracle.setLastProcessingStartedRefSlot(lastProcessingRefSlot);
+        mockConsensus.setCurrentFrame(
+            0,
+            differentCurrentRefSlot,
+            differentCurrentRefSlot + 100
+        );
+
+        vm.expectRevert(
+            TwoPhaseFrameConfigUpdate
+                .CurrentReportMainPhaseIsNotCompleted
+                .selector
+        );
+        new TwoPhaseFrameConfigUpdate(address(mockOracle), phasesConfig);
+    }
+
+    function test_constructor_RevertWhen_FastLaneTooShort() public {
+        mockLastProcessingRefSlot(epochEndSlot(1));
+
+        // Fast lane too short (less than 2 epochs = 64 slots)
+        TwoPhaseFrameConfigUpdate.PhasesConfig
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 63); // 63 < 64 (2 * 32)
+
+        vm.expectRevert(TwoPhaseFrameConfigUpdate.FastLaneTooShort.selector);
+        new TwoPhaseFrameConfigUpdate(address(mockOracle), phasesConfig);
+
+        // Fast lane with exactly 1 epoch
+        phasesConfig.restorePhaseFastLaneLengthSlots = 32; // 1 epoch = 32 slots
+        vm.expectRevert(TwoPhaseFrameConfigUpdate.FastLaneTooShort.selector);
+        new TwoPhaseFrameConfigUpdate(address(mockOracle), phasesConfig);
+
+        // Fast lane with 0 slots
+        phasesConfig.restorePhaseFastLaneLengthSlots = 0;
+        vm.expectRevert(TwoPhaseFrameConfigUpdate.FastLaneTooShort.selector);
         new TwoPhaseFrameConfigUpdate(address(mockOracle), phasesConfig);
     }
 
     function test_constructor_RevertWhen_FastLanePeriodTooLong() public {
         mockLastProcessingRefSlot(epochEndSlot(1));
 
-        // Offset phase fast lane longer than frame
+        // Restore phase fast lane longer than current frame
         TwoPhaseFrameConfigUpdate.PhasesConfig
             memory phasesConfig = createPhasesConfig(
                 1,
                 1,
                 1,
-                dayToEpochs(1) * SLOTS_PER_EPOCH + 1
+                DEFAULT_EPOCHS_PER_FRAME * SLOTS_PER_EPOCH + 1
             );
         vm.expectRevert(
             TwoPhaseFrameConfigUpdate
@@ -202,7 +266,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
     function test_constructor_DefaultsRestorePhaseConfig() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 3, 2, 15); // only reportsToProcess provided
+            memory phasesConfig = createPhasesConfig(1, 3, 2, 64); // only reportsToProcess provided
 
         uint256 fromRefSlot = epochEndSlot({ dayCount: 1 });
         mockLastProcessingRefSlot(fromRefSlot);
@@ -243,7 +307,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         );
         assertEq(
             restorePhaseFastLaneSlots,
-            phasesConfig.finalFastLaneLengthSlots,
+            phasesConfig.restorePhaseFastLaneLengthSlots,
             "restorePhase fast lane defaulted to offsetPhase"
         );
 
@@ -261,7 +325,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
     function test_constructor_RevertWhen_OffsetPhaseAlreadyExpired() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // 1 report, 1 day, 10 fast lane slots
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64); // 1 report, 1 day, 10 fast lane slots
 
         uint256 startingDay = 20;
         uint256 fromRefSlot = epochEndSlot(startingDay);
@@ -293,7 +357,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
     function test_executeOffsetPhase_Success() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // 1 report, 1 day, 10 fast lane slots, restorePhase defaults
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64); // 1 report, 1 day, 10 fast lane slots, restorePhase defaults
 
         uint256 startingDay = 10;
         uint256 fromRefSlot = epochEndSlot(startingDay);
@@ -322,9 +386,11 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         assertFalse(updater.isReadyForOffsetPhase());
     }
 
-    function test_executeOffsetPhase_RevertWhen_UnexpectedRefSlot() public {
+    function test_executeOffsetPhase_RevertWhen_UnexpectedLastProcessingRefSlot()
+        public
+    {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // 1 report, 1 day, 10 fast lane slots
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64); // 1 report, 1 day, 10 fast lane slots
 
         uint256 startingDay = 10;
         uint256 fromRefSlot = epochEndSlot(startingDay);
@@ -341,7 +407,9 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                TwoPhaseFrameConfigUpdate.UnexpectedRefSlot.selector,
+                TwoPhaseFrameConfigUpdate
+                    .UnexpectedLastProcessingRefSlot
+                    .selector,
                 wrongSlot,
                 expectedOffsetPhaseSlot
             )
@@ -351,7 +419,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
     function test_executeOffsetPhase_RevertWhen_AlreadyExecuted() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // 1 report, 1 day, 10 fast lane slots
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64); // 1 report, 1 day, 10 fast lane slots
 
         uint256 startingDay = 10;
         uint256 fromRefSlot = epochEndSlot(startingDay);
@@ -374,7 +442,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
     function test_executeOffsetPhase_RevertWhen_DeadlineExpired() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // 1 report, 1 day, 10 fast lane slots
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64); // 1 report, 1 day, 10 fast lane slots
 
         uint256 startingDay = 10;
         uint256 fromRefSlot = epochEndSlot(startingDay);
@@ -407,7 +475,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
     function test_executeRestorePhase_Success() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // defaults: current frame & offsetPhase fast lane
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64); // defaults: current frame & offsetPhase fast lane
 
         uint256 startingDay = 10;
         uint256 fromRefSlot = epochEndSlot(startingDay);
@@ -451,7 +519,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
             mockConsensus.lastSetEpochsPerFrame(),
             DEFAULT_EPOCHS_PER_FRAME
         );
-        assertEq(mockConsensus.lastSetFastLaneLengthSlots(), 10);
+        assertEq(mockConsensus.lastSetFastLaneLengthSlots(), 64);
 
         // Verify role was renounced
         assertFalse(
@@ -467,7 +535,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
     function test_executeRestorePhase_RevertWhen_WithoutOffsetPhase() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // restorePhase uses defaults
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64); // restorePhase uses defaults
 
         uint256 startingDay = 10;
         uint256 fromRefSlot = epochEndSlot(startingDay);
@@ -493,11 +561,11 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         updater.executeRestorePhase();
     }
 
-    function test_executeRestorePhase_RevertWhen_WithUnexpectedRefSlot()
+    function test_executeRestorePhase_RevertWhen_UnexpectedLastProcessingRefSlot()
         public
     {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // restorePhase uses defaults
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64); // restorePhase uses defaults
 
         uint256 startingDay = 10;
         uint256 fromRefSlot = epochEndSlot(startingDay);
@@ -522,7 +590,9 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                TwoPhaseFrameConfigUpdate.UnexpectedRefSlot.selector,
+                TwoPhaseFrameConfigUpdate
+                    .UnexpectedLastProcessingRefSlot
+                    .selector,
                 wrongSlot,
                 restoreExpectedSlot
             )
@@ -532,7 +602,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
     function test_executeRestorePhase_RevertWhen_AlreadyExecuted() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // restorePhase uses defaults
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64); // restorePhase uses defaults
 
         uint256 startingDay = 10;
         uint256 fromRefSlot = epochEndSlot(startingDay);
@@ -563,7 +633,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
     function test_executeRestorePhase_RevertWhen_WithDeadlineExpired() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // restorePhase uses defaults
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64); // restorePhase uses defaults
 
         uint256 startingDay = 10;
         uint256 fromRefSlot = epochEndSlot(startingDay);
@@ -609,7 +679,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
     function test_renounceRoleWhenExpired_WhenOffsetPhaseExpired() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // restorePhase uses defaults
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64); // restorePhase uses defaults
 
         uint256 startingDay = 10;
         uint256 fromRefSlot = epochEndSlot(startingDay);
@@ -655,7 +725,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
     function test_renounceRoleWhenExpired_WhenRestorePhaseExpired() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // restorePhase uses defaults
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64); // restorePhase uses defaults
 
         uint256 startingDay = 30;
         uint256 fromRefSlot = epochEndSlot(startingDay);
@@ -704,7 +774,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
     function test_renounceRoleWhenExpired_WhenNoPhasesExpired() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // restorePhase uses defaults
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64); // restorePhase uses defaults
 
         uint256 startingDay = 20;
         uint256 fromRefSlot = epochEndSlot(startingDay);
@@ -721,19 +791,13 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
         assertFalse(offsetExpired);
         assertFalse(restoreExpired);
 
+        vm.expectRevert(TwoPhaseFrameConfigUpdate.NoneOfPhasesExpired.selector);
         updater.renounceRoleWhenExpired();
-
-        assertTrue(
-            mockConsensus.hasRole(
-                mockConsensus.MANAGE_FRAME_CONFIG_ROLE(),
-                address(updater)
-            )
-        );
     }
 
     function test_phaseStatesInitialized() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // restorePhase uses defaults
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64); // restorePhase uses defaults
 
         uint256 startingDay = 10;
         uint256 fromRefSlot = epochEndSlot(startingDay);
@@ -768,24 +832,21 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
         assertEq(offsetExpectedProcessingRefSlot, expectedOffsetPhaseSlot);
         assertEq(offsetEpochsPerFrame, EPOCHS_PER_DAY); // offsetPhase config uses 1 day (225 epochs)
-        assertEq(
-            offsetFastLaneLengthSlots,
-            phasesConfig.finalFastLaneLengthSlots
-        );
+        assertEq(offsetFastLaneLengthSlots, 0);
         assertFalse(offsetExecuted);
 
         assertEq(restoreExpectedProcessingRefSlot, expectedRestorePhaseSlot);
         assertEq(restoreEpochsPerFrame, DEFAULT_EPOCHS_PER_FRAME);
         assertEq(
             restoreFastLaneLengthSlots,
-            phasesConfig.finalFastLaneLengthSlots
+            phasesConfig.restorePhaseFastLaneLengthSlots
         );
         assertFalse(restoreExecuted);
     }
 
     function test_readinessStates() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // restorePhase uses defaults
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64); // restorePhase uses defaults
 
         uint256 startingDay = 10;
         uint256 fromRefSlot = epochEndSlot(startingDay);
@@ -829,7 +890,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
     function test_getExpirationStatus() public {
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 2, 1, 10); // restorePhase uses defaults
+            memory phasesConfig = createPhasesConfig(1, 2, 1, 64); // restorePhase uses defaults
 
         uint256 startingDay = 1; // Use smaller day to avoid overlaps with large DEFAULT_EPOCHS_PER_FRAME
         uint256 fromRefSlot = epochEndSlot(startingDay);
@@ -900,7 +961,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test {
 
         // Case 1: Offset phase with new frame smaller than current (1 day < 13 days)
         TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = createPhasesConfig(1, 1, 1, 10); // defaults
+            memory phasesConfig = createPhasesConfig(1, 1, 1, 64); // defaults
 
         uint256 fromRefSlot = epochEndSlot(1);
         mockLastProcessingRefSlot(fromRefSlot);
