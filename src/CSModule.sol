@@ -542,6 +542,7 @@ contract CSModule is ICSModule, BaseModule {
         }
     }
 
+    /// @dev Setting `topUpQueueLimit` to 0 effectively disables the top-up queue permanently.
     function _initTopUpQueue(uint32 topUpQueueLimit) internal {
         if (topUpQueueLimit > 0) {
             _topUpQueue().limit = topUpQueueLimit;
