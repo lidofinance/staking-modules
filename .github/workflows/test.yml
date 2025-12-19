@@ -126,7 +126,9 @@ jobs:
 
       - name: Build
         run: just build --sizes
-        continue-on-error: true # FIXME: Comment out after fixing the code size issues.
+        continue-on-error:
+          true # FIXME: Comment out after fixing the code size issues. The step fails no matter what
+          # the DISABLE_CODE_SIZE_LIMIT value is if contract sizes exceed the 24k limit.
 
       - name: Run unit-tests
         run: just test-unit
