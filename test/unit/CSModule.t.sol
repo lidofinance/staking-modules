@@ -552,46 +552,27 @@ contract CSMTopUpQueue is CSMCommon {
     }
 
     function test_topUp_DepositAmountBelowTopUpLimit() public {
-        createNodeOperator(2);
-        csm.obtainDepositData(2, "");
+        createNodeOperator(3);
+        csm.obtainDepositData(3, "");
+
+        assertEq(_getTopUpQueueLength(), 3);
+
+        bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
+        vm.startSnapshotGas("CSM.obtainDepositData`topUps`");
+        (bytes[] memory keys, uint256[] memory allocations) = csm
+            .obtainDepositData({
+                depositAmount: 5,
+                packedPubkeys: packedPubkeys,
+                keyIndices: UintArr(0, 1),
+                operatorIds: UintArr(0, 0),
+                topUpLimits: UintArr(3, 3)
+            });
+        vm.stopSnapshotGas();
 
         assertEq(_getTopUpQueueLength(), 2);
-
-        bytes memory keys = csm.getSigningKeys(0, 0, 1);
-        csm.obtainDepositData({
-            depositAmount: 3,
-            packedPubkeys: keys,
-            keyIndices: UintArr(0),
-            operatorIds: UintArr(0),
-            topUpLimits: UintArr(4)
-        });
-
-        assertEq(_getTopUpQueueLength(), 2);
-
-        uint256 noId;
-        uint256 keyIndex;
-
-        (noId, keyIndex) = csm.getTopUpQueueItem(0);
-        assertEq(noId, 0);
-        assertEq(keyIndex, 0);
-    }
-
-    function test_topUp_DepositAmountAboveTopUpLimit() public {
-        createNodeOperator(2);
-        csm.obtainDepositData(2, "");
-
-        assertEq(_getTopUpQueueLength(), 2);
-
-        bytes memory keys = csm.getSigningKeys(0, 0, 1);
-        csm.obtainDepositData({
-            depositAmount: 4,
-            packedPubkeys: keys,
-            keyIndices: UintArr(0),
-            operatorIds: UintArr(0),
-            topUpLimits: UintArr(3)
-        });
-
-        assertEq(_getTopUpQueueLength(), 1);
+        assertEq(allocations, UintArr(3, 2));
+        assertEq(keys[0], slice(packedPubkeys, 0 * 48, 48));
+        assertEq(keys[1], slice(packedPubkeys, 1 * 48, 48));
 
         uint256 noId;
         uint256 keyIndex;
@@ -599,31 +580,65 @@ contract CSMTopUpQueue is CSMCommon {
         (noId, keyIndex) = csm.getTopUpQueueItem(0);
         assertEq(noId, 0);
         assertEq(keyIndex, 1);
+    }
+
+    function test_topUp_DepositAmountAboveTopUpLimit() public {
+        createNodeOperator(3);
+        csm.obtainDepositData(3, "");
+
+        assertEq(_getTopUpQueueLength(), 3);
+
+        bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
+        (bytes[] memory keys, uint256[] memory allocations) = csm
+            .obtainDepositData({
+                depositAmount: 4,
+                packedPubkeys: packedPubkeys,
+                keyIndices: UintArr(0, 1),
+                operatorIds: UintArr(0, 0),
+                topUpLimits: UintArr(2, 1)
+            });
+
+        assertEq(_getTopUpQueueLength(), 1);
+        assertEq(allocations, UintArr(2, 1));
+        assertEq(keys[0], slice(packedPubkeys, 0 * 48, 48));
+        assertEq(keys[1], slice(packedPubkeys, 1 * 48, 48));
+
+        uint256 noId;
+        uint256 keyIndex;
+
+        (noId, keyIndex) = csm.getTopUpQueueItem(0);
+        assertEq(noId, 0);
+        assertEq(keyIndex, 2);
     }
 
     function test_topUp_RemovesFullKeys() public {
         createNodeOperator(2);
-        csm.obtainDepositData(2, "");
+        createNodeOperator(1);
+        csm.obtainDepositData(3, "");
 
-        assertEq(_getTopUpQueueLength(), 2);
+        assertEq(_getTopUpQueueLength(), 3);
 
-        bytes memory keys = csm.getSigningKeys(0, 0, 1);
-        csm.obtainDepositData({
-            depositAmount: 0,
-            packedPubkeys: keys,
-            keyIndices: UintArr(0),
-            operatorIds: UintArr(0),
-            topUpLimits: UintArr(0)
-        });
+        bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
+        (bytes[] memory keys, uint256[] memory allocations) = csm
+            .obtainDepositData({
+                depositAmount: 0,
+                packedPubkeys: packedPubkeys,
+                keyIndices: UintArr(0, 1),
+                operatorIds: UintArr(0, 0),
+                topUpLimits: UintArr(0, 0)
+            });
 
         assertEq(_getTopUpQueueLength(), 1);
+        assertEq(allocations, UintArr(0, 0));
+        assertEq(keys[0], slice(packedPubkeys, 0 * 48, 48));
+        assertEq(keys[1], slice(packedPubkeys, 1 * 48, 48));
 
         uint256 noId;
         uint256 keyIndex;
 
         (noId, keyIndex) = csm.getTopUpQueueItem(0);
-        assertEq(noId, 0);
-        assertEq(keyIndex, 1);
+        assertEq(noId, 1);
+        assertEq(keyIndex, 0);
     }
 
     function test_topUp_nonceIncrementsWhenKeysProvided() public {
