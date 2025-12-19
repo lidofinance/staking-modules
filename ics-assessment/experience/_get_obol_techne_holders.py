@@ -1,7 +1,7 @@
 from web3 import Web3
 
-ARBITRUM_BLOCK_CUTOFF = 385107521
-ETHEREUM_BLOCK_CUTOFF = 23486383
+ARBITRUM_BLOCK_CUTOFF = 412387831
+ETHEREUM_BLOCK_CUTOFF = 24048776
 
 # Preferably use infura for unlimited block range
 ARBITRUM_PROVIDER_URL = 'http://localhost:8545/'
@@ -20,7 +20,7 @@ def fetch_nft_holders(rpc: str, address: str, from_block: int, to_block: int) ->
         "anonymous": False
     }])
 
-    logs = contract.events.Transfer.get_logs(fromBlock=from_block, toBlock=to_block)
+    logs = contract.events.Transfer.get_logs(from_block=from_block, to_block=to_block)
     holders = set()
     for log in logs:
         holders.add(log.args.to)

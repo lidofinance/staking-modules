@@ -16,7 +16,7 @@ import requests
 RPC_URL: str = "http://127.0.0.1:8545"
 FEE_DISTRIBUTOR_ADDRESS: str = "0xaCd9820b0A2229a82dc1A0770307ce5522FF3582"
 FROM_BLOCK: int = 4980
-TO_BLOCK: str | int = 1329775
+TO_BLOCK: str | int = 1858334
 OUTPUT_PATH: Path = Path(__file__).parent / "eligible_node_operators_hoodi.json"
 REQUIRED_PERFORMANCE_WINDOW = 53  # days
 
@@ -25,7 +25,7 @@ EVENT_SIGNATURE: str = "DistributionLogUpdated(string)"
 
 
 def fetch_cids_via_getlogs(w3: Web3, address: str, from_block: int, to_block: int | str) -> List[Tuple[int, str]]:
-    topic0 = Web3.keccak(text=EVENT_SIGNATURE).hex()
+    topic0 = "0x" +Web3.keccak(text=EVENT_SIGNATURE).hex()
     addr = Web3.to_checksum_address(address)
     logs = w3.eth.get_logs({
         "address": addr,
