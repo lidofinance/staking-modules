@@ -4,9 +4,12 @@
 pragma solidity 0.8.31;
 
 import { Test } from "forge-std/Test.sol";
+
+import { TwoPhaseFrameConfigUpdate } from "src/utils/TwoPhaseFrameConfigUpdate.sol";
+import { IFeeOracle } from "src/interfaces/IFeeOracle.sol";
+
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 import { Utilities } from "../../helpers/Utilities.sol";
-import { TwoPhaseFrameConfigUpdate } from "../../../src/utils/TwoPhaseFrameConfigUpdate.sol";
 
 contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
     TwoPhaseFrameConfigUpdate public updater;
@@ -37,6 +40,44 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         Env memory env = envVars();
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
+
+        uint256 lastProcessingRefSlot = oracle.getLastProcessingRefSlot();
+        (uint256 currentRefSlot, ) = hashConsensus.getCurrentFrame();
+        if (currentRefSlot != lastProcessingRefSlot) {
+            uint256 consensusVersion = oracle.getConsensusVersion();
+            uint256 contractVersion = oracle.getContractVersion();
+
+            IFeeOracle.ReportData memory report = IFeeOracle.ReportData({
+                consensusVersion: consensusVersion,
+                refSlot: currentRefSlot,
+                treeRoot: someBytes32(),
+                treeCid: someCIDv0(),
+                logCid: someCIDv0(),
+                distributed: 0,
+                rebate: 0,
+                strikesTreeRoot: someBytes32(),
+                strikesTreeCid: someCIDv0()
+            });
+            bytes32 reportHash = keccak256(abi.encode(report));
+
+            (address[] memory members, ) = hashConsensus.getFastLaneMembers();
+            for (uint256 i; i < members.length; i++) {
+                vm.prank(members[i]);
+                hashConsensus.submitReport(
+                    currentRefSlot,
+                    reportHash,
+                    consensusVersion
+                );
+            }
+
+            bytes32 submitRole = oracle.SUBMIT_DATA_ROLE();
+            bytes32 adminRole = oracle.getRoleAdmin(submitRole);
+            address admin = oracle.getRoleMember(adminRole, 0);
+            vm.prank(admin);
+            oracle.grantRole(submitRole, address(this));
+            oracle.submitReportData(report, contractVersion);
+            oracle.renounceRole(submitRole, address(this));
+        }
     }
 
     function test_shiftReportWindow() public {
