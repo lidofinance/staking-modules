@@ -1,5 +1,5 @@
 [profile.default]
-solc = "0.8.31"
+solc = "0.8.33"
 evm_version = "osaka"
 optimizer = true
 optimizer_runs = 0 # REVISE IN THE FUTURE

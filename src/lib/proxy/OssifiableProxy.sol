@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.31;
+pragma solidity 0.8.33;
 
 import { StorageSlot } from "@openzeppelin/contracts/utils/StorageSlot.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";

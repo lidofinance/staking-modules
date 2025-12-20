@@ -2,7 +2,7 @@
   "extends": "solhint:recommended",
   "plugins": ["lido-csm"],
   "rules": {
-    "compiler-version": ["error", "0.8.31"],
+    "compiler-version": ["error", "0.8.33"],
     "no-inline-assembly": "off",
     "no-unused-import": "error",
     "func-named-parameters": "error",

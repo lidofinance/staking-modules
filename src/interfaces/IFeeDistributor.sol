@@ -4,7 +4,7 @@
 import { IAssetRecovererLib } from "../lib/AssetRecovererLib.sol";
 import { IStETH } from "./IStETH.sol";
 
-pragma solidity 0.8.31;
+pragma solidity 0.8.33;
 
 interface IFeeDistributor is IAssetRecovererLib {
     struct DistributionData {

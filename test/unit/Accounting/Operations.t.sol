@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.31;
+pragma solidity 0.8.33;
 
 import { Accounting } from "src/Accounting.sol";
 import { IBurner } from "src/interfaces/IBurner.sol";
