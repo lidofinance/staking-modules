@@ -1,7 +1,6 @@
 import json
 import asyncio
 from web3 import AsyncWeb3
-from web3.providers.async_rpc import AsyncHTTPProvider
 
 PROVIDER_URL_MAINNET = 'http://localhost:8545/'
 PROVIDER_URL_HOODI = 'http://localhost:8545/'
@@ -11,15 +10,15 @@ CONTRACT_ADDRESS_HOODI = '0x79CEf36D84743222f37765204Bec41E92a93E59d'
 with open("../../artifacts/mainnet/ics/abi/csm_abi.json", "r") as file:
     CSM_ABI = file.read()
 
-REFERENCE_BLOCK_MAINNET = 23486383
-REFERENCE_BLOCK_HOODI = 1329775
+REFERENCE_BLOCK_MAINNET = 24048776
+REFERENCE_BLOCK_HOODI = 1856195
 
 OUTPUT_FILE_MAINNET = 'node_operator_owners_mainnet.json'
 OUTPUT_FILE_HOODI = 'node_operator_owners_hoodi.json'
 
 
 async def fetch_node_operator_owners(provider_url, contract_address, reference_block, json_output):
-    w3 = AsyncWeb3(AsyncHTTPProvider(provider_url))
+    w3 = AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(provider_url))
     contract = w3.eth.contract(address=contract_address, abi=CSM_ABI, decode_tuples=True)
 
     node_operators = {}
@@ -40,7 +39,7 @@ async def fetch_node_operator_owners(provider_url, contract_address, reference_b
             node_operator = await contract.functions.getNodeOperator(i).call(block_identifier=reference_block)
             node_operators[i] = node_operator.managerAddress if node_operator.extendedManagerPermissions else node_operator.rewardAddress
             processed["num"] += 1
-            if processed["num"] % 10 == 0:
+            if processed["num"] % 10 == 0 or processed["num"] == count:
                 print(f"Fetched {processed['num']}/{count} node operators.")
 
             queue.task_done()

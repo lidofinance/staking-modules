@@ -6,7 +6,7 @@ from web3 import Web3
 RPC_URL = "http://localhost:8545"
 PGVOTE_NFT_ADDRESS = "0x4a9cef2134Fa8e48ff2BeaF533D8b5E05e085Dc0"
 FROM_BLOCK = 19620007  # created at
-TO_BLOCK = 23486383  # cutoff date
+TO_BLOCK = 24048776  # cutoff date
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 TRANSFER_EVENT_ABI = [
@@ -36,8 +36,8 @@ def fetch_erc20_balances(
     )
 
     logs = contract.events.Transfer.get_logs(
-        fromBlock=from_block,
-        toBlock=to_block,
+        from_block=from_block,
+        to_block=to_block,
     )
     logs = sorted(
         logs,

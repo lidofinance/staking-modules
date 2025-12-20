@@ -3,7 +3,7 @@ from collections import defaultdict
 from web3 import Web3
 
 RPC_URL = "http://localhost:8545/"
-ARAGON_BLOCK_CUTOFF = 23486383
+ARAGON_BLOCK_CUTOFF = 24048776
 REQUIRED_LDO = 100 * 10 ** 18  # 100 LDO in wei
 
 if __name__ == '__main__':
@@ -16,8 +16,8 @@ if __name__ == '__main__':
     abi = '[{"anonymous":false,"inputs":[{"indexed":true,"name":"voteId","type":"uint256"},{"indexed":true,"name":"voter","type":"address"},{"indexed":false,"name":"supports","type":"bool"},{"indexed":false,"name":"stake","type":"uint256"}],"name":"CastVote","type":"event"}]'
     contract = w3.eth.contract(address=voting_address, abi=abi, decode_tuples=True)
     logs = contract.events.CastVote().get_logs(
-            fromBlock=voting_deployment_block,
-            toBlock=ARAGON_BLOCK_CUTOFF
+            from_block=voting_deployment_block,
+            to_block=ARAGON_BLOCK_CUTOFF
     )
 
     voters = defaultdict(set)

@@ -25,10 +25,9 @@ scores = {
     "sdvtm-mainnet": 7
 }
 
-# TODO add support for v2 reports
 MAINNET_PERFORMANCE_REPORTS = [
-    "QmaUC2HBv88mJ9Gf99hfNgtH4qo2F1yHaBMC4imwVhxDDi",  # 23248929 block
-    "QmPPFkydgtnwMBDF6nZZaU5nnqy3csbKts3UfRRgWXreEu"  # 23463926 block
+    "QmZyzTYdSait7BYCEToFJFJ6qVkX2HJBrrvXhk64e82xoK",  # 23849500 block
+    "QmdjvGW2yT8dgvK88sDaA9KFpmxTBxayLP6R1wm5mmzCnP"   # 24048776 block
 ]
 
 MIN_SCORE = 5
@@ -207,7 +206,7 @@ def _check_csm_performance_logs(addresses: set[str], no_owners_file_name, perf_r
     # If any operator id for the addresses is eligible, continue
     eligible = False
     for report in perf_reports:
-        data = _request_performance_report(report)
+        data = _request_performance_report(report)[0]
         threshold = data.get('threshold', 0)
         operators = data.get('operators', {})
         for no_id in found_ids:
