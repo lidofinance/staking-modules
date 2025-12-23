@@ -16,7 +16,7 @@ import requests
 RPC_URL: str = "http://127.0.0.1:8545"
 FEE_DISTRIBUTOR_ADDRESS: str = "0xaCd9820b0A2229a82dc1A0770307ce5522FF3582"
 FROM_BLOCK: int = 4980
-TO_BLOCK: str | int = 1858334
+TO_BLOCK: str | int = 1879749
 OUTPUT_PATH: Path = Path(__file__).parent / "eligible_node_operators_hoodi.json"
 REQUIRED_PERFORMANCE_WINDOW = 53  # days
 

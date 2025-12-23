@@ -1,7 +1,7 @@
 from web3 import Web3
 
-ARBITRUM_BLOCK_CUTOFF = 412387831
-ETHEREUM_BLOCK_CUTOFF = 24048776
+ARBITRUM_BLOCK_CUTOFF = 413481079
+ETHEREUM_BLOCK_CUTOFF = 24071596
 
 # Preferably use infura for unlimited block range
 ARBITRUM_PROVIDER_URL = 'http://localhost:8545/'
