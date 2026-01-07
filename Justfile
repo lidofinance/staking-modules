@@ -365,10 +365,10 @@ test-current *args:
     just kill-fork
 
 deploy-utils contract_name *args:
-    just _deploy-utils {{contract_name}} {{anvil_rpc_url}} ./artifacts/latest/utils/{{contract_name}}/ --broadcast {{args}}
+    just _deploy-utils {{contract_name}} {{anvil_rpc_url}} ./artifacts/latest/utils/{{contract_name}}/ "" --broadcast {{args}}
 
 deploy-utils-dry contract_name *args:
-    just _deploy-utils {{contract_name}} $RPC_URL ./artifacts/local/utils/{{contract_name}}/ {{args}}
+    just _deploy-utils {{contract_name}} $RPC_URL ./artifacts/local/utils/{{contract_name}}/ "/dry-run" {{args}}
 
 deploy-utils-live contract_name *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
@@ -376,9 +376,9 @@ deploy-utils-live contract_name *args:
 
 [confirm("You are about to broadcast utility contract deployment transactions to the network. Are you sure?")]
 _deploy-utils-live-confirmed contract_name *args:
-    just _deploy-utils {{contract_name}} $RPC_URL ./artifacts/latest/utils/{{contract_name}}/ --broadcast --verify {{args}}
+    just _deploy-utils {{contract_name}} $RPC_URL ./artifacts/latest/utils/{{contract_name}}/ "" --broadcast --verify {{args}}
 
-_deploy-utils contract_name rpc_url artifacts_dir *args:
+_deploy-utils contract_name rpc_url artifacts_dir dry-prefix *args:
     #!/usr/bin/env bash
     CHAIN_LOWER="{{chain}}"
     CHAIN_CAPITALIZED="${CHAIN_LOWER^}"
@@ -387,7 +387,7 @@ _deploy-utils contract_name rpc_url artifacts_dir *args:
     forge script script/Deploy{{contract_name}}${CHAIN_CAPITALIZED}.s.sol:Deploy{{contract_name}}${CHAIN_CAPITALIZED} --sig="run(string)" \
         --rpc-url {{rpc_url}} --slow {{args}} -- `git rev-parse HEAD`
     
-    cp ./broadcast/Deploy{{contract_name}}${CHAIN_CAPITALIZED}.s.sol/`cast chain-id --rpc-url={{rpc_url}}`/run-latest.json \
+    cp ./broadcast/Deploy{{contract_name}}${CHAIN_CAPITALIZED}.s.sol/`cast chain-id --rpc-url={{rpc_url}}`{{dry-prefix}}/run-latest.json \
         {{artifacts_dir}}/transactions.json
 
 _warn message:
