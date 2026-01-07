@@ -515,11 +515,7 @@ contract BondCoreBurnTest is BondCoreTestBase {
         uint256 bondSharesBefore = bondCore.getBondShares(0);
         vm.expectCall(
             locator.burner(),
-            abi.encodeWithSelector(
-                IBurner.requestBurnShares.selector,
-                address(bondCore),
-                shares
-            )
+            abi.encodeWithSelector(IBurner.requestBurnMyShares.selector, shares)
         );
         uint256 unburned = bondCore.burn(0, 1 ether);
         uint256 bondSharesAfter = bondCore.getBondShares(0);
@@ -549,8 +545,7 @@ contract BondCoreBurnTest is BondCoreTestBase {
         vm.expectCall(
             locator.burner(),
             abi.encodeWithSelector(
-                IBurner.requestBurnShares.selector,
-                address(bondCore),
+                IBurner.requestBurnMyShares.selector,
                 stETH.getSharesByPooledEth(amountToBurn)
             )
         );
@@ -576,11 +571,7 @@ contract BondCoreBurnTest is BondCoreTestBase {
 
         vm.expectCall(
             locator.burner(),
-            abi.encodeWithSelector(
-                IBurner.requestBurnShares.selector,
-                address(bondCore),
-                shares
-            )
+            abi.encodeWithSelector(IBurner.requestBurnMyShares.selector, shares)
         );
 
         uint256 unburned = bondCore.burn(0, 32 ether);

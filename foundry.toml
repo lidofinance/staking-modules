@@ -39,6 +39,7 @@ fs_permissions = [
 ignored_warnings_from = [
     "src/lib/base-oracle/HashConsensus.sol",
     "test/OssifiableProxy.t.sol",
+    "node_modules"
 ]
 
 [profile.lite]

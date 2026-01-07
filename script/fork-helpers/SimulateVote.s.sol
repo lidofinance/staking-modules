@@ -65,7 +65,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
         });
         // 2. burner role
         burner.grantRole(
-            burner.REQUEST_BURN_SHARES_ROLE(),
+            burner.REQUEST_BURN_MY_STETH_ROLE(),
             address(accounting)
         );
         // 3. twg role
@@ -126,7 +126,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
         });
 
         burner.grantRole(
-            burner.REQUEST_BURN_SHARES_ROLE(),
+            burner.REQUEST_BURN_MY_STETH_ROLE(),
             address(accounting)
         );
 

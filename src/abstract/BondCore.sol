@@ -220,11 +220,7 @@ abstract contract BondCore is IBondCore {
             notBurnedAmount = amountToBurn - amountBurned;
         }
 
-        // TODO: Replace with `requestBurnMyShares` (https://github.com/lidofinance/core/pull/1142) in the next major release
-        IBurner(LIDO_LOCATOR.burner()).requestBurnShares(
-            address(this),
-            burnedShares
-        );
+        IBurner(LIDO_LOCATOR.burner()).requestBurnMyShares(burnedShares);
 
         emit BondBurned(nodeOperatorId, amountToBurn, amountBurned);
     }

@@ -624,11 +624,7 @@ contract PenalizeTest is BaseTest {
 
         vm.expectCall(
             locator.burner(),
-            abi.encodeWithSelector(
-                IBurner.requestBurnShares.selector,
-                address(accounting),
-                shares
-            )
+            abi.encodeWithSelector(IBurner.requestBurnMyShares.selector, shares)
         );
 
         vm.prank(address(stakingModule));
@@ -659,8 +655,7 @@ contract PenalizeTest is BaseTest {
         vm.expectCall(
             locator.burner(),
             abi.encodeWithSelector(
-                IBurner.requestBurnShares.selector,
-                address(accounting),
+                IBurner.requestBurnMyShares.selector,
                 bondShares
             )
         );
@@ -703,8 +698,7 @@ contract PenalizeTest is BaseTest {
         vm.expectCall(
             locator.burner(),
             abi.encodeWithSelector(
-                IBurner.requestBurnShares.selector,
-                address(accounting),
+                IBurner.requestBurnMyShares.selector,
                 bondSharesBefore
             )
         );
@@ -740,8 +734,7 @@ contract PenalizeTest is BaseTest {
         vm.expectCall(
             locator.burner(),
             abi.encodeWithSelector(
-                IBurner.requestBurnShares.selector,
-                address(accounting),
+                IBurner.requestBurnMyShares.selector,
                 bondSharesBefore
             )
         );

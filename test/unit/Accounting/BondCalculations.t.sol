@@ -440,7 +440,7 @@ contract LockBondETHTest is BaseTest {
 
         expectNoCall(
             address(burner),
-            abi.encodeWithSelector(IBurner.requestBurnShares.selector)
+            abi.encodeWithSelector(IBurner.requestBurnMyShares.selector)
         );
         bool applied = accounting.settleLockedBondETH(noId);
         vm.stopPrank();
@@ -472,8 +472,7 @@ contract LockBondETHTest is BaseTest {
         vm.expectCall(
             locator.burner(),
             abi.encodeWithSelector(
-                IBurner.requestBurnShares.selector,
-                address(accounting),
+                IBurner.requestBurnMyShares.selector,
                 bondSharesBefore
             )
         );

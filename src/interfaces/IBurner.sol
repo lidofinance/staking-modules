@@ -6,6 +6,8 @@ pragma solidity 0.8.33;
 interface IBurner {
     function REQUEST_BURN_SHARES_ROLE() external view returns (bytes32);
 
+    function REQUEST_BURN_MY_STETH_ROLE() external view returns (bytes32);
+
     function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
 
     function getRoleMember(
@@ -22,8 +24,5 @@ interface IBurner {
         address account
     ) external view returns (bool);
 
-    function requestBurnShares(
-        address _from,
-        uint256 _sharesAmountToBurn
-    ) external;
+    function requestBurnMyShares(uint256 _sharesAmountToBurn) external;
 }
