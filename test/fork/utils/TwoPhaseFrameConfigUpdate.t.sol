@@ -127,6 +127,135 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         oracle.renounceRole(submitRole, address(this));
     }
 
+    function test_deployParams() public {
+        Env memory env = envVars();
+        vm.skip(_isEmpty(env.UTILS_DEPLOY_CONFIG));
+
+        string memory utilsConfig = vm.readFile(env.UTILS_DEPLOY_CONFIG);
+        bytes memory encodedParams = vm.parseJsonBytes(
+            utilsConfig,
+            ".TwoPhaseFrameConfigUpdateParams"
+        );
+        (
+            uint256 reportsToProcessBeforeOffsetPhaseFromConfig,
+            uint256 reportsToProcessBeforeRestorePhaseFromConfig,
+            uint256 offsetPhaseEpochsPerFrameFromConfig,
+            uint256 restorePhaseFastLaneLengthSlotsFromConfig
+        ) = abi.decode(encodedParams, (uint256, uint256, uint256, uint256));
+
+        {
+            uint256 slotsPerEpoch = updater.SLOTS_PER_EPOCH();
+
+            (
+                uint256 offsetExpectedProcessingRefSlot,
+                ,
+                uint256 offsetPhaseEpochsPerFrameActual,
+                uint256 offsetFastLaneLengthSlotsActual,
+
+            ) = updater.offsetPhase();
+
+            (
+                uint256 restoreExpectedProcessingRefSlot,
+                ,
+                ,
+                uint256 restoreFastLaneLengthSlotsActual,
+
+            ) = updater.restorePhase();
+
+            assertEq(
+                offsetPhaseEpochsPerFrameActual,
+                offsetPhaseEpochsPerFrameFromConfig,
+                "Offset phase epochsPerFrame mismatch"
+            );
+            assertEq(
+                offsetFastLaneLengthSlotsActual,
+                0,
+                "Offset phase fast lane should be disabled"
+            );
+            assertEq(
+                restoreFastLaneLengthSlotsActual,
+                restorePhaseFastLaneLengthSlotsFromConfig,
+                "Restore phase fast lane length mismatch"
+            );
+            assertEq(
+                restoreExpectedProcessingRefSlot -
+                    offsetExpectedProcessingRefSlot,
+                reportsToProcessBeforeRestorePhaseFromConfig *
+                    offsetPhaseEpochsPerFrameFromConfig *
+                    slotsPerEpoch,
+                "Restore phase expected ref slot mismatch"
+            );
+        }
+
+        // Check reportsToProcessBeforeOffsetPhase by deployment time
+        {
+            uint256 deployBlockNumber = _utilsDeployBlockNumber(
+                env.UTILS_DEPLOY_CONFIG
+            );
+            vm.createSelectFork(env.RPC_URL, deployBlockNumber);
+
+            uint256 lastProcessingRefSlotAtDeployTime = oracle
+                .getLastProcessingRefSlot();
+            (uint256 currentRefSlotAtDeployTime, ) = hashConsensus
+                .getCurrentFrame();
+            assertEq(
+                currentRefSlotAtDeployTime,
+                lastProcessingRefSlotAtDeployTime,
+                "Sanity: report main phase not completed at deploy time"
+            );
+
+            (, uint256 currentEpochsPerFrameAtDeployTime, ) = hashConsensus
+                .getFrameConfig();
+            (uint256 slotsPerEpochAtDeployTime, , ) = hashConsensus
+                .getChainConfig();
+
+            (uint256 offsetExpectedProcessingRefSlot, , , , ) = updater
+                .offsetPhase();
+            assertEq(
+                offsetExpectedProcessingRefSlot,
+                lastProcessingRefSlotAtDeployTime +
+                    (reportsToProcessBeforeOffsetPhaseFromConfig *
+                        currentEpochsPerFrameAtDeployTime *
+                        slotsPerEpochAtDeployTime),
+                "Offset phase expected ref slot mismatch"
+            );
+        }
+    }
+
+    function _utilsDeployBlockNumber(
+        string memory utilsDeployConfigPath
+    ) internal returns (uint256 deployBlockNumber) {
+        string memory transactionsPath = string.concat(
+            _dirOf(utilsDeployConfigPath),
+            "transactions.json"
+        );
+        vm.skip(!vm.exists(transactionsPath));
+
+        string memory transactionsJson = vm.readFile(transactionsPath);
+        string memory deployBlockNumberHex = vm.parseJsonString(
+            transactionsJson,
+            ".receipts[0].blockNumber"
+        );
+        deployBlockNumber = vm.parseUint(deployBlockNumberHex);
+    }
+
+    function _dirOf(
+        string memory path
+    ) internal pure returns (string memory dir) {
+        bytes memory b = bytes(path);
+        if (b.length == 0) return "";
+
+        uint256 i = b.length;
+        while (i > 0) {
+            if (b[i - 1] == "/") break;
+            unchecked {
+                --i;
+            }
+        }
+        if (i == 0) return "";
+        dir = string(slice(b, 0, i));
+    }
+
     function test_shiftReportWindow() public {
         uint256 genesisTime = updater.GENESIS_TIME();
         uint256 secondsPerSlot = updater.SECONDS_PER_SLOT();
