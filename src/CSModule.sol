@@ -18,6 +18,8 @@ import { SigningKeys } from "./lib/SigningKeys.sol";
 contract CSModule is ICSModule, BaseModule {
     using QueueLib for QueueLib.Queue;
 
+    uint64 internal constant INITIALIZED_VERSION = 3;
+
     /// @dev QUEUE_LOWEST_PRIORITY identifies the range of available priorities: [0; QUEUE_LOWEST_PRIORITY].
     uint256 public immutable QUEUE_LOWEST_PRIORITY;
 
@@ -39,6 +41,19 @@ contract CSModule is ICSModule, BaseModule {
         QUEUE_LOWEST_PRIORITY = PARAMETERS_REGISTRY.QUEUE_LOWEST_PRIORITY();
         _disableInitializers();
     }
+
+    /// @notice Initialize the module from scratch
+    function initialize(
+        address admin
+    ) external override reinitializer(INITIALIZED_VERSION) {
+        __BaseModule_init(admin);
+    }
+
+    /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3
+    ///      for the existing deployment. If the version 3 contract is deployed from scratch, the `initialize`
+    ///      method should be used instead.
+    // solhint-disable-next-line no-empty-blocks
+    function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {}
 
     /// @inheritdoc IStakingModule
     /// @notice Get the next `depositsCount` of depositable keys with signatures from the queue
@@ -190,22 +205,6 @@ contract CSModule is ICSModule, BaseModule {
     }
 
     /// @inheritdoc ICSModule
-    function depositQueuePointers(
-        uint256 queuePriority
-    ) external view returns (uint128 head, uint128 tail) {
-        QueueLib.Queue storage q = _queueByPriority[queuePriority];
-        return (q.head, q.tail);
-    }
-
-    /// @inheritdoc ICSModule
-    function depositQueueItem(
-        uint256 queuePriority,
-        uint128 index
-    ) external view returns (Batch) {
-        return _queueByPriority[queuePriority].at(index);
-    }
-
-    /// @inheritdoc ICSModule
     function cleanDepositQueue(
         uint256 maxItems
     ) external returns (uint256 removed, uint256 lastRemovedAtDepth) {
@@ -273,6 +272,22 @@ contract CSModule is ICSModule, BaseModule {
                 maxItems -= visitedPerQueue;
             }
         }
+    }
+
+    /// @inheritdoc ICSModule
+    function depositQueuePointers(
+        uint256 queuePriority
+    ) external view returns (uint128 head, uint128 tail) {
+        QueueLib.Queue storage q = _queueByPriority[queuePriority];
+        return (q.head, q.tail);
+    }
+
+    /// @inheritdoc ICSModule
+    function depositQueueItem(
+        uint256 queuePriority,
+        uint128 index
+    ) external view returns (Batch) {
+        return _queueByPriority[queuePriority].at(index);
     }
 
     function _onOperatorDepositableChange(

@@ -164,11 +164,11 @@ contract DeploymentHelpers is Test {
         address strikes;
         address strikesImpl;
         address verifier;
-        address verifierV2;
+        address verifierV3;
         address hashConsensus;
         address lidoLocator;
         address gateSeal;
-        address gateSealV2;
+        address gateSealV3;
     }
 
     struct CuratedDeploymentConfig {
@@ -321,12 +321,18 @@ contract DeploymentHelpers is Test {
         vm.label(deploymentConfig.feeDistributorImpl, "feeDistributorImpl");
 
         deploymentConfig.verifier = vm.parseJsonAddress(config, ".Verifier");
-        if (vm.keyExistsJson(config, ".VerifierV2")) {
-            deploymentConfig.verifierV2 = vm.parseJsonAddress(
+        if (vm.keyExistsJson(config, ".VerifierV3")) {
+            deploymentConfig.verifierV3 = vm.parseJsonAddress(
+                config,
+                ".VerifierV3"
+            );
+            vm.label(deploymentConfig.verifierV3, "verifierV3");
+        } else if (vm.keyExistsJson(config, ".VerifierV2")) {
+            deploymentConfig.verifierV3 = vm.parseJsonAddress(
                 config,
                 ".VerifierV2"
             );
-            vm.label(deploymentConfig.verifierV2, "verifierV2");
+            vm.label(deploymentConfig.verifierV3, "verifierV3");
         }
         vm.label(deploymentConfig.verifier, "verifier");
 
@@ -343,12 +349,18 @@ contract DeploymentHelpers is Test {
         vm.label(deploymentConfig.lidoLocator, "LidoLocator");
 
         deploymentConfig.gateSeal = vm.parseJsonAddress(config, ".GateSeal");
-        if (vm.keyExistsJson(config, ".GateSealV2")) {
-            deploymentConfig.gateSealV2 = vm.parseJsonAddress(
+        if (vm.keyExistsJson(config, ".GateSealV3")) {
+            deploymentConfig.gateSealV3 = vm.parseJsonAddress(
+                config,
+                ".GateSealV3"
+            );
+            vm.label(deploymentConfig.gateSealV3, "GateSealV3");
+        } else if (vm.keyExistsJson(config, ".GateSealV2")) {
+            deploymentConfig.gateSealV3 = vm.parseJsonAddress(
                 config,
                 ".GateSealV2"
             );
-            vm.label(deploymentConfig.gateSealV2, "GateSealV2");
+            vm.label(deploymentConfig.gateSealV3, "GateSealV3");
         }
         vm.label(deploymentConfig.gateSeal, "GateSeal");
     }
@@ -810,9 +822,9 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
         strikes = ValidatorStrikes(deploymentConfig.strikes);
         strikesImpl = ValidatorStrikes(deploymentConfig.strikesImpl);
         verifier = Verifier(
-            deploymentConfig.verifierV2 == address(0)
+            deploymentConfig.verifierV3 == address(0)
                 ? deploymentConfig.verifier
-                : deploymentConfig.verifierV2
+                : deploymentConfig.verifierV3
         );
         hashConsensus = HashConsensus(deploymentConfig.hashConsensus);
         locator = ILidoLocator(deploymentConfig.lidoLocator);
@@ -820,9 +832,9 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
         stakingRouter = IStakingRouter(locator.stakingRouter());
         wstETH = IWstETH(IWithdrawalQueue(locator.withdrawalQueue()).WSTETH());
         gateSeal = IGateSeal(
-            deploymentConfig.gateSealV2 == address(0)
+            deploymentConfig.gateSealV3 == address(0)
                 ? deploymentConfig.gateSeal
-                : deploymentConfig.gateSealV2
+                : deploymentConfig.gateSealV3
         );
         burner = IBurner(locator.burner());
     }

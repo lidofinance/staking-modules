@@ -14,6 +14,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
     bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE =
         keccak256("OPERATOR_ADDRESSES_ADMIN_ROLE");
 
+    uint64 internal constant INITIALIZED_VERSION = 1;
+
     constructor(
         bytes32 moduleType,
         address lidoLocator,
@@ -30,6 +32,13 @@ contract CuratedModule is ICuratedModule, BaseModule {
         )
     {
         _disableInitializers();
+    }
+
+    /// @notice Initialize the module from scratch
+    function initialize(
+        address admin
+    ) external override reinitializer(INITIALIZED_VERSION) {
+        __BaseModule_init(admin);
     }
 
     /// @inheritdoc IStakingModule
@@ -85,6 +94,20 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     /// @inheritdoc ICuratedModule
+    function changeNodeOperatorAddresses(
+        uint256 nodeOperatorId,
+        address newManagerAddress,
+        address newRewardAddress
+    ) external onlyRole(OPERATOR_ADDRESSES_ADMIN_ROLE) {
+        NOAddresses.changeNodeOperatorAddresses(
+            _nodeOperators,
+            nodeOperatorId,
+            newManagerAddress,
+            newRewardAddress
+        );
+    }
+
+    /// @inheritdoc ICuratedModule
     function getDepositsAllocation(
         uint256 /* depositAmount */
     )
@@ -97,20 +120,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
         )
     {
         revert NotImplemented();
-    }
-
-    /// @inheritdoc ICuratedModule
-    function changeNodeOperatorAddresses(
-        uint256 nodeOperatorId,
-        address newManagerAddress,
-        address newRewardAddress
-    ) external onlyRole(OPERATOR_ADDRESSES_ADMIN_ROLE) {
-        NOAddresses.changeNodeOperatorAddresses(
-            _nodeOperators,
-            nodeOperatorId,
-            newManagerAddress,
-            newRewardAddress
-        );
     }
 
     // TODO: Implement. It does not revert currently for tests.

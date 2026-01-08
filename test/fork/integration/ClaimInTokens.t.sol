@@ -25,6 +25,7 @@ contract ClaimRewardsTest is
     address internal stranger;
     address internal nodeOperator;
     uint256 internal defaultNoId;
+    uint256 internal accountingSharesSurplus;
 
     modifier assertInvariants() {
         _;
@@ -50,6 +51,9 @@ contract ClaimRewardsTest is
         Env memory env = envVars();
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
+        accountingSharesSurplus =
+            lido.sharesOf(address(accounting)) -
+            accounting.totalBondShares();
 
         vm.startPrank(module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0));
         module.grantRole(module.DEFAULT_ADMIN_ROLE(), address(this));
@@ -138,8 +142,8 @@ contract ClaimRewardsTest is
             "NO bond shares should be decreased by real transferred shares"
         );
         assertEq(
-            accountingTotalBondSharesAfter,
             accountingSharesAfter,
+            accountingTotalBondSharesAfter + accountingSharesSurplus,
             "Total bond shares should be equal to real shares"
         );
     }
@@ -203,8 +207,8 @@ contract ClaimRewardsTest is
             "NO bond shares should be decreased by real transferred shares"
         );
         assertEq(
-            accountingTotalBondSharesAfter,
             accountingSharesAfter,
+            accountingTotalBondSharesAfter + accountingSharesSurplus,
             "Total bond shares should be equal to real shares"
         );
     }
@@ -284,8 +288,8 @@ contract ClaimRewardsTest is
             "NO bond shares should be decreased by real transferred shares"
         );
         assertEq(
-            accountingTotalBondSharesAfter,
             accountingSharesAfter,
+            accountingTotalBondSharesAfter + accountingSharesSurplus,
             "Total bond shares should be equal to real shares"
         );
     }
@@ -349,8 +353,8 @@ contract ClaimRewardsTest is
         );
         assertEq(current, required, "NO bond shares should be equal required");
         assertEq(
-            accounting.totalBondShares(),
             accountingSharesAfter,
+            accounting.totalBondShares() + accountingSharesSurplus,
             "Total bond shares should be equal to real shares"
         );
     }
@@ -419,8 +423,8 @@ contract ClaimRewardsTest is
             "NO bond shares should be equal required"
         );
         assertEq(
-            accounting.totalBondShares(),
             accountingSharesAfter,
+            accounting.totalBondShares() + accountingSharesSurplus,
             "Total bond shares should be equal to real shares"
         );
     }
@@ -512,8 +516,8 @@ contract ClaimRewardsTest is
             "NO bond shares should be equal required"
         );
         assertEq(
-            accounting.totalBondShares(),
             accountingSharesAfter,
+            accounting.totalBondShares() + accountingSharesSurplus,
             "Total bond shares should be equal to real shares"
         );
     }

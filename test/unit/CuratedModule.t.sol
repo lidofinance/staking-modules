@@ -208,7 +208,7 @@ contract CuratedInitialize is CuratedCommon {
         assertTrue(module.hasRole(module.DEFAULT_ADMIN_ROLE(), address(this)));
         assertEq(module.getRoleMemberCount(module.DEFAULT_ADMIN_ROLE()), 1);
         assertTrue(module.isPaused());
-        assertEq(module.getInitializedVersion(), 2);
+        assertEq(module.getInitializedVersion(), 1);
     }
 
     function test_initialize_RevertWhen_ZeroAdminAddress() public {

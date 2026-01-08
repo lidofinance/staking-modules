@@ -48,7 +48,7 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
     }
 
     function test_state_onlyFull() public view {
-        assertEq(module.getInitializedVersion(), 2);
+        assertEq(module.getInitializedVersion(), 3);
     }
 
     function test_immutables() public view {
@@ -333,7 +333,7 @@ contract FeeDistributorDeploymentTest is DeploymentBaseTest {
     }
 
     function test_state_onlyFull() public view {
-        assertEq(feeDistributor.getInitializedVersion(), 2);
+        assertEq(feeDistributor.getInitializedVersion(), 3);
         assertEq(feeDistributor.rebateRecipient(), deployParams.aragonAgent);
     }
 

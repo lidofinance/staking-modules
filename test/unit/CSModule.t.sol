@@ -329,7 +329,7 @@ contract CsmInitialize is CSMCommon {
         assertTrue(csm.hasRole(csm.DEFAULT_ADMIN_ROLE(), address(this)));
         assertEq(csm.getRoleMemberCount(csm.DEFAULT_ADMIN_ROLE()), 1);
         assertTrue(csm.isPaused());
-        assertEq(csm.getInitializedVersion(), 2);
+        assertEq(csm.getInitializedVersion(), 3);
     }
 
     function test_initialize_RevertWhen_ZeroAdminAddress() public {

@@ -124,6 +124,9 @@ contract RecoverIntegrationTest is
     function test_recoverStETH_fromAccounting() public assertInvariants {
         assertEq(lido.sharesOf(recoverer), 0);
 
+        uint256 surplusBefore = lido.sharesOf(address(accounting)) -
+            accounting.totalBondShares();
+
         uint256 amount = 1 ether;
         vm.startPrank(user);
         vm.deal(user, amount);
@@ -134,7 +137,7 @@ contract RecoverIntegrationTest is
         vm.prank(recoverer);
         accounting.recoverStETHShares();
 
-        assertEq(lido.sharesOf(recoverer), shares);
+        assertEq(lido.sharesOf(recoverer), shares + surplusBefore);
     }
 
     function test_recoverETH_fromAccounting() public assertInvariants {

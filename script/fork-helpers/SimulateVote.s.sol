@@ -5,9 +5,16 @@ pragma solidity 0.8.33;
 
 import { Script } from "forge-std/Script.sol";
 
+import { CSModule } from "../../src/CSModule.sol";
+import { Accounting } from "../../src/Accounting.sol";
+import { Ejector } from "../../src/Ejector.sol";
+import { FeeDistributor } from "../../src/FeeDistributor.sol";
+import { ValidatorStrikes } from "../../src/ValidatorStrikes.sol";
+import { Verifier } from "../../src/Verifier.sol";
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 import { ITriggerableWithdrawalsGateway } from "../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { IBurner } from "../../src/interfaces/IBurner.sol";
+import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 
 import { ForkHelpersCommon } from "./Common.sol";
 import { DeployParams } from "../DeployBase.s.sol";
@@ -141,189 +148,252 @@ contract SimulateVote is Script, ForkHelpersCommon {
     }
 
     function upgrade() external {
+        _setUp();
+        if (moduleType != ModuleType.Community) {
+            revert WrongModuleType();
+        }
+
         Env memory env = envVars();
-        string memory deploymentConfigContent = vm.readFile(env.DEPLOY_CONFIG);
-        DeploymentConfig memory deploymentConfig = parseDeploymentConfig(
-            deploymentConfigContent
-        );
-        DeployParams memory deployParams = parseDeployParams(env.DEPLOY_CONFIG);
-        //
-        // TODO: uncomment and change when v2 -> v3 upgrade flow is ready
-        //
-        //     IBondCurve.BondCurveIntervalInput[][]
-        //         memory bondCurves = new IBondCurve.BondCurveIntervalInput[][](
-        //             2 + deployParams.extraBondCurves.length
-        //         );
-        //     bondCurves[0] = CommonScriptUtils.arraysToBondCurveIntervalsInputs(
-        //         deployParams.defaultBondCurve
-        //     );
-        //     bondCurves[1] = CommonScriptUtils.arraysToBondCurveIntervalsInputs(
-        //         deployParams.legacyEaBondCurve
-        //     );
-        //     if (deployParams.extraBondCurves.length > 0) {
-        //         for (uint256 i = 0; i < deployParams.extraBondCurves.length; i++) {
-        //             bondCurves[i + 2] = CommonScriptUtils
-        //                 .arraysToBondCurveIntervalsInputs(
-        //                     deployParams.extraBondCurves[i]
-        //                 );
-        //         }
-        //     }
+        DeploymentConfig memory deploymentConfig;
+        DeployParams memory deployParams;
+        {
+            string memory deploymentConfigContent = vm.readFile(
+                env.DEPLOY_CONFIG
+            );
+            deploymentConfig = parseDeploymentConfig(deploymentConfigContent);
+            deployParams = parseDeployParams(env.DEPLOY_CONFIG);
+        }
+        address admin = _prepareAdmin(deploymentConfig.csm);
+        IBurner burner = IBurner(locator.burner());
+        address burnerAdmin = _prepareAdmin(address(burner));
 
-        //     IBondCurve.BondCurveIntervalInput[]
-        //         memory identifiedCommunityStakersGateBondCurve = CommonScriptUtils
-        //             .arraysToBondCurveIntervalsInputs(
-        //                 deployParams.identifiedCommunityStakersGateBondCurve
-        //             );
+        {
+            OssifiableProxy moduleProxy = OssifiableProxy(
+                payable(deploymentConfig.csm)
+            );
+            vm.startBroadcast(_prepareProxyAdmin(address(moduleProxy)));
+            // 1. Upgrade CSModule implementation
+            moduleProxy.proxy__upgradeTo(deploymentConfig.csmImpl);
+            // 2. Finalize CSModule v3 upgrade
+            CSModule(deploymentConfig.csm).finalizeUpgradeV3();
+            vm.stopBroadcast();
+        }
 
-        //     address admin = _prepareAdmin(deploymentConfig.module);
+        {
+            OssifiableProxy parametersRegistryProxy = OssifiableProxy(
+                payable(deploymentConfig.parametersRegistry)
+            );
+            vm.startBroadcast(
+                _prepareProxyAdmin(address(parametersRegistryProxy))
+            );
+            // 3. Upgrade ParametersRegistry implementation
+            parametersRegistryProxy.proxy__upgradeTo(
+                deploymentConfig.parametersRegistryImpl
+            );
+            vm.stopBroadcast();
+        }
 
-        //     OssifiableProxy moduleProxy = OssifiableProxy(
-        //         payable(deploymentConfig.module)
-        //     );
-        //     vm.startBroadcast(_prepareProxyAdmin(address(moduleProxy)));
-        //     {
-        //         moduleProxy.proxy__upgradeTo(deploymentConfig.moduleImpl);
-        //         CSModule(deploymentConfig.module).finalizeUpgradeV2();
-        //     }
-        //     vm.stopBroadcast();
-        //     OssifiableProxy accountingProxy = OssifiableProxy(
-        //         payable(deploymentConfig.accounting)
-        //     );
-        //     vm.startBroadcast(_prepareProxyAdmin(address(accountingProxy)));
-        //     {
-        //         accountingProxy.proxy__upgradeTo(deploymentConfig.accountingImpl);
-        //         Accounting(deploymentConfig.accounting).finalizeUpgradeV3();
-        //     }
-        //     vm.stopBroadcast();
+        {
+            OssifiableProxy accountingProxy = OssifiableProxy(
+                payable(deploymentConfig.accounting)
+            );
+            vm.startBroadcast(_prepareProxyAdmin(address(accountingProxy)));
+            // 4. Upgrade Accounting implementation
+            accountingProxy.proxy__upgradeTo(deploymentConfig.accountingImpl);
+            // 5. Finalize Accounting v3 upgrade
+            Accounting(deploymentConfig.accounting).finalizeUpgradeV3();
+            vm.stopBroadcast();
+        }
 
-        //     OssifiableProxy oracleProxy = OssifiableProxy(
-        //         payable(deploymentConfig.oracle)
-        //     );
-        //     vm.startBroadcast(_prepareProxyAdmin(address(oracleProxy)));
-        //     {
-        //         oracleProxy.proxy__upgradeTo(deploymentConfig.oracleImpl);
-        //         FeeOracle(deploymentConfig.oracle).finalizeUpgradeV2({
-        //             consensusVersion: 3
-        //         });
-        //     }
-        //     vm.stopBroadcast();
+        {
+            OssifiableProxy feeDistributorProxy = OssifiableProxy(
+                payable(deploymentConfig.feeDistributor)
+            );
+            vm.startBroadcast(_prepareProxyAdmin(address(feeDistributorProxy)));
+            // 6. Upgrade FeeDistributor implementation
+            feeDistributorProxy.proxy__upgradeTo(
+                deploymentConfig.feeDistributorImpl
+            );
+            // 7. Finalize FeeDistributor v3 upgrade
+            FeeDistributor(deploymentConfig.feeDistributor).finalizeUpgradeV3();
+            vm.stopBroadcast();
+        }
 
-        //     OssifiableProxy feeDistributorProxy = OssifiableProxy(
-        //         payable(deploymentConfig.feeDistributor)
-        //     );
-        //     vm.startBroadcast(_prepareProxyAdmin(address(feeDistributorProxy)));
-        //     {
-        //         feeDistributorProxy.proxy__upgradeTo(
-        //             deploymentConfig.feeDistributorImpl
-        //         );
-        //         FeeDistributor(deploymentConfig.feeDistributor).finalizeUpgradeV2(
-        //             admin
-        //         );
-        //     }
-        //     vm.stopBroadcast();
+        {
+            OssifiableProxy exitPenaltiesProxy = OssifiableProxy(
+                payable(deploymentConfig.exitPenalties)
+            );
+            vm.startBroadcast(_prepareProxyAdmin(address(exitPenaltiesProxy)));
+            // 8. Upgrade ExitPenalties implementation
+            exitPenaltiesProxy.proxy__upgradeTo(
+                deploymentConfig.exitPenaltiesImpl
+            );
+            vm.stopBroadcast();
+        }
 
-        //     module = CSModule(deploymentConfig.module);
-        //     accounting = Accounting(deploymentConfig.accounting);
-        //     oracle = FeeOracle(deploymentConfig.oracle);
+        {
+            OssifiableProxy strikesProxy = OssifiableProxy(
+                payable(deploymentConfig.strikes)
+            );
+            vm.startBroadcast(_prepareProxyAdmin(address(strikesProxy)));
+            // 9. Upgrade ValidatorStrikes implementation
+            strikesProxy.proxy__upgradeTo(deploymentConfig.strikesImpl);
+            vm.stopBroadcast();
+        }
 
-        //     vm.startBroadcast(admin);
+        module = CSModule(deploymentConfig.csm);
+        accounting = Accounting(deploymentConfig.accounting);
+        strikes = ValidatorStrikes(deploymentConfig.strikes);
 
-        //     accounting.revokeRole(accounting.SET_BOND_CURVE_ROLE(), address(module));
-        //     module.grantRole(
-        //         module.CREATE_NODE_OPERATOR_ROLE(),
-        //         deploymentConfig.permissionlessGate
-        //     );
-        //     module.grantRole(
-        //         module.CREATE_NODE_OPERATOR_ROLE(),
-        //         deploymentConfig.vettedGate
-        //     );
-        //     accounting.grantRole(
-        //         accounting.SET_BOND_CURVE_ROLE(),
-        //         deploymentConfig.vettedGate
-        //     );
+        address oldEjector = address(strikes.ejector());
+        {
+            Verifier oldVerifier = Verifier(deploymentConfig.verifier);
+            Ejector oldEjectorContract = Ejector(oldEjector);
 
-        // address generalDelayedPenaltyReporter = module.getRoleMember(
-        //     REPORT_EL_REWARDS_STEALING_PENALTY_ROLE,
-        //     1
-        // );
-        // module.revokeRole(
-        //     REPORT_EL_REWARDS_STEALING_PENALTY_ROLE,
-        //     generalDelayedPenaltyReporter
-        // );
-        // module.grantRole(
-        //     REPORT_GENERAL_DELAYED_PENALTY_ROLE,
-        //     generalDelayedPenaltyReporter
-        // );
-        //
-        // address generalDelayedPenaltySettler = module.getRoleMember(
-        //     SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE,
-        //     1
-        // );
-        // module.revokeRole(
-        //     SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE,
-        //     generalDelayedPenaltySettler
-        // );
-        // module.grantRole(
-        //     SETTLE_GENERAL_DELAYED_PENALTY_ROLE,
-        //     generalDelayedPenaltySettler
-        // );
+            vm.startBroadcast(admin);
 
-        //     accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), admin);
+            // 10. Point ValidatorStrikes to the new Ejector
+            strikes.setEjector(deploymentConfig.ejector);
 
-        //     accounting.addBondCurve(identifiedCommunityStakersGateBondCurve);
+            // 11. Grant REPORT_GENERAL_DELAYED_PENALTY_ROLE
+            module.grantRole(
+                module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
+                deployParams.generalDelayedPenaltyReporter
+            );
+            // 12. Grant SETTLE_GENERAL_DELAYED_PENALTY_ROLE
+            module.grantRole(
+                module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(),
+                deployParams.easyTrackEVMScriptExecutor
+            );
+            // 13. Revoke REPORT_EL_REWARDS_STEALING_PENALTY_ROLE
+            module.revokeRole(
+                REPORT_EL_REWARDS_STEALING_PENALTY_ROLE,
+                deployParams.generalDelayedPenaltyReporter
+            );
+            // 14. Revoke SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE
+            module.revokeRole(
+                SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE,
+                deployParams.easyTrackEVMScriptExecutor
+            );
+            // 15. Revoke VERIFIER_ROLE from previous verifier
+            module.revokeRole(
+                module.VERIFIER_ROLE(),
+                deploymentConfig.verifier
+            );
+            // 16. Grant VERIFIER_ROLE to VerifierV3
+            module.grantRole(
+                module.VERIFIER_ROLE(),
+                deploymentConfig.verifierV3
+            );
+            // 17. Revoke SUBMIT_WITHDRAWALS_ROLE from previous verifier
+            module.revokeRole(
+                module.SUBMIT_WITHDRAWALS_ROLE(),
+                deploymentConfig.verifier
+            );
+            // 18. Grant SUBMIT_WITHDRAWALS_ROLE to VerifierV3
+            module.grantRole(
+                module.SUBMIT_WITHDRAWALS_ROLE(),
+                deploymentConfig.verifierV3
+            );
+            // 19. Grant SUBMIT_WITHDRAWALS_ROLE to Easy Track
+            module.grantRole(
+                module.SUBMIT_WITHDRAWALS_ROLE(),
+                deployParams.easyTrackEVMScriptExecutor
+            );
 
-        //     accounting.revokeRole(accounting.MANAGE_BOND_CURVES_ROLE(), admin);
+            // 20. Revoke PAUSE_ROLE from old gate seal on CSModule
+            module.revokeRole(module.PAUSE_ROLE(), deploymentConfig.gateSeal);
+            // 21. Revoke PAUSE_ROLE from old gate seal on Accounting
+            accounting.revokeRole(
+                accounting.PAUSE_ROLE(),
+                deploymentConfig.gateSeal
+            );
+            // 22. Revoke PAUSE_ROLE from old gate seal on FeeOracle
+            oracle.revokeRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSeal);
+            // 23. Revoke PAUSE_ROLE from old gate seal on VettedGate
+            vettedGate.revokeRole(
+                vettedGate.PAUSE_ROLE(),
+                deploymentConfig.gateSeal
+            );
+            // 24. Revoke PAUSE_ROLE from old gate seal on old Verifier
+            oldVerifier.revokeRole(
+                oldVerifier.PAUSE_ROLE(),
+                deploymentConfig.gateSeal
+            );
+            // 25. Revoke PAUSE_ROLE from old gate seal on old Ejector
+            oldEjectorContract.revokeRole(
+                oldEjectorContract.PAUSE_ROLE(),
+                deploymentConfig.gateSeal
+            );
+            // 26. Revoke PAUSE_ROLE from reseal manager on old Verifier
+            oldVerifier.revokeRole(
+                oldVerifier.PAUSE_ROLE(),
+                deployParams.resealManager
+            );
+            // 27. Revoke RESUME_ROLE from reseal manager on old Verifier
+            oldVerifier.revokeRole(
+                oldVerifier.RESUME_ROLE(),
+                deployParams.resealManager
+            );
+            // 28. Revoke PAUSE_ROLE from reseal manager on old Ejector
+            oldEjectorContract.revokeRole(
+                oldEjectorContract.PAUSE_ROLE(),
+                deployParams.resealManager
+            );
+            // 29. Revoke RESUME_ROLE from reseal manager on old Ejector
+            oldEjectorContract.revokeRole(
+                oldEjectorContract.RESUME_ROLE(),
+                deployParams.resealManager
+            );
 
-        //     module.revokeRole(module.VERIFIER_ROLE(), address(deploymentConfig.verifier));
-        //     module.grantRole(
-        //         module.VERIFIER_ROLE(),
-        //         address(deploymentConfig.verifierV2)
-        //     );
-        //     TODO: Grant VERIFIER_ROLE on CSModule to EasyTrack executor.
+            // 30. Grant PAUSE_ROLE to gateSealV3 on CSModule
+            module.grantRole(module.PAUSE_ROLE(), deploymentConfig.gateSealV3);
+            // 31. Grant PAUSE_ROLE to gateSealV3 on Accounting
+            accounting.grantRole(
+                accounting.PAUSE_ROLE(),
+                deploymentConfig.gateSealV3
+            );
+            // 32. Grant PAUSE_ROLE to gateSealV3 on FeeOracle
+            oracle.grantRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSealV3);
+            // 33. Grant PAUSE_ROLE to gateSealV3 on VettedGate
+            vettedGate.grantRole(
+                vettedGate.PAUSE_ROLE(),
+                deploymentConfig.gateSealV3
+            );
 
-        //     module.revokeRole(module.PAUSE_ROLE(), address(deploymentConfig.gateSeal));
-        //     accounting.revokeRole(
-        //         accounting.PAUSE_ROLE(),
-        //         address(deploymentConfig.gateSeal)
-        //     );
-        //     oracle.revokeRole(
-        //         oracle.PAUSE_ROLE(),
-        //         address(deploymentConfig.gateSeal)
-        //     );
+            vm.stopBroadcast();
+        }
 
-        //     module.grantRole(module.PAUSE_ROLE(), address(deploymentConfig.gateSealV2));
-        //     accounting.grantRole(
-        //         accounting.PAUSE_ROLE(),
-        //         address(deploymentConfig.gateSealV2)
-        //     );
-        //     oracle.grantRole(
-        //         oracle.PAUSE_ROLE(),
-        //         address(deploymentConfig.gateSealV2)
-        //     );
+        {
+            vm.startBroadcast(burnerAdmin);
+            // 34. Revoke REQUEST_BURN_SHARES_ROLE from Accounting
+            burner.revokeRole(
+                burner.REQUEST_BURN_SHARES_ROLE(),
+                address(accounting)
+            );
+            // 35. Grant REQUEST_BURN_MY_STETH_ROLE to Accounting
+            burner.grantRole(
+                burner.REQUEST_BURN_MY_STETH_ROLE(),
+                address(accounting)
+            );
+            vm.stopBroadcast();
+        }
 
-        //     module.grantRole(module.PAUSE_ROLE(), deployParams.resealManager);
-        //     module.grantRole(module.RESUME_ROLE(), deployParams.resealManager);
-        //     accounting.grantRole(
-        //         accounting.PAUSE_ROLE(),
-        //         deployParams.resealManager
-        //     );
-        //     accounting.grantRole(
-        //         accounting.RESUME_ROLE(),
-        //         deployParams.resealManager
-        //     );
-        //     oracle.grantRole(oracle.PAUSE_ROLE(), deployParams.resealManager);
-        //     oracle.grantRole(oracle.RESUME_ROLE(), deployParams.resealManager);
+        {
+            ITriggerableWithdrawalsGateway twg = ITriggerableWithdrawalsGateway(
+                locator.triggerableWithdrawalsGateway()
+            );
+            address twgAdmin = _prepareAdmin(address(twg));
 
-        //     accounting.revokeRole(keccak256("RESET_BOND_CURVE_ROLE"), address(module));
-        //     address moduleCommittee = accounting.getRoleMember(
-        //         keccak256("RESET_BOND_CURVE_ROLE"),
-        //         0
-        //     );
-        //     accounting.revokeRole(
-        //         keccak256("RESET_BOND_CURVE_ROLE"),
-        //         address(moduleCommittee)
-        //     );
-
-        //     vm.stopBroadcast();
+            vm.startBroadcast(twgAdmin);
+            // 36. Revoke TWG full-withdrawal role from old Ejector
+            twg.revokeRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), oldEjector);
+            // 37. Grant TWG full-withdrawal role to new Ejector
+            twg.grantRole(
+                twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(),
+                deploymentConfig.ejector
+            );
+            vm.stopBroadcast();
+        }
     }
 }

@@ -43,6 +43,10 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
             );
         }
     }
+
+    function test_state_onlyFull() public view {
+        assertEq(curatedModule.getInitializedVersion(), 1);
+    }
 }
 
 contract OperatorsDataDeploymentTest is DeploymentBaseTest {

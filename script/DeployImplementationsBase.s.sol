@@ -10,24 +10,17 @@ import { FeeDistributor } from "../src/FeeDistributor.sol";
 import { ExitPenalties } from "../src/ExitPenalties.sol";
 import { Ejector } from "../src/Ejector.sol";
 import { ValidatorStrikes } from "../src/ValidatorStrikes.sol";
-import { FeeOracle } from "../src/FeeOracle.sol";
 import { Verifier } from "../src/Verifier.sol";
-import { PermissionlessGate } from "../src/PermissionlessGate.sol";
-import { VettedGateFactory } from "../src/VettedGateFactory.sol";
-import { VettedGate } from "../src/VettedGate.sol";
 import { ParametersRegistry } from "../src/ParametersRegistry.sol";
-import { IParametersRegistry } from "../src/interfaces/IParametersRegistry.sol";
 import { IVerifier } from "../src/interfaces/IVerifier.sol";
-import { OssifiableProxy } from "../src/lib/proxy/OssifiableProxy.sol";
 
 import { JsonObj, Json } from "./utils/Json.sol";
-import { Dummy } from "./utils/Dummy.sol";
-import { CommonScriptUtils } from "./utils/Common.sol";
 import { Slot } from "../src/lib/Types.sol";
+import { OssifiableProxy } from "../src/lib/proxy/OssifiableProxy.sol";
 
 abstract contract DeployImplementationsBase is DeployBase {
-    address public gateSealV2;
-    Verifier public verifierV2;
+    address public gateSealV3;
+    Verifier public verifierV3;
     address public earlyAdoption;
 
     bytes32 internal constant LEGACY_QUEUE_SLOT = bytes32(uint256(1));
@@ -57,33 +50,6 @@ abstract contract DeployImplementationsBase is DeployBase {
             ParametersRegistry parametersRegistryImpl = new ParametersRegistry(
                 config.queueLowestPriority
             );
-            parametersRegistry = ParametersRegistry(
-                _deployProxy(config.proxyAdmin, address(parametersRegistryImpl))
-            );
-            parametersRegistry.initialize({
-                admin: deployer,
-                data: IParametersRegistry.InitializationData({
-                    defaultKeyRemovalCharge: config.defaultKeyRemovalCharge,
-                    defaultGeneralDelayedPenaltyAdditionalFine: config
-                        .defaultGeneralDelayedPenaltyAdditionalFine,
-                    defaultKeysLimit: config.defaultKeysLimit,
-                    defaultRewardShare: config.defaultRewardShareBP,
-                    defaultPerformanceLeeway: config.defaultAvgPerfLeewayBP,
-                    defaultStrikesLifetime: config.defaultStrikesLifetimeFrames,
-                    defaultStrikesThreshold: config.defaultStrikesThreshold,
-                    defaultQueuePriority: config.defaultQueuePriority,
-                    defaultQueueMaxDeposits: config.defaultQueueMaxDeposits,
-                    defaultBadPerformancePenalty: config
-                        .defaultBadPerformancePenalty,
-                    defaultAttestationsWeight: config.defaultAttestationsWeight,
-                    defaultBlocksWeight: config.defaultBlocksWeight,
-                    defaultSyncWeight: config.defaultSyncWeight,
-                    defaultAllowedExitDelay: config.defaultAllowedExitDelay,
-                    defaultExitDelayFee: config.defaultExitDelayFee,
-                    defaultMaxWithdrawalRequestFee: config
-                        .defaultMaxWithdrawalRequestFee
-                })
-            });
 
             Accounting accountingImpl = new Accounting({
                 lidoLocator: config.lidoLocatorAddress,
@@ -93,95 +59,15 @@ abstract contract DeployImplementationsBase is DeployBase {
                 maxBondLockPeriod: config.maxBondLockPeriod
             });
 
-            permissionlessGate = new PermissionlessGate(address(csm), deployer);
-
-            address vettedGateImpl = address(new VettedGate(address(csm)));
-            vettedGateFactory = new VettedGateFactory(vettedGateImpl);
-            vettedGate = VettedGate(
-                vettedGateFactory.create({
-                    curveId: config.identifiedCommunityStakersGateCurveId,
-                    treeRoot: config.identifiedCommunityStakersGateTreeRoot,
-                    treeCid: config.identifiedCommunityStakersGateTreeCid,
-                    admin: deployer
-                })
-            );
-
-            uint256 identifiedCommunityStakersGateBondCurveId = vettedGate
-                .curveId();
-            parametersRegistry.setKeyRemovalCharge(
-                identifiedCommunityStakersGateBondCurveId,
-                config.identifiedCommunityStakersGateKeyRemovalCharge
-            );
-            parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(
-                identifiedCommunityStakersGateBondCurveId,
-                config
-                    .identifiedCommunityStakersGateGeneralDelayedPenaltyAdditionalFine
-            );
-            parametersRegistry.setKeysLimit(
-                identifiedCommunityStakersGateBondCurveId,
-                config.identifiedCommunityStakersGateKeysLimit
-            );
-            parametersRegistry.setPerformanceLeewayData(
-                identifiedCommunityStakersGateBondCurveId,
-                CommonScriptUtils.arraysToKeyIndexValueIntervals(
-                    config.identifiedCommunityStakersGateAvgPerfLeewayData
-                )
-            );
-            parametersRegistry.setRewardShareData(
-                identifiedCommunityStakersGateBondCurveId,
-                CommonScriptUtils.arraysToKeyIndexValueIntervals(
-                    config.identifiedCommunityStakersGateRewardShareData
-                )
-            );
-            parametersRegistry.setStrikesParams(
-                identifiedCommunityStakersGateBondCurveId,
-                config.identifiedCommunityStakersGateStrikesLifetimeFrames,
-                config.identifiedCommunityStakersGateStrikesThreshold
-            );
-            parametersRegistry.setQueueConfig(
-                identifiedCommunityStakersGateBondCurveId,
-                uint32(config.identifiedCommunityStakersGateQueuePriority),
-                uint32(config.identifiedCommunityStakersGateQueueMaxDeposits)
-            );
-            parametersRegistry.setBadPerformancePenalty(
-                identifiedCommunityStakersGateBondCurveId,
-                config.identifiedCommunityStakersGateBadPerformancePenalty
-            );
-            parametersRegistry.setPerformanceCoefficients(
-                identifiedCommunityStakersGateBondCurveId,
-                config.identifiedCommunityStakersGateAttestationsWeight,
-                config.identifiedCommunityStakersGateBlocksWeight,
-                config.identifiedCommunityStakersGateSyncWeight
-            );
-            parametersRegistry.setAllowedExitDelay(
-                identifiedCommunityStakersGateBondCurveId,
-                config.identifiedCommunityStakersGateAllowedExitDelay
-            );
-            parametersRegistry.setExitDelayFee(
-                identifiedCommunityStakersGateBondCurveId,
-                config.identifiedCommunityStakersGateExitDelayFee
-            );
-            parametersRegistry.setMaxWithdrawalRequestFee(
-                identifiedCommunityStakersGateBondCurveId,
-                config.identifiedCommunityStakersGateMaxWithdrawalRequestFee
-            );
-
-            OssifiableProxy vettedGateProxy = OssifiableProxy(
+            address vettedGateImpl = OssifiableProxy(
                 payable(address(vettedGate))
-            );
-            vettedGateProxy.proxy__changeAdmin(config.proxyAdmin);
+            ).proxy__getImplementation();
 
             FeeDistributor feeDistributorImpl = new FeeDistributor({
                 stETH: locator.lido(),
                 accounting: address(accounting),
                 oracle: address(oracle)
             });
-
-            Dummy dummyImpl = new Dummy();
-
-            exitPenalties = ExitPenalties(
-                _deployProxy(deployer, address(dummyImpl))
-            );
 
             CSModule csmImpl = new CSModule({
                 moduleType: config.moduleType,
@@ -198,40 +84,24 @@ abstract contract DeployImplementationsBase is DeployBase {
                 parametersRegistry: address(parametersRegistry)
             });
 
-            strikes = ValidatorStrikes(
-                _deployProxy(config.proxyAdmin, address(strikesImpl))
-            );
-
-            FeeOracle oracleImpl = new FeeOracle({
-                feeDistributor: address(feeDistributor),
-                strikes: address(strikes),
-                secondsPerSlot: config.secondsPerSlot,
-                genesisTime: config.clGenesisTime
-            });
-
             ExitPenalties exitPenaltiesImpl = new ExitPenalties(
                 address(csm),
                 address(parametersRegistry),
                 address(strikes)
             );
 
-            OssifiableProxy exitPenaltiesProxy = OssifiableProxy(
-                payable(address(exitPenalties))
-            );
-            exitPenaltiesProxy.proxy__upgradeTo(address(exitPenaltiesImpl));
-            exitPenaltiesProxy.proxy__changeAdmin(config.proxyAdmin);
+            uint256 stakingModuleId = Ejector(address(ejector))
+                .STAKING_MODULE_ID();
 
             ejector = new Ejector(
                 address(csm),
                 address(strikes),
-                config.stakingModuleId,
+                stakingModuleId,
                 deployer
             );
 
-            strikes.initialize(deployer, address(ejector));
-
             // prettier-ignore
-            verifierV2 = new Verifier({
+            verifierV3 = new Verifier({
                 withdrawalAddress: locator.withdrawalVault(),
                 module: address(csm),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
@@ -260,10 +130,10 @@ abstract contract DeployImplementationsBase is DeployBase {
             sealables[0] = address(csm);
             sealables[1] = address(accounting);
             sealables[2] = address(oracle);
-            sealables[3] = address(verifierV2);
+            sealables[3] = address(verifierV3);
             sealables[4] = address(vettedGate);
             sealables[5] = address(ejector);
-            gateSealV2 = _deployGateSeal(sealables);
+            gateSealV3 = _deployGateSeal(sealables);
 
             if (config.secondAdminAddress != address(0)) {
                 if (config.secondAdminAddress == deployer) {
@@ -272,69 +142,30 @@ abstract contract DeployImplementationsBase is DeployBase {
                 _grantSecondAdminsForNewContracts();
             }
 
-            verifierV2.grantRole(verifierV2.PAUSE_ROLE(), config.resealManager);
-            verifierV2.grantRole(
-                verifierV2.RESUME_ROLE(),
-                config.resealManager
-            );
-            vettedGate.grantRole(vettedGate.PAUSE_ROLE(), config.resealManager);
-            vettedGate.grantRole(
-                vettedGate.RESUME_ROLE(),
+            verifierV3.grantRole(verifierV3.PAUSE_ROLE(), config.resealManager);
+            verifierV3.grantRole(
+                verifierV3.RESUME_ROLE(),
                 config.resealManager
             );
             ejector.grantRole(ejector.PAUSE_ROLE(), config.resealManager);
             ejector.grantRole(ejector.RESUME_ROLE(), config.resealManager);
 
-            ejector.grantRole(ejector.PAUSE_ROLE(), gateSealV2);
+            ejector.grantRole(ejector.PAUSE_ROLE(), gateSealV3);
             ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             ejector.revokeRole(ejector.DEFAULT_ADMIN_ROLE(), deployer);
 
-            vettedGate.grantRole(vettedGate.PAUSE_ROLE(), gateSealV2);
-            vettedGate.grantRole(
-                vettedGate.DEFAULT_ADMIN_ROLE(),
+            verifierV3.grantRole(verifierV3.PAUSE_ROLE(), gateSealV3);
+            verifierV3.grantRole(
+                verifierV3.DEFAULT_ADMIN_ROLE(),
                 config.aragonAgent
             );
-            vettedGate.grantRole(
-                vettedGate.SET_TREE_ROLE(),
-                config.easyTrackEVMScriptExecutor
-            );
-            vettedGate.grantRole(
-                vettedGate.START_REFERRAL_SEASON_ROLE(),
-                config.aragonAgent
-            );
-            vettedGate.grantRole(
-                vettedGate.END_REFERRAL_SEASON_ROLE(),
-                config.identifiedCommunityStakersGateManager
-            );
-            vettedGate.revokeRole(vettedGate.DEFAULT_ADMIN_ROLE(), deployer);
+            verifierV3.revokeRole(verifierV3.DEFAULT_ADMIN_ROLE(), deployer);
 
-            permissionlessGate.grantRole(
-                permissionlessGate.DEFAULT_ADMIN_ROLE(),
-                config.aragonAgent
-            );
-            permissionlessGate.revokeRole(
-                permissionlessGate.DEFAULT_ADMIN_ROLE(),
-                deployer
-            );
-
-            verifierV2.grantRole(verifierV2.PAUSE_ROLE(), gateSealV2);
-            verifierV2.grantRole(
-                verifierV2.DEFAULT_ADMIN_ROLE(),
-                config.aragonAgent
-            );
-            verifierV2.revokeRole(verifierV2.DEFAULT_ADMIN_ROLE(), deployer);
-
-            parametersRegistry.grantRole(
-                parametersRegistry.DEFAULT_ADMIN_ROLE(),
-                config.aragonAgent
-            );
-            parametersRegistry.revokeRole(
-                parametersRegistry.DEFAULT_ADMIN_ROLE(),
-                deployer
-            );
-
-            strikes.grantRole(strikes.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
-            strikes.revokeRole(strikes.DEFAULT_ADMIN_ROLE(), deployer);
+            config.stakingModuleId = stakingModuleId;
+            config.identifiedCommunityStakersGateCurveId = vettedGate.curveId();
+            config.identifiedCommunityStakersGateTreeRoot = vettedGate
+                .treeRoot();
+            config.identifiedCommunityStakersGateTreeCid = vettedGate.treeCid();
 
             JsonObj memory deployJson = Json.newObj("artifact");
             deployJson.set("ChainId", chainId);
@@ -348,7 +179,9 @@ abstract contract DeployImplementationsBase is DeployBase {
             deployJson.set("Accounting", address(accounting));
             deployJson.set("AccountingImpl", address(accountingImpl));
             deployJson.set("FeeOracle", address(oracle));
-            deployJson.set("FeeOracleImpl", address(oracleImpl));
+            address oracleImpl = OssifiableProxy(payable(address(oracle)))
+                .proxy__getImplementation();
+            deployJson.set("FeeOracleImpl", oracleImpl);
             deployJson.set("FeeDistributor", address(feeDistributor));
             deployJson.set("FeeDistributorImpl", address(feeDistributorImpl));
             deployJson.set("ExitPenalties", address(exitPenalties));
@@ -358,14 +191,14 @@ abstract contract DeployImplementationsBase is DeployBase {
             deployJson.set("ValidatorStrikesImpl", address(strikesImpl));
             deployJson.set("HashConsensus", address(hashConsensus));
             deployJson.set("Verifier", address(verifier));
-            deployJson.set("VerifierV2", address(verifierV2));
+            deployJson.set("VerifierV3", address(verifierV3));
             deployJson.set("PermissionlessGate", address(permissionlessGate));
             deployJson.set("VettedGateFactory", address(vettedGateFactory));
             deployJson.set("VettedGate", address(vettedGate));
             deployJson.set("VettedGateImpl", address(vettedGateImpl));
             deployJson.set("LidoLocator", config.lidoLocatorAddress);
             deployJson.set("GateSeal", gateSeal);
-            deployJson.set("GateSealV2", gateSealV2);
+            deployJson.set("GateSealV3", gateSealV3);
             deployJson.set("DeployParams", abi.encode(config));
             deployJson.set("git-ref", gitRef);
             vm.writeJson(
@@ -388,28 +221,12 @@ abstract contract DeployImplementationsBase is DeployBase {
         if (keccak256(abi.encodePacked(chainName)) == keccak256("mainnet")) {
             revert CannotBeUsedInMainnet();
         }
-        parametersRegistry.grantRole(
-            parametersRegistry.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
-        vettedGate.grantRole(
-            vettedGate.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
-        permissionlessGate.grantRole(
-            permissionlessGate.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
         ejector.grantRole(
             ejector.DEFAULT_ADMIN_ROLE(),
             config.secondAdminAddress
         );
-        verifierV2.grantRole(
-            verifierV2.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
-        strikes.grantRole(
-            strikes.DEFAULT_ADMIN_ROLE(),
+        verifierV3.grantRole(
+            verifierV3.DEFAULT_ADMIN_ROLE(),
             config.secondAdminAddress
         );
     }
@@ -428,8 +245,4 @@ abstract contract DeployImplementationsBase is DeployBase {
             revert LegacyQueueNotEmpty(head, tail);
         }
     }
-}
-
-interface ICSEarlyAdoption {
-    function CURVE_ID() external view returns (uint256);
 }

@@ -6947,6 +6947,8 @@ abstract contract ModuleGetStakingModuleSummary is ModuleFixtures {
 contract MyModule is BaseModule {
     error NotImplementedInTest();
 
+    uint64 internal constant INITIALIZED_VERSION = 1;
+
     constructor(
         bytes32 moduleType,
         address lidoLocator,
@@ -6963,6 +6965,12 @@ contract MyModule is BaseModule {
         )
     {
         _disableInitializers();
+    }
+
+    function initialize(
+        address admin
+    ) external override reinitializer(INITIALIZED_VERSION) {
+        __BaseModule_init(admin);
     }
 
     function obtainDepositData(
@@ -7990,7 +7998,7 @@ abstract contract ModuleSupportsInterface is ModuleFixtures {
 
 abstract contract ModuleMisc is ModuleFixtures {
     function test_getInitializedVersion() public view {
-        assertEq(module.getInitializedVersion(), 2);
+        assertEq(module.getInitializedVersion(), 3);
     }
 
     function test_getActiveNodeOperatorsCount_OneOperator()
