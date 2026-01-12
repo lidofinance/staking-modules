@@ -73,10 +73,10 @@ contract CSModule is ICSModule, BaseModule {
 
     /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing version 2 deployment.
     ///      If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
-    function finalizeUpgradeV3(
-        uint32 topUpQueueLimit
-    ) external reinitializer(3) {
-        _initTopUpQueue(topUpQueueLimit);
+    function finalizeUpgradeV3() external reinitializer(3) {
+        // NOTE: Disable the top-up queue for existing modules, because only modules deployed starting from version 3
+        // might use the top-up queue.
+        _initTopUpQueue(0);
     }
 
     /// @inheritdoc IStakingModule
