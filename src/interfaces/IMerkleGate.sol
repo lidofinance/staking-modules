@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.31;
+pragma solidity 0.8.33;
 
 /// @title Merkle Gate Interface
 /// @notice Common surface for gates that guard node operator creation via Merkle proofs.

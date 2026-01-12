@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.31;
+pragma solidity 0.8.33;
 
 import { CommonBase, Vm } from "forge-std/Base.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";

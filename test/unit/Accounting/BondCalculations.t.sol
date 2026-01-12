@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.31;
+pragma solidity 0.8.33;
 
 import { BaseTest, BondStateBaseTest, FailedReceiverStub, GetRequiredBondBaseTest, GetRequiredBondForKeysBaseTest, RewardsBaseTest } from "./_Base.t.sol";
 import { Accounting } from "src/Accounting.sol";
@@ -440,7 +440,7 @@ contract LockBondETHTest is BaseTest {
 
         expectNoCall(
             address(burner),
-            abi.encodeWithSelector(IBurner.requestBurnShares.selector)
+            abi.encodeWithSelector(IBurner.requestBurnMyShares.selector)
         );
         bool applied = accounting.settleLockedBondETH(noId);
         vm.stopPrank();
@@ -472,8 +472,7 @@ contract LockBondETHTest is BaseTest {
         vm.expectCall(
             locator.burner(),
             abi.encodeWithSelector(
-                IBurner.requestBurnShares.selector,
-                address(accounting),
+                IBurner.requestBurnMyShares.selector,
                 bondSharesBefore
             )
         );

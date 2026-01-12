@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.31;
+pragma solidity 0.8.33;
 
 import { Test } from "forge-std/Test.sol";
 import { StdCheats } from "forge-std/StdCheats.sol";
@@ -101,6 +101,8 @@ contract DeploymentHelpers is Test {
     struct Env {
         string RPC_URL;
         string DEPLOY_CONFIG;
+        /// @dev Optional: utility-contract deployment JSON (e.g. artifacts/<chain>/utils/<name>/deploy-<chain>.json)
+        string UTILS_DEPLOY_CONFIG;
         uint256 VOTE_PREV_BLOCK;
     }
 
@@ -202,6 +204,7 @@ contract DeploymentHelpers is Test {
         Env memory env = Env(
             vm.envOr("RPC_URL", string("")),
             vm.envOr("DEPLOY_CONFIG", string("")),
+            vm.envOr("UTILS_DEPLOY_CONFIG", string("")),
             vm.envOr("VOTE_PREV_BLOCK", uint256(0))
         );
         vm.skip(_isEmpty(env.RPC_URL));

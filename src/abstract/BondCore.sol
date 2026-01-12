@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.31;
+pragma solidity 0.8.33;
 
 import { ILidoLocator } from "../interfaces/ILidoLocator.sol";
 import { ILido } from "../interfaces/ILido.sol";
@@ -199,7 +199,7 @@ abstract contract BondCore is IBondCore {
     }
 
     /// @dev Burn Node Operator's bond shares (stETH). Shares will be burned on the next stETH rebase
-    /// @dev The contract that uses this implementation should be granted `Burner.REQUEST_BURN_SHARES_ROLE` and have stETH allowance for `Burner`
+    /// @dev The contract that uses this implementation should be granted `Burner.REQUEST_BURN_MY_STETH_ROLE` and have stETH allowance for `Burner`
     /// @param amount Bond amount to burn in ETH (stETH)
     /// @return notBurnedAmount Amount in ETH that was not burned due to insufficient bond shares
     function _burn(
@@ -220,11 +220,7 @@ abstract contract BondCore is IBondCore {
             notBurnedAmount = amountToBurn - amountBurned;
         }
 
-        // TODO: Replace with `requestBurnMyShares` (https://github.com/lidofinance/core/pull/1142) in the next major release
-        IBurner(LIDO_LOCATOR.burner()).requestBurnShares(
-            address(this),
-            burnedShares
-        );
+        IBurner(LIDO_LOCATOR.burner()).requestBurnMyShares(burnedShares);
 
         emit BondBurned(nodeOperatorId, amountToBurn, amountBurned);
     }

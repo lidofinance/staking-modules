@@ -103,6 +103,8 @@ Further test commands require the following environment variables to be set:
 ```bash
 export RPC_URL=http://127.0.0.1:8545
 export DEPLOY_CONFIG=./artifacts/local/deploy-hoodi.json
+# Optional: utility deployment config for `test-utils`
+export UTILS_DEPLOY_CONFIG=./artifacts/local/utils/TwoPhaseFrameConfigUpdate/deploy-hoodi.json
 ```
 
 The result of deployment is `./artifacts/local/deploy-hoodi.json` deployment config, which is required for integration testing
@@ -119,6 +121,8 @@ Integration tests should pass either before a vote, or after at any state of con
 ```bash
 just test-integration
 ```
+
+Utility-contract tests can be run either by exporting `UTILS_DEPLOY_CONFIG` or by using `just test-utils-with-config <path>`.
 
 There also fork helper scripts to prepare a fork state for e.g. UI testing purposes,
 see [fork.just](./fork.just) to get all available commands

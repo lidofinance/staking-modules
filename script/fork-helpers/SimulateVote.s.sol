@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.31;
+pragma solidity 0.8.33;
 
 import { Script } from "forge-std/Script.sol";
 
@@ -65,7 +65,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
         });
         // 2. burner role
         burner.grantRole(
-            burner.REQUEST_BURN_SHARES_ROLE(),
+            burner.REQUEST_BURN_MY_STETH_ROLE(),
             address(accounting)
         );
         // 3. twg role
@@ -126,7 +126,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
         });
 
         burner.grantRole(
-            burner.REQUEST_BURN_SHARES_ROLE(),
+            burner.REQUEST_BURN_MY_STETH_ROLE(),
             address(accounting)
         );
 
