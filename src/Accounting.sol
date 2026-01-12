@@ -31,6 +31,8 @@ contract Accounting is
     AccessControlEnumerableUpgradeable,
     AssetRecoverer
 {
+    uint64 internal constant INITIALIZED_VERSION = 3;
+
     bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
     bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
     bytes32 public constant MANAGE_BOND_CURVES_ROLE =
@@ -92,7 +94,7 @@ contract Accounting is
         address admin,
         uint256 bondLockPeriod,
         address _chargePenaltyRecipient
-    ) external reinitializer(3) {
+    ) external reinitializer(INITIALIZED_VERSION) {
         __AccessControlEnumerable_init();
         __BondCurve_init(bondCurve);
         __BondLock_init(bondLockPeriod);
@@ -113,7 +115,7 @@ contract Accounting is
     /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing version 2 deployment.
     ///      If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
     // solhint-disable-next-line no-empty-blocks
-    function finalizeUpgradeV3() external reinitializer(3) {}
+    function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {}
 
     /// @inheritdoc IAccounting
     function resume() external onlyRole(RESUME_ROLE) {
