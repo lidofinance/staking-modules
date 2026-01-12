@@ -708,7 +708,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
         vm.selectFork(forkIdAfterUpgrade);
         address implAfter = oracleProxy.proxy__getImplementation();
 
-        assertEq(implBefore, implAfter);
+        assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(oracleImpl));
 
         assertFalse(
@@ -718,7 +718,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
             oracle.hasRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSealV3)
         );
 
-        assertEq(oracle.getContractVersion(), contractVersionBefore);
+        assertEq(oracle.getContractVersion(), contractVersionBefore + 1);
         assertEq(oracle.getConsensusVersion(), consensusVersionBefore);
     }
 
@@ -789,7 +789,8 @@ contract VoteChangesTest is V3UpgradeTestBase {
         vm.selectFork(forkIdAfterUpgrade);
         address implAfter = vettedGateProxy.proxy__getImplementation();
 
-        assertEq(implBefore, implAfter);
+        assertNotEq(implBefore, implAfter);
+        assertEq(implAfter, address(vettedGateImpl));
         assertEq(vettedGate.getInitializedVersion(), versionBefore);
         assertEq(vettedGate.treeRoot(), treeRootBefore);
         assertEq(

@@ -6,11 +6,13 @@ pragma solidity 0.8.33;
 import { DeployBase } from "./DeployBase.s.sol";
 import { CSModule } from "../src/CSModule.sol";
 import { Accounting } from "../src/Accounting.sol";
+import { FeeOracle } from "../src/FeeOracle.sol";
 import { FeeDistributor } from "../src/FeeDistributor.sol";
 import { ExitPenalties } from "../src/ExitPenalties.sol";
 import { Ejector } from "../src/Ejector.sol";
 import { ValidatorStrikes } from "../src/ValidatorStrikes.sol";
 import { Verifier } from "../src/Verifier.sol";
+import { VettedGate } from "../src/VettedGate.sol";
 import { ParametersRegistry } from "../src/ParametersRegistry.sol";
 import { IVerifier } from "../src/interfaces/IVerifier.sol";
 
@@ -59,9 +61,14 @@ abstract contract DeployImplementationsBase is DeployBase {
                 maxBondLockPeriod: config.maxBondLockPeriod
             });
 
-            address vettedGateImpl = OssifiableProxy(
-                payable(address(vettedGate))
-            ).proxy__getImplementation();
+            VettedGate vettedGateImpl = new VettedGate(address(csm));
+
+            FeeOracle oracleImpl = new FeeOracle({
+                feeDistributor: address(feeDistributor),
+                strikes: address(strikes),
+                secondsPerSlot: config.secondsPerSlot,
+                genesisTime: config.clGenesisTime
+            });
 
             FeeDistributor feeDistributorImpl = new FeeDistributor({
                 stETH: locator.lido(),
@@ -179,9 +186,7 @@ abstract contract DeployImplementationsBase is DeployBase {
             deployJson.set("Accounting", address(accounting));
             deployJson.set("AccountingImpl", address(accountingImpl));
             deployJson.set("FeeOracle", address(oracle));
-            address oracleImpl = OssifiableProxy(payable(address(oracle)))
-                .proxy__getImplementation();
-            deployJson.set("FeeOracleImpl", oracleImpl);
+            deployJson.set("FeeOracleImpl", address(oracleImpl));
             deployJson.set("FeeDistributor", address(feeDistributor));
             deployJson.set("FeeDistributorImpl", address(feeDistributorImpl));
             deployJson.set("ExitPenalties", address(exitPenalties));

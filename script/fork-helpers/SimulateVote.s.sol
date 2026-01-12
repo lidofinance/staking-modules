@@ -194,13 +194,35 @@ contract SimulateVote is Script, ForkHelpersCommon {
         }
 
         {
+            OssifiableProxy oracleProxy = OssifiableProxy(
+                payable(deploymentConfig.oracle)
+            );
+            vm.startBroadcast(_prepareProxyAdmin(address(oracleProxy)));
+            // 4. Upgrade FeeOracle implementation
+            oracleProxy.proxy__upgradeTo(deploymentConfig.oracleImpl);
+            // 5. Finalize FeeOracle v3 upgrade
+            oracle.finalizeUpgradeV3();
+            vm.stopBroadcast();
+        }
+
+        {
+            OssifiableProxy vettedGateProxy = OssifiableProxy(
+                payable(deploymentConfig.vettedGate)
+            );
+            vm.startBroadcast(_prepareProxyAdmin(address(vettedGateProxy)));
+            // 6. Upgrade VettedGate implementation
+            vettedGateProxy.proxy__upgradeTo(deploymentConfig.vettedGateImpl);
+            vm.stopBroadcast();
+        }
+
+        {
             OssifiableProxy accountingProxy = OssifiableProxy(
                 payable(deploymentConfig.accounting)
             );
             vm.startBroadcast(_prepareProxyAdmin(address(accountingProxy)));
-            // 4. Upgrade Accounting implementation
+            // 7. Upgrade Accounting implementation
             accountingProxy.proxy__upgradeTo(deploymentConfig.accountingImpl);
-            // 5. Finalize Accounting v3 upgrade
+            // 8. Finalize Accounting v3 upgrade
             Accounting(deploymentConfig.accounting).finalizeUpgradeV3();
             vm.stopBroadcast();
         }
@@ -210,11 +232,11 @@ contract SimulateVote is Script, ForkHelpersCommon {
                 payable(deploymentConfig.feeDistributor)
             );
             vm.startBroadcast(_prepareProxyAdmin(address(feeDistributorProxy)));
-            // 6. Upgrade FeeDistributor implementation
+            // 9. Upgrade FeeDistributor implementation
             feeDistributorProxy.proxy__upgradeTo(
                 deploymentConfig.feeDistributorImpl
             );
-            // 7. Finalize FeeDistributor v3 upgrade
+            // 10. Finalize FeeDistributor v3 upgrade
             FeeDistributor(deploymentConfig.feeDistributor).finalizeUpgradeV3();
             vm.stopBroadcast();
         }
@@ -224,7 +246,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
                 payable(deploymentConfig.exitPenalties)
             );
             vm.startBroadcast(_prepareProxyAdmin(address(exitPenaltiesProxy)));
-            // 8. Upgrade ExitPenalties implementation
+            // 11. Upgrade ExitPenalties implementation
             exitPenaltiesProxy.proxy__upgradeTo(
                 deploymentConfig.exitPenaltiesImpl
             );
@@ -236,7 +258,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
                 payable(deploymentConfig.strikes)
             );
             vm.startBroadcast(_prepareProxyAdmin(address(strikesProxy)));
-            // 9. Upgrade ValidatorStrikes implementation
+            // 12. Upgrade ValidatorStrikes implementation
             strikesProxy.proxy__upgradeTo(deploymentConfig.strikesImpl);
             vm.stopBroadcast();
         }
@@ -252,110 +274,110 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
             vm.startBroadcast(admin);
 
-            // 10. Point ValidatorStrikes to the new Ejector
+            // 13. Point ValidatorStrikes to the new Ejector
             strikes.setEjector(deploymentConfig.ejector);
 
-            // 11. Grant REPORT_GENERAL_DELAYED_PENALTY_ROLE
+            // 14. Grant REPORT_GENERAL_DELAYED_PENALTY_ROLE
             module.grantRole(
                 module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
                 deployParams.generalDelayedPenaltyReporter
             );
-            // 12. Grant SETTLE_GENERAL_DELAYED_PENALTY_ROLE
+            // 15. Grant SETTLE_GENERAL_DELAYED_PENALTY_ROLE
             module.grantRole(
                 module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(),
                 deployParams.easyTrackEVMScriptExecutor
             );
-            // 13. Revoke REPORT_EL_REWARDS_STEALING_PENALTY_ROLE
+            // 16. Revoke REPORT_EL_REWARDS_STEALING_PENALTY_ROLE
             module.revokeRole(
                 REPORT_EL_REWARDS_STEALING_PENALTY_ROLE,
                 deployParams.generalDelayedPenaltyReporter
             );
-            // 14. Revoke SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE
+            // 17. Revoke SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE
             module.revokeRole(
                 SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE,
                 deployParams.easyTrackEVMScriptExecutor
             );
-            // 15. Revoke VERIFIER_ROLE from previous verifier
+            // 18. Revoke VERIFIER_ROLE from previous verifier
             module.revokeRole(
                 module.VERIFIER_ROLE(),
                 deploymentConfig.verifier
             );
-            // 16. Grant VERIFIER_ROLE to VerifierV3
+            // 19. Grant VERIFIER_ROLE to VerifierV3
             module.grantRole(
                 module.VERIFIER_ROLE(),
                 deploymentConfig.verifierV3
             );
-            // 17. Revoke SUBMIT_WITHDRAWALS_ROLE from previous verifier
+            // 20. Revoke SUBMIT_WITHDRAWALS_ROLE from previous verifier
             module.revokeRole(
                 module.SUBMIT_WITHDRAWALS_ROLE(),
                 deploymentConfig.verifier
             );
-            // 18. Grant SUBMIT_WITHDRAWALS_ROLE to VerifierV3
+            // 21. Grant SUBMIT_WITHDRAWALS_ROLE to VerifierV3
             module.grantRole(
                 module.SUBMIT_WITHDRAWALS_ROLE(),
                 deploymentConfig.verifierV3
             );
-            // 19. Grant SUBMIT_WITHDRAWALS_ROLE to Easy Track
+            // 22. Grant SUBMIT_WITHDRAWALS_ROLE to Easy Track
             module.grantRole(
                 module.SUBMIT_WITHDRAWALS_ROLE(),
                 deployParams.easyTrackEVMScriptExecutor
             );
 
-            // 20. Revoke PAUSE_ROLE from old gate seal on CSModule
+            // 23. Revoke PAUSE_ROLE from old gate seal on CSModule
             module.revokeRole(module.PAUSE_ROLE(), deploymentConfig.gateSeal);
-            // 21. Revoke PAUSE_ROLE from old gate seal on Accounting
+            // 24. Revoke PAUSE_ROLE from old gate seal on Accounting
             accounting.revokeRole(
                 accounting.PAUSE_ROLE(),
                 deploymentConfig.gateSeal
             );
-            // 22. Revoke PAUSE_ROLE from old gate seal on FeeOracle
+            // 25. Revoke PAUSE_ROLE from old gate seal on FeeOracle
             oracle.revokeRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSeal);
-            // 23. Revoke PAUSE_ROLE from old gate seal on VettedGate
+            // 26. Revoke PAUSE_ROLE from old gate seal on VettedGate
             vettedGate.revokeRole(
                 vettedGate.PAUSE_ROLE(),
                 deploymentConfig.gateSeal
             );
-            // 24. Revoke PAUSE_ROLE from old gate seal on old Verifier
+            // 27. Revoke PAUSE_ROLE from old gate seal on old Verifier
             oldVerifier.revokeRole(
                 oldVerifier.PAUSE_ROLE(),
                 deploymentConfig.gateSeal
             );
-            // 25. Revoke PAUSE_ROLE from old gate seal on old Ejector
+            // 28. Revoke PAUSE_ROLE from old gate seal on old Ejector
             oldEjectorContract.revokeRole(
                 oldEjectorContract.PAUSE_ROLE(),
                 deploymentConfig.gateSeal
             );
-            // 26. Revoke PAUSE_ROLE from reseal manager on old Verifier
+            // 29. Revoke PAUSE_ROLE from reseal manager on old Verifier
             oldVerifier.revokeRole(
                 oldVerifier.PAUSE_ROLE(),
                 deployParams.resealManager
             );
-            // 27. Revoke RESUME_ROLE from reseal manager on old Verifier
+            // 30. Revoke RESUME_ROLE from reseal manager on old Verifier
             oldVerifier.revokeRole(
                 oldVerifier.RESUME_ROLE(),
                 deployParams.resealManager
             );
-            // 28. Revoke PAUSE_ROLE from reseal manager on old Ejector
+            // 31. Revoke PAUSE_ROLE from reseal manager on old Ejector
             oldEjectorContract.revokeRole(
                 oldEjectorContract.PAUSE_ROLE(),
                 deployParams.resealManager
             );
-            // 29. Revoke RESUME_ROLE from reseal manager on old Ejector
+            // 32. Revoke RESUME_ROLE from reseal manager on old Ejector
             oldEjectorContract.revokeRole(
                 oldEjectorContract.RESUME_ROLE(),
                 deployParams.resealManager
             );
 
-            // 30. Grant PAUSE_ROLE to gateSealV3 on CSModule
+            // 33. Grant PAUSE_ROLE to gateSealV3 on CSModule
             module.grantRole(module.PAUSE_ROLE(), deploymentConfig.gateSealV3);
-            // 31. Grant PAUSE_ROLE to gateSealV3 on Accounting
+            // 34. Grant PAUSE_ROLE to gateSealV3 on Accounting
             accounting.grantRole(
                 accounting.PAUSE_ROLE(),
                 deploymentConfig.gateSealV3
             );
-            // 32. Grant PAUSE_ROLE to gateSealV3 on FeeOracle
+            // 35. Grant PAUSE_ROLE to gateSealV3 on FeeOracle
             oracle.grantRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSealV3);
-            // 33. Grant PAUSE_ROLE to gateSealV3 on VettedGate
+            // 36. Grant PAUSE_ROLE to gateSealV3 on VettedGate
             vettedGate.grantRole(
                 vettedGate.PAUSE_ROLE(),
                 deploymentConfig.gateSealV3
@@ -366,12 +388,12 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
         {
             vm.startBroadcast(burnerAdmin);
-            // 34. Revoke REQUEST_BURN_SHARES_ROLE from Accounting
+            // 37. Revoke REQUEST_BURN_SHARES_ROLE from Accounting
             burner.revokeRole(
                 burner.REQUEST_BURN_SHARES_ROLE(),
                 address(accounting)
             );
-            // 35. Grant REQUEST_BURN_MY_STETH_ROLE to Accounting
+            // 38. Grant REQUEST_BURN_MY_STETH_ROLE to Accounting
             burner.grantRole(
                 burner.REQUEST_BURN_MY_STETH_ROLE(),
                 address(accounting)
@@ -386,9 +408,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
             address twgAdmin = _prepareAdmin(address(twg));
 
             vm.startBroadcast(twgAdmin);
-            // 36. Revoke TWG full-withdrawal role from old Ejector
+            // 39. Revoke TWG full-withdrawal role from old Ejector
             twg.revokeRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), oldEjector);
-            // 37. Grant TWG full-withdrawal role to new Ejector
+            // 40. Grant TWG full-withdrawal role to new Ejector
             twg.grantRole(
                 twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(),
                 deploymentConfig.ejector
