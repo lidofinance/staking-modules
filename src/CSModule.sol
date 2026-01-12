@@ -176,7 +176,6 @@ contract CSModule is ICSModule, BaseModule {
                             _topUpQueue().enqueue(
                                 newTopUpQueueItem(
                                     // The ids are assigned sequentially, so noId can't exceed uint32 in practice.
-                                    // forge-lint: disable-next-line(unsafe-typecast)
                                     noId,
                                     keyIndexBase + i
                                 )
