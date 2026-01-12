@@ -254,9 +254,13 @@ contract CSModule is ICSModule, BaseModule {
         publicKeys = new bytes[](keyIndices.length);
         allocations = new uint256[](keyIndices.length);
 
-        uint256 itemsSkipped = 0;
+        bool lastItemPartialDeposit;
         for (uint256 i; i < keyIndices.length; i++) {
-            TopUpQueueItem item = _topUpQueue().at(/* 0 + */ itemsSkipped);
+            if (lastItemPartialDeposit) {
+                revert InvalidTopUpOrder();
+            }
+
+            TopUpQueueItem item = _topUpQueue().at(0);
 
             if (operatorIds[i] != item.noId()) {
                 revert InvalidTopUpOrder();
@@ -278,10 +282,10 @@ contract CSModule is ICSModule, BaseModule {
                 depositAmount -= allocations[i];
             }
 
-            if (itemsSkipped == 0 && allocations[i] == topUpLimits[i]) {
+            if (allocations[i] == topUpLimits[i]) {
                 _topUpQueue().dequeue();
             } else {
-                itemsSkipped++;
+                lastItemPartialDeposit = true;
             }
         }
 
