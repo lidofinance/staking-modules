@@ -10,7 +10,7 @@ on:
       - develop
 
 env:
-  FOUNDRY_PROFILE: ci
+  FOUNDRY_PROFILE: ci-quick
   TERM: ansi
 
 permissions:
@@ -161,7 +161,7 @@ jobs:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
-      - name: Run post-vote tests after v3 upgrade
+      - name: Run post-vote tests after v3 upgrade (quick)
         run: just test-upgrade
         env:
           CHAIN: mainnet

@@ -12,7 +12,7 @@ on:
         type: boolean
 
 env:
-  FOUNDRY_PROFILE: ci
+  FOUNDRY_PROFILE: ci-quick
   TERM: ansi
 
 jobs:

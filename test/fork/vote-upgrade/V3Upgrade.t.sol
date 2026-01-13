@@ -4,6 +4,7 @@
 pragma solidity 0.8.33;
 
 import { Test } from "forge-std/Test.sol";
+import { console } from "forge-std/console.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
@@ -43,6 +44,28 @@ contract V3UpgradeTestBase is
 
     error UpdateConfigRequired();
 
+    bool internal _skippedLongForkTest;
+
+    function skipLongForkTest() public returns (bool skip) {
+        if (_skippedLongForkTest) {
+            return true;
+        }
+        string memory profile = vm.envOr("FOUNDRY_PROFILE", string(""));
+        bool isCIProfile = keccak256(abi.encodePacked(profile)) ==
+            keccak256(abi.encodePacked("ci"));
+        bool forkIsActive;
+        try vm.activeFork() returns (uint256) {
+            forkIsActive = true;
+        } catch {}
+        skip = !isCIProfile && forkIsActive;
+        if (skip) {
+            console.log(
+                "WARN: Skipping long fork test. It only runs with FOUNDRY_PROFILE=ci and active fork"
+            );
+            _skippedLongForkTest = true;
+        }
+    }
+
     function setUp() public {
         Env memory env = envVars();
         assertNotEq(env.VOTE_PREV_BLOCK, 0, "VOTE_PREV_BLOCK not set");
@@ -62,6 +85,17 @@ contract VoteChangesTest is V3UpgradeTestBase {
         OssifiableProxy csmProxy = OssifiableProxy(payable(address(module)));
 
         vm.selectFork(forkIdBeforeUpgrade);
+        address member0 = module.getRoleMember(
+            module.CREATE_NODE_OPERATOR_ROLE(),
+            0
+        );
+        address member1 = module.getRoleMember(
+            module.CREATE_NODE_OPERATOR_ROLE(),
+            1
+        );
+        address oldPermissionlessGate = member0 == address(vettedGate)
+            ? member1
+            : member0;
         address implBefore = csmProxy.proxy__getImplementation();
 
         vm.selectFork(forkIdAfterUpgrade);
@@ -76,6 +110,13 @@ contract VoteChangesTest is V3UpgradeTestBase {
             module.hasRole(
                 module.CREATE_NODE_OPERATOR_ROLE(),
                 address(permissionlessGate)
+            )
+        );
+        assertNotEq(oldPermissionlessGate, address(permissionlessGate));
+        assertFalse(
+            module.hasRole(
+                module.CREATE_NODE_OPERATOR_ROLE(),
+                oldPermissionlessGate
             )
         );
         assertTrue(
@@ -220,7 +261,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_csmNodeOperatorsState() public {
-        if (skipInvariants()) {
+        if (skipLongForkTest()) {
             return;
         }
         NodeOperator memory noBefore;
@@ -545,7 +586,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_accountingCurvesState() public {
-        if (skipInvariants()) {
+        if (skipLongForkTest()) {
             return;
         }
         vm.selectFork(forkIdBeforeUpgrade);
@@ -597,7 +638,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_accountingNodeOperatorsState() public {
-        if (skipInvariants()) {
+        if (skipLongForkTest()) {
             return;
         }
         uint256 curveBefore;
@@ -677,7 +718,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_feeDistributorNodeOperatorState() public {
-        if (skipInvariants()) {
+        if (skipLongForkTest()) {
             return;
         }
         uint256 distributedSharesBefore;

@@ -22,8 +22,9 @@ contract InvariantAsserts is Test {
             return true;
         }
         string memory profile = vm.envOr("FOUNDRY_PROFILE", string(""));
-        bool isCIProfile = keccak256(abi.encodePacked(profile)) ==
-            keccak256(abi.encodePacked("ci"));
+        bytes32 profileHash = keccak256(abi.encodePacked(profile));
+        bool isCIProfile = profileHash == keccak256(abi.encodePacked("ci")) ||
+            profileHash == keccak256(abi.encodePacked("ci-quick"));
         bool forkIsActive;
         try vm.activeFork() returns (uint256) {
             forkIsActive = true;
@@ -31,7 +32,7 @@ contract InvariantAsserts is Test {
         skip = !isCIProfile && forkIsActive;
         if (skip) {
             console.log(
-                "WARN: Skipping invariants. It only runs with FOUNDRY_PROFILE=ci and active fork"
+                "WARN: Skipping invariants. It only runs with FOUNDRY_PROFILE=ci or ci-quick and active fork"
             );
             _skipped = true;
         }

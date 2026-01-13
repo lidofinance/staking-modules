@@ -10,6 +10,7 @@ import { FeeOracle } from "../src/FeeOracle.sol";
 import { FeeDistributor } from "../src/FeeDistributor.sol";
 import { ExitPenalties } from "../src/ExitPenalties.sol";
 import { Ejector } from "../src/Ejector.sol";
+import { PermissionlessGate } from "../src/PermissionlessGate.sol";
 import { ValidatorStrikes } from "../src/ValidatorStrikes.sol";
 import { Verifier } from "../src/Verifier.sol";
 import { VettedGate } from "../src/VettedGate.sol";
@@ -107,6 +108,8 @@ abstract contract DeployImplementationsBase is DeployBase {
                 deployer
             );
 
+            permissionlessGate = new PermissionlessGate(address(csm), deployer);
+
             // prettier-ignore
             verifierV3 = new Verifier({
                 withdrawalAddress: locator.withdrawalVault(),
@@ -160,6 +163,15 @@ abstract contract DeployImplementationsBase is DeployBase {
             ejector.grantRole(ejector.PAUSE_ROLE(), gateSealV3);
             ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             ejector.revokeRole(ejector.DEFAULT_ADMIN_ROLE(), deployer);
+
+            permissionlessGate.grantRole(
+                permissionlessGate.DEFAULT_ADMIN_ROLE(),
+                config.aragonAgent
+            );
+            permissionlessGate.revokeRole(
+                permissionlessGate.DEFAULT_ADMIN_ROLE(),
+                deployer
+            );
 
             verifierV3.grantRole(verifierV3.PAUSE_ROLE(), gateSealV3);
             verifierV3.grantRole(
@@ -232,6 +244,10 @@ abstract contract DeployImplementationsBase is DeployBase {
         );
         verifierV3.grantRole(
             verifierV3.DEFAULT_ADMIN_ROLE(),
+            config.secondAdminAddress
+        );
+        permissionlessGate.grantRole(
+            permissionlessGate.DEFAULT_ADMIN_ROLE(),
             config.secondAdminAddress
         );
     }
