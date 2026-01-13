@@ -206,7 +206,7 @@ oz-upgrades:
 make-fork *args:
     @if pgrep -x "anvil" > /dev/null; \
         then just _warn "anvil process is already running in the background. Make sure it's connected to the right network and in the right state."; \
-        else anvil -f ${RPC_URL} --host {{anvil_host}} --port {{anvil_port}} --config-out localhost.json {{disable_code_size_limit}} {{args}}; \
+        else anvil -f ${RPC_URL} --host {{anvil_host}} --port {{anvil_port}} --config-out localhost.json {{disable_code_size_limit}} --timeout 90000 {{args}}; \
     fi
 
 kill-fork:

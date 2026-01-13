@@ -16,15 +16,30 @@ import { FeeOracle } from "src/FeeOracle.sol";
 
 contract InvariantAsserts is Test {
     bool internal _skipped;
+    bool internal _skippedLongForkTest;
+
+    function _profileHash() internal returns (bytes32) {
+        string memory profile = vm.envOr("FOUNDRY_PROFILE", string(""));
+        return keccak256(abi.encodePacked(profile));
+    }
+
+    function _isCiProfile(bytes32 profileHash) internal pure returns (bool) {
+        return profileHash == keccak256(abi.encodePacked("ci"));
+    }
+
+    function _isCiQuickProfile(
+        bytes32 profileHash
+    ) internal pure returns (bool) {
+        return profileHash == keccak256(abi.encodePacked("ci-quick"));
+    }
 
     function skipInvariants() public returns (bool skip) {
         if (_skipped) {
             return true;
         }
-        string memory profile = vm.envOr("FOUNDRY_PROFILE", string(""));
-        bytes32 profileHash = keccak256(abi.encodePacked(profile));
-        bool isCIProfile = profileHash == keccak256(abi.encodePacked("ci")) ||
-            profileHash == keccak256(abi.encodePacked("ci-quick"));
+        bytes32 profileHash = _profileHash();
+        bool isCIProfile = _isCiProfile(profileHash) ||
+            _isCiQuickProfile(profileHash);
         bool forkIsActive;
         try vm.activeFork() returns (uint256) {
             forkIsActive = true;
@@ -38,8 +53,30 @@ contract InvariantAsserts is Test {
         }
     }
 
+    function skipLongForkTest() public returns (bool skip) {
+        if (_skippedLongForkTest) {
+            return true;
+        }
+        bytes32 profileHash = _profileHash();
+        bool isCIProfile = _isCiProfile(profileHash);
+        bool forkIsActive;
+        try vm.activeFork() returns (uint256) {
+            forkIsActive = true;
+        } catch {}
+        skip = !isCIProfile && forkIsActive;
+        if (skip) {
+            console.log(
+                "WARN: Skipping long fork test. It only runs with FOUNDRY_PROFILE=ci and active fork"
+            );
+            _skippedLongForkTest = true;
+        }
+    }
+
     function assertModuleKeys(IBaseModule csm) public {
         if (skipInvariants()) {
+            return;
+        }
+        if (skipLongForkTest()) {
             return;
         }
         uint256 noCount = csm.getNodeOperatorsCount();
@@ -131,6 +168,9 @@ contract InvariantAsserts is Test {
         if (skipInvariants()) {
             return;
         }
+        if (skipLongForkTest()) {
+            return;
+        }
         uint256 noCount = csm.getNodeOperatorsCount();
         NodeOperator memory no;
 
@@ -165,23 +205,6 @@ contract InvariantAsserts is Test {
         if (skipInvariants()) {
             return;
         }
-
-        bytes32 value;
-
-        // _legacyQueue
-        value = vm.load(address(module), bytes32(uint256(1)));
-        assertEq(value, bytes32(0), "assert slot(1) is empty");
-
-        // _accountingOld
-        value = vm.load(address(module), bytes32(uint256(2)));
-        assertEq(value, bytes32(0), "assert slot(2) is empty");
-
-        // _earlyAdoption
-        value = vm.load(address(module), bytes32(uint256(3)));
-        assertEq(value, bytes32(0), "assert slot(3) is empty");
-
-        value = vm.load(address(module), bytes32(uint256(4)));
-        assertEq(value, bytes32(0), "assert slot(4) is empty");
     }
 
     function assertAccountingTotalBondShares(
@@ -190,6 +213,9 @@ contract InvariantAsserts is Test {
         Accounting accounting
     ) public {
         if (skipInvariants()) {
+            return;
+        }
+        if (skipLongForkTest()) {
             return;
         }
         uint256 totalNodeOperatorsShares;

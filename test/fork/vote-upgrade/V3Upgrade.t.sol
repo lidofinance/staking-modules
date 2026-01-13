@@ -4,7 +4,6 @@
 pragma solidity 0.8.33;
 
 import { Test } from "forge-std/Test.sol";
-import { console } from "forge-std/console.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
@@ -43,28 +42,6 @@ contract V3UpgradeTestBase is
     DeployParams internal deployParams;
 
     error UpdateConfigRequired();
-
-    bool internal _skippedLongForkTest;
-
-    function skipLongForkTest() public returns (bool skip) {
-        if (_skippedLongForkTest) {
-            return true;
-        }
-        string memory profile = vm.envOr("FOUNDRY_PROFILE", string(""));
-        bool isCIProfile = keccak256(abi.encodePacked(profile)) ==
-            keccak256(abi.encodePacked("ci"));
-        bool forkIsActive;
-        try vm.activeFork() returns (uint256) {
-            forkIsActive = true;
-        } catch {}
-        skip = !isCIProfile && forkIsActive;
-        if (skip) {
-            console.log(
-                "WARN: Skipping long fork test. It only runs with FOUNDRY_PROFILE=ci and active fork"
-            );
-            _skippedLongForkTest = true;
-        }
-    }
 
     function setUp() public {
         Env memory env = envVars();
