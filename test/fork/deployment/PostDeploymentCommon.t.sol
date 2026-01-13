@@ -47,10 +47,6 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         assertFalse(module.isPaused());
     }
 
-    function test_state_onlyFull() public view {
-        assertEq(module.getInitializedVersion(), 3);
-    }
-
     function test_immutables() public view {
         assertEq(moduleImpl.getType(), deployParams.moduleType);
         assertEq(

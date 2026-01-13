@@ -31,6 +31,10 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
 }
 
 contract ModuleDeploymentTest is DeploymentBaseTest {
+    function test_state_onlyFull() public view {
+        assertEq(module.getInitializedVersion(), 3);
+    }
+
     function test_roles_onlyFull() public view {
         assertEq(
             module.getRoleMemberCount(module.CREATE_NODE_OPERATOR_ROLE()),
