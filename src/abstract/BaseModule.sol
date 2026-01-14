@@ -598,36 +598,17 @@ abstract contract BaseModule is
             if (_isValidatorWithdrawn[pointer]) {
                 continue;
             }
-            if (info.isSlashed && !_isValidatorSlashed[pointer]) {
-                revert SlashingPenaltyIsNotApplicable();
-            }
-
-            if (info.slashingPenalty > 0 && !info.isSlashed) {
-                revert InvalidWithdrawnValidatorInfo();
-            }
-
-            // For slashed validator this value should reflect pre-slashing, hence non-zero balance.
-            // For non-slashed validator it will reflect the withdrawal amount, hence it cannot be zero either.
-            if (info.exitBalance == 0) {
-                revert ZeroExitBalance();
-            }
 
             NodeOperator storage no = _nodeOperators[info.nodeOperatorId];
-
-            if (info.keyIndex >= no.totalDepositedKeys) {
-                revert SigningKeysInvalidOffset();
-            }
-
-            unchecked {
-                ++no.totalWithdrawnKeys;
-            }
-
-            bool bondCoversPenalties = WithdrawnValidatorLib.process(info);
+            bool bondCoversPenalties = WithdrawnValidatorLib.process(
+                no,
+                info,
+                _isValidatorSlashed[pointer]
+            );
             if (!bondCoversPenalties) {
                 _onUncompensatedPenalty(info.nodeOperatorId);
             }
 
-            // Nonce will be updated below even if depositable count was not changed
             _updateDepositableValidatorsCount({
                 nodeOperatorId: info.nodeOperatorId,
                 incrementNonceIfUpdated: false
