@@ -31,6 +31,7 @@ interface ICSModule is
     error TopUpQueueDisabled();
     error InvalidSigningKey();
     error InvalidTopUpOrder();
+    error UnexpectedExtraKey();
 
     /// @notice Initializes the contract.
     /// @param admin An address to grant the DEFAULT_ADMIN_ROLE to.

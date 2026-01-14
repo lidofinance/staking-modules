@@ -689,7 +689,7 @@ contract CSMTopUpQueue is CSMCommon {
             csm.getSigningKeys(0, 0, 1),
             csm.getSigningKeys(0, 0, 1)
         );
-        vm.expectRevert(ICSModule.InvalidTopUpOrder.selector);
+        vm.expectRevert(ICSModule.UnexpectedExtraKey.selector);
         csm.obtainDepositData({
             depositAmount: 3,
             packedPubkeys: packedPubkeys,
@@ -743,7 +743,7 @@ contract CSMTopUpQueue is CSMCommon {
         csm.obtainDepositData(3, "");
 
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 3);
-        vm.expectRevert(ICSModule.InvalidTopUpOrder.selector);
+        vm.expectRevert(ICSModule.UnexpectedExtraKey.selector);
         csm.obtainDepositData({
             depositAmount: 1,
             packedPubkeys: packedPubkeys,

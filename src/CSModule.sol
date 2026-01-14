@@ -233,6 +233,9 @@ contract CSModule is ICSModule, BaseModule {
     }
 
     /// @inheritdoc IStakingModuleV2
+    /// @dev The function strictly follows the top-up queue. If a key in the list cannot be dequeued from the queue
+    /// (i.e., the allocation to this key is below its top-up limit), the function reverts when additional keys are
+    /// provided after this one.
     function obtainDepositData(
         uint256 depositAmount,
         bytes calldata packedPubkeys,
@@ -257,7 +260,7 @@ contract CSModule is ICSModule, BaseModule {
         bool lastItemPartialDeposit;
         for (uint256 i; i < keyIndices.length; i++) {
             if (lastItemPartialDeposit) {
-                revert InvalidTopUpOrder();
+                revert UnexpectedExtraKey();
             }
 
             TopUpQueueItem item = _topUpQueue().at(0);
