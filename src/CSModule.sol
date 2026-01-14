@@ -13,16 +13,15 @@ import { NodeOperator } from "./interfaces/IBaseModule.sol";
 import { ICSModule } from "./interfaces/ICSModule.sol";
 
 import { TopUpQueueLib, TopUpQueueItem, newTopUpQueueItem } from "./lib/TopUpQueueLib.sol";
-import { PackedPubkeys } from "./lib/PackedPubkeys.sol";
 import { DepositQueueLib, Batch } from "./lib/DepositQueueLib.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
 import { DepositQueueCleanLib } from "./lib/DepositQueueCleanLib.sol";
 import { OperatorDepositableChangeLib } from "./lib/OperatorDepositableChangeLib.sol";
+import { TopUpDepositDataLib } from "./lib/TopUpDepositDataLib.sol";
 
 contract CSModule is ICSModule, BaseModule {
     using DepositQueueLib for DepositQueueLib.Queue;
     using TopUpQueueLib for TopUpQueueLib.Queue;
-    using PackedPubkeys for bytes;
     using SafeCast for uint256;
 
     /// @custom:storage-location erc7201:CSModule
@@ -257,43 +256,15 @@ contract CSModule is ICSModule, BaseModule {
             return (publicKeys, allocations);
         }
 
-        publicKeys = new bytes[](keyIndices.length);
-        allocations = new uint256[](keyIndices.length);
-
-        bool lastItemPartialDeposit;
-        for (uint256 i; i < keyIndices.length; i++) {
-            if (lastItemPartialDeposit) {
-                revert UnexpectedExtraKey();
-            }
-
-            TopUpQueueItem item = _topUpQueue().at(0);
-
-            if (operatorIds[i] != item.noId()) {
-                revert InvalidTopUpOrder();
-            }
-
-            if (keyIndices[i] != item.keyIndex()) {
-                revert InvalidTopUpOrder();
-            }
-
-            {
-                bytes memory key = packedPubkeys.at(i);
-                _verifyModuleKey(item.noId(), item.keyIndex(), key);
-
-                publicKeys[i] = key;
-            }
-
-            if (depositAmount > 0) {
-                allocations[i] = Math.min(topUpLimits[i], depositAmount);
-                depositAmount -= allocations[i];
-            }
-
-            if (allocations[i] == topUpLimits[i]) {
-                _topUpQueue().dequeue();
-            } else {
-                lastItemPartialDeposit = true;
-            }
-        }
+        // solhint-disable-next-line func-named-parameters
+        (publicKeys, allocations) = TopUpDepositDataLib.obtainDepositData(
+            _topUpQueue(),
+            depositAmount,
+            packedPubkeys,
+            keyIndices,
+            operatorIds,
+            topUpLimits
+        );
 
         _incrementModuleNonce();
     }
@@ -431,22 +402,6 @@ contract CSModule is ICSModule, BaseModule {
             QUEUE_LOWEST_PRIORITY,
             nodeOperatorId
         );
-    }
-
-    function _verifyModuleKey(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        bytes memory key
-    ) internal view {
-        bytes memory keyFromStorage = SigningKeys.loadKeys(
-            nodeOperatorId,
-            keyIndex,
-            1
-        );
-
-        if (keccak256(key) != keccak256(keyFromStorage)) {
-            revert InvalidSigningKey();
-        }
     }
 
     /// @dev Setting `topUpQueueLimit` to 0 effectively disables the top-up queue permanently.
