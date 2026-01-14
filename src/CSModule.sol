@@ -17,6 +17,7 @@ import { PackedPubkeys } from "./lib/PackedPubkeys.sol";
 import { DepositQueueLib, Batch } from "./lib/DepositQueueLib.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
 import { DepositQueueCleanLib } from "./lib/DepositQueueCleanLib.sol";
+import { OperatorDepositableChangeLib } from "./lib/OperatorDepositableChangeLib.sol";
 
 contract CSModule is ICSModule, BaseModule {
     using DepositQueueLib for DepositQueueLib.Queue;
@@ -421,60 +422,15 @@ contract CSModule is ICSModule, BaseModule {
     function _onOperatorDepositableChange(
         uint256 nodeOperatorId
     ) internal override {
-        uint256 curveId = _getBondCurveId(nodeOperatorId);
-        (uint32 priority, uint32 maxDeposits) = PARAMETERS_REGISTRY
-            .getQueueConfig(curveId);
-
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-        uint32 depositable = no.depositableValidatorsCount;
-        uint32 enqueued = no.enqueuedCount;
-        if (depositable <= enqueued) {
-            return;
-        }
-
-        uint32 toEnqueue;
-        unchecked {
-            toEnqueue = depositable - enqueued;
-        }
-
-        if (priority < QUEUE_LOWEST_PRIORITY) {
-            unchecked {
-                uint32 depositedAndQueued = no.totalDepositedKeys + enqueued;
-                if (maxDeposits > depositedAndQueued) {
-                    uint32 priorityDepositsLeft = maxDeposits -
-                        depositedAndQueued;
-                    uint32 count = uint32(
-                        Math.min(toEnqueue, priorityDepositsLeft)
-                    );
-
-                    _enqueueNodeOperatorKeys(nodeOperatorId, priority, count);
-                    toEnqueue -= count;
-                }
-            }
-        }
-
-        if (toEnqueue > 0) {
-            _enqueueNodeOperatorKeys(
-                nodeOperatorId,
-                QUEUE_LOWEST_PRIORITY,
-                toEnqueue
-            );
-        }
-    }
-
-    // NOTE: If `count` is 0 an empty batch will be created.
-    function _enqueueNodeOperatorKeys(
-        uint256 nodeOperatorId,
-        uint256 queuePriority,
-        uint32 count
-    ) internal {
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-        no.enqueuedCount += count;
-        DepositQueueLib.Queue storage q = _depositQueueByPriority[
-            queuePriority
-        ];
-        q.enqueue(nodeOperatorId, count);
-        emit BatchEnqueued(queuePriority, nodeOperatorId, count);
+        // solhint-disable-next-line func-named-parameters
+        OperatorDepositableChangeLib.onOperatorDepositableChange(
+            _nodeOperators,
+            _depositQueueByPriority,
+            PARAMETERS_REGISTRY,
+            _accounting(),
+            QUEUE_LOWEST_PRIORITY,
+            nodeOperatorId
+        );
     }
 
     function _verifyModuleKey(
