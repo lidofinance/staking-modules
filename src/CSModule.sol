@@ -12,11 +12,11 @@ import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.so
 import { NodeOperator } from "./interfaces/IBaseModule.sol";
 import { ICSModule } from "./interfaces/ICSModule.sol";
 
-import { TransientUintUintMap, TransientUintUintMapLib } from "./lib/TransientUintUintMapLib.sol";
 import { TopUpQueueLib, TopUpQueueItem, newTopUpQueueItem } from "./lib/TopUpQueueLib.sol";
 import { PackedPubkeys } from "./lib/PackedPubkeys.sol";
 import { DepositQueueLib, Batch } from "./lib/DepositQueueLib.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
+import { DepositQueueCleanLib } from "./lib/DepositQueueCleanLib.sol";
 
 contract CSModule is ICSModule, BaseModule {
     using DepositQueueLib for DepositQueueLib.Queue;
@@ -396,70 +396,13 @@ contract CSModule is ICSModule, BaseModule {
     function cleanDepositQueue(
         uint256 maxItems
     ) external returns (uint256 removed, uint256 lastRemovedAtDepth) {
-        removed = 0;
-        lastRemovedAtDepth = 0;
-
-        if (maxItems == 0) {
-            return (0, 0);
-        }
-
-        // NOTE: We need one unique hash map per function invocation to be able to track batches of
-        // the same operator across multiple queues.
-        TransientUintUintMap queueLookup = TransientUintUintMapLib.create();
-
-        DepositQueueLib.Queue storage queue;
-
-        uint256 totalVisited = 0;
-        // Note: The highest priority to start iterations with. Priorities are ordered like 0, 1, 2, ...
-        uint256 priority = 0;
-
-        while (true) {
-            if (priority > QUEUE_LOWEST_PRIORITY) {
-                break;
-            }
-
-            queue = _depositQueueByPriority[priority];
-            unchecked {
-                ++priority;
-            }
-
-            (
-                uint256 removedPerQueue,
-                uint256 lastRemovedAtDepthPerQueue,
-                uint256 visitedPerQueue,
-                bool reachedOutOfQueue
-            ) = queue.clean(_nodeOperators, maxItems, queueLookup);
-
-            if (removedPerQueue > 0) {
-                unchecked {
-                    // 1234 56 789A     <- cumulative depth (A=10)
-                    // 1234 12 1234     <- depth per queue
-                    // **R*|**|**R*     <- queue with [R]emoved elements
-                    //
-                    // Given that we observed all 3 queues:
-                    // totalVisited: 4+2=6
-                    // lastRemovedAtDepthPerQueue: 3
-                    // lastRemovedAtDepth: 6+3=9
-
-                    lastRemovedAtDepth =
-                        totalVisited +
-                        lastRemovedAtDepthPerQueue;
-                    removed += removedPerQueue;
-                }
-            }
-
-            // NOTE: If `maxItems` is set to the total length of the queue(s), `reachedOutOfQueue` is equal
-            // to `false`, effectively breaking the cycle, because in `QueueLib.clean` we don't reach
-            // an empty batch after the end of a queue.
-            if (!reachedOutOfQueue) {
-                break;
-            }
-
-            unchecked {
-                totalVisited += visitedPerQueue;
-                maxItems -= visitedPerQueue;
-            }
-        }
+        return
+            DepositQueueCleanLib.cleanDepositQueue(
+                _depositQueueByPriority,
+                _nodeOperators,
+                QUEUE_LOWEST_PRIORITY,
+                maxItems
+            );
     }
 
     /// @inheritdoc ICSModule

@@ -10,13 +10,15 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { CSModule } from "src/CSModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
-import { ParametersRegistryMock } from "../helpers/mocks/ParametersRegistryMock.sol";
+import { IDepositQueueLib } from "src/lib/DepositQueueLib.sol";
 import { ITopUpQueueLib } from "src/lib/TopUpQueueLib.sol";
 import { ICSModule } from "src/interfaces/ICSModule.sol";
 
+import { ParametersRegistryMock } from "../helpers/mocks/ParametersRegistryMock.sol";
 import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
 import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
 import { Stub } from "../helpers/mocks/Stub.sol";
+
 // forge-lint: disable-next-line(unaliased-plain-import)
 import "./ModuleAbstract.t.sol";
 
@@ -1016,6 +1018,16 @@ contract CSMQueueOps is CSMCommon {
             assertEq(toRemove, 2, "toRemove != 2");
             assertEq(toVisit, 6, "toVisit != 6");
         }
+    }
+
+    function test_clean_MaxItemsIsZero() public {
+        createNodeOperator({ keysCount: 1 });
+
+        (uint256 toRemove, uint256 toVisit) = csm.cleanDepositQueue({
+            maxItems: 0
+        });
+        assertEq(toRemove, 0, "toRemove != 0");
+        assertEq(toVisit, 0, "toVisit != 0");
     }
 
     function test_updateDepositableValidatorsCount_NothingToDo()

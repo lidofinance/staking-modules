@@ -44,13 +44,6 @@ contract Library {
         return q.at(index);
     }
 
-    function clean(
-        uint256 maxItems
-    ) external returns (uint256, uint256, uint256, bool) {
-        TransientUintUintMap queueLookup = TransientUintUintMapLib.create();
-        return q.clean(nodeOperators, maxItems, queueLookup);
-    }
-
     function setNodeOperator(
         uint256 id,
         NodeOperator calldata operatorData
@@ -148,16 +141,6 @@ contract DepositQueueLibTest is Test {
         assertTrue(q.peek().isNil());
         vm.expectRevert(IDepositQueueLib.DepositQueueIsEmpty.selector);
         q.dequeue();
-    }
-
-    function test_clean_revertWhen_MaxItemsIsZero() public {
-        NodeOperator memory operatorData;
-        operatorData.depositableValidatorsCount = 1;
-        operatorData.enqueuedCount = 1;
-        q.setNodeOperator(1, operatorData);
-
-        vm.expectRevert(IDepositQueueLib.DepositQueueLookupNoLimit.selector);
-        q.clean(0);
     }
 }
 
