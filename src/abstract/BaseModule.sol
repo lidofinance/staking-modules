@@ -156,9 +156,8 @@ abstract contract BaseModule is
             : managementProperties.rewardAddress;
         no.managerAddress = managerAddress;
         no.rewardAddress = rewardAddress;
-        if (managementProperties.extendedManagerPermissions) {
-            no.extendedManagerPermissions = true;
-        }
+        no.extendedManagerPermissions = managementProperties
+            .extendedManagerPermissions;
 
         unchecked {
             ++_nodeOperatorsCount;
@@ -1070,12 +1069,13 @@ abstract contract BaseModule is
             }
         }
 
-        if (no.depositableValidatorsCount != newCount) {
+        uint32 previousCount = no.depositableValidatorsCount;
+        if (previousCount != newCount) {
             // Updating the global counter.
             unchecked {
                 _depositableValidatorsCount =
                     _depositableValidatorsCount -
-                    no.depositableValidatorsCount +
+                    previousCount +
                     // Each term is bounded by uint32 counts, so fitting into uint64 is safe.
                     // forge-lint: disable-next-line(unsafe-typecast)
                     uint64(newCount);
