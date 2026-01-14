@@ -15,8 +15,9 @@ library PackedPubkeys {
         assembly ("memory-safe") {
             let p := mul(PUBKEY_LENGTH, keyIndex)
             if gt(add(p, PUBKEY_LENGTH), self.length) {
+                // Equal to `revert Panic(0x32)`, where 0x32 is the standard code for "Out of bounds" error in Solidity.
                 mstore(0x00, 0x4e487b71) // `Panic(uint256)`.
-                mstore(0x20, 0x32) // Out of bounds.
+                mstore(0x20, 0x32) // 0x32 = Out of bounds.
                 revert(0x1c, 0x24)
             }
 
