@@ -247,7 +247,7 @@ _deploy-live-no-confirm *args:
 _deploy-impl *args:
     FOUNDRY_PROFILE=deploy \
         forge script {{deploy_impls_script_path}} --sig="deploy(string,string)" \
-            --rpc-url ${RPC_URL} {{args}} \
+            --rpc-url ${RPC_URL} {{disable_code_size_limit}} {{args}} \
             -- {{deploy_config_path}} `git rev-parse HEAD`
 
 [confirm("You are about to broadcast deployment transactions to the network. Are you sure?")]
