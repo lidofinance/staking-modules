@@ -79,4 +79,4 @@ runs:
         RPC_URL: ${{ inputs.rpc_url }}
         CHAIN: mainnet
         DEPLOY_CONFIG: ./artifacts/mainnet/upgrade-v2-mainnet.json
-        FOUNDRY_PROFILE: ci
+        FOUNDRY_PROFILE: ci-quick

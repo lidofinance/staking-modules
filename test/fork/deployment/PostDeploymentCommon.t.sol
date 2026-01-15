@@ -315,7 +315,7 @@ contract FeeDistributorDeploymentTest is DeploymentBaseTest {
     }
 
     function test_state_onlyFull() public view {
-        assertEq(feeDistributor.getInitializedVersion(), 2);
+        assertEq(feeDistributor.getInitializedVersion(), 3);
         assertEq(feeDistributor.rebateRecipient(), deployParams.aragonAgent);
     }
 
@@ -388,7 +388,7 @@ contract FeeOracleDeploymentTest is DeploymentBaseTest {
 
     function test_state_onlyFull() public view {
         assertFalse(oracle.isPaused());
-        assertEq(oracle.getContractVersion(), 2);
+        assertEq(oracle.getContractVersion(), 3);
         assertEq(oracle.getConsensusContract(), address(hashConsensus));
         assertEq(oracle.getConsensusVersion(), deployParams.consensusVersion);
     }

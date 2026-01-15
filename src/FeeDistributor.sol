@@ -21,6 +21,8 @@ contract FeeDistributor is
     AccessControlEnumerableUpgradeable,
     AssetRecoverer
 {
+    uint64 internal constant INITIALIZED_VERSION = 3;
+
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
 
     IStETH public immutable STETH;
@@ -85,7 +87,7 @@ contract FeeDistributor is
     function initialize(
         address admin,
         address _rebateRecipient
-    ) external reinitializer(2) {
+    ) external reinitializer(INITIALIZED_VERSION) {
         if (admin == address(0)) {
             revert ZeroAdminAddress();
         }
@@ -97,13 +99,10 @@ contract FeeDistributor is
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
-    /// @dev This method is expected to be called only when the contract is upgraded from version 1 to version 2 for the existing version 1 deployment.
-    ///      If the version 2 contract is deployed from scratch, the `initialize` method should be used instead.
-    function finalizeUpgradeV2(
-        address _rebateRecipient
-    ) external reinitializer(2) {
-        _setRebateRecipient(_rebateRecipient);
-    }
+    /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing
+    ///      version 2 deployment. If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
+    // solhint-disable-next-line no-empty-blocks
+    function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {}
 
     /// @inheritdoc IFeeDistributor
     function setRebateRecipient(

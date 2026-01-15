@@ -13,6 +13,8 @@ import { IValidatorStrikes } from "./interfaces/IValidatorStrikes.sol";
 import { IFeeOracle } from "./interfaces/IFeeOracle.sol";
 
 contract FeeOracle is IFeeOracle, BaseOracle, PausableUntil, AssetRecoverer {
+    uint256 internal constant INITIALIZED_VERSION = 3;
+
     /// @notice No assets are stored in the contract
 
     /// @notice An ACL role granting the permission to submit the data for a committee report.
@@ -69,20 +71,13 @@ contract FeeOracle is IFeeOracle, BaseOracle, PausableUntil, AssetRecoverer {
         BaseOracle._initialize(consensusContract, consensusVersion, 0);
 
         _updateContractVersion(2);
+        _updateContractVersion(INITIALIZED_VERSION);
     }
 
-    /// @dev This method is expected to be called only when the contract is upgraded from version 1 to version 2 for the existing version 1 deployment.
-    ///      If the version 2 contract is deployed from scratch, the `initialize` method should be used instead.
-    function finalizeUpgradeV2(uint256 consensusVersion) external {
-        _setConsensusVersion(consensusVersion);
-
-        // nullify storage slots
-        assembly ("memory-safe") {
-            sstore(_feeDistributor.slot, 0x00)
-            sstore(_avgPerfLeewayBP.slot, 0x00)
-        }
-
-        _updateContractVersion(2);
+    /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing version 2 deployment.
+    ///      If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
+    function finalizeUpgradeV3() external {
+        _updateContractVersion(INITIALIZED_VERSION);
     }
 
     /// @inheritdoc IFeeOracle

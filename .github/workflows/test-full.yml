@@ -1,28 +1,16 @@
 ---
-name: Tests and Checks
+name: Tests and Checks (Full)
 
 on:
-  workflow_dispatch:
   pull_request:
-  push:
     branches:
       - main
-      - develop
 
 env:
-  FOUNDRY_PROFILE: ci-quick
+  FOUNDRY_PROFILE: ci
   TERM: ansi
 
-permissions:
-  security-events: write
-
 jobs:
-  security:
-    uses: lidofinance/linters/.github/workflows/security.yml@master
-  actions:
-    uses: lidofinance/linters/.github/workflows/actions.yml@master
-
-  # Maybe to make it reusable workflow instead?
   bootstrap:
     name: Bootstrap environment
     runs-on: ubuntu-latest
@@ -53,48 +41,11 @@ jobs:
         run: cargo install "just@$JUST_TAG"
         if: steps.get-cache.outputs.cache-hit != 'true'
 
-  linters:
-    name: Linters
-    runs-on: ubuntu-latest
-    needs: bootstrap
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Set FOUNDRY_VERSION
-        run: echo "FOUNDRY_VERSION=$(head .foundryref)" >> "$GITHUB_ENV"
-
-      - uses: actions/cache@v4
-        with:
-          path: ${{ needs.bootstrap.outputs.cache-path }}
-          key: ${{ needs.bootstrap.outputs.cache-key }}
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: ${{ env.FOUNDRY_VERSION }}
-
-      - name: Install node
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-          cache: yarn
-          cache-dependency-path: "**/yarn.lock"
-
-      - name: Install dependencies
-        run: just deps-dev
-
-      - name: Linters check
-        run: just lint
-
   foundry:
-    name: Foundry project
+    name: Foundry project (full)
     runs-on: ubuntu-latest
     needs: bootstrap
-    env:
-      # FIXME: Comment out after fixing the code size issues.
-      DISABLE_CODE_SIZE_LIMIT: 1
+    if: ${{ github.head_ref == 'develop' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -126,9 +77,6 @@ jobs:
 
       - name: Build
         run: just build --sizes
-        continue-on-error:
-          true # FIXME: Comment out after fixing the code size issues. The step fails no matter what
-          # the DISABLE_CODE_SIZE_LIMIT value is if contract sizes exceed the 24k limit.
 
       - name: Run unit-tests
         run: just test-unit
@@ -145,13 +93,6 @@ jobs:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
-      # TODO: Remake as v3-only and enable when new tests are ready
-      # - name: Run local deployment tests for v2 deploy
-      #   run: just test-v2-only-deploy
-      #   env:
-      #     CHAIN: mainnet
-      #     RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
-
       - name: Run local integration tests
         run: just test-local
         env:
@@ -164,14 +105,8 @@ jobs:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
-      - name: Run post-vote tests after v3 upgrade (quick)
+      - name: Run post-vote tests after v3 upgrade
         run: just test-upgrade
         env:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
-
-      # TODO: Enable later
-      # - name: Check gas report
-      #   run: just gas-report && git diff --exit-code GAS.md
-      #   env:
-      #     RPC_URL: ${{ secrets.RPC_URL }}

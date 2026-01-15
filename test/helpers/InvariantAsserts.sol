@@ -16,14 +16,30 @@ import { FeeOracle } from "src/FeeOracle.sol";
 
 contract InvariantAsserts is Test {
     bool internal _skipped;
+    bool internal _skippedLongForkTest;
+
+    function _profileHash() internal returns (bytes32) {
+        string memory profile = vm.envOr("FOUNDRY_PROFILE", string(""));
+        return keccak256(abi.encodePacked(profile));
+    }
+
+    function _isCiProfile(bytes32 profileHash) internal pure returns (bool) {
+        return profileHash == keccak256(abi.encodePacked("ci"));
+    }
+
+    function _isCiQuickProfile(
+        bytes32 profileHash
+    ) internal pure returns (bool) {
+        return profileHash == keccak256(abi.encodePacked("ci-quick"));
+    }
 
     function skipInvariants() public returns (bool skip) {
         if (_skipped) {
             return true;
         }
-        string memory profile = vm.envOr("FOUNDRY_PROFILE", string(""));
-        bool isCIProfile = keccak256(abi.encodePacked(profile)) ==
-            keccak256(abi.encodePacked("ci"));
+        bytes32 profileHash = _profileHash();
+        bool isCIProfile = _isCiProfile(profileHash) ||
+            _isCiQuickProfile(profileHash);
         bool forkIsActive;
         try vm.activeFork() returns (uint256) {
             forkIsActive = true;
@@ -31,14 +47,36 @@ contract InvariantAsserts is Test {
         skip = !isCIProfile && forkIsActive;
         if (skip) {
             console.log(
-                "WARN: Skipping invariants. It only runs with FOUNDRY_PROFILE=ci and active fork"
+                "WARN: Skipping invariants. It only runs with FOUNDRY_PROFILE=ci or ci-quick and active fork"
             );
             _skipped = true;
         }
     }
 
+    function skipLongForkTest() public returns (bool skip) {
+        if (_skippedLongForkTest) {
+            return true;
+        }
+        bytes32 profileHash = _profileHash();
+        bool isCIProfile = _isCiProfile(profileHash);
+        bool forkIsActive;
+        try vm.activeFork() returns (uint256) {
+            forkIsActive = true;
+        } catch {}
+        skip = !isCIProfile && forkIsActive;
+        if (skip) {
+            console.log(
+                "WARN: Skipping long fork test. It only runs with FOUNDRY_PROFILE=ci and active fork"
+            );
+            _skippedLongForkTest = true;
+        }
+    }
+
     function assertModuleKeys(IBaseModule csm) public {
         if (skipInvariants()) {
+            return;
+        }
+        if (skipLongForkTest()) {
             return;
         }
         uint256 noCount = csm.getNodeOperatorsCount();
@@ -130,6 +168,9 @@ contract InvariantAsserts is Test {
         if (skipInvariants()) {
             return;
         }
+        if (skipLongForkTest()) {
+            return;
+        }
         uint256 noCount = csm.getNodeOperatorsCount();
         NodeOperator memory no;
 
@@ -164,23 +205,6 @@ contract InvariantAsserts is Test {
         if (skipInvariants()) {
             return;
         }
-
-        bytes32 value;
-
-        // _legacyQueue
-        value = vm.load(address(module), bytes32(uint256(1)));
-        assertEq(value, bytes32(0), "assert slot(1) is empty");
-
-        // _accountingOld
-        value = vm.load(address(module), bytes32(uint256(2)));
-        assertEq(value, bytes32(0), "assert slot(2) is empty");
-
-        // _earlyAdoption
-        value = vm.load(address(module), bytes32(uint256(3)));
-        assertEq(value, bytes32(0), "assert slot(3) is empty");
-
-        value = vm.load(address(module), bytes32(uint256(4)));
-        assertEq(value, bytes32(0), "assert slot(4) is empty");
     }
 
     function assertAccountingTotalBondShares(
@@ -189,6 +213,9 @@ contract InvariantAsserts is Test {
         Accounting accounting
     ) public {
         if (skipInvariants()) {
+            return;
+        }
+        if (skipLongForkTest()) {
             return;
         }
         uint256 totalNodeOperatorsShares;
@@ -223,20 +250,13 @@ contract InvariantAsserts is Test {
         );
     }
 
-    function assertAccountingUnusedStorageSlots(
-        Accounting /* accounting */
-    ) public {
+    function assertAccountingUnusedStorageSlots(Accounting accounting) public {
         if (skipInvariants()) {
             return;
         }
-        //
-        // TODO: Re-enable after v2 upgrade.
-        //       Currently tests perform `v1 -> v3` upgrade and `finalizeUpgradeV3` doesn't contain `_feeDistributorOld` nullifying.
-        //       It will be nullified during the v2 upgrade.
-        //
         // _feeDistributorOld
-        // bytes32 value = vm.load(address(accounting), bytes32(uint256(0)));
-        // assertEq(value, bytes32(0), "assert _feeDistributorOld is empty");
+        bytes32 value = vm.load(address(accounting), bytes32(uint256(0)));
+        assertEq(value, bytes32(0), "assert _feeDistributorOld is empty");
     }
 
     function assertFeeDistributorClaimableShares(

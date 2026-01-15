@@ -86,7 +86,7 @@ contract FeeOracleTest is Test, Utilities, InvariantAsserts {
     function test_getContractVersion() public {
         _deployFeeOracleAndHashConsensus(_lastSlotOfEpoch(1));
 
-        assertEq(oracle.getContractVersion(), 2);
+        assertEq(oracle.getContractVersion(), 3);
     }
 
     function test_happyPath() public assertInvariants {
@@ -122,7 +122,7 @@ contract FeeOracleTest is Test, Utilities, InvariantAsserts {
         _reachConsensus(refSlot, reportHash);
 
         vm.prank(members[0]);
-        oracle.submitReportData({ data: data, contractVersion: 2 });
+        oracle.submitReportData({ data: data, contractVersion: 3 });
 
         (, startSlot, , ) = oracle.getConsensusReport();
         (refSlot, ) = consensus.getCurrentFrame();
@@ -178,7 +178,7 @@ contract FeeOracleTest is Test, Utilities, InvariantAsserts {
 
         vm.expectRevert(IFeeOracle.SenderNotAllowed.selector);
         vm.prank(stranger);
-        oracle.submitReportData({ data: data, contractVersion: 2 });
+        oracle.submitReportData({ data: data, contractVersion: 3 });
     }
 
     function test_submitReport_RevertWhen_PausedFor() public assertInvariants {
@@ -215,7 +215,7 @@ contract FeeOracleTest is Test, Utilities, InvariantAsserts {
 
         vm.expectRevert(PausableUntil.ResumedExpected.selector);
         vm.prank(members[0]);
-        oracle.submitReportData({ data: data, contractVersion: 2 });
+        oracle.submitReportData({ data: data, contractVersion: 3 });
     }
 
     function test_happyPath_whenResumed() public assertInvariants {
@@ -256,7 +256,7 @@ contract FeeOracleTest is Test, Utilities, InvariantAsserts {
         _reachConsensus(refSlot, reportHash);
 
         vm.prank(members[0]);
-        oracle.submitReportData({ data: data, contractVersion: 2 });
+        oracle.submitReportData({ data: data, contractVersion: 3 });
 
         (, startSlot, , ) = oracle.getConsensusReport();
         (refSlot, ) = consensus.getCurrentFrame();
@@ -344,7 +344,7 @@ contract FeeOracleTest is Test, Utilities, InvariantAsserts {
         vm.assertTrue(
             oracle.hasRole(oracle.DEFAULT_ADMIN_ROLE(), address(this))
         );
-        assertEq(oracle.getContractVersion(), 2);
+        assertEq(oracle.getContractVersion(), 3);
     }
 
     function test_initialize_RevertWhen_AdminCannotBeZero() public {
@@ -367,19 +367,6 @@ contract FeeOracleTest is Test, Utilities, InvariantAsserts {
 
         vm.expectRevert(IFeeOracle.ZeroAdminAddress.selector);
         oracle.initialize(address(0), address(consensus), CONSENSUS_VERSION);
-    }
-
-    function test_finalizeUpgradeV2() public assertInvariants {
-        oracle = new FeeOracleForTest({
-            feeDistributor: address(distributor),
-            strikes: address(strikes),
-            secondsPerSlot: chainConfig.secondsPerSlot,
-            genesisTime: chainConfig.genesisTime
-        });
-        oracle.mock_setContractVersion(1);
-
-        oracle.finalizeUpgradeV2(CONSENSUS_VERSION);
-        assertEq(oracle.getContractVersion(), 2);
     }
 
     function test_recovererRole() public assertInvariants {

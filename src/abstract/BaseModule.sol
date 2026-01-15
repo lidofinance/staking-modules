@@ -118,21 +118,6 @@ abstract contract BaseModule is
         FEE_DISTRIBUTOR = address(ACCOUNTING.FEE_DISTRIBUTOR());
     }
 
-    /// @notice initialize the module from scratch
-    function _initialize(address admin) internal {
-        if (admin == address(0)) {
-            revert ZeroAdminAddress();
-        }
-
-        __AccessControlEnumerable_init();
-
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(STAKING_ROUTER_ROLE, address(LIDO_LOCATOR.stakingRouter()));
-
-        // Module is on pause initially and should be resumed during the vote
-        _pauseFor(PausableUntil.PAUSE_INFINITELY);
-    }
-
     /// @inheritdoc IBaseModule
     function resume() external onlyRole(RESUME_ROLE) {
         _resume();
@@ -961,6 +946,21 @@ abstract contract BaseModule is
         return
             interfaceId == type(INodeOperatorOwner).interfaceId ||
             super.supportsInterface(interfaceId);
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function __BaseModule_init(address admin) internal {
+        if (admin == address(0)) {
+            revert ZeroAdminAddress();
+        }
+
+        __AccessControlEnumerable_init();
+
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(STAKING_ROUTER_ROLE, address(LIDO_LOCATOR.stakingRouter()));
+
+        // Module is on pause initially and should be resumed during the vote
+        _pauseFor(PausableUntil.PAUSE_INFINITELY);
     }
 
     function _incrementModuleNonce() internal {

@@ -23,7 +23,7 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
     function test_CSModuleUpgradeTo() public {
         OssifiableProxy proxy = OssifiableProxy(payable(address(module)));
         CSModule newModule = new CSModule({
-            moduleType: "CSMv2",
+            moduleType: "CSMv3",
             lidoLocator: address(module.LIDO_LOCATOR()),
             parametersRegistry: address(module.PARAMETERS_REGISTRY()),
             accounting: address(module.ACCOUNTING()),
@@ -31,13 +31,13 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
         });
         vm.prank(proxy.proxy__getAdmin());
         proxy.proxy__upgradeTo(address(newModule));
-        assertEq(module.getType(), "CSMv2");
+        assertEq(module.getType(), "CSMv3");
     }
 
     function test_CSModuleUpgradeToAndCall() public {
         OssifiableProxy proxy = OssifiableProxy(payable(address(module)));
         CSModule newModule = new CSModule({
-            moduleType: "CSMv2",
+            moduleType: "CSMv3",
             lidoLocator: address(module.LIDO_LOCATOR()),
             parametersRegistry: address(module.PARAMETERS_REGISTRY()),
             accounting: address(module.ACCOUNTING()),
@@ -64,7 +64,7 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
             address(newModule),
             abi.encodeWithSelector(newModule.resume.selector, 1)
         );
-        assertEq(module.getType(), "CSMv2");
+        assertEq(module.getType(), "CSMv3");
         assertFalse(module.isPaused());
     }
 

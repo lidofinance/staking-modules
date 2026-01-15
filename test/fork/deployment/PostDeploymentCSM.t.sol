@@ -581,6 +581,35 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
     }
 }
 
+contract GateSealDeploymentTest is DeploymentBaseTest {
+    function test_configuration() public view {
+        assertTrue(address(gateSeal) != address(0), "gate seal missing");
+        address committee = gateSeal.get_sealing_committee();
+        assertEq(committee, deployParams.sealingCommittee, "committee");
+        assertEq(
+            gateSeal.get_seal_duration_seconds(),
+            deployParams.sealDuration,
+            "seal duration"
+        );
+        assertEq(
+            gateSeal.get_expiry_timestamp(),
+            deployParams.sealExpiryTimestamp,
+            "expiry"
+        );
+    }
+
+    function test_sealables() public view {
+        address[] memory sealables = gateSeal.get_sealables();
+        assertEq(sealables.length, 6, "sealables length");
+        assertEq(sealables[0], address(module), "module mismatch");
+        assertEq(sealables[1], address(accounting), "accounting mismatch");
+        assertEq(sealables[2], address(oracle), "oracle mismatch");
+        assertEq(sealables[3], address(verifier), "verifier mismatch");
+        assertEq(sealables[4], address(vettedGate), "vetted gate mismatch");
+        assertEq(sealables[5], address(ejector), "ejector mismatch");
+    }
+}
+
 contract PermissionlessGateDeploymentTest is DeploymentBaseTest {
     function test_immutables() public view {
         assertEq(address(permissionlessGate.MODULE()), address(module));

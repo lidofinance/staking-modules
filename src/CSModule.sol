@@ -38,6 +38,8 @@ contract CSModule is ICSModule, BaseModule {
     bytes32 private constant CSMODULE_STORAGE_LOCATION =
         0x48912ff6aecfe3259bdc07bbe67306543da3ba7172b1471bf49b659c3f4c6d00;
 
+    uint64 internal constant INITIALIZED_VERSION = 3;
+
     modifier onlyActiveTopUpQueue() {
         _onlyActiveTopUpQueue();
         _;
@@ -65,15 +67,15 @@ contract CSModule is ICSModule, BaseModule {
     function initialize(
         address admin,
         uint32 topUpQueueLimit
-    ) external reinitializer(3) {
-        BaseModule._initialize(admin);
+    ) external reinitializer(INITIALIZED_VERSION) {
+        __BaseModule_init(admin);
 
         _initTopUpQueue(topUpQueueLimit);
     }
 
     /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing version 2 deployment.
     ///      If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
-    function finalizeUpgradeV3() external reinitializer(3) {
+    function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {
         // NOTE: Disable the top-up queue for existing modules, because only modules deployed starting from version 3
         // might use the top-up queue.
         _initTopUpQueue(0);

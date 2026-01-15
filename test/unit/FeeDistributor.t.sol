@@ -121,7 +121,7 @@ contract FeeDistributorInitTest is FeeDistributorTestBase {
             )
         );
         assertEq(feeDistributor.rebateRecipient(), rebateRecipient);
-        assertEq(feeDistributor.getInitializedVersion(), 2);
+        assertEq(feeDistributor.getInitializedVersion(), 3);
     }
 
     function test_initialize_RevertWhen_zeroAdmin() public {
@@ -146,30 +146,20 @@ contract FeeDistributorInitTest is FeeDistributorTestBase {
         feeDistributor.initialize(address(this), rebateRecipient);
     }
 
-    function test_finalizeUpgradeV2() public {
+    function test_finalizeUpgradeV3() public {
         _enableInitializers(address(feeDistributor));
 
-        vm.expectEmit(address(feeDistributor));
-        emit IFeeDistributor.RebateRecipientSet(rebateRecipient);
-        feeDistributor.finalizeUpgradeV2(rebateRecipient);
+        feeDistributor.finalizeUpgradeV3();
 
-        assertEq(feeDistributor.rebateRecipient(), rebateRecipient);
-        assertEq(feeDistributor.getInitializedVersion(), 2);
+        assertEq(feeDistributor.getInitializedVersion(), 3);
     }
 
-    function test_finalizeUpgradeV2_RevertWhen_zeroRebateRecipient() public {
+    function test_finalizeUpgradeV3_RevertWhen_calledTwice() public {
         _enableInitializers(address(feeDistributor));
-
-        vm.expectRevert(IFeeDistributor.ZeroRebateRecipientAddress.selector);
-        feeDistributor.finalizeUpgradeV2(address(0));
-    }
-
-    function test_finalizeUpgradeV2_RevertWhen_calledTwice() public {
-        _enableInitializers(address(feeDistributor));
-        feeDistributor.finalizeUpgradeV2(rebateRecipient);
+        feeDistributor.finalizeUpgradeV3();
 
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        feeDistributor.finalizeUpgradeV2(rebateRecipient);
+        feeDistributor.finalizeUpgradeV3();
     }
 }
 
@@ -200,7 +190,7 @@ contract FeeDistributorTest is FeeDistributorTestBase {
     }
 
     function test_getInitializedVersion() public view {
-        assertEq(feeDistributor.getInitializedVersion(), 2);
+        assertEq(feeDistributor.getInitializedVersion(), 3);
     }
 
     function test_distributeFeesHappyPath() public assertInvariants {
