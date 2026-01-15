@@ -247,22 +247,21 @@ contract StakingRouterIntegrationTest is
         (uint256 noId, uint256 keysCount) = getDepositableNodeOperator(
             nextAddress()
         );
-        uint256 depositedValidatorsBefore = module
-            .getNodeOperator(noId)
-            .totalDepositedKeys;
-        uint256 depositableValidatorsCount = module
-            .getNodeOperator(noId)
-            .depositableValidatorsCount;
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+
+        uint256 depositedValidatorsBefore = no.totalDepositedKeys;
+        uint256 depositableValidatorsCount = no.depositableValidatorsCount;
+        uint256 exited = no.totalExitedKeys;
 
         hugeDeposit();
         lidoDepositWithNoGasMetering(keysCount);
 
-        uint256 exited = 1;
         vm.prank(agent);
         stakingRouter.reportStakingModuleExitedValidatorsCountByNodeOperator(
             moduleId,
             _encodeNodeOperatorId(noId),
-            _encodeUint128Value(exited)
+            _encodeUint128Value(++exited)
         );
 
         IStakingRouter.NodeOperatorSummary memory summary = stakingRouter
@@ -287,28 +286,30 @@ contract StakingRouterIntegrationTest is
         hugeDeposit();
         uint256 noId;
         uint256 keysCount;
+        uint256 exited;
 
         for (;;) {
             (noId, keysCount) = getDepositableNodeOperator(nextAddress());
             lidoDepositWithNoGasMetering(keysCount);
+            NodeOperator memory no = module.getNodeOperator(noId);
             /// we need to be sure there are more than 1 keys for further checks
-            if (module.getNodeOperator(noId).totalDepositedKeys > 1) {
+            if (no.totalDepositedKeys > 1) {
+                exited = no.totalExitedKeys;
                 break;
             }
         }
 
-        uint256 exited = 2;
         vm.prank(agent);
         stakingRouter.reportStakingModuleExitedValidatorsCountByNodeOperator(
             moduleId,
             _encodeNodeOperatorId(noId),
-            _encodeUint128Value(exited)
+            _encodeUint128Value(++exited)
         );
 
         IStakingRouter.StakingModule memory moduleInfo = stakingRouter
             .getStakingModule(moduleId);
 
-        uint256 unsafeExited = 1;
+        uint256 unsafeExited = exited;
 
         IStakingRouter.ValidatorsCountsCorrection
             memory correction = IStakingRouter.ValidatorsCountsCorrection({
