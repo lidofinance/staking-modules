@@ -964,29 +964,58 @@ abstract contract BaseModule is
         uint256 nodeOperatorId,
         bool incrementNonceIfUpdated
     ) internal {
-        (uint32 oldCount, uint32 newCount) = NodeOperatorOps
-            .updateDepositableValidatorsCount(
-                _nodeOperators,
-                nodeOperatorId,
-                _accounting()
-            );
+        NodeOperator storage no = _nodeOperators[nodeOperatorId];
 
-        if (newCount == oldCount) {
-            return;
+        uint256 totalDepositedKeys = no.totalDepositedKeys;
+        uint256 newCount = no.totalVettedKeys - totalDepositedKeys;
+        uint256 unbondedKeys = _accounting().getUnbondedKeysCount(
+            nodeOperatorId
+        );
+
+        uint256 nonDeposited = no.totalAddedKeys - totalDepositedKeys;
+        if (unbondedKeys >= nonDeposited) {
+            newCount = 0;
+        } else if (unbondedKeys > no.totalAddedKeys - no.totalVettedKeys) {
+            newCount = nonDeposited - unbondedKeys;
         }
 
-        // Updating the global counter.
-        unchecked {
-            _depositableValidatorsCount =
-                _depositableValidatorsCount -
-                oldCount +
-                newCount;
+        if (no.targetLimitMode > 0 && newCount > 0) {
+            unchecked {
+                uint256 nonWithdrawnValidators = totalDepositedKeys -
+                    no.totalWithdrawnKeys;
+
+                uint256 targetLimit = no.targetLimit;
+                uint256 leftToLimit = 0;
+
+                if (targetLimit > nonWithdrawnValidators) {
+                    leftToLimit = targetLimit - nonWithdrawnValidators;
+                }
+
+                if (newCount > leftToLimit) {
+                    newCount = leftToLimit;
+                }
+            }
         }
 
-        if (incrementNonceIfUpdated) {
-            _incrementModuleNonce();
+        if (no.depositableValidatorsCount != newCount) {
+            // Updating the global counter.
+            unchecked {
+                _depositableValidatorsCount =
+                    _depositableValidatorsCount -
+                    no.depositableValidatorsCount +
+                    // Each term is bounded by uint32 counts, so fitting into uint64 is safe.
+                    // forge-lint: disable-next-line(unsafe-typecast)
+                    uint64(newCount);
+            }
+            // NodeOperator.depositableValidatorsCount is uint32, and newCount is derived from the same bounds.
+            // forge-lint: disable-next-line(unsafe-typecast)
+            no.depositableValidatorsCount = uint32(newCount);
+            emit DepositableSigningKeysCountChanged(nodeOperatorId, newCount);
+            if (incrementNonceIfUpdated) {
+                _incrementModuleNonce();
+            }
+            _onOperatorDepositableChange(nodeOperatorId);
         }
-        _onOperatorDepositableChange(nodeOperatorId);
     }
 
     function _onOperatorDepositableChange(

@@ -50,56 +50,6 @@ library NodeOperatorOps {
         }
     }
 
-    function updateDepositableValidatorsCount(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        uint256 nodeOperatorId,
-        IAccounting accounting
-    ) external returns (uint32 oldCount, uint32 newCount) {
-        NodeOperator storage no = nodeOperators[nodeOperatorId];
-
-        uint32 totalDepositedKeys = no.totalDepositedKeys;
-        newCount = no.totalVettedKeys - totalDepositedKeys;
-        uint32 unbondedKeys = uint32(
-            accounting.getUnbondedKeysCount(nodeOperatorId)
-        );
-
-        {
-            uint32 nonDeposited = no.totalAddedKeys - totalDepositedKeys;
-            if (unbondedKeys >= nonDeposited) {
-                newCount = 0;
-            } else if (unbondedKeys > no.totalAddedKeys - no.totalVettedKeys) {
-                newCount = nonDeposited - unbondedKeys;
-            }
-        }
-
-        if (no.targetLimitMode > 0 && newCount > 0) {
-            unchecked {
-                uint32 nonWithdrawnValidators = totalDepositedKeys -
-                    no.totalWithdrawnKeys;
-
-                uint32 targetLimit = no.targetLimit;
-                uint32 leftToLimit = 0;
-
-                if (targetLimit > nonWithdrawnValidators) {
-                    leftToLimit = targetLimit - nonWithdrawnValidators;
-                }
-
-                if (newCount > leftToLimit) {
-                    newCount = leftToLimit;
-                }
-            }
-        }
-
-        oldCount = no.depositableValidatorsCount;
-        if (oldCount != newCount) {
-            no.depositableValidatorsCount = newCount;
-            emit IBaseModule.DepositableSigningKeysCountChanged(
-                nodeOperatorId,
-                newCount
-            );
-        }
-    }
-
     function setTargetLimit(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,
