@@ -10,7 +10,7 @@ import { FORCED_TARGET_LIMIT_MODE_ID } from "../interfaces/IStakingModule.sol";
 import { IAccounting } from "../interfaces/IAccounting.sol";
 
 /// @dev The library is used to reduce BaseModule bytecode size.
-library NodeOperatorLib {
+library NodeOperatorOps {
     function createNodeOperator(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,
@@ -48,60 +48,6 @@ library NodeOperatorLib {
         if (referrer != address(0)) {
             emit IBaseModule.ReferrerSet(nodeOperatorId, referrer);
         }
-    }
-
-    function getNodeOperatorSummary(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        uint256 nodeOperatorId,
-        IAccounting accounting
-    )
-        external
-        view
-        returns (
-            uint256 targetLimitMode,
-            uint256 targetValidatorsCount,
-            uint256 stuckValidatorsCount,
-            uint256 refundedValidatorsCount,
-            uint256 stuckPenaltyEndTimestamp,
-            uint256 totalExitedValidators,
-            uint256 totalDepositedValidators,
-            uint256 depositableValidatorsCount
-        )
-    {
-        NodeOperator storage no = nodeOperators[nodeOperatorId];
-        if (no.managerAddress == address(0)) {
-            revert IBaseModule.NodeOperatorDoesNotExist();
-        }
-
-        uint256 totalUnbondedKeys = accounting.getUnbondedKeysCountToEject(
-            nodeOperatorId
-        );
-        uint256 totalNonDepositedKeys = no.totalAddedKeys -
-            no.totalDepositedKeys;
-        if (totalUnbondedKeys > totalNonDepositedKeys) {
-            targetLimitMode = FORCED_TARGET_LIMIT_MODE_ID;
-            unchecked {
-                targetValidatorsCount =
-                    no.totalAddedKeys -
-                    no.totalWithdrawnKeys -
-                    totalUnbondedKeys;
-            }
-            if (no.targetLimitMode > 0) {
-                targetValidatorsCount = Math.min(
-                    targetValidatorsCount,
-                    no.targetLimit
-                );
-            }
-        } else {
-            targetLimitMode = no.targetLimitMode;
-            targetValidatorsCount = no.targetLimit;
-        }
-        stuckValidatorsCount = 0;
-        refundedValidatorsCount = 0;
-        stuckPenaltyEndTimestamp = 0;
-        totalExitedValidators = no.totalExitedKeys;
-        totalDepositedValidators = no.totalDepositedKeys;
-        depositableValidatorsCount = no.depositableValidatorsCount;
     }
 
     function updateDepositableValidatorsCount(
@@ -196,5 +142,59 @@ library NodeOperatorLib {
             targetLimitMode,
             targetLimit
         );
+    }
+
+    function getNodeOperatorSummary(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint256 nodeOperatorId,
+        IAccounting accounting
+    )
+        external
+        view
+        returns (
+            uint256 targetLimitMode,
+            uint256 targetValidatorsCount,
+            uint256 stuckValidatorsCount,
+            uint256 refundedValidatorsCount,
+            uint256 stuckPenaltyEndTimestamp,
+            uint256 totalExitedValidators,
+            uint256 totalDepositedValidators,
+            uint256 depositableValidatorsCount
+        )
+    {
+        NodeOperator storage no = nodeOperators[nodeOperatorId];
+        if (no.managerAddress == address(0)) {
+            revert IBaseModule.NodeOperatorDoesNotExist();
+        }
+
+        uint256 totalUnbondedKeys = accounting.getUnbondedKeysCountToEject(
+            nodeOperatorId
+        );
+        uint256 totalNonDepositedKeys = no.totalAddedKeys -
+            no.totalDepositedKeys;
+        if (totalUnbondedKeys > totalNonDepositedKeys) {
+            targetLimitMode = FORCED_TARGET_LIMIT_MODE_ID;
+            unchecked {
+                targetValidatorsCount =
+                    no.totalAddedKeys -
+                    no.totalWithdrawnKeys -
+                    totalUnbondedKeys;
+            }
+            if (no.targetLimitMode > 0) {
+                targetValidatorsCount = Math.min(
+                    targetValidatorsCount,
+                    no.targetLimit
+                );
+            }
+        } else {
+            targetLimitMode = no.targetLimitMode;
+            targetValidatorsCount = no.targetLimit;
+        }
+        stuckValidatorsCount = 0;
+        refundedValidatorsCount = 0;
+        stuckPenaltyEndTimestamp = 0;
+        totalExitedValidators = no.totalExitedKeys;
+        totalDepositedValidators = no.totalDepositedKeys;
+        depositableValidatorsCount = no.depositableValidatorsCount;
     }
 }

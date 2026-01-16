@@ -22,7 +22,7 @@ import { PausableUntil } from "../lib/utils/PausableUntil.sol";
 import { WithdrawnValidatorLib } from "../lib/WithdrawnValidatorLib.sol";
 import { ValidatorCountsReport } from "../lib/ValidatorCountsReport.sol";
 import { NOAddresses } from "../lib/NOAddresses.sol";
-import { NodeOperatorLib } from "../lib/NodeOperatorLib.sol";
+import { NodeOperatorOps } from "../lib/NodeOperatorOps.sol";
 import { OperatorTracker } from "../lib/OperatorTracker.sol";
 
 import { AssetRecoverer } from "./AssetRecoverer.sol";
@@ -136,7 +136,7 @@ abstract contract BaseModule is
         nodeOperatorId = _nodeOperatorsCount;
         OperatorTracker.recordCreator(nodeOperatorId);
         // solhint-disable-next-line func-named-parameters
-        NodeOperatorLib.createNodeOperator(
+        NodeOperatorOps.createNodeOperator(
             _nodeOperators,
             nodeOperatorId,
             from,
@@ -748,7 +748,7 @@ abstract contract BaseModule is
         )
     {
         return
-            NodeOperatorLib.getNodeOperatorSummary(
+            NodeOperatorOps.getNodeOperatorSummary(
                 _nodeOperators,
                 nodeOperatorId,
                 _accounting()
@@ -964,7 +964,7 @@ abstract contract BaseModule is
         uint256 nodeOperatorId,
         bool incrementNonceIfUpdated
     ) internal {
-        (uint32 oldCount, uint32 newCount) = NodeOperatorLib
+        (uint32 oldCount, uint32 newCount) = NodeOperatorOps
             .updateDepositableValidatorsCount(
                 _nodeOperators,
                 nodeOperatorId,
@@ -1040,7 +1040,7 @@ abstract contract BaseModule is
         uint256 targetLimit
     ) internal {
         // solhint-disable-next-line func-named-parameters
-        NodeOperatorLib.setTargetLimit(
+        NodeOperatorOps.setTargetLimit(
             _nodeOperators,
             nodeOperatorId,
             targetLimitMode,
