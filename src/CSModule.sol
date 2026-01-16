@@ -16,7 +16,7 @@ import { TopUpQueueLib, TopUpQueueItem, newTopUpQueueItem } from "./lib/TopUpQue
 import { DepositQueueLib, Batch } from "./lib/DepositQueueLib.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
 import { DepositQueueOps } from "./lib/DepositQueueOps.sol";
-import { TopUpDepositDataLib } from "./lib/TopUpDepositDataLib.sol";
+import { TopUpQueueOps } from "./lib/TopUpQueueOps.sol";
 
 contract CSModule is ICSModule, BaseModule {
     using DepositQueueLib for DepositQueueLib.Queue;
@@ -256,7 +256,7 @@ contract CSModule is ICSModule, BaseModule {
         }
 
         // solhint-disable-next-line func-named-parameters
-        (publicKeys, allocations) = TopUpDepositDataLib.obtainDepositData(
+        (publicKeys, allocations) = TopUpQueueOps.obtainDepositData(
             _topUpQueue(),
             depositAmount,
             packedPubkeys,

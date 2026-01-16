@@ -12,9 +12,15 @@ import { PackedPubkeys } from "./PackedPubkeys.sol";
 import { SigningKeys } from "./SigningKeys.sol";
 
 /// @dev The library is used to reduce CSModule bytecode size.
-library TopUpDepositDataLib {
+library TopUpQueueOps {
     using TopUpQueueLib for TopUpQueueLib.Queue;
     using PackedPubkeys for bytes;
+
+    struct TopUpKeyParams {
+        uint256[] keyIndices;
+        uint256[] operatorIds;
+        uint256[] topUpLimits;
+    }
 
     function obtainDepositData(
         TopUpQueueLib.Queue storage topUpQueue,
@@ -23,24 +29,43 @@ library TopUpDepositDataLib {
         uint256[] calldata keyIndices,
         uint256[] calldata operatorIds,
         uint256[] calldata topUpLimits
+    ) external returns (bytes[] memory, uint256[] memory) {
+        // NOTE: Wrapping the function inputs with a struct to save space on the stack.
+        TopUpKeyParams memory data = TopUpKeyParams({
+            keyIndices: keyIndices,
+            operatorIds: operatorIds,
+            topUpLimits: topUpLimits
+        });
+
+        return
+            _obtainDepositData(topUpQueue, depositAmount, packedPubkeys, data);
+    }
+
+    function _obtainDepositData(
+        TopUpQueueLib.Queue storage topUpQueue,
+        uint256 depositAmount,
+        bytes calldata packedPubkeys,
+        TopUpKeyParams memory data
     )
-        external
+        private
         returns (bytes[] memory publicKeys, uint256[] memory allocations)
     {
-        publicKeys = new bytes[](keyIndices.length);
-        allocations = new uint256[](keyIndices.length);
+        uint256 keyCount = data.keyIndices.length;
 
-        for (uint256 i; i < keyIndices.length; i++) {
-            // NOTE: Check whether the last processed key was partially filled.
-            if (i > 0 && allocations[i - 1] < topUpLimits[i - 1]) {
+        publicKeys = new bytes[](keyCount);
+        allocations = new uint256[](keyCount);
+
+        bool lastItemPartiallyDeposited;
+        for (uint256 i; i < keyCount; i++) {
+            if (lastItemPartiallyDeposited) {
                 revert ICSModule.UnexpectedExtraKey();
             }
 
             TopUpQueueItem item = topUpQueue.at(0);
 
             if (
-                operatorIds[i] != item.noId() ||
-                keyIndices[i] != item.keyIndex()
+                data.operatorIds[i] != item.noId() ||
+                data.keyIndices[i] != item.keyIndex()
             ) {
                 revert ICSModule.InvalidTopUpOrder();
             }
@@ -52,12 +77,14 @@ library TopUpDepositDataLib {
             }
 
             if (depositAmount > 0) {
-                allocations[i] = Math.min(topUpLimits[i], depositAmount);
+                allocations[i] = Math.min(data.topUpLimits[i], depositAmount);
                 depositAmount -= allocations[i];
             }
 
-            if (allocations[i] == topUpLimits[i]) {
+            if (allocations[i] == data.topUpLimits[i]) {
                 topUpQueue.dequeue();
+            } else {
+                lastItemPartiallyDeposited = true;
             }
         }
     }
