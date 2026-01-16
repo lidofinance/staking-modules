@@ -15,8 +15,7 @@ import { ICSModule } from "./interfaces/ICSModule.sol";
 import { TopUpQueueLib, TopUpQueueItem, newTopUpQueueItem } from "./lib/TopUpQueueLib.sol";
 import { DepositQueueLib, Batch } from "./lib/DepositQueueLib.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
-import { DepositQueueCleanLib } from "./lib/DepositQueueCleanLib.sol";
-import { OperatorDepositableChangeLib } from "./lib/OperatorDepositableChangeLib.sol";
+import { DepositQueueOps } from "./lib/DepositQueueOps.sol";
 import { TopUpDepositDataLib } from "./lib/TopUpDepositDataLib.sol";
 
 contract CSModule is ICSModule, BaseModule {
@@ -369,7 +368,7 @@ contract CSModule is ICSModule, BaseModule {
         uint256 maxItems
     ) external returns (uint256 removed, uint256 lastRemovedAtDepth) {
         return
-            DepositQueueCleanLib.cleanDepositQueue(
+            DepositQueueOps.cleanDepositQueue(
                 _depositQueueByPriority,
                 _nodeOperators,
                 QUEUE_LOWEST_PRIORITY,
@@ -394,7 +393,7 @@ contract CSModule is ICSModule, BaseModule {
         uint256 nodeOperatorId
     ) internal override {
         // solhint-disable-next-line func-named-parameters
-        OperatorDepositableChangeLib.onOperatorDepositableChange(
+        DepositQueueOps.enqueueNodeOperatorKeys(
             _nodeOperators,
             _depositQueueByPriority,
             PARAMETERS_REGISTRY,

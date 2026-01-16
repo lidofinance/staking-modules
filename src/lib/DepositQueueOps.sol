@@ -3,18 +3,20 @@
 
 pragma solidity 0.8.33;
 
+import { IAccounting } from "../interfaces/IAccounting.sol";
+import { ICSModule } from "../interfaces/ICSModule.sol";
+import { IParametersRegistry } from "../interfaces/IParametersRegistry.sol";
 import { NodeOperator } from "../interfaces/IBaseModule.sol";
 
 import { TransientUintUintMap, TransientUintUintMapLib } from "./TransientUintUintMapLib.sol";
 import { Batch, DepositQueueLib, IDepositQueueLib } from "./DepositQueueLib.sol";
 
-library DepositQueueCleanLib {
+library DepositQueueOps {
     using DepositQueueLib for DepositQueueLib.Queue;
     using TransientUintUintMapLib for TransientUintUintMap;
 
     function cleanDepositQueue(
-        mapping(uint256 => DepositQueueLib.Queue)
-            storage depositQueueByPriority,
+        mapping(uint256 => DepositQueueLib.Queue) storage depositQueues,
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 queueLowestPriority,
         uint256 maxItems
@@ -41,7 +43,7 @@ library DepositQueueCleanLib {
                 break;
             }
 
-            queue = depositQueueByPriority[priority];
+            queue = depositQueues[priority];
             unchecked {
                 ++priority;
             }
@@ -86,7 +88,7 @@ library DepositQueueCleanLib {
     }
 
     function _clean(
-        DepositQueueLib.Queue storage self,
+        DepositQueueLib.Queue storage queue,
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 maxItems,
         TransientUintUintMap queueLookup
@@ -111,11 +113,11 @@ library DepositQueueCleanLib {
         Batch prevItem;
         uint128 indexOfPrev;
 
-        uint128 head = self.head;
+        uint128 head = queue.head;
         uint128 curr = head;
 
         while (visited < maxItems) {
-            Batch item = self.queue[curr];
+            Batch item = queue.queue[curr];
             if (item.isNil()) {
                 reachedOutOfQueue = true;
                 break;
@@ -128,13 +130,13 @@ library DepositQueueCleanLib {
                 // NOTE: Since we reached that point there's no way for a Node Operator to have a depositable batch
                 // later in the queue, and hence we don't update _queueLookup for the Node Operator.
                 if (curr == head) {
-                    self.dequeue();
-                    head = self.head;
+                    queue.dequeue();
+                    head = queue.head;
                 } else {
                     // There's no `prev` item while we call `dequeue`, and removing an item will keep the `prev` intact
                     // other than changing its `next` field.
                     prevItem = prevItem.setNext(item.next());
-                    self.queue[indexOfPrev] = prevItem;
+                    queue.queue[indexOfPrev] = prevItem;
                 }
 
                 // We assume that the invariant `enqueuedCount` >= `keys` is kept.
@@ -153,5 +155,78 @@ library DepositQueueCleanLib {
 
             curr = item.next();
         }
+    }
+
+    function enqueueNodeOperatorKeys(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        mapping(uint256 => DepositQueueLib.Queue) storage depositQueues,
+        IParametersRegistry parametersRegistry,
+        IAccounting accounting,
+        uint256 queueLowestPriority,
+        uint256 nodeOperatorId
+    ) external {
+        NodeOperator storage no = nodeOperators[nodeOperatorId];
+        uint32 depositable = no.depositableValidatorsCount;
+        uint32 enqueued = no.enqueuedCount;
+        if (depositable <= enqueued) {
+            return;
+        }
+
+        uint32 toEnqueue;
+        unchecked {
+            toEnqueue = depositable - enqueued;
+        }
+
+        (uint32 priority, uint32 maxDeposits) = parametersRegistry
+            .getQueueConfig(accounting.getBondCurveId(nodeOperatorId));
+        if (priority < queueLowestPriority) {
+            unchecked {
+                uint32 depositedAndQueued = no.totalDepositedKeys + enqueued;
+                if (maxDeposits > depositedAndQueued) {
+                    uint32 priorityDepositsLeft = maxDeposits -
+                        depositedAndQueued;
+                    uint32 count = toEnqueue;
+                    if (count > priorityDepositsLeft) {
+                        count = priorityDepositsLeft;
+                    }
+
+                    // solhint-disable-next-line func-named-parameters
+                    _enqueueNodeOperatorKeys(
+                        depositQueues[priority],
+                        no,
+                        nodeOperatorId,
+                        priority,
+                        count
+                    );
+                    toEnqueue -= count;
+                }
+            }
+        }
+
+        if (toEnqueue > 0) {
+            // solhint-disable-next-line func-named-parameters
+            _enqueueNodeOperatorKeys(
+                depositQueues[queueLowestPriority],
+                no,
+                nodeOperatorId,
+                queueLowestPriority,
+                toEnqueue
+            );
+        }
+    }
+
+    // NOTE: If `count` is 0 an empty batch will be created.
+    function _enqueueNodeOperatorKeys(
+        DepositQueueLib.Queue storage queue,
+        NodeOperator storage no,
+        uint256 nodeOperatorId,
+        uint256 queuePriority,
+        uint32 count
+    ) private {
+        unchecked {
+            no.enqueuedCount += count;
+        }
+        queue.enqueue(nodeOperatorId, count);
+        emit ICSModule.BatchEnqueued(queuePriority, nodeOperatorId, count);
     }
 }
