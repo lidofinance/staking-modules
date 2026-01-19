@@ -155,6 +155,11 @@ interface IBaseModule is
 
     function SUBMIT_WITHDRAWALS_ROLE() external view returns (bytes32);
 
+    function REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE()
+        external
+        view
+        returns (bytes32);
+
     function RECOVERER_ROLE() external view returns (bytes32);
 
     function CREATE_NODE_OPERATOR_ROLE() external view returns (bytes32);

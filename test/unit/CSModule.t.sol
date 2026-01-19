@@ -108,6 +108,10 @@ contract CSMCommon is ModuleFixtures {
         );
         module.grantRole(module.VERIFIER_ROLE(), address(this));
         module.grantRole(module.SUBMIT_WITHDRAWALS_ROLE(), address(this));
+        module.grantRole(
+            module.REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE(),
+            address(this)
+        );
         vm.stopPrank();
     }
 

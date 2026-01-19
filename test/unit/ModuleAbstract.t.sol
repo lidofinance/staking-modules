@@ -5905,7 +5905,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 slashingPenalty
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportWithdrawnSlashedValidators(validatorInfos);
     }
 
     function test_reportWithdrawnValidators_slashingPenaltyOverridesExitBalancePenalty()
@@ -5938,7 +5938,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 slashingPenalty
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportWithdrawnSlashedValidators(validatorInfos);
     }
 
     function test_reportWithdrawnValidators_slashingPenaltyNotScaled()
@@ -5972,7 +5972,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 slashingPenalty
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportWithdrawnSlashedValidators(validatorInfos);
     }
 
     function test_reportWithdrawnValidators_slashingPenalty_RevertWhenNotReported()
@@ -6000,7 +6000,58 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             address(module)
         );
 
+        module.reportWithdrawnSlashedValidators(validatorInfos);
+    }
+
+    function test_reportWithdrawnValidators_RevertWhen_SlashedInfoWithRegularMethod()
+        public
+        assertInvariants
+    {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        module.onValidatorSlashed(noId, keyIndex);
+
+        WithdrawnValidatorInfo[]
+            memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 1 ether,
+            isSlashed: true
+        });
+
+        vm.expectRevert(
+            IBaseModule.InvalidWithdrawnValidatorInfo.selector,
+            address(module)
+        );
         module.reportWithdrawnValidators(validatorInfos);
+    }
+
+    function test_reportWithdrawnSlashedValidators_RevertWhen_NotSlashedInfo()
+        public
+        assertInvariants
+    {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        WithdrawnValidatorInfo[]
+            memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        vm.expectRevert(
+            IBaseModule.InvalidWithdrawnValidatorInfo.selector,
+            address(module)
+        );
+        module.reportWithdrawnSlashedValidators(validatorInfos);
     }
 
     function test_reportWithdrawnValidators_chargeWithdrawalFee_DelayFee()
@@ -7200,6 +7251,51 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
         module.reportWithdrawnValidators(validatorInfos);
+    }
+
+    function test_reportWithdrawnSlashedValidatorsRole() public {
+        uint256 noId = createNodeOperator();
+        bytes32 role = module.REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE();
+
+        vm.startPrank(admin);
+        module.grantRole(role, actor);
+        module.grantRole(module.STAKING_ROUTER_ROLE(), admin);
+        module.grantRole(module.VERIFIER_ROLE(), admin);
+        module.obtainDepositData(1, "");
+        module.onValidatorSlashed(noId, 0);
+        vm.stopPrank();
+
+        WithdrawnValidatorInfo[]
+            memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: true
+        });
+
+        vm.prank(actor);
+        module.reportWithdrawnSlashedValidators(validatorInfos);
+    }
+
+    function test_reportWithdrawnSlashedValidatorsRole_revert() public {
+        uint256 noId = createNodeOperator();
+        bytes32 role = module.REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE();
+
+        WithdrawnValidatorInfo[]
+            memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: true
+        });
+
+        vm.prank(stranger);
+        expectRoleRevert(stranger, role);
+        module.reportWithdrawnSlashedValidators(validatorInfos);
     }
 
     function test_recovererRole() public {

@@ -67,6 +67,8 @@ abstract contract BaseModule is
     bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
     bytes32 public constant SUBMIT_WITHDRAWALS_ROLE =
         keccak256("SUBMIT_WITHDRAWALS_ROLE");
+    bytes32 public constant REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE =
+        keccak256("REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE");
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
     bytes32 public constant CREATE_NODE_OPERATOR_ROLE =
         keccak256("CREATE_NODE_OPERATOR_ROLE");
@@ -584,43 +586,17 @@ abstract contract BaseModule is
         emit ValidatorSlashingReported(nodeOperatorId, keyIndex, pubkey);
     }
 
+    function reportWithdrawnSlashedValidators(
+        WithdrawnValidatorInfo[] calldata validatorInfos
+    ) external onlyRole(REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE) {
+        _reportWithdrawnValidators(validatorInfos, true);
+    }
+
     /// @inheritdoc IBaseModule
     function reportWithdrawnValidators(
         WithdrawnValidatorInfo[] calldata validatorInfos
     ) external onlyRole(SUBMIT_WITHDRAWALS_ROLE) {
-        bool anySubmission = false;
-
-        for (uint256 i; i < validatorInfos.length; ++i) {
-            WithdrawnValidatorInfo calldata info = validatorInfos[i];
-            _onlyExistingNodeOperator(info.nodeOperatorId);
-
-            uint256 pointer = _keyPointer(info.nodeOperatorId, info.keyIndex);
-            if (_isValidatorWithdrawn[pointer]) {
-                continue;
-            }
-
-            NodeOperator storage no = _nodeOperators[info.nodeOperatorId];
-            bool bondCoversPenalties = WithdrawnValidatorLib.process(
-                no,
-                info,
-                _isValidatorSlashed[pointer]
-            );
-            if (!bondCoversPenalties) {
-                _onUncompensatedPenalty(info.nodeOperatorId);
-            }
-
-            _updateDepositableValidatorsCount({
-                nodeOperatorId: info.nodeOperatorId,
-                incrementNonceIfUpdated: false
-            });
-
-            _isValidatorWithdrawn[pointer] = true;
-            anySubmission = true;
-        }
-
-        if (anySubmission) {
-            _incrementModuleNonce();
-        }
+        _reportWithdrawnValidators(validatorInfos, false);
     }
 
     /// @inheritdoc IStakingModule
@@ -885,6 +861,49 @@ abstract contract BaseModule is
 
         // Module is on pause initially and should be resumed during the vote
         _pauseFor(PausableUntil.PAUSE_INFINITELY);
+    }
+
+    function _reportWithdrawnValidators(
+        WithdrawnValidatorInfo[] calldata validatorInfos,
+        bool slashed
+    ) internal {
+        bool anySubmission;
+
+        for (uint256 i; i < validatorInfos.length; ++i) {
+            WithdrawnValidatorInfo calldata info = validatorInfos[i];
+            _onlyExistingNodeOperator(info.nodeOperatorId);
+
+            uint256 pointer = _keyPointer(info.nodeOperatorId, info.keyIndex);
+            if (_isValidatorWithdrawn[pointer]) {
+                continue;
+            }
+
+            if (info.isSlashed != slashed) {
+                revert InvalidWithdrawnValidatorInfo();
+            }
+
+            NodeOperator storage no = _nodeOperators[info.nodeOperatorId];
+            bool bondCoversPenalties = WithdrawnValidatorLib.process(
+                no,
+                info,
+                _isValidatorSlashed[pointer]
+            );
+            if (!bondCoversPenalties) {
+                _onUncompensatedPenalty(info.nodeOperatorId);
+            }
+
+            _updateDepositableValidatorsCount({
+                nodeOperatorId: info.nodeOperatorId,
+                incrementNonceIfUpdated: false
+            });
+
+            _isValidatorWithdrawn[pointer] = true;
+            anySubmission = true;
+        }
+
+        if (anySubmission) {
+            _incrementModuleNonce();
+        }
     }
 
     function _incrementModuleNonce() internal {
