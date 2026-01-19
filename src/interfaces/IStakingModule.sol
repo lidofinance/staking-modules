@@ -3,6 +3,9 @@
 
 pragma solidity 0.8.33;
 
+/// @dev Target limit mode id for forced mode.
+uint8 constant FORCED_TARGET_LIMIT_MODE_ID = 2;
+
 /// @title Lido's Staking Module interface
 interface IStakingModule {
     /// @dev Event to be emitted on StakingModule's nonce change

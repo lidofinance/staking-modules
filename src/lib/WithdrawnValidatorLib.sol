@@ -1,11 +1,11 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { IBaseModule, WithdrawnValidatorInfo } from "../interfaces/IBaseModule.sol";
+import { IBaseModule, NodeOperator, WithdrawnValidatorInfo } from "../interfaces/IBaseModule.sol";
 import { ExitPenaltyInfo } from "../interfaces/IExitPenalties.sol";
 import { IAccounting } from "../interfaces/IAccounting.sol";
 
@@ -22,8 +22,32 @@ library WithdrawnValidatorLib {
         MIN_ACTIVATION_BALANCE / PENALTY_QUOTIENT;
 
     function process(
-        WithdrawnValidatorInfo calldata validatorInfo
+        NodeOperator storage no,
+        WithdrawnValidatorInfo calldata validatorInfo,
+        bool isSlashed
     ) external returns (bool bondCoversPenalties) {
+        if (validatorInfo.isSlashed && !isSlashed) {
+            revert IBaseModule.SlashingPenaltyIsNotApplicable();
+        }
+
+        if (validatorInfo.slashingPenalty > 0 && !validatorInfo.isSlashed) {
+            revert IBaseModule.InvalidWithdrawnValidatorInfo();
+        }
+
+        // For slashed validator this value should reflect pre-slashing, hence non-zero balance.
+        // For non-slashed validator it will reflect the withdrawal amount, hence it cannot be zero either.
+        if (validatorInfo.exitBalance == 0) {
+            revert IBaseModule.ZeroExitBalance();
+        }
+
+        if (validatorInfo.keyIndex >= no.totalDepositedKeys) {
+            revert IBaseModule.SigningKeysInvalidOffset();
+        }
+
+        unchecked {
+            ++no.totalWithdrawnKeys;
+        }
+
         bytes memory pubkey = SigningKeys.loadKeys(
             validatorInfo.nodeOperatorId,
             validatorInfo.keyIndex,

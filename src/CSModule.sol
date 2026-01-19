@@ -12,16 +12,15 @@ import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.so
 import { NodeOperator } from "./interfaces/IBaseModule.sol";
 import { ICSModule } from "./interfaces/ICSModule.sol";
 
-import { TransientUintUintMap, TransientUintUintMapLib } from "./lib/TransientUintUintMapLib.sol";
 import { TopUpQueueLib, TopUpQueueItem, newTopUpQueueItem } from "./lib/TopUpQueueLib.sol";
-import { PackedPubkeys } from "./lib/PackedPubkeys.sol";
 import { DepositQueueLib, Batch } from "./lib/DepositQueueLib.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
+import { DepositQueueOps } from "./lib/DepositQueueOps.sol";
+import { TopUpQueueOps } from "./lib/TopUpQueueOps.sol";
 
 contract CSModule is ICSModule, BaseModule {
     using DepositQueueLib for DepositQueueLib.Queue;
     using TopUpQueueLib for TopUpQueueLib.Queue;
-    using PackedPubkeys for bytes;
     using SafeCast for uint256;
 
     /// @custom:storage-location erc7201:CSModule
@@ -256,43 +255,15 @@ contract CSModule is ICSModule, BaseModule {
             return (publicKeys, allocations);
         }
 
-        publicKeys = new bytes[](keyIndices.length);
-        allocations = new uint256[](keyIndices.length);
-
-        bool lastItemPartialDeposit;
-        for (uint256 i; i < keyIndices.length; i++) {
-            if (lastItemPartialDeposit) {
-                revert UnexpectedExtraKey();
-            }
-
-            TopUpQueueItem item = _topUpQueue().at(0);
-
-            if (operatorIds[i] != item.noId()) {
-                revert InvalidTopUpOrder();
-            }
-
-            if (keyIndices[i] != item.keyIndex()) {
-                revert InvalidTopUpOrder();
-            }
-
-            {
-                bytes memory key = packedPubkeys.at(i);
-                _verifyModuleKey(item.noId(), item.keyIndex(), key);
-
-                publicKeys[i] = key;
-            }
-
-            if (depositAmount > 0) {
-                allocations[i] = Math.min(topUpLimits[i], depositAmount);
-                depositAmount -= allocations[i];
-            }
-
-            if (allocations[i] == topUpLimits[i]) {
-                _topUpQueue().dequeue();
-            } else {
-                lastItemPartialDeposit = true;
-            }
-        }
+        // solhint-disable-next-line func-named-parameters
+        (publicKeys, allocations) = TopUpQueueOps.obtainDepositData(
+            _topUpQueue(),
+            depositAmount,
+            packedPubkeys,
+            keyIndices,
+            operatorIds,
+            topUpLimits
+        );
 
         _incrementModuleNonce();
     }
@@ -396,70 +367,13 @@ contract CSModule is ICSModule, BaseModule {
     function cleanDepositQueue(
         uint256 maxItems
     ) external returns (uint256 removed, uint256 lastRemovedAtDepth) {
-        removed = 0;
-        lastRemovedAtDepth = 0;
-
-        if (maxItems == 0) {
-            return (0, 0);
-        }
-
-        // NOTE: We need one unique hash map per function invocation to be able to track batches of
-        // the same operator across multiple queues.
-        TransientUintUintMap queueLookup = TransientUintUintMapLib.create();
-
-        DepositQueueLib.Queue storage queue;
-
-        uint256 totalVisited = 0;
-        // Note: The highest priority to start iterations with. Priorities are ordered like 0, 1, 2, ...
-        uint256 priority = 0;
-
-        while (true) {
-            if (priority > QUEUE_LOWEST_PRIORITY) {
-                break;
-            }
-
-            queue = _depositQueueByPriority[priority];
-            unchecked {
-                ++priority;
-            }
-
-            (
-                uint256 removedPerQueue,
-                uint256 lastRemovedAtDepthPerQueue,
-                uint256 visitedPerQueue,
-                bool reachedOutOfQueue
-            ) = queue.clean(_nodeOperators, maxItems, queueLookup);
-
-            if (removedPerQueue > 0) {
-                unchecked {
-                    // 1234 56 789A     <- cumulative depth (A=10)
-                    // 1234 12 1234     <- depth per queue
-                    // **R*|**|**R*     <- queue with [R]emoved elements
-                    //
-                    // Given that we observed all 3 queues:
-                    // totalVisited: 4+2=6
-                    // lastRemovedAtDepthPerQueue: 3
-                    // lastRemovedAtDepth: 6+3=9
-
-                    lastRemovedAtDepth =
-                        totalVisited +
-                        lastRemovedAtDepthPerQueue;
-                    removed += removedPerQueue;
-                }
-            }
-
-            // NOTE: If `maxItems` is set to the total length of the queue(s), `reachedOutOfQueue` is equal
-            // to `false`, effectively breaking the cycle, because in `QueueLib.clean` we don't reach
-            // an empty batch after the end of a queue.
-            if (!reachedOutOfQueue) {
-                break;
-            }
-
-            unchecked {
-                totalVisited += visitedPerQueue;
-                maxItems -= visitedPerQueue;
-            }
-        }
+        return
+            DepositQueueOps.cleanDepositQueue(
+                _depositQueueByPriority,
+                _nodeOperators,
+                QUEUE_LOWEST_PRIORITY,
+                maxItems
+            );
     }
 
     /// @inheritdoc ICSModule
@@ -478,76 +392,15 @@ contract CSModule is ICSModule, BaseModule {
     function _onOperatorDepositableChange(
         uint256 nodeOperatorId
     ) internal override {
-        uint256 curveId = _getBondCurveId(nodeOperatorId);
-        (uint32 priority, uint32 maxDeposits) = PARAMETERS_REGISTRY
-            .getQueueConfig(curveId);
-
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-        uint32 depositable = no.depositableValidatorsCount;
-        uint32 enqueued = no.enqueuedCount;
-        if (depositable <= enqueued) {
-            return;
-        }
-
-        uint32 toEnqueue;
-        unchecked {
-            toEnqueue = depositable - enqueued;
-        }
-
-        if (priority < QUEUE_LOWEST_PRIORITY) {
-            unchecked {
-                uint32 depositedAndQueued = no.totalDepositedKeys + enqueued;
-                if (maxDeposits > depositedAndQueued) {
-                    uint32 priorityDepositsLeft = maxDeposits -
-                        depositedAndQueued;
-                    uint32 count = uint32(
-                        Math.min(toEnqueue, priorityDepositsLeft)
-                    );
-
-                    _enqueueNodeOperatorKeys(nodeOperatorId, priority, count);
-                    toEnqueue -= count;
-                }
-            }
-        }
-
-        if (toEnqueue > 0) {
-            _enqueueNodeOperatorKeys(
-                nodeOperatorId,
-                QUEUE_LOWEST_PRIORITY,
-                toEnqueue
-            );
-        }
-    }
-
-    // NOTE: If `count` is 0 an empty batch will be created.
-    function _enqueueNodeOperatorKeys(
-        uint256 nodeOperatorId,
-        uint256 queuePriority,
-        uint32 count
-    ) internal {
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-        no.enqueuedCount += count;
-        DepositQueueLib.Queue storage q = _depositQueueByPriority[
-            queuePriority
-        ];
-        q.enqueue(nodeOperatorId, count);
-        emit BatchEnqueued(queuePriority, nodeOperatorId, count);
-    }
-
-    function _verifyModuleKey(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        bytes memory key
-    ) internal view {
-        bytes memory keyFromStorage = SigningKeys.loadKeys(
-            nodeOperatorId,
-            keyIndex,
-            1
+        // solhint-disable-next-line func-named-parameters
+        DepositQueueOps.enqueueNodeOperatorKeys(
+            _nodeOperators,
+            _depositQueueByPriority,
+            PARAMETERS_REGISTRY,
+            _accounting(),
+            QUEUE_LOWEST_PRIORITY,
+            nodeOperatorId
         );
-
-        if (keccak256(key) != keccak256(keyFromStorage)) {
-            revert InvalidSigningKey();
-        }
     }
 
     /// @dev Setting `topUpQueueLimit` to 0 effectively disables the top-up queue permanently.

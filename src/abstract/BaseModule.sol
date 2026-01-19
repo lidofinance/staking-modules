@@ -4,9 +4,8 @@
 pragma solidity 0.8.33;
 
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { IStakingModule } from "../interfaces/IStakingModule.sol";
+import { IStakingModule, FORCED_TARGET_LIMIT_MODE_ID } from "../interfaces/IStakingModule.sol";
 import { ILidoLocator } from "../interfaces/ILidoLocator.sol";
 import { IStETH } from "../interfaces/IStETH.sol";
 import { IParametersRegistry } from "../interfaces/IParametersRegistry.sol";
@@ -21,9 +20,10 @@ import { SigningKeys } from "../lib/SigningKeys.sol";
 import { GeneralPenalty } from "../lib/GeneralPenaltyLib.sol";
 import { PausableUntil } from "../lib/utils/PausableUntil.sol";
 import { WithdrawnValidatorLib } from "../lib/WithdrawnValidatorLib.sol";
-import { TransientUintUintMap, TransientUintUintMapLib } from "../lib/TransientUintUintMapLib.sol";
 import { ValidatorCountsReport } from "../lib/ValidatorCountsReport.sol";
 import { NOAddresses } from "../lib/NOAddresses.sol";
+import { NodeOperatorOps } from "../lib/NodeOperatorOps.sol";
+import { OperatorTracker } from "../lib/OperatorTracker.sol";
 
 import { AssetRecoverer } from "./AssetRecoverer.sol";
 
@@ -70,12 +70,6 @@ abstract contract BaseModule is
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
     bytes32 public constant CREATE_NODE_OPERATOR_ROLE =
         keccak256("CREATE_NODE_OPERATOR_ROLE");
-
-    // @dev see IStakingModule.sol
-    uint8 internal constant FORCED_TARGET_LIMIT_MODE_ID = 2;
-    // keccak256(abi.encode(uint256(keccak256("OPERATORS_CREATED_IN_TX_MAP_TSLOT")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 internal constant OPERATORS_CREATED_IN_TX_MAP_TSLOT =
-        0x1b07bc0838fdc4254cbabb5dd0c94d936f872c6758547168d513d8ad1dc3a500;
 
     ILidoLocator public immutable LIDO_LOCATOR;
     IStETH public immutable STETH;
@@ -139,42 +133,20 @@ abstract contract BaseModule is
         whenResumed
         returns (uint256 nodeOperatorId)
     {
-        if (from == address(0)) {
-            revert ZeroSenderAddress();
-        }
-
         nodeOperatorId = _nodeOperatorsCount;
-        _recordOperatorCreator(nodeOperatorId);
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-
-        address managerAddress = managementProperties.managerAddress ==
-            address(0)
-            ? from
-            : managementProperties.managerAddress;
-        address rewardAddress = managementProperties.rewardAddress == address(0)
-            ? from
-            : managementProperties.rewardAddress;
-        no.managerAddress = managerAddress;
-        no.rewardAddress = rewardAddress;
-        if (managementProperties.extendedManagerPermissions) {
-            no.extendedManagerPermissions = true;
-        }
+        OperatorTracker.recordCreator(nodeOperatorId);
+        // solhint-disable-next-line func-named-parameters
+        NodeOperatorOps.createNodeOperator(
+            _nodeOperators,
+            nodeOperatorId,
+            from,
+            managementProperties,
+            referrer
+        );
 
         unchecked {
             ++_nodeOperatorsCount;
         }
-
-        emit NodeOperatorAdded(
-            nodeOperatorId,
-            managerAddress,
-            rewardAddress,
-            managementProperties.extendedManagerPermissions
-        );
-
-        if (referrer != address(0)) {
-            emit ReferrerSet(nodeOperatorId, referrer);
-        }
-
         _incrementModuleNonce();
     }
 
@@ -626,36 +598,17 @@ abstract contract BaseModule is
             if (_isValidatorWithdrawn[pointer]) {
                 continue;
             }
-            if (info.isSlashed && !_isValidatorSlashed[pointer]) {
-                revert SlashingPenaltyIsNotApplicable();
-            }
-
-            if (info.slashingPenalty > 0 && !info.isSlashed) {
-                revert InvalidWithdrawnValidatorInfo();
-            }
-
-            // For slashed validator this value should reflect pre-slashing, hence non-zero balance.
-            // For non-slashed validator it will reflect the withdrawal amount, hence it cannot be zero either.
-            if (info.exitBalance == 0) {
-                revert ZeroExitBalance();
-            }
 
             NodeOperator storage no = _nodeOperators[info.nodeOperatorId];
-
-            if (info.keyIndex >= no.totalDepositedKeys) {
-                revert SigningKeysInvalidOffset();
-            }
-
-            unchecked {
-                ++no.totalWithdrawnKeys;
-            }
-
-            bool bondCoversPenalties = WithdrawnValidatorLib.process(info);
+            bool bondCoversPenalties = WithdrawnValidatorLib.process(
+                no,
+                info,
+                _isValidatorSlashed[pointer]
+            );
             if (!bondCoversPenalties) {
                 _onUncompensatedPenalty(info.nodeOperatorId);
             }
 
-            // Nonce will be updated below even if depositable count was not changed
             _updateDepositableValidatorsCount({
                 nodeOperatorId: info.nodeOperatorId,
                 incrementNonceIfUpdated: false
@@ -794,41 +747,12 @@ abstract contract BaseModule is
             uint256 depositableValidatorsCount
         )
     {
-        _onlyExistingNodeOperator(nodeOperatorId);
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-        uint256 totalUnbondedKeys = _accounting().getUnbondedKeysCountToEject(
-            nodeOperatorId
-        );
-        uint256 totalNonDepositedKeys = no.totalAddedKeys -
-            no.totalDepositedKeys;
-        // Unbonded deposited keys
-        if (totalUnbondedKeys > totalNonDepositedKeys) {
-            targetLimitMode = FORCED_TARGET_LIMIT_MODE_ID;
-            // If there is `targetLimit` set no matter the `targetLimitMode` we switch to `FORCED_TARGET_LIMIT_MODE`
-            // to ensure that there is no way to bypass the regular limit by having unbonded keys.
-            unchecked {
-                targetValidatorsCount =
-                    no.totalAddedKeys -
-                    no.totalWithdrawnKeys -
-                    totalUnbondedKeys;
-            }
-            // Account for the no.targetLimit only when target limit is enabled
-            if (no.targetLimitMode > 0) {
-                targetValidatorsCount = Math.min(
-                    targetValidatorsCount,
-                    no.targetLimit
-                );
-            }
-        } else {
-            targetLimitMode = no.targetLimitMode;
-            targetValidatorsCount = no.targetLimit;
-        }
-        stuckValidatorsCount = 0;
-        refundedValidatorsCount = 0;
-        stuckPenaltyEndTimestamp = 0;
-        totalExitedValidators = no.totalExitedKeys;
-        totalDepositedValidators = no.totalDepositedKeys;
-        depositableValidatorsCount = no.depositableValidatorsCount;
+        return
+            NodeOperatorOps.getNodeOperatorSummary(
+                _nodeOperators,
+                nodeOperatorId,
+                _accounting()
+            );
     }
 
     /// @inheritdoc IBaseModule
@@ -980,7 +904,7 @@ abstract contract BaseModule is
         bytes calldata signatures
     ) internal {
         // Do not allow of multiple calls of addValidatorKeys* methods for the creator contract.
-        _forgetOperatorCreator(nodeOperatorId);
+        OperatorTracker.forgetCreator(nodeOperatorId);
 
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
         uint256 totalAddedKeys = no.totalAddedKeys;
@@ -1042,31 +966,34 @@ abstract contract BaseModule is
     ) internal {
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
 
-        uint32 totalDepositedKeys = no.totalDepositedKeys;
+        uint256 totalDepositedKeys = no.totalDepositedKeys;
         uint256 newCount = no.totalVettedKeys - totalDepositedKeys;
         uint256 unbondedKeys = _accounting().getUnbondedKeysCount(
             nodeOperatorId
         );
 
-        {
-            uint256 nonDeposited = no.totalAddedKeys - totalDepositedKeys;
-            if (unbondedKeys >= nonDeposited) {
-                newCount = 0;
-            } else if (unbondedKeys > no.totalAddedKeys - no.totalVettedKeys) {
-                newCount = nonDeposited - unbondedKeys;
-            }
+        uint256 nonDeposited = no.totalAddedKeys - totalDepositedKeys;
+        if (unbondedKeys >= nonDeposited) {
+            newCount = 0;
+        } else if (unbondedKeys > no.totalAddedKeys - no.totalVettedKeys) {
+            newCount = nonDeposited - unbondedKeys;
         }
 
         if (no.targetLimitMode > 0 && newCount > 0) {
             unchecked {
                 uint256 nonWithdrawnValidators = totalDepositedKeys -
                     no.totalWithdrawnKeys;
-                newCount = Math.min(
-                    no.targetLimit > nonWithdrawnValidators
-                        ? no.targetLimit - nonWithdrawnValidators
-                        : 0,
-                    newCount
-                );
+
+                uint256 targetLimit = no.targetLimit;
+                uint256 leftToLimit = 0;
+
+                if (targetLimit > nonWithdrawnValidators) {
+                    leftToLimit = targetLimit - nonWithdrawnValidators;
+                }
+
+                if (newCount > leftToLimit) {
+                    newCount = leftToLimit;
+                }
             }
         }
 
@@ -1136,69 +1063,18 @@ abstract contract BaseModule is
         );
     }
 
-    function _recordOperatorCreator(uint256 nodeOperatorId) internal {
-        TransientUintUintMap map = TransientUintUintMapLib.load(
-            OPERATORS_CREATED_IN_TX_MAP_TSLOT
-        );
-
-        map.set(nodeOperatorId, uint256(uint160(msg.sender)));
-    }
-
-    function _forgetOperatorCreator(uint256 nodeOperatorId) internal {
-        TransientUintUintMap map = TransientUintUintMapLib.load(
-            OPERATORS_CREATED_IN_TX_MAP_TSLOT
-        );
-        map.set(nodeOperatorId, 0);
-    }
-
     function _setTargetLimit(
         uint256 nodeOperatorId,
         uint256 targetLimitMode,
         uint256 targetLimit
     ) internal {
-        if (targetLimitMode > FORCED_TARGET_LIMIT_MODE_ID) {
-            revert InvalidInput();
-        }
-        if (targetLimit > type(uint32).max) {
-            revert InvalidInput();
-        }
-        _onlyExistingNodeOperator(nodeOperatorId);
-
-        if (targetLimitMode == 0) {
-            targetLimit = 0;
-        }
-
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-
-        // NOTE: Bytecode saving trick; increased gas cost in rare cases is fine.
-        // if (
-        //     no.targetLimitMode == targetLimitMode &&
-        //     no.targetLimit == targetLimit
-        // ) {
-        //     return;
-        // }
-
-        // `targetLimitMode` is validated against FORCED_TARGET_LIMIT_MODE_ID (fits uint8).
-        // forge-lint: disable-next-line(unsafe-typecast)
-        no.targetLimitMode = uint8(targetLimitMode);
-        // `targetLimit` is explicitly bounded by type(uint32).max above.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        no.targetLimit = uint32(targetLimit);
-
-        emit TargetValidatorsCountChanged(
+        // solhint-disable-next-line func-named-parameters
+        NodeOperatorOps.setTargetLimit(
+            _nodeOperators,
             nodeOperatorId,
             targetLimitMode,
             targetLimit
         );
-    }
-
-    function _getOperatorCreator(
-        uint256 nodeOperatorId
-    ) internal view returns (address) {
-        TransientUintUintMap map = TransientUintUintMapLib.load(
-            OPERATORS_CREATED_IN_TX_MAP_TSLOT
-        );
-        return address(uint160(map.get(nodeOperatorId)));
     }
 
     function _checkCanAddKeys(
@@ -1211,7 +1087,7 @@ abstract contract BaseModule is
         } else {
             // We're trying to add keys via gate, check if we can do it.
             _checkRole(CREATE_NODE_OPERATOR_ROLE);
-            if (_getOperatorCreator(nodeOperatorId) != msg.sender) {
+            if (OperatorTracker.getCreator(nodeOperatorId) != msg.sender) {
                 revert CannotAddKeys();
             }
         }
