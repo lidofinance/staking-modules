@@ -127,21 +127,26 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         assertTrue(module.hasRole(module.VERIFIER_ROLE(), address(verifier)));
         assertEq(module.getRoleMemberCount(module.VERIFIER_ROLE()), 1);
         assertTrue(
-            module.hasRole(module.SUBMIT_WITHDRAWALS_ROLE(), address(verifier))
+            module.hasRole(
+                module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(),
+                address(verifier)
+            )
         );
         assertEq(
-            module.getRoleMemberCount(module.SUBMIT_WITHDRAWALS_ROLE()),
+            module.getRoleMemberCount(
+                module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE()
+            ),
             1
         );
         assertTrue(
             module.hasRole(
-                module.REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE(),
+                module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(),
                 address(deployParams.easyTrackEVMScriptExecutor)
             )
         );
         assertEq(
             module.getRoleMemberCount(
-                module.REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE()
+                module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE()
             ),
             1
         );

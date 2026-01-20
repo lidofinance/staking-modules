@@ -459,7 +459,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         WithdrawnValidatorInfo[]
             memory validatorExits = new WithdrawnValidatorInfo[](1);
         validatorExits[0] = info;
-        MODULE.reportWithdrawnValidators(validatorExits);
+        MODULE.reportRegularWithdrawnValidators(validatorExits);
     }
 
     function _getParentBlockRoot(

@@ -227,7 +227,7 @@ abstract contract ModuleFixtures is
             slashingPenalty: 0,
             isSlashed: false
         });
-        module.reportWithdrawnValidators(withdrawalsInfo);
+        module.reportRegularWithdrawnValidators(withdrawalsInfo);
     }
 
     function getNodeOperatorSummary(
@@ -3553,7 +3553,7 @@ abstract contract ModuleGetNodeOperatorNonWithdrawnKeys is ModuleFixtures {
             isSlashed: false
         });
 
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
         uint256 keys = module.getNodeOperatorNonWithdrawnKeys(noId);
         assertEq(keys, 2);
     }
@@ -5349,7 +5349,7 @@ abstract contract ModuleCompensateGeneralDelayedPenalty is ModuleFixtures {
 }
 
 abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
-    function test_reportWithdrawnValidators_NoPenalties()
+    function test_reportRegularWithdrawnValidators_NoPenalties()
         public
         assertInvariants
     {
@@ -5378,7 +5378,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             0,
             pubkey
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -5391,7 +5391,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function test_reportWithdrawnValidators_changeNonce()
+    function test_reportRegularWithdrawnValidators_changeNonce()
         public
         assertInvariants
     {
@@ -5423,7 +5423,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             0,
             pubkey
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -5434,7 +5434,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function test_reportWithdrawnValidators_lowExitBalance()
+    function test_reportRegularWithdrawnValidators_lowExitBalance()
         public
         assertInvariants
     {
@@ -5464,7 +5464,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 balanceShortage
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -5473,7 +5473,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_reportWithdrawnValidators_superLowExitBalance()
+    function test_reportRegularWithdrawnValidators_superLowExitBalance()
         public
         assertInvariants
     {
@@ -5503,7 +5503,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 balanceShortage
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -5512,7 +5512,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_reportWithdrawnValidators_exitDelayFee()
+    function test_reportRegularWithdrawnValidators_exitDelayFee()
         public
         assertInvariants
     {
@@ -5549,7 +5549,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 exitDelayFeeAmount
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -5558,7 +5558,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_reportWithdrawnValidators_hugeExitDelayFee()
+    function test_reportRegularWithdrawnValidators_hugeExitDelayFee()
         public
         assertInvariants
     {
@@ -5595,7 +5595,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 exitDelayFeeAmount
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -5604,7 +5604,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_reportWithdrawnValidators_exitDelayFeeWithMultiplier()
+    function test_reportRegularWithdrawnValidators_exitDelayFeeWithMultiplier()
         public
         assertInvariants
     {
@@ -5644,10 +5644,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 fee * multiplier
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnValidators_exitDelayFeeAtMaxWithMultiplier()
+    function test_reportRegularWithdrawnValidators_exitDelayFeeAtMaxWithMultiplier()
         public
         assertInvariants
     {
@@ -5688,10 +5688,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 fee * multiplier
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnValidators_strikesPenalty()
+    function test_reportRegularWithdrawnValidators_strikesPenalty()
         public
         assertInvariants
     {
@@ -5731,7 +5731,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 strikesPenaltyAmount
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -5740,7 +5740,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_reportWithdrawnValidators_hugeStrikesPenalty()
+    function test_reportRegularWithdrawnValidators_hugeStrikesPenalty()
         public
         assertInvariants
     {
@@ -5780,7 +5780,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 strikesPenaltyAmount
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -5789,7 +5789,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_reportWithdrawnValidators_strikesPenaltyWithMultiplier()
+    function test_reportRegularWithdrawnValidators_strikesPenaltyWithMultiplier()
         public
         assertInvariants
     {
@@ -5829,10 +5829,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 penalty * multiplier
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnValidators_strikesPenaltyAtMaxWithMultiplier()
+    function test_reportRegularWithdrawnValidators_strikesPenaltyAtMaxWithMultiplier()
         public
         assertInvariants
     {
@@ -5873,10 +5873,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 penalty * multiplier
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnValidators_slashingPenaltyApplied()
+    function test_reportSlashedWithdrawnValidators_slashingPenaltyApplied()
         public
         assertInvariants
     {
@@ -5905,10 +5905,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 slashingPenalty
             )
         );
-        module.reportWithdrawnSlashedValidators(validatorInfos);
+        module.reportSlashedWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnValidators_slashingPenaltyOverridesExitBalancePenalty()
+    function test_reportSlashedWithdrawnValidators_slashingPenaltyOverridesExitBalancePenalty()
         public
         assertInvariants
     {
@@ -5938,10 +5938,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 slashingPenalty
             )
         );
-        module.reportWithdrawnSlashedValidators(validatorInfos);
+        module.reportSlashedWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnValidators_slashingPenaltyNotScaled()
+    function test_reportSlashedWithdrawnValidators_slashingPenaltyNotScaled()
         public
         assertInvariants
     {
@@ -5972,10 +5972,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 slashingPenalty
             )
         );
-        module.reportWithdrawnSlashedValidators(validatorInfos);
+        module.reportSlashedWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnValidators_slashingPenalty_RevertWhenNotReported()
+    function test_reportSlashedWithdrawnValidators_slashingPenalty_RevertWhenNotReported()
         public
         assertInvariants
     {
@@ -6000,10 +6000,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             address(module)
         );
 
-        module.reportWithdrawnSlashedValidators(validatorInfos);
+        module.reportSlashedWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnValidators_RevertWhen_SlashedInfoWithRegularMethod()
+    function test_reportRegularWithdrawnValidators_RevertWhen_SlashedInfoWithRegularMethod()
         public
         assertInvariants
     {
@@ -6026,10 +6026,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             IBaseModule.InvalidWithdrawnValidatorInfo.selector,
             address(module)
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnSlashedValidators_RevertWhen_NotSlashedInfo()
+    function test_reportSlashedWithdrawnValidators_RevertWhen_NotSlashedInfo()
         public
         assertInvariants
     {
@@ -6051,10 +6051,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             IBaseModule.InvalidWithdrawnValidatorInfo.selector,
             address(module)
         );
-        module.reportWithdrawnSlashedValidators(validatorInfos);
+        module.reportSlashedWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnValidators_chargeWithdrawalFee_DelayFee()
+    function test_reportRegularWithdrawnValidators_chargeWithdrawalFee_DelayFee()
         public
         assertInvariants
     {
@@ -6095,7 +6095,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 exitDelayFeeAmount + withdrawalRequestFeeAmount
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6104,7 +6104,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_reportWithdrawnValidators_chargeWithdrawalFee_hugeDelayFee()
+    function test_reportRegularWithdrawnValidators_chargeWithdrawalFee_hugeDelayFee()
         public
         assertInvariants
     {
@@ -6145,7 +6145,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 exitDelayFeeAmount + withdrawalRequestFeeAmount
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6154,7 +6154,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_reportWithdrawnValidators_chargeHugeWithdrawalFee_DelayFee()
+    function test_reportRegularWithdrawnValidators_chargeHugeWithdrawalFee_DelayFee()
         public
         assertInvariants
     {
@@ -6195,7 +6195,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 exitDelayFeeAmount + withdrawalRequestFeeAmount
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6204,7 +6204,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_reportWithdrawnValidators_chargeWithdrawalFee_StrikesPenalty()
+    function test_reportRegularWithdrawnValidators_chargeWithdrawalFee_StrikesPenalty()
         public
         assertInvariants
     {
@@ -6258,7 +6258,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 withdrawalRequestFeeAmount
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6267,7 +6267,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_reportWithdrawnValidators_chargeWithdrawalFee_HugeStrikesPenalty()
+    function test_reportRegularWithdrawnValidators_chargeWithdrawalFee_HugeStrikesPenalty()
         public
         assertInvariants
     {
@@ -6319,7 +6319,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 withdrawalRequestFeeAmount
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6328,7 +6328,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_reportWithdrawnValidators_chargeHugeWithdrawalFee_StrikesPenalty()
+    function test_reportRegularWithdrawnValidators_chargeHugeWithdrawalFee_StrikesPenalty()
         public
         assertInvariants
     {
@@ -6380,7 +6380,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 withdrawalRequestFeeAmount
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6389,7 +6389,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_reportWithdrawnValidators_chargeWithdrawalFee_DelayAndStrikesPenalties()
+    function test_reportRegularWithdrawnValidators_chargeWithdrawalFee_DelayAndStrikesPenalties()
         public
         assertInvariants
     {
@@ -6442,7 +6442,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 strikesPenaltyAmount
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6451,7 +6451,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_reportWithdrawnValidators_chargeWithdrawalFee_DelayAndStrikesPenalties_AllHuge()
+    function test_reportRegularWithdrawnValidators_chargeWithdrawalFee_DelayAndStrikesPenalties_AllHuge()
         public
     {
         uint256 keyIndex = 0;
@@ -6503,7 +6503,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 strikesPenaltyAmount
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6512,7 +6512,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_reportWithdrawnValidators_chargeWithdrawalFee_zeroPenaltyValue()
+    function test_reportRegularWithdrawnValidators_chargeWithdrawalFee_zeroPenaltyValue()
         public
         assertInvariants
     {
@@ -6552,7 +6552,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 withdrawalRequestFeeAmount
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6561,7 +6561,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_reportWithdrawnValidators_chargeHugeWithdrawalFee_zeroPenaltyValue()
+    function test_reportRegularWithdrawnValidators_chargeHugeWithdrawalFee_zeroPenaltyValue()
         public
         assertInvariants
     {
@@ -6601,7 +6601,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 withdrawalRequestFeeAmount
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6610,7 +6610,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 2);
     }
 
-    function test_reportWithdrawnValidators_chargeWithdrawalFeeNotScaled()
+    function test_reportRegularWithdrawnValidators_chargeWithdrawalFeeNotScaled()
         public
         assertInvariants
     {
@@ -6648,10 +6648,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 withdrawalRequestFee
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnValidators_dontChargeWithdrawalFee_noPenalties()
+    function test_reportRegularWithdrawnValidators_dontChargeWithdrawalFee_noPenalties()
         public
         assertInvariants
     {
@@ -6691,7 +6691,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 withdrawalRequestFeeAmount
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6700,7 +6700,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_reportWithdrawnValidators_dontChargeWithdrawalFee_exitBalancePenalty()
+    function test_reportRegularWithdrawnValidators_dontChargeWithdrawalFee_exitBalancePenalty()
         public
         assertInvariants
     {
@@ -6742,7 +6742,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 withdrawalRequestFeeAmount
             )
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
@@ -6751,7 +6751,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_reportWithdrawnValidators_unbondedKeys()
+    function test_reportRegularWithdrawnValidators_unbondedKeys()
         public
         assertInvariants
     {
@@ -6770,11 +6770,11 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             isSlashed: false
         });
 
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function test_reportWithdrawnValidators_RevertWhen_ZeroExitBalance()
+    function test_reportRegularWithdrawnValidators_RevertWhen_ZeroExitBalance()
         public
         assertInvariants
     {
@@ -6793,10 +6793,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         });
 
         vm.expectRevert(IBaseModule.ZeroExitBalance.selector);
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnValidators_RevertWhen_NoNodeOperator()
+    function test_reportRegularWithdrawnValidators_RevertWhen_NoNodeOperator()
         public
         assertInvariants
     {
@@ -6811,10 +6811,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         });
 
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnValidators_RevertWhen_InvalidKeyIndexOffset()
+    function test_reportRegularWithdrawnValidators_RevertWhen_InvalidKeyIndexOffset()
         public
         assertInvariants
     {
@@ -6831,10 +6831,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         });
 
         vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnValidators_alreadyWithdrawn()
+    function test_reportRegularWithdrawnValidators_alreadyWithdrawn()
         public
         assertInvariants
     {
@@ -6851,10 +6851,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             isSlashed: false
         });
 
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         uint256 nonceBefore = module.getNonce();
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
         assertEq(
             module.getNonce(),
             nonceBefore,
@@ -6862,7 +6862,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         );
     }
 
-    function test_reportWithdrawnValidators_nonceIncrementsOnceForManyWithdrawals()
+    function test_reportRegularWithdrawnValidators_nonceIncrementsOnceForManyWithdrawals()
         public
         assertInvariants
     {
@@ -6881,7 +6881,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 isSlashed: false
             });
         }
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
         assertEq(
             module.getNonce(),
             nonceBefore + 1,
@@ -7210,9 +7210,9 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         module.onValidatorSlashed(noId, 0);
     }
 
-    function test_reportWithdrawnValidatorsRole() public {
+    function test_reportRegularWithdrawnValidatorsRole() public {
         uint256 noId = createNodeOperator();
-        bytes32 role = module.SUBMIT_WITHDRAWALS_ROLE();
+        bytes32 role = module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE();
 
         vm.startPrank(admin);
         module.grantRole(role, actor);
@@ -7231,12 +7231,12 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         });
 
         vm.prank(actor);
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnValidatorsRole_revert() public {
+    function test_reportRegularWithdrawnValidatorsRole_revert() public {
         uint256 noId = createNodeOperator();
-        bytes32 role = module.SUBMIT_WITHDRAWALS_ROLE();
+        bytes32 role = module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE();
 
         WithdrawnValidatorInfo[]
             memory validatorInfos = new WithdrawnValidatorInfo[](1);
@@ -7250,12 +7250,12 @@ abstract contract ModuleAccessControl is ModuleFixtures {
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnSlashedValidatorsRole() public {
+    function test_reportSlashedWithdrawnValidatorsRole() public {
         uint256 noId = createNodeOperator();
-        bytes32 role = module.REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE();
+        bytes32 role = module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE();
 
         vm.startPrank(admin);
         module.grantRole(role, actor);
@@ -7276,12 +7276,12 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         });
 
         vm.prank(actor);
-        module.reportWithdrawnSlashedValidators(validatorInfos);
+        module.reportSlashedWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportWithdrawnSlashedValidatorsRole_revert() public {
+    function test_reportSlashedWithdrawnValidatorsRole_revert() public {
         uint256 noId = createNodeOperator();
-        bytes32 role = module.REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE();
+        bytes32 role = module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE();
 
         WithdrawnValidatorInfo[]
             memory validatorInfos = new WithdrawnValidatorInfo[](1);
@@ -7295,7 +7295,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        module.reportWithdrawnSlashedValidators(validatorInfos);
+        module.reportSlashedWithdrawnValidators(validatorInfos);
     }
 
     function test_recovererRole() public {
@@ -7564,7 +7564,7 @@ abstract contract ModuleDepositableValidatorsCount is ModuleFixtures {
         }); // Large CL balance drop, that doesn't change the unbonded count.
 
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 0);
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 2);
         assertEq(getStakingModuleSummary().depositableValidatorsCount, 2);
     }

@@ -433,7 +433,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.reportWithdrawnValidators.selector,
+                IBaseModule.reportRegularWithdrawnValidators.selector,
                 withdrawals
             )
         );
@@ -652,7 +652,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.reportWithdrawnValidators.selector
+                IBaseModule.reportRegularWithdrawnValidators.selector
             ),
             ""
         );
@@ -920,7 +920,7 @@ contract VerifierConsolidationTest is VerifierTestBase {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.reportWithdrawnValidators.selector,
+                IBaseModule.reportRegularWithdrawnValidators.selector,
                 withdrawals
             )
         );
@@ -1035,7 +1035,7 @@ contract VerifierConsolidationTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.reportWithdrawnValidators.selector
+                IBaseModule.reportRegularWithdrawnValidators.selector
             ),
             ""
         );

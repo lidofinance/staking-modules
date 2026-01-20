@@ -224,7 +224,7 @@ contract NodeOperators is
             slashingPenalty,
             slashingPenalty > 0
         );
-        module.reportWithdrawnValidators(validatorInfos);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
         assertTrue(module.isValidatorWithdrawn(noId, keyIndex));
         assertEq(

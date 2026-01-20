@@ -162,8 +162,8 @@ interface IVerifier {
 
     /// @notice Verify withdrawal proof and report withdrawal to the module for valid proofs
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
-    /// determining the exact penalty amounts and calling the `IBaseModule.reportWithdrawnValidators` method via an EasyTrack
-    /// motion.
+    /// determining the exact penalty amounts and calling the `IBaseModule.reportSlashedWithdrawnValidators` method via
+    /// an EasyTrack motion.
     /// @param data @see ProcessWithdrawalInput
     function processWithdrawalProof(
         ProcessWithdrawalInput calldata data
@@ -171,8 +171,8 @@ interface IVerifier {
 
     /// @notice Verify withdrawal proof against historical summaries data and report withdrawal to the module for valid proofs
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
-    /// determining the exact penalty amounts and calling the `IBaseModule.reportWithdrawnValidators` method via an EasyTrack
-    /// motion.
+    /// determining the exact penalty amounts and calling the `IBaseModule.reportSlashedWithdrawnValidators` method via
+    /// an EasyTrack motion.
     /// @param data @see ProcessHistoricalWithdrawalInput
     function processHistoricalWithdrawalProof(
         ProcessHistoricalWithdrawalInput calldata data

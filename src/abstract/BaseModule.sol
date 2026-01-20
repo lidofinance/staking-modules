@@ -65,10 +65,10 @@ abstract contract BaseModule is
     bytes32 public constant SETTLE_GENERAL_DELAYED_PENALTY_ROLE =
         keccak256("SETTLE_GENERAL_DELAYED_PENALTY_ROLE");
     bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
-    bytes32 public constant SUBMIT_WITHDRAWALS_ROLE =
-        keccak256("SUBMIT_WITHDRAWALS_ROLE");
-    bytes32 public constant REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE =
-        keccak256("REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE");
+    bytes32 public constant REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE =
+        keccak256("REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE");
+    bytes32 public constant REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE =
+        keccak256("REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE");
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
     bytes32 public constant CREATE_NODE_OPERATOR_ROLE =
         keccak256("CREATE_NODE_OPERATOR_ROLE");
@@ -586,16 +586,16 @@ abstract contract BaseModule is
         emit ValidatorSlashingReported(nodeOperatorId, keyIndex, pubkey);
     }
 
-    function reportWithdrawnSlashedValidators(
+    function reportSlashedWithdrawnValidators(
         WithdrawnValidatorInfo[] calldata validatorInfos
-    ) external onlyRole(REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE) {
+    ) external onlyRole(REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE) {
         _reportWithdrawnValidators(validatorInfos, true);
     }
 
     /// @inheritdoc IBaseModule
-    function reportWithdrawnValidators(
+    function reportRegularWithdrawnValidators(
         WithdrawnValidatorInfo[] calldata validatorInfos
-    ) external onlyRole(SUBMIT_WITHDRAWALS_ROLE) {
+    ) external onlyRole(REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE) {
         _reportWithdrawnValidators(validatorInfos, false);
     }
 

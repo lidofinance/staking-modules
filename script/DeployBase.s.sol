@@ -581,9 +581,12 @@ abstract contract DeployBase is Script {
             );
 
             csm.grantRole(csm.VERIFIER_ROLE(), address(verifier));
-            csm.grantRole(csm.SUBMIT_WITHDRAWALS_ROLE(), address(verifier));
             csm.grantRole(
-                csm.REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE(),
+                csm.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(),
+                address(verifier)
+            );
+            csm.grantRole(
+                csm.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(),
                 config.easyTrackEVMScriptExecutor
             );
 
