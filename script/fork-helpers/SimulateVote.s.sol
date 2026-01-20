@@ -327,9 +327,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
                 module.SUBMIT_WITHDRAWALS_ROLE(),
                 deploymentConfig.verifierV3
             );
-            // 22. Grant SUBMIT_WITHDRAWALS_ROLE to Easy Track
+            // 22. Grant REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE to Easy Track
             module.grantRole(
-                module.SUBMIT_WITHDRAWALS_ROLE(),
+                module.REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE(),
                 deployParams.easyTrackEVMScriptExecutor
             );
             // 23. Revoke CREATE_NODE_OPERATOR_ROLE from old PermissionlessGate

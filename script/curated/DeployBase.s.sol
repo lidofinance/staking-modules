@@ -589,7 +589,7 @@ abstract contract DeployBase is Script {
                 address(verifier)
             );
             curatedModule.grantRole(
-                curatedModule.SUBMIT_WITHDRAWALS_ROLE(),
+                curatedModule.REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE(),
                 config.easyTrackEVMScriptExecutor
             );
 

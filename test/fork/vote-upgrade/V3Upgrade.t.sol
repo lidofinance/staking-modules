@@ -121,15 +121,22 @@ contract VoteChangesTest is V3UpgradeTestBase {
                 deploymentConfig.verifierV3
             )
         );
+        assertEq(
+            module.getRoleMemberCount(module.SUBMIT_WITHDRAWALS_ROLE()),
+            1
+        );
+
         assertTrue(
             module.hasRole(
-                module.SUBMIT_WITHDRAWALS_ROLE(),
+                module.REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE(),
                 deployParams.easyTrackEVMScriptExecutor
             )
         );
         assertEq(
-            module.getRoleMemberCount(module.SUBMIT_WITHDRAWALS_ROLE()),
-            2
+            module.getRoleMemberCount(
+                module.REPORT_WITHDRAWN_SLASHED_VALIDATORS_ROLE()
+            ),
+            1
         );
 
         assertTrue(
