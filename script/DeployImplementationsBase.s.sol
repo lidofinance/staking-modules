@@ -15,7 +15,6 @@ import { ValidatorStrikes } from "../src/ValidatorStrikes.sol";
 import { Verifier } from "../src/Verifier.sol";
 import { VettedGate } from "../src/VettedGate.sol";
 import { ParametersRegistry } from "../src/ParametersRegistry.sol";
-import { IParametersRegistry } from "../src/interfaces/IParametersRegistry.sol";
 import { IVerifier } from "../src/interfaces/IVerifier.sol";
 
 import { JsonObj, Json } from "./utils/Json.sol";
@@ -54,35 +53,6 @@ abstract contract DeployImplementationsBase is DeployBase {
             ParametersRegistry parametersRegistryImpl = new ParametersRegistry(
                 config.queueLowestPriority
             );
-            parametersRegistry = ParametersRegistry(
-                _deployProxy(config.proxyAdmin, address(parametersRegistryImpl))
-            );
-            parametersRegistry.initialize({
-                admin: deployer,
-                data: IParametersRegistry.InitializationData({
-                    defaultKeyRemovalCharge: config.defaultKeyRemovalCharge,
-                    defaultGeneralDelayedPenaltyAdditionalFine: config
-                        .defaultGeneralDelayedPenaltyAdditionalFine,
-                    defaultKeysLimit: config.defaultKeysLimit,
-                    defaultRewardShare: config.defaultRewardShareBP,
-                    defaultPerformanceLeeway: config.defaultAvgPerfLeewayBP,
-                    defaultStrikesLifetime: config.defaultStrikesLifetimeFrames,
-                    defaultStrikesThreshold: config.defaultStrikesThreshold,
-                    defaultQueuePriority: config.defaultQueuePriority,
-                    defaultQueueMaxDeposits: config.defaultQueueMaxDeposits,
-                    defaultBadPerformancePenalty: config
-                        .defaultBadPerformancePenalty,
-                    defaultAttestationsWeight: config.defaultAttestationsWeight,
-                    defaultBlocksWeight: config.defaultBlocksWeight,
-                    defaultSyncWeight: config.defaultSyncWeight,
-                    defaultAllowedExitDelay: config.defaultAllowedExitDelay,
-                    defaultExitDelayFee: config.defaultExitDelayFee,
-                    defaultMaxWithdrawalRequestFee: config
-                        .defaultMaxWithdrawalRequestFee,
-                    defaultDepositAllocationWeight: config
-                        .defaultDepositAllocationWeight
-                })
-            });
 
             Accounting accountingImpl = new Accounting({
                 lidoLocator: config.lidoLocatorAddress,

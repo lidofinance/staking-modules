@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-- `src/`: Solidity contracts (Solc 0.8.24).
+- `src/`: Solidity contracts (Solc 0.8.33).
 - `test/`: Forge tests (`*.t.sol`), plus `test/fork/*` for fork/integration and deployment tests.
 - `script/`: Forge scripts (deploy/verify, per-chain variants).
 - `artifacts/`, `broadcast/`, `out/`, `cache/`: build, deploy, and fork outputs.
@@ -23,7 +23,7 @@
 
 - Formatting: Prettier + `prettier-plugin-solidity` (Solidity `printWidth=80`, `tabWidth=4`, spaces only).
 - Linting: Solhint (`.solhint.json`) with `solhint:recommended` and `solhint-plugin-lido-csm`.
-- Versions: enforce `pragma solidity ^0.8.24` (`compiler-version` rule).
+- Versions: enforce `pragma solidity 0.8.33` (`compiler-version` rule).
 - Naming: contracts/libraries `CamelCase` (e.g., `CSModule`, `AssetRecovererLib`), interfaces `IName` (rule: `interface-starts-with-i`).
 - Conventions: prefer custom errors, calldata parameters, and struct packing (gas rules). Immutable vars styled as constants.
 
@@ -31,13 +31,17 @@
 
 - Framework: Foundry/Forge with fuzzing (`fuzz.runs=256`).
 - Structure: unit tests in `test/*.t.sol`; fork suites under `test/fork/*` (deployment/integration).
-- Run: `just test-unit` for fast cycles; `CHAIN`/`RPC_URL` required for fork tests. Example: `export CHAIN=holesky && export RPC_URL=<https-url>`.
+- Run: `just test-unit` for fast cycles; `CHAIN`/`RPC_URL` required for fork tests. Example: `export CHAIN=hoodi && export RPC_URL=<https-url>`.
 - Coverage: `just coverage-lcov` produces LCOV output (commit if relevant).
 
 ## Commit & Pull Request Guidelines
 
 - Commits: Conventional Commits. Examples: `feat: add validator key rotation`, `fix: resolve bond calculation overflow`.
 - PRs: clear description, linked issues, rationale, test coverage notes, storage layout impacts (if any), and gas impact (attach `GAS.md` when updated). Ensure CI green and `yarn lint:check` passes.
+
+## Communication
+
+- If a feature request is underspecified, ask targeted questions before implementing. Do not invent requirements or omit important details—surface uncertainties explicitly.
 
 ## Security & Configuration Tips
 

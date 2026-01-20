@@ -10,33 +10,26 @@ import { NodeOperator } from "./interfaces/IBaseModule.sol";
 import { BaseModule } from "./abstract/BaseModule.sol";
 
 import { NOAddresses } from "./lib/NOAddresses.sol";
+import { PackedPubkeys } from "./lib/PackedPubkeys.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
 import { CuratedDepositAllocator } from "./lib/allocator/CuratedDepositAllocator.sol";
 
-library CuratedModuleStorage {
-    struct Layout {
+contract CuratedModule is ICuratedModule, BaseModule {
+    using PackedPubkeys for bytes;
+
+    /// @custom:storage-location erc7201:CuratedModule
+    struct CuratedModuleStorage {
         // Tracks per-operator balances (in wei) reported by the Accounting oracle.
         mapping(uint256 => uint256) operatorBalances;
     }
 
-    // keccak256(abi.encode(uint256(keccak256("CuratedModule")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 internal constant SLOT =
-        0x748416948424a2a643c796b7b8213bcf41155fd3a072f0851ad0a3d6ca632500;
-
-    function layout() internal pure returns (Layout storage layoutStorage) {
-        bytes32 slot = SLOT;
-        assembly {
-            layoutStorage.slot := slot
-        }
-    }
-}
-
-contract CuratedModule is ICuratedModule, BaseModule {
     bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE =
         keccak256("OPERATOR_ADDRESSES_ADMIN_ROLE");
 
     uint64 internal constant INITIALIZED_VERSION = 1;
-    uint256 internal constant PUBKEY_LENGTH = 48;
+    // keccak256(abi.encode(uint256(keccak256("CuratedModule")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant CURATED_MODULE_STORAGE_LOCATION =
+        0x748416948424a2a643c796b7b8213bcf41155fd3a072f0851ad0a3d6ca632500;
 
     constructor(
         bytes32 moduleType,
@@ -64,8 +57,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     /// @inheritdoc IStakingModule
-    /// @dev Limit for top up capacity:
-    ///      free capacity should not be greater than some limit X
     function obtainDepositData(
         uint256 depositsCount,
         bytes calldata /* depositCalldata */
@@ -161,7 +152,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         if (
             operatorIds.length != keyIndices.length ||
             operatorIds.length != topUpLimits.length ||
-            packedPubkeys.length != operatorIds.length * PUBKEY_LENGTH
+            packedPubkeys.count() != operatorIds.length
         ) {
             revert InvalidInput();
         }
@@ -194,7 +185,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             revert InvalidInput();
         }
 
-        CuratedModuleStorage.Layout storage $ = CuratedModuleStorage.layout();
+        CuratedModuleStorage storage $ = _storage();
 
         for (uint256 i; i < operatorsCount; ++i) {
             uint256 operatorId = operatorIds[i];
@@ -238,7 +229,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     function getNodeOperatorBalances(
         uint256 operatorId
     ) external view returns (uint256) {
-        return CuratedModuleStorage.layout().operatorBalances[operatorId];
+        return _storage().operatorBalances[operatorId];
     }
 
     /// @inheritdoc ICuratedModule
@@ -277,9 +268,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         return
             CuratedDepositAllocator.allocateTopUps({
                 nodeOperators: _nodeOperators,
-                nodeOperatorBalances: CuratedModuleStorage
-                    .layout()
-                    .operatorBalances,
+                nodeOperatorBalances: _storage().operatorBalances,
                 operatorsCount: operatorsCount,
                 depositAmount: depositAmount,
                 operatorIds: allOperatorIds
@@ -311,7 +300,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
                 revert PublicKeyIsWithdrawn();
             }
 
-            bytes memory pubkey = _loadPackedPubkey(packedPubkeys, i);
+            bytes memory pubkey = packedPubkeys.at(i);
             publicKeys[i] = pubkey;
             if (
                 keccak256(pubkey) !=
@@ -319,21 +308,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
             ) {
                 revert PubkeyMismatch();
             }
-        }
-    }
-
-    function _loadPackedPubkey(
-        bytes calldata packedPubkeys,
-        uint256 index
-    ) internal pure returns (bytes memory pubkey) {
-        pubkey = new bytes(PUBKEY_LENGTH);
-        uint256 offset = index * PUBKEY_LENGTH;
-        assembly ("memory-safe") {
-            calldatacopy(
-                add(pubkey, 0x20),
-                add(packedPubkeys.offset, offset),
-                PUBKEY_LENGTH
-            )
         }
     }
 
@@ -351,9 +325,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             uint256[] memory operatorAllocations
         ) = CuratedDepositAllocator.allocateTopUps({
                 nodeOperators: _nodeOperators,
-                nodeOperatorBalances: CuratedModuleStorage
-                    .layout()
-                    .operatorBalances,
+                nodeOperatorBalances: _storage().operatorBalances,
                 operatorsCount: _nodeOperatorsCount,
                 depositAmount: depositAmount,
                 operatorIds: uniqueOperatorIds
@@ -423,6 +395,12 @@ contract CuratedModule is ICuratedModule, BaseModule {
                 allocations[i] = amount;
                 perOperatorAllocations[operatorId] = remaining - amount;
             }
+        }
+    }
+
+    function _storage() internal pure returns (CuratedModuleStorage storage $) {
+        assembly ("memory-safe") {
+            $.slot := CURATED_MODULE_STORAGE_LOCATION
         }
     }
 

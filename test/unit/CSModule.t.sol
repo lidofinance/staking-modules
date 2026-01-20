@@ -1633,7 +1633,7 @@ contract CSMRecoverERC20 is ModuleRecoverERC20, CSMCommon {}
 contract CSMSupportsInterface is ModuleSupportsInterface, CSMCommon {}
 
 contract CSMMisc is ModuleMisc, CSMCommon {
-    function test_getInitializedVersion() public view {
+    function test_getInitializedVersion() public view override {
         assertEq(module.getInitializedVersion(), 3);
     }
 }

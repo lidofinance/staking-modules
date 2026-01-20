@@ -26,4 +26,8 @@ library PackedPubkeys {
             calldatacopy(add(key, 0x20), p, PUBKEY_LENGTH)
         }
     }
+
+    function count(bytes calldata self) internal pure returns (uint256) {
+        return self.length / PUBKEY_LENGTH;
+    }
 }

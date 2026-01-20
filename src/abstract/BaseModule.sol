@@ -1028,7 +1028,6 @@ abstract contract BaseModule is
             }
             // NodeOperator.depositableValidatorsCount is uint32, and newCount is derived from the same bounds.
             // forge-lint: disable-next-line(unsafe-typecast)
-            // TODO integrate curated module free capacity limit somewhere here
             no.depositableValidatorsCount = uint32(newCount);
             emit DepositableSigningKeysCountChanged(nodeOperatorId, newCount);
             if (incrementNonceIfUpdated) {

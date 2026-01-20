@@ -8118,6 +8118,7 @@ abstract contract ModuleMisc is ModuleFixtures {
     function test_getInitializedVersion() public view virtual {
         assertEq(module.getInitializedVersion(), 3);
     }
+
     function test_getActiveNodeOperatorsCount_OneOperator()
         public
         assertInvariants
