@@ -5,6 +5,8 @@ pragma solidity 0.8.33;
 
 import { CommonBase } from "forge-std/Base.sol";
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -824,6 +826,8 @@ contract CSMTopUpQueue is CSMCommon {
     }
 
     function testFuzz_setTopUpQueueLimit(uint32 limit) public {
+        vm.expectEmit(true, true, true, true, address(csm));
+        emit ICSModule.TopUpQueueLimitSet(limit);
         csm.setTopUpQueueLimit(limit);
         assertEq(_getTopUpQueueLimit(), limit);
     }
@@ -838,6 +842,18 @@ contract CSMTopUpQueue is CSMCommon {
         assertGt(_getTopUpQueueLimit(), 0);
         csm.setTopUpQueueLimit(0);
         assertEq(_getTopUpQueueLimit(), 0);
+    }
+
+    function test_setTopUpQueueLimit_RevertWhenLimitExceedsUint32() public {
+        uint256 limit = uint256(type(uint32).max) + 1;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SafeCast.SafeCastOverflowedUintDowncast.selector,
+                32,
+                limit
+            )
+        );
+        csm.setTopUpQueueLimit(limit);
     }
 
     function test_setTopUpQueueLimit_RevertWhenTopUpQueueDisabled() public {
