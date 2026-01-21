@@ -912,6 +912,18 @@ contract CSMTopUpQueue is CSMCommon {
         assertEq(noId, 0);
         assertEq(keyIndex, 1);
     }
+
+    function test_rewindToUpQueue_RevertWhenExceedsUint32() public {
+        uint256 to = uint256(type(uint32).max) + 1;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SafeCast.SafeCastOverflowedUintDowncast.selector,
+                32,
+                to
+            )
+        );
+        csm.rewindTopUpQueue(to);
+    }
 }
 
 contract CSMProposeNodeOperatorManagerAddressChange is
