@@ -38,7 +38,7 @@ using { noId, keyIndex, unwrap } for TopUpQueueItem global;
 interface ITopUpQueueLib {
     error TopUpQueueIsEmpty();
     error TopUpQueueIsFull();
-    error InvalidHead();
+    error RewindForward();
 }
 
 library TopUpQueueLib {
@@ -69,7 +69,7 @@ library TopUpQueueLib {
 
     function rewind(Queue storage self, uint32 to) internal {
         if (to >= self.head) {
-            revert ITopUpQueueLib.InvalidHead();
+            revert ITopUpQueueLib.RewindForward();
         }
 
         self.head = to;

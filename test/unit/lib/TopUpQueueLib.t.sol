@@ -132,10 +132,10 @@ contract TopUpQueueLibTest is Test, Utilities {
         assertTrue(q.at(0).eq(i1));
     }
 
-    function test_rewind_RevertWhenInvalidHead() public {
+    function test_rewind_RevertWhenRewindForward() public {
         q.setLimit(3);
 
-        vm.expectRevert(ITopUpQueueLib.InvalidHead.selector);
+        vm.expectRevert(ITopUpQueueLib.RewindForward.selector);
         q.rewind(0);
 
         q.enqueue(buf); // 0
@@ -144,7 +144,7 @@ contract TopUpQueueLibTest is Test, Utilities {
         q.dequeue();
 
         for (uint32 to = 1; to < 3; ++to) {
-            vm.expectRevert(ITopUpQueueLib.InvalidHead.selector);
+            vm.expectRevert(ITopUpQueueLib.RewindForward.selector);
             q.rewind(to);
         }
     }
