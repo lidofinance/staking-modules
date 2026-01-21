@@ -877,7 +877,7 @@ contract CSMTopUpQueue is CSMCommon {
         csm.setTopUpQueueLimit(0);
     }
 
-    function test_rewindToUpQueue() public {
+    function test_rewindTopUpQueue() public {
         createNodeOperator(2);
         createNodeOperator(1);
         csm.obtainDepositData(3, "");
@@ -913,7 +913,7 @@ contract CSMTopUpQueue is CSMCommon {
         assertEq(keyIndex, 1);
     }
 
-    function test_rewindToUpQueue_RevertWhenExceedsUint32() public {
+    function test_rewindTopUpQueue_RevertWhenExceedsUint32() public {
         uint256 to = uint256(type(uint32).max) + 1;
         vm.expectRevert(
             abi.encodeWithSelector(
