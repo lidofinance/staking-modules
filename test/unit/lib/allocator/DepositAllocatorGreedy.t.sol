@@ -381,7 +381,7 @@ contract DepositAllocatorGreedyTest is Test {
             _copy(caps)
         );
 
-        (, fills, rest) = harness.allocate(state, inflow, step);
+        (fills, rest) = harness.allocate(state, inflow, step);
     }
 
     function _buildState(
@@ -476,15 +476,7 @@ contract DepositAllocatorGreedyHarness {
         AllocationState memory state,
         uint256 inflow,
         uint256 step
-    )
-        external
-        pure
-        returns (
-            uint256[] memory imbalances,
-            uint256[] memory fills,
-            uint256 rest
-        )
-    {
+    ) external pure returns (uint256[] memory fills, uint256 rest) {
         return DepositAllocatorGreedy._allocate(state, inflow, step);
     }
 }

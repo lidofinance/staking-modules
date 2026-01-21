@@ -18,6 +18,7 @@ struct AllocationState {
 
 /// @notice Greedy imbalance math with the same entrypoints as DepositPouringMath.
 library DepositAllocatorGreedy {
+    // Fixed-point scale (2^96) for share ratios to represent fractional shares as integers.
     uint256 internal constant S_SCALE = uint256(1) << 96;
 
     error LengthMismatch();
@@ -27,28 +28,22 @@ library DepositAllocatorGreedy {
         AllocationState memory state,
         uint256 inflow,
         uint256 step
-    )
-        internal
-        pure
-        returns (
-            uint256[] memory imbalances,
-            uint256[] memory fills,
-            uint256 rest
-        )
-    {
+    ) internal pure returns (uint256[] memory fills, uint256 rest) {
         if (step == 0) {
             revert ZeroStep();
         }
         uint256 n = state.shares.length;
+        if (n == 0) {
+            return (new uint256[](0), inflow);
+        }
         if (state.amounts.length != n || state.capacities.length != n) {
             revert LengthMismatch();
         }
-        if (n == 0) {
-            return (new uint256[](0), new uint256[](0), inflow);
-        }
 
-        uint256[] memory idx;
-        (imbalances, idx) = _computeAllocateImbalances(state, inflow, step);
+        (
+            uint256[] memory imbalances,
+            uint256[] memory idx
+        ) = _computeImbalances(state, inflow, step);
         fills = new uint256[](n);
 
         _sortByImbalanceDesc(idx, imbalances);
@@ -85,9 +80,8 @@ library DepositAllocatorGreedy {
         uint256[] memory idx,
         uint256[] memory imbalances
     ) internal pure {
-        uint256 count = idx.length;
         unchecked {
-            for (uint256 i = 1; i < count; ++i) {
+            for (uint256 i = 1; i < idx.length; ++i) {
                 uint256 key = idx[i];
                 uint256 keyImb = imbalances[key];
                 uint256 j = i;
@@ -102,7 +96,7 @@ library DepositAllocatorGreedy {
         }
     }
 
-    function _computeAllocateImbalances(
+    function _computeImbalances(
         AllocationState memory state,
         uint256 inflow,
         uint256 step

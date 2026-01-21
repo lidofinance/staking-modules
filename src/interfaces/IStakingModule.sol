@@ -233,13 +233,13 @@ interface IStakingModule {
 
 interface IStakingModuleV2 {
     /// @notice Method to get from module public keys for top up and amount that should be topped up. Module also verify that keys belong to module and revert if got wrong data
-    /// @param depositAmount Deposit amount for top up in gwei
+    /// @param maxDepositAmount Maximum deposit amount for top up in gwei
     /// @param packedPubkeys Packed list of pubkeys
     /// @param keyIndices List of keys' indices
     /// @param operatorIds List of operator indices
     /// @param topUpLimits List of gwei amount that can be deposited to key based on Cl data and SR logic
     function obtainDepositData(
-        uint256 depositAmount,
+        uint256 maxDepositAmount,
         bytes calldata packedPubkeys,
         uint256[] calldata keyIndices,
         uint256[] calldata operatorIds,

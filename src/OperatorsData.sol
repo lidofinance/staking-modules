@@ -134,8 +134,7 @@ contract OperatorsData is
     function _cacheModuleAddresses() internal {
         IStakingRouter.StakingModule[] memory modules = STAKING_ROUTER
             .getStakingModules();
-        uint256 length = modules.length;
-        for (uint256 i = 0; i < length; ++i) {
+        for (uint256 i = 0; i < modules.length; ++i) {
             IStakingRouter.StakingModule memory module = modules[i];
             _moduleAddresses[module.id] = module.stakingModuleAddress;
             emit ModuleAddressCached(module.id, module.stakingModuleAddress);

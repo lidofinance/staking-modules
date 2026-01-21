@@ -99,8 +99,7 @@ library FeeSplits {
         IAccounting.FeeSplit[] storage splits = feeSplitsStorage[
             nodeOperatorId
         ];
-        uint256 len = splits.length;
-        for (uint256 i; i < len; ++i) {
+        for (uint256 i; i < splits.length; ++i) {
             IAccounting.FeeSplit storage feeSplit = splits[i];
             // NOTE: Due to rounding error, final operator's part might contain some dust.
             //      There is a known issue that the transfer amount may differ slightly depending on when the split was made due to `pending` accumulation.

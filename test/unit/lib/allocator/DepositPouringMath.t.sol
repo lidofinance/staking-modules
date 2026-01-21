@@ -335,7 +335,7 @@ contract DepositPouringMathTest is Test {
             _copy(caps)
         );
 
-        (, fills, rest) = harness.allocate(a, inflow, step);
+        (fills, rest) = harness.allocate(a, inflow, step);
     }
 
     function _buildState(
@@ -430,15 +430,7 @@ contract DepositPouringMathHarness {
         AllocationState memory state,
         uint256 inflow,
         uint256 step
-    )
-        external
-        pure
-        returns (
-            int256[] memory imbalances,
-            uint256[] memory fills,
-            uint256 rest
-        )
-    {
+    ) external pure returns (uint256[] memory fills, uint256 rest) {
         return DepositPouringMath._allocate(state, inflow, step);
     }
 }

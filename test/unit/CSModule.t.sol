@@ -518,7 +518,7 @@ contract CSMTopUpQueue is CSMCommon {
 
         assertEq(_getTopUpQueueCapacity(), 0);
         csm.obtainDepositData({
-            depositAmount: 0,
+            maxDepositAmount: 0,
             packedPubkeys: csm.getSigningKeys(0, 0, 1),
             keyIndices: UintArr(0),
             operatorIds: UintArr(0),
@@ -576,7 +576,7 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
         (bytes[] memory keys, uint256[] memory allocations) = csm
             .obtainDepositData({
-                depositAmount: 5,
+                maxDepositAmount: 5,
                 packedPubkeys: packedPubkeys,
                 keyIndices: UintArr(0, 1),
                 operatorIds: UintArr(0, 0),
@@ -605,7 +605,7 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
         (bytes[] memory keys, uint256[] memory allocations) = csm
             .obtainDepositData({
-                depositAmount: 4,
+                maxDepositAmount: 4,
                 packedPubkeys: packedPubkeys,
                 keyIndices: UintArr(0, 1),
                 operatorIds: UintArr(0, 0),
@@ -635,7 +635,7 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
         (bytes[] memory keys, uint256[] memory allocations) = csm
             .obtainDepositData({
-                depositAmount: 2,
+                maxDepositAmount: 2,
                 packedPubkeys: packedPubkeys,
                 keyIndices: UintArr(0, 1),
                 operatorIds: UintArr(0, 0),
@@ -665,7 +665,7 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
         (bytes[] memory keys, uint256[] memory allocations) = csm
             .obtainDepositData({
-                depositAmount: 1,
+                maxDepositAmount: 1,
                 packedPubkeys: packedPubkeys,
                 keyIndices: UintArr(0, 1),
                 operatorIds: UintArr(0, 0),
@@ -687,7 +687,7 @@ contract CSMTopUpQueue is CSMCommon {
 
         bytes memory keys = csm.getSigningKeys(0, 0, 1);
         csm.obtainDepositData({
-            depositAmount: 0,
+            maxDepositAmount: 0,
             packedPubkeys: keys,
             keyIndices: UintArr(0),
             operatorIds: UintArr(0),
@@ -707,7 +707,7 @@ contract CSMTopUpQueue is CSMCommon {
         );
         vm.expectRevert(ICSModule.UnexpectedExtraKey.selector);
         csm.obtainDepositData({
-            depositAmount: 3,
+            maxDepositAmount: 3,
             packedPubkeys: packedPubkeys,
             keyIndices: UintArr(0, 0),
             operatorIds: UintArr(0, 0),
@@ -727,7 +727,7 @@ contract CSMTopUpQueue is CSMCommon {
         // Operator ID mismatch
         vm.expectRevert(ICSModule.InvalidTopUpOrder.selector);
         csm.obtainDepositData({
-            depositAmount: 3,
+            maxDepositAmount: 3,
             packedPubkeys: keys,
             keyIndices: UintArr(0),
             operatorIds: UintArr(1),
@@ -737,7 +737,7 @@ contract CSMTopUpQueue is CSMCommon {
         // Operator key index mismatch
         vm.expectRevert(ICSModule.InvalidTopUpOrder.selector);
         csm.obtainDepositData({
-            depositAmount: 3,
+            maxDepositAmount: 3,
             packedPubkeys: keys,
             keyIndices: UintArr(1),
             operatorIds: UintArr(0),
@@ -746,7 +746,7 @@ contract CSMTopUpQueue is CSMCommon {
 
         vm.expectRevert(ICSModule.InvalidSigningKey.selector);
         csm.obtainDepositData({
-            depositAmount: 3,
+            maxDepositAmount: 3,
             packedPubkeys: keys,
             keyIndices: UintArr(0),
             operatorIds: UintArr(0),
@@ -761,7 +761,7 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 3);
         vm.expectRevert(ICSModule.UnexpectedExtraKey.selector);
         csm.obtainDepositData({
-            depositAmount: 1,
+            maxDepositAmount: 1,
             packedPubkeys: packedPubkeys,
             keyIndices: UintArr(0, 1, 2),
             operatorIds: UintArr(0, 0, 0),
@@ -799,7 +799,7 @@ contract CSMTopUpQueue is CSMCommon {
         assertEq(csm.getKeysForTopUp(7), keys);
 
         csm.obtainDepositData({
-            depositAmount: 3,
+            maxDepositAmount: 3,
             packedPubkeys: bytes.concat(keys[0], keys[1], keys[2]),
             keyIndices: UintArr(0, 1, 0),
             operatorIds: UintArr(0, 0, 1),

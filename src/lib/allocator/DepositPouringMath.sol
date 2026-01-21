@@ -24,6 +24,7 @@ struct AllocationState {
  * @dev currently unused
  */
 library DepositPouringMath {
+    // Fixed-point scale (2^96) for share ratios to represent fractional shares as integers.
     uint256 internal constant S_SCALE = uint256(1) << 96;
 
     error LengthMismatch();
@@ -46,15 +47,7 @@ library DepositPouringMath {
         AllocationState memory state,
         uint256 inflow,
         uint256 step
-    )
-        internal
-        pure
-        returns (
-            int256[] memory imbalances,
-            uint256[] memory fills,
-            uint256 rest
-        )
-    {
+    ) internal pure returns (uint256[] memory fills, uint256 rest) {
         if (step == 0) {
             revert ZeroStep();
         }
@@ -64,7 +57,7 @@ library DepositPouringMath {
         }
         if (n == 0) {
             // no baskets, return full inflow as rest
-            return (new int256[](0), new uint256[](0), inflow);
+            return (new uint256[](0), inflow);
         }
 
         DemandFillsCache memory cache = _prepareCache(state, inflow, step);
@@ -73,7 +66,7 @@ library DepositPouringMath {
             _calculateDemands(cache);
             rest = _fulfillDemands(cache, rest, step);
         }
-        return (cache.imbalances, cache.fills, rest);
+        return (cache.fills, rest);
     }
 
     /// @notice Prepare cache for allocation
@@ -123,11 +116,10 @@ library DepositPouringMath {
     }
 
     function _calculateDemands(DemandFillsCache memory cache) internal pure {
-        uint256 n = cache.imbalancesSortMap.length;
         uint256 demandsCount = 0;
 
         unchecked {
-            for (uint256 i; i < n; ++i) {
+            for (uint256 i; i < cache.imbalancesSortMap.length; ++i) {
                 uint256 idx = cache.imbalancesSortMap[i];
                 uint256 capacity = cache.capacities[idx];
                 if (capacity == 0) continue;

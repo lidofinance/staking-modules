@@ -9,7 +9,6 @@ import { IBaseModule } from "../../interfaces/IBaseModule.sol";
 import { IParametersRegistry } from "../../interfaces/IParametersRegistry.sol";
 import { NodeOperator } from "../../interfaces/IBaseModule.sol";
 import { AllocationState, DepositAllocatorGreedy } from "./DepositAllocatorGreedy.sol";
-import { DepositPouringMath } from "./DepositPouringMath.sol";
 
 /// @notice Curated deposit allocation helpers (external library for bytecode savings).
 /// @dev Invariants assumed by this library:
@@ -18,17 +17,19 @@ import { DepositPouringMath } from "./DepositPouringMath.sol";
 library CuratedDepositAllocator {
     uint256 internal constant MAX_EFFECTIVE_BALANCE = 2048 ether;
     struct DepositableOperatorsData {
-        uint256[] weights;
-        uint256[] currents;
-        uint256[] capacities;
-        uint256[] operatorIds;
-        uint256 count;
-        uint256 weightSum;
-        uint256 totalAmount;
+        uint256[] weights; // Per-operator weights for allocation (0 means ineligible).
+        uint256[] currents; // Current amounts per operator (units depend on caller: validator count for deposits, wei for top-ups).
+        uint256[] capacities; // Remaining capacity per operator (units match `currents`).
+        uint256[] operatorIds; // Operator ids aligned with arrays above (compacted to operators included in allocation).
+        uint256 count; // Number of operators included in allocation (filled entries in the arrays above).
+        uint256 weightSum; // Sum of weights across eligible operators (for share calculation).
+        uint256 totalCurrent; // Sum of current amounts across eligible operators (units match `currents`).
     }
 
     uint256 internal constant DEPOSIT_STEP = 1;
-    uint256 internal constant TOPUP_STEP = 1 ether;
+    // 1 ETH: consensus EFFECTIVE_BALANCE_INCREMENT (and MIN_DEPOSIT_AMOUNT) are 1e9 gwei,
+    // so this is the smallest effective-balance step; EIP‑7251 keeps that increment.
+    uint256 internal constant TOP_UP_STEP = 1 ether;
 
     /// @notice Allocate new validator deposits across curated operators.
     /// @dev Input preparation and iteration behavior:
@@ -56,25 +57,18 @@ library CuratedDepositAllocator {
             uint256[] memory allocations
         )
     {
-        if (depositsCount == 0 || operatorsCount == 0) {
+        if (depositsCount == 0) {
             return (0, new uint256[](0), new uint256[](0));
         }
 
-        (
-            DepositableOperatorsData memory data,
-            uint256 totalCapacity,
-            uint256 weightedCapacity
-        ) = _collectDepositableOperatorsData(nodeOperators, operatorsCount);
-
-        if (
-            data.count == 0 ||
-            totalCapacity < depositsCount ||
-            weightedCapacity < depositsCount
-        ) {
-            return (0, new uint256[](0), new uint256[](0));
+        DepositableOperatorsData memory data = _collectDepositableOperatorsData(
+            nodeOperators,
+            operatorsCount
+        );
+        // TODO this case should not be reachable in normal operation; need to align with staking router impl
+        if (data.count == 0) {
+            revert IBaseModule.NotEnoughKeys();
         }
-
-        _truncateDepositable(data);
 
         uint256[] memory eligibleAllocations;
         (allocated, eligibleAllocations) = _computeAllocations({
@@ -84,26 +78,14 @@ library CuratedDepositAllocator {
             step: DEPOSIT_STEP,
             allocationAmount: depositsCount,
             weightSum: data.weightSum,
-            totalAmount: data.totalAmount
+            totalAmount: data.totalCurrent
         });
 
-        uint256 nonZeroCount;
-        for (uint256 i; i < data.count; ++i) {
-            if (eligibleAllocations[i] != 0) {
-                ++nonZeroCount;
-            }
-        }
-
-        operatorIds = new uint256[](nonZeroCount);
-        allocations = new uint256[](nonZeroCount);
-        uint256 outIdx;
-        for (uint256 i; i < data.count; ++i) {
-            uint256 allocation = eligibleAllocations[i];
-            if (allocation == 0) continue;
-            operatorIds[outIdx] = data.operatorIds[i];
-            allocations[outIdx] = allocation;
-            ++outIdx;
-        }
+        (operatorIds, allocations) = _compactAllocations(
+            data.operatorIds,
+            eligibleAllocations,
+            data.count
+        );
     }
 
     /// @notice Allocate top-up deposit amount across curated operators.
@@ -139,8 +121,8 @@ library CuratedDepositAllocator {
             uint256[] memory allocations
         )
     {
-        uint256 keysCount = operatorIds.length;
-        if (depositAmount == 0 || keysCount == 0) {
+        uint256 operatorIdsCount = operatorIds.length;
+        if (depositAmount == 0 || operatorIdsCount == 0) {
             return (new uint256[](0), new uint256[](0));
         }
 
@@ -157,35 +139,21 @@ library CuratedDepositAllocator {
             return (new uint256[](0), new uint256[](0));
         }
 
-        _truncateDepositable(data);
-
         (, uint256[] memory eligibleAllocations) = _computeAllocations({
             currentAmounts: data.currents,
             capacities: data.capacities,
             weights: data.weights,
-            step: TOPUP_STEP,
+            step: TOP_UP_STEP,
             allocationAmount: depositAmount,
             weightSum: data.weightSum,
-            totalAmount: data.totalAmount
+            totalAmount: data.totalCurrent
         });
 
-        uint256 nonZeroCount;
-        for (uint256 i; i < data.count; ++i) {
-            if (eligibleAllocations[i] != 0) {
-                ++nonZeroCount;
-            }
-        }
-
-        allocatedOperatorIds = new uint256[](nonZeroCount);
-        allocations = new uint256[](nonZeroCount);
-        uint256 outIdx;
-        for (uint256 i; i < data.count; ++i) {
-            uint256 allocation = eligibleAllocations[i];
-            if (allocation == 0) continue;
-            allocatedOperatorIds[outIdx] = data.operatorIds[i];
-            allocations[outIdx] = allocation;
-            ++outIdx;
-        }
+        (allocatedOperatorIds, allocations) = _compactAllocations(
+            data.operatorIds,
+            eligibleAllocations,
+            data.count
+        );
     }
 
     /// @dev Builds AllocationState and runs the configured allocator in-memory.
@@ -216,22 +184,46 @@ library CuratedDepositAllocator {
                 }
                 state.shares[i] = Math.mulDiv(
                     weights[i],
-                    DepositPouringMath.S_SCALE,
+                    DepositAllocatorGreedy.S_SCALE,
                     weightSum
                 );
             }
         }
 
-        uint256 remainder;
-        uint256[] memory allocUnits;
-        (, allocUnits, remainder) = DepositAllocatorGreedy._allocate(
-            state,
-            allocationAmount,
-            step
-        );
+        (
+            uint256[] memory allocUnits,
+            uint256 remainder
+        ) = DepositAllocatorGreedy._allocate(state, allocationAmount, step);
 
         allocated = allocationAmount - remainder;
         allocations = allocUnits;
+    }
+
+    function _compactAllocations(
+        uint256[] memory operatorIds,
+        uint256[] memory eligibleAllocations,
+        uint256 count
+    )
+        internal
+        pure
+        returns (uint256[] memory compactIds, uint256[] memory allocations)
+    {
+        compactIds = new uint256[](count);
+        allocations = new uint256[](count);
+        uint256 compactIndex;
+        for (uint256 i; i < count; ++i) {
+            uint256 allocation = eligibleAllocations[i];
+            if (allocation == 0) continue;
+            compactIds[compactIndex] = operatorIds[i];
+            allocations[compactIndex] = allocation;
+            ++compactIndex;
+        }
+        if (compactIndex != count) {
+            assembly {
+                mstore(compactIds, compactIndex)
+                mstore(allocations, compactIndex)
+            }
+        }
     }
 
     /// @dev Collect eligible operators for deposit allocation.
@@ -239,15 +231,7 @@ library CuratedDepositAllocator {
     function _collectDepositableOperatorsData(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 operatorsCount
-    )
-        internal
-        view
-        returns (
-            DepositableOperatorsData memory data,
-            uint256 totalCapacity,
-            uint256 weightedCapacity
-        )
-    {
+    ) internal view returns (DepositableOperatorsData memory data) {
         data.weights = new uint256[](operatorsCount);
         data.currents = new uint256[](operatorsCount);
         data.capacities = new uint256[](operatorsCount);
@@ -264,7 +248,6 @@ library CuratedDepositAllocator {
                 uint256 capacity = no.depositableValidatorsCount;
                 if (capacity == 0) continue;
 
-                totalCapacity += capacity;
                 uint256 weight = parametersRegistry.getDepositAllocationWeight(
                     accounting.getBondCurveId(i)
                 );
@@ -276,14 +259,15 @@ library CuratedDepositAllocator {
                     no.totalWithdrawnKeys;
                 data.capacities[eligibleCount] = capacity;
                 data.operatorIds[eligibleCount] = i;
-                weightedCapacity += capacity;
                 data.weightSum += weight;
-                data.totalAmount += data.currents[eligibleCount];
+                data.totalCurrent += data.currents[eligibleCount];
                 ++eligibleCount;
             }
         }
 
         data.count = eligibleCount;
+        // Truncate arrays to the number of eligible operators collected.
+        _truncateDepositable(data);
     }
 
     /// @dev Collect eligible operators for top-up allocation.
@@ -299,33 +283,34 @@ library CuratedDepositAllocator {
         data.capacities = new uint256[](operatorIds.length);
         data.operatorIds = new uint256[](operatorIds.length);
 
-        (data.weightSum, data.totalAmount) = _collectTopUpGlobalTotals(
-            nodeOperators,
-            nodeOperatorBalances,
-            operatorsCount
-        );
-
         IParametersRegistry parametersRegistry = IBaseModule(address(this))
             .PARAMETERS_REGISTRY();
         IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
 
+        uint256[] memory weightsByOperatorId;
+        uint256[] memory capacitiesByOperatorId;
+        (
+            data.weightSum,
+            data.totalCurrent,
+            weightsByOperatorId,
+            capacitiesByOperatorId
+        ) = _collectTopUpGlobalBaseline({
+            nodeOperators: nodeOperators,
+            nodeOperatorBalances: nodeOperatorBalances,
+            operatorsCount: operatorsCount,
+            parametersRegistry: parametersRegistry,
+            accounting: accounting
+        });
+
         uint256 eligibleCount;
-        uint256 n = operatorIds.length;
-        for (uint256 i; i < n; ++i) {
+        for (uint256 i; i < operatorIds.length; ++i) {
             uint256 operatorId = operatorIds[i];
 
             // Collect only requested operators; allocation still uses the global share baseline.
-            // there's double capacity calculation here, but it's probably not expensive in practice.
-            NodeOperator storage no = nodeOperators[operatorId];
-            uint256 capacity = _topUpCapacity(
-                no,
-                nodeOperatorBalances[operatorId]
-            );
+            uint256 capacity = capacitiesByOperatorId[operatorId];
             if (capacity == 0) continue;
 
-            uint256 weight = parametersRegistry.getDepositAllocationWeight(
-                accounting.getBondCurveId(operatorId)
-            );
+            uint256 weight = weightsByOperatorId[operatorId];
             if (weight == 0) continue;
 
             data.weights[eligibleCount] = weight;
@@ -336,16 +321,28 @@ library CuratedDepositAllocator {
         }
 
         data.count = eligibleCount;
+        // Truncate arrays to the number of eligible operators collected.
+        _truncateDepositable(data);
     }
 
-    function _collectTopUpGlobalTotals(
+    function _collectTopUpGlobalBaseline(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         mapping(uint256 => uint256) storage nodeOperatorBalances,
-        uint256 operatorsCount
-    ) internal view returns (uint256 weightSum, uint256 totalAmount) {
-        IParametersRegistry parametersRegistry = IBaseModule(address(this))
-            .PARAMETERS_REGISTRY();
-        IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
+        uint256 operatorsCount,
+        IParametersRegistry parametersRegistry,
+        IAccounting accounting
+    )
+        internal
+        view
+        returns (
+            uint256 weightSum,
+            uint256 totalCurrent,
+            uint256[] memory weightsByOperatorId,
+            uint256[] memory capacitiesByOperatorId
+        )
+    {
+        weightsByOperatorId = new uint256[](operatorsCount);
+        capacitiesByOperatorId = new uint256[](operatorsCount);
 
         // Build global share baseline across all eligible operators (non-zero weight + capacity).
         for (uint256 i; i < operatorsCount; ++i) {
@@ -353,13 +350,15 @@ library CuratedDepositAllocator {
                 nodeOperators[i],
                 nodeOperatorBalances[i]
             );
+            capacitiesByOperatorId[i] = capacity;
             if (capacity == 0) continue;
             uint256 weight = parametersRegistry.getDepositAllocationWeight(
                 accounting.getBondCurveId(i)
             );
+            weightsByOperatorId[i] = weight;
             if (weight == 0) continue;
             weightSum += weight;
-            totalAmount += nodeOperatorBalances[i];
+            totalCurrent += nodeOperatorBalances[i];
         }
     }
 
