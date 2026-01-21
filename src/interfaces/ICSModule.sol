@@ -37,7 +37,7 @@ interface ICSModule is
     /// @notice Initializes the contract.
     /// @param admin An address to grant the DEFAULT_ADMIN_ROLE to.
     /// @param topUpQueueLimit The limit of the top-up queue.
-    function initialize(address admin, uint32 topUpQueueLimit) external;
+    function initialize(address admin, uint8 topUpQueueLimit) external;
 
     /// @notice Clean the deposit queue from batches with no depositable keys
     /// @dev Use **eth_call** to check how many items will be removed

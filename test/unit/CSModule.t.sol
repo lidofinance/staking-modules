@@ -29,7 +29,7 @@ contract CSMCommon is ModuleFixtures {
     using Strings for uint128;
 
     CSModule csm;
-    uint32 topUpQueueLimit;
+    uint8 topUpQueueLimit;
 
     function moduleType() internal pure override returns (ModuleType) {
         return ModuleType.Community;
@@ -830,7 +830,7 @@ contract CSMTopUpQueue is CSMCommon {
         csm.getKeysForTopUp(0);
     }
 
-    function testFuzz_setTopUpQueueLimit(uint32 limit) public {
+    function testFuzz_setTopUpQueueLimit(uint8 limit) public {
         vm.expectEmit(true, true, true, true, address(csm));
         emit ICSModule.TopUpQueueLimitSet(limit);
         csm.setTopUpQueueLimit(limit);
@@ -849,12 +849,12 @@ contract CSMTopUpQueue is CSMCommon {
         assertEq(_getTopUpQueueLimit(), 0);
     }
 
-    function test_setTopUpQueueLimit_RevertWhenLimitExceedsUint32() public {
+    function test_setTopUpQueueLimit_RevertWhenLimitExceedsUint8() public {
         uint256 limit = uint256(type(uint32).max) + 1;
         vm.expectRevert(
             abi.encodeWithSelector(
                 SafeCast.SafeCastOverflowedUintDowncast.selector,
-                32,
+                8,
                 limit
             )
         );

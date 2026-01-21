@@ -14,7 +14,7 @@ contract Library {
 
     TopUpQueueLib.Queue internal q;
 
-    function setLimit(uint32 limit) external {
+    function setLimit(uint8 limit) external {
         q.limit = limit;
     }
 

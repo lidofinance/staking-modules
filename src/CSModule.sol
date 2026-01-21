@@ -67,7 +67,7 @@ contract CSModule is ICSModule, BaseModule {
 
     function initialize(
         address admin,
-        uint32 topUpQueueLimit
+        uint8 topUpQueueLimit
     ) external reinitializer(INITIALIZED_VERSION) {
         __BaseModule_init(admin);
 
@@ -274,7 +274,7 @@ contract CSModule is ICSModule, BaseModule {
     function setTopUpQueueLimit(
         uint256 limit
     ) external onlyActiveTopUpQueue onlyRole(MANAGE_TOP_UP_QUEUE_ROLE) {
-        _topUpQueue().limit = limit.toUint32();
+        _topUpQueue().limit = limit.toUint8();
         emit TopUpQueueLimitSet(limit);
         _incrementModuleNonce();
     }
@@ -416,7 +416,7 @@ contract CSModule is ICSModule, BaseModule {
     }
 
     /// @dev Setting `topUpQueueLimit` to 0 effectively disables the top-up queue permanently.
-    function _initTopUpQueue(uint32 topUpQueueLimit) internal {
+    function _initTopUpQueue(uint8 topUpQueueLimit) internal {
         if (topUpQueueLimit > 0) {
             _topUpQueue().active = true;
             _topUpQueue().limit = topUpQueueLimit;

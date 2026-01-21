@@ -46,8 +46,8 @@ library TopUpQueueLib {
 
     struct Queue {
         TopUpQueueItem[] items;
-        uint32 limit;
         uint32 head;
+        uint8 limit;
         bool active;
     }
 
