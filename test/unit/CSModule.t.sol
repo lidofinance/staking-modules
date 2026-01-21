@@ -414,6 +414,7 @@ contract CSMTopUpQueue is CSMCommon {
 
         vm.startPrank(admin);
         csm.grantRole(csm.MANAGE_TOP_UP_QUEUE_ROLE(), address(this));
+        csm.grantRole(csm.REWIND_TOP_UP_QUEUE_ROLE(), address(this));
         vm.stopPrank();
     }
 
@@ -871,7 +872,6 @@ contract CSMTopUpQueue is CSMCommon {
 
         _enableInitializers(address(csm));
         csm.initialize({ admin: address(this), topUpQueueLimit: 0 });
-        csm.grantRole(csm.MANAGE_TOP_UP_QUEUE_ROLE(), address(this));
 
         vm.expectRevert(ICSModule.TopUpQueueDisabled.selector);
         csm.setTopUpQueueLimit(0);
@@ -1552,7 +1552,7 @@ contract CSMAccessControl is ModuleAccessControl, CSMCommonNoRoles {
 
     function test_rewindToUpQueue_RevertWhenNoRole() public {
         uint256 noId = createNodeOperator();
-        bytes32 role = csm.MANAGE_TOP_UP_QUEUE_ROLE();
+        bytes32 role = csm.REWIND_TOP_UP_QUEUE_ROLE();
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
