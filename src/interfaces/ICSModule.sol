@@ -22,6 +22,7 @@ interface ICSModule is
         uint256 count
     );
     event TopUpQueueLimitSet(uint256 limit);
+    event TopUpQueueRewound(uint256 to);
 
     error NotEligibleForPriorityQueue();
     error PriorityQueueAlreadyUsed();
@@ -51,14 +52,19 @@ interface ICSModule is
     /// @param limit How many items may sit in the top-up queue at most.
     function setTopUpQueueLimit(uint256 limit) external;
 
+    /// @notice Rewind the top-up queue to able to deposit to mistakenly skipped items.
+    /// @param to Pointer to move the queue `head` to.
+    function rewindTopUpQueue(uint256 to) external;
+
     /// @notice Returns the top-up queue stats.
     /// @return active Whether the queue was activated upon initialization of the module.
     /// @return limit How many items may sit in the top-up queue at most.
     /// @return length How many items are in the queue.
+    /// @return head Pointer to the head of the queue.
     function getTopUpQueue()
         external
         view
-        returns (bool active, uint256 limit, uint256 length);
+        returns (bool active, uint256 limit, uint256 length, uint256 head);
 
     /// @notice Returns the top-up queue item by the given index.
     /// @param index The index of the item to retrieve.

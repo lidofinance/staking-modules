@@ -237,19 +237,23 @@ contract CSMCommon is ModuleFixtures {
     }
 
     function _getTopUpQueueActive() internal view returns (bool active) {
-        (active, , ) = csm.getTopUpQueue();
+        (active, , , ) = csm.getTopUpQueue();
     }
 
     function _getTopUpQueueLimit() internal view returns (uint256 limit) {
-        (, limit, ) = csm.getTopUpQueue();
+        (, limit, , ) = csm.getTopUpQueue();
     }
 
     function _getTopUpQueueLength() internal view returns (uint256 length) {
-        (, , length) = csm.getTopUpQueue();
+        (, , length, ) = csm.getTopUpQueue();
+    }
+
+    function _getTopUpQueueHead() internal view returns (uint256 head) {
+        (, , , head) = csm.getTopUpQueue();
     }
 
     function _getTopUpQueueCapacity() internal view returns (uint256) {
-        (, uint256 limit, uint256 length) = csm.getTopUpQueue();
+        (, uint256 limit, uint256 length, ) = csm.getTopUpQueue();
 
         if (limit > length) {
             return limit - length;
@@ -871,6 +875,42 @@ contract CSMTopUpQueue is CSMCommon {
 
         vm.expectRevert(ICSModule.TopUpQueueDisabled.selector);
         csm.setTopUpQueueLimit(0);
+    }
+
+    function test_rewindToUpQueue() public {
+        createNodeOperator(2);
+        createNodeOperator(1);
+        csm.obtainDepositData(3, "");
+        assertEq(_getTopUpQueueLength(), 3);
+
+        bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
+        csm.obtainDepositData({
+            depositAmount: 2,
+            packedPubkeys: packedPubkeys,
+            keyIndices: UintArr(0, 1),
+            operatorIds: UintArr(0, 0),
+            topUpLimits: UintArr(1, 1)
+        });
+
+        assertEq(_getTopUpQueueLength(), 1);
+
+        uint256 noId;
+        uint256 keyIndex;
+
+        (noId, keyIndex) = csm.getTopUpQueueItem(0);
+        assertEq(noId, 1);
+        assertEq(keyIndex, 0);
+
+        uint256 to = 1;
+        vm.expectEmit(true, true, true, true, address(csm));
+        emit ICSModule.TopUpQueueRewound(to);
+        csm.rewindTopUpQueue(to);
+        assertEq(_getTopUpQueueHead(), to);
+        assertEq(_getTopUpQueueLength(), 2);
+
+        (noId, keyIndex) = csm.getTopUpQueueItem(0);
+        assertEq(noId, 0);
+        assertEq(keyIndex, 1);
     }
 }
 
@@ -1501,23 +1541,22 @@ contract CSMAccessControl is ModuleAccessControl, CSMCommonNoRoles {
         super.setUp();
     }
 
-    function test_manageTopUpQueueRole() public {
-        uint256 noId = createNodeOperator();
-        bytes32 role = csm.MANAGE_TOP_UP_QUEUE_ROLE();
-        vm.prank(admin);
-        csm.grantRole(role, actor);
-
-        vm.prank(actor);
-        csm.setTopUpQueueLimit(33);
-    }
-
-    function test_manageTopUpQueueRole_revert() public {
+    function test_setTopUpQueueLimit_RevertWhenNoRole() public {
         uint256 noId = createNodeOperator();
         bytes32 role = csm.MANAGE_TOP_UP_QUEUE_ROLE();
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
         csm.setTopUpQueueLimit(33);
+    }
+
+    function test_rewindToUpQueue_RevertWhenNoRole() public {
+        uint256 noId = createNodeOperator();
+        bytes32 role = csm.MANAGE_TOP_UP_QUEUE_ROLE();
+
+        vm.prank(stranger);
+        expectRoleRevert(stranger, role);
+        csm.rewindTopUpQueue(33);
     }
 }
 
