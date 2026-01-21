@@ -924,6 +924,22 @@ contract CSMTopUpQueue is CSMCommon {
         );
         csm.rewindTopUpQueue(to);
     }
+
+    function test_rewindTopUpQueue_RevertWhenTopUpQueueDisabled() public {
+        csm = new CSModule({
+            moduleType: "community-staking-module",
+            lidoLocator: address(locator),
+            parametersRegistry: address(parametersRegistry),
+            accounting: address(accounting),
+            exitPenalties: address(exitPenalties)
+        });
+
+        _enableInitializers(address(csm));
+        csm.initialize({ admin: address(this), topUpQueueLimit: 0 });
+
+        vm.expectRevert(ICSModule.TopUpQueueDisabled.selector);
+        csm.rewindTopUpQueue(0);
+    }
 }
 
 contract CSMProposeNodeOperatorManagerAddressChange is
