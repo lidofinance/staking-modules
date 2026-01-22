@@ -234,7 +234,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
     /// @inheritdoc ICuratedModule
     function getDepositsAllocation(
-        uint256 /* depositAmount */
+        uint256 depositAmount
     )
         external
         view
@@ -244,20 +244,9 @@ contract CuratedModule is ICuratedModule, BaseModule {
             uint256[] memory allocations
         )
     {
-        revert NotImplemented();
-    }
-
-    /// @inheritdoc ICuratedModule
-    function getTopUpAllocations(
-        uint256 depositAmount
-    )
-        external
-        view
-        returns (uint256[] memory operatorIds, uint256[] memory allocations)
-    {
         uint256 operatorsCount = _nodeOperatorsCount;
         if (depositAmount == 0 || operatorsCount == 0) {
-            return (new uint256[](0), new uint256[](0));
+            return (0, new uint256[](0), new uint256[](0));
         }
 
         uint256[] memory allOperatorIds = new uint256[](operatorsCount);
@@ -265,8 +254,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
             allOperatorIds[i] = i;
         }
 
-        return
-            CuratedDepositAllocator.allocateTopUps({
+        (allocated, operatorIds, allocations) = CuratedDepositAllocator
+            .allocateTopUps({
                 nodeOperators: _nodeOperators,
                 nodeOperatorBalances: _storage().operatorBalances,
                 operatorsCount: operatorsCount,
@@ -325,6 +314,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             _nodeOperatorsCount
         );
         (
+            ,
             uint256[] memory allocatedOperatorIds,
             uint256[] memory operatorAllocations
         ) = CuratedDepositAllocator.allocateTopUps({
@@ -361,9 +351,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
         for (uint256 i; i < operatorIds.length; ++i) {
             uint256 operatorId = operatorIds[i];
             if (seen.get(operatorId) != 0) continue;
-            if (operatorId >= operatorsCount) {
-                revert NodeOperatorDoesNotExist();
-            }
             seen.set(operatorId, 1);
             uniqueOperatorIds[count] = operatorId;
             ++count;

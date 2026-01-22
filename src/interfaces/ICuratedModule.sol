@@ -51,13 +51,4 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
             uint256[] memory operatorIds,
             uint256[] memory allocations
         );
-
-    /// @notice Returns per-operator top-up allocations for the given deposit amount.
-    /// @param depositAmount Amount of ETH (wei) to allocate for top-ups.
-    function getTopUpAllocations(
-        uint256 depositAmount
-    )
-        external
-        view
-        returns (uint256[] memory operatorIds, uint256[] memory allocations);
 }

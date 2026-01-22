@@ -105,6 +105,7 @@ library CuratedDepositAllocator {
     /// @param operatorsCount Total operators count in the module.
     /// @param depositAmount Total top-up amount in wei to allocate.
     /// @param operatorIds Key owner operator ids for this top-up request.
+    /// @return allocated Total allocated amount in wei.
     /// @return allocatedOperatorIds Operator ids for allocated operators.
     /// @return allocations Per-operator allocations aligned to allocatedOperatorIds.
     function allocateTopUps(
@@ -117,13 +118,14 @@ library CuratedDepositAllocator {
         external
         view
         returns (
+            uint256 allocated,
             uint256[] memory allocatedOperatorIds,
             uint256[] memory allocations
         )
     {
         uint256 operatorIdsCount = operatorIds.length;
         if (depositAmount == 0 || operatorIdsCount == 0) {
-            return (new uint256[](0), new uint256[](0));
+            return (0, new uint256[](0), new uint256[](0));
         }
 
         // operatorsCount > 0 is guaranteed by the caller.
@@ -136,10 +138,11 @@ library CuratedDepositAllocator {
                 operatorsCount
             );
         if (data.count == 0) {
-            return (new uint256[](0), new uint256[](0));
+            return (0, new uint256[](0), new uint256[](0));
         }
 
-        (, uint256[] memory eligibleAllocations) = _computeAllocations({
+        uint256[] memory eligibleAllocations;
+        (allocated, eligibleAllocations) = _computeAllocations({
             currentAmounts: data.currents,
             capacities: data.capacities,
             weights: data.weights,
