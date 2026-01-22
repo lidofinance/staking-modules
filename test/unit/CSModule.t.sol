@@ -885,7 +885,7 @@ contract CSMTopUpQueue is CSMCommon {
 
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
         csm.obtainDepositData({
-            depositAmount: 2,
+            maxDepositAmount: 2,
             packedPubkeys: packedPubkeys,
             keyIndices: UintArr(0, 1),
             operatorIds: UintArr(0, 0),

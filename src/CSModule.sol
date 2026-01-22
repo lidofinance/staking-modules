@@ -401,9 +401,16 @@ contract CSModule is ICSModule, BaseModule {
         }
     }
 
-    function _onOperatorDepositableChange(
-        uint256 nodeOperatorId
+    function _applyDepositableValidatorsCount(
+        uint256 nodeOperatorId,
+        uint256 newCount,
+        bool incrementNonceIfUpdated
     ) internal override {
+        super._applyDepositableValidatorsCount(
+            nodeOperatorId,
+            newCount,
+            incrementNonceIfUpdated
+        );
         // solhint-disable-next-line func-named-parameters
         DepositQueueOps.enqueueNodeOperatorKeys(
             _nodeOperators,

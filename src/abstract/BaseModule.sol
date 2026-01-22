@@ -1015,31 +1015,38 @@ abstract contract BaseModule is
                 }
             }
         }
-
-        if (no.depositableValidatorsCount != newCount) {
-            // Updating the global counter.
-            unchecked {
-                _depositableValidatorsCount =
-                    _depositableValidatorsCount -
-                    no.depositableValidatorsCount +
-                    // Each term is bounded by uint32 counts, so fitting into uint64 is safe.
-                    // forge-lint: disable-next-line(unsafe-typecast)
-                    uint64(newCount);
-            }
-            // NodeOperator.depositableValidatorsCount is uint32, and newCount is derived from the same bounds.
-            // forge-lint: disable-next-line(unsafe-typecast)
-            no.depositableValidatorsCount = uint32(newCount);
-            emit DepositableSigningKeysCountChanged(nodeOperatorId, newCount);
-            if (incrementNonceIfUpdated) {
-                _incrementModuleNonce();
-            }
-            _onOperatorDepositableChange(nodeOperatorId);
-        }
+        _applyDepositableValidatorsCount({
+            nodeOperatorId: nodeOperatorId,
+            newCount: newCount,
+            incrementNonceIfUpdated: incrementNonceIfUpdated
+        });
     }
 
-    function _onOperatorDepositableChange(
-        uint256 nodeOperatorId
-    ) internal virtual;
+    function _applyDepositableValidatorsCount(
+        uint256 nodeOperatorId,
+        uint256 newCount,
+        bool incrementNonceIfUpdated
+    ) internal virtual {
+        NodeOperator storage no = _nodeOperators[nodeOperatorId];
+        if (no.depositableValidatorsCount == newCount) return;
+
+        // Updating the global counter.
+        unchecked {
+            _depositableValidatorsCount =
+                _depositableValidatorsCount -
+                no.depositableValidatorsCount +
+                // Each term is bounded by uint32 counts, so fitting into uint64 is safe.
+                // forge-lint: disable-next-line(unsafe-typecast)
+                uint64(newCount);
+        }
+        // NodeOperator.depositableValidatorsCount is uint32, and newCount is derived from the same bounds.
+        // forge-lint: disable-next-line(unsafe-typecast)
+        no.depositableValidatorsCount = uint32(newCount);
+        emit DepositableSigningKeysCountChanged(nodeOperatorId, newCount);
+        if (incrementNonceIfUpdated) {
+            _incrementModuleNonce();
+        }
+    }
 
     /// TODO: Figure out if we can remove this method
     /// @dev Update exited validators count for a single Node Operator

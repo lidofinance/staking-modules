@@ -159,9 +159,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
             keyIndices: keyIndices,
             operatorIds: operatorIds
         });
-        uint256 maxDepositAmountWei = maxDepositAmount * 1 gwei;
         allocations = _allocateTopUps(
-            maxDepositAmountWei,
+            maxDepositAmount,
             operatorIds,
             topUpLimits
         );
@@ -264,11 +263,25 @@ contract CuratedModule is ICuratedModule, BaseModule {
             });
     }
 
-    // TODO we need to zeroing depositable when weight == 0 here
-    function _onOperatorDepositableChange(
-        uint256 /* nodeOperatorId */
+    function _applyDepositableValidatorsCount(
+        uint256 nodeOperatorId,
+        uint256 newCount,
+        bool incrementNonceIfUpdated
     ) internal override {
-        // Not used in curated module yet.
+        if (newCount > 0) {
+            if (
+                PARAMETERS_REGISTRY.getDepositAllocationWeight(
+                    _getBondCurveId(nodeOperatorId)
+                ) == 0
+            ) {
+                newCount = 0;
+            }
+        }
+        super._applyDepositableValidatorsCount(
+            nodeOperatorId,
+            newCount,
+            incrementNonceIfUpdated
+        );
     }
 
     function _loadTopUpPublicKeys(
@@ -388,11 +401,11 @@ contract CuratedModule is ICuratedModule, BaseModule {
                 uint256 remaining = perOperatorAllocations[operatorId];
                 if (remaining == 0) continue;
 
-                uint256 limit = topUpLimits[i] * 1 gwei;
+                uint256 limit = topUpLimits[i];
                 if (limit == 0) continue;
 
                 uint256 amount = remaining < limit ? remaining : limit;
-                allocations[i] = amount / 1 gwei;
+                allocations[i] = amount;
                 perOperatorAllocations[operatorId] = remaining - amount;
             }
         }
@@ -407,9 +420,9 @@ contract CuratedModule is ICuratedModule, BaseModule {
         CuratedModuleStorage storage $ = _storage();
         uint256[] memory perOperatorIncrements = new uint256[](operatorsCount);
         for (uint256 i; i < operatorIds.length; ++i) {
-            uint256 allocationGwei = allocations[i];
-            if (allocationGwei == 0) continue;
-            perOperatorIncrements[operatorIds[i]] += allocationGwei * 1 gwei;
+            uint256 allocationWei = allocations[i];
+            if (allocationWei == 0) continue;
+            perOperatorIncrements[operatorIds[i]] += allocationWei;
         }
         for (uint256 i; i < uniqueOperatorIds.length; ++i) {
             uint256 operatorId = uniqueOperatorIds[i];

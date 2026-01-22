@@ -7047,9 +7047,14 @@ contract MyModule is BaseModule {
         revert NotImplementedInTest();
     }
 
-    function _onOperatorDepositableChange(
-        uint256 nodeOperatorId
+    function _applyDepositableValidatorsCount(
+        uint256 nodeOperatorId,
+        uint256 newCount,
+        bool incrementNonceIfUpdated
     ) internal override {
+        nodeOperatorId;
+        newCount;
+        incrementNonceIfUpdated;
         revert NotImplementedInTest();
     }
 
