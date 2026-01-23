@@ -153,7 +153,15 @@ interface IBaseModule is
 
     function VERIFIER_ROLE() external view returns (bytes32);
 
-    function SUBMIT_WITHDRAWALS_ROLE() external view returns (bytes32);
+    function REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE()
+        external
+        view
+        returns (bytes32);
+
+    function REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE()
+        external
+        view
+        returns (bytes32);
 
     function RECOVERER_ROLE() external view returns (bytes32);
 
@@ -419,7 +427,14 @@ interface IBaseModule is
     ///           balance of the validator has been moved to another validator.
     /// @notice Called by `Verifier` contract.
     /// @param validatorInfos An array WithdrawnValidatorInfo structs
-    function reportWithdrawnValidators(
+    function reportRegularWithdrawnValidators(
+        WithdrawnValidatorInfo[] calldata validatorInfos
+    ) external;
+
+    /// @notice Report withdrawn validators that have been slashed.
+    /// @notice Called by the Easy Track EVM script executor via a motion started by the dedicated committee.
+    /// @param validatorInfos An array WithdrawnValidatorInfo structs
+    function reportSlashedWithdrawnValidators(
         WithdrawnValidatorInfo[] calldata validatorInfos
     ) external;
 

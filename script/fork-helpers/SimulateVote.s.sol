@@ -317,87 +317,82 @@ contract SimulateVote is Script, ForkHelpersCommon {
                 module.VERIFIER_ROLE(),
                 deploymentConfig.verifierV3
             );
-            // 20. Revoke SUBMIT_WITHDRAWALS_ROLE from previous verifier
-            module.revokeRole(
-                module.SUBMIT_WITHDRAWALS_ROLE(),
-                deploymentConfig.verifier
-            );
-            // 21. Grant SUBMIT_WITHDRAWALS_ROLE to VerifierV3
+            // 20. Grant REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE to VerifierV3
             module.grantRole(
-                module.SUBMIT_WITHDRAWALS_ROLE(),
+                module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(),
                 deploymentConfig.verifierV3
             );
-            // 22. Grant SUBMIT_WITHDRAWALS_ROLE to Easy Track
+            // 21. Grant REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE to Easy Track
             module.grantRole(
-                module.SUBMIT_WITHDRAWALS_ROLE(),
+                module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(),
                 deployParams.easyTrackEVMScriptExecutor
             );
-            // 23. Revoke CREATE_NODE_OPERATOR_ROLE from old PermissionlessGate
+            // 22. Revoke CREATE_NODE_OPERATOR_ROLE from old PermissionlessGate
             module.revokeRole(
                 module.CREATE_NODE_OPERATOR_ROLE(),
                 oldPermissionlessGate
             );
-            // 24. Grant CREATE_NODE_OPERATOR_ROLE to new PermissionlessGate
+            // 23. Grant CREATE_NODE_OPERATOR_ROLE to new PermissionlessGate
             module.grantRole(
                 module.CREATE_NODE_OPERATOR_ROLE(),
                 deploymentConfig.permissionlessGate
             );
 
-            // 25. Revoke PAUSE_ROLE from old gate seal on CSModule
+            // 24. Revoke PAUSE_ROLE from old gate seal on CSModule
             module.revokeRole(module.PAUSE_ROLE(), deploymentConfig.gateSeal);
-            // 26. Revoke PAUSE_ROLE from old gate seal on Accounting
+            // 25. Revoke PAUSE_ROLE from old gate seal on Accounting
             accounting.revokeRole(
                 accounting.PAUSE_ROLE(),
                 deploymentConfig.gateSeal
             );
-            // 27. Revoke PAUSE_ROLE from old gate seal on FeeOracle
+            // 26. Revoke PAUSE_ROLE from old gate seal on FeeOracle
             oracle.revokeRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSeal);
-            // 28. Revoke PAUSE_ROLE from old gate seal on VettedGate
+            // 27. Revoke PAUSE_ROLE from old gate seal on VettedGate
             vettedGate.revokeRole(
                 vettedGate.PAUSE_ROLE(),
                 deploymentConfig.gateSeal
             );
-            // 29. Revoke PAUSE_ROLE from old gate seal on old Verifier
+            // 28. Revoke PAUSE_ROLE from old gate seal on old Verifier
             oldVerifier.revokeRole(
                 oldVerifier.PAUSE_ROLE(),
                 deploymentConfig.gateSeal
             );
-            // 30. Revoke PAUSE_ROLE from old gate seal on old Ejector
+            // 29. Revoke PAUSE_ROLE from old gate seal on old Ejector
             oldEjectorContract.revokeRole(
                 oldEjectorContract.PAUSE_ROLE(),
                 deploymentConfig.gateSeal
             );
-            // 31. Revoke PAUSE_ROLE from reseal manager on old Verifier
+            // 30. Revoke PAUSE_ROLE from reseal manager on old Verifier
             oldVerifier.revokeRole(
                 oldVerifier.PAUSE_ROLE(),
                 deployParams.resealManager
             );
-            // 32. Revoke RESUME_ROLE from reseal manager on old Verifier
+            // 31. Revoke RESUME_ROLE from reseal manager on old Verifier
             oldVerifier.revokeRole(
                 oldVerifier.RESUME_ROLE(),
                 deployParams.resealManager
             );
-            // 33. Revoke PAUSE_ROLE from reseal manager on old Ejector
+            // 32. Revoke PAUSE_ROLE from reseal manager on old Ejector
             oldEjectorContract.revokeRole(
                 oldEjectorContract.PAUSE_ROLE(),
                 deployParams.resealManager
             );
-            // 34. Revoke RESUME_ROLE from reseal manager on old Ejector
+            // 33. Revoke RESUME_ROLE from reseal manager on old Ejector
             oldEjectorContract.revokeRole(
                 oldEjectorContract.RESUME_ROLE(),
                 deployParams.resealManager
             );
 
-            // 35. Grant PAUSE_ROLE to gateSealV3 on CSModule
+            // 34. Grant PAUSE_ROLE to gateSealV3 on CSModule
             module.grantRole(module.PAUSE_ROLE(), deploymentConfig.gateSealV3);
-            // 36. Grant PAUSE_ROLE to gateSealV3 on Accounting
+            // 35. Grant PAUSE_ROLE to gateSealV3 on Accounting
             accounting.grantRole(
                 accounting.PAUSE_ROLE(),
                 deploymentConfig.gateSealV3
             );
-            // 37. Grant PAUSE_ROLE to gateSealV3 on FeeOracle
+            // 36. Grant PAUSE_ROLE to gateSealV3 on FeeOracle
             oracle.grantRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSealV3);
-            // 38. Grant PAUSE_ROLE to gateSealV3 on VettedGate
+            // 37. Grant PAUSE_ROLE to gateSealV3 on VettedGate
             vettedGate.grantRole(
                 vettedGate.PAUSE_ROLE(),
                 deploymentConfig.gateSealV3
@@ -408,12 +403,12 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
         {
             vm.startBroadcast(burnerAdmin);
-            // 39. Revoke REQUEST_BURN_SHARES_ROLE from Accounting
+            // 38. Revoke REQUEST_BURN_SHARES_ROLE from Accounting
             burner.revokeRole(
                 burner.REQUEST_BURN_SHARES_ROLE(),
                 address(accounting)
             );
-            // 40. Grant REQUEST_BURN_MY_STETH_ROLE to Accounting
+            // 39. Grant REQUEST_BURN_MY_STETH_ROLE to Accounting
             burner.grantRole(
                 burner.REQUEST_BURN_MY_STETH_ROLE(),
                 address(accounting)
@@ -428,9 +423,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
             address twgAdmin = _prepareAdmin(address(twg));
 
             vm.startBroadcast(twgAdmin);
-            // 41. Revoke TWG full-withdrawal role from old Ejector
+            // 40. Revoke TWG full-withdrawal role from old Ejector
             twg.revokeRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), oldEjector);
-            // 42. Grant TWG full-withdrawal role to new Ejector
+            // 41. Grant TWG full-withdrawal role to new Ejector
             twg.grantRole(
                 twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(),
                 deploymentConfig.ejector

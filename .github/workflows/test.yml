@@ -10,7 +10,7 @@ on:
       - develop
 
 env:
-  FOUNDRY_PROFILE: ci-quick
+  FOUNDRY_PROFILE: ci_quick
   TERM: ansi
 
 permissions:

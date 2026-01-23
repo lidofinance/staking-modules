@@ -30,7 +30,7 @@ contract InvariantAsserts is Test {
     function _isCiQuickProfile(
         bytes32 profileHash
     ) internal pure returns (bool) {
-        return profileHash == keccak256(abi.encodePacked("ci-quick"));
+        return profileHash == keccak256(abi.encodePacked("ci_quick"));
     }
 
     function skipInvariants() public returns (bool skip) {
@@ -47,7 +47,7 @@ contract InvariantAsserts is Test {
         skip = !isCIProfile && forkIsActive;
         if (skip) {
             console.log(
-                "WARN: Skipping invariants. It only runs with FOUNDRY_PROFILE=ci or ci-quick and active fork"
+                "WARN: Skipping invariants. It only runs with FOUNDRY_PROFILE=ci or ci_quick and active fork"
             );
             _skipped = true;
         }

@@ -94,7 +94,14 @@ contract CuratedCommon is ModuleFixtures {
             address(this)
         );
         module.grantRole(module.VERIFIER_ROLE(), address(this));
-        module.grantRole(module.SUBMIT_WITHDRAWALS_ROLE(), address(this));
+        module.grantRole(
+            module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(),
+            address(this)
+        );
+        module.grantRole(
+            module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(),
+            address(this)
+        );
         vm.stopPrank();
     }
 
@@ -334,8 +341,11 @@ contract CuratedSettleGeneralDelayedPenaltyAdvanced is
     CuratedCommon
 {}
 
+// contract CuratedReportWithdrawnValidators is
+//     ModuleReportWithdrawnValidators,
+//     CuratedCommon
+// {}
 //contract CuratedCompensateGeneralDelayedPenalty is ModuleCompensateGeneralDelayedPenalty, CuratedCommon {}
-//contract CuratedSubmitWithdrawals is ModuleSubmitWithdrawals, CuratedCommon {}
 //contract CuratedGetStakingModuleSummary is ModuleGetStakingModuleSummary, CuratedCommon {}
 //contract CuratedAccessControl is ModuleAccessControl, CuratedCommonNoRoles {}
 //contract CuratedStakingRouterAccessControl is ModuleStakingRouterAccessControl, CuratedCommonNoRoles {}

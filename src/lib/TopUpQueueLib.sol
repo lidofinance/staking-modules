@@ -38,6 +38,7 @@ using { noId, keyIndex, unwrap } for TopUpQueueItem global;
 interface ITopUpQueueLib {
     error TopUpQueueIsEmpty();
     error TopUpQueueIsFull();
+    error RewindForward();
 }
 
 library TopUpQueueLib {
@@ -45,8 +46,8 @@ library TopUpQueueLib {
 
     struct Queue {
         TopUpQueueItem[] items;
-        uint32 limit;
         uint32 head;
+        uint8 limit;
         bool active;
     }
 
@@ -63,9 +64,15 @@ library TopUpQueueLib {
             revert ITopUpQueueLib.TopUpQueueIsEmpty();
         }
 
-        // NOTE: Zeroing out the storage slot, since it's unreachable after `dequeue`.
-        self.items[self.head] = TopUpQueueItem.wrap(0x00);
         self.head++;
+    }
+
+    function rewind(Queue storage self, uint32 to) internal {
+        if (to >= self.head) {
+            revert ITopUpQueueLib.RewindForward();
+        }
+
+        self.head = to;
     }
 
     function capacity(Queue storage self) internal view returns (uint256) {

@@ -51,7 +51,7 @@ block_gas_limit = 60_000_000
 verbosity = 3
 fuzz = { runs = 10_000, max_test_rejects = 2_000_000 }
 
-[profile.ci-quick]
+[profile.ci_quick]
 verbosity = 3
 fuzz = { runs = 1000, max_test_rejects = 500_000 }
 

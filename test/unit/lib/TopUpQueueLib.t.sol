@@ -14,7 +14,7 @@ contract Library {
 
     TopUpQueueLib.Queue internal q;
 
-    function setLimit(uint32 limit) external {
+    function setLimit(uint8 limit) external {
         q.limit = limit;
     }
 
@@ -24,6 +24,10 @@ contract Library {
 
     function dequeue() external {
         q.dequeue();
+    }
+
+    function rewind(uint32 to) external {
+        q.rewind(to);
     }
 
     function at(uint256 index) external view returns (TopUpQueueItem) {
@@ -98,6 +102,51 @@ contract TopUpQueueLibTest is Test, Utilities {
     function test_dequeue_RevertWhenQueueEmpty() public {
         vm.expectRevert(ITopUpQueueLib.TopUpQueueIsEmpty.selector);
         q.dequeue();
+    }
+
+    function test_rewind() public {
+        TopUpQueueItem i0 = TopUpQueueItem.wrap(0x11);
+        TopUpQueueItem i1 = TopUpQueueItem.wrap(0x13);
+        TopUpQueueItem i2 = TopUpQueueItem.wrap(0x17);
+
+        q.setLimit(3);
+
+        q.enqueue(i0);
+        q.enqueue(i1);
+        q.enqueue(i2);
+
+        q.dequeue();
+        assertEq(q.length(), 2);
+
+        q.rewind(0);
+        assertEq(q.length(), 3);
+        assertTrue(q.at(0).eq(i0));
+
+        q.dequeue();
+        q.dequeue();
+        q.dequeue();
+        assertEq(q.length(), 0);
+
+        q.rewind(1);
+        assertEq(q.length(), 2);
+        assertTrue(q.at(0).eq(i1));
+    }
+
+    function test_rewind_RevertWhenRewindForward() public {
+        q.setLimit(3);
+
+        vm.expectRevert(ITopUpQueueLib.RewindForward.selector);
+        q.rewind(0);
+
+        q.enqueue(buf); // 0
+        q.enqueue(buf); // 1
+        q.enqueue(buf); // 2
+        q.dequeue();
+
+        for (uint32 to = 1; to < 3; ++to) {
+            vm.expectRevert(ITopUpQueueLib.RewindForward.selector);
+            q.rewind(to);
+        }
     }
 
     function test_length() public {

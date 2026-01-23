@@ -32,6 +32,8 @@ contract CSModule is ICSModule, BaseModule {
 
     bytes32 public constant MANAGE_TOP_UP_QUEUE_ROLE =
         keccak256("MANAGE_TOP_UP_QUEUE_ROLE");
+    bytes32 public constant REWIND_TOP_UP_QUEUE_ROLE =
+        keccak256("REWIND_TOP_UP_QUEUE_ROLE");
 
     // keccak256(abi.encode(uint256(keccak256("CSModule")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant CSMODULE_STORAGE_LOCATION =
@@ -65,7 +67,7 @@ contract CSModule is ICSModule, BaseModule {
 
     function initialize(
         address admin,
-        uint32 topUpQueueLimit
+        uint8 topUpQueueLimit
     ) external reinitializer(INITIALIZED_VERSION) {
         __BaseModule_init(admin);
 
@@ -272,8 +274,17 @@ contract CSModule is ICSModule, BaseModule {
     function setTopUpQueueLimit(
         uint256 limit
     ) external onlyActiveTopUpQueue onlyRole(MANAGE_TOP_UP_QUEUE_ROLE) {
-        _topUpQueue().limit = limit.toUint32();
+        _topUpQueue().limit = limit.toUint8();
         emit TopUpQueueLimitSet(limit);
+        _incrementModuleNonce();
+    }
+
+    /// @inheritdoc ICSModule
+    function rewindTopUpQueue(
+        uint256 to
+    ) external onlyActiveTopUpQueue onlyRole(REWIND_TOP_UP_QUEUE_ROLE) {
+        _topUpQueue().rewind(to.toUint32());
+        emit TopUpQueueRewound(to);
         _incrementModuleNonce();
     }
 
@@ -281,12 +292,13 @@ contract CSModule is ICSModule, BaseModule {
     function getTopUpQueue()
         external
         view
-        returns (bool active, uint256 limit, uint256 length)
+        returns (bool active, uint256 limit, uint256 length, uint256 head)
     {
         TopUpQueueLib.Queue storage q = _topUpQueue();
         active = q.active;
         limit = q.limit;
         length = q.length();
+        head = q.head;
     }
 
     /// @inheritdoc ICSModule
@@ -404,7 +416,7 @@ contract CSModule is ICSModule, BaseModule {
     }
 
     /// @dev Setting `topUpQueueLimit` to 0 effectively disables the top-up queue permanently.
-    function _initTopUpQueue(uint32 topUpQueueLimit) internal {
+    function _initTopUpQueue(uint8 topUpQueueLimit) internal {
         if (topUpQueueLimit > 0) {
             _topUpQueue().active = true;
             _topUpQueue().limit = topUpQueueLimit;

@@ -73,7 +73,7 @@ contract VerifierHistoricalBase is Test, Utilities {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.reportWithdrawnValidators.selector
+                IBaseModule.reportRegularWithdrawnValidators.selector
             ),
             ""
         );
@@ -141,7 +141,7 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.reportWithdrawnValidators.selector,
+                IBaseModule.reportRegularWithdrawnValidators.selector,
                 withdrawals
             )
         );
@@ -331,7 +331,7 @@ contract VerifierCrossForkHistoricalTest is VerifierHistoricalBase {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.reportWithdrawnValidators.selector,
+                IBaseModule.reportRegularWithdrawnValidators.selector,
                 withdrawals
             )
         );
@@ -388,7 +388,7 @@ contract VerifierCrossForkHistoricalAtPivotSlotTest is VerifierHistoricalBase {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.reportWithdrawnValidators.selector,
+                IBaseModule.reportRegularWithdrawnValidators.selector,
                 withdrawals
             )
         );
