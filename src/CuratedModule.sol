@@ -114,12 +114,10 @@ contract CuratedModule is ICuratedModule, BaseModule {
                 depositableValidatorsCount
             );
 
-            _setOperatorBalance(
+            _increaseOperatorBalance(
                 $,
                 operatorId,
-                $.operatorBalances[operatorId] +
-                    allocation *
-                    WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE
+                allocation * WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE
             );
         }
         unchecked {
@@ -428,12 +426,20 @@ contract CuratedModule is ICuratedModule, BaseModule {
             uint256 operatorId = uniqueOperatorIds[i];
             uint256 increment = perOperatorIncrements[operatorId];
             if (increment == 0) continue;
-            _setOperatorBalance(
-                $,
-                operatorId,
-                $.operatorBalances[operatorId] + increment
-            );
+            _increaseOperatorBalance($, operatorId, increment);
         }
+    }
+
+    function _increaseOperatorBalance(
+        CuratedModuleStorage storage $,
+        uint256 operatorId,
+        uint256 incrementWei
+    ) internal {
+        _setOperatorBalance(
+            $,
+            operatorId,
+            $.operatorBalances[operatorId] + incrementWei
+        );
     }
 
     function _setOperatorBalance(
