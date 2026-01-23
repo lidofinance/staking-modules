@@ -7,7 +7,7 @@ CONTRACT_ADDRESS_MAINNET = '0xdA7dE2ECdDfccC6c3AF10108Db212ACBBf9EA83F'
 with open("abi/csm_abi.json", "r") as file:
     CSM_ABI = file.read()
 
-REFERENCE_BLOCK_MAINNET = 22845716
+REFERENCE_BLOCK_MAINNET = 24293769
 ICS_ROUNDS = 3
 
 exclude_files = [
