@@ -26,8 +26,8 @@ scores = {
 }
 
 MAINNET_PERFORMANCE_REPORTS = [
-    "QmZyzTYdSait7BYCEToFJFJ6qVkX2HJBrrvXhk64e82xoK",  # 23849500 block
-    "QmdjvGW2yT8dgvK88sDaA9KFpmxTBxayLP6R1wm5mmzCnP"   # 24048776 block
+    "QmdjvGW2yT8dgvK88sDaA9KFpmxTBxayLP6R1wm5mmzCnP",  # 24048776 block
+    "QmaaokMVEPoEPcoMzVN5EtMuauTLfLnGZAkwma7nkpRCK4"   # 24247804 block
 ]
 
 MIN_SCORE = 5
@@ -135,14 +135,27 @@ def _csm_testnet_score(addresses: set[str]) -> int:
     with open(owners_file, "r") as f:
         node_operators = json.load(f)  # {no_id: owner}
 
+    holesky_file = current_dir / "eligible_addresses_holesky.json"
+    with open(holesky_file, "r") as f:
+        eligible_addresses_holesky = set(json.load(f))
+    
+    eligible_holesky = any(a in eligible_addresses_holesky for a in addresses)
+
     # Map owner address -> node operator id
     addr_to_id: dict[str, str] = {v.lower(): k for k, v in node_operators.items()}
     found_ids = {addr_to_id[a] for a in addresses if a in addr_to_id}
-    if not found_ids:
+    if not found_ids and not eligible_holesky:
         return 0
-
-    if any(no_id in eligible_ids for no_id in found_ids):
+    
+    testnet_eligible = False
+    if eligible_holesky:
+        print("    Found eligible Holesky address among given addresses.")
+        testnet_eligible = True
+    elif any(no_id in eligible_ids for no_id in found_ids):
         print("    Found node operator IDs for given addresses on Testnet:", ", ".join(found_ids & eligible_ids))
+        testnet_eligible = True
+
+    if testnet_eligible:
         # Optional Circles bonus
         circles_file = current_dir.parent / "humanity" / "circle_group_members.csv"
         is_circles_verified = is_addresses_in_csv(addresses, "circle_group_members.csv",

@@ -26,13 +26,13 @@ scores = {
 MIN_SCORE = 2
 MAX_SCORE = 7
 
-SNAPSHOT_VOTE_TIMESTAMP = 1766358000
+SNAPSHOT_VOTE_TIMESTAMP = 1769122800
 REQUIRED_SNAPSHOT_VOTES = 3
 REQUIRED_SNAPSHOT_VP = 100  # 100 LDO
 REQUIRED_ARAGON_VOTES = 2
 
-HIGH_SIGNAL_START_DATE = datetime(2025, 7, 1)  # YYYY, MM, DD
-HIGH_SIGNAL_END_DATE = datetime(2025, 12, 22)  # YYYY, MM, DD
+HIGH_SIGNAL_START_DATE = datetime(2025, 9, 1)  # YYYY, MM, DD
+HIGH_SIGNAL_END_DATE = datetime(2026, 1, 23)  # YYYY, MM, DD
 
 current_dir = Path(__file__).parent.resolve()
 CACHE_DIR = current_dir / ".cache"
@@ -274,7 +274,6 @@ def high_signal(addresses: set[str], score: float | None = None) -> int:
                 address_score = response.get("totalScores", 0)[0]["totalScore"]
 
             high_signal_score = max(address_score, high_signal_score)
-            print(f"    Found High-signal score {address_score} for address {address}")
 
             if high_signal_score == 0:
                 print("    No High-signal score found for the given addresses.")
@@ -299,7 +298,7 @@ def high_signal(addresses: set[str], score: float | None = None) -> int:
     elif high_signal_score > 80:
         hs_points = scores["high-signal-80"]
     else:
-        print("    High-signal score is below the minimum threshold (30). No additional points awarded.")
+        print(f"    High-signal score {high_signal_score} is below the minimum threshold (30). No additional points awarded.")
         return 0
     return hs_points
 
