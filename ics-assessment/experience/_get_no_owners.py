@@ -10,8 +10,8 @@ CONTRACT_ADDRESS_HOODI = '0x79CEf36D84743222f37765204Bec41E92a93E59d'
 with open("../../artifacts/mainnet/ics/abi/csm_abi.json", "r") as file:
     CSM_ABI = file.read()
 
-REFERENCE_BLOCK_MAINNET = 24071596
-REFERENCE_BLOCK_HOODI = 1879749
+REFERENCE_BLOCK_MAINNET = 24293769
+REFERENCE_BLOCK_HOODI = 2086013
 
 OUTPUT_FILE_MAINNET = 'node_operator_owners_mainnet.json'
 OUTPUT_FILE_HOODI = 'node_operator_owners_hoodi.json'

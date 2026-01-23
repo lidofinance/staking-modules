@@ -45,7 +45,7 @@ def main():
     )
     total = experience_score + humanity_score + engagement_score
     print(
-        f"Sum of all scores: {total} (limits: min=15)" + (" ✅" if total > 15 else " ❌")
+        f"Sum of all scores: {total} (limits: min=15)" + (" ✅" if total >= 15 else " ❌")
     )
 
     # Final resolution summary
