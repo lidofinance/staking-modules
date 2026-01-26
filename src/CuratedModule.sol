@@ -14,7 +14,6 @@ import { PackedPubkeys } from "./lib/PackedPubkeys.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "./lib/TransientUintUintMapLib.sol";
 import { CuratedDepositAllocator } from "./lib/allocator/CuratedDepositAllocator.sol";
-import { WithdrawnValidatorLib } from "./lib/WithdrawnValidatorLib.sol";
 
 contract CuratedModule is ICuratedModule, BaseModule {
     using PackedPubkeys for bytes;
@@ -117,7 +116,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             _increaseOperatorBalance(
                 $,
                 operatorId,
-                allocation * WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE
+                allocation * CuratedDepositAllocator.MIN_ACTIVATION_BALANCE
             );
         }
         unchecked {
@@ -151,6 +150,9 @@ contract CuratedModule is ICuratedModule, BaseModule {
         ) {
             revert InvalidInput();
         }
+        // @dev StakingRouter is expected to provide per-key top-up limits capped
+        // by MAX_EFFECTIVE_BALANCE and to avoid duplicate (operatorId, keyIndex)
+        // entries in a single request.
 
         publicKeys = _loadTopUpPublicKeys({
             packedPubkeys: packedPubkeys,

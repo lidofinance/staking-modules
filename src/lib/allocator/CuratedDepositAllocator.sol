@@ -15,7 +15,8 @@ import { AllocationState, DepositAllocatorGreedy } from "./DepositAllocatorGreed
 ///      - totalWithdrawnKeys <= totalDepositedKeys per operator.
 ///      - each operatorId < operatorsCount.
 library CuratedDepositAllocator {
-    uint256 internal constant MAX_EFFECTIVE_BALANCE = 2048 ether;
+    uint256 public constant MAX_EFFECTIVE_BALANCE = 2048 ether;
+    uint256 public constant MIN_ACTIVATION_BALANCE = 32 ether;
     struct DepositableOperatorsData {
         uint256[] weights; // Per-operator weights for allocation (0 means ineligible).
         uint256[] currents; // Current amounts per operator (units depend on caller: validator count for deposits, wei for top-ups).
