@@ -37,6 +37,9 @@ contract DeployLocalDevNet is DeployBase {
         config.gIFirstValidator = GIndices.FIRST_VALIDATOR_ELECTRA;
         config.gIFirstHistoricalSummary = GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA; // prettier-ignore
         config.gIFirstBlockRootInSummary = GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA; // prettier-ignore
+        config.gIFirstBalanceNode = GIndices.FIRST_BALANCE_NODE_ELECTRA;
+        config.gIFirstPendingConsolidation = GIndices
+            .FIRST_PENDING_CONSOLIDATION_ELECTRA;
         config.verifierFirstSupportedSlot =
             vm.envUint("DEVNET_ELECTRA_EPOCH") *
             config.slotsPerEpoch;
@@ -130,6 +133,9 @@ contract DeployLocalDevNet is DeployBase {
         config.sealingCommittee = 0x0000000000000000000000000000000000000000;
         config.sealDuration = 0;
         config.sealExpiryTimestamp = 0;
+
+        // DG
+        config.resealManager = vm.envAddress("CSM_RESEAL_MANAGER_ADDRESS");
 
         config.secondAdminAddress = vm.envOr(
             "CSM_SECOND_ADMIN_ADDRESS",
