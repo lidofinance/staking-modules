@@ -3,7 +3,8 @@
 
 pragma solidity 0.8.33;
 
-import { DeployImplementationsBase } from "./DeployImplementationsBase.s.sol";
+import { DeployCSMImplementationsBase } from "./DeployCSMImplementationsBase.s.sol";
+import { DeployMainnet } from "./DeployMainnet.s.sol";
 import { HashConsensus } from "../src/lib/base-oracle/HashConsensus.sol";
 import { CSModule } from "../src/CSModule.sol";
 import { Accounting } from "../src/Accounting.sol";
@@ -18,11 +19,10 @@ import { ValidatorStrikes } from "../src/ValidatorStrikes.sol";
 import { Ejector } from "../src/Ejector.sol";
 import { Verifier } from "../src/Verifier.sol";
 import { DeploymentHelpers } from "../test/helpers/Fixtures.sol";
-import { DeployHoodi } from "./DeployHoodi.s.sol";
 
-contract DeployImplementationsHoodi is
-    DeployImplementationsBase,
-    DeployHoodi,
+contract DeployCSMImplementationsMainnet is
+    DeployCSMImplementationsBase,
+    DeployMainnet,
     DeploymentHelpers
 {
     function deploy(

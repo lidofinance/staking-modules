@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { DeployImplementationsBase } from "./DeployImplementationsBase.s.sol";
+import { DeployCSMImplementationsBase } from "./DeployCSMImplementationsBase.s.sol";
 import { DeployLocalDevNet } from "./DeployLocalDevNet.s.sol";
 import { HashConsensus } from "../src/lib/base-oracle/HashConsensus.sol";
 import { CSModule } from "../src/CSModule.sol";
@@ -20,8 +20,8 @@ import { Ejector } from "../src/Ejector.sol";
 import { Verifier } from "../src/Verifier.sol";
 import { DeploymentHelpers } from "../test/helpers/Fixtures.sol";
 
-contract DeployImplementationsLocalDevNet is
-    DeployImplementationsBase,
+contract DeployCSMImplementationsLocalDevNet is
+    DeployCSMImplementationsBase,
     DeployLocalDevNet,
     DeploymentHelpers
 {

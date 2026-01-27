@@ -10,20 +10,16 @@ deploy_script_name := if chain == "mainnet" {
     "DeployLocalDevNet"
 } else if chain == "hoodi" {
     "DeployHoodi"
-} else if chain == "holesky" {
-    "DeployHolesky"
 } else {
     error("Unsupported chain " + chain)
 }
 
-deploy_implementations_script_name := if chain == "mainnet" {
-    "DeployImplementationsMainnet"
+deploy_csm_implementations_script_name := if chain == "mainnet" {
+    "DeployCSMImplementationsMainnet"
 } else if chain == "hoodi" {
-    "DeployImplementationsHoodi"
-} else if chain == "holesky" {
-    "DeployImplementationsHolesky"
+    "DeployCSMImplementationsHoodi"
 } else if chain == "local-devnet" {
-    "SCRIPT_IS_NOT_DEFINED"
+    "DeployCSMImplementationsLocalDevNet"
 } else {
     error("Unsupported chain " + chain)
 }
@@ -34,14 +30,12 @@ deploy_config_path := if chain == "mainnet" {
     "artifacts/local-devnet/deploy-local-devnet.json"
 } else if chain == "hoodi" {
     "artifacts/hoodi/deploy-hoodi.json"
-} else if chain == "holesky" {
-    "artifacts/holesky/deploy-holesky.json"
 } else {
     error("Unsupported chain " + chain)
 }
 
 deploy_script_path := "script" / deploy_script_name + ".s.sol:" + deploy_script_name
-deploy_impls_script_path := "script" / deploy_implementations_script_name + ".s.sol:" + deploy_implementations_script_name
+deploy_csm_impls_script_path := "script" / deploy_csm_implementations_script_name + ".s.sol:" + deploy_csm_implementations_script_name
 
 anvil_host := env_var_or_default("ANVIL_IP_ADDR", "127.0.0.1")
 anvil_port := env_var_or_default("ANVIL_PORT", "8545")
@@ -238,7 +232,7 @@ deploy-live-dry *args:
     just _deploy-live-no-confirm {{args}}
 
 verify-live *args:
-    just _warn "Pass --chain=your_chain manually. e.g. --chain=holesky for testnet deployment"
+    just _warn "Pass --chain=your_chain manually. e.g. --chain=hoodi for testnet deployment"
     forge script {{deploy_script_path}} --sig="run(string)" --rpc-url ${RPC_URL} --verify {{args}} --unlocked -- `git rev-parse HEAD`
 
 _deploy-live-no-confirm *args:
@@ -246,7 +240,7 @@ _deploy-live-no-confirm *args:
 
 _deploy-impl *args:
     FOUNDRY_PROFILE=deploy \
-        forge script {{deploy_impls_script_path}} --sig="deploy(string,string)" \
+        forge script {{deploy_csm_impls_script_path}} --sig="deploy(string,string)" \
             --rpc-url ${RPC_URL} {{disable_code_size_limit}} {{args}} \
             -- {{deploy_config_path}} `git rev-parse HEAD`
 
@@ -254,14 +248,14 @@ _deploy-impl *args:
 deploy-impl-live *args:
     ARTIFACTS_DIR=./artifacts/latest/ just _deploy-impl --broadcast --verify {{args}}
 
-    cp ./broadcast/{{deploy_implementations_script_name}}.s.sol/\
+    cp ./broadcast/{{deploy_csm_implementations_script_name}}.s.sol/\
         $(cast chain-id --rpc-url=$RPC_URL)\
         /deploy-latest.json ./artifacts/latest/transactions.json
 
 deploy-impl-dry *args:
     just _deploy-impl {{args}}
 
-    cp ./broadcast/{{deploy_implementations_script_name}}.s.sol/\
+    cp ./broadcast/{{deploy_csm_implementations_script_name}}.s.sol/\
         $(cast chain-id --rpc-url=$RPC_URL)\
         /dry-run/deploy-latest.json ./artifacts/local/transactions.json
 
