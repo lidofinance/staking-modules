@@ -15,7 +15,7 @@ import { CSModule } from "src/CSModule.sol";
 import { CuratedDepositAllocator } from "src/lib/allocator/CuratedDepositAllocator.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 // forge-lint: disable-next-line(unaliased-plain-import)
-import "./ModuleAbstract.t.sol";
+import "./ModuleAbstract/_All.t.sol";
 
 contract CuratedCommon is ModuleFixtures {
     CuratedModule cm;
