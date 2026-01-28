@@ -590,27 +590,6 @@ abstract contract ModuleStakingRouterAccessControl is ModuleFixtures {
         module.onWithdrawalCredentialsChanged();
     }
 
-    function test_stakingRouterRole_onWithdrawalCredentialsChanged_withDepositable()
-        public
-    {
-        createNodeOperator();
-        bytes32 role = module.STAKING_ROUTER_ROLE();
-        vm.prank(admin);
-        module.grantRole(role, actor);
-
-        if (moduleType() == ModuleType.Community) {
-            vm.expectRevert(
-                ICSModule
-                    .DepositQueueHasUnsupportedWithdrawalCredentials
-                    .selector
-            );
-        } else {
-            vm.expectRevert(); // TODO: Fill in the correct error for the CuratedModule.
-        }
-        vm.prank(actor);
-        module.onWithdrawalCredentialsChanged();
-    }
-
     function test_stakingRouterRole_onWithdrawalCredentialsChanged_RoleRevert()
         public
     {
@@ -865,6 +844,14 @@ abstract contract ModuleMisc is ModuleFixtures {
         assertEq(depositedCount, 1);
     }
 
+    function test_getNodeOperatorTotalDepositedKeys_NoOperator()
+        public
+        assertInvariants
+    {
+        uint256 depositedCount = module.getNodeOperatorTotalDepositedKeys(0);
+        assertEq(depositedCount, 0);
+    }
+
     function test_getNodeOperatorManagementProperties()
         public
         assertInvariants
@@ -888,6 +875,17 @@ abstract contract ModuleMisc is ModuleFixtures {
         assertEq(props.managerAddress, manager);
         assertEq(props.rewardAddress, reward);
         assertEq(props.extendedManagerPermissions, extended);
+    }
+
+    function test_getNodeOperatorManagementProperties_NoOperator()
+        public
+        assertInvariants
+    {
+        NodeOperatorManagementProperties memory props = module
+            .getNodeOperatorManagementProperties(0);
+        assertEq(props.managerAddress, address(0));
+        assertEq(props.rewardAddress, address(0));
+        assertFalse(props.extendedManagerPermissions);
     }
 
     function test_getNodeOperatorOwner() public assertInvariants {

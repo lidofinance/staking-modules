@@ -38,6 +38,12 @@ import { WstETHMock } from "../../helpers/mocks/WstETHMock.sol";
 import { ModuleFixtures } from "./_Base.t.sol";
 
 abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
+    function test_isValidatorWithdrawn_DefaultFalse() public assertInvariants {
+        uint256 noId = createNodeOperator(1);
+
+        assertFalse(module.isValidatorWithdrawn(noId, 0));
+    }
+
     function test_reportRegularWithdrawnValidators_NoPenalties()
         public
         assertInvariants
@@ -1551,6 +1557,54 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         );
     }
 
+    function test_reportRegularWithdrawnValidators_emptyBatch_NoNonceChange()
+        public
+        assertInvariants
+    {
+        createNodeOperator(1);
+        uint256 nonceBefore = module.getNonce();
+
+        WithdrawnValidatorInfo[]
+            memory validatorInfos = new WithdrawnValidatorInfo[](0);
+        module.reportRegularWithdrawnValidators(validatorInfos);
+
+        assertEq(
+            module.getNonce(),
+            nonceBefore,
+            "Nonce should not change when batch is empty"
+        );
+    }
+
+    function test_reportRegularWithdrawnValidators_allAlreadyWithdrawn_NoNonceChange()
+        public
+        assertInvariants
+    {
+        uint256 noId = createNodeOperator(2);
+        module.obtainDepositData(2, "");
+
+        WithdrawnValidatorInfo[]
+            memory validatorInfos = new WithdrawnValidatorInfo[](2);
+        for (uint256 i = 0; i < 2; ++i) {
+            validatorInfos[i] = WithdrawnValidatorInfo({
+                nodeOperatorId: noId,
+                keyIndex: i,
+                exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+                slashingPenalty: 0,
+                isSlashed: false
+            });
+        }
+
+        module.reportRegularWithdrawnValidators(validatorInfos);
+        uint256 nonceBefore = module.getNonce();
+        module.reportRegularWithdrawnValidators(validatorInfos);
+
+        assertEq(
+            module.getNonce(),
+            nonceBefore,
+            "Nonce should not change when all keys are already withdrawn"
+        );
+    }
+
     function test_reportRegularWithdrawnValidators_nonceIncrementsOnceForManyWithdrawals()
         public
         assertInvariants
@@ -1589,6 +1643,12 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         module.onValidatorSlashed(noId, keyIndex);
         assertTrue(module.isValidatorSlashed(noId, keyIndex));
+    }
+
+    function test_isValidatorSlashed_DefaultFalse() public assertInvariants {
+        uint256 noId = createNodeOperator(1);
+
+        assertFalse(module.isValidatorSlashed(noId, 0));
     }
 
     function test_onValidatorSlashed_RevertWhen_CalledTwice() public {

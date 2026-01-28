@@ -391,7 +391,99 @@ contract CSMPauseAffectingTest is ModulePauseAffectingTest, CSMCommon {}
 
 contract CSMCreateNodeOperator is ModuleCreateNodeOperator, CSMCommon {}
 
-contract CSMAddValidatorKeys is ModuleAddValidatorKeys, CSMCommon {}
+contract CSMAddValidatorKeys is ModuleAddValidatorKeys, CSMCommon {
+    function test_AddValidatorKeysETH_EmitsBatchEnqueued()
+        public
+        assertInvariants
+        brutalizeMemory
+    {
+        uint256 noId = createNodeOperator();
+        (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
+
+        uint256 required = accounting.getRequiredBondForNextKeys(0, 1);
+        vm.deal(nodeOperator, required);
+
+        vm.expectEmit(address(module));
+        emit ICSModule.BatchEnqueued(
+            ICSModule(address(module)).QUEUE_LOWEST_PRIORITY(),
+            noId,
+            1
+        );
+        vm.prank(nodeOperator);
+        module.addValidatorKeysETH{ value: required }(
+            nodeOperator,
+            noId,
+            1,
+            keys,
+            signatures
+        );
+    }
+
+    function test_AddValidatorKeysStETH_EmitsBatchEnqueued()
+        public
+        assertInvariants
+        brutalizeMemory
+    {
+        uint256 noId = createNodeOperator();
+        (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
+
+        vm.deal(nodeOperator, BOND_SIZE + 1 wei);
+        vm.startPrank(nodeOperator);
+        stETH.submit{ value: BOND_SIZE + 1 wei }(address(0));
+
+        vm.expectEmit(address(module));
+        emit ICSModule.BatchEnqueued(
+            ICSModule(address(module)).QUEUE_LOWEST_PRIORITY(),
+            noId,
+            1
+        );
+        module.addValidatorKeysStETH(
+            nodeOperator,
+            noId,
+            1,
+            keys,
+            signatures,
+            IAccounting.PermitInput({
+                value: BOND_SIZE,
+                deadline: 0,
+                v: 0,
+                r: 0,
+                s: 0
+            })
+        );
+    }
+
+    function test_AddValidatorKeysWstETH_EmitsBatchEnqueued()
+        public
+        assertInvariants
+        brutalizeMemory
+    {
+        uint256 noId = createNodeOperator();
+        uint256 toWrap = BOND_SIZE + 1 wei;
+        vm.deal(nodeOperator, toWrap);
+        vm.startPrank(nodeOperator);
+        stETH.submit{ value: toWrap }(address(0));
+        stETH.approve(address(wstETH), UINT256_MAX);
+        wstETH.wrap(toWrap);
+
+        (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
+
+        vm.expectEmit(address(module));
+        emit ICSModule.BatchEnqueued(
+            ICSModule(address(module)).QUEUE_LOWEST_PRIORITY(),
+            noId,
+            1
+        );
+        module.addValidatorKeysWstETH(
+            nodeOperator,
+            noId,
+            1,
+            keys,
+            signatures,
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
+        );
+    }
+}
 
 contract CSMAddValidatorKeysViaGate is
     ModuleAddValidatorKeysViaGate,
@@ -403,7 +495,109 @@ contract CSMAddValidatorKeysNegative is
     CSMCommon
 {}
 
-contract CSMObtainDepositData is ModuleObtainDepositData, CSMCommon {}
+contract CSMObtainDepositData is ModuleObtainDepositData, CSMCommon {
+    function test_obtainDepositData_MultipleOperators_EmitsDepositableCountChanged()
+        public
+        assertInvariants
+    {
+        uint256 firstId = createNodeOperator(2);
+        uint256 secondId = createNodeOperator(3);
+        uint256 thirdId = createNodeOperator(1);
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.DepositableSigningKeysCountChanged(firstId, 0);
+        vm.expectEmit(address(module));
+        emit IBaseModule.DepositableSigningKeysCountChanged(secondId, 0);
+        vm.expectEmit(address(module));
+        emit IBaseModule.DepositableSigningKeysCountChanged(thirdId, 0);
+
+        module.obtainDepositData(6, "");
+    }
+
+    function test_obtainDepositData_zeroDeposits_enqueuedCount()
+        public
+        assertInvariants
+    {
+        uint256 noId = createNodeOperator();
+
+        module.obtainDepositData(0, "");
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(no.enqueuedCount, 1);
+    }
+
+    function test_obtainDepositData_counters_WhenLessThanLastBatch_enqueuedCount()
+        public
+        assertInvariants
+    {
+        uint256 noId = createNodeOperator(7);
+
+        module.obtainDepositData(3, "");
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(no.enqueuedCount, 4);
+    }
+
+    function test_obtainDepositData_counters_enqueuedCount()
+        public
+        assertInvariants
+    {
+        uint256 noId = createNodeOperator(1);
+
+        module.obtainDepositData(1, "");
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(no.enqueuedCount, 0);
+    }
+
+    function testFuzz_obtainDepositData_OneOperator_enqueuedCount(
+        uint256 batchCount,
+        uint256 random
+    ) public assertInvariants {
+        batchCount = bound(batchCount, 1, 20);
+        random = bound(random, 1, 20);
+        vm.assume(batchCount > random);
+
+        uint256 totalKeys = 1;
+        createNodeOperator(1);
+        for (uint256 i = 1; i < batchCount + 1; ++i) {
+            uint256 keys = i / random + 1;
+            uploadMoreKeys(0, keys);
+            totalKeys += keys;
+        }
+
+        module.obtainDepositData(totalKeys - random, "");
+
+        NodeOperator memory no = module.getNodeOperator(0);
+        assertEq(no.enqueuedCount, random);
+    }
+
+    function testFuzz_obtainDepositData_MultipleOperators_exactCounters(
+        uint256 batchCount,
+        uint256 random
+    ) public assertInvariants {
+        batchCount = bound(batchCount, 1, 20);
+        random = bound(random, 1, 20);
+        vm.assume(batchCount > random);
+
+        uint256 totalKeys;
+        for (uint256 i = 1; i < batchCount + 1; ++i) {
+            uint256 keys = i / random + 1;
+            createNodeOperator(keys);
+            totalKeys += keys;
+        }
+
+        module.obtainDepositData(totalKeys - random, "");
+
+        (
+            ,
+            uint256 totalDepositedValidators,
+            uint256 depositableValidatorsCount
+        ) = module.getStakingModuleSummary();
+        assertEq(totalDepositedValidators, totalKeys - random);
+        assertEq(depositableValidatorsCount, random);
+    }
+}
 
 contract CSMTopUpQueue is CSMCommon {
     function setUp() public override {
@@ -1530,7 +1724,34 @@ contract CSMUnsafeUpdateValidatorsCount is
 contract CSMReportGeneralDelayedPenalty is
     ModuleReportGeneralDelayedPenalty,
     CSMCommon
-{}
+{
+    function test_reportGeneralDelayedPenalty_UpdateDepositableAfterUnlock_EmitsBatchEnqueued()
+        public
+        assertInvariants
+    {
+        uint256 noId = createNodeOperator();
+
+        module.reportGeneralDelayedPenalty(
+            noId,
+            bytes32(abi.encode(1)),
+            BOND_SIZE / 2,
+            "Test penalty"
+        );
+
+        createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        vm.warp(accounting.getBondLockPeriod() + 1);
+
+        vm.expectEmit(address(module));
+        emit ICSModule.BatchEnqueued(
+            ICSModule(address(module)).QUEUE_LOWEST_PRIORITY(),
+            noId,
+            1
+        );
+        module.updateDepositableValidatorsCount(noId);
+    }
+}
 
 contract CSMCancelGeneralDelayedPenalty is
     ModuleCancelGeneralDelayedPenalty,
@@ -1613,6 +1834,21 @@ contract CSMStakingRouterAccessControl is
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
         csm.obtainDepositData(0, hex"", UintArr(), UintArr(), UintArr());
+    }
+
+    function test_stakingRouterRole_onWithdrawalCredentialsChanged_withDepositable()
+        public
+    {
+        createNodeOperator();
+        bytes32 role = module.STAKING_ROUTER_ROLE();
+        vm.prank(admin);
+        module.grantRole(role, actor);
+
+        vm.expectRevert(
+            ICSModule.DepositQueueHasUnsupportedWithdrawalCredentials.selector
+        );
+        vm.prank(actor);
+        module.onWithdrawalCredentialsChanged();
     }
 }
 

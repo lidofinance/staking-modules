@@ -276,6 +276,21 @@ abstract contract ModuleGetSigningKeys is ModuleFixtures {
         assertEq(obtainedKeys, wantedKey, "unexpected key at position 1");
     }
 
+    function test_getSigningKeys_RevertWhen_InvalidOffset()
+        public
+        assertInvariants
+        brutalizeMemory
+    {
+        uint256 noId = createNodeOperator(2);
+
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.getSigningKeys({
+            nodeOperatorId: noId,
+            startIndex: 2,
+            keysCount: 1
+        });
+    }
+
     function test_getSigningKeys_WhenNoNodeOperator()
         public
         assertInvariants
@@ -374,6 +389,21 @@ abstract contract ModuleGetSigningKeysWithSignatures is ModuleFixtures {
             wantedSignature,
             "unexpected sitnature at position 1"
         );
+    }
+
+    function test_getSigningKeysWithSignatures_RevertWhen_InvalidOffset()
+        public
+        assertInvariants
+        brutalizeMemory
+    {
+        uint256 noId = createNodeOperator(2);
+
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.getSigningKeysWithSignatures({
+            nodeOperatorId: noId,
+            startIndex: 2,
+            keysCount: 1
+        });
     }
 
     function test_getSigningKeysWithSignatures_WhenNoNodeOperator()

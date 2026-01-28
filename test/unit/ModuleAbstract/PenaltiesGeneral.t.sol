@@ -106,6 +106,37 @@ abstract contract ModuleReportGeneralDelayedPenalty is ModuleFixtures {
         );
     }
 
+    function test_reportGeneralDelayedPenalty_ZeroAmountWithAdditionalFine()
+        public
+        assertInvariants
+    {
+        uint256 noId = createNodeOperator();
+        uint256 fine = 1 ether;
+
+        module.PARAMETERS_REGISTRY().setGeneralDelayedPenaltyAdditionalFine(
+            0,
+            fine
+        );
+
+        vm.expectEmit(address(module));
+        emit IGeneralPenalty.GeneralDelayedPenaltyReported(
+            noId,
+            bytes32(abi.encode(1)),
+            0,
+            fine,
+            "Test penalty"
+        );
+        module.reportGeneralDelayedPenalty(
+            noId,
+            bytes32(abi.encode(1)),
+            0,
+            "Test penalty"
+        );
+
+        uint256 lockedBond = accounting.getActualLockedBond(noId);
+        assertEq(lockedBond, fine);
+    }
+
     function test_reportGeneralDelayedPenalty_RevertWhen_ZeroPenaltyType()
         public
     {
@@ -173,14 +204,6 @@ abstract contract ModuleReportGeneralDelayedPenalty is ModuleFixtures {
 
         vm.warp(accounting.getBondLockPeriod() + 1);
 
-        if (moduleType() == ModuleType.Community) {
-            vm.expectEmit(address(module));
-            emit ICSModule.BatchEnqueued(
-                ICSModule(address(module)).QUEUE_LOWEST_PRIORITY(),
-                noId,
-                1
-            );
-        }
         module.updateDepositableValidatorsCount(noId);
 
         no = module.getNodeOperator(noId);

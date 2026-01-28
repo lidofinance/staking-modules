@@ -57,14 +57,6 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             emit IStakingModule.SigningKeyAdded(noId, keys);
             vm.expectEmit(address(module));
             emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
-            if (moduleType() == ModuleType.Community) {
-                vm.expectEmit(address(module));
-                emit ICSModule.BatchEnqueued(
-                    ICSModule(address(module)).QUEUE_LOWEST_PRIORITY(),
-                    noId,
-                    1
-                );
-            }
         }
         module.addValidatorKeysWstETH(
             nodeOperator,
@@ -210,14 +202,6 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             emit IStakingModule.SigningKeyAdded(noId, keys);
             vm.expectEmit(address(module));
             emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
-            if (moduleType() == ModuleType.Community) {
-                vm.expectEmit(address(module));
-                emit ICSModule.BatchEnqueued(
-                    ICSModule(address(module)).QUEUE_LOWEST_PRIORITY(),
-                    noId,
-                    1
-                );
-            }
         }
         module.addValidatorKeysStETH(
             nodeOperator,
@@ -376,14 +360,6 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             emit IStakingModule.SigningKeyAdded(noId, keys);
             vm.expectEmit(address(module));
             emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
-            if (moduleType() == ModuleType.Community) {
-                vm.expectEmit(address(module));
-                emit ICSModule.BatchEnqueued(
-                    ICSModule(address(module)).QUEUE_LOWEST_PRIORITY(),
-                    noId,
-                    1
-                );
-            }
         }
         vm.prank(nodeOperator);
         module.addValidatorKeysETH{ value: required }(

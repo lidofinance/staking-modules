@@ -142,6 +142,20 @@ contract DepositQueueLibTest is Test {
         vm.expectRevert(IDepositQueueLib.DepositQueueIsEmpty.selector);
         q.dequeue();
     }
+
+    function test_at_returnsNilForOutOfBounds() public {
+        q.enqueue(1, 2);
+
+        assertTrue(q.at(42).isNil());
+    }
+
+    function test_peek_returnsNilAfterFullDequeue() public {
+        q.enqueue(1, 2);
+
+        q.dequeue();
+
+        assertTrue(q.peek().isNil());
+    }
 }
 
 function eq(Batch lhs, Batch rhs) pure returns (bool) {

@@ -252,39 +252,7 @@ contract CuratedAddValidatorKeysNegative is
     CuratedCommon
 {}
 
-contract CuratedObtainDepositData is CuratedCommon {
-    function test_obtainDepositData() public assertInvariants {
-        uint256 nodeOperatorId = createNodeOperator(1);
-        (bytes memory keys, bytes memory signatures) = module
-            .getSigningKeysWithSignatures(nodeOperatorId, 0, 1);
-
-        vm.expectEmit(address(module));
-        emit IBaseModule.DepositableSigningKeysCountChanged(nodeOperatorId, 0);
-        (bytes memory obtainedKeys, bytes memory obtainedSignatures) = module
-            .obtainDepositData(1, "");
-        assertEq(obtainedKeys, keys);
-        assertEq(obtainedSignatures, signatures);
-    }
-
-    function test_obtainDepositData_counters() public assertInvariants {
-        uint256 keysCount = 1;
-        uint256 noId = createNodeOperator(keysCount);
-        (bytes memory keys, bytes memory signatures) = module
-            .getSigningKeysWithSignatures(noId, 0, keysCount);
-
-        vm.expectEmit(address(module));
-        emit IBaseModule.DepositedSigningKeysCountChanged(noId, keysCount);
-        (bytes memory depositedKeys, bytes memory depositedSignatures) = module
-            .obtainDepositData(keysCount, "");
-
-        assertEq(keys, depositedKeys);
-        assertEq(signatures, depositedSignatures);
-
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalDepositedKeys, 1);
-        assertEq(no.depositableValidatorsCount, 0);
-    }
-
+contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
     function test_obtainDepositData_updatesOperatorBalances()
         public
         assertInvariants
@@ -313,131 +281,6 @@ contract CuratedObtainDepositData is CuratedCommon {
             firstBalance + secondBalance,
             CuratedDepositAllocator.MIN_ACTIVATION_BALANCE
         );
-    }
-
-    function test_obtainDepositData_zeroDeposits() public assertInvariants {
-        uint256 noId = createNodeOperator();
-        uint256 nonceBefore = module.getNonce();
-
-        (bytes memory publicKeys, bytes memory signatures) = module
-            .obtainDepositData(0, "");
-
-        assertEq(publicKeys.length, 0);
-        assertEq(signatures.length, 0);
-        assertEq(module.getNonce(), nonceBefore + 1);
-
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalDepositedKeys, 0);
-        assertEq(no.depositableValidatorsCount, 1);
-    }
-
-    function test_obtainDepositData_unvettedKeys() public assertInvariants {
-        createNodeOperator(2);
-        uint256 secondNoId = createNodeOperator(1);
-        createNodeOperator(3);
-
-        unvetKeys(secondNoId, 0);
-
-        module.obtainDepositData(5, "");
-
-        (
-            ,
-            uint256 totalDepositedValidators,
-            uint256 depositableValidatorsCount
-        ) = module.getStakingModuleSummary();
-        assertEq(totalDepositedValidators, 5);
-        assertEq(depositableValidatorsCount, 0);
-    }
-
-    function test_obtainDepositData_counters_WhenLessThanLastBatch()
-        public
-        assertInvariants
-    {
-        uint256 noId = createNodeOperator(7);
-
-        vm.expectEmit(address(module));
-        emit IBaseModule.DepositedSigningKeysCountChanged(noId, 3);
-        module.obtainDepositData(3, "");
-
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalDepositedKeys, 3);
-        assertEq(no.depositableValidatorsCount, 4);
-    }
-
-    function test_obtainDepositData_RevertWhen_NoMoreKeys()
-        public
-        assertInvariants
-    {
-        vm.expectRevert(IBaseModule.NotEnoughKeys.selector);
-        module.obtainDepositData(1, "");
-    }
-
-    function test_obtainDepositData_nonceChanged() public assertInvariants {
-        createNodeOperator();
-        uint256 nonce = module.getNonce();
-
-        module.obtainDepositData(1, "");
-        assertEq(module.getNonce(), nonce + 1);
-    }
-
-    function testFuzz_obtainDepositData_MultipleOperators(
-        uint256 batchCount,
-        uint256 random
-    ) public assertInvariants {
-        batchCount = bound(batchCount, 1, 20);
-        random = bound(random, 1, 20);
-        vm.assume(batchCount > random);
-
-        uint256 totalKeys;
-        for (uint256 i = 1; i < batchCount + 1; ++i) {
-            uint256 keys = i / random + 1;
-            createNodeOperator(keys);
-            totalKeys += keys;
-        }
-
-        module.obtainDepositData(totalKeys - random, "");
-
-        (
-            ,
-            uint256 totalDepositedValidators,
-            uint256 depositableValidatorsCount
-        ) = module.getStakingModuleSummary();
-        assertLe(totalDepositedValidators, totalKeys - random);
-        assertEq(
-            totalDepositedValidators + depositableValidatorsCount,
-            totalKeys
-        );
-    }
-
-    function testFuzz_obtainDepositData_OneOperator(
-        uint256 batchCount,
-        uint256 random
-    ) public assertInvariants {
-        batchCount = bound(batchCount, 1, 20);
-        random = bound(random, 1, 20);
-        vm.assume(batchCount > random);
-
-        uint256 totalKeys = 1;
-        createNodeOperator(1);
-        for (uint256 i = 1; i < batchCount + 1; ++i) {
-            uint256 keys = i / random + 1;
-            uploadMoreKeys(0, keys);
-            totalKeys += keys;
-        }
-
-        module.obtainDepositData(totalKeys - random, "");
-
-        (
-            ,
-            uint256 totalDepositedValidators,
-            uint256 depositableValidatorsCount
-        ) = module.getStakingModuleSummary();
-        assertEq(totalDepositedValidators, totalKeys - random);
-        assertEq(depositableValidatorsCount, random);
-
-        NodeOperator memory no = module.getNodeOperator(0);
-        assertEq(no.totalDepositedKeys, totalKeys - random);
-        assertEq(no.depositableValidatorsCount, random);
     }
 
     function test_obtainDepositData_DistributesByWeight()
@@ -704,23 +547,6 @@ contract CuratedObtainDepositData is CuratedCommon {
         assertEq(no0.totalDepositedKeys, 2);
         assertEq(no1.totalDepositedKeys, 1);
         assertEq(pubkeys, expectedKeys);
-    }
-
-    function test_stakingRouterRole_obtainDepositData() public {
-        bytes32 role = module.STAKING_ROUTER_ROLE();
-        vm.prank(admin);
-        module.grantRole(role, actor);
-
-        vm.prank(actor);
-        module.obtainDepositData(0, "");
-    }
-
-    function test_stakingRouterRole_obtainDepositData_revert() public {
-        bytes32 role = module.STAKING_ROUTER_ROLE();
-
-        vm.prank(stranger);
-        expectRoleRevert(stranger, role);
-        module.obtainDepositData(0, "");
     }
 }
 
@@ -2017,6 +1843,20 @@ contract CuratedStakingRouterAccessControl is
         override
     {
         vm.skip(true);
+    }
+
+    function test_stakingRouterRole_onWithdrawalCredentialsChanged_withDepositable()
+        public
+    {
+        createNodeOperator();
+        bytes32 role = module.STAKING_ROUTER_ROLE();
+        vm.prank(admin);
+        module.grantRole(role, actor);
+
+        // TODO: need proper revert message from onWithdrawalCredentialsChanged
+        vm.expectRevert();
+        vm.prank(actor);
+        module.onWithdrawalCredentialsChanged();
     }
 }
 

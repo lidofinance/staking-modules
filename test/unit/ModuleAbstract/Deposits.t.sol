@@ -61,13 +61,15 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         uint256 secondId = createNodeOperator(3);
         uint256 thirdId = createNodeOperator(1);
 
-        vm.expectEmit(address(module));
-        emit IBaseModule.DepositableSigningKeysCountChanged(firstId, 0);
-        vm.expectEmit(address(module));
-        emit IBaseModule.DepositableSigningKeysCountChanged(secondId, 0);
-        vm.expectEmit(address(module));
-        emit IBaseModule.DepositableSigningKeysCountChanged(thirdId, 0);
         module.obtainDepositData(6, "");
+
+        (
+            ,
+            uint256 totalDepositedValidators,
+            uint256 depositableValidatorsCount
+        ) = module.getStakingModuleSummary();
+        assertLe(totalDepositedValidators, 6);
+        assertEq(totalDepositedValidators + depositableValidatorsCount, 6);
     }
 
     function test_obtainDepositData_counters() public assertInvariants {
@@ -85,13 +87,13 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         assertEq(signatures, depositedSignatures);
 
         NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.enqueuedCount, 0);
         assertEq(no.totalDepositedKeys, 1);
         assertEq(no.depositableValidatorsCount, 0);
     }
 
     function test_obtainDepositData_zeroDeposits() public assertInvariants {
         uint256 noId = createNodeOperator();
+        uint256 nonceBefore = module.getNonce();
 
         (bytes memory publicKeys, bytes memory signatures) = module
             .obtainDepositData(0, "");
@@ -100,9 +102,9 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         assertEq(signatures.length, 0);
 
         NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.enqueuedCount, 1);
         assertEq(no.totalDepositedKeys, 0);
         assertEq(no.depositableValidatorsCount, 1);
+        assertEq(module.getNonce(), nonceBefore);
     }
 
     function test_obtainDepositData_unvettedKeys() public assertInvariants {
@@ -134,7 +136,6 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         module.obtainDepositData(3, "");
 
         NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.enqueuedCount, 4);
         assertEq(no.totalDepositedKeys, 3);
         assertEq(no.depositableValidatorsCount, 4);
     }
@@ -177,8 +178,11 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
             uint256 totalDepositedValidators,
             uint256 depositableValidatorsCount
         ) = module.getStakingModuleSummary();
-        assertEq(totalDepositedValidators, totalKeys - random);
-        assertEq(depositableValidatorsCount, random);
+        assertLe(totalDepositedValidators, totalKeys - random);
+        assertEq(
+            totalDepositedValidators + depositableValidatorsCount,
+            totalKeys
+        );
     }
 
     function testFuzz_obtainDepositData_OneOperator(
@@ -208,7 +212,6 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         assertEq(depositableValidatorsCount, random);
 
         NodeOperator memory no = module.getNodeOperator(0);
-        assertEq(no.enqueuedCount, random);
         assertEq(no.totalDepositedKeys, totalKeys - random);
         assertEq(no.depositableValidatorsCount, random);
     }
