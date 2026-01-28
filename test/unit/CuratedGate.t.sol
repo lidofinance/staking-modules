@@ -4,23 +4,25 @@
 pragma solidity 0.8.33;
 
 import { Test } from "forge-std/Test.sol";
+
+import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
+import { CuratedGate } from "src/CuratedGate.sol";
+import { ICuratedGate } from "src/interfaces/ICuratedGate.sol";
+import { IMerkleGate } from "src/interfaces/IMerkleGate.sol";
+import { IMetaOperatorRegistry, OperatorInfo } from "src/interfaces/IMetaOperatorRegistry.sol";
+import { IBaseModule, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
+import { IAccounting } from "src/interfaces/IAccounting.sol";
+import { MerkleTree } from "../helpers/MerkleTree.sol";
+import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
+
 import { Utilities } from "../helpers/Utilities.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
 import { CSMMock } from "../helpers/mocks/CSMMock.sol";
-import { OperatorsDataMock } from "../helpers/mocks/OperatorsDataMock.sol";
-import { PausableUntil } from "../../src/lib/utils/PausableUntil.sol";
-import { CuratedGate } from "../../src/CuratedGate.sol";
-import { ICuratedGate } from "../../src/interfaces/ICuratedGate.sol";
-import { IMerkleGate } from "../../src/interfaces/IMerkleGate.sol";
-import { IOperatorsData, OperatorInfo } from "../../src/interfaces/IOperatorsData.sol";
-import { IBaseModule, NodeOperatorManagementProperties } from "../../src/interfaces/IBaseModule.sol";
-import { IAccounting } from "../../src/interfaces/IAccounting.sol";
-import { MerkleTree } from "../helpers/MerkleTree.sol";
-import { IAssetRecovererLib } from "../../src/lib/AssetRecovererLib.sol";
+import { MetaOperatorRegistryMock } from "../helpers/mocks/MetaOperatorRegistryMock.sol";
 
 contract CuratedGateTestBase is Test, Utilities, Fixtures {
     CSMMock public module;
-    OperatorsDataMock public data;
+    MetaOperatorRegistryMock public data;
     CuratedGate public gate;
     uint256 internal constant MODULE_ID = 1;
 
@@ -49,7 +51,7 @@ contract CuratedGateTestBase is Test, Utilities, Fixtures {
             })
         );
 
-        data = new OperatorsDataMock();
+        data = new MetaOperatorRegistryMock();
 
         tree = new MerkleTree();
         tree.pushLeaf(abi.encode(member));
@@ -57,7 +59,7 @@ contract CuratedGateTestBase is Test, Utilities, Fixtures {
         root = tree.root();
         cid = someCIDv0();
 
-        gate = new CuratedGate(address(module), MODULE_ID, address(data));
+        gate = new CuratedGate(MODULE_ID, address(module), address(data));
         _enableInitializers(address(gate));
         gate.initialize(curveId(), root, cid, admin);
 
@@ -80,36 +82,36 @@ contract CuratedGateTestBaseDefaultCurve is CuratedGateTestBase {
 contract CuratedGateTest_constructor is CuratedGateTestBase {
     function test_constructor() public {
         CuratedGate e = new CuratedGate(
-            address(module),
             MODULE_ID,
+            address(module),
             address(data)
         );
         assertEq(address(e.MODULE()), address(module));
         assertEq(e.MODULE_ID(), MODULE_ID);
-        assertEq(address(e.OPERATORS_DATA()), address(data));
+        assertEq(address(e.META_OPERATOR_REGISTRY()), address(data));
     }
 
     function test_constructor_RevertWhen_ZeroModule() public {
         vm.expectRevert(ICuratedGate.ZeroModuleAddress.selector);
-        new CuratedGate(address(0), MODULE_ID, address(data));
+        new CuratedGate(MODULE_ID, address(0), address(data));
+    }
+
+    function test_constructor_RevertWhen_ZeroMetaOperatorRegistry() public {
+        vm.expectRevert(ICuratedGate.ZeroMetaOperatorRegistryAddress.selector);
+        new CuratedGate(MODULE_ID, address(module), address(0));
     }
 
     function test_constructor_RevertWhen_ZeroModuleId() public {
         vm.expectRevert(ICuratedGate.ZeroModuleId.selector);
-        new CuratedGate(address(module), 0, address(data));
-    }
-
-    function test_constructor_RevertWhen_ZeroOperatorsData() public {
-        vm.expectRevert(ICuratedGate.ZeroOperatorsDataAddress.selector);
-        new CuratedGate(address(module), MODULE_ID, address(0));
+        new CuratedGate(0, address(module), address(data));
     }
 }
 
 contract CuratedGateTest_initialize is CuratedGateTestBase {
     function test_initialize() public {
         CuratedGate e = new CuratedGate(
-            address(module),
             MODULE_ID,
+            address(module),
             address(data)
         );
         _enableInitializers(address(e));
@@ -122,8 +124,8 @@ contract CuratedGateTest_initialize is CuratedGateTestBase {
 
     function test_initialize_RevertWhen_ZeroAdmin() public {
         CuratedGate e = new CuratedGate(
-            address(module),
             MODULE_ID,
+            address(module),
             address(data)
         );
         _enableInitializers(address(e));
@@ -133,8 +135,8 @@ contract CuratedGateTest_initialize is CuratedGateTestBase {
 
     function test_initialize_RevertWhen_InvalidTreeRoot() public {
         CuratedGate e = new CuratedGate(
-            address(module),
             MODULE_ID,
+            address(module),
             address(data)
         );
         _enableInitializers(address(e));
@@ -144,8 +146,8 @@ contract CuratedGateTest_initialize is CuratedGateTestBase {
 
     function test_initialize_RevertWhen_InvalidTreeCid() public {
         CuratedGate e = new CuratedGate(
-            address(module),
             MODULE_ID,
+            address(module),
             address(data)
         );
         _enableInitializers(address(e));
@@ -155,8 +157,8 @@ contract CuratedGateTest_initialize is CuratedGateTestBase {
 
     function test_initialize_AllowsDefaultCurveId() public {
         CuratedGate e = new CuratedGate(
-            address(module),
             MODULE_ID,
+            address(module),
             address(data)
         );
         _enableInitializers(address(e));
@@ -296,7 +298,7 @@ contract CuratedGateTest_createNodeOperator is CuratedGateTestBase {
         vm.expectCall(
             address(data),
             abi.encodeWithSelector(
-                IOperatorsData.set.selector,
+                IMetaOperatorRegistry.setOperatorMetadataAsAdmin.selector,
                 MODULE_ID,
                 0,
                 OperatorInfo({
@@ -405,7 +407,7 @@ contract CuratedGateTest_createNodeOperator_DefaultCurve is
         vm.expectCall(
             address(data),
             abi.encodeWithSelector(
-                IOperatorsData.set.selector,
+                IMetaOperatorRegistry.setOperatorMetadataAsAdmin.selector,
                 MODULE_ID,
                 0,
                 OperatorInfo({

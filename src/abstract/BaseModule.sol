@@ -177,6 +177,7 @@ abstract contract BaseModule is
         unchecked {
             ++_nodeOperatorsCount;
         }
+        _onNodeOperatorCreate();
         _incrementModuleNonce();
     }
 
@@ -632,6 +633,13 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
+    function nodeOperatorExists(
+        uint256 nodeOperatorId
+    ) external view returns (bool) {
+        return nodeOperatorId < _nodeOperatorsCount;
+    }
+
+    /// @inheritdoc IBaseModule
     function getNodeOperator(
         uint256 nodeOperatorId
     ) external view returns (NodeOperator memory) {
@@ -877,6 +885,9 @@ abstract contract BaseModule is
         return _keyAddedBalances[_keyPointer(nodeOperatorId, keyIndex)];
     }
 
+    // solhint-disable-next-line no-empty-blocks
+    function _onNodeOperatorCreate() internal virtual {}
+
     /// @dev Prevents reactivation of a Node Operator after an uncovered penalty by
     ///      forcing its target limit to zero.
     function _onUncompensatedPenalty(uint256 nodeOperatorId) internal {
@@ -948,7 +959,7 @@ abstract contract BaseModule is
     function _updateDepositableValidatorsCount(
         uint256 nodeOperatorId,
         bool incrementNonceIfUpdated
-    ) internal {
+    ) internal returns (bool changed) {
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
 
         uint256 totalDepositedKeys = no.totalDepositedKeys;
@@ -981,12 +992,13 @@ abstract contract BaseModule is
                 }
             }
         }
-        _applyDepositableValidatorsCount({
-            no: no,
-            nodeOperatorId: nodeOperatorId,
-            newCount: newCount,
-            incrementNonceIfUpdated: incrementNonceIfUpdated
-        });
+        return
+            _applyDepositableValidatorsCount({
+                no: no,
+                nodeOperatorId: nodeOperatorId,
+                newCount: newCount,
+                incrementNonceIfUpdated: incrementNonceIfUpdated
+            });
     }
 
     function _applyDepositableValidatorsCount(
@@ -994,8 +1006,8 @@ abstract contract BaseModule is
         uint256 nodeOperatorId,
         uint256 newCount,
         bool incrementNonceIfUpdated
-    ) internal virtual {
-        if (no.depositableValidatorsCount == newCount) return;
+    ) internal virtual returns (bool) {
+        if (no.depositableValidatorsCount == newCount) return false;
 
         // Updating the global counter.
         unchecked {
@@ -1013,6 +1025,8 @@ abstract contract BaseModule is
         if (incrementNonceIfUpdated) {
             _incrementModuleNonce();
         }
+
+        return true;
     }
 
     function _setTargetLimit(

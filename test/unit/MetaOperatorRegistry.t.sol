@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
@@ -7,19 +7,19 @@ import { Test } from "forge-std/Test.sol";
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import { OperatorsData } from "src/OperatorsData.sol";
-import { IOperatorsData, OperatorInfo } from "src/interfaces/IOperatorsData.sol";
+import { MetaOperatorRegistry } from "src/MetaOperatorRegistry.sol";
+import { IMetaOperatorRegistry, OperatorInfo } from "src/interfaces/IMetaOperatorRegistry.sol";
 import { NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 
-import { CSMMock, NodeOperatorOwnerNo165Mock } from "../helpers/mocks/CSMMock.sol";
+import { CSMMock } from "../helpers/mocks/CSMMock.sol";
 import { StakingRouterMock } from "../helpers/mocks/StakingRouterMock.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
 
-contract OperatorsDataTestBase is Test, Utilities, Fixtures {
+contract MetaOperatorRegistryTestBase is Test, Utilities, Fixtures {
     CSMMock public module;
     StakingRouterMock public stakingRouter;
-    OperatorsData public data;
+    MetaOperatorRegistry public registry;
 
     address public admin;
     address public setter;
@@ -51,53 +51,78 @@ contract OperatorsDataTestBase is Test, Utilities, Fixtures {
         modules[0] = address(module);
         stakingRouter.setModules(modules);
 
-        data = new OperatorsData(address(stakingRouter));
-        _enableInitializers(address(data));
-        data.initialize(admin);
+        registry = new MetaOperatorRegistry(
+            address(module),
+            address(stakingRouter)
+        );
+        _enableInitializers(address(registry));
+        registry.initialize(admin);
         vm.startPrank(admin);
-        data.grantRole(data.SETTER_ROLE(), setter);
+        registry.grantRole(registry.SET_OPERATOR_INFO_ROLE(), setter);
         vm.stopPrank();
     }
 }
 
-contract OperatorsDataTest_constructor is OperatorsDataTestBase {
+contract MetaOperatorRegistryTest_constructor is MetaOperatorRegistryTestBase {
     function test_constructor_HappyPath() public {
-        OperatorsData d = new OperatorsData(address(stakingRouter));
+        MetaOperatorRegistry d = new MetaOperatorRegistry(
+            address(module),
+            address(stakingRouter)
+        );
         assertEq(address(d.STAKING_ROUTER()), address(stakingRouter));
     }
 
     function test_constructor_RevertWhen_ZeroStakingRouter() public {
-        vm.expectRevert(IOperatorsData.ZeroStakingRouterAddress.selector);
-        new OperatorsData(address(0));
+        vm.expectRevert(
+            IMetaOperatorRegistry.ZeroStakingRouterAddress.selector
+        );
+        new MetaOperatorRegistry(address(module), address(0));
     }
 }
 
-contract OperatorsDataTest_initialize is OperatorsDataTestBase {
+contract MetaOperatorRegistryTest_initialize is MetaOperatorRegistryTestBase {
     function test_initialize_HappyPath() public {
-        OperatorsData d = new OperatorsData(address(stakingRouter));
+        MetaOperatorRegistry d = new MetaOperatorRegistry(
+            address(module),
+            address(stakingRouter)
+        );
         _enableInitializers(address(d));
         d.initialize(admin);
         assertTrue(d.hasRole(d.DEFAULT_ADMIN_ROLE(), admin));
     }
 
     function test_initialize_RevertWhen_ZeroAdmin() public {
-        OperatorsData d = new OperatorsData(address(stakingRouter));
+        MetaOperatorRegistry d = new MetaOperatorRegistry(
+            address(module),
+            address(stakingRouter)
+        );
         _enableInitializers(address(d));
-        vm.expectRevert(IOperatorsData.ZeroAdminAddress.selector);
+        vm.expectRevert(IMetaOperatorRegistry.ZeroAdminAddress.selector);
         d.initialize(address(0));
     }
 
-    function test_initialize_cachesModuleAddresses() public {
-        OperatorsData d = new OperatorsData(address(stakingRouter));
+    function test_initialize_allowsMetadataLookup() public {
+        MetaOperatorRegistry d = new MetaOperatorRegistry(
+            address(module),
+            address(stakingRouter)
+        );
         _enableInitializers(address(d));
-
-        vm.expectEmit(address(d));
-        emit IOperatorsData.ModuleAddressCached(moduleId, address(module));
         d.initialize(admin);
+
+        OperatorInfo memory info = d.getOperatorMetadata(
+            moduleId,
+            nodeOperatorId
+        );
+        assertEq(info.name, "");
+        assertEq(info.description, "");
+        assertFalse(info.ownerEditsRestricted);
     }
 
     function test_initialize_RevertWhen_DoubleCall() public {
-        OperatorsData d = new OperatorsData(address(stakingRouter));
+        MetaOperatorRegistry d = new MetaOperatorRegistry(
+            address(module),
+            address(stakingRouter)
+        );
         _enableInitializers(address(d));
         d.initialize(admin);
         vm.expectRevert(Initializable.InvalidInitialization.selector);
@@ -105,19 +130,18 @@ contract OperatorsDataTest_initialize is OperatorsDataTestBase {
     }
 }
 
-contract OperatorsDataTest_set is OperatorsDataTestBase {
+contract MetaOperatorRegistryTest_set is MetaOperatorRegistryTestBase {
     function test_set() public {
         vm.prank(setter);
-        vm.expectEmit(address(data));
-        emit IOperatorsData.OperatorDataSet(
+        vm.expectEmit(address(registry));
+        emit IMetaOperatorRegistry.OperatorDataSet(
             moduleId,
-            address(module),
             nodeOperatorId,
             "Alpha",
             "The first",
             false
         );
-        data.set(
+        registry.setOperatorMetadataAsAdmin(
             moduleId,
             nodeOperatorId,
             OperatorInfo({
@@ -127,7 +151,10 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
             })
         );
 
-        OperatorInfo memory info = data.get(moduleId, nodeOperatorId);
+        OperatorInfo memory info = registry.getOperatorMetadata(
+            moduleId,
+            nodeOperatorId
+        );
         assertEq(info.name, "Alpha");
         assertEq(info.description, "The first");
         assertFalse(info.ownerEditsRestricted);
@@ -135,7 +162,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
 
     function test_set_OverwriteAllowed() public {
         vm.startPrank(setter);
-        data.set(
+        registry.setOperatorMetadataAsAdmin(
             moduleId,
             nodeOperatorId,
             OperatorInfo({
@@ -144,7 +171,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
                 ownerEditsRestricted: false
             })
         );
-        data.set(
+        registry.setOperatorMetadataAsAdmin(
             moduleId,
             nodeOperatorId,
             OperatorInfo({
@@ -155,7 +182,10 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
         );
         vm.stopPrank();
 
-        OperatorInfo memory info = data.get(moduleId, nodeOperatorId);
+        OperatorInfo memory info = registry.getOperatorMetadata(
+            moduleId,
+            nodeOperatorId
+        );
         assertEq(info.name, "Alpha2");
         assertEq(info.description, "v2");
         assertTrue(info.ownerEditsRestricted);
@@ -167,12 +197,7 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
         stakingRouter.addModule(moduleId + 1, address(newModule));
 
         vm.prank(setter);
-        vm.expectEmit(address(data));
-        emit IOperatorsData.ModuleAddressCached(
-            moduleId + 1,
-            address(newModule)
-        );
-        data.set(
+        registry.setOperatorMetadataAsAdmin(
             moduleId + 1,
             nodeOperatorId,
             OperatorInfo({
@@ -182,16 +207,19 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
             })
         );
 
-        OperatorInfo memory info = data.get(moduleId + 1, nodeOperatorId);
+        OperatorInfo memory info = registry.getOperatorMetadata(
+            moduleId + 1,
+            nodeOperatorId
+        );
         assertEq(info.name, "Beta");
         assertEq(info.description, "Second");
         assertTrue(info.ownerEditsRestricted);
     }
 
     function test_set_RevertWhen_NoRole() public {
-        expectRoleRevert(stranger, data.SETTER_ROLE());
+        expectRoleRevert(stranger, registry.SET_OPERATOR_INFO_ROLE());
         vm.prank(stranger);
-        data.set(
+        registry.setOperatorMetadataAsAdmin(
             moduleId,
             nodeOperatorId,
             OperatorInfo({
@@ -204,8 +232,10 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
 
     function test_set_RevertWhen_NodeOperatorDoesNotExist() public {
         vm.prank(setter);
-        vm.expectRevert(IOperatorsData.NodeOperatorDoesNotExist.selector);
-        data.set(
+        vm.expectRevert(
+            IMetaOperatorRegistry.NodeOperatorDoesNotExist.selector
+        );
+        registry.setOperatorMetadataAsAdmin(
             moduleId,
             10,
             OperatorInfo({
@@ -219,22 +249,8 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
     function test_set_RevertWhen_UnregisteredModule() public {
         vm.prank(setter);
         vm.expectRevert(StakingRouterMock.StakingModuleUnregistered.selector);
-        data.set(
+        registry.setOperatorMetadataAsAdmin(
             moduleId + 1,
-            nodeOperatorId,
-            OperatorInfo({
-                name: "Alpha",
-                description: "Desc",
-                ownerEditsRestricted: false
-            })
-        );
-    }
-
-    function test_set_RevertWhen_ZeroModule() public {
-        vm.prank(setter);
-        vm.expectRevert(IOperatorsData.ZeroModuleId.selector);
-        data.set(
-            0,
             nodeOperatorId,
             OperatorInfo({
                 name: "Alpha",
@@ -245,21 +261,28 @@ contract OperatorsDataTest_set is OperatorsDataTestBase {
     }
 }
 
-contract OperatorsDataTest_setByOwner is OperatorsDataTestBase {
+contract MetaOperatorRegistryTest_setByOwner is MetaOperatorRegistryTestBase {
     function test_setByOwner() public {
         vm.prank(nodeOperator);
-        vm.expectEmit(address(data));
-        emit IOperatorsData.OperatorDataSet(
+        vm.expectEmit(address(registry));
+        emit IMetaOperatorRegistry.OperatorDataSet(
             moduleId,
-            address(module),
             nodeOperatorId,
             "OwnerName",
             "OwnerDesc",
             false
         );
-        data.setByOwner(moduleId, nodeOperatorId, "OwnerName", "OwnerDesc");
+        registry.setOperatorMetadataAsOwner(
+            moduleId,
+            nodeOperatorId,
+            "OwnerName",
+            "OwnerDesc"
+        );
 
-        OperatorInfo memory info = data.get(moduleId, nodeOperatorId);
+        OperatorInfo memory info = registry.getOperatorMetadata(
+            moduleId,
+            nodeOperatorId
+        );
         assertEq(info.name, "OwnerName");
         assertEq(info.description, "OwnerDesc");
         assertFalse(info.ownerEditsRestricted);
@@ -276,15 +299,18 @@ contract OperatorsDataTest_setByOwner is OperatorsDataTestBase {
         );
         stakingRouter.addModule(moduleId + 1, address(newModule));
 
-        vm.expectEmit(address(data));
-        emit IOperatorsData.ModuleAddressCached(
-            moduleId + 1,
-            address(newModule)
-        );
         vm.prank(nodeOperator);
-        data.setByOwner(moduleId + 1, nodeOperatorId, "OwnerName", "OwnerDesc");
+        registry.setOperatorMetadataAsOwner(
+            moduleId + 1,
+            nodeOperatorId,
+            "OwnerName",
+            "OwnerDesc"
+        );
 
-        OperatorInfo memory info = data.get(moduleId + 1, nodeOperatorId);
+        OperatorInfo memory info = registry.getOperatorMetadata(
+            moduleId + 1,
+            nodeOperatorId
+        );
         assertEq(info.name, "OwnerName");
         assertEq(info.description, "OwnerDesc");
         assertFalse(info.ownerEditsRestricted);
@@ -292,16 +318,15 @@ contract OperatorsDataTest_setByOwner is OperatorsDataTestBase {
 
     function test_setByOwner_RevertWhen_Restricted() public {
         vm.prank(setter);
-        vm.expectEmit(address(data));
-        emit IOperatorsData.OperatorDataSet(
+        vm.expectEmit(address(registry));
+        emit IMetaOperatorRegistry.OperatorDataSet(
             moduleId,
-            address(module),
             nodeOperatorId,
             "",
             "",
             true
         );
-        data.set(
+        registry.setOperatorMetadataAsAdmin(
             moduleId,
             nodeOperatorId,
             OperatorInfo({
@@ -312,14 +337,24 @@ contract OperatorsDataTest_setByOwner is OperatorsDataTestBase {
         );
 
         vm.prank(nodeOperator);
-        vm.expectRevert(IOperatorsData.OwnerEditsRestricted.selector);
-        data.setByOwner(moduleId, nodeOperatorId, "Name", "Desc");
+        vm.expectRevert(IMetaOperatorRegistry.OwnerEditsRestricted.selector);
+        registry.setOperatorMetadataAsOwner(
+            moduleId,
+            nodeOperatorId,
+            "Name",
+            "Desc"
+        );
     }
 
     function test_setByOwner_RevertWhen_NotOwner() public {
         vm.prank(stranger);
-        vm.expectRevert(IOperatorsData.SenderIsNotEligible.selector);
-        data.setByOwner(moduleId, nodeOperatorId, "Name", "Desc");
+        vm.expectRevert(IMetaOperatorRegistry.SenderIsNotEligible.selector);
+        registry.setOperatorMetadataAsOwner(
+            moduleId,
+            nodeOperatorId,
+            "Name",
+            "Desc"
+        );
     }
 
     function test_setByOwner_RevertWhen_NodeOperatorDoesNotExist() public {
@@ -331,58 +366,50 @@ contract OperatorsDataTest_setByOwner is OperatorsDataTestBase {
             })
         );
         vm.prank(nodeOperator);
-        vm.expectRevert(IOperatorsData.NodeOperatorDoesNotExist.selector);
-        data.setByOwner(moduleId, 10, "Name", "Desc");
-    }
-
-    function test_setByOwner_RevertWhen_ZeroModule() public {
-        vm.prank(nodeOperator);
-        vm.expectRevert(IOperatorsData.ZeroModuleId.selector);
-        data.setByOwner(0, nodeOperatorId, "Name", "Desc");
+        vm.expectRevert(
+            IMetaOperatorRegistry.NodeOperatorDoesNotExist.selector
+        );
+        registry.setOperatorMetadataAsOwner(moduleId, 10, "Name", "Desc");
     }
 
     function test_setByOwner_RevertWhen_UnregisteredModule() public {
         vm.prank(nodeOperator);
         vm.expectRevert(StakingRouterMock.StakingModuleUnregistered.selector);
-        data.setByOwner(moduleId + 1, nodeOperatorId, "Name", "Desc");
-    }
-
-    function test_setByOwner_RevertWhen_ModuleMissingINodeOperatorOwnerInterface()
-        public
-    {
-        NodeOperatorOwnerNo165Mock moduleNo165 = new NodeOperatorOwnerNo165Mock(
-            nodeOperator
+        registry.setOperatorMetadataAsOwner(
+            moduleId + 1,
+            nodeOperatorId,
+            "Name",
+            "Desc"
         );
-        stakingRouter.addModule(moduleId + 1, address(moduleNo165));
-
-        vm.prank(setter);
-        vm.expectRevert(
-            IOperatorsData
-                .ModuleDoesNotSupportNodeOperatorOwnerInterface
-                .selector
-        );
-        data.setByOwner(moduleId + 1, nodeOperatorId, "Alpha", "Desc");
     }
 }
 
-contract OperatorsDataTest_get is OperatorsDataTestBase {
-    function test_get_RevertWhen_ZeroModule() public {
-        vm.expectRevert(IOperatorsData.ZeroModuleId.selector);
-        data.get(0, nodeOperatorId);
+contract MetaOperatorRegistryTest_get is MetaOperatorRegistryTestBase {
+    function test_get_HappyPath_NoDataYet() public {
+        OperatorInfo memory info = registry.getOperatorMetadata(
+            moduleId,
+            nodeOperatorId
+        );
+        assertEq(info.name, "");
+        assertEq(info.description, "");
+        assertFalse(info.ownerEditsRestricted);
     }
 
-    function test_get_HappyPath_NoDataYet() public {
-        OperatorInfo memory info = data.get(moduleId, nodeOperatorId);
+    function test_get_AllowsZeroModuleId() public {
+        OperatorInfo memory info = registry.getOperatorMetadata(
+            0,
+            nodeOperatorId
+        );
         assertEq(info.name, "");
         assertEq(info.description, "");
         assertFalse(info.ownerEditsRestricted);
     }
 }
 
-contract OperatorsDataTest_restrictions is OperatorsDataTestBase {
+contract MetaOperatorRegistryTest_restrictions is MetaOperatorRegistryTestBase {
     function test_set_updatesOwnerRestriction() public {
         vm.prank(setter);
-        data.set(
+        registry.setOperatorMetadataAsAdmin(
             moduleId,
             nodeOperatorId,
             OperatorInfo({
@@ -392,12 +419,14 @@ contract OperatorsDataTest_restrictions is OperatorsDataTestBase {
             })
         );
 
-        assertTrue(data.isOwnerEditsRestricted(moduleId, nodeOperatorId));
-        OperatorInfo memory info = data.get(moduleId, nodeOperatorId);
+        OperatorInfo memory info = registry.getOperatorMetadata(
+            moduleId,
+            nodeOperatorId
+        );
         assertTrue(info.ownerEditsRestricted);
 
         vm.prank(setter);
-        data.set(
+        registry.setOperatorMetadataAsAdmin(
             moduleId,
             nodeOperatorId,
             OperatorInfo({
@@ -407,24 +436,9 @@ contract OperatorsDataTest_restrictions is OperatorsDataTestBase {
             })
         );
 
-        assertFalse(data.isOwnerEditsRestricted(moduleId, nodeOperatorId));
-        info = data.get(moduleId, nodeOperatorId);
+        info = registry.getOperatorMetadata(moduleId, nodeOperatorId);
         assertEq(info.name, "Alpha2");
         assertEq(info.description, "Desc2");
         assertFalse(info.ownerEditsRestricted);
-    }
-
-    function test_isOwnerEditsRestricted_DefaultFalse() public {
-        assertFalse(data.isOwnerEditsRestricted(moduleId, nodeOperatorId));
-    }
-
-    function test_isOwnerEditsRestricted_RevertWhen_ZeroModule() public {
-        vm.expectRevert(IOperatorsData.ZeroModuleId.selector);
-        data.isOwnerEditsRestricted(0, nodeOperatorId);
-    }
-
-    function test_isOwnerEditsRestricted_RevertWhen_UnknownModule() public {
-        vm.expectRevert(IOperatorsData.UnknownModule.selector);
-        data.isOwnerEditsRestricted(moduleId + 1, nodeOperatorId);
     }
 }

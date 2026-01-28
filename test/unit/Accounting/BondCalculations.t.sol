@@ -93,7 +93,7 @@ contract BondCurveTest is BaseTest {
         vm.expectCall(
             address(accounting.MODULE()),
             abi.encodeWithSelector(
-                IBaseModule.updateDepositableValidatorsCount.selector,
+                IBaseModule.onNodeOperatorBondCurveUpdated.selector,
                 0
             )
         );

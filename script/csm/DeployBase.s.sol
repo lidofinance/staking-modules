@@ -91,7 +91,6 @@ struct DeployParams {
     uint256 defaultAllowedExitDelay;
     uint256 defaultExitDelayFee;
     uint256 defaultMaxElWithdrawalRequestFee;
-    uint256 defaultDepositAllocationWeight;
     // VettedGate
     address identifiedCommunityStakersGateManager;
     uint256 identifiedCommunityStakersGateCurveId;
@@ -115,7 +114,6 @@ struct DeployParams {
     uint256 identifiedCommunityStakersGateAllowedExitDelay;
     uint256 identifiedCommunityStakersGateExitDelayFee;
     uint256 identifiedCommunityStakersGateMaxElWithdrawalRequestFee;
-    uint256 identifiedCommunityStakersGateDepositAllocationWeight;
     // GateSeal
     address gateSealFactory;
     address sealingCommittee;
@@ -268,9 +266,7 @@ abstract contract DeployBase is Script {
                     defaultAllowedExitDelay: config.defaultAllowedExitDelay,
                     defaultExitDelayFee: config.defaultExitDelayFee,
                     defaultMaxElWithdrawalRequestFee: config
-                        .defaultMaxElWithdrawalRequestFee,
-                    defaultDepositAllocationWeight: config
-                        .defaultDepositAllocationWeight
+                        .defaultMaxElWithdrawalRequestFee
                 })
             });
 
@@ -469,15 +465,6 @@ abstract contract DeployBase is Script {
                 identifiedCommunityStakersGateBondCurveId,
                 config.identifiedCommunityStakersGateMaxElWithdrawalRequestFee
             );
-            if (
-                config.identifiedCommunityStakersGateDepositAllocationWeight !=
-                0
-            ) {
-                parametersRegistry.setDepositAllocationWeight(
-                    identifiedCommunityStakersGateBondCurveId,
-                    config.identifiedCommunityStakersGateDepositAllocationWeight
-                );
-            }
 
             feeDistributor.initialize({
                 admin: address(deployer),

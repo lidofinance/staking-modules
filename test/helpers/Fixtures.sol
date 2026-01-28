@@ -27,7 +27,7 @@ import { ExitPenalties } from "src/ExitPenalties.sol";
 import { ValidatorStrikes } from "src/ValidatorStrikes.sol";
 import { Verifier } from "src/Verifier.sol";
 import { CuratedModule } from "src/CuratedModule.sol";
-import { OperatorsData } from "src/OperatorsData.sol";
+import { MetaOperatorRegistry } from "src/MetaOperatorRegistry.sol";
 import { CuratedGateFactory } from "src/CuratedGateFactory.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
 import { CuratedDeployParams } from "script/curated/DeployBase.s.sol";
@@ -120,8 +120,6 @@ contract DeploymentHelpers is Test {
         uint256 stakingModuleId;
         bytes32 moduleType;
         uint256 queueLowestPriority;
-        uint256 defaultDepositAllocationWeight;
-        uint256 identifiedCommunityStakersGateDepositAllocationWeight;
         uint256 bondLockPeriod;
         uint256 minBondLockPeriod;
         uint256 maxBondLockPeriod;
@@ -194,8 +192,8 @@ contract DeploymentHelpers is Test {
         address strikesImpl;
         address verifier;
         address hashConsensus;
-        address operatorsData;
-        address operatorsDataImpl;
+        address metaOperatorRegistry;
+        address metaOperatorRegistryImpl;
         address curatedGateFactory;
         address[] curatedGates;
         address gateSeal;
@@ -479,17 +477,20 @@ contract DeploymentHelpers is Test {
         );
         vm.label(deploymentConfig.hashConsensus, "curatedHashConsensus");
 
-        deploymentConfig.operatorsData = vm.parseJsonAddress(
+        deploymentConfig.metaOperatorRegistry = vm.parseJsonAddress(
             config,
-            ".OperatorsData"
+            ".MetaOperatorRegistry"
         );
-        vm.label(deploymentConfig.operatorsData, "operatorsData");
+        vm.label(deploymentConfig.metaOperatorRegistry, "metaOperatorRegistry");
 
-        deploymentConfig.operatorsDataImpl = vm.parseJsonAddress(
+        deploymentConfig.metaOperatorRegistryImpl = vm.parseJsonAddress(
             config,
-            ".OperatorsDataImpl"
+            ".MetaOperatorRegistryImpl"
         );
-        vm.label(deploymentConfig.operatorsDataImpl, "operatorsDataImpl");
+        vm.label(
+            deploymentConfig.metaOperatorRegistryImpl,
+            "metaOperatorRegistryImpl"
+        );
 
         deploymentConfig.curatedGateFactory = vm.parseJsonAddress(
             config,
@@ -611,9 +612,6 @@ contract DeploymentHelpers is Test {
         dst.defaultExitDelayFee = src.defaultExitDelayFee;
         dst.defaultMaxElWithdrawalRequestFee = src
             .defaultMaxElWithdrawalRequestFee;
-        dst.defaultDepositAllocationWeight = src.defaultDepositAllocationWeight;
-        dst.identifiedCommunityStakersGateDepositAllocationWeight = src
-            .identifiedCommunityStakersGateDepositAllocationWeight;
 
         // Curated gates
         for (uint256 i; i < src.curatedGates.length; ++i) {
@@ -726,11 +724,6 @@ contract DeploymentHelpers is Test {
                 .verifierFirstSupportedSlot;
             params.capellaSlot = decoded.capellaSlot;
             params.defaultBondCurve = decoded.defaultBondCurve;
-            params.defaultDepositAllocationWeight = decoded
-                .defaultDepositAllocationWeight;
-            params
-                .identifiedCommunityStakersGateDepositAllocationWeight = decoded
-                .identifiedCommunityStakersGateDepositAllocationWeight;
         }
     }
 
@@ -778,7 +771,7 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
     IBurner public burner;
     CuratedModule public curatedModule;
     CuratedModule public curatedModuleImpl;
-    OperatorsData public operatorsData;
+    MetaOperatorRegistry public metaOperatorRegistry;
     CuratedGateFactory public curatedGateFactory;
     address[] public curatedGates;
 
@@ -895,7 +888,9 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
         gateSeal = IGateSeal(deploymentConfig.gateSeal);
         burner = IBurner(locator.burner());
 
-        operatorsData = OperatorsData(deploymentConfig.operatorsData);
+        metaOperatorRegistry = MetaOperatorRegistry(
+            deploymentConfig.metaOperatorRegistry
+        );
         curatedGateFactory = CuratedGateFactory(
             deploymentConfig.curatedGateFactory
         );

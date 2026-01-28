@@ -87,10 +87,6 @@ contract OneShotCurveSetupTest is Test, Utilities {
         params.allowedExitDelay.isSet = false;
         params.exitDelayFee.isSet = false;
         params.maxElWithdrawalRequestFee.isSet = false;
-        params.depositAllocationWeight.isSet = false;
-        params.depositAllocationWeight.isSet = false;
-        params.depositAllocationWeight.isSet = false;
-        params.depositAllocationWeight.isSet = false;
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
@@ -450,7 +446,6 @@ contract OneShotCurveSetupTest is Test, Utilities {
     function test_execute_setsMaxElWithdrawalRequestFee() external {
         IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
         params.maxElWithdrawalRequestFee = _scalarOverride(202);
-        params.depositAllocationWeight = _scalarOverride(303);
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
@@ -465,29 +460,6 @@ contract OneShotCurveSetupTest is Test, Utilities {
                 ParametersRegistryMock.setMaxElWithdrawalRequestFee.selector,
                 1,
                 params.maxElWithdrawalRequestFee.value
-            )
-        );
-
-        deployer.execute();
-    }
-
-    function test_execute_setsDepositAllocationWeight() external {
-        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
-        params.depositAllocationWeight = _scalarOverride(303);
-
-        OneShotCurveSetup deployer = new OneShotCurveSetup(
-            address(accounting),
-            address(registry),
-            params
-        );
-
-        _expectBondCurveAddition(params.bondCurve);
-        vm.expectCall(
-            address(registry),
-            abi.encodeWithSelector(
-                ParametersRegistryMock.setDepositAllocationWeight.selector,
-                1,
-                params.depositAllocationWeight.value
             )
         );
 
@@ -627,14 +599,6 @@ contract OneShotCurveSetupTest is Test, Utilities {
                 params.maxElWithdrawalRequestFee.value
             )
         );
-        vm.expectCall(
-            address(registry),
-            abi.encodeWithSelector(
-                ParametersRegistryMock.setDepositAllocationWeight.selector,
-                expectedCurveId,
-                params.depositAllocationWeight.value
-            )
-        );
     }
 
     function _paramsWithAllOverrides()
@@ -690,10 +654,6 @@ contract OneShotCurveSetupTest is Test, Utilities {
         params.maxElWithdrawalRequestFee = IOneShotCurveSetup.ScalarOverride({
             isSet: true,
             value: 8
-        });
-        params.depositAllocationWeight = IOneShotCurveSetup.ScalarOverride({
-            isSet: true,
-            value: 9
         });
     }
 

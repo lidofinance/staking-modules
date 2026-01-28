@@ -17,7 +17,6 @@ import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { IGeneralPenalty } from "src/lib/GeneralPenaltyLib.sol";
 import { ILidoLocator } from "src/interfaces/ILidoLocator.sol";
 import { INOAddresses } from "src/lib/NOAddresses.sol";
-import { INodeOperatorOwner } from "src/interfaces/INodeOperatorOwner.sol";
 import { IStakingModule } from "src/interfaces/IStakingModule.sol";
 import { IWithdrawalQueue } from "src/interfaces/IWithdrawalQueue.sol";
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";

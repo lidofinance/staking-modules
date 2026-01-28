@@ -2,18 +2,19 @@
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
-import { NodeOperatorManagementProperties, NodeOperator } from "../../../src/interfaces/IBaseModule.sol";
-import { IAccounting } from "../../../src/interfaces/IAccounting.sol";
-import { IParametersRegistry } from "../../../src/interfaces/IParametersRegistry.sol";
+
+import { NodeOperatorManagementProperties, NodeOperator } from "src/interfaces/IBaseModule.sol";
+import { IAccounting } from "src/interfaces/IAccounting.sol";
+import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
+
+import { Fixtures } from "../Fixtures.sol";
+import { Utilities } from "../Utilities.sol";
+
 import { ParametersRegistryMock } from "./ParametersRegistryMock.sol";
 import { AccountingMock } from "./AccountingMock.sol";
 import { WstETHMock } from "./WstETHMock.sol";
 import { LidoMock } from "./LidoMock.sol";
-import { Utilities } from "../Utilities.sol";
 import { LidoLocatorMock } from "./LidoLocatorMock.sol";
-import { Fixtures } from "../Fixtures.sol";
-import { INodeOperatorOwner } from "../../../src/interfaces/INodeOperatorOwner.sol";
-import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 contract CSMMock is Utilities, Fixtures {
     NodeOperator internal mockNodeOperator;
@@ -111,8 +112,10 @@ contract CSMMock is Utilities, Fixtures {
     }
 
     function createNodeOperator(
-        address /* from */,
-        NodeOperatorManagementProperties memory /* managementProperties */,
+        address,
+        /* from */
+        NodeOperatorManagementProperties memory,
+        /* managementProperties */
         address /* referrer */
     ) external pure returns (uint256) {
         return 0;
@@ -145,7 +148,8 @@ contract CSMMock is Utilities, Fixtures {
     ) external {}
 
     function getSigningKeys(
-        uint256 /* nodeOperatorId */,
+        uint256,
+        /* nodeOperatorId */
         uint256 startIndex,
         uint256 keysCount
     ) external pure returns (bytes memory pubkeys) {
@@ -156,34 +160,5 @@ contract CSMMock is Utilities, Fixtures {
         uint256 /* nodeOperatorId */
     ) external view returns (uint256) {
         return PARAMETERS_REGISTRY.getAllowedExitDelay(0);
-    }
-
-    function supportsInterface(
-        bytes4 interfaceId
-    ) external pure returns (bool) {
-        return
-            interfaceId == type(INodeOperatorOwner).interfaceId ||
-            interfaceId == type(IERC165).interfaceId;
-    }
-}
-
-contract NodeOperatorOwnerNo165Mock {
-    address internal _owner;
-
-    constructor(address owner) {
-        _owner = owner;
-    }
-
-    function setOwner(address owner) external {
-        _owner = owner;
-    }
-
-    function getNodeOperatorOwner(
-        uint256 nodeOperatorId
-    ) external view returns (address) {
-        if (nodeOperatorId != 0) {
-            return address(0);
-        }
-        return _owner;
     }
 }

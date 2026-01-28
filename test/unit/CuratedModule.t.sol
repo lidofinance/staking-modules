@@ -10,6 +10,7 @@ import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { IBaseModule, INOAddresses, NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
+import { IMetaOperatorRegistry } from "src/interfaces/IMetaOperatorRegistry.sol";
 import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
 import { CSModule } from "src/CSModule.sol";
 import { CuratedDepositAllocator } from "src/lib/allocator/CuratedDepositAllocator.sol";
@@ -20,6 +21,9 @@ import "./ModuleAbstract/ModuleAbstract.t.sol";
 
 contract CuratedCommon is ModuleFixtures {
     CuratedModule cm;
+    Stub internal metaOperatorsRegistry;
+    uint256 internal constant DEFAULT_OPERATOR_WEIGHT = 1;
+    uint256 internal constant MAX_MOCKED_OPERATORS = 256;
 
     function moduleType() internal pure override returns (ModuleType) {
         return ModuleType.Curated;
@@ -53,12 +57,15 @@ contract CuratedCommon is ModuleFixtures {
             address(feeDistributor)
         );
 
+        metaOperatorsRegistry = new Stub();
+        _mockMetaOperatorDefaults();
         module = new CuratedModule({
             moduleType: "curated-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaOperatorsRegistry: address(metaOperatorsRegistry)
         });
         cm = CuratedModule(address(module));
 
@@ -106,6 +113,65 @@ contract CuratedCommon is ModuleFixtures {
         vm.stopPrank();
     }
 
+    function _mockMetaOperatorDefaults() internal {
+        for (uint256 i; i < MAX_MOCKED_OPERATORS; ++i) {
+            _mockOperatorGroupMembership(i, true);
+            _mockOperatorWeightUpdated(i, false);
+            _mockOperatorWeight(i, DEFAULT_OPERATOR_WEIGHT);
+        }
+    }
+
+    function _mockAllOperatorWeights(uint256 weight) internal {
+        uint256 count = module.getNodeOperatorsCount();
+        for (uint256 i; i < count; ++i) {
+            _mockOperatorWeight(i, weight);
+        }
+    }
+
+    function _mockOperatorWeight(
+        uint256 nodeOperatorId,
+        uint256 weight
+    ) internal {
+        vm.mockCall(
+            address(metaOperatorsRegistry),
+            abi.encodeWithSelector(
+                IMetaOperatorRegistry
+                    .getNodeOperatorWeightAndExternalStake
+                    .selector,
+                nodeOperatorId
+            ),
+            abi.encode(weight, 0)
+        );
+    }
+
+    function _mockOperatorGroupMembership(
+        uint256 nodeOperatorId,
+        bool isInGroup
+    ) internal {
+        vm.mockCall(
+            address(metaOperatorsRegistry),
+            abi.encodeWithSelector(
+                IMetaOperatorRegistry.getNodeOperatorGroupMembership.selector,
+                nodeOperatorId
+            ),
+            abi.encode(isInGroup, 0)
+        );
+    }
+
+    function _mockOperatorWeightUpdated(
+        uint256 nodeOperatorId,
+        bool changed
+    ) internal {
+        vm.mockCall(
+            address(metaOperatorsRegistry),
+            abi.encodeWithSelector(
+                IMetaOperatorRegistry.onNodeOperatorWeightUpdated.selector,
+                nodeOperatorId
+            ),
+            abi.encode(changed)
+        );
+    }
+
     function _moduleInvariants() internal override {
         assertModuleKeys(module);
         assertModuleUnusedStorageSlots(module);
@@ -132,7 +198,8 @@ contract CuratedInitialize is CuratedCommon {
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaOperatorsRegistry: address(metaOperatorsRegistry)
         });
         assertEq(module.getType(), "curated-module");
         assertEq(address(module.LIDO_LOCATOR()), address(locator));
@@ -151,7 +218,8 @@ contract CuratedInitialize is CuratedCommon {
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaOperatorsRegistry: address(metaOperatorsRegistry)
         });
     }
 
@@ -162,42 +230,49 @@ contract CuratedInitialize is CuratedCommon {
             lidoLocator: address(0),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaOperatorsRegistry: address(metaOperatorsRegistry)
         });
     }
 
     function test_constructor_RevertWhen_ZeroParametersRegistryAddress()
         public
     {
+        Stub registry = new Stub();
         vm.expectRevert(IBaseModule.ZeroParametersRegistryAddress.selector);
         new CuratedModule({
             moduleType: "curated-module",
             lidoLocator: address(locator),
             parametersRegistry: address(0),
             accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaOperatorsRegistry: address(metaOperatorsRegistry)
         });
     }
 
     function test_constructor_RevertWhen_ZeroAccountingAddress() public {
+        Stub registry = new Stub();
         vm.expectRevert(IBaseModule.ZeroAccountingAddress.selector);
         new CuratedModule({
             moduleType: "curated-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(0),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaOperatorsRegistry: address(metaOperatorsRegistry)
         });
     }
 
     function test_constructor_RevertWhen_ZeroExitPenaltiesAddress() public {
+        Stub registry = new Stub();
         vm.expectRevert(IBaseModule.ZeroExitPenaltiesAddress.selector);
         new CuratedModule({
             moduleType: "curated-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
-            exitPenalties: address(0)
+            exitPenalties: address(0),
+            metaOperatorsRegistry: address(metaOperatorsRegistry)
         });
     }
 
@@ -207,7 +282,8 @@ contract CuratedInitialize is CuratedCommon {
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaOperatorsRegistry: address(metaOperatorsRegistry)
         });
 
         vm.expectRevert(Initializable.InvalidInitialization.selector);
@@ -220,7 +296,8 @@ contract CuratedInitialize is CuratedCommon {
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaOperatorsRegistry: address(metaOperatorsRegistry)
         });
 
         _enableInitializers(address(module));
@@ -237,7 +314,8 @@ contract CuratedInitialize is CuratedCommon {
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaOperatorsRegistry: address(metaOperatorsRegistry)
         });
 
         _enableInitializers(address(module));
@@ -335,7 +413,7 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         });
         uint256 curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(second, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 3);
+        _mockOperatorWeight(second, 3);
 
         (bytes memory pubkeys, ) = module.obtainDepositData(4, "");
 
@@ -460,7 +538,8 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         uint256 curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(first, curveId);
         accounting.setBondCurve(second, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 0);
+        _mockOperatorWeight(first, 0);
+        _mockOperatorWeight(second, 0);
 
         vm.expectRevert(IBaseModule.NotEnoughKeys.selector);
         module.obtainDepositData(1, "");
@@ -481,7 +560,7 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         });
         uint256 curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(zeroWeightId, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 0);
+        _mockOperatorWeight(zeroWeightId, 0);
 
         bytes memory expectedKeys = module.getSigningKeys(weightedId, 0, 1);
         (bytes memory pubkeys, ) = module.obtainDepositData(2, "");
@@ -509,7 +588,7 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         });
         uint256 curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(zeroWeightId, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 0);
+        _mockOperatorWeight(zeroWeightId, 0);
 
         bytes memory expectedKeys = module.getSigningKeys(firstId, 0, 1);
         (bytes memory pubkeys, ) = module.obtainDepositData(1, "");
@@ -731,7 +810,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         });
         uint256 curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(secondId, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 3);
+        _mockOperatorWeight(secondId, 3);
 
         cm.updateOperatorBalances(
             UintArr(firstId, secondId),
@@ -942,15 +1021,15 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         uint256 curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(omittedHeavyId, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 100);
+        _mockOperatorWeight(omittedHeavyId, 100);
 
         curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(omittedMidId, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 10);
+        _mockOperatorWeight(omittedMidId, 10);
 
         curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(includedId, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 1);
+        _mockOperatorWeight(includedId, 1);
 
         cm.updateOperatorBalances(
             UintArr(omittedHeavyId, omittedMidId, includedId),
@@ -1023,7 +1102,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
             uint256 curveId = accounting.addBondCurve(curve);
             accounting.setBondCurve(operatorIds[i], curveId);
-            parametersRegistry.setDepositAllocationWeight(curveId, weight);
+            _mockOperatorWeight(operatorIds[i], weight);
 
             weightSum += weight;
         }
@@ -1136,11 +1215,12 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
             });
             uint256 curveId = accounting.addBondCurve(curve);
             accounting.setBondCurve(firstId, curveId);
-            parametersRegistry.setDepositAllocationWeight(curveId, 1);
             curveId = accounting.addBondCurve(curve);
             accounting.setBondCurve(secondId, curveId);
-            parametersRegistry.setDepositAllocationWeight(curveId, 2);
         }
+
+        _mockOperatorWeight(firstId, 1);
+        _mockOperatorWeight(secondId, 2);
 
         uint256[2] memory balances = [uint256(1 ether), uint256(2 ether)];
         {
@@ -1241,8 +1321,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        parametersRegistry.setDefaultDepositAllocationWeight(0);
-
+        _mockAllOperatorWeights(0);
         (, uint256[] memory ids, uint256[] memory allocs) = cm
             .getDepositsAllocation(2 ether);
 
@@ -1399,12 +1478,11 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        parametersRegistry.setDefaultDepositAllocationWeight(0);
-
         bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
         bytes memory key1 = module.getSigningKeys(secondId, 0, 1);
         uint256 limitWei = 2 ether;
 
+        _mockAllOperatorWeights(0);
         uint256[] memory allocations = cm.allocateDeposits(
             2 ether,
             BytesArr(key0, key1),
@@ -1462,7 +1540,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         });
         uint256 curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(zeroWeightId, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 0);
+        _mockOperatorWeight(zeroWeightId, 0);
 
         bytes memory key0 = module.getSigningKeys(zeroWeightId, 0, 1);
         bytes memory key1 = module.getSigningKeys(weightedId, 0, 1);
@@ -1946,7 +2024,7 @@ contract CuratedDepositableValidatorsCount is
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 1);
         assertEq(getStakingModuleSummary().depositableValidatorsCount, 1);
 
-        parametersRegistry.setDefaultDepositAllocationWeight(0);
+        _mockOperatorWeight(noId, 0);
         module.updateDepositableValidatorsCount(noId);
 
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 0);

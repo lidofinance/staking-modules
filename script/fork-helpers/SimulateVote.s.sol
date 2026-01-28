@@ -196,14 +196,6 @@ contract SimulateVote is Script, ForkHelpersCommon {
             vm.stopBroadcast();
         }
         {
-            vm.startBroadcast(parametersRegistryAdmin);
-            parametersRegistry.setDefaultDepositAllocationWeight(
-                deployParams.defaultDepositAllocationWeight
-            );
-            vm.stopBroadcast();
-        }
-
-        {
             OssifiableProxy oracleProxy = OssifiableProxy(
                 payable(deploymentConfig.oracle)
             );

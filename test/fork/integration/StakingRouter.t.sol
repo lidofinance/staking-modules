@@ -291,10 +291,10 @@ contract StakingRouterIntegrationTest is
         for (;;) {
             (noId, keysCount) = getDepositableNodeOperator(nextAddress());
             lidoDepositWithNoGasMetering(keysCount);
-            NodeOperator memory no = module.getNodeOperator(noId);
+            NodeOperator memory noCurrent = module.getNodeOperator(noId);
             /// we need to be sure there are more than 1 keys for further checks
-            if (no.totalDepositedKeys > 1) {
-                exited = no.totalExitedKeys;
+            if (noCurrent.totalDepositedKeys > 1) {
+                exited = noCurrent.totalExitedKeys;
                 break;
             }
         }
@@ -329,8 +329,8 @@ contract StakingRouterIntegrationTest is
             correction
         );
 
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalExitedKeys, unsafeExited);
+        NodeOperator memory noFinal = module.getNodeOperator(noId);
+        assertEq(noFinal.totalExitedKeys, unsafeExited);
     }
 
     function test_decreaseVettedSigningKeysCount() public assertInvariants {

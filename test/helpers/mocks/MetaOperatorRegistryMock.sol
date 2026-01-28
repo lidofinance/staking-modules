@@ -1,11 +1,12 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
+
 pragma solidity 0.8.33;
 
-import { OperatorInfo } from "../../../src/interfaces/IOperatorsData.sol";
+import { OperatorInfo } from "../../../src/interfaces/IMetaOperatorRegistry.sol";
 
-contract OperatorsDataMock {
-    function set(
+contract MetaOperatorRegistryMock {
+    function setOperatorMetadataAsAdmin(
         uint256 moduleId,
         uint256 nodeOperatorId,
         OperatorInfo calldata info

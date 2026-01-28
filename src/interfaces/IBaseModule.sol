@@ -8,7 +8,6 @@ import { IAccessControlEnumerable } from "@openzeppelin/contracts/access/extensi
 import { IAssetRecovererLib } from "../lib/AssetRecovererLib.sol";
 import { INOAddresses } from "../lib/NOAddresses.sol";
 
-import { INodeOperatorOwner } from "./INodeOperatorOwner.sol";
 import { IAccounting } from "./IAccounting.sol";
 import { IExitPenalties } from "./IExitPenalties.sol";
 import { ILidoLocator } from "./ILidoLocator.sol";
@@ -60,8 +59,7 @@ interface IBaseModule is
     IStakingModule,
     IAccessControlEnumerable,
     INOAddresses,
-    IAssetRecovererLib,
-    INodeOperatorOwner
+    IAssetRecovererLib
 {
     event NodeOperatorAdded(
         uint256 indexed nodeOperatorId,
@@ -118,6 +116,7 @@ interface IBaseModule is
     error CannotAddKeys();
     error NodeOperatorDoesNotExist();
     error SenderIsNotEligible();
+    error SenderIsNotAccounting();
     error InvalidVetKeysPointer();
     error ZeroExitBalance();
     error SlashingPenaltyIsNotApplicable();
@@ -195,6 +194,12 @@ interface IBaseModule is
 
     /// @notice Returns the initialized version of the contract
     function getInitializedVersion() external view returns (uint64);
+
+    /// @notice Returns whether the Node Operator exists.
+    /// @param nodeOperatorId ID of the Node Operator
+    function nodeOperatorExists(
+        uint256 nodeOperatorId
+    ) external view returns (bool);
 
     /// @notice Permissioned method to add a new Node Operator
     ///         Should be called by `*Gate.sol` contracts. See `PermissionlessGate.sol` and `VettedGate.sol` for examples
@@ -352,6 +357,10 @@ interface IBaseModule is
     ///         - Depositable keys count should respect targetLimit value
     /// @param nodeOperatorId ID of the Node Operator
     function updateDepositableValidatorsCount(uint256 nodeOperatorId) external;
+
+    /// @notice Notify the module about a node operator bond curve update.
+    /// @param nodeOperatorId ID of the Node Operator
+    function onNodeOperatorBondCurveUpdated(uint256 nodeOperatorId) external;
 
     /// @notice Get Node Operator info
     /// @param nodeOperatorId ID of the Node Operator

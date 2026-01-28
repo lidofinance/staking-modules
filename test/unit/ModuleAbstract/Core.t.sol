@@ -17,7 +17,6 @@ import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { IGeneralPenalty } from "src/lib/GeneralPenaltyLib.sol";
 import { ILidoLocator } from "src/interfaces/ILidoLocator.sol";
 import { INOAddresses } from "src/lib/NOAddresses.sol";
-import { INodeOperatorOwner } from "src/interfaces/INodeOperatorOwner.sol";
 import { IStakingModule } from "src/interfaces/IStakingModule.sol";
 import { IWithdrawalQueue } from "src/interfaces/IWithdrawalQueue.sol";
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
@@ -228,7 +227,7 @@ contract MyModule is BaseModule {
         uint256 nodeOperatorId,
         uint256 newCount,
         bool incrementNonceIfUpdated
-    ) internal override {
+    ) internal override returns (bool) {
         nodeOperatorId;
         newCount;
         incrementNonceIfUpdated;
@@ -245,6 +244,10 @@ contract MyModule is BaseModule {
             uint256 depositableValidatorsCount
         )
     {
+        revert NotImplementedInTest();
+    }
+
+    function onNodeOperatorBondCurveUpdated(uint256 nodeOperatorId) external {
         revert NotImplementedInTest();
     }
 

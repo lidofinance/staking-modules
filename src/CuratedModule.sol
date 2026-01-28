@@ -4,8 +4,9 @@
 pragma solidity 0.8.33;
 
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
+import { IMetaOperatorRegistry } from "./interfaces/IMetaOperatorRegistry.sol";
 import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.sol";
-import { NodeOperator } from "./interfaces/IBaseModule.sol";
+import { IBaseModule, NodeOperator } from "./interfaces/IBaseModule.sol";
 
 import { BaseModule } from "./abstract/BaseModule.sol";
 
@@ -20,10 +21,13 @@ contract CuratedModule is ICuratedModule, BaseModule {
     struct CuratedModuleStorage {
         // Tracks per-operator balances (in wei) reported by the Accounting oracle.
         mapping(uint256 => uint256) operatorBalances;
+        uint256 nodeOperatorWeightsUpdateCount;
     }
 
     bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE =
         keccak256("OPERATOR_ADDRESSES_ADMIN_ROLE");
+
+    IMetaOperatorRegistry public immutable META_OPERATOR_REGISTRY;
 
     uint64 internal constant INITIALIZED_VERSION = 1;
     // keccak256(abi.encode(uint256(keccak256("CuratedModule")) - 1)) & ~bytes32(uint256(0xff))
@@ -35,7 +39,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
         address lidoLocator,
         address parametersRegistry,
         address accounting,
-        address exitPenalties
+        address exitPenalties,
+        address metaOperatorsRegistry
     )
         BaseModule(
             moduleType,
@@ -44,7 +49,13 @@ contract CuratedModule is ICuratedModule, BaseModule {
             accounting,
             exitPenalties
         )
-    {}
+    {
+        if (metaOperatorsRegistry == address(0)) {
+            revert ZeroMetaOperatorRegistryAddress();
+        }
+
+        META_OPERATOR_REGISTRY = IMetaOperatorRegistry(metaOperatorsRegistry);
+    }
 
     /// @notice Initialize the module from scratch
     function initialize(
@@ -63,6 +74,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
         returns (bytes memory publicKeys, bytes memory signatures)
     {
         _checkStakingRouterRole();
+        _requireNodeOperatorWeightsUpToDate();
+
         (
             uint256 allocated,
             uint256[] memory operatorIds,
@@ -134,6 +147,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256[] calldata topUpLimits
     ) external returns (uint256[] memory allocations) {
         _checkStakingRouterRole();
+        _requireNodeOperatorWeightsUpToDate();
+
         if (maxDepositAmount == 0) {
             return new uint256[](0);
         }
@@ -212,6 +227,60 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     /// @inheritdoc ICuratedModule
+    function onBondCurveWeightUpdated() external {
+        if (msg.sender != address(META_OPERATOR_REGISTRY)) {
+            revert SenderIsNotMetaOperatorRegistry();
+        }
+
+        _storage().nodeOperatorWeightsUpdateCount = 0;
+        _incrementModuleNonce();
+    }
+
+    /// @inheritdoc ICuratedModule
+    function batchUpdateNodeOperatorWeights(
+        uint256 maxCount
+    ) external override returns (bool finished) {
+        if (maxCount == 0) {
+            revert InvalidMaxCount();
+        }
+
+        CuratedModuleStorage storage $ = _storage();
+        uint256 operatorsCount = _nodeOperatorsCount;
+        uint256 index = $.nodeOperatorWeightsUpdateCount;
+        if (index >= operatorsCount) {
+            return true;
+        }
+
+        uint256 limit = index + maxCount;
+        if (limit > operatorsCount) {
+            limit = operatorsCount;
+        }
+
+        for (uint256 i = index; i < limit; ++i) {
+            _updateNodeOperatorWeight(i);
+        }
+
+        $.nodeOperatorWeightsUpdateCount = limit;
+        finished = limit == operatorsCount;
+    }
+
+    /// @inheritdoc ICuratedModule
+    function getNodeOperatorWeightsToUpdateCount()
+        external
+        view
+        returns (uint256)
+    {
+        uint256 operatorsCount = _nodeOperatorsCount;
+        uint256 index = _storage().nodeOperatorWeightsUpdateCount;
+        if (index >= operatorsCount) {
+            return 0;
+        }
+        unchecked {
+            return operatorsCount - index;
+        }
+    }
+
+    /// @inheritdoc ICuratedModule
     function getNodeOperatorBalance(
         uint256 operatorId
     ) external view returns (uint256) {
@@ -255,22 +324,69 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256 nodeOperatorId,
         uint256 newCount,
         bool incrementNonceIfUpdated
-    ) internal override {
+    ) internal override returns (bool) {
         if (newCount > 0) {
-            if (
-                PARAMETERS_REGISTRY.getDepositAllocationWeight(
-                    _getBondCurveId(nodeOperatorId)
-                ) == 0
-            ) {
+            (uint256 weight, ) = META_OPERATOR_REGISTRY
+                .getNodeOperatorWeightAndExternalStake(nodeOperatorId);
+            if (weight == 0) {
                 newCount = 0;
             }
         }
-        super._applyDepositableValidatorsCount(
-            no,
-            nodeOperatorId,
-            newCount,
-            incrementNonceIfUpdated
+        return
+            super._applyDepositableValidatorsCount(
+                no,
+                nodeOperatorId,
+                newCount,
+                incrementNonceIfUpdated
+            );
+    }
+
+    /// @inheritdoc IBaseModule
+    function onNodeOperatorBondCurveUpdated(
+        uint256 nodeOperatorId
+    ) external override(IBaseModule) {
+        _updateNodeOperatorWeight(nodeOperatorId);
+    }
+
+    function _updateNodeOperatorWeight(uint256 nodeOperatorId) internal {
+        bool weightChanged = _updateNodeOperatorWeightInRegistry(
+            nodeOperatorId
         );
+        bool depositableChanged = _updateDepositableValidatorsCount({
+            nodeOperatorId: nodeOperatorId,
+            incrementNonceIfUpdated: false
+        });
+        if (weightChanged || depositableChanged) {
+            _incrementModuleNonce();
+        }
+    }
+
+    function _updateNodeOperatorWeightInRegistry(
+        uint256 nodeOperatorId
+    ) internal returns (bool) {
+        (bool isInGroup, ) = META_OPERATOR_REGISTRY
+            .getNodeOperatorGroupMembership(nodeOperatorId);
+        if (!isInGroup) {
+            return false;
+        }
+
+        return
+            META_OPERATOR_REGISTRY.onNodeOperatorWeightUpdated(nodeOperatorId);
+    }
+
+    function _onNodeOperatorCreate() internal override {
+        CuratedModuleStorage storage $ = _storage();
+        if ($.nodeOperatorWeightsUpdateCount == _nodeOperatorsCount - 1) {
+            unchecked {
+                ++$.nodeOperatorWeightsUpdateCount;
+            }
+        }
+    }
+
+    function _requireNodeOperatorWeightsUpToDate() internal view {
+        if (_storage().nodeOperatorWeightsUpdateCount != _nodeOperatorsCount) {
+            revert NodeOperatorWeightsUpdateInProgress();
+        }
     }
 
     function _validateTopUpPublicKeys(

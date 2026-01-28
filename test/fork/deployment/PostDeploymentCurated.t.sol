@@ -72,28 +72,31 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
     }
 }
 
-contract OperatorsDataDeploymentTest is DeploymentBaseTest {
+contract MetaOperatorRegistryDeploymentTest is DeploymentBaseTest {
     function test_roles_onlyFull() public view {
         assertEq(
-            operatorsData.getRoleMemberCount(
-                operatorsData.DEFAULT_ADMIN_ROLE()
+            metaOperatorRegistry.getRoleMemberCount(
+                metaOperatorRegistry.DEFAULT_ADMIN_ROLE()
             ),
             adminsCount
         );
         assertTrue(
-            operatorsData.hasRole(
-                operatorsData.DEFAULT_ADMIN_ROLE(),
+            metaOperatorRegistry.hasRole(
+                metaOperatorRegistry.DEFAULT_ADMIN_ROLE(),
                 deployParams.aragonAgent
             )
         );
 
-        bytes32 setterRole = operatorsData.SETTER_ROLE();
+        bytes32 setterRole = metaOperatorRegistry.SET_OPERATOR_INFO_ROLE();
         uint256 gatesCount = curatedGates.length;
-        assertEq(operatorsData.getRoleMemberCount(setterRole), gatesCount);
+        assertEq(
+            metaOperatorRegistry.getRoleMemberCount(setterRole),
+            gatesCount
+        );
         for (uint256 i = 0; i < gatesCount; ++i) {
             assertTrue(
-                operatorsData.hasRole(setterRole, curatedGates[i]),
-                "gate missing operatorsData setter role"
+                metaOperatorRegistry.hasRole(setterRole, curatedGates[i]),
+                "gate missing metaOperatorRegistry setter role"
             );
         }
     }
@@ -109,7 +112,10 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
 
             assertEq(address(gate.MODULE()), address(module));
             assertEq(address(gate.ACCOUNTING()), address(accounting));
-            assertEq(address(gate.OPERATORS_DATA()), address(operatorsData));
+            assertEq(
+                address(gate.META_OPERATOR_REGISTRY()),
+                address(metaOperatorRegistry)
+            );
             assertEq(gate.MODULE_ID(), deployParams.stakingModuleId);
         }
     }

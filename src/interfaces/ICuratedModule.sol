@@ -5,29 +5,26 @@ pragma solidity 0.8.33;
 
 import { IBaseModule } from "./IBaseModule.sol";
 import { IStakingModuleV2 } from "./IStakingModule.sol";
+import { IMetaOperatorRegistry } from "./IMetaOperatorRegistry.sol";
 
 interface ICuratedModule is IBaseModule, IStakingModuleV2 {
-    error NotImplemented();
-    error PublicKeyIsWithdrawn();
-    error PublicKeyIsSlashed();
-    error PubkeyMismatch();
-
     event NodeOperatorBalanceUpdated(
         uint256 indexed operatorId,
         uint256 balanceWei
     );
 
+    error NotImplemented();
+    error PublicKeyIsWithdrawn();
+    error PublicKeyIsSlashed();
+    error PubkeyMismatch();
+    error ZeroMetaOperatorRegistryAddress();
+    error SenderIsNotMetaOperatorRegistry();
+    error InvalidMaxCount();
+    error NodeOperatorWeightsUpdateInProgress();
+
     /// @notice Initializes the contract.
     /// @param admin An address to grant the DEFAULT_ADMIN_ROLE to.
     function initialize(address admin) external;
-
-    function OPERATOR_ADDRESSES_ADMIN_ROLE() external view returns (bytes32);
-
-    /// @notice Returns stored operator balance (validators + pending).
-    /// @param operatorId ID of the Node Operator
-    function getNodeOperatorBalance(
-        uint256 operatorId
-    ) external view returns (uint256);
 
     /// @notice Change both reward and manager addresses of a node operator.
     /// @param nodeOperatorId ID of the Node Operator
@@ -38,6 +35,28 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
         address newManagerAddress,
         address newRewardAddress
     ) external;
+
+    /// @notice Notify the module about a bond curve weight update.
+    function onBondCurveWeightUpdated() external;
+
+    /// @notice Process node operator weight updates in order.
+    /// @param maxCount Maximum operators to process in this call.
+    /// @return finished Whether all operators have been processed.
+    function batchUpdateNodeOperatorWeights(
+        uint256 maxCount
+    ) external returns (bool finished);
+
+    /// @notice Returns the count of node operators left to update weights for.
+    function getNodeOperatorWeightsToUpdateCount()
+        external
+        view
+        returns (uint256);
+
+    /// @notice Returns stored operator balance (validators + pending).
+    /// @param operatorId ID of the Node Operator
+    function getNodeOperatorBalance(
+        uint256 operatorId
+    ) external view returns (uint256);
 
     /// @notice  Method to get list of operators and amount of Eth that can be topped up to operator from depositAmount
     /// @param depositAmount Amount of Eth that can be deposited to module
@@ -51,4 +70,12 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
             uint256[] memory operatorIds,
             uint256[] memory allocations
         );
+
+    function OPERATOR_ADDRESSES_ADMIN_ROLE() external view returns (bytes32);
+
+    /// @notice Returns current meta operators registry.
+    function META_OPERATOR_REGISTRY()
+        external
+        view
+        returns (IMetaOperatorRegistry);
 }

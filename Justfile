@@ -48,7 +48,7 @@ import "curated.just"
 default: clean deps build test-all
 
 build *args:
-    forge build --skip test --force {{args}}
+    forge build --skip test --skip script {{args}}
 
 clean:
     forge clean
