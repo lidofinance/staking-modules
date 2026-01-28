@@ -287,7 +287,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256[] calldata operatorIds
     ) internal view {
         for (uint256 i; i < operatorIds.length; ++i) {
-            if (pubkeys[i].length != 48) {
+            if (pubkeys[i].length != SigningKeys.PUBKEY_LENGTH) {
                 revert InvalidInput();
             }
             uint256 operatorId = operatorIds[i];

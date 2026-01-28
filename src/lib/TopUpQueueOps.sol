@@ -71,7 +71,7 @@ library TopUpQueueOps {
 
             {
                 bytes memory key = pubkeys[i];
-                if (key.length != 48) {
+                if (key.length != SigningKeys.PUBKEY_LENGTH) {
                     revert IBaseModule.InvalidInput();
                 }
                 _verifyModuleKey(item.noId(), item.keyIndex(), key);
