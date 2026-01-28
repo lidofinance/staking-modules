@@ -209,6 +209,34 @@ contract Utilities is CommonBase {
         return arr;
     }
 
+    function BytesArr(bytes memory e0) public pure returns (bytes[] memory) {
+        bytes[] memory arr = new bytes[](1);
+        arr[0] = e0;
+        return arr;
+    }
+
+    function BytesArr(
+        bytes memory e0,
+        bytes memory e1
+    ) public pure returns (bytes[] memory) {
+        bytes[] memory arr = new bytes[](2);
+        arr[0] = e0;
+        arr[1] = e1;
+        return arr;
+    }
+
+    function BytesArr(
+        bytes memory e0,
+        bytes memory e1,
+        bytes memory e2
+    ) public pure returns (bytes[] memory) {
+        bytes[] memory arr = new bytes[](3);
+        arr[0] = e0;
+        arr[1] = e1;
+        arr[2] = e2;
+        return arr;
+    }
+
     function slice(
         bytes memory subject,
         uint256 offset,
