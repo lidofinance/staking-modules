@@ -608,6 +608,10 @@ abstract contract BaseModule is
         _reportWithdrawnValidators(validatorInfos, false);
     }
 
+    // ====================
+    // Continue review from here
+    // ====================
+
     /// @inheritdoc IStakingModule
     function reportValidatorExitDelay(
         uint256 nodeOperatorId,
