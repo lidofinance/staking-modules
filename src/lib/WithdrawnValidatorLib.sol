@@ -24,8 +24,9 @@ library WithdrawnValidatorLib {
     function process(
         NodeOperator storage no,
         WithdrawnValidatorInfo calldata validatorInfo,
+        // TODO: remove this parameter and check it in the upper call
         bool isSlashed
-    ) external returns (bool bondCoversPenalties) {
+    ) external returns (bool penaltiesCovered) {
         if (validatorInfo.isSlashed && !isSlashed) {
             revert IBaseModule.SlashingPenaltyIsNotApplicable();
         }
@@ -58,10 +59,7 @@ library WithdrawnValidatorLib {
             .EXIT_PENALTIES()
             .getExitPenaltyInfo(validatorInfo.nodeOperatorId, pubkey);
 
-        bondCoversPenalties = _fulfilExitObligations(
-            validatorInfo,
-            penaltyInfo
-        );
+        penaltiesCovered = _fulfillExitObligations(validatorInfo, penaltyInfo);
 
         // solhint-disable-next-line func-named-parameters
         emit IBaseModule.ValidatorWithdrawn(
@@ -75,10 +73,11 @@ library WithdrawnValidatorLib {
 
     // NOTE: The function might revert if the penalty recorded in the `penaltyInfo` is large enough. As of now, it
     // should be greater than 2^245, which is about 5.6 * 10^55 ethers.
-    function _fulfilExitObligations(
+    function _fulfillExitObligations(
         WithdrawnValidatorInfo calldata validatorInfo,
         ExitPenaltyInfo memory penaltyInfo
-    ) internal returns (bool bondCoversPenalties) {
+    ) internal returns (bool penaltiesCovered) {
+        // TODO: Rename to chargeElWithdrawalRequestFee
         bool chargeWithdrawalRequestFee = false;
 
         uint256 penaltyMultiplier = _getPenaltyMultiplier(validatorInfo);
@@ -101,14 +100,14 @@ library WithdrawnValidatorLib {
             chargeWithdrawalRequestFee = true;
         }
 
-        // The withdrawal request fee is taken when either a delay was reported or the validator exited due to
+        // The EL withdrawal request fee is taken when either a delay was reported or the validator exited due to
         // strikes. Otherwise, the fee has already been paid by the node operator upon withdrawal trigger, or it is
         // a DAO decision to withdraw the validator before the withdrawal request becomes delayed.
         if (
             chargeWithdrawalRequestFee &&
             penaltyInfo.withdrawalRequestFee.value != 0
         ) {
-            // Withdrawal request fee is not scaled because sending a withdrawal request for a validator does
+            // EL withdrawal request fee is not scaled because sending a withdrawal request for a validator does
             // not depend on the size of a validator.
             feeSum += penaltyInfo.withdrawalRequestFee.value;
         }
@@ -122,10 +121,10 @@ library WithdrawnValidatorLib {
 
         IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
 
-        bondCoversPenalties = true;
+        penaltiesCovered = true;
 
         if (feeSum > 0) {
-            bondCoversPenalties = accounting.chargeFee(
+            penaltiesCovered = accounting.chargeFee(
                 validatorInfo.nodeOperatorId,
                 feeSum
             );
@@ -133,7 +132,7 @@ library WithdrawnValidatorLib {
 
         if (penaltySum > 0) {
             // We still call `penalize` even if there's no bond left, for the lock to be created.
-            bondCoversPenalties = accounting.penalize(
+            penaltiesCovered = accounting.penalize(
                 validatorInfo.nodeOperatorId,
                 penaltySum
             );

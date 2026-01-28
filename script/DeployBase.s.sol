@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
+// TODO: Move this file and other CSM files to /csm folder
+
 pragma solidity 0.8.33;
 
 import { Script, VmSafe } from "forge-std/Script.sol";

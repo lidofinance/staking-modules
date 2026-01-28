@@ -361,6 +361,7 @@ contract Accounting is
         emit BondLockCompensated(nodeOperatorId, msg.value);
     }
 
+    // TODO: Remove return
     /// @inheritdoc IAccounting
     function settleLockedBondETH(
         uint256 nodeOperatorId

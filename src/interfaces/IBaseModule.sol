@@ -134,6 +134,7 @@ interface IBaseModule is
     error ZeroAdminAddress();
     error ZeroSenderAddress();
     error ZeroParametersRegistryAddress();
+    error ZeroModuleType();
 
     function PAUSE_ROLE() external view returns (bytes32);
 

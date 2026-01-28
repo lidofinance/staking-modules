@@ -89,6 +89,11 @@ abstract contract BaseModule is
         address accounting,
         address exitPenalties
     ) {
+        // TODO: Add tests
+        if (moduleType == bytes32(0)) {
+            revert ZeroModuleType();
+        }
+
         if (lidoLocator == address(0)) {
             revert ZeroLocatorAddress();
         }
@@ -137,14 +142,13 @@ abstract contract BaseModule is
     {
         nodeOperatorId = _nodeOperatorsCount;
         OperatorTracker.recordCreator(nodeOperatorId);
-        // solhint-disable-next-line func-named-parameters
-        NodeOperatorOps.createNodeOperator(
-            _nodeOperators,
-            nodeOperatorId,
-            from,
-            managementProperties,
-            referrer
-        );
+        NodeOperatorOps.createNodeOperator({
+            nodeOperators: _nodeOperators,
+            nodeOperatorId: nodeOperatorId,
+            from: from,
+            managementProperties: managementProperties,
+            referrer: referrer
+        });
 
         unchecked {
             ++_nodeOperatorsCount;
@@ -315,6 +319,7 @@ abstract contract BaseModule is
         STETH.transferShares(FEE_DISTRIBUTOR, totalShares);
     }
 
+    // TODO: Check if exited keys are still needed for SR
     /// @inheritdoc IStakingModule
     function updateExitedValidatorsCount(
         bytes calldata nodeOperatorIds,
@@ -434,6 +439,7 @@ abstract contract BaseModule is
         _incrementModuleNonce();
     }
 
+    // TODO: Override for CSM, remove charge mechanism from BaseModule
     /// @inheritdoc IBaseModule
     function removeKeys(
         uint256 nodeOperatorId,
@@ -447,6 +453,7 @@ abstract contract BaseModule is
             revert SigningKeysInvalidOffset();
         }
 
+        // TODO: Remove all linter silences like this
         // solhint-disable-next-line func-named-parameters
         uint256 newTotalSigningKeys = SigningKeys.removeKeysSigs(
             nodeOperatorId,
@@ -462,10 +469,10 @@ abstract contract BaseModule is
         uint256 amountToCharge = PARAMETERS_REGISTRY.getKeyRemovalCharge(
             curveId
         ) * keysCount;
-        bool isFullyCharged = true;
+        bool chargeCovered = true;
 
         if (amountToCharge != 0) {
-            isFullyCharged = _accounting().chargeFee(
+            chargeCovered = _accounting().chargeFee(
                 nodeOperatorId,
                 amountToCharge
             );
@@ -482,7 +489,7 @@ abstract contract BaseModule is
         no.totalVettedKeys = uint32(newTotalSigningKeys);
         emit VettedSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
 
-        if (!isFullyCharged) {
+        if (!chargeCovered) {
             _onUncompensatedPenalty(nodeOperatorId);
         }
 
@@ -547,6 +554,8 @@ abstract contract BaseModule is
 
             if (!settled) continue;
 
+            // If general delayed penalty was not compensated using `compensateGeneralDelayedPenalty`,
+            // we treat it the same way as when bond is not sufficient to cover the penalty.
             _onUncompensatedPenalty(nodeOperatorId);
 
             // Nonce should be updated if depositableValidators change
@@ -883,12 +892,12 @@ abstract contract BaseModule is
             }
 
             NodeOperator storage no = _nodeOperators[info.nodeOperatorId];
-            bool bondCoversPenalties = WithdrawnValidatorLib.process(
+            bool penaltiesCovered = WithdrawnValidatorLib.process(
                 no,
                 info,
                 _isValidatorSlashed[pointer]
             );
-            if (!bondCoversPenalties) {
+            if (!penaltiesCovered) {
                 _onUncompensatedPenalty(info.nodeOperatorId);
             }
 
