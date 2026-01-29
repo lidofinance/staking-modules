@@ -9,7 +9,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { BaseModule } from "./abstract/BaseModule.sol";
 
 import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.sol";
-import { NodeOperator } from "./interfaces/IBaseModule.sol";
+import { IBaseModule, NodeOperator } from "./interfaces/IBaseModule.sol";
 import { ICSModule } from "./interfaces/ICSModule.sol";
 
 import { TopUpQueueLib, TopUpQueueItem, newTopUpQueueItem } from "./lib/TopUpQueueLib.sol";
@@ -79,7 +79,6 @@ contract CSModule is ICSModule, BaseModule {
     function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {
         // Clean `__freeSlot1` and `__freeSlot2` since the storage slots are no longer needed in version 3.
         // `__freeSlot3` and `__freeSlot4` were already cleaned in CSM v2 upgrade or were never used in clean CSM v2 deployments.
-        // TODO: Add tests
         assembly ("memory-safe") {
             sstore(__freeSlot1.slot, 0x00)
             sstore(__freeSlot2.slot, 0x00)
@@ -193,15 +192,14 @@ contract CSModule is ICSModule, BaseModule {
                         }
                     }
 
-                    // solhint-disable-next-line func-named-parameters
-                    SigningKeys.loadKeysSigs(
-                        noId,
-                        no.totalDepositedKeys,
-                        keysCount,
-                        publicKeys,
-                        signatures,
-                        loadedKeysCount
-                    );
+                    SigningKeys.loadKeysSigs({
+                        nodeOperatorId: noId,
+                        startIndex: no.totalDepositedKeys,
+                        keysCount: keysCount,
+                        pubkeys: publicKeys,
+                        signatures: signatures,
+                        bufOffset: loadedKeysCount
+                    });
 
                     // It's impossible in practice to reach the limit of these variables.
                     loadedKeysCount += keysCount;
@@ -256,15 +254,14 @@ contract CSModule is ICSModule, BaseModule {
         // NOTE: Function call doesn't leave an unreachable item on the stack.
         _checkRole(STAKING_ROUTER_ROLE);
 
-        // solhint-disable-next-line func-named-parameters
-        allocations = TopUpQueueOps.allocateDeposits(
-            _topUpQueue(),
-            maxDepositAmount,
-            pubkeys,
-            keyIndices,
-            operatorIds,
-            topUpLimits
-        );
+        allocations = TopUpQueueOps.allocateDeposits({
+            topUpQueue: _topUpQueue(),
+            depositAmount: maxDepositAmount,
+            pubkeys: pubkeys,
+            keyIndices: keyIndices,
+            operatorIds: operatorIds,
+            topUpLimits: topUpLimits
+        });
 
         if (keyIndices.length == 0) {
             return allocations;
@@ -279,6 +276,65 @@ contract CSModule is ICSModule, BaseModule {
     ) external onlyActiveTopUpQueue onlyRole(MANAGE_TOP_UP_QUEUE_ROLE) {
         _topUpQueue().limit = limit.toUint8();
         emit TopUpQueueLimitSet(limit);
+        _incrementModuleNonce();
+    }
+
+    /// @inheritdoc IBaseModule
+    function removeKeys(
+        uint256 nodeOperatorId,
+        uint256 startIndex,
+        uint256 keysCount
+    ) external override(BaseModule, IBaseModule) {
+        _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
+        NodeOperator storage no = _nodeOperators[nodeOperatorId];
+
+        if (startIndex < no.totalDepositedKeys) {
+            revert SigningKeysInvalidOffset();
+        }
+
+        uint256 newTotalSigningKeys = SigningKeys.removeKeysSigs({
+            nodeOperatorId: nodeOperatorId,
+            startIndex: startIndex,
+            keysCount: keysCount,
+            totalKeysCount: no.totalAddedKeys
+        });
+
+        // The Node Operator is charged for the every removed key. It's motivated by the fact that the DAO should cleanup
+        // the queue from the empty batches related to the Node Operator. It's possible to have multiple batches with only one
+        // key in it, so it means the DAO should be able to cover removal costs for as much batches as keys removed in this case.
+        uint256 curveId = _getBondCurveId(nodeOperatorId);
+        uint256 amountToCharge = PARAMETERS_REGISTRY.getKeyRemovalCharge(
+            curveId
+        ) * keysCount;
+        bool chargeCovered = true;
+
+        if (amountToCharge != 0) {
+            chargeCovered = _accounting().chargeFee(
+                nodeOperatorId,
+                amountToCharge
+            );
+            emit KeyRemovalChargeApplied(nodeOperatorId);
+        }
+
+        // Added/vetted signing key counters are uint32 fields; newTotalSigningKeys is strictly
+        // less than no.totalAddedKeys, so it always fits.
+        // forge-lint: disable-next-line(unsafe-typecast)
+        no.totalAddedKeys = uint32(newTotalSigningKeys);
+        emit TotalSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
+
+        // forge-lint: disable-next-line(unsafe-typecast)
+        no.totalVettedKeys = uint32(newTotalSigningKeys);
+        emit VettedSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
+
+        if (!chargeCovered) {
+            _onUncompensatedPenalty(nodeOperatorId);
+        }
+
+        // Nonce is updated below due to keys state change
+        _updateDepositableValidatorsCount({
+            nodeOperatorId: nodeOperatorId,
+            incrementNonceIfUpdated: false
+        });
         _incrementModuleNonce();
     }
 
@@ -414,15 +470,14 @@ contract CSModule is ICSModule, BaseModule {
             newCount,
             incrementNonceIfUpdated
         );
-        // solhint-disable-next-line func-named-parameters
-        DepositQueueOps.enqueueNodeOperatorKeys(
-            _nodeOperators,
-            _depositQueueByPriority,
-            PARAMETERS_REGISTRY,
-            _accounting(),
-            QUEUE_LOWEST_PRIORITY,
-            nodeOperatorId
-        );
+        DepositQueueOps.enqueueNodeOperatorKeys({
+            nodeOperators: _nodeOperators,
+            depositQueues: _depositQueueByPriority,
+            parametersRegistry: PARAMETERS_REGISTRY,
+            accounting: _accounting(),
+            queueLowestPriority: QUEUE_LOWEST_PRIORITY,
+            nodeOperatorId: nodeOperatorId
+        });
     }
 
     /// @dev Setting `topUpQueueLimit` to 0 effectively disables the top-up queue permanently.

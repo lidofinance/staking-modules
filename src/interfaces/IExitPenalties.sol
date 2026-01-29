@@ -16,8 +16,7 @@ struct MarkedUint248 {
 struct ExitPenaltyInfo {
     MarkedUint248 delayFee;
     MarkedUint248 strikesPenalty;
-    // TODO: REname to elWithdrawalRequestFee
-    MarkedUint248 withdrawalRequestFee;
+    MarkedUint248 elWithdrawalRequestFee;
 }
 
 interface IExitPenalties is IExitTypes {

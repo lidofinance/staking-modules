@@ -61,14 +61,13 @@ library WithdrawnValidatorLib {
 
         penaltiesCovered = _fulfillExitObligations(validatorInfo, penaltyInfo);
 
-        // solhint-disable-next-line func-named-parameters
-        emit IBaseModule.ValidatorWithdrawn(
-            validatorInfo.nodeOperatorId,
-            validatorInfo.keyIndex,
-            validatorInfo.exitBalance,
-            validatorInfo.slashingPenalty,
-            pubkey
-        );
+        emit IBaseModule.ValidatorWithdrawn({
+            nodeOperatorId: validatorInfo.nodeOperatorId,
+            keyIndex: validatorInfo.keyIndex,
+            exitBalance: validatorInfo.exitBalance,
+            slashingPenalty: validatorInfo.slashingPenalty,
+            pubkey: pubkey
+        });
     }
 
     // NOTE: The function might revert if the penalty recorded in the `penaltyInfo` is large enough. As of now, it
@@ -77,8 +76,7 @@ library WithdrawnValidatorLib {
         WithdrawnValidatorInfo calldata validatorInfo,
         ExitPenaltyInfo memory penaltyInfo
     ) internal returns (bool penaltiesCovered) {
-        // TODO: Rename to chargeElWithdrawalRequestFee
-        bool chargeWithdrawalRequestFee = false;
+        bool chargeElWithdrawalRequestFee = false;
 
         uint256 penaltyMultiplier = _getPenaltyMultiplier(validatorInfo);
         uint256 penaltySum;
@@ -89,7 +87,7 @@ library WithdrawnValidatorLib {
                 penaltyInfo.delayFee.value,
                 penaltyMultiplier
             );
-            chargeWithdrawalRequestFee = true;
+            chargeElWithdrawalRequestFee = true;
         }
 
         if (penaltyInfo.strikesPenalty.isValue) {
@@ -97,19 +95,19 @@ library WithdrawnValidatorLib {
                 penaltyInfo.strikesPenalty.value,
                 penaltyMultiplier
             );
-            chargeWithdrawalRequestFee = true;
+            chargeElWithdrawalRequestFee = true;
         }
 
         // The EL withdrawal request fee is taken when either a delay was reported or the validator exited due to
         // strikes. Otherwise, the fee has already been paid by the node operator upon withdrawal trigger, or it is
         // a DAO decision to withdraw the validator before the withdrawal request becomes delayed.
         if (
-            chargeWithdrawalRequestFee &&
-            penaltyInfo.withdrawalRequestFee.value != 0
+            chargeElWithdrawalRequestFee &&
+            penaltyInfo.elWithdrawalRequestFee.value != 0
         ) {
             // EL withdrawal request fee is not scaled because sending a withdrawal request for a validator does
             // not depend on the size of a validator.
-            feeSum += penaltyInfo.withdrawalRequestFee.value;
+            feeSum += penaltyInfo.elWithdrawalRequestFee.value;
         }
 
         if (validatorInfo.isSlashed) {

@@ -179,7 +179,7 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
             .getExitPenaltyInfo(NO_ID, publicKey);
-        assertEq(exitPenaltyInfo.withdrawalRequestFee.value, paidFee);
+        assertEq(exitPenaltyInfo.elWithdrawalRequestFee.value, paidFee);
     }
 
     function test_processTriggeredExit_zeroMaxFeeValue() public {
@@ -202,8 +202,8 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
             .getExitPenaltyInfo(NO_ID, publicKey);
-        assertEq(exitPenaltyInfo.withdrawalRequestFee.isValue, true);
-        assertEq(exitPenaltyInfo.withdrawalRequestFee.value, 0);
+        assertEq(exitPenaltyInfo.elWithdrawalRequestFee.isValue, true);
+        assertEq(exitPenaltyInfo.elWithdrawalRequestFee.value, 0);
     }
 
     function test_processTriggeredExit_voluntaryExit() public {
@@ -221,7 +221,7 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
             .getExitPenaltyInfo(NO_ID, publicKey);
-        assertEq(exitPenaltyInfo.withdrawalRequestFee.value, 0);
+        assertEq(exitPenaltyInfo.elWithdrawalRequestFee.value, 0);
     }
 
     function test_processTriggeredExit_doubleReporting() public {
@@ -254,7 +254,7 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
             .getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(
-            exitPenaltyInfo.withdrawalRequestFee.value,
+            exitPenaltyInfo.elWithdrawalRequestFee.value,
             initialPaidFee,
             "paid fee should not be updated"
         );
@@ -272,7 +272,7 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
             .getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(
-            exitPenaltyInfo.withdrawalRequestFee.value,
+            exitPenaltyInfo.elWithdrawalRequestFee.value,
             maxFee,
             "paid fee should be capped to max fee"
         );

@@ -17,7 +17,7 @@ import { IBurner } from "../../src/interfaces/IBurner.sol";
 import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 
 import { ForkHelpersCommon } from "./Common.sol";
-import { DeployParams } from "../DeployBase.s.sol";
+import { DeployParams } from "../csm/DeployBase.s.sol";
 
 contract SimulateVote is Script, ForkHelpersCommon {
     bytes32 internal constant REPORT_EL_REWARDS_STEALING_PENALTY_ROLE =

@@ -248,9 +248,9 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
             .getExitPenaltyInfo(nodeOperatorId, key);
         assertEq(exitPenaltyInfo.strikesPenalty.value, penalty);
-        assertTrue(exitPenaltyInfo.withdrawalRequestFee.isValue);
+        assertTrue(exitPenaltyInfo.elWithdrawalRequestFee.isValue);
         assertEq(
-            exitPenaltyInfo.withdrawalRequestFee.value,
+            exitPenaltyInfo.elWithdrawalRequestFee.value,
             expectedWithdrawalFee
         );
         assertEq(

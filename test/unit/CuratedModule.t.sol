@@ -144,6 +144,17 @@ contract CuratedInitialize is CuratedCommon {
         assertEq(address(module.EXIT_PENALTIES()), address(exitPenalties));
     }
 
+    function test_constructor_RevertWhen_ZeroModuleType() public {
+        vm.expectRevert(IBaseModule.ZeroModuleType.selector);
+        new CuratedModule({
+            moduleType: bytes32(0),
+            lidoLocator: address(locator),
+            parametersRegistry: address(parametersRegistry),
+            accounting: address(accounting),
+            exitPenalties: address(exitPenalties)
+        });
+    }
+
     function test_constructor_RevertWhen_ZeroLocator() public {
         vm.expectRevert(IBaseModule.ZeroLocatorAddress.selector);
         new CuratedModule({
@@ -1778,11 +1789,6 @@ contract CuratedGetSigningKeysWithSignatures is
 {}
 
 contract CuratedRemoveKeys is ModuleRemoveKeys, CuratedCommon {}
-
-contract CuratedRemoveKeysChargeFee is
-    ModuleRemoveKeysChargeFee,
-    CuratedCommon
-{}
 
 contract CuratedRemoveKeysReverts is ModuleRemoveKeysReverts, CuratedCommon {}
 

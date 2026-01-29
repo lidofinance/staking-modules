@@ -190,28 +190,26 @@ library DepositQueueOps {
                         count = priorityDepositsLeft;
                     }
 
-                    // solhint-disable-next-line func-named-parameters
-                    _enqueueNodeOperatorKeys(
-                        depositQueues[priority],
-                        no,
-                        nodeOperatorId,
-                        priority,
-                        count
-                    );
+                    _enqueueNodeOperatorKeys({
+                        queue: depositQueues[priority],
+                        no: no,
+                        nodeOperatorId: nodeOperatorId,
+                        queuePriority: priority,
+                        count: count
+                    });
                     toEnqueue -= count;
                 }
             }
         }
 
         if (toEnqueue > 0) {
-            // solhint-disable-next-line func-named-parameters
-            _enqueueNodeOperatorKeys(
-                depositQueues[queueLowestPriority],
-                no,
-                nodeOperatorId,
-                queueLowestPriority,
-                toEnqueue
-            );
+            _enqueueNodeOperatorKeys({
+                queue: depositQueues[queueLowestPriority],
+                no: no,
+                nodeOperatorId: nodeOperatorId,
+                queuePriority: queueLowestPriority,
+                count: toEnqueue
+            });
         }
     }
 

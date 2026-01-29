@@ -91,7 +91,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
         ExitPenaltyInfo storage exitPenaltyInfo = _exitPenaltyInfo[keyPointer];
         // don't update the fee if it was already set to prevent hypothetical manipulations
         //    with double reporting to get lower/higher fee.
-        if (exitPenaltyInfo.withdrawalRequestFee.isValue) {
+        if (exitPenaltyInfo.elWithdrawalRequestFee.isValue) {
             return;
         }
         uint256 curveId = ACCOUNTING.getBondCurveId(nodeOperatorId);
@@ -101,7 +101,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
 
         uint256 fee = Math.min(withdrawalRequestPaidFee, maxFee);
 
-        exitPenaltyInfo.withdrawalRequestFee = MarkedUint248(
+        exitPenaltyInfo.elWithdrawalRequestFee = MarkedUint248(
             fee.toUint248(),
             true
         );

@@ -108,7 +108,6 @@ interface IBaseModule is
         uint256 keyIndex,
         bytes pubkey
     );
-    event KeyRemovalChargeApplied(uint256 indexed nodeOperatorId);
 
     error CannotAddKeys();
     error NodeOperatorDoesNotExist();
@@ -457,7 +456,7 @@ interface IBaseModule is
         uint256 keyIndex
     ) external view returns (bool);
 
-    /// @notice Remove keys for the Node Operator and confiscate removal charge for each deleted key
+    /// @notice Remove keys for the Node Operator. Charging is module-specific (e.g., CSM applies a per-key fee).
     ///         This method is a part of the Optimistic Vetting scheme. After key deletion `totalVettedKeys`
     ///         is set equal to `totalAddedKeys`. If invalid keys are not removed, the unvetting process will be repeated
     ///         and `decreaseVettedSigningKeysCount` will be called by StakingRouter.

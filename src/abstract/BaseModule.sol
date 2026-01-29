@@ -89,7 +89,6 @@ abstract contract BaseModule is
         address accounting,
         address exitPenalties
     ) {
-        // TODO: Add tests
         if (moduleType == bytes32(0)) {
             revert ZeroModuleType();
         }
@@ -439,13 +438,12 @@ abstract contract BaseModule is
         _incrementModuleNonce();
     }
 
-    // TODO: Override for CSM, remove charge mechanism from BaseModule
     /// @inheritdoc IBaseModule
     function removeKeys(
         uint256 nodeOperatorId,
         uint256 startIndex,
         uint256 keysCount
-    ) external {
+    ) external virtual {
         _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
 
@@ -453,31 +451,12 @@ abstract contract BaseModule is
             revert SigningKeysInvalidOffset();
         }
 
-        // TODO: Remove all linter silences like this
-        // solhint-disable-next-line func-named-parameters
-        uint256 newTotalSigningKeys = SigningKeys.removeKeysSigs(
-            nodeOperatorId,
-            startIndex,
-            keysCount,
-            no.totalAddedKeys
-        );
-
-        // The Node Operator is charged for the every removed key. It's motivated by the fact that the DAO should cleanup
-        // the queue from the empty batches related to the Node Operator. It's possible to have multiple batches with only one
-        // key in it, so it means the DAO should be able to cover removal costs for as much batches as keys removed in this case.
-        uint256 curveId = _getBondCurveId(nodeOperatorId);
-        uint256 amountToCharge = PARAMETERS_REGISTRY.getKeyRemovalCharge(
-            curveId
-        ) * keysCount;
-        bool chargeCovered = true;
-
-        if (amountToCharge != 0) {
-            chargeCovered = _accounting().chargeFee(
-                nodeOperatorId,
-                amountToCharge
-            );
-            emit KeyRemovalChargeApplied(nodeOperatorId);
-        }
+        uint256 newTotalSigningKeys = SigningKeys.removeKeysSigs({
+            nodeOperatorId: nodeOperatorId,
+            startIndex: startIndex,
+            keysCount: keysCount,
+            totalKeysCount: no.totalAddedKeys
+        });
 
         // Added/vetted signing key counters are uint32 fields; newTotalSigningKeys is strictly
         // less than no.totalAddedKeys, so it always fits.
@@ -488,10 +467,6 @@ abstract contract BaseModule is
         // forge-lint: disable-next-line(unsafe-typecast)
         no.totalVettedKeys = uint32(newTotalSigningKeys);
         emit VettedSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
-
-        if (!chargeCovered) {
-            _onUncompensatedPenalty(nodeOperatorId);
-        }
 
         // Nonce is updated below due to keys state change
         _updateDepositableValidatorsCount({
@@ -771,15 +746,14 @@ abstract contract BaseModule is
         _onlyValidIndexRange(nodeOperatorId, startIndex, keysCount);
 
         (keys, signatures) = SigningKeys.initKeysSigsBuf(keysCount);
-        // solhint-disable-next-line func-named-parameters
-        SigningKeys.loadKeysSigs(
-            nodeOperatorId,
-            startIndex,
-            keysCount,
-            keys,
-            signatures,
-            0
-        );
+        SigningKeys.loadKeysSigs({
+            nodeOperatorId: nodeOperatorId,
+            startIndex: startIndex,
+            keysCount: keysCount,
+            pubkeys: keys,
+            signatures: signatures,
+            bufOffset: 0
+        });
     }
 
     /// @inheritdoc IStakingModule
@@ -951,14 +925,13 @@ abstract contract BaseModule is
                 revert KeysLimitExceeded();
             }
 
-            // solhint-disable-next-line func-named-parameters
-            uint256 newTotalAddedKeys = SigningKeys.saveKeysSigs(
-                nodeOperatorId,
-                totalAddedKeys,
-                keysCount,
-                publicKeys,
-                signatures
-            );
+            uint256 newTotalAddedKeys = SigningKeys.saveKeysSigs({
+                nodeOperatorId: nodeOperatorId,
+                startIndex: totalAddedKeys,
+                keysCount: keysCount,
+                pubkeys: publicKeys,
+                signatures: signatures
+            });
 
             uint32 totalVettedKeys = no.totalVettedKeys;
             // Optimistic vetting takes place.
@@ -1107,7 +1080,6 @@ abstract contract BaseModule is
         uint256 targetLimitMode,
         uint256 targetLimit
     ) internal {
-        // solhint-disable-next-line func-named-parameters
         NodeOperatorOps.setTargetLimit(
             _nodeOperators,
             nodeOperatorId,

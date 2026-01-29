@@ -4,7 +4,7 @@
 pragma solidity 0.8.33;
 
 import { DeployBase } from "./DeployBase.s.sol";
-import { GIndices } from "./constants/GIndices.sol";
+import { GIndices } from "../constants/GIndices.sol";
 
 contract DeployLocalDevNet is DeployBase {
     constructor() DeployBase("local-devnet", vm.envUint("DEVNET_CHAIN_ID")) {

@@ -7,7 +7,7 @@ import { Test } from "forge-std/Test.sol";
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import { DeployParams } from "script/DeployBase.s.sol";
+import { DeployParams } from "script/csm/DeployBase.s.sol";
 import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
 import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
@@ -36,6 +36,13 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
 contract ModuleDeploymentTest is DeploymentBaseTest {
     function test_state_onlyFull() public view {
         assertEq(module.getInitializedVersion(), 3);
+    }
+
+    function test_unusedStorageSlots_onlyFull() public {
+        bytes32 slot1 = vm.load(address(module), bytes32(uint256(1)));
+        bytes32 slot2 = vm.load(address(module), bytes32(uint256(2)));
+        assertEq(slot1, bytes32(0), "assert __freeSlot1 is empty");
+        assertEq(slot2, bytes32(0), "assert __freeSlot2 is empty");
     }
 
     function test_roles_onlyFull() public view {

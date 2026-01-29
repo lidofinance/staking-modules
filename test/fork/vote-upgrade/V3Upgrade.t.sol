@@ -7,7 +7,7 @@ import { Test } from "forge-std/Test.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { DeployParams } from "../../../script/DeployBase.s.sol";
+import { DeployParams } from "../../../script/csm/DeployBase.s.sol";
 import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
 import { NodeOperator } from "../../../src/interfaces/IBaseModule.sol";
 import { IBondLock } from "../../../src/interfaces/IBondLock.sol";

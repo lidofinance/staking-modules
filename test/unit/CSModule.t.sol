@@ -294,6 +294,17 @@ contract CsmInitialize is CSMCommon {
         assertEq(address(csm.EXIT_PENALTIES()), address(exitPenalties));
     }
 
+    function test_constructor_RevertWhen_ZeroModuleType() public {
+        vm.expectRevert(IBaseModule.ZeroModuleType.selector);
+        new CSModule({
+            moduleType: bytes32(0),
+            lidoLocator: address(locator),
+            parametersRegistry: address(parametersRegistry),
+            accounting: address(accounting),
+            exitPenalties: address(exitPenalties)
+        });
+    }
+
     function test_constructor_RevertWhen_ZeroLocator() public {
         vm.expectRevert(IBaseModule.ZeroLocatorAddress.selector);
         new CSModule({
@@ -368,6 +379,55 @@ contract CsmInitialize is CSMCommon {
         assertEq(csm.getRoleMemberCount(csm.DEFAULT_ADMIN_ROLE()), 1);
         assertTrue(csm.isPaused());
         assertEq(csm.getInitializedVersion(), 3);
+    }
+
+    function test_finalizeUpgradeV3_ClearsFreeSlotsAndDisablesTopUpQueue()
+        public
+    {
+        CSModule csm = new CSModule({
+            moduleType: "community-staking-module",
+            lidoLocator: address(locator),
+            parametersRegistry: address(parametersRegistry),
+            accounting: address(accounting),
+            exitPenalties: address(exitPenalties)
+        });
+
+        _enableInitializers(address(csm));
+
+        bytes32 slot1 = bytes32(uint256(1));
+        bytes32 slot2 = bytes32(uint256(2));
+        vm.store(address(csm), slot1, bytes32(uint256(1)));
+        vm.store(address(csm), slot2, bytes32(uint256(2)));
+
+        csm.finalizeUpgradeV3();
+
+        assertEq(vm.load(address(csm), slot1), bytes32(0));
+        assertEq(vm.load(address(csm), slot2), bytes32(0));
+
+        (bool active, uint256 limit, uint256 length, uint256 head) = csm
+            .getTopUpQueue();
+        assertFalse(active);
+        assertEq(limit, 0);
+        assertEq(length, 0);
+        assertEq(head, 0);
+        assertEq(csm.getInitializedVersion(), 3);
+    }
+
+    function test_finalizeUpgradeV3_RevertWhen_calledTwice() public {
+        CSModule csm = new CSModule({
+            moduleType: "community-staking-module",
+            lidoLocator: address(locator),
+            parametersRegistry: address(parametersRegistry),
+            accounting: address(accounting),
+            exitPenalties: address(exitPenalties)
+        });
+
+        _enableInitializers(address(csm));
+
+        csm.finalizeUpgradeV3();
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        csm.finalizeUpgradeV3();
     }
 
     function test_initialize_RevertWhen_ZeroAdminAddress() public {
@@ -1749,7 +1809,82 @@ contract CSMGetSigningKeysWithSignatures is
 
 contract CSMRemoveKeys is ModuleRemoveKeys, CSMCommon {}
 
-contract CSMRemoveKeysChargeFee is ModuleRemoveKeysChargeFee, CSMCommon {}
+contract CSMRemoveKeysChargeFee is CSMCommon {
+    function test_removeKeys_chargeFee() public assertInvariants {
+        uint256 noId = createNodeOperator(3);
+
+        uint256 amountToCharge = module
+            .PARAMETERS_REGISTRY()
+            .getKeyRemovalCharge(0) * 2;
+
+        vm.expectCall(
+            address(accounting),
+            abi.encodeWithSelector(
+                accounting.chargeFee.selector,
+                noId,
+                amountToCharge
+            ),
+            1
+        );
+
+        vm.expectEmit(address(module));
+        emit ICSModule.KeyRemovalChargeApplied(noId);
+
+        vm.prank(nodeOperator);
+        module.removeKeys(noId, 1, 2);
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(no.totalAddedKeys, 1);
+        // There should be no target limit if the charge is fully paid.
+        assertEq(no.targetLimit, 0);
+        assertEq(no.targetLimitMode, 0);
+    }
+
+    function test_removeKeys_chargeFeeMoreThanBond() public assertInvariants {
+        uint256 noId = createNodeOperator(1);
+
+        vm.prank(admin);
+        module.PARAMETERS_REGISTRY().setKeyRemovalCharge(
+            0,
+            BOND_SIZE + 1 ether
+        );
+
+        vm.prank(nodeOperator);
+        module.removeKeys(noId, 0, 1);
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(no.totalAddedKeys, 0);
+        // Target limit should be set to 0 and mode to 2 if the charge is more than bond.
+        assertEq(no.targetLimit, 0);
+        assertEq(no.targetLimitMode, 2);
+    }
+
+    function test_removeKeys_withNoFee() public assertInvariants {
+        vm.prank(admin);
+        module.PARAMETERS_REGISTRY().setKeyRemovalCharge(0, 0);
+
+        uint256 noId = createNodeOperator(3);
+
+        vm.recordLogs();
+
+        vm.prank(nodeOperator);
+        module.removeKeys(noId, 1, 2);
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        for (uint256 i = 0; i < entries.length; i++) {
+            assertNotEq(
+                entries[i].topics[0],
+                ICSModule.KeyRemovalChargeApplied.selector
+            );
+        }
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(no.totalAddedKeys, 1);
+        // There should be no target limit if the is no charge.
+        assertEq(no.targetLimit, 0);
+        assertEq(no.targetLimitMode, 0);
+    }
+}
 
 contract CSMRemoveKeysReverts is ModuleRemoveKeysReverts, CSMCommon {}
 

@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { Test } from "forge-std/Test.sol";
 
-import { DeployParams } from "script/DeployBase.s.sol";
+import { DeployParams } from "script/csm/DeployBase.s.sol";
 
 import { Utilities } from "../../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../../helpers/Fixtures.sol";

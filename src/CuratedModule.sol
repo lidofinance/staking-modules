@@ -85,15 +85,14 @@ contract CuratedModule is ICuratedModule, BaseModule {
             uint256 operatorId = operatorIds[i];
             NodeOperator storage no = _nodeOperators[operatorId];
 
-            // solhint-disable-next-line func-named-parameters
-            SigningKeys.loadKeysSigs(
-                operatorId,
-                no.totalDepositedKeys,
-                allocation,
-                publicKeys,
-                signatures,
-                loadedKeysCount
-            );
+            SigningKeys.loadKeysSigs({
+                nodeOperatorId: operatorId,
+                startIndex: no.totalDepositedKeys,
+                keysCount: allocation,
+                pubkeys: publicKeys,
+                signatures: signatures,
+                bufOffset: loadedKeysCount
+            });
 
             loadedKeysCount += allocation;
 

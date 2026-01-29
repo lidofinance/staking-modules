@@ -4,22 +4,22 @@
 pragma solidity 0.8.33;
 
 import { DeployBase } from "./DeployBase.s.sol";
-import { CSModule } from "../src/CSModule.sol";
-import { Accounting } from "../src/Accounting.sol";
-import { FeeOracle } from "../src/FeeOracle.sol";
-import { FeeDistributor } from "../src/FeeDistributor.sol";
-import { ExitPenalties } from "../src/ExitPenalties.sol";
-import { Ejector } from "../src/Ejector.sol";
-import { PermissionlessGate } from "../src/PermissionlessGate.sol";
-import { ValidatorStrikes } from "../src/ValidatorStrikes.sol";
-import { Verifier } from "../src/Verifier.sol";
-import { VettedGate } from "../src/VettedGate.sol";
-import { ParametersRegistry } from "../src/ParametersRegistry.sol";
-import { IVerifier } from "../src/interfaces/IVerifier.sol";
+import { CSModule } from "../../src/CSModule.sol";
+import { Accounting } from "../../src/Accounting.sol";
+import { FeeOracle } from "../../src/FeeOracle.sol";
+import { FeeDistributor } from "../../src/FeeDistributor.sol";
+import { ExitPenalties } from "../../src/ExitPenalties.sol";
+import { Ejector } from "../../src/Ejector.sol";
+import { PermissionlessGate } from "../../src/PermissionlessGate.sol";
+import { ValidatorStrikes } from "../../src/ValidatorStrikes.sol";
+import { Verifier } from "../../src/Verifier.sol";
+import { VettedGate } from "../../src/VettedGate.sol";
+import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
+import { IVerifier } from "../../src/interfaces/IVerifier.sol";
 
-import { JsonObj, Json } from "./utils/Json.sol";
-import { Slot } from "../src/lib/Types.sol";
-import { OssifiableProxy } from "../src/lib/proxy/OssifiableProxy.sol";
+import { JsonObj, Json } from "../utils/Json.sol";
+import { Slot } from "../../src/lib/Types.sol";
+import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 
 abstract contract DeployCSMImplementationsBase is DeployBase {
     address public gateSealV3;
