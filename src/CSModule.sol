@@ -239,33 +239,29 @@ contract CSModule is ICSModule, BaseModule {
     /// @dev The function strictly follows the top-up queue. If a key in the list cannot be dequeued from the queue
     /// (i.e., the allocation to this key is below its top-up limit), the function reverts when additional keys are
     /// provided after this one.
-    function obtainDepositData(
+    function allocateDeposits(
         uint256 maxDepositAmount,
-        bytes calldata packedPubkeys,
+        bytes[] calldata pubkeys,
         uint256[] calldata keyIndices,
         uint256[] calldata operatorIds,
         uint256[] calldata topUpLimits
-    )
-        external
-        onlyActiveTopUpQueue
-        returns (bytes[] memory publicKeys, uint256[] memory allocations)
-    {
+    ) external onlyActiveTopUpQueue returns (uint256[] memory allocations) {
         // NOTE: Function call doesn't leave an unreachable item on the stack.
         _checkRole(STAKING_ROUTER_ROLE);
 
-        if (keyIndices.length == 0) {
-            return (publicKeys, allocations);
-        }
-
         // solhint-disable-next-line func-named-parameters
-        (publicKeys, allocations) = TopUpQueueOps.obtainDepositData(
+        allocations = TopUpQueueOps.allocateDeposits(
             _topUpQueue(),
             maxDepositAmount,
-            packedPubkeys,
+            pubkeys,
             keyIndices,
             operatorIds,
             topUpLimits
         );
+
+        if (keyIndices.length == 0) {
+            return allocations;
+        }
 
         _incrementModuleNonce();
     }

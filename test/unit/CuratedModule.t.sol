@@ -561,18 +561,15 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         bytes memory key = module.getSigningKeys(noId, 0, 1);
         uint256 limitWei = 4 ether;
 
-        (bytes[] memory publicKeys, uint256[] memory allocations) = cm
-            .obtainDepositData(
-                3 ether,
-                key,
-                UintArr(0),
-                UintArr(noId),
-                UintArr(limitWei)
-            );
+        uint256[] memory allocations = cm.allocateDeposits(
+            3 ether,
+            BytesArr(key),
+            UintArr(0),
+            UintArr(noId),
+            UintArr(limitWei)
+        );
 
-        assertEq(publicKeys.length, 1);
         assertEq(allocations.length, 1);
-        assertEq(publicKeys[0], key);
         assertEq(allocations[0], 3 ether);
     }
 
@@ -586,13 +583,12 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
         bytes memory key1 = module.getSigningKeys(secondId, 0, 1);
-        bytes memory packedPubkeys = bytes.concat(key0, key1);
         uint256 firstBalanceBefore = cm.getNodeOperatorBalance(firstId);
         uint256 secondBalanceBefore = cm.getNodeOperatorBalance(secondId);
 
-        (, uint256[] memory allocations) = cm.obtainDepositData(
+        uint256[] memory allocations = cm.allocateDeposits(
             4 ether,
-            packedPubkeys,
+            BytesArr(key0, key1),
             UintArr(0, 0),
             UintArr(firstId, secondId),
             UintArr(10 ether, 10 ether)
@@ -618,21 +614,16 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory key0 = module.getSigningKeys(noId, 0, 1);
         bytes memory key1 = module.getSigningKeys(noId, 1, 1);
-        bytes memory packedPubkeys = bytes.concat(key0, key1);
 
-        (bytes[] memory publicKeys, uint256[] memory allocations) = cm
-            .obtainDepositData(
-                3 ether,
-                packedPubkeys,
-                UintArr(0, 1),
-                UintArr(noId, noId),
-                UintArr(1 ether, 3 ether)
-            );
+        uint256[] memory allocations = cm.allocateDeposits(
+            3 ether,
+            BytesArr(key0, key1),
+            UintArr(0, 1),
+            UintArr(noId, noId),
+            UintArr(1 ether, 3 ether)
+        );
 
-        assertEq(publicKeys.length, 2);
         assertEq(allocations.length, 2);
-        assertEq(publicKeys[0], key0);
-        assertEq(publicKeys[1], key1);
         assertEq(allocations[0], 1 ether);
         assertEq(allocations[1], 2 ether);
     }
@@ -647,9 +638,9 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
 
-        (, uint256[] memory allocations) = cm.obtainDepositData(
+        uint256[] memory allocations = cm.allocateDeposits(
             2 ether,
-            key0,
+            BytesArr(key0),
             UintArr(0),
             UintArr(firstId),
             UintArr(10 ether)
@@ -675,9 +666,9 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory key = module.getSigningKeys(secondId, 0, 1);
 
-        (, uint256[] memory allocations) = cm.obtainDepositData(
+        uint256[] memory allocations = cm.allocateDeposits(
             4 ether,
-            key,
+            BytesArr(key),
             UintArr(0),
             UintArr(secondId),
             UintArr(10 ether)
@@ -714,11 +705,11 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
         bytes memory key1 = module.getSigningKeys(firstId, 1, 1);
-        bytes memory packedPubkeys = bytes.concat(key0, key1);
+        bytes[] memory pubkeys = BytesArr(key0, key1);
 
-        (, uint256[] memory allocations) = cm.obtainDepositData(
+        uint256[] memory allocations = cm.allocateDeposits(
             4 ether,
-            packedPubkeys,
+            pubkeys,
             UintArr(0, 1),
             UintArr(firstId, firstId),
             UintArr(10 ether, 10 ether)
@@ -734,9 +725,9 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
             0
         );
 
-        (, uint256[] memory secondAllocations) = cm.obtainDepositData(
+        uint256[] memory secondAllocations = cm.allocateDeposits(
             7 ether,
-            packedPubkeys,
+            pubkeys,
             UintArr(0, 1),
             UintArr(firstId, firstId),
             UintArr(10 ether, 10 ether)
@@ -762,9 +753,9 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory key = module.getSigningKeys(noId, 0, 1);
 
-        (, uint256[] memory allocations) = cm.obtainDepositData(
+        uint256[] memory allocations = cm.allocateDeposits(
             10 ether,
-            key,
+            BytesArr(key),
             UintArr(0),
             UintArr(noId),
             UintArr(10 ether)
@@ -789,9 +780,9 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory key = module.getSigningKeys(noId, 0, 1);
 
-        (, uint256[] memory allocations) = cm.obtainDepositData(
+        uint256[] memory allocations = cm.allocateDeposits(
             1 ether,
-            key,
+            BytesArr(key),
             UintArr(0),
             UintArr(noId),
             UintArr(10 ether)
@@ -809,11 +800,10 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory key0 = module.getSigningKeys(noId, 0, 1);
         bytes memory key1 = module.getSigningKeys(noId, 1, 1);
-        bytes memory packedPubkeys = bytes.concat(key0, key1);
 
-        (, uint256[] memory allocations) = cm.obtainDepositData(
+        uint256[] memory allocations = cm.allocateDeposits(
             4 ether,
-            packedPubkeys,
+            BytesArr(key0, key1),
             UintArr(0, 1),
             UintArr(noId, noId),
             UintArr(0, 10 ether)
@@ -828,17 +818,17 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertInvariants
     {
         uint256 nonce = module.getNonce();
+        bytes[] memory invalidPubkeys = new bytes[](1);
+        invalidPubkeys[0] = new bytes(47);
 
-        (bytes[] memory publicKeys, uint256[] memory allocations) = cm
-            .obtainDepositData(
-                0,
-                new bytes(47),
-                UintArr(),
-                UintArr(1),
-                UintArr(1, 2)
-            );
+        uint256[] memory allocations = cm.allocateDeposits(
+            0,
+            invalidPubkeys,
+            UintArr(),
+            UintArr(1),
+            UintArr(1, 2)
+        );
 
-        assertEq(publicKeys.length, 0);
         assertEq(allocations.length, 0);
         assertEq(module.getNonce(), nonce);
     }
@@ -853,9 +843,9 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         bytes memory key = module.getSigningKeys(noId, 0, 1);
         uint256 depositAmount = 2 ether + 0.5 ether;
 
-        (, uint256[] memory allocations) = cm.obtainDepositData(
+        uint256[] memory allocations = cm.allocateDeposits(
             depositAmount,
-            key,
+            BytesArr(key),
             UintArr(0),
             UintArr(noId),
             UintArr(10 ether)
@@ -881,12 +871,12 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory cappedKey = module.getSigningKeys(cappedId, 0, 1);
         bytes memory wideKey = module.getSigningKeys(wideId, 0, 1);
-        bytes memory packedPubkeys = bytes.concat(cappedKey, wideKey);
+        bytes[] memory pubkeys = BytesArr(cappedKey, wideKey);
         uint256 depositAmount = 2200 ether;
 
-        (, uint256[] memory allocations) = cm.obtainDepositData(
+        uint256[] memory allocations = cm.allocateDeposits(
             depositAmount,
-            packedPubkeys,
+            pubkeys,
             UintArr(0, 0),
             UintArr(cappedId, wideId),
             UintArr(type(uint256).max, type(uint256).max)
@@ -935,9 +925,9 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         bytes memory key = module.getSigningKeys(includedId, 0, 1);
         uint256 depositAmount = 111 ether;
 
-        (, uint256[] memory allocations) = cm.obtainDepositData(
+        uint256[] memory allocations = cm.allocateDeposits(
             depositAmount,
-            key,
+            BytesArr(key),
             UintArr(0),
             UintArr(includedId),
             UintArr(depositAmount)
@@ -955,11 +945,10 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory key0 = module.getSigningKeys(noId, 0, 1);
         bytes memory key1 = module.getSigningKeys(noId, 1, 1);
-        bytes memory packedPubkeys = bytes.concat(key0, key1);
 
-        (, uint256[] memory allocations) = cm.obtainDepositData(
+        uint256[] memory allocations = cm.allocateDeposits(
             10 ether,
-            packedPubkeys,
+            BytesArr(key0, key1),
             UintArr(0, 1),
             UintArr(noId, noId),
             UintArr(3 ether, 3 ether)
@@ -1024,7 +1013,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         vm.revertTo(snapshot);
 
-        bytes memory packedPubkeys;
+        bytes[] memory pubkeys = new bytes[](operatorsCount);
         uint256[] memory keyIndices = new uint256[](operatorsCount);
         uint256[] memory topUpLimits = new uint256[](operatorsCount);
         uint256 depositAmount = weightSum *
@@ -1032,14 +1021,14 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         for (uint256 i; i < operatorsCount; ++i) {
             bytes memory key = module.getSigningKeys(operatorIds[i], 0, 1);
-            packedPubkeys = bytes.concat(packedPubkeys, key);
+            pubkeys[i] = key;
             keyIndices[i] = 0;
             topUpLimits[i] = depositAmount;
         }
 
-        (, uint256[] memory topUpAllocations) = cm.obtainDepositData(
+        uint256[] memory topUpAllocations = cm.allocateDeposits(
             depositAmount,
-            packedPubkeys,
+            pubkeys,
             keyIndices,
             operatorIds,
             topUpLimits
@@ -1075,11 +1064,10 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
         bytes memory key1 = module.getSigningKeys(secondId, 0, 1);
-        bytes memory packedPubkeys = bytes.concat(key0, key1);
 
-        (, uint256[] memory keyAllocations) = cm.obtainDepositData(
+        uint256[] memory keyAllocations = cm.allocateDeposits(
             2 ether,
-            packedPubkeys,
+            BytesArr(key0, key1),
             UintArr(0, 0),
             UintArr(firstId, secondId),
             UintArr(10 ether, 10 ether)
@@ -1119,7 +1107,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         uint256[2] memory balances = [uint256(1 ether), uint256(2 ether)];
         {
-            bytes memory packedPubkeys = bytes.concat(
+            bytes[] memory pubkeys = BytesArr(
                 module.getSigningKeys(firstId, 0, 1),
                 module.getSigningKeys(secondId, 0, 1)
             );
@@ -1140,9 +1128,9 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
             assertEq(allocs[0], 1 ether);
             assertEq(allocs[1], 2 ether);
 
-            (, uint256[] memory keyAllocations) = cm.obtainDepositData(
+            uint256[] memory keyAllocations = cm.allocateDeposits(
                 3 ether,
-                packedPubkeys,
+                pubkeys,
                 UintArr(0, 0),
                 UintArr(firstId, secondId),
                 UintArr(10 ether, 10 ether)
@@ -1155,7 +1143,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         balances[1] += 2 ether;
 
         {
-            bytes memory packedPubkeys = bytes.concat(
+            bytes[] memory pubkeys = BytesArr(
                 module.getSigningKeys(firstId, 0, 1),
                 module.getSigningKeys(secondId, 0, 1)
             );
@@ -1176,9 +1164,9 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
             assertEq(allocs[0], 1 ether);
             assertEq(allocs[1], 2 ether);
 
-            (, uint256[] memory keyAllocations) = cm.obtainDepositData(
+            uint256[] memory keyAllocations = cm.allocateDeposits(
                 3 ether,
-                packedPubkeys,
+                pubkeys,
                 UintArr(0, 0),
                 UintArr(firstId, secondId),
                 UintArr(10 ether, 10 ether)
@@ -1334,21 +1322,16 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
         bytes memory key1 = module.getSigningKeys(secondId, 0, 1);
-        bytes memory packedPubkeys = bytes.concat(key0, key1);
 
-        (bytes[] memory publicKeys, uint256[] memory allocations) = cm
-            .obtainDepositData(
-                10 ether,
-                packedPubkeys,
-                UintArr(0, 0),
-                UintArr(firstId, secondId),
-                UintArr(1 ether, 10 ether)
-            );
+        uint256[] memory allocations = cm.allocateDeposits(
+            10 ether,
+            BytesArr(key0, key1),
+            UintArr(0, 0),
+            UintArr(firstId, secondId),
+            UintArr(1 ether, 10 ether)
+        );
 
-        assertEq(publicKeys.length, 2);
         assertEq(allocations.length, 2);
-        assertEq(publicKeys[0], key0);
-        assertEq(publicKeys[1], key1);
         assertEq(allocations[0], 1 ether);
         assertEq(allocations[1], 5 ether);
         assertEq(allocations[0] + allocations[1], 6 ether);
@@ -1359,10 +1342,14 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertInvariants
     {
         uint256 nonce = module.getNonce();
-        (bytes[] memory publicKeys, uint256[] memory allocations) = cm
-            .obtainDepositData(1 ether, "", UintArr(), UintArr(), UintArr());
+        uint256[] memory allocations = cm.allocateDeposits(
+            1 ether,
+            new bytes[](0),
+            UintArr(),
+            UintArr(),
+            UintArr()
+        );
 
-        assertEq(publicKeys.length, 0);
         assertEq(allocations.length, 0);
         assertEq(module.getNonce(), nonce + 1);
     }
@@ -1379,21 +1366,16 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
         bytes memory key1 = module.getSigningKeys(secondId, 0, 1);
-        bytes memory packedPubkeys = bytes.concat(key0, key1);
         uint256 limitWei = 2 ether;
 
-        (bytes[] memory publicKeys, uint256[] memory allocations) = cm
-            .obtainDepositData(
-                2 ether,
-                packedPubkeys,
-                UintArr(0, 0),
-                UintArr(firstId, secondId),
-                UintArr(limitWei, limitWei)
-            );
+        uint256[] memory allocations = cm.allocateDeposits(
+            2 ether,
+            BytesArr(key0, key1),
+            UintArr(0, 0),
+            UintArr(firstId, secondId),
+            UintArr(limitWei, limitWei)
+        );
 
-        assertEq(publicKeys.length, 2);
-        assertEq(publicKeys[0], key0);
-        assertEq(publicKeys[1], key1);
         assertEq(allocations[0], 0);
         assertEq(allocations[1], 0);
     }
@@ -1409,9 +1391,9 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory key = module.getSigningKeys(noId, 0, 1);
 
-        (, uint256[] memory allocations) = cm.obtainDepositData(
+        uint256[] memory allocations = cm.allocateDeposits(
             1 ether,
-            key,
+            BytesArr(key),
             UintArr(0),
             UintArr(noId),
             UintArr(0)
@@ -1447,12 +1429,11 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory key0 = module.getSigningKeys(zeroWeightId, 0, 1);
         bytes memory key1 = module.getSigningKeys(weightedId, 0, 1);
-        bytes memory packedPubkeys = bytes.concat(key0, key1);
         uint256 limitWei = 1 ether;
 
-        (, uint256[] memory allocations) = cm.obtainDepositData(
+        uint256[] memory allocations = cm.allocateDeposits(
             1 ether,
-            packedPubkeys,
+            BytesArr(key0, key1),
             UintArr(0, 0),
             UintArr(zeroWeightId, weightedId),
             UintArr(limitWei, limitWei)
@@ -1479,12 +1460,11 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
         bytes memory key1 = module.getSigningKeys(secondId, 0, 1);
-        bytes memory packedPubkeys = bytes.concat(key0, key1);
         uint256 limitWei = 2 ether;
 
-        (, uint256[] memory allocations) = cm.obtainDepositData(
+        uint256[] memory allocations = cm.allocateDeposits(
             1 ether,
-            packedPubkeys,
+            BytesArr(key0, key1),
             UintArr(0, 0),
             UintArr(firstId, secondId),
             UintArr(limitWei, limitWei)
@@ -1506,9 +1486,9 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         bytes memory key = module.getSigningKeys(noId, 0, 1);
         uint256 limitWei = 10 ether;
 
-        (, uint256[] memory allocations) = cm.obtainDepositData(
+        uint256[] memory allocations = cm.allocateDeposits(
             1 ether - 1,
-            key,
+            BytesArr(key),
             UintArr(0),
             UintArr(noId),
             UintArr(limitWei)
@@ -1522,7 +1502,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        cm.obtainDepositData(0, "", UintArr(), UintArr(), UintArr());
+        cm.allocateDeposits(0, new bytes[](0), UintArr(), UintArr(), UintArr());
     }
 
     function test_topUpObtainDepositData_zeroDepositReturnsEmpty()
@@ -1530,10 +1510,14 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertInvariants
     {
         uint256 nonce = module.getNonce();
-        (bytes[] memory publicKeys, uint256[] memory allocations) = cm
-            .obtainDepositData(0, "", UintArr(), UintArr(), UintArr());
+        uint256[] memory allocations = cm.allocateDeposits(
+            0,
+            new bytes[](0),
+            UintArr(),
+            UintArr(),
+            UintArr()
+        );
 
-        assertEq(publicKeys.length, 0);
         assertEq(allocations.length, 0);
         assertEq(module.getNonce(), nonce);
     }
@@ -1545,7 +1529,13 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         createNodeOperator(1);
 
         vm.expectRevert(IBaseModule.InvalidInput.selector);
-        cm.obtainDepositData(1 ether, "", UintArr(), UintArr(0), UintArr());
+        cm.allocateDeposits(
+            1 ether,
+            new bytes[](0),
+            UintArr(),
+            UintArr(0),
+            UintArr()
+        );
     }
 
     function test_topUpObtainDepositData_revertWhen_OperatorIdOutOfRange()
@@ -1555,16 +1545,16 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         createNodeOperator(1);
 
         vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
-        cm.obtainDepositData(
+        cm.allocateDeposits(
             1 ether,
-            new bytes(48),
+            BytesArr(new bytes(48)),
             UintArr(0),
             UintArr(1),
             UintArr(1 ether)
         );
     }
 
-    function test_topUpObtainDepositData_revertWhen_PackedPubkeysLengthMismatch()
+    function test_topUpObtainDepositData_revertWhen_PubkeysLengthMismatch()
         public
         assertInvariants
     {
@@ -1572,9 +1562,9 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         module.obtainDepositData(1, "");
 
         vm.expectRevert(IBaseModule.InvalidInput.selector);
-        cm.obtainDepositData(
+        cm.allocateDeposits(
             1 ether,
-            new bytes(47),
+            BytesArr(new bytes(47)),
             UintArr(0),
             UintArr(noId),
             UintArr(1 ether)
@@ -1591,9 +1581,9 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         bytes memory key = module.getSigningKeys(noId, 0, 1);
 
         vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
-        cm.obtainDepositData(
+        cm.allocateDeposits(
             1 ether,
-            key,
+            BytesArr(key),
             UintArr(1),
             UintArr(noId),
             UintArr(1 ether)
@@ -1621,9 +1611,9 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         bytes memory key = module.getSigningKeys(noId, 0, 1);
 
         vm.expectRevert(ICuratedModule.PublicKeyIsWithdrawn.selector);
-        cm.obtainDepositData(
+        cm.allocateDeposits(
             1 ether,
-            key,
+            BytesArr(key),
             UintArr(0),
             UintArr(noId),
             UintArr(1 ether)
@@ -1641,9 +1631,9 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         bytes memory key = module.getSigningKeys(noId, 0, 1);
 
         vm.expectRevert(ICuratedModule.PublicKeyIsSlashed.selector);
-        cm.obtainDepositData(
+        cm.allocateDeposits(
             1 ether,
-            key,
+            BytesArr(key),
             UintArr(0),
             UintArr(noId),
             UintArr(1 ether)
@@ -1661,9 +1651,9 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         wrongKey[0] = bytes1(uint8(wrongKey[0]) ^ 0x01);
 
         vm.expectRevert(ICuratedModule.PubkeyMismatch.selector);
-        cm.obtainDepositData(
+        cm.allocateDeposits(
             1 ether,
-            wrongKey,
+            BytesArr(wrongKey),
             UintArr(0),
             UintArr(noId),
             UintArr(1 ether)
