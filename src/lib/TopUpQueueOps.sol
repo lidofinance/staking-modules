@@ -5,31 +5,36 @@ pragma solidity 0.8.33;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
+import { IBaseModule } from "../interfaces/IBaseModule.sol";
 import { ICSModule } from "../interfaces/ICSModule.sol";
 
 import { TopUpQueueLib, TopUpQueueItem } from "./TopUpQueueLib.sol";
-import { PackedPubkeys } from "./PackedPubkeys.sol";
 import { SigningKeys } from "./SigningKeys.sol";
 
 /// @dev The library is used to reduce CSModule bytecode size.
 library TopUpQueueOps {
     using TopUpQueueLib for TopUpQueueLib.Queue;
-    using PackedPubkeys for bytes;
-
     struct TopUpKeyParams {
         uint256[] keyIndices;
         uint256[] operatorIds;
         uint256[] topUpLimits;
     }
 
-    function obtainDepositData(
+    function allocateDeposits(
         TopUpQueueLib.Queue storage topUpQueue,
         uint256 depositAmount,
-        bytes calldata packedPubkeys,
+        bytes[] calldata pubkeys,
         uint256[] calldata keyIndices,
         uint256[] calldata operatorIds,
         uint256[] calldata topUpLimits
-    ) external returns (bytes[] memory, uint256[] memory) {
+    ) external returns (uint256[] memory) {
+        if (
+            pubkeys.length != keyIndices.length ||
+            pubkeys.length != operatorIds.length ||
+            pubkeys.length != topUpLimits.length
+        ) {
+            revert IBaseModule.InvalidInput();
+        }
         // NOTE: Wrapping the function inputs with a struct to save space on the stack.
         TopUpKeyParams memory data = TopUpKeyParams({
             keyIndices: keyIndices,
@@ -37,22 +42,16 @@ library TopUpQueueOps {
             topUpLimits: topUpLimits
         });
 
-        return
-            _obtainDepositData(topUpQueue, depositAmount, packedPubkeys, data);
+        return _allocateDeposits(topUpQueue, depositAmount, pubkeys, data);
     }
 
-    function _obtainDepositData(
+    function _allocateDeposits(
         TopUpQueueLib.Queue storage topUpQueue,
         uint256 depositAmount,
-        bytes calldata packedPubkeys,
+        bytes[] calldata pubkeys,
         TopUpKeyParams memory data
-    )
-        private
-        returns (bytes[] memory publicKeys, uint256[] memory allocations)
-    {
+    ) private returns (uint256[] memory allocations) {
         uint256 keyCount = data.keyIndices.length;
-
-        publicKeys = new bytes[](keyCount);
         allocations = new uint256[](keyCount);
 
         bool lastItemPartiallyDeposited;
@@ -71,9 +70,11 @@ library TopUpQueueOps {
             }
 
             {
-                bytes memory key = packedPubkeys.at(i);
+                bytes memory key = pubkeys[i];
+                if (key.length != SigningKeys.PUBKEY_LENGTH) {
+                    revert IBaseModule.InvalidInput();
+                }
                 _verifyModuleKey(item.noId(), item.keyIndex(), key);
-                publicKeys[i] = key;
             }
 
             if (depositAmount > 0) {

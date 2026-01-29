@@ -10,14 +10,11 @@ import { NodeOperator } from "./interfaces/IBaseModule.sol";
 import { BaseModule } from "./abstract/BaseModule.sol";
 
 import { NOAddresses } from "./lib/NOAddresses.sol";
-import { PackedPubkeys } from "./lib/PackedPubkeys.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "./lib/TransientUintUintMapLib.sol";
 import { CuratedDepositAllocator } from "./lib/allocator/CuratedDepositAllocator.sol";
 
 contract CuratedModule is ICuratedModule, BaseModule {
-    using PackedPubkeys for bytes;
-
     /// @custom:storage-location erc7201:CuratedModule
     struct CuratedModuleStorage {
         // Tracks per-operator balances (in wei) reported by the Accounting oracle.
@@ -128,25 +125,25 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     /// @inheritdoc IStakingModuleV2
-    function obtainDepositData(
+    function allocateDeposits(
         uint256 maxDepositAmount,
-        bytes calldata packedPubkeys,
+        bytes[] calldata pubkeys,
         uint256[] calldata keyIndices,
         uint256[] calldata operatorIds,
         uint256[] calldata topUpLimits
     )
         external
         onlyRole(STAKING_ROUTER_ROLE)
-        returns (bytes[] memory publicKeys, uint256[] memory allocations)
+        returns (uint256[] memory allocations)
     {
         if (maxDepositAmount == 0) {
-            return (new bytes[](0), new uint256[](0));
+            return new uint256[](0);
         }
 
         if (
             operatorIds.length != keyIndices.length ||
             operatorIds.length != topUpLimits.length ||
-            packedPubkeys.count() != operatorIds.length
+            pubkeys.length != operatorIds.length
         ) {
             revert InvalidInput();
         }
@@ -154,8 +151,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
         // by MAX_EFFECTIVE_BALANCE and to avoid duplicate (operatorId, keyIndex)
         // entries in a single request.
 
-        publicKeys = _loadTopUpPublicKeys({
-            packedPubkeys: packedPubkeys,
+        _validateTopUpPublicKeys({
+            pubkeys: pubkeys,
             keyIndices: keyIndices,
             operatorIds: operatorIds
         });
@@ -284,13 +281,15 @@ contract CuratedModule is ICuratedModule, BaseModule {
         );
     }
 
-    function _loadTopUpPublicKeys(
-        bytes calldata packedPubkeys,
+    function _validateTopUpPublicKeys(
+        bytes[] calldata pubkeys,
         uint256[] calldata keyIndices,
         uint256[] calldata operatorIds
-    ) internal view returns (bytes[] memory publicKeys) {
-        publicKeys = new bytes[](operatorIds.length);
+    ) internal view {
         for (uint256 i; i < operatorIds.length; ++i) {
+            if (pubkeys[i].length != SigningKeys.PUBKEY_LENGTH) {
+                revert InvalidInput();
+            }
             uint256 operatorId = operatorIds[i];
             uint256 keyIndex = keyIndices[i];
             NodeOperator storage no = _nodeOperators[operatorId];
@@ -306,8 +305,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
                 revert PublicKeyIsSlashed();
             }
 
-            bytes memory pubkey = packedPubkeys.at(i);
-            publicKeys[i] = pubkey;
+            bytes memory pubkey = pubkeys[i];
             if (
                 keccak256(pubkey) !=
                 keccak256(SigningKeys.loadKeys(operatorId, keyIndex, 1))

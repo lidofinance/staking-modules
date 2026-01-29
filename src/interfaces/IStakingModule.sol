@@ -232,24 +232,24 @@ interface IStakingModule {
 }
 
 interface IStakingModuleV2 {
-    /// @notice Method to get from module public keys for top up and amount that should be topped up.
-    ///         Module also verify that keys belong to module and revert if got wrong data.
-    /// @param maxDepositAmount Maximum deposit amount for top up in wei
-    /// @param packedPubkeys Packed list of pubkeys
-    /// @param keyIndices List of keys' indices
-    /// @param operatorIds List of operator indices
-    /// @param topUpLimits List of wei amounts that can be deposited to key based on CL data and SR logic
-    /// @return publicKeys List of public keys corresponding to requested top-up keys
-    /// @return allocations Per-key top-up allocations in wei
-    function obtainDepositData(
+    /// @notice Validates provided keys and calculates deposit allocations for top-up
+    /// @dev Reverts if any key doesn't belong to the module or data is invalid
+    /// @param maxDepositAmount Total ether amount available for top-up (must be multiple of 1 gwei)
+    /// @param pubkeys List of validator public keys to top up
+    /// @param keyIndices Indices of keys within their respective operators
+    /// @param operatorIds Node operator IDs that own the keys
+    /// @param topUpLimits Maximum amount that can be deposited per key based on CL data and SR internal logic.
+    /// @return allocations Amount to deposit to each key
+    /// @dev Values depositAmount, topUpLimits, allocations are denominated in wei
+    /// @dev allocations list can contain zero values
+    /// @dev sum of allocations can be less or equal to maxDepositAmount
+    function allocateDeposits(
         uint256 maxDepositAmount,
-        bytes calldata packedPubkeys,
+        bytes[] calldata pubkeys,
         uint256[] calldata keyIndices,
         uint256[] calldata operatorIds,
         uint256[] calldata topUpLimits
-    )
-        external
-        returns (bytes[] memory publicKeys, uint256[] memory allocations);
+    ) external returns (uint256[] memory allocations);
 
     /// @notice Method called Third phase not
     /// @param operatorIds Indices of operators
