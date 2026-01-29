@@ -1849,6 +1849,58 @@ contract CuratedReportWithdrawnValidators is
     CuratedCommon
 {}
 
+contract CuratedKeyAddedBalance is ModuleKeyAddedBalance, CuratedCommon {}
+
+contract CuratedTopUpKeyAddedBalance is CuratedCommon {
+    function test_topUp_emitsKeyAddedBalanceIncreased() public {
+        createNodeOperator(1);
+        cm.obtainDepositData(1, "");
+
+        bytes memory key = cm.getSigningKeys(0, 0, 1);
+        bytes[] memory pubkeys = BytesArr(key);
+
+        vm.expectEmit(address(cm));
+        emit IBaseModule.KeyAddedBalanceIncreased(0, 0, 5 ether, 5 ether);
+
+        cm.allocateDeposits({
+            maxDepositAmount: 5 ether,
+            pubkeys: pubkeys,
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(5 ether)
+        });
+    }
+
+    function test_topUp_noEmitWhenKeyAtCap() public {
+        createNodeOperator(1);
+        cm.obtainDepositData(1, "");
+
+        uint256 cap = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE -
+            WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
+        cm.increaseKeyAddedBalance(0, 0, cap);
+
+        bytes memory key = cm.getSigningKeys(0, 0, 1);
+        bytes[] memory pubkeys = BytesArr(key);
+
+        vm.recordLogs();
+        cm.allocateDeposits({
+            maxDepositAmount: 5 ether,
+            pubkeys: pubkeys,
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(5 ether)
+        });
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 signature = keccak256(
+            "KeyAddedBalanceIncreased(uint256,uint256,uint256,uint256)"
+        );
+        for (uint256 i; i < entries.length; ++i) {
+            assertNotEq(entries[i].topics[0], signature);
+        }
+    }
+}
+
 contract CuratedGetStakingModuleSummary is
     ModuleGetStakingModuleSummary,
     CuratedCommon

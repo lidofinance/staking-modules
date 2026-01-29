@@ -193,7 +193,6 @@ contract CSModule is ICSModule, BaseModule {
                             );
                         }
                     }
-
                     SigningKeys.loadKeysSigs({
                         nodeOperatorId: noId,
                         startIndex: no.totalDepositedKeys,
@@ -256,18 +255,33 @@ contract CSModule is ICSModule, BaseModule {
         _onlyEnabledTopUpQueue();
         _checkStakingRouterRole();
 
+        uint256[] memory cappedTopUpLimits = new uint256[](topUpLimits.length);
+        for (uint256 i; i < topUpLimits.length; ++i) {
+            uint256 remaining = _getRemainingKeyBalance(
+                operatorIds[i],
+                keyIndices[i]
+            );
+            cappedTopUpLimits[i] = Math.min(topUpLimits[i], remaining);
+        }
+
         allocations = TopUpQueueOps.allocateDeposits({
             topUpQueue: _topUpQueue(),
             depositAmount: maxDepositAmount,
             pubkeys: pubkeys,
             keyIndices: keyIndices,
             operatorIds: operatorIds,
-            topUpLimits: topUpLimits
+            topUpLimits: cappedTopUpLimits
         });
 
         if (keyIndices.length == 0) {
             return allocations;
         }
+
+        _increaseKeyAddedBalancesByAllocations(
+            operatorIds,
+            keyIndices,
+            allocations
+        );
 
         _incrementModuleNonce();
     }
@@ -498,6 +512,17 @@ contract CSModule is ICSModule, BaseModule {
     /// @dev This function is used to get the queue lowest priority from immutables to save bytecode.
     function _queueLowestPriority() internal view returns (uint256) {
         return QUEUE_LOWEST_PRIORITY;
+    }
+
+    function _getRemainingKeyBalance(
+        uint256 nodeOperatorId,
+        uint256 keyIndex
+    ) internal view returns (uint256) {
+        uint256 keyAddedBalance = _getKeyAddedBalance(nodeOperatorId, keyIndex);
+        if (keyAddedBalance >= KEY_ADDED_BALANCE_CAP) {
+            return 0;
+        }
+        return KEY_ADDED_BALANCE_CAP - keyAddedBalance;
     }
 
     function _storage() internal pure returns (CSModuleStorage storage $) {

@@ -108,6 +108,13 @@ interface IBaseModule is
         uint256 keyIndex,
         bytes pubkey
     );
+    event KeyAddedBalanceIncreased(
+        uint256 indexed nodeOperatorId,
+        uint256 indexed keyIndex,
+        uint256 amount,
+        uint256 newTotal
+    );
+    event KeyRemovalChargeApplied(uint256 indexed nodeOperatorId);
 
     error CannotAddKeys();
     error NodeOperatorDoesNotExist();
@@ -406,6 +413,16 @@ interface IBaseModule is
     function onValidatorSlashed(
         uint256 nodeOperatorId,
         uint256 keyIndex
+    ) external;
+
+    /// @notice Increase tracked added balance for a particular key
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @param keyIndex Index of the key in the Node Operator's keys storage
+    /// @param amount Amount to add to the tracked added balance (wei)
+    function increaseKeyAddedBalance(
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 amount
     ) external;
 
     /// @notice Report Node Operator's keys as withdrawn and charge penalties associated with exit if any.

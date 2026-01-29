@@ -23,8 +23,13 @@ library WithdrawnValidatorLib {
 
     function process(
         NodeOperator storage no,
-        WithdrawnValidatorInfo calldata validatorInfo
+        WithdrawnValidatorInfo calldata validatorInfo,
+        bool isSlashed,
+        uint256 keyAddedBalance
     ) external returns (bool penaltiesCovered) {
+        if (validatorInfo.isSlashed && !isSlashed) {
+            revert IBaseModule.SlashingPenaltyIsNotApplicable();
+        }
         if (validatorInfo.slashingPenalty > 0 && !validatorInfo.isSlashed) {
             revert IBaseModule.InvalidWithdrawnValidatorInfo();
         }
@@ -53,7 +58,11 @@ library WithdrawnValidatorLib {
             .EXIT_PENALTIES()
             .getExitPenaltyInfo(validatorInfo.nodeOperatorId, pubkey);
 
-        penaltiesCovered = _fulfillExitObligations(validatorInfo, penaltyInfo);
+        penaltiesCovered = _fulfillExitObligations(
+            validatorInfo,
+            penaltyInfo,
+            keyAddedBalance
+        );
 
         emit IBaseModule.ValidatorWithdrawn({
             nodeOperatorId: validatorInfo.nodeOperatorId,
@@ -68,7 +77,8 @@ library WithdrawnValidatorLib {
     // should be greater than 2^245, which is about 5.6 * 10^55 ethers.
     function _fulfillExitObligations(
         WithdrawnValidatorInfo calldata validatorInfo,
-        ExitPenaltyInfo memory penaltyInfo
+        ExitPenaltyInfo memory penaltyInfo,
+        uint256 keyAddedBalance
     ) internal returns (bool penaltiesCovered) {
         bool chargeElWithdrawalRequestFee = false;
 
@@ -104,11 +114,12 @@ library WithdrawnValidatorLib {
             feeSum += penaltyInfo.elWithdrawalRequestFee.value;
         }
 
+        uint256 expectedBalance = MIN_ACTIVATION_BALANCE + keyAddedBalance;
         if (validatorInfo.isSlashed) {
             // Slashing penalty doesn't scale because all the losses are already accounted.
             penaltySum += validatorInfo.slashingPenalty;
-        } else if (validatorInfo.exitBalance < MIN_ACTIVATION_BALANCE) {
-            penaltySum += MIN_ACTIVATION_BALANCE - validatorInfo.exitBalance;
+        } else if (validatorInfo.exitBalance < expectedBalance) {
+            penaltySum += expectedBalance - validatorInfo.exitBalance;
         }
 
         IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();

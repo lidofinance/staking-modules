@@ -156,6 +156,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         allocations = _allocateTopUps(
             maxDepositAmount,
             operatorIds,
+            keyIndices,
             topUpLimits
         );
 
@@ -308,6 +309,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     function _allocateTopUps(
         uint256 depositAmount,
         uint256[] calldata operatorIds,
+        uint256[] calldata keyIndices,
         uint256[] calldata topUpLimits
     ) internal returns (uint256[] memory allocations) {
         uint256[] memory uniqueOperatorIds = _uniqueOperatorIds(
@@ -333,7 +335,13 @@ contract CuratedModule is ICuratedModule, BaseModule {
             operatorAllocations: operatorAllocations,
             operatorsCount: _nodeOperatorsCount
         });
-        _increaseOperatorBalancesFromTopUps({
+
+        _increaseKeyAddedBalancesByAllocations({
+            operatorIds: operatorIds,
+            keyIndices: keyIndices,
+            allocations: allocations
+        });
+        _increaseOperatorBalancesByAllocations({
             operatorIds: operatorIds,
             allocations: allocations,
             uniqueOperatorIds: uniqueOperatorIds,
@@ -399,7 +407,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         }
     }
 
-    function _increaseOperatorBalancesFromTopUps(
+    function _increaseOperatorBalancesByAllocations(
         uint256[] calldata operatorIds,
         uint256[] memory allocations,
         uint256[] memory uniqueOperatorIds,

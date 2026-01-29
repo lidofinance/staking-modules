@@ -34,7 +34,7 @@ abstract contract ModuleLinearStorage {
     bytes32 internal __freeSlot2;
     /// @dev Total number of withdrawn validators reported for the module.
     uint256 internal _totalWithdrawnValidators;
-    bytes32 internal __freeSlot4;
+    mapping(uint256 noKeyIndexPacked => uint256) internal _keyAddedBalances;
 
     uint256 internal _nonce;
     mapping(uint256 => NodeOperator) internal _nodeOperators;
@@ -71,6 +71,9 @@ abstract contract BaseModule is
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
     bytes32 public constant CREATE_NODE_OPERATOR_ROLE =
         keccak256("CREATE_NODE_OPERATOR_ROLE");
+    uint256 internal constant KEY_ADDED_BALANCE_CAP =
+        WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE -
+            WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
 
     ILidoLocator public immutable LIDO_LOCATOR;
     IStETH public immutable STETH;
@@ -538,6 +541,26 @@ abstract contract BaseModule is
         emit ValidatorSlashingReported(nodeOperatorId, keyIndex, pubkey);
     }
 
+    /// @inheritdoc IBaseModule
+    function increaseKeyAddedBalance(
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 amount
+    ) external onlyRole(VERIFIER_ROLE) {
+        _onlyExistingNodeOperator(nodeOperatorId);
+        NodeOperator storage no = _nodeOperators[nodeOperatorId];
+        if (keyIndex >= no.totalDepositedKeys) {
+            revert SigningKeysInvalidOffset();
+        }
+
+        uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
+        if (_isValidatorWithdrawn[pointer]) {
+            revert InvalidWithdrawnValidatorInfo();
+        }
+
+        _increaseKeyAddedBalance(nodeOperatorId, keyIndex, amount);
+    }
+
     function reportSlashedWithdrawnValidators(
         WithdrawnValidatorInfo[] calldata validatorInfos
     ) external {
@@ -818,8 +841,13 @@ abstract contract BaseModule is
             }
 
             NodeOperator storage no = _nodeOperators[info.nodeOperatorId];
-            bool penaltiesCovered = WithdrawnValidatorLib.process(no, info);
-            if (!penaltiesCovered) {
+            bool bondCoversPenalties = WithdrawnValidatorLib.process(
+                no,
+                info,
+                _isValidatorSlashed[pointer],
+                _keyAddedBalances[pointer]
+            );
+            if (!bondCoversPenalties) {
                 _onUncompensatedPenalty(info.nodeOperatorId);
             }
 
@@ -846,6 +874,48 @@ abstract contract BaseModule is
         }
     }
 
+    function _getKeyAddedBalance(
+        uint256 nodeOperatorId,
+        uint256 keyIndex
+    ) internal view returns (uint256) {
+        return _keyAddedBalances[_keyPointer(nodeOperatorId, keyIndex)];
+    }
+
+    function _increaseKeyAddedBalance(
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 incrementWei
+    ) internal {
+        uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
+        uint256 current = _keyAddedBalances[pointer];
+        if (current == KEY_ADDED_BALANCE_CAP) return;
+        uint256 newBalance = current + incrementWei;
+        _keyAddedBalances[pointer] = newBalance > KEY_ADDED_BALANCE_CAP
+            ? KEY_ADDED_BALANCE_CAP
+            : newBalance;
+        emit KeyAddedBalanceIncreased(
+            nodeOperatorId,
+            keyIndex,
+            incrementWei,
+            _keyAddedBalances[pointer]
+        );
+    }
+
+    function _increaseKeyAddedBalancesByAllocations(
+        uint256[] calldata operatorIds,
+        uint256[] calldata keyIndices,
+        uint256[] memory allocations
+    ) internal {
+        for (uint256 i; i < allocations.length; ++i) {
+            uint256 allocationWei = allocations[i];
+            if (allocationWei == 0) continue;
+            _increaseKeyAddedBalance(
+                operatorIds[i],
+                keyIndices[i],
+                allocationWei
+            );
+        }
+    }
     /// @dev Prevents reactivation of a Node Operator after an uncovered penalty by
     ///      forcing its target limit to zero.
     function _onUncompensatedPenalty(uint256 nodeOperatorId) internal {
