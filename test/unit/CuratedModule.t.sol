@@ -14,8 +14,9 @@ import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
 import { CSModule } from "src/CSModule.sol";
 import { CuratedDepositAllocator } from "src/lib/allocator/CuratedDepositAllocator.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 // forge-lint: disable-next-line(unaliased-plain-import)
-import "./ModuleAbstract/_All.t.sol";
+import "./ModuleAbstract/ModuleAbstract.t.sol";
 
 contract CuratedCommon is ModuleFixtures {
     CuratedModule cm;

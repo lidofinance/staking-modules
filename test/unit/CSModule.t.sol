@@ -22,7 +22,7 @@ import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
 import { Stub } from "../helpers/mocks/Stub.sol";
 
 // forge-lint: disable-next-line(unaliased-plain-import)
-import "./ModuleAbstract/_All.t.sol";
+import "./ModuleAbstract/ModuleAbstract.t.sol";
 
 contract CSMCommon is ModuleFixtures {
     using Strings for uint256;
