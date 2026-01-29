@@ -496,6 +496,31 @@ contract CSMAddValidatorKeysNegative is
 {}
 
 contract CSMObtainDepositData is ModuleObtainDepositData, CSMCommon {
+    function test_obtainDepositData_MultipleOperators()
+        public
+        assertInvariants
+    {
+        uint256 firstId = createNodeOperator(2);
+        uint256 secondId = createNodeOperator(3);
+        uint256 thirdId = createNodeOperator(1);
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.DepositableSigningKeysCountChanged(firstId, 0);
+        vm.expectEmit(address(module));
+        emit IBaseModule.DepositableSigningKeysCountChanged(secondId, 0);
+        vm.expectEmit(address(module));
+        emit IBaseModule.DepositableSigningKeysCountChanged(thirdId, 0);
+        module.obtainDepositData(6, "");
+
+        (
+            ,
+            uint256 totalDepositedValidators,
+            uint256 depositableValidatorsCount
+        ) = module.getStakingModuleSummary();
+        assertEq(totalDepositedValidators, 6);
+        assertEq(depositableValidatorsCount, 0);
+    }
+
     function test_obtainDepositData_zeroDeposits_enqueuedCount()
         public
         assertInvariants
