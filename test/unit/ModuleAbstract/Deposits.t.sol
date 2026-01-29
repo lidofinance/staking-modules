@@ -61,6 +61,12 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         uint256 secondId = createNodeOperator(3);
         uint256 thirdId = createNodeOperator(1);
 
+        vm.expectEmit(address(module));
+        emit IBaseModule.DepositableSigningKeysCountChanged(firstId, 0);
+        vm.expectEmit(address(module));
+        emit IBaseModule.DepositableSigningKeysCountChanged(secondId, 0);
+        vm.expectEmit(address(module));
+        emit IBaseModule.DepositableSigningKeysCountChanged(thirdId, 0);
         module.obtainDepositData(6, "");
 
         (

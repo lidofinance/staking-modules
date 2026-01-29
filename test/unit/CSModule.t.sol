@@ -496,24 +496,6 @@ contract CSMAddValidatorKeysNegative is
 {}
 
 contract CSMObtainDepositData is ModuleObtainDepositData, CSMCommon {
-    function test_obtainDepositData_MultipleOperators_EmitsDepositableCountChanged()
-        public
-        assertInvariants
-    {
-        uint256 firstId = createNodeOperator(2);
-        uint256 secondId = createNodeOperator(3);
-        uint256 thirdId = createNodeOperator(1);
-
-        vm.expectEmit(address(module));
-        emit IBaseModule.DepositableSigningKeysCountChanged(firstId, 0);
-        vm.expectEmit(address(module));
-        emit IBaseModule.DepositableSigningKeysCountChanged(secondId, 0);
-        vm.expectEmit(address(module));
-        emit IBaseModule.DepositableSigningKeysCountChanged(thirdId, 0);
-
-        module.obtainDepositData(6, "");
-    }
-
     function test_obtainDepositData_zeroDeposits_enqueuedCount()
         public
         assertInvariants
@@ -538,7 +520,7 @@ contract CSMObtainDepositData is ModuleObtainDepositData, CSMCommon {
         assertEq(no.enqueuedCount, 4);
     }
 
-    function test_obtainDepositData_counters_enqueuedCount()
+    function test_obtainDepositData_OneOperator_zeroedEnqueuedCount()
         public
         assertInvariants
     {
@@ -1780,25 +1762,29 @@ contract CSMReportGeneralDelayedPenalty is
     {
         uint256 noId = createNodeOperator();
 
-        module.reportGeneralDelayedPenalty(
+        csm.reportGeneralDelayedPenalty(
             noId,
             bytes32(abi.encode(1)),
             BOND_SIZE / 2,
             "Test penalty"
         );
 
-        createNodeOperator();
-        module.obtainDepositData(1, "");
+        csm.cleanDepositQueue(1);
+        NodeOperator memory no = csm.getNodeOperator(noId);
+        assertEq(no.enqueuedCount, 0);
 
         vm.warp(accounting.getBondLockPeriod() + 1);
 
-        vm.expectEmit(address(module));
+        vm.expectEmit(address(csm));
         emit ICSModule.BatchEnqueued(
-            ICSModule(address(module)).QUEUE_LOWEST_PRIORITY(),
+            ICSModule(address(csm)).QUEUE_LOWEST_PRIORITY(),
             noId,
             1
         );
-        module.updateDepositableValidatorsCount(noId);
+        csm.updateDepositableValidatorsCount(noId);
+
+        no = csm.getNodeOperator(noId);
+        assertEq(no.enqueuedCount, 1);
     }
 }
 
