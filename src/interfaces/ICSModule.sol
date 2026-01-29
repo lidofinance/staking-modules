@@ -68,6 +68,7 @@ interface ICSModule is
         returns (bool active, uint256 limit, uint256 length, uint256 head);
 
     /// @notice Returns the top-up queue item by the given index.
+    // TODO: Add a note that `index` is relative to head and not an absolute one
     /// @param index The index of the item to retrieve.
     /// @return nodeOperatorId Node operator ID.
     /// @return keyIndex Index of key in the deposited keys array.

@@ -583,10 +583,6 @@ abstract contract BaseModule is
         _reportWithdrawnValidators(validatorInfos, false);
     }
 
-    // ====================
-    // Continue review from here
-    // ====================
-
     /// @inheritdoc IStakingModule
     function reportValidatorExitDelay(
         uint256 nodeOperatorId,
@@ -607,6 +603,7 @@ abstract contract BaseModule is
     function onValidatorExitTriggered(
         uint256 nodeOperatorId,
         bytes calldata publicKey,
+        // Rename to elWithdrawalRequestFeePaid
         uint256 withdrawalRequestPaidFee,
         uint256 exitType
     ) external onlyRole(STAKING_ROUTER_ROLE) {
@@ -719,6 +716,7 @@ abstract contract BaseModule is
             );
     }
 
+    // TODO: Remove and use getNodeOperator in Ejector.sol
     /// @inheritdoc IBaseModule
     function getNodeOperatorTotalDepositedKeys(
         uint256 nodeOperatorId
@@ -778,6 +776,7 @@ abstract contract BaseModule is
         return nodeOperatorId < _nodeOperatorsCount;
     }
 
+    // TODO: Move to NodeOperatorOps
     /// @inheritdoc IStakingModule
     function getNodeOperatorIds(
         uint256 offset,
@@ -827,6 +826,7 @@ abstract contract BaseModule is
             );
     }
 
+    // TODO: Remove from here and from OperatorsData
     function supportsInterface(
         bytes4 interfaceId
     ) public view override(AccessControlEnumerableUpgradeable) returns (bool) {
@@ -899,6 +899,7 @@ abstract contract BaseModule is
         }
     }
 
+    // TODO: Add natspec
     function _onUncompensatedPenalty(uint256 nodeOperatorId) internal {
         _setTargetLimit(nodeOperatorId, FORCED_TARGET_LIMIT_MODE_ID, 0);
     }
@@ -1013,6 +1014,7 @@ abstract contract BaseModule is
         uint256 newCount,
         bool incrementNonceIfUpdated
     ) internal virtual {
+        // TODO: Use pointer from upper function to save gas
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
         if (no.depositableValidatorsCount == newCount) return;
 
@@ -1092,7 +1094,7 @@ abstract contract BaseModule is
         uint256 nodeOperatorId,
         address who
     ) internal view {
-        // Most likely a direct call, so check the sender is a manager.
+        // Most likely a direct call, so check the sender is a manager first.
         if (who == msg.sender) {
             _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
         } else {
