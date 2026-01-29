@@ -120,8 +120,8 @@ contract BaseOracleTest is Test, Utilities {
         oracle.grantRole(role, manager);
 
         vm.prank(manager);
-        oracle.setConsensusVersion(3);
-        assertEq(oracle.getConsensusVersion(), 3);
+        oracle.setConsensusVersion(4);
+        assertEq(oracle.getConsensusVersion(), 4);
     }
 
     function test_submitConsensusReport_RevertsIfSenderIsNotConsensusContract()
@@ -279,10 +279,10 @@ contract BaseOracleTest is Test, Utilities {
     function test_setConsensusVersion_UpdatesConsensusVersion() public {
         vm.prank(admin);
         vm.expectEmit(address(oracle));
-        emit BaseOracle.ConsensusVersionSet(3, CONSENSUS_VERSION);
-        oracle.setConsensusVersion(3);
+        emit BaseOracle.ConsensusVersionSet(4, CONSENSUS_VERSION);
+        oracle.setConsensusVersion(4);
 
-        assertEq(oracle.getConsensusVersion(), 3);
+        assertEq(oracle.getConsensusVersion(), 4);
     }
 
     function test_checkConsensusData_RevertsOnMismatchedSlot() public {

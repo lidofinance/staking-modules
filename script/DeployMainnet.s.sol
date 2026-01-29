@@ -21,7 +21,7 @@ contract DeployMainnet is DeployBase {
         config.clGenesisTime = 1606824023; // https://github.com/eth-clients/mainnet/blob/f6b7882618a5ad2c1d2731ae35e5d16a660d5bb7/README.md?plain=1#L10
         config.oracleReportEpochsPerFrame = 225 * 28; // 28 days
         config.fastLaneLengthSlots = 1800;
-        config.consensusVersion = 3;
+        config.consensusVersion = 4;
         config.oracleMembers = new address[](9);
         config.oracleMembers[0] = 0x73181107c8D9ED4ce0bbeF7A0b4ccf3320C41d12; // Instadapp
         config.oracleMembers[1] = 0x285f8537e1dAeEdaf617e96C742F2Cf36d63CcfB; // Chorus One
