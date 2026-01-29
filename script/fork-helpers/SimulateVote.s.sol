@@ -211,7 +211,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
             // 4. Upgrade FeeOracle implementation
             oracleProxy.proxy__upgradeTo(deploymentConfig.oracleImpl);
             // 5. Finalize FeeOracle v3 upgrade
-            oracle.finalizeUpgradeV3();
+            oracle.finalizeUpgradeV3(deployParams.consensusVersion);
             vm.stopBroadcast();
         }
 
