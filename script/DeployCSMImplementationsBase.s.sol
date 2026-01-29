@@ -21,7 +21,7 @@ import { JsonObj, Json } from "./utils/Json.sol";
 import { Slot } from "../src/lib/Types.sol";
 import { OssifiableProxy } from "../src/lib/proxy/OssifiableProxy.sol";
 
-abstract contract DeployImplementationsBase is DeployBase {
+abstract contract DeployCSMImplementationsBase is DeployBase {
     address public gateSealV3;
     Verifier public verifierV3;
     address public earlyAdoption;
