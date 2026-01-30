@@ -317,30 +317,51 @@ abstract contract BaseModule is
         STETH.transferShares(FEE_DISTRIBUTOR, totalShares);
     }
 
+    /// @dev DEPRECATED: Should be removed in the future versions.
     /// @inheritdoc IStakingModule
     function updateExitedValidatorsCount(
         bytes calldata nodeOperatorIds,
         bytes calldata exitedValidatorsCounts
     ) external onlyRole(STAKING_ROUTER_ROLE) {
-        uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(
-            nodeOperatorIds,
-            exitedValidatorsCounts
-        );
+        uint256 operatorsInReport;
+        uint256 idsOffset;
+        uint256 countsOffset;
+        assembly ("memory-safe") {
+            operatorsInReport := div(nodeOperatorIds.length, 8)
+            idsOffset := nodeOperatorIds.offset
+            countsOffset := exitedValidatorsCounts.offset
+        }
 
-        for (uint256 i = 0; i < operatorsInReport; ++i) {
-            (
-                uint256 nodeOperatorId,
-                uint256 exitedValidatorsCount
-            ) = ValidatorCountsReport.next(
-                    nodeOperatorIds,
-                    exitedValidatorsCounts,
-                    i
-                );
-            _updateExitedValidatorsCount({
-                nodeOperatorId: nodeOperatorId,
-                exitedValidatorsCount: exitedValidatorsCount,
-                allowDecrease: false
-            });
+        for (uint256 i; i < operatorsInReport; ++i) {
+            uint256 nodeOperatorId;
+            uint256 exitedValidatorsCount;
+            assembly ("memory-safe") {
+                nodeOperatorId := shr(192, calldataload(idsOffset))
+                exitedValidatorsCount := shr(128, calldataload(countsOffset))
+            }
+            idsOffset += 8;
+            countsOffset += 16;
+
+            NodeOperator storage no = _nodeOperators[nodeOperatorId];
+            uint32 totalExitedKeys = no.totalExitedKeys;
+            unchecked {
+                // @dev Invariant sum(no.totalExitedKeys for no in nos) == _totalExitedValidators.
+                // `_totalExitedValidators` accumulates the same uint32 per-operator counts, so pushing
+                // the new value through uint64 preserves the exact result.
+                // forge-lint: disable-next-item(unsafe-typecast)
+                _totalExitedValidators =
+                    (_totalExitedValidators - totalExitedKeys) +
+                    uint64(exitedValidatorsCount);
+            }
+            // Each node operator stores its exited count in a uint32 slot; `exitedValidatorsCount`
+            // is validated against `totalDepositedKeys` (also uint32), so the cast is safe.
+            // forge-lint: disable-next-line(unsafe-typecast)
+            no.totalExitedKeys = uint32(exitedValidatorsCount);
+
+            emit ExitedSigningKeysCountChanged(
+                nodeOperatorId,
+                exitedValidatorsCount
+            );
         }
         _incrementModuleNonce();
     }
@@ -368,19 +389,12 @@ abstract contract BaseModule is
         // Nothing to do, rewards are distributed by a performance oracle.
     }
 
-    /// TODO: Figure out if we can remove the body of this function to save bytecode
+    /// @dev DEPRECATED: Should be removed in the future versions.
     /// @inheritdoc IStakingModule
     function unsafeUpdateValidatorsCount(
-        uint256 nodeOperatorId,
-        uint256 exitedValidatorsKeysCount
-    ) external onlyRole(STAKING_ROUTER_ROLE) {
-        _updateExitedValidatorsCount({
-            nodeOperatorId: nodeOperatorId,
-            exitedValidatorsCount: exitedValidatorsKeysCount,
-            allowDecrease: true
-        });
-        _incrementModuleNonce();
-    }
+        uint256 /* nodeOperatorId */,
+        uint256 /* exitedValidatorsKeysCount */
+    ) external onlyRole(STAKING_ROUTER_ROLE) {}
 
     /// @inheritdoc IStakingModule
     function decreaseVettedSigningKeysCount(
@@ -1051,47 +1065,6 @@ abstract contract BaseModule is
         if (incrementNonceIfUpdated) {
             _incrementModuleNonce();
         }
-    }
-
-    /// TODO: Figure out if we can remove this method
-    /// @dev Update exited validators count for a single Node Operator
-    /// @dev Allows decrease the count for unsafe updates
-    function _updateExitedValidatorsCount(
-        uint256 nodeOperatorId,
-        uint256 exitedValidatorsCount,
-        bool allowDecrease
-    ) internal {
-        _onlyExistingNodeOperator(nodeOperatorId);
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-        uint32 totalExitedKeys = no.totalExitedKeys;
-        if (exitedValidatorsCount == totalExitedKeys) {
-            return;
-        }
-        if (exitedValidatorsCount > no.totalDepositedKeys) {
-            revert ExitedKeysHigherThanTotalDeposited();
-        }
-        if (!allowDecrease && exitedValidatorsCount < totalExitedKeys) {
-            revert ExitedKeysDecrease();
-        }
-
-        unchecked {
-            // @dev Invariant sum(no.totalExitedKeys for no in nos) == _totalExitedValidators.
-            // `_totalExitedValidators` accumulates the same uint32 per-operator counts, so pushing
-            // the new value through uint64 preserves the exact result.
-            // forge-lint: disable-next-item(unsafe-typecast)
-            _totalExitedValidators =
-                (_totalExitedValidators - totalExitedKeys) +
-                uint64(exitedValidatorsCount);
-        }
-        // Each node operator stores its exited count in a uint32 slot; `exitedValidatorsCount`
-        // is validated against `totalDepositedKeys` (also uint32), so the cast is safe.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        no.totalExitedKeys = uint32(exitedValidatorsCount);
-
-        emit ExitedSigningKeysCountChanged(
-            nodeOperatorId,
-            exitedValidatorsCount
-        );
     }
 
     function _setTargetLimit(
