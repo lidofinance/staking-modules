@@ -1843,6 +1843,64 @@ contract CSMGetStakingModuleSummary is
     CSMCommon
 {}
 
+contract CSMFinalizeUpgradeV3 is CSMCommon {
+    bytes32 internal constant TOTAL_WITHDRAWN_VALIDATORS_SLOT =
+        bytes32(uint256(4));
+    uint64 internal expectedTotalWithdrawn;
+
+    function setUp() public override {
+        super.setUp();
+
+        vm.pauseGasMetering();
+
+        uint256 operatorsCount = 1000;
+
+        for (uint256 i; i < operatorsCount; ++i) {
+            createNodeOperator(1);
+        }
+
+        module.obtainDepositData(operatorsCount, "");
+
+        WithdrawnValidatorInfo[]
+            memory validatorInfos = new WithdrawnValidatorInfo[](
+                operatorsCount
+            );
+
+        for (uint256 i; i < operatorsCount; ++i) {
+            validatorInfos[i] = WithdrawnValidatorInfo({
+                nodeOperatorId: i,
+                keyIndex: 0,
+                exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+                slashingPenalty: 0,
+                isSlashed: false
+            });
+        }
+
+        module.reportRegularWithdrawnValidators(validatorInfos);
+
+        expectedTotalWithdrawn = uint64(operatorsCount);
+
+        vm.store(address(module), TOTAL_WITHDRAWN_VALIDATORS_SLOT, bytes32(0));
+        vm.store(address(module), INITIALIZABLE_STORAGE, bytes32(uint256(2)));
+
+        vm.resumeGasMetering();
+    }
+
+    function test_finalizeUpgradeV3_MigratesTotalWithdrawnValidators_1k()
+        public
+    {
+        vm.startSnapshotGas("finalizeUpgradeV3");
+        csm.finalizeUpgradeV3();
+        uint256 gasUsed = vm.stopSnapshotGas();
+        emit log_named_uint("finalizeUpgradeV3 gas", gasUsed);
+
+        uint256 migrated = uint256(
+            vm.load(address(module), TOTAL_WITHDRAWN_VALIDATORS_SLOT)
+        ) & type(uint64).max;
+        assertEq(migrated, expectedTotalWithdrawn);
+    }
+}
+
 contract CSMAccessControl is ModuleAccessControl, CSMCommonNoRoles {
     function setUp() public override {
         topUpQueueLimit = 32;

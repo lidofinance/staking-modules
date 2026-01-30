@@ -7,6 +7,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { BaseModule } from "./abstract/BaseModule.sol";
+import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
 
 import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.sol";
 import { NodeOperator } from "./interfaces/IBaseModule.sol";
@@ -80,6 +81,12 @@ contract CSModule is ICSModule, BaseModule {
         // NOTE: Disable the top-up queue for existing modules, because only modules deployed starting from version 3
         // might use the top-up queue.
         _initTopUpQueue(0);
+        // NOTE: Rebuild the global withdrawn counter for the future.
+        _totalWithdrawnValidators = NodeOperatorOps
+            .calculateTotalWithdrawnValidators({
+                nodeOperators: _nodeOperators,
+                nodeOperatorsCount: _nodeOperatorsCount
+            });
     }
 
     /// @inheritdoc IStakingModule

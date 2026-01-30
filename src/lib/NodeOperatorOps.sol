@@ -8,6 +8,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IBaseModule, NodeOperator, NodeOperatorManagementProperties } from "../interfaces/IBaseModule.sol";
 import { FORCED_TARGET_LIMIT_MODE_ID } from "../interfaces/IStakingModule.sol";
 import { IAccounting } from "../interfaces/IAccounting.sol";
+import { ValidatorCountsReport } from "./ValidatorCountsReport.sol";
 
 /// @dev The library is used to reduce BaseModule bytecode size.
 library NodeOperatorOps {
@@ -91,6 +92,112 @@ library NodeOperatorOps {
             nodeOperatorId,
             targetLimitMode,
             targetLimit
+        );
+    }
+
+    function updateExitedValidatorsCount(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint64 nodeOperatorsCount,
+        uint64 totalExitedValidators,
+        bytes calldata nodeOperatorIds,
+        bytes calldata exitedValidatorsCounts
+    ) external returns (uint64 updatedTotalExitedValidators) {
+        uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(
+            nodeOperatorIds,
+            exitedValidatorsCounts
+        );
+
+        updatedTotalExitedValidators = totalExitedValidators;
+        for (uint256 i = 0; i < operatorsInReport; ++i) {
+            (
+                uint256 nodeOperatorId,
+                uint256 exitedValidatorsCount
+            ) = ValidatorCountsReport.next(
+                    nodeOperatorIds,
+                    exitedValidatorsCounts,
+                    i
+                );
+            updatedTotalExitedValidators = _updateExitedValidatorsCount({
+                nodeOperators: nodeOperators,
+                nodeOperatorsCount: nodeOperatorsCount,
+                totalExitedValidators: updatedTotalExitedValidators,
+                nodeOperatorId: nodeOperatorId,
+                exitedValidatorsCount: exitedValidatorsCount,
+                allowDecrease: false
+            });
+        }
+    }
+
+    function unsafeUpdateValidatorsCount(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint64 nodeOperatorsCount,
+        uint64 totalExitedValidators,
+        uint256 nodeOperatorId,
+        uint256 exitedValidatorsCount
+    ) external returns (uint64 updatedTotalExitedValidators) {
+        updatedTotalExitedValidators = _updateExitedValidatorsCount({
+            nodeOperators: nodeOperators,
+            nodeOperatorsCount: nodeOperatorsCount,
+            totalExitedValidators: totalExitedValidators,
+            nodeOperatorId: nodeOperatorId,
+            exitedValidatorsCount: exitedValidatorsCount,
+            allowDecrease: true
+        });
+    }
+
+    function calculateTotalWithdrawnValidators(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint64 nodeOperatorsCount
+    ) external view returns (uint64 totalWithdrawnValidators) {
+        for (uint256 i; i < nodeOperatorsCount; ++i) {
+            totalWithdrawnValidators += nodeOperators[i].totalWithdrawnKeys;
+        }
+    }
+
+    /// @dev Update exited validators count for a single Node Operator.
+    function _updateExitedValidatorsCount(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint64 nodeOperatorsCount,
+        uint64 totalExitedValidators,
+        uint256 nodeOperatorId,
+        uint256 exitedValidatorsCount,
+        bool allowDecrease
+    ) private returns (uint64 updatedTotalExitedValidators) {
+        if (nodeOperatorId >= nodeOperatorsCount) {
+            revert IBaseModule.NodeOperatorDoesNotExist();
+        }
+
+        NodeOperator storage no = nodeOperators[nodeOperatorId];
+        uint32 totalExitedKeys = no.totalExitedKeys;
+        if (exitedValidatorsCount == totalExitedKeys) {
+            return totalExitedValidators;
+        }
+        if (exitedValidatorsCount > no.totalDepositedKeys) {
+            revert IBaseModule.ExitedKeysHigherThanTotalDeposited();
+        }
+        if (!allowDecrease && exitedValidatorsCount < totalExitedKeys) {
+            revert IBaseModule.ExitedKeysDecrease();
+        }
+
+        unchecked {
+            // @dev Invariant sum(no.totalExitedKeys for no in nos) == totalExitedValidators.
+            // `totalExitedValidators` accumulates the same uint32 per-operator counts, so pushing
+            // the new value through uint64 preserves the exact result.
+            // forge-lint: disable-next-item(unsafe-typecast)
+            updatedTotalExitedValidators = uint64(
+                uint256(totalExitedValidators) -
+                    totalExitedKeys +
+                    exitedValidatorsCount
+            );
+        }
+        // Each node operator stores its exited count in a uint32 slot; `exitedValidatorsCount`
+        // is validated against `totalDepositedKeys` (also uint32), so the cast is safe.
+        // forge-lint: disable-next-line(unsafe-typecast)
+        no.totalExitedKeys = uint32(exitedValidatorsCount);
+
+        emit IBaseModule.ExitedSigningKeysCountChanged(
+            nodeOperatorId,
+            exitedValidatorsCount
         );
     }
 
