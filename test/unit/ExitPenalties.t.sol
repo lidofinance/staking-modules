@@ -187,7 +187,7 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
         uint256 paidFee = 0.1 ether;
         uint256 exitType = exitPenalties.VOLUNTARY_EXIT_TYPE_ID() + 1;
 
-        parametersRegistry.setElMaxWithdrawalRequestFee(0, 0);
+        parametersRegistry.setMaxElWithdrawalRequestFee(0, 0);
 
         vm.expectEmit(address(exitPenalties));
         emit IExitPenalties.TriggeredExitFeeRecorded(
@@ -262,7 +262,7 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
 
     function test_processTriggeredExit_feeMoreThanMax() public {
         bytes memory publicKey = randomBytes(48);
-        uint256 maxFee = parametersRegistry.getElMaxWithdrawalRequestFee(0);
+        uint256 maxFee = parametersRegistry.getMaxElWithdrawalRequestFee(0);
         uint256 paidFee = maxFee + 0.1 ether;
         uint256 exitType = exitPenalties.VOLUNTARY_EXIT_TYPE_ID() + 1;
 

@@ -50,7 +50,7 @@ struct GateCurveParams {
     uint256 syncWeight;
     uint256 allowedExitDelay;
     uint256 exitDelayFee;
-    uint256 elMaxWithdrawalRequestFee;
+    uint256 maxElWithdrawalRequestFee;
     uint256 depositAllocationWeight;
 }
 
@@ -114,7 +114,7 @@ struct CuratedDeployParams {
     uint256 defaultSyncWeight;
     uint256 defaultAllowedExitDelay;
     uint256 defaultExitDelayFee;
-    uint256 defaultElMaxWithdrawalRequestFee;
+    uint256 defaultMaxElWithdrawalRequestFee;
     uint256 defaultDepositAllocationWeight;
     uint256 identifiedCommunityStakersGateDepositAllocationWeight;
     // Curated gates
@@ -276,8 +276,8 @@ abstract contract DeployBase is Script {
                     defaultSyncWeight: config.defaultSyncWeight,
                     defaultAllowedExitDelay: config.defaultAllowedExitDelay,
                     defaultExitDelayFee: config.defaultExitDelayFee,
-                    defaultElMaxWithdrawalRequestFee: config
-                        .defaultElMaxWithdrawalRequestFee,
+                    defaultMaxElWithdrawalRequestFee: config
+                        .defaultMaxElWithdrawalRequestFee,
                     defaultDepositAllocationWeight: config
                         .defaultDepositAllocationWeight
                 })
@@ -382,9 +382,9 @@ abstract contract DeployBase is Script {
                     curveId,
                     params.exitDelayFee
                 );
-                parametersRegistry.setElMaxWithdrawalRequestFee(
+                parametersRegistry.setMaxElWithdrawalRequestFee(
                     curveId,
-                    params.elMaxWithdrawalRequestFee
+                    params.maxElWithdrawalRequestFee
                 );
                 if (params.depositAllocationWeight != 0) {
                     parametersRegistry.setDepositAllocationWeight(

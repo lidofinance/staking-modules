@@ -90,7 +90,7 @@ struct DeployParams {
     uint256 defaultSyncWeight;
     uint256 defaultAllowedExitDelay;
     uint256 defaultExitDelayFee;
-    uint256 defaultElMaxWithdrawalRequestFee;
+    uint256 defaultMaxElWithdrawalRequestFee;
     uint256 defaultDepositAllocationWeight;
     // VettedGate
     address identifiedCommunityStakersGateManager;
@@ -114,7 +114,7 @@ struct DeployParams {
     uint256 identifiedCommunityStakersGateSyncWeight;
     uint256 identifiedCommunityStakersGateAllowedExitDelay;
     uint256 identifiedCommunityStakersGateExitDelayFee;
-    uint256 identifiedCommunityStakersGateElMaxWithdrawalRequestFee;
+    uint256 identifiedCommunityStakersGateMaxElWithdrawalRequestFee;
     uint256 identifiedCommunityStakersGateDepositAllocationWeight;
     // GateSeal
     address gateSealFactory;
@@ -267,8 +267,8 @@ abstract contract DeployBase is Script {
                     defaultSyncWeight: config.defaultSyncWeight,
                     defaultAllowedExitDelay: config.defaultAllowedExitDelay,
                     defaultExitDelayFee: config.defaultExitDelayFee,
-                    defaultElMaxWithdrawalRequestFee: config
-                        .defaultElMaxWithdrawalRequestFee,
+                    defaultMaxElWithdrawalRequestFee: config
+                        .defaultMaxElWithdrawalRequestFee,
                     defaultDepositAllocationWeight: config
                         .defaultDepositAllocationWeight
                 })
@@ -465,9 +465,9 @@ abstract contract DeployBase is Script {
                 identifiedCommunityStakersGateBondCurveId,
                 config.identifiedCommunityStakersGateExitDelayFee
             );
-            parametersRegistry.setElMaxWithdrawalRequestFee(
+            parametersRegistry.setMaxElWithdrawalRequestFee(
                 identifiedCommunityStakersGateBondCurveId,
-                config.identifiedCommunityStakersGateElMaxWithdrawalRequestFee
+                config.identifiedCommunityStakersGateMaxElWithdrawalRequestFee
             );
             if (
                 config.identifiedCommunityStakersGateDepositAllocationWeight !=

@@ -31,7 +31,7 @@ contract OneShotCurveSetup is IOneShotCurveSetup {
     PerformanceCoefficientsOverride public performanceCoefficientsOverride;
     ScalarOverride public allowedExitDelayOverride;
     ScalarOverride public exitDelayFeeOverride;
-    ScalarOverride public elMaxWithdrawalRequestFeeOverride;
+    ScalarOverride public maxElWithdrawalRequestFeeOverride;
     ScalarOverride public depositAllocationWeightOverride;
 
     constructor(
@@ -69,7 +69,7 @@ contract OneShotCurveSetup is IOneShotCurveSetup {
         performanceCoefficientsOverride = params.performanceCoefficients;
         allowedExitDelayOverride = params.allowedExitDelay;
         exitDelayFeeOverride = params.exitDelayFee;
-        elMaxWithdrawalRequestFeeOverride = params.elMaxWithdrawalRequestFee;
+        maxElWithdrawalRequestFeeOverride = params.maxElWithdrawalRequestFee;
         depositAllocationWeightOverride = params.depositAllocationWeight;
     }
 
@@ -148,10 +148,10 @@ contract OneShotCurveSetup is IOneShotCurveSetup {
         if (exitDelayFeeOverride.isSet) {
             REGISTRY.setExitDelayFee(curveId, exitDelayFeeOverride.value);
         }
-        if (elMaxWithdrawalRequestFeeOverride.isSet) {
-            REGISTRY.setElMaxWithdrawalRequestFee(
+        if (maxElWithdrawalRequestFeeOverride.isSet) {
+            REGISTRY.setMaxElWithdrawalRequestFee(
                 curveId,
-                elMaxWithdrawalRequestFeeOverride.value
+                maxElWithdrawalRequestFeeOverride.value
             );
         }
         if (depositAllocationWeightOverride.isSet) {

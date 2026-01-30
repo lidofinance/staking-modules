@@ -158,8 +158,8 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
             deployParams.defaultExitDelayFee
         );
         assertEq(
-            parametersRegistry.defaultElMaxWithdrawalRequestFee(),
-            deployParams.defaultElMaxWithdrawalRequestFee
+            parametersRegistry.defaultMaxElWithdrawalRequestFee(),
+            deployParams.defaultMaxElWithdrawalRequestFee
         );
         assertEq(
             parametersRegistry.defaultDepositAllocationWeight(),
@@ -292,10 +292,10 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
             deployParams.identifiedCommunityStakersGateExitDelayFee
         );
         assertEq(
-            parametersRegistry.getElMaxWithdrawalRequestFee(
+            parametersRegistry.getMaxElWithdrawalRequestFee(
                 identifiedCommunityStakersGateCurveId
             ),
-            deployParams.identifiedCommunityStakersGateElMaxWithdrawalRequestFee
+            deployParams.identifiedCommunityStakersGateMaxElWithdrawalRequestFee
         );
         if (
             deployParams
@@ -384,10 +384,10 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
             deployParams.defaultExitDelayFee
         );
         assertEq(
-            parametersRegistry.getElMaxWithdrawalRequestFee(
+            parametersRegistry.getMaxElWithdrawalRequestFee(
                 legacyEaBondCurveId
             ),
-            deployParams.defaultElMaxWithdrawalRequestFee
+            deployParams.defaultMaxElWithdrawalRequestFee
         );
     }
 
@@ -430,8 +430,8 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
                 defaultSyncWeight: deployParams.defaultSyncWeight,
                 defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
                 defaultExitDelayFee: deployParams.defaultExitDelayFee,
-                defaultElMaxWithdrawalRequestFee: deployParams
-                    .defaultElMaxWithdrawalRequestFee,
+                defaultMaxElWithdrawalRequestFee: deployParams
+                    .defaultMaxElWithdrawalRequestFee,
                 defaultDepositAllocationWeight: deployParams
                     .defaultDepositAllocationWeight
             })
@@ -474,8 +474,8 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
                 defaultSyncWeight: deployParams.defaultSyncWeight,
                 defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
                 defaultExitDelayFee: deployParams.defaultExitDelayFee,
-                defaultElMaxWithdrawalRequestFee: deployParams
-                    .defaultElMaxWithdrawalRequestFee,
+                defaultMaxElWithdrawalRequestFee: deployParams
+                    .defaultMaxElWithdrawalRequestFee,
                 defaultDepositAllocationWeight: deployParams
                     .defaultDepositAllocationWeight
             })

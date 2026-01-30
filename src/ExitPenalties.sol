@@ -95,7 +95,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
             return;
         }
         uint256 curveId = ACCOUNTING.getBondCurveId(nodeOperatorId);
-        uint256 maxFee = PARAMETERS_REGISTRY.getElMaxWithdrawalRequestFee(
+        uint256 maxFee = PARAMETERS_REGISTRY.getMaxElWithdrawalRequestFee(
             curveId
         );
 

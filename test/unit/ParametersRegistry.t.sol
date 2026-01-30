@@ -43,7 +43,7 @@ contract ParametersRegistryBaseTest is Test, Utilities, Fixtures {
             defaultSyncWeight: 2,
             defaultAllowedExitDelay: 1 days,
             defaultExitDelayFee: 0.05 ether,
-            defaultElMaxWithdrawalRequestFee: 0.1 ether,
+            defaultMaxElWithdrawalRequestFee: 0.1 ether,
             defaultDepositAllocationWeight: 1
         });
     }
@@ -116,8 +116,8 @@ contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
             defaultInitData.defaultExitDelayFee
         );
         vm.expectEmit(address(parametersRegistry));
-        emit IParametersRegistry.DefaultElMaxWithdrawalRequestFeeSet(
-            defaultInitData.defaultElMaxWithdrawalRequestFee
+        emit IParametersRegistry.DefaultMaxElWithdrawalRequestFeeSet(
+            defaultInitData.defaultMaxElWithdrawalRequestFee
         );
 
         parametersRegistry.initialize(admin, defaultInitData);
@@ -186,8 +186,8 @@ contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
             defaultInitData.defaultExitDelayFee
         );
         assertEq(
-            parametersRegistry.defaultElMaxWithdrawalRequestFee(),
-            defaultInitData.defaultElMaxWithdrawalRequestFee
+            parametersRegistry.defaultMaxElWithdrawalRequestFee(),
+            defaultInitData.defaultMaxElWithdrawalRequestFee
         );
         assertEq(
             parametersRegistry.defaultDepositAllocationWeight(),
@@ -2276,7 +2276,7 @@ contract ParametersRegistryExitDelayFeeTest is
     }
 }
 
-contract ParametersRegistryElMaxWithdrawalRequestFeeTest is
+contract ParametersRegistryMaxElWithdrawalRequestFeeTest is
     ParametersRegistryBaseTestInitialized,
     ParametersTest
 {
@@ -2305,7 +2305,7 @@ contract ParametersRegistryElMaxWithdrawalRequestFeeTest is
             .MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
-        parametersRegistry.setDefaultElMaxWithdrawalRequestFee(fee);
+        parametersRegistry.setDefaultMaxElWithdrawalRequestFee(fee);
     }
 
     function test_set() public override {
@@ -2324,7 +2324,7 @@ contract ParametersRegistryElMaxWithdrawalRequestFeeTest is
             .MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
-        parametersRegistry.setElMaxWithdrawalRequestFee(curveId, fee);
+        parametersRegistry.setMaxElWithdrawalRequestFee(curveId, fee);
     }
 
     function test_unset() public override {
@@ -2342,7 +2342,7 @@ contract ParametersRegistryElMaxWithdrawalRequestFeeTest is
             .MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
-        parametersRegistry.unsetElMaxWithdrawalRequestFee(curveId);
+        parametersRegistry.unsetMaxElWithdrawalRequestFee(curveId);
     }
 
     function test_get_usualData() public override {
@@ -2350,9 +2350,9 @@ contract ParametersRegistryElMaxWithdrawalRequestFeeTest is
         uint256 fee = 1 ether;
 
         vm.prank(admin);
-        parametersRegistry.setElMaxWithdrawalRequestFee(curveId, fee);
+        parametersRegistry.setMaxElWithdrawalRequestFee(curveId, fee);
 
-        uint256 feeOut = parametersRegistry.getElMaxWithdrawalRequestFee(
+        uint256 feeOut = parametersRegistry.getMaxElWithdrawalRequestFee(
             curveId
         );
 
@@ -2361,22 +2361,21 @@ contract ParametersRegistryElMaxWithdrawalRequestFeeTest is
 
     function test_get_defaultData() public view override {
         uint256 curveId = 10;
-        uint256 feeOut = parametersRegistry.getElMaxWithdrawalRequestFee(
+        uint256 feeOut = parametersRegistry.getMaxElWithdrawalRequestFee(
             curveId
         );
 
-        assertEq(feeOut, defaultInitData.defaultElMaxWithdrawalRequestFee);
+        assertEq(feeOut, defaultInitData.defaultMaxElWithdrawalRequestFee);
     }
 
     function _test_set_default(address from) internal {
         uint256 fee = 1 ether;
 
         vm.expectEmit(address(parametersRegistry));
-        emit IParametersRegistry.DefaultElMaxWithdrawalRequestFeeSet(fee);
+        emit IParametersRegistry.DefaultMaxElWithdrawalRequestFeeSet(fee);
         vm.prank(from);
-        parametersRegistry.setDefaultElMaxWithdrawalRequestFee(fee);
-
-        assertEq(parametersRegistry.defaultElMaxWithdrawalRequestFee(), fee);
+        parametersRegistry.setDefaultMaxElWithdrawalRequestFee(fee);
+        assertEq(parametersRegistry.defaultMaxElWithdrawalRequestFee(), fee);
     }
 
     function _test_set(address from) internal {
@@ -2384,9 +2383,9 @@ contract ParametersRegistryElMaxWithdrawalRequestFeeTest is
         uint256 fee = 1 ether;
 
         vm.expectEmit(address(parametersRegistry));
-        emit IParametersRegistry.ElMaxWithdrawalRequestFeeSet(curveId, fee);
+        emit IParametersRegistry.MaxElWithdrawalRequestFeeSet(curveId, fee);
         vm.prank(from);
-        parametersRegistry.setElMaxWithdrawalRequestFee(curveId, fee);
+        parametersRegistry.setMaxElWithdrawalRequestFee(curveId, fee);
     }
 
     function _test_unset(address from) internal {
@@ -2394,20 +2393,20 @@ contract ParametersRegistryElMaxWithdrawalRequestFeeTest is
         uint256 fee = 1 ether;
 
         vm.prank(from);
-        parametersRegistry.setElMaxWithdrawalRequestFee(curveId, fee);
+        parametersRegistry.setMaxElWithdrawalRequestFee(curveId, fee);
 
-        uint256 feeOut = parametersRegistry.getElMaxWithdrawalRequestFee(
+        uint256 feeOut = parametersRegistry.getMaxElWithdrawalRequestFee(
             curveId
         );
 
         assertEq(feeOut, fee);
 
         vm.prank(from);
-        parametersRegistry.unsetElMaxWithdrawalRequestFee(curveId);
+        parametersRegistry.unsetMaxElWithdrawalRequestFee(curveId);
 
-        feeOut = parametersRegistry.getElMaxWithdrawalRequestFee(curveId);
+        feeOut = parametersRegistry.getMaxElWithdrawalRequestFee(curveId);
 
-        assertEq(feeOut, defaultInitData.defaultElMaxWithdrawalRequestFee);
+        assertEq(feeOut, defaultInitData.defaultMaxElWithdrawalRequestFee);
     }
 }
 

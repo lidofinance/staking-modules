@@ -609,8 +609,8 @@ contract DeploymentHelpers is Test {
         dst.defaultSyncWeight = src.defaultSyncWeight;
         dst.defaultAllowedExitDelay = src.defaultAllowedExitDelay;
         dst.defaultExitDelayFee = src.defaultExitDelayFee;
-        dst.defaultElMaxWithdrawalRequestFee = src
-            .defaultElMaxWithdrawalRequestFee;
+        dst.defaultMaxElWithdrawalRequestFee = src
+            .defaultMaxElWithdrawalRequestFee;
         dst.defaultDepositAllocationWeight = src.defaultDepositAllocationWeight;
         dst.identifiedCommunityStakersGateDepositAllocationWeight = src
             .identifiedCommunityStakersGateDepositAllocationWeight;
