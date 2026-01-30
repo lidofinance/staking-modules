@@ -391,7 +391,6 @@ abstract contract BaseModule is
                 exitedValidatorsCount
             );
         }
-        _incrementModuleNonce();
     }
 
     /// @inheritdoc IStakingModule

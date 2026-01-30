@@ -418,7 +418,7 @@ abstract contract ModuleUpdateExitedValidatorsCount is ModuleFixtures {
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalExitedKeys, 1, "totalExitedKeys not increased");
 
-        assertEq(module.getNonce(), nonce + 1);
+        assertEq(module.getNonce(), nonce);
     }
 }
 
