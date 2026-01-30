@@ -22,7 +22,7 @@ contract DeployLocalDevNet is DeployBase {
         config.clGenesisTime = vm.envUint("DEVNET_GENESIS_TIME");
         config.oracleReportEpochsPerFrame = vm.envUint("CSM_EPOCHS_PER_FRAME");
         config.fastLaneLengthSlots = 0;
-        config.consensusVersion = 3;
+        config.consensusVersion = 4;
         config.oracleMembers = new address[](3);
         config.oracleMembers[0] = vm.envAddress("CSM_ORACLE_1_ADDRESS");
         config.oracleMembers[1] = vm.envAddress("CSM_ORACLE_2_ADDRESS");

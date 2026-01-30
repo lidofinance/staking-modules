@@ -21,7 +21,7 @@ contract DeployHoodi is DeployBase {
         config.clGenesisTime = 1742213400;
         config.oracleReportEpochsPerFrame = 1575; // 7 days
         config.fastLaneLengthSlots = 32;
-        config.consensusVersion = 3;
+        config.consensusVersion = 4;
         config.oracleMembers = new address[](12);
         config.oracleMembers[0] = 0xcA80ee7313A315879f326105134F938676Cfd7a9;
         config.oracleMembers[1] = 0xf03B8DC8762B97F13Ac82e6F94bE3Ed002FF7459;

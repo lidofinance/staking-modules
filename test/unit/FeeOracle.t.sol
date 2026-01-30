@@ -8,6 +8,7 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { UnstructuredStorage } from "src/lib/UnstructuredStorage.sol";
 import { HashConsensus } from "src/lib/base-oracle/HashConsensus.sol";
+import { BaseOracle } from "src/lib/base-oracle/BaseOracle.sol";
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { DistributorMock } from "../helpers/mocks/DistributorMock.sol";
 import { ValidatorStrikesMock } from "../helpers/mocks/ValidatorStrikesMock.sol";
@@ -49,7 +50,7 @@ contract FeeOracleTest is Test, Utilities, InvariantAsserts {
     address internal constant ORACLE_ADMIN =
         address(uint160(uint256(keccak256("ORACLE_ADMIN"))));
 
-    uint256 internal constant CONSENSUS_VERSION = 1;
+    uint256 internal constant CONSENSUS_VERSION = 4;
     uint256 internal constant INITIAL_EPOCH = 17;
 
     FeeOracleForTest public oracle;
@@ -345,6 +346,7 @@ contract FeeOracleTest is Test, Utilities, InvariantAsserts {
             oracle.hasRole(oracle.DEFAULT_ADMIN_ROLE(), address(this))
         );
         assertEq(oracle.getContractVersion(), 3);
+        assertEq(oracle.getConsensusVersion(), CONSENSUS_VERSION);
     }
 
     function test_initialize_RevertWhen_AdminCannotBeZero() public {
@@ -367,6 +369,21 @@ contract FeeOracleTest is Test, Utilities, InvariantAsserts {
 
         vm.expectRevert(IFeeOracle.ZeroAdminAddress.selector);
         oracle.initialize(address(0), address(consensus), CONSENSUS_VERSION);
+    }
+
+    function test_finalizeUpgradeV3() public assertInvariants {
+        oracle = new FeeOracleForTest({
+            feeDistributor: address(distributor),
+            strikes: address(strikes),
+            secondsPerSlot: chainConfig.secondsPerSlot,
+            genesisTime: chainConfig.genesisTime
+        });
+        oracle.mock_setContractVersion(2);
+
+        oracle.finalizeUpgradeV3(CONSENSUS_VERSION);
+
+        assertEq(oracle.getConsensusVersion(), CONSENSUS_VERSION);
+        assertEq(oracle.getContractVersion(), 3);
     }
 
     function test_recovererRole() public assertInvariants {
