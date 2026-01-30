@@ -24,6 +24,10 @@ interface IPrevCSParametersRegistry {
     function defaultExitDelayPenalty() external returns (uint256);
 }
 
+interface IParametersRegistryV2 {
+    function defaultMaxWithdrawalRequestFee() external view returns (uint256);
+}
+
 contract V3UpgradeTestBase is
     Test,
     Utilities,
@@ -486,7 +490,8 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(beforeValue, afterValue, "defaultExitDelayFee");
 
         vm.selectFork(forkIdBeforeUpgrade);
-        beforeValue = parametersRegistry.defaultMaxElWithdrawalRequestFee();
+        beforeValue = IParametersRegistryV2(address(parametersRegistry))
+            .defaultMaxWithdrawalRequestFee();
         vm.selectFork(forkIdAfterUpgrade);
         afterValue = parametersRegistry.defaultMaxElWithdrawalRequestFee();
         assertEq(beforeValue, afterValue, "defaultMaxElWithdrawalRequestFee");
