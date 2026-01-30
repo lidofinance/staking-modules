@@ -41,12 +41,6 @@ contract CSModule is ICSModule, BaseModule {
 
     uint64 internal constant INITIALIZED_VERSION = 3;
 
-    // TODO: Use just a private function
-    modifier onlyActiveTopUpQueue() {
-        _onlyActiveTopUpQueue();
-        _;
-    }
-
     constructor(
         bytes32 moduleType,
         address lidoLocator,
@@ -63,8 +57,6 @@ contract CSModule is ICSModule, BaseModule {
         )
     {
         QUEUE_LOWEST_PRIORITY = PARAMETERS_REGISTRY.QUEUE_LOWEST_PRIORITY();
-        // TODO: Move to BaseModule
-        _disableInitializers();
     }
 
     function initialize(
@@ -116,7 +108,7 @@ contract CSModule is ICSModule, BaseModule {
         uint256 depositsLeft = depositsCount;
         uint256 loadedKeysCount = 0;
 
-        bool topUpQueueActive = _topUpQueue().active;
+        bool topUpQueueEnabled = _topUpQueue().enabled;
         DepositQueueLib.Queue storage depositQueue;
         // NOTE: The highest priority to start iterations with. Priorities are ordered like 0, 1, 2, ...
         uint256 priority = 0;
@@ -181,7 +173,7 @@ contract CSModule is ICSModule, BaseModule {
 
                     uint32 noId = uint32(item.noId());
 
-                    if (topUpQueueActive) {
+                    if (topUpQueueEnabled) {
                         uint32 keyIndexBase = no.totalDepositedKeys;
                         for (uint32 i; i < keysCount; i++) {
                             _topUpQueue().enqueue(
@@ -252,7 +244,8 @@ contract CSModule is ICSModule, BaseModule {
         uint256[] calldata keyIndices,
         uint256[] calldata operatorIds,
         uint256[] calldata topUpLimits
-    ) external onlyActiveTopUpQueue returns (uint256[] memory allocations) {
+    ) external returns (uint256[] memory allocations) {
+        _onlyEnabledTopUpQueue();
         // NOTE: Function call doesn't leave an unreachable item on the stack.
         _checkRole(STAKING_ROUTER_ROLE);
 
@@ -275,7 +268,8 @@ contract CSModule is ICSModule, BaseModule {
     /// @inheritdoc ICSModule
     function setTopUpQueueLimit(
         uint256 limit
-    ) external onlyActiveTopUpQueue onlyRole(MANAGE_TOP_UP_QUEUE_ROLE) {
+    ) external onlyRole(MANAGE_TOP_UP_QUEUE_ROLE) {
+        _onlyEnabledTopUpQueue();
         _topUpQueue().limit = limit.toUint8();
         emit TopUpQueueLimitSet(limit);
         _incrementModuleNonce();
@@ -344,7 +338,8 @@ contract CSModule is ICSModule, BaseModule {
     /// @inheritdoc ICSModule
     function rewindTopUpQueue(
         uint256 to
-    ) external onlyActiveTopUpQueue onlyRole(REWIND_TOP_UP_QUEUE_ROLE) {
+    ) external onlyRole(REWIND_TOP_UP_QUEUE_ROLE) {
+        _onlyEnabledTopUpQueue();
         _topUpQueue().rewind(to.toUint32());
         emit TopUpQueueRewound(to);
         _incrementModuleNonce();
@@ -354,10 +349,10 @@ contract CSModule is ICSModule, BaseModule {
     function getTopUpQueue()
         external
         view
-        returns (bool active, uint256 limit, uint256 length, uint256 head)
+        returns (bool enabled, uint256 limit, uint256 length, uint256 head)
     {
         TopUpQueueLib.Queue storage q = _topUpQueue();
-        active = q.active;
+        enabled = q.enabled;
         limit = q.limit;
         length = q.length();
         head = q.head;
@@ -386,24 +381,10 @@ contract CSModule is ICSModule, BaseModule {
     }
 
     /// @inheritdoc IStakingModule
-    /// @dev Changing the WC means that the current deposit data in the queue is not valid anymore and can't be deposited.
-    ///      If there are depositable validators in the queue, the method should revert to prevent deposits with invalid
-    ///      withdrawal credentials.
-    // TODO: Move to BaseModule and change error name to `DepositableKeysWithUnsupportedWithdrawalCredentials`
-    function onWithdrawalCredentialsChanged()
-        external
-        onlyRole(STAKING_ROUTER_ROLE)
-    {
-        if (_depositableValidatorsCount > 0) {
-            revert DepositQueueHasUnsupportedWithdrawalCredentials();
-        }
-    }
-
-    // TODO: Move base implementation to BaseModule like for removeKeys
-    /// @inheritdoc IStakingModule
     function getStakingModuleSummary()
         external
         view
+        override(BaseModule, IStakingModule)
         returns (
             uint256 totalExitedValidators,
             uint256 totalDepositedValidators,
@@ -413,7 +394,7 @@ contract CSModule is ICSModule, BaseModule {
         totalExitedValidators = _totalExitedValidators;
         totalDepositedValidators = _totalDepositedValidators;
         depositableValidatorsCount = _depositableValidatorsCount;
-        if (_topUpQueue().active) {
+        if (_topUpQueue().enabled) {
             depositableValidatorsCount = Math.min(
                 depositableValidatorsCount,
                 _topUpQueue().capacity()
@@ -455,7 +436,8 @@ contract CSModule is ICSModule, BaseModule {
     /// @inheritdoc ICSModule
     function getKeysForTopUp(
         uint256 keyCount
-    ) external view onlyActiveTopUpQueue returns (bytes[] memory pubkeys) {
+    ) external view returns (bytes[] memory pubkeys) {
+        _onlyEnabledTopUpQueue();
         keyCount = Math.min(keyCount, _topUpQueue().length());
         pubkeys = new bytes[](keyCount);
 
@@ -466,11 +448,13 @@ contract CSModule is ICSModule, BaseModule {
     }
 
     function _applyDepositableValidatorsCount(
+        NodeOperator storage no,
         uint256 nodeOperatorId,
         uint256 newCount,
         bool incrementNonceIfUpdated
     ) internal override {
         super._applyDepositableValidatorsCount(
+            no,
             nodeOperatorId,
             newCount,
             incrementNonceIfUpdated
@@ -490,14 +474,13 @@ contract CSModule is ICSModule, BaseModule {
         if (topUpQueueLimit == 0) {
             return;
         }
-        _topUpQueue().active = true;
+        _topUpQueue().enabled = true;
         _topUpQueue().limit = topUpQueueLimit;
         emit TopUpQueueLimitSet(topUpQueueLimit);
     }
 
-    // TODO: Rename to `_onlyEnabledTopUpQueue` and `_topUpQueue().active` to `enabled`
-    function _onlyActiveTopUpQueue() internal view {
-        if (!_topUpQueue().active) {
+    function _onlyEnabledTopUpQueue() internal view {
+        if (!_topUpQueue().enabled) {
             revert TopUpQueueDisabled();
         }
     }
@@ -507,7 +490,6 @@ contract CSModule is ICSModule, BaseModule {
         return $.topUpQueue;
     }
 
-    // TODO: Try to unify in all contracts
     function _storage() internal pure returns (CSModuleStorage storage $) {
         assembly ("memory-safe") {
             $.slot := CSMODULE_STORAGE_LOCATION

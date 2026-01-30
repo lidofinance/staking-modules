@@ -13,7 +13,6 @@ import { IAccounting } from "../interfaces/IAccounting.sol";
 import { IExitPenalties } from "../interfaces/IExitPenalties.sol";
 import { NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "../interfaces/IBaseModule.sol";
 import { IBaseModule } from "../interfaces/IBaseModule.sol";
-import { INodeOperatorOwner } from "../interfaces/INodeOperatorOwner.sol";
 
 import { DepositQueueLib } from "../lib/DepositQueueLib.sol";
 import { SigningKeys } from "../lib/SigningKeys.sol";
@@ -116,6 +115,8 @@ abstract contract BaseModule is
         ACCOUNTING = IAccounting(accounting);
         EXIT_PENALTIES = IExitPenalties(exitPenalties);
         FEE_DISTRIBUTOR = address(ACCOUNTING.FEE_DISTRIBUTOR());
+
+        _disableInitializers();
     }
 
     /// @inheritdoc IBaseModule
@@ -126,6 +127,35 @@ abstract contract BaseModule is
     /// @inheritdoc IBaseModule
     function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE) {
         _pauseFor(duration);
+    }
+
+    /// @inheritdoc IStakingModule
+    function getStakingModuleSummary()
+        external
+        view
+        virtual
+        returns (
+            uint256 totalExitedValidators,
+            uint256 totalDepositedValidators,
+            uint256 depositableValidatorsCount
+        )
+    {
+        totalExitedValidators = _totalExitedValidators;
+        totalDepositedValidators = _totalDepositedValidators;
+        depositableValidatorsCount = _depositableValidatorsCount;
+    }
+
+    /// @inheritdoc IStakingModule
+    /// @dev Changing the WC means that the current deposit data in the queue is not valid anymore and can't be deposited.
+    ///      If there are depositable validators in the queue, the method should revert to prevent deposits with invalid
+    ///      withdrawal credentials.
+    function onWithdrawalCredentialsChanged()
+        external
+        onlyRole(STAKING_ROUTER_ROLE)
+    {
+        if (_depositableValidatorsCount > 0) {
+            revert DepositableKeysWithUnsupportedWithdrawalCredentials();
+        }
     }
 
     /// @inheritdoc IBaseModule
@@ -715,14 +745,6 @@ abstract contract BaseModule is
             );
     }
 
-    // TODO: Remove and use getNodeOperator in Ejector.sol
-    /// @inheritdoc IBaseModule
-    function getNodeOperatorTotalDepositedKeys(
-        uint256 nodeOperatorId
-    ) external view returns (uint256 totalDepositedKeys) {
-        totalDepositedKeys = _nodeOperators[nodeOperatorId].totalDepositedKeys;
-    }
-
     /// @inheritdoc IBaseModule
     function getSigningKeys(
         uint256 nodeOperatorId,
@@ -775,26 +797,17 @@ abstract contract BaseModule is
         return nodeOperatorId < _nodeOperatorsCount;
     }
 
-    // TODO: Move to NodeOperatorOps
     /// @inheritdoc IStakingModule
     function getNodeOperatorIds(
         uint256 offset,
         uint256 limit
     ) external view returns (uint256[] memory nodeOperatorIds) {
-        uint256 nodeOperatorsCount = _nodeOperatorsCount;
-        if (offset >= nodeOperatorsCount || limit == 0) {
-            return nodeOperatorIds;
-        }
-
-        unchecked {
-            uint256 idsCount = nodeOperatorsCount - offset;
-            if (idsCount > limit) idsCount = limit;
-
-            nodeOperatorIds = new uint256[](idsCount);
-            for (uint256 i; i < idsCount; ++i) {
-                nodeOperatorIds[i] = offset++;
-            }
-        }
+        return
+            NodeOperatorOps.getNodeOperatorIds(
+                _nodeOperatorsCount,
+                offset,
+                limit
+            );
     }
 
     /// @inheritdoc IStakingModule
@@ -823,15 +836,6 @@ abstract contract BaseModule is
             PARAMETERS_REGISTRY.getAllowedExitDelay(
                 _getBondCurveId(nodeOperatorId)
             );
-    }
-
-    // TODO: Remove from here and from OperatorsData
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override(AccessControlEnumerableUpgradeable) returns (bool) {
-        return
-            interfaceId == type(INodeOperatorOwner).interfaceId ||
-            super.supportsInterface(interfaceId);
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -897,7 +901,8 @@ abstract contract BaseModule is
         }
     }
 
-    // TODO: Add natspec
+    /// @dev Prevents reactivation of a Node Operator after an uncovered penalty by
+    ///      forcing its target limit to zero.
     function _onUncompensatedPenalty(uint256 nodeOperatorId) internal {
         _setTargetLimit(nodeOperatorId, FORCED_TARGET_LIMIT_MODE_ID, 0);
     }
@@ -1001,6 +1006,7 @@ abstract contract BaseModule is
             }
         }
         _applyDepositableValidatorsCount({
+            no: no,
             nodeOperatorId: nodeOperatorId,
             newCount: newCount,
             incrementNonceIfUpdated: incrementNonceIfUpdated
@@ -1008,12 +1014,11 @@ abstract contract BaseModule is
     }
 
     function _applyDepositableValidatorsCount(
+        NodeOperator storage no,
         uint256 nodeOperatorId,
         uint256 newCount,
         bool incrementNonceIfUpdated
     ) internal virtual {
-        // TODO: Use pointer from upper function to save gas
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
         if (no.depositableValidatorsCount == newCount) return;
 
         // Updating the global counter.

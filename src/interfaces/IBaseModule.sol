@@ -126,6 +126,7 @@ interface IBaseModule is
 
     error KeysLimitExceeded();
     error SigningKeysInvalidOffset();
+    error DepositableKeysWithUnsupportedWithdrawalCredentials();
 
     error ZeroLocatorAddress();
     error ZeroAccountingAddress();
@@ -373,13 +374,6 @@ interface IBaseModule is
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Non-withdrawn keys count
     function getNodeOperatorNonWithdrawnKeys(
-        uint256 nodeOperatorId
-    ) external view returns (uint256);
-
-    /// @notice Get Node Operator total deposited keys
-    /// @param nodeOperatorId ID of the Node Operator
-    /// @return Total deposited keys count
-    function getNodeOperatorTotalDepositedKeys(
         uint256 nodeOperatorId
     ) external view returns (uint256);
 

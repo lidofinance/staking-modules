@@ -1179,6 +1179,7 @@ contract CSMTopUpQueue is CSMCommon {
         _enableInitializers(address(csm));
         csm.initialize({ admin: address(this), topUpQueueLimit: 0 });
 
+        csm.grantRole(csm.MANAGE_TOP_UP_QUEUE_ROLE(), address(this));
         vm.expectRevert(ICSModule.TopUpQueueDisabled.selector);
         csm.setTopUpQueueLimit(0);
     }
@@ -1247,6 +1248,7 @@ contract CSMTopUpQueue is CSMCommon {
         _enableInitializers(address(csm));
         csm.initialize({ admin: address(this), topUpQueueLimit: 0 });
 
+        csm.grantRole(csm.REWIND_TOP_UP_QUEUE_ROLE(), address(this));
         vm.expectRevert(ICSModule.TopUpQueueDisabled.selector);
         csm.rewindTopUpQueue(0);
     }
@@ -2052,7 +2054,9 @@ contract CSMStakingRouterAccessControl is
         module.grantRole(role, actor);
 
         vm.expectRevert(
-            ICSModule.DepositQueueHasUnsupportedWithdrawalCredentials.selector
+            IBaseModule
+                .DepositableKeysWithUnsupportedWithdrawalCredentials
+                .selector
         );
         vm.prank(actor);
         module.onWithdrawalCredentialsChanged();
@@ -2072,8 +2076,6 @@ contract CSMNodeOperatorStateAfterUpdateCurve is
 contract CSMOnRewardsMinted is ModuleOnRewardsMinted, CSMCommon {}
 
 contract CSMRecoverERC20 is ModuleRecoverERC20, CSMCommon {}
-
-contract CSMSupportsInterface is ModuleSupportsInterface, CSMCommon {}
 
 contract CSMMisc is ModuleMisc, CSMCommon {
     function test_getInitializedVersion() public view override {

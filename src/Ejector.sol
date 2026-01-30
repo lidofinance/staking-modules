@@ -87,7 +87,7 @@ contract Ejector is
             uint256 maxKeyIndex = startFrom + keysCount;
             if (
                 maxKeyIndex >
-                MODULE.getNodeOperatorTotalDepositedKeys(nodeOperatorId)
+                MODULE.getNodeOperator(nodeOperatorId).totalDepositedKeys
             ) {
                 revert SigningKeysInvalidOffset();
             }
@@ -152,9 +152,9 @@ contract Ejector is
             revert NothingToEject();
         }
 
-        uint256 totalDepositedKeys = MODULE.getNodeOperatorTotalDepositedKeys(
-            nodeOperatorId
-        );
+        uint256 totalDepositedKeys = MODULE
+            .getNodeOperator(nodeOperatorId)
+            .totalDepositedKeys;
         ValidatorData[] memory exitsData = new ValidatorData[](
             keyIndices.length
         );
@@ -207,7 +207,8 @@ contract Ejector is
         // A key must be deposited to prevent ejecting unvetted keys that can intersect with
         // other modules.
         if (
-            keyIndex >= MODULE.getNodeOperatorTotalDepositedKeys(nodeOperatorId)
+            keyIndex >=
+            MODULE.getNodeOperator(nodeOperatorId).totalDepositedKeys
         ) {
             revert SigningKeysInvalidOffset();
         }

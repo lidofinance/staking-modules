@@ -18,7 +18,6 @@ import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol
 contract CSMMock is Utilities, Fixtures {
     NodeOperator internal mockNodeOperator;
     uint256 internal nodeOperatorsCount;
-    uint256 internal nodeOperatorTotalDepositedKeys;
     mapping(uint256 => mapping(uint256 => bool))
         internal isValidatorWithdrawnByKey;
     IAccounting public immutable ACCOUNTING;
@@ -51,6 +50,11 @@ contract CSMMock is Utilities, Fixtures {
 
     function mock_setNodeOperator(NodeOperator memory no) external {
         mockNodeOperator = no;
+    }
+
+    function mock_setNodeOperatorTotalDepositedKeys(uint256 count) external {
+        // Storage uses uint32; tests keep values in range.
+        mockNodeOperator.totalDepositedKeys = uint32(count);
     }
 
     function getNodeOperator(
@@ -104,16 +108,6 @@ contract CSMMock is Utilities, Fixtures {
 
     function getNodeOperatorsCount() external view returns (uint256) {
         return nodeOperatorsCount;
-    }
-
-    function mock_setNodeOperatorTotalDepositedKeys(uint256 count) external {
-        nodeOperatorTotalDepositedKeys = count;
-    }
-
-    function getNodeOperatorTotalDepositedKeys(
-        uint256
-    ) external view returns (uint256) {
-        return nodeOperatorTotalDepositedKeys;
     }
 
     function createNodeOperator(

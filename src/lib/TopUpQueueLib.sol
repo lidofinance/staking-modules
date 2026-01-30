@@ -48,7 +48,7 @@ library TopUpQueueLib {
         TopUpQueueItem[] items;
         uint32 head;
         uint8 limit;
-        bool active;
+        bool enabled;
     }
 
     function enqueue(Queue storage self, TopUpQueueItem item) internal {

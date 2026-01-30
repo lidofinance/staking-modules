@@ -1911,8 +1911,6 @@ contract CuratedOnRewardsMinted is ModuleOnRewardsMinted, CuratedCommon {}
 
 contract CuratedRecoverERC20 is ModuleRecoverERC20, CuratedCommon {}
 
-contract CuratedSupportsInterface is ModuleSupportsInterface, CuratedCommon {}
-
 contract CuratedMisc is ModuleMisc, CuratedCommon {
     function test_getInitializedVersion() public view override {
         assertEq(module.getInitializedVersion(), 1);

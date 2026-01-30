@@ -224,6 +224,7 @@ contract MyModule is BaseModule {
     }
 
     function _applyDepositableValidatorsCount(
+        NodeOperator storage no,
         uint256 nodeOperatorId,
         uint256 newCount,
         bool incrementNonceIfUpdated
@@ -234,13 +235,10 @@ contract MyModule is BaseModule {
         revert NotImplementedInTest();
     }
 
-    function onWithdrawalCredentialsChanged() external {
-        revert NotImplementedInTest();
-    }
-
     function getStakingModuleSummary()
         external
         view
+        override
         returns (
             uint256 totalExitedValidators,
             uint256 totalDepositedValidators,
@@ -641,24 +639,6 @@ abstract contract ModuleStakingRouterAccessControl is ModuleFixtures {
     }
 }
 
-abstract contract ModuleSupportsInterface is ModuleFixtures {
-    function test_supportsInterface_ReturnsTrueForINodeOperatorOwner()
-        public
-        view
-    {
-        assertTrue(
-            module.supportsInterface(type(INodeOperatorOwner).interfaceId)
-        );
-    }
-
-    function test_supportsInterface_ReturnsFalseForUnknownInterface()
-        public
-        view
-    {
-        assertFalse(module.supportsInterface(bytes4(uint32(0xdeadbeef))));
-    }
-}
-
 abstract contract ModuleMisc is ModuleFixtures {
     function test_getInitializedVersion() public view virtual {
         assertEq(module.getInitializedVersion(), 3);
@@ -830,26 +810,6 @@ abstract contract ModuleMisc is ModuleFixtures {
         uint256 activeCount = module.getActiveNodeOperatorsCount();
 
         assertEq(activeCount, 3);
-    }
-
-    function test_getNodeOperatorTotalDepositedKeys() public assertInvariants {
-        uint256 noId = createNodeOperator();
-
-        uint256 depositedCount = module.getNodeOperatorTotalDepositedKeys(noId);
-        assertEq(depositedCount, 0);
-
-        module.obtainDepositData(1, "");
-
-        depositedCount = module.getNodeOperatorTotalDepositedKeys(noId);
-        assertEq(depositedCount, 1);
-    }
-
-    function test_getNodeOperatorTotalDepositedKeys_NoOperator()
-        public
-        assertInvariants
-    {
-        uint256 depositedCount = module.getNodeOperatorTotalDepositedKeys(0);
-        assertEq(depositedCount, 0);
     }
 
     function test_getNodeOperatorManagementProperties()
