@@ -113,8 +113,6 @@ interface IBaseModule is
     error NodeOperatorDoesNotExist();
     error SenderIsNotEligible();
     error InvalidVetKeysPointer();
-    error ExitedKeysHigherThanTotalDeposited();
-    error ExitedKeysDecrease();
     error ZeroExitBalance();
     error SlashingPenaltyIsNotApplicable();
     error ValidatorSlashingAlreadyReported();
