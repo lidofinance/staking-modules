@@ -108,7 +108,7 @@ interface IBaseModule is
         uint256 keyIndex,
         bytes pubkey
     );
-    event KeyAddedBalanceIncreased(
+    event KeyAddedBalanceChanged(
         uint256 indexed nodeOperatorId,
         uint256 indexed keyIndex,
         uint256 amount,

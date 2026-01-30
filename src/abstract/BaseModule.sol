@@ -890,14 +890,15 @@ abstract contract BaseModule is
         uint256 current = _keyAddedBalances[pointer];
         if (current == KEY_ADDED_BALANCE_CAP) return;
         uint256 newBalance = current + incrementWei;
-        _keyAddedBalances[pointer] = newBalance > KEY_ADDED_BALANCE_CAP
+        uint256 updatedBalance = newBalance > KEY_ADDED_BALANCE_CAP
             ? KEY_ADDED_BALANCE_CAP
             : newBalance;
-        emit KeyAddedBalanceIncreased(
+        _keyAddedBalances[pointer] = updatedBalance;
+        emit KeyAddedBalanceChanged(
             nodeOperatorId,
             keyIndex,
             incrementWei,
-            _keyAddedBalances[pointer]
+            updatedBalance
         );
     }
 

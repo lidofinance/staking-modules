@@ -1852,7 +1852,7 @@ contract CuratedReportWithdrawnValidators is
 contract CuratedKeyAddedBalance is ModuleKeyAddedBalance, CuratedCommon {}
 
 contract CuratedTopUpKeyAddedBalance is CuratedCommon {
-    function test_topUp_emitsKeyAddedBalanceIncreased() public {
+    function test_topUp_emitsKeyAddedBalanceChanged() public {
         createNodeOperator(1);
         cm.obtainDepositData(1, "");
 
@@ -1860,7 +1860,7 @@ contract CuratedTopUpKeyAddedBalance is CuratedCommon {
         bytes[] memory pubkeys = BytesArr(key);
 
         vm.expectEmit(address(cm));
-        emit IBaseModule.KeyAddedBalanceIncreased(0, 0, 5 ether, 5 ether);
+        emit IBaseModule.KeyAddedBalanceChanged(0, 0, 5 ether, 5 ether);
 
         cm.allocateDeposits({
             maxDepositAmount: 5 ether,
@@ -1893,7 +1893,7 @@ contract CuratedTopUpKeyAddedBalance is CuratedCommon {
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
         bytes32 signature = keccak256(
-            "KeyAddedBalanceIncreased(uint256,uint256,uint256,uint256)"
+            "KeyAddedBalanceChanged(uint256,uint256,uint256,uint256)"
         );
         for (uint256 i; i < entries.length; ++i) {
             assertNotEq(entries[i].topics[0], signature);

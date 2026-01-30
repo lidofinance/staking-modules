@@ -979,13 +979,13 @@ contract CSMTopUpQueue is CSMCommon {
         assertEq(_getTopUpQueueLength(), 0);
     }
 
-    function test_topUp_emitsKeyAddedBalanceIncreased() public {
+    function test_topUp_emitsKeyAddedBalanceChanged() public {
         createNodeOperator(1);
         csm.obtainDepositData(1, "");
 
         bytes memory key = csm.getSigningKeys(0, 0, 1);
         vm.expectEmit(address(csm));
-        emit IBaseModule.KeyAddedBalanceIncreased(0, 0, 5 ether, 5 ether);
+        emit IBaseModule.KeyAddedBalanceChanged(0, 0, 5 ether, 5 ether);
 
         csm.allocateDeposits({
             maxDepositAmount: 5 ether,
@@ -1016,7 +1016,7 @@ contract CSMTopUpQueue is CSMCommon {
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
         bytes32 signature = keccak256(
-            "KeyAddedBalanceIncreased(uint256,uint256,uint256,uint256)"
+            "KeyAddedBalanceChanged(uint256,uint256,uint256,uint256)"
         );
         for (uint256 i; i < entries.length; ++i) {
             assertNotEq(entries[i].topics[0], signature);
@@ -1033,7 +1033,7 @@ contract CSMTopUpQueue is CSMCommon {
 
         bytes memory key = csm.getSigningKeys(0, 0, 1);
         vm.expectEmit(address(csm));
-        emit IBaseModule.KeyAddedBalanceIncreased(0, 0, 1 ether, cap);
+        emit IBaseModule.KeyAddedBalanceChanged(0, 0, 1 ether, cap);
 
         uint256[] memory allocations = csm.allocateDeposits({
             maxDepositAmount: 5 ether,

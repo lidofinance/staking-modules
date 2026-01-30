@@ -114,12 +114,12 @@ library WithdrawnValidatorLib {
             feeSum += penaltyInfo.elWithdrawalRequestFee.value;
         }
 
-        uint256 expectedBalance = MIN_ACTIVATION_BALANCE + keyAddedBalance;
+        uint256 minExpectedBalance = MIN_ACTIVATION_BALANCE + keyAddedBalance;
         if (validatorInfo.isSlashed) {
             // Slashing penalty doesn't scale because all the losses are already accounted.
             penaltySum += validatorInfo.slashingPenalty;
-        } else if (validatorInfo.exitBalance < expectedBalance) {
-            penaltySum += expectedBalance - validatorInfo.exitBalance;
+        } else if (validatorInfo.exitBalance < minExpectedBalance) {
+            penaltySum += minExpectedBalance - validatorInfo.exitBalance;
         }
 
         IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();

@@ -255,6 +255,7 @@ contract CSModule is ICSModule, BaseModule {
         _onlyEnabledTopUpQueue();
         _checkStakingRouterRole();
 
+        // Cap top-ups so we don't over-allocate to keys that lost balance due to CL penalties.
         uint256[] memory cappedTopUpLimits = new uint256[](topUpLimits.length);
         for (uint256 i; i < topUpLimits.length; ++i) {
             uint256 remaining = _getRemainingKeyBalance(
