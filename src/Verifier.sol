@@ -205,14 +205,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
             revert ValidatorIsNotSlashed();
         }
 
-        // TODO: Consider uncommenting or removing the block.
-        // if (
-        //     _computeEpochAtSlot(data.recentBlock.header.slot) <
-        //     data.validator.object.withdrawableEpoch
-        // ) {
-        //     revert ValidatorIsNotWithdrawable();
-        // }
-
         {
             bytes memory pubkey = MODULE.getSigningKeys(
                 data.validator.nodeOperatorId,

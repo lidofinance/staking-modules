@@ -29,7 +29,7 @@ import { Verifier } from "src/Verifier.sol";
 import { CuratedModule } from "src/CuratedModule.sol";
 import { OperatorsData } from "src/OperatorsData.sol";
 import { CuratedGateFactory } from "src/CuratedGateFactory.sol";
-import { DeployParams } from "script/DeployBase.s.sol";
+import { DeployParams } from "script/csm/DeployBase.s.sol";
 import { CuratedDeployParams } from "script/curated/DeployBase.s.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 import { IACL } from "src/interfaces/IACL.sol";
@@ -609,7 +609,8 @@ contract DeploymentHelpers is Test {
         dst.defaultSyncWeight = src.defaultSyncWeight;
         dst.defaultAllowedExitDelay = src.defaultAllowedExitDelay;
         dst.defaultExitDelayFee = src.defaultExitDelayFee;
-        dst.defaultMaxWithdrawalRequestFee = src.defaultMaxWithdrawalRequestFee;
+        dst.defaultMaxElWithdrawalRequestFee = src
+            .defaultMaxElWithdrawalRequestFee;
         dst.defaultDepositAllocationWeight = src.defaultDepositAllocationWeight;
         dst.identifiedCommunityStakersGateDepositAllocationWeight = src
             .identifiedCommunityStakersGateDepositAllocationWeight;

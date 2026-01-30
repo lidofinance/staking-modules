@@ -51,7 +51,7 @@ interface IOneShotCurveSetup {
         PerformanceCoefficientsOverride performanceCoefficients;
         ScalarOverride allowedExitDelay;
         ScalarOverride exitDelayFee;
-        ScalarOverride maxWithdrawalRequestFee;
+        ScalarOverride maxElWithdrawalRequestFee;
         ScalarOverride depositAllocationWeight;
     }
 

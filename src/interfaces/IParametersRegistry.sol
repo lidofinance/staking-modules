@@ -51,7 +51,7 @@ interface IParametersRegistry {
         uint256 defaultSyncWeight;
         uint256 defaultAllowedExitDelay;
         uint256 defaultExitDelayFee;
-        uint256 defaultMaxWithdrawalRequestFee;
+        uint256 defaultMaxElWithdrawalRequestFee;
         uint256 defaultDepositAllocationWeight;
     }
 
@@ -70,7 +70,7 @@ interface IParametersRegistry {
     event DefaultQueueConfigSet(uint256 priority, uint256 maxDeposits);
     event DefaultAllowedExitDelaySet(uint256 delay);
     event DefaultExitDelayFeeSet(uint256 penalty);
-    event DefaultMaxWithdrawalRequestFeeSet(uint256 fee);
+    event DefaultMaxElWithdrawalRequestFeeSet(uint256 fee);
     event DefaultDepositAllocationWeightSet(uint256 weight);
 
     event KeyRemovalChargeSet(
@@ -109,7 +109,7 @@ interface IParametersRegistry {
     );
     event AllowedExitDelaySet(uint256 indexed curveId, uint256 delay);
     event ExitDelayFeeSet(uint256 indexed curveId, uint256 penalty);
-    event MaxWithdrawalRequestFeeSet(uint256 indexed curveId, uint256 fee);
+    event MaxElWithdrawalRequestFeeSet(uint256 indexed curveId, uint256 fee);
     event DepositAllocationWeightSet(uint256 indexed curveId, uint256 weight);
 
     event KeyRemovalChargeUnset(uint256 indexed curveId);
@@ -123,7 +123,7 @@ interface IParametersRegistry {
     event PerformanceCoefficientsUnset(uint256 indexed curveId);
     event AllowedExitDelayUnset(uint256 indexed curveId);
     event ExitDelayFeeUnset(uint256 indexed curveId);
-    event MaxWithdrawalRequestFeeUnset(uint256 indexed curveId);
+    event MaxElWithdrawalRequestFeeUnset(uint256 indexed curveId);
     event DepositAllocationWeightUnset(uint256 indexed curveId);
 
     error InvalidRewardShareData();
@@ -158,7 +158,7 @@ interface IParametersRegistry {
     /// @notice Role to manage reward share parameters
     function MANAGE_REWARD_SHARE_ROLE() external view returns (bytes32);
 
-    /// @notice Role to manage validator exit related parameters: allowed exit delay, exit delay fee, max withdrawal request fee
+    /// @notice Role to manage validator exit related parameters: allowed exit delay, exit delay fee, EL max withdrawal request fee
     function MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE()
         external
         view
@@ -222,8 +222,8 @@ interface IParametersRegistry {
     /// @notice Get default value for exit delay penalty
     function defaultExitDelayFee() external returns (uint256);
 
-    /// @notice Get default value for max withdrawal request fee
-    function defaultMaxWithdrawalRequestFee() external returns (uint256);
+    /// @notice Get default value for max EL withdrawal request fee
+    function defaultMaxElWithdrawalRequestFee() external returns (uint256);
 
     /// @notice Get default value for operator allocation weight
     function defaultDepositAllocationWeight() external returns (uint256);
@@ -292,9 +292,9 @@ interface IParametersRegistry {
     /// @param fee The value to be set as default for the exit delay fee
     function setDefaultExitDelayFee(uint256 fee) external;
 
-    /// @notice set default value for max withdrawal request fee. Default value is used if a specific value is not set for the curveId
-    /// @param fee value to be set as default for the max withdrawal request fee
-    function setDefaultMaxWithdrawalRequestFee(uint256 fee) external;
+    /// @notice set default value for max EL withdrawal request fee. Default value is used if a specific value is not set for the curveId
+    /// @param fee value to be set as default for the max EL withdrawal request fee
+    function setDefaultMaxElWithdrawalRequestFee(uint256 fee) external;
 
     /// @notice Set default value for operator allocation weight. Default value is used if a specific value is not set for the curveId
     /// @param weight value to be set as default for the operator allocation weight
@@ -541,10 +541,13 @@ interface IParametersRegistry {
         uint256 curveId
     ) external view returns (uint256 penalty);
 
-    /// @notice Set max withdrawal request fee for the curveId
-    /// @param curveId Curve Id to associate max withdrawal request fee with
-    /// @param fee max withdrawal request fee
-    function setMaxWithdrawalRequestFee(uint256 curveId, uint256 fee) external;
+    /// @notice Set max EL withdrawal request fee for the curveId
+    /// @param curveId Curve Id to associate max EL withdrawal request fee with
+    /// @param fee Max EL withdrawal request fee
+    function setMaxElWithdrawalRequestFee(
+        uint256 curveId,
+        uint256 fee
+    ) external;
 
     /// @notice Set operator allocation weight for the curveId
     /// @param curveId Curve Id to associate operator allocation weight with
@@ -554,18 +557,18 @@ interface IParametersRegistry {
         uint256 weight
     ) external;
 
-    /// @notice Unset max withdrawal request fee for the curveId
-    /// @param curveId Curve Id to unset max withdrawal request fee for
-    function unsetMaxWithdrawalRequestFee(uint256 curveId) external;
+    /// @notice Unset max EL withdrawal request fee for the curveId
+    /// @param curveId Curve Id to unset max EL withdrawal request fee for
+    function unsetMaxElWithdrawalRequestFee(uint256 curveId) external;
 
     /// @notice Unset operator allocation weight for the curveId
     /// @param curveId Curve Id to unset operator allocation weight for
     function unsetDepositAllocationWeight(uint256 curveId) external;
 
-    /// @notice Get max withdrawal request fee by the curveId
-    /// @dev `defaultMaxWithdrawalRequestFee` is returned if the value is not set for the given curveId.
-    /// @param curveId Curve Id to get max withdrawal request fee for
-    function getMaxWithdrawalRequestFee(
+    /// @notice Get max EL withdrawal request fee by the curveId
+    /// @dev `defaultMaxElWithdrawalRequestFee` is returned if the value is not set for the given curveId.
+    /// @param curveId Curve Id to get max EL withdrawal request fee for
+    function getMaxElWithdrawalRequestFee(
         uint256 curveId
     ) external view returns (uint256 fee);
 

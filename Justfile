@@ -34,8 +34,8 @@ deploy_config_path := if chain == "mainnet" {
     error("Unsupported chain " + chain)
 }
 
-deploy_script_path := "script" / deploy_script_name + ".s.sol:" + deploy_script_name
-deploy_csm_impls_script_path := "script" / deploy_csm_implementations_script_name + ".s.sol:" + deploy_csm_implementations_script_name
+deploy_script_path := "script" / "csm" / deploy_script_name + ".s.sol:" + deploy_script_name
+deploy_csm_impls_script_path := "script" / "csm" / deploy_csm_implementations_script_name + ".s.sol:" + deploy_csm_implementations_script_name
 
 anvil_host := env_var_or_default("ANVIL_IP_ADDR", "127.0.0.1")
 anvil_port := env_var_or_default("ANVIL_PORT", "8545")

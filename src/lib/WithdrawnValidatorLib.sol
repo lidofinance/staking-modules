@@ -23,13 +23,8 @@ library WithdrawnValidatorLib {
 
     function process(
         NodeOperator storage no,
-        WithdrawnValidatorInfo calldata validatorInfo,
-        bool isSlashed
-    ) external returns (bool bondCoversPenalties) {
-        if (validatorInfo.isSlashed && !isSlashed) {
-            revert IBaseModule.SlashingPenaltyIsNotApplicable();
-        }
-
+        WithdrawnValidatorInfo calldata validatorInfo
+    ) external returns (bool penaltiesCovered) {
         if (validatorInfo.slashingPenalty > 0 && !validatorInfo.isSlashed) {
             revert IBaseModule.InvalidWithdrawnValidatorInfo();
         }
@@ -58,28 +53,24 @@ library WithdrawnValidatorLib {
             .EXIT_PENALTIES()
             .getExitPenaltyInfo(validatorInfo.nodeOperatorId, pubkey);
 
-        bondCoversPenalties = _fulfilExitObligations(
-            validatorInfo,
-            penaltyInfo
-        );
+        penaltiesCovered = _fulfillExitObligations(validatorInfo, penaltyInfo);
 
-        // solhint-disable-next-line func-named-parameters
-        emit IBaseModule.ValidatorWithdrawn(
-            validatorInfo.nodeOperatorId,
-            validatorInfo.keyIndex,
-            validatorInfo.exitBalance,
-            validatorInfo.slashingPenalty,
-            pubkey
-        );
+        emit IBaseModule.ValidatorWithdrawn({
+            nodeOperatorId: validatorInfo.nodeOperatorId,
+            keyIndex: validatorInfo.keyIndex,
+            exitBalance: validatorInfo.exitBalance,
+            slashingPenalty: validatorInfo.slashingPenalty,
+            pubkey: pubkey
+        });
     }
 
     // NOTE: The function might revert if the penalty recorded in the `penaltyInfo` is large enough. As of now, it
     // should be greater than 2^245, which is about 5.6 * 10^55 ethers.
-    function _fulfilExitObligations(
+    function _fulfillExitObligations(
         WithdrawnValidatorInfo calldata validatorInfo,
         ExitPenaltyInfo memory penaltyInfo
-    ) internal returns (bool bondCoversPenalties) {
-        bool chargeWithdrawalRequestFee = false;
+    ) internal returns (bool penaltiesCovered) {
+        bool chargeElWithdrawalRequestFee = false;
 
         uint256 penaltyMultiplier = _getPenaltyMultiplier(validatorInfo);
         uint256 penaltySum;
@@ -90,7 +81,7 @@ library WithdrawnValidatorLib {
                 penaltyInfo.delayFee.value,
                 penaltyMultiplier
             );
-            chargeWithdrawalRequestFee = true;
+            chargeElWithdrawalRequestFee = true;
         }
 
         if (penaltyInfo.strikesPenalty.isValue) {
@@ -98,19 +89,19 @@ library WithdrawnValidatorLib {
                 penaltyInfo.strikesPenalty.value,
                 penaltyMultiplier
             );
-            chargeWithdrawalRequestFee = true;
+            chargeElWithdrawalRequestFee = true;
         }
 
-        // The withdrawal request fee is taken when either a delay was reported or the validator exited due to
+        // The EL withdrawal request fee is taken when either a delay was reported or the validator exited due to
         // strikes. Otherwise, the fee has already been paid by the node operator upon withdrawal trigger, or it is
         // a DAO decision to withdraw the validator before the withdrawal request becomes delayed.
         if (
-            chargeWithdrawalRequestFee &&
-            penaltyInfo.withdrawalRequestFee.value != 0
+            chargeElWithdrawalRequestFee &&
+            penaltyInfo.elWithdrawalRequestFee.value != 0
         ) {
-            // Withdrawal request fee is not scaled because sending a withdrawal request for a validator does
+            // EL withdrawal request fee is not scaled because sending a withdrawal request for a validator does
             // not depend on the size of a validator.
-            feeSum += penaltyInfo.withdrawalRequestFee.value;
+            feeSum += penaltyInfo.elWithdrawalRequestFee.value;
         }
 
         if (validatorInfo.isSlashed) {
@@ -122,10 +113,10 @@ library WithdrawnValidatorLib {
 
         IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
 
-        bondCoversPenalties = true;
+        penaltiesCovered = true;
 
         if (feeSum > 0) {
-            bondCoversPenalties = accounting.chargeFee(
+            penaltiesCovered = accounting.chargeFee(
                 validatorInfo.nodeOperatorId,
                 feeSum
             );
@@ -133,7 +124,7 @@ library WithdrawnValidatorLib {
 
         if (penaltySum > 0) {
             // We still call `penalize` even if there's no bond left, for the lock to be created.
-            bondCoversPenalties = accounting.penalize(
+            penaltiesCovered = accounting.penalize(
                 validatorInfo.nodeOperatorId,
                 penaltySum
             );

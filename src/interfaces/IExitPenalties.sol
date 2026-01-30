@@ -16,7 +16,7 @@ struct MarkedUint248 {
 struct ExitPenaltyInfo {
     MarkedUint248 delayFee;
     MarkedUint248 strikesPenalty;
-    MarkedUint248 withdrawalRequestFee;
+    MarkedUint248 elWithdrawalRequestFee;
 }
 
 interface IExitPenalties is IExitTypes {
@@ -67,12 +67,12 @@ interface IExitPenalties is IExitTypes {
     /// @notice Process the triggered exit report
     /// @param nodeOperatorId ID of the Node Operator
     /// @param publicKey Public key of the validator
-    /// @param withdrawalRequestPaidFee The fee paid for the withdrawal request
+    /// @param elWithdrawalRequestFeePaid The fee paid for the withdrawal request
     /// @param exitType The type of the exit (0 - direct exit, 1 - forced exit)
     function processTriggeredExit(
         uint256 nodeOperatorId,
         bytes calldata publicKey,
-        uint256 withdrawalRequestPaidFee,
+        uint256 elWithdrawalRequestFeePaid,
         uint256 exitType
     ) external;
 

@@ -86,7 +86,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         params.performanceCoefficients.isSet = false;
         params.allowedExitDelay.isSet = false;
         params.exitDelayFee.isSet = false;
-        params.maxWithdrawalRequestFee.isSet = false;
+        params.maxElWithdrawalRequestFee.isSet = false;
         params.depositAllocationWeight.isSet = false;
         params.depositAllocationWeight.isSet = false;
         params.depositAllocationWeight.isSet = false;
@@ -177,7 +177,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         expectNoCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setMaxWithdrawalRequestFee.selector
+                ParametersRegistryMock.setMaxElWithdrawalRequestFee.selector
             )
         );
 
@@ -447,9 +447,9 @@ contract OneShotCurveSetupTest is Test, Utilities {
         deployer.execute();
     }
 
-    function test_execute_setsMaxWithdrawalRequestFee() external {
+    function test_execute_setsMaxElWithdrawalRequestFee() external {
         IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
-        params.maxWithdrawalRequestFee = _scalarOverride(202);
+        params.maxElWithdrawalRequestFee = _scalarOverride(202);
         params.depositAllocationWeight = _scalarOverride(303);
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(
@@ -462,9 +462,9 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setMaxWithdrawalRequestFee.selector,
+                ParametersRegistryMock.setMaxElWithdrawalRequestFee.selector,
                 1,
-                params.maxWithdrawalRequestFee.value
+                params.maxElWithdrawalRequestFee.value
             )
         );
 
@@ -622,9 +622,9 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setMaxWithdrawalRequestFee.selector,
+                ParametersRegistryMock.setMaxElWithdrawalRequestFee.selector,
                 expectedCurveId,
-                params.maxWithdrawalRequestFee.value
+                params.maxElWithdrawalRequestFee.value
             )
         );
         vm.expectCall(
@@ -687,7 +687,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
             isSet: true,
             value: 7
         });
-        params.maxWithdrawalRequestFee = IOneShotCurveSetup.ScalarOverride({
+        params.maxElWithdrawalRequestFee = IOneShotCurveSetup.ScalarOverride({
             isSet: true,
             value: 8
         });

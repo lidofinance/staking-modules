@@ -179,7 +179,7 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
             .getExitPenaltyInfo(NO_ID, publicKey);
-        assertEq(exitPenaltyInfo.withdrawalRequestFee.value, paidFee);
+        assertEq(exitPenaltyInfo.elWithdrawalRequestFee.value, paidFee);
     }
 
     function test_processTriggeredExit_zeroMaxFeeValue() public {
@@ -187,7 +187,7 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
         uint256 paidFee = 0.1 ether;
         uint256 exitType = exitPenalties.VOLUNTARY_EXIT_TYPE_ID() + 1;
 
-        parametersRegistry.setMaxWithdrawalRequestFee(0, 0);
+        parametersRegistry.setMaxElWithdrawalRequestFee(0, 0);
 
         vm.expectEmit(address(exitPenalties));
         emit IExitPenalties.TriggeredExitFeeRecorded(
@@ -202,8 +202,8 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
             .getExitPenaltyInfo(NO_ID, publicKey);
-        assertEq(exitPenaltyInfo.withdrawalRequestFee.isValue, true);
-        assertEq(exitPenaltyInfo.withdrawalRequestFee.value, 0);
+        assertEq(exitPenaltyInfo.elWithdrawalRequestFee.isValue, true);
+        assertEq(exitPenaltyInfo.elWithdrawalRequestFee.value, 0);
     }
 
     function test_processTriggeredExit_voluntaryExit() public {
@@ -221,7 +221,7 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
 
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
             .getExitPenaltyInfo(NO_ID, publicKey);
-        assertEq(exitPenaltyInfo.withdrawalRequestFee.value, 0);
+        assertEq(exitPenaltyInfo.elWithdrawalRequestFee.value, 0);
     }
 
     function test_processTriggeredExit_doubleReporting() public {
@@ -254,7 +254,7 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
             .getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(
-            exitPenaltyInfo.withdrawalRequestFee.value,
+            exitPenaltyInfo.elWithdrawalRequestFee.value,
             initialPaidFee,
             "paid fee should not be updated"
         );
@@ -262,7 +262,7 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
 
     function test_processTriggeredExit_feeMoreThanMax() public {
         bytes memory publicKey = randomBytes(48);
-        uint256 maxFee = parametersRegistry.getMaxWithdrawalRequestFee(0);
+        uint256 maxFee = parametersRegistry.getMaxElWithdrawalRequestFee(0);
         uint256 paidFee = maxFee + 0.1 ether;
         uint256 exitType = exitPenalties.VOLUNTARY_EXIT_TYPE_ID() + 1;
 
@@ -272,7 +272,7 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
             .getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(
-            exitPenaltyInfo.withdrawalRequestFee.value,
+            exitPenaltyInfo.elWithdrawalRequestFee.value,
             maxFee,
             "paid fee should be capped to max fee"
         );

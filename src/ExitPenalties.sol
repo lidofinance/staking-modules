@@ -80,7 +80,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
     function processTriggeredExit(
         uint256 nodeOperatorId,
         bytes calldata publicKey,
-        uint256 withdrawalRequestPaidFee,
+        uint256 elWithdrawalRequestFeePaid,
         uint256 exitType
     ) external onlyModule {
         if (exitType == VOLUNTARY_EXIT_TYPE_ID) {
@@ -91,17 +91,17 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
         ExitPenaltyInfo storage exitPenaltyInfo = _exitPenaltyInfo[keyPointer];
         // don't update the fee if it was already set to prevent hypothetical manipulations
         //    with double reporting to get lower/higher fee.
-        if (exitPenaltyInfo.withdrawalRequestFee.isValue) {
+        if (exitPenaltyInfo.elWithdrawalRequestFee.isValue) {
             return;
         }
         uint256 curveId = ACCOUNTING.getBondCurveId(nodeOperatorId);
-        uint256 maxFee = PARAMETERS_REGISTRY.getMaxWithdrawalRequestFee(
+        uint256 maxFee = PARAMETERS_REGISTRY.getMaxElWithdrawalRequestFee(
             curveId
         );
 
-        uint256 fee = Math.min(withdrawalRequestPaidFee, maxFee);
+        uint256 fee = Math.min(elWithdrawalRequestFeePaid, maxFee);
 
-        exitPenaltyInfo.withdrawalRequestFee = MarkedUint248(
+        exitPenaltyInfo.elWithdrawalRequestFee = MarkedUint248(
             fee.toUint248(),
             true
         );
@@ -109,7 +109,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
             nodeOperatorId: nodeOperatorId,
             exitType: exitType,
             pubkey: publicKey,
-            withdrawalRequestPaidFee: withdrawalRequestPaidFee,
+            withdrawalRequestPaidFee: elWithdrawalRequestFeePaid,
             withdrawalRequestRecordedFee: fee
         });
     }

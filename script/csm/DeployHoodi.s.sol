@@ -4,35 +4,38 @@
 pragma solidity 0.8.33;
 
 import { DeployBase } from "./DeployBase.s.sol";
-import { GIndices } from "./constants/GIndices.sol";
+import { GIndices } from "../constants/GIndices.sol";
 
-contract DeployMainnet is DeployBase {
-    constructor() DeployBase("mainnet", 1) {
+contract DeployHoodi is DeployBase {
+    constructor() DeployBase("hoodi", 560048) {
         // Lido addresses
-        config.lidoLocatorAddress = 0xC1d0b3DE6792Bf6b4b37EccdcC24e45978Cfd2Eb;
-        config.aragonAgent = 0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c;
+        config.lidoLocatorAddress = 0xe2EF9536DAAAEBFf5b1c130957AB3E80056b06D8;
+        config.aragonAgent = 0x0534aA41907c9631fae990960bCC72d75fA7cfeD;
         config
-            .easyTrackEVMScriptExecutor = 0xFE5986E06210aC1eCC1aDCafc0cc7f8D63B3F977;
+            .easyTrackEVMScriptExecutor = 0x79a20FD0FA36453B2F45eAbab19bfef43575Ba9E;
         config.proxyAdmin = config.aragonAgent;
 
         // Oracle
-        config.secondsPerSlot = 12; // https://github.com/eth-clients/mainnet/blob/f6b7882618a5ad2c1d2731ae35e5d16a660d5bb7/metadata/config.yaml#L58
-        config.slotsPerEpoch = 32; // https://github.com/ethereum/consensus-specs/blob/7df1ce30384b13d01617f8ddf930f4035da0f689/specs/phase0/beacon-chain.md?plain=1#L246
-        config.clGenesisTime = 1606824023; // https://github.com/eth-clients/mainnet/blob/f6b7882618a5ad2c1d2731ae35e5d16a660d5bb7/README.md?plain=1#L10
-        config.oracleReportEpochsPerFrame = 225 * 28; // 28 days
-        config.fastLaneLengthSlots = 1800;
+        config.secondsPerSlot = 12;
+        config.slotsPerEpoch = 32;
+        config.clGenesisTime = 1742213400;
+        config.oracleReportEpochsPerFrame = 1575; // 7 days
+        config.fastLaneLengthSlots = 32;
         config.consensusVersion = 4;
-        config.oracleMembers = new address[](9);
-        config.oracleMembers[0] = 0x73181107c8D9ED4ce0bbeF7A0b4ccf3320C41d12; // Instadapp
-        config.oracleMembers[1] = 0x285f8537e1dAeEdaf617e96C742F2Cf36d63CcfB; // Chorus One
-        config.oracleMembers[2] = 0x404335BcE530400a5814375E7Ec1FB55fAff3eA2; // Staking Facilities
-        config.oracleMembers[3] = 0x946D3b081ed19173dC83Cd974fC69e1e760B7d78; // Stakefish
-        config.oracleMembers[4] = 0x007DE4a5F7bc37E2F26c0cb2E8A95006EE9B89b5; // P2P
-        config.oracleMembers[5] = 0xc79F702202E3A6B0B6310B537E786B9ACAA19BAf; // Chainlayer
-        config.oracleMembers[6] = 0x61c91ECd902EB56e314bB2D5c5C07785444Ea1c8; // bloXroute
-        config.oracleMembers[7] = 0xe57B3792aDCc5da47EF4fF588883F0ee0c9835C9; // MatrixedLink
-        config.oracleMembers[8] = 0x4118DAD7f348A4063bD15786c299De2f3B1333F3; // Caliber
-        config.hashConsensusQuorum = 5;
+        config.oracleMembers = new address[](12);
+        config.oracleMembers[0] = 0xcA80ee7313A315879f326105134F938676Cfd7a9;
+        config.oracleMembers[1] = 0xf03B8DC8762B97F13Ac82e6F94bE3Ed002FF7459;
+        config.oracleMembers[2] = 0x1932f53B1457a5987791a40Ba91f71c5Efd5788F;
+        config.oracleMembers[3] = 0x4c75FA734a39f3a21C57e583c1c29942F021C6B7;
+        config.oracleMembers[4] = 0x99B2B75F490fFC9A29E4E1f5987BE8e30E690aDF;
+        config.oracleMembers[5] = 0x219743f1911d84B32599BdC2Df21fC8Dba6F81a2;
+        config.oracleMembers[6] = 0xD3b1e36A372Ca250eefF61f90E833Ca070559970;
+        config.oracleMembers[7] = 0xf7aE520e99ed3C41180B5E12681d31Aa7302E4e5;
+        config.oracleMembers[8] = 0xB1cC91878c1831893D39C2Bb0988404ca5Fa7918;
+        config.oracleMembers[9] = 0xfe43A8B0b481Ae9fB1862d31826532047d2d538c;
+        config.oracleMembers[10] = 0x43C45C2455C49eed320F463fF4f1Ece3D2BF5aE2;
+        config.oracleMembers[11] = 0x948A62cc0414979dc7aa9364BA5b96ECb29f8736;
+        config.hashConsensusQuorum = 7;
 
         // Verifier
         config.slotsPerHistoricalRoot = 8192; // @see https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#time-parameters
@@ -42,8 +45,8 @@ contract DeployMainnet is DeployBase {
         config.gIFirstBlockRootInSummary = GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA; // prettier-ignore
         config.gIFirstBalanceNode = GIndices.FIRST_BALANCE_NODE_ELECTRA;
         config.gIFirstPendingConsolidation = GIndices.FIRST_PENDING_CONSOLIDATION_ELECTRA; // prettier-ignore
-        config.verifierFirstSupportedSlot = 364032 * config.slotsPerEpoch; // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-7600.md#activation
-        config.capellaSlot = 194048 * config.slotsPerEpoch; // @see https://github.com/eth-clients/mainnet/blob/main/metadata/config.yaml#L50
+        config.verifierFirstSupportedSlot = 2048 * config.slotsPerEpoch; // @see https://github.com/eth-clients/hoodi/blob/main/metadata/config.yaml#L41
+        config.capellaSlot = 0; // @see https://github.com/eth-clients/hoodi/blob/main/metadata/config.yaml#L33
 
         // Accounting
         // 2.4 -> 1.3
@@ -53,21 +56,20 @@ contract DeployMainnet is DeployBase {
         config.legacyEaBondCurve.push([1, 1.5 ether]);
         config.legacyEaBondCurve.push([2, 1.3 ether]);
 
-        config.minBondLockPeriod = 4 weeks;
+        config.minBondLockPeriod = 1 days;
         config.maxBondLockPeriod = 365 days;
         config.bondLockPeriod = 8 weeks;
         config
-            .setResetBondCurveAddress = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
+            .setResetBondCurveAddress = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
         config
-            .chargePenaltyRecipient = 0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c; // locator.treasury()
-
+            .chargePenaltyRecipient = 0x0534aA41907c9631fae990960bCC72d75fA7cfeD; // locator.treasury()
         // Module
         config.stakingModuleId = _nextStakingModuleId(
             config.lidoLocatorAddress
         );
         config.moduleType = "community-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
         config
-            .generalDelayedPenaltyReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
+            .generalDelayedPenaltyReporter = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
 
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0.02 ether;
@@ -86,16 +88,16 @@ contract DeployMainnet is DeployBase {
         config.defaultSyncWeight = 2; // https://eth2book.info/capella/part2/incentives/rewards/
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.1 ether;
-        config.defaultMaxWithdrawalRequestFee = 0.1 ether;
+        config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
 
         // VettedGate
         config
-            .identifiedCommunityStakersGateManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
+            .identifiedCommunityStakersGateManager = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
         config.identifiedCommunityStakersGateCurveId = 2;
         config
-            .identifiedCommunityStakersGateTreeRoot = 0x91545c42adde0f5d82e4c228f81449eab20349c1d31a8538e0468466f93495c5;
+            .identifiedCommunityStakersGateTreeRoot = 0x6ddbc639b18ef7eee4e4262baf6e2bec58724b40b9e557df4bc78a0d9c2e0607; // See the first value in artifacts/hoodi/ics/merkle-tree.json
         config
-            .identifiedCommunityStakersGateTreeCid = "bafkreido7ieacbe6nlhdivxfp2gd5kxovofngf6qdmahih4laihm675e2a";
+            .identifiedCommunityStakersGateTreeCid = "bafkreicr363zly5gj3gkpmamu2qzcpevw6tylwc767fxi3vfc2skcxanfi";
         // 1.5 -> 1.3
         config.identifiedCommunityStakersGateBondCurve.push([1, 1.5 ether]);
         config.identifiedCommunityStakersGateBondCurve.push([2, 1.3 ether]);
@@ -121,16 +123,18 @@ contract DeployMainnet is DeployBase {
         config.identifiedCommunityStakersGateAllowedExitDelay = 5 days;
         config.identifiedCommunityStakersGateExitDelayFee = 0.05 ether;
         config
-            .identifiedCommunityStakersGateMaxWithdrawalRequestFee = 0.1 ether;
+            .identifiedCommunityStakersGateMaxElWithdrawalRequestFee = 0.1 ether;
 
         // GateSeal
-        config.gateSealFactory = 0x6C82877cAC5a7A739f16Ca0A89c0A328B8764A24;
-        config.sealingCommittee = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
+        config.gateSealFactory = 0xA402349F560D45310D301E92B1AA4DeCABe147B3;
+        config.sealingCommittee = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
         config.sealDuration = 11 days;
         config.sealExpiryTimestamp = block.timestamp + 365 days;
 
         // DG
-        config.resealManager = 0x7914b5a1539b97Bd0bbd155757F25FD79A522d24;
+        config.resealManager = 0x05172CbCDb7307228F781436b327679e4DAE166B;
+
+        config.secondAdminAddress = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
         _setUp();
     }
 }

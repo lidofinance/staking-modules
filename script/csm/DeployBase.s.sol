@@ -5,34 +5,34 @@ pragma solidity 0.8.33;
 
 import { Script, VmSafe } from "forge-std/Script.sol";
 
-import { HashConsensus } from "../src/lib/base-oracle/HashConsensus.sol";
-import { OssifiableProxy } from "../src/lib/proxy/OssifiableProxy.sol";
-import { CSModule } from "../src/CSModule.sol";
-import { Accounting } from "../src/Accounting.sol";
-import { FeeDistributor } from "../src/FeeDistributor.sol";
-import { Ejector } from "../src/Ejector.sol";
-import { ValidatorStrikes } from "../src/ValidatorStrikes.sol";
-import { FeeOracle } from "../src/FeeOracle.sol";
-import { Verifier } from "../src/Verifier.sol";
-import { IVerifier } from "../src/interfaces/IVerifier.sol";
-import { PermissionlessGate } from "../src/PermissionlessGate.sol";
-import { VettedGate } from "../src/VettedGate.sol";
-import { ParametersRegistry } from "../src/ParametersRegistry.sol";
+import { HashConsensus } from "../../src/lib/base-oracle/HashConsensus.sol";
+import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
+import { CSModule } from "../../src/CSModule.sol";
+import { Accounting } from "../../src/Accounting.sol";
+import { FeeDistributor } from "../../src/FeeDistributor.sol";
+import { Ejector } from "../../src/Ejector.sol";
+import { ValidatorStrikes } from "../../src/ValidatorStrikes.sol";
+import { FeeOracle } from "../../src/FeeOracle.sol";
+import { Verifier } from "../../src/Verifier.sol";
+import { IVerifier } from "../../src/interfaces/IVerifier.sol";
+import { PermissionlessGate } from "../../src/PermissionlessGate.sol";
+import { VettedGate } from "../../src/VettedGate.sol";
+import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
 
-import { ILidoLocator } from "../src/interfaces/ILidoLocator.sol";
-import { IGateSealFactory } from "../src/interfaces/IGateSealFactory.sol";
-import { BaseOracle } from "../src/lib/base-oracle/BaseOracle.sol";
-import { IParametersRegistry } from "../src/interfaces/IParametersRegistry.sol";
-import { IBondCurve } from "../src/interfaces/IBondCurve.sol";
+import { ILidoLocator } from "../../src/interfaces/ILidoLocator.sol";
+import { IGateSealFactory } from "../../src/interfaces/IGateSealFactory.sol";
+import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
+import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.sol";
+import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
 
-import { JsonObj, Json } from "./utils/Json.sol";
-import { Dummy } from "./utils/Dummy.sol";
-import { CommonScriptUtils } from "./utils/Common.sol";
-import { GIndex } from "../src/lib/GIndex.sol";
-import { Slot } from "../src/lib/Types.sol";
-import { VettedGateFactory } from "../src/VettedGateFactory.sol";
-import { ExitPenalties } from "../src/ExitPenalties.sol";
-import { IStakingRouter } from "../src/interfaces/IStakingRouter.sol";
+import { JsonObj, Json } from "../utils/Json.sol";
+import { Dummy } from "../utils/Dummy.sol";
+import { CommonScriptUtils } from "../utils/Common.sol";
+import { GIndex } from "../../src/lib/GIndex.sol";
+import { Slot } from "../../src/lib/Types.sol";
+import { VettedGateFactory } from "../../src/VettedGateFactory.sol";
+import { ExitPenalties } from "../../src/ExitPenalties.sol";
+import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 
 struct DeployParams {
     // Lido addresses
@@ -90,7 +90,7 @@ struct DeployParams {
     uint256 defaultSyncWeight;
     uint256 defaultAllowedExitDelay;
     uint256 defaultExitDelayFee;
-    uint256 defaultMaxWithdrawalRequestFee;
+    uint256 defaultMaxElWithdrawalRequestFee;
     uint256 defaultDepositAllocationWeight;
     // VettedGate
     address identifiedCommunityStakersGateManager;
@@ -114,7 +114,7 @@ struct DeployParams {
     uint256 identifiedCommunityStakersGateSyncWeight;
     uint256 identifiedCommunityStakersGateAllowedExitDelay;
     uint256 identifiedCommunityStakersGateExitDelayFee;
-    uint256 identifiedCommunityStakersGateMaxWithdrawalRequestFee;
+    uint256 identifiedCommunityStakersGateMaxElWithdrawalRequestFee;
     uint256 identifiedCommunityStakersGateDepositAllocationWeight;
     // GateSeal
     address gateSealFactory;
@@ -267,8 +267,8 @@ abstract contract DeployBase is Script {
                     defaultSyncWeight: config.defaultSyncWeight,
                     defaultAllowedExitDelay: config.defaultAllowedExitDelay,
                     defaultExitDelayFee: config.defaultExitDelayFee,
-                    defaultMaxWithdrawalRequestFee: config
-                        .defaultMaxWithdrawalRequestFee,
+                    defaultMaxElWithdrawalRequestFee: config
+                        .defaultMaxElWithdrawalRequestFee,
                     defaultDepositAllocationWeight: config
                         .defaultDepositAllocationWeight
                 })
@@ -465,9 +465,9 @@ abstract contract DeployBase is Script {
                 identifiedCommunityStakersGateBondCurveId,
                 config.identifiedCommunityStakersGateExitDelayFee
             );
-            parametersRegistry.setMaxWithdrawalRequestFee(
+            parametersRegistry.setMaxElWithdrawalRequestFee(
                 identifiedCommunityStakersGateBondCurveId,
-                config.identifiedCommunityStakersGateMaxWithdrawalRequestFee
+                config.identifiedCommunityStakersGateMaxElWithdrawalRequestFee
             );
             if (
                 config.identifiedCommunityStakersGateDepositAllocationWeight !=

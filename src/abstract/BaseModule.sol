@@ -13,7 +13,6 @@ import { IAccounting } from "../interfaces/IAccounting.sol";
 import { IExitPenalties } from "../interfaces/IExitPenalties.sol";
 import { NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "../interfaces/IBaseModule.sol";
 import { IBaseModule } from "../interfaces/IBaseModule.sol";
-import { INodeOperatorOwner } from "../interfaces/INodeOperatorOwner.sol";
 
 import { DepositQueueLib } from "../lib/DepositQueueLib.sol";
 import { SigningKeys } from "../lib/SigningKeys.sol";
@@ -90,6 +89,10 @@ abstract contract BaseModule is
         address accounting,
         address exitPenalties
     ) {
+        if (moduleType == bytes32(0)) {
+            revert ZeroModuleType();
+        }
+
         if (lidoLocator == address(0)) {
             revert ZeroLocatorAddress();
         }
@@ -113,6 +116,8 @@ abstract contract BaseModule is
         ACCOUNTING = IAccounting(accounting);
         EXIT_PENALTIES = IExitPenalties(exitPenalties);
         FEE_DISTRIBUTOR = address(ACCOUNTING.FEE_DISTRIBUTOR());
+
+        _disableInitializers();
     }
 
     /// @inheritdoc IBaseModule
@@ -123,6 +128,35 @@ abstract contract BaseModule is
     /// @inheritdoc IBaseModule
     function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE) {
         _pauseFor(duration);
+    }
+
+    /// @inheritdoc IStakingModule
+    function getStakingModuleSummary()
+        external
+        view
+        virtual
+        returns (
+            uint256 totalExitedValidators,
+            uint256 totalDepositedValidators,
+            uint256 depositableValidatorsCount
+        )
+    {
+        totalExitedValidators = _totalExitedValidators;
+        totalDepositedValidators = _totalDepositedValidators;
+        depositableValidatorsCount = _depositableValidatorsCount;
+    }
+
+    /// @inheritdoc IStakingModule
+    /// @dev Changing the WC means that the current deposit data in the queue is not valid anymore and can't be deposited.
+    ///      If there are depositable validators in the queue, the method should revert to prevent deposits with invalid
+    ///      withdrawal credentials.
+    function onWithdrawalCredentialsChanged()
+        external
+        onlyRole(STAKING_ROUTER_ROLE)
+    {
+        if (_depositableValidatorsCount > 0) {
+            revert DepositableKeysWithUnsupportedWithdrawalCredentials();
+        }
     }
 
     /// @inheritdoc IBaseModule
@@ -138,14 +172,13 @@ abstract contract BaseModule is
     {
         nodeOperatorId = _nodeOperatorsCount;
         OperatorTracker.recordCreator(nodeOperatorId);
-        // solhint-disable-next-line func-named-parameters
-        NodeOperatorOps.createNodeOperator(
-            _nodeOperators,
-            nodeOperatorId,
-            from,
-            managementProperties,
-            referrer
-        );
+        NodeOperatorOps.createNodeOperator({
+            nodeOperators: _nodeOperators,
+            nodeOperatorId: nodeOperatorId,
+            from: from,
+            managementProperties: managementProperties,
+            referrer: referrer
+        });
 
         unchecked {
             ++_nodeOperatorsCount;
@@ -450,7 +483,7 @@ abstract contract BaseModule is
         uint256 nodeOperatorId,
         uint256 startIndex,
         uint256 keysCount
-    ) external {
+    ) external virtual {
         _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
 
@@ -458,30 +491,12 @@ abstract contract BaseModule is
             revert SigningKeysInvalidOffset();
         }
 
-        // solhint-disable-next-line func-named-parameters
-        uint256 newTotalSigningKeys = SigningKeys.removeKeysSigs(
-            nodeOperatorId,
-            startIndex,
-            keysCount,
-            no.totalAddedKeys
-        );
-
-        // The Node Operator is charged for the every removed key. It's motivated by the fact that the DAO should cleanup
-        // the queue from the empty batches related to the Node Operator. It's possible to have multiple batches with only one
-        // key in it, so it means the DAO should be able to cover removal costs for as much batches as keys removed in this case.
-        uint256 curveId = _getBondCurveId(nodeOperatorId);
-        uint256 amountToCharge = PARAMETERS_REGISTRY.getKeyRemovalCharge(
-            curveId
-        ) * keysCount;
-        bool isFullyCharged = true;
-
-        if (amountToCharge != 0) {
-            isFullyCharged = _accounting().chargeFee(
-                nodeOperatorId,
-                amountToCharge
-            );
-            emit KeyRemovalChargeApplied(nodeOperatorId);
-        }
+        uint256 newTotalSigningKeys = SigningKeys.removeKeysSigs({
+            nodeOperatorId: nodeOperatorId,
+            startIndex: startIndex,
+            keysCount: keysCount,
+            totalKeysCount: no.totalAddedKeys
+        });
 
         // Added/vetted signing key counters are uint32 fields; newTotalSigningKeys is strictly
         // less than no.totalAddedKeys, so it always fits.
@@ -492,10 +507,6 @@ abstract contract BaseModule is
         // forge-lint: disable-next-line(unsafe-typecast)
         no.totalVettedKeys = uint32(newTotalSigningKeys);
         emit VettedSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
-
-        if (!isFullyCharged) {
-            _onUncompensatedPenalty(nodeOperatorId);
-        }
 
         // Nonce is updated below due to keys state change
         _updateDepositableValidatorsCount({
@@ -558,6 +569,8 @@ abstract contract BaseModule is
 
             if (!settled) continue;
 
+            // If general delayed penalty was not compensated using `compensateGeneralDelayedPenalty`,
+            // we treat it the same way as when bond is not sufficient to cover the penalty.
             _onUncompensatedPenalty(nodeOperatorId);
 
             // Nonce should be updated if depositableValidators change
@@ -630,14 +643,14 @@ abstract contract BaseModule is
     function onValidatorExitTriggered(
         uint256 nodeOperatorId,
         bytes calldata publicKey,
-        uint256 withdrawalRequestPaidFee,
+        uint256 elWithdrawalRequestFeePaid,
         uint256 exitType
     ) external onlyRole(STAKING_ROUTER_ROLE) {
         _onlyExistingNodeOperator(nodeOperatorId);
         EXIT_PENALTIES.processTriggeredExit(
             nodeOperatorId,
             publicKey,
-            withdrawalRequestPaidFee,
+            elWithdrawalRequestFeePaid,
             exitType
         );
     }
@@ -743,13 +756,6 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function getNodeOperatorTotalDepositedKeys(
-        uint256 nodeOperatorId
-    ) external view returns (uint256 totalDepositedKeys) {
-        totalDepositedKeys = _nodeOperators[nodeOperatorId].totalDepositedKeys;
-    }
-
-    /// @inheritdoc IBaseModule
     function getSigningKeys(
         uint256 nodeOperatorId,
         uint256 startIndex,
@@ -769,15 +775,14 @@ abstract contract BaseModule is
         _onlyValidIndexRange(nodeOperatorId, startIndex, keysCount);
 
         (keys, signatures) = SigningKeys.initKeysSigsBuf(keysCount);
-        // solhint-disable-next-line func-named-parameters
-        SigningKeys.loadKeysSigs(
-            nodeOperatorId,
-            startIndex,
-            keysCount,
-            keys,
-            signatures,
-            0
-        );
+        SigningKeys.loadKeysSigs({
+            nodeOperatorId: nodeOperatorId,
+            startIndex: startIndex,
+            keysCount: keysCount,
+            pubkeys: keys,
+            signatures: signatures,
+            bufOffset: 0
+        });
     }
 
     /// @inheritdoc IStakingModule
@@ -807,20 +812,12 @@ abstract contract BaseModule is
         uint256 offset,
         uint256 limit
     ) external view returns (uint256[] memory nodeOperatorIds) {
-        uint256 nodeOperatorsCount = _nodeOperatorsCount;
-        if (offset >= nodeOperatorsCount || limit == 0) {
-            return nodeOperatorIds;
-        }
-
-        unchecked {
-            uint256 idsCount = nodeOperatorsCount - offset;
-            if (idsCount > limit) idsCount = limit;
-
-            nodeOperatorIds = new uint256[](idsCount);
-            for (uint256 i; i < idsCount; ++i) {
-                nodeOperatorIds[i] = offset++;
-            }
-        }
+        return
+            NodeOperatorOps.getNodeOperatorIds(
+                _nodeOperatorsCount,
+                offset,
+                limit
+            );
     }
 
     /// @inheritdoc IStakingModule
@@ -849,14 +846,6 @@ abstract contract BaseModule is
             PARAMETERS_REGISTRY.getAllowedExitDelay(
                 _getBondCurveId(nodeOperatorId)
             );
-    }
-
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override(AccessControlEnumerableUpgradeable) returns (bool) {
-        return
-            interfaceId == type(INodeOperatorOwner).interfaceId ||
-            super.supportsInterface(interfaceId);
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -892,14 +881,13 @@ abstract contract BaseModule is
             if (info.isSlashed != slashed) {
                 revert InvalidWithdrawnValidatorInfo();
             }
+            if (info.isSlashed && !_isValidatorSlashed[pointer]) {
+                revert SlashingPenaltyIsNotApplicable();
+            }
 
             NodeOperator storage no = _nodeOperators[info.nodeOperatorId];
-            bool bondCoversPenalties = WithdrawnValidatorLib.process(
-                no,
-                info,
-                _isValidatorSlashed[pointer]
-            );
-            if (!bondCoversPenalties) {
+            bool penaltiesCovered = WithdrawnValidatorLib.process(no, info);
+            if (!penaltiesCovered) {
                 _onUncompensatedPenalty(info.nodeOperatorId);
             }
 
@@ -926,6 +914,8 @@ abstract contract BaseModule is
         }
     }
 
+    /// @dev Prevents reactivation of a Node Operator after an uncovered penalty by
+    ///      forcing its target limit to zero.
     function _onUncompensatedPenalty(uint256 nodeOperatorId) internal {
         _setTargetLimit(nodeOperatorId, FORCED_TARGET_LIMIT_MODE_ID, 0);
     }
@@ -952,14 +942,13 @@ abstract contract BaseModule is
                 revert KeysLimitExceeded();
             }
 
-            // solhint-disable-next-line func-named-parameters
-            uint256 newTotalAddedKeys = SigningKeys.saveKeysSigs(
-                nodeOperatorId,
-                totalAddedKeys,
-                keysCount,
-                publicKeys,
-                signatures
-            );
+            uint256 newTotalAddedKeys = SigningKeys.saveKeysSigs({
+                nodeOperatorId: nodeOperatorId,
+                startIndex: totalAddedKeys,
+                keysCount: keysCount,
+                pubkeys: publicKeys,
+                signatures: signatures
+            });
 
             uint32 totalVettedKeys = no.totalVettedKeys;
             // Optimistic vetting takes place.
@@ -1030,6 +1019,7 @@ abstract contract BaseModule is
             }
         }
         _applyDepositableValidatorsCount({
+            no: no,
             nodeOperatorId: nodeOperatorId,
             newCount: newCount,
             incrementNonceIfUpdated: incrementNonceIfUpdated
@@ -1037,11 +1027,11 @@ abstract contract BaseModule is
     }
 
     function _applyDepositableValidatorsCount(
+        NodeOperator storage no,
         uint256 nodeOperatorId,
         uint256 newCount,
         bool incrementNonceIfUpdated
     ) internal virtual {
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
         if (no.depositableValidatorsCount == newCount) return;
 
         // Updating the global counter.
@@ -1067,7 +1057,6 @@ abstract contract BaseModule is
         uint256 targetLimitMode,
         uint256 targetLimit
     ) internal {
-        // solhint-disable-next-line func-named-parameters
         NodeOperatorOps.setTargetLimit(
             _nodeOperators,
             nodeOperatorId,
@@ -1080,7 +1069,7 @@ abstract contract BaseModule is
         uint256 nodeOperatorId,
         address who
     ) internal view {
-        // Most likely a direct call, so check the sender is a manager.
+        // Most likely a direct call, so check the sender is a manager first.
         if (who == msg.sender) {
             _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
         } else {

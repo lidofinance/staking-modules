@@ -7,7 +7,7 @@ import { Test } from "forge-std/Test.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { DeployParams } from "../../../script/DeployBase.s.sol";
+import { DeployParams } from "../../../script/csm/DeployBase.s.sol";
 import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
 import { NodeOperator } from "../../../src/interfaces/IBaseModule.sol";
 import { IBondLock } from "../../../src/interfaces/IBondLock.sol";
@@ -22,6 +22,10 @@ interface IPrevCSParametersRegistry {
         returns (uint256);
 
     function defaultExitDelayPenalty() external returns (uint256);
+}
+
+interface IParametersRegistryV2 {
+    function defaultMaxWithdrawalRequestFee() external view returns (uint256);
 }
 
 contract V3UpgradeTestBase is
@@ -486,10 +490,11 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(beforeValue, afterValue, "defaultExitDelayFee");
 
         vm.selectFork(forkIdBeforeUpgrade);
-        beforeValue = parametersRegistry.defaultMaxWithdrawalRequestFee();
+        beforeValue = IParametersRegistryV2(address(parametersRegistry))
+            .defaultMaxWithdrawalRequestFee();
         vm.selectFork(forkIdAfterUpgrade);
-        afterValue = parametersRegistry.defaultMaxWithdrawalRequestFee();
-        assertEq(beforeValue, afterValue, "defaultMaxWithdrawalRequestFee");
+        afterValue = parametersRegistry.defaultMaxElWithdrawalRequestFee();
+        assertEq(beforeValue, afterValue, "defaultMaxElWithdrawalRequestFee");
     }
 
     function test_accountingChanges() public {

@@ -43,9 +43,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             accounting,
             exitPenalties
         )
-    {
-        _disableInitializers();
-    }
+    {}
 
     /// @notice Initialize the module from scratch
     function initialize(
@@ -85,15 +83,14 @@ contract CuratedModule is ICuratedModule, BaseModule {
             uint256 operatorId = operatorIds[i];
             NodeOperator storage no = _nodeOperators[operatorId];
 
-            // solhint-disable-next-line func-named-parameters
-            SigningKeys.loadKeysSigs(
-                operatorId,
-                no.totalDepositedKeys,
-                allocation,
-                publicKeys,
-                signatures,
-                loadedKeysCount
-            );
+            SigningKeys.loadKeysSigs({
+                nodeOperatorId: operatorId,
+                startIndex: no.totalDepositedKeys,
+                keysCount: allocation,
+                pubkeys: publicKeys,
+                signatures: signatures,
+                bufOffset: loadedKeysCount
+            });
 
             loadedKeysCount += allocation;
 
@@ -199,17 +196,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
         _incrementModuleNonce();
     }
 
-    /// @inheritdoc IStakingModule
-    /// @dev Changing the WC means that the current deposit data in the queue is not valid anymore and can't be deposited.
-    ///      If there are depositable validators in the queue, the method should revert to prevent deposits with invalid
-    ///      withdrawal credentials.
-    function onWithdrawalCredentialsChanged()
-        external
-        onlyRole(STAKING_ROUTER_ROLE)
-    {
-        revert NotImplemented();
-    }
-
     /// @inheritdoc ICuratedModule
     function changeNodeOperatorAddresses(
         uint256 nodeOperatorId,
@@ -264,6 +250,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     function _applyDepositableValidatorsCount(
+        NodeOperator storage no,
         uint256 nodeOperatorId,
         uint256 newCount,
         bool incrementNonceIfUpdated
@@ -278,6 +265,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             }
         }
         super._applyDepositableValidatorsCount(
+            no,
             nodeOperatorId,
             newCount,
             incrementNonceIfUpdated
@@ -458,20 +446,5 @@ contract CuratedModule is ICuratedModule, BaseModule {
         assembly ("memory-safe") {
             $.slot := CURATED_MODULE_STORAGE_LOCATION
         }
-    }
-
-    /// @inheritdoc IStakingModule
-    function getStakingModuleSummary()
-        external
-        view
-        returns (
-            uint256 totalExitedValidators,
-            uint256 totalDepositedValidators,
-            uint256 depositableValidatorsCount
-        )
-    {
-        totalExitedValidators = _totalExitedValidators;
-        totalDepositedValidators = _totalDepositedValidators;
-        depositableValidatorsCount = _depositableValidatorsCount;
     }
 }

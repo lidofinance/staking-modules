@@ -221,7 +221,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(_toUint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(0, false),
-                withdrawalRequestFee: MarkedUint248(0, false)
+                elWithdrawalRequestFee: MarkedUint248(0, false)
             })
         );
 
@@ -267,7 +267,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(_toUint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(0, false),
-                withdrawalRequestFee: MarkedUint248(0, false)
+                elWithdrawalRequestFee: MarkedUint248(0, false)
             })
         );
 
@@ -314,7 +314,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(fee, true),
                 strikesPenalty: MarkedUint248(0, false),
-                withdrawalRequestFee: MarkedUint248(0, false)
+                elWithdrawalRequestFee: MarkedUint248(0, false)
             })
         );
 
@@ -359,7 +359,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(fee, true),
                 strikesPenalty: MarkedUint248(0, false),
-                withdrawalRequestFee: MarkedUint248(0, false)
+                elWithdrawalRequestFee: MarkedUint248(0, false)
             })
         );
 
@@ -403,7 +403,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                     _toUint248(strikesPenaltyAmount),
                     true
                 ),
-                withdrawalRequestFee: MarkedUint248(0, false)
+                elWithdrawalRequestFee: MarkedUint248(0, false)
             })
         );
 
@@ -452,7 +452,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                     _toUint248(strikesPenaltyAmount),
                     true
                 ),
-                withdrawalRequestFee: MarkedUint248(0, false)
+                elWithdrawalRequestFee: MarkedUint248(0, false)
             })
         );
 
@@ -499,7 +499,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(penalty, true),
-                withdrawalRequestFee: MarkedUint248(0, false)
+                elWithdrawalRequestFee: MarkedUint248(0, false)
             })
         );
 
@@ -544,7 +544,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(penalty, true),
-                withdrawalRequestFee: MarkedUint248(0, false)
+                elWithdrawalRequestFee: MarkedUint248(0, false)
             })
         );
 
@@ -764,7 +764,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(_toUint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(0, false),
-                withdrawalRequestFee: MarkedUint248(
+                elWithdrawalRequestFee: MarkedUint248(
                     _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
@@ -814,7 +814,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(_toUint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(0, false),
-                withdrawalRequestFee: MarkedUint248(
+                elWithdrawalRequestFee: MarkedUint248(
                     _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
@@ -864,7 +864,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(_toUint248(exitDelayFeeAmount), true),
                 strikesPenalty: MarkedUint248(0, false),
-                withdrawalRequestFee: MarkedUint248(
+                elWithdrawalRequestFee: MarkedUint248(
                     _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
@@ -919,7 +919,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                     _toUint248(strikesPenaltyAmount),
                     true
                 ),
-                withdrawalRequestFee: MarkedUint248(
+                elWithdrawalRequestFee: MarkedUint248(
                     _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
@@ -980,7 +980,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                     _toUint248(strikesPenaltyAmount),
                     true
                 ),
-                withdrawalRequestFee: MarkedUint248(
+                elWithdrawalRequestFee: MarkedUint248(
                     _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
@@ -1041,7 +1041,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                     _toUint248(strikesPenaltyAmount),
                     true
                 ),
-                withdrawalRequestFee: MarkedUint248(
+                elWithdrawalRequestFee: MarkedUint248(
                     _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
@@ -1103,7 +1103,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                     _toUint248(strikesPenaltyAmount),
                     true
                 ),
-                withdrawalRequestFee: MarkedUint248(
+                elWithdrawalRequestFee: MarkedUint248(
                     _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
@@ -1164,7 +1164,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                     _toUint248(strikesPenaltyAmount),
                     true
                 ),
-                withdrawalRequestFee: MarkedUint248(
+                elWithdrawalRequestFee: MarkedUint248(
                     _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
@@ -1221,7 +1221,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(0, true),
                 strikesPenalty: MarkedUint248(0, true),
-                withdrawalRequestFee: MarkedUint248(
+                elWithdrawalRequestFee: MarkedUint248(
                     _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
@@ -1270,7 +1270,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(0, true),
                 strikesPenalty: MarkedUint248(0, true),
-                withdrawalRequestFee: MarkedUint248(
+                elWithdrawalRequestFee: MarkedUint248(
                     _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
@@ -1320,7 +1320,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(0, true),
                 strikesPenalty: MarkedUint248(0, true),
-                withdrawalRequestFee: MarkedUint248(withdrawalRequestFee, true)
+                elWithdrawalRequestFee: MarkedUint248(
+                    withdrawalRequestFee,
+                    true
+                )
             })
         );
 
@@ -1360,7 +1363,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(0, false),
-                withdrawalRequestFee: MarkedUint248(
+                elWithdrawalRequestFee: MarkedUint248(
                     _toUint248(withdrawalRequestFeeAmount),
                     true
                 )
@@ -1410,7 +1413,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(0, false),
-                withdrawalRequestFee: MarkedUint248(
+                elWithdrawalRequestFee: MarkedUint248(
                     _toUint248(withdrawalRequestFeeAmount),
                     true
                 )

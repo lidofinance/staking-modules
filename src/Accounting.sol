@@ -362,11 +362,7 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function settleLockedBondETH(
-        uint256 nodeOperatorId
-    ) external onlyModule returns (bool applied) {
-        applied = false;
-
+    function settleLockedBondETH(uint256 nodeOperatorId) external onlyModule {
         uint256 lockedAmount = BondLock.getActualLockedBond(nodeOperatorId);
         if (lockedAmount > 0) {
             uint256 notBurnedAmount = BondCore._burn(
@@ -380,7 +376,6 @@ contract Accounting is
                 amount: notBurnedAmount,
                 until: INFINITE_BOND_LOCK_UNTIL
             });
-            applied = true;
         }
     }
 

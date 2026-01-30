@@ -11,6 +11,26 @@ import { IAccounting } from "../interfaces/IAccounting.sol";
 
 /// @dev The library is used to reduce BaseModule bytecode size.
 library NodeOperatorOps {
+    function getNodeOperatorIds(
+        uint256 nodeOperatorsCount,
+        uint256 offset,
+        uint256 limit
+    ) external pure returns (uint256[] memory nodeOperatorIds) {
+        if (offset >= nodeOperatorsCount || limit == 0) {
+            return nodeOperatorIds;
+        }
+
+        unchecked {
+            uint256 idsCount = nodeOperatorsCount - offset;
+            if (idsCount > limit) idsCount = limit;
+
+            nodeOperatorIds = new uint256[](idsCount);
+            for (uint256 i; i < idsCount; ++i) {
+                nodeOperatorIds[i] = offset++;
+            }
+        }
+    }
+
     function createNodeOperator(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,

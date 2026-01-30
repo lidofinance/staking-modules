@@ -26,7 +26,7 @@ contract ParametersRegistryMock {
 
     uint256 public allowedExitDelay = 1 weeks;
     uint256 public exitDelayFee = 0.1 ether;
-    uint256 public maxWithdrawalRequestFee = 1 ether;
+    uint256 public maxElWithdrawalRequestFee = 1 ether;
     uint256 public depositAllocationWeight = 1;
 
     mapping(uint256 curveId => MarkedQueueConfig) internal _queueConfigs;
@@ -157,17 +157,17 @@ contract ParametersRegistryMock {
         exitDelayFee = fee;
     }
 
-    function getMaxWithdrawalRequestFee(
+    function getMaxElWithdrawalRequestFee(
         uint256 /* curveId */
     ) external view returns (uint256) {
-        return maxWithdrawalRequestFee;
+        return maxElWithdrawalRequestFee;
     }
 
-    function setMaxWithdrawalRequestFee(
+    function setMaxElWithdrawalRequestFee(
         uint256 /* curveId */,
-        uint256 _maxWithdrawalRequestFee
+        uint256 _maxElWithdrawalRequestFee
     ) external {
-        maxWithdrawalRequestFee = _maxWithdrawalRequestFee;
+        maxElWithdrawalRequestFee = _maxElWithdrawalRequestFee;
     }
 
     function defaultDepositAllocationWeight() external view returns (uint256) {

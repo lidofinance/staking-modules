@@ -350,9 +350,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     /// @notice Settle locked bond ETH for the given Node Operator
     /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator
-    function settleLockedBondETH(
-        uint256 nodeOperatorId
-    ) external returns (bool);
+    function settleLockedBondETH(uint256 nodeOperatorId) external;
 
     /// @notice Compensate locked bond ETH for the given Node Operator
     /// @dev Called by staking module exclusively

@@ -178,9 +178,9 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
     function test_reportStrikes() public assertInvariants {
         uint256 distributed = 0;
         feesTree.pushLeaf(abi.encode(type(uint64).max, 0));
-        uint256 keyIndex = module.getNodeOperatorTotalDepositedKeys(
-            nodeOperatorId
-        ) - 1;
+        uint256 keyIndex = module
+            .getNodeOperator(nodeOperatorId)
+            .totalDepositedKeys - 1;
         bytes memory key = module.getSigningKeys(nodeOperatorId, keyIndex, 1);
 
         (, uint256 threshold) = parametersRegistry.getStrikesParams(
@@ -248,9 +248,9 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
         ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
             .getExitPenaltyInfo(nodeOperatorId, key);
         assertEq(exitPenaltyInfo.strikesPenalty.value, penalty);
-        assertTrue(exitPenaltyInfo.withdrawalRequestFee.isValue);
+        assertTrue(exitPenaltyInfo.elWithdrawalRequestFee.isValue);
         assertEq(
-            exitPenaltyInfo.withdrawalRequestFee.value,
+            exitPenaltyInfo.elWithdrawalRequestFee.value,
             expectedWithdrawalFee
         );
         assertEq(
