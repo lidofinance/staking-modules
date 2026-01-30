@@ -1320,7 +1320,10 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             ExitPenaltyInfo({
                 delayFee: MarkedUint248(0, true),
                 strikesPenalty: MarkedUint248(0, true),
-                elWithdrawalRequestFee: MarkedUint248(withdrawalRequestFee, true)
+                elWithdrawalRequestFee: MarkedUint248(
+                    withdrawalRequestFee,
+                    true
+                )
             })
         );
 
