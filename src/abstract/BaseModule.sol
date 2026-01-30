@@ -867,13 +867,12 @@ abstract contract BaseModule is
             if (info.isSlashed != slashed) {
                 revert InvalidWithdrawnValidatorInfo();
             }
+            if (info.isSlashed && !_isValidatorSlashed[pointer]) {
+                revert SlashingPenaltyIsNotApplicable();
+            }
 
             NodeOperator storage no = _nodeOperators[info.nodeOperatorId];
-            bool penaltiesCovered = WithdrawnValidatorLib.process(
-                no,
-                info,
-                _isValidatorSlashed[pointer]
-            );
+            bool penaltiesCovered = WithdrawnValidatorLib.process(no, info);
             if (!penaltiesCovered) {
                 _onUncompensatedPenalty(info.nodeOperatorId);
             }

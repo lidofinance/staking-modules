@@ -23,14 +23,8 @@ library WithdrawnValidatorLib {
 
     function process(
         NodeOperator storage no,
-        WithdrawnValidatorInfo calldata validatorInfo,
-        // TODO: remove this parameter and check it in the upper call
-        bool isSlashed
+        WithdrawnValidatorInfo calldata validatorInfo
     ) external returns (bool penaltiesCovered) {
-        if (validatorInfo.isSlashed && !isSlashed) {
-            revert IBaseModule.SlashingPenaltyIsNotApplicable();
-        }
-
         if (validatorInfo.slashingPenalty > 0 && !validatorInfo.isSlashed) {
             revert IBaseModule.InvalidWithdrawnValidatorInfo();
         }

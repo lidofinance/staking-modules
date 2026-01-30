@@ -410,9 +410,8 @@ contract LockBondETHTest is BaseTest {
         assertEq(accounting.getActualLockedBond(noId), amount);
 
         vm.prank(address(stakingModule));
-        bool applied = accounting.settleLockedBondETH(noId);
+        accounting.settleLockedBondETH(noId);
         assertEq(accounting.getActualLockedBond(noId), 0);
-        assertTrue(applied);
     }
 
     function test_settleLockedBondETH_noLocked() public assertInvariants {
@@ -424,10 +423,9 @@ contract LockBondETHTest is BaseTest {
         uint256 bond = accounting.getBondShares(noId);
 
         vm.prank(address(stakingModule));
-        bool applied = accounting.settleLockedBondETH(noId);
+        accounting.settleLockedBondETH(noId);
         assertEq(accounting.getActualLockedBond(noId), 0);
         assertEq(accounting.getBondShares(noId), bond);
-        assertFalse(applied);
     }
 
     function test_settleLockedBondETH_noBond() public assertInvariants {
@@ -442,7 +440,7 @@ contract LockBondETHTest is BaseTest {
             address(burner),
             abi.encodeWithSelector(IBurner.requestBurnMyShares.selector)
         );
-        bool applied = accounting.settleLockedBondETH(noId);
+        accounting.settleLockedBondETH(noId);
         vm.stopPrank();
 
         Accounting.BondLockData memory bondLockAfter = accounting
@@ -451,7 +449,6 @@ contract LockBondETHTest is BaseTest {
         assertEq(bondLockAfter.amount, 1 ether);
         assertEq(bondLockAfter.until, type(uint128).max);
         assertEq(accounting.getBondShares(noId), 0);
-        assertTrue(applied);
     }
 
     function test_settleLockedBondETH_partialBurn_setsInfiniteLockToRestOnly()

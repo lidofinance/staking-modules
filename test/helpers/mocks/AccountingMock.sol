@@ -119,13 +119,8 @@ contract AccountingMock {
         bondLock[nodeOperatorId].amount -= uint128(amount);
     }
 
-    function settleLockedBondETH(
-        uint256 nodeOperatorId
-    ) external returns (bool applied) {
+    function settleLockedBondETH(uint256 nodeOperatorId) external {
         uint256 lockedBond = getActualLockedBond(nodeOperatorId);
-        if (lockedBond > 0) {
-            applied = true;
-        }
         if (lockedBond > bond[nodeOperatorId]) {
             bond[nodeOperatorId] = 0;
         } else {

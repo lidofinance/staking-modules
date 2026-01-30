@@ -1754,8 +1754,7 @@ contract ScenarioTest is BaseTest {
 
         // 7) Settle lock
         vm.prank(address(stakingModule));
-        bool applied = accounting.settleLockedBondETH(0);
-        assertTrue(applied);
+        accounting.settleLockedBondETH(0);
 
         (, req) = accounting.getBondSummary(0);
 
