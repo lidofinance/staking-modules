@@ -88,7 +88,7 @@ contract DeployHoodi is DeployBase {
         config.defaultSyncWeight = 2; // https://eth2book.info/capella/part2/incentives/rewards/
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.1 ether;
-        config.defaultMaxWithdrawalRequestFee = 0.1 ether;
+        config.defaultElMaxWithdrawalRequestFee = 0.1 ether;
 
         // VettedGate
         config
@@ -123,7 +123,7 @@ contract DeployHoodi is DeployBase {
         config.identifiedCommunityStakersGateAllowedExitDelay = 5 days;
         config.identifiedCommunityStakersGateExitDelayFee = 0.05 ether;
         config
-            .identifiedCommunityStakersGateMaxWithdrawalRequestFee = 0.1 ether;
+            .identifiedCommunityStakersGateElMaxWithdrawalRequestFee = 0.1 ether;
 
         // GateSeal
         config.gateSealFactory = 0xA402349F560D45310D301E92B1AA4DeCABe147B3;

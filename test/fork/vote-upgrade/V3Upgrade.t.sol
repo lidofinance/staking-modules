@@ -486,10 +486,10 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(beforeValue, afterValue, "defaultExitDelayFee");
 
         vm.selectFork(forkIdBeforeUpgrade);
-        beforeValue = parametersRegistry.defaultMaxWithdrawalRequestFee();
+        beforeValue = parametersRegistry.defaultElMaxWithdrawalRequestFee();
         vm.selectFork(forkIdAfterUpgrade);
-        afterValue = parametersRegistry.defaultMaxWithdrawalRequestFee();
-        assertEq(beforeValue, afterValue, "defaultMaxWithdrawalRequestFee");
+        afterValue = parametersRegistry.defaultElMaxWithdrawalRequestFee();
+        assertEq(beforeValue, afterValue, "defaultElMaxWithdrawalRequestFee");
     }
 
     function test_accountingChanges() public {

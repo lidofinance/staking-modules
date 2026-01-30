@@ -89,8 +89,8 @@ contract ParametersRegistry is
     uint256 public defaultExitDelayFee;
     mapping(uint256 => MarkedUint248) internal _exitDelayFees;
 
-    uint256 public defaultMaxWithdrawalRequestFee;
-    mapping(uint256 => MarkedUint248) internal _maxWithdrawalRequestFees;
+    uint256 public defaultElMaxWithdrawalRequestFee;
+    mapping(uint256 => MarkedUint248) internal _elMaxWithdrawalRequestFees;
 
     uint256 public defaultDepositAllocationWeight;
     mapping(uint256 curveId => MarkedUint248)
@@ -146,7 +146,9 @@ contract ParametersRegistry is
         );
         _setDefaultAllowedExitDelay(data.defaultAllowedExitDelay);
         _setDefaultExitDelayFee(data.defaultExitDelayFee);
-        _setDefaultMaxWithdrawalRequestFee(data.defaultMaxWithdrawalRequestFee);
+        _setDefaultElMaxWithdrawalRequestFee(
+            data.defaultElMaxWithdrawalRequestFee
+        );
 
         __AccessControlEnumerable_init();
 
@@ -249,10 +251,10 @@ contract ParametersRegistry is
     }
 
     /// @inheritdoc IParametersRegistry
-    function setDefaultMaxWithdrawalRequestFee(
+    function setDefaultElMaxWithdrawalRequestFee(
         uint256 fee
     ) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
-        _setDefaultMaxWithdrawalRequestFee(fee);
+        _setDefaultElMaxWithdrawalRequestFee(fee);
     }
 
     /// @inheritdoc IParametersRegistry
@@ -424,15 +426,15 @@ contract ParametersRegistry is
     }
 
     /// @inheritdoc IParametersRegistry
-    function setMaxWithdrawalRequestFee(
+    function setElMaxWithdrawalRequestFee(
         uint256 curveId,
         uint256 fee
     ) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
-        _maxWithdrawalRequestFees[curveId] = MarkedUint248(
+        _elMaxWithdrawalRequestFees[curveId] = MarkedUint248(
             fee.toUint248(),
             true
         );
-        emit MaxWithdrawalRequestFeeSet(curveId, fee);
+        emit ElMaxWithdrawalRequestFeeSet(curveId, fee);
     }
 
     /// @inheritdoc IParametersRegistry
@@ -546,11 +548,11 @@ contract ParametersRegistry is
     }
 
     /// @inheritdoc IParametersRegistry
-    function unsetMaxWithdrawalRequestFee(
+    function unsetElMaxWithdrawalRequestFee(
         uint256 curveId
     ) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
-        delete _maxWithdrawalRequestFees[curveId];
-        emit MaxWithdrawalRequestFeeUnset(curveId);
+        delete _elMaxWithdrawalRequestFees[curveId];
+        emit ElMaxWithdrawalRequestFeeUnset(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
@@ -706,11 +708,11 @@ contract ParametersRegistry is
     }
 
     /// @inheritdoc IParametersRegistry
-    function getMaxWithdrawalRequestFee(
+    function getElMaxWithdrawalRequestFee(
         uint256 curveId
     ) external view returns (uint256 fee) {
-        MarkedUint248 memory data = _maxWithdrawalRequestFees[curveId];
-        return data.isValue ? data.value : defaultMaxWithdrawalRequestFee;
+        MarkedUint248 memory data = _elMaxWithdrawalRequestFees[curveId];
+        return data.isValue ? data.value : defaultElMaxWithdrawalRequestFee;
     }
 
     /// @inheritdoc IParametersRegistry
@@ -827,9 +829,9 @@ contract ParametersRegistry is
         emit DefaultExitDelayFeeSet(penalty);
     }
 
-    function _setDefaultMaxWithdrawalRequestFee(uint256 fee) internal {
-        defaultMaxWithdrawalRequestFee = fee;
-        emit DefaultMaxWithdrawalRequestFeeSet(fee);
+    function _setDefaultElMaxWithdrawalRequestFee(uint256 fee) internal {
+        defaultElMaxWithdrawalRequestFee = fee;
+        emit DefaultElMaxWithdrawalRequestFeeSet(fee);
     }
 
     function _setDefaultDepositAllocationWeight(uint256 weight) internal {

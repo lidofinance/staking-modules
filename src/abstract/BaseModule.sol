@@ -603,15 +603,14 @@ abstract contract BaseModule is
     function onValidatorExitTriggered(
         uint256 nodeOperatorId,
         bytes calldata publicKey,
-        // Rename to elWithdrawalRequestFeePaid
-        uint256 withdrawalRequestPaidFee,
+        uint256 elWithdrawalRequestFeePaid,
         uint256 exitType
     ) external onlyRole(STAKING_ROUTER_ROLE) {
         _onlyExistingNodeOperator(nodeOperatorId);
         EXIT_PENALTIES.processTriggeredExit(
             nodeOperatorId,
             publicKey,
-            withdrawalRequestPaidFee,
+            elWithdrawalRequestFeePaid,
             exitType
         );
     }

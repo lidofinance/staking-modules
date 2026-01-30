@@ -88,7 +88,7 @@ contract DeployLocalDevNet is DeployBase {
         config.defaultSyncWeight = 2; // https://eth2book.info/capella/part2/incentives/rewards/
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.1 ether;
-        config.defaultMaxWithdrawalRequestFee = 0.1 ether;
+        config.defaultElMaxWithdrawalRequestFee = 0.1 ether;
 
         // VettedGate
         config
@@ -126,7 +126,7 @@ contract DeployLocalDevNet is DeployBase {
         config.identifiedCommunityStakersGateAllowedExitDelay = 8 days;
         config.identifiedCommunityStakersGateExitDelayFee = 0.05 ether;
         config
-            .identifiedCommunityStakersGateMaxWithdrawalRequestFee = 0.05 ether;
+            .identifiedCommunityStakersGateElMaxWithdrawalRequestFee = 0.05 ether;
 
         // GateSeal
         config.gateSealFactory = 0x0000000000000000000000000000000000000000;
