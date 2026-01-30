@@ -445,6 +445,20 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         );
     }
 
+    /// @inheritdoc IVerifier
+    function processIncomingConsolidation(
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 addedBalanceWei
+    ) external whenResumed {
+        MODULE.increaseKeyAddedBalance(
+            nodeOperatorId,
+            keyIndex,
+            addedBalanceWei
+        );
+        // TODO implement
+    }
+
     function _reportSingleValidator(
         WithdrawnValidatorInfo memory info
     ) internal {

@@ -519,7 +519,9 @@ contract CSModule is ICSModule, BaseModule {
         uint256 nodeOperatorId,
         uint256 keyIndex
     ) internal view returns (uint256) {
-        uint256 keyAddedBalance = _getKeyAddedBalance(nodeOperatorId, keyIndex);
+        uint256 keyAddedBalance = _keyAddedBalances[
+            _keyPointer(nodeOperatorId, keyIndex)
+        ];
         if (keyAddedBalance >= KEY_ADDED_BALANCE_CAP) {
             return 0;
         }

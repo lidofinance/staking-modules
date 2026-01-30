@@ -186,4 +186,11 @@ interface IVerifier {
     function processConsolidation(
         ProcessConsolidationInput calldata data
     ) external;
+
+    /// @notice Stub method for incoming consolidation request proofs.
+    function processIncomingConsolidation(
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 addedBalanceWei
+    ) external;
 }

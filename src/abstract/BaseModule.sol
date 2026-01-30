@@ -874,10 +874,11 @@ abstract contract BaseModule is
         }
     }
 
-    function _getKeyAddedBalance(
+    /// @inheritdoc IBaseModule
+    function getKeyAddedBalance(
         uint256 nodeOperatorId,
         uint256 keyIndex
-    ) internal view returns (uint256) {
+    ) external view returns (uint256) {
         return _keyAddedBalances[_keyPointer(nodeOperatorId, keyIndex)];
     }
 
@@ -894,12 +895,7 @@ abstract contract BaseModule is
             ? KEY_ADDED_BALANCE_CAP
             : newBalance;
         _keyAddedBalances[pointer] = updatedBalance;
-        emit KeyAddedBalanceChanged(
-            nodeOperatorId,
-            keyIndex,
-            incrementWei,
-            updatedBalance
-        );
+        emit KeyAddedBalanceChanged(nodeOperatorId, keyIndex, updatedBalance);
     }
 
     function _increaseKeyAddedBalancesByAllocations(
@@ -917,6 +913,7 @@ abstract contract BaseModule is
             );
         }
     }
+
     /// @dev Prevents reactivation of a Node Operator after an uncovered penalty by
     ///      forcing its target limit to zero.
     function _onUncompensatedPenalty(uint256 nodeOperatorId) internal {

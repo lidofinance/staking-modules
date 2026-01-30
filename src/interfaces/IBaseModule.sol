@@ -111,7 +111,6 @@ interface IBaseModule is
     event KeyAddedBalanceChanged(
         uint256 indexed nodeOperatorId,
         uint256 indexed keyIndex,
-        uint256 amount,
         uint256 newTotal
     );
     event KeyRemovalChargeApplied(uint256 indexed nodeOperatorId);
@@ -424,6 +423,11 @@ interface IBaseModule is
         uint256 keyIndex,
         uint256 amount
     ) external;
+
+    function getKeyAddedBalance(
+        uint256 nodeOperatorId,
+        uint256 keyIndex
+    ) external view returns (uint256);
 
     /// @notice Report Node Operator's keys as withdrawn and charge penalties associated with exit if any.
     ///         A validator is considered withdrawn in the following cases:

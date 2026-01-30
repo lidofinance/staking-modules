@@ -21,7 +21,6 @@ interface ICSModule is
         uint256 indexed nodeOperatorId,
         uint256 count
     );
-    event KeyRemovalChargeApplied(uint256 indexed nodeOperatorId);
     event TopUpQueueLimitSet(uint256 limit);
     event TopUpQueueRewound(uint256 to);
 

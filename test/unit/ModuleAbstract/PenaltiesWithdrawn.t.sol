@@ -1689,7 +1689,7 @@ abstract contract ModuleKeyAddedBalance is ModuleFixtures {
         module.obtainDepositData(1, "");
 
         vm.expectEmit(address(module));
-        emit IBaseModule.KeyAddedBalanceChanged(noId, 0, 10 ether, 10 ether);
+        emit IBaseModule.KeyAddedBalanceChanged(noId, 0, 10 ether);
         module.increaseKeyAddedBalance(noId, 0, 10 ether);
 
         vm.deal(address(this), 100 ether);
@@ -1795,7 +1795,7 @@ abstract contract ModuleKeyAddedBalance is ModuleFixtures {
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
         bytes32 signature = keccak256(
-            "KeyAddedBalanceChanged(uint256,uint256,uint256,uint256)"
+            "KeyAddedBalanceChanged(uint256,uint256,uint256)"
         );
         for (uint256 i; i < entries.length; ++i) {
             assertNotEq(entries[i].topics[0], signature);
@@ -1813,8 +1813,23 @@ abstract contract ModuleKeyAddedBalance is ModuleFixtures {
             WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
 
         vm.expectEmit(address(module));
-        emit IBaseModule.KeyAddedBalanceChanged(noId, 0, cap + 1 ether, cap);
+        emit IBaseModule.KeyAddedBalanceChanged(noId, 0, cap);
 
         module.increaseKeyAddedBalance(noId, 0, cap + 1 ether);
+    }
+
+    function test_getKeyAddedBalance_defaultZero() public {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        assertEq(module.getKeyAddedBalance(noId, 0), 0);
+    }
+
+    function test_getKeyAddedBalance_afterIncrease() public {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        module.increaseKeyAddedBalance(noId, 0, 3 ether);
+        assertEq(module.getKeyAddedBalance(noId, 0), 3 ether);
     }
 }

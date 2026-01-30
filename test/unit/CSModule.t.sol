@@ -985,7 +985,7 @@ contract CSMTopUpQueue is CSMCommon {
 
         bytes memory key = csm.getSigningKeys(0, 0, 1);
         vm.expectEmit(address(csm));
-        emit IBaseModule.KeyAddedBalanceChanged(0, 0, 5 ether, 5 ether);
+        emit IBaseModule.KeyAddedBalanceChanged(0, 0, 5 ether);
 
         csm.allocateDeposits({
             maxDepositAmount: 5 ether,
@@ -1016,7 +1016,7 @@ contract CSMTopUpQueue is CSMCommon {
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
         bytes32 signature = keccak256(
-            "KeyAddedBalanceChanged(uint256,uint256,uint256,uint256)"
+            "KeyAddedBalanceChanged(uint256,uint256,uint256)"
         );
         for (uint256 i; i < entries.length; ++i) {
             assertNotEq(entries[i].topics[0], signature);
@@ -1033,7 +1033,7 @@ contract CSMTopUpQueue is CSMCommon {
 
         bytes memory key = csm.getSigningKeys(0, 0, 1);
         vm.expectEmit(address(csm));
-        emit IBaseModule.KeyAddedBalanceChanged(0, 0, 1 ether, cap);
+        emit IBaseModule.KeyAddedBalanceChanged(0, 0, cap);
 
         uint256[] memory allocations = csm.allocateDeposits({
             maxDepositAmount: 5 ether,
@@ -1956,7 +1956,7 @@ contract CSMRemoveKeysChargeFee is CSMCommon {
         );
 
         vm.expectEmit(address(module));
-        emit ICSModule.KeyRemovalChargeApplied(noId);
+        emit IBaseModule.KeyRemovalChargeApplied(noId);
 
         vm.prank(nodeOperator);
         module.removeKeys(noId, 1, 2);
@@ -2002,7 +2002,7 @@ contract CSMRemoveKeysChargeFee is CSMCommon {
         for (uint256 i = 0; i < entries.length; i++) {
             assertNotEq(
                 entries[i].topics[0],
-                ICSModule.KeyRemovalChargeApplied.selector
+                IBaseModule.KeyRemovalChargeApplied.selector
             );
         }
 
