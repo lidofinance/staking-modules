@@ -477,6 +477,10 @@ contract FeeOracleDeploymentTest is DeploymentBaseTest {
 }
 
 contract HashConsensusDeploymentTest is DeploymentBaseTest {
+    struct UtilsDeployParams {
+        address twoPhaseFrameConfigUpdate;
+    }
+
     function test_state() public view {
         (
             uint256 slotsPerEpoch,
@@ -511,7 +515,7 @@ contract HashConsensusDeploymentTest is DeploymentBaseTest {
         }
     }
 
-    function test_roles() public view {
+    function test_roles() public {
         assertTrue(
             hashConsensus.hasRole(
                 hashConsensus.DEFAULT_ADMIN_ROLE(),
@@ -554,12 +558,15 @@ contract HashConsensusDeploymentTest is DeploymentBaseTest {
                 1
             );
 
-            assertEq(
+            assertLe(
                 hashConsensus.getRoleMemberCount(
                     hashConsensus.MANAGE_FRAME_CONFIG_ROLE()
                 ),
-                0
+                // TODO: The role is on TwoPhaseFrameConfigUpdate contract.
+                //       Return `0` back when the contract is ossified.
+                1
             );
+
             assertEq(
                 hashConsensus.getRoleMemberCount(
                     hashConsensus.MANAGE_FAST_LANE_CONFIG_ROLE()

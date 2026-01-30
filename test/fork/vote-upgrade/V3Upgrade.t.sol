@@ -746,7 +746,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
         );
 
         assertEq(oracle.getContractVersion(), contractVersionBefore + 1);
-        assertEq(oracle.getConsensusVersion(), consensusVersionBefore);
+        assertEq(oracle.getConsensusVersion(), consensusVersionBefore + 1);
     }
 
     function test_validatorStrikesChanges() public {
