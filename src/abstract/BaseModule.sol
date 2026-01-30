@@ -322,13 +322,26 @@ abstract contract BaseModule is
         bytes calldata nodeOperatorIds,
         bytes calldata exitedValidatorsCounts
     ) external onlyRole(STAKING_ROUTER_ROLE) {
-        _totalExitedValidators = NodeOperatorOps.updateExitedValidatorsCount({
-            nodeOperators: _nodeOperators,
-            nodeOperatorsCount: _nodeOperatorsCount,
-            totalExitedValidators: _totalExitedValidators,
-            nodeOperatorIds: nodeOperatorIds,
-            exitedValidatorsCounts: exitedValidatorsCounts
-        });
+        uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(
+            nodeOperatorIds,
+            exitedValidatorsCounts
+        );
+
+        for (uint256 i = 0; i < operatorsInReport; ++i) {
+            (
+                uint256 nodeOperatorId,
+                uint256 exitedValidatorsCount
+            ) = ValidatorCountsReport.next(
+                    nodeOperatorIds,
+                    exitedValidatorsCounts,
+                    i
+                );
+            _updateExitedValidatorsCount({
+                nodeOperatorId: nodeOperatorId,
+                exitedValidatorsCount: exitedValidatorsCount,
+                allowDecrease: false
+            });
+        }
         _incrementModuleNonce();
     }
 
@@ -361,12 +374,10 @@ abstract contract BaseModule is
         uint256 nodeOperatorId,
         uint256 exitedValidatorsKeysCount
     ) external onlyRole(STAKING_ROUTER_ROLE) {
-        _totalExitedValidators = NodeOperatorOps.unsafeUpdateValidatorsCount({
-            nodeOperators: _nodeOperators,
-            nodeOperatorsCount: _nodeOperatorsCount,
-            totalExitedValidators: _totalExitedValidators,
+        _updateExitedValidatorsCount({
             nodeOperatorId: nodeOperatorId,
-            exitedValidatorsCount: exitedValidatorsKeysCount
+            exitedValidatorsCount: exitedValidatorsKeysCount,
+            allowDecrease: true
         });
         _incrementModuleNonce();
     }
@@ -1040,6 +1051,47 @@ abstract contract BaseModule is
         if (incrementNonceIfUpdated) {
             _incrementModuleNonce();
         }
+    }
+
+    /// TODO: Figure out if we can remove this method
+    /// @dev Update exited validators count for a single Node Operator
+    /// @dev Allows decrease the count for unsafe updates
+    function _updateExitedValidatorsCount(
+        uint256 nodeOperatorId,
+        uint256 exitedValidatorsCount,
+        bool allowDecrease
+    ) internal {
+        _onlyExistingNodeOperator(nodeOperatorId);
+        NodeOperator storage no = _nodeOperators[nodeOperatorId];
+        uint32 totalExitedKeys = no.totalExitedKeys;
+        if (exitedValidatorsCount == totalExitedKeys) {
+            return;
+        }
+        if (exitedValidatorsCount > no.totalDepositedKeys) {
+            revert ExitedKeysHigherThanTotalDeposited();
+        }
+        if (!allowDecrease && exitedValidatorsCount < totalExitedKeys) {
+            revert ExitedKeysDecrease();
+        }
+
+        unchecked {
+            // @dev Invariant sum(no.totalExitedKeys for no in nos) == _totalExitedValidators.
+            // `_totalExitedValidators` accumulates the same uint32 per-operator counts, so pushing
+            // the new value through uint64 preserves the exact result.
+            // forge-lint: disable-next-item(unsafe-typecast)
+            _totalExitedValidators =
+                (_totalExitedValidators - totalExitedKeys) +
+                uint64(exitedValidatorsCount);
+        }
+        // Each node operator stores its exited count in a uint32 slot; `exitedValidatorsCount`
+        // is validated against `totalDepositedKeys` (also uint32), so the cast is safe.
+        // forge-lint: disable-next-line(unsafe-typecast)
+        no.totalExitedKeys = uint32(exitedValidatorsCount);
+
+        emit ExitedSigningKeysCountChanged(
+            nodeOperatorId,
+            exitedValidatorsCount
+        );
     }
 
     function _setTargetLimit(
