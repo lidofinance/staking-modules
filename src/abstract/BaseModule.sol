@@ -34,10 +34,9 @@ abstract contract ModuleLinearStorage {
 
     bytes32 internal __freeSlot1;
     bytes32 internal __freeSlot2;
-    bytes32 internal __freeSlot3;
     /// @dev Total number of withdrawn validators reported for the module.
-    uint64 internal _totalWithdrawnValidators;
-    bytes24 internal __partiallyFreeSlot4;
+    uint256 internal _totalWithdrawnValidators;
+    bytes32 internal __freeSlot4;
 
     uint256 internal _nonce;
     mapping(uint256 => NodeOperator) internal _nodeOperators;
@@ -323,24 +322,20 @@ abstract contract BaseModule is
         bytes calldata nodeOperatorIds,
         bytes calldata exitedValidatorsCounts
     ) external onlyRole(STAKING_ROUTER_ROLE) {
-        uint256 operatorsInReport;
-        uint256 idsOffset;
-        uint256 countsOffset;
-        assembly ("memory-safe") {
-            operatorsInReport := div(nodeOperatorIds.length, 8)
-            idsOffset := nodeOperatorIds.offset
-            countsOffset := exitedValidatorsCounts.offset
-        }
+        uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(
+            nodeOperatorIds,
+            exitedValidatorsCounts
+        );
 
-        for (uint256 i; i < operatorsInReport; ++i) {
-            uint256 nodeOperatorId;
-            uint256 exitedValidatorsCount;
-            assembly ("memory-safe") {
-                nodeOperatorId := shr(192, calldataload(idsOffset))
-                exitedValidatorsCount := shr(128, calldataload(countsOffset))
-            }
-            idsOffset += 8;
-            countsOffset += 16;
+        for (uint256 i = 0; i < operatorsInReport; ++i) {
+            (
+                uint256 nodeOperatorId,
+                uint256 exitedValidatorsCount
+            ) = ValidatorCountsReport.next(
+                    nodeOperatorIds,
+                    exitedValidatorsCounts,
+                    i
+                );
 
             NodeOperator storage no = _nodeOperators[nodeOperatorId];
             uint32 totalExitedKeys = no.totalExitedKeys;
@@ -394,7 +389,7 @@ abstract contract BaseModule is
     function unsafeUpdateValidatorsCount(
         uint256 /* nodeOperatorId */,
         uint256 /* exitedValidatorsKeysCount */
-    ) external onlyRole(STAKING_ROUTER_ROLE) {}
+    ) external {}
 
     /// @inheritdoc IStakingModule
     function decreaseVettedSigningKeysCount(

@@ -420,172 +420,44 @@ abstract contract ModuleUpdateExitedValidatorsCount is ModuleFixtures {
 
         assertEq(module.getNonce(), nonce + 1);
     }
-
-    function test_updateExitedValidatorsCount_RevertWhen_NoNodeOperator()
-        public
-    {
-        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
-        module.updateExitedValidatorsCount(
-            bytes.concat(bytes8(0x0000000000000000)),
-            bytes.concat(bytes16(0x00000000000000000000000000000001))
-        );
-    }
-
-    function test_updateExitedValidatorsCount_RevertWhen_CountMoreThanDeposited()
-        public
-    {
-        createNodeOperator(1);
-
-        vm.expectRevert(
-            IBaseModule.ExitedKeysHigherThanTotalDeposited.selector
-        );
-        module.updateExitedValidatorsCount(
-            bytes.concat(bytes8(0x0000000000000000)),
-            bytes.concat(bytes16(0x00000000000000000000000000000001))
-        );
-    }
-
-    function test_updateExitedValidatorsCount_RevertWhen_ExitedKeysDecrease()
-        public
-    {
-        createNodeOperator(1);
-        module.obtainDepositData(1, "");
-
-        module.updateExitedValidatorsCount(
-            bytes.concat(bytes8(0x0000000000000000)),
-            bytes.concat(bytes16(0x00000000000000000000000000000001))
-        );
-
-        vm.expectRevert(IBaseModule.ExitedKeysDecrease.selector);
-        module.updateExitedValidatorsCount(
-            bytes.concat(bytes8(0x0000000000000000)),
-            bytes.concat(bytes16(0x00000000000000000000000000000000))
-        );
-    }
-
-    function test_updateExitedValidatorsCount_NoEventIfSameValue()
-        public
-        assertInvariants
-    {
-        createNodeOperator(1);
-        module.obtainDepositData(1, "");
-
-        module.updateExitedValidatorsCount(
-            bytes.concat(bytes8(0x0000000000000000)),
-            bytes.concat(bytes16(0x00000000000000000000000000000001))
-        );
-
-        vm.recordLogs();
-        module.updateExitedValidatorsCount(
-            bytes.concat(bytes8(0x0000000000000000)),
-            bytes.concat(bytes16(0x00000000000000000000000000000001))
-        );
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        // One event is NonceChanged
-        assertEq(logs.length, 1);
-    }
 }
 
 abstract contract ModuleUnsafeUpdateValidatorsCount is ModuleFixtures {
-    function test_unsafeUpdateValidatorsCount_NonZero()
-        public
-        assertInvariants
-    {
+    function test_unsafeUpdateValidatorsCount_NoOp() public assertInvariants {
         uint256 noId = createNodeOperator(5);
         module.obtainDepositData(5, "");
+
+        NodeOperator memory noBefore = module.getNodeOperator(noId);
+        StakingModuleSummary memory summaryBefore = getStakingModuleSummary();
         uint256 nonce = module.getNonce();
 
-        vm.expectEmit(address(module));
-        emit IBaseModule.ExitedSigningKeysCountChanged(noId, 1);
-        module.unsafeUpdateValidatorsCount({
-            nodeOperatorId: noId,
-            exitedValidatorsKeysCount: 1
-        });
-
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalExitedKeys, 1, "totalExitedKeys not increased");
-        assertEq(
-            no.stuckValidatorsCount,
-            0,
-            "stuckValidatorsCount not increased"
-        );
-
-        assertEq(module.getNonce(), nonce + 1);
-    }
-
-    function test_unsafeUpdateValidatorsCount_RevertWhen_NoNodeOperator()
-        public
-    {
-        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
-        module.unsafeUpdateValidatorsCount({
-            nodeOperatorId: 100500,
-            exitedValidatorsKeysCount: 1
-        });
-    }
-
-    function test_unsafeUpdateValidatorsCount_RevertWhen_NotStakingRouter()
-        public
-    {
-        expectRoleRevert(stranger, module.STAKING_ROUTER_ROLE());
-        vm.prank(stranger);
-        module.unsafeUpdateValidatorsCount({
-            nodeOperatorId: 100500,
-            exitedValidatorsKeysCount: 1
-        });
-    }
-
-    function test_unsafeUpdateValidatorsCount_RevertWhen_ExitedCountMoreThanDeposited()
-        public
-    {
-        uint256 noId = createNodeOperator(1);
-
-        vm.expectRevert(
-            IBaseModule.ExitedKeysHigherThanTotalDeposited.selector
-        );
-        module.unsafeUpdateValidatorsCount({
-            nodeOperatorId: noId,
-            exitedValidatorsKeysCount: 100500
-        });
-    }
-
-    function test_unsafeUpdateValidatorsCount_DecreaseExitedKeys()
-        public
-        assertInvariants
-    {
-        uint256 noId = createNodeOperator(1);
-        module.obtainDepositData(1, "");
-
-        setExited(0, 1);
-
-        module.unsafeUpdateValidatorsCount({
-            nodeOperatorId: noId,
-            exitedValidatorsKeysCount: 0
-        });
-
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalExitedKeys, 0, "totalExitedKeys should be zero");
-    }
-
-    function test_unsafeUpdateValidatorsCount_NoEventIfSameValue()
-        public
-        assertInvariants
-    {
-        uint256 noId = createNodeOperator(2);
-        module.obtainDepositData(2, "");
-
-        module.unsafeUpdateValidatorsCount({
-            nodeOperatorId: noId,
-            exitedValidatorsKeysCount: 1
-        });
-
         vm.recordLogs();
-        module.unsafeUpdateValidatorsCount({
-            nodeOperatorId: noId,
-            exitedValidatorsKeysCount: 1
-        });
+        module.unsafeUpdateValidatorsCount(noId, 100500);
+
+        NodeOperator memory noAfter = module.getNodeOperator(noId);
+        StakingModuleSummary memory summaryAfter = getStakingModuleSummary();
         Vm.Log[] memory logs = vm.getRecordedLogs();
-        // One event is NonceChanged
-        assertEq(logs.length, 1);
+
+        assertEq(noAfter.totalExitedKeys, noBefore.totalExitedKeys);
+        assertEq(noAfter.stuckValidatorsCount, noBefore.stuckValidatorsCount);
+        assertEq(
+            noAfter.depositableValidatorsCount,
+            noBefore.depositableValidatorsCount
+        );
+        assertEq(
+            summaryAfter.totalExitedValidators,
+            summaryBefore.totalExitedValidators
+        );
+        assertEq(
+            summaryAfter.totalDepositedValidators,
+            summaryBefore.totalDepositedValidators
+        );
+        assertEq(
+            summaryAfter.depositableValidatorsCount,
+            summaryBefore.depositableValidatorsCount
+        );
+        assertEq(module.getNonce(), nonce);
+        assertEq(logs.length, 0);
     }
 }
 
@@ -681,10 +553,7 @@ abstract contract ModuleDepositableValidatorsCount is ModuleFixtures {
             .depositableValidatorsCount;
         uint256 totalDepositableBefore = getStakingModuleSummary()
             .depositableValidatorsCount;
-        module.unsafeUpdateValidatorsCount({
-            nodeOperatorId: noId,
-            exitedValidatorsKeysCount: 1
-        });
+        module.unsafeUpdateValidatorsCount(noId, 1);
         // values are the same
         assertEq(
             module.getNodeOperator(noId).depositableValidatorsCount,

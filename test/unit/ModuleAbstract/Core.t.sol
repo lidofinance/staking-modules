@@ -606,19 +606,15 @@ abstract contract ModuleStakingRouterAccessControl is ModuleFixtures {
         vm.prank(admin);
         module.grantRole(role, actor);
 
+        uint256 nonce = module.getNonce();
+        vm.recordLogs();
+
         vm.prank(actor);
         module.unsafeUpdateValidatorsCount(noId, 0);
-    }
 
-    function test_stakingRouterRole_unsafeUpdateValidatorsCountRole_revert()
-        public
-    {
-        uint256 noId = createNodeOperator();
-        bytes32 role = module.STAKING_ROUTER_ROLE();
-
-        vm.prank(stranger);
-        expectRoleRevert(stranger, role);
-        module.unsafeUpdateValidatorsCount(noId, 0);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(module.getNonce(), nonce);
+        assertEq(logs.length, 0);
     }
 
     function test_stakingRouterRole_unvetKeys() public {
