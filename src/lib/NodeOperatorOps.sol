@@ -9,6 +9,8 @@ import { IBaseModule, NodeOperator, NodeOperatorManagementProperties } from "../
 import { FORCED_TARGET_LIMIT_MODE_ID } from "../interfaces/IStakingModule.sol";
 import { IAccounting } from "../interfaces/IAccounting.sol";
 
+import { ValidatorCountsReport } from "./ValidatorCountsReport.sol";
+
 /// @dev The library is used to reduce BaseModule bytecode size.
 library NodeOperatorOps {
     function getNodeOperatorIds(
@@ -112,6 +114,103 @@ library NodeOperatorOps {
             targetLimitMode,
             targetLimit
         );
+    }
+
+    function updateExitedValidatorsCount(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint64 totalExitedValidators,
+        bytes calldata nodeOperatorIds,
+        bytes calldata exitedValidatorsCounts
+    ) external returns (uint64) {
+        uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(
+            nodeOperatorIds,
+            exitedValidatorsCounts
+        );
+
+        for (uint256 i = 0; i < operatorsInReport; ++i) {
+            (
+                uint256 nodeOperatorId,
+                uint256 exitedValidatorsCount
+            ) = ValidatorCountsReport.next(
+                    nodeOperatorIds,
+                    exitedValidatorsCounts,
+                    i
+                );
+
+            NodeOperator storage no = nodeOperators[nodeOperatorId];
+            uint32 totalExitedKeys = no.totalExitedKeys;
+            unchecked {
+                // @dev Invariant sum(no.totalExitedKeys for no in nos) == totalExitedValidators.
+                // `totalExitedValidators` accumulates the same uint32 per-operator counts, so pushing
+                // the new value through uint64 preserves the exact result.
+                // forge-lint: disable-next-item(unsafe-typecast)
+                totalExitedValidators =
+                    (totalExitedValidators - totalExitedKeys) +
+                    uint64(exitedValidatorsCount);
+            }
+            // Each node operator stores its exited count in a uint32 slot; `exitedValidatorsCount`
+            // is validated against `totalDepositedKeys` (also uint32), so the cast is safe.
+            // forge-lint: disable-next-line(unsafe-typecast)
+            no.totalExitedKeys = uint32(exitedValidatorsCount);
+
+            emit IBaseModule.ExitedSigningKeysCountChanged(
+                nodeOperatorId,
+                exitedValidatorsCount
+            );
+        }
+
+        return totalExitedValidators;
+    }
+
+    function decreaseVettedSigningKeysCount(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        bytes calldata nodeOperatorIds,
+        bytes calldata vettedSigningKeysCounts
+    ) external {
+        IBaseModule module = IBaseModule(address(this));
+        uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(
+            nodeOperatorIds,
+            vettedSigningKeysCounts
+        );
+
+        for (uint256 i = 0; i < operatorsInReport; ++i) {
+            (
+                uint256 nodeOperatorId,
+                uint256 vettedSigningKeysCount
+            ) = ValidatorCountsReport.next(
+                    nodeOperatorIds,
+                    vettedSigningKeysCounts,
+                    i
+                );
+
+            NodeOperator storage no = nodeOperators[nodeOperatorId];
+
+            if (no.managerAddress == address(0)) {
+                revert IBaseModule.NodeOperatorDoesNotExist();
+            }
+
+            if (vettedSigningKeysCount >= no.totalVettedKeys) {
+                revert IBaseModule.InvalidVetKeysPointer();
+            }
+
+            if (vettedSigningKeysCount < no.totalDepositedKeys) {
+                revert IBaseModule.InvalidVetKeysPointer();
+            }
+
+            // NodeOperator.totalVettedKeys and totalDepositedKeys are uint32 slots; the checks above keep
+            // `vettedSigningKeysCount` within those limits, so this cast is safe.
+            // forge-lint: disable-next-line(unsafe-typecast)
+            no.totalVettedKeys = uint32(vettedSigningKeysCount);
+            emit IBaseModule.VettedSigningKeysCountChanged(
+                nodeOperatorId,
+                vettedSigningKeysCount
+            );
+
+            // @dev separate event for intentional decrease from Staking Router
+            emit IBaseModule.VettedSigningKeysCountDecreased(nodeOperatorId);
+
+            module.updateDepositableValidatorsCount(nodeOperatorId);
+        }
     }
 
     function getNodeOperatorSummary(

@@ -19,7 +19,6 @@ import { SigningKeys } from "../lib/SigningKeys.sol";
 import { GeneralPenalty } from "../lib/GeneralPenaltyLib.sol";
 import { PausableUntil } from "../lib/utils/PausableUntil.sol";
 import { WithdrawnValidatorLib } from "../lib/WithdrawnValidatorLib.sol";
-import { ValidatorCountsReport } from "../lib/ValidatorCountsReport.sol";
 import { NOAddresses } from "../lib/NOAddresses.sol";
 import { NodeOperatorOps } from "../lib/NodeOperatorOps.sol";
 import { OperatorTracker } from "../lib/OperatorTracker.sol";
@@ -121,12 +120,14 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function resume() external onlyRole(RESUME_ROLE) {
+    function resume() external {
+        _checkRole(RESUME_ROLE);
         _resume();
     }
 
     /// @inheritdoc IBaseModule
-    function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE) {
+    function pauseFor(uint256 duration) external {
+        _checkRole(PAUSE_ROLE);
         _pauseFor(duration);
     }
 
@@ -150,10 +151,8 @@ abstract contract BaseModule is
     /// @dev Changing the WC means that the current deposit data in the queue is not valid anymore and can't be deposited.
     ///      If there are depositable validators in the queue, the method should revert to prevent deposits with invalid
     ///      withdrawal credentials.
-    function onWithdrawalCredentialsChanged()
-        external
-        onlyRole(STAKING_ROUTER_ROLE)
-    {
+    function onWithdrawalCredentialsChanged() external {
+        _checkStakingRouterRole();
         if (_depositableValidatorsCount > 0) {
             revert DepositableKeysWithUnsupportedWithdrawalCredentials();
         }
@@ -164,12 +163,8 @@ abstract contract BaseModule is
         address from,
         NodeOperatorManagementProperties calldata managementProperties,
         address referrer
-    )
-        external
-        onlyRole(CREATE_NODE_OPERATOR_ROLE)
-        whenResumed
-        returns (uint256 nodeOperatorId)
-    {
+    ) external whenResumed returns (uint256 nodeOperatorId) {
+        _checkRole(CREATE_NODE_OPERATOR_ROLE);
         nodeOperatorId = _nodeOperatorsCount;
         OperatorTracker.recordCreator(nodeOperatorId);
         NodeOperatorOps.createNodeOperator({
@@ -343,9 +338,8 @@ abstract contract BaseModule is
 
     /// @inheritdoc IStakingModule
     /// @dev Passes through the minted stETH shares to the fee distributor
-    function onRewardsMinted(
-        uint256 totalShares
-    ) external onlyRole(STAKING_ROUTER_ROLE) {
+    function onRewardsMinted(uint256 totalShares) external {
+        _checkStakingRouterRole();
         STETH.transferShares(FEE_DISTRIBUTOR, totalShares);
     }
 
@@ -354,43 +348,14 @@ abstract contract BaseModule is
     function updateExitedValidatorsCount(
         bytes calldata nodeOperatorIds,
         bytes calldata exitedValidatorsCounts
-    ) external onlyRole(STAKING_ROUTER_ROLE) {
-        uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(
+    ) external {
+        _checkStakingRouterRole();
+        _totalExitedValidators = NodeOperatorOps.updateExitedValidatorsCount(
+            _nodeOperators,
+            _totalExitedValidators,
             nodeOperatorIds,
             exitedValidatorsCounts
         );
-
-        for (uint256 i = 0; i < operatorsInReport; ++i) {
-            (
-                uint256 nodeOperatorId,
-                uint256 exitedValidatorsCount
-            ) = ValidatorCountsReport.next(
-                    nodeOperatorIds,
-                    exitedValidatorsCounts,
-                    i
-                );
-
-            NodeOperator storage no = _nodeOperators[nodeOperatorId];
-            uint32 totalExitedKeys = no.totalExitedKeys;
-            unchecked {
-                // @dev Invariant sum(no.totalExitedKeys for no in nos) == _totalExitedValidators.
-                // `_totalExitedValidators` accumulates the same uint32 per-operator counts, so pushing
-                // the new value through uint64 preserves the exact result.
-                // forge-lint: disable-next-item(unsafe-typecast)
-                _totalExitedValidators =
-                    (_totalExitedValidators - totalExitedKeys) +
-                    uint64(exitedValidatorsCount);
-            }
-            // Each node operator stores its exited count in a uint32 slot; `exitedValidatorsCount`
-            // is validated against `totalDepositedKeys` (also uint32), so the cast is safe.
-            // forge-lint: disable-next-line(unsafe-typecast)
-            no.totalExitedKeys = uint32(exitedValidatorsCount);
-
-            emit ExitedSigningKeysCountChanged(
-                nodeOperatorId,
-                exitedValidatorsCount
-            );
-        }
     }
 
     /// @inheritdoc IStakingModule
@@ -398,7 +363,8 @@ abstract contract BaseModule is
         uint256 nodeOperatorId,
         uint256 targetLimitMode,
         uint256 targetLimit
-    ) external onlyRole(STAKING_ROUTER_ROLE) {
+    ) external {
+        _checkStakingRouterRole();
         _setTargetLimit(nodeOperatorId, targetLimitMode, targetLimit);
 
         _updateDepositableValidatorsCount({
@@ -427,54 +393,13 @@ abstract contract BaseModule is
     function decreaseVettedSigningKeysCount(
         bytes calldata nodeOperatorIds,
         bytes calldata vettedSigningKeysCounts
-    ) external onlyRole(STAKING_ROUTER_ROLE) {
-        uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(
+    ) external {
+        _checkStakingRouterRole();
+        NodeOperatorOps.decreaseVettedSigningKeysCount(
+            _nodeOperators,
             nodeOperatorIds,
             vettedSigningKeysCounts
         );
-
-        for (uint256 i = 0; i < operatorsInReport; ++i) {
-            (
-                uint256 nodeOperatorId,
-                uint256 vettedSigningKeysCount
-            ) = ValidatorCountsReport.next(
-                    nodeOperatorIds,
-                    vettedSigningKeysCounts,
-                    i
-                );
-
-            _onlyExistingNodeOperator(nodeOperatorId);
-
-            NodeOperator storage no = _nodeOperators[nodeOperatorId];
-
-            if (vettedSigningKeysCount >= no.totalVettedKeys) {
-                revert InvalidVetKeysPointer();
-            }
-
-            if (vettedSigningKeysCount < no.totalDepositedKeys) {
-                revert InvalidVetKeysPointer();
-            }
-
-            // NodeOperator.totalVettedKeys and totalDepositedKeys are uint32 slots; the checks above keep
-            // `vettedSigningKeysCount` within those limits, so this cast is safe.
-            // forge-lint: disable-next-line(unsafe-typecast)
-            no.totalVettedKeys = uint32(vettedSigningKeysCount);
-            emit VettedSigningKeysCountChanged(
-                nodeOperatorId,
-                vettedSigningKeysCount
-            );
-
-            // @dev separate event for intentional decrease from Staking Router
-            emit VettedSigningKeysCountDecreased(nodeOperatorId);
-
-            // Nonce will be updated below once
-            _updateDepositableValidatorsCount({
-                nodeOperatorId: nodeOperatorId,
-                incrementNonceIfUpdated: false
-            });
-        }
-
-        _incrementModuleNonce();
     }
 
     /// @inheritdoc IBaseModule
@@ -529,7 +454,8 @@ abstract contract BaseModule is
         bytes32 penaltyType,
         uint256 amount,
         string calldata details
-    ) external onlyRole(REPORT_GENERAL_DELAYED_PENALTY_ROLE) {
+    ) external {
+        _checkRole(REPORT_GENERAL_DELAYED_PENALTY_ROLE);
         _onlyExistingNodeOperator(nodeOperatorId);
         GeneralPenalty.reportGeneralDelayedPenalty(
             nodeOperatorId,
@@ -543,7 +469,8 @@ abstract contract BaseModule is
     function cancelGeneralDelayedPenalty(
         uint256 nodeOperatorId,
         uint256 amount
-    ) external onlyRole(REPORT_GENERAL_DELAYED_PENALTY_ROLE) {
+    ) external {
+        _checkRole(REPORT_GENERAL_DELAYED_PENALTY_ROLE);
         _onlyExistingNodeOperator(nodeOperatorId);
         GeneralPenalty.cancelGeneralDelayedPenalty(nodeOperatorId, amount);
     }
@@ -552,7 +479,8 @@ abstract contract BaseModule is
     function settleGeneralDelayedPenalty(
         uint256[] calldata nodeOperatorIds,
         uint256[] calldata maxAmounts
-    ) external onlyRole(SETTLE_GENERAL_DELAYED_PENALTY_ROLE) {
+    ) external {
+        _checkRole(SETTLE_GENERAL_DELAYED_PENALTY_ROLE);
         if (nodeOperatorIds.length != maxAmounts.length) {
             revert InvalidInput();
         }
@@ -592,7 +520,8 @@ abstract contract BaseModule is
     function onValidatorSlashed(
         uint256 nodeOperatorId,
         uint256 keyIndex
-    ) external onlyRole(VERIFIER_ROLE) {
+    ) external {
+        _checkRole(VERIFIER_ROLE);
         _onlyExistingNodeOperator(nodeOperatorId);
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
         if (keyIndex >= no.totalDepositedKeys) {
@@ -611,14 +540,16 @@ abstract contract BaseModule is
 
     function reportSlashedWithdrawnValidators(
         WithdrawnValidatorInfo[] calldata validatorInfos
-    ) external onlyRole(REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE) {
+    ) external {
+        _checkRole(REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE);
         _reportWithdrawnValidators(validatorInfos, true);
     }
 
     /// @inheritdoc IBaseModule
     function reportRegularWithdrawnValidators(
         WithdrawnValidatorInfo[] calldata validatorInfos
-    ) external onlyRole(REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE) {
+    ) external {
+        _checkRole(REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE);
         _reportWithdrawnValidators(validatorInfos, false);
     }
 
@@ -629,9 +560,10 @@ abstract contract BaseModule is
         /* proofSlotTimestamp */
         bytes calldata publicKey,
         uint256 eligibleToExitInSec
-    ) external onlyRole(STAKING_ROUTER_ROLE) {
+    ) external {
+        _checkStakingRouterRole();
         _onlyExistingNodeOperator(nodeOperatorId);
-        EXIT_PENALTIES.processExitDelayReport(
+        _exitPenalties().processExitDelayReport(
             nodeOperatorId,
             publicKey,
             eligibleToExitInSec
@@ -644,9 +576,10 @@ abstract contract BaseModule is
         bytes calldata publicKey,
         uint256 elWithdrawalRequestFeePaid,
         uint256 exitType
-    ) external onlyRole(STAKING_ROUTER_ROLE) {
+    ) external {
+        _checkStakingRouterRole();
         _onlyExistingNodeOperator(nodeOperatorId);
-        EXIT_PENALTIES.processTriggeredExit(
+        _exitPenalties().processTriggeredExit(
             nodeOperatorId,
             publicKey,
             elWithdrawalRequestFeePaid,
@@ -829,7 +762,7 @@ abstract contract BaseModule is
     ) external view returns (bool) {
         _onlyExistingNodeOperator(nodeOperatorId);
         return
-            EXIT_PENALTIES.isValidatorExitDelayPenaltyApplicable(
+            _exitPenalties().isValidatorExitDelayPenaltyApplicable(
                 nodeOperatorId,
                 publicKey,
                 eligibleToExitInSec
@@ -1121,9 +1054,18 @@ abstract contract BaseModule is
         return _accounting().getBondCurveId(nodeOperatorId);
     }
 
+    function _checkStakingRouterRole() internal view {
+        _checkRole(STAKING_ROUTER_ROLE);
+    }
+
     /// @dev This function is used to get the accounting contract from immutables to save bytecode.
     function _accounting() internal view returns (IAccounting) {
         return ACCOUNTING;
+    }
+
+    /// @dev This function is used to get the exit penalties contract from immutables to save bytecode.
+    function _exitPenalties() internal view returns (IExitPenalties) {
+        return EXIT_PENALTIES;
     }
 
     function _onlyRecoverer() internal view override {
