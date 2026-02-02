@@ -359,7 +359,7 @@ contract MetaOperatorRegistry is
                 noId
             ];
             if (groupData.isValue) {
-                revert NodeOperatorAlreadyInGroup();
+                revert NodeOperatorAlreadyInGroup(noId);
             }
 
             _groupIndex.groupIdByOperatorId[noId] = MarkedUint248(

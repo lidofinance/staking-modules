@@ -59,7 +59,7 @@ interface IMetaOperatorRegistry {
     error InvalidSubNodeOperatorShares();
     error InvalidOperatorGroupId();
     error NodeOperatorDoesNotExist();
-    error NodeOperatorAlreadyInGroup();
+    error NodeOperatorAlreadyInGroup(uint256 nodeOperatorId);
     error AlreadyUsedAsExternalOperator();
     error NodeOperatorNotInGroup();
     error SenderIsNotModule();
