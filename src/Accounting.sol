@@ -608,7 +608,7 @@ contract Accounting is
             }
         }
         claimableShares = _getClaimableBondShares(nodeOperatorId);
-        if (hasSplits) {
+        if (hasSplits && !isPaused()) {
             uint256 transferredShares = FeeSplits.splitAndTransferFees({
                 feeSplitsStorage: _feeSplits,
                 pendingSharesToSplitStorage: _pendingSharesToSplit,

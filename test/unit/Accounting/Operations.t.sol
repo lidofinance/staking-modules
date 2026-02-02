@@ -774,6 +774,21 @@ contract PenalizeTest is BaseTest {
 }
 
 contract PullFeeRewardsTest is BaseTest {
+    function _setFeeSplits(IAccounting.FeeSplit[] memory splits) internal {
+        mock_getNodeOperatorOwner(user);
+        vm.prank(user);
+        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+    }
+
+    function _captureSplitShares(
+        IAccounting.FeeSplit[] memory splits
+    ) internal view returns (uint256[] memory sharesBefore) {
+        sharesBefore = new uint256[](splits.length);
+        for (uint256 i = 0; i < splits.length; i++) {
+            sharesBefore[i] = stETH.sharesOf(splits[i].recipient);
+        }
+    }
+
     function test_pullFeeRewards() public assertInvariants {
         uint256 feeShares = 1 ether;
         stETH.mintShares(address(feeDistributor), feeShares);
@@ -797,6 +812,7 @@ contract PullFeeRewardsTest is BaseTest {
 
         assertEq(bondSharesAfter, bondSharesBefore + feeShares);
         assertEq(totalBondSharesAfter, totalBondSharesBefore + feeShares);
+        assertEq(accounting.getPendingSharesToSplit(0), 0);
     }
 
     function test_pullFeeRewards_zeroAmount() public assertInvariants {
@@ -824,7 +840,6 @@ contract PullFeeRewardsTest is BaseTest {
 
     function test_pullFeeRewards_withSplits() public assertInvariants {
         uint256 feeShares = 10 ether;
-
         IAccounting.FeeSplit[] memory splits = new IAccounting.FeeSplit[](2);
         splits[0] = IAccounting.FeeSplit({
             recipient: nextAddress(),
@@ -834,16 +849,8 @@ contract PullFeeRewardsTest is BaseTest {
             recipient: nextAddress(),
             share: 5000
         });
-
-        uint256[] memory sharesBefore = new uint256[](splits.length);
-        for (uint8 i = 0; i < splits.length; i++) {
-            sharesBefore[i] = stETH.sharesOf(splits[i].recipient);
-        }
-
-        mock_getNodeOperatorOwner(user);
-
-        vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        uint256[] memory sharesBefore = _captureSplitShares(splits);
+        _setFeeSplits(splits);
 
         stETH.mintShares(address(feeDistributor), feeShares);
         mock_getNodeOperatorsCount(1);
@@ -886,7 +893,6 @@ contract PullFeeRewardsTest is BaseTest {
         assertInvariants
     {
         uint256 feeShares = 3 wei;
-
         IAccounting.FeeSplit[] memory splits = new IAccounting.FeeSplit[](2);
         splits[0] = IAccounting.FeeSplit({
             recipient: nextAddress(),
@@ -896,16 +902,8 @@ contract PullFeeRewardsTest is BaseTest {
             recipient: nextAddress(),
             share: 500
         });
-
-        uint256[] memory sharesBefore = new uint256[](splits.length);
-        for (uint8 i = 0; i < splits.length; i++) {
-            sharesBefore[i] = stETH.sharesOf(splits[i].recipient);
-        }
-
-        mock_getNodeOperatorOwner(user);
-
-        vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        uint256[] memory sharesBefore = _captureSplitShares(splits);
+        _setFeeSplits(splits);
 
         stETH.mintShares(address(feeDistributor), feeShares);
         mock_getNodeOperatorsCount(1);
@@ -941,12 +939,132 @@ contract PullFeeRewardsTest is BaseTest {
         );
     }
 
+    function test_pullFeeRewards_withSplits_paused_pendingRecorded()
+        public
+        assertInvariants
+    {
+        uint256 feeShares = 10 ether;
+        IAccounting.FeeSplit[] memory splits = new IAccounting.FeeSplit[](2);
+        splits[0] = IAccounting.FeeSplit({
+            recipient: nextAddress(),
+            share: 3000
+        });
+        splits[1] = IAccounting.FeeSplit({
+            recipient: nextAddress(),
+            share: 5000
+        });
+        uint256[] memory sharesBefore = _captureSplitShares(splits);
+        _setFeeSplits(splits);
+
+        vm.prank(admin);
+        accounting.pauseFor(1 days);
+        assertTrue(accounting.isPaused());
+
+        stETH.mintShares(address(feeDistributor), feeShares);
+        mock_getNodeOperatorsCount(1);
+        mock_getNodeOperatorNonWithdrawnKeys(0);
+
+        uint256 pendingBefore = accounting.getPendingSharesToSplit(0);
+        uint256 bondSharesBefore = accounting.getBondShares(0);
+        uint256 totalBondSharesBefore = accounting.totalBondShares();
+
+        vm.expectCall(
+            address(accounting.MODULE()),
+            abi.encodeWithSelector(
+                IBaseModule.updateDepositableValidatorsCount.selector,
+                0
+            )
+        );
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
+
+        assertEq(
+            accounting.getPendingSharesToSplit(0),
+            pendingBefore + feeShares,
+            "pending not recorded"
+        );
+        assertEq(
+            accounting.getBondShares(0),
+            bondSharesBefore + feeShares,
+            "bond shares should increase"
+        );
+        assertEq(
+            accounting.totalBondShares(),
+            totalBondSharesBefore + feeShares,
+            "total bond shares should increase"
+        );
+
+        assertEq(
+            stETH.sharesOf(splits[0].recipient),
+            sharesBefore[0],
+            "split[0] transfer while paused"
+        );
+        assertEq(
+            stETH.sharesOf(splits[1].recipient),
+            sharesBefore[1],
+            "split[1] transfer while paused"
+        );
+    }
+
+    function test_pullFeeRewards_withSplits_pauseThenResume_splitsPendingWithoutNewRewards()
+        public
+        assertInvariants
+    {
+        uint256 feeShares = 10 ether;
+        IAccounting.FeeSplit[] memory splits = new IAccounting.FeeSplit[](2);
+        splits[0] = IAccounting.FeeSplit({
+            recipient: nextAddress(),
+            share: 3000
+        });
+        splits[1] = IAccounting.FeeSplit({
+            recipient: nextAddress(),
+            share: 5000
+        });
+        _setFeeSplits(splits);
+
+        vm.prank(admin);
+        accounting.pauseFor(1 days);
+        assertTrue(accounting.isPaused());
+
+        mock_getNodeOperatorsCount(1);
+        mock_getNodeOperatorNonWithdrawnKeys(0);
+
+        stETH.mintShares(address(feeDistributor), feeShares);
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
+
+        assertEq(accounting.getPendingSharesToSplit(0), feeShares);
+        assertEq(accounting.getBondShares(0), feeShares);
+
+        vm.prank(admin);
+        accounting.resume();
+        assertFalse(accounting.isPaused());
+
+        uint256 recipient0Before = stETH.sharesOf(splits[0].recipient);
+        uint256 recipient1Before = stETH.sharesOf(splits[1].recipient);
+
+        accounting.pullAndSplitFeeRewards(0, 0, new bytes32[](0));
+
+        uint256 expectedSplit0 = (feeShares * splits[0].share) / 10_000;
+        uint256 expectedSplit1 = (feeShares * splits[1].share) / 10_000;
+        uint256 expectedTransferred = expectedSplit0 + expectedSplit1;
+        uint256 expectedRemainder = feeShares - expectedTransferred;
+
+        assertEq(
+            stETH.sharesOf(splits[0].recipient),
+            recipient0Before + expectedSplit0
+        );
+        assertEq(
+            stETH.sharesOf(splits[1].recipient),
+            recipient1Before + expectedSplit1
+        );
+        assertEq(accounting.getPendingSharesToSplit(0), 0);
+        assertEq(accounting.getBondShares(0), expectedRemainder);
+    }
+
     function test_pullFeeRewards_withSplits_allBPSUsed_noReminderDueToRounding()
         public
         assertInvariants
     {
         uint256 feeShares = 1 ether;
-
         IAccounting.FeeSplit[] memory splits = new IAccounting.FeeSplit[](2);
         splits[0] = IAccounting.FeeSplit({
             recipient: nextAddress(),
@@ -956,16 +1074,8 @@ contract PullFeeRewardsTest is BaseTest {
             recipient: nextAddress(),
             share: 7000
         });
-
-        uint256[] memory sharesBefore = new uint256[](splits.length);
-        for (uint8 i = 0; i < splits.length; i++) {
-            sharesBefore[i] = stETH.sharesOf(splits[i].recipient);
-        }
-
-        mock_getNodeOperatorOwner(user);
-
-        vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        uint256[] memory sharesBefore = _captureSplitShares(splits);
+        _setFeeSplits(splits);
 
         stETH.mintShares(address(feeDistributor), feeShares);
         mock_getNodeOperatorsCount(1);
@@ -1006,7 +1116,6 @@ contract PullFeeRewardsTest is BaseTest {
         assertInvariants
     {
         uint256 feeShares = 0;
-
         IAccounting.FeeSplit[] memory splits = new IAccounting.FeeSplit[](2);
         splits[0] = IAccounting.FeeSplit({
             recipient: nextAddress(),
@@ -1016,16 +1125,8 @@ contract PullFeeRewardsTest is BaseTest {
             recipient: nextAddress(),
             share: 500
         });
-
-        uint256[] memory sharesBefore = new uint256[](splits.length);
-        for (uint8 i = 0; i < splits.length; i++) {
-            sharesBefore[i] = stETH.sharesOf(splits[i].recipient);
-        }
-
-        mock_getNodeOperatorOwner(user);
-
-        vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        uint256[] memory sharesBefore = _captureSplitShares(splits);
+        _setFeeSplits(splits);
 
         mock_getNodeOperatorsCount(1);
         mock_getNodeOperatorNonWithdrawnKeys(0);
@@ -1090,15 +1191,8 @@ contract PullFeeRewardsTest is BaseTest {
             totalFeeSharesForSplits += fees[i];
         }
 
-        uint256[] memory sharesBefore = new uint256[](splitsCount);
-
-        for (uint8 i = 0; i < splitsCount; i++) {
-            sharesBefore[i] = stETH.sharesOf(splits[i].recipient);
-        }
-
-        mock_getNodeOperatorOwner(user);
-        vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        uint256[] memory sharesBefore = _captureSplitShares(splits);
+        _setFeeSplits(splits);
 
         stETH.mintShares(address(feeDistributor), feeShares);
         mock_getNodeOperatorsCount(1);
@@ -1146,9 +1240,7 @@ contract PullFeeRewardsTest is BaseTest {
             recipient: nextAddress(),
             share: 3000
         });
-        mock_getNodeOperatorOwner(user);
-        vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        _setFeeSplits(splits);
 
         uint256 feeShares = 2 ether;
         stETH.mintShares(address(feeDistributor), feeShares);
@@ -1189,9 +1281,7 @@ contract PullFeeRewardsTest is BaseTest {
             recipient: nextAddress(),
             share: 5000
         });
-        mock_getNodeOperatorOwner(user);
-        vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        _setFeeSplits(splits);
 
         mock_getNodeOperatorsCount(1);
         mock_getNodeOperatorNonWithdrawnKeys(100500); // Required significantly more than we will pull
@@ -1241,9 +1331,8 @@ contract PullFeeRewardsTest is BaseTest {
             recipient: nextAddress(),
             share: 5000
         });
-        mock_getNodeOperatorOwner(user);
-        vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        uint256[] memory sharesBefore = _captureSplitShares(splits);
+        _setFeeSplits(splits);
 
         mock_getNodeOperatorsCount(1);
         mock_getNodeOperatorNonWithdrawnKeys(100500); // Required significantly more than we will pull
@@ -1251,12 +1340,11 @@ contract PullFeeRewardsTest is BaseTest {
         uint256 feeShares = 1 ether;
         stETH.mintShares(address(feeDistributor), feeShares);
 
-        uint256 sharesBefore = stETH.sharesOf(splits[0].recipient);
         uint256 bondSharesBefore = accounting.getBondShares(0);
 
         accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
 
-        assertEq(stETH.sharesOf(splits[0].recipient), sharesBefore);
+        assertEq(stETH.sharesOf(splits[0].recipient), sharesBefore[0]);
         assertEq(accounting.getBondShares(0), bondSharesBefore + feeShares);
         assertEq(accounting.getPendingSharesToSplit(0), feeShares);
     }
@@ -1266,7 +1354,6 @@ contract PullFeeRewardsTest is BaseTest {
         assertInvariants
     {
         uint256 feeShares = 10; // small amount to trigger rounding
-
         IAccounting.FeeSplit[] memory splits = new IAccounting.FeeSplit[](2);
         splits[0] = IAccounting.FeeSplit({
             recipient: nextAddress(),
@@ -1276,16 +1363,8 @@ contract PullFeeRewardsTest is BaseTest {
             recipient: nextAddress(),
             share: 3333
         });
-
-        uint256[] memory sharesBefore = new uint256[](splits.length);
-        for (uint8 i = 0; i < splits.length; i++) {
-            sharesBefore[i] = stETH.sharesOf(splits[i].recipient);
-        }
-
-        mock_getNodeOperatorOwner(user);
-
-        vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        uint256[] memory sharesBefore = _captureSplitShares(splits);
+        _setFeeSplits(splits);
 
         stETH.mintShares(address(feeDistributor), feeShares);
         mock_getNodeOperatorsCount(1);
@@ -1326,7 +1405,6 @@ contract PullFeeRewardsTest is BaseTest {
         assertInvariants
     {
         uint256 feeShares = 3; // ensure some splits round to zero
-
         IAccounting.FeeSplit[] memory splits = new IAccounting.FeeSplit[](3);
         splits[0] = IAccounting.FeeSplit({
             recipient: nextAddress(),
@@ -1340,15 +1418,8 @@ contract PullFeeRewardsTest is BaseTest {
             recipient: nextAddress(),
             share: 5000
         });
-
-        uint256[] memory sharesBefore = new uint256[](splits.length);
-        for (uint8 i = 0; i < splits.length; i++) {
-            sharesBefore[i] = stETH.sharesOf(splits[i].recipient);
-        }
-
-        mock_getNodeOperatorOwner(user);
-        vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        uint256[] memory sharesBefore = _captureSplitShares(splits);
+        _setFeeSplits(splits);
 
         stETH.mintShares(address(feeDistributor), feeShares);
         mock_getNodeOperatorsCount(1);
@@ -1388,9 +1459,7 @@ contract PullFeeRewardsTest is BaseTest {
             recipient: nextAddress(),
             share: 5000
         });
-        mock_getNodeOperatorOwner(user);
-        vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        _setFeeSplits(splits);
 
         mock_getNodeOperatorsCount(1);
         mock_getNodeOperatorNonWithdrawnKeys(0);
