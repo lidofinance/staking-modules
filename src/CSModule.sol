@@ -107,7 +107,7 @@ contract CSModule is ICSModule, BaseModule {
         returns (bytes memory publicKeys, bytes memory signatures)
     {
         // NOTE: Function call doesn't leave an unreachable item on the stack.
-        _checkRole(STAKING_ROUTER_ROLE);
+        _checkRole(_stakingRouterRole());
 
         (publicKeys, signatures) = SigningKeys.initKeysSigsBuf(depositsCount);
         if (depositsCount == 0) {
@@ -123,7 +123,7 @@ contract CSModule is ICSModule, BaseModule {
         uint256 priority = 0;
 
         while (true) {
-            if (priority > QUEUE_LOWEST_PRIORITY || depositsLeft == 0) {
+            if (priority > _queueLowestPriority() || depositsLeft == 0) {
                 break;
             }
 
@@ -256,7 +256,7 @@ contract CSModule is ICSModule, BaseModule {
     ) external returns (uint256[] memory allocations) {
         _onlyEnabledTopUpQueue();
         // NOTE: Function call doesn't leave an unreachable item on the stack.
-        _checkRole(STAKING_ROUTER_ROLE);
+        _checkRole(_stakingRouterRole());
 
         allocations = TopUpQueueOps.allocateDeposits({
             topUpQueue: _topUpQueue(),
@@ -275,9 +275,8 @@ contract CSModule is ICSModule, BaseModule {
     }
 
     /// @inheritdoc ICSModule
-    function setTopUpQueueLimit(
-        uint256 limit
-    ) external onlyRole(MANAGE_TOP_UP_QUEUE_ROLE) {
+    function setTopUpQueueLimit(uint256 limit) external {
+        _checkRole(MANAGE_TOP_UP_QUEUE_ROLE);
         _onlyEnabledTopUpQueue();
         _topUpQueue().limit = limit.toUint8();
         emit TopUpQueueLimitSet(limit);
@@ -345,9 +344,8 @@ contract CSModule is ICSModule, BaseModule {
 
     // TODO: Ensure that after deep rewind we will be able to iterate over the queue without allocating anything and SR will not revert in this case. Add integration test for it
     /// @inheritdoc ICSModule
-    function rewindTopUpQueue(
-        uint256 to
-    ) external onlyRole(REWIND_TOP_UP_QUEUE_ROLE) {
+    function rewindTopUpQueue(uint256 to) external {
+        _checkRole(REWIND_TOP_UP_QUEUE_ROLE);
         _onlyEnabledTopUpQueue();
         _topUpQueue().rewind(to.toUint32());
         emit TopUpQueueRewound(to);
@@ -437,7 +435,7 @@ contract CSModule is ICSModule, BaseModule {
             DepositQueueOps.cleanDepositQueue(
                 _depositQueueByPriority,
                 _nodeOperators,
-                QUEUE_LOWEST_PRIORITY,
+                _queueLowestPriority(),
                 maxItems
             );
     }
@@ -473,7 +471,7 @@ contract CSModule is ICSModule, BaseModule {
             depositQueues: _depositQueueByPriority,
             parametersRegistry: PARAMETERS_REGISTRY,
             accounting: _accounting(),
-            queueLowestPriority: QUEUE_LOWEST_PRIORITY,
+            queueLowestPriority: _queueLowestPriority(),
             nodeOperatorId: nodeOperatorId
         });
     }
@@ -497,6 +495,11 @@ contract CSModule is ICSModule, BaseModule {
     function _topUpQueue() internal view returns (TopUpQueueLib.Queue storage) {
         CSModuleStorage storage $ = _storage();
         return $.topUpQueue;
+    }
+
+    /// @dev This function is used to get the queue lowest priority from immutables to save bytecode.
+    function _queueLowestPriority() internal view returns (uint256) {
+        return QUEUE_LOWEST_PRIORITY;
     }
 
     function _storage() internal pure returns (CSModuleStorage storage $) {

@@ -120,12 +120,14 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function resume() external onlyRole(RESUME_ROLE) {
+    function resume() external {
+        _checkRole(RESUME_ROLE);
         _resume();
     }
 
     /// @inheritdoc IBaseModule
-    function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE) {
+    function pauseFor(uint256 duration) external {
+        _checkRole(PAUSE_ROLE);
         _pauseFor(duration);
     }
 
@@ -149,10 +151,8 @@ abstract contract BaseModule is
     /// @dev Changing the WC means that the current deposit data in the queue is not valid anymore and can't be deposited.
     ///      If there are depositable validators in the queue, the method should revert to prevent deposits with invalid
     ///      withdrawal credentials.
-    function onWithdrawalCredentialsChanged()
-        external
-        onlyRole(STAKING_ROUTER_ROLE)
-    {
+    function onWithdrawalCredentialsChanged() external {
+        _checkRole(_stakingRouterRole());
         if (_depositableValidatorsCount > 0) {
             revert DepositableKeysWithUnsupportedWithdrawalCredentials();
         }
@@ -163,12 +163,8 @@ abstract contract BaseModule is
         address from,
         NodeOperatorManagementProperties calldata managementProperties,
         address referrer
-    )
-        external
-        onlyRole(CREATE_NODE_OPERATOR_ROLE)
-        whenResumed
-        returns (uint256 nodeOperatorId)
-    {
+    ) external whenResumed returns (uint256 nodeOperatorId) {
+        _checkRole(CREATE_NODE_OPERATOR_ROLE);
         nodeOperatorId = _nodeOperatorsCount;
         OperatorTracker.recordCreator(nodeOperatorId);
         NodeOperatorOps.createNodeOperator({
@@ -342,9 +338,8 @@ abstract contract BaseModule is
 
     /// @inheritdoc IStakingModule
     /// @dev Passes through the minted stETH shares to the fee distributor
-    function onRewardsMinted(
-        uint256 totalShares
-    ) external onlyRole(STAKING_ROUTER_ROLE) {
+    function onRewardsMinted(uint256 totalShares) external {
+        _checkRole(_stakingRouterRole());
         STETH.transferShares(FEE_DISTRIBUTOR, totalShares);
     }
 
@@ -353,7 +348,8 @@ abstract contract BaseModule is
     function updateExitedValidatorsCount(
         bytes calldata nodeOperatorIds,
         bytes calldata exitedValidatorsCounts
-    ) external onlyRole(STAKING_ROUTER_ROLE) {
+    ) external {
+        _checkRole(_stakingRouterRole());
         _totalExitedValidators = NodeOperatorOps.updateExitedValidatorsCount(
             _nodeOperators,
             _totalExitedValidators,
@@ -367,7 +363,8 @@ abstract contract BaseModule is
         uint256 nodeOperatorId,
         uint256 targetLimitMode,
         uint256 targetLimit
-    ) external onlyRole(STAKING_ROUTER_ROLE) {
+    ) external {
+        _checkRole(_stakingRouterRole());
         _setTargetLimit(nodeOperatorId, targetLimitMode, targetLimit);
 
         _updateDepositableValidatorsCount({
@@ -396,7 +393,8 @@ abstract contract BaseModule is
     function decreaseVettedSigningKeysCount(
         bytes calldata nodeOperatorIds,
         bytes calldata vettedSigningKeysCounts
-    ) external onlyRole(STAKING_ROUTER_ROLE) {
+    ) external {
+        _checkRole(_stakingRouterRole());
         NodeOperatorOps.decreaseVettedSigningKeysCount(
             _nodeOperators,
             nodeOperatorIds,
@@ -456,7 +454,8 @@ abstract contract BaseModule is
         bytes32 penaltyType,
         uint256 amount,
         string calldata details
-    ) external onlyRole(REPORT_GENERAL_DELAYED_PENALTY_ROLE) {
+    ) external {
+        _checkRole(REPORT_GENERAL_DELAYED_PENALTY_ROLE);
         _onlyExistingNodeOperator(nodeOperatorId);
         GeneralPenalty.reportGeneralDelayedPenalty(
             nodeOperatorId,
@@ -470,7 +469,8 @@ abstract contract BaseModule is
     function cancelGeneralDelayedPenalty(
         uint256 nodeOperatorId,
         uint256 amount
-    ) external onlyRole(REPORT_GENERAL_DELAYED_PENALTY_ROLE) {
+    ) external {
+        _checkRole(REPORT_GENERAL_DELAYED_PENALTY_ROLE);
         _onlyExistingNodeOperator(nodeOperatorId);
         GeneralPenalty.cancelGeneralDelayedPenalty(nodeOperatorId, amount);
     }
@@ -479,7 +479,8 @@ abstract contract BaseModule is
     function settleGeneralDelayedPenalty(
         uint256[] calldata nodeOperatorIds,
         uint256[] calldata maxAmounts
-    ) external onlyRole(SETTLE_GENERAL_DELAYED_PENALTY_ROLE) {
+    ) external {
+        _checkRole(SETTLE_GENERAL_DELAYED_PENALTY_ROLE);
         if (nodeOperatorIds.length != maxAmounts.length) {
             revert InvalidInput();
         }
@@ -519,7 +520,8 @@ abstract contract BaseModule is
     function onValidatorSlashed(
         uint256 nodeOperatorId,
         uint256 keyIndex
-    ) external onlyRole(VERIFIER_ROLE) {
+    ) external {
+        _checkRole(VERIFIER_ROLE);
         _onlyExistingNodeOperator(nodeOperatorId);
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
         if (keyIndex >= no.totalDepositedKeys) {
@@ -538,14 +540,16 @@ abstract contract BaseModule is
 
     function reportSlashedWithdrawnValidators(
         WithdrawnValidatorInfo[] calldata validatorInfos
-    ) external onlyRole(REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE) {
+    ) external {
+        _checkRole(REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE);
         _reportWithdrawnValidators(validatorInfos, true);
     }
 
     /// @inheritdoc IBaseModule
     function reportRegularWithdrawnValidators(
         WithdrawnValidatorInfo[] calldata validatorInfos
-    ) external onlyRole(REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE) {
+    ) external {
+        _checkRole(REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE);
         _reportWithdrawnValidators(validatorInfos, false);
     }
 
@@ -556,9 +560,10 @@ abstract contract BaseModule is
         /* proofSlotTimestamp */
         bytes calldata publicKey,
         uint256 eligibleToExitInSec
-    ) external onlyRole(STAKING_ROUTER_ROLE) {
+    ) external {
+        _checkRole(_stakingRouterRole());
         _onlyExistingNodeOperator(nodeOperatorId);
-        EXIT_PENALTIES.processExitDelayReport(
+        _exitPenalties().processExitDelayReport(
             nodeOperatorId,
             publicKey,
             eligibleToExitInSec
@@ -571,9 +576,10 @@ abstract contract BaseModule is
         bytes calldata publicKey,
         uint256 elWithdrawalRequestFeePaid,
         uint256 exitType
-    ) external onlyRole(STAKING_ROUTER_ROLE) {
+    ) external {
+        _checkRole(_stakingRouterRole());
         _onlyExistingNodeOperator(nodeOperatorId);
-        EXIT_PENALTIES.processTriggeredExit(
+        _exitPenalties().processTriggeredExit(
             nodeOperatorId,
             publicKey,
             elWithdrawalRequestFeePaid,
@@ -756,7 +762,7 @@ abstract contract BaseModule is
     ) external view returns (bool) {
         _onlyExistingNodeOperator(nodeOperatorId);
         return
-            EXIT_PENALTIES.isValidatorExitDelayPenaltyApplicable(
+            _exitPenalties().isValidatorExitDelayPenaltyApplicable(
                 nodeOperatorId,
                 publicKey,
                 eligibleToExitInSec
@@ -783,7 +789,7 @@ abstract contract BaseModule is
         __AccessControlEnumerable_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(STAKING_ROUTER_ROLE, address(LIDO_LOCATOR.stakingRouter()));
+        _grantRole(_stakingRouterRole(), address(LIDO_LOCATOR.stakingRouter()));
 
         // Module is on pause initially and should be resumed during the vote
         _pauseFor(PausableUntil.PAUSE_INFINITELY);
@@ -1051,6 +1057,16 @@ abstract contract BaseModule is
     /// @dev This function is used to get the accounting contract from immutables to save bytecode.
     function _accounting() internal view returns (IAccounting) {
         return ACCOUNTING;
+    }
+
+    /// @dev This function is used to get the exit penalties contract from immutables to save bytecode.
+    function _exitPenalties() internal view returns (IExitPenalties) {
+        return EXIT_PENALTIES;
+    }
+
+    /// @dev This function is used to get STAKING_ROUTER_ROLE constant to save bytecode.
+    function _stakingRouterRole() internal pure returns (bytes32) {
+        return STAKING_ROUTER_ROLE;
     }
 
     function _onlyRecoverer() internal view override {
