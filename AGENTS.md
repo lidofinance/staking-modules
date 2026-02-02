@@ -35,6 +35,7 @@
 - Prefer early returns to else statements.
 - While refactoring keep comments added from existing implementations where applicable.
 - Make sure external functions in contracts and interfaces have proper natspec.
+- Avoid using magic numbers, prefer re-using or defining constants.
 - When last I looked, the year was 2026.
 
 ## Testing Guidelines

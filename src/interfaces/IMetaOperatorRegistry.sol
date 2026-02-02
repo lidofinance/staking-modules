@@ -72,6 +72,9 @@ interface IMetaOperatorRegistry {
     /// @notice Role allowed to manage operator groups.
     function MANAGE_OPERATOR_GROUPS_ROLE() external view returns (bytes32);
 
+    /// @notice Sentinel value for creating a new group.
+    function CREATE_GROUP_SENTINEL() external view returns (uint256);
+
     /// @notice Role allowed to set operator metadata.
     function SET_OPERATOR_INFO_ROLE() external view returns (bytes32);
 
@@ -118,7 +121,7 @@ interface IMetaOperatorRegistry {
     ) external view returns (OperatorInfo memory info);
 
     /// @notice Create a new operator group or update an existing one.
-    /// @param groupId Group id to create or update.
+    /// @param groupId Group id to update, or CREATE_GROUP_SENTINEL to create.
     /// @param groupInfo Group definition.
     /// @dev Creating is allowed only when groupId == getOperatorGroupsCount().
     function createOrUpdateOperatorGroup(

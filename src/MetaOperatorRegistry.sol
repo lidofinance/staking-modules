@@ -46,6 +46,8 @@ contract MetaOperatorRegistry is
     bytes32 public constant SET_OPERATOR_INFO_ROLE =
         keccak256("SET_OPERATOR_INFO_ROLE");
 
+    uint256 public constant CREATE_GROUP_SENTINEL = type(uint256).max;
+
     ICuratedModule public immutable MODULE;
     IAccounting public immutable ACCOUNTING;
     IStakingRouter public immutable STAKING_ROUTER;
@@ -171,20 +173,21 @@ contract MetaOperatorRegistry is
         uint256 groupId,
         OperatorGroup calldata groupInfo
     ) external onlyRole(MANAGE_OPERATOR_GROUPS_ROLE) {
-        uint256 groupCount = _groups.length;
-        if (groupId > groupCount) {
+        if (groupId == CREATE_GROUP_SENTINEL) {
+            uint256 newGroupId = _groups.length;
+            _groups.push();
+            _storeGroup(newGroupId.toUint248(), groupInfo, false);
+            emit OperatorGroupCreated(newGroupId);
+            return;
+        }
+
+        if (groupId >= _groups.length) {
             revert InvalidOperatorGroupId();
         }
 
-        if (groupId == groupCount) {
-            _groups.push();
-            _storeGroup(groupId.toUint248(), groupInfo, false);
-            emit OperatorGroupCreated(groupId);
-        } else {
-            _clearGroupMembership(groupId);
-            _storeGroup(groupId.toUint248(), groupInfo, true);
-            emit OperatorGroupUpdated(groupId);
-        }
+        _clearGroupMembership(groupId);
+        _storeGroup(groupId.toUint248(), groupInfo, true);
+        emit OperatorGroupUpdated(groupId);
     }
 
     /// @inheritdoc IMetaOperatorRegistry
