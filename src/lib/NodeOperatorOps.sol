@@ -10,6 +10,7 @@ import { FORCED_TARGET_LIMIT_MODE_ID } from "../interfaces/IStakingModule.sol";
 import { IAccounting } from "../interfaces/IAccounting.sol";
 
 import { ValidatorCountsReport } from "./ValidatorCountsReport.sol";
+import { WithdrawnValidatorLib } from "./WithdrawnValidatorLib.sol";
 
 /// @dev The library is used to reduce BaseModule bytecode size.
 library NodeOperatorOps {
@@ -265,5 +266,102 @@ library NodeOperatorOps {
         totalExitedValidators = no.totalExitedKeys;
         totalDepositedValidators = no.totalDepositedKeys;
         depositableValidatorsCount = no.depositableValidatorsCount;
+    }
+
+    function increaseKeyAddedBalance(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        mapping(uint256 => bool) storage isValidatorWithdrawn,
+        mapping(uint256 => uint256) storage keyAddedBalances,
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 incrementWei
+    ) external {
+        NodeOperator storage no = nodeOperators[nodeOperatorId];
+        if (keyIndex >= no.totalDepositedKeys) {
+            revert IBaseModule.SigningKeysInvalidOffset();
+        }
+
+        uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
+        if (isValidatorWithdrawn[pointer]) {
+            revert IBaseModule.InvalidWithdrawnValidatorInfo();
+        }
+
+        _increaseKeyAddedBalanceUnchecked(
+            keyAddedBalances,
+            nodeOperatorId,
+            keyIndex,
+            incrementWei
+        );
+    }
+
+    function increaseKeyAddedBalancesByAllocations(
+        mapping(uint256 => uint256) storage keyAddedBalances,
+        uint256[] calldata operatorIds,
+        uint256[] calldata keyIndices,
+        uint256[] calldata allocations
+    ) external {
+        for (uint256 i; i < allocations.length; ++i) {
+            uint256 allocationWei = allocations[i];
+            if (allocationWei == 0) continue;
+            _increaseKeyAddedBalanceUnchecked(
+                keyAddedBalances,
+                operatorIds[i],
+                keyIndices[i],
+                allocationWei
+            );
+        }
+    }
+
+    function capTopUpLimitsByKeyBalance(
+        mapping(uint256 => uint256) storage keyAddedBalances,
+        uint256[] calldata operatorIds,
+        uint256[] calldata keyIndices,
+        uint256[] calldata topUpLimits
+    ) external view returns (uint256[] memory cappedTopUpLimits) {
+        uint256 len = topUpLimits.length;
+        cappedTopUpLimits = new uint256[](len);
+        uint256 cap = _keyAddedBalanceCap();
+        for (uint256 i; i < len; ++i) {
+            uint256 keyAddedBalance = keyAddedBalances[
+                _keyPointer(operatorIds[i], keyIndices[i])
+            ];
+            uint256 remaining = keyAddedBalance >= cap
+                ? 0
+                : cap - keyAddedBalance;
+            cappedTopUpLimits[i] = Math.min(topUpLimits[i], remaining);
+        }
+    }
+
+    function _increaseKeyAddedBalanceUnchecked(
+        mapping(uint256 => uint256) storage keyAddedBalances,
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 incrementWei
+    ) internal {
+        uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
+        uint256 current = keyAddedBalances[pointer];
+        uint256 cap = _keyAddedBalanceCap();
+        if (current == cap) return;
+        uint256 newBalance = current + incrementWei;
+        uint256 updatedBalance = newBalance > cap ? cap : newBalance;
+        keyAddedBalances[pointer] = updatedBalance;
+        emit IBaseModule.KeyAddedBalanceChanged(
+            nodeOperatorId,
+            keyIndex,
+            updatedBalance
+        );
+    }
+
+    function _keyPointer(
+        uint256 nodeOperatorId,
+        uint256 keyIndex
+    ) private pure returns (uint256) {
+        return (nodeOperatorId << 128) | keyIndex;
+    }
+
+    function _keyAddedBalanceCap() private pure returns (uint256) {
+        return
+            WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE -
+            WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
     }
 }

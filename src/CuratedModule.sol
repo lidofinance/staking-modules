@@ -13,6 +13,7 @@ import { NOAddresses } from "./lib/NOAddresses.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "./lib/TransientUintUintMapLib.sol";
 import { CuratedDepositAllocator } from "./lib/allocator/CuratedDepositAllocator.sol";
+import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
 
 contract CuratedModule is ICuratedModule, BaseModule {
     /// @custom:storage-location erc7201:CuratedModule
@@ -336,11 +337,12 @@ contract CuratedModule is ICuratedModule, BaseModule {
             operatorsCount: _nodeOperatorsCount
         });
 
-        _increaseKeyAddedBalancesByAllocations({
-            operatorIds: operatorIds,
-            keyIndices: keyIndices,
-            allocations: allocations
-        });
+        NodeOperatorOps.increaseKeyAddedBalancesByAllocations(
+            _keyAddedBalances,
+            operatorIds,
+            keyIndices,
+            allocations
+        );
         _increaseOperatorBalancesByAllocations({
             operatorIds: operatorIds,
             allocations: allocations,

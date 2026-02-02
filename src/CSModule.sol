@@ -17,6 +17,7 @@ import { DepositQueueLib, Batch } from "./lib/DepositQueueLib.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
 import { DepositQueueOps } from "./lib/DepositQueueOps.sol";
 import { TopUpQueueOps } from "./lib/TopUpQueueOps.sol";
+import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
 
 contract CSModule is ICSModule, BaseModule {
     using DepositQueueLib for DepositQueueLib.Queue;
@@ -256,14 +257,13 @@ contract CSModule is ICSModule, BaseModule {
         _checkStakingRouterRole();
 
         // Cap top-ups so we don't over-allocate to keys that lost balance due to CL penalties.
-        uint256[] memory cappedTopUpLimits = new uint256[](topUpLimits.length);
-        for (uint256 i; i < topUpLimits.length; ++i) {
-            uint256 remaining = _getRemainingKeyBalance(
-                operatorIds[i],
-                keyIndices[i]
+        uint256[] memory cappedTopUpLimits = NodeOperatorOps
+            .capTopUpLimitsByKeyBalance(
+                _keyAddedBalances,
+                operatorIds,
+                keyIndices,
+                topUpLimits
             );
-            cappedTopUpLimits[i] = Math.min(topUpLimits[i], remaining);
-        }
 
         allocations = TopUpQueueOps.allocateDeposits({
             topUpQueue: _topUpQueue(),
@@ -278,7 +278,8 @@ contract CSModule is ICSModule, BaseModule {
             return allocations;
         }
 
-        _increaseKeyAddedBalancesByAllocations(
+        NodeOperatorOps.increaseKeyAddedBalancesByAllocations(
+            _keyAddedBalances,
             operatorIds,
             keyIndices,
             allocations
@@ -513,19 +514,6 @@ contract CSModule is ICSModule, BaseModule {
     /// @dev This function is used to get the queue lowest priority from immutables to save bytecode.
     function _queueLowestPriority() internal view returns (uint256) {
         return QUEUE_LOWEST_PRIORITY;
-    }
-
-    function _getRemainingKeyBalance(
-        uint256 nodeOperatorId,
-        uint256 keyIndex
-    ) internal view returns (uint256) {
-        uint256 keyAddedBalance = _keyAddedBalances[
-            _keyPointer(nodeOperatorId, keyIndex)
-        ];
-        if (keyAddedBalance >= KEY_ADDED_BALANCE_CAP) {
-            return 0;
-        }
-        return KEY_ADDED_BALANCE_CAP - keyAddedBalance;
     }
 
     function _storage() internal pure returns (CSModuleStorage storage $) {

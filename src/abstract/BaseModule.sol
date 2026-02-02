@@ -71,10 +71,6 @@ abstract contract BaseModule is
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
     bytes32 public constant CREATE_NODE_OPERATOR_ROLE =
         keccak256("CREATE_NODE_OPERATOR_ROLE");
-    uint256 internal constant KEY_ADDED_BALANCE_CAP =
-        WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE -
-            WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
-
     ILidoLocator public immutable LIDO_LOCATOR;
     IStETH public immutable STETH;
     IParametersRegistry public immutable PARAMETERS_REGISTRY;
@@ -546,19 +542,18 @@ abstract contract BaseModule is
         uint256 nodeOperatorId,
         uint256 keyIndex,
         uint256 amount
-    ) external onlyRole(VERIFIER_ROLE) {
+    ) external {
+        _checkRole(VERIFIER_ROLE);
         _onlyExistingNodeOperator(nodeOperatorId);
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-        if (keyIndex >= no.totalDepositedKeys) {
-            revert SigningKeysInvalidOffset();
-        }
 
-        uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
-        if (_isValidatorWithdrawn[pointer]) {
-            revert InvalidWithdrawnValidatorInfo();
-        }
-
-        _increaseKeyAddedBalance(nodeOperatorId, keyIndex, amount);
+        NodeOperatorOps.increaseKeyAddedBalance({
+            nodeOperators: _nodeOperators,
+            isValidatorWithdrawn: _isValidatorWithdrawn,
+            keyAddedBalances: _keyAddedBalances,
+            nodeOperatorId: nodeOperatorId,
+            keyIndex: keyIndex,
+            incrementWei: amount
+        });
     }
 
     function reportSlashedWithdrawnValidators(
@@ -841,13 +836,13 @@ abstract contract BaseModule is
             }
 
             NodeOperator storage no = _nodeOperators[info.nodeOperatorId];
-            bool bondCoversPenalties = WithdrawnValidatorLib.process(
+            bool penaltiesCovered = WithdrawnValidatorLib.process(
                 no,
                 info,
                 _isValidatorSlashed[pointer],
                 _keyAddedBalances[pointer]
             );
-            if (!bondCoversPenalties) {
+            if (!penaltiesCovered) {
                 _onUncompensatedPenalty(info.nodeOperatorId);
             }
 
@@ -880,38 +875,6 @@ abstract contract BaseModule is
         uint256 keyIndex
     ) external view returns (uint256) {
         return _keyAddedBalances[_keyPointer(nodeOperatorId, keyIndex)];
-    }
-
-    function _increaseKeyAddedBalance(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        uint256 incrementWei
-    ) internal {
-        uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
-        uint256 current = _keyAddedBalances[pointer];
-        if (current == KEY_ADDED_BALANCE_CAP) return;
-        uint256 newBalance = current + incrementWei;
-        uint256 updatedBalance = newBalance > KEY_ADDED_BALANCE_CAP
-            ? KEY_ADDED_BALANCE_CAP
-            : newBalance;
-        _keyAddedBalances[pointer] = updatedBalance;
-        emit KeyAddedBalanceChanged(nodeOperatorId, keyIndex, updatedBalance);
-    }
-
-    function _increaseKeyAddedBalancesByAllocations(
-        uint256[] calldata operatorIds,
-        uint256[] calldata keyIndices,
-        uint256[] memory allocations
-    ) internal {
-        for (uint256 i; i < allocations.length; ++i) {
-            uint256 allocationWei = allocations[i];
-            if (allocationWei == 0) continue;
-            _increaseKeyAddedBalance(
-                operatorIds[i],
-                keyIndices[i],
-                allocationWei
-            );
-        }
     }
 
     /// @dev Prevents reactivation of a Node Operator after an uncovered penalty by
