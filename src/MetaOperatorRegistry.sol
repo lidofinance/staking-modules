@@ -207,9 +207,6 @@ contract MetaOperatorRegistry is
             MarkedUint248 memory shareData = _groupIndex.operatorShareById[
                 noId
             ];
-            if (!shareData.isValue) {
-                revert InvariantFailed();
-            }
             groupInfo.subNodeOperators[i] = SubNodeOperator({
                 nodeOperatorId: noId,
                 share: uint16(shareData.value)
@@ -437,14 +434,12 @@ contract MetaOperatorRegistry is
         }
     }
 
+    /// @dev `noId` should be a part of group with `groupId`.
     function _refreshOperatorWeight(
         uint256 groupId,
         uint256 noId
     ) internal returns (bool changed) {
         MarkedUint248 memory shareData = _groupIndex.operatorShareById[noId];
-        if (!shareData.isValue) {
-            return false;
-        }
 
         uint256 newWeight = _getEffectiveWeight(noId, shareData.value);
         uint256 oldWeight = _setEffectiveWeight(noId, newWeight);
