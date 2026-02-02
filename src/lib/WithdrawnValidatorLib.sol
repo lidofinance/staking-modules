@@ -27,9 +27,6 @@ library WithdrawnValidatorLib {
         bool isSlashed,
         uint256 keyAddedBalance
     ) external returns (bool penaltiesCovered) {
-        if (validatorInfo.isSlashed && !isSlashed) {
-            revert IBaseModule.SlashingPenaltyIsNotApplicable();
-        }
         if (validatorInfo.slashingPenalty > 0 && !validatorInfo.isSlashed) {
             revert IBaseModule.InvalidWithdrawnValidatorInfo();
         }
