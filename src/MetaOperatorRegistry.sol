@@ -41,7 +41,8 @@ contract MetaOperatorRegistry is
         mapping(uint256 groupId => uint256 weight) groupEffectiveWeightSum;
     }
 
-    bytes32 public constant CMC_ROLE = keccak256("CMC_ROLE");
+    bytes32 public constant MANAGE_OPERATOR_GROUPS_ROLE =
+        keccak256("MANAGE_OPERATOR_GROUPS_ROLE");
     bytes32 public constant SET_OPERATOR_INFO_ROLE =
         keccak256("SET_OPERATOR_INFO_ROLE");
 
@@ -169,7 +170,7 @@ contract MetaOperatorRegistry is
     function createOrUpdateOperatorGroup(
         uint256 groupId,
         OperatorGroup calldata groupInfo
-    ) external onlyRole(CMC_ROLE) {
+    ) external onlyRole(MANAGE_OPERATOR_GROUPS_ROLE) {
         uint256 groupCount = _groups.length;
         if (groupId > groupCount) {
             revert InvalidOperatorGroupId();
@@ -257,7 +258,7 @@ contract MetaOperatorRegistry is
     function setBondCurveWeight(
         uint256 curveId,
         uint256 weight
-    ) external onlyRole(CMC_ROLE) {
+    ) external onlyRole(MANAGE_OPERATOR_GROUPS_ROLE) {
         if (_bondCurveWeight[curveId] == weight) {
             return;
         }

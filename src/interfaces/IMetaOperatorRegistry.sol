@@ -69,7 +69,7 @@ interface IMetaOperatorRegistry {
     error InvariantFailed();
 
     /// @notice Role allowed to manage operator groups.
-    function CMC_ROLE() external view returns (bytes32);
+    function MANAGE_OPERATOR_GROUPS_ROLE() external view returns (bytes32);
 
     /// @notice Role allowed to set operator metadata.
     function SET_OPERATOR_INFO_ROLE() external view returns (bytes32);
