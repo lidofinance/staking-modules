@@ -195,12 +195,6 @@ interface IBaseModule is
     /// @notice Returns the initialized version of the contract
     function getInitializedVersion() external view returns (uint64);
 
-    /// @notice Returns whether the Node Operator exists.
-    /// @param nodeOperatorId ID of the Node Operator
-    function nodeOperatorExists(
-        uint256 nodeOperatorId
-    ) external view returns (bool);
-
     /// @notice Permissioned method to add a new Node Operator
     ///         Should be called by `*Gate.sol` contracts. See `PermissionlessGate.sol` and `VettedGate.sol` for examples
     /// @param from Sender address. Initial sender address to be used as a default manager and reward addresses.

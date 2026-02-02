@@ -350,8 +350,7 @@ contract MetaOperatorRegistry is
             uint64 noId = subOperator.nodeOperatorId;
             uint16 share = subOperator.share;
 
-            bool exists = MODULE.nodeOperatorExists(noId);
-            if (!exists) {
+            if (!_nodeOperatorExists(address(MODULE), noId)) {
                 revert NodeOperatorDoesNotExist();
             }
 

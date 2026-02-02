@@ -633,13 +633,6 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function nodeOperatorExists(
-        uint256 nodeOperatorId
-    ) external view returns (bool) {
-        return nodeOperatorId < _nodeOperatorsCount;
-    }
-
-    /// @inheritdoc IBaseModule
     function getNodeOperator(
         uint256 nodeOperatorId
     ) external view returns (NodeOperator memory) {
