@@ -19,7 +19,6 @@ import { SigningKeys } from "../lib/SigningKeys.sol";
 import { GeneralPenalty } from "../lib/GeneralPenaltyLib.sol";
 import { PausableUntil } from "../lib/utils/PausableUntil.sol";
 import { WithdrawnValidatorLib } from "../lib/WithdrawnValidatorLib.sol";
-import { ValidatorCountsReport } from "../lib/ValidatorCountsReport.sol";
 import { NOAddresses } from "../lib/NOAddresses.sol";
 import { NodeOperatorOps } from "../lib/NodeOperatorOps.sol";
 import { OperatorTracker } from "../lib/OperatorTracker.sol";
@@ -355,42 +354,12 @@ abstract contract BaseModule is
         bytes calldata nodeOperatorIds,
         bytes calldata exitedValidatorsCounts
     ) external onlyRole(STAKING_ROUTER_ROLE) {
-        uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(
+        _totalExitedValidators = NodeOperatorOps.updateExitedValidatorsCount(
+            _nodeOperators,
+            _totalExitedValidators,
             nodeOperatorIds,
             exitedValidatorsCounts
         );
-
-        for (uint256 i = 0; i < operatorsInReport; ++i) {
-            (
-                uint256 nodeOperatorId,
-                uint256 exitedValidatorsCount
-            ) = ValidatorCountsReport.next(
-                    nodeOperatorIds,
-                    exitedValidatorsCounts,
-                    i
-                );
-
-            NodeOperator storage no = _nodeOperators[nodeOperatorId];
-            uint32 totalExitedKeys = no.totalExitedKeys;
-            unchecked {
-                // @dev Invariant sum(no.totalExitedKeys for no in nos) == _totalExitedValidators.
-                // `_totalExitedValidators` accumulates the same uint32 per-operator counts, so pushing
-                // the new value through uint64 preserves the exact result.
-                // forge-lint: disable-next-item(unsafe-typecast)
-                _totalExitedValidators =
-                    (_totalExitedValidators - totalExitedKeys) +
-                    uint64(exitedValidatorsCount);
-            }
-            // Each node operator stores its exited count in a uint32 slot; `exitedValidatorsCount`
-            // is validated against `totalDepositedKeys` (also uint32), so the cast is safe.
-            // forge-lint: disable-next-line(unsafe-typecast)
-            no.totalExitedKeys = uint32(exitedValidatorsCount);
-
-            emit ExitedSigningKeysCountChanged(
-                nodeOperatorId,
-                exitedValidatorsCount
-            );
-        }
     }
 
     /// @inheritdoc IStakingModule
@@ -428,53 +397,11 @@ abstract contract BaseModule is
         bytes calldata nodeOperatorIds,
         bytes calldata vettedSigningKeysCounts
     ) external onlyRole(STAKING_ROUTER_ROLE) {
-        uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(
+        NodeOperatorOps.decreaseVettedSigningKeysCount(
+            _nodeOperators,
             nodeOperatorIds,
             vettedSigningKeysCounts
         );
-
-        for (uint256 i = 0; i < operatorsInReport; ++i) {
-            (
-                uint256 nodeOperatorId,
-                uint256 vettedSigningKeysCount
-            ) = ValidatorCountsReport.next(
-                    nodeOperatorIds,
-                    vettedSigningKeysCounts,
-                    i
-                );
-
-            _onlyExistingNodeOperator(nodeOperatorId);
-
-            NodeOperator storage no = _nodeOperators[nodeOperatorId];
-
-            if (vettedSigningKeysCount >= no.totalVettedKeys) {
-                revert InvalidVetKeysPointer();
-            }
-
-            if (vettedSigningKeysCount < no.totalDepositedKeys) {
-                revert InvalidVetKeysPointer();
-            }
-
-            // NodeOperator.totalVettedKeys and totalDepositedKeys are uint32 slots; the checks above keep
-            // `vettedSigningKeysCount` within those limits, so this cast is safe.
-            // forge-lint: disable-next-line(unsafe-typecast)
-            no.totalVettedKeys = uint32(vettedSigningKeysCount);
-            emit VettedSigningKeysCountChanged(
-                nodeOperatorId,
-                vettedSigningKeysCount
-            );
-
-            // @dev separate event for intentional decrease from Staking Router
-            emit VettedSigningKeysCountDecreased(nodeOperatorId);
-
-            // Nonce will be updated below once
-            _updateDepositableValidatorsCount({
-                nodeOperatorId: nodeOperatorId,
-                incrementNonceIfUpdated: false
-            });
-        }
-
-        _incrementModuleNonce();
     }
 
     /// @inheritdoc IBaseModule
