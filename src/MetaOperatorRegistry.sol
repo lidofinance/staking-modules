@@ -394,7 +394,7 @@ contract MetaOperatorRegistry is
                 extKey
             ];
             if (groupData.isValue) {
-                revert NodeOperatorAlreadyInGroup();
+                revert AlreadyUsedAsExternalOperator();
             }
 
             if (!ExternalOperatorLib.isNOR(extOp.data)) {

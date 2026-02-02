@@ -60,6 +60,7 @@ interface IMetaOperatorRegistry {
     error InvalidOperatorGroupId();
     error NodeOperatorDoesNotExist();
     error NodeOperatorAlreadyInGroup();
+    error AlreadyUsedAsExternalOperator();
     error NodeOperatorNotInGroup();
     error SenderIsNotModule();
     error SenderIsNotEligible();
