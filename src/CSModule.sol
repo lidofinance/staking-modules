@@ -106,8 +106,7 @@ contract CSModule is ICSModule, BaseModule {
         virtual
         returns (bytes memory publicKeys, bytes memory signatures)
     {
-        // NOTE: Function call doesn't leave an unreachable item on the stack.
-        _checkRole(_stakingRouterRole());
+        _checkStakingRouterRole();
 
         (publicKeys, signatures) = SigningKeys.initKeysSigsBuf(depositsCount);
         if (depositsCount == 0) {
@@ -255,8 +254,7 @@ contract CSModule is ICSModule, BaseModule {
         uint256[] calldata topUpLimits
     ) external returns (uint256[] memory allocations) {
         _onlyEnabledTopUpQueue();
-        // NOTE: Function call doesn't leave an unreachable item on the stack.
-        _checkRole(_stakingRouterRole());
+        _checkStakingRouterRole();
 
         allocations = TopUpQueueOps.allocateDeposits({
             topUpQueue: _topUpQueue(),

@@ -152,7 +152,7 @@ abstract contract BaseModule is
     ///      If there are depositable validators in the queue, the method should revert to prevent deposits with invalid
     ///      withdrawal credentials.
     function onWithdrawalCredentialsChanged() external {
-        _checkRole(_stakingRouterRole());
+        _checkStakingRouterRole();
         if (_depositableValidatorsCount > 0) {
             revert DepositableKeysWithUnsupportedWithdrawalCredentials();
         }
@@ -339,7 +339,7 @@ abstract contract BaseModule is
     /// @inheritdoc IStakingModule
     /// @dev Passes through the minted stETH shares to the fee distributor
     function onRewardsMinted(uint256 totalShares) external {
-        _checkRole(_stakingRouterRole());
+        _checkStakingRouterRole();
         STETH.transferShares(FEE_DISTRIBUTOR, totalShares);
     }
 
@@ -349,7 +349,7 @@ abstract contract BaseModule is
         bytes calldata nodeOperatorIds,
         bytes calldata exitedValidatorsCounts
     ) external {
-        _checkRole(_stakingRouterRole());
+        _checkStakingRouterRole();
         _totalExitedValidators = NodeOperatorOps.updateExitedValidatorsCount(
             _nodeOperators,
             _totalExitedValidators,
@@ -364,7 +364,7 @@ abstract contract BaseModule is
         uint256 targetLimitMode,
         uint256 targetLimit
     ) external {
-        _checkRole(_stakingRouterRole());
+        _checkStakingRouterRole();
         _setTargetLimit(nodeOperatorId, targetLimitMode, targetLimit);
 
         _updateDepositableValidatorsCount({
@@ -394,7 +394,7 @@ abstract contract BaseModule is
         bytes calldata nodeOperatorIds,
         bytes calldata vettedSigningKeysCounts
     ) external {
-        _checkRole(_stakingRouterRole());
+        _checkStakingRouterRole();
         NodeOperatorOps.decreaseVettedSigningKeysCount(
             _nodeOperators,
             nodeOperatorIds,
@@ -561,7 +561,7 @@ abstract contract BaseModule is
         bytes calldata publicKey,
         uint256 eligibleToExitInSec
     ) external {
-        _checkRole(_stakingRouterRole());
+        _checkStakingRouterRole();
         _onlyExistingNodeOperator(nodeOperatorId);
         _exitPenalties().processExitDelayReport(
             nodeOperatorId,
@@ -577,7 +577,7 @@ abstract contract BaseModule is
         uint256 elWithdrawalRequestFeePaid,
         uint256 exitType
     ) external {
-        _checkRole(_stakingRouterRole());
+        _checkStakingRouterRole();
         _onlyExistingNodeOperator(nodeOperatorId);
         _exitPenalties().processTriggeredExit(
             nodeOperatorId,
@@ -789,7 +789,7 @@ abstract contract BaseModule is
         __AccessControlEnumerable_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(_stakingRouterRole(), address(LIDO_LOCATOR.stakingRouter()));
+        _grantRole(STAKING_ROUTER_ROLE, address(LIDO_LOCATOR.stakingRouter()));
 
         // Module is on pause initially and should be resumed during the vote
         _pauseFor(PausableUntil.PAUSE_INFINITELY);
@@ -1054,6 +1054,10 @@ abstract contract BaseModule is
         return _accounting().getBondCurveId(nodeOperatorId);
     }
 
+    function _checkStakingRouterRole() internal view {
+        _checkRole(STAKING_ROUTER_ROLE);
+    }
+
     /// @dev This function is used to get the accounting contract from immutables to save bytecode.
     function _accounting() internal view returns (IAccounting) {
         return ACCOUNTING;
@@ -1062,11 +1066,6 @@ abstract contract BaseModule is
     /// @dev This function is used to get the exit penalties contract from immutables to save bytecode.
     function _exitPenalties() internal view returns (IExitPenalties) {
         return EXIT_PENALTIES;
-    }
-
-    /// @dev This function is used to get STAKING_ROUTER_ROLE constant to save bytecode.
-    function _stakingRouterRole() internal pure returns (bytes32) {
-        return STAKING_ROUTER_ROLE;
     }
 
     function _onlyRecoverer() internal view override {

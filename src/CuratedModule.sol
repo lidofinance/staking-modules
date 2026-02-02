@@ -61,7 +61,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         override(IStakingModule)
         returns (bytes memory publicKeys, bytes memory signatures)
     {
-        _checkRole(_stakingRouterRole());
+        _checkStakingRouterRole();
         (
             uint256 allocated,
             uint256[] memory operatorIds,
@@ -132,7 +132,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256[] calldata operatorIds,
         uint256[] calldata topUpLimits
     ) external returns (uint256[] memory allocations) {
-        _checkRole(_stakingRouterRole());
+        _checkStakingRouterRole();
         if (maxDepositAmount == 0) {
             return new uint256[](0);
         }
@@ -169,7 +169,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256[] calldata pendingBalancesGwei,
         uint256 /* refSlot */
     ) external {
-        _checkRole(_stakingRouterRole());
+        _checkStakingRouterRole();
         uint256 operatorsCount = operatorIds.length;
         if (
             validatorsBalancesGwei.length != operatorsCount ||
