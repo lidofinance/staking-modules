@@ -146,7 +146,7 @@ abstract contract DeployBase is Script {
     Verifier public verifier;
     HashConsensus public hashConsensus;
     ParametersRegistry public parametersRegistry;
-    MetaOperatorRegistry public metaOperatorsRegistry;
+    MetaOperatorRegistry public metaRegistry;
     CuratedGateFactory public curatedGateFactory;
     address[] public curatedGateInstances;
     address internal curatedGateImpl;
@@ -215,20 +215,10 @@ abstract contract DeployBase is Script {
             );
 
             accounting = Accounting(_deployProxy(deployer, address(dummyImpl)));
-
-            MetaOperatorRegistry metaOperatorsRegistryImpl = new MetaOperatorRegistry(
-                    address(curatedModule),
-                    locator.stakingRouter()
-                );
-            metaOperatorsRegistry = MetaOperatorRegistry(
-                _deployProxy(
-                    config.proxyAdmin,
-                    address(metaOperatorsRegistryImpl)
-                )
-            );
-            metaOperatorsRegistry.initialize(deployer);
-
             oracle = FeeOracle(_deployProxy(deployer, address(dummyImpl)));
+            metaRegistry = MetaOperatorRegistry(
+                _deployProxy(deployer, address(dummyImpl))
+            );
 
             FeeDistributor feeDistributorImpl = new FeeDistributor({
                 stETH: locator.lido(),
@@ -409,7 +399,7 @@ abstract contract DeployBase is Script {
                 parametersRegistry: address(parametersRegistry),
                 accounting: address(accounting),
                 exitPenalties: address(exitPenalties),
-                metaOperatorsRegistry: address(metaOperatorsRegistry)
+                metaOperatorsRegistry: address(metaRegistry)
             });
 
             {
@@ -421,6 +411,20 @@ abstract contract DeployBase is Script {
             }
 
             curatedModule.initialize({ admin: deployer });
+
+            MetaOperatorRegistry metaRegistryImpl = new MetaOperatorRegistry(
+                address(curatedModule),
+                locator.stakingRouter()
+            );
+
+            {
+                OssifiableProxy metaRegistryProxy = OssifiableProxy(
+                    payable(address(metaRegistry))
+                );
+                metaRegistryProxy.proxy__upgradeTo(address(metaRegistryImpl));
+                metaRegistryProxy.proxy__changeAdmin(config.proxyAdmin);
+            }
+            metaRegistry.initialize({ admin: deployer });
 
             ValidatorStrikes strikesImpl = new ValidatorStrikes({
                 module: address(curatedModule),
@@ -460,7 +464,7 @@ abstract contract DeployBase is Script {
                 new CuratedGate(
                     config.stakingModuleId,
                     address(curatedModule),
-                    address(metaOperatorsRegistry)
+                    address(metaRegistry)
                 )
             );
 
@@ -632,12 +636,12 @@ abstract contract DeployBase is Script {
                 gate.revokeRole(gate.DEFAULT_ADMIN_ROLE(), deployer);
             }
 
-            metaOperatorsRegistry.grantRole(
-                metaOperatorsRegistry.DEFAULT_ADMIN_ROLE(),
+            metaRegistry.grantRole(
+                metaRegistry.DEFAULT_ADMIN_ROLE(),
                 config.aragonAgent
             );
-            metaOperatorsRegistry.revokeRole(
-                metaOperatorsRegistry.DEFAULT_ADMIN_ROLE(),
+            metaRegistry.revokeRole(
+                metaRegistry.DEFAULT_ADMIN_ROLE(),
                 deployer
             );
 
@@ -681,13 +685,10 @@ abstract contract DeployBase is Script {
             deployJson.set("ChainId", chainId);
             deployJson.set("CuratedModule", address(curatedModule));
             deployJson.set("CuratedModuleImpl", address(curatedModuleImpl));
-            deployJson.set(
-                "MetaOperatorRegistry",
-                address(metaOperatorsRegistry)
-            );
+            deployJson.set("MetaOperatorRegistry", address(metaRegistry));
             deployJson.set(
                 "MetaOperatorRegistryImpl",
-                address(metaOperatorsRegistryImpl)
+                address(metaRegistryImpl)
             );
             deployJson.set("ParametersRegistry", address(parametersRegistry));
             deployJson.set(
@@ -766,8 +767,8 @@ abstract contract DeployBase is Script {
                     address(gate)
                 );
             }
-            metaOperatorsRegistry.grantRole(
-                metaOperatorsRegistry.SET_OPERATOR_INFO_ROLE(),
+            metaRegistry.grantRole(
+                metaRegistry.SET_OPERATOR_INFO_ROLE(),
                 address(gate)
             );
             gate.grantRole(gate.PAUSE_ROLE(), config.resealManager);
@@ -850,8 +851,8 @@ abstract contract DeployBase is Script {
             parametersRegistry.DEFAULT_ADMIN_ROLE(),
             config.secondAdminAddress
         );
-        metaOperatorsRegistry.grantRole(
-            metaOperatorsRegistry.DEFAULT_ADMIN_ROLE(),
+        metaRegistry.grantRole(
+            metaRegistry.DEFAULT_ADMIN_ROLE(),
             config.secondAdminAddress
         );
         for (uint256 i = 0; i < curatedGateInstances.length; i++) {
