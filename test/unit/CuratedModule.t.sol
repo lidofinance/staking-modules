@@ -1822,6 +1822,38 @@ contract CuratedUpdateOperatorBalances is CuratedCommon {
     }
 }
 
+contract CuratedGetOperatorsWeights is CuratedCommon {
+    function test_getOperatorsWeights_ReturnsWeightsInOrder()
+        public
+        assertInvariants
+    {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+
+        _mockOperatorWeight(firstId, 7);
+        _mockOperatorWeight(secondId, 3);
+
+        uint256[] memory weights = cm.getOperatorsWeights(
+            UintArr(firstId, secondId)
+        );
+        assertEq(weights, UintArr(7, 3));
+    }
+
+    function test_getOperatorsWeights_ReturnsEmptyWhenNoIds() public {
+        uint256[] memory weights = cm.getOperatorsWeights(UintArr());
+        assertEq(weights.length, 0);
+    }
+
+    function test_getOperatorsWeights_RevertWhen_NodeOperatorDoesNotExist()
+        public
+    {
+        createNodeOperator(1);
+
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
+        cm.getOperatorsWeights(UintArr(1));
+    }
+}
+
 contract CuratedProposeNodeOperatorManagerAddressChange is
     ModuleProposeNodeOperatorManagerAddressChange,
     CuratedCommon

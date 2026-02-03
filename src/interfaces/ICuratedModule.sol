@@ -58,6 +58,14 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
         uint256 operatorId
     ) external view returns (uint256);
 
+    /// @notice Returns operator weights used for operator-level allocations in the module.
+    /// @dev Provides weights from the on-chain allocation strategy used by the module.
+    /// @param operatorIds Node operator IDs to query.
+    /// @return operatorWeights Weights aligned with operatorIds.
+    function getOperatorsWeights(
+        uint256[] calldata operatorIds
+    ) external view returns (uint256[] memory operatorWeights);
+
     /// @notice  Method to get list of operators and amount of Eth that can be topped up to operator from depositAmount
     /// @param depositAmount Amount of Eth that can be deposited to module
     function getDepositsAllocation(

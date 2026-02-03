@@ -212,6 +212,22 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     /// @inheritdoc ICuratedModule
+    function getOperatorsWeights(
+        uint256[] calldata operatorIds
+    ) external view returns (uint256[] memory operatorWeights) {
+        uint256 operatorsCount = operatorIds.length;
+        operatorWeights = new uint256[](operatorsCount);
+
+        for (uint256 i; i < operatorsCount; ++i) {
+            uint256 operatorId = operatorIds[i];
+            _onlyExistingNodeOperator(operatorId);
+            (uint256 weight, ) = META_OPERATOR_REGISTRY
+                .getNodeOperatorWeightAndExternalStake(operatorId);
+            operatorWeights[i] = weight;
+        }
+    }
+
+    /// @inheritdoc ICuratedModule
     function changeNodeOperatorAddresses(
         uint256 nodeOperatorId,
         address newManagerAddress,
