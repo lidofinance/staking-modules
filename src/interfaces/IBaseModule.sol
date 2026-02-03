@@ -415,6 +415,7 @@ interface IBaseModule is
     ) external;
 
     /// @notice Increase tracked added balance for a particular key
+    /// @dev The method is not expected to be called on 0x01 validator mode module
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     /// @param amount Amount to add to the tracked added balance (wei)

@@ -33,6 +33,7 @@ abstract contract ModuleLinearStorage {
     bytes32 internal __freeSlot1;
     bytes32 internal __freeSlot2;
     /// @dev Total number of withdrawn validators reported for the module.
+    // TODO: Check that these slots are free before upgrade.
     uint256 internal _totalWithdrawnValidators;
     mapping(uint256 noKeyIndexPacked => uint256) internal _keyAddedBalances;
 
