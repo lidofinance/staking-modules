@@ -118,7 +118,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
         vm.startBroadcast(agent);
 
         stakingRouter.addStakingModule({
-            _name: "curated-onchain-v1",
+            _name: "curated-onchain-v2",
             _stakingModuleAddress: address(curatedModule),
             _stakeShareLimit: 2000, // 20%
             _priorityExitShareThreshold: 2500, // 25%
