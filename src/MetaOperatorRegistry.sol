@@ -103,7 +103,7 @@ contract MetaOperatorRegistry is
         uint256 nodeOperatorId,
         OperatorInfo calldata info
     ) external onlyRole(SET_OPERATOR_INFO_ROLE) {
-        address module = _resolveModuleAddress(moduleId);
+        address module = _getOrCacheModuleAddress(moduleId);
         if (!_nodeOperatorExists(module, nodeOperatorId)) {
             revert NodeOperatorDoesNotExist();
         }
@@ -131,7 +131,7 @@ contract MetaOperatorRegistry is
         string calldata name,
         string calldata description
     ) external {
-        address module = _resolveModuleAddress(moduleId);
+        address module = _getOrCacheModuleAddress(moduleId);
         address owner = _nodeOperatorOwner(module, nodeOperatorId);
         if (owner == address(0)) {
             revert NodeOperatorDoesNotExist();
@@ -293,9 +293,6 @@ contract MetaOperatorRegistry is
         uint256 groupTotalWeight = _weightCache.groupEffectiveWeightSum[
             groupId
         ];
-        if (groupTotalWeight == 0) {
-            revert InvariantFailed();
-        }
         externalStake = Math.mulDiv(
             totalExternalStake,
             weight,
@@ -403,7 +400,7 @@ contract MetaOperatorRegistry is
             (uint8 moduleId, uint64 noId) = ExternalOperatorLib.unpackEntry(
                 extOp.data
             );
-            address module = _resolveModuleAddress(moduleId);
+            address module = _getOrCacheModuleAddress(moduleId);
             if (!_nodeOperatorExists(module, noId)) {
                 revert NodeOperatorDoesNotExist();
             }
@@ -500,7 +497,7 @@ contract MetaOperatorRegistry is
         return keccak256(abi.encode(moduleId, nodeOperatorId));
     }
 
-    function _resolveModuleAddress(
+    function _getOrCacheModuleAddress(
         uint256 moduleId
     ) internal returns (address module) {
         module = _modules[moduleId];
@@ -518,9 +515,7 @@ contract MetaOperatorRegistry is
     ) internal view returns (address module) {
         module = _modules[moduleId];
         if (module == address(0)) {
-            module = STAKING_ROUTER
-                .getStakingModule(moduleId)
-                .stakingModuleAddress;
+            revert UnknownModule();
         }
     }
 
@@ -548,10 +543,6 @@ contract MetaOperatorRegistry is
 
         for (uint256 i; i < opCount; ++i) {
             bytes memory data = group.externalOperators[i].data;
-            if (!ExternalOperatorLib.isNOR(data)) {
-                revert UnsupportedExternalOperatorType();
-            }
-
             (uint8 moduleId, uint64 noId) = ExternalOperatorLib.unpackEntry(
                 data
             );
