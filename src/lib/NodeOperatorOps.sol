@@ -355,7 +355,6 @@ library NodeOperatorOps {
         );
     }
 
-    // TODO: consider moving to `PointerLib`
     function _keyPointer(
         uint256 nodeOperatorId,
         uint256 keyIndex

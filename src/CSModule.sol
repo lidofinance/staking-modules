@@ -285,7 +285,13 @@ contract CSModule is ICSModule, BaseModule {
     function setTopUpQueueLimit(uint256 limit) external {
         _checkRole(MANAGE_TOP_UP_QUEUE_ROLE);
         _onlyEnabledTopUpQueue();
-        // TODO: Add check that limit is not zero. And not the same as current one.
+        if (limit == 0) {
+            revert ZeroTopUpQueueLimit();
+        }
+        uint8 currentLimit = _topUpQueue().limit;
+        if (limit == currentLimit) {
+            revert TopUpQueueLimitIsSame();
+        }
         _topUpQueue().limit = limit.toUint8();
         emit TopUpQueueLimitSet(limit);
         _incrementModuleNonce();

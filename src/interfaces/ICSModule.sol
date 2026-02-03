@@ -29,6 +29,8 @@ interface ICSModule is
     error PriorityQueueMaxDepositsUsed();
     error NoQueuedKeysToMigrate();
     error TopUpQueueDisabled();
+    error ZeroTopUpQueueLimit();
+    error TopUpQueueLimitIsSame();
     error InvalidSigningKey();
     error InvalidTopUpOrder();
     error UnexpectedExtraKey();

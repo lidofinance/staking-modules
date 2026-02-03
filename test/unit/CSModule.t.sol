@@ -1263,6 +1263,8 @@ contract CSMTopUpQueue is CSMCommon {
     }
 
     function testFuzz_setTopUpQueueLimit(uint8 limit) public {
+        limit = uint8(bound(limit, 1, type(uint8).max));
+        vm.assume(limit != _getTopUpQueueLimit());
         vm.expectEmit(true, true, true, true, address(csm));
         emit ICSModule.TopUpQueueLimitSet(limit);
         csm.setTopUpQueueLimit(limit);
@@ -1271,14 +1273,19 @@ contract CSMTopUpQueue is CSMCommon {
 
     function test_setTopUpQueueLimit_incrementsNonce() public {
         uint256 nonceBefore = csm.getNonce();
-        csm.setTopUpQueueLimit(0);
+        csm.setTopUpQueueLimit(1);
         assertEq(csm.getNonce(), nonceBefore + 1);
     }
 
-    function testFuzz_setTopUpQueueLimitToZero() public {
-        assertGt(_getTopUpQueueLimit(), 0);
+    function test_setTopUpQueueLimit_RevertWhenLimitZero() public {
+        vm.expectRevert(ICSModule.ZeroTopUpQueueLimit.selector);
         csm.setTopUpQueueLimit(0);
-        assertEq(_getTopUpQueueLimit(), 0);
+    }
+
+    function test_setTopUpQueueLimit_RevertWhenLimitSame() public {
+        uint256 current = _getTopUpQueueLimit();
+        vm.expectRevert(ICSModule.TopUpQueueLimitIsSame.selector);
+        csm.setTopUpQueueLimit(current);
     }
 
     function test_setTopUpQueueLimit_RevertWhenLimitExceedsUint8() public {
