@@ -3,22 +3,13 @@
 
 pragma solidity 0.8.33;
 
-import { Test } from "forge-std/Test.sol";
-
 import { NodeOperator } from "src/interfaces/IBaseModule.sol";
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
 
-import { Utilities } from "../../helpers/Utilities.sol";
-import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
-import { ExitPenaltyInfo } from "../../../src/interfaces/IExitPenalties.sol";
+import { ExitPenaltyInfo } from "../../../../src/interfaces/IExitPenalties.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
-contract StakingRouterIntegrationTest is
-    Test,
-    Utilities,
-    DeploymentFixtures,
-    InvariantAsserts
-{
+abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
     address internal agent;
     uint256 internal moduleId;
 
@@ -27,7 +18,7 @@ contract StakingRouterIntegrationTest is
         vm.pauseGasMetering();
         uint256 noCount = module.getNodeOperatorsCount();
         assertModuleKeys(module);
-        assertModuleEnqueuedCount(module);
+        _assertModuleEnqueuedCount();
         assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
         assertAccountingBurnerApproval(
@@ -43,9 +34,7 @@ contract StakingRouterIntegrationTest is
     }
 
     function setUp() public {
-        Env memory env = envVars();
-        vm.createSelectFork(env.RPC_URL);
-        initializeFromDeployment();
+        _setUpModule();
 
         vm.startPrank(module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0));
         module.grantRole(module.DEFAULT_ADMIN_ROLE(), address(this));
@@ -98,9 +87,8 @@ contract StakingRouterIntegrationTest is
     }
 
     function test_RouterDeposit() public assertInvariants {
-        (uint256 noId, uint256 keysCount) = getDepositableNodeOperator(
-            nextAddress()
-        );
+        (uint256 noId, uint256 keysCount) = integrationHelpers
+            .getDepositableNodeOperator(nextAddress());
         uint256 depositedKeysBefore = module
             .getNodeOperator(noId)
             .totalDepositedKeys;
@@ -118,7 +106,7 @@ contract StakingRouterIntegrationTest is
         (, , uint256 depositableValidatorsCount) = module
             .getStakingModuleSummary();
         if (depositableValidatorsCount < keysCount) {
-            addNodeOperator(
+            integrationHelpers.addNodeOperator(
                 nextAddress(),
                 keysCount - depositableValidatorsCount
             );
@@ -160,9 +148,40 @@ contract StakingRouterIntegrationTest is
         );
     }
 
+    function test_decreaseVettedSigningKeysCount() public assertInvariants {
+        address nodeOperatorManager = nextAddress();
+        uint256 totalKeys = 10;
+        uint256 newVetted = 2;
+        uint256 noId = integrationHelpers.addNodeOperator(
+            nodeOperatorManager,
+            totalKeys
+        );
+
+        vm.prank(
+            stakingRouter.getRoleMember(
+                stakingRouter.STAKING_MODULE_UNVETTING_ROLE(),
+                0
+            )
+        );
+        vm.startSnapshotGas("StakingRouter.decreaseVettedSigningKeysCount");
+        stakingRouter.decreaseStakingModuleVettedKeysCountByNodeOperator(
+            moduleId,
+            _encodeNodeOperatorId(noId),
+            _encodeUint128Value(newVetted)
+        );
+        vm.stopSnapshotGas();
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(no.totalVettedKeys, newVetted);
+        assertEq(no.depositableValidatorsCount, newVetted);
+    }
+
     function test_updateTargetValidatorsLimits() public assertInvariants {
         address nodeOperatorManager = nextAddress();
-        uint256 noId = addNodeOperator(nodeOperatorManager, 5);
+        uint256 noId = integrationHelpers.addNodeOperator(
+            nodeOperatorManager,
+            5
+        );
 
         vm.prank(agent);
         stakingRouter.updateTargetValidatorsLimits(moduleId, noId, 1, 2);
@@ -185,9 +204,8 @@ contract StakingRouterIntegrationTest is
         public
         assertInvariants
     {
-        (uint256 noId, uint256 keysCount) = getDepositableNodeOperator(
-            nextAddress()
-        );
+        (uint256 noId, uint256 keysCount) = integrationHelpers
+            .getDepositableNodeOperator(nextAddress());
         uint256 exitedKeysBefore = module.getNodeOperator(noId).totalExitedKeys;
 
         hugeDeposit();
@@ -207,9 +225,8 @@ contract StakingRouterIntegrationTest is
     }
 
     function test_getStakingModuleSummary() public assertInvariants {
-        (uint256 noId, uint256 keysCount) = getDepositableNodeOperator(
-            nextAddress()
-        );
+        (uint256 noId, uint256 keysCount) = integrationHelpers
+            .getDepositableNodeOperator(nextAddress());
 
         IStakingRouter.StakingModuleSummary memory summaryOld = stakingRouter
             .getStakingModuleSummary(moduleId);
@@ -244,9 +261,8 @@ contract StakingRouterIntegrationTest is
     }
 
     function test_getNodeOperatorSummary() public assertInvariants {
-        (uint256 noId, uint256 keysCount) = getDepositableNodeOperator(
-            nextAddress()
-        );
+        (uint256 noId, uint256 keysCount) = integrationHelpers
+            .getDepositableNodeOperator(nextAddress());
 
         NodeOperator memory no = module.getNodeOperator(noId);
 
@@ -289,7 +305,9 @@ contract StakingRouterIntegrationTest is
         uint256 exited;
 
         for (;;) {
-            (noId, keysCount) = getDepositableNodeOperator(nextAddress());
+            (noId, keysCount) = integrationHelpers.getDepositableNodeOperator(
+                nextAddress()
+            );
             lidoDepositWithNoGasMetering(keysCount);
             NodeOperator memory no = module.getNodeOperator(noId);
             /// we need to be sure there are more than 1 keys for further checks
@@ -333,34 +351,12 @@ contract StakingRouterIntegrationTest is
         assertEq(no.totalExitedKeys, unsafeExited);
     }
 
-    function test_decreaseVettedSigningKeysCount() public assertInvariants {
-        address nodeOperatorManager = nextAddress();
-        uint256 totalKeys = 10;
-        uint256 newVetted = 2;
-        uint256 noId = addNodeOperator(nodeOperatorManager, totalKeys);
-
-        vm.prank(
-            stakingRouter.getRoleMember(
-                stakingRouter.STAKING_MODULE_UNVETTING_ROLE(),
-                0
-            )
-        );
-        vm.startSnapshotGas("CSM.decreaseVettedSigningKeysCount");
-        stakingRouter.decreaseStakingModuleVettedKeysCountByNodeOperator(
-            moduleId,
-            _encodeNodeOperatorId(noId),
-            _encodeUint128Value(newVetted)
-        );
-        vm.stopSnapshotGas();
-
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalVettedKeys, newVetted);
-        assertEq(no.depositableValidatorsCount, newVetted);
-    }
-
     function test_reportValidatorExitDelay() public assertInvariants {
         uint256 totalKeys = 1;
-        uint256 noId = addNodeOperator(nextAddress(), totalKeys);
+        uint256 noId = integrationHelpers.addNodeOperator(
+            nextAddress(),
+            totalKeys
+        );
         bytes memory publicKey = module.getSigningKeys(noId, 0, 1);
         uint256 curveId = accounting.getBondCurveId(noId);
         uint256 exitDelay = parametersRegistry.getAllowedExitDelay(curveId);
@@ -406,3 +402,13 @@ contract StakingRouterIntegrationTest is
         assertEq(exitPenaltyInfo.delayFee.value, expectedPenalty);
     }
 }
+
+contract StakingRouterIntegrationTestCSM is
+    StakingRouterIntegrationTestBase,
+    CSMIntegrationBase
+{}
+
+contract StakingRouterIntegrationTestCurated is
+    StakingRouterIntegrationTestBase,
+    CuratedIntegrationBase
+{}

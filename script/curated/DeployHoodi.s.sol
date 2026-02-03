@@ -112,6 +112,7 @@ contract DeployHoodi is DeployBase {
             primaryGate.params.allowedExitDelay = 3 days; // TODO
             primaryGate.params.exitDelayFee = 0.02 ether; // TODO
             primaryGate.params.maxElWithdrawalRequestFee = 0.05 ether; // TODO
+            primaryGate.params.depositAllocationWeight = 1; // TODO: reconsider
         }
 
         // GateSeal

@@ -114,6 +114,7 @@ contract DeployMainnet is DeployBase {
             primaryGate.params.allowedExitDelay = 5 days; // TODO
             primaryGate.params.exitDelayFee = 0.05 ether; // TODO
             primaryGate.params.maxElWithdrawalRequestFee = 0.1 ether; // TODO
+            primaryGate.params.depositAllocationWeight = 1; // TODO: reconsider
         }
 
         // GateSeal

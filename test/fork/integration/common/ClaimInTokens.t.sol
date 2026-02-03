@@ -3,24 +3,13 @@
 
 pragma solidity 0.8.33;
 
-import { Test } from "forge-std/Test.sol";
-
-import { NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { IWithdrawalQueue } from "src/interfaces/IWithdrawalQueue.sol";
 
-import { Utilities } from "../../helpers/Utilities.sol";
-import { PermitHelper } from "../../helpers/Permit.sol";
-import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { MerkleTree } from "../../helpers/MerkleTree.sol";
-import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
+import { PermitHelper } from "../../../helpers/Permit.sol";
+import { MerkleTree } from "../../../helpers/MerkleTree.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
-contract ClaimRewardsTest is
-    Test,
-    Utilities,
-    PermitHelper,
-    DeploymentFixtures,
-    InvariantAsserts
-{
+abstract contract ClaimRewardsTestBase is ModuleTypeBase, PermitHelper {
     address internal user;
     address internal stranger;
     address internal nodeOperator;
@@ -32,7 +21,7 @@ contract ClaimRewardsTest is
         vm.pauseGasMetering();
         uint256 noCount = module.getNodeOperatorsCount();
         assertModuleKeys(module);
-        assertModuleEnqueuedCount(module);
+        _assertModuleEnqueuedCount();
         assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
         assertAccountingBurnerApproval(
@@ -48,9 +37,7 @@ contract ClaimRewardsTest is
     }
 
     function setUp() public {
-        Env memory env = envVars();
-        vm.createSelectFork(env.RPC_URL);
-        initializeFromDeployment();
+        _setUpModule();
         accountingSharesSurplus =
             lido.sharesOf(address(accounting)) -
             accounting.totalBondShares();
@@ -67,24 +54,10 @@ contract ClaimRewardsTest is
         nodeOperator = nextAddress("NodeOperator");
 
         uint256 keysCount = 5;
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
+        defaultNoId = integrationHelpers.addNodeOperator(
+            nodeOperator,
             keysCount
         );
-        uint256 amount = accounting.getBondAmountByKeysCount(keysCount, 0);
-        vm.deal(nodeOperator, amount);
-
-        vm.prank(nodeOperator);
-        defaultNoId = permissionlessGate.addNodeOperatorETH{ value: amount }({
-            keysCount: keysCount,
-            publicKeys: keys,
-            signatures: signatures,
-            managementProperties: NodeOperatorManagementProperties({
-                managerAddress: address(0),
-                rewardAddress: address(0),
-                extendedManagerPermissions: false
-            }),
-            referrer: address(0)
-        });
     }
 
     function test_claimExcessBondStETH() public assertInvariants {
@@ -522,3 +495,10 @@ contract ClaimRewardsTest is
         );
     }
 }
+
+contract ClaimRewardsTestCSM is ClaimRewardsTestBase, CSMIntegrationBase {}
+
+contract ClaimRewardsTestCurated is
+    ClaimRewardsTestBase,
+    CuratedIntegrationBase
+{}
