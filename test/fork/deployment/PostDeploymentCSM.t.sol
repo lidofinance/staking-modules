@@ -41,20 +41,8 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
     function test_unusedStorageSlots_onlyFull() public {
         bytes32 slot1 = vm.load(address(module), bytes32(uint256(1)));
         bytes32 slot2 = vm.load(address(module), bytes32(uint256(2)));
-        bytes32 slot3 = vm.load(address(module), bytes32(uint256(3)));
-        bytes32 slot4 = vm.load(address(module), bytes32(uint256(4)));
         assertEq(slot1, bytes32(0), "assert __freeSlot1 is empty");
         assertEq(slot2, bytes32(0), "assert __freeSlot2 is empty");
-        assertEq(
-            slot3,
-            bytes32(0),
-            "assert _totalWithdrawnValidators is empty"
-        );
-        assertEq(
-            slot4,
-            bytes32(0),
-            "assert _keyAddedBalances base slot is empty"
-        );
     }
 
     function test_roles_onlyFull() public view {

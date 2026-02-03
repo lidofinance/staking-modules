@@ -250,6 +250,23 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(totalNodeOperatorsBefore, totalNodeOperatorsAfter);
     }
 
+    function test_csmStorageSlotsBeforeUpgrade() public {
+        vm.selectFork(forkIdBeforeUpgrade);
+        bytes32 slot3 = vm.load(address(module), bytes32(uint256(3)));
+        bytes32 slot4 = vm.load(address(module), bytes32(uint256(4)));
+
+        assertEq(
+            slot3,
+            bytes32(0),
+            "assert _totalWithdrawnValidators is empty before upgrade"
+        );
+        assertEq(
+            slot4,
+            bytes32(0),
+            "assert _keyAddedBalances base slot is empty before upgrade"
+        );
+    }
+
     function test_csmNodeOperatorsState() public {
         if (skipLongForkTest()) {
             return;
