@@ -50,6 +50,8 @@ interface IBondCore {
         uint256 toChargeAmount,
         uint256 chargedAmount
     );
+    event BondDebtIncreased(uint256 indexed nodeOperatorId, uint256 amount);
+    event BondDebtCovered(uint256 indexed nodeOperatorId, uint256 amount);
 
     error ZeroLocatorAddress();
     error NothingToClaim();

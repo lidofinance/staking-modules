@@ -82,7 +82,7 @@ contract BondCoreTestable is BondCore {
         uint256 nodeOperatorId,
         uint256 amount
     ) external returns (uint256) {
-        return _burn(nodeOperatorId, amount);
+        return _burn(nodeOperatorId, amount, true);
     }
 
     function charge(

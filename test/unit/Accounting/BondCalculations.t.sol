@@ -446,12 +446,13 @@ contract LockBondETHTest is BaseTest {
         Accounting.BondLockData memory bondLockAfter = accounting
             .getLockedBondInfo(0);
 
-        assertEq(bondLockAfter.amount, 1 ether);
-        assertEq(bondLockAfter.until, type(uint128).max);
+        assertEq(bondLockAfter.amount, 0);
+        assertEq(bondLockAfter.until, 0);
         assertEq(accounting.getBondShares(noId), 0);
+        assertApproxEqAbs(accounting.getBondDebt(noId), amount, 1);
     }
 
-    function test_settleLockedBondETH_partialBurn_setsInfiniteLockToRestOnly()
+    function test_settleLockedBondETH_partialBurn_bondDebtCreated()
         public
         assertInvariants
     {
@@ -480,8 +481,9 @@ contract LockBondETHTest is BaseTest {
         Accounting.BondLockData memory lockAfter = accounting.getLockedBondInfo(
             noId
         );
-        assertApproxEqAbs(lockAfter.amount, locked - bond, 1);
-        assertEq(lockAfter.until, type(uint128).max);
+        assertEq(lockAfter.amount, 0);
+        assertEq(lockAfter.until, 0);
+        assertApproxEqAbs(accounting.getBondDebt(noId), locked - bond, 1);
     }
 
     function test_settleLockedBondETH_restZero_removesLock()
