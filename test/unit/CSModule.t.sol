@@ -1973,25 +1973,6 @@ contract CSMRemoveKeysChargeFee is CSMCommon {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_removeKeys_chargeFeeMoreThanBond() public assertInvariants {
-        uint256 noId = createNodeOperator(1);
-
-        vm.prank(admin);
-        module.PARAMETERS_REGISTRY().setKeyRemovalCharge(
-            0,
-            BOND_SIZE + 1 ether
-        );
-
-        vm.prank(nodeOperator);
-        module.removeKeys(noId, 0, 1);
-
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalAddedKeys, 0);
-        // Target limit should be set to 0 and mode to 2 if the charge is more than bond.
-        assertEq(no.targetLimit, 0);
-        assertEq(no.targetLimitMode, 2);
-    }
-
     function test_removeKeys_withNoFee() public assertInvariants {
         vm.prank(admin);
         module.PARAMETERS_REGISTRY().setKeyRemovalCharge(0, 0);

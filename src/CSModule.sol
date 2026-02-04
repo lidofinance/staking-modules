@@ -297,8 +297,6 @@ contract CSModule is ICSModule, BaseModule {
         _incrementModuleNonce();
     }
 
-    /// Start your review from here
-
     /// @inheritdoc IBaseModule
     function removeKeys(
         uint256 nodeOperatorId,
@@ -326,13 +324,9 @@ contract CSModule is ICSModule, BaseModule {
         uint256 amountToCharge = PARAMETERS_REGISTRY.getKeyRemovalCharge(
             curveId
         ) * keysCount;
-        bool chargeCovered = true;
 
         if (amountToCharge != 0) {
-            chargeCovered = _accounting().chargeFee(
-                nodeOperatorId,
-                amountToCharge
-            );
+            _accounting().chargeFee(nodeOperatorId, amountToCharge);
             emit KeyRemovalChargeApplied(nodeOperatorId);
         }
 
@@ -342,13 +336,11 @@ contract CSModule is ICSModule, BaseModule {
         no.totalAddedKeys = uint32(newTotalSigningKeys);
         emit TotalSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
 
+        // Reset vetted keys pointer since we can not know if the removed keys were previously unvetted due to being invalid, or not.
+        // If invalid keys are still present after deletion and vetted keys pointer reset, they will be unvetted again.
         // forge-lint: disable-next-line(unsafe-typecast)
         no.totalVettedKeys = uint32(newTotalSigningKeys);
         emit VettedSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
-
-        if (!chargeCovered) {
-            _onUncompensatedPenalty(nodeOperatorId);
-        }
 
         // Nonce is updated below due to keys state change
         _updateDepositableValidatorsCount({
@@ -385,22 +377,22 @@ contract CSModule is ICSModule, BaseModule {
     function getTopUpQueueItem(
         uint256 index
     ) external view returns (uint256 nodeOperatorId, uint256 keyIndex) {
-        TopUpQueueLib.Queue storage q = _topUpQueue();
-        TopUpQueueItem item = q.at(index);
+        TopUpQueueItem item = _topUpQueue().at(index);
         nodeOperatorId = item.noId();
         keyIndex = item.keyIndex();
     }
 
     /// @inheritdoc IStakingModuleV2
+    /// @dev The function does nothing in CSM, since the information about the operator balances is not used in the
+    ///      module. If it becomes needed in the future, the method should be implemented and the oracle should deliver
+    ///      the actual balances.
     function updateOperatorBalances(
         uint256[] calldata,
         uint256[] calldata,
         uint256[] calldata,
         uint256
     ) external {
-        // NOTE: The function does nothing in CSM, since the information about the operator balances is not used in the
-        // module. If it becomes needed in the future, the method should be implemented and the oracle should deliver
-        // the actual balances.
+        // NOTE: The function does nothing in CSM, see the docstring.
     }
 
     /// @inheritdoc IStakingModule
@@ -448,20 +440,20 @@ contract CSModule is ICSModule, BaseModule {
         uint256 maxItems
     ) external returns (uint256 removed, uint256 lastRemovedAtDepth) {
         return
-            DepositQueueOps.cleanDepositQueue(
-                _depositQueueByPriority,
-                _nodeOperators,
-                _queueLowestPriority(),
-                maxItems
-            );
+            DepositQueueOps.cleanDepositQueue({
+                depositQueues: _depositQueueByPriority,
+                nodeOperators: _nodeOperators,
+                queueLowestPriority: _queueLowestPriority(),
+                maxItems: maxItems
+            });
     }
 
     /// @inheritdoc ICSModule
     function getKeysForTopUp(
-        uint256 keyCount
+        uint256 maxKeyCount
     ) external view returns (bytes[] memory pubkeys) {
         _onlyEnabledTopUpQueue();
-        keyCount = Math.min(keyCount, _topUpQueue().length());
+        uint256 keyCount = Math.min(maxKeyCount, _topUpQueue().length());
         pubkeys = new bytes[](keyCount);
 
         for (uint256 i; i < keyCount; i++) {

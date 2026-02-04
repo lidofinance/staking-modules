@@ -26,7 +26,7 @@ library WithdrawnValidatorLib {
         WithdrawnValidatorInfo calldata validatorInfo,
         bool isSlashed,
         uint256 keyAddedBalance
-    ) external returns (bool penaltiesCovered) {
+    ) external returns (bool penaltyCovered) {
         if (validatorInfo.slashingPenalty > 0 && !validatorInfo.isSlashed) {
             revert IBaseModule.InvalidWithdrawnValidatorInfo();
         }
@@ -55,7 +55,7 @@ library WithdrawnValidatorLib {
             .EXIT_PENALTIES()
             .getExitPenaltyInfo(validatorInfo.nodeOperatorId, pubkey);
 
-        penaltiesCovered = _fulfillExitObligations(
+        penaltyCovered = _fulfillExitObligations(
             validatorInfo,
             penaltyInfo,
             keyAddedBalance
@@ -76,7 +76,7 @@ library WithdrawnValidatorLib {
         WithdrawnValidatorInfo calldata validatorInfo,
         ExitPenaltyInfo memory penaltyInfo,
         uint256 keyAddedBalance
-    ) internal returns (bool penaltiesCovered) {
+    ) internal returns (bool penaltyCovered) {
         bool chargeElWithdrawalRequestFee = false;
 
         uint256 penaltyMultiplier = _getPenaltyMultiplier(validatorInfo);
@@ -121,18 +121,15 @@ library WithdrawnValidatorLib {
 
         IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
 
-        penaltiesCovered = true;
-
         if (feeSum > 0) {
-            penaltiesCovered = accounting.chargeFee(
-                validatorInfo.nodeOperatorId,
-                feeSum
-            );
+            accounting.chargeFee(validatorInfo.nodeOperatorId, feeSum);
         }
+
+        penaltyCovered = true;
 
         if (penaltySum > 0) {
             // We still call `penalize` even if there's no bond left, for the lock to be created.
-            penaltiesCovered = accounting.penalize(
+            penaltyCovered = accounting.penalize(
                 validatorInfo.nodeOperatorId,
                 penaltySum
             );

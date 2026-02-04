@@ -89,8 +89,8 @@ contract BondCoreTestable is BondCore {
         uint256 nodeOperatorId,
         uint256 amount,
         address recipient
-    ) external returns (bool) {
-        return _charge(nodeOperatorId, amount, recipient);
+    ) external {
+        _charge(nodeOperatorId, amount, recipient);
     }
 
     function increaseBond(uint256 nodeOperatorId, uint256 shares) external {
@@ -809,11 +809,7 @@ contract BondCoreChargeTest is BondCoreTestBase {
                 shares
             )
         );
-        bool fullyCharged = bondCore.charge(
-            0,
-            1 ether,
-            testChargePenaltyRecipient
-        );
+        bondCore.charge(0, 1 ether, testChargePenaltyRecipient);
         uint256 bondSharesAfter = bondCore.getBondShares(0);
 
         assertEq(
@@ -822,7 +818,6 @@ contract BondCoreChargeTest is BondCoreTestBase {
             "bond shares should be decreased by charging"
         );
         assertEq(bondCore.totalBondShares(), bondSharesAfter);
-        assertTrue(fullyCharged, "should be fully charged");
     }
 
     function test_charge_MoreThanDeposit() public {
@@ -845,11 +840,7 @@ contract BondCoreChargeTest is BondCoreTestBase {
                 stETH.getSharesByPooledEth(32 ether)
             )
         );
-        bool fullyCharged = bondCore.charge(
-            0,
-            33 ether,
-            testChargePenaltyRecipient
-        );
+        bondCore.charge(0, 33 ether, testChargePenaltyRecipient);
 
         assertEq(
             bondCore.getBondShares(0),
@@ -857,7 +848,6 @@ contract BondCoreChargeTest is BondCoreTestBase {
             "bond shares should be 0 after charging"
         );
         assertEq(bondCore.totalBondShares(), 0);
-        assertFalse(fullyCharged, "should not be fully charged");
     }
 
     function test_charge_EqualToDeposit() public {
@@ -877,11 +867,7 @@ contract BondCoreChargeTest is BondCoreTestBase {
             )
         );
 
-        bool fullyCharged = bondCore.charge(
-            0,
-            32 ether,
-            testChargePenaltyRecipient
-        );
+        bondCore.charge(0, 32 ether, testChargePenaltyRecipient);
 
         assertEq(
             bondCore.getBondShares(0),
@@ -889,7 +875,6 @@ contract BondCoreChargeTest is BondCoreTestBase {
             "bond shares should be 0 after charging"
         );
         assertEq(bondCore.totalBondShares(), 0);
-        assertTrue(fullyCharged, "should be fully charged");
     }
 
     function test_charge_ZeroAmount() public {
@@ -900,7 +885,7 @@ contract BondCoreChargeTest is BondCoreTestBase {
 
         // Should not emit any events for zero charge
         vm.recordLogs();
-        bool fullyCharged = bondCore.charge(0, 0, testChargePenaltyRecipient);
+        bondCore.charge(0, 0, testChargePenaltyRecipient);
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
         // Verify no events were emitted
@@ -917,7 +902,6 @@ contract BondCoreChargeTest is BondCoreTestBase {
             totalBondSharesBefore,
             "total bond shares should remain unchanged for zero charge"
         );
-        assertTrue(fullyCharged, "should be fully charged");
     }
 }
 

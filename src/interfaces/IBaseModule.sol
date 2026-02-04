@@ -408,7 +408,7 @@ interface IBaseModule is
     /// @notice Report Node Operator's key as slashed.
     /// @notice Called by `Verifier` contract. See `Verifier.processSlashedProof`.
     /// @param nodeOperatorId The ID of the Node Operator
-    /// @param keyIndex The index of the validator key that was slashed
+    /// @param keyIndex Index of the key in the Node Operator's keys storage
     function onValidatorSlashed(
         uint256 nodeOperatorId,
         uint256 keyIndex
@@ -425,6 +425,10 @@ interface IBaseModule is
         uint256 amount
     ) external;
 
+    /// @notice Get tracked added balance for a particular key
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @param keyIndex Index of the Key in the Node Operator's keys storage
+    /// @return Tracked added balance (wei)
     function getKeyAddedBalance(
         uint256 nodeOperatorId,
         uint256 keyIndex
@@ -454,7 +458,7 @@ interface IBaseModule is
 
     /// @notice Checks if a validator was reported as slashed
     /// @param nodeOperatorId The ID of the node operator
-    /// @param keyIndex The index of the validator key
+    /// @param keyIndex Index of the key in the Node Operator's keys storage
     /// @return bool True if a validator was reported as slashed
     function isValidatorSlashed(
         uint256 nodeOperatorId,
@@ -463,7 +467,7 @@ interface IBaseModule is
 
     /// @notice Check if the given Node Operator's key is reported as withdrawn
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param keyIndex index of the key to check
+    /// @param keyIndex Index of the key in the Node Operator's keys storage
     /// @return Is validator reported as withdrawn or not
     function isValidatorWithdrawn(
         uint256 nodeOperatorId,
