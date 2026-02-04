@@ -365,7 +365,7 @@ contract Accounting is
     function settleLockedBondETH(uint256 nodeOperatorId) external onlyModule {
         uint256 lockedAmount = BondLock.getActualLockedBond(nodeOperatorId);
         if (lockedAmount > 0) {
-            BondCore._burn(nodeOperatorId, lockedAmount, true);
+            BondCore._burn(nodeOperatorId, lockedAmount);
             // reduce all locked bond even if bond isn't covered lock fully since debt will be created in this case
             BondLock._unlock(nodeOperatorId, lockedAmount);
         }
@@ -376,7 +376,7 @@ contract Accounting is
         uint256 nodeOperatorId,
         uint256 amount
     ) external onlyModule returns (bool fullyBurned) {
-        uint256 notBurnedAmount = BondCore._burn(nodeOperatorId, amount, true);
+        uint256 notBurnedAmount = BondCore._burn(nodeOperatorId, amount);
         fullyBurned = notBurnedAmount == 0;
     }
 
@@ -390,10 +390,6 @@ contract Accounting is
             amount,
             chargePenaltyRecipient
         );
-    }
-
-    function coverBondDebt(uint256 nodeOperatorId) external {
-        _coverBondDebt(nodeOperatorId);
     }
 
     /// @inheritdoc IAccounting
@@ -685,7 +681,7 @@ contract Accounting is
         );
         uint256 currentBond = BondCore.getBond(nodeOperatorId);
         uint256 bondDebt = BondCore.getBondDebt(nodeOperatorId);
-        if (currentBond <= bondDebt) {
+        if (bondDebt > currentBond) {
             return nonWithdrawnKeys;
         }
         unchecked {

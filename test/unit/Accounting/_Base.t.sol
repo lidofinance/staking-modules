@@ -276,9 +276,18 @@ abstract contract BondStateBaseTest is BondAmountModifiersTest, BaseTest {
         accounting.lockBondETH(0, amount);
     }
 
+    // @dev Should be called after _deposit
+    function _debt(uint256 amount) internal virtual {
+        uint256 bondBefore = accounting.getBond(0);
+        vm.prank(address(stakingModule));
+        accounting.penalize(0, bondBefore + amount);
+    }
+
     function test_WithOneWithdrawnValidator() public virtual;
 
     function test_WithBond() public virtual;
+
+    function test_WithBondDebt() public virtual;
 
     function test_WithBondAndOneWithdrawnValidator() public virtual;
 

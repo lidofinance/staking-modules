@@ -213,6 +213,20 @@ contract ClaimableBondTest is RewardsBaseTest {
         );
     }
 
+    function test_WithBondDebt() public override {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 32 ether });
+        _debt({ amount: 1 ether });
+
+        uint256 claimableBondShares = accounting.getClaimableBondShares(0);
+
+        assertEq(
+            claimableBondShares,
+            0,
+            "claimable bond shares should be zero"
+        );
+    }
+
     function test_WithBondAndOneWithdrawnValidator() public override {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 32 ether });
@@ -560,6 +574,17 @@ contract GetRequiredETHBondTest is GetRequiredBondBaseTest {
         );
     }
 
+    function test_WithBondDebt() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 32 ether });
+        _debt({ amount: 1 ether });
+        (uint256 current, uint256 required) = accounting.getBondSummary(0);
+        assertEq(
+            accounting.getRequiredBondForNextKeys(0, 0),
+            required - current
+        );
+    }
+
     function test_WithBondAndOneWithdrawnValidator()
         public
         override
@@ -712,6 +737,17 @@ contract GetRequiredWstETHBondTest is GetRequiredBondBaseTest {
     function test_WithBond() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
         _deposit({ bond: 32 ether });
+        (uint256 current, uint256 required) = accounting.getBondSummary(0);
+        assertEq(
+            accounting.getRequiredBondForNextKeysWstETH(0, 0),
+            wstETH.getWstETHByStETH(required - current)
+        );
+    }
+
+    function test_WithBondDebt() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 32 ether });
+        _debt({ amount: 1 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
         assertEq(
             accounting.getRequiredBondForNextKeysWstETH(0, 0),
@@ -906,6 +942,15 @@ contract GetBondSummaryTest is BondStateBaseTest {
         assertEq(required, 32 ether);
     }
 
+    function test_WithBondDebt() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 32 ether });
+        _debt({ amount: 1 ether });
+        (uint256 current, uint256 required) = accounting.getBondSummary(0);
+        assertEq(current, 0);
+        assertApproxEqAbs(required, 33 ether, 1 wei);
+    }
+
     function test_WithBondAndOneWithdrawnValidator()
         public
         override
@@ -1027,6 +1072,21 @@ contract GetBondSummarySharesTest is BondStateBaseTest {
         );
         assertEq(current, stETH.getSharesByPooledEth(32 ether));
         assertEq(required, stETH.getSharesByPooledEth(32 ether));
+    }
+
+    function test_WithBondDebt() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 32 ether });
+        _debt({ amount: 1 ether });
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(
+            0
+        );
+        assertEq(current, 0);
+        assertApproxEqAbs(
+            required,
+            stETH.getSharesByPooledEth(32 ether + 1 ether),
+            1 wei
+        );
     }
 
     function test_WithBondAndOneWithdrawnValidator()
@@ -1203,6 +1263,22 @@ contract ClaimableRewardsAndBondSharesTest is RewardsBaseTest {
             claimableBondShares,
             stETH.getSharesByPooledEth(0.1 ether),
             "claimable bond shares should be equal to rewards"
+        );
+    }
+
+    function test_WithBondDebt() public override {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 32 ether });
+        _rewards({ fee: 0.1 ether });
+        _debt({ amount: 1 ether });
+
+        uint256 claimableBondShares = accounting
+            .getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
+
+        assertEq(
+            claimableBondShares,
+            0,
+            "claimable bond shares should be zero"
         );
     }
 
