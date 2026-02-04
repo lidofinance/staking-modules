@@ -286,7 +286,7 @@ library NodeOperatorOps {
             revert IBaseModule.InvalidWithdrawnValidatorInfo();
         }
 
-        _increaseKeyAddedBalanceUnchecked(
+        _increaseKeyAddedBalance(
             keyAddedBalances,
             nodeOperatorId,
             keyIndex,
@@ -302,8 +302,10 @@ library NodeOperatorOps {
     ) external {
         for (uint256 i; i < allocations.length; ++i) {
             uint256 allocationWei = allocations[i];
-            if (allocationWei == 0) continue;
-            _increaseKeyAddedBalanceUnchecked(
+            if (allocationWei == 0) {
+                continue;
+            }
+            _increaseKeyAddedBalance(
                 keyAddedBalances,
                 operatorIds[i],
                 keyIndices[i],
@@ -332,7 +334,7 @@ library NodeOperatorOps {
         }
     }
 
-    function _increaseKeyAddedBalanceUnchecked(
+    function _increaseKeyAddedBalance(
         mapping(uint256 => uint256) storage keyAddedBalances,
         uint256 nodeOperatorId,
         uint256 keyIndex,
@@ -341,9 +343,10 @@ library NodeOperatorOps {
         uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
         uint256 current = keyAddedBalances[pointer];
         uint256 cap = _keyAddedBalanceCap();
-        if (current == cap) return;
-        uint256 newBalance = current + incrementWei;
-        uint256 updatedBalance = newBalance > cap ? cap : newBalance;
+        if (current == cap) {
+            return;
+        }
+        uint256 updatedBalance = Math.min(cap, current + incrementWei);
         keyAddedBalances[pointer] = updatedBalance;
         emit IBaseModule.KeyAddedBalanceChanged(
             nodeOperatorId,
