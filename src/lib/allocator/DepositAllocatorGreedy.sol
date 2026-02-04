@@ -56,11 +56,16 @@ library DepositAllocatorGreedy {
                 uint256 possible = imbalances[opIdx];
                 uint256 cap = state.capacities[opIdx];
                 if (possible > cap) {
-                    possible = cap;
+                    possible = _quantize(cap, step);
                 }
                 if (possible == 0) continue;
 
-                uint256 toGive = possible < remaining ? possible : remaining;
+                uint256 toGive = possible < remaining
+                    ? possible
+                    : _quantize(remaining, step);
+                // NOTE: toGive can be 0 if remaining is less than step and possible is greater than remaining.
+                //     In this case, there is no point in iterating further.
+                if (toGive == 0) break;
                 fills[opIdx] = toGive;
                 remaining -= toGive;
             }
