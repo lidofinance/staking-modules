@@ -188,6 +188,42 @@ contract EjectorTestVoluntaryEject is EjectorTestBase {
         ejector.voluntaryEject(NO_ID, keyIndex, 1, refundRecipient);
     }
 
+    function test_voluntaryEject_DefaultRefundRecipient() public {
+        uint256 keyIndex = 0;
+        bytes memory pubkey = csm.getSigningKeys(0, 0, 1);
+
+        csm.mock_setNodeOperatorsCount(1);
+        csm.mock_setNodeOperatorTotalDepositedKeys(1);
+        csm.mock_setNodeOperatorManagementProperties(
+            NodeOperatorManagementProperties(
+                address(this),
+                address(this),
+                false
+            )
+        );
+
+        ValidatorData[] memory expectedExitsData = new ValidatorData[](1);
+        expectedExitsData[0] = ValidatorData(0, NO_ID, pubkey);
+        uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
+
+        vm.expectCall(
+            address(twg),
+            abi.encodeWithSelector(
+                ITriggerableWithdrawalsGateway.triggerFullWithdrawals.selector,
+                expectedExitsData,
+                address(this),
+                exitType
+            )
+        );
+        vm.expectEmit(address(ejector));
+        emit IEjector.VoluntaryEjectionRequested({
+            nodeOperatorId: NO_ID,
+            pubkey: pubkey,
+            refundRecipient: address(this)
+        });
+        ejector.voluntaryEject(NO_ID, keyIndex, 1, address(0));
+    }
+
     function test_voluntaryEject_multipleSequentialKeys() public {
         uint256 keyIndex = 0;
         uint256 keysCount = 5;
@@ -520,6 +556,44 @@ contract EjectorTestVoluntaryEjectByArray is EjectorTestBase {
         ejector.voluntaryEjectByArray(NO_ID, indices, refundRecipient);
     }
 
+    function test_voluntaryEjectByArray_DefaultRefundRecipient() public {
+        uint256 keyIndex = 0;
+        bytes memory pubkey = csm.getSigningKeys(0, 0, 1);
+
+        csm.mock_setNodeOperatorsCount(1);
+        csm.mock_setNodeOperatorTotalDepositedKeys(1);
+        csm.mock_setNodeOperatorManagementProperties(
+            NodeOperatorManagementProperties(
+                address(this),
+                address(this),
+                false
+            )
+        );
+
+        ValidatorData[] memory expectedExitsData = new ValidatorData[](1);
+        expectedExitsData[0] = ValidatorData(0, NO_ID, pubkey);
+        uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
+
+        uint256[] memory indices = new uint256[](1);
+        indices[0] = keyIndex;
+        vm.expectCall(
+            address(twg),
+            abi.encodeWithSelector(
+                ITriggerableWithdrawalsGateway.triggerFullWithdrawals.selector,
+                expectedExitsData,
+                address(this),
+                exitType
+            )
+        );
+        vm.expectEmit(address(ejector));
+        emit IEjector.VoluntaryEjectionRequested({
+            nodeOperatorId: NO_ID,
+            pubkey: pubkey,
+            refundRecipient: address(this)
+        });
+        ejector.voluntaryEjectByArray(NO_ID, indices, address(0));
+    }
+
     function test_voluntaryEjectByArray_MultipleKeys() public {
         uint256 keysCount = 5;
         bytes memory pubkeys = csm.getSigningKeys(0, 0, keysCount);
@@ -670,6 +744,35 @@ contract EjectorTestVoluntaryEjectByArray is EjectorTestBase {
         uint256 expectedRefund = (1 ether * twg.MOCK_REFUND_PERCENTAGE_BP()) /
             10000;
         assertEq(nodeOperator.balance, expectedRefund);
+    }
+
+    function test_voluntaryEjectByArray_revertWhen_MultipleKeysWithDuplicates()
+        public
+    {
+        uint256 keysCount = 5;
+        bytes memory pubkeys = csm.getSigningKeys(0, 0, keysCount);
+
+        csm.mock_setNodeOperatorsCount(1);
+        csm.mock_setNodeOperatorTotalDepositedKeys(keysCount);
+        csm.mock_setNodeOperatorManagementProperties(
+            NodeOperatorManagementProperties(
+                address(this),
+                address(this),
+                false
+            )
+        );
+
+        uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
+
+        uint256[] memory indices = new uint256[](keysCount + 2);
+        for (uint256 i = 0; i < keysCount; i++) {
+            indices[i] = i;
+        }
+        indices[keysCount] = keysCount - 1; // duplicate
+        indices[keysCount + 1] = keysCount - 2; // duplicate
+
+        vm.expectRevert(IEjector.DuplicateKeyIndex.selector);
+        ejector.voluntaryEjectByArray(NO_ID, indices, refundRecipient);
     }
 
     function test_voluntaryEjectByArray_revertWhen_senderIsNotEligible()
@@ -857,6 +960,21 @@ contract EjectorTestEjectBadPerformer is EjectorTestBase {
         });
         vm.prank(address(strikes));
         ejector.ejectBadPerformer(NO_ID, keyIndex, refundRecipient);
+    }
+
+    function test_ejectBadPerformer_revertWhen_ZeroRefundRecipient() public {
+        uint256 keyIndex = 0;
+        bytes memory pubkey = csm.getSigningKeys(0, keyIndex, 1);
+
+        csm.mock_setNodeOperatorTotalDepositedKeys(1);
+
+        ValidatorData[] memory expectedExitsData = new ValidatorData[](1);
+        expectedExitsData[0] = ValidatorData(0, NO_ID, pubkey);
+        uint256 exitType = ejector.STRIKES_EXIT_TYPE_ID();
+
+        vm.expectRevert(IEjector.ZeroRefundRecipient.selector);
+        vm.prank(address(strikes));
+        ejector.ejectBadPerformer(NO_ID, keyIndex, address(0));
     }
 
     function test_ejectBadPerformer_revertWhen_SigningKeysInvalidOffset()
