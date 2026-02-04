@@ -147,7 +147,7 @@ contract ChargeFeeTest is BaseTest {
         uint256 bondSharesBefore = accounting.getBondShares(0);
 
         vm.prank(address(stakingModule));
-        bool fullyCharged = accounting.chargeFee(0, amountToCharge);
+        accounting.chargeFee(0, amountToCharge);
         uint256 bondSharesAfter = accounting.getBondShares(0);
 
         assertEq(
@@ -156,7 +156,6 @@ contract ChargeFeeTest is BaseTest {
             "bond shares should be decreased by penalty"
         );
         assertEq(accounting.totalBondShares(), bondSharesAfter);
-        assertTrue(fullyCharged, "should be fully charged");
     }
 
     function test_chargeFee_onInsufficientBond() public assertInvariants {
@@ -164,7 +163,7 @@ contract ChargeFeeTest is BaseTest {
         uint256 amountToCharge = bond + 1 ether; // charge more than bond
 
         vm.prank(address(stakingModule));
-        bool fullyCharged = accounting.chargeFee(0, amountToCharge);
+        accounting.chargeFee(0, amountToCharge);
         uint256 bondSharesAfter = accounting.getBondShares(0);
 
         assertEq(
@@ -177,7 +176,6 @@ contract ChargeFeeTest is BaseTest {
             0,
             "total bond shares should be zero"
         );
-        assertFalse(fullyCharged, "should no be fully charged");
     }
 
     function test_chargeFee_RevertWhen_SenderIsNotModule() public {

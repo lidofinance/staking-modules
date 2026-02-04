@@ -19,7 +19,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     /// @custom:storage-location erc7201:CuratedModule
     struct CuratedModuleStorage {
         // Tracks per-operator balances (in wei) reported by the Accounting oracle.
-        mapping(uint256 => uint256) operatorBalances;
+        mapping(uint256 nodeOperatorId => uint256 balance) operatorBalances;
     }
 
     bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE =
@@ -57,11 +57,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     function obtainDepositData(
         uint256 depositsCount,
         bytes calldata /* depositCalldata */
-    )
-        external
-        override(IStakingModule)
-        returns (bytes memory publicKeys, bytes memory signatures)
-    {
+    ) external returns (bytes memory publicKeys, bytes memory signatures) {
         _checkStakingRouterRole();
         (
             uint256 allocated,
@@ -125,6 +121,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
         _incrementModuleNonce();
     }
 
+    // Start next review from here
+
     /// @inheritdoc IStakingModuleV2
     function allocateDeposits(
         uint256 maxDepositAmount,
@@ -172,6 +170,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256 /* refSlot */
     ) external {
         _checkStakingRouterRole();
+        // TODO: Move operator balances ops into internal lib
         uint256 operatorsCount = operatorIds.length;
         if (
             validatorsBalancesGwei.length != operatorsCount ||

@@ -37,7 +37,7 @@ abstract contract ModuleLinearStorage {
     mapping(uint256 noKeyIndexPacked => uint256) internal _keyAddedBalances;
 
     uint256 internal _nonce;
-    mapping(uint256 => NodeOperator) internal _nodeOperators;
+    mapping(uint256 nodeOperatorId => NodeOperator) internal _nodeOperators;
     /// @dev see _keyPointer function for details of noKeyIndexPacked structure
     mapping(uint256 noKeyIndexPacked => bool) internal _isValidatorWithdrawn;
     mapping(uint256 noKeyIndexPacked => bool) internal _isValidatorSlashed;
@@ -836,13 +836,13 @@ abstract contract BaseModule is
             }
 
             NodeOperator storage no = _nodeOperators[info.nodeOperatorId];
-            bool penaltiesCovered = WithdrawnValidatorLib.process(
+            bool penaltyCovered = WithdrawnValidatorLib.process(
                 no,
                 info,
                 _isValidatorSlashed[pointer],
                 _keyAddedBalances[pointer]
             );
-            if (!penaltiesCovered) {
+            if (!penaltyCovered) {
                 _onUncompensatedPenalty(info.nodeOperatorId);
             }
 
@@ -878,7 +878,8 @@ abstract contract BaseModule is
     }
 
     /// @dev Prevents reactivation of a Node Operator after an uncovered penalty by
-    ///      forcing its target limit to zero.
+    ///      forcing its target limit to zero. Uncovered charges are not considered penalties, hence this method
+    ///      is not called in such cases.
     function _onUncompensatedPenalty(uint256 nodeOperatorId) internal {
         _setTargetLimit(nodeOperatorId, FORCED_TARGET_LIMIT_MODE_ID, 0);
     }

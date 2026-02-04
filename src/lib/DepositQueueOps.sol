@@ -39,14 +39,7 @@ library DepositQueueOps {
         uint256 priority = 0;
 
         while (true) {
-            if (priority > queueLowestPriority) {
-                break;
-            }
-
             queue = depositQueues[priority];
-            unchecked {
-                ++priority;
-            }
 
             (
                 uint256 removedPerQueue,
@@ -73,9 +66,7 @@ library DepositQueueOps {
                 }
             }
 
-            // NOTE: If `maxItems` is set to the total length of the queue(s), `reachedOutOfQueue` is equal
-            // to `false`, effectively breaking the cycle, because in `QueueLib.clean` we don't reach
-            // an empty batch after the end of a queue.
+            // NOTE: If we stopped in the middle of a queue, we also stop processing further queues.
             if (!reachedOutOfQueue) {
                 break;
             }
@@ -83,6 +74,13 @@ library DepositQueueOps {
             unchecked {
                 totalVisited += visitedPerQueue;
                 maxItems -= visitedPerQueue;
+            }
+
+            unchecked {
+                ++priority;
+            }
+            if (priority > queueLowestPriority) {
+                break;
             }
         }
     }
@@ -179,6 +177,7 @@ library DepositQueueOps {
 
         (uint32 priority, uint32 maxDeposits) = parametersRegistry
             .getQueueConfig(accounting.getBondCurveId(nodeOperatorId));
+        // If Node Operator is eligible for priority queue, try to enqueue there first.
         if (priority < queueLowestPriority) {
             unchecked {
                 uint32 depositedAndQueued = no.totalDepositedKeys + enqueued;

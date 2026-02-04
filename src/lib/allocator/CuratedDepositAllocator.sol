@@ -37,7 +37,7 @@ library CuratedDepositAllocator {
     ///      - Only operators with capacity > 0 and non-zero allocation weight are included.
     ///      - Current amounts are derived from deposited minus withdrawn keys (active keys).
     ///      - Operators that hit their capacity here will have capacity == 0 next call and
-    ///        will be excluded; remaining operators’ effective weights increase.
+    ///        will be excluded; remaining operators’ shares increase.
     /// @dev Returns compact arrays containing only operators with non-zero allocations.
     /// @param nodeOperators Node operator storage mapping from the module.
     /// @param operatorsCount Total operators count in the module.
@@ -72,6 +72,7 @@ library CuratedDepositAllocator {
         }
 
         uint256[] memory eligibleAllocations;
+        // TODO: Pass data instead of separate fields
         (allocated, eligibleAllocations) = _computeAllocations({
             currentAmounts: data.currents,
             capacities: data.capacities,
@@ -183,6 +184,7 @@ library CuratedDepositAllocator {
         unchecked {
             // weightSum > 0 is guaranteed by the collectors for any non-empty input.
             for (uint256 i; i < n; ++i) {
+                // TODO: Likely unreachable due to collector filtering; can skip check and save gas
                 if (weights[i] == 0) {
                     continue;
                 }
@@ -257,19 +259,19 @@ library CuratedDepositAllocator {
                 );
                 if (weight == 0) continue;
 
+                uint256 current = no.totalDepositedKeys - no.totalWithdrawnKeys;
                 data.weights[eligibleCount] = weight;
-                data.currents[eligibleCount] =
-                    no.totalDepositedKeys -
-                    no.totalWithdrawnKeys;
+                data.currents[eligibleCount] = current;
                 data.capacities[eligibleCount] = capacity;
                 data.operatorIds[eligibleCount] = i;
                 data.weightSum += weight;
-                data.totalCurrent += data.currents[eligibleCount];
+                data.totalCurrent += current;
                 ++eligibleCount;
             }
         }
 
         data.count = eligibleCount;
+        // TODO: Just iterate till eligibleCount and skip trimming
         // Truncate arrays to the number of eligible operators collected.
         _truncateDepositable(data);
     }

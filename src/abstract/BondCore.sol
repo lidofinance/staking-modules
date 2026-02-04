@@ -228,19 +228,17 @@ abstract contract BondCore is IBondCore {
     /// @dev Transfer Node Operator's bond shares (stETH) to charge recipient
     /// @param amount Bond amount to charge in ETH (stETH)
     /// @param recipient Address to send charged shares
-    /// @return fullyCharged True if the amount to charge is equal to the amount charged
     function _charge(
         uint256 nodeOperatorId,
         uint256 amount,
         address recipient
-    ) internal returns (bool fullyCharged) {
+    ) internal {
         uint256 toChargeShares = _sharesByEth(amount);
         uint256 chargedShares = _reduceBond(nodeOperatorId, toChargeShares);
-        fullyCharged = chargedShares == toChargeShares; // fully charged if the amount to charge is equal to the amount reduced
 
         // If no bond already or the amount to charge is zero
         if (chargedShares == 0) {
-            return fullyCharged;
+            return;
         }
 
         uint256 chargedEth = LIDO.transferShares(recipient, chargedShares);
