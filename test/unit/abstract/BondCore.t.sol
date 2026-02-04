@@ -969,7 +969,7 @@ contract BondCoreDebtTest is BondCoreTestBase {
         bondCore.burn(0, debt);
         assertEq(bondCore.getBondDebt(0), debt);
 
-        // Should not emit any events when there is no debt
+        // Should not emit any events when there is no bond to cover debt
         vm.recordLogs();
         bondCore.increaseBond(0, 0);
         Vm.Log[] memory logs = vm.getRecordedLogs();

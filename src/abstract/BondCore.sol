@@ -69,6 +69,7 @@ abstract contract BondCore is IBondCore {
         return _ethByShares(getBondShares(nodeOperatorId));
     }
 
+    /// @inheritdoc IBondCore
     function getBondDebt(uint256 nodeOperatorId) public view returns (uint256) {
         return _getBondCoreStorage().bondDebt[nodeOperatorId];
     }
@@ -313,10 +314,9 @@ abstract contract BondCore is IBondCore {
         uint256 notBurnedDebt = _burnWithoutDebt(nodeOperatorId, debt);
         if (notBurnedDebt == debt) {
             return;
-        } else {
-            emit BondDebtCovered(nodeOperatorId, debt - notBurnedDebt);
-            $.bondDebt[nodeOperatorId] = notBurnedDebt;
         }
+        emit BondDebtCovered(nodeOperatorId, debt - notBurnedDebt);
+        $.bondDebt[nodeOperatorId] = notBurnedDebt;
     }
 
     function _increaseBondDebt(uint256 nodeOperatorId, uint256 amount) private {
