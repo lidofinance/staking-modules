@@ -1283,9 +1283,9 @@ contract CSMTopUpQueue is CSMCommon {
     }
 
     function test_setTopUpQueueLimit_RevertWhenLimitSame() public {
-        uint256 current = _getTopUpQueueLimit();
-        vm.expectRevert(ICSModule.TopUpQueueLimitIsSame.selector);
-        csm.setTopUpQueueLimit(current);
+        csm.setTopUpQueueLimit(1);
+        vm.expectRevert(ICSModule.SameTopUpQueueLimit.selector);
+        csm.setTopUpQueueLimit(1);
     }
 
     function test_setTopUpQueueLimit_RevertWhenLimitExceedsUint8() public {

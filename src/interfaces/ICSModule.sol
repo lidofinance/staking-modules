@@ -30,7 +30,7 @@ interface ICSModule is
     error NoQueuedKeysToMigrate();
     error TopUpQueueDisabled();
     error ZeroTopUpQueueLimit();
-    error TopUpQueueLimitIsSame();
+    error SameTopUpQueueLimit();
     error InvalidSigningKey();
     error InvalidTopUpOrder();
     error UnexpectedExtraKey();

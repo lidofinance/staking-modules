@@ -290,7 +290,7 @@ contract CSModule is ICSModule, BaseModule {
         }
         uint8 currentLimit = _topUpQueue().limit;
         if (limit == currentLimit) {
-            revert TopUpQueueLimitIsSame();
+            revert SameTopUpQueueLimit();
         }
         _topUpQueue().limit = limit.toUint8();
         emit TopUpQueueLimitSet(limit);
