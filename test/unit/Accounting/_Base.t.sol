@@ -52,6 +52,7 @@ contract AccountingFixtures is Test, Fixtures, Utilities, InvariantAsserts {
         vm.pauseGasMetering();
         emit AssertInvariants();
         assertAccountingTotalBondShares(nodeOperatorsCount, stETH, accounting);
+        assertAccountingBondDebts(nodeOperatorsCount, accounting);
         assertAccountingBurnerApproval(
             stETH,
             address(accounting),
