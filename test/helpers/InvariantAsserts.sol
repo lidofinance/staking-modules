@@ -241,6 +241,26 @@ contract InvariantAsserts is Test {
         );
     }
 
+    function assertAccountingBondDebts(
+        uint256 nodeOperatorsCount,
+        Accounting accounting
+    ) public {
+        if (skipInvariants()) {
+            return;
+        }
+        if (skipLongForkTest()) {
+            return;
+        }
+
+        for (uint256 noId = 0; noId < nodeOperatorsCount; noId++) {
+            uint256 debt = accounting.getBondDebt(noId);
+            uint256 bond = accounting.getBond(noId);
+            if (debt > 0) {
+                assertEq(bond, 0, "assert debt > 0 => bond == 0");
+            }
+        }
+    }
+
     function assertAccountingBurnerApproval(
         IStETH steth,
         address accounting,

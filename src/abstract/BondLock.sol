@@ -39,8 +39,6 @@ abstract contract BondLock is IBondLock, Initializable {
         mapping(uint256 nodeOperatorId => BondLockData) bondLock;
     }
 
-    uint128 public constant INFINITE_BOND_LOCK_UNTIL = type(uint128).max;
-
     // keccak256(abi.encode(uint256(keccak256("CSBondLock")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant BOND_LOCK_STORAGE_LOCATION =
         0x78c5a36767279da056404c09083fca30cf3ea61c442cfaba6669f76a37393f00;
