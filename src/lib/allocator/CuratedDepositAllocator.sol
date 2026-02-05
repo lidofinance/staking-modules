@@ -162,6 +162,11 @@ library CuratedDepositAllocator {
         );
     }
 
+    /// @dev Quantizes a value down to the nearest multiple of TOP_UP_STEP.
+    function quantizeForTopUp(uint256 value) internal pure returns (uint256) {
+        return DepositAllocatorGreedy._quantize(value, TOP_UP_STEP);
+    }
+
     /// @dev Builds AllocationState and runs the configured allocator in-memory.
     ///      Expects arrays already filtered/truncated to eligible operators.
     function _computeAllocations(

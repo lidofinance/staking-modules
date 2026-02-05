@@ -397,10 +397,11 @@ contract CuratedModule is ICuratedModule, BaseModule {
                 uint256 remaining = perOperatorAllocations[operatorId];
                 if (remaining == 0) continue;
 
-                uint256 limit = topUpLimits[i];
+                uint256 limit = CuratedDepositAllocator.quantizeForTopUp(
+                    topUpLimits[i]
+                );
                 if (limit == 0) continue;
 
-                // TODO: If limit % allocation_step != 0, then we break the invariant that allocations should be multiplies of allocation_step
                 uint256 amount = remaining < limit ? remaining : limit;
                 allocations[i] = amount;
                 perOperatorAllocations[operatorId] = remaining - amount;

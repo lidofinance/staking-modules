@@ -995,6 +995,28 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[1], 3 ether);
     }
 
+    function test_topUpObtainDepositData_topUpLimitsRoundedToStep()
+        public
+        assertInvariants
+    {
+        uint256 noId = createNodeOperator(2);
+        module.obtainDepositData(2, "");
+
+        bytes memory key0 = module.getSigningKeys(noId, 0, 1);
+        bytes memory key1 = module.getSigningKeys(noId, 1, 1);
+
+        uint256[] memory allocations = cm.allocateDeposits(
+            10 ether,
+            BytesArr(key0, key1),
+            UintArr(0, 1),
+            UintArr(noId, noId),
+            UintArr(2.5 ether, 3.1 ether)
+        );
+
+        assertEq(allocations[0], 2 ether);
+        assertEq(allocations[1], 3 ether);
+    }
+
     function test_topUpObtainDepositData_matchesPredepositAllocation()
         public
         assertInvariants
