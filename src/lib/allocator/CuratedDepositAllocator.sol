@@ -98,14 +98,15 @@ library CuratedDepositAllocator {
     ///        (non-zero weight, non-zero top-up capacity),
     ///        so a subset cannot bias its share by omitting other eligible operators.
     ///      - Per-operator capacity is computed as:
-    ///        (active validators * 2048 ETH) - current operator balance, floored at zero.
+    ///        `(active_validators * 2048 ETH) - current_operator_balance`, floored at zero.
     ///      - Per-key top-up limits are *not* used as caps for allocation; they are
     ///        applied later per-key and may leave unallocated remainder.
-    ///      - Operators that receive zero remaining balance in the module on later
-    ///        iterations will be excluded by capacity == 0 at the module level.
-    /// @param nodeOperatorBalances Per-operator balance (in wei) from Accounting oracle.
+    ///      - Operators that have zero remaining balance after allocation are excluded
+    ///        on later iterations by capacity == 0 at the module level.
+    /// @param nodeOperators Node operator storage mapping from the module.
+    /// @param nodeOperatorBalances Per-operator balance (in wei) storage mapping from the module.
     /// @param operatorsCount Total operators count in the module.
-    /// @param depositAmount Total top-up amount in wei to allocate.
+    /// @param allocationAmount Total top-up amount in wei to allocate.
     /// @param operatorIds Key owner operator ids for this top-up request.
     /// @return allocated Total allocated amount in wei.
     /// @return allocatedOperatorIds Operator ids for allocated operators.
@@ -114,7 +115,7 @@ library CuratedDepositAllocator {
         mapping(uint256 => NodeOperator) storage nodeOperators,
         mapping(uint256 => uint256) storage nodeOperatorBalances,
         uint256 operatorsCount,
-        uint256 depositAmount,
+        uint256 allocationAmount,
         uint256[] calldata operatorIds
     )
         external
@@ -126,7 +127,7 @@ library CuratedDepositAllocator {
         )
     {
         uint256 operatorIdsCount = operatorIds.length;
-        if (depositAmount == 0 || operatorIdsCount == 0) {
+        if (allocationAmount == 0 || operatorIdsCount == 0) {
             return (0, new uint256[](0), new uint256[](0));
         }
 
@@ -149,7 +150,7 @@ library CuratedDepositAllocator {
             capacities: data.capacities,
             weights: data.weights,
             step: TOP_UP_STEP,
-            allocationAmount: depositAmount,
+            allocationAmount: allocationAmount,
             weightSum: data.weightSum,
             totalAmount: data.totalCurrent
         });
@@ -289,10 +290,6 @@ library CuratedDepositAllocator {
         data.capacities = new uint256[](operatorIds.length);
         data.operatorIds = new uint256[](operatorIds.length);
 
-        IParametersRegistry parametersRegistry = IBaseModule(address(this))
-            .PARAMETERS_REGISTRY();
-        IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
-
         uint256[] memory weightsByOperatorId;
         uint256[] memory capacitiesByOperatorId;
         (
@@ -303,9 +300,7 @@ library CuratedDepositAllocator {
         ) = _collectTopUpGlobalBaseline({
             nodeOperators: nodeOperators,
             nodeOperatorBalances: nodeOperatorBalances,
-            operatorsCount: operatorsCount,
-            parametersRegistry: parametersRegistry,
-            accounting: accounting
+            operatorsCount: operatorsCount
         });
 
         uint256 eligibleCount;
@@ -334,9 +329,7 @@ library CuratedDepositAllocator {
     function _collectTopUpGlobalBaseline(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         mapping(uint256 => uint256) storage nodeOperatorBalances,
-        uint256 operatorsCount,
-        IParametersRegistry parametersRegistry,
-        IAccounting accounting
+        uint256 operatorsCount
     )
         internal
         view
@@ -349,6 +342,10 @@ library CuratedDepositAllocator {
     {
         weightsByOperatorId = new uint256[](operatorsCount);
         capacitiesByOperatorId = new uint256[](operatorsCount);
+
+        IParametersRegistry parametersRegistry = IBaseModule(address(this))
+            .PARAMETERS_REGISTRY();
+        IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
 
         // Build global share baseline across all eligible operators (non-zero weight + capacity).
         for (uint256 i; i < operatorsCount; ++i) {
