@@ -313,8 +313,8 @@ abstract contract BondCore is IBondCore {
         if (notBurnedDebt == debt) {
             return;
         }
-        emit BondDebtCovered(nodeOperatorId, debt - notBurnedDebt);
         $.bondDebt[nodeOperatorId] = notBurnedDebt;
+        emit BondDebtCovered(nodeOperatorId, debt - notBurnedDebt);
     }
 
     function _increaseBondDebt(uint256 nodeOperatorId, uint256 amount) private {
@@ -322,9 +322,7 @@ abstract contract BondCore is IBondCore {
             return;
         }
         BondCoreStorage storage $ = _getBondCoreStorage();
-        unchecked {
-            $.bondDebt[nodeOperatorId] += amount;
-        }
+        $.bondDebt[nodeOperatorId] += amount;
         emit BondDebtIncreased(nodeOperatorId, amount);
     }
 
