@@ -28,14 +28,17 @@ import { ValidatorStrikes } from "src/ValidatorStrikes.sol";
 import { Verifier } from "src/Verifier.sol";
 import { CuratedModule } from "src/CuratedModule.sol";
 import { OperatorsData } from "src/OperatorsData.sol";
+import { CuratedGate } from "src/CuratedGate.sol";
 import { CuratedGateFactory } from "src/CuratedGateFactory.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
 import { CuratedDeployParams } from "script/curated/DeployBase.s.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 import { IACL } from "src/interfaces/IACL.sol";
 import { IKernel } from "src/interfaces/IKernel.sol";
-import { Utilities } from "./Utilities.sol";
 import { Batch } from "src/lib/DepositQueueLib.sol";
+
+import { Utilities } from "./Utilities.sol";
+import { MerkleTree } from "./MerkleTree.sol";
 
 import { LidoMock } from "./mocks/LidoMock.sol";
 import { WstETHMock } from "./mocks/WstETHMock.sol";
@@ -740,7 +743,7 @@ contract DeploymentHelpers is Test {
     }
 }
 
-contract DeploymentFixtures is StdCheats, DeploymentHelpers {
+abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     enum ModuleType {
         Unknown,
         Community,
@@ -947,51 +950,61 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
         }
         revert ModuleNotFound();
     }
+}
 
+contract DeploymentFixtures is DeploymentFixturesBase {}
+
+interface IForkIntegrationHelpers {
     function addNodeOperator(
         address from,
         uint256 keysCount
-    ) internal returns (uint256 nodeOperatorId) {
-        (bytes memory keys, bytes memory signatures) = new Utilities()
-            .keysSignatures(keysCount);
-        uint256 amount = accounting.getBondAmountByKeysCount(keysCount, 0);
-        vm.deal(from, amount);
+    ) external returns (uint256 nodeOperatorId);
 
-        vm.prank(from);
-        nodeOperatorId = permissionlessGate.addNodeOperatorETH{
-            value: amount
-        }({
-            keysCount: keysCount,
-            publicKeys: keys,
-            signatures: signatures,
-            managementProperties: NodeOperatorManagementProperties({
-                managerAddress: address(0),
-                rewardAddress: address(0),
-                extendedManagerPermissions: false
-            }),
-            referrer: address(0)
-        });
-    }
+    function addNodeOperatorWithManagement(
+        address from,
+        address manager,
+        address reward,
+        bool extendedPermissions,
+        uint256 keysCount
+    ) external returns (uint256 nodeOperatorId);
 
     function getDepositableNodeOperator(
         address nodeOperatorAddress
-    ) internal returns (uint256 noId, uint256 keysCount) {
-        module.cleanDepositQueue({ maxItems: 2 * module.getNonce() });
-        for (uint256 i = 0; i <= module.QUEUE_LOWEST_PRIORITY(); ++i) {
-            (uint128 head, ) = module.depositQueuePointers(i);
-            Batch batch = module.depositQueueItem(i, head);
-            if (!batch.isNil()) {
-                return (batch.noId(), batch.keys());
-            }
-        }
-        keysCount = 5;
-        noId = addNodeOperator(nodeOperatorAddress, keysCount);
+    ) external returns (uint256 noId, uint256 keysCount);
+
+    function getDepositedNodeOperator(
+        address nodeOperatorAddress,
+        uint256 keysCount
+    ) external returns (uint256 noId);
+
+    function getDepositedNodeOperatorWithSequentialActiveKeys(
+        address nodeOperatorAddress,
+        uint256 keysCount
+    ) external returns (uint256 noId, uint256 startIndex);
+}
+
+abstract contract ForkIntegrationHelpersBase is
+    Utilities,
+    IForkIntegrationHelpers
+{
+    CSModule internal module;
+    Accounting internal accounting;
+    IStakingRouter internal stakingRouter;
+
+    constructor(
+        CSModule module_,
+        Accounting accounting_,
+        IStakingRouter stakingRouter_
+    ) {
+        module = module_;
+        accounting = accounting_;
+        stakingRouter = stakingRouter_;
     }
 
     function getDepositedNodeOperator(
         address nodeOperatorAddress,
         uint256 keysCount
-    ) internal returns (uint256 noId) {
+    ) external virtual override returns (uint256 noId) {
         uint256 nosCount = module.getNodeOperatorsCount();
         for (; noId < nosCount; ++noId) {
             NodeOperator memory no = module.getNodeOperator(noId);
@@ -999,7 +1012,7 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
                 return noId;
             }
         }
-        noId = addNodeOperator(nodeOperatorAddress, keysCount);
+        noId = _addNodeOperator(nodeOperatorAddress, keysCount);
         (, , uint256 depositableValidatorsCount) = module
             .getStakingModuleSummary();
         vm.startPrank(address(stakingRouter));
@@ -1011,7 +1024,7 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
     function getDepositedNodeOperatorWithSequentialActiveKeys(
         address nodeOperatorAddress,
         uint256 keysCount
-    ) internal returns (uint256 noId, uint256 startIndex) {
+    ) external virtual override returns (uint256 noId, uint256 startIndex) {
         uint256 nosCount = module.getNodeOperatorsCount();
         for (; noId < nosCount; ++noId) {
             NodeOperator memory no = module.getNodeOperator(noId);
@@ -1030,7 +1043,7 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
                 }
             }
         }
-        noId = addNodeOperator(nodeOperatorAddress, keysCount);
+        noId = _addNodeOperator(nodeOperatorAddress, keysCount);
         (, , uint256 depositableValidatorsCount) = module
             .getStakingModuleSummary();
         vm.startPrank(address(stakingRouter));
@@ -1038,5 +1051,253 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
         module.obtainDepositData(depositableValidatorsCount, "");
         vm.stopPrank();
         return (noId, 0);
+    }
+
+    function _addNodeOperator(
+        address from,
+        uint256 keysCount
+    ) internal virtual returns (uint256 nodeOperatorId);
+}
+
+contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
+    PermissionlessGate internal permissionlessGate;
+
+    constructor(
+        CSModule module_,
+        Accounting accounting_,
+        IStakingRouter stakingRouter_,
+        PermissionlessGate permissionlessGate_
+    ) ForkIntegrationHelpersBase(module_, accounting_, stakingRouter_) {
+        permissionlessGate = permissionlessGate_;
+    }
+
+    function addNodeOperator(
+        address from,
+        uint256 keysCount
+    ) external override returns (uint256 nodeOperatorId) {
+        return
+            this.addNodeOperatorWithManagement(
+                from,
+                address(0),
+                address(0),
+                false,
+                keysCount
+            );
+    }
+
+    function addNodeOperatorWithManagement(
+        address from,
+        address manager,
+        address reward,
+        bool extendedPermissions,
+        uint256 keysCount
+    ) external override returns (uint256 nodeOperatorId) {
+        (bytes memory keys, bytes memory signatures) = keysSignatures(
+            keysCount
+        );
+        uint256 amount = accounting.getBondAmountByKeysCount(
+            keysCount,
+            permissionlessGate.CURVE_ID()
+        );
+        vm.deal(from, amount);
+
+        vm.prank(from);
+        nodeOperatorId = permissionlessGate.addNodeOperatorETH{
+            value: amount
+        }({
+            keysCount: keysCount,
+            publicKeys: keys,
+            signatures: signatures,
+            managementProperties: NodeOperatorManagementProperties({
+                managerAddress: manager,
+                rewardAddress: reward,
+                extendedManagerPermissions: extendedPermissions
+            }),
+            referrer: address(0)
+        });
+    }
+
+    function getDepositableNodeOperator(
+        address nodeOperatorAddress
+    ) external override returns (uint256 noId, uint256 keysCount) {
+        (, , uint256 depositableValidatorsCount) = module
+            .getStakingModuleSummary();
+        module.cleanDepositQueue({ maxItems: 2 * depositableValidatorsCount });
+        for (uint256 i = 0; i <= module.QUEUE_LOWEST_PRIORITY(); ++i) {
+            (uint128 head, ) = module.depositQueuePointers(i);
+            Batch batch = module.depositQueueItem(i, head);
+            if (!batch.isNil()) {
+                return (batch.noId(), batch.keys());
+            }
+        }
+        keysCount = 5;
+        noId = _addNodeOperator(nodeOperatorAddress, keysCount);
+    }
+
+    function _addNodeOperator(
+        address from,
+        uint256 keysCount
+    ) internal override returns (uint256 nodeOperatorId) {
+        return this.addNodeOperator(from, keysCount);
+    }
+}
+
+contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
+    ParametersRegistry internal parametersRegistry;
+    address[] internal curatedGates;
+
+    error ModuleNotFound();
+
+    constructor(
+        CSModule module_,
+        Accounting accounting_,
+        IStakingRouter stakingRouter_,
+        ParametersRegistry parametersRegistry_,
+        address[] memory curatedGates_
+    ) ForkIntegrationHelpersBase(module_, accounting_, stakingRouter_) {
+        parametersRegistry = parametersRegistry_;
+        curatedGates = curatedGates_;
+    }
+
+    function addNodeOperator(
+        address from,
+        uint256 keysCount
+    ) external override returns (uint256 nodeOperatorId) {
+        (bytes memory keys, bytes memory signatures) = keysSignatures(
+            keysCount
+        );
+        (CuratedGate gate, bytes32[] memory proof) = _prepareCuratedGate(from);
+        _ensureDepositAllocationWeight(gate.curveId());
+
+        vm.prank(from);
+        nodeOperatorId = gate.createNodeOperator(
+            "test",
+            "test",
+            address(0),
+            address(0),
+            proof
+        );
+
+        uint256 amount = accounting.getBondAmountByKeysCount(
+            keysCount,
+            gate.curveId()
+        );
+        vm.deal(from, amount);
+
+        vm.prank(from);
+        module.addValidatorKeysETH{ value: amount }(
+            from,
+            nodeOperatorId,
+            keysCount,
+            keys,
+            signatures
+        );
+    }
+
+    function addNodeOperatorWithManagement(
+        address from,
+        address manager,
+        address reward,
+        bool extendedPermissions,
+        uint256 keysCount
+    ) external override returns (uint256 nodeOperatorId) {
+        _ensureCreateNodeOperatorRole();
+        NodeOperatorManagementProperties
+            memory props = NodeOperatorManagementProperties({
+                managerAddress: manager,
+                rewardAddress: reward,
+                extendedManagerPermissions: extendedPermissions
+            });
+
+        nodeOperatorId = module.createNodeOperator(from, props, address(0));
+
+        address managerAddress = manager == address(0) ? from : manager;
+        (bytes memory keys, bytes memory signatures) = keysSignatures(
+            keysCount
+        );
+        uint256 amount = accounting.getBondAmountByKeysCount(
+            keysCount,
+            accounting.getBondCurveId(nodeOperatorId)
+        );
+        vm.deal(managerAddress, amount);
+
+        vm.prank(managerAddress);
+        module.addValidatorKeysETH{ value: amount }(
+            managerAddress,
+            nodeOperatorId,
+            keysCount,
+            keys,
+            signatures
+        );
+    }
+
+    function getDepositableNodeOperator(
+        address nodeOperatorAddress
+    ) external override returns (uint256 noId, uint256 keysCount) {
+        keysCount = 5;
+        noId = _addNodeOperator(nodeOperatorAddress, keysCount);
+    }
+
+    function _addNodeOperator(
+        address from,
+        uint256 keysCount
+    ) internal override returns (uint256 nodeOperatorId) {
+        return this.addNodeOperator(from, keysCount);
+    }
+
+    function _prepareCuratedGate(
+        address member
+    ) internal returns (CuratedGate gate, bytes32[] memory proof) {
+        if (curatedGates.length == 0) {
+            revert ModuleNotFound();
+        }
+
+        gate = CuratedGate(curatedGates[0]);
+        address admin = gate.getRoleMember(gate.DEFAULT_ADMIN_ROLE(), 0);
+        vm.startPrank(admin);
+        gate.grantRole(gate.SET_TREE_ROLE(), address(this));
+        gate.grantRole(gate.RESUME_ROLE(), address(this));
+        vm.stopPrank();
+
+        if (gate.isPaused()) {
+            gate.resume();
+        }
+
+        address extra = nextAddress("curated-proof");
+        MerkleTree tree = new MerkleTree();
+        tree.pushLeaf(abi.encode(member));
+        // Add a second leaf to allow unique roots even if member repeats.
+        tree.pushLeaf(abi.encode(extra));
+        string memory cid = string.concat(
+            "cid-",
+            vm.toString(uint256(uint160(extra)))
+        );
+        gate.setTreeParams(tree.root(), cid);
+
+        proof = tree.getProof(0);
+    }
+
+    function _ensureDepositAllocationWeight(uint256 curveId) internal {
+        if (parametersRegistry.getDepositAllocationWeight(curveId) != 0) {
+            return;
+        }
+
+        address admin = parametersRegistry.getRoleMember(
+            parametersRegistry.DEFAULT_ADMIN_ROLE(),
+            0
+        );
+        vm.prank(admin);
+        parametersRegistry.setDepositAllocationWeight(curveId, 1);
+    }
+
+    function _ensureCreateNodeOperatorRole() internal {
+        bytes32 role = module.CREATE_NODE_OPERATOR_ROLE();
+        if (module.hasRole(role, address(this))) {
+            return;
+        }
+
+        address admin = module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0);
+        vm.prank(admin);
+        module.grantRole(role, address(this));
     }
 }

@@ -7,9 +7,10 @@ import { Test } from "forge-std/Test.sol";
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import { CuratedDeployParams, CuratedGateConfig } from "script/curated/DeployBase.s.sol";
+import { CuratedDeployParams, CuratedGateConfig, GateCurveParams } from "script/curated/DeployBase.s.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
+import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
 import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
@@ -125,6 +126,175 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
             assertEq(gate.treeCid(), deployParams.curatedGates[i].treeCid);
             // TODO bad assert. needs to be fixed when decided on curves
             assertEq(gate.curveId(), i + 1);
+        }
+    }
+
+    function test_curveParameters() public view {
+        uint256 gatesCount = curatedGates.length;
+        assertGt(gatesCount, 0, "no curated gates deployed");
+        assertEq(
+            parametersRegistry.defaultDepositAllocationWeight(),
+            deployParams.defaultDepositAllocationWeight
+        );
+        for (uint256 i = 0; i < gatesCount; ++i) {
+            CuratedGate gate = CuratedGate(curatedGates[i]);
+            uint256 curveId = gate.curveId();
+
+            GateCurveParams memory params = deployParams.curatedGates[i].params;
+
+            assertEq(
+                parametersRegistry.getKeyRemovalCharge(curveId),
+                params.keyRemovalCharge
+            );
+            assertEq(
+                parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(
+                    curveId
+                ),
+                params.generalDelayedPenaltyAdditionalFine
+            );
+            assertEq(
+                parametersRegistry.getKeysLimit(curveId),
+                params.keysLimit
+            );
+
+            IParametersRegistry.KeyNumberValueInterval[]
+                memory avgPerfLeewayData = parametersRegistry
+                    .getPerformanceLeewayData(curveId);
+            if (params.avgPerfLeewayData.length == 0) {
+                assertEq(avgPerfLeewayData.length, 1);
+                assertEq(avgPerfLeewayData[0].minKeyNumber, 1);
+                assertEq(
+                    avgPerfLeewayData[0].value,
+                    deployParams.defaultAvgPerfLeewayBP
+                );
+            } else {
+                assertEq(
+                    avgPerfLeewayData.length,
+                    params.avgPerfLeewayData.length
+                );
+                for (uint256 j = 0; j < avgPerfLeewayData.length; ++j) {
+                    assertEq(
+                        avgPerfLeewayData[j].minKeyNumber,
+                        params.avgPerfLeewayData[j][0]
+                    );
+                    assertEq(
+                        avgPerfLeewayData[j].value,
+                        params.avgPerfLeewayData[j][1]
+                    );
+                }
+            }
+
+            IParametersRegistry.KeyNumberValueInterval[]
+                memory rewardShareData = parametersRegistry.getRewardShareData(
+                    curveId
+                );
+            if (params.rewardShareData.length == 0) {
+                assertEq(rewardShareData.length, 1);
+                assertEq(rewardShareData[0].minKeyNumber, 1);
+                assertEq(
+                    rewardShareData[0].value,
+                    deployParams.defaultRewardShareBP
+                );
+            } else {
+                assertEq(rewardShareData.length, params.rewardShareData.length);
+                for (uint256 j = 0; j < rewardShareData.length; ++j) {
+                    assertEq(
+                        rewardShareData[j].minKeyNumber,
+                        params.rewardShareData[j][0]
+                    );
+                    assertEq(
+                        rewardShareData[j].value,
+                        params.rewardShareData[j][1]
+                    );
+                }
+            }
+
+            (
+                uint256 strikesLifetime,
+                uint256 strikesThreshold
+            ) = parametersRegistry.getStrikesParams(curveId);
+            if (params.strikesThreshold == 0) {
+                assertEq(
+                    strikesLifetime,
+                    deployParams.defaultStrikesLifetimeFrames
+                );
+                assertEq(
+                    strikesThreshold,
+                    deployParams.defaultStrikesThreshold
+                );
+            } else {
+                assertEq(strikesLifetime, params.strikesLifetimeFrames);
+                assertEq(strikesThreshold, params.strikesThreshold);
+            }
+
+            (
+                uint256 queuePriority,
+                uint256 queueMaxDeposits
+            ) = parametersRegistry.getQueueConfig(curveId);
+            if (params.queueMaxDeposits == 0) {
+                assertEq(queuePriority, deployParams.defaultQueuePriority);
+                assertEq(
+                    queueMaxDeposits,
+                    deployParams.defaultQueueMaxDeposits
+                );
+            } else {
+                assertEq(queuePriority, params.queuePriority);
+                assertEq(queueMaxDeposits, params.queueMaxDeposits);
+            }
+
+            assertEq(
+                parametersRegistry.getBadPerformancePenalty(curveId),
+                params.badPerformancePenalty
+            );
+
+            (
+                uint256 attestationsWeight,
+                uint256 blocksWeight,
+                uint256 syncWeight
+            ) = parametersRegistry.getPerformanceCoefficients(curveId);
+            if (
+                params.attestationsWeight == 0 &&
+                params.blocksWeight == 0 &&
+                params.syncWeight == 0
+            ) {
+                assertEq(
+                    attestationsWeight,
+                    deployParams.defaultAttestationsWeight
+                );
+                assertEq(blocksWeight, deployParams.defaultBlocksWeight);
+                assertEq(syncWeight, deployParams.defaultSyncWeight);
+            } else {
+                assertEq(attestationsWeight, params.attestationsWeight);
+                assertEq(blocksWeight, params.blocksWeight);
+                assertEq(syncWeight, params.syncWeight);
+            }
+
+            assertEq(
+                parametersRegistry.getAllowedExitDelay(curveId),
+                params.allowedExitDelay
+            );
+            assertEq(
+                parametersRegistry.getExitDelayFee(curveId),
+                params.exitDelayFee
+            );
+            assertEq(
+                parametersRegistry.getMaxElWithdrawalRequestFee(curveId),
+                params.maxElWithdrawalRequestFee
+            );
+
+            if (params.depositAllocationWeight != 0) {
+                assertEq(
+                    parametersRegistry.getDepositAllocationWeight(curveId),
+                    params.depositAllocationWeight,
+                    "gate deposit allocation weight"
+                );
+            } else {
+                assertEq(
+                    parametersRegistry.getDepositAllocationWeight(curveId),
+                    deployParams.defaultDepositAllocationWeight,
+                    "gate deposit allocation weight default"
+                );
+            }
         }
     }
 
