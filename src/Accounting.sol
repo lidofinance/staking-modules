@@ -365,17 +365,9 @@ contract Accounting is
     function settleLockedBondETH(uint256 nodeOperatorId) external onlyModule {
         uint256 lockedAmount = BondLock.getActualLockedBond(nodeOperatorId);
         if (lockedAmount > 0) {
-            uint256 notBurnedAmount = BondCore._burn(
-                nodeOperatorId,
-                lockedAmount
-            );
-            // NOTE: If we could not burn the full locked amount, set the remaining amount and make the lock infinite.
-            //       Remove the lock if nothing is left to burn.
-            BondLock._changeBondLock({
-                nodeOperatorId: nodeOperatorId,
-                amount: notBurnedAmount,
-                until: INFINITE_BOND_LOCK_UNTIL
-            });
+            BondCore._burn(nodeOperatorId, lockedAmount);
+            // reduce all locked bond even if bond isn't covered lock fully since debt will be created in this case
+            BondLock._unlock(nodeOperatorId, lockedAmount);
         }
     }
 
@@ -386,15 +378,6 @@ contract Accounting is
     ) external onlyModule returns (bool fullyBurned) {
         uint256 notBurnedAmount = BondCore._burn(nodeOperatorId, amount);
         fullyBurned = notBurnedAmount == 0;
-        if (!fullyBurned) {
-            // NOTE:  If we could not burn the full amount, add the remaining to the current lock and make it infinite.
-            uint256 locked = BondLock.getActualLockedBond(nodeOperatorId);
-            BondLock._changeBondLock({
-                nodeOperatorId: nodeOperatorId,
-                amount: locked + notBurnedAmount,
-                until: INFINITE_BOND_LOCK_UNTIL
-            });
-        }
     }
 
     /// @inheritdoc IAccounting
@@ -672,8 +655,9 @@ contract Accounting is
             curveId
         );
         uint256 actualLockedBond = BondLock.getActualLockedBond(nodeOperatorId);
+        uint256 bondDebt = BondCore.getBondDebt(nodeOperatorId);
 
-        return requiredBondForKeys + actualLockedBond;
+        return requiredBondForKeys + actualLockedBond + bondDebt;
     }
 
     function _getRequiredBondShares(
@@ -692,6 +676,13 @@ contract Accounting is
             nodeOperatorId
         );
         uint256 currentBond = BondCore.getBond(nodeOperatorId);
+        uint256 bondDebt = BondCore.getBondDebt(nodeOperatorId);
+        if (bondDebt > currentBond) {
+            return nonWithdrawnKeys;
+        }
+        unchecked {
+            currentBond -= bondDebt;
+        }
 
         // Optionally account for locked bond depending on the flag
         if (includeLockedBond) {
@@ -700,7 +691,9 @@ contract Accounting is
             if (lockedBond > currentBond) {
                 return nonWithdrawnKeys;
             }
-            currentBond -= lockedBond;
+            unchecked {
+                currentBond -= lockedBond;
+            }
         }
         // 10 wei is added to account for possible stETH rounding errors
         // https://github.com/lidofinance/lido-dao/issues/442#issuecomment-1182264205.
