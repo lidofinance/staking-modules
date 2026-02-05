@@ -3,18 +3,13 @@
 
 pragma solidity 0.8.33;
 
-import { Test } from "forge-std/Test.sol";
+import { MerkleTree } from "../../../helpers/MerkleTree.sol";
+import { VettedGate } from "../../../../src/VettedGate.sol";
+import { CSMIntegrationBase } from "../common/ModuleTypeBase.sol";
 
-import { Utilities } from "../../helpers/Utilities.sol";
-import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { MerkleTree } from "../../helpers/MerkleTree.sol";
-import { VettedGate } from "../../../src/VettedGate.sol";
-
-contract MiscTest is Test, Utilities, DeploymentFixtures {
+contract MiscTest is CSMIntegrationBase {
     function setUp() public {
-        Env memory env = envVars();
-        vm.createSelectFork(env.RPC_URL);
-        initializeFromDeployment();
+        _setUpModule();
     }
 }
 

@@ -3,27 +3,17 @@
 
 pragma solidity 0.8.33;
 
-import { Test } from "forge-std/Test.sol";
-
 import { DeployParams } from "script/csm/DeployBase.s.sol";
 
-import { Utilities } from "../../../helpers/Utilities.sol";
-import { DeploymentFixtures } from "../../../helpers/Fixtures.sol";
-import { InvariantAsserts } from "../../../helpers/InvariantAsserts.sol";
+import { CSMIntegrationBase } from "../../common/ModuleTypeBase.sol";
 
-contract InvariantsBase is
-    Test,
-    Utilities,
-    DeploymentFixtures,
-    InvariantAsserts
-{
+contract InvariantsBase is CSMIntegrationBase {
     uint256 adminsCount;
     DeployParams internal deployParams;
 
     function setUp() public {
         Env memory env = envVars();
-        vm.createSelectFork(env.RPC_URL);
-        initializeFromDeployment();
+        _setUpModule();
         deployParams = parseDeployParams(env.DEPLOY_CONFIG);
         adminsCount = block.chainid == 1 ? 1 : 2;
     }

@@ -3,21 +3,13 @@
 
 pragma solidity 0.8.33;
 
-import { Test } from "forge-std/Test.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
-import { NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
-
-import { Utilities } from "../../helpers/Utilities.sol";
-import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-
-contract NoManagementBaseTest is Test, Utilities, DeploymentFixtures {
+abstract contract NoManagementBaseTest is ModuleTypeBase {
     address public nodeOperator;
 
-    function setUp() public {
-        Env memory env = envVars();
-        vm.createSelectFork(env.RPC_URL);
-        initializeFromDeployment();
-
+    function setUp() public virtual {
+        _setUpModule();
         nodeOperator = nextAddress("nodeOperator");
     }
 
@@ -26,33 +18,17 @@ contract NoManagementBaseTest is Test, Utilities, DeploymentFixtures {
         address reward,
         bool extendedPermissions
     ) internal returns (uint256 noId) {
-        uint256 keysCount = 1;
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
+        noId = integrationHelpers.addNodeOperatorWithManagement(
+            nodeOperator,
+            manager,
+            reward,
+            extendedPermissions,
+            1
         );
-        uint256 amount = accounting.getBondAmountByKeysCount(
-            keysCount,
-            permissionlessGate.CURVE_ID()
-        );
-        vm.deal(nodeOperator, amount);
-
-        vm.startPrank(nodeOperator);
-        noId = permissionlessGate.addNodeOperatorETH{ value: amount }({
-            keysCount: keysCount,
-            publicKeys: keys,
-            signatures: signatures,
-            managementProperties: NodeOperatorManagementProperties({
-                managerAddress: manager,
-                rewardAddress: reward,
-                extendedManagerPermissions: extendedPermissions
-            }),
-            referrer: address(0)
-        });
-        vm.stopPrank();
     }
 }
 
-contract NoAddressesBasicPermissionsTest is NoManagementBaseTest {
+abstract contract NoAddressesBasicPermissionsTestBase is NoManagementBaseTest {
     bool internal immutable EXTENDED;
 
     constructor() {
@@ -112,13 +88,15 @@ contract NoAddressesBasicPermissionsTest is NoManagementBaseTest {
     }
 }
 
-contract NoAddressesExtendedPermissionsTest is NoAddressesBasicPermissionsTest {
+abstract contract NoAddressesExtendedPermissionsTestBase is
+    NoAddressesBasicPermissionsTestBase
+{
     function _extended() internal pure override returns (bool) {
         return true;
     }
 }
 
-contract NoAddressesPermissionsTest is NoManagementBaseTest {
+abstract contract NoAddressesPermissionsTestBase is NoManagementBaseTest {
     function test_resetManagerAddresses() public {
         address someManager = nextAddress("someManager");
 
@@ -150,3 +128,33 @@ contract NoAddressesPermissionsTest is NoManagementBaseTest {
         );
     }
 }
+
+contract NoAddressesBasicPermissionsTestCSM is
+    NoAddressesBasicPermissionsTestBase,
+    CSMIntegrationBase
+{}
+
+contract NoAddressesBasicPermissionsTestCurated is
+    NoAddressesBasicPermissionsTestBase,
+    CuratedIntegrationBase
+{}
+
+contract NoAddressesExtendedPermissionsTestCSM is
+    NoAddressesExtendedPermissionsTestBase,
+    CSMIntegrationBase
+{}
+
+contract NoAddressesExtendedPermissionsTestCurated is
+    NoAddressesExtendedPermissionsTestBase,
+    CuratedIntegrationBase
+{}
+
+contract NoAddressesPermissionsTestCSM is
+    NoAddressesPermissionsTestBase,
+    CSMIntegrationBase
+{}
+
+contract NoAddressesPermissionsTestCurated is
+    NoAddressesPermissionsTestBase,
+    CuratedIntegrationBase
+{}
