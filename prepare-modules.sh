@@ -23,6 +23,7 @@ if [ -z "$SENDER" ] || [ "$SENDER" = "null" ]; then
 fi
 CM_DEPLOY_CONFIG="./artifacts/local/curated/deploy-hoodi.json"
 SM_DISCOVERY="0x43f1c35392418aeeDA48dC136caa7DE43544AbFF"
+mkdir -p "$(dirname "$CM_DEPLOY_CONFIG")"
 
 echo "=== Prepare Local Hoodi Fork - Module Deployment ==="
 echo "RPC_URL: $RPC_URL"

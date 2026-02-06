@@ -28,7 +28,6 @@ if [ -z "$SENDER" ] || [ "$SENDER" = "null" ]; then
   exit 1
 fi
 CM_DEPLOY_CONFIG="./artifacts/local/curated/deploy-hoodi.json"
-mkdir -p "$(dirname "$CM_DEPLOY_CONFIG")"
 
 echo "=== Setup Curated Gates (2-7) ==="
 
