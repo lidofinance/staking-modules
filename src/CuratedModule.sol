@@ -3,6 +3,8 @@
 
 pragma solidity 0.8.33;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMetaOperatorRegistry } from "./interfaces/IMetaOperatorRegistry.sol";
 import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.sol";
@@ -22,7 +24,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         // Tracks per-operator balances (in wei) reported by the Accounting oracle.
         mapping(uint256 nodeOperatorId => uint256 balance) operatorBalances;
         // Tracks how many operators left to update due to changes in weights.
-        uint256 nodeOperatorWeightsUpdateCount;
+        uint256 upToDateOperatorWeightsCount;
     }
 
     bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE =
@@ -207,6 +209,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     /// @inheritdoc ICuratedModule
+    // TODO: Move to MetaRegistry and just call external method here
     function getOperatorsWeights(
         uint256[] calldata operatorIds
     ) external view returns (uint256[] memory operatorWeights) {
@@ -238,12 +241,13 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     /// @inheritdoc ICuratedModule
+    // TODO: Rename to `requestFullOperatorWeightsUpdate`
     function onBondCurveWeightUpdated() external {
         if (msg.sender != address(META_OPERATOR_REGISTRY)) {
             revert SenderIsNotMetaOperatorRegistry();
         }
 
-        _storage().nodeOperatorWeightsUpdateCount = 0;
+        _storage().upToDateOperatorWeightsCount = 0;
         _incrementModuleNonce();
     }
 
@@ -257,21 +261,20 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
         CuratedModuleStorage storage $ = _storage();
         uint256 operatorsCount = _nodeOperatorsCount;
-        uint256 index = $.nodeOperatorWeightsUpdateCount;
-        if (index >= operatorsCount) {
+        uint256 noId = $.upToDateOperatorWeightsCount;
+        // TODO: Add invariant check that upToDateOperatorWeightsCount <= _nodeOperatorsCount
+        if (noId >= operatorsCount) {
             return true;
         }
 
-        uint256 limit = index + maxCount;
-        if (limit > operatorsCount) {
-            limit = operatorsCount;
+        uint256 limit = Math.min(noId + maxCount, operatorsCount);
+
+        for (; noId < limit; ++noId) {
+            _updateNodeOperatorWeight(noId);
         }
 
-        for (uint256 i = index; i < limit; ++i) {
-            _updateNodeOperatorWeight(i);
-        }
-
-        $.nodeOperatorWeightsUpdateCount = limit;
+        $.upToDateOperatorWeightsCount = limit;
+        // TODO: Return number of operators left
         finished = limit == operatorsCount;
     }
 
@@ -281,7 +284,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         view
         returns (uint256)
     {
-        return _nodeOperatorsCount - _storage().nodeOperatorWeightsUpdateCount;
+        return _nodeOperatorsCount - _storage().upToDateOperatorWeightsCount;
     }
 
     /// @inheritdoc ICuratedModule
@@ -345,6 +348,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             );
     }
 
+    // TODO: Merge with `_updateDepositableValidatorsCount` and rename to `_updateAllocationData`
     /// @inheritdoc IBaseModule
     function onNodeOperatorBondCurveUpdated(
         uint256 nodeOperatorId
@@ -368,6 +372,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     function _updateNodeOperatorWeightInRegistry(
         uint256 nodeOperatorId
     ) internal returns (bool) {
+        // TODO: This should be in META_OPERATOR_REGISTRY
         (bool isInGroup, ) = META_OPERATOR_REGISTRY
             .getNodeOperatorGroupMembership(nodeOperatorId);
         if (!isInGroup) {
@@ -378,17 +383,18 @@ contract CuratedModule is ICuratedModule, BaseModule {
             META_OPERATOR_REGISTRY.onNodeOperatorWeightUpdated(nodeOperatorId);
     }
 
+    // TODO: override addNodeOperator instead of using a hook
     function _onNodeOperatorCreate() internal override {
         CuratedModuleStorage storage $ = _storage();
-        if ($.nodeOperatorWeightsUpdateCount == _nodeOperatorsCount - 1) {
+        if ($.upToDateOperatorWeightsCount == _nodeOperatorsCount - 1) {
             unchecked {
-                ++$.nodeOperatorWeightsUpdateCount;
+                ++$.upToDateOperatorWeightsCount;
             }
         }
     }
 
     function _requireNodeOperatorWeightsUpToDate() internal view {
-        if (_storage().nodeOperatorWeightsUpdateCount != _nodeOperatorsCount) {
+        if (_storage().upToDateOperatorWeightsCount != _nodeOperatorsCount) {
             revert NodeOperatorWeightsUpdateInProgress();
         }
     }

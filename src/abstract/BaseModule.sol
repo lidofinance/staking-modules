@@ -1000,7 +1000,7 @@ abstract contract BaseModule is
         uint256 nodeOperatorId,
         uint256 newCount,
         bool incrementNonceIfUpdated
-    ) internal virtual returns (bool) {
+    ) internal virtual returns (bool changed) {
         if (no.depositableValidatorsCount == newCount) return false;
 
         // Updating the global counter.

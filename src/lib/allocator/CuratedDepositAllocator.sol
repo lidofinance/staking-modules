@@ -46,6 +46,7 @@ library CuratedDepositAllocator {
     /// @return allocated Number of deposits actually allocated.
     /// @return operatorIds Operator ids for allocated operators.
     /// @return allocations Per-operator allocations aligned to operatorIds.
+    /// TODO: Rename to `allocateInitialDeposits`
     function allocateDeposits(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 operatorsCount,
@@ -300,23 +301,19 @@ library CuratedDepositAllocator {
         data.capacities = new uint256[](operatorIds.length);
         data.operatorIds = new uint256[](operatorIds.length);
 
-        IMetaOperatorRegistry metaRegistry = ICuratedModule(address(this))
-            .META_OPERATOR_REGISTRY();
-
         uint256[] memory weightsByOperatorId;
         uint256[] memory capacitiesByOperatorId;
-        uint256[] memory externalStakeByOperatorId;
+        uint256[] memory currentStakeByOperatorId;
         (
             data.weightSum,
             data.totalCurrent,
             weightsByOperatorId,
             capacitiesByOperatorId,
-            externalStakeByOperatorId
+            currentStakeByOperatorId
         ) = _collectTopUpGlobalBaseline({
             nodeOperators: nodeOperators,
             nodeOperatorBalances: nodeOperatorBalances,
-            operatorsCount: operatorsCount,
-            metaRegistry: metaRegistry
+            operatorsCount: operatorsCount
         });
 
         uint256 eligibleCount;
@@ -331,9 +328,7 @@ library CuratedDepositAllocator {
             if (weight == 0) continue;
 
             data.weights[eligibleCount] = weight;
-            data.currents[eligibleCount] =
-                nodeOperatorBalances[operatorId] +
-                externalStakeByOperatorId[operatorId];
+            data.currents[eligibleCount] = currentStakeByOperatorId[operatorId];
             data.capacities[eligibleCount] = capacity;
             data.operatorIds[eligibleCount] = operatorId;
             ++eligibleCount;
@@ -347,8 +342,7 @@ library CuratedDepositAllocator {
     function _collectTopUpGlobalBaseline(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         mapping(uint256 => uint256) storage nodeOperatorBalances,
-        uint256 operatorsCount,
-        IMetaOperatorRegistry metaRegistry
+        uint256 operatorsCount
     )
         internal
         view
@@ -357,18 +351,22 @@ library CuratedDepositAllocator {
             uint256 totalCurrent,
             uint256[] memory weightsByOperatorId,
             uint256[] memory capacitiesByOperatorId,
-            uint256[] memory externalStakeByOperatorId
+            uint256[] memory currentStakeByOperatorId
         )
     {
         weightsByOperatorId = new uint256[](operatorsCount);
         capacitiesByOperatorId = new uint256[](operatorsCount);
-        externalStakeByOperatorId = new uint256[](operatorsCount);
+        currentStakeByOperatorId = new uint256[](operatorsCount);
+
+        IMetaOperatorRegistry metaRegistry = ICuratedModule(address(this))
+            .META_OPERATOR_REGISTRY();
 
         // Build global share baseline across all eligible operators (non-zero weight + capacity).
         for (uint256 i; i < operatorsCount; ++i) {
+            uint256 nodeOperatorBalance = nodeOperatorBalances[i];
             uint256 capacity = _topUpCapacity(
                 nodeOperators[i],
-                nodeOperatorBalances[i]
+                nodeOperatorBalance
             );
             capacitiesByOperatorId[i] = capacity;
             if (capacity == 0) continue;
@@ -376,10 +374,12 @@ library CuratedDepositAllocator {
             (uint256 weight, uint256 externalStake) = metaRegistry
                 .getNodeOperatorWeightAndExternalStake(i);
             weightsByOperatorId[i] = weight;
-            externalStakeByOperatorId[i] = externalStake;
             if (weight == 0) continue;
+
+            uint256 currentStake = nodeOperatorBalance + externalStake;
+            currentStakeByOperatorId[i] = currentStake;
             weightSum += weight;
-            totalCurrent += nodeOperatorBalances[i] + externalStake;
+            totalCurrent += currentStake;
         }
     }
 

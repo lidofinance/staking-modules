@@ -8,7 +8,7 @@ library ExternalOperatorLib {
         NOR
     }
 
-    uint256 public constant ENTRY_LEN_NOR = 10; // 1 + 1 + 8 (uint8 moduleId, uint64 nodeOperatorId)
+    uint256 public constant ENTRY_LEN_NOR = 10; // 1 + 1 + 8 (enum OperatorType, uint8 moduleId, uint64 nodeOperatorId)
 
     error InvalidExternalOperatorDataEntry();
 
