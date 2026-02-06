@@ -147,7 +147,7 @@ contract ChargeFeeTest is BaseTest {
         uint256 bondSharesBefore = accounting.getBondShares(0);
 
         vm.prank(address(stakingModule));
-        bool fullyCharged = accounting.chargeFee(0, amountToCharge);
+        accounting.chargeFee(0, amountToCharge);
         uint256 bondSharesAfter = accounting.getBondShares(0);
 
         assertEq(
@@ -156,7 +156,6 @@ contract ChargeFeeTest is BaseTest {
             "bond shares should be decreased by penalty"
         );
         assertEq(accounting.totalBondShares(), bondSharesAfter);
-        assertTrue(fullyCharged, "should be fully charged");
     }
 
     function test_chargeFee_onInsufficientBond() public assertInvariants {
@@ -164,7 +163,7 @@ contract ChargeFeeTest is BaseTest {
         uint256 amountToCharge = bond + 1 ether; // charge more than bond
 
         vm.prank(address(stakingModule));
-        bool fullyCharged = accounting.chargeFee(0, amountToCharge);
+        accounting.chargeFee(0, amountToCharge);
         uint256 bondSharesAfter = accounting.getBondShares(0);
 
         assertEq(
@@ -177,7 +176,6 @@ contract ChargeFeeTest is BaseTest {
             0,
             "total bond shares should be zero"
         );
-        assertFalse(fullyCharged, "should no be fully charged");
     }
 
     function test_chargeFee_RevertWhen_SenderIsNotModule() public {
@@ -650,7 +648,8 @@ contract PenalizeTest is BaseTest {
 
         vm.prank(address(stakingModule));
         accounting.lockBondETH(0, 1 ether); // lock some bond
-        uint256 bondLockBefore = accounting.getActualLockedBond(0);
+        Accounting.BondLockData memory bondLockBefore = accounting
+            .getLockedBondInfo(0);
 
         vm.expectCall(
             locator.burner(),
@@ -676,9 +675,10 @@ contract PenalizeTest is BaseTest {
             0,
             "total bond shares should be zero"
         );
-        assertApproxEqAbs(bondLockAfter.amount, bondLockBefore + 1 ether, 1);
-        assertEq(bondLockAfter.until, type(uint128).max);
-        assertFalse(fullyBurned, "should no be fully burned");
+        assertApproxEqAbs(accounting.getBondDebt(0), amountToBurn - bond, 1);
+        assertEq(bondLockAfter.amount, bondLockBefore.amount);
+        assertEq(bondLockAfter.until, bondLockBefore.until);
+        assertFalse(fullyBurned, "should not be fully burned");
     }
 
     function test_penalize_RevertWhen_SenderIsNotModule() public {
@@ -687,7 +687,7 @@ contract PenalizeTest is BaseTest {
         accounting.penalize(0, 20);
     }
 
-    function test_penalize_unburnedAmount_noExistingLock_createsInfiniteLock()
+    function test_penalize_unburnedAmount_createsBondDebt()
         public
         assertInvariants
     {
@@ -706,50 +706,15 @@ contract PenalizeTest is BaseTest {
         vm.prank(address(stakingModule));
         bool fullyBurned = accounting.penalize(0, amountToBurn);
 
-        Accounting.BondLockData memory lockAfter = accounting.getLockedBondInfo(
-            0
+        assertApproxEqAbs(
+            accounting.getBondDebt(0),
+            amountToBurn - bondBefore,
+            1
         );
-        assertApproxEqAbs(lockAfter.amount, amountToBurn - bondBefore, 1);
-        assertEq(lockAfter.until, type(uint128).max);
         assertFalse(fullyBurned);
     }
 
-    function test_penalize_unburnedAmount_expiredLock_notAdded()
-        public
-        assertInvariants
-    {
-        vm.prank(address(stakingModule));
-        accounting.lockBondETH(0, 1 ether);
-        Accounting.BondLockData memory lockBefore = accounting
-            .getLockedBondInfo(0);
-        assertEq(accounting.getActualLockedBond(0), 1 ether);
-
-        vm.warp(lockBefore.until);
-        assertEq(accounting.getActualLockedBond(0), 0);
-
-        uint256 bondBefore = accounting.getBond(0);
-        uint256 bondSharesBefore = accounting.getBondShares(0);
-        uint256 amountToBurn = bondBefore + 1 ether;
-
-        vm.expectCall(
-            locator.burner(),
-            abi.encodeWithSelector(
-                IBurner.requestBurnMyShares.selector,
-                bondSharesBefore
-            )
-        );
-
-        vm.prank(address(stakingModule));
-        accounting.penalize(0, amountToBurn);
-
-        Accounting.BondLockData memory lockAfter = accounting.getLockedBondInfo(
-            0
-        );
-        assertApproxEqAbs(lockAfter.amount, amountToBurn - bondBefore, 1);
-        assertEq(lockAfter.until, type(uint128).max);
-    }
-
-    function test_penalize_fullyBurned_keepsExistingLock()
+    function test_penalize_fullyBurned_noBondDebtCreated()
         public
         assertInvariants
     {
@@ -763,13 +728,9 @@ contract PenalizeTest is BaseTest {
 
         vm.prank(address(stakingModule));
         bool fullyBurned = accounting.penalize(0, amountToBurn);
-        Accounting.BondLockData memory lockAfter = accounting.getLockedBondInfo(
-            0
-        );
 
         assertTrue(fullyBurned);
-        assertEq(lockAfter.amount, lockBefore.amount);
-        assertEq(lockAfter.until, lockBefore.until);
+        assertEq(accounting.getBondDebt(0), 0);
     }
 }
 

@@ -20,7 +20,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     /// @custom:storage-location erc7201:CuratedModule
     struct CuratedModuleStorage {
         // Tracks per-operator balances (in wei) reported by the Accounting oracle.
-        mapping(uint256 => uint256) operatorBalances;
+        mapping(uint256 nodeOperatorId => uint256 balance) operatorBalances;
         uint256 nodeOperatorWeightsUpdateCount;
     }
 
@@ -68,11 +68,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     function obtainDepositData(
         uint256 depositsCount,
         bytes calldata /* depositCalldata */
-    )
-        external
-        override(IStakingModule)
-        returns (bytes memory publicKeys, bytes memory signatures)
-    {
+    ) external returns (bytes memory publicKeys, bytes memory signatures) {
         _checkStakingRouterRole();
         _requireNodeOperatorWeightsUpToDate();
 
@@ -154,21 +150,18 @@ contract CuratedModule is ICuratedModule, BaseModule {
         }
 
         if (
-            operatorIds.length != keyIndices.length ||
-            operatorIds.length != topUpLimits.length ||
+            pubkeys.length != keyIndices.length ||
+            pubkeys.length != topUpLimits.length ||
             pubkeys.length != operatorIds.length
         ) {
             revert InvalidInput();
         }
-        // @dev StakingRouter is expected to provide per-key top-up limits capped
-        // by MAX_EFFECTIVE_BALANCE and to avoid duplicate (operatorId, keyIndex)
+
+        // NOTE: StakingRouter is expected to provide per-key top-up limits capped
+        // by MAX_EFFECTIVE_BALANCE and avoid duplicate (operatorId, keyIndex)
         // entries in a single request.
 
-        _validateTopUpPublicKeys({
-            pubkeys: pubkeys,
-            keyIndices: keyIndices,
-            operatorIds: operatorIds
-        });
+        _validateTopUpPublicKeys(pubkeys, keyIndices, operatorIds);
         allocations = _allocateTopUps(
             maxDepositAmount,
             operatorIds,
@@ -187,10 +180,11 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256 /* refSlot */
     ) external {
         _checkStakingRouterRole();
+        // TODO: Move operator balances ops into internal lib
         uint256 operatorsCount = operatorIds.length;
         if (
-            validatorsBalancesGwei.length != operatorsCount ||
-            pendingBalancesGwei.length != operatorsCount
+            operatorsCount != validatorsBalancesGwei.length ||
+            operatorsCount != pendingBalancesGwei.length
         ) {
             revert InvalidInput();
         }
@@ -298,7 +292,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
     /// @inheritdoc ICuratedModule
     function getDepositsAllocation(
-        uint256 depositAmount
+        uint256 maxDepositAmount
     )
         external
         view
@@ -309,7 +303,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         )
     {
         uint256 operatorsCount = _nodeOperatorsCount;
-        if (depositAmount == 0 || operatorsCount == 0) {
+        if (maxDepositAmount == 0 || operatorsCount == 0) {
             return (0, new uint256[](0), new uint256[](0));
         }
 
@@ -323,7 +317,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
                 nodeOperators: _nodeOperators,
                 nodeOperatorBalances: _storage().operatorBalances,
                 operatorsCount: operatorsCount,
-                depositAmount: depositAmount,
+                allocationAmount: maxDepositAmount,
                 operatorIds: allOperatorIds
             });
     }
@@ -403,7 +397,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256[] calldata keyIndices,
         uint256[] calldata operatorIds
     ) internal view {
-        for (uint256 i; i < operatorIds.length; ++i) {
+        for (uint256 i; i < pubkeys.length; ++i) {
+            // TODO: Move to NodeOperatorOps and unify with CSM
             if (pubkeys[i].length != SigningKeys.PUBKEY_LENGTH) {
                 revert InvalidInput();
             }
@@ -433,15 +428,12 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     function _allocateTopUps(
-        uint256 depositAmount,
+        uint256 maxDepositAmount,
         uint256[] calldata operatorIds,
         uint256[] calldata keyIndices,
         uint256[] calldata topUpLimits
     ) internal returns (uint256[] memory allocations) {
-        uint256[] memory uniqueOperatorIds = _uniqueOperatorIds(
-            operatorIds,
-            _nodeOperatorsCount
-        );
+        uint256[] memory uniqueOperatorIds = _uniqueOperatorIds(operatorIds);
         (
             ,
             uint256[] memory allocatedOperatorIds,
@@ -450,11 +442,12 @@ contract CuratedModule is ICuratedModule, BaseModule {
                 nodeOperators: _nodeOperators,
                 nodeOperatorBalances: _storage().operatorBalances,
                 operatorsCount: _nodeOperatorsCount,
-                depositAmount: depositAmount,
+                allocationAmount: maxDepositAmount,
                 operatorIds: uniqueOperatorIds
             });
 
-        allocations = _distributeTopUpAllocations({
+        uint256[] memory perOperatorIncrements;
+        (allocations, perOperatorIncrements) = _distributeTopUpAllocations({
             operatorIds: operatorIds,
             topUpLimits: topUpLimits,
             allocatedOperatorIds: allocatedOperatorIds,
@@ -469,17 +462,14 @@ contract CuratedModule is ICuratedModule, BaseModule {
             allocations
         );
         _increaseOperatorBalancesByAllocations({
-            operatorIds: operatorIds,
-            allocations: allocations,
             uniqueOperatorIds: uniqueOperatorIds,
-            operatorsCount: _nodeOperatorsCount
+            perOperatorIncrements: perOperatorIncrements
         });
     }
 
     /// @dev Deduplicate operator ids for allocation to avoid overweighting by repeated keys.
     function _uniqueOperatorIds(
-        uint256[] calldata operatorIds,
-        uint256 operatorsCount
+        uint256[] calldata operatorIds
     ) internal returns (uint256[] memory uniqueOperatorIds) {
         uniqueOperatorIds = new uint256[](operatorIds.length);
         TransientUintUintMap seen = TransientUintUintMapLib.create();
@@ -493,6 +483,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         }
 
         if (count != operatorIds.length) {
+            // Trim the uniqueOperatorIds array to the actual count of unique ids.
             assembly {
                 mstore(uniqueOperatorIds, count)
             }
@@ -506,12 +497,19 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256[] memory allocatedOperatorIds,
         uint256[] memory operatorAllocations,
         uint256 operatorsCount
-    ) internal returns (uint256[] memory allocations) {
+    )
+        internal
+        returns (
+            uint256[] memory allocations,
+            uint256[] memory perOperatorIncrements
+        )
+    {
         // topUpLimits are per-key and aligned with operatorIds/keyIndices order.
         allocations = new uint256[](operatorIds.length);
         // NOTE: Use a full operatorsCount-sized array for O(1) lookups; operator counts are small enough
         // that a compact map would add overhead and can be worse overall.
         uint256[] memory perOperatorAllocations = new uint256[](operatorsCount);
+        perOperatorIncrements = new uint256[](operatorsCount);
         for (uint256 i; i < allocatedOperatorIds.length; ++i) {
             perOperatorAllocations[
                 allocatedOperatorIds[i]
@@ -524,29 +522,24 @@ contract CuratedModule is ICuratedModule, BaseModule {
                 uint256 remaining = perOperatorAllocations[operatorId];
                 if (remaining == 0) continue;
 
-                uint256 limit = topUpLimits[i];
+                uint256 limit = CuratedDepositAllocator.quantizeForTopUp(
+                    topUpLimits[i]
+                );
                 if (limit == 0) continue;
 
                 uint256 amount = remaining < limit ? remaining : limit;
                 allocations[i] = amount;
                 perOperatorAllocations[operatorId] = remaining - amount;
+                perOperatorIncrements[operatorId] += amount;
             }
         }
     }
 
     function _increaseOperatorBalancesByAllocations(
-        uint256[] calldata operatorIds,
-        uint256[] memory allocations,
         uint256[] memory uniqueOperatorIds,
-        uint256 operatorsCount
+        uint256[] memory perOperatorIncrements
     ) internal {
         CuratedModuleStorage storage $ = _storage();
-        uint256[] memory perOperatorIncrements = new uint256[](operatorsCount);
-        for (uint256 i; i < operatorIds.length; ++i) {
-            uint256 allocationWei = allocations[i];
-            if (allocationWei == 0) continue;
-            perOperatorIncrements[operatorIds[i]] += allocationWei;
-        }
         for (uint256 i; i < uniqueOperatorIds.length; ++i) {
             uint256 operatorId = uniqueOperatorIds[i];
             uint256 increment = perOperatorIncrements[operatorId];
@@ -582,3 +575,5 @@ contract CuratedModule is ICuratedModule, BaseModule {
         }
     }
 }
+
+// Last review ended here

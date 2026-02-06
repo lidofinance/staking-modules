@@ -50,6 +50,8 @@ interface IBondCore {
         uint256 toChargeAmount,
         uint256 chargedAmount
     );
+    event BondDebtIncreased(uint256 indexed nodeOperatorId, uint256 amount);
+    event BondDebtCovered(uint256 indexed nodeOperatorId, uint256 amount);
 
     error ZeroLocatorAddress();
     error NothingToClaim();
@@ -77,4 +79,13 @@ interface IBondCore {
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Bond amount in ETH (stETH)
     function getBond(uint256 nodeOperatorId) external view returns (uint256);
+
+    /// @notice Get bond debt in ETH for the given Node Operator.
+    ///         Bond debt can occur when Node Operator's bond is not enough to cover the penalties.
+    ///         Any bond debt will be covered as soon as the Node Operator deposits more bond or receives rewards.
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @return Bond debt in ETH
+    function getBondDebt(
+        uint256 nodeOperatorId
+    ) external view returns (uint256);
 }

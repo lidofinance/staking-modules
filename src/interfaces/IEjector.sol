@@ -17,6 +17,8 @@ interface IEjector is IExitTypes {
     error SenderIsNotEligible();
     error SenderIsNotStrikes();
     error NothingToEject();
+    error DuplicateKeyIndex();
+    error ZeroRefundRecipient();
 
     event VoluntaryEjectionRequested(
         uint256 indexed nodeOperatorId,

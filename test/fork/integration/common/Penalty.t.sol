@@ -3,22 +3,10 @@
 
 pragma solidity 0.8.33;
 
-import { Test } from "forge-std/Test.sol";
+import { PermitHelper } from "../../../helpers/Permit.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
-import { NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
-
-import { Utilities } from "../../helpers/Utilities.sol";
-import { PermitHelper } from "../../helpers/Permit.sol";
-import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
-
-contract PenaltyIntegrationTest is
-    Test,
-    Utilities,
-    PermitHelper,
-    DeploymentFixtures,
-    InvariantAsserts
-{
+abstract contract PenaltyIntegrationTestBase is ModuleTypeBase, PermitHelper {
     address internal user;
     address internal stranger;
     address internal nodeOperator;
@@ -29,7 +17,7 @@ contract PenaltyIntegrationTest is
         vm.pauseGasMetering();
         uint256 noCount = module.getNodeOperatorsCount();
         assertModuleKeys(module);
-        assertModuleEnqueuedCount(module);
+        _assertModuleEnqueuedCount();
         assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
         assertAccountingBurnerApproval(
@@ -45,9 +33,7 @@ contract PenaltyIntegrationTest is
     }
 
     function setUp() public {
-        Env memory env = envVars();
-        vm.createSelectFork(env.RPC_URL);
-        initializeFromDeployment();
+        _setUpModule();
 
         vm.startPrank(module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0));
         module.grantRole(module.DEFAULT_ADMIN_ROLE(), address(this));
@@ -69,24 +55,10 @@ contract PenaltyIntegrationTest is
         nodeOperator = nextAddress("NodeOperator");
 
         uint256 keysCount = 5;
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
+        defaultNoId = integrationHelpers.addNodeOperator(
+            nodeOperator,
             keysCount
         );
-        uint256 amount = accounting.getBondAmountByKeysCount(keysCount, 0);
-        vm.deal(nodeOperator, amount);
-
-        vm.prank(nodeOperator);
-        defaultNoId = permissionlessGate.addNodeOperatorETH{ value: amount }({
-            keysCount: keysCount,
-            publicKeys: keys,
-            signatures: signatures,
-            managementProperties: NodeOperatorManagementProperties({
-                managerAddress: address(0),
-                rewardAddress: address(0),
-                extendedManagerPermissions: false
-            }),
-            referrer: address(0)
-        });
     }
 
     function test_generalDelayedPenalty() public assertInvariants {
@@ -121,3 +93,13 @@ contract PenaltyIntegrationTest is
         assertEq(bondAfter, bondBefore - amountShares);
     }
 }
+
+contract PenaltyIntegrationTestCSM is
+    PenaltyIntegrationTestBase,
+    CSMIntegrationBase
+{}
+
+contract PenaltyIntegrationTestCurated is
+    PenaltyIntegrationTestBase,
+    CuratedIntegrationBase
+{}

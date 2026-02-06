@@ -1,21 +1,17 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity ^0.8.33;
+pragma solidity 0.8.33;
 
-import { Test } from "forge-std/Test.sol";
+import { MerkleTree } from "../../../helpers/MerkleTree.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
-import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { MerkleTree } from "../../helpers/MerkleTree.sol";
+import { IValidatorStrikes } from "../../../../src/interfaces/IValidatorStrikes.sol";
+import { IFeeOracle } from "../../../../src/interfaces/IFeeOracle.sol";
+import { IExitPenalties, ExitPenaltyInfo } from "../../../../src/interfaces/IExitPenalties.sol";
+import { IWithdrawalVault } from "../../../../src/interfaces/IWithdrawalVault.sol";
 
-import { IValidatorStrikes } from "../../../src/interfaces/IValidatorStrikes.sol";
-import { IFeeOracle } from "../../../src/interfaces/IFeeOracle.sol";
-import { IExitPenalties, ExitPenaltyInfo } from "../../../src/interfaces/IExitPenalties.sol";
-import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
-import { Utilities } from "../../helpers/Utilities.sol";
-import { IWithdrawalVault } from "../../../src/interfaces/IWithdrawalVault.sol";
-
-contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
+abstract contract OracleTestBase is ModuleTypeBase {
     uint256 private nodeOperatorId;
     address private refundRecipient;
     MerkleTree private feesTree;
@@ -26,7 +22,7 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
         vm.pauseGasMetering();
         uint256 noCount = module.getNodeOperatorsCount();
         assertModuleKeys(module);
-        assertModuleEnqueuedCount(module);
+        _assertModuleEnqueuedCount();
         assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
         assertAccountingBurnerApproval(
@@ -42,9 +38,7 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
     }
 
     function setUp() public {
-        Env memory env = envVars();
-        vm.createSelectFork(env.RPC_URL);
-        initializeFromDeployment();
+        _setUpModule();
 
         vm.startPrank(module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0));
         module.grantRole(module.RESUME_ROLE(), address(this));
@@ -63,7 +57,8 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
         refundRecipient = nextAddress("refundRecipient");
         uint256 keysCount;
         uint256 moduleId = findModule();
-        (nodeOperatorId, keysCount) = getDepositableNodeOperator(nextAddress());
+        (nodeOperatorId, keysCount) = integrationHelpers
+            .getDepositableNodeOperator(nextAddress());
         vm.prank(locator.depositSecurityModule());
         lido.deposit(keysCount, moduleId, "");
     }
@@ -273,3 +268,7 @@ contract OracleTest is Test, Utilities, DeploymentFixtures, InvariantAsserts {
         );
     }
 }
+
+contract OracleTestCSM is OracleTestBase, CSMIntegrationBase {}
+
+contract OracleTestCurated is OracleTestBase, CuratedIntegrationBase {}

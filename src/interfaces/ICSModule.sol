@@ -68,10 +68,9 @@ interface ICSModule is
         returns (bool enabled, uint256 limit, uint256 length, uint256 head);
 
     /// @notice Returns the top-up queue item by the given index.
-    /// @dev `index` is an offset from the current head (not a global index).
-    /// @param index The index of the item to retrieve.
+    /// @param index An offset from the current head (not a global index) of the item to retrieve.
     /// @return nodeOperatorId Node operator ID.
-    /// @return keyIndex Index of key in the deposited keys array.
+    /// @return keyIndex Index of the key in the Node Operator's keys storage
     function getTopUpQueueItem(
         uint256 index
     ) external view returns (uint256 nodeOperatorId, uint256 keyIndex);
@@ -96,12 +95,12 @@ interface ICSModule is
         uint128 index
     ) external view returns (Batch);
 
-    /// @notice Fetches up to `keyCount` validator public keys from the top-up queue.
-    /// @dev If the queue contains fewer than `keyCount` entries, all available keys are returned.
+    /// @notice Fetches up to `maxKeyCount` validator public keys from the top-up queue.
+    /// @dev If the queue contains fewer than `maxKeyCount` entries, all available keys are returned.
     /// @dev The keys are returned in the same order as they appear in the queue.
-    /// @param keyCount The maximum number of keys to retrieve.
+    /// @param maxKeyCount The maximum number of keys to retrieve.
     /// @return pubkeys The list of validator public keys returned from the queue.
     function getKeysForTopUp(
-        uint256 keyCount
+        uint256 maxKeyCount
     ) external view returns (bytes[] memory pubkeys);
 }

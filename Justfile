@@ -79,7 +79,7 @@ test-all:
 
 # Run all unit tests
 test-unit *args:
-    forge test --skip script --no-match-path 'test/fork/*' -vvv {{args}}
+    forge test --skip script --no-match-path 'test/fork/**' -vvv {{args}}
 
 # Run all deployment tests that should be executed against full scratch deployment before the module activation vote
 test-deployment-full-scratch *args:
@@ -94,8 +94,9 @@ test-deployment-full-afterVote *args:
     forge test --match-path 'test/fork/deployment/*' --no-match-test '.*_scratch.*' -vvv --show-progress {{args}}
 
 # Run all integration tests
+# Restrict to 4 parallel jobs to avoid overloading the RPC
 test-integration *args:
-    forge test --match-path 'test/fork/integration/*' -vvv --show-progress {{args}}
+    forge test --match-path 'test/fork/integration/**' -vvv --show-progress -j 4 {{args}}
 
 # Run tests for utility contracts
 test-utils *args:
@@ -103,7 +104,7 @@ test-utils *args:
 
 # Run tests applicable after the module upgrade vote. Does not include deployment tests
 test-post-upgrade *args:
-    forge test --match-path='test/fork/*' --no-match-path 'test/fork/deployment/*' -vvv --show-progress {{args}}
+    forge test --match-path='test/fork/**' --no-match-path 'test/fork/deployment/**' -vvv --show-progress {{args}}
 
 gas-report:
     #!/usr/bin/env python

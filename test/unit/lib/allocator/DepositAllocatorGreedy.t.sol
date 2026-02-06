@@ -325,22 +325,41 @@ contract DepositAllocatorGreedyTest is Test {
         assertEq(fills[1], 3);
     }
 
-    function test_edge_capacityCanBreakStepMultiple() public {
-        uint256[] memory weights = _arr2(1, 1);
-        uint256[] memory amounts = _arr2(0, 0);
-        uint256[] memory caps = _arr2(3, 10);
+    function test_edge_capacityLessThanStep() public {
+        uint256[] memory weights = _arr3(1, 1, 1);
+        uint256[] memory amounts = _arr3(0, 0, 0);
+        uint256[] memory caps = _arr3(3, 5, 10);
 
         (uint256[] memory fills, uint256 rest) = _runAllocate(
             weights,
             amounts,
             caps,
-            10,
+            30,
             4
         );
 
-        assertEq(rest, 3);
-        assertEq(fills[0], 3);
+        assertEq(rest, 18);
+        assertEq(fills[0], 0);
         assertEq(fills[1], 4);
+        assertEq(fills[2], 8);
+    }
+
+    function test_edge_lastAllocationLessThanStep() public {
+        uint256[] memory weights = _arr2(1, 1);
+        uint256[] memory amounts = _arr2(0, 9);
+        uint256[] memory caps = _arr2(20, 20);
+
+        (uint256[] memory fills, uint256 rest) = _runAllocate(
+            weights,
+            amounts,
+            caps,
+            11,
+            2
+        );
+
+        assertEq(rest, 1);
+        assertEq(fills[0], 10);
+        assertEq(fills[1], 0);
     }
 
     function test_revert_lengthMismatch() public {

@@ -235,6 +235,45 @@ contract ClaimStETHRewardsTest is ClaimRewardsBaseTest {
         );
     }
 
+    function test_WithBondDebt() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 32 ether });
+        _rewards({ fee: 0.1 ether });
+        _debt({ amount: 1 ether });
+
+        uint256 bondSharesBefore = accounting.getBondShares(0);
+        vm.prank(user);
+        accounting.claimRewardsStETH(
+            leaf.nodeOperatorId,
+            UINT256_MAX,
+            leaf.shares,
+            leaf.proof
+        );
+        uint256 bondSharesAfter = accounting.getBondShares(0);
+
+        assertEq(
+            stETH.balanceOf(rewardAddress),
+            0,
+            "reward address balance should be 0"
+        );
+        assertApproxEqAbs(
+            bondSharesAfter,
+            bondSharesBefore,
+            1 wei,
+            "bond shares after claim should be equal to before minus excess bond after curve"
+        );
+        assertEq(
+            stETH.sharesOf(address(accounting)),
+            bondSharesAfter,
+            "bond manager after claim should be equal to after"
+        );
+        assertEq(
+            accounting.totalBondShares(),
+            bondSharesAfter,
+            "total bond shares after claim should be equal to after"
+        );
+    }
+
     function test_WithBondAndOneWithdrawnValidator()
         public
         override
@@ -853,6 +892,50 @@ contract ClaimWstETHRewardsTest is ClaimRewardsBaseTest {
         );
     }
 
+    function test_WithBondDebt() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 32 ether });
+        _rewards({ fee: 0.1 ether });
+        _debt({ amount: 1 ether });
+
+        uint256 bondSharesBefore = accounting.getBondShares(0);
+        vm.prank(user);
+        accounting.claimRewardsWstETH(
+            leaf.nodeOperatorId,
+            UINT256_MAX,
+            leaf.shares,
+            leaf.proof
+        );
+        uint256 bondSharesAfter = accounting.getBondShares(0);
+
+        assertEq(
+            wstETH.balanceOf(rewardAddress),
+            0,
+            "reward address balance should be 0"
+        );
+        assertApproxEqAbs(
+            bondSharesAfter,
+            bondSharesBefore,
+            1 wei,
+            "bond shares after claim should be equal to before"
+        );
+        assertEq(
+            wstETH.balanceOf(address(accounting)),
+            0,
+            "bond manager wstETH balance should be 0"
+        );
+        assertEq(
+            stETH.sharesOf(address(accounting)),
+            bondSharesAfter,
+            "bond manager after claim should be equal to bond shares after"
+        );
+        assertEq(
+            accounting.totalBondShares(),
+            bondSharesAfter,
+            "total bond shares after claim should be equal to bond shares after"
+        );
+    }
+
     function test_WithBondAndOneWithdrawnValidator()
         public
         override
@@ -1408,6 +1491,42 @@ contract ClaimRewardsUnstETHTest is ClaimRewardsBaseTest {
         _operator({ ongoing: 16, withdrawn: 0 });
         _deposit({ bond: 32 ether });
         _rewards({ fee: 0.1 ether });
+
+        uint256 bondSharesBefore = accounting.getBondShares(0);
+
+        vm.prank(user);
+        accounting.claimRewardsUnstETH(
+            leaf.nodeOperatorId,
+            UINT256_MAX,
+            leaf.shares,
+            leaf.proof
+        );
+
+        uint256 bondSharesAfter = accounting.getBondShares(0);
+
+        assertApproxEqAbs(
+            bondSharesAfter,
+            bondSharesBefore,
+            1 wei,
+            "bond shares after claim should be equal to before"
+        );
+        assertEq(
+            stETH.sharesOf(rewardAddress),
+            0,
+            "reward address shares should be 0"
+        );
+        assertEq(
+            accounting.totalBondShares(),
+            bondSharesAfter,
+            "total bond shares should be equal to after"
+        );
+    }
+
+    function test_WithBondDebt() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 32 ether });
+        _rewards({ fee: 0.1 ether });
+        _debt({ amount: 1 ether });
 
         uint256 bondSharesBefore = accounting.getBondShares(0);
 

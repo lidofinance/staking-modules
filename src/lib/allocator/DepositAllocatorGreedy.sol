@@ -24,6 +24,7 @@ library DepositAllocatorGreedy {
     error LengthMismatch();
     error ZeroStep();
 
+    // TODO: Make naming aligned with CuratedDepositAllocator
     function _allocate(
         AllocationState memory state,
         uint256 inflow,
@@ -54,12 +55,17 @@ library DepositAllocatorGreedy {
                 uint256 opIdx = idx[i];
                 uint256 possible = imbalances[opIdx];
                 uint256 cap = state.capacities[opIdx];
-                if (cap < possible) {
-                    possible = cap;
+                if (possible > cap) {
+                    possible = _quantize(cap, step);
                 }
                 if (possible == 0) continue;
 
-                uint256 toGive = possible <= remaining ? possible : remaining;
+                uint256 toGive = possible < remaining
+                    ? possible
+                    : _quantize(remaining, step);
+                // NOTE: toGive can be 0 if remaining is less than step and possible is greater than remaining.
+                //     In this case, there is no point in iterating further.
+                if (toGive == 0) break;
                 fills[opIdx] = toGive;
                 remaining -= toGive;
             }
@@ -73,7 +79,9 @@ library DepositAllocatorGreedy {
         uint256 step
     ) internal pure returns (uint256) {
         if (step < 2 || value == 0) return value;
-        return value - (value % step);
+        unchecked {
+            return value - (value % step);
+        }
     }
 
     function _sortByImbalanceDesc(
@@ -113,12 +121,15 @@ library DepositAllocatorGreedy {
 
         unchecked {
             for (uint256 i; i < n; ++i) {
+                // TODO: Consider removing idx from here and index this array in sorting method
                 idx[i] = i;
+                // TODO: Can be removed since it does not matter here
                 uint256 capacity = state.capacities[i];
                 if (capacity == 0) continue;
 
                 uint256 share = state.shares[i];
                 if (share == 0) continue;
+                // NOTE: Rounding up to avoid cases when 10 keys aren't allocated over 100 equal operators
                 uint256 target = Math.mulDiv(
                     share,
                     targetTotal,
@@ -127,8 +138,7 @@ library DepositAllocatorGreedy {
                 );
                 uint256 current = state.amounts[i];
                 if (target <= current) continue;
-                uint256 imbalance = _quantize(target - current, step);
-                imbalances[i] = imbalance;
+                imbalances[i] = _quantize(target - current, step);
             }
         }
     }

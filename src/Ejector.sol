@@ -10,6 +10,7 @@ import { ExitTypes } from "./abstract/ExitTypes.sol";
 
 import { PausableUntil } from "./lib/utils/PausableUntil.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
+import { TransientUintUintMap, TransientUintUintMapLib } from "./lib/TransientUintUintMapLib.sol";
 
 import { IEjector } from "./interfaces/IEjector.sol";
 import { ICSModule } from "./interfaces/ICSModule.sol";
@@ -81,6 +82,9 @@ contract Ejector is
             revert NothingToEject();
         }
 
+        // Default to sender if no refund recipient is specified
+        refundRecipient = _msgSenderIfEmpty(refundRecipient);
+
         {
             // A key must be deposited to prevent ejecting unvetted keys that can intersect with
             // other modules.
@@ -131,11 +135,7 @@ contract Ejector is
         // @dev This call might revert if the limits are exceeded on the protocol side.
         triggerableWithdrawalsGateway().triggerFullWithdrawals{
             value: msg.value
-        }(
-            exitsData,
-            refundRecipient == address(0) ? msg.sender : refundRecipient,
-            VOLUNTARY_EXIT_TYPE_ID
-        );
+        }(exitsData, refundRecipient, VOLUNTARY_EXIT_TYPE_ID);
     }
 
     /// @dev Additional method for non-sequential keys to save gas and decrease fee amount compared
@@ -152,13 +152,23 @@ contract Ejector is
             revert NothingToEject();
         }
 
+        // Default to sender if no refund recipient is specified
+        refundRecipient = _msgSenderIfEmpty(refundRecipient);
+
         uint256 totalDepositedKeys = MODULE
             .getNodeOperator(nodeOperatorId)
             .totalDepositedKeys;
         ValidatorData[] memory exitsData = new ValidatorData[](
             keyIndices.length
         );
+        TransientUintUintMap seen = TransientUintUintMapLib.create();
         for (uint256 i = 0; i < keyIndices.length; i++) {
+            // Skip duplicate keys in the input array
+            if (seen.get(keyIndices[i]) != 0) {
+                revert DuplicateKeyIndex();
+            }
+            seen.set(keyIndices[i], 1);
+
             // A key must be deposited to prevent ejecting unvetted keys that can intersect with
             // other modules.
             if (keyIndices[i] >= totalDepositedKeys) {
@@ -191,11 +201,7 @@ contract Ejector is
         // @dev This call might revert if the limits are exceeded on the protocol side.
         triggerableWithdrawalsGateway().triggerFullWithdrawals{
             value: msg.value
-        }(
-            exitsData,
-            refundRecipient == address(0) ? msg.sender : refundRecipient,
-            VOLUNTARY_EXIT_TYPE_ID
-        );
+        }(exitsData, refundRecipient, VOLUNTARY_EXIT_TYPE_ID);
     }
 
     /// @inheritdoc IEjector
@@ -218,6 +224,10 @@ contract Ejector is
         // active keys available
         if (MODULE.isValidatorWithdrawn(nodeOperatorId, keyIndex)) {
             revert AlreadyWithdrawn();
+        }
+
+        if (refundRecipient == address(0)) {
+            revert ZeroRefundRecipient();
         }
 
         ValidatorData[] memory exitsData = new ValidatorData[](1);
@@ -253,6 +263,10 @@ contract Ejector is
             ITriggerableWithdrawalsGateway(
                 MODULE.LIDO_LOCATOR().triggerableWithdrawalsGateway()
             );
+    }
+
+    function _msgSenderIfEmpty(address input) internal view returns (address) {
+        return input == address(0) ? msg.sender : input;
     }
 
     function _onlyStrikes() internal view {

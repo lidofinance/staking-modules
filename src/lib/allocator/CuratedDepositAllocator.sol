@@ -38,7 +38,7 @@ library CuratedDepositAllocator {
     ///      - Only operators with capacity > 0 and non-zero allocation weight are included.
     ///      - Current amounts are derived from deposited minus withdrawn keys (active keys).
     ///      - Operators that hit their capacity here will have capacity == 0 next call and
-    ///        will be excluded; remaining operators’ effective weights increase.
+    ///        will be excluded; remaining operators’ shares increase.
     /// @dev Returns compact arrays containing only operators with non-zero allocations.
     /// @param nodeOperators Node operator storage mapping from the module.
     /// @param operatorsCount Total operators count in the module.
@@ -73,6 +73,7 @@ library CuratedDepositAllocator {
         }
 
         uint256[] memory eligibleAllocations;
+        // TODO: Pass data instead of separate fields
         (allocated, eligibleAllocations) = _computeAllocations({
             currentAmounts: data.currents,
             capacities: data.capacities,
@@ -98,14 +99,15 @@ library CuratedDepositAllocator {
     ///        (non-zero weight, non-zero top-up capacity),
     ///        so a subset cannot bias its share by omitting other eligible operators.
     ///      - Per-operator capacity is computed as:
-    ///        (active validators * 2048 ETH) - current operator balance, floored at zero.
+    ///        `(active_validators * 2048 ETH) - current_operator_balance`, floored at zero.
     ///      - Per-key top-up limits are *not* used as caps for allocation; they are
     ///        applied later per-key and may leave unallocated remainder.
-    ///      - Operators that receive zero remaining balance in the module on later
-    ///        iterations will be excluded by capacity == 0 at the module level.
-    /// @param nodeOperatorBalances Per-operator balance (in wei) from Accounting oracle.
+    ///      - Operators that have zero remaining balance after allocation are excluded
+    ///        on later iterations by capacity == 0 at the module level.
+    /// @param nodeOperators Node operator storage mapping from the module.
+    /// @param nodeOperatorBalances Per-operator balance (in wei) storage mapping from the module.
     /// @param operatorsCount Total operators count in the module.
-    /// @param depositAmount Total top-up amount in wei to allocate.
+    /// @param allocationAmount Total top-up amount in wei to allocate.
     /// @param operatorIds Key owner operator ids for this top-up request.
     /// @return allocated Total allocated amount in wei.
     /// @return allocatedOperatorIds Operator ids for allocated operators.
@@ -114,7 +116,7 @@ library CuratedDepositAllocator {
         mapping(uint256 => NodeOperator) storage nodeOperators,
         mapping(uint256 => uint256) storage nodeOperatorBalances,
         uint256 operatorsCount,
-        uint256 depositAmount,
+        uint256 allocationAmount,
         uint256[] calldata operatorIds
     )
         external
@@ -126,7 +128,7 @@ library CuratedDepositAllocator {
         )
     {
         uint256 operatorIdsCount = operatorIds.length;
-        if (depositAmount == 0 || operatorIdsCount == 0) {
+        if (allocationAmount == 0 || operatorIdsCount == 0) {
             return (0, new uint256[](0), new uint256[](0));
         }
 
@@ -149,7 +151,7 @@ library CuratedDepositAllocator {
             capacities: data.capacities,
             weights: data.weights,
             step: TOP_UP_STEP,
-            allocationAmount: depositAmount,
+            allocationAmount: allocationAmount,
             weightSum: data.weightSum,
             totalAmount: data.totalCurrent
         });
@@ -159,6 +161,11 @@ library CuratedDepositAllocator {
             eligibleAllocations,
             data.count
         );
+    }
+
+    /// @dev Quantizes a value down to the nearest multiple of TOP_UP_STEP.
+    function quantizeForTopUp(uint256 value) internal pure returns (uint256) {
+        return DepositAllocatorGreedy._quantize(value, TOP_UP_STEP);
     }
 
     /// @dev Builds AllocationState and runs the configured allocator in-memory.
@@ -184,6 +191,7 @@ library CuratedDepositAllocator {
         unchecked {
             // weightSum > 0 is guaranteed by the collectors for any non-empty input.
             for (uint256 i; i < n; ++i) {
+                // TODO: Likely unreachable due to collector filtering; can skip check and save gas
                 if (weights[i] == 0) {
                     continue;
                 }
@@ -274,6 +282,7 @@ library CuratedDepositAllocator {
         }
 
         data.count = eligibleCount;
+        // TODO: Just iterate till eligibleCount and skip trimming
         // Truncate arrays to the number of eligible operators collected.
         _truncateDepositable(data);
     }

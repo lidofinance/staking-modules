@@ -379,11 +379,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     ///      Method call can result in the remaining bond being lower than the locked bond.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Amount to charge in ETH (stETH)
-    /// @return fullyCharged True if the bond was fully charged, false otherwise
-    function chargeFee(
-        uint256 nodeOperatorId,
-        uint256 amount
-    ) external returns (bool fullyCharged);
+    function chargeFee(uint256 nodeOperatorId, uint256 amount) external;
 
     /// @notice Pull fees (if proof provided) from FeeDistributor to the Node Operator's bond and split pending according to configured fee splits.
     /// @dev Permissionless method. Can be called before penalty application to ensure that rewards are also penalized and split.

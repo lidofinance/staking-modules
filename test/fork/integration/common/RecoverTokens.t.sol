@@ -3,20 +3,10 @@
 
 pragma solidity 0.8.33;
 
-import { Test } from "forge-std/Test.sol";
+import { PermitHelper } from "../../../helpers/Permit.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
-import { Utilities } from "../../helpers/Utilities.sol";
-import { PermitHelper } from "../../helpers/Permit.sol";
-import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
-
-contract RecoverIntegrationTest is
-    Test,
-    Utilities,
-    PermitHelper,
-    DeploymentFixtures,
-    InvariantAsserts
-{
+abstract contract RecoverIntegrationTestBase is ModuleTypeBase, PermitHelper {
     address internal user;
     address internal recoverer;
 
@@ -25,7 +15,7 @@ contract RecoverIntegrationTest is
         vm.pauseGasMetering();
         uint256 noCount = module.getNodeOperatorsCount();
         assertModuleKeys(module);
-        assertModuleEnqueuedCount(module);
+        _assertModuleEnqueuedCount();
         assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
         assertAccountingBurnerApproval(
@@ -41,9 +31,7 @@ contract RecoverIntegrationTest is
     }
 
     function setUp() public {
-        Env memory env = envVars();
-        vm.createSelectFork(env.RPC_URL);
-        initializeFromDeployment();
+        _setUpModule();
 
         recoverer = nextAddress("Recoverer");
         user = nextAddress("User");
@@ -236,3 +224,13 @@ contract RecoverIntegrationTest is
         assertEq(wstETH.balanceOf(recoverer), amountWstETH);
     }
 }
+
+contract RecoverIntegrationTestCSM is
+    RecoverIntegrationTestBase,
+    CSMIntegrationBase
+{}
+
+contract RecoverIntegrationTestCurated is
+    RecoverIntegrationTestBase,
+    CuratedIntegrationBase
+{}
