@@ -6,14 +6,14 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @dev Helper struct for input allocation state.
 struct AllocationState {
-    /// @dev Target share per operator scaled by S_SCALE.
-    uint256[] shares;
+    /// @dev Target share per operator scaled by S_SCALE (X96).
+    uint256[] sharesX96;
     /// @dev Current allocated amount per operator.
-    uint256[] amounts;
+    uint256[] currents;
     /// @dev Remaining capacity per operator (max allocatable).
     uint256[] capacities;
     /// @dev Sum of current amounts across all operators.
-    uint256 totalAmount;
+    uint256 totalCurrent;
 }
 
 /// @notice Greedy imbalance math with the same entrypoints as DepositPouringMath.
@@ -21,35 +21,40 @@ library DepositAllocatorGreedy {
     // Fixed-point scale (2^96) for share ratios to represent fractional shares as integers.
     uint256 internal constant S_SCALE = uint256(1) << 96;
 
+    // Expected input invariants:
+    // - state.capacities[i] > 0
+    // - state.sharesX96[i] > 0
+    // for i in [0..n).
+
     error LengthMismatch();
     error ZeroStep();
 
-    // TODO: Make naming aligned with CuratedDepositAllocator
     function _allocate(
         AllocationState memory state,
-        uint256 inflow,
+        uint256 allocationAmount,
         uint256 step
-    ) internal pure returns (uint256[] memory fills, uint256 rest) {
+    ) internal pure returns (uint256[] memory allocations, uint256 remainder) {
         if (step == 0) {
             revert ZeroStep();
         }
-        uint256 n = state.shares.length;
+        uint256 n = state.sharesX96.length;
         if (n == 0) {
-            return (new uint256[](0), inflow);
+            return (new uint256[](0), allocationAmount);
         }
-        if (state.amounts.length != n || state.capacities.length != n) {
+        if (state.currents.length != n || state.capacities.length != n) {
             revert LengthMismatch();
         }
 
-        (
-            uint256[] memory imbalances,
-            uint256[] memory idx
-        ) = _computeImbalances(state, inflow, step);
-        fills = new uint256[](n);
+        uint256[] memory imbalances = _computeImbalances(
+            state,
+            allocationAmount,
+            step
+        );
+        allocations = new uint256[](n);
 
-        _sortByImbalanceDesc(idx, imbalances);
+        uint256[] memory idx = _sortedIndicesByImbalanceDesc(imbalances);
 
-        uint256 remaining = inflow;
+        uint256 remaining = allocationAmount;
         unchecked {
             for (uint256 i; i < n && remaining > 0; ++i) {
                 uint256 opIdx = idx[i];
@@ -66,12 +71,12 @@ library DepositAllocatorGreedy {
                 // NOTE: toGive can be 0 if remaining is less than step and possible is greater than remaining.
                 //     In this case, there is no point in iterating further.
                 if (toGive == 0) break;
-                fills[opIdx] = toGive;
+                allocations[opIdx] = toGive;
                 remaining -= toGive;
             }
         }
 
-        rest = remaining;
+        remainder = remaining;
     }
 
     function _quantize(
@@ -84,13 +89,16 @@ library DepositAllocatorGreedy {
         }
     }
 
-    function _sortByImbalanceDesc(
-        uint256[] memory idx,
+    function _sortedIndicesByImbalanceDesc(
         uint256[] memory imbalances
-    ) internal pure {
+    ) internal pure returns (uint256[] memory idx) {
+        uint256 n = imbalances.length;
+        idx = new uint256[](n);
+        if (n == 0) return idx;
+        idx[0] = 0;
         unchecked {
-            for (uint256 i = 1; i < idx.length; ++i) {
-                uint256 key = idx[i];
+            for (uint256 i = 1; i < n; ++i) {
+                uint256 key = i;
                 uint256 keyImb = imbalances[key];
                 uint256 j = i;
                 while (j > 0) {
@@ -106,29 +114,17 @@ library DepositAllocatorGreedy {
 
     function _computeImbalances(
         AllocationState memory state,
-        uint256 inflow,
+        uint256 allocationAmount,
         uint256 step
-    )
-        internal
-        pure
-        returns (uint256[] memory imbalances, uint256[] memory idx)
-    {
-        uint256 n = state.shares.length;
+    ) internal pure returns (uint256[] memory imbalances) {
+        uint256 n = state.sharesX96.length;
         imbalances = new uint256[](n);
-        idx = new uint256[](n);
 
-        uint256 targetTotal = state.totalAmount + inflow;
+        uint256 targetTotal = state.totalCurrent + allocationAmount;
 
         unchecked {
             for (uint256 i; i < n; ++i) {
-                // TODO: Consider removing idx from here and index this array in sorting method
-                idx[i] = i;
-                // TODO: Can be removed since it does not matter here
-                uint256 capacity = state.capacities[i];
-                if (capacity == 0) continue;
-
-                uint256 share = state.shares[i];
-                if (share == 0) continue;
+                uint256 share = state.sharesX96[i];
                 // NOTE: Rounding up to avoid cases when 10 keys aren't allocated over 100 equal operators
                 uint256 target = Math.mulDiv(
                     share,
@@ -136,7 +132,7 @@ library DepositAllocatorGreedy {
                     S_SCALE,
                     Math.Rounding.Ceil
                 );
-                uint256 current = state.amounts[i];
+                uint256 current = state.currents[i];
                 if (target <= current) continue;
                 imbalances[i] = _quantize(target - current, step);
             }
