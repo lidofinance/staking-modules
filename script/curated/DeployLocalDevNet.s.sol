@@ -53,7 +53,7 @@ contract DeployLocalDevNet is DeployBase {
         config.defaultKeyRemovalCharge = 0;
         config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
         config.defaultKeysLimit = type(uint256).max;
-        config.defaultAvgPerfLeewayBP = 450;
+        config.defaultAvgPerfLeewayBP = 10000;
         config.defaultRewardShareBP = 10000;
         config.defaultStrikesLifetimeFrames = 6;
         config.defaultStrikesThreshold = 3;
@@ -84,8 +84,11 @@ contract DeployLocalDevNet is DeployBase {
                 "CURATED_GATE_GENERAL_DELAYED_PENALTY_FINE",
                 uint256(0.05 ether)
             );
-            primaryGate.params.keysLimit = vm.envOr("CURATED_GATE_KEYS_LIMIT", uint256(type(uint248).max));
-            primaryGate.params.avgPerfLeewayData.push([1, 500]); // TODO
+            primaryGate.params.keysLimit = vm.envOr(
+                "CURATED_GATE_KEYS_LIMIT",
+                uint256(type(uint248).max)
+            );
+            primaryGate.params.avgPerfLeewayData.push([1, 10000]); // TODO
             primaryGate.params.rewardShareData.push([1, 10000]); // TODO
             primaryGate.params.rewardShareData.push([17, 5834]); // TODO
             primaryGate.params.strikesLifetimeFrames = 6; // TODO
