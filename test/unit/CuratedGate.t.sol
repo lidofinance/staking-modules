@@ -17,11 +17,11 @@ import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
 
 import { Utilities } from "../helpers/Utilities.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
-import { CSMMock } from "../helpers/mocks/CSMMock.sol";
+import { CuratedMock } from "../helpers/mocks/CuratedMock.sol";
 import { MetaOperatorRegistryMock } from "../helpers/mocks/MetaOperatorRegistryMock.sol";
 
 contract CuratedGateTestBase is Test, Utilities, Fixtures {
-    CSMMock public module;
+    CuratedMock public module;
     MetaOperatorRegistryMock public data;
     CuratedGate public gate;
     uint256 internal constant MODULE_ID = 1;
@@ -41,7 +41,7 @@ contract CuratedGateTestBase is Test, Utilities, Fixtures {
         member2 = nextAddress("MEMBER");
         stranger = nextAddress("STRANGER");
 
-        module = new CSMMock();
+        module = new CuratedMock();
         module.mock_setNodeOperatorsCount(1);
         module.mock_setNodeOperatorManagementProperties(
             NodeOperatorManagementProperties({
@@ -52,6 +52,7 @@ contract CuratedGateTestBase is Test, Utilities, Fixtures {
         );
 
         data = new MetaOperatorRegistryMock();
+        module.mock_setMetaOperatorRegistry(address(data));
 
         tree = new MerkleTree();
         tree.pushLeaf(abi.encode(member));
@@ -59,7 +60,7 @@ contract CuratedGateTestBase is Test, Utilities, Fixtures {
         root = tree.root();
         cid = someCIDv0();
 
-        gate = new CuratedGate(MODULE_ID, address(module), address(data));
+        gate = new CuratedGate(MODULE_ID, address(module));
         _enableInitializers(address(gate));
         gate.initialize(curveId(), root, cid, admin);
 
@@ -81,11 +82,7 @@ contract CuratedGateTestBaseDefaultCurve is CuratedGateTestBase {
 
 contract CuratedGateTest_constructor is CuratedGateTestBase {
     function test_constructor() public {
-        CuratedGate e = new CuratedGate(
-            MODULE_ID,
-            address(module),
-            address(data)
-        );
+        CuratedGate e = new CuratedGate(MODULE_ID, address(module));
         assertEq(address(e.MODULE()), address(module));
         assertEq(e.MODULE_ID(), MODULE_ID);
         assertEq(address(e.META_OPERATOR_REGISTRY()), address(data));
@@ -93,27 +90,18 @@ contract CuratedGateTest_constructor is CuratedGateTestBase {
 
     function test_constructor_RevertWhen_ZeroModule() public {
         vm.expectRevert(ICuratedGate.ZeroModuleAddress.selector);
-        new CuratedGate(MODULE_ID, address(0), address(data));
-    }
-
-    function test_constructor_RevertWhen_ZeroMetaOperatorRegistry() public {
-        vm.expectRevert(ICuratedGate.ZeroMetaOperatorRegistryAddress.selector);
-        new CuratedGate(MODULE_ID, address(module), address(0));
+        new CuratedGate(MODULE_ID, address(0));
     }
 
     function test_constructor_RevertWhen_ZeroModuleId() public {
         vm.expectRevert(ICuratedGate.ZeroModuleId.selector);
-        new CuratedGate(0, address(module), address(data));
+        new CuratedGate(0, address(module));
     }
 }
 
 contract CuratedGateTest_initialize is CuratedGateTestBase {
     function test_initialize() public {
-        CuratedGate e = new CuratedGate(
-            MODULE_ID,
-            address(module),
-            address(data)
-        );
+        CuratedGate e = new CuratedGate(MODULE_ID, address(module));
         _enableInitializers(address(e));
         e.initialize(1, root, cid, admin);
         assertEq(e.treeRoot(), root);
@@ -123,44 +111,28 @@ contract CuratedGateTest_initialize is CuratedGateTestBase {
     }
 
     function test_initialize_RevertWhen_ZeroAdmin() public {
-        CuratedGate e = new CuratedGate(
-            MODULE_ID,
-            address(module),
-            address(data)
-        );
+        CuratedGate e = new CuratedGate(MODULE_ID, address(module));
         _enableInitializers(address(e));
         vm.expectRevert(ICuratedGate.ZeroAdminAddress.selector);
         e.initialize(1, root, cid, address(0));
     }
 
     function test_initialize_RevertWhen_InvalidTreeRoot() public {
-        CuratedGate e = new CuratedGate(
-            MODULE_ID,
-            address(module),
-            address(data)
-        );
+        CuratedGate e = new CuratedGate(MODULE_ID, address(module));
         _enableInitializers(address(e));
         vm.expectRevert(IMerkleGate.InvalidTreeRoot.selector);
         e.initialize(1, bytes32(0), cid, admin);
     }
 
     function test_initialize_RevertWhen_InvalidTreeCid() public {
-        CuratedGate e = new CuratedGate(
-            MODULE_ID,
-            address(module),
-            address(data)
-        );
+        CuratedGate e = new CuratedGate(MODULE_ID, address(module));
         _enableInitializers(address(e));
         vm.expectRevert(IMerkleGate.InvalidTreeCid.selector);
         e.initialize(1, root, "", admin);
     }
 
     function test_initialize_AllowsDefaultCurveId() public {
-        CuratedGate e = new CuratedGate(
-            MODULE_ID,
-            address(module),
-            address(data)
-        );
+        CuratedGate e = new CuratedGate(MODULE_ID, address(module));
         _enableInitializers(address(e));
         uint256 defaultCurveId = module.ACCOUNTING().DEFAULT_BOND_CURVE_ID();
         e.initialize(defaultCurveId, root, cid, admin);

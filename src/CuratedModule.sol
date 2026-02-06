@@ -286,14 +286,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         view
         returns (uint256)
     {
-        uint256 operatorsCount = _nodeOperatorsCount;
-        uint256 index = _storage().nodeOperatorWeightsUpdateCount;
-        if (index >= operatorsCount) {
-            return 0;
-        }
-        unchecked {
-            return operatorsCount - index;
-        }
+        return _nodeOperatorsCount - _storage().nodeOperatorWeightsUpdateCount;
     }
 
     /// @inheritdoc ICuratedModule

@@ -10,14 +10,14 @@ import { ICuratedGate } from "../../src/interfaces/ICuratedGate.sol";
 import { CuratedGateFactory } from "../../src/CuratedGateFactory.sol";
 import { ICuratedGateFactory } from "../../src/interfaces/ICuratedGateFactory.sol";
 
-import { CSMMock } from "../helpers/mocks/CSMMock.sol";
+import { CuratedMock } from "../helpers/mocks/CuratedMock.sol";
 import { MetaOperatorRegistryMock } from "../helpers/mocks/MetaOperatorRegistryMock.sol";
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 
 contract CuratedGateFactoryTestBase is Test, Utilities {
     CuratedGateFactory factory;
-    CSMMock module;
+    CuratedMock module;
     MetaOperatorRegistryMock data;
     address impl;
     bytes32 root;
@@ -29,12 +29,11 @@ contract CuratedGateFactoryTestBase is Test, Utilities {
 
     function setUp() public virtual {
         admin = nextAddress("admin");
-        module = new CSMMock();
+        module = new CuratedMock();
         data = new MetaOperatorRegistryMock();
+        module.mock_setMetaOperatorRegistry(address(data));
         moduleId = 1;
-        impl = address(
-            new CuratedGate(moduleId, address(module), address(data))
-        );
+        impl = address(new CuratedGate(moduleId, address(module)));
         factory = new CuratedGateFactory(impl);
         root = bytes32(randomBytes(32));
         cid = "someCid";

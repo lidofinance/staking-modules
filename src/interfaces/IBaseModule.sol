@@ -116,7 +116,6 @@ interface IBaseModule is
     error CannotAddKeys();
     error NodeOperatorDoesNotExist();
     error SenderIsNotEligible();
-    error SenderIsNotAccounting();
     error InvalidVetKeysPointer();
     error ZeroExitBalance();
     error SlashingPenaltyIsNotApplicable();

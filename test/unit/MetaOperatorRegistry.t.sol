@@ -1007,7 +1007,7 @@ contract MetaOperatorRegistryTestWeights is MetaOperatorRegistryTestGroupsBase {
     {
         uint64 noId = 0;
         uint256 bondCurveId = module.ACCOUNTING().getBondCurveId(noId);
-        _setBondCurveWeight(bondCurveId, 0);
+        assertEq(registry.getBondCurveWeight(bondCurveId), 0);
 
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(noId, MAX_BP), _extOperatorsArr0());
@@ -1166,20 +1166,15 @@ contract MetaOperatorRegistryTestBondCurve is
         registry.setBondCurveWeight(0, 123);
     }
 
-    function test_setBondCurveWeight_SameWeightDoesNotCallHook() public {
+    function test_setBondCurveWeight_RevertWhen_SameWeight() public {
         {
             _mockBondCurveWeightHook();
             vm.prank(groupManager);
             registry.setBondCurveWeight(0, 123);
         }
 
-        expectNoCall(
-            address(module),
-            abi.encodeWithSelector(
-                ICuratedModule.onBondCurveWeightUpdated.selector
-            )
-        );
         vm.prank(groupManager);
+        vm.expectRevert(IMetaOperatorRegistry.SameBondCurveWeight.selector);
         registry.setBondCurveWeight(0, 123);
     }
 

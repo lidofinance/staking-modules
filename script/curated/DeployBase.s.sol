@@ -461,11 +461,7 @@ abstract contract DeployBase is Script {
             strikes.initialize(deployer, address(ejector));
 
             curatedGateImpl = address(
-                new CuratedGate(
-                    config.stakingModuleId,
-                    address(curatedModule),
-                    address(metaRegistry)
-                )
+                new CuratedGate(config.stakingModuleId, address(curatedModule))
             );
 
             curatedGateFactory = new CuratedGateFactory(curatedGateImpl);

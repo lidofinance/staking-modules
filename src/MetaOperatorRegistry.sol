@@ -260,7 +260,7 @@ contract MetaOperatorRegistry is
         uint256 weight
     ) external onlyRole(MANAGE_OPERATOR_GROUPS_ROLE) {
         if (_bondCurveWeight[curveId] == weight) {
-            return;
+            revert SameBondCurveWeight();
         }
 
         _bondCurveWeight[curveId] = weight;

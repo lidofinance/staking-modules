@@ -54,25 +54,18 @@ contract CuratedGate is
     /// @dev Tracks whether an address already consumed its eligibility
     mapping(address => bool) internal _consumedAddresses;
 
-    constructor(
-        uint256 moduleId,
-        address module,
-        address metaOperatorRegistry
-    ) {
+    constructor(uint256 moduleId, address module) {
         if (moduleId == 0) {
             revert ZeroModuleId();
         }
         if (module == address(0)) {
             revert ZeroModuleAddress();
         }
-        if (metaOperatorRegistry == address(0)) {
-            revert ZeroMetaOperatorRegistryAddress();
-        }
 
         MODULE = ICuratedModule(module);
         MODULE_ID = moduleId;
         ACCOUNTING = MODULE.ACCOUNTING();
-        META_OPERATOR_REGISTRY = IMetaOperatorRegistry(metaOperatorRegistry);
+        META_OPERATOR_REGISTRY = MODULE.META_OPERATOR_REGISTRY();
 
         _disableInitializers();
     }
@@ -192,8 +185,9 @@ contract CuratedGate is
         if (_treeRoot == bytes32(0)) revert InvalidTreeRoot();
         if (_treeRoot == treeRoot) revert InvalidTreeRoot();
         if (bytes(_treeCid).length == 0) revert InvalidTreeCid();
-        if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid)))
+        if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid))) {
             revert InvalidTreeCid();
+        }
         treeRoot = _treeRoot;
         treeCid = _treeCid;
         emit TreeSet(_treeRoot, _treeCid);

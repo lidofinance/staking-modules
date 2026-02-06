@@ -1822,6 +1822,29 @@ contract CuratedUpdateOperatorBalances is CuratedCommon {
     }
 }
 
+contract CuratedNodeOperatorWeightsToUpdateCount is CuratedCommon {
+    function test_getNodeOperatorWeightsToUpdateCount() public {
+        createNodeOperator(1);
+        createNodeOperator(1);
+        createNodeOperator(1);
+
+        assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 0);
+
+        vm.prank(address(metaOperatorsRegistry));
+        cm.onBondCurveWeightUpdated();
+
+        assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 3);
+
+        bool finished = cm.batchUpdateNodeOperatorWeights(2);
+        assertFalse(finished);
+        assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 1);
+
+        finished = cm.batchUpdateNodeOperatorWeights(5);
+        assertTrue(finished);
+        assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 0);
+    }
+}
+
 contract CuratedGetOperatorsWeights is CuratedCommon {
     function test_getOperatorsWeights_ReturnsWeightsInOrder()
         public
