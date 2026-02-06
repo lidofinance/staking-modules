@@ -21,6 +21,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     struct CuratedModuleStorage {
         // Tracks per-operator balances (in wei) reported by the Accounting oracle.
         mapping(uint256 nodeOperatorId => uint256 balance) operatorBalances;
+        // Tracks how many operators left to update due to changes in weights.
         uint256 nodeOperatorWeightsUpdateCount;
     }
 
