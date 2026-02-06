@@ -36,6 +36,7 @@ contract MetaRegistry is
         ExternalOperator[] externalOperators;
     }
 
+    // TODO: Rename to `EffectiveWeightCache`
     struct WeightCache {
         mapping(uint256 nodeOperatorId => uint256 weight) operatorEffectiveWeight;
         mapping(uint256 groupId => uint256 weight) groupEffectiveWeightSum;
@@ -55,21 +56,17 @@ contract MetaRegistry is
     uint256 internal constant MAX_BP = 10000;
     uint256 internal constant EXTERNAL_STAKE_PER_VALIDATOR = 32 ether;
 
+    // TODO: Add custom storage location
     mapping(uint256 curveId => uint256 weight) internal _bondCurveWeight;
+
     CachedOperatorGroup[] internal _groups;
     GroupIndex internal _groupIndex;
 
     WeightCache internal _weightCache;
 
     mapping(bytes32 key => OperatorInfo) internal _operatorMetadata;
+    // TODO: Work with modules only via StakingRouter
     mapping(uint256 moduleId => address moduleAddress) internal _modules;
-
-    modifier onlyExistingGroup(uint256 groupId) {
-        if (groupId >= _groups.length) {
-            revert InvalidOperatorGroupId();
-        }
-        _;
-    }
 
     constructor(address module, address stakingRouter) {
         if (module == address(0)) {
@@ -82,6 +79,7 @@ contract MetaRegistry is
 
         MODULE = ICuratedModule(module);
         ACCOUNTING = IAccounting(MODULE.ACCOUNTING());
+        // TODO: Fetch from LIDO_LOCATOR in module
         STAKING_ROUTER = IStakingRouter(payable(stakingRouter));
 
         _disableInitializers();
@@ -97,6 +95,7 @@ contract MetaRegistry is
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
+    // TODO: Metadata should be settable for CM Operators only
     /// @inheritdoc IMetaRegistry
     function setOperatorMetadataAsAdmin(
         uint256 moduleId,
@@ -104,6 +103,7 @@ contract MetaRegistry is
         OperatorInfo calldata info
     ) external onlyRole(SET_OPERATOR_INFO_ROLE) {
         address module = _getOrCacheModuleAddress(moduleId);
+        // TODO: rewrite to `_onlyExistingOperator`
         if (!_nodeOperatorExists(module, nodeOperatorId)) {
             revert NodeOperatorDoesNotExist();
         }
@@ -173,10 +173,12 @@ contract MetaRegistry is
         uint256 groupId,
         OperatorGroup calldata groupInfo
     ) external onlyRole(MANAGE_OPERATOR_GROUPS_ROLE) {
+        // TODO: Use 0 as guard and create an empty group on init to occupy the 0 groupId and simplify the logic
         if (groupId == CREATE_GROUP_SENTINEL) {
             uint256 newGroupId = _groups.length;
             _groups.push();
             _storeGroup(newGroupId.toUint248(), groupInfo, false);
+            // TODO: Add group info to the event
             emit OperatorGroupCreated(newGroupId);
             return;
         }
@@ -193,23 +195,18 @@ contract MetaRegistry is
     /// @inheritdoc IMetaRegistry
     function getOperatorGroup(
         uint256 groupId
-    )
-        external
-        view
-        onlyExistingGroup(groupId)
-        returns (OperatorGroup memory groupInfo)
-    {
+    ) external view returns (OperatorGroup memory groupInfo) {
+        if (groupId >= _groups.length) {
+            revert InvalidOperatorGroupId();
+        }
         CachedOperatorGroup storage group = _groups[groupId];
         uint256 subOpCount = group.subNodeOperatorIds.length;
         groupInfo.subNodeOperators = new SubNodeOperator[](subOpCount);
         for (uint256 i; i < subOpCount; ++i) {
             uint64 noId = group.subNodeOperatorIds[i];
-            MarkedUint248 memory shareData = _groupIndex.operatorShareById[
-                noId
-            ];
             groupInfo.subNodeOperators[i] = SubNodeOperator({
                 nodeOperatorId: noId,
-                share: uint16(shareData.value)
+                share: uint16(_groupIndex.operatorShareById[noId].value)
             });
         }
         groupInfo.externalOperators = group.externalOperators;
@@ -251,9 +248,10 @@ contract MetaRegistry is
     function getBondCurveWeight(
         uint256 curveId
     ) external view returns (uint256 weight) {
-        return _bondCurveWeight[curveId];
+        weight = _bondCurveWeight[curveId];
     }
 
+    // TODO: Guard with a separate role
     /// @inheritdoc IMetaRegistry
     function setBondCurveWeight(
         uint256 curveId,
@@ -274,29 +272,29 @@ contract MetaRegistry is
         uint256 noId
     ) external view returns (uint256 weight, uint256 externalStake) {
         MarkedUint248 memory groupData = _groupIndex.groupIdByOperatorId[noId];
+        // If Node Operator is not in any group, it has no weight and external stake.
         if (!groupData.isValue) {
             return (0, 0);
         }
 
-        uint256 groupId = groupData.value;
-
         weight = _weightCache.operatorEffectiveWeight[noId];
+        // If the operator has no weight, it can't have external stake either, so we can skip the calculations.
         if (weight == 0) {
             return (0, 0);
         }
 
-        uint256 totalExternalStake = _totalExternalStake(_groups[groupId]);
+        uint256 groupId = groupData.value;
+        uint256 totalExternalStake = _totalExternalStake(
+            _groups[groupId].externalOperators
+        );
         if (totalExternalStake == 0) {
             return (weight, 0);
         }
 
-        uint256 groupTotalWeight = _weightCache.groupEffectiveWeightSum[
-            groupId
-        ];
         externalStake = Math.mulDiv(
             totalExternalStake,
             weight,
-            groupTotalWeight
+            _weightCache.groupEffectiveWeightSum[groupId]
         );
     }
 
@@ -308,15 +306,13 @@ contract MetaRegistry is
         operatorWeights = new uint256[](count);
 
         for (uint256 i; i < count; ++i) {
-            uint256 noId = nodeOperatorIds[i];
-            if (!_groupIndex.groupIdByOperatorId[noId].isValue) {
-                continue;
-            }
-
-            operatorWeights[i] = _weightCache.operatorEffectiveWeight[noId];
+            operatorWeights[i] = _weightCache.operatorEffectiveWeight[
+                nodeOperatorIds[i]
+            ];
         }
     }
 
+    // TODO: Give it a reasonable name
     /// @inheritdoc IMetaRegistry
     function onNodeOperatorWeightUpdated(
         uint256 nodeOperatorId
@@ -331,6 +327,7 @@ contract MetaRegistry is
         return _refreshOperatorWeight(groupData.value, nodeOperatorId);
     }
 
+    // TODO: Split into 2 methods `_createGroup` and `_updateGroup`
     function _storeGroup(
         uint248 groupId,
         OperatorGroup calldata groupInfo,
@@ -349,12 +346,7 @@ contract MetaRegistry is
             return;
         }
 
-        uint256 effectiveWeightSum = _storeSubOperators(
-            group,
-            groupId,
-            groupInfo.subNodeOperators
-        );
-        _weightCache.groupEffectiveWeightSum[groupId] = effectiveWeightSum;
+        _storeSubOperators(group, groupId, groupInfo.subNodeOperators);
 
         _storeExternalOperators(group, groupId, groupInfo.externalOperators);
     }
@@ -363,10 +355,10 @@ contract MetaRegistry is
         CachedOperatorGroup storage group,
         uint248 groupId,
         SubNodeOperator[] calldata subNodeOperators
-    ) internal returns (uint256 effectiveWeightSum) {
+    ) internal {
         uint256 shareSum;
-        uint256 subOpCount = subNodeOperators.length;
-        for (uint256 i; i < subOpCount; ++i) {
+        uint256 effectiveWeightSum;
+        for (uint256 i; i < subNodeOperators.length; ++i) {
             SubNodeOperator memory subOperator = subNodeOperators[i];
             uint64 noId = subOperator.nodeOperatorId;
             uint16 share = subOperator.share;
@@ -375,30 +367,26 @@ contract MetaRegistry is
                 revert NodeOperatorDoesNotExist();
             }
 
-            MarkedUint248 memory groupData = _groupIndex.groupIdByOperatorId[
-                noId
-            ];
-            if (groupData.isValue) {
+            if (_groupIndex.groupIdByOperatorId[noId].isValue) {
                 revert NodeOperatorAlreadyInGroup(noId);
             }
-
+            // TODO: Convert groupId here and use uint256 above
             _groupIndex.groupIdByOperatorId[noId] = MarkedUint248(
                 groupId,
                 true
             );
-            _groupIndex.operatorShareById[noId] = MarkedUint248(
-                uint256(share).toUint248(),
-                true
-            );
+            _groupIndex.operatorShareById[noId] = MarkedUint248(share, true);
             group.subNodeOperatorIds.push(noId);
 
-            uint256 effectiveWeight = _getEffectiveWeight(noId, share);
+            uint256 effectiveWeight = _getLatestEffectiveWeight(noId, share);
             _setEffectiveWeight(noId, effectiveWeight);
             effectiveWeightSum += effectiveWeight;
             shareSum += share;
         }
 
         if (shareSum != MAX_BP) revert InvalidSubNodeOperatorShares();
+
+        _weightCache.groupEffectiveWeightSum[groupId] = effectiveWeightSum;
     }
 
     function _storeExternalOperators(
@@ -406,26 +394,24 @@ contract MetaRegistry is
         uint248 groupId,
         ExternalOperator[] calldata externalOperators
     ) internal {
-        uint256 extOpCount = externalOperators.length;
-        for (uint256 i; i < extOpCount; ++i) {
+        for (uint256 i; i < externalOperators.length; ++i) {
             ExternalOperator calldata extOp = externalOperators[i];
             bytes32 extKey = ExternalOperatorLib.uniqueKey(extOp.data);
-            MarkedUint248 memory groupData = _groupIndex.groupIdByExternalKey[
-                extKey
-            ];
-            if (groupData.isValue) {
+            if (_groupIndex.groupIdByExternalKey[extKey].isValue) {
                 revert AlreadyUsedAsExternalOperator();
             }
 
-            if (!ExternalOperatorLib.isNOR(extOp.data)) {
+            if (ExternalOperatorLib.isNOR(extOp.data)) {
+                // TODO: Wrap to handle NOR
+                (uint8 moduleId, uint64 noId) = ExternalOperatorLib.unpackEntry(
+                    extOp.data
+                );
+                address module = _getOrCacheModuleAddress(moduleId);
+                if (!_nodeOperatorExists(module, noId)) {
+                    revert NodeOperatorDoesNotExist();
+                }
+            } else {
                 revert UnsupportedExternalOperatorType();
-            }
-            (uint8 moduleId, uint64 noId) = ExternalOperatorLib.unpackEntry(
-                extOp.data
-            );
-            address module = _getOrCacheModuleAddress(moduleId);
-            if (!_nodeOperatorExists(module, noId)) {
-                revert NodeOperatorDoesNotExist();
             }
 
             _groupIndex.groupIdByExternalKey[extKey] = MarkedUint248(
@@ -439,18 +425,18 @@ contract MetaRegistry is
     function _clearGroupMembership(uint256 groupId) internal {
         CachedOperatorGroup storage group = _groups[groupId];
 
-        uint256 subOperatorsCount = group.subNodeOperatorIds.length;
-        for (uint256 i; i < subOperatorsCount; ++i) {
+        for (uint256 i; i < group.subNodeOperatorIds.length; ++i) {
             uint256 nodeOperatorId = group.subNodeOperatorIds[i];
             delete _groupIndex.groupIdByOperatorId[nodeOperatorId];
+            // TODO: Rename to `shareByOperatorId`
             delete _groupIndex.operatorShareById[nodeOperatorId];
         }
 
-        uint256 extOpCount = group.externalOperators.length;
-        for (uint256 i; i < extOpCount; ++i) {
+        for (uint256 i; i < group.externalOperators.length; ++i) {
             ExternalOperator storage op = group.externalOperators[i];
-            bytes32 externalKey = ExternalOperatorLib.uniqueKey(op.data);
-            delete _groupIndex.groupIdByExternalKey[externalKey];
+            delete _groupIndex.groupIdByExternalKey[
+                ExternalOperatorLib.uniqueKey(op.data)
+            ];
         }
     }
 
@@ -461,26 +447,30 @@ contract MetaRegistry is
     ) internal returns (bool changed) {
         MarkedUint248 memory shareData = _groupIndex.operatorShareById[noId];
 
-        uint256 newWeight = _getEffectiveWeight(noId, shareData.value);
+        uint256 newWeight = _getLatestEffectiveWeight(noId, shareData.value);
         uint256 oldWeight = _setEffectiveWeight(noId, newWeight);
 
-        uint256 sum = _weightCache.groupEffectiveWeightSum[groupId];
         _weightCache.groupEffectiveWeightSum[groupId] =
-            sum +
+            _weightCache.groupEffectiveWeightSum[groupId] +
             newWeight -
             oldWeight;
 
         return true;
     }
 
-    function _getEffectiveWeight(
+    function _getLatestEffectiveWeight(
         uint256 nodeOperatorId,
         uint256 share
     ) internal view returns (uint256) {
-        uint256 curveId = ACCOUNTING.getBondCurveId(nodeOperatorId);
-        uint256 baseWeight = _bondCurveWeight[curveId];
+        uint256 baseWeight = _getOperatorBaseWeight(nodeOperatorId);
         if (baseWeight == 0 || share == 0) return 0;
         return Math.mulDiv(baseWeight, share, MAX_BP);
+    }
+
+    function _getOperatorBaseWeight(
+        uint256 nodeOperatorId
+    ) internal view returns (uint256) {
+        return _bondCurveWeight[ACCOUNTING.getBondCurveId(nodeOperatorId)];
     }
 
     function _setEffectiveWeight(
@@ -545,15 +535,11 @@ contract MetaRegistry is
     }
 
     function _totalExternalStake(
-        CachedOperatorGroup storage group
+        ExternalOperator[] storage externalOperators
     ) internal view returns (uint256 totalExternalStake) {
-        uint256 opCount = group.externalOperators.length;
-        if (opCount == 0) {
-            return 0;
-        }
-
-        for (uint256 i; i < opCount; ++i) {
-            bytes memory data = group.externalOperators[i].data;
+        for (uint256 i; i < externalOperators.length; ++i) {
+            bytes memory data = externalOperators[i].data;
+            // TODO: Handle data depending on the external operator type.
             (uint8 moduleId, uint64 noId) = ExternalOperatorLib.unpackEntry(
                 data
             );
