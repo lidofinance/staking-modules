@@ -132,6 +132,14 @@ contract CuratedCommon is ModuleFixtures {
         uint256 nodeOperatorId,
         uint256 weight
     ) internal {
+        _mockOperatorWeightAndExternalStake(nodeOperatorId, weight, 0);
+    }
+
+    function _mockOperatorWeightAndExternalStake(
+        uint256 nodeOperatorId,
+        uint256 weight,
+        uint256 externalStake
+    ) internal {
         vm.mockCall(
             address(metaOperatorsRegistry),
             abi.encodeWithSelector(
@@ -140,7 +148,7 @@ contract CuratedCommon is ModuleFixtures {
                     .selector,
                 nodeOperatorId
             ),
-            abi.encode(weight, 0)
+            abi.encode(weight, externalStake)
         );
     }
 
@@ -428,6 +436,39 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
             module.getSigningKeys(second, 0, 3)
         );
         assertEq(pubkeys, expectedKeys);
+    }
+
+    function test_obtainDepositData_ExternalStakeUses2048EthNormalization()
+        public
+        assertInvariants
+    {
+        uint256 noId0 = createNodeOperator(10);
+        uint256 noId1 = createNodeOperator(10);
+
+        _mockOperatorWeightAndExternalStake({
+            nodeOperatorId: noId0,
+            weight: 1,
+            externalStake: 2048 ether
+        });
+        _mockOperatorWeightAndExternalStake({
+            nodeOperatorId: noId1,
+            weight: 1,
+            externalStake: 0
+        });
+
+        module.obtainDepositData(4, "");
+
+        NodeOperator memory no0 = module.getNodeOperator(noId0);
+        NodeOperator memory no1 = module.getNodeOperator(noId1);
+
+        // currents = [1, 0]
+        // inflow = 4
+        // targetTotal = 1 + 4 = 5
+        // targets = [ceil(5/2), ceil(5/2)] = [3, 3]
+        // imbalances sorted = [3, 2]
+        // deposits greedy => [1, 3]
+        assertEq(no0.totalDepositedKeys, 1);
+        assertEq(no1.totalDepositedKeys, 3);
     }
 
     function test_obtainDepositData_LeavesRemainderOnCap()

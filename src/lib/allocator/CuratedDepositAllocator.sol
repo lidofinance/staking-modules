@@ -268,7 +268,7 @@ library CuratedDepositAllocator {
                 if (externalStake > 0) {
                     current +=
                         externalStake /
-                        WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
+                        WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE;
                 }
 
                 data.weights[eligibleCount] = weight;
