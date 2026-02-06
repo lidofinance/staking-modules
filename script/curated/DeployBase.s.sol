@@ -16,7 +16,7 @@ import { FeeOracle } from "../../src/FeeOracle.sol";
 import { Verifier } from "../../src/Verifier.sol";
 import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
 import { ExitPenalties } from "../../src/ExitPenalties.sol";
-import { MetaOperatorRegistry } from "../../src/MetaOperatorRegistry.sol";
+import { MetaRegistry } from "../../src/MetaRegistry.sol";
 import { CuratedGate } from "../../src/CuratedGate.sol";
 import { CuratedGateFactory } from "../../src/CuratedGateFactory.sol";
 
@@ -146,7 +146,7 @@ abstract contract DeployBase is Script {
     Verifier public verifier;
     HashConsensus public hashConsensus;
     ParametersRegistry public parametersRegistry;
-    MetaOperatorRegistry public metaRegistry;
+    MetaRegistry public metaRegistry;
     CuratedGateFactory public curatedGateFactory;
     address[] public curatedGateInstances;
     address internal curatedGateImpl;
@@ -216,7 +216,7 @@ abstract contract DeployBase is Script {
 
             accounting = Accounting(_deployProxy(deployer, address(dummyImpl)));
             oracle = FeeOracle(_deployProxy(deployer, address(dummyImpl)));
-            metaRegistry = MetaOperatorRegistry(
+            metaRegistry = MetaRegistry(
                 _deployProxy(deployer, address(dummyImpl))
             );
 
@@ -399,7 +399,7 @@ abstract contract DeployBase is Script {
                 parametersRegistry: address(parametersRegistry),
                 accounting: address(accounting),
                 exitPenalties: address(exitPenalties),
-                metaOperatorsRegistry: address(metaRegistry)
+                metaRegistry: address(metaRegistry)
             });
 
             {
@@ -412,7 +412,7 @@ abstract contract DeployBase is Script {
 
             curatedModule.initialize({ admin: deployer });
 
-            MetaOperatorRegistry metaRegistryImpl = new MetaOperatorRegistry(
+            MetaRegistry metaRegistryImpl = new MetaRegistry(
                 address(curatedModule),
                 locator.stakingRouter()
             );
@@ -681,11 +681,8 @@ abstract contract DeployBase is Script {
             deployJson.set("ChainId", chainId);
             deployJson.set("CuratedModule", address(curatedModule));
             deployJson.set("CuratedModuleImpl", address(curatedModuleImpl));
-            deployJson.set("MetaOperatorRegistry", address(metaRegistry));
-            deployJson.set(
-                "MetaOperatorRegistryImpl",
-                address(metaRegistryImpl)
-            );
+            deployJson.set("MetaRegistry", address(metaRegistry));
+            deployJson.set("MetaRegistryImpl", address(metaRegistryImpl));
             deployJson.set("ParametersRegistry", address(parametersRegistry));
             deployJson.set(
                 "ParametersRegistryImpl",

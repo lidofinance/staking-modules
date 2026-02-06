@@ -11,14 +11,14 @@ import { CuratedGateFactory } from "../../src/CuratedGateFactory.sol";
 import { ICuratedGateFactory } from "../../src/interfaces/ICuratedGateFactory.sol";
 
 import { CuratedMock } from "../helpers/mocks/CuratedMock.sol";
-import { MetaOperatorRegistryMock } from "../helpers/mocks/MetaOperatorRegistryMock.sol";
+import { MetaRegistryMock } from "../helpers/mocks/MetaRegistryMock.sol";
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 
 contract CuratedGateFactoryTestBase is Test, Utilities {
     CuratedGateFactory factory;
     CuratedMock module;
-    MetaOperatorRegistryMock data;
+    MetaRegistryMock data;
     address impl;
     bytes32 root;
     string cid;
@@ -30,8 +30,8 @@ contract CuratedGateFactoryTestBase is Test, Utilities {
     function setUp() public virtual {
         admin = nextAddress("admin");
         module = new CuratedMock();
-        data = new MetaOperatorRegistryMock();
-        module.mock_setMetaOperatorRegistry(address(data));
+        data = new MetaRegistryMock();
+        module.mock_setMetaRegistry(address(data));
         moduleId = 1;
         impl = address(new CuratedGate(moduleId, address(module)));
         factory = new CuratedGateFactory(impl);
@@ -65,7 +65,7 @@ contract CuratedGateFactoryTest_create is CuratedGateFactoryTestBase {
         assertEq(gate.MODULE_ID(), moduleId);
         assertEq(gate.treeRoot(), root);
         assertEq(gate.treeCid(), cid);
-        assertEq(address(gate.META_OPERATOR_REGISTRY()), address(data));
+        assertEq(address(gate.META_REGISTRY()), address(data));
 
         AccessControlEnumerableUpgradeable access = AccessControlEnumerableUpgradeable(
                 instance

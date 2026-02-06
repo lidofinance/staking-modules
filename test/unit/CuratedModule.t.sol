@@ -10,7 +10,7 @@ import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { IBaseModule, INOAddresses, NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
-import { IMetaOperatorRegistry } from "src/interfaces/IMetaOperatorRegistry.sol";
+import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
 import { CSModule } from "src/CSModule.sol";
 import { CuratedDepositAllocator } from "src/lib/allocator/CuratedDepositAllocator.sol";
@@ -21,7 +21,7 @@ import "./ModuleAbstract/ModuleAbstract.t.sol";
 
 contract CuratedCommon is ModuleFixtures {
     CuratedModule cm;
-    Stub internal metaOperatorsRegistry;
+    Stub internal metaRegistry;
     uint256 internal constant DEFAULT_OPERATOR_WEIGHT = 1;
     uint256 internal constant MAX_MOCKED_OPERATORS = 256;
 
@@ -57,7 +57,7 @@ contract CuratedCommon is ModuleFixtures {
             address(feeDistributor)
         );
 
-        metaOperatorsRegistry = new Stub();
+        metaRegistry = new Stub();
         _mockMetaOperatorDefaults();
         module = new CuratedModule({
             moduleType: "curated-module",
@@ -65,7 +65,7 @@ contract CuratedCommon is ModuleFixtures {
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
             exitPenalties: address(exitPenalties),
-            metaOperatorsRegistry: address(metaOperatorsRegistry)
+            metaRegistry: address(metaRegistry)
         });
         cm = CuratedModule(address(module));
 
@@ -141,11 +141,9 @@ contract CuratedCommon is ModuleFixtures {
         uint256 externalStake
     ) internal {
         vm.mockCall(
-            address(metaOperatorsRegistry),
+            address(metaRegistry),
             abi.encodeWithSelector(
-                IMetaOperatorRegistry
-                    .getNodeOperatorWeightAndExternalStake
-                    .selector,
+                IMetaRegistry.getNodeOperatorWeightAndExternalStake.selector,
                 nodeOperatorId
             ),
             abi.encode(weight, externalStake)
@@ -157,9 +155,9 @@ contract CuratedCommon is ModuleFixtures {
         bool isInGroup
     ) internal {
         vm.mockCall(
-            address(metaOperatorsRegistry),
+            address(metaRegistry),
             abi.encodeWithSelector(
-                IMetaOperatorRegistry.getNodeOperatorGroupMembership.selector,
+                IMetaRegistry.getNodeOperatorGroupMembership.selector,
                 nodeOperatorId
             ),
             abi.encode(isInGroup, 0)
@@ -171,9 +169,9 @@ contract CuratedCommon is ModuleFixtures {
         bool changed
     ) internal {
         vm.mockCall(
-            address(metaOperatorsRegistry),
+            address(metaRegistry),
             abi.encodeWithSelector(
-                IMetaOperatorRegistry.onNodeOperatorWeightUpdated.selector,
+                IMetaRegistry.onNodeOperatorWeightUpdated.selector,
                 nodeOperatorId
             ),
             abi.encode(changed)
@@ -183,6 +181,10 @@ contract CuratedCommon is ModuleFixtures {
     function _moduleInvariants() internal override {
         assertModuleKeys(module);
         assertModuleUnusedStorageSlots(module);
+
+        uint256 operatorsCount = cm.getNodeOperatorsCount();
+        uint256 operatorsLeft = cm.getNodeOperatorWeightsToUpdateCount();
+        assertLe(operatorsLeft, operatorsCount, "weights update counter");
     }
 }
 
@@ -207,7 +209,7 @@ contract CuratedInitialize is CuratedCommon {
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
             exitPenalties: address(exitPenalties),
-            metaOperatorsRegistry: address(metaOperatorsRegistry)
+            metaRegistry: address(metaRegistry)
         });
         assertEq(module.getType(), "curated-module");
         assertEq(address(module.LIDO_LOCATOR()), address(locator));
@@ -227,7 +229,7 @@ contract CuratedInitialize is CuratedCommon {
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
             exitPenalties: address(exitPenalties),
-            metaOperatorsRegistry: address(metaOperatorsRegistry)
+            metaRegistry: address(metaRegistry)
         });
     }
 
@@ -239,7 +241,7 @@ contract CuratedInitialize is CuratedCommon {
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
             exitPenalties: address(exitPenalties),
-            metaOperatorsRegistry: address(metaOperatorsRegistry)
+            metaRegistry: address(metaRegistry)
         });
     }
 
@@ -254,7 +256,7 @@ contract CuratedInitialize is CuratedCommon {
             parametersRegistry: address(0),
             accounting: address(accounting),
             exitPenalties: address(exitPenalties),
-            metaOperatorsRegistry: address(metaOperatorsRegistry)
+            metaRegistry: address(metaRegistry)
         });
     }
 
@@ -267,7 +269,7 @@ contract CuratedInitialize is CuratedCommon {
             parametersRegistry: address(parametersRegistry),
             accounting: address(0),
             exitPenalties: address(exitPenalties),
-            metaOperatorsRegistry: address(metaOperatorsRegistry)
+            metaRegistry: address(metaRegistry)
         });
     }
 
@@ -280,7 +282,7 @@ contract CuratedInitialize is CuratedCommon {
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
             exitPenalties: address(0),
-            metaOperatorsRegistry: address(metaOperatorsRegistry)
+            metaRegistry: address(metaRegistry)
         });
     }
 
@@ -291,7 +293,7 @@ contract CuratedInitialize is CuratedCommon {
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
             exitPenalties: address(exitPenalties),
-            metaOperatorsRegistry: address(metaOperatorsRegistry)
+            metaRegistry: address(metaRegistry)
         });
 
         vm.expectRevert(Initializable.InvalidInitialization.selector);
@@ -305,7 +307,7 @@ contract CuratedInitialize is CuratedCommon {
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
             exitPenalties: address(exitPenalties),
-            metaOperatorsRegistry: address(metaOperatorsRegistry)
+            metaRegistry: address(metaRegistry)
         });
 
         _enableInitializers(address(module));
@@ -323,7 +325,7 @@ contract CuratedInitialize is CuratedCommon {
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
             exitPenalties: address(exitPenalties),
-            metaOperatorsRegistry: address(metaOperatorsRegistry)
+            metaRegistry: address(metaRegistry)
         });
 
         _enableInitializers(address(module));
@@ -1893,50 +1895,18 @@ contract CuratedNodeOperatorWeightsToUpdateCount is CuratedCommon {
 
         assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 0);
 
-        vm.prank(address(metaOperatorsRegistry));
-        cm.onBondCurveWeightUpdated();
+        vm.prank(address(metaRegistry));
+        cm.requestFullOperatorWeightsUpdate();
 
         assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 3);
 
-        bool finished = cm.batchUpdateNodeOperatorWeights(2);
-        assertFalse(finished);
+        uint256 operatorsLeft = cm.batchUpdateNodeOperatorWeights(2);
+        assertEq(operatorsLeft, 1);
         assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 1);
 
-        finished = cm.batchUpdateNodeOperatorWeights(5);
-        assertTrue(finished);
+        operatorsLeft = cm.batchUpdateNodeOperatorWeights(5);
+        assertEq(operatorsLeft, 0);
         assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 0);
-    }
-}
-
-contract CuratedGetOperatorsWeights is CuratedCommon {
-    function test_getOperatorsWeights_ReturnsWeightsInOrder()
-        public
-        assertInvariants
-    {
-        uint256 firstId = createNodeOperator(1);
-        uint256 secondId = createNodeOperator(1);
-
-        _mockOperatorWeight(firstId, 7);
-        _mockOperatorWeight(secondId, 3);
-
-        uint256[] memory weights = cm.getOperatorsWeights(
-            UintArr(firstId, secondId)
-        );
-        assertEq(weights, UintArr(7, 3));
-    }
-
-    function test_getOperatorsWeights_ReturnsEmptyWhenNoIds() public {
-        uint256[] memory weights = cm.getOperatorsWeights(UintArr());
-        assertEq(weights.length, 0);
-    }
-
-    function test_getOperatorsWeights_RevertWhen_NodeOperatorDoesNotExist()
-        public
-    {
-        createNodeOperator(1);
-
-        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
-        cm.getOperatorsWeights(UintArr(1));
     }
 }
 

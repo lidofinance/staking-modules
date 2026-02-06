@@ -6,7 +6,7 @@ pragma solidity 0.8.33;
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IBaseModule } from "../../interfaces/IBaseModule.sol";
 import { ICuratedModule } from "../../interfaces/ICuratedModule.sol";
-import { IMetaOperatorRegistry } from "../../interfaces/IMetaOperatorRegistry.sol";
+import { IMetaRegistry } from "../../interfaces/IMetaRegistry.sol";
 import { NodeOperator } from "../../interfaces/IBaseModule.sol";
 import { AllocationState, DepositAllocatorGreedy } from "./DepositAllocatorGreedy.sol";
 import { WithdrawnValidatorLib } from "../WithdrawnValidatorLib.sol";
@@ -46,8 +46,7 @@ library CuratedDepositAllocator {
     /// @return allocated Number of deposits actually allocated.
     /// @return operatorIds Operator ids for allocated operators.
     /// @return allocations Per-operator allocations aligned to operatorIds.
-    /// TODO: Rename to `allocateInitialDeposits`
-    function allocateDeposits(
+    function allocateInitialDeposits(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 operatorsCount,
         uint256 depositsCount
@@ -251,8 +250,8 @@ library CuratedDepositAllocator {
         data.capacities = new uint256[](operatorsCount);
         data.operatorIds = new uint256[](operatorsCount);
 
-        IMetaOperatorRegistry metaRegistry = ICuratedModule(address(this))
-            .META_OPERATOR_REGISTRY();
+        IMetaRegistry metaRegistry = ICuratedModule(address(this))
+            .META_REGISTRY();
 
         uint256 eligibleCount;
         unchecked {
@@ -358,8 +357,8 @@ library CuratedDepositAllocator {
         capacitiesByOperatorId = new uint256[](operatorsCount);
         currentStakeByOperatorId = new uint256[](operatorsCount);
 
-        IMetaOperatorRegistry metaRegistry = ICuratedModule(address(this))
-            .META_OPERATOR_REGISTRY();
+        IMetaRegistry metaRegistry = ICuratedModule(address(this))
+            .META_REGISTRY();
 
         // Build global share baseline across all eligible operators (non-zero weight + capacity).
         for (uint256 i; i < operatorsCount; ++i) {

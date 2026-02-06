@@ -162,7 +162,7 @@ abstract contract BaseModule is
         address from,
         NodeOperatorManagementProperties calldata managementProperties,
         address referrer
-    ) external whenResumed returns (uint256 nodeOperatorId) {
+    ) public virtual whenResumed returns (uint256 nodeOperatorId) {
         _checkRole(CREATE_NODE_OPERATOR_ROLE);
         nodeOperatorId = _nodeOperatorsCount;
         OperatorTracker.recordCreator(nodeOperatorId);
@@ -177,7 +177,6 @@ abstract contract BaseModule is
         unchecked {
             ++_nodeOperatorsCount;
         }
-        _onNodeOperatorCreate();
         _incrementModuleNonce();
     }
 
@@ -877,9 +876,6 @@ abstract contract BaseModule is
     ) external view returns (uint256) {
         return _keyAddedBalances[_keyPointer(nodeOperatorId, keyIndex)];
     }
-
-    // solhint-disable-next-line no-empty-blocks
-    function _onNodeOperatorCreate() internal virtual {}
 
     /// @dev Prevents reactivation of a Node Operator after an uncovered penalty by
     ///      forcing its target limit to zero. Uncovered charges are not considered penalties, hence this method

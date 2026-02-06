@@ -3,22 +3,18 @@
 
 pragma solidity 0.8.33;
 
-import { IMetaOperatorRegistry } from "src/interfaces/IMetaOperatorRegistry.sol";
+import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 
 import { CSMMock } from "./CSMMock.sol";
 
 contract CuratedMock is CSMMock {
-    IMetaOperatorRegistry internal metaOperatorRegistry;
+    IMetaRegistry internal metaRegistry;
 
-    function META_OPERATOR_REGISTRY()
-        external
-        view
-        returns (IMetaOperatorRegistry)
-    {
-        return metaOperatorRegistry;
+    function META_REGISTRY() external view returns (IMetaRegistry) {
+        return metaRegistry;
     }
 
-    function mock_setMetaOperatorRegistry(address value) external {
-        metaOperatorRegistry = IMetaOperatorRegistry(value);
+    function mock_setMetaRegistry(address value) external {
+        metaRegistry = IMetaRegistry(value);
     }
 }

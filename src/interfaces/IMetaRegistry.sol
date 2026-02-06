@@ -20,7 +20,7 @@ struct OperatorInfo {
 }
 
 /// @notice Meta registry for curated node operator groups.
-interface IMetaOperatorRegistry {
+interface IMetaRegistry {
     struct SubNodeOperator {
         uint64 nodeOperatorId;
         uint16 share;
@@ -175,6 +175,13 @@ interface IMetaOperatorRegistry {
     function getNodeOperatorWeightAndExternalStake(
         uint256 nodeOperatorId
     ) external view returns (uint256 weight, uint256 externalStake);
+
+    /// @notice Returns allocation weights for the given node operators.
+    /// @param nodeOperatorIds Node operator ids to query.
+    /// @return operatorWeights Weights aligned with nodeOperatorIds.
+    function getOperatorsWeights(
+        uint256[] calldata nodeOperatorIds
+    ) external view returns (uint256[] memory operatorWeights);
 
     /// @notice Notify the registry about a node operator weight update.
     /// @param nodeOperatorId Node operator id that triggered the update.

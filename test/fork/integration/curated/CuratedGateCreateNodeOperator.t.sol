@@ -4,7 +4,7 @@
 pragma solidity 0.8.33;
 
 import { CuratedGate } from "../../../../src/CuratedGate.sol";
-import { OperatorInfo } from "../../../../src/interfaces/IMetaOperatorRegistry.sol";
+import { OperatorInfo } from "../../../../src/interfaces/IMetaRegistry.sol";
 import { MerkleTree } from "../../../helpers/MerkleTree.sol";
 import { CuratedIntegrationBase } from "../common/ModuleTypeBase.sol";
 
@@ -53,7 +53,7 @@ contract CuratedGateCreateNodeOperatorTest is CuratedIntegrationBase {
 
         assertEq(module.getNodeOperatorsCount(), beforeCount + 1);
 
-        OperatorInfo memory info = metaOperatorRegistry.getOperatorMetadata(
+        OperatorInfo memory info = metaRegistry.getOperatorMetadata(
             gate.MODULE_ID(),
             noId
         );

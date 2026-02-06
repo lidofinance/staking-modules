@@ -27,7 +27,7 @@ import { ExitPenalties } from "src/ExitPenalties.sol";
 import { ValidatorStrikes } from "src/ValidatorStrikes.sol";
 import { Verifier } from "src/Verifier.sol";
 import { CuratedModule } from "src/CuratedModule.sol";
-import { MetaOperatorRegistry } from "src/MetaOperatorRegistry.sol";
+import { MetaRegistry } from "src/MetaRegistry.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { CuratedGateFactory } from "src/CuratedGateFactory.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
@@ -195,8 +195,8 @@ contract DeploymentHelpers is Test {
         address strikesImpl;
         address verifier;
         address hashConsensus;
-        address metaOperatorRegistry;
-        address metaOperatorRegistryImpl;
+        address metaRegistry;
+        address metaRegistryImpl;
         address curatedGateFactory;
         address[] curatedGates;
         address gateSeal;
@@ -480,20 +480,17 @@ contract DeploymentHelpers is Test {
         );
         vm.label(deploymentConfig.hashConsensus, "curatedHashConsensus");
 
-        deploymentConfig.metaOperatorRegistry = vm.parseJsonAddress(
+        deploymentConfig.metaRegistry = vm.parseJsonAddress(
             config,
-            ".MetaOperatorRegistry"
+            ".MetaRegistry"
         );
-        vm.label(deploymentConfig.metaOperatorRegistry, "metaOperatorRegistry");
+        vm.label(deploymentConfig.metaRegistry, "metaRegistry");
 
-        deploymentConfig.metaOperatorRegistryImpl = vm.parseJsonAddress(
+        deploymentConfig.metaRegistryImpl = vm.parseJsonAddress(
             config,
-            ".MetaOperatorRegistryImpl"
+            ".MetaRegistryImpl"
         );
-        vm.label(
-            deploymentConfig.metaOperatorRegistryImpl,
-            "metaOperatorRegistryImpl"
-        );
+        vm.label(deploymentConfig.metaRegistryImpl, "metaRegistryImpl");
 
         deploymentConfig.curatedGateFactory = vm.parseJsonAddress(
             config,
@@ -774,7 +771,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     IBurner public burner;
     CuratedModule public curatedModule;
     CuratedModule public curatedModuleImpl;
-    MetaOperatorRegistry public metaOperatorRegistry;
+    MetaRegistry public metaRegistry;
     CuratedGateFactory public curatedGateFactory;
     address[] public curatedGates;
 
@@ -891,9 +888,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         gateSeal = IGateSeal(deploymentConfig.gateSeal);
         burner = IBurner(locator.burner());
 
-        metaOperatorRegistry = MetaOperatorRegistry(
-            deploymentConfig.metaOperatorRegistry
-        );
+        metaRegistry = MetaRegistry(deploymentConfig.metaRegistry);
         curatedGateFactory = CuratedGateFactory(
             deploymentConfig.curatedGateFactory
         );
@@ -1159,7 +1154,7 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
             keysCount
         );
         (CuratedGate gate, bytes32[] memory proof) = _prepareCuratedGate(from);
-        // FIXME: add MetaOperatorRegistry setup here (replacement for the removed _ensureDepositAllocationWeight).
+        // FIXME: add MetaRegistry setup here (replacement for the removed _ensureDepositAllocationWeight).
 
         vm.prank(from);
         nodeOperatorId = gate.createNodeOperator(

@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { IMerkleGate } from "./IMerkleGate.sol";
 import { ICuratedModule } from "./ICuratedModule.sol";
-import { IMetaOperatorRegistry } from "./IMetaOperatorRegistry.sol";
+import { IMetaRegistry } from "./IMetaRegistry.sol";
 import { IAccounting } from "./IAccounting.sol";
 
 /// @title Curated Gate Interface
@@ -15,7 +15,7 @@ interface ICuratedGate is IMerkleGate {
     error InvalidCurveId();
     error ZeroModuleId();
     error ZeroModuleAddress();
-    error ZeroMetaOperatorRegistryAddress();
+    error ZeroMetaRegistryAddress();
     error ZeroAdminAddress();
 
     function PAUSE_ROLE() external view returns (bytes32);
@@ -33,11 +33,8 @@ interface ICuratedGate is IMerkleGate {
     /// @return ACCOUNTING Accounting reference
     function ACCOUNTING() external view returns (IAccounting);
 
-    /// @return META_OPERATOR_REGISTRY Operators metadata registry reference
-    function META_OPERATOR_REGISTRY()
-        external
-        view
-        returns (IMetaOperatorRegistry);
+    /// @return META_REGISTRY Operators metadata registry reference
+    function META_REGISTRY() external view returns (IMetaRegistry);
 
     /// @return curveId Instance-specific custom curve id
     function curveId() external view returns (uint256);
@@ -50,7 +47,7 @@ interface ICuratedGate is IMerkleGate {
     function resume() external;
 
     /// @notice Create an empty Node Operator for the caller if eligible.
-    ///         Stores provided name/description in MetaOperatorRegistry. Marks caller as consumed.
+    ///         Stores provided name/description in MetaRegistry. Marks caller as consumed.
     /// @param name Display name of the Node Operator
     /// @param description Description of the Node Operator
     /// @param managerAddress Address to set as manager; if zero, defaults will be used by the module

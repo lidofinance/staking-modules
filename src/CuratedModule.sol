@@ -6,9 +6,9 @@ pragma solidity 0.8.33;
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
-import { IMetaOperatorRegistry } from "./interfaces/IMetaOperatorRegistry.sol";
+import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
 import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.sol";
-import { IBaseModule, NodeOperator } from "./interfaces/IBaseModule.sol";
+import { IBaseModule, NodeOperator, NodeOperatorManagementProperties } from "./interfaces/IBaseModule.sol";
 
 import { BaseModule } from "./abstract/BaseModule.sol";
 
@@ -30,7 +30,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE =
         keccak256("OPERATOR_ADDRESSES_ADMIN_ROLE");
 
-    IMetaOperatorRegistry public immutable META_OPERATOR_REGISTRY;
+    IMetaRegistry public immutable META_REGISTRY;
 
     uint64 internal constant INITIALIZED_VERSION = 1;
     // keccak256(abi.encode(uint256(keccak256("CuratedModule")) - 1)) & ~bytes32(uint256(0xff))
@@ -43,7 +43,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         address parametersRegistry,
         address accounting,
         address exitPenalties,
-        address metaOperatorsRegistry
+        address metaRegistry
     )
         BaseModule(
             moduleType,
@@ -53,11 +53,11 @@ contract CuratedModule is ICuratedModule, BaseModule {
             exitPenalties
         )
     {
-        if (metaOperatorsRegistry == address(0)) {
-            revert ZeroMetaOperatorRegistryAddress();
+        if (metaRegistry == address(0)) {
+            revert ZeroMetaRegistryAddress();
         }
 
-        META_OPERATOR_REGISTRY = IMetaOperatorRegistry(metaOperatorsRegistry);
+        META_REGISTRY = IMetaRegistry(metaRegistry);
     }
 
     /// @notice Initialize the module from scratch
@@ -79,7 +79,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             uint256 allocated,
             uint256[] memory operatorIds,
             uint256[] memory allocations
-        ) = CuratedDepositAllocator.allocateDeposits(
+        ) = CuratedDepositAllocator.allocateInitialDeposits(
                 _nodeOperators,
                 _nodeOperatorsCount,
                 depositsCount
@@ -209,20 +209,26 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     /// @inheritdoc ICuratedModule
-    // TODO: Move to MetaRegistry and just call external method here
     function getOperatorsWeights(
         uint256[] calldata operatorIds
     ) external view returns (uint256[] memory operatorWeights) {
-        uint256 operatorsCount = operatorIds.length;
-        operatorWeights = new uint256[](operatorsCount);
+        return META_REGISTRY.getOperatorsWeights(operatorIds);
+    }
 
-        for (uint256 i; i < operatorsCount; ++i) {
-            uint256 operatorId = operatorIds[i];
-            _onlyExistingNodeOperator(operatorId);
-            (uint256 weight, ) = META_OPERATOR_REGISTRY
-                .getNodeOperatorWeightAndExternalStake(operatorId);
-            operatorWeights[i] = weight;
+    /// @inheritdoc IBaseModule
+    function createNodeOperator(
+        address from,
+        NodeOperatorManagementProperties calldata managementProperties,
+        address referrer
+    ) public override(IBaseModule, BaseModule) whenResumed returns (uint256) {
+        CuratedModuleStorage storage $ = _storage();
+        if ($.upToDateOperatorWeightsCount == _nodeOperatorsCount) {
+            unchecked {
+                ++$.upToDateOperatorWeightsCount;
+            }
         }
+
+        return super.createNodeOperator(from, managementProperties, referrer);
     }
 
     /// @inheritdoc ICuratedModule
@@ -240,11 +246,20 @@ contract CuratedModule is ICuratedModule, BaseModule {
         );
     }
 
+    /// @inheritdoc IBaseModule
+    function onNodeOperatorBondCurveUpdated(
+        uint256 nodeOperatorId
+    ) external override(IBaseModule) {
+        _updateDepositableValidatorsCount({
+            nodeOperatorId: nodeOperatorId,
+            incrementNonceIfUpdated: true
+        });
+    }
+
     /// @inheritdoc ICuratedModule
-    // TODO: Rename to `requestFullOperatorWeightsUpdate`
-    function onBondCurveWeightUpdated() external {
-        if (msg.sender != address(META_OPERATOR_REGISTRY)) {
-            revert SenderIsNotMetaOperatorRegistry();
+    function requestFullOperatorWeightsUpdate() external {
+        if (msg.sender != address(META_REGISTRY)) {
+            revert SenderIsNotMetaRegistry();
         }
 
         _storage().upToDateOperatorWeightsCount = 0;
@@ -254,7 +269,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     /// @inheritdoc ICuratedModule
     function batchUpdateNodeOperatorWeights(
         uint256 maxCount
-    ) external override returns (bool finished) {
+    ) external override returns (uint256 operatorsLeft) {
         if (maxCount == 0) {
             revert InvalidMaxCount();
         }
@@ -262,20 +277,23 @@ contract CuratedModule is ICuratedModule, BaseModule {
         CuratedModuleStorage storage $ = _storage();
         uint256 operatorsCount = _nodeOperatorsCount;
         uint256 noId = $.upToDateOperatorWeightsCount;
-        // TODO: Add invariant check that upToDateOperatorWeightsCount <= _nodeOperatorsCount
-        if (noId >= operatorsCount) {
-            return true;
+        if (noId == operatorsCount) {
+            return 0;
         }
 
         uint256 limit = Math.min(noId + maxCount, operatorsCount);
 
         for (; noId < limit; ++noId) {
-            _updateNodeOperatorWeight(noId);
+            _updateDepositableValidatorsCount({
+                nodeOperatorId: noId,
+                incrementNonceIfUpdated: false
+            });
         }
 
         $.upToDateOperatorWeightsCount = limit;
-        // TODO: Return number of operators left
-        finished = limit == operatorsCount;
+        operatorsLeft = operatorsCount - limit;
+
+        if (operatorsLeft == 0) _incrementModuleNonce();
     }
 
     /// @inheritdoc ICuratedModule
@@ -332,64 +350,27 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256 newCount,
         bool incrementNonceIfUpdated
     ) internal override returns (bool) {
+        bool weightChanged = META_REGISTRY.onNodeOperatorWeightUpdated(
+            nodeOperatorId
+        );
+
         if (newCount > 0) {
-            (uint256 weight, ) = META_OPERATOR_REGISTRY
+            (uint256 weight, ) = META_REGISTRY
                 .getNodeOperatorWeightAndExternalStake(nodeOperatorId);
             if (weight == 0) {
                 newCount = 0;
             }
         }
-        return
-            super._applyDepositableValidatorsCount(
-                no,
-                nodeOperatorId,
-                newCount,
-                incrementNonceIfUpdated
-            );
-    }
 
-    // TODO: Merge with `_updateDepositableValidatorsCount` and rename to `_updateAllocationData`
-    /// @inheritdoc IBaseModule
-    function onNodeOperatorBondCurveUpdated(
-        uint256 nodeOperatorId
-    ) external override(IBaseModule) {
-        _updateNodeOperatorWeight(nodeOperatorId);
-    }
-
-    function _updateNodeOperatorWeight(uint256 nodeOperatorId) internal {
-        bool weightChanged = _updateNodeOperatorWeightInRegistry(
-            nodeOperatorId
+        bool depositableChanged = super._applyDepositableValidatorsCount(
+            no,
+            nodeOperatorId,
+            newCount,
+            incrementNonceIfUpdated
         );
-        bool depositableChanged = _updateDepositableValidatorsCount({
-            nodeOperatorId: nodeOperatorId,
-            incrementNonceIfUpdated: false
-        });
-        if (weightChanged || depositableChanged) {
+
+        if (!depositableChanged && weightChanged && incrementNonceIfUpdated) {
             _incrementModuleNonce();
-        }
-    }
-
-    function _updateNodeOperatorWeightInRegistry(
-        uint256 nodeOperatorId
-    ) internal returns (bool) {
-        // TODO: This should be in META_OPERATOR_REGISTRY
-        (bool isInGroup, ) = META_OPERATOR_REGISTRY
-            .getNodeOperatorGroupMembership(nodeOperatorId);
-        if (!isInGroup) {
-            return false;
-        }
-
-        return
-            META_OPERATOR_REGISTRY.onNodeOperatorWeightUpdated(nodeOperatorId);
-    }
-
-    // TODO: override addNodeOperator instead of using a hook
-    function _onNodeOperatorCreate() internal override {
-        CuratedModuleStorage storage $ = _storage();
-        if ($.upToDateOperatorWeightsCount == _nodeOperatorsCount - 1) {
-            unchecked {
-                ++$.upToDateOperatorWeightsCount;
-            }
         }
     }
 

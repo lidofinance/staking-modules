@@ -13,7 +13,7 @@ import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMerkleGate } from "./interfaces/IMerkleGate.sol";
 import { ICuratedGate } from "./interfaces/ICuratedGate.sol";
 import { NodeOperatorManagementProperties } from "./interfaces/IBaseModule.sol";
-import { IMetaOperatorRegistry, OperatorInfo } from "./interfaces/IMetaOperatorRegistry.sol";
+import { IMetaRegistry, OperatorInfo } from "./interfaces/IMetaRegistry.sol";
 import { IAccounting } from "./interfaces/IAccounting.sol";
 
 /// @notice Merkle gate for Curated Module v2
@@ -38,7 +38,7 @@ contract CuratedGate is
     IAccounting public immutable ACCOUNTING;
 
     /// @inheritdoc ICuratedGate
-    IMetaOperatorRegistry public immutable META_OPERATOR_REGISTRY;
+    IMetaRegistry public immutable META_REGISTRY;
 
     /// @inheritdoc IMerkleGate
     bytes32 public treeRoot;
@@ -65,7 +65,7 @@ contract CuratedGate is
         MODULE = ICuratedModule(module);
         MODULE_ID = moduleId;
         ACCOUNTING = MODULE.ACCOUNTING();
-        META_OPERATOR_REGISTRY = MODULE.META_OPERATOR_REGISTRY();
+        META_REGISTRY = MODULE.META_REGISTRY();
 
         _disableInitializers();
     }
@@ -133,7 +133,7 @@ contract CuratedGate is
             ownerEditsRestricted: false
         });
 
-        META_OPERATOR_REGISTRY.setOperatorMetadataAsAdmin(
+        META_REGISTRY.setOperatorMetadataAsAdmin(
             MODULE_ID,
             nodeOperatorId,
             metadata

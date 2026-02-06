@@ -73,31 +73,26 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
     }
 }
 
-contract MetaOperatorRegistryDeploymentTest is DeploymentBaseTest {
+contract MetaRegistryDeploymentTest is DeploymentBaseTest {
     function test_roles_onlyFull() public view {
         assertEq(
-            metaOperatorRegistry.getRoleMemberCount(
-                metaOperatorRegistry.DEFAULT_ADMIN_ROLE()
-            ),
+            metaRegistry.getRoleMemberCount(metaRegistry.DEFAULT_ADMIN_ROLE()),
             adminsCount
         );
         assertTrue(
-            metaOperatorRegistry.hasRole(
-                metaOperatorRegistry.DEFAULT_ADMIN_ROLE(),
+            metaRegistry.hasRole(
+                metaRegistry.DEFAULT_ADMIN_ROLE(),
                 deployParams.aragonAgent
             )
         );
 
-        bytes32 setterRole = metaOperatorRegistry.SET_OPERATOR_INFO_ROLE();
+        bytes32 setterRole = metaRegistry.SET_OPERATOR_INFO_ROLE();
         uint256 gatesCount = curatedGates.length;
-        assertEq(
-            metaOperatorRegistry.getRoleMemberCount(setterRole),
-            gatesCount
-        );
+        assertEq(metaRegistry.getRoleMemberCount(setterRole), gatesCount);
         for (uint256 i = 0; i < gatesCount; ++i) {
             assertTrue(
-                metaOperatorRegistry.hasRole(setterRole, curatedGates[i]),
-                "gate missing metaOperatorRegistry setter role"
+                metaRegistry.hasRole(setterRole, curatedGates[i]),
+                "gate missing metaRegistry setter role"
             );
         }
     }
@@ -113,10 +108,7 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
 
             assertEq(address(gate.MODULE()), address(module));
             assertEq(address(gate.ACCOUNTING()), address(accounting));
-            assertEq(
-                address(gate.META_OPERATOR_REGISTRY()),
-                address(metaOperatorRegistry)
-            );
+            assertEq(address(gate.META_REGISTRY()), address(metaRegistry));
             assertEq(gate.MODULE_ID(), deployParams.stakingModuleId);
         }
     }
@@ -284,7 +276,7 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
                 params.maxElWithdrawalRequestFee
             );
 
-            // FIXME: add MetaOperatorRegistry-level assertions here to replace
+            // FIXME: add MetaRegistry-level assertions here to replace
             // the removed deposit-allocation-weight checks.
         }
     }

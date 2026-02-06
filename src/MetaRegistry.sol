@@ -14,12 +14,12 @@ import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IBaseModule } from "./interfaces/IBaseModule.sol";
 import { IStakingModule } from "./interfaces/IStakingModule.sol";
 import { IStakingRouter } from "./interfaces/IStakingRouter.sol";
-import { IMetaOperatorRegistry, MarkedUint248, OperatorInfo } from "./interfaces/IMetaOperatorRegistry.sol";
+import { IMetaRegistry, MarkedUint248, OperatorInfo } from "./interfaces/IMetaRegistry.sol";
 import { ExternalOperatorLib } from "./lib/ExternalOperatorLib.sol";
 
 /// @notice Stores meta-operator group definitions for the curated module.
-contract MetaOperatorRegistry is
-    IMetaOperatorRegistry,
+contract MetaRegistry is
+    IMetaRegistry,
     Initializable,
     AccessControlEnumerableUpgradeable
 {
@@ -87,7 +87,7 @@ contract MetaOperatorRegistry is
         _disableInitializers();
     }
 
-    /// @inheritdoc IMetaOperatorRegistry
+    /// @inheritdoc IMetaRegistry
     function initialize(address admin) external initializer {
         if (admin == address(0)) {
             revert ZeroAdminAddress();
@@ -97,7 +97,7 @@ contract MetaOperatorRegistry is
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
-    /// @inheritdoc IMetaOperatorRegistry
+    /// @inheritdoc IMetaRegistry
     function setOperatorMetadataAsAdmin(
         uint256 moduleId,
         uint256 nodeOperatorId,
@@ -124,7 +124,7 @@ contract MetaOperatorRegistry is
         });
     }
 
-    /// @inheritdoc IMetaOperatorRegistry
+    /// @inheritdoc IMetaRegistry
     function setOperatorMetadataAsOwner(
         uint256 moduleId,
         uint256 nodeOperatorId,
@@ -160,7 +160,7 @@ contract MetaOperatorRegistry is
         });
     }
 
-    /// @inheritdoc IMetaOperatorRegistry
+    /// @inheritdoc IMetaRegistry
     function getOperatorMetadata(
         uint256 moduleId,
         uint256 nodeOperatorId
@@ -168,7 +168,7 @@ contract MetaOperatorRegistry is
         return _operatorMetadata[_metadataKey(moduleId, nodeOperatorId)];
     }
 
-    /// @inheritdoc IMetaOperatorRegistry
+    /// @inheritdoc IMetaRegistry
     function createOrUpdateOperatorGroup(
         uint256 groupId,
         OperatorGroup calldata groupInfo
@@ -190,7 +190,7 @@ contract MetaOperatorRegistry is
         emit OperatorGroupUpdated(groupId);
     }
 
-    /// @inheritdoc IMetaOperatorRegistry
+    /// @inheritdoc IMetaRegistry
     function getOperatorGroup(
         uint256 groupId
     )
@@ -215,12 +215,12 @@ contract MetaOperatorRegistry is
         groupInfo.externalOperators = group.externalOperators;
     }
 
-    /// @inheritdoc IMetaOperatorRegistry
+    /// @inheritdoc IMetaRegistry
     function getOperatorGroupsCount() external view returns (uint256 count) {
         return _groups.length;
     }
 
-    /// @inheritdoc IMetaOperatorRegistry
+    /// @inheritdoc IMetaRegistry
     function getNodeOperatorGroupMembership(
         uint256 nodeOperatorId
     ) external view returns (bool isInGroup, uint256 operatorGroupId) {
@@ -233,7 +233,7 @@ contract MetaOperatorRegistry is
         return (true, groupData.value);
     }
 
-    /// @inheritdoc IMetaOperatorRegistry
+    /// @inheritdoc IMetaRegistry
     function getExternalOperatorGroupMembership(
         bytes calldata data
     ) external view returns (bool isInGroup, uint256 operatorGroupId) {
@@ -247,14 +247,14 @@ contract MetaOperatorRegistry is
         return (true, groupData.value);
     }
 
-    /// @inheritdoc IMetaOperatorRegistry
+    /// @inheritdoc IMetaRegistry
     function getBondCurveWeight(
         uint256 curveId
     ) external view returns (uint256 weight) {
         return _bondCurveWeight[curveId];
     }
 
-    /// @inheritdoc IMetaOperatorRegistry
+    /// @inheritdoc IMetaRegistry
     function setBondCurveWeight(
         uint256 curveId,
         uint256 weight
@@ -266,10 +266,10 @@ contract MetaOperatorRegistry is
         _bondCurveWeight[curveId] = weight;
         emit BondCurveWeightSet(curveId, weight);
 
-        MODULE.onBondCurveWeightUpdated();
+        MODULE.requestFullOperatorWeightsUpdate();
     }
 
-    /// @inheritdoc IMetaOperatorRegistry
+    /// @inheritdoc IMetaRegistry
     function getNodeOperatorWeightAndExternalStake(
         uint256 noId
     ) external view returns (uint256 weight, uint256 externalStake) {
@@ -300,12 +300,35 @@ contract MetaOperatorRegistry is
         );
     }
 
-    /// @inheritdoc IMetaOperatorRegistry
+    /// @inheritdoc IMetaRegistry
+    function getOperatorsWeights(
+        uint256[] calldata nodeOperatorIds
+    ) external view returns (uint256[] memory operatorWeights) {
+        uint256 count = nodeOperatorIds.length;
+        operatorWeights = new uint256[](count);
+
+        for (uint256 i; i < count; ++i) {
+            uint256 noId = nodeOperatorIds[i];
+            if (!_groupIndex.groupIdByOperatorId[noId].isValue) {
+                continue;
+            }
+
+            operatorWeights[i] = _weightCache.operatorEffectiveWeight[noId];
+        }
+    }
+
+    /// @inheritdoc IMetaRegistry
     function onNodeOperatorWeightUpdated(
         uint256 nodeOperatorId
     ) external returns (bool changed) {
-        uint256 groupId = _requireOperatorInGroup(nodeOperatorId);
-        return _refreshOperatorWeight(groupId, nodeOperatorId);
+        MarkedUint248 memory groupData = _groupIndex.groupIdByOperatorId[
+            nodeOperatorId
+        ];
+        if (!groupData.isValue) {
+            return false;
+        }
+
+        return _refreshOperatorWeight(groupData.value, nodeOperatorId);
     }
 
     function _storeGroup(
@@ -476,18 +499,6 @@ contract MetaOperatorRegistry is
             oldWeight,
             newWeight
         );
-    }
-
-    function _requireOperatorInGroup(
-        uint256 nodeOperatorId
-    ) internal view returns (uint256 groupId) {
-        MarkedUint248 memory groupData = _groupIndex.groupIdByOperatorId[
-            nodeOperatorId
-        ];
-        if (!groupData.isValue) {
-            revert NodeOperatorNotInGroup();
-        }
-        groupId = groupData.value;
     }
 
     function _metadataKey(

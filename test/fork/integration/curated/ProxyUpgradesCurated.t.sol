@@ -20,8 +20,8 @@ contract ProxyUpgradesCurated is CuratedIntegrationBase {
             parametersRegistry: address(module.PARAMETERS_REGISTRY()),
             accounting: address(module.ACCOUNTING()),
             exitPenalties: address(module.EXIT_PENALTIES()),
-            metaOperatorsRegistry: address(
-                CuratedModule(address(module)).META_OPERATOR_REGISTRY()
+            metaRegistry: address(
+                CuratedModule(address(module)).META_REGISTRY()
             )
         });
         vm.prank(proxy.proxy__getAdmin());
@@ -37,8 +37,8 @@ contract ProxyUpgradesCurated is CuratedIntegrationBase {
             parametersRegistry: address(module.PARAMETERS_REGISTRY()),
             accounting: address(module.ACCOUNTING()),
             exitPenalties: address(module.EXIT_PENALTIES()),
-            metaOperatorsRegistry: address(
-                CuratedModule(address(module)).META_OPERATOR_REGISTRY()
+            metaRegistry: address(
+                CuratedModule(address(module)).META_REGISTRY()
             )
         });
         address contractAdmin = module.getRoleMember(

@@ -3,9 +3,9 @@
 
 pragma solidity 0.8.33;
 
-import { OperatorInfo } from "../../../src/interfaces/IMetaOperatorRegistry.sol";
+import { OperatorInfo } from "../../../src/interfaces/IMetaRegistry.sol";
 
-contract MetaOperatorRegistryMock {
+contract MetaRegistryMock {
     function setOperatorMetadataAsAdmin(
         uint256 moduleId,
         uint256 nodeOperatorId,

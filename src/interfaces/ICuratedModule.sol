@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { IBaseModule } from "./IBaseModule.sol";
 import { IStakingModuleV2 } from "./IStakingModule.sol";
-import { IMetaOperatorRegistry } from "./IMetaOperatorRegistry.sol";
+import { IMetaRegistry } from "./IMetaRegistry.sol";
 
 interface ICuratedModule is IBaseModule, IStakingModuleV2 {
     event NodeOperatorBalanceUpdated(
@@ -17,8 +17,8 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
     error PublicKeyIsWithdrawn();
     error PublicKeyIsSlashed();
     error PubkeyMismatch();
-    error ZeroMetaOperatorRegistryAddress();
-    error SenderIsNotMetaOperatorRegistry();
+    error ZeroMetaRegistryAddress();
+    error SenderIsNotMetaRegistry();
     error InvalidMaxCount();
     error NodeOperatorWeightsUpdateInProgress();
 
@@ -36,15 +36,15 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
         address newRewardAddress
     ) external;
 
-    /// @notice Notify the module about a bond curve weight update.
-    function onBondCurveWeightUpdated() external;
+    /// @notice Request refreshing node operator weights for all operators.
+    function requestFullOperatorWeightsUpdate() external;
 
     /// @notice Process node operator weight updates in order.
     /// @param maxCount Maximum operators to process in this call.
-    /// @return finished Whether all operators have been processed.
+    /// @return operatorsLeft Number of operators left to process.
     function batchUpdateNodeOperatorWeights(
         uint256 maxCount
-    ) external returns (bool finished);
+    ) external returns (uint256 operatorsLeft);
 
     /// @notice Returns the count of node operators left to update weights for.
     function getNodeOperatorWeightsToUpdateCount()
@@ -81,9 +81,6 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
 
     function OPERATOR_ADDRESSES_ADMIN_ROLE() external view returns (bytes32);
 
-    /// @notice Returns current meta operators registry.
-    function META_OPERATOR_REGISTRY()
-        external
-        view
-        returns (IMetaOperatorRegistry);
+    /// @notice Returns current meta registry.
+    function META_REGISTRY() external view returns (IMetaRegistry);
 }
