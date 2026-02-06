@@ -7,7 +7,7 @@ import { NodeOperator } from "src/interfaces/IBaseModule.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
 
 import { PermitHelper } from "../../../helpers/Permit.sol";
-import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
 abstract contract AccountingIntegrationTestBase is
     ModuleTypeBase,
@@ -211,6 +211,8 @@ abstract contract DepositTestBase is AccountingIntegrationTestBase {
 
 contract DepositTestCSM is DepositTestBase, CSMIntegrationBase {}
 
+contract DepositTestCSM0x02 is DepositTestBase, CSM0x02IntegrationBase {}
+
 contract DepositTestCurated is DepositTestBase, CuratedIntegrationBase {}
 
 abstract contract AddValidatorKeysTestBase is AccountingIntegrationTestBase {
@@ -237,9 +239,9 @@ abstract contract AddValidatorKeysTestBase is AccountingIntegrationTestBase {
         (bytes memory keys, bytes memory signatures) = keysSignatures(
             keysCount
         );
-        uint256 amount = accounting.getBondAmountByKeysCount(
-            keysCount,
-            bondCurveId
+        uint256 amount = accounting.getRequiredBondForNextKeys(
+            defaultNoId,
+            keysCount
         );
         vm.deal(nodeOperator, amount);
 
@@ -261,9 +263,9 @@ abstract contract AddValidatorKeysTestBase is AccountingIntegrationTestBase {
 
     function test_addValidatorKeysStETH() public assertInvariants {
         uint256 keysCount = _keysCount();
-        uint256 amount = accounting.getBondAmountByKeysCount(
-            keysCount,
-            bondCurveId
+        uint256 amount = accounting.getRequiredBondForNextKeys(
+            defaultNoId,
+            keysCount
         );
         vm.startPrank(nodeOperator);
         vm.deal(nodeOperator, amount);
@@ -293,9 +295,9 @@ abstract contract AddValidatorKeysTestBase is AccountingIntegrationTestBase {
 
     function test_addValidatorKeysWstETH() public assertInvariants {
         uint256 keysCount = _keysCount();
-        uint256 amount = accounting.getBondAmountByKeysCount(
-            keysCount,
-            bondCurveId
+        uint256 amount = accounting.getRequiredBondForNextKeys(
+            defaultNoId,
+            keysCount
         );
         vm.startPrank(nodeOperator);
         vm.deal(nodeOperator, amount);
@@ -335,6 +337,15 @@ contract AddValidatorKeysTestCSM is
     }
 }
 
+contract AddValidatorKeysTestCSM0x02 is
+    AddValidatorKeysTestBase,
+    CSM0x02IntegrationBase
+{
+    function _keysCount() internal pure override returns (uint256) {
+        return 1;
+    }
+}
+
 contract AddValidatorKeysTestCurated is
     AddValidatorKeysTestBase,
     CuratedIntegrationBase
@@ -347,6 +358,15 @@ contract AddValidatorKeysTestCurated is
 contract AddValidatorKeys10KeysTestCSM is
     AddValidatorKeysTestBase,
     CSMIntegrationBase
+{
+    function _keysCount() internal pure override returns (uint256) {
+        return 10;
+    }
+}
+
+contract AddValidatorKeys10KeysTestCSM0x02 is
+    AddValidatorKeysTestBase,
+    CSM0x02IntegrationBase
 {
     function _keysCount() internal pure override returns (uint256) {
         return 10;
@@ -478,6 +498,31 @@ contract RemoveKeysTestCSM is RemoveKeysTestBase, CSMIntegrationBase {
 
         vm.startPrank(nodeOperator);
         vm.startSnapshotGas("CSM.removeKeys");
+        module.removeKeys(defaultNoId, initialKeysCount - keysCount, keysCount);
+        vm.stopSnapshotGas();
+        vm.stopPrank();
+
+        NodeOperator memory no = module.getNodeOperator(defaultNoId);
+        assertEq(no.totalAddedKeys, initialKeysCount - keysCount);
+
+        (uint256 bondAfter, ) = accounting.getBondSummary(defaultNoId);
+
+        assertApproxEqAbs(bondBefore, bondAfter + keyRemovalCharge, 2 wei);
+    }
+}
+
+contract RemoveKeysTestCSM0x02 is RemoveKeysTestBase, CSM0x02IntegrationBase {
+    function test_removeKeys_withCharge() public assertInvariants {
+        uint256 keysCount = 1;
+
+        (uint256 bondBefore, ) = accounting.getBondSummary(defaultNoId);
+
+        uint256 keyRemovalCharge = parametersRegistry.getKeyRemovalCharge(
+            bondCurveId
+        );
+
+        vm.startPrank(nodeOperator);
+        vm.startSnapshotGas("CSM0x02.removeKeys");
         module.removeKeys(defaultNoId, initialKeysCount - keysCount, keysCount);
         vm.stopSnapshotGas();
         vm.stopPrank();

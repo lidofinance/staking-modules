@@ -7,7 +7,7 @@ import { NodeOperator } from "src/interfaces/IBaseModule.sol";
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
 
 import { ExitPenaltyInfo } from "../../../../src/interfaces/IExitPenalties.sol";
-import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
 abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
     address internal agent;
@@ -406,6 +406,11 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
 contract StakingRouterIntegrationTestCSM is
     StakingRouterIntegrationTestBase,
     CSMIntegrationBase
+{}
+
+contract StakingRouterIntegrationTestCSM0x02 is
+    StakingRouterIntegrationTestBase,
+    CSM0x02IntegrationBase
 {}
 
 contract StakingRouterIntegrationTestCurated is

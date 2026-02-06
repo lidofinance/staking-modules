@@ -54,6 +54,16 @@ contract V3UpgradeTestBase is
         forkIdAfterUpgrade = vm.createSelectFork(env.RPC_URL);
 
         string memory config = vm.readFile(env.DEPLOY_CONFIG);
+        if (vm.keyExistsJson(config, ".CuratedModule")) {
+            vm.skip(true);
+        }
+        if (
+            vm.parseJsonAddress(config, ".VettedGateFactory") == address(0) &&
+            vm.parseJsonAddress(config, ".VettedGate") == address(0) &&
+            vm.parseJsonAddress(config, ".VettedGateImpl") == address(0)
+        ) {
+            vm.skip(true);
+        }
         deploymentConfig = parseDeploymentConfig(config);
         deployParams = parseDeployParams(env.DEPLOY_CONFIG);
 

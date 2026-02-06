@@ -31,6 +31,7 @@ import { OperatorsData } from "src/OperatorsData.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { CuratedGateFactory } from "src/CuratedGateFactory.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
+import { DeployCSM0x02Params } from "script/csm0x02/DeployCSM0x02Base.s.sol";
 import { CuratedDeployParams } from "script/curated/DeployBase.s.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 import { IACL } from "src/interfaces/IACL.sol";
@@ -537,6 +538,17 @@ contract DeploymentHelpers is Test {
             );
     }
 
+    function parseDeployParams0x02(
+        string memory deployConfigPath
+    ) internal view returns (DeployCSM0x02Params memory) {
+        string memory config = vm.readFile(deployConfigPath);
+        return
+            abi.decode(
+                vm.parseJsonBytes(config, ".DeployParams"),
+                (DeployCSM0x02Params)
+            );
+    }
+
     function updateCuratedDeployParams(
         CuratedDeployParams storage dst,
         string memory deployConfigPath
@@ -648,93 +660,163 @@ contract DeploymentHelpers is Test {
                 vm.parseJsonBytes(config, ".CuratedDeployParams"),
                 (CuratedDeployParams)
             );
-            params.lidoLocatorAddress = decoded.lidoLocatorAddress;
-            params.aragonAgent = decoded.aragonAgent;
-            params.proxyAdmin = decoded.proxyAdmin;
-            params.easyTrackEVMScriptExecutor = decoded
-                .easyTrackEVMScriptExecutor;
-            params.generalDelayedPenaltyReporter = decoded
-                .generalDelayedPenaltyReporter;
-            params.resealManager = decoded.resealManager;
-            params.secondAdminAddress = decoded.secondAdminAddress;
-            params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
-            params.setResetBondCurveAddress = decoded.setResetBondCurveAddress;
-            params.stakingModuleId = decoded.stakingModuleId;
-            params.moduleType = decoded.moduleType;
-            params.queueLowestPriority = decoded.queueLowestPriority;
-            params.bondLockPeriod = decoded.bondLockPeriod;
-            params.minBondLockPeriod = decoded.minBondLockPeriod;
-            params.maxBondLockPeriod = decoded.maxBondLockPeriod;
-            params.secondsPerSlot = decoded.secondsPerSlot;
-            params.slotsPerEpoch = decoded.slotsPerEpoch;
-            params.clGenesisTime = decoded.clGenesisTime;
-            params.oracleReportEpochsPerFrame = decoded
-                .oracleReportEpochsPerFrame;
-            params.fastLaneLengthSlots = decoded.fastLaneLengthSlots;
-            params.consensusVersion = decoded.consensusVersion;
-            params.oracleMembers = decoded.oracleMembers;
-            params.hashConsensusQuorum = decoded.hashConsensusQuorum;
-            params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
-            params.gIFirstValidator = decoded.gIFirstValidator;
-            params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
-            params.gIFirstBlockRootInSummary = decoded
-                .gIFirstBlockRootInSummary;
-            params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
-            params.gIFirstPendingConsolidation = decoded
-                .gIFirstPendingConsolidation;
-            params.verifierFirstSupportedSlot = decoded
-                .verifierFirstSupportedSlot;
-            params.capellaSlot = decoded.capellaSlot;
-            params.defaultBondCurve = decoded.defaultBondCurve;
+            return _fillCommonFromCurated(params, decoded);
         } else {
-            DeployParams memory decoded = abi.decode(
-                vm.parseJsonBytes(config, ".DeployParams"),
-                (DeployParams)
+            address vettedGateFactory = vm.parseJsonAddress(
+                config,
+                ".VettedGateFactory"
             );
-            params.lidoLocatorAddress = decoded.lidoLocatorAddress;
-            params.aragonAgent = decoded.aragonAgent;
-            params.proxyAdmin = decoded.proxyAdmin;
-            params.easyTrackEVMScriptExecutor = decoded
-                .easyTrackEVMScriptExecutor;
-            params.generalDelayedPenaltyReporter = decoded
-                .generalDelayedPenaltyReporter;
-            params.resealManager = decoded.resealManager;
-            params.secondAdminAddress = decoded.secondAdminAddress;
-            params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
-            params.setResetBondCurveAddress = decoded.setResetBondCurveAddress;
-            params.stakingModuleId = decoded.stakingModuleId;
-            params.moduleType = decoded.moduleType;
-            params.queueLowestPriority = decoded.queueLowestPriority;
-            params.bondLockPeriod = decoded.bondLockPeriod;
-            params.minBondLockPeriod = decoded.minBondLockPeriod;
-            params.maxBondLockPeriod = decoded.maxBondLockPeriod;
-            params.secondsPerSlot = decoded.secondsPerSlot;
-            params.slotsPerEpoch = decoded.slotsPerEpoch;
-            params.clGenesisTime = decoded.clGenesisTime;
-            params.oracleReportEpochsPerFrame = decoded
-                .oracleReportEpochsPerFrame;
-            params.fastLaneLengthSlots = decoded.fastLaneLengthSlots;
-            params.consensusVersion = decoded.consensusVersion;
-            params.oracleMembers = decoded.oracleMembers;
-            params.hashConsensusQuorum = decoded.hashConsensusQuorum;
-            params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
-            params.gIFirstValidator = decoded.gIFirstValidator;
-            params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
-            params.gIFirstBlockRootInSummary = decoded
-                .gIFirstBlockRootInSummary;
-            params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
-            params.gIFirstPendingConsolidation = decoded
-                .gIFirstPendingConsolidation;
-            params.verifierFirstSupportedSlot = decoded
-                .verifierFirstSupportedSlot;
-            params.capellaSlot = decoded.capellaSlot;
-            params.defaultBondCurve = decoded.defaultBondCurve;
-            params.defaultDepositAllocationWeight = decoded
-                .defaultDepositAllocationWeight;
-            params
-                .identifiedCommunityStakersGateDepositAllocationWeight = decoded
-                .identifiedCommunityStakersGateDepositAllocationWeight;
+            address vettedGate = vm.parseJsonAddress(config, ".VettedGate");
+            address vettedGateImpl = vm.parseJsonAddress(
+                config,
+                ".VettedGateImpl"
+            );
+            bool isCsm0x02 = vettedGateFactory == address(0) &&
+                vettedGate == address(0) &&
+                vettedGateImpl == address(0);
+            if (isCsm0x02) {
+                DeployCSM0x02Params memory decoded = abi.decode(
+                    vm.parseJsonBytes(config, ".DeployParams"),
+                    (DeployCSM0x02Params)
+                );
+                return _fillCommonFromCommunity0x02(params, decoded);
+            } else {
+                DeployParams memory decoded = abi.decode(
+                    vm.parseJsonBytes(config, ".DeployParams"),
+                    (DeployParams)
+                );
+                return _fillCommonFromCommunity(params, decoded);
+            }
         }
+    }
+
+    function _fillCommonFromCurated(
+        CommonDeployParams memory params,
+        CuratedDeployParams memory decoded
+    ) internal pure returns (CommonDeployParams memory) {
+        params.lidoLocatorAddress = decoded.lidoLocatorAddress;
+        params.aragonAgent = decoded.aragonAgent;
+        params.proxyAdmin = decoded.proxyAdmin;
+        params.easyTrackEVMScriptExecutor = decoded.easyTrackEVMScriptExecutor;
+        params.generalDelayedPenaltyReporter = decoded
+            .generalDelayedPenaltyReporter;
+        params.resealManager = decoded.resealManager;
+        params.secondAdminAddress = decoded.secondAdminAddress;
+        params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
+        params.setResetBondCurveAddress = decoded.setResetBondCurveAddress;
+        params.stakingModuleId = decoded.stakingModuleId;
+        params.moduleType = decoded.moduleType;
+        params.queueLowestPriority = decoded.queueLowestPriority;
+        params.bondLockPeriod = decoded.bondLockPeriod;
+        params.minBondLockPeriod = decoded.minBondLockPeriod;
+        params.maxBondLockPeriod = decoded.maxBondLockPeriod;
+        params.secondsPerSlot = decoded.secondsPerSlot;
+        params.slotsPerEpoch = decoded.slotsPerEpoch;
+        params.clGenesisTime = decoded.clGenesisTime;
+        params.oracleReportEpochsPerFrame = decoded.oracleReportEpochsPerFrame;
+        params.fastLaneLengthSlots = decoded.fastLaneLengthSlots;
+        params.consensusVersion = decoded.consensusVersion;
+        params.oracleMembers = decoded.oracleMembers;
+        params.hashConsensusQuorum = decoded.hashConsensusQuorum;
+        params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
+        params.gIFirstValidator = decoded.gIFirstValidator;
+        params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
+        params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
+        params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
+        params.gIFirstPendingConsolidation = decoded
+            .gIFirstPendingConsolidation;
+        params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
+        params.capellaSlot = decoded.capellaSlot;
+        params.defaultBondCurve = decoded.defaultBondCurve;
+        return params;
+    }
+
+    function _fillCommonFromCommunity(
+        CommonDeployParams memory params,
+        DeployParams memory decoded
+    ) internal pure returns (CommonDeployParams memory) {
+        params.lidoLocatorAddress = decoded.lidoLocatorAddress;
+        params.aragonAgent = decoded.aragonAgent;
+        params.proxyAdmin = decoded.proxyAdmin;
+        params.easyTrackEVMScriptExecutor = decoded.easyTrackEVMScriptExecutor;
+        params.generalDelayedPenaltyReporter = decoded
+            .generalDelayedPenaltyReporter;
+        params.resealManager = decoded.resealManager;
+        params.secondAdminAddress = decoded.secondAdminAddress;
+        params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
+        params.setResetBondCurveAddress = decoded.setResetBondCurveAddress;
+        params.stakingModuleId = decoded.stakingModuleId;
+        params.moduleType = decoded.moduleType;
+        params.queueLowestPriority = decoded.queueLowestPriority;
+        params.bondLockPeriod = decoded.bondLockPeriod;
+        params.minBondLockPeriod = decoded.minBondLockPeriod;
+        params.maxBondLockPeriod = decoded.maxBondLockPeriod;
+        params.secondsPerSlot = decoded.secondsPerSlot;
+        params.slotsPerEpoch = decoded.slotsPerEpoch;
+        params.clGenesisTime = decoded.clGenesisTime;
+        params.oracleReportEpochsPerFrame = decoded.oracleReportEpochsPerFrame;
+        params.fastLaneLengthSlots = decoded.fastLaneLengthSlots;
+        params.consensusVersion = decoded.consensusVersion;
+        params.oracleMembers = decoded.oracleMembers;
+        params.hashConsensusQuorum = decoded.hashConsensusQuorum;
+        params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
+        params.gIFirstValidator = decoded.gIFirstValidator;
+        params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
+        params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
+        params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
+        params.gIFirstPendingConsolidation = decoded
+            .gIFirstPendingConsolidation;
+        params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
+        params.capellaSlot = decoded.capellaSlot;
+        params.defaultBondCurve = decoded.defaultBondCurve;
+        params.defaultDepositAllocationWeight = decoded
+            .defaultDepositAllocationWeight;
+        params.identifiedCommunityStakersGateDepositAllocationWeight = decoded
+            .identifiedCommunityStakersGateDepositAllocationWeight;
+        return params;
+    }
+
+    function _fillCommonFromCommunity0x02(
+        CommonDeployParams memory params,
+        DeployCSM0x02Params memory decoded
+    ) internal pure returns (CommonDeployParams memory) {
+        params.lidoLocatorAddress = decoded.lidoLocatorAddress;
+        params.aragonAgent = decoded.aragonAgent;
+        params.proxyAdmin = decoded.proxyAdmin;
+        params.easyTrackEVMScriptExecutor = decoded.easyTrackEVMScriptExecutor;
+        params.generalDelayedPenaltyReporter = decoded
+            .generalDelayedPenaltyReporter;
+        params.resealManager = decoded.resealManager;
+        params.secondAdminAddress = decoded.secondAdminAddress;
+        params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
+        params.setResetBondCurveAddress = decoded.setResetBondCurveAddress;
+        params.stakingModuleId = decoded.stakingModuleId;
+        params.moduleType = decoded.moduleType;
+        params.queueLowestPriority = decoded.queueLowestPriority;
+        params.bondLockPeriod = decoded.bondLockPeriod;
+        params.minBondLockPeriod = decoded.minBondLockPeriod;
+        params.maxBondLockPeriod = decoded.maxBondLockPeriod;
+        params.secondsPerSlot = decoded.secondsPerSlot;
+        params.slotsPerEpoch = decoded.slotsPerEpoch;
+        params.clGenesisTime = decoded.clGenesisTime;
+        params.oracleReportEpochsPerFrame = decoded.oracleReportEpochsPerFrame;
+        params.fastLaneLengthSlots = decoded.fastLaneLengthSlots;
+        params.consensusVersion = decoded.consensusVersion;
+        params.oracleMembers = decoded.oracleMembers;
+        params.hashConsensusQuorum = decoded.hashConsensusQuorum;
+        params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
+        params.gIFirstValidator = decoded.gIFirstValidator;
+        params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
+        params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
+        params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
+        params.gIFirstPendingConsolidation = decoded
+            .gIFirstPendingConsolidation;
+        params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
+        params.capellaSlot = decoded.capellaSlot;
+        params.defaultBondCurve = decoded.defaultBondCurve;
+        params.defaultDepositAllocationWeight = decoded
+            .defaultDepositAllocationWeight;
+        return params;
     }
 
     function _isEmpty(string memory s) internal pure returns (bool) {
@@ -747,6 +829,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     enum ModuleType {
         Unknown,
         Community,
+        Community0x02,
         Curated
     }
 
@@ -805,7 +888,15 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         );
         assertEq(deploymentConfig.chainId, block.chainid, "ChainId mismatch");
 
-        moduleType = ModuleType.Community;
+        if (
+            deploymentConfig.vettedGateFactory == address(0) &&
+            deploymentConfig.vettedGate == address(0) &&
+            deploymentConfig.vettedGateImpl == address(0)
+        ) {
+            moduleType = ModuleType.Community0x02;
+        } else {
+            moduleType = ModuleType.Community;
+        }
 
         module = CSModule(deploymentConfig.csm);
         moduleImpl = CSModule(deploymentConfig.csmImpl);

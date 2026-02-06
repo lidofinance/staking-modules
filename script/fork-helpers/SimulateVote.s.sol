@@ -29,7 +29,10 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
     function addModule() external {
         _setUp();
-        if (moduleType != ModuleType.Community) {
+        if (
+            moduleType != ModuleType.Community &&
+            moduleType != ModuleType.Community0x02
+        ) {
             revert WrongModuleType();
         }
 

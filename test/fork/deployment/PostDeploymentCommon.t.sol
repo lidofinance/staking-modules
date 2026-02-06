@@ -257,10 +257,6 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
                 deployParams.setResetBondCurveAddress
             )
         );
-        assertEq(
-            accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()),
-            2
-        );
 
         assertEq(
             accounting.getRoleMemberCount(keccak256("RESET_BOND_CURVE_ROLE")),
