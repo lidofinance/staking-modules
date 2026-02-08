@@ -413,8 +413,7 @@ abstract contract DeployBase is Script {
             curatedModule.initialize({ admin: deployer });
 
             MetaRegistry metaRegistryImpl = new MetaRegistry(
-                address(curatedModule),
-                locator.stakingRouter()
+                address(curatedModule)
             );
 
             {
@@ -460,9 +459,7 @@ abstract contract DeployBase is Script {
 
             strikes.initialize(deployer, address(ejector));
 
-            curatedGateImpl = address(
-                new CuratedGate(config.stakingModuleId, address(curatedModule))
-            );
+            curatedGateImpl = address(new CuratedGate(address(curatedModule)));
 
             curatedGateFactory = new CuratedGateFactory(curatedGateImpl);
 

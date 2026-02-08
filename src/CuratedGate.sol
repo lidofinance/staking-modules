@@ -32,9 +32,6 @@ contract CuratedGate is
     ICuratedModule public immutable MODULE;
 
     /// @inheritdoc ICuratedGate
-    uint256 public immutable MODULE_ID;
-
-    /// @inheritdoc ICuratedGate
     IAccounting public immutable ACCOUNTING;
 
     /// @inheritdoc ICuratedGate
@@ -54,16 +51,12 @@ contract CuratedGate is
     /// @dev Tracks whether an address already consumed its eligibility
     mapping(address => bool) internal _consumedAddresses;
 
-    constructor(uint256 moduleId, address module) {
-        if (moduleId == 0) {
-            revert ZeroModuleId();
-        }
+    constructor(address module) {
         if (module == address(0)) {
             revert ZeroModuleAddress();
         }
 
         MODULE = ICuratedModule(module);
-        MODULE_ID = moduleId;
         ACCOUNTING = MODULE.ACCOUNTING();
         META_REGISTRY = MODULE.META_REGISTRY();
 
@@ -133,11 +126,7 @@ contract CuratedGate is
             ownerEditsRestricted: false
         });
 
-        META_REGISTRY.setOperatorMetadataAsAdmin(
-            MODULE_ID,
-            nodeOperatorId,
-            metadata
-        );
+        META_REGISTRY.setOperatorMetadataAsAdmin(nodeOperatorId, metadata);
     }
 
     /// @inheritdoc IMerkleGate

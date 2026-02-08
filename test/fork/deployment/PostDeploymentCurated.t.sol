@@ -10,6 +10,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { CuratedDeployParams, CuratedGateConfig, GateCurveParams } from "script/curated/DeployBase.s.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
+import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
 import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
 
@@ -74,6 +75,15 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
 }
 
 contract MetaRegistryDeploymentTest is DeploymentBaseTest {
+    function test_state_onlyFull() public view {
+        assertEq(metaRegistry.getOperatorGroupsCount(), 1);
+
+        IMetaRegistry.OperatorGroup memory groupInfo = metaRegistry
+            .getOperatorGroup(metaRegistry.NO_GROUP_ID());
+        assertEq(groupInfo.subNodeOperators.length, 0);
+        assertEq(groupInfo.externalOperators.length, 0);
+    }
+
     function test_roles_onlyFull() public view {
         assertEq(
             metaRegistry.getRoleMemberCount(metaRegistry.DEFAULT_ADMIN_ROLE()),
@@ -109,7 +119,6 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
             assertEq(address(gate.MODULE()), address(module));
             assertEq(address(gate.ACCOUNTING()), address(accounting));
             assertEq(address(gate.META_REGISTRY()), address(metaRegistry));
-            assertEq(gate.MODULE_ID(), deployParams.stakingModuleId);
         }
     }
 

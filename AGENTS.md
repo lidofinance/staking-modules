@@ -14,7 +14,7 @@
 
 - `just deps`: install production deps; `just deps-dev`: dev deps + husky.
 - `just`: clean, deps, build, and run all tests.
-- `just build`: Forge build (skips tests/scripts); `forge build` works too.
+- `just build`: build the project skipping tests and scripts (preferable for faster iterations); use `forge build` for compile all files of the project.
 - `just test-unit`: unit tests only; `just test-all`: unit + fork suites.
 - `just test-local`: spins up anvil fork, deploys, runs deployment+integration tests.
 - `just coverage` | `just coverage-lcov`: coverage (LCOV saved; see `lcov.html`).
@@ -27,7 +27,6 @@
 - Linting: Solhint (`.solhint.json`) with `solhint:recommended` and `solhint-plugin-lido-csm`.
 - Versions: enforce `pragma solidity 0.8.33` (`compiler-version` rule).
 - Naming: contracts/libraries `CamelCase` (e.g., `CSModule`, `AssetRecovererLib`), interfaces `IName` (rule: `interface-starts-with-i`).
-- The if statement body should be enclosed in a block, for example: `if (cond) { do(); }`
 - Inline assembly should be well documented, preferably every non-trivial line with its own comment.
 - Conventions: prefer custom errors, calldata parameters, and struct packing (gas rules). Immutable vars styled as constants.
 - Keep things in one function unless composable or reusable.

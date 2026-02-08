@@ -4,7 +4,7 @@
 pragma solidity 0.8.33;
 
 /// @notice Node operator registry interface for legacy curated module.
-interface INodeOperatorRegistry {
+interface INodeOperatorsRegistry {
     /// @notice Returns the node operator by id.
     /// @param _nodeOperatorId Node Operator id.
     /// @param _fullInfo If true, name will be returned as well.

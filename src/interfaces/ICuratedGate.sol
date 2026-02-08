@@ -13,7 +13,6 @@ import { IAccounting } from "./IAccounting.sol";
 interface ICuratedGate is IMerkleGate {
     /// Errors
     error InvalidCurveId();
-    error ZeroModuleId();
     error ZeroModuleAddress();
     error ZeroMetaRegistryAddress();
     error ZeroAdminAddress();
@@ -26,9 +25,6 @@ interface ICuratedGate is IMerkleGate {
 
     /// @return MODULE Curated module reference
     function MODULE() external view returns (ICuratedModule);
-
-    /// @return MODULE_ID Curated module id cached for metadata integration
-    function MODULE_ID() external view returns (uint256);
 
     /// @return ACCOUNTING Accounting reference
     function ACCOUNTING() external view returns (IAccounting);

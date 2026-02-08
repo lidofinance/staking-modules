@@ -7,7 +7,6 @@ import { OperatorInfo } from "../../../src/interfaces/IMetaRegistry.sol";
 
 contract MetaRegistryMock {
     function setOperatorMetadataAsAdmin(
-        uint256 moduleId,
         uint256 nodeOperatorId,
         OperatorInfo calldata info
     ) external {}

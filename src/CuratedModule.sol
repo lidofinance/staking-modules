@@ -349,8 +349,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256 nodeOperatorId,
         uint256 newCount,
         bool incrementNonceIfUpdated
-    ) internal override returns (bool) {
-        bool weightChanged = META_REGISTRY.onNodeOperatorWeightUpdated(
+    ) internal override returns (bool depositableChanged) {
+        bool weightChanged = META_REGISTRY.refreshOperatorWeight(
             nodeOperatorId
         );
 
@@ -362,14 +362,14 @@ contract CuratedModule is ICuratedModule, BaseModule {
             }
         }
 
-        bool depositableChanged = super._applyDepositableValidatorsCount(
-            no,
-            nodeOperatorId,
-            newCount,
-            incrementNonceIfUpdated
-        );
+        depositableChanged = super._applyDepositableValidatorsCount({
+            no: no,
+            nodeOperatorId: nodeOperatorId,
+            newCount: newCount,
+            incrementNonceIfUpdated: false
+        });
 
-        if (!depositableChanged && weightChanged && incrementNonceIfUpdated) {
+        if (incrementNonceIfUpdated && (depositableChanged || weightChanged)) {
             _incrementModuleNonce();
         }
     }

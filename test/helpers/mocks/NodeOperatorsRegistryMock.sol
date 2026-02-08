@@ -3,9 +3,9 @@
 
 pragma solidity 0.8.33;
 
-import { INodeOperatorRegistry } from "src/interfaces/INodeOperatorRegistry.sol";
+import { INodeOperatorsRegistry } from "src/interfaces/INodeOperatorsRegistry.sol";
 
-contract NodeOperatorRegistryMock is INodeOperatorRegistry {
+contract NodeOperatorsRegistryMock is INodeOperatorsRegistry {
     struct NodeOperatorData {
         bool active;
         string name;

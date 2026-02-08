@@ -171,7 +171,7 @@ contract CuratedCommon is ModuleFixtures {
         vm.mockCall(
             address(metaRegistry),
             abi.encodeWithSelector(
-                IMetaRegistry.onNodeOperatorWeightUpdated.selector,
+                IMetaRegistry.refreshOperatorWeight.selector,
                 nodeOperatorId
             ),
             abi.encode(changed)

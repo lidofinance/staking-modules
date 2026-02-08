@@ -24,7 +24,6 @@ contract CuratedGateTestBase is Test, Utilities, Fixtures {
     CuratedMock public module;
     MetaRegistryMock public data;
     CuratedGate public gate;
-    uint256 internal constant MODULE_ID = 1;
 
     address public admin;
     address public member;
@@ -60,7 +59,7 @@ contract CuratedGateTestBase is Test, Utilities, Fixtures {
         root = tree.root();
         cid = someCIDv0();
 
-        gate = new CuratedGate(MODULE_ID, address(module));
+        gate = new CuratedGate(address(module));
         _enableInitializers(address(gate));
         gate.initialize(curveId(), root, cid, admin);
 
@@ -82,61 +81,55 @@ contract CuratedGateTestBaseDefaultCurve is CuratedGateTestBase {
 
 contract CuratedGateTest_constructor is CuratedGateTestBase {
     function test_constructor() public {
-        CuratedGate e = new CuratedGate(MODULE_ID, address(module));
-        assertEq(address(e.MODULE()), address(module));
-        assertEq(e.MODULE_ID(), MODULE_ID);
-        assertEq(address(e.META_REGISTRY()), address(data));
+        CuratedGate g = new CuratedGate(address(module));
+        assertEq(address(g.MODULE()), address(module));
+        assertEq(address(g.META_REGISTRY()), address(data));
     }
 
     function test_constructor_RevertWhen_ZeroModule() public {
         vm.expectRevert(ICuratedGate.ZeroModuleAddress.selector);
-        new CuratedGate(MODULE_ID, address(0));
-    }
-
-    function test_constructor_RevertWhen_ZeroModuleId() public {
-        vm.expectRevert(ICuratedGate.ZeroModuleId.selector);
-        new CuratedGate(0, address(module));
+        new CuratedGate(address(0));
     }
 }
 
 contract CuratedGateTest_initialize is CuratedGateTestBase {
     function test_initialize() public {
-        CuratedGate e = new CuratedGate(MODULE_ID, address(module));
-        _enableInitializers(address(e));
-        e.initialize(1, root, cid, admin);
-        assertEq(e.treeRoot(), root);
-        assertEq(keccak256(bytes(e.treeCid())), keccak256(bytes(cid)));
-        assertTrue(e.hasRole(e.DEFAULT_ADMIN_ROLE(), admin));
-        assertEq(e.curveId(), 1);
+        CuratedGate g = new CuratedGate(address(module));
+        _enableInitializers(address(g));
+        g.initialize(1, root, cid, admin);
+        assertEq(g.treeRoot(), root);
+        assertEq(keccak256(bytes(g.treeCid())), keccak256(bytes(cid)));
+        assertTrue(g.hasRole(g.DEFAULT_ADMIN_ROLE(), admin));
+        assertEq(g.curveId(), 1);
     }
 
     function test_initialize_RevertWhen_ZeroAdmin() public {
-        CuratedGate e = new CuratedGate(MODULE_ID, address(module));
-        _enableInitializers(address(e));
+        CuratedGate g = new CuratedGate(address(module));
+        _enableInitializers(address(g));
         vm.expectRevert(ICuratedGate.ZeroAdminAddress.selector);
-        e.initialize(1, root, cid, address(0));
+        g.initialize(1, root, cid, address(0));
     }
 
     function test_initialize_RevertWhen_InvalidTreeRoot() public {
-        CuratedGate e = new CuratedGate(MODULE_ID, address(module));
-        _enableInitializers(address(e));
+        CuratedGate g = new CuratedGate(address(module));
+        _enableInitializers(address(g));
         vm.expectRevert(IMerkleGate.InvalidTreeRoot.selector);
-        e.initialize(1, bytes32(0), cid, admin);
+        g.initialize(1, bytes32(0), cid, admin);
     }
 
     function test_initialize_RevertWhen_InvalidTreeCid() public {
-        CuratedGate e = new CuratedGate(MODULE_ID, address(module));
-        _enableInitializers(address(e));
+        CuratedGate g = new CuratedGate(address(module));
+        _enableInitializers(address(g));
         vm.expectRevert(IMerkleGate.InvalidTreeCid.selector);
-        e.initialize(1, root, "", admin);
+        g.initialize(1, root, "", admin);
     }
 
     function test_initialize_AllowsDefaultCurveId() public {
-        CuratedGate e = new CuratedGate(MODULE_ID, address(module));
-        _enableInitializers(address(e));
+        CuratedGate g = new CuratedGate(address(module));
+        _enableInitializers(address(g));
         uint256 defaultCurveId = module.ACCOUNTING().DEFAULT_BOND_CURVE_ID();
-        e.initialize(defaultCurveId, root, cid, admin);
-        assertEq(e.curveId(), defaultCurveId);
+        g.initialize(defaultCurveId, root, cid, admin);
+        assertEq(g.curveId(), defaultCurveId);
     }
 }
 
@@ -271,7 +264,6 @@ contract CuratedGateTest_createNodeOperator is CuratedGateTestBase {
             address(data),
             abi.encodeWithSelector(
                 IMetaRegistry.setOperatorMetadataAsAdmin.selector,
-                MODULE_ID,
                 0,
                 OperatorInfo({
                     name: "Name",
@@ -380,7 +372,6 @@ contract CuratedGateTest_createNodeOperator_DefaultCurve is
             address(data),
             abi.encodeWithSelector(
                 IMetaRegistry.setOperatorMetadataAsAdmin.selector,
-                MODULE_ID,
                 0,
                 OperatorInfo({
                     name: "Name",

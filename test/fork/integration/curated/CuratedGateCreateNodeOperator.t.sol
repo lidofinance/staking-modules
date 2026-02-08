@@ -53,10 +53,7 @@ contract CuratedGateCreateNodeOperatorTest is CuratedIntegrationBase {
 
         assertEq(module.getNodeOperatorsCount(), beforeCount + 1);
 
-        OperatorInfo memory info = metaRegistry.getOperatorMetadata(
-            gate.MODULE_ID(),
-            noId
-        );
+        OperatorInfo memory info = metaRegistry.getOperatorMetadata(noId);
         assertEq(info.name, name);
         assertEq(info.description, description);
         assertEq(accounting.getBondCurveId(noId), gate.curveId());
