@@ -51,6 +51,22 @@ for i in {1..7}; do
   GATE=$(jq -r ".CuratedGates[$((i-1))]" "$CM_DEPLOY_CONFIG")
   ADDR_FILE="addresses$i"
 
+  # Skip if gate not in deploy config or not deployed
+  if [ -z "$GATE" ] || [ "$GATE" = "null" ]; then
+    echo ">>> Gate $i: not in deploy config, skipping"
+    RESULTS+=("Gate $i: SKIPPED (not deployed)")
+    echo ""
+    continue
+  fi
+
+  CODE=$(cast code "$GATE" --rpc-url="$RPC_URL")
+  if [ -z "$CODE" ] || [ "$CODE" = "0x" ]; then
+    echo ">>> Gate $i: $GATE has no code, skipping"
+    RESULTS+=("Gate $i: SKIPPED (no code at $GATE)")
+    echo ""
+    continue
+  fi
+
   echo ">>> Gate $i: $GATE (from $ADDR_FILE)"
 
   # Check if address file exists
