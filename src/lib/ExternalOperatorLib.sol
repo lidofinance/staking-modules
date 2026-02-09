@@ -3,33 +3,45 @@
 
 pragma solidity 0.8.33;
 
+import { IMetaRegistry } from "../interfaces/IMetaRegistry.sol";
+
+enum OperatorType {
+    NOR
+}
+
 library ExternalOperatorLib {
-    enum OperatorType {
-        NOR
-    }
+    using ExternalOperatorLib for IMetaRegistry.ExternalOperator;
 
     uint256 public constant ENTRY_LEN_NOR = 10; // 1 + 1 + 8 (enum OperatorType, uint8 moduleId, uint64 nodeOperatorId)
 
     error InvalidExternalOperatorDataEntry();
 
-    function uniqueKey(bytes memory data) internal pure returns (bytes32) {
+    function uniqueKey(
+        IMetaRegistry.ExternalOperator memory self
+    ) internal pure returns (bytes32) {
         // NOTE: As long the first byte is dedicated to the operator type, the simple hashing is enough.
-        return keccak256(data);
+        return keccak256(self.data);
     }
 
-    function unpackEntry(
-        bytes memory data
-    ) internal pure returns (uint8 moduleId_, uint64 noId_) {
+    function tryGetOpType(
+        IMetaRegistry.ExternalOperator memory self
+    ) internal pure returns (OperatorType) {
         // NOTE: Type guard for now; replace with a proper switch for more types.
-        if (!isNOR(data)) {
+        if (!_isNOR(self.data)) {
             revert InvalidExternalOperatorDataEntry();
         }
 
-        moduleId_ = _moduleIdNOR(data);
-        noId_ = _noIdNOR(data);
+        return OperatorType.NOR;
     }
 
-    function isNOR(bytes memory data) internal pure returns (bool) {
+    function unpackEntryTypeNOR(
+        IMetaRegistry.ExternalOperator memory self
+    ) internal pure returns (uint8 moduleId_, uint64 noId_) {
+        moduleId_ = _moduleIdNOR(self.data);
+        noId_ = _noIdNOR(self.data);
+    }
+
+    function _isNOR(bytes memory data) internal pure returns (bool) {
         if (data.length != ENTRY_LEN_NOR) {
             return false;
         }

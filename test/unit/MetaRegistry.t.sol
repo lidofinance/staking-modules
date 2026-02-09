@@ -11,6 +11,7 @@ import { MetaRegistry } from "src/MetaRegistry.sol";
 import { IMetaRegistry, OperatorInfo } from "src/interfaces/IMetaRegistry.sol";
 import { IBaseModule, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
+import { ExternalOperatorLib } from "src/lib/ExternalOperatorLib.sol";
 import { IStakingModule } from "src/interfaces/IStakingModule.sol";
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
 import { ILidoLocator } from "src/interfaces/ILidoLocator.sol";
@@ -487,7 +488,7 @@ contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
         assertEq(groupId1, newGroupId);
 
         uint256 externalGroupId = registry.getExternalOperatorGroupMembership(
-            externalData
+            _externalOperator(externalData)
         );
         assertTrue(externalGroupId != NO_GROUP_ID);
         assertEq(externalGroupId, newGroupId);
@@ -637,7 +638,9 @@ contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
             memory externalOperators = _extOperatorsArr1(
                 abi.encodePacked(uint8(1), uint8(EXTERNAL_MODULE_ID), uint64(0))
             );
-        vm.expectRevert(IMetaRegistry.UnsupportedExternalOperatorType.selector);
+        vm.expectRevert(
+            ExternalOperatorLib.InvalidExternalOperatorDataEntry.selector
+        );
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), externalOperators);
     }
@@ -722,12 +725,12 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         assertEq(groupInfo.externalOperators[0].data, updatedExternal);
 
         uint256 oldGroupId = registry.getExternalOperatorGroupMembership(
-            initialExternal
+            _externalOperator(initialExternal)
         );
         assertEq(oldGroupId, NO_GROUP_ID);
 
         uint256 groupId = registry.getExternalOperatorGroupMembership(
-            updatedExternal
+            _externalOperator(updatedExternal)
         );
         assertTrue(groupId != NO_GROUP_ID);
         assertEq(groupId, newGroupId);
@@ -764,7 +767,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         assertEq(groupId, NO_GROUP_ID);
 
         uint256 externalGroupId = registry.getExternalOperatorGroupMembership(
-            externalData
+            _externalOperator(externalData)
         );
         assertEq(externalGroupId, NO_GROUP_ID);
     }
@@ -886,7 +889,9 @@ contract MetaRegistryTestGroupsGetters is MetaRegistryTestGroupsBase {
     {
         uint256 nonExistentNoId = externalModule.getNodeOperatorsCount();
         uint256 groupId = registry.getExternalOperatorGroupMembership(
-            _norData(uint8(EXTERNAL_MODULE_ID), uint64(nonExistentNoId))
+            _externalOperator(
+                _norData(uint8(EXTERNAL_MODULE_ID), uint64(nonExistentNoId))
+            )
         );
         assertEq(groupId, NO_GROUP_ID);
     }
@@ -908,7 +913,7 @@ contract MetaRegistryTestGroupsGetters is MetaRegistryTestGroupsBase {
         assertEq(groupId, NO_GROUP_ID);
 
         uint256 externalGroupId = registry.getExternalOperatorGroupMembership(
-            externalData
+            _externalOperator(externalData)
         );
         assertEq(externalGroupId, NO_GROUP_ID);
     }

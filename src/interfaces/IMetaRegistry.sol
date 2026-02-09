@@ -139,10 +139,10 @@ interface IMetaRegistry {
     ) external view returns (uint256 operatorGroupId);
 
     /// @notice Check whether an external operator is in a group.
-    /// @param data External operator data.
+    /// @param op External operator.
     /// @return operatorGroupId Group ID.
     function getExternalOperatorGroupMembership(
-        bytes calldata data
+        ExternalOperator calldata op
     ) external view returns (uint256 operatorGroupId);
 
     /// @notice Returns base weight for the bond curve ID.

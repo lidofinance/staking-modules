@@ -14,7 +14,7 @@ import { IBaseModule } from "./interfaces/IBaseModule.sol";
 import { IStakingModule } from "./interfaces/IStakingModule.sol";
 import { IStakingRouter } from "./interfaces/IStakingRouter.sol";
 import { IMetaRegistry, OperatorInfo } from "./interfaces/IMetaRegistry.sol";
-import { ExternalOperatorLib } from "./lib/ExternalOperatorLib.sol";
+import { ExternalOperatorLib, OperatorType } from "./lib/ExternalOperatorLib.sol";
 
 /// @notice Stores meta-operator group definitions for the curated module.
 contract MetaRegistry is
@@ -22,6 +22,8 @@ contract MetaRegistry is
     Initializable,
     AccessControlEnumerableUpgradeable
 {
+    using ExternalOperatorLib for ExternalOperator;
+
     struct CachedOperatorGroup {
         uint64[] subNodeOperatorIds;
         ExternalOperator[] externalOperators;
@@ -211,12 +213,9 @@ contract MetaRegistry is
 
     /// @inheritdoc IMetaRegistry
     function getExternalOperatorGroupMembership(
-        bytes calldata data
+        ExternalOperator calldata op
     ) external view returns (uint256 operatorGroupId) {
-        return
-            _storage().groupIndex.groupIdByExternalKey[
-                ExternalOperatorLib.uniqueKey(data)
-            ];
+        return _storage().groupIndex.groupIdByExternalKey[op.uniqueKey()];
     }
 
     /// @inheritdoc IMetaRegistry
@@ -350,9 +349,7 @@ contract MetaRegistry is
 
         for (uint256 i; i < group.externalOperators.length; ++i) {
             ExternalOperator storage op = group.externalOperators[i];
-            delete $.groupIndex.groupIdByExternalKey[
-                ExternalOperatorLib.uniqueKey(op.data)
-            ];
+            delete $.groupIndex.groupIdByExternalKey[op.uniqueKey()];
         }
 
         delete group.subNodeOperatorIds;
@@ -369,9 +366,8 @@ contract MetaRegistry is
         uint256 shareSum;
         uint256 effectiveWeightSum;
         for (uint256 i; i < subNodeOperators.length; ++i) {
-            SubNodeOperator memory subOperator = subNodeOperators[i];
-            uint64 noId = subOperator.nodeOperatorId;
-            uint16 share = subOperator.share;
+            uint64 noId = subNodeOperators[i].nodeOperatorId;
+            uint16 share = subNodeOperators[i].share;
 
             _onlyExistingOperator(address(MODULE), noId);
 
@@ -403,27 +399,20 @@ contract MetaRegistry is
         CachedOperatorGroup storage group = $.groups[groupId];
 
         for (uint256 i; i < externalOperators.length; ++i) {
-            ExternalOperator calldata extOp = externalOperators[i];
-            bytes32 extKey = ExternalOperatorLib.uniqueKey(extOp.data);
+            ExternalOperator calldata op = externalOperators[i];
+            bytes32 extKey = op.uniqueKey();
+
             if ($.groupIndex.groupIdByExternalKey[extKey] != NO_GROUP_ID) {
                 revert AlreadyUsedAsExternalOperator();
             }
 
-            if (ExternalOperatorLib.isNOR(extOp.data)) {
-                // TODO: Wrap to handle NOR
-                (uint8 moduleId, uint64 noId) = ExternalOperatorLib.unpackEntry(
-                    extOp.data
-                );
-                address module = STAKING_ROUTER
-                    .getStakingModule(moduleId)
-                    .stakingModuleAddress;
-                _onlyExistingOperator(module, noId);
-            } else {
-                revert UnsupportedExternalOperatorType();
+            OperatorType opType = op.tryGetOpType();
+            if (opType == OperatorType.NOR) {
+                _checkExternalOperatorExistsTypeNOR(op);
             }
 
             $.groupIndex.groupIdByExternalKey[extKey] = groupId;
-            group.externalOperators.push(extOp);
+            group.externalOperators.push(op);
         }
     }
 
@@ -487,11 +476,14 @@ contract MetaRegistry is
         );
     }
 
-    function _nodeOperatorExists(
-        address module,
-        uint256 nodeOperatorId
-    ) internal view returns (bool) {
-        return nodeOperatorId < IStakingModule(module).getNodeOperatorsCount();
+    function _checkExternalOperatorExistsTypeNOR(
+        ExternalOperator calldata op
+    ) internal view {
+        (uint8 moduleId, uint64 noId) = op.unpackEntryTypeNOR();
+        address module = STAKING_ROUTER
+            .getStakingModule(moduleId)
+            .stakingModuleAddress;
+        _onlyExistingOperator(module, noId);
     }
 
     function _onlyExistingOperator(
@@ -501,6 +493,13 @@ contract MetaRegistry is
         if (!_nodeOperatorExists(module, nodeOperatorId)) {
             revert NodeOperatorDoesNotExist();
         }
+    }
+
+    function _nodeOperatorExists(
+        address module,
+        uint256 nodeOperatorId
+    ) internal view returns (bool) {
+        return nodeOperatorId < IStakingModule(module).getNodeOperatorsCount();
     }
 
     function _nodeOperatorOwner(
@@ -514,33 +513,38 @@ contract MetaRegistry is
         ExternalOperator[] storage externalOperators
     ) internal view returns (uint256 totalExternalStake) {
         for (uint256 i; i < externalOperators.length; ++i) {
-            bytes memory data = externalOperators[i].data;
-            // TODO: Handle data depending on the external operator type.
-            (uint8 moduleId, uint64 noId) = ExternalOperatorLib.unpackEntry(
-                data
-            );
+            ExternalOperator memory op = externalOperators[i];
 
-            address module = STAKING_ROUTER
-                .getStakingModule(moduleId)
-                .stakingModuleAddress;
-
-            (
-                ,
-                ,
-                ,
-                ,
-                uint64 totalExitedValidators,
-                ,
-                uint64 totalDepositedValidators
-            ) = INodeOperatorsRegistry(module).getNodeOperator(noId, false);
-
-            uint256 activeValidators = totalDepositedValidators -
-                totalExitedValidators;
-            if (activeValidators == 0) continue;
-            totalExternalStake +=
-                activeValidators *
-                EXTERNAL_STAKE_PER_VALIDATOR;
+            OperatorType opType = op.tryGetOpType();
+            if (opType == OperatorType.NOR) {
+                totalExternalStake += _getOperatorExternalStakeTypeNOR(op);
+            }
         }
+    }
+
+    function _getOperatorExternalStakeTypeNOR(
+        ExternalOperator memory op
+    ) internal view returns (uint256 stake) {
+        (uint8 moduleId, uint64 noId) = op.unpackEntryTypeNOR();
+
+        address module = STAKING_ROUTER
+            .getStakingModule(moduleId)
+            .stakingModuleAddress;
+
+        (
+            ,
+            ,
+            ,
+            ,
+            uint64 totalExitedValidators,
+            ,
+            uint64 totalDepositedValidators
+        ) = INodeOperatorsRegistry(module).getNodeOperator(noId, false);
+
+        uint256 activeValidators = totalDepositedValidators -
+            totalExitedValidators;
+        if (activeValidators == 0) return stake;
+        stake = activeValidators * EXTERNAL_STAKE_PER_VALIDATOR;
     }
 
     function _storage() internal pure returns (MetaRegistryStorage storage $) {
