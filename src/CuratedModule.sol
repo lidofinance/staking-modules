@@ -324,6 +324,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
             uint256[] memory allocations
         )
     {
+        _requireNodeOperatorWeightsUpToDate();
+
         uint256 operatorsCount = _nodeOperatorsCount;
         if (maxDepositAmount == 0 || operatorsCount == 0) {
             return (0, new uint256[](0), new uint256[](0));

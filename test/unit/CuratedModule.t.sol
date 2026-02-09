@@ -1839,6 +1839,21 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
             UintArr(1 ether)
         );
     }
+
+    function test_getDepositsAllocation_RevertWhen_WeightsUpdateInProgress()
+        public
+        assertInvariants
+    {
+        createNodeOperator(1);
+
+        vm.prank(address(metaRegistry));
+        cm.requestFullOperatorWeightsUpdate();
+
+        vm.expectRevert(
+            ICuratedModule.NodeOperatorWeightsUpdateInProgress.selector
+        );
+        cm.getDepositsAllocation(1 ether);
+    }
 }
 
 contract CuratedUpdateOperatorBalances is CuratedCommon {
