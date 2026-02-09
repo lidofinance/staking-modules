@@ -148,12 +148,11 @@ jobs:
       #     CHAIN: mainnet
       #     RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
-      # TODO: Remake as v3-only and enable when new tests are ready
-      # - name: Run local deployment tests for CSM v3 deploy
-      #   run: just test-csm-v3-only-deploy
-      #   env:
-      #     CHAIN: mainnet
-      #     RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+      - name: Run local deployment tests for CSM v3 deploy
+        run: just test-csm-v3-only-deploy
+        env:
+          CHAIN: mainnet
+          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
       - name: Run local deployment tests for CSM scratch deploy
         run: just test-csm-full-deploy
