@@ -23,7 +23,7 @@ library ExternalOperatorLib {
         return keccak256(self.data);
     }
 
-    function tryGetOpType(
+    function tryGetExtOpType(
         IMetaRegistry.ExternalOperator memory self
     ) internal pure returns (OperatorType) {
         // NOTE: Type guard for now; replace with a proper switch for more types.

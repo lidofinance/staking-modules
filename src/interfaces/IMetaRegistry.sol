@@ -131,16 +131,18 @@ interface IMetaRegistry {
     /// @notice Returns total operator groups count.
     function getOperatorGroupsCount() external view returns (uint256 count);
 
-    /// @notice Check whether a node operator is in a group.
+    /// @notice Get Node Operator group ID (returns NO_GROUP_ID if the operator is not in any group).
     /// @param nodeOperatorId Node operator ID to query.
     /// @return operatorGroupId Group ID.
+    // TODO: Rename to getNodeOperatorGroupId
     function getNodeOperatorGroupMembership(
         uint256 nodeOperatorId
     ) external view returns (uint256 operatorGroupId);
 
-    /// @notice Check whether an external operator is in a group.
+    /// @notice Get External Operator group ID (returns NO_GROUP_ID if the operator is not in any group).
     /// @param op External operator.
     /// @return operatorGroupId Group ID.
+    // TODO: Rename to getExternalOperatorGroupId
     function getExternalOperatorGroupMembership(
         ExternalOperator calldata op
     ) external view returns (uint256 operatorGroupId);

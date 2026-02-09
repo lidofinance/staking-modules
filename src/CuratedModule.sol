@@ -213,7 +213,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     function getOperatorsWeights(
         uint256[] calldata operatorIds
     ) external view returns (uint256[] memory operatorWeights) {
-        return META_REGISTRY.getOperatorsWeights(operatorIds);
+        return _metaRegistry().getOperatorsWeights(operatorIds);
     }
 
     /// @inheritdoc IBaseModule
@@ -250,6 +250,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         );
     }
 
+    // TODO: Rename to updateNodeOperatorWeightAndDepositableValidatorsCount
     /// @inheritdoc IBaseModule
     function onNodeOperatorBondCurveUpdated(
         uint256 nodeOperatorId
@@ -262,7 +263,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
     /// @inheritdoc ICuratedModule
     function requestFullOperatorWeightsUpdate() external {
-        if (msg.sender != address(META_REGISTRY)) {
+        if (msg.sender != address(_metaRegistry())) {
             revert SenderIsNotMetaRegistry();
         }
 
@@ -359,12 +360,13 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256 newCount,
         bool incrementNonceIfUpdated
     ) internal override returns (bool depositableChanged) {
-        bool weightChanged = META_REGISTRY.refreshOperatorWeight(
+        // TODO: Return flag and value and remove the call below
+        bool weightChanged = _metaRegistry().refreshOperatorWeight(
             nodeOperatorId
         );
 
         if (newCount > 0) {
-            (uint256 weight, ) = META_REGISTRY
+            (uint256 weight, ) = _metaRegistry()
                 .getNodeOperatorWeightAndExternalStake(nodeOperatorId);
             if (weight == 0) {
                 newCount = 0;
@@ -552,6 +554,10 @@ contract CuratedModule is ICuratedModule, BaseModule {
     ) internal {
         $.operatorBalances[operatorId] = balanceWei;
         emit NodeOperatorBalanceUpdated(operatorId, balanceWei);
+    }
+
+    function _metaRegistry() internal view returns (IMetaRegistry) {
+        return META_REGISTRY;
     }
 
     function _storage() internal pure returns (CuratedModuleStorage storage $) {

@@ -16,10 +16,10 @@ contract Library {
         return op.uniqueKey();
     }
 
-    function tryGetOpType(
+    function tryGetExtOpType(
         IMetaRegistry.ExternalOperator calldata op
     ) external pure returns (OperatorType) {
-        return op.tryGetOpType();
+        return op.tryGetExtOpType();
     }
 
     function unpackEntryTypeNOR(
@@ -67,49 +67,49 @@ contract ExternalOperatorLibTest is Test {
         assertEq(n, noId);
     }
 
-    function test_tryGetOpType() public view {
+    function test_tryGetExtOpType() public view {
         assertEq(
-            uint8(lib.tryGetOpType(norEntry(1, 0))),
+            uint8(lib.tryGetExtOpType(norEntry(1, 0))),
             uint8(OperatorType.NOR)
         );
     }
 
-    function test_tryGetOpType_revertWhen_wrongType() public {
+    function test_tryGetExtOpType_revertWhen_wrongType() public {
         vm.expectRevert(
             ExternalOperatorLib.InvalidExternalOperatorDataEntry.selector
         );
-        lib.tryGetOpType(
+        lib.tryGetExtOpType(
             IMetaRegistry.ExternalOperator(abi.encode(type(OperatorType).max))
         );
     }
 
-    function test_tryGetOpType_revertWhen_tooShort() public {
+    function test_tryGetExtOpType_revertWhen_tooShort() public {
         vm.expectRevert(
             ExternalOperatorLib.InvalidExternalOperatorDataEntry.selector
         );
-        lib.tryGetOpType(
+        lib.tryGetExtOpType(
             IMetaRegistry.ExternalOperator(
                 new bytes(ExternalOperatorLib.ENTRY_LEN_NOR - 1)
             )
         );
     }
 
-    function test_tryGetOpType_revertWhen_tooLong() public {
+    function test_tryGetExtOpType_revertWhen_tooLong() public {
         vm.expectRevert(
             ExternalOperatorLib.InvalidExternalOperatorDataEntry.selector
         );
-        lib.tryGetOpType(
+        lib.tryGetExtOpType(
             IMetaRegistry.ExternalOperator(
                 new bytes(ExternalOperatorLib.ENTRY_LEN_NOR + 1)
             )
         );
     }
 
-    function test_tryGetOpType_revertWhen_empty() public {
+    function test_tryGetExtOpType_revertWhen_empty() public {
         vm.expectRevert(
             ExternalOperatorLib.InvalidExternalOperatorDataEntry.selector
         );
-        lib.tryGetOpType(IMetaRegistry.ExternalOperator(""));
+        lib.tryGetExtOpType(IMetaRegistry.ExternalOperator(""));
     }
 
     function norEntry(

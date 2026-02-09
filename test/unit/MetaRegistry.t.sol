@@ -226,26 +226,6 @@ contract MetaRegistryTestConstructor is MetaRegistryTestBase {
         vm.expectRevert(IMetaRegistry.ZeroModuleAddress.selector);
         new MetaRegistry(address(0));
     }
-
-    function test_constructor_RevertWhen_ZeroAccounting() public {
-        vm.mockCall(
-            address(module),
-            abi.encodeWithSelector(IBaseModule.ACCOUNTING.selector),
-            abi.encode(address(0))
-        );
-        vm.expectRevert(IMetaRegistry.ZeroAccountingAddress.selector);
-        new MetaRegistry(address(module));
-    }
-
-    function test_constructor_RevertWhen_ZeroStakingRouter() public {
-        vm.mockCall(
-            address(module.LIDO_LOCATOR()),
-            abi.encodeWithSelector(ILidoLocator.stakingRouter.selector),
-            abi.encode(address(0))
-        );
-        vm.expectRevert(IMetaRegistry.ZeroStakingRouterAddress.selector);
-        new MetaRegistry(address(module));
-    }
 }
 
 contract MetaRegistryTestInitialize is MetaRegistryTestBase {
