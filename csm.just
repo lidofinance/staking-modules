@@ -35,19 +35,19 @@ verify-csm-live *args:
     just _verify-live-generic {{deploy_script_path}} {{args}}
 
 deploy-csm-impl *args:
-    just _deploy-impl {{args}}
+    just _deploy-csm-impl {{args}}
 
 [confirm("You are about to broadcast deployment transactions to the network. Are you sure?")]
 deploy-csm-impl-live *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
-    ARTIFACTS_DIR={{csm_artifacts_latest_dir}} just _deploy-impl --broadcast --verify {{args}}
+    ARTIFACTS_DIR={{csm_artifacts_latest_dir}} just _deploy-csm-impl --broadcast --verify {{args}}
 
     cp ./broadcast/{{deploy_csm_implementations_script_name}}.s.sol/\
         $(cast chain-id --rpc-url=$RPC_URL)\
         /deploy-latest.json {{csm_latest_transactions_path}}
 
 deploy-csm-impl-dry *args:
-    just _deploy-impl {{args}}
+    just _deploy-csm-impl {{args}}
 
     cp ./broadcast/{{deploy_csm_implementations_script_name}}.s.sol/\
         $(cast chain-id --rpc-url=$RPC_URL)\
@@ -95,7 +95,7 @@ deploy-local *args:
     just _warn "anvil is kept running in the background: {{anvil_rpc_url}}"
 
 # Deploy CSM v3 components, upgrade CSM, run deployment, integration, and post-upgrade tests
-test-upgrade *args:
+test-csm-upgrade *args:
     #!/usr/bin/env bash
     set -euxo pipefail
 
@@ -104,7 +104,7 @@ test-upgrade *args:
 
     export RPC_URL={{anvil_rpc_url}}
 
-    SKIP_LEGACY_QUEUE_CHECK=1 just _deploy-impl --broadcast --private-key=`cat localhost.json | jq -r ".private_keys[0]"`
+    SKIP_LEGACY_QUEUE_CHECK=1 just _deploy-csm-impl --broadcast --private-key=`cat localhost.json | jq -r ".private_keys[0]"`
 
     export DEPLOY_CONFIG={{csm_local_upgrade_config_path}}
     export VOTE_PREV_BLOCK=`cast block-number -r $RPC_URL`
@@ -118,7 +118,7 @@ test-upgrade *args:
     just kill-fork
 
 # Deploy CSM from scratch, add module to the SR, and run deployment and integration tests
-test-local *args:
+test-csm-local *args:
     #!/usr/bin/env bash
     set -euxo pipefail
 
@@ -138,7 +138,7 @@ test-local *args:
     just kill-fork
 
 # Deploy CSM from scratch and run deployment tests
-test-full-deploy *args:
+test-csm-full-deploy *args:
     #!/usr/bin/env bash
     set -euxo pipefail
 
@@ -154,7 +154,7 @@ test-full-deploy *args:
     just kill-fork
 
 # Deploy CSM v3 components and run deployment tests
-test-v3-only-deploy *args:
+test-csm-v3-only-deploy *args:
     #!/usr/bin/env bash
     set -euxo pipefail
 
@@ -163,16 +163,16 @@ test-v3-only-deploy *args:
 
     export RPC_URL={{anvil_rpc_url}}
 
-    SKIP_LEGACY_QUEUE_CHECK=1 just _deploy-impl --broadcast --private-key=`cat localhost.json | jq -r ".private_keys[0]"` {{disable_code_size_limit}}
+    SKIP_LEGACY_QUEUE_CHECK=1 just _deploy-csm-impl --broadcast --private-key=`cat localhost.json | jq -r ".private_keys[0]"` {{disable_code_size_limit}}
 
     export DEPLOY_CONFIG={{csm_local_upgrade_config_path}}
 
-    just test-deployment-v3-only-scratch {{args}}
+    just test-deployment-csm-v3-only-scratch {{args}}
 
     just kill-fork
 
 # Run tests on fork with current state
-test-current *args:
+test-csm-current *args:
     #!/usr/bin/env bash
     set -euxo pipefail
 
@@ -188,7 +188,7 @@ test-current *args:
     just kill-fork
 
 # Run all deployment tests that should be executed against CSM v3 scratch deployment before the module upgrade vote
-test-deployment-v3-only-scratch *args:
+test-deployment-csm-v3-only-scratch *args:
     forge test --match-path 'test/fork/deployment/*' --no-match-test '(.*_afterVote.*)|(.*_onlyFull.*)' -vvv --show-progress {{args}}
 
 _deploy-live *args:
@@ -197,7 +197,7 @@ _deploy-live *args:
 _deploy-live-no-confirm *args:
     just _deploy-live-generic-no-confirm {{deploy_script_path}} {{args}}
 
-_deploy-impl *args:
+_deploy-csm-impl *args:
     FOUNDRY_PROFILE=deploy \
         forge script {{deploy_csm_impls_script_path}} --sig="deploy(string,string)" \
             --rpc-url ${RPC_URL} {{disable_code_size_limit}} {{args}} \

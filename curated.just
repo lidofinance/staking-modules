@@ -63,3 +63,34 @@ test-curated-local *args:
     just test-integration {{args}}
 
     just kill-fork
+
+# Deploy Curated module from scratch and run deployment tests
+test-curated-full-deploy *args:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    just make-fork --silent &
+    while ! echo exit | nc {{anvil_host}} {{anvil_port}} > /dev/null; do sleep 1; done
+    just deploy-curated --private-key=`cat localhost.json | jq -r ".private_keys[0]"` {{disable_code_size_limit}} -vvv
+
+    export DEPLOY_CONFIG={{curated_local_deploy_config_path}}
+    export RPC_URL={{anvil_rpc_url}}
+
+    just test-deployment-full-scratch {{args}}
+
+    just kill-fork
+
+# Run tests on fork with current state
+test-curated-current *args:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    just make-fork --silent &
+    while ! echo exit | nc {{anvil_host}} {{anvil_port}} > /dev/null; do sleep 1; done
+
+    export RPC_URL={{anvil_rpc_url}}
+    export DEPLOY_CONFIG={{curated_deploy_config_path}}
+
+    just test-utils {{args}}
+
+    just kill-fork

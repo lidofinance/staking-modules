@@ -86,11 +86,11 @@ test-unit *args:
 
 # Run all deployment tests that should be executed against full scratch deployment before the module activation vote
 test-deployment-full-scratch *args:
-    forge test --match-path 'test/fork/deployment/*' --no-match-test '.*_afterVote.*' -vvv --show-progress {{args}}
+    forge test --match-path 'test/fork/deployment/*' --no-match-test '.*_afterVote.*' -vvv --show-progress -j 4 {{args}}
 
 # Run all deployment tests that should be executed against full scratch deployment after the module activation vote
 test-deployment-full-afterVote *args:
-    forge test --match-path 'test/fork/deployment/*' --no-match-test '.*_scratch.*' -vvv --show-progress {{args}}
+    forge test --match-path 'test/fork/deployment/*' --no-match-test '.*_scratch.*' -vvv --show-progress -j 4 {{args}}
 
 # Run all integration tests
 # Restrict to 4 parallel jobs to avoid overloading the RPC
@@ -103,7 +103,7 @@ test-utils *args:
 
 # Run tests applicable after the module upgrade vote. Does not include deployment tests
 test-post-upgrade *args:
-    forge test --match-path='test/fork/**' --no-match-path 'test/fork/deployment/**' -vvv --show-progress {{args}}
+    forge test --match-path='test/fork/**' --no-match-path 'test/fork/deployment/**' -vvv --show-progress -j 4 {{args}}
 
 gas-report:
     #!/usr/bin/env python

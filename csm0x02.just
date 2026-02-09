@@ -7,6 +7,7 @@ csm0x02_artifacts_latest_dir := "./artifacts/latest/csm0x02/"
 csm0x02_local_transactions_path := csm0x02_artifacts_local_dir + "transactions.json"
 csm0x02_latest_transactions_path := csm0x02_artifacts_latest_dir + "transactions.json"
 csm0x02_local_deploy_config_path := csm0x02_artifacts_local_dir + "deploy-" + chain + ".json"
+csm0x02_deploy_config_path := "artifacts" / chain / "csm0x02" / "deploy-" + chain + ".json"
 
 deploy-csm0x02 *args:
     mkdir -p {{csm0x02_artifacts_local_dir}}
@@ -63,5 +64,39 @@ test-csm0x02-local *args:
     just test-deployment-full-afterVote {{args}}
 
     just test-integration {{args}}
+
+    just kill-fork
+
+# Deploy CSM0x02 from scratch and run deployment tests
+test-csm0x02-full-deploy *args:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    just make-fork --silent &
+    while ! echo exit | nc {{anvil_host}} {{anvil_port}} > /dev/null; do sleep 1; done
+
+    mkdir -p {{csm0x02_artifacts_local_dir}}
+    ARTIFACTS_DIR={{csm0x02_artifacts_local_dir}} \
+        just deploy-csm0x02 --private-key=`cat localhost.json | jq -r ".private_keys[0]"` {{disable_code_size_limit}} -vvv
+
+    export DEPLOY_CONFIG={{csm0x02_local_deploy_config_path}}
+    export RPC_URL={{anvil_rpc_url}}
+
+    just test-deployment-full-scratch {{args}}
+
+    just kill-fork
+
+# Run tests on fork with current state
+test-csm0x02-current *args:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    just make-fork --silent &
+    while ! echo exit | nc {{anvil_host}} {{anvil_port}} > /dev/null; do sleep 1; done
+
+    export RPC_URL={{anvil_rpc_url}}
+    export DEPLOY_CONFIG={{csm0x02_deploy_config_path}}
+
+    just test-utils {{args}}
 
     just kill-fork
