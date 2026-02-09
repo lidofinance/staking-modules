@@ -316,15 +316,13 @@ contract MetaRegistry is
                 revert InvalidOperatorGroup();
             }
 
-            // TODO: Add OperatorGroupCleared(groupId);
-
-            return;
+            emit OperatorGroupCleared(groupId);
+        } else {
+            _storeSubOperators(groupId, groupInfo.subNodeOperators);
+            _storeExternalOperators(groupId, groupInfo.externalOperators);
+            // TODO: Add groupInfo to the event
+            emit OperatorGroupUpdated(groupId);
         }
-
-        _storeSubOperators(groupId, groupInfo.subNodeOperators);
-        _storeExternalOperators(groupId, groupInfo.externalOperators);
-        // TODO: Add groupInfo to the event
-        emit OperatorGroupUpdated(groupId);
     }
 
     function _resetGroup(uint256 groupId) internal {

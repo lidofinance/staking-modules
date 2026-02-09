@@ -726,6 +726,9 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
+        vm.expectEmit(address(registry));
+        emit IMetaRegistry.OperatorGroupCleared(newGroupId);
+
         vm.prank(groupManager);
         _updateGroup(newGroupId, _subOperatorsArr0(), _extOperatorsArr0());
 
