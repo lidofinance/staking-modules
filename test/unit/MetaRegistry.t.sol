@@ -1145,4 +1145,98 @@ contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
         bool changed = registry.refreshOperatorWeight(0);
         assertFalse(changed);
     }
+
+    function test_refreshOperatorWeight_ReturnsTrueAndEmitsWhen_WeightChanges()
+        public
+    {
+        uint64 noId = 0;
+
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(noId, MAX_BP), _extOperatorsArr0());
+
+        // Set bond curve weight so refreshing produces a non-zero effective weight.
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+
+        vm.expectEmit(address(registry));
+        emit IMetaRegistry.NodeOperatorEffectiveWeightChanged(
+            noId,
+            0,
+            CURVE_WEIGHT
+        );
+        bool changed = registry.refreshOperatorWeight(noId);
+        assertTrue(changed);
+
+        // Verify effective weight is persisted.
+        (uint256 weight, ) = registry.getNodeOperatorWeightAndExternalStake(
+            noId
+        );
+        assertEq(weight, CURVE_WEIGHT);
+    }
+
+    function test_refreshOperatorWeight_ReturnsFalseAndNoEventWhen_WeightUnchanged()
+        public
+    {
+        uint64 noId = 0;
+
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(noId, MAX_BP), _extOperatorsArr0());
+
+        // Set bond curve weight and refresh once so the weight is cached.
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        registry.refreshOperatorWeight(noId);
+
+        // Refresh again with no underlying change.
+        vm.recordLogs();
+        bool changed = registry.refreshOperatorWeight(noId);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        assertFalse(changed);
+        // No NodeOperatorEffectiveWeightChanged event should be emitted.
+        for (uint256 i; i < logs.length; ++i) {
+            assertTrue(
+                logs[i].topics[0] !=
+                    IMetaRegistry.NodeOperatorEffectiveWeightChanged.selector,
+                "unexpected weight change event"
+            );
+        }
+    }
+
+    function test_refreshOperatorWeight_UpdatesGroupEffectiveWeightSum()
+        public
+    {
+        IMetaRegistry.SubNodeOperator memory op0 = IMetaRegistry
+            .SubNodeOperator({ nodeOperatorId: 0, share: 6000 });
+        IMetaRegistry.SubNodeOperator memory op1 = IMetaRegistry
+            .SubNodeOperator({ nodeOperatorId: 1, share: 4000 });
+
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr2(op0, op1), _extOperatorsArr0());
+
+        // Both operators use default curve 0.
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+
+        // Refresh first operator to cache its effective weight.
+        registry.refreshOperatorWeight(0);
+        (uint256 w0, ) = registry.getNodeOperatorWeightAndExternalStake(0);
+        assertEq(w0, 6000); // 10000 * 6000 / 10000
+
+        // Refresh second operator.
+        registry.refreshOperatorWeight(1);
+        (uint256 w1, ) = registry.getNodeOperatorWeightAndExternalStake(1);
+        assertEq(w1, 4000); // 10000 * 4000 / 10000
+
+        // Change the bond curve weight. This doesn't auto-refresh cached weights.
+        _setBondCurveWeight(0, CURVE_WEIGHT * 2);
+
+        // Refresh only operator 0.
+        bool changed = registry.refreshOperatorWeight(0);
+        assertTrue(changed);
+
+        (uint256 w0After, ) = registry.getNodeOperatorWeightAndExternalStake(0);
+        assertEq(w0After, 12000); // 20000 * 6000 / 10000
+
+        // Operator 1 still has stale cached weight.
+        (uint256 w1After, ) = registry.getNodeOperatorWeightAndExternalStake(1);
+        assertEq(w1After, 4000);
+    }
 }

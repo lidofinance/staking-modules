@@ -427,6 +427,8 @@ contract MetaRegistry is
         uint256 newWeight = _getLatestEffectiveWeight(noId, share);
         uint256 oldWeight = _setEffectiveWeight(noId, newWeight);
 
+        if (oldWeight == newWeight) return false;
+
         $.effectiveWeightCache.groupEffectiveWeightSum[groupId] =
             $.effectiveWeightCache.groupEffectiveWeightSum[groupId] +
             newWeight -
