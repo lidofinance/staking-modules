@@ -105,7 +105,7 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
         );
     }
 
-    function test_state() public view {
+    function test_state_onlyFull() public view {
         assertEq(
             parametersRegistry.defaultKeyRemovalCharge(),
             deployParams.defaultKeyRemovalCharge
@@ -391,7 +391,7 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
         );
     }
 
-    function test_roles() public view {
+    function test_roles_onlyFull() public view {
         assertTrue(
             parametersRegistry.hasRole(
                 parametersRegistry.DEFAULT_ADMIN_ROLE(),
@@ -406,7 +406,7 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
         );
     }
 
-    function test_proxy() public {
+    function test_proxy_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         parametersRegistry.initialize({
             admin: deployParams.aragonAgent,
@@ -514,7 +514,7 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
         assertEq(address(vettedGateImpl.ACCOUNTING()), address(accounting));
     }
 
-    function test_roles() public view {
+    function test_roles_onlyFull() public view {
         assertTrue(
             vettedGate.hasRole(
                 vettedGate.DEFAULT_ADMIN_ROLE(),
@@ -582,7 +582,7 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
         );
     }
 
-    function test_proxy() public {
+    function test_proxy_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         vettedGate.initialize({
             _curveId: 1,

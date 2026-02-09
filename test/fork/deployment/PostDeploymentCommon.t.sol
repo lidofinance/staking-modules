@@ -646,12 +646,12 @@ contract VerifierDeploymentTest is DeploymentBaseTest {
 }
 
 contract ValidatorStrikesDeploymentTest is DeploymentBaseTest {
-    function test_state_scratch() public view {
+    function test_state_scratch_onlyFull() public view {
         assertEq(strikes.treeRoot(), bytes32(0));
         assertEq(keccak256(abi.encodePacked(strikes.treeCid())), keccak256(""));
     }
 
-    function test_state() public view {
+    function test_state_onlyFull() public view {
         assertEq(address(strikes.ejector()), address(ejector));
         assertEq(strikes.getInitializedVersion(), 1);
     }
@@ -680,7 +680,7 @@ contract ValidatorStrikesDeploymentTest is DeploymentBaseTest {
         );
     }
 
-    function test_proxy() public {
+    function test_proxy_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         strikes.initialize({
             admin: deployParams.aragonAgent,
@@ -750,7 +750,7 @@ contract ExitPenaltiesDeploymentTest is DeploymentBaseTest {
         assertEq(address(exitPenaltiesImpl.STRIKES()), address(strikes));
     }
 
-    function test_proxy() public view {
+    function test_proxy_onlyFull() public view {
         OssifiableProxy proxy = OssifiableProxy(
             payable(address(exitPenalties))
         );
