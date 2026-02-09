@@ -6,14 +6,14 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @dev Helper struct for input allocation state.
 struct AllocationState {
-    /// @dev Target share per operator scaled by S_SCALE.
-    uint256[] shares;
+    /// @dev Target share per operator scaled by S_SCALE (X96).
+    uint256[] sharesX96;
     /// @dev Current allocated amount per operator.
-    uint256[] amounts;
+    uint256[] currents;
     /// @dev Remaining capacity per operator (max allocatable).
     uint256[] capacities;
     /// @dev Sum of current amounts across all operators.
-    uint256 totalAmount;
+    uint256 totalCurrent;
 }
 
 /// @notice Greedy imbalance math with the same entrypoints as DepositPouringMath.
@@ -24,54 +24,49 @@ library DepositAllocatorGreedy {
     error LengthMismatch();
     error ZeroStep();
 
-    // TODO: Make naming aligned with CuratedDepositAllocator
+    /// @dev Expected input invariants:
+    ///      - state.capacities[i] > 0
+    ///      - state.sharesX96[i] > 0
+    ///      - step > 0
+    ///      - state.sharesX96.length > 0
+    ///      - all arrays in state have the same length n, and entries correspond to the same operators across arrays.
+    ///      for i in [0..n).
     function _allocate(
         AllocationState memory state,
-        uint256 inflow,
+        uint256 allocationAmount,
         uint256 step
-    ) internal pure returns (uint256[] memory fills, uint256 rest) {
-        if (step == 0) {
-            revert ZeroStep();
-        }
-        uint256 n = state.shares.length;
-        if (n == 0) {
-            return (new uint256[](0), inflow);
-        }
-        if (state.amounts.length != n || state.capacities.length != n) {
-            revert LengthMismatch();
-        }
+    ) internal pure returns (uint256[] memory allocations, uint256 remainder) {
+        uint256 n = state.sharesX96.length;
+        uint256[] memory imbalances = _computeImbalances(
+            state,
+            allocationAmount,
+            step
+        );
+        allocations = new uint256[](n);
 
-        (
-            uint256[] memory imbalances,
-            uint256[] memory idx
-        ) = _computeImbalances(state, inflow, step);
-        fills = new uint256[](n);
+        uint256[] memory idx = _sortedIndicesByImbalanceDesc(imbalances);
 
-        _sortByImbalanceDesc(idx, imbalances);
+        uint256 remaining = allocationAmount;
+        for (uint256 i; i < n && remaining > 0; ++i) {
+            uint256 opIdx = idx[i];
+            uint256 possible = Math.min(
+                imbalances[opIdx],
+                _quantize(state.capacities[opIdx], step)
+            );
+            if (possible == 0) continue;
 
-        uint256 remaining = inflow;
-        unchecked {
-            for (uint256 i; i < n && remaining > 0; ++i) {
-                uint256 opIdx = idx[i];
-                uint256 possible = imbalances[opIdx];
-                uint256 cap = state.capacities[opIdx];
-                if (possible > cap) {
-                    possible = _quantize(cap, step);
-                }
-                if (possible == 0) continue;
+            uint256 toGive = Math.min(possible, _quantize(remaining, step));
+            // NOTE: toGive can be 0 if remaining is less than step and possible is greater than remaining.
+            //       In this case, there is no point in iterating further.
+            if (toGive == 0) break;
 
-                uint256 toGive = possible < remaining
-                    ? possible
-                    : _quantize(remaining, step);
-                // NOTE: toGive can be 0 if remaining is less than step and possible is greater than remaining.
-                //     In this case, there is no point in iterating further.
-                if (toGive == 0) break;
-                fills[opIdx] = toGive;
+            allocations[opIdx] = toGive;
+            unchecked {
                 remaining -= toGive;
             }
         }
 
-        rest = remaining;
+        remainder = remaining;
     }
 
     function _quantize(
@@ -84,14 +79,14 @@ library DepositAllocatorGreedy {
         }
     }
 
-    function _sortByImbalanceDesc(
-        uint256[] memory idx,
+    function _sortedIndicesByImbalanceDesc(
         uint256[] memory imbalances
-    ) internal pure {
+    ) internal pure returns (uint256[] memory idx) {
+        uint256 n = imbalances.length;
+        idx = new uint256[](n);
         unchecked {
-            for (uint256 i = 1; i < idx.length; ++i) {
-                uint256 key = idx[i];
-                uint256 keyImb = imbalances[key];
+            for (uint256 i = 1; i < n; ++i) {
+                uint256 keyImb = imbalances[i];
                 uint256 j = i;
                 while (j > 0) {
                     uint256 prev = idx[j - 1];
@@ -99,45 +94,30 @@ library DepositAllocatorGreedy {
                     idx[j] = prev;
                     --j;
                 }
-                idx[j] = key;
+                idx[j] = i;
             }
         }
     }
 
     function _computeImbalances(
         AllocationState memory state,
-        uint256 inflow,
+        uint256 allocationAmount,
         uint256 step
-    )
-        internal
-        pure
-        returns (uint256[] memory imbalances, uint256[] memory idx)
-    {
-        uint256 n = state.shares.length;
+    ) internal pure returns (uint256[] memory imbalances) {
+        uint256 n = state.sharesX96.length;
         imbalances = new uint256[](n);
-        idx = new uint256[](n);
-
-        uint256 targetTotal = state.totalAmount + inflow;
-
-        unchecked {
-            for (uint256 i; i < n; ++i) {
-                // TODO: Consider removing idx from here and index this array in sorting method
-                idx[i] = i;
-                // TODO: Can be removed since it does not matter here
-                uint256 capacity = state.capacities[i];
-                if (capacity == 0) continue;
-
-                uint256 share = state.shares[i];
-                if (share == 0) continue;
-                // NOTE: Rounding up to avoid cases when 10 keys aren't allocated over 100 equal operators
-                uint256 target = Math.mulDiv(
-                    share,
-                    targetTotal,
-                    S_SCALE,
-                    Math.Rounding.Ceil
-                );
-                uint256 current = state.amounts[i];
-                if (target <= current) continue;
+        uint256 targetTotal = state.totalCurrent + allocationAmount;
+        for (uint256 i; i < n; ++i) {
+            // NOTE: Rounding up to avoid cases when 10 keys aren't allocated over 100 equal operators
+            uint256 target = Math.mulDiv(
+                state.sharesX96[i],
+                targetTotal,
+                S_SCALE,
+                Math.Rounding.Ceil
+            );
+            uint256 current = state.currents[i];
+            if (target <= current) continue;
+            unchecked {
                 imbalances[i] = _quantize(target - current, step);
             }
         }
