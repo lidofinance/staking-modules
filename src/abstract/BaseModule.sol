@@ -163,7 +163,7 @@ abstract contract BaseModule is
         NodeOperatorManagementProperties calldata managementProperties,
         address referrer
     ) external whenResumed returns (uint256 nodeOperatorId) {
-        _checkRole(CREATE_NODE_OPERATOR_ROLE);
+        _checkCreateNodeOperatorRole();
         nodeOperatorId = _nodeOperatorsCount;
         OperatorTracker.recordCreator(nodeOperatorId);
         NodeOperatorOps.createNodeOperator({
@@ -194,7 +194,7 @@ abstract contract BaseModule is
 
         if (
             msg.value <
-            accounting.getRequiredBondForNextKeys(nodeOperatorId, keysCount)
+            _getRequiredBondForNextKeys(accounting, nodeOperatorId, keysCount)
         ) {
             revert InvalidAmount();
         }
@@ -224,7 +224,8 @@ abstract contract BaseModule is
 
         IAccounting accounting = _accounting();
 
-        uint256 amount = accounting.getRequiredBondForNextKeys(
+        uint256 amount = _getRequiredBondForNextKeys(
+            accounting,
             nodeOperatorId,
             keysCount
         );
@@ -454,7 +455,7 @@ abstract contract BaseModule is
         uint256 amount,
         string calldata details
     ) external {
-        _checkRole(REPORT_GENERAL_DELAYED_PENALTY_ROLE);
+        _checkReportGeneralDelayedPenaltyRole();
         _onlyExistingNodeOperator(nodeOperatorId);
         GeneralPenalty.reportGeneralDelayedPenalty(
             nodeOperatorId,
@@ -469,7 +470,7 @@ abstract contract BaseModule is
         uint256 nodeOperatorId,
         uint256 amount
     ) external {
-        _checkRole(REPORT_GENERAL_DELAYED_PENALTY_ROLE);
+        _checkReportGeneralDelayedPenaltyRole();
         _onlyExistingNodeOperator(nodeOperatorId);
         GeneralPenalty.cancelGeneralDelayedPenalty(nodeOperatorId, amount);
     }
@@ -520,7 +521,7 @@ abstract contract BaseModule is
         uint256 nodeOperatorId,
         uint256 keyIndex
     ) external {
-        _checkRole(VERIFIER_ROLE);
+        _checkVerifierRole();
         _onlyExistingNodeOperator(nodeOperatorId);
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
         if (keyIndex >= no.totalDepositedKeys) {
@@ -543,7 +544,7 @@ abstract contract BaseModule is
         uint256 keyIndex,
         uint256 amount
     ) external {
-        _checkRole(VERIFIER_ROLE);
+        _checkVerifierRole();
         _onlyExistingNodeOperator(nodeOperatorId);
 
         NodeOperatorOps.increaseKeyAddedBalance({
@@ -710,7 +711,7 @@ abstract contract BaseModule is
         uint256 nodeOperatorId,
         uint256 startIndex,
         uint256 keysCount
-    ) external view returns (bytes memory) {
+    ) external view returns (bytes memory keys) {
         _onlyValidIndexRange(nodeOperatorId, startIndex, keysCount);
 
         return SigningKeys.loadKeys(nodeOperatorId, startIndex, keysCount);
@@ -793,7 +794,7 @@ abstract contract BaseModule is
     ) external view returns (uint256) {
         _onlyExistingNodeOperator(nodeOperatorId);
         return
-            PARAMETERS_REGISTRY.getAllowedExitDelay(
+            _parametersRegistry().getAllowedExitDelay(
                 _getBondCurveId(nodeOperatorId)
             );
     }
@@ -896,8 +897,9 @@ abstract contract BaseModule is
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
         uint256 totalAddedKeys = no.totalAddedKeys;
 
-        uint256 curveId = _getBondCurveId(nodeOperatorId);
-        uint256 keysLimit = PARAMETERS_REGISTRY.getKeysLimit(curveId);
+        uint256 keysLimit = _parametersRegistry().getKeysLimit(
+            _getBondCurveId(nodeOperatorId)
+        );
 
         unchecked {
             if (
@@ -1038,7 +1040,7 @@ abstract contract BaseModule is
             _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
         } else {
             // We're trying to add keys via gate, check if we can do it.
-            _checkRole(CREATE_NODE_OPERATOR_ROLE);
+            _checkCreateNodeOperatorRole();
             if (OperatorTracker.getCreator(nodeOperatorId) != msg.sender) {
                 revert CannotAddKeys();
             }
@@ -1086,8 +1088,31 @@ abstract contract BaseModule is
         return _accounting().getBondCurveId(nodeOperatorId);
     }
 
+    function _getRequiredBondForNextKeys(
+        IAccounting accounting,
+        uint256 nodeOperatorId,
+        uint256 keysCount
+    ) internal view returns (uint256 amount) {
+        amount = accounting.getRequiredBondForNextKeys(
+            nodeOperatorId,
+            keysCount
+        );
+    }
+
     function _checkStakingRouterRole() internal view {
         _checkRole(STAKING_ROUTER_ROLE);
+    }
+
+    function _checkReportGeneralDelayedPenaltyRole() internal view {
+        _checkRole(REPORT_GENERAL_DELAYED_PENALTY_ROLE);
+    }
+
+    function _checkVerifierRole() internal view {
+        _checkRole(VERIFIER_ROLE);
+    }
+
+    function _checkCreateNodeOperatorRole() internal view {
+        _checkRole(CREATE_NODE_OPERATOR_ROLE);
     }
 
     /// @dev This function is used to get the accounting contract from immutables to save bytecode.
@@ -1098,6 +1123,11 @@ abstract contract BaseModule is
     /// @dev This function is used to get the exit penalties contract from immutables to save bytecode.
     function _exitPenalties() internal view returns (IExitPenalties) {
         return EXIT_PENALTIES;
+    }
+
+    /// @dev This function is used to get the parameters registry contract from immutables to save bytecode.
+    function _parametersRegistry() internal view returns (IParametersRegistry) {
+        return PARAMETERS_REGISTRY;
     }
 
     function _onlyRecoverer() internal view override {

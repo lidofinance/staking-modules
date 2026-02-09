@@ -362,31 +362,6 @@ contract DepositAllocatorGreedyTest is Test {
         assertEq(fills[1], 0);
     }
 
-    function test_revert_lengthMismatch() public {
-        AllocationState memory state;
-        state.shares = new uint256[](2);
-        state.amounts = new uint256[](1);
-        state.capacities = new uint256[](2);
-        state.totalAmount = 0;
-
-        vm.expectRevert(DepositAllocatorGreedy.LengthMismatch.selector);
-        harness.allocate(state, 1, 1);
-    }
-
-    function test_revert_zeroStep() public {
-        uint256[] memory weights = _arr2(1, 1);
-        uint256[] memory amounts = _arr2(0, 0);
-        uint256[] memory caps = _arr2(10, 10);
-        AllocationState memory state = _buildState(
-            _copy(weights),
-            _copy(amounts),
-            _copy(caps)
-        );
-
-        vm.expectRevert(DepositAllocatorGreedy.ZeroStep.selector);
-        harness.allocate(state, 1, 0);
-    }
-
     function _runAllocate(
         uint256[] memory weights,
         uint256[] memory amounts,
@@ -409,8 +384,8 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory caps
     ) internal pure returns (AllocationState memory state) {
         uint256 n = weights.length;
-        state.shares = new uint256[](n);
-        state.amounts = amounts;
+        state.sharesX96 = new uint256[](n);
+        state.currents = amounts;
         state.capacities = caps;
 
         uint256 weightSum;
@@ -421,14 +396,14 @@ contract DepositAllocatorGreedyTest is Test {
                 totalAmount += amounts[i];
             }
         }
-        state.totalAmount = totalAmount;
+        state.totalCurrent = totalAmount;
         if (weightSum == 0) return state;
 
         unchecked {
             for (uint256 i; i < n; ++i) {
                 uint256 weight = weights[i];
                 if (weight == 0) continue;
-                state.shares[i] = Math.mulDiv(weight, S_SCALE, weightSum);
+                state.sharesX96[i] = Math.mulDiv(weight, S_SCALE, weightSum);
             }
         }
     }

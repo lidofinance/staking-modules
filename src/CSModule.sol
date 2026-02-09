@@ -113,7 +113,7 @@ contract CSModule is ICSModule, BaseModule {
         uint256 depositsLeft = depositsCount;
         uint256 loadedKeysCount = 0;
 
-        bool topUpQueueEnabled = _topUpQueue().enabled;
+        bool topUpQueueEnabled = _topUpQueueEnabled();
         DepositQueueLib.Queue storage depositQueue;
         // NOTE: The highest priority to start iterations with. Priorities are ordered like 0, 1, 2, ...
         uint256 priority = 0;
@@ -288,8 +288,7 @@ contract CSModule is ICSModule, BaseModule {
         if (limit == 0) {
             revert ZeroTopUpQueueLimit();
         }
-        uint8 currentLimit = _topUpQueue().limit;
-        if (limit == currentLimit) {
+        if (limit == _topUpQueue().limit) {
             revert SameTopUpQueueLimit();
         }
         _topUpQueue().limit = limit.toUint8();
@@ -320,9 +319,8 @@ contract CSModule is ICSModule, BaseModule {
         // The Node Operator is charged for the every removed key. It's motivated by the fact that the DAO should cleanup
         // the queue from the empty batches related to the Node Operator. It's possible to have multiple batches with only one
         // key in it, so it means the DAO should be able to cover removal costs for as much batches as keys removed in this case.
-        uint256 curveId = _getBondCurveId(nodeOperatorId);
-        uint256 amountToCharge = PARAMETERS_REGISTRY.getKeyRemovalCharge(
-            curveId
+        uint256 amountToCharge = _parametersRegistry().getKeyRemovalCharge(
+            _getBondCurveId(nodeOperatorId)
         ) * keysCount;
 
         if (amountToCharge != 0) {
@@ -409,7 +407,7 @@ contract CSModule is ICSModule, BaseModule {
         totalExitedValidators = _totalExitedValidators;
         totalDepositedValidators = _totalDepositedValidators;
         depositableValidatorsCount = _depositableValidatorsCount;
-        if (_topUpQueue().enabled) {
+        if (_topUpQueueEnabled()) {
             depositableValidatorsCount = Math.min(
                 depositableValidatorsCount,
                 _topUpQueue().capacity()
@@ -477,7 +475,7 @@ contract CSModule is ICSModule, BaseModule {
         DepositQueueOps.enqueueNodeOperatorKeys({
             nodeOperators: _nodeOperators,
             depositQueues: _depositQueueByPriority,
-            parametersRegistry: PARAMETERS_REGISTRY,
+            parametersRegistry: _parametersRegistry(),
             accounting: _accounting(),
             queueLowestPriority: _queueLowestPriority(),
             nodeOperatorId: nodeOperatorId
@@ -495,7 +493,7 @@ contract CSModule is ICSModule, BaseModule {
     }
 
     function _onlyEnabledTopUpQueue() internal view {
-        if (!_topUpQueue().enabled) {
+        if (!_topUpQueueEnabled()) {
             revert TopUpQueueDisabled();
         }
     }
@@ -503,6 +501,10 @@ contract CSModule is ICSModule, BaseModule {
     function _topUpQueue() internal view returns (TopUpQueueLib.Queue storage) {
         CSModuleStorage storage $ = _storage();
         return $.topUpQueue;
+    }
+
+    function _topUpQueueEnabled() internal view returns (bool enabled) {
+        enabled = _topUpQueue().enabled;
     }
 
     /// @dev This function is used to get the queue lowest priority from immutables to save bytecode.
