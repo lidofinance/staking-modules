@@ -933,9 +933,8 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
-        // There should be target limit if the charges or penalties are not covered by the bond.
-        assertEq(no.targetLimit, 0);
-        assertEq(no.targetLimitMode, 2);
+        // There should be no target limit if the charges are not covered by the bond.
+        assertNotEq(no.targetLimitMode, 2);
     }
 
     function test_reportRegularWithdrawnValidators_chargeWithdrawalFee_DelayAndStrikesPenalties()

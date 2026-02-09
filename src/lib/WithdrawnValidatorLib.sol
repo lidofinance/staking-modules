@@ -121,18 +121,22 @@ library WithdrawnValidatorLib {
 
         IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
 
-        if (feeSum > 0) {
-            accounting.chargeFee(validatorInfo.nodeOperatorId, feeSum);
-        }
-
         penaltyCovered = true;
 
+        // Confiscate penalties first to prioritize compensations for the stETH holders.
         if (penaltySum > 0) {
             // We still call `penalize` even if there's no bond left, for the lock to be created.
             penaltyCovered = accounting.penalize(
                 validatorInfo.nodeOperatorId,
                 penaltySum
             );
+        }
+
+        // Charge fees second to avoid charging fees if the penalty is not covered,
+        // as the fees are meant to cover the costs of processing the withdrawal incurred by the protocol maintainers.
+        // stETH holders should have first priority to be compensated, so the fees are charged only if the penalty is covered.
+        if (feeSum > 0) {
+            accounting.chargeFee(validatorInfo.nodeOperatorId, feeSum);
         }
     }
 
