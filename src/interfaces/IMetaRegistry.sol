@@ -33,7 +33,10 @@ interface IMetaRegistry {
         uint256 indexed groupId,
         OperatorGroup groupInfo
     );
-    event OperatorGroupUpdated(uint256 indexed groupId);
+    event OperatorGroupUpdated(
+        uint256 indexed groupId,
+        OperatorGroup groupInfo
+    );
     event OperatorGroupCleared(uint256 indexed groupId);
     event BondCurveWeightSet(uint256 indexed curveId, uint256 weight);
     event OperatorMetadataSet(

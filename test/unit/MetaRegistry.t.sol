@@ -664,15 +664,24 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         uint256 newGroupId = registry.getOperatorGroupsCount();
         _createDefaultGroupWithExternal(0, MAX_BP, 0);
 
+        IMetaRegistry.SubNodeOperator[] memory subOperators = _subOperatorsArr1(
+            1,
+            MAX_BP
+        );
+        IMetaRegistry.ExternalOperator[]
+            memory externalOperators = _extOperatorsArr0();
+
         vm.expectEmit(address(registry));
-        emit IMetaRegistry.OperatorGroupUpdated(newGroupId);
+        emit IMetaRegistry.OperatorGroupUpdated(
+            newGroupId,
+            IMetaRegistry.OperatorGroup({
+                subNodeOperators: subOperators,
+                externalOperators: externalOperators
+            })
+        );
 
         vm.prank(groupManager);
-        _updateGroup(
-            newGroupId,
-            _subOperatorsArr1(1, MAX_BP),
-            _extOperatorsArr0()
-        );
+        _updateGroup(newGroupId, subOperators, externalOperators);
 
         IMetaRegistry.OperatorGroup memory groupInfo = registry
             .getOperatorGroup(newGroupId);

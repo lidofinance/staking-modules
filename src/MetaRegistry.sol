@@ -320,8 +320,7 @@ contract MetaRegistry is
         } else {
             _storeSubOperators(groupId, groupInfo.subNodeOperators);
             _storeExternalOperators(groupId, groupInfo.externalOperators);
-            // TODO: Add groupInfo to the event
-            emit OperatorGroupUpdated(groupId);
+            emit OperatorGroupUpdated(groupId, groupInfo);
         }
     }
 
