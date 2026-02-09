@@ -105,7 +105,7 @@ contract DeploymentHelpers is Test {
     struct Env {
         string RPC_URL;
         string DEPLOY_CONFIG;
-        /// @dev Optional: utility-contract deployment JSON (e.g. artifacts/<chain>/utils/<name>/deploy-<chain>.json)
+        /// @dev Optional: utility-contract deployment JSON (e.g. artifacts/<chain>/<module>/utils/<name>/deploy-<chain>.json)
         string UTILS_DEPLOY_CONFIG;
         uint256 VOTE_PREV_BLOCK;
     }

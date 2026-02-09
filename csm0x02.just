@@ -51,10 +51,8 @@ test-csm0x02-local *args:
     just make-fork --silent &
     while ! echo exit | nc {{anvil_host}} {{anvil_port}} > /dev/null; do sleep 1; done
 
-    mkdir -p {{csm0x02_artifacts_local_dir}}
-
-    ARTIFACTS_DIR={{csm0x02_artifacts_local_dir}} \
-        just deploy-csm0x02 --silent --private-key=`cat localhost.json | jq -r ".private_keys[0]"` {{disable_code_size_limit}}
+    export ARTIFACTS_DIR={{csm0x02_artifacts_local_dir}}
+    just deploy-csm0x02 --silent --private-key=`cat localhost.json | jq -r ".private_keys[0]"` {{disable_code_size_limit}}
 
     export DEPLOY_CONFIG={{csm0x02_local_deploy_config_path}}
     export RPC_URL={{anvil_rpc_url}}
@@ -75,9 +73,8 @@ test-csm0x02-full-deploy *args:
     just make-fork --silent &
     while ! echo exit | nc {{anvil_host}} {{anvil_port}} > /dev/null; do sleep 1; done
 
-    mkdir -p {{csm0x02_artifacts_local_dir}}
-    ARTIFACTS_DIR={{csm0x02_artifacts_local_dir}} \
-        just deploy-csm0x02 --private-key=`cat localhost.json | jq -r ".private_keys[0]"` {{disable_code_size_limit}} -vvv
+    export ARTIFACTS_DIR={{csm0x02_artifacts_local_dir}}
+    just deploy-csm0x02 --private-key=`cat localhost.json | jq -r ".private_keys[0]"` {{disable_code_size_limit}} -vvv
 
     export DEPLOY_CONFIG={{csm0x02_local_deploy_config_path}}
     export RPC_URL={{anvil_rpc_url}}

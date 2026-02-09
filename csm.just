@@ -42,16 +42,16 @@ deploy-csm-impl-live *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
     ARTIFACTS_DIR={{csm_artifacts_latest_dir}} just _deploy-csm-impl --broadcast --verify {{args}}
 
-    cp ./broadcast/{{deploy_csm_implementations_script_name}}.s.sol/\
-        $(cast chain-id --rpc-url=$RPC_URL)\
-        /deploy-latest.json {{csm_latest_transactions_path}}
+    just _copy-file \
+        ./broadcast/{{deploy_csm_implementations_script_name}}.s.sol/$(cast chain-id --rpc-url=$RPC_URL)/deploy-latest.json \
+        {{csm_latest_transactions_path}}
 
 deploy-csm-impl-dry *args:
     just _deploy-csm-impl {{args}}
 
-    cp ./broadcast/{{deploy_csm_implementations_script_name}}.s.sol/\
-        $(cast chain-id --rpc-url=$RPC_URL)\
-        /dry-run/deploy-latest.json {{csm_local_transactions_path}}
+    just _copy-file \
+        ./broadcast/{{deploy_csm_implementations_script_name}}.s.sol/$(cast chain-id --rpc-url=$RPC_URL)/dry-run/deploy-latest.json \
+        {{csm_local_transactions_path}}
 
 upgrade-csm-v3:
     just vote-upgrade

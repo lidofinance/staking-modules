@@ -9,16 +9,19 @@ curated_local_transactions_path := curated_artifacts_local_dir + "transactions.j
 curated_local_deploy_config_path := curated_artifacts_local_dir + "deploy-" + chain + ".json"
 
 deploy-curated *args:
+    mkdir -p {{curated_artifacts_local_dir}}
     just _deploy-generic {{curated_deploy_script_path}} {{anvil_rpc_url}} {{args}}
 
 deploy-curated-live *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
+    mkdir -p {{curated_artifacts_latest_dir}}
     ARTIFACTS_DIR={{curated_artifacts_latest_dir}} just _deploy-curated-live {{args}}
 
     just _copy-run-latest {{curated_deploy_script_name}} $RPC_URL {{curated_deploy_config_path}}
 
 deploy-curated-live-no-confirm *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
+    mkdir -p {{curated_artifacts_latest_dir}}
     ARTIFACTS_DIR={{curated_artifacts_latest_dir}} just _deploy-curated-live-no-confirm --broadcast {{args}}
 
     just _copy-run-latest {{curated_deploy_script_name}} $RPC_URL {{curated_deploy_config_path}}
@@ -49,9 +52,8 @@ test-curated-local *args:
     just make-fork --silent &
     while ! echo exit | nc {{anvil_host}} {{anvil_port}} > /dev/null; do sleep 1; done
 
-    mkdir -p {{curated_artifacts_local_dir}}
-
-    ARTIFACTS_DIR={{curated_artifacts_local_dir}} just deploy-curated --silent --private-key=`cat localhost.json | jq -r ".private_keys[0]"` {{disable_code_size_limit}}
+    export ARTIFACTS_DIR={{curated_artifacts_local_dir}}
+    just deploy-curated --silent --private-key=`cat localhost.json | jq -r ".private_keys[0]"` {{disable_code_size_limit}}
 
     export DEPLOY_CONFIG={{curated_local_deploy_config_path}}
     export RPC_URL={{anvil_rpc_url}}
@@ -71,6 +73,7 @@ test-curated-full-deploy *args:
 
     just make-fork --silent &
     while ! echo exit | nc {{anvil_host}} {{anvil_port}} > /dev/null; do sleep 1; done
+    export ARTIFACTS_DIR={{curated_artifacts_local_dir}}
     just deploy-curated --private-key=`cat localhost.json | jq -r ".private_keys[0]"` {{disable_code_size_limit}} -vvv
 
     export DEPLOY_CONFIG={{curated_local_deploy_config_path}}
