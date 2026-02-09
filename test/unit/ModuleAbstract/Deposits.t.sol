@@ -121,14 +121,6 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         assertEq(no.depositableValidatorsCount, 4);
     }
 
-    function test_obtainDepositData_RevertWhen_NoMoreKeys()
-        public
-        assertInvariants
-    {
-        vm.expectRevert(IBaseModule.NotEnoughKeys.selector);
-        module.obtainDepositData(1, "");
-    }
-
     function test_obtainDepositData_nonceChanged() public assertInvariants {
         createNodeOperator();
         uint256 nonce = module.getNonce();

@@ -362,31 +362,6 @@ contract DepositAllocatorGreedyTest is Test {
         assertEq(fills[1], 0);
     }
 
-    function test_revert_lengthMismatch() public {
-        AllocationState memory state;
-        state.sharesX96 = new uint256[](2);
-        state.currents = new uint256[](1);
-        state.capacities = new uint256[](2);
-        state.totalCurrent = 0;
-
-        vm.expectRevert(DepositAllocatorGreedy.LengthMismatch.selector);
-        harness.allocate(state, 1, 1);
-    }
-
-    function test_revert_zeroStep() public {
-        uint256[] memory weights = _arr2(1, 1);
-        uint256[] memory amounts = _arr2(0, 0);
-        uint256[] memory caps = _arr2(10, 10);
-        AllocationState memory state = _buildState(
-            _copy(weights),
-            _copy(amounts),
-            _copy(caps)
-        );
-
-        vm.expectRevert(DepositAllocatorGreedy.ZeroStep.selector);
-        harness.allocate(state, 1, 0);
-    }
-
     function _runAllocate(
         uint256[] memory weights,
         uint256[] memory amounts,

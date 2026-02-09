@@ -199,7 +199,6 @@ interface IStakingModule {
 
     /// @notice Obtains deposit data to be used by StakingRouter to deposit to the Ethereum Deposit
     ///     contract
-    /// @dev The method MUST revert when the staking module has not enough deposit data items
     /// @param depositsCount Number of deposits to be done
     /// @param depositCalldata Staking module defined data encoded as bytes.
     ///        IMPORTANT: depositCalldata MUST NOT modify the deposit data set of the staking module
@@ -232,7 +231,7 @@ interface IStakingModule {
 }
 
 interface IStakingModuleV2 {
-    /// @notice Validates provided keys and calculates deposit allocations for top-up
+    /// @notice Validates that provided keys belong to the corresponding operators in the module and calculates deposit allocations for top-up
     /// @dev Reverts if any key doesn't belong to the module or data is invalid
     /// @param maxDepositAmount Total ether amount available for top-up (must be multiple of 1 gwei)
     /// @param pubkeys List of validator public keys to top up
