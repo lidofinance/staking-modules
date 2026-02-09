@@ -9,7 +9,7 @@ import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { ICuratedGate } from "src/interfaces/ICuratedGate.sol";
 import { IMerkleGate } from "src/interfaces/IMerkleGate.sol";
-import { IMetaRegistry, OperatorInfo } from "src/interfaces/IMetaRegistry.sol";
+import { IMetaRegistry, OperatorMetadata } from "src/interfaces/IMetaRegistry.sol";
 import { IBaseModule, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
 import { MerkleTree } from "../helpers/MerkleTree.sol";
@@ -265,7 +265,7 @@ contract CuratedGateTest_createNodeOperator is CuratedGateTestBase {
             abi.encodeWithSelector(
                 IMetaRegistry.setOperatorMetadataAsAdmin.selector,
                 0,
-                OperatorInfo({
+                OperatorMetadata({
                     name: "Name",
                     description: "Description",
                     ownerEditsRestricted: false
@@ -373,7 +373,7 @@ contract CuratedGateTest_createNodeOperator_DefaultCurve is
             abi.encodeWithSelector(
                 IMetaRegistry.setOperatorMetadataAsAdmin.selector,
                 0,
-                OperatorInfo({
+                OperatorMetadata({
                     name: "Name",
                     description: "Description",
                     ownerEditsRestricted: false

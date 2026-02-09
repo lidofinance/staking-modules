@@ -7,7 +7,7 @@ import { IAccounting } from "./IAccounting.sol";
 import { ICuratedModule } from "./ICuratedModule.sol";
 
 /// @notice Stored operator metadata.
-struct OperatorInfo {
+struct OperatorMetadata {
     string name;
     string description;
     bool ownerEditsRestricted;
@@ -35,11 +35,9 @@ interface IMetaRegistry {
     );
     event OperatorGroupUpdated(uint256 indexed groupId);
     event BondCurveWeightSet(uint256 indexed curveId, uint256 weight);
-    event OperatorDataSet(
+    event OperatorMetadataSet(
         uint256 indexed nodeOperatorId,
-        string name,
-        string description,
-        bool ownerEditsRestricted
+        OperatorMetadata metadata
     );
     event NodeOperatorEffectiveWeightChanged(
         uint256 indexed nodeOperatorId,
@@ -88,10 +86,10 @@ interface IMetaRegistry {
 
     /// @notice Set or update metadata for a node operator (callable by SET_OPERATOR_INFO_ROLE).
     /// @param nodeOperatorId Node operator ID.
-    /// @param info Metadata payload to persist.
+    /// @param metadata Metadata payload to persist.
     function setOperatorMetadataAsAdmin(
         uint256 nodeOperatorId,
-        OperatorInfo calldata info
+        OperatorMetadata calldata metadata
     ) external;
 
     /// @notice Set or update metadata by the node operator owner.
@@ -107,10 +105,10 @@ interface IMetaRegistry {
 
     /// @notice Get metadata for a node operator.
     /// @param nodeOperatorId Node operator ID.
-    /// @return info Stored metadata struct.
+    /// @return metadata Stored metadata struct.
     function getOperatorMetadata(
         uint256 nodeOperatorId
-    ) external view returns (OperatorInfo memory info);
+    ) external view returns (OperatorMetadata memory metadata);
 
     /// @notice Create a new operator group or update an existing one.
     /// @param groupId Group ID to update, or NO_GROUP_ID to create.

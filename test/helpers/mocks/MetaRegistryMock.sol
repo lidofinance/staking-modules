@@ -3,11 +3,16 @@
 
 pragma solidity 0.8.33;
 
-import { OperatorInfo } from "../../../src/interfaces/IMetaRegistry.sol";
+import { IMetaRegistry, OperatorMetadata } from "src/interfaces/IMetaRegistry.sol";
 
 contract MetaRegistryMock {
     function setOperatorMetadataAsAdmin(
         uint256 nodeOperatorId,
-        OperatorInfo calldata info
-    ) external {}
+        OperatorMetadata calldata metadata
+    ) external {
+        emit IMetaRegistry.OperatorMetadataSet({
+            nodeOperatorId: nodeOperatorId,
+            metadata: metadata
+        });
+    }
 }

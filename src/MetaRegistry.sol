@@ -13,7 +13,7 @@ import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IBaseModule } from "./interfaces/IBaseModule.sol";
 import { IStakingModule } from "./interfaces/IStakingModule.sol";
 import { IStakingRouter } from "./interfaces/IStakingRouter.sol";
-import { IMetaRegistry, OperatorInfo } from "./interfaces/IMetaRegistry.sol";
+import { IMetaRegistry, OperatorMetadata } from "./interfaces/IMetaRegistry.sol";
 import { ExternalOperatorLib, OperatorType } from "./lib/ExternalOperatorLib.sol";
 
 /// @notice Stores meta-operator group definitions for the curated module.
@@ -46,7 +46,7 @@ contract MetaRegistry is
         CachedOperatorGroup[] groups;
         GroupIndex groupIndex;
         EffectiveWeightCache effectiveWeightCache;
-        mapping(uint256 nodeOperatorId => OperatorInfo) operatorMetadata;
+        mapping(uint256 nodeOperatorId => OperatorMetadata) operatorMetadata;
     }
 
     bytes32 public constant MANAGE_OPERATOR_GROUPS_ROLE =
@@ -97,19 +97,14 @@ contract MetaRegistry is
     /// @inheritdoc IMetaRegistry
     function setOperatorMetadataAsAdmin(
         uint256 nodeOperatorId,
-        OperatorInfo calldata info
+        OperatorMetadata calldata metadata
     ) external onlyRole(SET_OPERATOR_INFO_ROLE) {
         _onlyExistingOperator(address(MODULE), nodeOperatorId);
 
-        // TODO: Use OperatorMetadata naming consistently across the codebase.
-        _storage().operatorMetadata[nodeOperatorId] = info;
-
-        // TODO: Emit struct
-        emit OperatorDataSet({
+        _storage().operatorMetadata[nodeOperatorId] = metadata;
+        emit OperatorMetadataSet({
             nodeOperatorId: nodeOperatorId,
-            name: info.name,
-            description: info.description,
-            ownerEditsRestricted: info.ownerEditsRestricted
+            metadata: metadata
         });
     }
 
@@ -120,13 +115,10 @@ contract MetaRegistry is
         string calldata description
     ) external {
         address owner = _nodeOperatorOwner(address(MODULE), nodeOperatorId);
-        if (owner == address(0)) {
-            revert NodeOperatorDoesNotExist();
-        }
-        if (owner != msg.sender) {
-            revert SenderIsNotEligible();
-        }
-        OperatorInfo storage stored = _storage().operatorMetadata[
+        if (owner == address(0)) revert NodeOperatorDoesNotExist();
+        if (owner != msg.sender) revert SenderIsNotEligible();
+
+        OperatorMetadata storage stored = _storage().operatorMetadata[
             nodeOperatorId
         ];
         bool ownerEditsRestricted = stored.ownerEditsRestricted;
@@ -137,18 +129,16 @@ contract MetaRegistry is
         stored.name = name;
         stored.description = description;
 
-        emit OperatorDataSet({
+        emit OperatorMetadataSet({
             nodeOperatorId: nodeOperatorId,
-            name: name,
-            description: description,
-            ownerEditsRestricted: ownerEditsRestricted
+            metadata: stored
         });
     }
 
     /// @inheritdoc IMetaRegistry
     function getOperatorMetadata(
         uint256 nodeOperatorId
-    ) external view returns (OperatorInfo memory info) {
+    ) external view returns (OperatorMetadata memory metadata) {
         return _storage().operatorMetadata[nodeOperatorId];
     }
 

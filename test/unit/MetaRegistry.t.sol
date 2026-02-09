@@ -8,7 +8,7 @@ import { Test, Vm } from "forge-std/Test.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import { MetaRegistry } from "src/MetaRegistry.sol";
-import { IMetaRegistry, OperatorInfo } from "src/interfaces/IMetaRegistry.sol";
+import { IMetaRegistry, OperatorMetadata } from "src/interfaces/IMetaRegistry.sol";
 import { IBaseModule, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { ExternalOperatorLib } from "src/lib/ExternalOperatorLib.sol";
@@ -35,7 +35,7 @@ contract MetaRegistryTestBase is Test, Utilities, Fixtures {
     address public nodeOperatorOwner;
     address public stranger;
 
-    OperatorInfo internal emptyOperatorInfo;
+    OperatorMetadata internal emptyOperatorMetadata;
 
     uint256 internal constant MODULE_ID = 1;
     uint256 internal constant EXTERNAL_MODULE_ID = MODULE_ID + 1;
@@ -269,7 +269,7 @@ contract MetaRegistryTestSetMetadataAsAdmin is MetaRegistryTestBase {
     function test_setOperatorMetadataAsAdmin() public {
         uint256 nodeOperatorId = 0;
 
-        OperatorInfo memory exp = OperatorInfo({
+        OperatorMetadata memory exp = OperatorMetadata({
             name: "Alpha",
             description: "The first",
             ownerEditsRestricted: false
@@ -277,15 +277,12 @@ contract MetaRegistryTestSetMetadataAsAdmin is MetaRegistryTestBase {
 
         vm.prank(metadataAdmin);
         vm.expectEmit(address(registry));
-        emit IMetaRegistry.OperatorDataSet(
-            nodeOperatorId,
-            exp.name,
-            exp.description,
-            false
-        );
+        emit IMetaRegistry.OperatorMetadataSet(nodeOperatorId, exp);
         registry.setOperatorMetadataAsAdmin(nodeOperatorId, exp);
 
-        OperatorInfo memory got = registry.getOperatorMetadata(nodeOperatorId);
+        OperatorMetadata memory got = registry.getOperatorMetadata(
+            nodeOperatorId
+        );
         assertEq(got.name, exp.name);
         assertEq(got.description, exp.description);
         assertEq(got.ownerEditsRestricted, exp.ownerEditsRestricted);
@@ -294,12 +291,12 @@ contract MetaRegistryTestSetMetadataAsAdmin is MetaRegistryTestBase {
     function test_setMetadataAsAdmin_OverwriteAllowed() public {
         uint256 nodeOperatorId = 0;
 
-        OperatorInfo memory infoV1 = OperatorInfo({
+        OperatorMetadata memory infoV1 = OperatorMetadata({
             name: "Alpha",
             description: "v1",
             ownerEditsRestricted: false
         });
-        OperatorInfo memory infoV2 = OperatorInfo({
+        OperatorMetadata memory infoV2 = OperatorMetadata({
             name: "Omega",
             description: "v2",
             ownerEditsRestricted: true
@@ -310,7 +307,9 @@ contract MetaRegistryTestSetMetadataAsAdmin is MetaRegistryTestBase {
         registry.setOperatorMetadataAsAdmin(nodeOperatorId, infoV2);
         vm.stopPrank();
 
-        OperatorInfo memory got = registry.getOperatorMetadata(nodeOperatorId);
+        OperatorMetadata memory got = registry.getOperatorMetadata(
+            nodeOperatorId
+        );
 
         assertEq(got.name, infoV2.name);
         assertEq(got.description, infoV2.description);
@@ -322,7 +321,10 @@ contract MetaRegistryTestSetMetadataAsAdmin is MetaRegistryTestBase {
 
         expectRoleRevert(stranger, registry.SET_OPERATOR_INFO_ROLE());
         vm.prank(stranger);
-        registry.setOperatorMetadataAsAdmin(nodeOperatorId, emptyOperatorInfo);
+        registry.setOperatorMetadataAsAdmin(
+            nodeOperatorId,
+            emptyOperatorMetadata
+        );
     }
 
     function test_setOperatorMetadataAsAdmin_RevertWhen_NodeOperatorDoesNotExist()
@@ -332,7 +334,10 @@ contract MetaRegistryTestSetMetadataAsAdmin is MetaRegistryTestBase {
 
         vm.prank(metadataAdmin);
         vm.expectRevert(IMetaRegistry.NodeOperatorDoesNotExist.selector);
-        registry.setOperatorMetadataAsAdmin(nonExistentNoId, emptyOperatorInfo);
+        registry.setOperatorMetadataAsAdmin(
+            nonExistentNoId,
+            emptyOperatorMetadata
+        );
     }
 }
 
@@ -340,7 +345,7 @@ contract MetaRegistryTestSetMetadataAsOwner is MetaRegistryTestBase {
     function test_setOperatorMetadataAsOwner() public {
         uint256 nodeOperatorId = 0;
 
-        OperatorInfo memory exp = OperatorInfo({
+        OperatorMetadata memory exp = OperatorMetadata({
             name: "Alpha",
             description: "The first",
             ownerEditsRestricted: false
@@ -348,19 +353,16 @@ contract MetaRegistryTestSetMetadataAsOwner is MetaRegistryTestBase {
 
         vm.prank(nodeOperatorOwner);
         vm.expectEmit(address(registry));
-        emit IMetaRegistry.OperatorDataSet(
-            nodeOperatorId,
-            exp.name,
-            exp.description,
-            exp.ownerEditsRestricted
-        );
+        emit IMetaRegistry.OperatorMetadataSet(nodeOperatorId, exp);
         registry.setOperatorMetadataAsOwner(
             nodeOperatorId,
             exp.name,
             exp.description
         );
 
-        OperatorInfo memory got = registry.getOperatorMetadata(nodeOperatorId);
+        OperatorMetadata memory got = registry.getOperatorMetadata(
+            nodeOperatorId
+        );
         assertEq(got.name, exp.name);
         assertEq(got.description, exp.description);
         assertEq(got.ownerEditsRestricted, exp.ownerEditsRestricted);
@@ -372,7 +374,7 @@ contract MetaRegistryTestSetMetadataAsOwner is MetaRegistryTestBase {
         vm.prank(metadataAdmin);
         registry.setOperatorMetadataAsAdmin(
             nodeOperatorId,
-            OperatorInfo({
+            OperatorMetadata({
                 name: "",
                 description: "",
                 ownerEditsRestricted: true
@@ -407,13 +409,15 @@ contract MetaRegistryTestGetMetadata is MetaRegistryTestBase {
     function test_getOperatorMetadata_ReturnsEmptyWhenUnset() public {
         uint256 nodeOperatorId = 0;
 
-        OperatorInfo memory got = registry.getOperatorMetadata(nodeOperatorId);
+        OperatorMetadata memory got = registry.getOperatorMetadata(
+            nodeOperatorId
+        );
 
-        assertEq(got.name, emptyOperatorInfo.name);
-        assertEq(got.description, emptyOperatorInfo.description);
+        assertEq(got.name, emptyOperatorMetadata.name);
+        assertEq(got.description, emptyOperatorMetadata.description);
         assertEq(
             got.ownerEditsRestricted,
-            emptyOperatorInfo.ownerEditsRestricted
+            emptyOperatorMetadata.ownerEditsRestricted
         );
     }
 }
