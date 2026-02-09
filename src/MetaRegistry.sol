@@ -342,9 +342,10 @@ contract MetaRegistry is
         $.effectiveWeightCache.groupEffectiveWeightSum[groupId] = 0;
 
         for (uint256 i; i < group.subNodeOperatorIds.length; ++i) {
-            uint256 nodeOperatorId = group.subNodeOperatorIds[i];
-            delete $.groupIndex.groupIdByOperatorId[nodeOperatorId];
-            delete $.groupIndex.shareByOperatorId[nodeOperatorId];
+            uint256 noId = group.subNodeOperatorIds[i];
+            delete $.groupIndex.groupIdByOperatorId[noId];
+            delete $.groupIndex.shareByOperatorId[noId];
+            delete $.effectiveWeightCache.operatorEffectiveWeight[noId];
         }
 
         for (uint256 i; i < group.externalOperators.length; ++i) {

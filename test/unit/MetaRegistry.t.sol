@@ -772,6 +772,66 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         assertEq(externalGroupId, NO_GROUP_ID);
     }
 
+    function test_updateGroup_ResetsEffectiveWeightForRemovedOperators()
+        public
+    {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+
+        IMetaRegistry.SubNodeOperator memory op0 = IMetaRegistry
+            .SubNodeOperator({ nodeOperatorId: 0, share: 6000 });
+        IMetaRegistry.SubNodeOperator memory op1 = IMetaRegistry
+            .SubNodeOperator({ nodeOperatorId: 1, share: 4000 });
+
+        uint256 newGroupId = registry.getOperatorGroupsCount();
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr2(op0, op1), _extOperatorsArr0());
+
+        uint256[] memory weightsBefore = registry.getOperatorsWeights(
+            UintArr(0, 1)
+        );
+        assertEq(weightsBefore[0], 6000);
+        assertEq(weightsBefore[1], 4000);
+
+        // Update group to only contain operator 1 (removing operator 0).
+        vm.prank(groupManager);
+        _updateGroup(
+            newGroupId,
+            _subOperatorsArr1(1, MAX_BP),
+            _extOperatorsArr0()
+        );
+
+        uint256[] memory weightsAfter = registry.getOperatorsWeights(
+            UintArr(0, 1)
+        );
+        assertEq(weightsAfter[0], 0);
+        assertEq(weightsAfter[1], CURVE_WEIGHT); // 10000 * 10000 / 10000
+
+        (uint256 w0, ) = registry.getNodeOperatorWeightAndExternalStake(0);
+        assertEq(w0, 0);
+    }
+
+    function test_updateGroup_ResetsEffectiveWeightOnEmptyUpdate() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+
+        uint256 newGroupId = registry.getOperatorGroupsCount();
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+
+        uint256[] memory weightsBefore = registry.getOperatorsWeights(
+            UintArr(0)
+        );
+        assertEq(weightsBefore[0], CURVE_WEIGHT);
+
+        // Update group to empty.
+        vm.prank(groupManager);
+        _updateGroup(newGroupId, _subOperatorsArr0(), _extOperatorsArr0());
+
+        uint256[] memory weightsAfter = registry.getOperatorsWeights(
+            UintArr(0)
+        );
+        assertEq(weightsAfter[0], 0);
+    }
+
     function test_updateGroup_RevertWhen_GroupIdInvalid() public {
         vm.startPrank(groupManager);
         vm.expectRevert(IMetaRegistry.InvalidOperatorGroupId.selector);
