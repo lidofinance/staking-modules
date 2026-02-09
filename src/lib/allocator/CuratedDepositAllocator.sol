@@ -313,7 +313,7 @@ library CuratedDepositAllocator {
             if (weight == 0) continue;
 
             data.sharesX96[eligibleCount] = weight;
-            data.currents[eligibleCount] = nodeOperatorBalances[operatorId];
+            data.currents[eligibleCount] = currentStakeByOperatorId[operatorId];
             data.capacities[eligibleCount] = capacity;
             data.operatorIds[eligibleCount] = operatorId;
             ++eligibleCount;
@@ -357,11 +357,11 @@ library CuratedDepositAllocator {
                 .getNodeOperatorWeightAndExternalStake(i);
             if (weight == 0) continue;
             weightsByOperatorId[i] = weight;
+            weightSum += weight;
 
             uint256 currentStake = balance + externalStake;
             currentStakeByOperatorId[i] = currentStake;
-            weightSum += weight;
-            totalCurrent += balance;
+            totalCurrent += currentStake;
         }
     }
 

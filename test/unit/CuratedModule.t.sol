@@ -3,24 +3,25 @@
 
 pragma solidity 0.8.33;
 
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
+import { CuratedDepositAllocator } from "src/lib/allocator/CuratedDepositAllocator.sol";
 import { CuratedModule } from "src/CuratedModule.sol";
+import { IBaseModule, INOAddresses, NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
+import { IBondCurve } from "src/interfaces/IBondCurve.sol";
+import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
+import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
+
 import { Stub } from "../helpers/mocks/Stub.sol";
 import { ParametersRegistryMock } from "../helpers/mocks/ParametersRegistryMock.sol";
 import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
-import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
-import { IBaseModule, INOAddresses, NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
-import { IBondCurve } from "src/interfaces/IBondCurve.sol";
-import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
-import { CSModule } from "src/CSModule.sol";
-import { CuratedDepositAllocator } from "src/lib/allocator/CuratedDepositAllocator.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 // forge-lint: disable-next-line(unaliased-plain-import)
 import "./ModuleAbstract/ModuleAbstract.t.sol";
 
 contract CuratedCommon is ModuleFixtures {
-    CuratedModule cm;
+    ICuratedModule cm;
     Stub internal metaRegistry;
     uint256 internal constant DEFAULT_OPERATOR_WEIGHT = 1;
     uint256 internal constant MAX_MOCKED_OPERATORS = 256;
@@ -467,7 +468,7 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         // inflow = 4
         // targetTotal = 1 + 4 = 5
         // targets = [ceil(5/2), ceil(5/2)] = [3, 3]
-        // imbalances sorted = [3, 2]
+        // imbalances = [2, 3]
         // deposits greedy => [1, 3]
         assertEq(no0.totalDepositedKeys, 1);
         assertEq(no1.totalDepositedKeys, 3);
@@ -1737,6 +1738,74 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
             UintArr(noId),
             UintArr(1 ether)
         );
+    }
+
+    function test_getDepositsAllocation_externalStakeReducesAllocation()
+        public
+        assertInvariants
+    {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        module.obtainDepositData(2, "");
+
+        // Both operators have equal weight and the same internal balance.
+        // Operator 0 additionally has 4 ether of external stake.
+        _mockOperatorWeightAndExternalStake(firstId, 1, 4 ether);
+
+        // currents = [32 + 4, 32] = [36, 32]
+        // inflow = 6
+        // targetTotal = 68 + 6 = 74
+        // targets = [ceil(74/2), ceil(74/2)] = [37, 37]
+        // imbalances = [1, 5]
+        // deposits greedy => [1, 5]
+        (uint256 allocated, uint256[] memory ids, uint256[] memory allocs) = cm
+            .getDepositsAllocation(6 ether);
+
+        assertEq(allocated, 6 ether);
+        assertEq(ids.length, 2);
+        assertEq(ids[0], firstId);
+        assertEq(ids[1], secondId);
+        assertEq(allocs[0], 1 ether);
+        assertEq(allocs[1], 5 ether);
+    }
+
+    function test_topUpObtainDepositData_externalStakeReducesAllocation()
+        public
+        assertInvariants
+    {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        module.obtainDepositData(2, "");
+
+        cm.updateOperatorBalances({
+            operatorIds: UintArr(firstId, secondId),
+            validatorsBalancesGwei: UintArr(5 ether / 1 gwei, 5 ether / 1 gwei),
+            pendingBalancesGwei: UintArr(0, 0),
+            refSlot: 0
+        });
+
+        // Operator 0 has large external stake; operator 1 has none.
+        _mockOperatorWeightAndExternalStake(firstId, 1, 10 ether);
+
+        bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
+        bytes memory key1 = module.getSigningKeys(secondId, 0, 1);
+
+        // currents = [5 + 10, 5] = [15, 5]
+        // inflow = 2
+        // targetTotal = 20 + 2 = 22
+        // targets = [ceil(22/2), ceil(22/2)] = [11, 11]
+        // imbalances = [0, 6]
+        // deposits greedy => [0, 2]
+        uint256[] memory allocations = cm.allocateDeposits(
+            2 ether,
+            BytesArr(key0, key1),
+            UintArr(0, 0),
+            UintArr(firstId, secondId),
+            UintArr(32 ether, 32 ether)
+        );
+
+        assertEq(allocations[0], 0);
+        assertEq(allocations[1], 2 ether);
     }
 
     function test_getDepositsAllocation_RevertWhen_WeightsUpdateInProgress()
