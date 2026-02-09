@@ -391,8 +391,7 @@ contract MetaRegistry is
         CachedOperatorGroup storage group = $.groups[groupId];
 
         for (uint256 i; i < externalOperators.length; ++i) {
-            // TODO: memory or calldata? Check the gas cost difference.
-            ExternalOperator calldata op = externalOperators[i];
+            ExternalOperator memory op = externalOperators[i];
             bytes32 extKey = op.uniqueKey();
 
             if ($.groupIndex.groupIdByExternalKey[extKey] != NO_GROUP_ID) {
@@ -472,7 +471,7 @@ contract MetaRegistry is
     }
 
     function _checkExternalOperatorExistsTypeNOR(
-        ExternalOperator calldata op
+        ExternalOperator memory op
     ) internal view {
         (uint8 moduleId, uint64 noId) = op.unpackEntryTypeNOR();
         // TODO: Add a cache for module addresses
