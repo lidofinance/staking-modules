@@ -37,6 +37,14 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
         address newRewardAddress
     ) external;
 
+    /// @notice Notifies the module about the weight change of a node operator.
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @param newWeight The new weight of the node operator.
+    function onNodeOperatorWeightChange(
+        uint256 nodeOperatorId,
+        uint256 newWeight
+    ) external;
+
     /// @notice Request refreshing node operator weights for all operators.
     function requestFullOperatorWeightsUpdate() external;
 

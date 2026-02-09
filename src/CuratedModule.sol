@@ -252,13 +252,37 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
     // TODO: Rename to updateNodeOperatorWeightAndDepositableValidatorsCount
     /// @inheritdoc IBaseModule
+    /// @dev This one is called in `Accounting.setBondCurve`.
     function onNodeOperatorBondCurveUpdated(
         uint256 nodeOperatorId
     ) external override(IBaseModule) {
+        _metaRegistry().refreshOperatorWeight(nodeOperatorId);
         _updateDepositableValidatorsCount({
             nodeOperatorId: nodeOperatorId,
             incrementNonceIfUpdated: true
         });
+    }
+
+    /// @inheritdoc ICuratedModule
+    function onNodeOperatorWeightChange(
+        uint256 nodeOperatorId,
+        uint256 newWeight
+    ) external {
+        if (msg.sender != address(_metaRegistry())) {
+            revert SenderIsNotMetaRegistry();
+        }
+
+        if (newWeight == 0) {
+            _applyDepositableValidatorsCount({
+                no: _nodeOperators[nodeOperatorId],
+                nodeOperatorId: nodeOperatorId,
+                newCount: 0,
+                incrementNonceIfUpdated: false
+            });
+        }
+
+        // NOTE: We always increment the nonce since weight change might affect the expected deposit allocation.
+        _incrementModuleNonce();
     }
 
     /// @inheritdoc ICuratedModule
@@ -289,19 +313,13 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256 limit = Math.min(noId + maxCount, operatorsCount);
 
         for (; noId < limit; ++noId) {
-            _updateDepositableValidatorsCount({
-                nodeOperatorId: noId,
-                incrementNonceIfUpdated: false
-            });
+            _metaRegistry().refreshOperatorWeight(noId);
         }
 
         $.upToDateOperatorWeightsCount = limit;
         operatorsLeft = operatorsCount - limit;
 
-        if (operatorsLeft == 0) {
-            emit NodeOperatorWeightsUpToDate();
-            _incrementModuleNonce();
-        }
+        if (operatorsLeft == 0) emit NodeOperatorWeightsUpToDate();
     }
 
     /// @inheritdoc ICuratedModule
@@ -360,14 +378,10 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256 newCount,
         bool incrementNonceIfUpdated
     ) internal override returns (bool depositableChanged) {
-        // TODO: Return flag and value and remove the call below
-        bool weightChanged = _metaRegistry().refreshOperatorWeight(
-            nodeOperatorId
-        );
-
         if (newCount > 0) {
-            (uint256 weight, ) = _metaRegistry()
-                .getNodeOperatorWeightAndExternalStake(nodeOperatorId);
+            uint256 weight = _metaRegistry().getNodeOperatorWeight(
+                nodeOperatorId
+            );
             if (weight == 0) {
                 newCount = 0;
             }
@@ -377,12 +391,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
             no: no,
             nodeOperatorId: nodeOperatorId,
             newCount: newCount,
-            incrementNonceIfUpdated: false
+            incrementNonceIfUpdated: incrementNonceIfUpdated
         });
-
-        if (incrementNonceIfUpdated && (depositableChanged || weightChanged)) {
-            _incrementModuleNonce();
-        }
     }
 
     function _requireNodeOperatorWeightsUpToDate() internal view {

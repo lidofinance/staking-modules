@@ -664,15 +664,30 @@ contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
         vm.stopPrank();
     }
 
-    function test_createGroup_CallsRequestFullOperatorWeightsUpdate() public {
+    function test_createGroup_CallsOnNodeOperatorWeightChange() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+
+        IMetaRegistry.SubNodeOperator memory op0 = IMetaRegistry
+            .SubNodeOperator({ nodeOperatorId: 0, share: 6000 });
+        IMetaRegistry.SubNodeOperator memory op1 = IMetaRegistry
+            .SubNodeOperator({ nodeOperatorId: 1, share: 4000 });
+
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICuratedModule.requestFullOperatorWeightsUpdate.selector
+                ICuratedModule.onNodeOperatorWeightChange.selector,
+                uint256(op0.nodeOperatorId)
+            )
+        );
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICuratedModule.onNodeOperatorWeightChange.selector,
+                uint256(op1.nodeOperatorId)
             )
         );
         vm.prank(groupManager);
-        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+        _createGroup(_subOperatorsArr2(op0, op1), _extOperatorsArr0());
     }
 }
 
@@ -923,15 +938,26 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         vm.stopPrank();
     }
 
-    function test_updateGroup_CallsRequestFullOperatorWeightsUpdate() public {
+    function test_updateGroup_CallsOnNodeOperatorWeightChange() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+
         uint256 newGroupId = registry.getOperatorGroupsCount();
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
+        // Calls for both removed and added operators.
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICuratedModule.requestFullOperatorWeightsUpdate.selector
+                ICuratedModule.onNodeOperatorWeightChange.selector,
+                uint256(0)
+            )
+        );
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICuratedModule.onNodeOperatorWeightChange.selector,
+                uint256(1)
             )
         );
         vm.prank(groupManager);
@@ -942,7 +968,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         );
     }
 
-    function test_updateGroup_CallsRequestFullOperatorWeightsUpdateOnEmptyUpdate()
+    function test_updateGroup_CallsOnNodeOperatorWeightChangeOnEmptyUpdate()
         public
     {
         uint256 newGroupId = registry.getOperatorGroupsCount();
@@ -952,7 +978,8 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                ICuratedModule.requestFullOperatorWeightsUpdate.selector
+                ICuratedModule.onNodeOperatorWeightChange.selector,
+                uint256(0)
             )
         );
         vm.prank(groupManager);
@@ -1246,14 +1273,21 @@ contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
         registry.setBondCurveWeight(0, 123);
     }
 
-    function test_refreshOperatorWeight_ReturnsFalseWhen_NotInGroup() public {
-        bool changed = registry.refreshOperatorWeight(0);
-        assertFalse(changed);
+    function test_refreshOperatorWeight_NoOpWhen_NotInGroup() public {
+        expectNoCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICuratedModule.onNodeOperatorWeightChange.selector,
+                uint256(0)
+            )
+        );
+        registry.refreshOperatorWeight(0);
+
+        (uint256 weight, ) = registry.getNodeOperatorWeightAndExternalStake(0);
+        assertEq(weight, 0);
     }
 
-    function test_refreshOperatorWeight_ReturnsTrueAndEmitsWhen_WeightChanges()
-        public
-    {
+    function test_refreshOperatorWeight_EmitsWhen_WeightChanges() public {
         uint64 noId = 0;
 
         vm.prank(groupManager);
@@ -1268,8 +1302,7 @@ contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
             0,
             CURVE_WEIGHT
         );
-        bool changed = registry.refreshOperatorWeight(noId);
-        assertTrue(changed);
+        registry.refreshOperatorWeight(noId);
 
         // Verify effective weight is persisted.
         (uint256 weight, ) = registry.getNodeOperatorWeightAndExternalStake(
@@ -1278,9 +1311,7 @@ contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
         assertEq(weight, CURVE_WEIGHT);
     }
 
-    function test_refreshOperatorWeight_ReturnsFalseAndNoEventWhen_WeightUnchanged()
-        public
-    {
+    function test_refreshOperatorWeight_NoEventWhen_WeightUnchanged() public {
         uint64 noId = 0;
 
         vm.prank(groupManager);
@@ -1292,10 +1323,9 @@ contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
 
         // Refresh again with no underlying change.
         vm.recordLogs();
-        bool changed = registry.refreshOperatorWeight(noId);
+        registry.refreshOperatorWeight(noId);
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
-        assertFalse(changed);
         // No NodeOperatorEffectiveWeightChanged event should be emitted.
         for (uint256 i; i < logs.length; ++i) {
             assertTrue(
@@ -1334,8 +1364,7 @@ contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
         _setBondCurveWeight(0, CURVE_WEIGHT * 2);
 
         // Refresh only operator 0.
-        bool changed = registry.refreshOperatorWeight(0);
-        assertTrue(changed);
+        registry.refreshOperatorWeight(0);
 
         (uint256 w0After, ) = registry.getNodeOperatorWeightAndExternalStake(0);
         assertEq(w0After, 12000); // 20000 * 6000 / 10000

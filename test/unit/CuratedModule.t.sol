@@ -144,6 +144,14 @@ contract CuratedCommon is ModuleFixtures {
         vm.mockCall(
             address(metaRegistry),
             abi.encodeWithSelector(
+                IMetaRegistry.getNodeOperatorWeight.selector,
+                nodeOperatorId
+            ),
+            abi.encode(weight)
+        );
+        vm.mockCall(
+            address(metaRegistry),
+            abi.encodeWithSelector(
                 IMetaRegistry.getNodeOperatorWeightAndExternalStake.selector,
                 nodeOperatorId
             ),
@@ -1892,7 +1900,7 @@ contract CuratedNodeOperatorWeightsToUpdateCount is CuratedCommon {
         assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 0);
     }
 
-    function test_batchUpdateNodeOperatorWeights_EmitsUpToDateAndIncrementsNonceWhen_AllProcessed()
+    function test_batchUpdateNodeOperatorWeights_EmitsUpToDateWhen_AllProcessed()
         public
         assertInvariants
     {
@@ -1902,14 +1910,11 @@ contract CuratedNodeOperatorWeightsToUpdateCount is CuratedCommon {
         vm.prank(address(metaRegistry));
         cm.requestFullOperatorWeightsUpdate();
 
-        uint256 nonce = module.getNonce();
-
         vm.expectEmit(address(cm));
         emit ICuratedModule.NodeOperatorWeightsUpToDate();
 
         uint256 operatorsLeft = cm.batchUpdateNodeOperatorWeights(2);
         assertEq(operatorsLeft, 0);
-        assertEq(module.getNonce(), nonce + 1);
     }
 
     function test_batchUpdateNodeOperatorWeights_NoEmitAndNoNonceIncrementWhen_PartialBatch()

@@ -162,6 +162,14 @@ interface IMetaRegistry {
     /// @param weight Base allocation weight.
     function setBondCurveWeight(uint256 curveId, uint256 weight) external;
 
+    /// @notice Returns effective weight for the node operator.
+    /// @param nodeOperatorId Node operator ID to query.
+    /// @return weight Effective allocation weight.
+    /// @dev Returns 0 if the operator is not in a group.
+    function getNodeOperatorWeight(
+        uint256 nodeOperatorId
+    ) external view returns (uint256 weight);
+
     /// @notice Returns effective weight and external stake for the node operator.
     /// @param nodeOperatorId Node operator ID to query.
     /// @return weight Effective allocation weight.
@@ -180,8 +188,5 @@ interface IMetaRegistry {
 
     /// @notice Trigger the operator weight update routine in the registry.
     /// @param nodeOperatorId Node operator ID to trigger the update for.
-    /// @return changed Whether operator weight changed after update.
-    function refreshOperatorWeight(
-        uint256 nodeOperatorId
-    ) external returns (bool changed);
+    function refreshOperatorWeight(uint256 nodeOperatorId) external;
 }

@@ -158,9 +158,6 @@ contract MetaRegistry is
         } else {
             _updateGroup(groupId, groupInfo);
         }
-
-        // TODO: This an overkill
-        MODULE.requestFullOperatorWeightsUpdate();
     }
 
     /// @inheritdoc IMetaRegistry
@@ -232,6 +229,31 @@ contract MetaRegistry is
     }
 
     /// @inheritdoc IMetaRegistry
+    function refreshOperatorWeight(uint256 nodeOperatorId) external {
+        uint256 groupId = _storage().groupIndex.groupIdByOperatorId[
+            nodeOperatorId
+        ];
+        if (groupId == NO_GROUP_ID) {
+            return;
+        }
+
+        _refreshOperatorWeight(groupId, nodeOperatorId);
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function getNodeOperatorWeight(
+        uint256 noId
+    ) external view returns (uint256 weight) {
+        MetaRegistryStorage storage $ = _storage();
+        uint256 groupId = $.groupIndex.groupIdByOperatorId[noId];
+        // If Node Operator is not in any group, it has no weight.
+        if (groupId == NO_GROUP_ID) {
+            return 0;
+        }
+        weight = $.effectiveWeightCache.operatorEffectiveWeight[noId];
+    }
+
+    /// @inheritdoc IMetaRegistry
     function getNodeOperatorWeightAndExternalStake(
         uint256 noId
     ) external view returns (uint256 weight, uint256 externalStake) {
@@ -275,20 +297,6 @@ contract MetaRegistry is
                 nodeOperatorIds[i]
             ];
         }
-    }
-
-    /// @inheritdoc IMetaRegistry
-    function refreshOperatorWeight(
-        uint256 nodeOperatorId
-    ) external returns (bool changed) {
-        uint256 groupId = _storage().groupIndex.groupIdByOperatorId[
-            nodeOperatorId
-        ];
-        if (groupId == NO_GROUP_ID) {
-            return false;
-        }
-
-        return _refreshOperatorWeight(groupId, nodeOperatorId);
     }
 
     function _createGroup(OperatorGroup calldata groupInfo) internal {
@@ -336,7 +344,7 @@ contract MetaRegistry is
             delete $.groupIndex.groupIdByOperatorId[noId];
             delete $.groupIndex.shareByOperatorId[noId];
             delete $.effectiveWeightCache.operatorEffectiveWeight[noId];
-            // TODO: Add MODULE.updateDepositableValidatorsCount if needed after the weight reset.
+            MODULE.onNodeOperatorWeightChange(noId, 0);
         }
 
         for (uint256 i; i < group.externalOperators.length; ++i) {
@@ -410,10 +418,7 @@ contract MetaRegistry is
     }
 
     /// @dev `noId` should be a part of group with `groupId`.
-    function _refreshOperatorWeight(
-        uint256 groupId,
-        uint256 noId
-    ) internal returns (bool changed) {
+    function _refreshOperatorWeight(uint256 groupId, uint256 noId) internal {
         MetaRegistryStorage storage $ = _storage();
         uint256 share = $.groupIndex.shareByOperatorId[noId];
 
@@ -425,7 +430,6 @@ contract MetaRegistry is
                 $.effectiveWeightCache.groupEffectiveWeightSum[groupId] +
                 newWeight -
                 oldWeight;
-            changed = true;
         }
     }
 
@@ -468,7 +472,8 @@ contract MetaRegistry is
             oldWeight,
             newWeight
         );
-        // TODO: Add MODULE.updateDepositableValidatorsCount if msg.sender is not MODULE
+
+        MODULE.onNodeOperatorWeightChange(nodeOperatorId, newWeight);
     }
 
     function _checkExternalOperatorExistsTypeNOR(
