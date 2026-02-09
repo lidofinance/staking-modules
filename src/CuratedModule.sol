@@ -223,6 +223,9 @@ contract CuratedModule is ICuratedModule, BaseModule {
     ) public override(IBaseModule, BaseModule) whenResumed returns (uint256) {
         CuratedModuleStorage storage $ = _storage();
         if ($.upToDateOperatorWeightsCount == _nodeOperatorsCount) {
+            // NOTE: Unconditionally increase the counter because the new operator will have zero weight, hence do not
+            // affect the allocation. The operator should be added to a group eventually and it will trigger the full
+            // weights refresh routine.
             unchecked {
                 ++$.upToDateOperatorWeightsCount;
             }
