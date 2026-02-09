@@ -17,4 +17,6 @@ contract CuratedMock is CSMMock {
     function mock_setMetaRegistry(address value) external {
         metaRegistry = IMetaRegistry(value);
     }
+
+    function requestFullOperatorWeightsUpdate() external {}
 }

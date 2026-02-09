@@ -16,7 +16,7 @@ import { IStakingModule } from "src/interfaces/IStakingModule.sol";
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
 import { ILidoLocator } from "src/interfaces/ILidoLocator.sol";
 
-import { CSMMock } from "../helpers/mocks/CSMMock.sol";
+import { CuratedMock } from "../helpers/mocks/CuratedMock.sol";
 import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
 import { NodeOperatorsRegistryMock } from "../helpers/mocks/NodeOperatorsRegistryMock.sol";
 import { StakingRouterMock } from "../helpers/mocks/StakingRouterMock.sol";
@@ -24,7 +24,7 @@ import { Utilities } from "../helpers/Utilities.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
 
 contract MetaRegistryTestBase is Test, Utilities, Fixtures {
-    CSMMock public module;
+    CuratedMock public module;
     StakingRouterMock public stakingRouter;
     MetaRegistry public registry;
 
@@ -51,7 +51,7 @@ contract MetaRegistryTestBase is Test, Utilities, Fixtures {
         nodeOperatorOwner = nextAddress("NODE_OPERATOR_OWNER");
         stranger = nextAddress("STRANGER");
 
-        module = new CSMMock();
+        module = new CuratedMock();
         module.mock_setNodeOperatorsCount(3);
         module.mock_setNodeOperatorManagementProperties(
             NodeOperatorManagementProperties({
@@ -122,18 +122,7 @@ contract MetaRegistryTestGroupsBase is MetaRegistryTestBase {
         ops[0] = _externalOperator(data);
     }
 
-    function _mockBondCurveWeightHook() internal {
-        vm.mockCall(
-            address(module),
-            abi.encodeWithSelector(
-                ICuratedModule.requestFullOperatorWeightsUpdate.selector
-            ),
-            ""
-        );
-    }
-
     function _setBondCurveWeight(uint256 curveId, uint256 weight) internal {
-        _mockBondCurveWeightHook();
         vm.prank(bondCurveWeightManager);
         registry.setBondCurveWeight(curveId, weight);
     }
@@ -673,6 +662,17 @@ contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
         );
         vm.stopPrank();
     }
+
+    function test_createGroup_CallsRequestFullOperatorWeightsUpdate() public {
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICuratedModule.requestFullOperatorWeightsUpdate.selector
+            )
+        );
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+    }
 }
 
 contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
@@ -832,6 +832,33 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         assertEq(weightsAfter[0], 0);
     }
 
+    function test_updateGroup_RemovedOperatorCanBeReAddedToNewGroup() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+
+        uint256 groupId1 = registry.getOperatorGroupsCount();
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+
+        // Update group1 to only contain operator 1 (freeing operator 0).
+        vm.prank(groupManager);
+        _updateGroup(
+            groupId1,
+            _subOperatorsArr1(1, MAX_BP),
+            _extOperatorsArr0()
+        );
+
+        // Operator 0 should be free to join a new group.
+        uint256 groupId2 = registry.getOperatorGroupsCount();
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+
+        uint256 membership = registry.getNodeOperatorGroupMembership(0);
+        assertEq(membership, groupId2);
+
+        uint256[] memory weights = registry.getOperatorsWeights(UintArr(0));
+        assertEq(weights[0], CURVE_WEIGHT);
+    }
+
     function test_updateGroup_RevertWhen_GroupIdInvalid() public {
         vm.startPrank(groupManager);
         vm.expectRevert(IMetaRegistry.InvalidOperatorGroupId.selector);
@@ -881,6 +908,42 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
             _extOperatorsArr0()
         );
         vm.stopPrank();
+    }
+
+    function test_updateGroup_CallsRequestFullOperatorWeightsUpdate() public {
+        uint256 newGroupId = registry.getOperatorGroupsCount();
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICuratedModule.requestFullOperatorWeightsUpdate.selector
+            )
+        );
+        vm.prank(groupManager);
+        _updateGroup(
+            newGroupId,
+            _subOperatorsArr1(1, MAX_BP),
+            _extOperatorsArr0()
+        );
+    }
+
+    function test_updateGroup_CallsRequestFullOperatorWeightsUpdateOnEmptyUpdate()
+        public
+    {
+        uint256 newGroupId = registry.getOperatorGroupsCount();
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(
+                ICuratedModule.requestFullOperatorWeightsUpdate.selector
+            )
+        );
+        vm.prank(groupManager);
+        _updateGroup(newGroupId, _subOperatorsArr0(), _extOperatorsArr0());
     }
 }
 
@@ -1160,7 +1223,6 @@ contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
     function test_getBondCurveWeight_ReturnsValue() public {
         assertEq(registry.getBondCurveWeight(0), 0);
 
-        _mockBondCurveWeightHook();
         vm.prank(bondCurveWeightManager);
         registry.setBondCurveWeight(0, 123);
 
@@ -1168,8 +1230,6 @@ contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
     }
 
     function test_setBondCurveWeight_EmitsAndCallsHook() public {
-        // TODO: Replace mockCall with a real module hook expectation.
-        _mockBondCurveWeightHook();
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
@@ -1191,7 +1251,6 @@ contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
 
     function test_setBondCurveWeight_RevertWhen_SameWeight() public {
         {
-            _mockBondCurveWeightHook();
             vm.prank(bondCurveWeightManager);
             registry.setBondCurveWeight(0, 123);
         }

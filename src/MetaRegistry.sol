@@ -175,6 +175,8 @@ contract MetaRegistry is
             _updateGroup(groupId, groupInfo);
             emit OperatorGroupUpdated(groupId);
         }
+
+        MODULE.requestFullOperatorWeightsUpdate();
     }
 
     /// @inheritdoc IMetaRegistry
