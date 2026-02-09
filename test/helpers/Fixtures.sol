@@ -28,6 +28,8 @@ import { ValidatorStrikes } from "src/ValidatorStrikes.sol";
 import { Verifier } from "src/Verifier.sol";
 import { CuratedModule } from "src/CuratedModule.sol";
 import { MetaRegistry } from "src/MetaRegistry.sol";
+import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
+import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { CuratedGateFactory } from "src/CuratedGateFactory.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
@@ -1155,7 +1157,6 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
             keysCount
         );
         (CuratedGate gate, bytes32[] memory proof) = _prepareCuratedGate(from);
-        // FIXME: add MetaRegistry setup here (replacement for the removed _ensureDepositAllocationWeight).
 
         vm.prank(from);
         nodeOperatorId = gate.createNodeOperator(
@@ -1165,6 +1166,8 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
             address(0),
             proof
         );
+
+        _ensureMetaRegistrySetup(nodeOperatorId, gate.curveId());
 
         uint256 amount = accounting.getBondAmountByKeysCount(
             keysCount,
@@ -1198,6 +1201,9 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
             });
 
         nodeOperatorId = module.createNodeOperator(from, props, address(0));
+
+        uint256 curveId = accounting.getBondCurveId(nodeOperatorId);
+        _ensureMetaRegistrySetup(nodeOperatorId, curveId);
 
         address managerAddress = manager == address(0) ? from : manager;
         (bytes memory keys, bytes memory signatures) = keysSignatures(
@@ -1263,6 +1269,50 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         gate.setTreeParams(tree.root(), cid);
 
         proof = tree.getProof(0);
+    }
+
+    function _ensureMetaRegistrySetup(
+        uint256 nodeOperatorId,
+        uint256 curveId
+    ) internal {
+        MetaRegistry r = MetaRegistry(
+            address(ICuratedModule(address(module)).META_REGISTRY())
+        );
+
+        address admin = r.getRoleMember(r.DEFAULT_ADMIN_ROLE(), 0);
+
+        vm.startPrank(admin);
+        r.grantRole(r.MANAGE_OPERATOR_GROUPS_ROLE(), address(this));
+        r.grantRole(r.SET_BOND_CURVE_WEIGHT_ROLE(), address(this));
+        vm.stopPrank();
+
+        // TODO: Think about more realistic weight, so far the units are unclear.
+        if (r.getBondCurveWeight(curveId) == 0) {
+            r.setBondCurveWeight(curveId, 1);
+        }
+
+        uint256 groupId = r.getNodeOperatorGroupMembership(nodeOperatorId);
+        if (groupId == r.NO_GROUP_ID()) {
+            IMetaRegistry.SubNodeOperator[]
+                memory subs = new IMetaRegistry.SubNodeOperator[](1);
+            subs[0] = IMetaRegistry.SubNodeOperator({
+                nodeOperatorId: uint64(nodeOperatorId),
+                share: 10000
+            });
+            r.createOrUpdateOperatorGroup(
+                r.NO_GROUP_ID(),
+                IMetaRegistry.OperatorGroup({
+                    subNodeOperators: subs,
+                    externalOperators: new IMetaRegistry.ExternalOperator[](0)
+                })
+            );
+        }
+
+        CuratedModule cm = CuratedModule(address(module));
+        uint256 left = cm.getNodeOperatorWeightsToUpdateCount();
+        if (left > 0) {
+            cm.batchUpdateNodeOperatorWeights(left);
+        }
     }
 
     function _ensureCreateNodeOperatorRole() internal {
