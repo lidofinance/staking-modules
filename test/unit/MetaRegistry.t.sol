@@ -23,10 +23,27 @@ import { StakingRouterMock } from "../helpers/mocks/StakingRouterMock.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
 
+contract MetaRegistryForTest is MetaRegistry {
+    constructor(address module) MetaRegistry(module) {}
+
+    function mock_setModuleAddressInCache(
+        uint256 moduleId,
+        address moduleAddress
+    ) external {
+        _storage().moduleAddressCache[moduleId] = moduleAddress;
+    }
+
+    function mock_getModuleAddressInCache(
+        uint256 moduleId
+    ) external view returns (address moduleAddress) {
+        moduleAddress = _storage().moduleAddressCache[moduleId];
+    }
+}
+
 contract MetaRegistryTestBase is Test, Utilities, Fixtures {
     CuratedMock public module;
     StakingRouterMock public stakingRouter;
-    MetaRegistry public registry;
+    MetaRegistryForTest public registry;
 
     address public admin;
     address public metadataAdmin;
@@ -67,7 +84,7 @@ contract MetaRegistryTestBase is Test, Utilities, Fixtures {
         modules[0] = address(module);
         stakingRouter.setModules(modules);
 
-        registry = new MetaRegistry(address(module));
+        registry = new MetaRegistryForTest(address(module));
         _enableInitializers(address(registry));
         registry.initialize(admin);
 
@@ -1128,33 +1145,6 @@ contract MetaRegistryTestWeights is MetaRegistryTestGroupsBase {
         assertEq(externalStake2, 0);
     }
 
-    function test_getNodeOperatorWeightAndExternalStake_RevertWhen_ExternalModuleUnregistered()
-        public
-    {
-        externalModule.mock_setNodeOperatorsCount(1);
-        _setExternalNodeOperator(0, 1, 2);
-
-        _setBondCurveWeight(0, CURVE_WEIGHT);
-        IMetaRegistry.SubNodeOperator[] memory subOperators = _subOperatorsArr1(
-            0,
-            MAX_BP
-        );
-        IMetaRegistry.ExternalOperator[]
-            memory externalOperators = _extOperatorsArr1(
-                _norData(uint8(EXTERNAL_MODULE_ID), 0)
-            );
-
-        vm.prank(groupManager);
-        _createGroup(subOperators, externalOperators);
-
-        address[] memory modules = new address[](1);
-        modules[0] = address(module);
-        stakingRouter.setModules(modules);
-
-        vm.expectRevert(StakingRouterMock.StakingModuleUnregistered.selector);
-        registry.getNodeOperatorWeightAndExternalStake(0);
-    }
-
     function test_getNodeOperatorWeightAndExternalStake_DistributesExternalStake()
         public
     {
@@ -1353,5 +1343,75 @@ contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
         // Operator 1 still has stale cached weight.
         (uint256 w1After, ) = registry.getNodeOperatorWeightAndExternalStake(1);
         assertEq(w1After, 4000);
+    }
+}
+
+contract MetaRegistryTestModuleAddressCache is MetaRegistryTestGroupsBase {
+    function test_createGroup_CachesModuleAddressFromRouter() public {
+        externalModule.mock_setNodeOperatorsCount(1);
+        _setExternalNodeOperator(0, 1, 2);
+
+        vm.expectCall(
+            address(stakingRouter),
+            abi.encodeWithSelector(
+                IStakingRouter.getStakingModule.selector,
+                EXTERNAL_MODULE_ID
+            )
+        );
+        vm.prank(groupManager);
+        _createGroup(
+            _subOperatorsArr1(0, MAX_BP),
+            _extOperatorsArr1(_norData(uint8(EXTERNAL_MODULE_ID), 0))
+        );
+
+        assertEq(
+            registry.mock_getModuleAddressInCache(EXTERNAL_MODULE_ID),
+            address(externalModule)
+        );
+    }
+
+    function test_createGroup_UsesCachedModuleAddressOnCacheHit() public {
+        externalModule.mock_setNodeOperatorsCount(2);
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        _setExternalNodeOperator(0, 1, 10);
+        _setExternalNodeOperator(1, 2, 20);
+
+        // Pre-populate the cache for EXTERNAL_MODULE_ID.
+        registry.mock_setModuleAddressInCache(
+            EXTERNAL_MODULE_ID,
+            address(externalModule)
+        );
+
+        // Remove the module from the router. If the cache is bypassed
+        // during group creation, this will revert.
+        address[] memory modules = new address[](1);
+        modules[0] = address(module);
+        stakingRouter.setModules(modules);
+
+        vm.prank(groupManager);
+        _createGroup(
+            _subOperatorsArr1(0, MAX_BP),
+            _extOperatorsArr1(_norData(uint8(EXTERNAL_MODULE_ID), 0))
+        );
+    }
+
+    function test_getNodeOperatorWeightAndExternalStake_RevertWhen_ModuleAddressNotCached()
+        public
+    {
+        externalModule.mock_setNodeOperatorsCount(1);
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        _setExternalNodeOperator(0, 1, 2);
+
+        vm.prank(groupManager);
+        _createGroup(
+            _subOperatorsArr1(0, MAX_BP),
+            _extOperatorsArr1(_norData(uint8(EXTERNAL_MODULE_ID), 0))
+        );
+
+        // Clear the cache entry to simulate the invariant violation.
+        registry.mock_setModuleAddressInCache(EXTERNAL_MODULE_ID, address(0));
+
+        vm.expectRevert(IMetaRegistry.ModuleAddressNotCached.selector);
+        registry.getNodeOperatorWeightAndExternalStake(0);
     }
 }

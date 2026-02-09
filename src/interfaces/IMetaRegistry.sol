@@ -65,6 +65,7 @@ interface IMetaRegistry {
     error OwnerEditsRestricted();
     error UnsupportedExternalOperatorType();
     error SameBondCurveWeight();
+    error ModuleAddressNotCached();
 
     /// @notice Role allowed to manage operator groups.
     function MANAGE_OPERATOR_GROUPS_ROLE() external view returns (bytes32);

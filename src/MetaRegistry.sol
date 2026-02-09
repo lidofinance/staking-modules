@@ -47,6 +47,7 @@ contract MetaRegistry is
         GroupIndex groupIndex;
         EffectiveWeightCache effectiveWeightCache;
         mapping(uint256 nodeOperatorId => OperatorMetadata) operatorMetadata;
+        mapping(uint256 moduleId => address moduleAddress) moduleAddressCache;
     }
 
     bytes32 public constant MANAGE_OPERATOR_GROUPS_ROLE =
@@ -472,13 +473,33 @@ contract MetaRegistry is
 
     function _checkExternalOperatorExistsTypeNOR(
         ExternalOperator memory op
-    ) internal view {
+    ) internal {
         (uint8 moduleId, uint64 noId) = op.unpackEntryTypeNOR();
-        // TODO: Add a cache for module addresses
-        address module = STAKING_ROUTER
-            .getStakingModule(moduleId)
-            .stakingModuleAddress;
+        address module = _getOrCacheModuleAddress(moduleId);
         _onlyExistingOperator(module, noId);
+    }
+
+    /// @dev Returns the module address for `moduleId`, resolving from
+    ///      STAKING_ROUTER on cache miss.
+    function _getOrCacheModuleAddress(
+        uint8 moduleId
+    ) internal returns (address addr) {
+        addr = _storage().moduleAddressCache[moduleId];
+        if (addr == address(0)) {
+            addr = STAKING_ROUTER
+                .getStakingModule(moduleId)
+                .stakingModuleAddress;
+            _storage().moduleAddressCache[moduleId] = addr;
+        }
+    }
+
+    /// @dev Returns the cached module address. Reverts if the address was
+    ///      never resolved via `_getOrCacheModuleAddress`.
+    function _getCachedModuleAddress(
+        uint8 moduleId
+    ) internal view returns (address addr) {
+        addr = _storage().moduleAddressCache[moduleId];
+        if (addr == address(0)) revert ModuleAddressNotCached();
     }
 
     function _onlyExistingOperator(
@@ -522,10 +543,8 @@ contract MetaRegistry is
     ) internal view returns (uint256 stake) {
         (uint8 moduleId, uint64 noId) = op.unpackEntryTypeNOR();
 
-        // TODO: Cache!
-        address module = STAKING_ROUTER
-            .getStakingModule(moduleId)
-            .stakingModuleAddress;
+        // NOTE: The module address is expected to be cached during _storeExternalOperators.
+        address module = _getCachedModuleAddress(moduleId);
 
         (
             ,
