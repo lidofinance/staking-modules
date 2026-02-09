@@ -296,7 +296,10 @@ contract CuratedModule is ICuratedModule, BaseModule {
         $.upToDateOperatorWeightsCount = limit;
         operatorsLeft = operatorsCount - limit;
 
-        if (operatorsLeft == 0) _incrementModuleNonce();
+        if (operatorsLeft == 0) {
+            emit NodeOperatorWeightsUpToDate();
+            _incrementModuleNonce();
+        }
     }
 
     /// @inheritdoc ICuratedModule

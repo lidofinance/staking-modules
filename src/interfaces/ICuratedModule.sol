@@ -12,6 +12,7 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
         uint256 indexed operatorId,
         uint256 balanceWei
     );
+    event NodeOperatorWeightsUpToDate();
 
     error NotImplemented();
     error PublicKeyIsWithdrawn();

@@ -1923,6 +1923,79 @@ contract CuratedNodeOperatorWeightsToUpdateCount is CuratedCommon {
         assertEq(operatorsLeft, 0);
         assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 0);
     }
+
+    function test_batchUpdateNodeOperatorWeights_EmitsUpToDateAndIncrementsNonceWhen_AllProcessed()
+        public
+        assertInvariants
+    {
+        createNodeOperator(1);
+        createNodeOperator(1);
+
+        vm.prank(address(metaRegistry));
+        cm.requestFullOperatorWeightsUpdate();
+
+        uint256 nonce = module.getNonce();
+
+        vm.expectEmit(address(cm));
+        emit ICuratedModule.NodeOperatorWeightsUpToDate();
+
+        uint256 operatorsLeft = cm.batchUpdateNodeOperatorWeights(2);
+        assertEq(operatorsLeft, 0);
+        assertEq(module.getNonce(), nonce + 1);
+    }
+
+    function test_batchUpdateNodeOperatorWeights_NoEmitAndNoNonceIncrementWhen_PartialBatch()
+        public
+        assertInvariants
+    {
+        createNodeOperator(1);
+        createNodeOperator(1);
+        createNodeOperator(1);
+
+        vm.prank(address(metaRegistry));
+        cm.requestFullOperatorWeightsUpdate();
+
+        uint256 nonce = module.getNonce();
+
+        vm.recordLogs();
+        uint256 operatorsLeft = cm.batchUpdateNodeOperatorWeights(2);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            assertTrue(
+                logs[i].topics[0] !=
+                    ICuratedModule.NodeOperatorWeightsUpToDate.selector,
+                "unexpected NodeOperatorWeightsUpToDate event"
+            );
+        }
+
+        assertEq(operatorsLeft, 1);
+        assertEq(module.getNonce(), nonce);
+    }
+
+    function test_batchUpdateNodeOperatorWeights_NoEmitWhen_AlreadyUpToDate()
+        public
+        assertInvariants
+    {
+        createNodeOperator(1);
+
+        uint256 nonce = module.getNonce();
+
+        vm.recordLogs();
+        uint256 operatorsLeft = cm.batchUpdateNodeOperatorWeights(1);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            assertTrue(
+                logs[i].topics[0] !=
+                    ICuratedModule.NodeOperatorWeightsUpToDate.selector,
+                "unexpected NodeOperatorWeightsUpToDate event"
+            );
+        }
+
+        assertEq(operatorsLeft, 0);
+        assertEq(module.getNonce(), nonce);
+    }
 }
 
 contract CuratedProposeNodeOperatorManagerAddressChange is
