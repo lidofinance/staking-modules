@@ -56,7 +56,9 @@ contract FeeOracle is IFeeOracle, BaseOracle, PausableUntil, AssetRecoverer {
         STRIKES = IValidatorStrikes(strikes);
     }
 
-    /// @dev initialize contract from scratch
+    /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
+    ///      It is recommended to call this method in the same transaction as the deployment transaction
+    ///      and perform extensive deployment verification before using the contract instance.
     function initialize(
         address admin,
         address consensusContract,
@@ -76,6 +78,7 @@ contract FeeOracle is IFeeOracle, BaseOracle, PausableUntil, AssetRecoverer {
 
     /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing version 2 deployment.
     ///      If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
+    ///      To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
     function finalizeUpgradeV3(uint256 consensusVersion) external {
         _setConsensusVersion(consensusVersion);
         _updateContractVersion(INITIALIZED_VERSION);

@@ -67,6 +67,9 @@ contract ValidatorStrikes is
         _disableInitializers();
     }
 
+    /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
+    ///      It is recommended to call this method in the same transaction as the deployment transaction
+    ///      and perform extensive deployment verification before using the contract instance.
     function initialize(address admin, address _ejector) external initializer {
         if (admin == address(0)) {
             revert ZeroAdminAddress();

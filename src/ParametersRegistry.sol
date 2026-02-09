@@ -113,7 +113,9 @@ contract ParametersRegistry is
         _disableInitializers();
     }
 
-    /// @notice initialize contract
+    /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
+    ///      It is recommended to call this method in the same transaction as the deployment transaction
+    ///      and perform extensive deployment verification before using the contract instance.
     function initialize(
         address admin,
         InitializationData calldata data
