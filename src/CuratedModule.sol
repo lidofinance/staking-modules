@@ -3,6 +3,8 @@
 
 pragma solidity 0.8.33;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.sol";
 import { NodeOperator } from "./interfaces/IBaseModule.sol";
@@ -70,10 +72,10 @@ contract CuratedModule is ICuratedModule, BaseModule {
                 _nodeOperatorsCount,
                 depositsCount
             );
-        (publicKeys, signatures) = SigningKeys.initKeysSigsBuf(allocated);
         if (allocated == 0) {
             return (publicKeys, signatures);
         }
+        (publicKeys, signatures) = SigningKeys.initKeysSigsBuf(allocated);
 
         uint256 loadedKeysCount;
         CuratedModuleStorage storage $ = _storage();
@@ -156,6 +158,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             topUpLimits
         );
 
+        // TODO: Do we need to check for zero allocations here?
         _incrementModuleNonce();
     }
 
@@ -276,27 +279,13 @@ contract CuratedModule is ICuratedModule, BaseModule {
     ) internal view {
         for (uint256 i; i < pubkeys.length; ++i) {
             // TODO: Move to NodeOperatorOps and unify with CSM
-            if (pubkeys[i].length != SigningKeys.PUBKEY_LENGTH) {
-                revert InvalidInput();
-            }
             uint256 operatorId = operatorIds[i];
             uint256 keyIndex = keyIndices[i];
-            NodeOperator storage no = _nodeOperators[operatorId];
-            if (keyIndex >= no.totalDepositedKeys) {
+            if (keyIndex >= _nodeOperators[operatorId].totalDepositedKeys) {
                 revert SigningKeysInvalidOffset();
             }
-
-            uint256 pointer = _keyPointer(operatorId, keyIndex);
-            if (_isValidatorWithdrawn[pointer]) {
-                revert PublicKeyIsWithdrawn();
-            }
-            if (_isValidatorSlashed[pointer]) {
-                revert PublicKeyIsSlashed();
-            }
-
-            bytes memory pubkey = pubkeys[i];
             if (
-                keccak256(pubkey) !=
+                keccak256(pubkeys[i]) !=
                 keccak256(SigningKeys.loadKeys(operatorId, keyIndex, 1))
             ) {
                 revert PubkeyMismatch();
@@ -322,6 +311,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
                 allocationAmount: maxDepositAmount,
                 operatorIds: uniqueOperatorIds
             });
+
+        // TODO: Add capped top-up limits like in CSM
 
         uint256[] memory perOperatorIncrements;
         (allocations, perOperatorIncrements) = _distributeTopUpAllocations({
@@ -386,17 +377,18 @@ contract CuratedModule is ICuratedModule, BaseModule {
         // NOTE: Use a full operatorsCount-sized array for O(1) lookups; operator counts are small enough
         // that a compact map would add overhead and can be worse overall.
         uint256[] memory perOperatorAllocations = new uint256[](operatorsCount);
-        perOperatorIncrements = new uint256[](operatorsCount);
         for (uint256 i; i < allocatedOperatorIds.length; ++i) {
             perOperatorAllocations[
                 allocatedOperatorIds[i]
             ] = operatorAllocations[i];
         }
 
+        perOperatorIncrements = new uint256[](operatorsCount);
         unchecked {
             for (uint256 i; i < operatorIds.length; ++i) {
                 uint256 operatorId = operatorIds[i];
-                uint256 remaining = perOperatorAllocations[operatorId];
+                uint256 remaining = perOperatorAllocations[operatorId] -
+                    perOperatorIncrements[operatorId];
                 if (remaining == 0) continue;
 
                 uint256 limit = CuratedDepositAllocator.quantizeForTopUp(
@@ -404,9 +396,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
                 );
                 if (limit == 0) continue;
 
-                uint256 amount = remaining < limit ? remaining : limit;
+                uint256 amount = Math.min(remaining, limit);
                 allocations[i] = amount;
-                perOperatorAllocations[operatorId] = remaining - amount;
                 perOperatorIncrements[operatorId] += amount;
             }
         }

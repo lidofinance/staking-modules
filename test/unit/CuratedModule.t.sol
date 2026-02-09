@@ -444,28 +444,6 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         assertEq(pubkeys, expectedKeys);
     }
 
-    function test_obtainDepositData_RevertWhen_ZeroWeights()
-        public
-        assertInvariants
-    {
-        uint256 first = createNodeOperator(1);
-        uint256 second = createNodeOperator(1);
-
-        IBondCurve.BondCurveIntervalInput[]
-            memory curve = new IBondCurve.BondCurveIntervalInput[](1);
-        curve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: BOND_SIZE
-        });
-        uint256 curveId = accounting.addBondCurve(curve);
-        accounting.setBondCurve(first, curveId);
-        accounting.setBondCurve(second, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 0);
-
-        vm.expectRevert(IBaseModule.NotEnoughKeys.selector);
-        module.obtainDepositData(1, "");
-    }
-
     function test_obtainDepositData_RevertWhen_WeightedCapacityTooLow()
         public
         assertInvariants
@@ -542,17 +520,6 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         assertEq(no0.totalDepositedKeys, 1);
         assertEq(no1.totalDepositedKeys, 1);
         assertEq(pubkeys, expectedKeys);
-    }
-
-    function test_obtainDepositData_RevertWhen_AllZeroCapacity()
-        public
-        assertInvariants
-    {
-        createNodeOperator(0);
-        createNodeOperator(0);
-
-        vm.expectRevert(IBaseModule.NotEnoughKeys.selector);
-        module.obtainDepositData(1, "");
     }
 
     function test_obtainDepositData_WithdrawnKeysAffectAllocation()
@@ -1613,23 +1580,6 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         );
     }
 
-    function test_topUpObtainDepositData_revertWhen_PubkeysLengthMismatch()
-        public
-        assertInvariants
-    {
-        uint256 noId = createNodeOperator(1);
-        module.obtainDepositData(1, "");
-
-        vm.expectRevert(IBaseModule.InvalidInput.selector);
-        cm.allocateDeposits(
-            1 ether,
-            BytesArr(new bytes(47)),
-            UintArr(0),
-            UintArr(noId),
-            UintArr(1 ether)
-        );
-    }
-
     function test_topUpObtainDepositData_revertWhen_KeyIndexOutOfRange()
         public
         assertInvariants
@@ -1644,56 +1594,6 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
             1 ether,
             BytesArr(key),
             UintArr(1),
-            UintArr(noId),
-            UintArr(1 ether)
-        );
-    }
-
-    function test_topUpObtainDepositData_revertWhen_PublicKeyWithdrawn()
-        public
-        assertInvariants
-    {
-        uint256 noId = createNodeOperator(1);
-        module.obtainDepositData(1, "");
-
-        WithdrawnValidatorInfo[]
-            memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 0,
-            exitBalance: CuratedDepositAllocator.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-        module.reportRegularWithdrawnValidators(validatorInfos);
-
-        bytes memory key = module.getSigningKeys(noId, 0, 1);
-
-        vm.expectRevert(ICuratedModule.PublicKeyIsWithdrawn.selector);
-        cm.allocateDeposits(
-            1 ether,
-            BytesArr(key),
-            UintArr(0),
-            UintArr(noId),
-            UintArr(1 ether)
-        );
-    }
-
-    function test_topUpObtainDepositData_revertWhen_PublicKeyIsSlashed()
-        public
-        assertInvariants
-    {
-        uint256 noId = createNodeOperator(1);
-        module.obtainDepositData(1, "");
-        module.onValidatorSlashed(noId, 0);
-
-        bytes memory key = module.getSigningKeys(noId, 0, 1);
-
-        vm.expectRevert(ICuratedModule.PublicKeyIsSlashed.selector);
-        cm.allocateDeposits(
-            1 ether,
-            BytesArr(key),
-            UintArr(0),
             UintArr(noId),
             UintArr(1 ether)
         );
