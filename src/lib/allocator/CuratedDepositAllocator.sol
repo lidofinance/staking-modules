@@ -18,6 +18,7 @@ import { WithdrawnValidatorLib } from "../WithdrawnValidatorLib.sol";
 library CuratedDepositAllocator {
     uint256 public constant MAX_EFFECTIVE_BALANCE = 2048 ether;
     uint256 public constant MIN_ACTIVATION_BALANCE = 32 ether;
+
     struct DepositableOperatorsData {
         uint256[] weights; // Per-operator weights for allocation (0 means ineligible).
         uint256[] currents; // Current amounts per operator (units depend on caller: validator count for deposits, wei for top-ups).
@@ -265,6 +266,9 @@ library CuratedDepositAllocator {
                 if (weight == 0) continue;
 
                 uint256 current = no.totalDepositedKeys - no.totalWithdrawnKeys;
+                // NOTE: To determine the count of validators a node operator would have in the module we calculate
+                // allocation for, we divide the external stake by the maximum stake a validator might have in this
+                // module. Since the CuratedModule supports 0x02 validators, the maximum value is MAX_EFFECTIVE_BALANCE.
                 if (externalStake > 0) {
                     current +=
                         externalStake /
