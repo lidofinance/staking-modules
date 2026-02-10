@@ -52,7 +52,7 @@ library SigningKeys {
         bytes memory tmpKey = new bytes(48);
 
         for (uint256 i; i < keysCount; ) {
-            curOffset = SIGNING_KEYS_POSITION.getKeyOffset(
+            curOffset = _signingKeysPosition().getKeyOffset(
                 nodeOperatorId,
                 startIndex
             );
@@ -113,7 +113,7 @@ library SigningKeys {
         // removing from the last index
         unchecked {
             for (uint256 i = startIndex + keysCount; i > startIndex; ) {
-                curOffset = SIGNING_KEYS_POSITION.getKeyOffset(
+                curOffset = _signingKeysPosition().getKeyOffset(
                     nodeOperatorId,
                     i - 1
                 );
@@ -126,7 +126,7 @@ library SigningKeys {
                     mstore(add(tmpKey, 0x20), sload(curOffset)) // bytes 0..31
                 }
                 if (i < totalKeysCount) {
-                    lastOffset = SIGNING_KEYS_POSITION.getKeyOffset(
+                    lastOffset = _signingKeysPosition().getKeyOffset(
                         nodeOperatorId,
                         totalKeysCount - 1
                     );
@@ -175,7 +175,7 @@ library SigningKeys {
     ) internal view {
         uint256 curOffset;
         for (uint256 i; i < keysCount; ) {
-            curOffset = SIGNING_KEYS_POSITION.getKeyOffset(
+            curOffset = _signingKeysPosition().getKeyOffset(
                 nodeOperatorId,
                 startIndex + i
             );
@@ -203,7 +203,7 @@ library SigningKeys {
 
         pubkeys = new bytes(keysCount * PUBKEY_LENGTH);
         for (uint256 i; i < keysCount; ) {
-            curOffset = SIGNING_KEYS_POSITION.getKeyOffset(
+            curOffset = _signingKeysPosition().getKeyOffset(
                 nodeOperatorId,
                 startIndex + i
             );
@@ -235,5 +235,9 @@ library SigningKeys {
             uint256(
                 keccak256(abi.encodePacked(position, nodeOperatorId, keyIndex))
             );
+    }
+
+    function _signingKeysPosition() internal pure returns (bytes32) {
+        return SIGNING_KEYS_POSITION;
     }
 }
