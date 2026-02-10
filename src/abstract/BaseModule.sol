@@ -83,13 +83,9 @@ abstract contract BaseModule is
         address exitPenalties
     ) {
         if (moduleType == bytes32(0)) revert ZeroModuleType();
-
         if (lidoLocator == address(0)) revert ZeroLocatorAddress();
-
         if (parametersRegistry == address(0)) revert ZeroParametersRegistryAddress();
-
         if (accounting == address(0)) revert ZeroAccountingAddress();
-
         if (exitPenalties == address(0)) revert ZeroExitPenaltiesAddress();
 
         MODULE_TYPE = moduleType;
@@ -172,7 +168,6 @@ abstract contract BaseModule is
         IAccounting accounting = _accounting();
 
         if (msg.value < _getRequiredBondForNextKeys(accounting, nodeOperatorId, keysCount)) revert InvalidAmount();
-
         if (msg.value != 0) accounting.depositETH{ value: msg.value }(from, nodeOperatorId);
 
         _addKeysAndUpdateDepositableValidatorsCount(nodeOperatorId, keysCount, publicKeys, signatures);
@@ -626,7 +621,6 @@ abstract contract BaseModule is
 
             uint256 pointer = _keyPointer(info.nodeOperatorId, info.keyIndex);
             if (_isValidatorWithdrawn[pointer]) continue;
-
             if (info.isSlashed != slashed) revert InvalidWithdrawnValidatorInfo();
             if (info.isSlashed && !_isValidatorSlashed[pointer]) revert SlashingPenaltyIsNotApplicable();
 
@@ -730,7 +724,9 @@ abstract contract BaseModule is
         uint256 nonDeposited = no.totalAddedKeys - totalDepositedKeys;
         if (unbondedKeys >= nonDeposited) {
             newCount = 0;
-        } else if (unbondedKeys > no.totalAddedKeys - no.totalVettedKeys) newCount = nonDeposited - unbondedKeys;
+        } else if (unbondedKeys > no.totalAddedKeys - no.totalVettedKeys) {
+            newCount = nonDeposited - unbondedKeys;
+        }
 
         if (no.targetLimitMode > 0 && newCount > 0) {
             unchecked {
@@ -740,7 +736,6 @@ abstract contract BaseModule is
                 uint256 leftToLimit = 0;
 
                 if (targetLimit > nonWithdrawnValidators) leftToLimit = targetLimit - nonWithdrawnValidators;
-
                 if (newCount > leftToLimit) newCount = leftToLimit;
             }
         }
@@ -797,7 +792,6 @@ abstract contract BaseModule is
     function _onlyNodeOperatorManager(uint256 nodeOperatorId, address from) internal view {
         address managerAddress = _nodeOperators[nodeOperatorId].managerAddress;
         if (managerAddress == address(0)) revert NodeOperatorDoesNotExist();
-
         if (managerAddress != from) revert SenderIsNotEligible();
     }
 

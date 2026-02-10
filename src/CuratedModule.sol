@@ -117,7 +117,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
         _requireNodeOperatorWeightsUpToDate();
 
         if (maxDepositAmount == 0) return new uint256[](0);
-
         if (
             pubkeys.length != keyIndices.length ||
             pubkeys.length != topUpLimits.length ||
@@ -211,7 +210,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
     /// @inheritdoc ICuratedModule
     function onNodeOperatorWeightChange(uint256 nodeOperatorId, uint256 newWeight) external {
         if (msg.sender != address(_metaRegistry())) revert SenderIsNotMetaRegistry();
-
         if (newWeight == 0) {
             _applyDepositableValidatorsCount({
                 no: _nodeOperators[nodeOperatorId],

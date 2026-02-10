@@ -34,9 +34,7 @@ library FeeSplits {
     ) external {
         uint256 len = feeSplits.length;
         if (len > MAX_FEE_SPLITS) revert IFeeSplits.TooManySplits();
-
         if (pendingSharesToSplitStorage[nodeOperatorId] > 0) revert IFeeSplits.PendingSharesExist();
-
         if (feeDistributor.getFeesToDistribute(nodeOperatorId, cumulativeFeeShares, rewardsProof) != 0) {
             revert IFeeSplits.UndistributedSharesExist();
         }

@@ -66,7 +66,6 @@ library TopUpQueueOps {
                 allocations[i] = Math.min(data.topUpLimits[i], maxDepositAmount);
                 maxDepositAmount -= allocations[i];
             }
-
             if (allocations[i] == data.topUpLimits[i]) {
                 topUpQueue.dequeue();
             } else if (i < keyCount - 1) revert ICSModule.UnexpectedExtraKey();

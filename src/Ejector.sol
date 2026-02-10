@@ -178,7 +178,6 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
         // eventually be withdrawn, so potentially malicious behaviour stops when there are no
         // active keys available
         if (MODULE.isValidatorWithdrawn(nodeOperatorId, keyIndex)) revert AlreadyWithdrawn();
-
         if (refundRecipient == address(0)) revert ZeroRefundRecipient();
 
         ValidatorData[] memory exitsData = new ValidatorData[](1);

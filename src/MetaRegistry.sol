@@ -129,7 +129,6 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     ) external onlyRole(MANAGE_OPERATOR_GROUPS_ROLE) {
         MetaRegistryStorage storage $ = _storage();
         if (groupId >= $.groups.length) revert InvalidOperatorGroupId();
-
         if (groupId == NO_GROUP_ID) {
             _createGroup(groupInfo);
         } else {

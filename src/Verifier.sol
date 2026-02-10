@@ -109,17 +109,11 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         address admin
     ) {
         if (withdrawalAddress == address(0)) revert ZeroWithdrawalAddress();
-
         if (module == address(0)) revert ZeroModuleAddress();
-
         if (admin == address(0)) revert ZeroAdminAddress();
-
         if (slotsPerEpoch == 0) revert InvalidChainConfig();
-
         if (slotsPerHistoricalRoot == 0) revert InvalidChainConfig();
-
         if (firstSupportedSlot > pivotSlot) revert InvalidPivotSlot();
-
         if (capellaSlot > firstSupportedSlot) revert InvalidCapellaSlot();
 
         WITHDRAWAL_ADDRESS = withdrawalAddress;
@@ -227,7 +221,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
     /// @inheritdoc IVerifier
     function processHistoricalWithdrawalProof(ProcessHistoricalWithdrawalInput calldata data) external whenResumed {
         if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) revert UnsupportedSlot(data.recentBlock.header.slot);
-
         if (data.withdrawalBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.withdrawalBlock.header.slot);
         }
@@ -271,11 +264,9 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
     /// @inheritdoc IVerifier
     function processConsolidation(ProcessConsolidationInput calldata data) external whenResumed {
         if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) revert UnsupportedSlot(data.recentBlock.header.slot);
-
         if (data.consolidationBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.consolidationBlock.header.slot);
         }
-
         if (data.validator.object.slashed) revert ValidatorIsSlashed();
 
         {
@@ -287,7 +278,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         if (_computeEpochAtSlot(data.recentBlock.header.slot) < data.validator.object.withdrawableEpoch) {
             revert ValidatorIsNotWithdrawable();
         }
-
         if (data.consolidation.object.sourceIndex != data.validator.index) revert InvalidConsolidationSource();
 
         // Verify recent block's header.
@@ -379,9 +369,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         // The methods in this contract do not accept proofs of withdrawals from slashed validators. It is proposed that
         // such withdrawals be processed off-chain and reported directly to the CSModule using EasyTracks.
         if (validator.object.slashed) revert ValidatorIsSlashed();
-
         if (_computeEpochAtSlot(header.slot) < validator.object.withdrawableEpoch) revert ValidatorIsNotWithdrawable();
-
         if (withdrawal.object.validatorIndex != validator.index) revert InvalidValidatorIndex();
 
         // See https://hackmd.io/1wM8vqeNTjqt4pC3XoCUKQ

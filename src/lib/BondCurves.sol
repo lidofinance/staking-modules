@@ -135,9 +135,7 @@ library BondCurves {
         if (intervals.length < MIN_CURVE_LENGTH || intervals.length > MAX_CURVE_LENGTH) {
             revert IBondCurves.InvalidBondCurveLength();
         }
-
         if (intervals[0].minKeysCount != 1) revert IBondCurves.InvalidBondCurveValues();
-
         if (intervals[0].trend == 0) revert IBondCurves.InvalidBondCurveValues();
 
         for (uint256 i = 1; i < intervals.length; ++i) {

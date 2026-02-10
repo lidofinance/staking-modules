@@ -73,7 +73,6 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
         bool isNewRootEmpty = _treeRoot == bytes32(0);
         bool isNewCidEmpty = bytes(_treeCid).length == 0;
         if (isNewRootEmpty != isNewCidEmpty) revert InvalidReportData();
-
         if (isNewRootEmpty) {
             if (treeRoot != bytes32(0)) {
                 delete treeRoot;
@@ -86,7 +85,6 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
         bool isSameRoot = _treeRoot == treeRoot;
         bool isSameCid = keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid));
         if (isSameRoot != isSameCid) revert InvalidReportData();
-
         if (!isSameRoot) {
             treeRoot = _treeRoot;
             treeCid = _treeCid;
@@ -105,9 +103,7 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
         // internal nodes without brute-forcing the input data.
 
         if (keyStrikesList.length == 0) revert EmptyKeyStrikesList();
-
         if (msg.value == 0) revert ZeroMsgValue();
-
         if (msg.value % keyStrikesList.length > 0) revert ValueNotEvenlyDivisible();
 
         bytes[] memory pubkeys = new bytes[](keyStrikesList.length);

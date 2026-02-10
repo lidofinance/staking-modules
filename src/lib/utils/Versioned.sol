@@ -37,7 +37,6 @@ contract Versioned {
     /// @dev Sets the contract version to N. Should be called from the initialize() function.
     function _initializeContractVersionTo(uint256 version) internal {
         if (version == 0) revert InvalidContractVersion();
-
         if (getContractVersion() != 0) revert NonZeroContractVersionOnInit();
 
         _setContractVersion(version);

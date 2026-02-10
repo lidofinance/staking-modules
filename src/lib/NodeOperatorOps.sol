@@ -78,9 +78,7 @@ library NodeOperatorOps {
         NodeOperator storage no = nodeOperators[nodeOperatorId];
 
         if (no.managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
-
         if (targetLimitMode == 0) targetLimit = 0;
-
         if (no.targetLimitMode == targetLimitMode && no.targetLimit == targetLimit) return;
 
         // `targetLimitMode` is validated against FORCED_TARGET_LIMIT_MODE_ID (fits uint8).
@@ -146,9 +144,7 @@ library NodeOperatorOps {
             NodeOperator storage no = nodeOperators[nodeOperatorId];
 
             if (no.managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
-
             if (vettedSigningKeysCount >= no.totalVettedKeys) revert IBaseModule.InvalidVetKeysPointer();
-
             if (vettedSigningKeysCount < no.totalDepositedKeys) revert IBaseModule.InvalidVetKeysPointer();
 
             // NodeOperator.totalVettedKeys and totalDepositedKeys are uint32 slots; the checks above keep

@@ -61,7 +61,6 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
     constructor(address stETH, address accounting, address oracle) {
         if (accounting == address(0)) revert ZeroAccountingAddress();
         if (oracle == address(0)) revert ZeroOracleAddress();
-
         if (stETH == address(0)) revert ZeroStEthAddress();
 
         ACCOUNTING = accounting;
@@ -104,7 +103,6 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
         sharesToDistribute = getFeesToDistribute(nodeOperatorId, cumulativeFeeShares, proof);
 
         if (sharesToDistribute == 0) return 0;
-
         if (totalClaimableShares < sharesToDistribute) revert NotEnoughShares();
 
         unchecked {
@@ -126,13 +124,10 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
         uint256 refSlot
     ) external onlyOracle {
         if (totalClaimableShares + distributed + rebate > STETH.sharesOf(address(this))) revert InvalidShares();
-
         if (distributed == 0 && rebate > 0) revert InvalidReportData();
-
         if (distributed > 0) {
             if (bytes(_treeCid).length == 0) revert InvalidTreeCid();
             if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid))) revert InvalidTreeCid();
-
             if (_treeRoot == bytes32(0)) revert InvalidTreeRoot();
             if (_treeRoot == treeRoot) revert InvalidTreeRoot();
 

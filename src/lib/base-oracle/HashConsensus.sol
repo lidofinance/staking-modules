@@ -187,7 +187,6 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
         address reportProcessor
     ) {
         if (slotsPerEpoch == 0) revert InvalidChainConfig();
-
         if (secondsPerSlot == 0) revert InvalidChainConfig();
 
         SLOTS_PER_EPOCH = slotsPerEpoch.toUint64();
@@ -195,7 +194,6 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
         GENESIS_TIME = genesisTime.toUint64();
 
         if (admin == address(0)) revert AdminCannotBeZero();
-
         if (reportProcessor == address(0)) revert ReportProcessorCannotBeZero();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -530,7 +528,6 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
         FrameConfig memory prevConfig
     ) internal {
         if (epochsPerFrame == 0) revert EpochsPerFrameCannotBeZero();
-
         if (fastLaneLengthSlots > epochsPerFrame * SLOTS_PER_EPOCH) revert FastLanePeriodCannotBeLongerThanFrame();
 
         _frameConfig = FrameConfig(initialEpoch.toUint64(), epochsPerFrame.toUint64(), fastLaneLengthSlots.toUint64());
@@ -538,7 +535,6 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
         if (initialEpoch != prevConfig.initialEpoch || epochsPerFrame != prevConfig.epochsPerFrame) {
             emit FrameConfigSet(initialEpoch, epochsPerFrame);
         }
-
         if (fastLaneLengthSlots != prevConfig.fastLaneLengthSlots) emit FastLaneConfigSet(fastLaneLengthSlots);
     }
 
@@ -636,7 +632,6 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
 
     function _addMember(address addr, uint256 quorum) internal {
         if (_isMember(addr)) revert DuplicateMember();
-
         if (addr == address(0)) revert AddressCannotBeZero();
 
         _memberStates.push(MemberState(0, 0));
@@ -753,9 +748,7 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
 
     function _submitReport(uint256 slot, bytes32 report, uint256 consensusVersion) internal {
         if (slot == 0) revert InvalidSlot();
-
         if (slot > type(uint64).max) revert NumericOverflow();
-
         if (report == ZERO_HASH) revert EmptyReport();
 
         uint256 memberIndex = _getMemberIndex(_msgSender());
@@ -772,13 +765,10 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
         ConsensusFrame memory frame = _getFrameAtTimestamp(timestamp, config);
 
         if (slot != frame.refSlot) revert InvalidSlot();
-
         if (currentSlot > frame.reportProcessingDeadlineSlot) revert StaleReport();
-
         if (currentSlot <= frame.refSlot + config.fastLaneLengthSlots && !_isFastLaneMember(memberIndex, frame.index)) {
             revert NonFastLaneMemberCannotReportWithinFastLaneInterval();
         }
-
         if (slot <= _getLastProcessingRefSlot()) {
             // consensus for the ref. slot was already reached and consensus report is processing
             if (slot == memberState.lastReportRefSlot) {
@@ -885,7 +875,6 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
             _quorum = quorum;
             emit QuorumSet(quorum, totalMembers, prevQuorum);
         }
-
         if (_computeEpochAtTimestamp(_getTime()) >= _frameConfig.initialEpoch) _checkConsensus(quorum);
     }
 
@@ -897,7 +886,6 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
             // a report for the current ref. slot cannot be processed anymore
             return;
         }
-
         if (_getLastProcessingRefSlot() >= frame.refSlot) {
             // a consensus report for the current ref. slot is already being processed
             return;
@@ -957,7 +945,6 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
     function _setReportProcessor(address newProcessor) internal {
         address prevProcessor = _reportProcessor;
         if (newProcessor == address(0)) revert ReportProcessorCannotBeZero();
-
         if (newProcessor == prevProcessor) revert NewProcessorCannotBeTheSame();
 
         _reportProcessor = newProcessor;

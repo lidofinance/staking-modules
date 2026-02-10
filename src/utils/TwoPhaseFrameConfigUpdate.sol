@@ -82,11 +82,8 @@ contract TwoPhaseFrameConfigUpdate {
 
     constructor(address oracle, PhasesConfig memory phasesConfig) {
         if (oracle == address(0)) revert ZeroOracleAddress();
-
         if (phasesConfig.reportsToProcessBeforeOffsetPhase == 0) revert ZeroReportsToEnableUpdate();
-
         if (phasesConfig.reportsToProcessBeforeRestorePhase == 0) revert ZeroReportsToEnableUpdate();
-
         if (phasesConfig.offsetPhaseEpochsPerFrame == 0) revert ZeroEpochsPerFrame();
 
         ORACLE = IReportAsyncProcessor(oracle);
@@ -105,7 +102,6 @@ contract TwoPhaseFrameConfigUpdate {
 
         // Typically, the Lido oracles wait for ref slot finalization, which takes at least 2 epochs.
         if (phasesConfig.restorePhaseFastLaneLengthSlots < SLOTS_PER_EPOCH * 2) revert FastLaneTooShort();
-
         if (phasesConfig.restorePhaseFastLaneLengthSlots > currentEpochsPerFrame * slotsPerEpoch) {
             revert FastLanePeriodCannotBeLongerThanFrame();
         }

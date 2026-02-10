@@ -367,7 +367,6 @@ contract DeploymentHelpers is Test {
                 vm.label(deploymentConfig.curatedGates[i], "curatedGate");
             }
         }
-
         if (vm.keyExistsJson(config, ".GateSeal")) {
             deploymentConfig.gateSeal = vm.parseJsonAddress(config, ".GateSeal");
             vm.label(deploymentConfig.gateSeal, "curatedGateSeal");
@@ -472,7 +471,6 @@ contract DeploymentHelpers is Test {
 
     function parseCommonDeployParams(string memory config) internal view returns (CommonDeployParams memory params) {
         if (bytes(config).length == 0) return params;
-
         if (vm.keyExistsJson(config, ".CuratedModule")) {
             CuratedDeployParams memory decoded = abi.decode(
                 vm.parseJsonBytes(config, ".CuratedDeployParams"),

@@ -144,7 +144,6 @@ contract CSModule is ICSModule, BaseModule {
 
                     // NOTE: This condition is located here to allow for the correct removal of the batch for the Node Operators with no depositable keys
                     if (keysCount == 0) continue;
-
                     if (topUpQueueEnabled) {
                         uint32 keyIndexBase = no.totalDepositedKeys;
                         for (uint32 i; i < keysCount; i++) {

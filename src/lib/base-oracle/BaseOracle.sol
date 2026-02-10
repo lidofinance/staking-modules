@@ -151,13 +151,10 @@ abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerableUp
         if (refSlot <= prevProcessingRefSlot) {
             revert RefSlotMustBeGreaterThanProcessingOne(refSlot, prevProcessingRefSlot);
         }
-
         if (_getTime() > deadline) revert ProcessingDeadlineMissed(deadline);
-
         if (refSlot != prevSubmittedRefSlot && prevProcessingRefSlot != prevSubmittedRefSlot) {
             emit WarnProcessingMissed(prevSubmittedRefSlot);
         }
-
         if (reportHash == bytes32(0)) revert HashCannotBeZero();
 
         emit ReportSubmitted(refSlot, reportHash, deadline);
@@ -265,7 +262,6 @@ abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerableUp
         if (consensusVersion != expectedConsensusVersion) {
             revert UnexpectedConsensusVersion(expectedConsensusVersion, consensusVersion);
         }
-
         if (hash != report.hash) revert UnexpectedDataHash(report.hash, hash);
     }
 
@@ -303,7 +299,6 @@ abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerableUp
     function _setConsensusVersion(uint256 version) internal {
         uint256 prevVersion = CONSENSUS_VERSION_POSITION.getStorageUint256();
         if (version == prevVersion) revert VersionCannotBeSame();
-
         if (version == 0) revert VersionCannotBeZero();
 
         CONSENSUS_VERSION_POSITION.setStorageUint256(version);

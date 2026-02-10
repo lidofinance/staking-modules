@@ -231,14 +231,12 @@ contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, Pausable
 
         // @dev Only members from the current merkle tree can claim the referral bond curve
         if (!verifyProof(msg.sender, proof)) revert InvalidProof();
-
         if (!isReferralProgramSeasonActive) revert ReferralProgramIsNotActive();
 
         uint256 season = referralProgramSeasonNumber;
         bytes32 referrer = _seasonedAddress(msg.sender, season);
 
         if (_referralCounts[referrer] < referralsThreshold) revert NotEnoughReferrals();
-
         if (_consumedReferrers[referrer]) revert AlreadyConsumed();
 
         _consumedReferrers[referrer] = true;
@@ -290,7 +288,6 @@ contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, Pausable
 
     function _consume(bytes32[] calldata proof) internal {
         if (isConsumed(msg.sender)) revert AlreadyConsumed();
-
         if (!verifyProof(msg.sender, proof)) revert InvalidProof();
 
         _consumedAddresses[msg.sender] = true;
@@ -301,7 +298,6 @@ contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, Pausable
     function _setTreeParams(bytes32 _treeRoot, string calldata _treeCid) internal {
         if (_treeRoot == bytes32(0)) revert InvalidTreeRoot();
         if (_treeRoot == treeRoot) revert InvalidTreeRoot();
-
         if (bytes(_treeCid).length == 0) revert InvalidTreeCid();
         if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid))) revert InvalidTreeCid();
 

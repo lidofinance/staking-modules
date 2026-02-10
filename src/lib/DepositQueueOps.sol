@@ -178,7 +178,6 @@ library DepositQueueOps {
                 }
             }
         }
-
         if (toEnqueue > 0) {
             _enqueueNodeOperatorKeys({
                 queue: depositQueues[queueLowestPriority],

@@ -33,7 +33,6 @@ library WithdrawnValidatorLib {
         // For slashed validator this value should reflect pre-slashing, hence non-zero balance.
         // For non-slashed validator it will reflect the withdrawal amount, hence it cannot be zero either.
         if (validatorInfo.exitBalance == 0) revert IBaseModule.ZeroExitBalance();
-
         if (validatorInfo.keyIndex >= no.totalDepositedKeys) revert IBaseModule.SigningKeysInvalidOffset();
 
         unchecked {
@@ -75,7 +74,6 @@ library WithdrawnValidatorLib {
             feeSum = _scalePenaltyByMultiplier(penaltyInfo.delayFee.value, penaltyMultiplier);
             chargeElWithdrawalRequestFee = true;
         }
-
         if (penaltyInfo.strikesPenalty.isValue) {
             penaltySum = _scalePenaltyByMultiplier(penaltyInfo.strikesPenalty.value, penaltyMultiplier);
             chargeElWithdrawalRequestFee = true;

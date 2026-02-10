@@ -274,7 +274,6 @@ contract Utilities is CommonBase {
             zeroSlotIsNotZero := mload(0x60)
         }
         if (freeMemoryPointerOverflowed) revert FreeMemoryPointerOverflowed();
-
         if (zeroSlotIsNotZero) revert ZeroSlotIsNotZero();
     }
 

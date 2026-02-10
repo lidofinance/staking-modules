@@ -565,7 +565,6 @@ contract Accounting is
     ) internal view returns (NodeOperatorManagementProperties memory no) {
         no = MODULE.getNodeOperatorManagementProperties(nodeOperatorId);
         if (no.managerAddress == address(0)) revert NodeOperatorDoesNotExist();
-
         if (no.managerAddress != msg.sender && no.rewardAddress != msg.sender) {
             if (_rewardsClaimers[nodeOperatorId] != msg.sender) revert SenderIsNotEligible();
         }
