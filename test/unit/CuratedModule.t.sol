@@ -1969,6 +1969,84 @@ contract CuratedNodeOperatorWeightsToUpdateCount is CuratedCommon {
         assertEq(operatorsLeft, 0);
         assertEq(module.getNonce(), nonce);
     }
+
+    function test_batchUpdateNodeOperatorWeights_RefreshesWeightsInOrderAcrossBatches()
+        public
+        assertInvariants
+    {
+        createNodeOperator(1);
+        createNodeOperator(1);
+        createNodeOperator(1);
+
+        vm.prank(address(metaRegistry));
+        cm.requestFullOperatorWeightsUpdate();
+
+        vm.expectCall(
+            address(metaRegistry),
+            abi.encodeWithSelector(
+                IMetaRegistry.refreshOperatorWeight.selector,
+                0
+            )
+        );
+        vm.expectCall(
+            address(metaRegistry),
+            abi.encodeWithSelector(
+                IMetaRegistry.refreshOperatorWeight.selector,
+                1
+            )
+        );
+        uint256 operatorsLeft = cm.batchUpdateNodeOperatorWeights(2);
+        assertEq(operatorsLeft, 1);
+
+        vm.expectCall(
+            address(metaRegistry),
+            abi.encodeWithSelector(
+                IMetaRegistry.refreshOperatorWeight.selector,
+                2
+            )
+        );
+        operatorsLeft = cm.batchUpdateNodeOperatorWeights(2);
+        assertEq(operatorsLeft, 0);
+    }
+}
+
+contract CuratedGetOperatorsWeights is CuratedCommon {
+    function test_getOperatorsWeights_ReturnsMetaRegistryValues()
+        public
+        assertInvariants
+    {
+        createNodeOperator(1);
+        createNodeOperator(1);
+
+        uint256[] memory operatorIds = UintArr(0, 1);
+        uint256[] memory expectedWeights = UintArr(42, 7);
+        vm.mockCall(
+            address(metaRegistry),
+            abi.encodeWithSelector(
+                IMetaRegistry.getOperatorsWeights.selector,
+                operatorIds
+            ),
+            abi.encode(expectedWeights)
+        );
+
+        uint256[] memory weights = cm.getOperatorsWeights(operatorIds);
+        assertEq(weights, expectedWeights);
+    }
+
+    function test_getOperatorsWeights_RevertWhen_WeightsUpdateInProgress()
+        public
+        assertInvariants
+    {
+        createNodeOperator(1);
+
+        vm.prank(address(metaRegistry));
+        cm.requestFullOperatorWeightsUpdate();
+
+        vm.expectRevert(
+            ICuratedModule.NodeOperatorWeightsUpdateInProgress.selector
+        );
+        cm.getOperatorsWeights(UintArr(0));
+    }
 }
 
 contract CuratedProposeNodeOperatorManagerAddressChange is

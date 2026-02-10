@@ -215,6 +215,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     function getOperatorsWeights(
         uint256[] calldata operatorIds
     ) external view returns (uint256[] memory operatorWeights) {
+        _requireNodeOperatorWeightsUpToDate();
         return _metaRegistry().getOperatorsWeights(operatorIds);
     }
 
