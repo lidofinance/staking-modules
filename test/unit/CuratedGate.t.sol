@@ -195,13 +195,7 @@ contract CuratedGateTest_setTreeParams is CuratedGateTestBase {
         assertTrue(gate.verifyProof(stranger, proof));
 
         vm.prank(stranger);
-        uint256 id = gate.createNodeOperator(
-            "Name2",
-            "Desc2",
-            address(0),
-            address(0),
-            proof
-        );
+        uint256 id = gate.createNodeOperator("Name2", "Desc2", address(0), address(0), proof);
 
         assertEq(id, 0);
         assertTrue(gate.isConsumed(stranger));
@@ -216,9 +210,7 @@ contract CuratedGateTest_getInitializedVersion is CuratedGateTestBase {
 
 contract CuratedGateTest_hashLeaf is CuratedGateTestBase {
     function test_hashLeaf() public {
-        bytes32 expected = keccak256(
-            bytes.concat(keccak256(abi.encode(member)))
-        );
+        bytes32 expected = keccak256(bytes.concat(keccak256(abi.encode(member))));
         assertEq(gate.hashLeaf(member), expected);
     }
 }
@@ -265,11 +257,7 @@ contract CuratedGateTest_createNodeOperator is CuratedGateTestBase {
             abi.encodeWithSelector(
                 IMetaRegistry.setOperatorMetadataAsAdmin.selector,
                 0,
-                OperatorMetadata({
-                    name: "Name",
-                    description: "Description",
-                    ownerEditsRestricted: false
-                })
+                OperatorMetadata({ name: "Name", description: "Description", ownerEditsRestricted: false })
             )
         );
         vm.expectCall(
@@ -285,20 +273,11 @@ contract CuratedGateTest_createNodeOperator is CuratedGateTestBase {
                 address(0)
             )
         );
-        vm.expectCall(
-            address(module.ACCOUNTING()),
-            abi.encodeWithSelector(IAccounting.setBondCurve.selector, 0, 1)
-        );
+        vm.expectCall(address(module.ACCOUNTING()), abi.encodeWithSelector(IAccounting.setBondCurve.selector, 0, 1));
         vm.expectEmit(address(gate));
         emit IMerkleGate.Consumed(member);
         vm.prank(member);
-        uint256 id = gate.createNodeOperator(
-            "Name",
-            "Description",
-            address(0x1111),
-            address(0x2222),
-            proof
-        );
+        uint256 id = gate.createNodeOperator("Name", "Description", address(0x1111), address(0x2222), proof);
 
         assertEq(id, 0);
         assertTrue(gate.isConsumed(member));
@@ -341,19 +320,13 @@ contract CuratedGateTest_createNodeOperator is CuratedGateTestBase {
     }
 }
 
-contract CuratedGateTest_createNodeOperator_DefaultCurve is
-    CuratedGateTestBaseDefaultCurve
-{
+contract CuratedGateTest_createNodeOperator_DefaultCurve is CuratedGateTestBaseDefaultCurve {
     function test_createNodeOperator_DoesNotSetCurveWhenDefault() public {
         bytes32[] memory proof = tree.getProof(0);
 
         expectNoCall(
             address(module.ACCOUNTING()),
-            abi.encodeWithSelector(
-                IAccounting.setBondCurve.selector,
-                0,
-                curveId()
-            )
+            abi.encodeWithSelector(IAccounting.setBondCurve.selector, 0, curveId())
         );
         vm.expectCall(
             address(module),
@@ -373,22 +346,12 @@ contract CuratedGateTest_createNodeOperator_DefaultCurve is
             abi.encodeWithSelector(
                 IMetaRegistry.setOperatorMetadataAsAdmin.selector,
                 0,
-                OperatorMetadata({
-                    name: "Name",
-                    description: "Description",
-                    ownerEditsRestricted: false
-                })
+                OperatorMetadata({ name: "Name", description: "Description", ownerEditsRestricted: false })
             )
         );
 
         vm.prank(member);
-        uint256 id = gate.createNodeOperator(
-            "Name",
-            "Description",
-            address(0x1111),
-            address(0x2222),
-            proof
-        );
+        uint256 id = gate.createNodeOperator("Name", "Description", address(0x1111), address(0x2222), proof);
 
         assertEq(id, 0);
         assertTrue(gate.isConsumed(member));

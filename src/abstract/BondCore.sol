@@ -58,9 +58,7 @@ abstract contract BondCore is IBondCore {
     }
 
     /// @inheritdoc IBondCore
-    function getBondShares(
-        uint256 nodeOperatorId
-    ) public view returns (uint256) {
+    function getBondShares(uint256 nodeOperatorId) public view returns (uint256) {
         return _getBondCoreStorage().bondShares[nodeOperatorId];
     }
 
@@ -80,19 +78,13 @@ abstract contract BondCore is IBondCore {
             return;
         }
 
-        uint256 shares = LIDO.submit{ value: msg.value }({
-            _referral: address(0)
-        });
+        uint256 shares = LIDO.submit{ value: msg.value }({ _referral: address(0) });
         _increaseBond(nodeOperatorId, shares);
         emit BondDepositedETH(nodeOperatorId, from, msg.value);
     }
 
     /// @dev Transfer user's stETH to the contract and stores stETH shares as Node Operator's bond shares
-    function _depositStETH(
-        address from,
-        uint256 nodeOperatorId,
-        uint256 amount
-    ) internal {
+    function _depositStETH(address from, uint256 nodeOperatorId, uint256 amount) internal {
         if (amount == 0) {
             return;
         }
@@ -104,11 +96,7 @@ abstract contract BondCore is IBondCore {
     }
 
     /// @dev Transfer user's wstETH to the contract, unwrap and store stETH shares as Node Operator's bond shares
-    function _depositWstETH(
-        address from,
-        uint256 nodeOperatorId,
-        uint256 amount
-    ) internal {
+    function _depositWstETH(address from, uint256 nodeOperatorId, uint256 amount) internal {
         if (amount == 0) {
             return;
         }
@@ -144,8 +132,7 @@ abstract contract BondCore is IBondCore {
         uint256 claimableShares,
         address to
     ) internal returns (uint256 requestId) {
-        uint256 sharesToClaim = requestedAmountToClaim <
-            _ethByShares(claimableShares)
+        uint256 sharesToClaim = requestedAmountToClaim < _ethByShares(claimableShares)
             ? _sharesByEth(requestedAmountToClaim)
             : claimableShares;
         if (sharesToClaim == 0) {
@@ -190,9 +177,7 @@ abstract contract BondCore is IBondCore {
         uint256 claimableShares,
         address to
     ) internal returns (uint256 wstETHAmount) {
-        uint256 sharesToClaim = requestedAmountToClaim < claimableShares
-            ? requestedAmountToClaim
-            : claimableShares;
+        uint256 sharesToClaim = requestedAmountToClaim < claimableShares ? requestedAmountToClaim : claimableShares;
         if (sharesToClaim == 0) {
             revert NothingToClaim();
         }
@@ -209,10 +194,7 @@ abstract contract BondCore is IBondCore {
     /// @dev The contract that uses this implementation should be granted `Burner.REQUEST_BURN_MY_STETH_ROLE` and have stETH allowance for `Burner`
     /// @param amount Bond amount to burn in ETH (stETH)
     /// @return notBurnedAmount Amount in ETH that was not burned due to insufficient bond shares
-    function _burn(
-        uint256 nodeOperatorId,
-        uint256 amount
-    ) internal returns (uint256 notBurnedAmount) {
+    function _burn(uint256 nodeOperatorId, uint256 amount) internal returns (uint256 notBurnedAmount) {
         notBurnedAmount = _burnWithoutDebt(nodeOperatorId, amount);
         _increaseBondDebt(nodeOperatorId, notBurnedAmount);
     }
@@ -220,11 +202,7 @@ abstract contract BondCore is IBondCore {
     /// @dev Transfer Node Operator's bond shares (stETH) to charge recipient
     /// @param amount Bond amount to charge in ETH (stETH)
     /// @param recipient Address to send charged shares
-    function _charge(
-        uint256 nodeOperatorId,
-        uint256 amount,
-        address recipient
-    ) internal {
+    function _charge(uint256 nodeOperatorId, uint256 amount, address recipient) internal {
         uint256 toChargeShares = _sharesByEth(amount);
         uint256 chargedShares = _reduceBond(nodeOperatorId, toChargeShares);
 
@@ -235,18 +213,11 @@ abstract contract BondCore is IBondCore {
 
         uint256 chargedEth = LIDO.transferShares(recipient, chargedShares);
 
-        emit BondCharged(
-            nodeOperatorId,
-            _ethByShares(toChargeShares),
-            chargedEth
-        );
+        emit BondCharged(nodeOperatorId, _ethByShares(toChargeShares), chargedEth);
     }
 
     /// @dev Unsafe reduce bond shares (stETH) (possible underflow). Safety checks should be done outside
-    function _unsafeReduceBond(
-        uint256 nodeOperatorId,
-        uint256 shares
-    ) internal {
+    function _unsafeReduceBond(uint256 nodeOperatorId, uint256 shares) internal {
         BondCoreStorage storage $ = _getBondCoreStorage();
         $.bondShares[nodeOperatorId] -= shares;
         $.totalBondShares -= shares;
@@ -271,19 +242,13 @@ abstract contract BondCore is IBondCore {
     }
 
     /// @dev Safe reduce bond shares (stETH). The maximum shares to reduce is the current bond shares
-    function _reduceBond(
-        uint256 nodeOperatorId,
-        uint256 shares
-    ) private returns (uint256 reducedShares) {
+    function _reduceBond(uint256 nodeOperatorId, uint256 shares) private returns (uint256 reducedShares) {
         uint256 currentShares = getBondShares(nodeOperatorId);
         reducedShares = shares < currentShares ? shares : currentShares;
         _unsafeReduceBond(nodeOperatorId, reducedShares);
     }
 
-    function _burnWithoutDebt(
-        uint256 nodeOperatorId,
-        uint256 amount
-    ) private returns (uint256 notBurnedAmount) {
+    function _burnWithoutDebt(uint256 nodeOperatorId, uint256 amount) private returns (uint256 notBurnedAmount) {
         uint256 sharesToBurn = _sharesByEth(amount);
         uint256 burnedShares = _reduceBond(nodeOperatorId, sharesToBurn);
 
@@ -326,11 +291,7 @@ abstract contract BondCore is IBondCore {
         emit BondDebtIncreased(nodeOperatorId, amount);
     }
 
-    function _getBondCoreStorage()
-        private
-        pure
-        returns (BondCoreStorage storage $)
-    {
+    function _getBondCoreStorage() private pure returns (BondCoreStorage storage $) {
         assembly {
             $.slot := BOND_CORE_STORAGE_LOCATION
         }

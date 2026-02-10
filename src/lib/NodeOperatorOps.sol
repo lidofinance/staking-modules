@@ -48,8 +48,7 @@ library NodeOperatorOps {
 
         NodeOperator storage no = nodeOperators[nodeOperatorId];
 
-        address managerAddress = managementProperties.managerAddress ==
-            address(0)
+        address managerAddress = managementProperties.managerAddress == address(0)
             ? from
             : managementProperties.managerAddress;
         address rewardAddress = managementProperties.rewardAddress == address(0)
@@ -58,8 +57,7 @@ library NodeOperatorOps {
         no.managerAddress = managerAddress;
         no.rewardAddress = rewardAddress;
         if (managementProperties.extendedManagerPermissions) {
-            no.extendedManagerPermissions = managementProperties
-                .extendedManagerPermissions;
+            no.extendedManagerPermissions = managementProperties.extendedManagerPermissions;
         }
 
         emit IBaseModule.NodeOperatorAdded(
@@ -97,10 +95,7 @@ library NodeOperatorOps {
             targetLimit = 0;
         }
 
-        if (
-            no.targetLimitMode == targetLimitMode &&
-            no.targetLimit == targetLimit
-        ) {
+        if (no.targetLimitMode == targetLimitMode && no.targetLimit == targetLimit) {
             return;
         }
 
@@ -111,11 +106,7 @@ library NodeOperatorOps {
         // forge-lint: disable-next-line(unsafe-typecast)
         no.targetLimit = uint32(targetLimit);
 
-        emit IBaseModule.TargetValidatorsCountChanged(
-            nodeOperatorId,
-            targetLimitMode,
-            targetLimit
-        );
+        emit IBaseModule.TargetValidatorsCountChanged(nodeOperatorId, targetLimitMode, targetLimit);
     }
 
     function updateExitedValidatorsCount(
@@ -124,20 +115,14 @@ library NodeOperatorOps {
         bytes calldata nodeOperatorIds,
         bytes calldata exitedValidatorsCounts
     ) external returns (uint64) {
-        uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(
-            nodeOperatorIds,
-            exitedValidatorsCounts
-        );
+        uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(nodeOperatorIds, exitedValidatorsCounts);
 
         for (uint256 i = 0; i < operatorsInReport; ++i) {
-            (
-                uint256 nodeOperatorId,
-                uint256 exitedValidatorsCount
-            ) = ValidatorCountsReport.next(
-                    nodeOperatorIds,
-                    exitedValidatorsCounts,
-                    i
-                );
+            (uint256 nodeOperatorId, uint256 exitedValidatorsCount) = ValidatorCountsReport.next(
+                nodeOperatorIds,
+                exitedValidatorsCounts,
+                i
+            );
 
             NodeOperator storage no = nodeOperators[nodeOperatorId];
             uint32 totalExitedKeys = no.totalExitedKeys;
@@ -146,19 +131,14 @@ library NodeOperatorOps {
                 // `totalExitedValidators` accumulates the same uint32 per-operator counts, so pushing
                 // the new value through uint64 preserves the exact result.
                 // forge-lint: disable-next-item(unsafe-typecast)
-                totalExitedValidators =
-                    (totalExitedValidators - totalExitedKeys) +
-                    uint64(exitedValidatorsCount);
+                totalExitedValidators = (totalExitedValidators - totalExitedKeys) + uint64(exitedValidatorsCount);
             }
             // Each node operator stores its exited count in a uint32 slot; `exitedValidatorsCount`
             // is validated against `totalDepositedKeys` (also uint32), so the cast is safe.
             // forge-lint: disable-next-line(unsafe-typecast)
             no.totalExitedKeys = uint32(exitedValidatorsCount);
 
-            emit IBaseModule.ExitedSigningKeysCountChanged(
-                nodeOperatorId,
-                exitedValidatorsCount
-            );
+            emit IBaseModule.ExitedSigningKeysCountChanged(nodeOperatorId, exitedValidatorsCount);
         }
 
         return totalExitedValidators;
@@ -170,20 +150,14 @@ library NodeOperatorOps {
         bytes calldata vettedSigningKeysCounts
     ) external {
         IBaseModule module = IBaseModule(address(this));
-        uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(
-            nodeOperatorIds,
-            vettedSigningKeysCounts
-        );
+        uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(nodeOperatorIds, vettedSigningKeysCounts);
 
         for (uint256 i = 0; i < operatorsInReport; ++i) {
-            (
-                uint256 nodeOperatorId,
-                uint256 vettedSigningKeysCount
-            ) = ValidatorCountsReport.next(
-                    nodeOperatorIds,
-                    vettedSigningKeysCounts,
-                    i
-                );
+            (uint256 nodeOperatorId, uint256 vettedSigningKeysCount) = ValidatorCountsReport.next(
+                nodeOperatorIds,
+                vettedSigningKeysCounts,
+                i
+            );
 
             NodeOperator storage no = nodeOperators[nodeOperatorId];
 
@@ -203,10 +177,7 @@ library NodeOperatorOps {
             // `vettedSigningKeysCount` within those limits, so this cast is safe.
             // forge-lint: disable-next-line(unsafe-typecast)
             no.totalVettedKeys = uint32(vettedSigningKeysCount);
-            emit IBaseModule.VettedSigningKeysCountChanged(
-                nodeOperatorId,
-                vettedSigningKeysCount
-            );
+            emit IBaseModule.VettedSigningKeysCountChanged(nodeOperatorId, vettedSigningKeysCount);
 
             // @dev separate event for intentional decrease from Staking Router
             emit IBaseModule.VettedSigningKeysCountDecreased(nodeOperatorId);
@@ -238,24 +209,15 @@ library NodeOperatorOps {
             revert IBaseModule.NodeOperatorDoesNotExist();
         }
 
-        uint256 totalUnbondedKeys = accounting.getUnbondedKeysCountToEject(
-            nodeOperatorId
-        );
-        uint256 totalNonDepositedKeys = no.totalAddedKeys -
-            no.totalDepositedKeys;
+        uint256 totalUnbondedKeys = accounting.getUnbondedKeysCountToEject(nodeOperatorId);
+        uint256 totalNonDepositedKeys = no.totalAddedKeys - no.totalDepositedKeys;
         if (totalUnbondedKeys > totalNonDepositedKeys) {
             targetLimitMode = FORCED_TARGET_LIMIT_MODE_ID;
             unchecked {
-                targetValidatorsCount =
-                    no.totalAddedKeys -
-                    no.totalWithdrawnKeys -
-                    totalUnbondedKeys;
+                targetValidatorsCount = no.totalAddedKeys - no.totalWithdrawnKeys - totalUnbondedKeys;
             }
             if (no.targetLimitMode > 0) {
-                targetValidatorsCount = Math.min(
-                    targetValidatorsCount,
-                    no.targetLimit
-                );
+                targetValidatorsCount = Math.min(targetValidatorsCount, no.targetLimit);
             }
         } else {
             targetLimitMode = no.targetLimitMode;
@@ -287,12 +249,7 @@ library NodeOperatorOps {
             revert IBaseModule.InvalidWithdrawnValidatorInfo();
         }
 
-        _increaseKeyAddedBalance(
-            keyAddedBalances,
-            nodeOperatorId,
-            keyIndex,
-            incrementWei
-        );
+        _increaseKeyAddedBalance(keyAddedBalances, nodeOperatorId, keyIndex, incrementWei);
     }
 
     function increaseKeyAddedBalancesByAllocations(
@@ -306,12 +263,7 @@ library NodeOperatorOps {
             if (allocationWei == 0) {
                 continue;
             }
-            _increaseKeyAddedBalance(
-                keyAddedBalances,
-                operatorIds[i],
-                keyIndices[i],
-                allocationWei
-            );
+            _increaseKeyAddedBalance(keyAddedBalances, operatorIds[i], keyIndices[i], allocationWei);
         }
     }
 
@@ -325,12 +277,8 @@ library NodeOperatorOps {
         cappedTopUpLimits = new uint256[](len);
         uint256 cap = _keyAddedBalanceCap();
         for (uint256 i; i < len; ++i) {
-            uint256 keyAddedBalance = keyAddedBalances[
-                _keyPointer(operatorIds[i], keyIndices[i])
-            ];
-            uint256 remaining = keyAddedBalance >= cap
-                ? 0
-                : cap - keyAddedBalance;
+            uint256 keyAddedBalance = keyAddedBalances[_keyPointer(operatorIds[i], keyIndices[i])];
+            uint256 remaining = keyAddedBalance >= cap ? 0 : cap - keyAddedBalance;
             cappedTopUpLimits[i] = Math.min(topUpLimits[i], remaining);
         }
     }
@@ -342,36 +290,24 @@ library NodeOperatorOps {
         uint256[] calldata allocatedOperatorIds,
         uint256[] calldata operatorAllocations,
         uint256 operatorsCount
-    )
-        external
-        pure
-        returns (
-            uint256[] memory allocations,
-            uint256[] memory perOperatorIncrements
-        )
-    {
+    ) external pure returns (uint256[] memory allocations, uint256[] memory perOperatorIncrements) {
         // topUpLimits are per-key and aligned with operatorIds/keyIndices order.
         allocations = new uint256[](operatorIds.length);
         // NOTE: Use a full operatorsCount-sized array for O(1) lookups; operator counts are small enough
         // that a compact map would add overhead and can be worse overall.
         uint256[] memory perOperatorAllocations = new uint256[](operatorsCount);
         for (uint256 i; i < allocatedOperatorIds.length; ++i) {
-            perOperatorAllocations[
-                allocatedOperatorIds[i]
-            ] = operatorAllocations[i];
+            perOperatorAllocations[allocatedOperatorIds[i]] = operatorAllocations[i];
         }
 
         perOperatorIncrements = new uint256[](operatorsCount);
         unchecked {
             for (uint256 i; i < operatorIds.length; ++i) {
                 uint256 operatorId = operatorIds[i];
-                uint256 remaining = perOperatorAllocations[operatorId] -
-                    perOperatorIncrements[operatorId];
+                uint256 remaining = perOperatorAllocations[operatorId] - perOperatorIncrements[operatorId];
                 if (remaining == 0) continue;
 
-                uint256 limit = CuratedDepositAllocator.quantizeForTopUp(
-                    topUpLimits[i]
-                );
+                uint256 limit = CuratedDepositAllocator.quantizeForTopUp(topUpLimits[i]);
                 if (limit == 0) continue;
 
                 uint256 amount = Math.min(remaining, limit);
@@ -395,23 +331,14 @@ library NodeOperatorOps {
         }
         uint256 updatedBalance = Math.min(cap, current + incrementWei);
         keyAddedBalances[pointer] = updatedBalance;
-        emit IBaseModule.KeyAddedBalanceChanged(
-            nodeOperatorId,
-            keyIndex,
-            updatedBalance
-        );
+        emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, updatedBalance);
     }
 
-    function _keyPointer(
-        uint256 nodeOperatorId,
-        uint256 keyIndex
-    ) private pure returns (uint256) {
+    function _keyPointer(uint256 nodeOperatorId, uint256 keyIndex) private pure returns (uint256) {
         return (nodeOperatorId << 128) | keyIndex;
     }
 
     function _keyAddedBalanceCap() private pure returns (uint256) {
-        return
-            WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE -
-            WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
+        return WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
     }
 }

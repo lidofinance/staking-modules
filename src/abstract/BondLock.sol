@@ -67,19 +67,13 @@ abstract contract BondLock is IBondLock, Initializable {
     }
 
     /// @inheritdoc IBondLock
-    function getLockedBondInfo(
-        uint256 nodeOperatorId
-    ) external view returns (BondLockData memory) {
+    function getLockedBondInfo(uint256 nodeOperatorId) external view returns (BondLockData memory) {
         return _getBondLockStorage().bondLock[nodeOperatorId];
     }
 
     /// @inheritdoc IBondLock
-    function getActualLockedBond(
-        uint256 nodeOperatorId
-    ) public view returns (uint256) {
-        BondLockData storage bondLock = _getBondLockStorage().bondLock[
-            nodeOperatorId
-        ];
+    function getActualLockedBond(uint256 nodeOperatorId) public view returns (uint256) {
+        BondLockData storage bondLock = _getBondLockStorage().bondLock[nodeOperatorId];
         return bondLock.until > block.timestamp ? bondLock.amount : 0;
     }
 
@@ -97,11 +91,7 @@ abstract contract BondLock is IBondLock, Initializable {
         if (lock.until > until) {
             until = lock.until;
         }
-        _changeBondLock({
-            nodeOperatorId: nodeOperatorId,
-            amount: amount,
-            until: until
-        });
+        _changeBondLock({ nodeOperatorId: nodeOperatorId, amount: amount, until: until });
     }
 
     /// @dev Unlock the locked bond amount for the given Node Operator without changing the lock period
@@ -114,19 +104,11 @@ abstract contract BondLock is IBondLock, Initializable {
             revert InvalidBondLockAmount();
         }
         unchecked {
-            _changeBondLock(
-                nodeOperatorId,
-                locked - amount,
-                _getBondLockStorage().bondLock[nodeOperatorId].until
-            );
+            _changeBondLock(nodeOperatorId, locked - amount, _getBondLockStorage().bondLock[nodeOperatorId].until);
         }
     }
 
-    function _changeBondLock(
-        uint256 nodeOperatorId,
-        uint256 amount,
-        uint256 until
-    ) internal {
+    function _changeBondLock(uint256 nodeOperatorId, uint256 amount, uint256 until) internal {
         if (amount == 0) {
             delete _getBondLockStorage().bondLock[nodeOperatorId];
             emit BondLockRemoved(nodeOperatorId);
@@ -157,11 +139,7 @@ abstract contract BondLock is IBondLock, Initializable {
         emit BondLockPeriodChanged(period);
     }
 
-    function _getBondLockStorage()
-        private
-        pure
-        returns (BondLockStorage storage $)
-    {
+    function _getBondLockStorage() private pure returns (BondLockStorage storage $) {
         assembly {
             $.slot := BOND_LOCK_STORAGE_LOCATION
         }

@@ -31,11 +31,7 @@ contract IntegrationTestBase is PermitHelper, CSMIntegrationBase {
         assertModuleEnqueuedCount(module);
         assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
-        assertAccountingBurnerApproval(
-            lido,
-            address(accounting),
-            locator.burner()
-        );
+        assertAccountingBurnerApproval(lido, address(accounting), locator.burner());
         assertAccountingUnusedStorageSlots(accounting);
         assertFeeDistributorClaimableShares(lido, feeDistributor);
         assertFeeDistributorTree(feeDistributor);
@@ -83,13 +79,8 @@ contract PermissionlessCreateNodeOperatorTest is IntegrationTestBase {
     }
 
     function test_createNodeOperatorETH() public assertInvariants {
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            KEYS_COUNT
-        );
-        uint256 amount = accounting.getBondAmountByKeysCount(
-            KEYS_COUNT,
-            permissionlessGate.CURVE_ID()
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(KEYS_COUNT);
+        uint256 amount = accounting.getBondAmountByKeysCount(KEYS_COUNT, permissionlessGate.CURVE_ID());
         vm.deal(nodeOperator, amount);
 
         uint256 preTotalShares = accounting.totalBondShares();
@@ -111,10 +102,7 @@ contract PermissionlessCreateNodeOperatorTest is IntegrationTestBase {
         });
         vm.stopSnapshotGas();
 
-        assertEq(
-            accounting.getBondCurveId(noId),
-            permissionlessGate.CURVE_ID()
-        );
+        assertEq(accounting.getBondCurveId(noId), permissionlessGate.CURVE_ID());
         assertEq(accounting.getBondShares(noId), shares);
         assertEq(accounting.totalBondShares(), shares + preTotalShares);
     }
@@ -128,14 +116,9 @@ contract PermissionlessCreateNodeOperatorTest is IntegrationTestBase {
 
         lido.approve(address(accounting), type(uint256).max);
 
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            KEYS_COUNT
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(KEYS_COUNT);
         uint256 shares = lido.getSharesByPooledEth(
-            accounting.getBondAmountByKeysCount(
-                KEYS_COUNT,
-                permissionlessGate.CURVE_ID()
-            )
+            accounting.getBondAmountByKeysCount(KEYS_COUNT, permissionlessGate.CURVE_ID())
         );
 
         vm.startSnapshotGas("PermissionlessGate.addNodeOperatorStETH");
@@ -148,21 +131,12 @@ contract PermissionlessCreateNodeOperatorTest is IntegrationTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            permit: IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            permit: IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             referrer: address(0)
         });
         vm.stopSnapshotGas();
 
-        assertEq(
-            accounting.getBondCurveId(noId),
-            permissionlessGate.CURVE_ID()
-        );
+        assertEq(accounting.getBondCurveId(noId), permissionlessGate.CURVE_ID());
         assertEq(accounting.getBondShares(noId), shares);
         assertEq(accounting.totalBondShares(), shares + preTotalShares);
     }
@@ -176,19 +150,12 @@ contract PermissionlessCreateNodeOperatorTest is IntegrationTestBase {
 
         wstETH.approve(address(accounting), type(uint256).max);
 
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            KEYS_COUNT
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(KEYS_COUNT);
         uint256 wstETHAmount = wstETH.wrap(
-            accounting.getBondAmountByKeysCount(
-                KEYS_COUNT,
-                permissionlessGate.CURVE_ID()
-            )
+            accounting.getBondAmountByKeysCount(KEYS_COUNT, permissionlessGate.CURVE_ID())
         );
 
-        uint256 shares = lido.getSharesByPooledEth(
-            wstETH.getStETHByWstETH(wstETHAmount)
-        );
+        uint256 shares = lido.getSharesByPooledEth(wstETH.getStETHByWstETH(wstETHAmount));
 
         vm.startSnapshotGas("PermissionlessGate.addNodeOperatorWstETH");
         uint256 noId = permissionlessGate.addNodeOperatorWstETH({
@@ -200,29 +167,18 @@ contract PermissionlessCreateNodeOperatorTest is IntegrationTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            permit: IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            permit: IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             referrer: address(0)
         });
         vm.stopSnapshotGas();
 
-        assertEq(
-            accounting.getBondCurveId(noId),
-            permissionlessGate.CURVE_ID()
-        );
+        assertEq(accounting.getBondCurveId(noId), permissionlessGate.CURVE_ID());
         assertEq(accounting.getBondShares(noId), shares);
         assertEq(accounting.totalBondShares(), shares + preTotalShares);
     }
 }
 
-contract PermissionlessCreateNodeOperator10KeysTest is
-    PermissionlessCreateNodeOperatorTest
-{
+contract PermissionlessCreateNodeOperator10KeysTest is PermissionlessCreateNodeOperatorTest {
     constructor() {
         KEYS_COUNT = 10;
     }
@@ -236,13 +192,8 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
     }
 
     function test_createNodeOperatorETH() public assertInvariants {
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
-        );
-        uint256 amount = accounting.getBondAmountByKeysCount(
-            keysCount,
-            vettedGate.curveId()
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
+        uint256 amount = accounting.getBondAmountByKeysCount(keysCount, vettedGate.curveId());
         vm.deal(nodeOperator, amount);
 
         uint256 preTotalShares = accounting.totalBondShares();
@@ -272,17 +223,9 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
         assertTrue(vettedGate.isConsumed(nodeOperator));
     }
 
-    function test_createNodeOperatorETH_revertWhen_InvalidProof()
-        public
-        assertInvariants
-    {
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
-        );
-        uint256 amount = accounting.getBondAmountByKeysCount(
-            keysCount,
-            vettedGate.curveId()
-        );
+    function test_createNodeOperatorETH_revertWhen_InvalidProof() public assertInvariants {
+        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
+        uint256 amount = accounting.getBondAmountByKeysCount(keysCount, vettedGate.curveId());
         vm.deal(nodeOperator, amount);
 
         uint256 preTotalShares = accounting.totalBondShares();
@@ -317,9 +260,7 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
 
         lido.approve(address(accounting), type(uint256).max);
 
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
 
         uint256 shares = lido.getSharesByPooledEth(
             accounting.getBondAmountByKeysCount(keysCount, vettedGate.curveId())
@@ -334,13 +275,7 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            permit: IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            permit: IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             proof: merkleTree.getProof(0),
             referrer: address(0)
         });
@@ -353,10 +288,7 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
         assertTrue(vettedGate.isConsumed(nodeOperator));
     }
 
-    function test_createNodeOperatorStETH_revertWhen_InvalidProof()
-        public
-        assertInvariants
-    {
+    function test_createNodeOperatorStETH_revertWhen_InvalidProof() public assertInvariants {
         vm.startPrank(nodeOperator);
         vm.deal(nodeOperator, 32 ether);
         lido.submit{ value: 32 ether }(address(0));
@@ -365,9 +297,7 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
 
         lido.approve(address(accounting), type(uint256).max);
 
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
 
         bytes32[] memory proof = merkleTree.getProof(1);
 
@@ -381,13 +311,7 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            permit: IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            permit: IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             proof: proof,
             referrer: address(0)
         });
@@ -405,16 +329,10 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
         uint256 preTotalShares = accounting.totalBondShares();
         wstETH.approve(address(accounting), type(uint256).max);
 
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
-        );
-        uint256 wstETHAmount = wstETH.wrap(
-            accounting.getBondAmountByKeysCount(keysCount, vettedGate.curveId())
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
+        uint256 wstETHAmount = wstETH.wrap(accounting.getBondAmountByKeysCount(keysCount, vettedGate.curveId()));
 
-        uint256 shares = lido.getSharesByPooledEth(
-            wstETH.getStETHByWstETH(wstETHAmount)
-        );
+        uint256 shares = lido.getSharesByPooledEth(wstETH.getStETHByWstETH(wstETHAmount));
 
         vm.startSnapshotGas("VettedGate.addNodeOperatorWstETH");
         uint256 noId = vettedGate.addNodeOperatorWstETH({
@@ -426,13 +344,7 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            permit: IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            permit: IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             proof: merkleTree.getProof(0),
             referrer: address(0)
         });
@@ -445,10 +357,7 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
         assertTrue(vettedGate.isConsumed(nodeOperator));
     }
 
-    function test_createNodeOperatorWstETH_revertWhen_InvalidProof()
-        public
-        assertInvariants
-    {
+    function test_createNodeOperatorWstETH_revertWhen_InvalidProof() public assertInvariants {
         vm.startPrank(nodeOperator);
         vm.deal(nodeOperator, 32 ether);
         lido.submit{ value: 32 ether }(address(0));
@@ -456,9 +365,7 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
         uint256 preTotalShares = accounting.totalBondShares();
         wstETH.approve(address(accounting), type(uint256).max);
 
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
 
         bytes32[] memory proof = merkleTree.getProof(1);
 
@@ -472,13 +379,7 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            permit: IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            permit: IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             proof: proof,
             referrer: address(0)
         });
@@ -489,9 +390,7 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
     }
 }
 
-contract VettedGateCreateNodeOperator10KeysTest is
-    VettedGateCreateNodeOperatorTest
-{
+contract VettedGateCreateNodeOperator10KeysTest is VettedGateCreateNodeOperatorTest {
     constructor() {
         keysCount = 10;
     }
@@ -501,13 +400,8 @@ contract VettedGateMiscTest is IntegrationTestBase {
     uint256 internal constant KEYS_COUNT = 2;
 
     function test_claimBondCurve() public assertInvariants {
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            KEYS_COUNT
-        );
-        uint256 amount = accounting.getBondAmountByKeysCount(
-            KEYS_COUNT,
-            permissionlessGate.CURVE_ID()
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(KEYS_COUNT);
+        uint256 amount = accounting.getBondAmountByKeysCount(KEYS_COUNT, permissionlessGate.CURVE_ID());
         vm.deal(nodeOperator, amount);
 
         vm.prank(nodeOperator);
@@ -523,10 +417,7 @@ contract VettedGateMiscTest is IntegrationTestBase {
             referrer: address(0)
         });
 
-        assertEq(
-            accounting.getBondCurveId(noId),
-            permissionlessGate.CURVE_ID()
-        );
+        assertEq(accounting.getBondCurveId(noId), permissionlessGate.CURVE_ID());
         vm.startPrank(nodeOperator);
         vm.startSnapshotGas("VettedGate.claimBondCurve");
         vettedGate.claimBondCurve(noId, merkleTree.getProof(0));
@@ -538,17 +429,9 @@ contract VettedGateMiscTest is IntegrationTestBase {
         assertTrue(vettedGate.isConsumed(nodeOperator));
     }
 
-    function test_claimBondCurve_revertWhenInvalidProof()
-        public
-        assertInvariants
-    {
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            KEYS_COUNT
-        );
-        uint256 amount = accounting.getBondAmountByKeysCount(
-            KEYS_COUNT,
-            permissionlessGate.CURVE_ID()
-        );
+    function test_claimBondCurve_revertWhenInvalidProof() public assertInvariants {
+        (bytes memory keys, bytes memory signatures) = keysSignatures(KEYS_COUNT);
+        uint256 amount = accounting.getBondAmountByKeysCount(KEYS_COUNT, permissionlessGate.CURVE_ID());
         vm.deal(nodeOperator, amount);
 
         vm.prank(nodeOperator);
@@ -564,10 +447,7 @@ contract VettedGateMiscTest is IntegrationTestBase {
             referrer: address(0)
         });
 
-        assertEq(
-            accounting.getBondCurveId(noId),
-            permissionlessGate.CURVE_ID()
-        );
+        assertEq(accounting.getBondCurveId(noId), permissionlessGate.CURVE_ID());
 
         bytes32[] memory proof = merkleTree.getProof(1);
 
@@ -576,10 +456,7 @@ contract VettedGateMiscTest is IntegrationTestBase {
         vettedGate.claimBondCurve(noId, proof);
         vm.stopPrank();
 
-        assertEq(
-            accounting.getBondCurveId(noId),
-            accounting.DEFAULT_BOND_CURVE_ID()
-        );
+        assertEq(accounting.getBondCurveId(noId), accounting.DEFAULT_BOND_CURVE_ID());
         assertEq(accounting.getClaimableBondShares(noId), 0);
         assertFalse(vettedGate.isConsumed(nodeOperator));
     }
@@ -600,13 +477,8 @@ contract VettedGateMiscTest is IntegrationTestBase {
 
     function test_referralSeason() public assertInvariants {
         // Create a new node operator
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            KEYS_COUNT
-        );
-        uint256 amount = accounting.getBondAmountByKeysCount(
-            KEYS_COUNT,
-            vettedGate.curveId()
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(KEYS_COUNT);
+        uint256 amount = accounting.getBondAmountByKeysCount(KEYS_COUNT, vettedGate.curveId());
         vm.deal(nodeOperator, amount);
 
         uint256 shares = lido.getSharesByPooledEth(amount);
@@ -629,49 +501,25 @@ contract VettedGateMiscTest is IntegrationTestBase {
         vm.stopPrank();
 
         // Start a new referral season
-        IBondCurve.BondCurveIntervalInput[]
-            memory referralBondCurve = new IBondCurve.BondCurveIntervalInput[](
-                2
-            );
-        referralBondCurve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: 1.2 ether
-        });
-        referralBondCurve[1] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 2,
-            trend: 1 ether
-        });
+        IBondCurve.BondCurveIntervalInput[] memory referralBondCurve = new IBondCurve.BondCurveIntervalInput[](2);
+        referralBondCurve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 1.2 ether });
+        referralBondCurve[1] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 2, trend: 1 ether });
 
-        vm.startPrank(
-            accounting.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0)
-        );
-        accounting.grantRole(
-            accounting.MANAGE_BOND_CURVES_ROLE(),
-            address(this)
-        );
+        vm.startPrank(accounting.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0));
+        accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(this));
         vm.stopPrank();
 
-        uint256 referralBondCurveId = accounting.addBondCurve(
-            referralBondCurve
-        );
+        uint256 referralBondCurveId = accounting.addBondCurve(referralBondCurve);
 
-        vm.startPrank(
-            vettedGate.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0)
-        );
-        vettedGate.grantRole(
-            vettedGate.START_REFERRAL_SEASON_ROLE(),
-            address(this)
-        );
+        vm.startPrank(vettedGate.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0));
+        vettedGate.grantRole(vettedGate.START_REFERRAL_SEASON_ROLE(), address(this));
         vm.stopPrank();
 
         vettedGate.startNewReferralProgramSeason(referralBondCurveId, 1);
 
         // Create a new node operator with a referrer pointing to the first one
         (keys, signatures) = keysSignatures(KEYS_COUNT);
-        amount = accounting.getBondAmountByKeysCount(
-            KEYS_COUNT,
-            vettedGate.curveId()
-        );
+        amount = accounting.getBondAmountByKeysCount(KEYS_COUNT, vettedGate.curveId());
         vm.deal(anotherNodeOperator, amount);
 
         shares = lido.getSharesByPooledEth(amount);
@@ -715,13 +563,8 @@ contract VettedGateMiscTest is IntegrationTestBase {
 
     function test_referralSeason_noClaimsAfterEnd() public assertInvariants {
         // Create a new node operator
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            KEYS_COUNT
-        );
-        uint256 amount = accounting.getBondAmountByKeysCount(
-            KEYS_COUNT,
-            vettedGate.curveId()
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(KEYS_COUNT);
+        uint256 amount = accounting.getBondAmountByKeysCount(KEYS_COUNT, vettedGate.curveId());
         vm.deal(nodeOperator, amount);
 
         uint256 shares = lido.getSharesByPooledEth(amount);
@@ -744,49 +587,25 @@ contract VettedGateMiscTest is IntegrationTestBase {
         vm.stopPrank();
 
         // Start a new referral season
-        IBondCurve.BondCurveIntervalInput[]
-            memory referralBondCurve = new IBondCurve.BondCurveIntervalInput[](
-                2
-            );
-        referralBondCurve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: 1.2 ether
-        });
-        referralBondCurve[1] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 2,
-            trend: 1 ether
-        });
+        IBondCurve.BondCurveIntervalInput[] memory referralBondCurve = new IBondCurve.BondCurveIntervalInput[](2);
+        referralBondCurve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 1.2 ether });
+        referralBondCurve[1] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 2, trend: 1 ether });
 
-        vm.startPrank(
-            accounting.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0)
-        );
-        accounting.grantRole(
-            accounting.MANAGE_BOND_CURVES_ROLE(),
-            address(this)
-        );
+        vm.startPrank(accounting.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0));
+        accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(this));
         vm.stopPrank();
 
-        uint256 referralBondCurveId = accounting.addBondCurve(
-            referralBondCurve
-        );
+        uint256 referralBondCurveId = accounting.addBondCurve(referralBondCurve);
 
-        vm.startPrank(
-            vettedGate.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0)
-        );
-        vettedGate.grantRole(
-            vettedGate.START_REFERRAL_SEASON_ROLE(),
-            address(this)
-        );
+        vm.startPrank(vettedGate.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0));
+        vettedGate.grantRole(vettedGate.START_REFERRAL_SEASON_ROLE(), address(this));
         vm.stopPrank();
 
         vettedGate.startNewReferralProgramSeason(referralBondCurveId, 1);
 
         // Create a new node operator with a referrer pointing to the first one
         (keys, signatures) = keysSignatures(KEYS_COUNT);
-        amount = accounting.getBondAmountByKeysCount(
-            KEYS_COUNT,
-            vettedGate.curveId()
-        );
+        amount = accounting.getBondAmountByKeysCount(KEYS_COUNT, vettedGate.curveId());
         vm.deal(anotherNodeOperator, amount);
 
         shares = lido.getSharesByPooledEth(amount);
@@ -811,13 +630,8 @@ contract VettedGateMiscTest is IntegrationTestBase {
         assertEq(vettedGate.getReferralsCount(nodeOperator), 1);
 
         // End the referral season
-        vm.startPrank(
-            vettedGate.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0)
-        );
-        vettedGate.grantRole(
-            vettedGate.END_REFERRAL_SEASON_ROLE(),
-            address(this)
-        );
+        vm.startPrank(vettedGate.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0));
+        vettedGate.grantRole(vettedGate.END_REFERRAL_SEASON_ROLE(), address(this));
         vm.stopPrank();
 
         vettedGate.endCurrentReferralProgramSeason();

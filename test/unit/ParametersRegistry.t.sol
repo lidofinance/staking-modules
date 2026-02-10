@@ -63,34 +63,24 @@ contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
         _enableInitializers(address(parametersRegistry));
 
         vm.expectEmit(address(parametersRegistry));
-        emit IParametersRegistry.DefaultKeyRemovalChargeSet(
-            defaultInitData.defaultKeyRemovalCharge
-        );
+        emit IParametersRegistry.DefaultKeyRemovalChargeSet(defaultInitData.defaultKeyRemovalCharge);
         vm.expectEmit(address(parametersRegistry));
         emit IParametersRegistry.DefaultGeneralDelayedPenaltyAdditionalFineSet(
             defaultInitData.defaultGeneralDelayedPenaltyAdditionalFine
         );
         vm.expectEmit(address(parametersRegistry));
-        emit IParametersRegistry.DefaultKeysLimitSet(
-            defaultInitData.defaultKeysLimit
-        );
+        emit IParametersRegistry.DefaultKeysLimitSet(defaultInitData.defaultKeysLimit);
         vm.expectEmit(address(parametersRegistry));
-        emit IParametersRegistry.DefaultRewardShareSet(
-            defaultInitData.defaultRewardShare
-        );
+        emit IParametersRegistry.DefaultRewardShareSet(defaultInitData.defaultRewardShare);
         vm.expectEmit(address(parametersRegistry));
-        emit IParametersRegistry.DefaultPerformanceLeewaySet(
-            defaultInitData.defaultPerformanceLeeway
-        );
+        emit IParametersRegistry.DefaultPerformanceLeewaySet(defaultInitData.defaultPerformanceLeeway);
         vm.expectEmit(address(parametersRegistry));
         emit IParametersRegistry.DefaultStrikesParamsSet(
             defaultInitData.defaultStrikesLifetime,
             defaultInitData.defaultStrikesThreshold
         );
         vm.expectEmit(address(parametersRegistry));
-        emit IParametersRegistry.DefaultBadPerformancePenaltySet(
-            defaultInitData.defaultBadPerformancePenalty
-        );
+        emit IParametersRegistry.DefaultBadPerformancePenaltySet(defaultInitData.defaultBadPerformancePenalty);
         vm.expectEmit(address(parametersRegistry));
         emit IParametersRegistry.DefaultPerformanceCoefficientsSet(
             defaultInitData.defaultAttestationsWeight,
@@ -103,83 +93,46 @@ contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
             defaultInitData.defaultQueueMaxDeposits
         );
         vm.expectEmit(address(parametersRegistry));
-        emit IParametersRegistry.DefaultAllowedExitDelaySet(
-            defaultInitData.defaultAllowedExitDelay
-        );
+        emit IParametersRegistry.DefaultAllowedExitDelaySet(defaultInitData.defaultAllowedExitDelay);
         vm.expectEmit(address(parametersRegistry));
-        emit IParametersRegistry.DefaultExitDelayFeeSet(
-            defaultInitData.defaultExitDelayFee
-        );
+        emit IParametersRegistry.DefaultExitDelayFeeSet(defaultInitData.defaultExitDelayFee);
         vm.expectEmit(address(parametersRegistry));
-        emit IParametersRegistry.DefaultMaxElWithdrawalRequestFeeSet(
-            defaultInitData.defaultMaxElWithdrawalRequestFee
-        );
+        emit IParametersRegistry.DefaultMaxElWithdrawalRequestFeeSet(defaultInitData.defaultMaxElWithdrawalRequestFee);
 
         parametersRegistry.initialize(admin, defaultInitData);
 
-        assertTrue(
-            parametersRegistry.hasRole(
-                parametersRegistry.DEFAULT_ADMIN_ROLE(),
-                admin
-            )
-        );
-        assertEq(
-            parametersRegistry.defaultKeyRemovalCharge(),
-            defaultInitData.defaultKeyRemovalCharge
-        );
+        assertTrue(parametersRegistry.hasRole(parametersRegistry.DEFAULT_ADMIN_ROLE(), admin));
+        assertEq(parametersRegistry.defaultKeyRemovalCharge(), defaultInitData.defaultKeyRemovalCharge);
         assertEq(
             parametersRegistry.defaultGeneralDelayedPenaltyAdditionalFine(),
             defaultInitData.defaultGeneralDelayedPenaltyAdditionalFine
         );
-        assertEq(
-            parametersRegistry.defaultKeysLimit(),
-            defaultInitData.defaultKeysLimit
-        );
+        assertEq(parametersRegistry.defaultKeysLimit(), defaultInitData.defaultKeysLimit);
 
-        (uint256 priority, uint256 maxDeposits) = parametersRegistry
-            .defaultQueueConfig();
+        (uint256 priority, uint256 maxDeposits) = parametersRegistry.defaultQueueConfig();
 
         assertEq(priority, defaultInitData.defaultQueuePriority);
         assertEq(maxDeposits, defaultInitData.defaultQueueMaxDeposits);
 
-        assertEq(
-            parametersRegistry.defaultRewardShare(),
-            defaultInitData.defaultRewardShare
-        );
-        assertEq(
-            parametersRegistry.defaultPerformanceLeeway(),
-            defaultInitData.defaultPerformanceLeeway
-        );
+        assertEq(parametersRegistry.defaultRewardShare(), defaultInitData.defaultRewardShare);
+        assertEq(parametersRegistry.defaultPerformanceLeeway(), defaultInitData.defaultPerformanceLeeway);
 
-        (uint256 lifetime, uint256 threshold) = parametersRegistry
-            .defaultStrikesParams();
+        (uint256 lifetime, uint256 threshold) = parametersRegistry.defaultStrikesParams();
 
         assertEq(lifetime, defaultInitData.defaultStrikesLifetime);
         assertEq(threshold, defaultInitData.defaultStrikesThreshold);
 
-        assertEq(
-            parametersRegistry.defaultBadPerformancePenalty(),
-            defaultInitData.defaultBadPerformancePenalty
-        );
+        assertEq(parametersRegistry.defaultBadPerformancePenalty(), defaultInitData.defaultBadPerformancePenalty);
 
-        (
-            uint256 attestationsOut,
-            uint256 blocksOut,
-            uint256 syncOut
-        ) = parametersRegistry.defaultPerformanceCoefficients();
+        (uint256 attestationsOut, uint256 blocksOut, uint256 syncOut) = parametersRegistry
+            .defaultPerformanceCoefficients();
 
         assertEq(attestationsOut, defaultInitData.defaultAttestationsWeight);
         assertEq(blocksOut, defaultInitData.defaultBlocksWeight);
         assertEq(syncOut, defaultInitData.defaultSyncWeight);
 
-        assertEq(
-            parametersRegistry.defaultAllowedExitDelay(),
-            defaultInitData.defaultAllowedExitDelay
-        );
-        assertEq(
-            parametersRegistry.defaultExitDelayFee(),
-            defaultInitData.defaultExitDelayFee
-        );
+        assertEq(parametersRegistry.defaultAllowedExitDelay(), defaultInitData.defaultAllowedExitDelay);
+        assertEq(parametersRegistry.defaultExitDelayFee(), defaultInitData.defaultExitDelayFee);
         assertEq(
             parametersRegistry.defaultMaxElWithdrawalRequestFee(),
             defaultInitData.defaultMaxElWithdrawalRequestFee
@@ -196,8 +149,7 @@ contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
     function test_initialize_RevertWhen_InvalidDefaultRewardShare() public {
         _enableInitializers(address(parametersRegistry));
 
-        IParametersRegistry.InitializationData
-            memory customInitData = defaultInitData;
+        IParametersRegistry.InitializationData memory customInitData = defaultInitData;
 
         customInitData.defaultRewardShare = 10001;
 
@@ -205,29 +157,21 @@ contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
         parametersRegistry.initialize(admin, customInitData);
     }
 
-    function test_initialize_RevertWhen_InvalidDefaultPerformanceLeeway()
-        public
-    {
+    function test_initialize_RevertWhen_InvalidDefaultPerformanceLeeway() public {
         _enableInitializers(address(parametersRegistry));
 
-        IParametersRegistry.InitializationData
-            memory customInitData = defaultInitData;
+        IParametersRegistry.InitializationData memory customInitData = defaultInitData;
 
         customInitData.defaultPerformanceLeeway = 10001;
 
-        vm.expectRevert(
-            IParametersRegistry.InvalidPerformanceLeewayData.selector
-        );
+        vm.expectRevert(IParametersRegistry.InvalidPerformanceLeewayData.selector);
         parametersRegistry.initialize(admin, customInitData);
     }
 
-    function test_initialize_RevertWhen_InvalidStrikesParams_zeroLifetime()
-        public
-    {
+    function test_initialize_RevertWhen_InvalidStrikesParams_zeroLifetime() public {
         _enableInitializers(address(parametersRegistry));
 
-        IParametersRegistry.InitializationData
-            memory customInitData = defaultInitData;
+        IParametersRegistry.InitializationData memory customInitData = defaultInitData;
 
         customInitData.defaultStrikesLifetime = 0;
         customInitData.defaultStrikesThreshold = 1;
@@ -236,13 +180,10 @@ contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
         parametersRegistry.initialize(admin, customInitData);
     }
 
-    function test_initialize_RevertWhen_InvalidStrikesParams_zeroThreshold()
-        public
-    {
+    function test_initialize_RevertWhen_InvalidStrikesParams_zeroThreshold() public {
         _enableInitializers(address(parametersRegistry));
 
-        IParametersRegistry.InitializationData
-            memory customInitData = defaultInitData;
+        IParametersRegistry.InitializationData memory customInitData = defaultInitData;
 
         customInitData.defaultStrikesLifetime = 1;
         customInitData.defaultStrikesThreshold = 0;
@@ -251,17 +192,12 @@ contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
         parametersRegistry.initialize(admin, customInitData);
     }
 
-    function test_initialize_RevertWhen_InvalidPriorityQueueId_QueueIdGreaterThanAllowed()
-        public
-    {
+    function test_initialize_RevertWhen_InvalidPriorityQueueId_QueueIdGreaterThanAllowed() public {
         _enableInitializers(address(parametersRegistry));
 
-        IParametersRegistry.InitializationData
-            memory customInitData = defaultInitData;
+        IParametersRegistry.InitializationData memory customInitData = defaultInitData;
 
-        customInitData.defaultQueuePriority =
-            parametersRegistry.QUEUE_LOWEST_PRIORITY() +
-            1;
+        customInitData.defaultQueuePriority = parametersRegistry.QUEUE_LOWEST_PRIORITY() + 1;
 
         vm.expectRevert(IParametersRegistry.QueueCannotBeUsed.selector);
         parametersRegistry.initialize(admin, customInitData);
@@ -270,8 +206,7 @@ contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
     function test_initialize_RevertWhen_ZeroPriorityQueueMaxDeposits() public {
         _enableInitializers(address(parametersRegistry));
 
-        IParametersRegistry.InitializationData
-            memory customInitData = defaultInitData;
+        IParametersRegistry.InitializationData memory customInitData = defaultInitData;
 
         customInitData.defaultQueueMaxDeposits = 0;
 
@@ -279,21 +214,16 @@ contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
         parametersRegistry.initialize(admin, customInitData);
     }
 
-    function test_initialize_RevertWhen_InvalidPerformanceCoefficients()
-        public
-    {
+    function test_initialize_RevertWhen_InvalidPerformanceCoefficients() public {
         _enableInitializers(address(parametersRegistry));
 
-        IParametersRegistry.InitializationData
-            memory customInitData = defaultInitData;
+        IParametersRegistry.InitializationData memory customInitData = defaultInitData;
 
         customInitData.defaultAttestationsWeight = 0;
         customInitData.defaultBlocksWeight = 0;
         customInitData.defaultSyncWeight = 0;
 
-        vm.expectRevert(
-            IParametersRegistry.InvalidPerformanceCoefficients.selector
-        );
+        vm.expectRevert(IParametersRegistry.InvalidPerformanceCoefficients.selector);
         parametersRegistry.initialize(admin, customInitData);
     }
 }
@@ -333,17 +263,11 @@ contract ParametersRegistryBaseTestInitialized is ParametersRegistryBaseTest {
     }
 }
 
-contract ParametersRegistryRewardShareDataTest is
-    ParametersRegistryBaseTestInitialized,
-    ParametersTest
-{
+contract ParametersRegistryRewardShareDataTest is ParametersRegistryBaseTestInitialized, ParametersTest {
     function setUp() public virtual override {
         super.setUp();
         vm.startPrank(admin);
-        parametersRegistry.grantRole(
-            parametersRegistry.MANAGE_REWARD_SHARE_ROLE(),
-            roleMember
-        );
+        parametersRegistry.grantRole(parametersRegistry.MANAGE_REWARD_SHARE_ROLE(), roleMember);
         vm.stopPrank();
     }
 
@@ -382,23 +306,22 @@ contract ParametersRegistryRewardShareDataTest is
 
     function test_set_Overwrite() public {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory first = new IParametersRegistry.KeyNumberValueInterval[](2);
+        IParametersRegistry.KeyNumberValueInterval[] memory first = new IParametersRegistry.KeyNumberValueInterval[](2);
         first[0] = IParametersRegistry.KeyNumberValueInterval(1, 10000);
         first[1] = IParametersRegistry.KeyNumberValueInterval(10, 8000);
 
         vm.prank(admin);
         parametersRegistry.setRewardShareData(curveId, first);
 
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory second = new IParametersRegistry.KeyNumberValueInterval[](1);
+        IParametersRegistry.KeyNumberValueInterval[] memory second = new IParametersRegistry.KeyNumberValueInterval[](
+            1
+        );
         second[0] = IParametersRegistry.KeyNumberValueInterval(1, 777);
 
         vm.prank(admin);
         parametersRegistry.setRewardShareData(curveId, second);
 
-        ParametersRegistry.KeyNumberValueInterval[]
-            memory result = parametersRegistry.getRewardShareData(1);
+        ParametersRegistry.KeyNumberValueInterval[] memory result = parametersRegistry.getRewardShareData(1);
 
         assertEq(result.length, 1);
         assertEq(result[0].minKeyNumber, 1);
@@ -407,8 +330,7 @@ contract ParametersRegistryRewardShareDataTest is
 
     function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
         data[0] = IParametersRegistry.KeyNumberValueInterval(1, 10000);
         data[1] = IParametersRegistry.KeyNumberValueInterval(10, 8000);
 
@@ -420,68 +342,53 @@ contract ParametersRegistryRewardShareDataTest is
 
     function test_set_RevertWhen_invalidIntervalsSort() public {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](3);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](3);
         data[0] = IParametersRegistry.KeyNumberValueInterval(1, 10000);
         data[1] = IParametersRegistry.KeyNumberValueInterval(100, 8000);
         data[2] = IParametersRegistry.KeyNumberValueInterval(10, 5000);
 
-        vm.expectRevert(
-            IParametersRegistry.InvalidKeyNumberValueIntervals.selector
-        );
+        vm.expectRevert(IParametersRegistry.InvalidKeyNumberValueIntervals.selector);
         vm.prank(admin);
         parametersRegistry.setRewardShareData(curveId, data);
     }
 
     function test_set_RevertWhen_firstIntervalStartsFromNotOne() public {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](1);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](1);
         data[0] = IParametersRegistry.KeyNumberValueInterval(100, 10000);
 
-        vm.expectRevert(
-            IParametersRegistry.InvalidKeyNumberValueIntervals.selector
-        );
+        vm.expectRevert(IParametersRegistry.InvalidKeyNumberValueIntervals.selector);
         vm.prank(admin);
         parametersRegistry.setRewardShareData(curveId, data);
     }
 
     function test_set_RevertWhen_invalidBpValues() public {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
         data[0] = IParametersRegistry.KeyNumberValueInterval(1, 100000);
         data[1] = IParametersRegistry.KeyNumberValueInterval(10, 8000);
 
-        vm.expectRevert(
-            IParametersRegistry.InvalidKeyNumberValueIntervals.selector
-        );
+        vm.expectRevert(IParametersRegistry.InvalidKeyNumberValueIntervals.selector);
         vm.prank(admin);
         parametersRegistry.setRewardShareData(curveId, data);
     }
 
     function test_set_RevertWhen_emptyIntervals() public {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](0);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](0);
 
-        vm.expectRevert(
-            IParametersRegistry.InvalidKeyNumberValueIntervals.selector
-        );
+        vm.expectRevert(IParametersRegistry.InvalidKeyNumberValueIntervals.selector);
         vm.prank(admin);
         parametersRegistry.setRewardShareData(curveId, data);
     }
 
     function test_set_RevertWhen_invalidBpValues_nonFirstItem() public {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
         data[0] = IParametersRegistry.KeyNumberValueInterval(1, 8000);
         data[1] = IParametersRegistry.KeyNumberValueInterval(10, 80000);
 
-        vm.expectRevert(
-            IParametersRegistry.InvalidKeyNumberValueIntervals.selector
-        );
+        vm.expectRevert(IParametersRegistry.InvalidKeyNumberValueIntervals.selector);
         vm.prank(admin);
         parametersRegistry.setRewardShareData(curveId, data);
     }
@@ -505,16 +412,14 @@ contract ParametersRegistryRewardShareDataTest is
 
     function test_get_usualData() public override {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
         data[0] = IParametersRegistry.KeyNumberValueInterval(1, 10000);
         data[1] = IParametersRegistry.KeyNumberValueInterval(10, 8000);
 
         vm.prank(admin);
         parametersRegistry.setRewardShareData(curveId, data);
 
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory dataOut = parametersRegistry.getRewardShareData(curveId);
+        IParametersRegistry.KeyNumberValueInterval[] memory dataOut = parametersRegistry.getRewardShareData(curveId);
 
         assertEq(dataOut.length, data.length);
         for (uint256 i = 0; i < dataOut.length; ++i) {
@@ -526,8 +431,7 @@ contract ParametersRegistryRewardShareDataTest is
     function test_get_defaultData() public view override {
         uint256 curveId = 10;
 
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory dataOut = parametersRegistry.getRewardShareData(curveId);
+        IParametersRegistry.KeyNumberValueInterval[] memory dataOut = parametersRegistry.getRewardShareData(curveId);
 
         assertEq(dataOut.length, 1);
         assertEq(dataOut[0].minKeyNumber, 1);
@@ -547,8 +451,7 @@ contract ParametersRegistryRewardShareDataTest is
 
     function _test_set(address from) internal {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
         data[0] = IParametersRegistry.KeyNumberValueInterval(1, 10000);
         data[1] = IParametersRegistry.KeyNumberValueInterval(10, 8000);
 
@@ -560,16 +463,14 @@ contract ParametersRegistryRewardShareDataTest is
 
     function _test_unset(address from) internal {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
         data[0] = IParametersRegistry.KeyNumberValueInterval(1, 10000);
         data[1] = IParametersRegistry.KeyNumberValueInterval(10, 8000);
 
         vm.prank(from);
         parametersRegistry.setRewardShareData(curveId, data);
 
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory dataOut = parametersRegistry.getRewardShareData(curveId);
+        IParametersRegistry.KeyNumberValueInterval[] memory dataOut = parametersRegistry.getRewardShareData(curveId);
 
         assertEq(dataOut.length, data.length);
         for (uint256 i = 0; i < dataOut.length; ++i) {
@@ -587,17 +488,11 @@ contract ParametersRegistryRewardShareDataTest is
     }
 }
 
-contract ParametersRegistryPerformanceLeewayDataTest is
-    ParametersRegistryBaseTestInitialized,
-    ParametersTest
-{
+contract ParametersRegistryPerformanceLeewayDataTest is ParametersRegistryBaseTestInitialized, ParametersTest {
     function setUp() public virtual override {
         super.setUp();
         vm.startPrank(admin);
-        parametersRegistry.grantRole(
-            parametersRegistry.MANAGE_PERFORMANCE_PARAMETERS_ROLE(),
-            roleMember
-        );
+        parametersRegistry.grantRole(parametersRegistry.MANAGE_PERFORMANCE_PARAMETERS_ROLE(), roleMember);
         vm.stopPrank();
     }
 
@@ -620,9 +515,7 @@ contract ParametersRegistryPerformanceLeewayDataTest is
 
     function test_setDefault_RevertWhen_InvalidRewardShareData() public {
         uint256 leeway = 20001;
-        vm.expectRevert(
-            IParametersRegistry.InvalidPerformanceLeewayData.selector
-        );
+        vm.expectRevert(IParametersRegistry.InvalidPerformanceLeewayData.selector);
         vm.prank(admin);
         parametersRegistry.setDefaultPerformanceLeeway(leeway);
     }
@@ -637,23 +530,22 @@ contract ParametersRegistryPerformanceLeewayDataTest is
 
     function test_set_Overwrite() public {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory first = new IParametersRegistry.KeyNumberValueInterval[](2);
+        IParametersRegistry.KeyNumberValueInterval[] memory first = new IParametersRegistry.KeyNumberValueInterval[](2);
         first[0] = IParametersRegistry.KeyNumberValueInterval(1, 10000);
         first[1] = IParametersRegistry.KeyNumberValueInterval(10, 8000);
 
         vm.prank(admin);
         parametersRegistry.setPerformanceLeewayData(curveId, first);
 
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory second = new IParametersRegistry.KeyNumberValueInterval[](1);
+        IParametersRegistry.KeyNumberValueInterval[] memory second = new IParametersRegistry.KeyNumberValueInterval[](
+            1
+        );
         second[0] = IParametersRegistry.KeyNumberValueInterval(1, 777);
 
         vm.prank(admin);
         parametersRegistry.setPerformanceLeewayData(curveId, second);
 
-        ParametersRegistry.KeyNumberValueInterval[]
-            memory result = parametersRegistry.getPerformanceLeewayData(1);
+        ParametersRegistry.KeyNumberValueInterval[] memory result = parametersRegistry.getPerformanceLeewayData(1);
 
         assertEq(result.length, 1);
         assertEq(result[0].minKeyNumber, 1);
@@ -662,8 +554,7 @@ contract ParametersRegistryPerformanceLeewayDataTest is
 
     function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
         data[0] = IParametersRegistry.KeyNumberValueInterval(1, 500);
         data[1] = IParametersRegistry.KeyNumberValueInterval(100, 400);
 
@@ -675,54 +566,42 @@ contract ParametersRegistryPerformanceLeewayDataTest is
 
     function test_set_RevertWhen_invalidIntervalsSort() public {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](3);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](3);
         data[0] = IParametersRegistry.KeyNumberValueInterval(1, 500);
         data[1] = IParametersRegistry.KeyNumberValueInterval(100, 400);
         data[2] = IParametersRegistry.KeyNumberValueInterval(10, 300);
 
-        vm.expectRevert(
-            IParametersRegistry.InvalidKeyNumberValueIntervals.selector
-        );
+        vm.expectRevert(IParametersRegistry.InvalidKeyNumberValueIntervals.selector);
         vm.prank(admin);
         parametersRegistry.setPerformanceLeewayData(curveId, data);
     }
 
     function test_set_RevertWhen_firstIntervalStartsFromNotOne() public {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](1);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](1);
         data[0] = IParametersRegistry.KeyNumberValueInterval(100, 10000);
 
-        vm.expectRevert(
-            IParametersRegistry.InvalidKeyNumberValueIntervals.selector
-        );
+        vm.expectRevert(IParametersRegistry.InvalidKeyNumberValueIntervals.selector);
         vm.prank(admin);
         parametersRegistry.setPerformanceLeewayData(curveId, data);
     }
 
     function test_set_RevertWhen_invalidBpValues() public {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
         data[0] = IParametersRegistry.KeyNumberValueInterval(1, 100000);
         data[1] = IParametersRegistry.KeyNumberValueInterval(10, 8000);
 
-        vm.expectRevert(
-            IParametersRegistry.InvalidKeyNumberValueIntervals.selector
-        );
+        vm.expectRevert(IParametersRegistry.InvalidKeyNumberValueIntervals.selector);
         vm.prank(admin);
         parametersRegistry.setPerformanceLeewayData(curveId, data);
     }
 
     function test_set_RevertWhen_emptyIntervals() public {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](0);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](0);
 
-        vm.expectRevert(
-            IParametersRegistry.InvalidKeyNumberValueIntervals.selector
-        );
+        vm.expectRevert(IParametersRegistry.InvalidKeyNumberValueIntervals.selector);
         vm.prank(admin);
         parametersRegistry.setPerformanceLeewayData(curveId, data);
     }
@@ -746,18 +625,16 @@ contract ParametersRegistryPerformanceLeewayDataTest is
 
     function test_get_usualData() public override {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
         data[0] = IParametersRegistry.KeyNumberValueInterval(1, 500);
         data[1] = IParametersRegistry.KeyNumberValueInterval(100, 400);
 
         vm.prank(admin);
         parametersRegistry.setPerformanceLeewayData(curveId, data);
 
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory dataOut = parametersRegistry.getPerformanceLeewayData(
-                curveId
-            );
+        IParametersRegistry.KeyNumberValueInterval[] memory dataOut = parametersRegistry.getPerformanceLeewayData(
+            curveId
+        );
 
         assertEq(dataOut.length, data.length);
         for (uint256 i = 0; i < dataOut.length; ++i) {
@@ -769,10 +646,9 @@ contract ParametersRegistryPerformanceLeewayDataTest is
     function test_get_defaultData() public view override {
         uint256 curveId = 10;
 
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory dataOut = parametersRegistry.getPerformanceLeewayData(
-                curveId
-            );
+        IParametersRegistry.KeyNumberValueInterval[] memory dataOut = parametersRegistry.getPerformanceLeewayData(
+            curveId
+        );
 
         assertEq(dataOut.length, 1);
         assertEq(dataOut[0].minKeyNumber, 1);
@@ -792,8 +668,7 @@ contract ParametersRegistryPerformanceLeewayDataTest is
 
     function _test_set(address from) internal {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
         data[0] = IParametersRegistry.KeyNumberValueInterval(1, 500);
         data[1] = IParametersRegistry.KeyNumberValueInterval(100, 400);
 
@@ -805,18 +680,16 @@ contract ParametersRegistryPerformanceLeewayDataTest is
 
     function _test_unset(address from) internal {
         uint256 curveId = 1;
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
         data[0] = IParametersRegistry.KeyNumberValueInterval(1, 450);
         data[1] = IParametersRegistry.KeyNumberValueInterval(100, 400);
 
         vm.prank(from);
         parametersRegistry.setPerformanceLeewayData(curveId, data);
 
-        IParametersRegistry.KeyNumberValueInterval[]
-            memory dataOut = parametersRegistry.getPerformanceLeewayData(
-                curveId
-            );
+        IParametersRegistry.KeyNumberValueInterval[] memory dataOut = parametersRegistry.getPerformanceLeewayData(
+            curveId
+        );
 
         assertEq(dataOut.length, data.length);
         for (uint256 i = 0; i < dataOut.length; ++i) {
@@ -835,17 +708,11 @@ contract ParametersRegistryPerformanceLeewayDataTest is
     }
 }
 
-contract ParametersRegistryKeyRemovalChargeTest is
-    ParametersRegistryBaseTestInitialized,
-    ParametersTest
-{
+contract ParametersRegistryKeyRemovalChargeTest is ParametersRegistryBaseTestInitialized, ParametersTest {
     function setUp() public virtual override {
         super.setUp();
         vm.startPrank(admin);
-        parametersRegistry.grantRole(
-            parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
-            roleMember
-        );
+        parametersRegistry.grantRole(parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(), roleMember);
         vm.stopPrank();
     }
 
@@ -860,8 +727,7 @@ contract ParametersRegistryKeyRemovalChargeTest is
     function test_setDefault_RevertWhen_noRole() public override {
         uint256 charge = 1 ether;
 
-        bytes32 role = parametersRegistry
-            .MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
+        bytes32 role = parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.setDefaultKeyRemovalCharge(charge);
@@ -879,8 +745,7 @@ contract ParametersRegistryKeyRemovalChargeTest is
         uint256 curveId = 1;
         uint256 charge = 1 ether;
 
-        bytes32 role = parametersRegistry
-            .MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
+        bytes32 role = parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.setKeyRemovalCharge(curveId, charge);
@@ -897,8 +762,7 @@ contract ParametersRegistryKeyRemovalChargeTest is
     function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 1;
 
-        bytes32 role = parametersRegistry
-            .MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
+        bytes32 role = parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.unsetKeyRemovalCharge(curveId);
@@ -971,10 +835,7 @@ contract ParametersRegistryGeneralDelayedPenaltyAdditionalFineTest is
     function setUp() public virtual override {
         super.setUp();
         vm.startPrank(admin);
-        parametersRegistry.grantRole(
-            parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
-            roleMember
-        );
+        parametersRegistry.grantRole(parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(), roleMember);
         vm.stopPrank();
     }
 
@@ -989,8 +850,7 @@ contract ParametersRegistryGeneralDelayedPenaltyAdditionalFineTest is
     function test_setDefault_RevertWhen_noRole() public override {
         uint256 fine = 1 ether;
 
-        bytes32 role = parametersRegistry
-            .MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
+        bytes32 role = parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.setDefaultGeneralDelayedPenaltyAdditionalFine(fine);
@@ -1008,14 +868,10 @@ contract ParametersRegistryGeneralDelayedPenaltyAdditionalFineTest is
         uint256 curveId = 1;
         uint256 fine = 1 ether;
 
-        bytes32 role = parametersRegistry
-            .MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
+        bytes32 role = parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
-        parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(
-            curveId,
-            fine
-        );
+        parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(curveId, fine);
     }
 
     function test_unset() public override {
@@ -1029,8 +885,7 @@ contract ParametersRegistryGeneralDelayedPenaltyAdditionalFineTest is
     function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 1;
 
-        bytes32 role = parametersRegistry
-            .MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
+        bytes32 role = parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.unsetGeneralDelayedPenaltyAdditionalFine(curveId);
@@ -1041,42 +896,29 @@ contract ParametersRegistryGeneralDelayedPenaltyAdditionalFineTest is
         uint256 fine = 1 ether;
 
         vm.prank(admin);
-        parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(
-            curveId,
-            fine
-        );
+        parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(curveId, fine);
 
-        uint256 fineOut = parametersRegistry
-            .getGeneralDelayedPenaltyAdditionalFine(curveId);
+        uint256 fineOut = parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(curveId);
 
         assertEq(fineOut, fine);
     }
 
     function test_get_defaultData() public view override {
         uint256 curveId = 10;
-        uint256 fineOut = parametersRegistry
-            .getGeneralDelayedPenaltyAdditionalFine(curveId);
+        uint256 fineOut = parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(curveId);
 
-        assertEq(
-            fineOut,
-            defaultInitData.defaultGeneralDelayedPenaltyAdditionalFine
-        );
+        assertEq(fineOut, defaultInitData.defaultGeneralDelayedPenaltyAdditionalFine);
     }
 
     function _test_set_default(address from) internal {
         uint256 fine = 1 ether;
 
         vm.expectEmit(address(parametersRegistry));
-        emit IParametersRegistry.DefaultGeneralDelayedPenaltyAdditionalFineSet(
-            fine
-        );
+        emit IParametersRegistry.DefaultGeneralDelayedPenaltyAdditionalFineSet(fine);
         vm.prank(from);
         parametersRegistry.setDefaultGeneralDelayedPenaltyAdditionalFine(fine);
 
-        assertEq(
-            parametersRegistry.defaultGeneralDelayedPenaltyAdditionalFine(),
-            fine
-        );
+        assertEq(parametersRegistry.defaultGeneralDelayedPenaltyAdditionalFine(), fine);
     }
 
     function _test_set(address from) internal {
@@ -1084,15 +926,9 @@ contract ParametersRegistryGeneralDelayedPenaltyAdditionalFineTest is
         uint256 fine = 1 ether;
 
         vm.expectEmit(address(parametersRegistry));
-        emit IParametersRegistry.GeneralDelayedPenaltyAdditionalFineSet(
-            curveId,
-            fine
-        );
+        emit IParametersRegistry.GeneralDelayedPenaltyAdditionalFineSet(curveId, fine);
         vm.prank(from);
-        parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(
-            curveId,
-            fine
-        );
+        parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(curveId, fine);
     }
 
     function _test_unset(address from) internal {
@@ -1100,41 +936,26 @@ contract ParametersRegistryGeneralDelayedPenaltyAdditionalFineTest is
         uint256 fine = 1 ether;
 
         vm.prank(from);
-        parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(
-            curveId,
-            fine
-        );
+        parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(curveId, fine);
 
-        uint256 fineOut = parametersRegistry
-            .getGeneralDelayedPenaltyAdditionalFine(curveId);
+        uint256 fineOut = parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(curveId);
 
         assertEq(fineOut, fine);
 
         vm.prank(from);
         parametersRegistry.unsetGeneralDelayedPenaltyAdditionalFine(curveId);
 
-        fineOut = parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(
-            curveId
-        );
+        fineOut = parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(curveId);
 
-        assertEq(
-            fineOut,
-            defaultInitData.defaultGeneralDelayedPenaltyAdditionalFine
-        );
+        assertEq(fineOut, defaultInitData.defaultGeneralDelayedPenaltyAdditionalFine);
     }
 }
 
-contract ParametersRegistryKeysLimitTest is
-    ParametersRegistryBaseTestInitialized,
-    ParametersTest
-{
+contract ParametersRegistryKeysLimitTest is ParametersRegistryBaseTestInitialized, ParametersTest {
     function setUp() public virtual override {
         super.setUp();
         vm.startPrank(admin);
-        parametersRegistry.grantRole(
-            parametersRegistry.MANAGE_KEYS_LIMIT_ROLE(),
-            roleMember
-        );
+        parametersRegistry.grantRole(parametersRegistry.MANAGE_KEYS_LIMIT_ROLE(), roleMember);
         vm.stopPrank();
     }
 
@@ -1250,17 +1071,11 @@ contract ParametersRegistryKeysLimitTest is
     }
 }
 
-contract ParametersRegistryStrikesParamsTest is
-    ParametersRegistryBaseTestInitialized,
-    ParametersTest
-{
+contract ParametersRegistryStrikesParamsTest is ParametersRegistryBaseTestInitialized, ParametersTest {
     function setUp() public virtual override {
         super.setUp();
         vm.startPrank(admin);
-        parametersRegistry.grantRole(
-            parametersRegistry.MANAGE_PERFORMANCE_PARAMETERS_ROLE(),
-            roleMember
-        );
+        parametersRegistry.grantRole(parametersRegistry.MANAGE_PERFORMANCE_PARAMETERS_ROLE(), roleMember);
         vm.stopPrank();
     }
 
@@ -1364,8 +1179,7 @@ contract ParametersRegistryStrikesParamsTest is
         vm.prank(admin);
         parametersRegistry.setStrikesParams(curveId, lifetime, threshold);
 
-        (uint256 lifetimeOut, uint256 thresholdOut) = parametersRegistry
-            .getStrikesParams(curveId);
+        (uint256 lifetimeOut, uint256 thresholdOut) = parametersRegistry.getStrikesParams(curveId);
 
         assertEq(lifetimeOut, lifetime);
         assertEq(thresholdOut, threshold);
@@ -1373,8 +1187,7 @@ contract ParametersRegistryStrikesParamsTest is
 
     function test_get_defaultData() public view override {
         uint256 curveId = 10;
-        (uint256 lifetimeOut, uint256 thresholdOut) = parametersRegistry
-            .getStrikesParams(curveId);
+        (uint256 lifetimeOut, uint256 thresholdOut) = parametersRegistry.getStrikesParams(curveId);
 
         assertEq(lifetimeOut, defaultInitData.defaultStrikesLifetime);
         assertEq(thresholdOut, defaultInitData.defaultStrikesThreshold);
@@ -1389,8 +1202,7 @@ contract ParametersRegistryStrikesParamsTest is
         vm.prank(from);
         parametersRegistry.setDefaultStrikesParams(lifetime, threshold);
 
-        (uint256 lifetimeOut, uint256 thresholdOut) = parametersRegistry
-            .defaultStrikesParams();
+        (uint256 lifetimeOut, uint256 thresholdOut) = parametersRegistry.defaultStrikesParams();
 
         assertEq(lifetimeOut, lifetime);
         assertEq(thresholdOut, threshold);
@@ -1415,8 +1227,7 @@ contract ParametersRegistryStrikesParamsTest is
         vm.prank(from);
         parametersRegistry.setStrikesParams(curveId, lifetime, threshold);
 
-        (uint256 lifetimeOut, uint256 thresholdOut) = parametersRegistry
-            .getStrikesParams(curveId);
+        (uint256 lifetimeOut, uint256 thresholdOut) = parametersRegistry.getStrikesParams(curveId);
 
         assertEq(lifetimeOut, lifetime);
         assertEq(thresholdOut, threshold);
@@ -1424,26 +1235,18 @@ contract ParametersRegistryStrikesParamsTest is
         vm.prank(from);
         parametersRegistry.unsetStrikesParams(curveId);
 
-        (lifetimeOut, thresholdOut) = parametersRegistry.getStrikesParams(
-            curveId
-        );
+        (lifetimeOut, thresholdOut) = parametersRegistry.getStrikesParams(curveId);
 
         assertEq(lifetimeOut, defaultInitData.defaultStrikesLifetime);
         assertEq(thresholdOut, defaultInitData.defaultStrikesThreshold);
     }
 }
 
-contract ParametersRegistryBadPerformancePenaltyTest is
-    ParametersRegistryBaseTestInitialized,
-    ParametersTest
-{
+contract ParametersRegistryBadPerformancePenaltyTest is ParametersRegistryBaseTestInitialized, ParametersTest {
     function setUp() public virtual override {
         super.setUp();
         vm.startPrank(admin);
-        parametersRegistry.grantRole(
-            parametersRegistry.MANAGE_PERFORMANCE_PARAMETERS_ROLE(),
-            roleMember
-        );
+        parametersRegistry.grantRole(parametersRegistry.MANAGE_PERFORMANCE_PARAMETERS_ROLE(), roleMember);
         vm.stopPrank();
     }
 
@@ -1561,17 +1364,11 @@ contract ParametersRegistryBadPerformancePenaltyTest is
     }
 }
 
-contract ParametersRegistryPerformanceCoefficientsTest is
-    ParametersRegistryBaseTestInitialized,
-    ParametersTest
-{
+contract ParametersRegistryPerformanceCoefficientsTest is ParametersRegistryBaseTestInitialized, ParametersTest {
     function setUp() public virtual override {
         super.setUp();
         vm.startPrank(admin);
-        parametersRegistry.grantRole(
-            parametersRegistry.MANAGE_PERFORMANCE_PARAMETERS_ROLE(),
-            roleMember
-        );
+        parametersRegistry.grantRole(parametersRegistry.MANAGE_PERFORMANCE_PARAMETERS_ROLE(), roleMember);
         vm.stopPrank();
     }
 
@@ -1591,29 +1388,17 @@ contract ParametersRegistryPerformanceCoefficientsTest is
         bytes32 role = parametersRegistry.MANAGE_PERFORMANCE_PARAMETERS_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
-        parametersRegistry.setDefaultPerformanceCoefficients(
-            attestations,
-            blocks,
-            sync
-        );
+        parametersRegistry.setDefaultPerformanceCoefficients(attestations, blocks, sync);
     }
 
-    function test_setDefault_RevertWhen_InvalidPerformanceCoefficients()
-        public
-    {
+    function test_setDefault_RevertWhen_InvalidPerformanceCoefficients() public {
         uint256 attestations = 0;
         uint256 blocks = 0;
         uint256 sync = 0;
 
-        vm.expectRevert(
-            IParametersRegistry.InvalidPerformanceCoefficients.selector
-        );
+        vm.expectRevert(IParametersRegistry.InvalidPerformanceCoefficients.selector);
         vm.prank(admin);
-        parametersRegistry.setDefaultPerformanceCoefficients(
-            attestations,
-            blocks,
-            sync
-        );
+        parametersRegistry.setDefaultPerformanceCoefficients(attestations, blocks, sync);
     }
 
     function test_set() public override {
@@ -1633,12 +1418,7 @@ contract ParametersRegistryPerformanceCoefficientsTest is
         bytes32 role = parametersRegistry.MANAGE_PERFORMANCE_PARAMETERS_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
-        parametersRegistry.setPerformanceCoefficients(
-            curveId,
-            attestations,
-            blocks,
-            sync
-        );
+        parametersRegistry.setPerformanceCoefficients(curveId, attestations, blocks, sync);
     }
 
     function test_set_RevertWhen_InvalidPerformanceCoefficients() public {
@@ -1647,16 +1427,9 @@ contract ParametersRegistryPerformanceCoefficientsTest is
         uint256 blocks = 0;
         uint256 sync = 0;
 
-        vm.expectRevert(
-            IParametersRegistry.InvalidPerformanceCoefficients.selector
-        );
+        vm.expectRevert(IParametersRegistry.InvalidPerformanceCoefficients.selector);
         vm.prank(admin);
-        parametersRegistry.setPerformanceCoefficients(
-            curveId,
-            attestations,
-            blocks,
-            sync
-        );
+        parametersRegistry.setPerformanceCoefficients(curveId, attestations, blocks, sync);
     }
 
     function test_unset() public override {
@@ -1683,18 +1456,11 @@ contract ParametersRegistryPerformanceCoefficientsTest is
         uint256 sync = 5;
 
         vm.prank(admin);
-        parametersRegistry.setPerformanceCoefficients(
-            curveId,
-            attestations,
-            blocks,
-            sync
-        );
+        parametersRegistry.setPerformanceCoefficients(curveId, attestations, blocks, sync);
 
-        (
-            uint256 attestationsOut,
-            uint256 blocksOut,
-            uint256 syncOut
-        ) = parametersRegistry.getPerformanceCoefficients(curveId);
+        (uint256 attestationsOut, uint256 blocksOut, uint256 syncOut) = parametersRegistry.getPerformanceCoefficients(
+            curveId
+        );
 
         assertEq(attestationsOut, attestations);
         assertEq(blocksOut, blocks);
@@ -1704,11 +1470,9 @@ contract ParametersRegistryPerformanceCoefficientsTest is
     function test_get_defaultData() public view override {
         uint256 curveId = 10;
 
-        (
-            uint256 attestationsOut,
-            uint256 blocksOut,
-            uint256 syncOut
-        ) = parametersRegistry.getPerformanceCoefficients(curveId);
+        (uint256 attestationsOut, uint256 blocksOut, uint256 syncOut) = parametersRegistry.getPerformanceCoefficients(
+            curveId
+        );
 
         assertEq(attestationsOut, defaultInitData.defaultAttestationsWeight);
         assertEq(blocksOut, defaultInitData.defaultBlocksWeight);
@@ -1721,23 +1485,12 @@ contract ParametersRegistryPerformanceCoefficientsTest is
         uint256 sync = 10;
 
         vm.expectEmit(address(parametersRegistry));
-        emit IParametersRegistry.DefaultPerformanceCoefficientsSet(
-            attestations,
-            blocks,
-            sync
-        );
+        emit IParametersRegistry.DefaultPerformanceCoefficientsSet(attestations, blocks, sync);
         vm.prank(from);
-        parametersRegistry.setDefaultPerformanceCoefficients(
-            attestations,
-            blocks,
-            sync
-        );
+        parametersRegistry.setDefaultPerformanceCoefficients(attestations, blocks, sync);
 
-        (
-            uint256 attestationsOut,
-            uint256 blocksOut,
-            uint256 syncOut
-        ) = parametersRegistry.defaultPerformanceCoefficients();
+        (uint256 attestationsOut, uint256 blocksOut, uint256 syncOut) = parametersRegistry
+            .defaultPerformanceCoefficients();
 
         assertEq(attestationsOut, attestations);
         assertEq(blocksOut, blocks);
@@ -1751,19 +1504,9 @@ contract ParametersRegistryPerformanceCoefficientsTest is
         uint256 sync = 5;
 
         vm.expectEmit(address(parametersRegistry));
-        emit IParametersRegistry.PerformanceCoefficientsSet(
-            curveId,
-            attestations,
-            blocks,
-            sync
-        );
+        emit IParametersRegistry.PerformanceCoefficientsSet(curveId, attestations, blocks, sync);
         vm.prank(from);
-        parametersRegistry.setPerformanceCoefficients(
-            curveId,
-            attestations,
-            blocks,
-            sync
-        );
+        parametersRegistry.setPerformanceCoefficients(curveId, attestations, blocks, sync);
     }
 
     function _test_unset(address from) internal {
@@ -1773,18 +1516,11 @@ contract ParametersRegistryPerformanceCoefficientsTest is
         uint256 sync = 5;
 
         vm.prank(from);
-        parametersRegistry.setPerformanceCoefficients(
-            curveId,
-            attestations,
-            blocks,
-            sync
-        );
+        parametersRegistry.setPerformanceCoefficients(curveId, attestations, blocks, sync);
 
-        (
-            uint256 attestationsOut,
-            uint256 blocksOut,
-            uint256 syncOut
-        ) = parametersRegistry.getPerformanceCoefficients(curveId);
+        (uint256 attestationsOut, uint256 blocksOut, uint256 syncOut) = parametersRegistry.getPerformanceCoefficients(
+            curveId
+        );
 
         assertEq(attestationsOut, attestations);
         assertEq(blocksOut, blocks);
@@ -1793,8 +1529,7 @@ contract ParametersRegistryPerformanceCoefficientsTest is
         vm.prank(from);
         parametersRegistry.unsetPerformanceCoefficients(curveId);
 
-        (attestationsOut, blocksOut, syncOut) = parametersRegistry
-            .getPerformanceCoefficients(curveId);
+        (attestationsOut, blocksOut, syncOut) = parametersRegistry.getPerformanceCoefficients(curveId);
 
         assertEq(attestationsOut, defaultInitData.defaultAttestationsWeight);
         assertEq(blocksOut, defaultInitData.defaultBlocksWeight);
@@ -1802,17 +1537,11 @@ contract ParametersRegistryPerformanceCoefficientsTest is
     }
 }
 
-contract ParametersRegistryQueueConfigTest is
-    ParametersRegistryBaseTestInitialized,
-    ParametersTest
-{
+contract ParametersRegistryQueueConfigTest is ParametersRegistryBaseTestInitialized, ParametersTest {
     function setUp() public virtual override {
         super.setUp();
         vm.startPrank(admin);
-        parametersRegistry.grantRole(
-            parametersRegistry.MANAGE_QUEUE_CONFIG_ROLE(),
-            roleMember
-        );
+        parametersRegistry.grantRole(parametersRegistry.MANAGE_QUEUE_CONFIG_ROLE(), roleMember);
         vm.stopPrank();
     }
 
@@ -1835,8 +1564,7 @@ contract ParametersRegistryQueueConfigTest is
     }
 
     function test_setDefault_RevertWhen_QueuePriorityAboveLimit() public {
-        uint32 priority = uint32(parametersRegistry.QUEUE_LOWEST_PRIORITY()) +
-            1;
+        uint32 priority = uint32(parametersRegistry.QUEUE_LOWEST_PRIORITY()) + 1;
         uint32 maxDeposits = 42;
 
         vm.expectRevert(IParametersRegistry.QueueCannotBeUsed.selector);
@@ -1898,8 +1626,7 @@ contract ParametersRegistryQueueConfigTest is
         vm.prank(admin);
         parametersRegistry.setQueueConfig(curveId, priority, maxDeposits);
 
-        (uint256 priorityOut, uint256 maxDepositsOut) = parametersRegistry
-            .getQueueConfig(curveId);
+        (uint256 priorityOut, uint256 maxDepositsOut) = parametersRegistry.getQueueConfig(curveId);
         assertEq(priorityOut, priority);
         assertEq(maxDepositsOut, maxDeposits);
     }
@@ -1907,16 +1634,14 @@ contract ParametersRegistryQueueConfigTest is
     function test_get_defaultData() public view override {
         uint256 curveId = 11;
 
-        (uint256 priorityOut, uint256 maxDepositsOut) = parametersRegistry
-            .getQueueConfig(curveId);
+        (uint256 priorityOut, uint256 maxDepositsOut) = parametersRegistry.getQueueConfig(curveId);
         assertEq(priorityOut, defaultInitData.defaultQueuePriority);
         assertEq(maxDepositsOut, defaultInitData.defaultQueueMaxDeposits);
     }
 
     function test_set_RevertWhen_QueuePriorityAboveLimit() public {
         uint256 curveId = 11;
-        uint32 priority = uint32(parametersRegistry.QUEUE_LOWEST_PRIORITY()) +
-            1;
+        uint32 priority = uint32(parametersRegistry.QUEUE_LOWEST_PRIORITY()) + 1;
         uint32 maxDeposits = 42;
 
         vm.expectRevert(IParametersRegistry.QueueCannotBeUsed.selector);
@@ -1943,8 +1668,7 @@ contract ParametersRegistryQueueConfigTest is
         vm.prank(from);
         parametersRegistry.setDefaultQueueConfig(priority, maxDeposits);
 
-        (uint256 priorityOut, uint256 maxDepositsOut) = parametersRegistry
-            .defaultQueueConfig();
+        (uint256 priorityOut, uint256 maxDepositsOut) = parametersRegistry.defaultQueueConfig();
         assertEq(priorityOut, priority);
         assertEq(maxDepositsOut, maxDeposits);
     }
@@ -1959,8 +1683,7 @@ contract ParametersRegistryQueueConfigTest is
         vm.prank(from);
         parametersRegistry.setQueueConfig(curveId, priority, maxDeposits);
 
-        (uint256 priorityOut, uint256 maxDepositsOut) = parametersRegistry
-            .getQueueConfig(curveId);
+        (uint256 priorityOut, uint256 maxDepositsOut) = parametersRegistry.getQueueConfig(curveId);
         assertEq(priorityOut, priority);
         assertEq(maxDepositsOut, maxDeposits);
     }
@@ -1973,8 +1696,7 @@ contract ParametersRegistryQueueConfigTest is
         vm.prank(from);
         parametersRegistry.setQueueConfig(curveId, priority, maxDeposits);
 
-        (uint256 priorityOut, uint256 maxDepositsOut) = parametersRegistry
-            .getQueueConfig(curveId);
+        (uint256 priorityOut, uint256 maxDepositsOut) = parametersRegistry.getQueueConfig(curveId);
         assertEq(priorityOut, priority);
         assertEq(maxDepositsOut, maxDeposits);
 
@@ -1983,25 +1705,17 @@ contract ParametersRegistryQueueConfigTest is
         vm.prank(from);
         parametersRegistry.unsetQueueConfig(curveId);
 
-        (priorityOut, maxDepositsOut) = parametersRegistry.getQueueConfig(
-            curveId
-        );
+        (priorityOut, maxDepositsOut) = parametersRegistry.getQueueConfig(curveId);
         assertEq(priorityOut, defaultInitData.defaultQueuePriority);
         assertEq(maxDepositsOut, defaultInitData.defaultQueueMaxDeposits);
     }
 }
 
-contract ParametersRegistryAllowedExitDelayTest is
-    ParametersRegistryBaseTestInitialized,
-    ParametersTest
-{
+contract ParametersRegistryAllowedExitDelayTest is ParametersRegistryBaseTestInitialized, ParametersTest {
     function setUp() public virtual override {
         super.setUp();
         vm.startPrank(admin);
-        parametersRegistry.grantRole(
-            parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE(),
-            roleMember
-        );
+        parametersRegistry.grantRole(parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE(), roleMember);
         vm.stopPrank();
     }
 
@@ -2024,8 +1738,7 @@ contract ParametersRegistryAllowedExitDelayTest is
     function test_setDefault_RevertWhen_noRole() public override {
         uint256 delay = 7 days;
 
-        bytes32 role = parametersRegistry
-            .MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
+        bytes32 role = parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.setDefaultAllowedExitDelay(delay);
@@ -2052,8 +1765,7 @@ contract ParametersRegistryAllowedExitDelayTest is
         uint256 curveId = 1;
         uint256 delay = 3 days;
 
-        bytes32 role = parametersRegistry
-            .MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
+        bytes32 role = parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.setAllowedExitDelay(curveId, delay);
@@ -2070,8 +1782,7 @@ contract ParametersRegistryAllowedExitDelayTest is
     function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 1;
 
-        bytes32 role = parametersRegistry
-            .MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
+        bytes32 role = parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.unsetAllowedExitDelay(curveId);
@@ -2137,17 +1848,11 @@ contract ParametersRegistryAllowedExitDelayTest is
     }
 }
 
-contract ParametersRegistryExitDelayFeeTest is
-    ParametersRegistryBaseTestInitialized,
-    ParametersTest
-{
+contract ParametersRegistryExitDelayFeeTest is ParametersRegistryBaseTestInitialized, ParametersTest {
     function setUp() public virtual override {
         super.setUp();
         vm.startPrank(admin);
-        parametersRegistry.grantRole(
-            parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE(),
-            roleMember
-        );
+        parametersRegistry.grantRole(parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE(), roleMember);
         vm.stopPrank();
     }
 
@@ -2162,8 +1867,7 @@ contract ParametersRegistryExitDelayFeeTest is
     function test_setDefault_RevertWhen_noRole() public override {
         uint256 penalty = 1 ether;
 
-        bytes32 role = parametersRegistry
-            .MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
+        bytes32 role = parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.setDefaultExitDelayFee(penalty);
@@ -2181,8 +1885,7 @@ contract ParametersRegistryExitDelayFeeTest is
         uint256 curveId = 1;
         uint256 penalty = 1 ether;
 
-        bytes32 role = parametersRegistry
-            .MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
+        bytes32 role = parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.setExitDelayFee(curveId, penalty);
@@ -2199,8 +1902,7 @@ contract ParametersRegistryExitDelayFeeTest is
     function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 1;
 
-        bytes32 role = parametersRegistry
-            .MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
+        bytes32 role = parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.unsetExitDelayFee(curveId);
@@ -2266,17 +1968,11 @@ contract ParametersRegistryExitDelayFeeTest is
     }
 }
 
-contract ParametersRegistryMaxElWithdrawalRequestFeeTest is
-    ParametersRegistryBaseTestInitialized,
-    ParametersTest
-{
+contract ParametersRegistryMaxElWithdrawalRequestFeeTest is ParametersRegistryBaseTestInitialized, ParametersTest {
     function setUp() public virtual override {
         super.setUp();
         vm.startPrank(admin);
-        parametersRegistry.grantRole(
-            parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE(),
-            roleMember
-        );
+        parametersRegistry.grantRole(parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE(), roleMember);
         vm.stopPrank();
     }
 
@@ -2291,8 +1987,7 @@ contract ParametersRegistryMaxElWithdrawalRequestFeeTest is
     function test_setDefault_RevertWhen_noRole() public override {
         uint256 fee = 1 ether;
 
-        bytes32 role = parametersRegistry
-            .MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
+        bytes32 role = parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.setDefaultMaxElWithdrawalRequestFee(fee);
@@ -2310,8 +2005,7 @@ contract ParametersRegistryMaxElWithdrawalRequestFeeTest is
         uint256 curveId = 1;
         uint256 fee = 1 ether;
 
-        bytes32 role = parametersRegistry
-            .MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
+        bytes32 role = parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.setMaxElWithdrawalRequestFee(curveId, fee);
@@ -2328,8 +2022,7 @@ contract ParametersRegistryMaxElWithdrawalRequestFeeTest is
     function test_unset_RevertWhen_noRole() public override {
         uint256 curveId = 1;
 
-        bytes32 role = parametersRegistry
-            .MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
+        bytes32 role = parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE();
         expectRoleRevert(stranger, role);
         vm.prank(stranger);
         parametersRegistry.unsetMaxElWithdrawalRequestFee(curveId);
@@ -2342,18 +2035,14 @@ contract ParametersRegistryMaxElWithdrawalRequestFeeTest is
         vm.prank(admin);
         parametersRegistry.setMaxElWithdrawalRequestFee(curveId, fee);
 
-        uint256 feeOut = parametersRegistry.getMaxElWithdrawalRequestFee(
-            curveId
-        );
+        uint256 feeOut = parametersRegistry.getMaxElWithdrawalRequestFee(curveId);
 
         assertEq(feeOut, fee);
     }
 
     function test_get_defaultData() public view override {
         uint256 curveId = 10;
-        uint256 feeOut = parametersRegistry.getMaxElWithdrawalRequestFee(
-            curveId
-        );
+        uint256 feeOut = parametersRegistry.getMaxElWithdrawalRequestFee(curveId);
 
         assertEq(feeOut, defaultInitData.defaultMaxElWithdrawalRequestFee);
     }
@@ -2385,9 +2074,7 @@ contract ParametersRegistryMaxElWithdrawalRequestFeeTest is
         vm.prank(from);
         parametersRegistry.setMaxElWithdrawalRequestFee(curveId, fee);
 
-        uint256 feeOut = parametersRegistry.getMaxElWithdrawalRequestFee(
-            curveId
-        );
+        uint256 feeOut = parametersRegistry.getMaxElWithdrawalRequestFee(curveId);
 
         assertEq(feeOut, fee);
 

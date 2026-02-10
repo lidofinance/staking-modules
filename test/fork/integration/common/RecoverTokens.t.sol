@@ -18,11 +18,7 @@ abstract contract RecoverIntegrationTestBase is ModuleTypeBase, PermitHelper {
         _assertModuleEnqueuedCount();
         assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
-        assertAccountingBurnerApproval(
-            lido,
-            address(accounting),
-            locator.burner()
-        );
+        assertAccountingBurnerApproval(lido, address(accounting), locator.burner());
         assertAccountingUnusedStorageSlots(accounting);
         assertFeeDistributorClaimableShares(lido, feeDistributor);
         assertFeeDistributorTree(feeDistributor);
@@ -43,15 +39,11 @@ abstract contract RecoverIntegrationTestBase is ModuleTypeBase, PermitHelper {
         handleStakingLimit();
         handleBunkerMode();
 
-        vm.startPrank(
-            accounting.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0)
-        );
+        vm.startPrank(accounting.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0));
         accounting.grantRole(accounting.RECOVERER_ROLE(), recoverer);
         vm.stopPrank();
 
-        vm.startPrank(
-            feeDistributor.getRoleMember(feeDistributor.DEFAULT_ADMIN_ROLE(), 0)
-        );
+        vm.startPrank(feeDistributor.getRoleMember(feeDistributor.DEFAULT_ADMIN_ROLE(), 0));
         feeDistributor.grantRole(feeDistributor.RECOVERER_ROLE(), recoverer);
         vm.stopPrank();
 
@@ -112,8 +104,7 @@ abstract contract RecoverIntegrationTestBase is ModuleTypeBase, PermitHelper {
     function test_recoverStETH_fromAccounting() public assertInvariants {
         assertEq(lido.sharesOf(recoverer), 0);
 
-        uint256 surplusBefore = lido.sharesOf(address(accounting)) -
-            accounting.totalBondShares();
+        uint256 surplusBefore = lido.sharesOf(address(accounting)) - accounting.totalBondShares();
 
         uint256 amount = 1 ether;
         vm.startPrank(user);
@@ -225,12 +216,6 @@ abstract contract RecoverIntegrationTestBase is ModuleTypeBase, PermitHelper {
     }
 }
 
-contract RecoverIntegrationTestCSM is
-    RecoverIntegrationTestBase,
-    CSMIntegrationBase
-{}
+contract RecoverIntegrationTestCSM is RecoverIntegrationTestBase, CSMIntegrationBase {}
 
-contract RecoverIntegrationTestCurated is
-    RecoverIntegrationTestBase,
-    CuratedIntegrationBase
-{}
+contract RecoverIntegrationTestCurated is RecoverIntegrationTestBase, CuratedIntegrationBase {}

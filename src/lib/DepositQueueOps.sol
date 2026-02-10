@@ -59,9 +59,7 @@ library DepositQueueOps {
                     // lastRemovedAtDepthPerQueue: 3
                     // lastRemovedAtDepth: 6+3=9
 
-                    lastRemovedAtDepth =
-                        totalVisited +
-                        lastRemovedAtDepthPerQueue;
+                    lastRemovedAtDepth = totalVisited + lastRemovedAtDepthPerQueue;
                     removed += removedPerQueue;
                 }
             }
@@ -90,15 +88,7 @@ library DepositQueueOps {
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 maxItems,
         TransientUintUintMap queueLookup
-    )
-        private
-        returns (
-            uint256 removed,
-            uint256 lastRemovedAtDepth,
-            uint256 visited,
-            bool reachedOutOfQueue
-        )
-    {
+    ) private returns (uint256 removed, uint256 lastRemovedAtDepth, uint256 visited, bool reachedOutOfQueue) {
         removed = 0;
         lastRemovedAtDepth = 0;
         visited = 0;
@@ -175,15 +165,15 @@ library DepositQueueOps {
             toEnqueue = depositable - enqueued;
         }
 
-        (uint32 priority, uint32 maxDeposits) = parametersRegistry
-            .getQueueConfig(accounting.getBondCurveId(nodeOperatorId));
+        (uint32 priority, uint32 maxDeposits) = parametersRegistry.getQueueConfig(
+            accounting.getBondCurveId(nodeOperatorId)
+        );
         // If Node Operator is eligible for priority queue, try to enqueue there first.
         if (priority < queueLowestPriority) {
             unchecked {
                 uint32 depositedAndQueued = no.totalDepositedKeys + enqueued;
                 if (maxDeposits > depositedAndQueued) {
-                    uint32 priorityDepositsLeft = maxDeposits -
-                        depositedAndQueued;
+                    uint32 priorityDepositsLeft = maxDeposits - depositedAndQueued;
                     uint32 count = toEnqueue;
                     if (count > priorityDepositsLeft) {
                         count = priorityDepositsLeft;

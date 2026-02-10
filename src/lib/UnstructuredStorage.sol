@@ -20,17 +20,13 @@ library UnstructuredStorage {
         }
     }
 
-    function getStorageAddress(
-        bytes32 position
-    ) internal view returns (address data) {
+    function getStorageAddress(bytes32 position) internal view returns (address data) {
         assembly {
             data := sload(position)
         }
     }
 
-    function getStorageUint256(
-        bytes32 position
-    ) internal view returns (uint256 data) {
+    function getStorageUint256(bytes32 position) internal view returns (uint256 data) {
         assembly {
             data := sload(position)
         }

@@ -25,11 +25,7 @@ contract CuratedGateFactory is ICuratedGateFactory {
         address admin
     ) external returns (address instance) {
         instance = address(
-            new OssifiableProxy({
-                implementation_: CURATED_GATE_IMPL,
-                admin_: admin,
-                data_: new bytes(0)
-            })
+            new OssifiableProxy({ implementation_: CURATED_GATE_IMPL, admin_: admin, data_: new bytes(0) })
         );
 
         CuratedGate(instance).initialize(curveId, treeRoot, treeCid, admin);

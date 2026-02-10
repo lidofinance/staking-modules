@@ -17,11 +17,7 @@ contract ObtainDepositDataTestCurated is CuratedIntegrationBase {
         _assertModuleEnqueuedCount();
         assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
-        assertAccountingBurnerApproval(
-            lido,
-            address(accounting),
-            locator.burner()
-        );
+        assertAccountingBurnerApproval(lido, address(accounting), locator.burner());
         assertAccountingUnusedStorageSlots(accounting);
         assertFeeDistributorClaimableShares(lido, feeDistributor);
         assertFeeDistributorTree(feeDistributor);
@@ -37,46 +33,30 @@ contract ObtainDepositDataTestCurated is CuratedIntegrationBase {
         vm.stopPrank();
     }
 
-    function test_obtainDepositData_increasesOperatorBalance()
-        public
-        assertInvariants
-    {
+    function test_obtainDepositData_increasesOperatorBalance() public assertInvariants {
         uint256 keysCount = 2;
         uint256 operatorsBefore = module.getNodeOperatorsCount();
-        uint256 noId = integrationHelpers.addNodeOperator(
-            nextAddress(),
-            keysCount
-        );
+        uint256 noId = integrationHelpers.addNodeOperator(nextAddress(), keysCount);
 
         ICuratedModule curatedModule = ICuratedModule(address(module));
         uint256 balanceBefore = curatedModule.getNodeOperatorBalance(noId);
 
-        (, uint256 totalDepositedBefore, uint256 depositableBefore) = module
-            .getStakingModuleSummary();
+        (, uint256 totalDepositedBefore, uint256 depositableBefore) = module.getStakingModuleSummary();
 
-        uint256 request = depositableBefore > keysCount
-            ? keysCount
-            : depositableBefore;
+        uint256 request = depositableBefore > keysCount ? keysCount : depositableBefore;
 
         vm.prank(address(stakingRouter));
-        (bytes memory pubkeys, bytes memory signatures) = module
-            .obtainDepositData(request, "");
+        (bytes memory pubkeys, bytes memory signatures) = module.obtainDepositData(request, "");
 
         uint256 allocated = pubkeys.length / 48;
         assertEq(pubkeys.length, allocated * 48);
         assertEq(signatures.length, allocated * 96);
 
-        (, uint256 totalDepositedAfter, uint256 depositableAfter) = module
-            .getStakingModuleSummary();
+        (, uint256 totalDepositedAfter, uint256 depositableAfter) = module.getStakingModuleSummary();
         assertEq(totalDepositedAfter, totalDepositedBefore + allocated);
         assertEq(depositableAfter, depositableBefore - allocated);
 
         uint256 balanceAfter = curatedModule.getNodeOperatorBalance(noId);
-        assertEq(
-            balanceAfter,
-            balanceBefore +
-                allocated *
-                CuratedDepositAllocator.MIN_ACTIVATION_BALANCE
-        );
+        assertEq(balanceAfter, balanceBefore + allocated * CuratedDepositAllocator.MIN_ACTIVATION_BALANCE);
     }
 }

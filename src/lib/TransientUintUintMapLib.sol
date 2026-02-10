@@ -23,11 +23,7 @@ library TransientUintUintMapLib {
         }
     }
 
-    function add(
-        TransientUintUintMap self,
-        uint256 key,
-        uint256 value
-    ) internal {
+    function add(TransientUintUintMap self, uint256 key, uint256 value) internal {
         uint256 slot = _slot(self, key);
         assembly ("memory-safe") {
             let v := tload(slot)
@@ -37,39 +33,27 @@ library TransientUintUintMapLib {
         }
     }
 
-    function set(
-        TransientUintUintMap self,
-        uint256 key,
-        uint256 value
-    ) internal {
+    function set(TransientUintUintMap self, uint256 key, uint256 value) internal {
         uint256 slot = _slot(self, key);
         assembly ("memory-safe") {
             tstore(slot, value)
         }
     }
 
-    function get(
-        TransientUintUintMap self,
-        uint256 key
-    ) internal view returns (uint256 v) {
+    function get(TransientUintUintMap self, uint256 key) internal view returns (uint256 v) {
         uint256 slot = _slot(self, key);
         assembly ("memory-safe") {
             v := tload(slot)
         }
     }
 
-    function load(
-        bytes32 tslot
-    ) internal pure returns (TransientUintUintMap self) {
+    function load(bytes32 tslot) internal pure returns (TransientUintUintMap self) {
         assembly ("memory-safe") {
             self := tslot
         }
     }
 
-    function _slot(
-        TransientUintUintMap self,
-        uint256 key
-    ) internal pure returns (uint256 slot) {
+    function _slot(TransientUintUintMap self, uint256 key) internal pure returns (uint256 slot) {
         // Compute an address in the transient storage in the same manner it works for storage mappings.
         // `slot` = keccak256(`self` . `key`)
         assembly ("memory-safe") {

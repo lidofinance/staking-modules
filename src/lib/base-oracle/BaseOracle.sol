@@ -12,11 +12,7 @@ import { IReportAsyncProcessor } from "./interfaces/IReportAsyncProcessor.sol";
 import { IConsensusContract } from "./interfaces/IConsensusContract.sol";
 
 // solhint-disable ordering
-abstract contract BaseOracle is
-    IReportAsyncProcessor,
-    AccessControlEnumerableUpgradeable,
-    Versioned
-{
+abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerableUpgradeable, Versioned {
     using UnstructuredStorage for bytes32;
     using SafeCast for uint256;
 
@@ -28,46 +24,30 @@ abstract contract BaseOracle is
 
     /// @notice An ACL role granting the permission to set the consensus
     /// contract address by calling setConsensusContract.
-    bytes32 public constant MANAGE_CONSENSUS_CONTRACT_ROLE =
-        keccak256("MANAGE_CONSENSUS_CONTRACT_ROLE");
+    bytes32 public constant MANAGE_CONSENSUS_CONTRACT_ROLE = keccak256("MANAGE_CONSENSUS_CONTRACT_ROLE");
 
     /// @notice An ACL role granting the permission to set the consensus
     /// version by calling setConsensusVersion.
-    bytes32 public constant MANAGE_CONSENSUS_VERSION_ROLE =
-        keccak256("MANAGE_CONSENSUS_VERSION_ROLE");
+    bytes32 public constant MANAGE_CONSENSUS_VERSION_ROLE = keccak256("MANAGE_CONSENSUS_VERSION_ROLE");
 
     /// @dev Storage slot: address consensusContract
-    bytes32 internal constant CONSENSUS_CONTRACT_POSITION =
-        keccak256("lido.BaseOracle.consensusContract");
+    bytes32 internal constant CONSENSUS_CONTRACT_POSITION = keccak256("lido.BaseOracle.consensusContract");
 
     /// @dev Storage slot: uint256 consensusVersion
-    bytes32 internal constant CONSENSUS_VERSION_POSITION =
-        keccak256("lido.BaseOracle.consensusVersion");
+    bytes32 internal constant CONSENSUS_VERSION_POSITION = keccak256("lido.BaseOracle.consensusVersion");
 
     /// @dev Storage slot: uint256 lastProcessingRefSlot
-    bytes32 internal constant LAST_PROCESSING_REF_SLOT_POSITION =
-        keccak256("lido.BaseOracle.lastProcessingRefSlot");
+    bytes32 internal constant LAST_PROCESSING_REF_SLOT_POSITION = keccak256("lido.BaseOracle.lastProcessingRefSlot");
 
     /// @dev Storage slot: ConsensusReport consensusReport
-    bytes32 internal constant CONSENSUS_REPORT_POSITION =
-        keccak256("lido.BaseOracle.consensusReport");
+    bytes32 internal constant CONSENSUS_REPORT_POSITION = keccak256("lido.BaseOracle.consensusReport");
 
     uint256 public immutable SECONDS_PER_SLOT;
     uint256 public immutable GENESIS_TIME;
 
-    event ConsensusHashContractSet(
-        address indexed addr,
-        address indexed prevAddr
-    );
-    event ConsensusVersionSet(
-        uint256 indexed version,
-        uint256 indexed prevVersion
-    );
-    event ReportSubmitted(
-        uint256 indexed refSlot,
-        bytes32 hash,
-        uint256 processingDeadlineTime
-    );
+    event ConsensusHashContractSet(address indexed addr, address indexed prevAddr);
+    event ConsensusVersionSet(uint256 indexed version, uint256 indexed prevVersion);
+    event ReportSubmitted(uint256 indexed refSlot, bytes32 hash, uint256 processingDeadlineTime);
     event ReportDiscarded(uint256 indexed refSlot, bytes32 hash);
     event ProcessingStarted(uint256 indexed refSlot, bytes32 hash);
     event WarnProcessingMissed(uint256 indexed refSlot);
@@ -78,23 +58,14 @@ abstract contract BaseOracle is
     error VersionCannotBeZero();
     error UnexpectedChainConfig();
     error SenderIsNotTheConsensusContract();
-    error InitialRefSlotCannotBeLessThanProcessingOne(
-        uint256 initialRefSlot,
-        uint256 processingRefSlot
-    );
-    error RefSlotMustBeGreaterThanProcessingOne(
-        uint256 refSlot,
-        uint256 processingRefSlot
-    );
+    error InitialRefSlotCannotBeLessThanProcessingOne(uint256 initialRefSlot, uint256 processingRefSlot);
+    error RefSlotMustBeGreaterThanProcessingOne(uint256 refSlot, uint256 processingRefSlot);
     error RefSlotCannotDecrease(uint256 refSlot, uint256 prevRefSlot);
     error NoConsensusReportToProcess();
     error ProcessingDeadlineMissed(uint256 deadline);
     error RefSlotAlreadyProcessing();
     error UnexpectedRefSlot(uint256 consensusRefSlot, uint256 dataRefSlot);
-    error UnexpectedConsensusVersion(
-        uint256 expectedVersion,
-        uint256 receivedVersion
-    );
+    error UnexpectedConsensusVersion(uint256 expectedVersion, uint256 receivedVersion);
     error HashCannotBeZero();
     error UnexpectedDataHash(bytes32 consensusHash, bytes32 receivedHash);
     error SecondsPerSlotCannotBeZero();
@@ -120,13 +91,8 @@ abstract contract BaseOracle is
 
     /// @notice Sets the address of the HashConsensus contract.
     ///
-    function setConsensusContract(
-        address addr
-    ) external onlyRole(MANAGE_CONSENSUS_CONTRACT_ROLE) {
-        _setConsensusContract(
-            addr,
-            LAST_PROCESSING_REF_SLOT_POSITION.getStorageUint256()
-        );
+    function setConsensusContract(address addr) external onlyRole(MANAGE_CONSENSUS_CONTRACT_ROLE) {
+        _setConsensusContract(addr, LAST_PROCESSING_REF_SLOT_POSITION.getStorageUint256());
     }
 
     /// @notice Returns the current consensus version expected by the oracle contract.
@@ -140,9 +106,7 @@ abstract contract BaseOracle is
 
     /// @notice Sets the consensus version expected by the oracle contract.
     ///
-    function setConsensusVersion(
-        uint256 version
-    ) external onlyRole(MANAGE_CONSENSUS_VERSION_ROLE) {
+    function setConsensusVersion(uint256 version) external onlyRole(MANAGE_CONSENSUS_VERSION_ROLE) {
         _setConsensusVersion(version);
     }
 
@@ -155,16 +119,10 @@ abstract contract BaseOracle is
     function getConsensusReport()
         external
         view
-        returns (
-            bytes32 hash,
-            uint256 refSlot,
-            uint256 processingDeadlineTime,
-            bool processingStarted
-        )
+        returns (bytes32 hash, uint256 refSlot, uint256 processingDeadlineTime, bool processingStarted)
     {
         ConsensusReport memory report = _storageConsensusReport().value;
-        uint256 processingRefSlot = LAST_PROCESSING_REF_SLOT_POSITION
-            .getStorageUint256();
+        uint256 processingRefSlot = LAST_PROCESSING_REF_SLOT_POSITION.getStorageUint256();
         return (
             report.hash,
             report.refSlot,
@@ -185,11 +143,7 @@ abstract contract BaseOracle is
     /// submit it using this same function, or to lose the consensus on the submitted report,
     /// notifying the processor via `discardConsensusReport`.
     ///
-    function submitConsensusReport(
-        bytes32 reportHash,
-        uint256 refSlot,
-        uint256 deadline
-    ) external {
+    function submitConsensusReport(bytes32 reportHash, uint256 refSlot, uint256 deadline) external {
         _checkSenderIsConsensusContract();
 
         uint256 prevSubmittedRefSlot = _storageConsensusReport().value.refSlot;
@@ -197,23 +151,16 @@ abstract contract BaseOracle is
             revert RefSlotCannotDecrease(refSlot, prevSubmittedRefSlot);
         }
 
-        uint256 prevProcessingRefSlot = LAST_PROCESSING_REF_SLOT_POSITION
-            .getStorageUint256();
+        uint256 prevProcessingRefSlot = LAST_PROCESSING_REF_SLOT_POSITION.getStorageUint256();
         if (refSlot <= prevProcessingRefSlot) {
-            revert RefSlotMustBeGreaterThanProcessingOne(
-                refSlot,
-                prevProcessingRefSlot
-            );
+            revert RefSlotMustBeGreaterThanProcessingOne(refSlot, prevProcessingRefSlot);
         }
 
         if (_getTime() > deadline) {
             revert ProcessingDeadlineMissed(deadline);
         }
 
-        if (
-            refSlot != prevSubmittedRefSlot &&
-            prevProcessingRefSlot != prevSubmittedRefSlot
-        ) {
+        if (refSlot != prevSubmittedRefSlot && prevProcessingRefSlot != prevSubmittedRefSlot) {
             emit WarnProcessingMissed(prevSubmittedRefSlot);
         }
 
@@ -230,11 +177,7 @@ abstract contract BaseOracle is
         });
 
         _storageConsensusReport().value = report;
-        _handleConsensusReport(
-            report,
-            prevSubmittedRefSlot,
-            prevProcessingRefSlot
-        );
+        _handleConsensusReport(report, prevSubmittedRefSlot, prevProcessingRefSlot);
     }
 
     /// @notice Called by HashConsensus contract to notify that the report for the given ref. slot
@@ -254,16 +197,14 @@ abstract contract BaseOracle is
     function discardConsensusReport(uint256 refSlot) external {
         _checkSenderIsConsensusContract();
 
-        ConsensusReport memory submittedReport = _storageConsensusReport()
-            .value;
+        ConsensusReport memory submittedReport = _storageConsensusReport().value;
         if (refSlot < submittedReport.refSlot) {
             revert RefSlotCannotDecrease(refSlot, submittedReport.refSlot);
         } else if (refSlot > submittedReport.refSlot) {
             return;
         }
 
-        uint256 lastProcessingRefSlot = LAST_PROCESSING_REF_SLOT_POSITION
-            .getStorageUint256();
+        uint256 lastProcessingRefSlot = LAST_PROCESSING_REF_SLOT_POSITION.getStorageUint256();
         if (refSlot <= lastProcessingRefSlot) {
             revert RefSlotAlreadyProcessing();
         }
@@ -295,11 +236,8 @@ abstract contract BaseOracle is
         _initializeContractVersionTo(1);
         _setConsensusContract(consensusContract, lastProcessingRefSlot);
         _setConsensusVersion(consensusVersion);
-        LAST_PROCESSING_REF_SLOT_POSITION.setStorageUint256(
-            lastProcessingRefSlot
-        );
-        _storageConsensusReport().value.refSlot = lastProcessingRefSlot
-            .toUint64();
+        LAST_PROCESSING_REF_SLOT_POSITION.setStorageUint256(lastProcessingRefSlot);
+        _storageConsensusReport().value.refSlot = lastProcessingRefSlot.toUint64();
     }
 
     /// @notice Returns whether the given address is a member of the oracle committee.
@@ -326,30 +264,20 @@ abstract contract BaseOracle is
     /// report that is not processing yet and asks to discard this report. Only called if there is
     /// no new consensus report at the moment; otherwise, `_handleConsensusReport` is called instead.
     ///
-    function _handleConsensusReportDiscarded(
-        ConsensusReport memory report
-    ) internal virtual {} // solhint-disable-line no-empty-blocks
+    function _handleConsensusReportDiscarded(ConsensusReport memory report) internal virtual {} // solhint-disable-line no-empty-blocks
 
     /// @notice May be called by a descendant contract to check if the received data matches
     /// the currently submitted consensus report. Reverts otherwise.
     ///
-    function _checkConsensusData(
-        uint256 refSlot,
-        uint256 consensusVersion,
-        bytes32 hash
-    ) internal view {
+    function _checkConsensusData(uint256 refSlot, uint256 consensusVersion, bytes32 hash) internal view {
         ConsensusReport memory report = _storageConsensusReport().value;
         if (refSlot != report.refSlot) {
             revert UnexpectedRefSlot(report.refSlot, refSlot);
         }
 
-        uint256 expectedConsensusVersion = CONSENSUS_VERSION_POSITION
-            .getStorageUint256();
+        uint256 expectedConsensusVersion = CONSENSUS_VERSION_POSITION.getStorageUint256();
         if (consensusVersion != expectedConsensusVersion) {
-            revert UnexpectedConsensusVersion(
-                expectedConsensusVersion,
-                consensusVersion
-            );
+            revert UnexpectedConsensusVersion(expectedConsensusVersion, consensusVersion);
         }
 
         if (hash != report.hash) {
@@ -373,8 +301,7 @@ abstract contract BaseOracle is
 
         _checkProcessingDeadline(report.processingDeadlineTime);
 
-        uint256 prevProcessingRefSlot = LAST_PROCESSING_REF_SLOT_POSITION
-            .getStorageUint256();
+        uint256 prevProcessingRefSlot = LAST_PROCESSING_REF_SLOT_POSITION.getStorageUint256();
         if (prevProcessingRefSlot == report.refSlot) {
             revert RefSlotAlreadyProcessing();
         }
@@ -409,10 +336,7 @@ abstract contract BaseOracle is
         emit ConsensusVersionSet(version, prevVersion);
     }
 
-    function _setConsensusContract(
-        address addr,
-        uint256 lastProcessingRefSlot
-    ) internal {
+    function _setConsensusContract(address addr, uint256 lastProcessingRefSlot) internal {
         if (addr == address(0)) {
             revert AddressCannotBeZero();
         }
@@ -422,19 +346,14 @@ abstract contract BaseOracle is
             revert AddressCannotBeSame();
         }
 
-        (, uint256 secondsPerSlot, uint256 genesisTime) = IConsensusContract(
-            addr
-        ).getChainConfig();
+        (, uint256 secondsPerSlot, uint256 genesisTime) = IConsensusContract(addr).getChainConfig();
         if (secondsPerSlot != SECONDS_PER_SLOT || genesisTime != GENESIS_TIME) {
             revert UnexpectedChainConfig();
         }
 
         uint256 initialRefSlot = IConsensusContract(addr).getInitialRefSlot();
         if (initialRefSlot < lastProcessingRefSlot) {
-            revert InitialRefSlotCannotBeLessThanProcessingOne(
-                initialRefSlot,
-                lastProcessingRefSlot
-            );
+            revert InitialRefSlotCannotBeLessThanProcessingOne(initialRefSlot, lastProcessingRefSlot);
         }
 
         CONSENSUS_CONTRACT_POSITION.setStorageAddress(addr);
@@ -459,11 +378,7 @@ abstract contract BaseOracle is
         ConsensusReport value;
     }
 
-    function _storageConsensusReport()
-        internal
-        pure
-        returns (StorageConsensusReport storage r)
-    {
+    function _storageConsensusReport() internal pure returns (StorageConsensusReport storage r) {
         bytes32 position = CONSENSUS_REPORT_POSITION;
         assembly {
             r.slot := position

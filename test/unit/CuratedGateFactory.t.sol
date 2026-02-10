@@ -64,9 +64,7 @@ contract CuratedGateFactoryTest_create is CuratedGateFactoryTestBase {
         assertEq(gate.treeCid(), cid);
         assertEq(address(gate.META_REGISTRY()), address(data));
 
-        AccessControlEnumerableUpgradeable access = AccessControlEnumerableUpgradeable(
-                instance
-            );
+        AccessControlEnumerableUpgradeable access = AccessControlEnumerableUpgradeable(instance);
         assertEq(access.getRoleMemberCount(access.DEFAULT_ADMIN_ROLE()), 1);
         assertTrue(access.hasRole(access.DEFAULT_ADMIN_ROLE(), admin));
 

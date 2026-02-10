@@ -25,9 +25,7 @@ contract ExposedUnstructuredStorageTest is Test {
      * forge-config: default.fuzz.runs = 2048
      * forge-config: default.fuzz.max-test-rejects = 0
      */
-    function testFuzz_getStorageAddress_Uninitialized(
-        bytes32 position
-    ) public view {
+    function testFuzz_getStorageAddress_Uninitialized(bytes32 position) public view {
         assertEq(unstructuredStorage.getStorageAddress(position), address(0));
     }
 
@@ -42,9 +40,7 @@ contract ExposedUnstructuredStorageTest is Test {
      * forge-config: default.fuzz.runs = 2048
      * forge-config: default.fuzz.max-test-rejects = 0
      */
-    function testFuzz_getStorageUint256_Uninitialized(
-        bytes32 position
-    ) public view {
+    function testFuzz_getStorageUint256_Uninitialized(bytes32 position) public view {
         uint256 data;
         assertEq(unstructuredStorage.getStorageUint256(position), data);
     }
@@ -74,10 +70,7 @@ contract ExposedUnstructuredStorageTest is Test {
         uint256 data = 1;
         uint256 unInitializedData;
 
-        assertEq(
-            unstructuredStorage.getStorageUint256(position),
-            unInitializedData
-        );
+        assertEq(unstructuredStorage.getStorageUint256(position), unInitializedData);
         unstructuredStorage.setStorageUint256(position, data);
         assertEq(unstructuredStorage.getStorageUint256(position), data);
     }
@@ -90,10 +83,7 @@ contract ExposedUnstructuredStorageTest is Test {
     function testFuzz_setStorageUint256(uint256 data, bytes32 position) public {
         uint256 unInitializedData;
 
-        assertEq(
-            unstructuredStorage.getStorageUint256(position),
-            unInitializedData
-        );
+        assertEq(unstructuredStorage.getStorageUint256(position), unInitializedData);
         unstructuredStorage.setStorageUint256(position, data);
         assertEq(unstructuredStorage.getStorageUint256(position), data);
     }

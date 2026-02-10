@@ -43,19 +43,14 @@ abstract contract ModuleExitDeadlineThreshold is ModuleFixtures {
         assertEq(exitDeadlineThreshold, parametersRegistry.allowedExitDelay());
     }
 
-    function test_exitDeadlineThreshold_RevertWhenNoNodeOperator()
-        public
-        assertInvariants
-    {
+    function test_exitDeadlineThreshold_RevertWhenNoNodeOperator() public assertInvariants {
         uint256 noId = 0;
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.exitDeadlineThreshold(noId);
     }
 }
 
-abstract contract ModuleIsValidatorExitDelayPenaltyApplicable is
-    ModuleFixtures
-{
+abstract contract ModuleIsValidatorExitDelayPenaltyApplicable is ModuleFixtures {
     function test_isValidatorExitDelayPenaltyApplicable_notApplicable() public {
         uint256 noId = createNodeOperator();
         uint256 eligibleToExit = module.exitDeadlineThreshold(noId);
@@ -72,12 +67,7 @@ abstract contract ModuleIsValidatorExitDelayPenaltyApplicable is
                 eligibleToExit
             )
         );
-        bool applicable = module.isValidatorExitDelayPenaltyApplicable(
-            noId,
-            154,
-            publicKey,
-            eligibleToExit
-        );
+        bool applicable = module.isValidatorExitDelayPenaltyApplicable(noId, 154, publicKey, eligibleToExit);
         assertFalse(applicable);
     }
 
@@ -97,12 +87,7 @@ abstract contract ModuleIsValidatorExitDelayPenaltyApplicable is
                 eligibleToExit
             )
         );
-        bool applicable = module.isValidatorExitDelayPenaltyApplicable(
-            noId,
-            154,
-            publicKey,
-            eligibleToExit
-        );
+        bool applicable = module.isValidatorExitDelayPenaltyApplicable(noId, 154, publicKey, eligibleToExit);
         assertTrue(applicable);
     }
 }
@@ -122,12 +107,7 @@ abstract contract ModuleReportValidatorExitDelay is ModuleFixtures {
                 exitDeadlineThreshold
             )
         );
-        module.reportValidatorExitDelay(
-            noId,
-            block.timestamp,
-            publicKey,
-            exitDeadlineThreshold
-        );
+        module.reportValidatorExitDelay(noId, block.timestamp, publicKey, exitDeadlineThreshold);
     }
 
     function test_reportValidatorExitDelay_RevertWhen_noNodeOperator() public {
@@ -136,12 +116,7 @@ abstract contract ModuleReportValidatorExitDelay is ModuleFixtures {
         uint256 exitDelay = parametersRegistry.allowedExitDelay();
 
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
-        module.reportValidatorExitDelay(
-            noId,
-            block.timestamp,
-            publicKey,
-            exitDelay
-        );
+        module.reportValidatorExitDelay(noId, block.timestamp, publicKey, exitDelay);
     }
 }
 
@@ -154,13 +129,7 @@ abstract contract ModuleOnValidatorExitTriggered is ModuleFixtures {
 
         vm.expectCall(
             address(exitPenalties),
-            abi.encodeWithSelector(
-                IExitPenalties.processTriggeredExit.selector,
-                noId,
-                publicKey,
-                paidFee,
-                exitType
-            )
+            abi.encodeWithSelector(IExitPenalties.processTriggeredExit.selector, noId, publicKey, paidFee, exitType)
         );
         module.onValidatorExitTriggered(noId, publicKey, paidFee, exitType);
     }

@@ -24,9 +24,7 @@ library BondCurves {
     ) external returns (uint256 curveId) {
         _check(intervals);
         curveId = bondCurvesStorage.bondCurves.length;
-        IBondCurve.BondCurveData storage bondCurve = bondCurvesStorage
-            .bondCurves
-            .push();
+        IBondCurve.BondCurveData storage bondCurve = bondCurvesStorage.bondCurves.push();
         _addIntervals(bondCurve, intervals);
     }
 
@@ -52,9 +50,7 @@ library BondCurves {
         uint256 keys,
         uint256 curveId
     ) external view returns (uint256) {
-        IBondCurve.BondCurveInterval[] storage intervals = bondCurvesStorage
-            .bondCurves[curveId]
-            .intervals;
+        IBondCurve.BondCurveInterval[] storage intervals = bondCurvesStorage.bondCurves[curveId].intervals;
         if (keys == 0) {
             return 0;
         }
@@ -71,10 +67,7 @@ library BondCurves {
                 }
             }
             IBondCurve.BondCurveInterval storage interval = intervals[low];
-            return
-                interval.minBond +
-                (keys - interval.minKeysCount) *
-                interval.trend;
+            return interval.minBond + (keys - interval.minKeysCount) * interval.trend;
         }
     }
 
@@ -83,9 +76,7 @@ library BondCurves {
         uint256 amount,
         uint256 curveId
     ) external view returns (uint256) {
-        IBondCurve.BondCurveInterval[] storage intervals = bondCurvesStorage
-            .bondCurves[curveId]
-            .intervals;
+        IBondCurve.BondCurveInterval[] storage intervals = bondCurvesStorage.bondCurves[curveId].intervals;
 
         // intervals[0].minBond is essentially the amount of bond required for the very first key
         if (amount < intervals[0].minBond) {
@@ -121,10 +112,7 @@ library BondCurves {
                 }
             }
             interval = intervals[low];
-            return
-                interval.minKeysCount +
-                (amount - interval.minBond) /
-                interval.trend;
+            return interval.minKeysCount + (amount - interval.minBond) / interval.trend;
         }
     }
 
@@ -132,9 +120,7 @@ library BondCurves {
         IBondCurve.BondCurveData storage bondCurve,
         IBondCurve.BondCurveIntervalInput[] calldata intervals
     ) internal {
-        IBondCurve.BondCurveInterval storage interval = bondCurve
-            .intervals
-            .push();
+        IBondCurve.BondCurveInterval storage interval = bondCurve.intervals.push();
 
         interval.minKeysCount = intervals[0].minKeysCount;
         interval.trend = intervals[0].trend;
@@ -153,13 +139,8 @@ library BondCurves {
         }
     }
 
-    function _check(
-        IBondCurve.BondCurveIntervalInput[] calldata intervals
-    ) internal pure {
-        if (
-            intervals.length < MIN_CURVE_LENGTH ||
-            intervals.length > MAX_CURVE_LENGTH
-        ) {
+    function _check(IBondCurve.BondCurveIntervalInput[] calldata intervals) internal pure {
+        if (intervals.length < MIN_CURVE_LENGTH || intervals.length > MAX_CURVE_LENGTH) {
             revert IBondCurves.InvalidBondCurveLength();
         }
 
@@ -173,9 +154,7 @@ library BondCurves {
 
         for (uint256 i = 1; i < intervals.length; ++i) {
             unchecked {
-                if (
-                    intervals[i].minKeysCount <= intervals[i - 1].minKeysCount
-                ) {
+                if (intervals[i].minKeysCount <= intervals[i - 1].minKeysCount) {
                     revert IBondCurves.InvalidBondCurveValues();
                 }
                 if (intervals[i].trend == 0) {

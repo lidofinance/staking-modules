@@ -5,10 +5,7 @@ pragma solidity 0.8.33;
 
 type TopUpQueueItem is uint64;
 
-function newTopUpQueueItem(
-    uint32 noId_,
-    uint32 keyIndex_
-) pure returns (TopUpQueueItem item) {
+function newTopUpQueueItem(uint32 noId_, uint32 keyIndex_) pure returns (TopUpQueueItem item) {
     assembly ("memory-safe") {
         item := shl(32, noId_)
         item := or(item, keyIndex_)
@@ -90,10 +87,7 @@ library TopUpQueueLib {
         return self.items.length - self.head;
     }
 
-    function at(
-        Queue storage self,
-        uint256 index
-    ) internal view returns (TopUpQueueItem) {
+    function at(Queue storage self, uint256 index) internal view returns (TopUpQueueItem) {
         index = self.head + index;
         return self.items[index];
     }

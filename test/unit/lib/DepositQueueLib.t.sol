@@ -25,10 +25,7 @@ contract Library {
         return q.head;
     }
 
-    function enqueue(
-        uint256 nodeOperatorId,
-        uint256 keysCount
-    ) public returns (Batch) {
+    function enqueue(uint256 nodeOperatorId, uint256 keysCount) public returns (Batch) {
         return q.enqueue(nodeOperatorId, keysCount);
     }
 
@@ -44,10 +41,7 @@ contract Library {
         return q.at(index);
     }
 
-    function setNodeOperator(
-        uint256 id,
-        NodeOperator calldata operatorData
-    ) external {
+    function setNodeOperator(uint256 id, NodeOperator calldata operatorData) external {
         nodeOperators[id] = operatorData;
     }
 }
@@ -75,12 +69,7 @@ contract DepositQueueLibTest is Test {
         assertEq(p.keys(), c);
     }
 
-    function testFuzz_setNext(
-        uint64 a,
-        uint64 b,
-        uint64 c,
-        uint64 d
-    ) public pure {
+    function testFuzz_setNext(uint64 a, uint64 b, uint64 c, uint64 d) public pure {
         Batch p0 = createBatch(a, b);
         Batch p1 = createBatch(c, d);
         p0 = p0.setNext(p1.next());
@@ -104,14 +93,7 @@ contract DepositQueueLibTest is Test {
         assertEq(q.tail(), 2);
     }
 
-    function testFuzz_dequeue(
-        uint64 a,
-        uint64 b,
-        uint64 c,
-        uint64 d,
-        uint64 e,
-        uint64 f
-    ) public {
+    function testFuzz_dequeue(uint64 a, uint64 b, uint64 c, uint64 d, uint64 e, uint64 f) public {
         assertTrue(q.peek().isNil());
 
         Batch p0 = q.enqueue(a, b);

@@ -173,10 +173,7 @@ abstract contract DeployBase is Script {
     function run(string memory _gitRef) external virtual {
         gitRef = _gitRef;
         if (chainId != block.chainid) {
-            revert ChainIdMismatch({
-                actual: block.chainid,
-                expected: chainId
-            });
+            revert ChainIdMismatch({ actual: block.chainid, expected: chainId });
         }
         HashConsensus accountingConsensus = HashConsensus(
             BaseOracle(locator.accountingOracle()).getConsensusContract()
@@ -185,8 +182,7 @@ abstract contract DeployBase is Script {
         uint256 quorum = accountingConsensus.getQuorum();
         if (block.chainid == 1) {
             if (
-                keccak256(abi.encode(config.oracleMembers)) !=
-                keccak256(abi.encode(members)) ||
+                keccak256(abi.encode(config.oracleMembers)) != keccak256(abi.encode(members)) ||
                 config.hashConsensusQuorum != quorum
             ) {
                 revert HashConsensusMismatch();
@@ -201,33 +197,23 @@ abstract contract DeployBase is Script {
         uint256[] memory curatedCurveIds = new uint256[](gatesCount);
 
         {
-            ParametersRegistry parametersRegistryImpl = new ParametersRegistry(
-                config.queueLowestPriority
-            );
-            parametersRegistry = ParametersRegistry(
-                _deployProxy(config.proxyAdmin, address(parametersRegistryImpl))
-            );
+            ParametersRegistry parametersRegistryImpl = new ParametersRegistry(config.queueLowestPriority);
+            parametersRegistry = ParametersRegistry(_deployProxy(config.proxyAdmin, address(parametersRegistryImpl)));
 
             Dummy dummyImpl = new Dummy();
 
-            curatedModule = CuratedModule(
-                _deployProxy(deployer, address(dummyImpl))
-            );
+            curatedModule = CuratedModule(_deployProxy(deployer, address(dummyImpl)));
 
             accounting = Accounting(_deployProxy(deployer, address(dummyImpl)));
             oracle = FeeOracle(_deployProxy(deployer, address(dummyImpl)));
-            metaRegistry = MetaRegistry(
-                _deployProxy(deployer, address(dummyImpl))
-            );
+            metaRegistry = MetaRegistry(_deployProxy(deployer, address(dummyImpl)));
 
             FeeDistributor feeDistributorImpl = new FeeDistributor({
                 stETH: locator.lido(),
                 accounting: address(accounting),
                 oracle: address(oracle)
             });
-            feeDistributor = FeeDistributor(
-                _deployProxy(config.proxyAdmin, address(feeDistributorImpl))
-            );
+            feeDistributor = FeeDistributor(_deployProxy(config.proxyAdmin, address(feeDistributorImpl)));
 
             // prettier-ignore
             verifier = new Verifier({
@@ -259,8 +245,7 @@ abstract contract DeployBase is Script {
                 admin: deployer,
                 data: IParametersRegistry.InitializationData({
                     defaultKeyRemovalCharge: config.defaultKeyRemovalCharge,
-                    defaultGeneralDelayedPenaltyAdditionalFine: config
-                        .defaultGeneralDelayedPenaltyAdditionalFine,
+                    defaultGeneralDelayedPenaltyAdditionalFine: config.defaultGeneralDelayedPenaltyAdditionalFine,
                     defaultKeysLimit: config.defaultKeysLimit,
                     defaultRewardShare: config.defaultRewardShareBP,
                     defaultPerformanceLeeway: config.defaultAvgPerfLeewayBP,
@@ -268,15 +253,13 @@ abstract contract DeployBase is Script {
                     defaultStrikesThreshold: config.defaultStrikesThreshold,
                     defaultQueuePriority: config.defaultQueuePriority,
                     defaultQueueMaxDeposits: config.defaultQueueMaxDeposits,
-                    defaultBadPerformancePenalty: config
-                        .defaultBadPerformancePenalty,
+                    defaultBadPerformancePenalty: config.defaultBadPerformancePenalty,
                     defaultAttestationsWeight: config.defaultAttestationsWeight,
                     defaultBlocksWeight: config.defaultBlocksWeight,
                     defaultSyncWeight: config.defaultSyncWeight,
                     defaultAllowedExitDelay: config.defaultAllowedExitDelay,
                     defaultExitDelayFee: config.defaultExitDelayFee,
-                    defaultMaxElWithdrawalRequestFee: config
-                        .defaultMaxElWithdrawalRequestFee
+                    defaultMaxElWithdrawalRequestFee: config.defaultMaxElWithdrawalRequestFee
                 })
             });
 
@@ -289,16 +272,13 @@ abstract contract DeployBase is Script {
             });
 
             {
-                OssifiableProxy accountingProxy = OssifiableProxy(
-                    payable(address(accounting))
-                );
+                OssifiableProxy accountingProxy = OssifiableProxy(payable(address(accounting)));
                 accountingProxy.proxy__upgradeTo(address(accountingImpl));
                 accountingProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
-            IBondCurve.BondCurveIntervalInput[]
-                memory defaultBondCurve = CommonScriptUtils
-                    .arraysToBondCurveIntervalsInputs(config.defaultBondCurve);
+            IBondCurve.BondCurveIntervalInput[] memory defaultBondCurve = CommonScriptUtils
+                .arraysToBondCurveIntervalsInputs(config.defaultBondCurve);
             accounting.initialize({
                 bondCurve: defaultBondCurve,
                 admin: deployer,
@@ -306,30 +286,21 @@ abstract contract DeployBase is Script {
                 _chargePenaltyRecipient: config.chargePenaltyRecipient
             });
 
-            accounting.grantRole(
-                accounting.MANAGE_BOND_CURVES_ROLE(),
-                address(deployer)
-            );
+            accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
 
             for (uint256 i = 0; i < gatesCount; i++) {
                 CuratedGateConfig storage gateConfig = config.curatedGates[i];
                 // default curve if no values
                 uint256 curveId = 0;
                 if (gateConfig.bondCurve.length != 0) {
-                    IBondCurve.BondCurveIntervalInput[]
-                        memory curatedGateBondCurve = CommonScriptUtils
-                            .arraysToBondCurveIntervalsInputs(
-                                gateConfig.bondCurve
-                            );
+                    IBondCurve.BondCurveIntervalInput[] memory curatedGateBondCurve = CommonScriptUtils
+                        .arraysToBondCurveIntervalsInputs(gateConfig.bondCurve);
                     curveId = accounting.addBondCurve(curatedGateBondCurve);
                 }
                 curatedCurveIds[i] = curveId;
 
                 GateCurveParams storage params = gateConfig.params;
-                parametersRegistry.setKeyRemovalCharge(
-                    curveId,
-                    params.keyRemovalCharge
-                );
+                parametersRegistry.setKeyRemovalCharge(curveId, params.keyRemovalCharge);
                 parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(
                     curveId,
                     params.generalDelayedPenaltyAdditionalFine
@@ -338,60 +309,35 @@ abstract contract DeployBase is Script {
                 if (params.avgPerfLeewayData.length > 0) {
                     parametersRegistry.setPerformanceLeewayData(
                         curveId,
-                        CommonScriptUtils.arraysToKeyIndexValueIntervals(
-                            params.avgPerfLeewayData
-                        )
+                        CommonScriptUtils.arraysToKeyIndexValueIntervals(params.avgPerfLeewayData)
                     );
                 }
                 if (params.rewardShareData.length > 0) {
                     parametersRegistry.setRewardShareData(
                         curveId,
-                        CommonScriptUtils.arraysToKeyIndexValueIntervals(
-                            params.rewardShareData
-                        )
+                        CommonScriptUtils.arraysToKeyIndexValueIntervals(params.rewardShareData)
                     );
                 }
-                parametersRegistry.setStrikesParams(
-                    curveId,
-                    params.strikesLifetimeFrames,
-                    params.strikesThreshold
-                );
+                parametersRegistry.setStrikesParams(curveId, params.strikesLifetimeFrames, params.strikesThreshold);
                 parametersRegistry.setQueueConfig(
                     curveId,
                     uint32(params.queuePriority),
                     uint32(params.queueMaxDeposits)
                 );
-                parametersRegistry.setBadPerformancePenalty(
-                    curveId,
-                    params.badPerformancePenalty
-                );
+                parametersRegistry.setBadPerformancePenalty(curveId, params.badPerformancePenalty);
                 parametersRegistry.setPerformanceCoefficients(
                     curveId,
                     params.attestationsWeight,
                     params.blocksWeight,
                     params.syncWeight
                 );
-                parametersRegistry.setAllowedExitDelay(
-                    curveId,
-                    params.allowedExitDelay
-                );
-                parametersRegistry.setExitDelayFee(
-                    curveId,
-                    params.exitDelayFee
-                );
-                parametersRegistry.setMaxElWithdrawalRequestFee(
-                    curveId,
-                    params.maxElWithdrawalRequestFee
-                );
+                parametersRegistry.setAllowedExitDelay(curveId, params.allowedExitDelay);
+                parametersRegistry.setExitDelayFee(curveId, params.exitDelayFee);
+                parametersRegistry.setMaxElWithdrawalRequestFee(curveId, params.maxElWithdrawalRequestFee);
             }
-            accounting.revokeRole(
-                accounting.MANAGE_BOND_CURVES_ROLE(),
-                address(deployer)
-            );
+            accounting.revokeRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
 
-            exitPenalties = ExitPenalties(
-                _deployProxy(deployer, address(dummyImpl))
-            );
+            exitPenalties = ExitPenalties(_deployProxy(deployer, address(dummyImpl)));
 
             CuratedModule curatedModuleImpl = new CuratedModule({
                 moduleType: config.moduleType,
@@ -403,23 +349,17 @@ abstract contract DeployBase is Script {
             });
 
             {
-                OssifiableProxy moduleProxy = OssifiableProxy(
-                    payable(address(curatedModule))
-                );
+                OssifiableProxy moduleProxy = OssifiableProxy(payable(address(curatedModule)));
                 moduleProxy.proxy__upgradeTo(address(curatedModuleImpl));
                 moduleProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
             curatedModule.initialize({ admin: deployer });
 
-            MetaRegistry metaRegistryImpl = new MetaRegistry(
-                address(curatedModule)
-            );
+            MetaRegistry metaRegistryImpl = new MetaRegistry(address(curatedModule));
 
             {
-                OssifiableProxy metaRegistryProxy = OssifiableProxy(
-                    payable(address(metaRegistry))
-                );
+                OssifiableProxy metaRegistryProxy = OssifiableProxy(payable(address(metaRegistry)));
                 metaRegistryProxy.proxy__upgradeTo(address(metaRegistryImpl));
                 metaRegistryProxy.proxy__changeAdmin(config.proxyAdmin);
             }
@@ -432,9 +372,7 @@ abstract contract DeployBase is Script {
                 parametersRegistry: address(parametersRegistry)
             });
 
-            strikes = ValidatorStrikes(
-                _deployProxy(config.proxyAdmin, address(strikesImpl))
-            );
+            strikes = ValidatorStrikes(_deployProxy(config.proxyAdmin, address(strikesImpl)));
 
             ExitPenalties exitPenaltiesImpl = new ExitPenalties(
                 address(curatedModule),
@@ -443,19 +381,12 @@ abstract contract DeployBase is Script {
             );
 
             {
-                OssifiableProxy exitPenaltiesProxy = OssifiableProxy(
-                    payable(address(exitPenalties))
-                );
+                OssifiableProxy exitPenaltiesProxy = OssifiableProxy(payable(address(exitPenalties)));
                 exitPenaltiesProxy.proxy__upgradeTo(address(exitPenaltiesImpl));
                 exitPenaltiesProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
-            ejector = new Ejector(
-                address(curatedModule),
-                address(strikes),
-                config.stakingModuleId,
-                deployer
-            );
+            ejector = new Ejector(address(curatedModule), address(strikes), config.stakingModuleId, deployer);
 
             strikes.initialize(deployer, address(ejector));
 
@@ -463,15 +394,9 @@ abstract contract DeployBase is Script {
 
             curatedGateFactory = new CuratedGateFactory(curatedGateImpl);
 
-            curatedGateInstances = _deployCuratedGates(
-                curatedCurveIds,
-                address(curatedGateFactory)
-            );
+            curatedGateInstances = _deployCuratedGates(curatedCurveIds, address(curatedGateFactory));
 
-            feeDistributor.initialize({
-                admin: address(deployer),
-                _rebateRecipient: config.aragonAgent
-            });
+            feeDistributor.initialize({ admin: address(deployer), _rebateRecipient: config.aragonAgent });
 
             hashConsensus = new HashConsensus({
                 slotsPerEpoch: config.slotsPerEpoch,
@@ -482,24 +407,12 @@ abstract contract DeployBase is Script {
                 admin: address(deployer),
                 reportProcessor: address(oracle)
             });
-            hashConsensus.grantRole(
-                hashConsensus.MANAGE_MEMBERS_AND_QUORUM_ROLE(),
-                config.aragonAgent
-            );
-            hashConsensus.grantRole(
-                hashConsensus.MANAGE_MEMBERS_AND_QUORUM_ROLE(),
-                address(deployer)
-            );
+            hashConsensus.grantRole(hashConsensus.MANAGE_MEMBERS_AND_QUORUM_ROLE(), config.aragonAgent);
+            hashConsensus.grantRole(hashConsensus.MANAGE_MEMBERS_AND_QUORUM_ROLE(), address(deployer));
             for (uint256 i = 0; i < config.oracleMembers.length; i++) {
-                hashConsensus.addMember(
-                    config.oracleMembers[i],
-                    config.hashConsensusQuorum
-                );
+                hashConsensus.addMember(config.oracleMembers[i], config.hashConsensusQuorum);
             }
-            hashConsensus.revokeRole(
-                hashConsensus.MANAGE_MEMBERS_AND_QUORUM_ROLE(),
-                address(deployer)
-            );
+            hashConsensus.revokeRole(hashConsensus.MANAGE_MEMBERS_AND_QUORUM_ROLE(), address(deployer));
 
             FeeOracle oracleImpl = new FeeOracle({
                 feeDistributor: address(feeDistributor),
@@ -509,9 +422,7 @@ abstract contract DeployBase is Script {
             });
 
             {
-                OssifiableProxy oracleProxy = OssifiableProxy(
-                    payable(address(oracle))
-                );
+                OssifiableProxy oracleProxy = OssifiableProxy(payable(address(oracle)));
                 oracleProxy.proxy__upgradeTo(address(oracleImpl));
                 oracleProxy.proxy__changeAdmin(config.proxyAdmin);
             }
@@ -524,8 +435,7 @@ abstract contract DeployBase is Script {
 
             if (config.gateSealFactory != address(0)) {
                 uint256 baseSealables = 5;
-                uint256 sealablesCount = baseSealables +
-                    curatedGateInstances.length;
+                uint256 sealablesCount = baseSealables + curatedGateInstances.length;
                 address[] memory sealables = new address[](sealablesCount);
                 sealables[0] = address(curatedModule);
                 sealables[1] = address(accounting);
@@ -548,19 +458,10 @@ abstract contract DeployBase is Script {
                 }
             }
 
-            curatedModule.grantRole(
-                curatedModule.PAUSE_ROLE(),
-                config.resealManager
-            );
-            curatedModule.grantRole(
-                curatedModule.RESUME_ROLE(),
-                config.resealManager
-            );
+            curatedModule.grantRole(curatedModule.PAUSE_ROLE(), config.resealManager);
+            curatedModule.grantRole(curatedModule.RESUME_ROLE(), config.resealManager);
             accounting.grantRole(accounting.PAUSE_ROLE(), config.resealManager);
-            accounting.grantRole(
-                accounting.RESUME_ROLE(),
-                config.resealManager
-            );
+            accounting.grantRole(accounting.RESUME_ROLE(), config.resealManager);
             oracle.grantRole(oracle.PAUSE_ROLE(), config.resealManager);
             oracle.grantRole(oracle.RESUME_ROLE(), config.resealManager);
             verifier.grantRole(verifier.PAUSE_ROLE(), config.resealManager);
@@ -568,10 +469,7 @@ abstract contract DeployBase is Script {
             ejector.grantRole(ejector.PAUSE_ROLE(), config.resealManager);
             ejector.grantRole(ejector.RESUME_ROLE(), config.resealManager);
 
-            accounting.grantRole(
-                accounting.SET_BOND_CURVE_ROLE(),
-                address(config.setResetBondCurveAddress)
-            );
+            accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), address(config.setResetBondCurveAddress));
 
             curatedModule.grantRole(
                 curatedModule.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
@@ -582,14 +480,8 @@ abstract contract DeployBase is Script {
                 config.easyTrackEVMScriptExecutor
             );
 
-            curatedModule.grantRole(
-                curatedModule.VERIFIER_ROLE(),
-                address(verifier)
-            );
-            curatedModule.grantRole(
-                curatedModule.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(),
-                address(verifier)
-            );
+            curatedModule.grantRole(curatedModule.VERIFIER_ROLE(), address(verifier));
+            curatedModule.grantRole(curatedModule.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), address(verifier));
             curatedModule.grantRole(
                 curatedModule.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(),
                 config.easyTrackEVMScriptExecutor
@@ -602,26 +494,14 @@ abstract contract DeployBase is Script {
                 _grantSecondAdmins();
             }
 
-            curatedModule.grantRole(
-                curatedModule.DEFAULT_ADMIN_ROLE(),
-                config.aragonAgent
-            );
-            curatedModule.revokeRole(
-                curatedModule.DEFAULT_ADMIN_ROLE(),
-                deployer
-            );
+            curatedModule.grantRole(curatedModule.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
+            curatedModule.revokeRole(curatedModule.DEFAULT_ADMIN_ROLE(), deployer);
 
             ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             ejector.revokeRole(ejector.DEFAULT_ADMIN_ROLE(), deployer);
 
-            parametersRegistry.grantRole(
-                parametersRegistry.DEFAULT_ADMIN_ROLE(),
-                config.aragonAgent
-            );
-            parametersRegistry.revokeRole(
-                parametersRegistry.DEFAULT_ADMIN_ROLE(),
-                deployer
-            );
+            parametersRegistry.grantRole(parametersRegistry.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
+            parametersRegistry.revokeRole(parametersRegistry.DEFAULT_ADMIN_ROLE(), deployer);
 
             for (uint256 i = 0; i < curatedGateInstances.length; i++) {
                 CuratedGate gate = CuratedGate(curatedGateInstances[i]);
@@ -629,47 +509,23 @@ abstract contract DeployBase is Script {
                 gate.revokeRole(gate.DEFAULT_ADMIN_ROLE(), deployer);
             }
 
-            metaRegistry.grantRole(
-                metaRegistry.DEFAULT_ADMIN_ROLE(),
-                config.aragonAgent
-            );
-            metaRegistry.revokeRole(
-                metaRegistry.DEFAULT_ADMIN_ROLE(),
-                deployer
-            );
+            metaRegistry.grantRole(metaRegistry.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
+            metaRegistry.revokeRole(metaRegistry.DEFAULT_ADMIN_ROLE(), deployer);
 
-            verifier.grantRole(
-                verifier.DEFAULT_ADMIN_ROLE(),
-                config.aragonAgent
-            );
+            verifier.grantRole(verifier.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             verifier.revokeRole(verifier.DEFAULT_ADMIN_ROLE(), deployer);
 
-            accounting.grantRole(
-                accounting.DEFAULT_ADMIN_ROLE(),
-                config.aragonAgent
-            );
+            accounting.grantRole(accounting.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             accounting.revokeRole(accounting.DEFAULT_ADMIN_ROLE(), deployer);
 
-            hashConsensus.grantRole(
-                hashConsensus.DEFAULT_ADMIN_ROLE(),
-                config.aragonAgent
-            );
-            hashConsensus.revokeRole(
-                hashConsensus.DEFAULT_ADMIN_ROLE(),
-                deployer
-            );
+            hashConsensus.grantRole(hashConsensus.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
+            hashConsensus.revokeRole(hashConsensus.DEFAULT_ADMIN_ROLE(), deployer);
 
             oracle.grantRole(oracle.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             oracle.revokeRole(oracle.DEFAULT_ADMIN_ROLE(), deployer);
 
-            feeDistributor.grantRole(
-                feeDistributor.DEFAULT_ADMIN_ROLE(),
-                config.aragonAgent
-            );
-            feeDistributor.revokeRole(
-                feeDistributor.DEFAULT_ADMIN_ROLE(),
-                deployer
-            );
+            feeDistributor.grantRole(feeDistributor.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
+            feeDistributor.revokeRole(feeDistributor.DEFAULT_ADMIN_ROLE(), deployer);
 
             strikes.grantRole(strikes.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             strikes.revokeRole(strikes.DEFAULT_ADMIN_ROLE(), deployer);
@@ -681,10 +537,7 @@ abstract contract DeployBase is Script {
             deployJson.set("MetaRegistry", address(metaRegistry));
             deployJson.set("MetaRegistryImpl", address(metaRegistryImpl));
             deployJson.set("ParametersRegistry", address(parametersRegistry));
-            deployJson.set(
-                "ParametersRegistryImpl",
-                address(parametersRegistryImpl)
-            );
+            deployJson.set("ParametersRegistryImpl", address(parametersRegistryImpl));
             deployJson.set("Accounting", address(accounting));
             deployJson.set("AccountingImpl", address(accountingImpl));
             deployJson.set("FeeOracle", address(oracle));
@@ -739,42 +592,25 @@ abstract contract DeployBase is Script {
             );
 
             {
-                OssifiableProxy gateProxy = OssifiableProxy(
-                    payable(address(gate))
-                );
+                OssifiableProxy gateProxy = OssifiableProxy(payable(address(gate)));
                 gateProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
             gates[i] = address(gate);
 
-            curatedModule.grantRole(
-                curatedModule.CREATE_NODE_OPERATOR_ROLE(),
-                address(gate)
-            );
+            curatedModule.grantRole(curatedModule.CREATE_NODE_OPERATOR_ROLE(), address(gate));
             if (gateCurveId != accounting.DEFAULT_BOND_CURVE_ID()) {
-                accounting.grantRole(
-                    accounting.SET_BOND_CURVE_ROLE(),
-                    address(gate)
-                );
+                accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), address(gate));
             }
-            metaRegistry.grantRole(
-                metaRegistry.SET_OPERATOR_INFO_ROLE(),
-                address(gate)
-            );
+            metaRegistry.grantRole(metaRegistry.SET_OPERATOR_INFO_ROLE(), address(gate));
             gate.grantRole(gate.PAUSE_ROLE(), config.resealManager);
             gate.grantRole(gate.RESUME_ROLE(), config.resealManager);
-            gate.grantRole(
-                gate.SET_TREE_ROLE(),
-                config.easyTrackEVMScriptExecutor
-            );
+            gate.grantRole(gate.SET_TREE_ROLE(), config.easyTrackEVMScriptExecutor);
         }
         return gates;
     }
 
-    function _deployProxy(
-        address admin,
-        address implementation
-    ) internal returns (address) {
+    function _deployProxy(address admin, address implementation) internal returns (address) {
         OssifiableProxy proxy = new OssifiableProxy({
             implementation_: implementation,
             data_: new bytes(0),
@@ -784,16 +620,10 @@ abstract contract DeployBase is Script {
         return address(proxy);
     }
 
-    function _deployGateSeal(
-        address[] memory sealables
-    ) internal returns (address) {
-        IGateSealFactory gateSealFactory = IGateSealFactory(
-            config.gateSealFactory
-        );
+    function _deployGateSeal(address[] memory sealables) internal returns (address) {
+        IGateSealFactory gateSealFactory = IGateSealFactory(config.gateSealFactory);
 
-        address committee = config.sealingCommittee == address(0)
-            ? deployer
-            : config.sealingCommittee;
+        address committee = config.sealingCommittee == address(0) ? deployer : config.sealingCommittee;
 
         vm.recordLogs();
         gateSealFactory.create_gate_seal({
@@ -807,70 +637,30 @@ abstract contract DeployBase is Script {
     }
 
     function _deployJsonFilename() internal view returns (string memory) {
-        return
-            string(
-                abi.encodePacked(artifactDir, "deploy-", chainName, ".json")
-            );
+        return string(abi.encodePacked(artifactDir, "deploy-", chainName, ".json"));
     }
 
     function _grantSecondAdmins() internal {
         if (keccak256(abi.encodePacked(chainName)) == keccak256("mainnet")) {
             revert CannotBeUsedInMainnet();
         }
-        curatedModule.grantRole(
-            curatedModule.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
-        accounting.grantRole(
-            accounting.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
-        oracle.grantRole(
-            oracle.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
-        feeDistributor.grantRole(
-            feeDistributor.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
-        hashConsensus.grantRole(
-            hashConsensus.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
-        parametersRegistry.grantRole(
-            parametersRegistry.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
-        metaRegistry.grantRole(
-            metaRegistry.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
+        curatedModule.grantRole(curatedModule.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        accounting.grantRole(accounting.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        oracle.grantRole(oracle.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        feeDistributor.grantRole(feeDistributor.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        hashConsensus.grantRole(hashConsensus.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        parametersRegistry.grantRole(parametersRegistry.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        metaRegistry.grantRole(metaRegistry.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         for (uint256 i = 0; i < curatedGateInstances.length; i++) {
             CuratedGate gate = CuratedGate(curatedGateInstances[i]);
-            gate.grantRole(
-                gate.DEFAULT_ADMIN_ROLE(),
-                config.secondAdminAddress
-            );
+            gate.grantRole(gate.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         }
-        ejector.grantRole(
-            ejector.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
-        verifier.grantRole(
-            verifier.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
-        strikes.grantRole(
-            strikes.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
+        ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        verifier.grantRole(verifier.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        strikes.grantRole(strikes.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
     }
 
-    function _nextStakingModuleId(
-        address locatorAddress
-    ) internal view returns (uint256) {
-        return
-            IStakingRouter(ILidoLocator(locatorAddress).stakingRouter())
-                .getStakingModulesCount() + 1;
+    function _nextStakingModuleId(address locatorAddress) internal view returns (uint256) {
+        return IStakingRouter(ILidoLocator(locatorAddress).stakingRouter()).getStakingModulesCount() + 1;
     }
 }

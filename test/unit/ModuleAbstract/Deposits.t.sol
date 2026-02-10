@@ -41,13 +41,11 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
 
     function test_obtainDepositData() public assertInvariants {
         uint256 nodeOperatorId = createNodeOperator(1);
-        (bytes memory keys, bytes memory signatures) = module
-            .getSigningKeysWithSignatures(nodeOperatorId, 0, 1);
+        (bytes memory keys, bytes memory signatures) = module.getSigningKeysWithSignatures(nodeOperatorId, 0, 1);
 
         vm.expectEmit(address(module));
         emit IBaseModule.DepositableSigningKeysCountChanged(nodeOperatorId, 0);
-        (bytes memory obtainedKeys, bytes memory obtainedSignatures) = module
-            .obtainDepositData(1, "");
+        (bytes memory obtainedKeys, bytes memory obtainedSignatures) = module.obtainDepositData(1, "");
         assertEq(obtainedKeys, keys);
         assertEq(obtainedSignatures, signatures);
     }
@@ -55,13 +53,11 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
     function test_obtainDepositData_counters() public assertInvariants {
         uint256 keysCount = 1;
         uint256 noId = createNodeOperator(keysCount);
-        (bytes memory keys, bytes memory signatures) = module
-            .getSigningKeysWithSignatures(noId, 0, keysCount);
+        (bytes memory keys, bytes memory signatures) = module.getSigningKeysWithSignatures(noId, 0, keysCount);
 
         vm.expectEmit(address(module));
         emit IBaseModule.DepositedSigningKeysCountChanged(noId, keysCount);
-        (bytes memory depositedKeys, bytes memory depositedSignatures) = module
-            .obtainDepositData(keysCount, "");
+        (bytes memory depositedKeys, bytes memory depositedSignatures) = module.obtainDepositData(keysCount, "");
 
         assertEq(keys, depositedKeys);
         assertEq(signatures, depositedSignatures);
@@ -75,8 +71,7 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         uint256 noId = createNodeOperator();
         uint256 nonceBefore = module.getNonce();
 
-        (bytes memory publicKeys, bytes memory signatures) = module
-            .obtainDepositData(0, "");
+        (bytes memory publicKeys, bytes memory signatures) = module.obtainDepositData(0, "");
 
         assertEq(publicKeys.length, 0);
         assertEq(signatures.length, 0);
@@ -96,19 +91,12 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
 
         module.obtainDepositData(5, "");
 
-        (
-            ,
-            uint256 totalDepositedValidators,
-            uint256 depositableValidatorsCount
-        ) = module.getStakingModuleSummary();
+        (, uint256 totalDepositedValidators, uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
         assertEq(totalDepositedValidators, 5);
         assertEq(depositableValidatorsCount, 0);
     }
 
-    function test_obtainDepositData_counters_WhenLessThanLastBatch()
-        public
-        assertInvariants
-    {
+    function test_obtainDepositData_counters_WhenLessThanLastBatch() public assertInvariants {
         uint256 noId = createNodeOperator(7);
 
         vm.expectEmit(address(module));
@@ -128,10 +116,7 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function testFuzz_obtainDepositData_MultipleOperators(
-        uint256 batchCount,
-        uint256 random
-    ) public assertInvariants {
+    function testFuzz_obtainDepositData_MultipleOperators(uint256 batchCount, uint256 random) public assertInvariants {
         batchCount = bound(batchCount, 1, 20);
         random = bound(random, 1, 20);
         vm.assume(batchCount > random);
@@ -145,22 +130,12 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
 
         module.obtainDepositData(totalKeys - random, "");
 
-        (
-            ,
-            uint256 totalDepositedValidators,
-            uint256 depositableValidatorsCount
-        ) = module.getStakingModuleSummary();
+        (, uint256 totalDepositedValidators, uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
         assertLe(totalDepositedValidators, totalKeys - random);
-        assertEq(
-            totalDepositedValidators + depositableValidatorsCount,
-            totalKeys
-        );
+        assertEq(totalDepositedValidators + depositableValidatorsCount, totalKeys);
     }
 
-    function testFuzz_obtainDepositData_OneOperator(
-        uint256 batchCount,
-        uint256 random
-    ) public assertInvariants {
+    function testFuzz_obtainDepositData_OneOperator(uint256 batchCount, uint256 random) public assertInvariants {
         batchCount = bound(batchCount, 1, 20);
         random = bound(random, 1, 20);
         vm.assume(batchCount > random);
@@ -175,11 +150,7 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
 
         module.obtainDepositData(totalKeys - random, "");
 
-        (
-            ,
-            uint256 totalDepositedValidators,
-            uint256 depositableValidatorsCount
-        ) = module.getStakingModuleSummary();
+        (, uint256 totalDepositedValidators, uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
         assertEq(totalDepositedValidators, totalKeys - random);
         assertEq(depositableValidatorsCount, random);
 
@@ -217,10 +188,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function test_updateTargetValidatorsLimits_sameValues()
-        public
-        assertInvariants
-    {
+    function test_updateTargetValidatorsLimits_sameValues() public assertInvariants {
         uint256 noId = createNodeOperator();
 
         vm.expectEmit(address(module));
@@ -233,20 +201,14 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         assertEq(summary.targetValidatorsCount, 1);
     }
 
-    function test_updateTargetValidatorsLimits_limitIsZero()
-        public
-        assertInvariants
-    {
+    function test_updateTargetValidatorsLimits_limitIsZero() public assertInvariants {
         uint256 noId = createNodeOperator();
         vm.expectEmit(address(module));
         emit IBaseModule.TargetValidatorsCountChanged(noId, 1, 0);
         module.updateTargetValidatorsLimits(noId, 1, 0);
     }
 
-    function test_updateTargetValidatorsLimits_FromDisabledToDisabled_withNonZeroTargetLimit()
-        public
-        assertInvariants
-    {
+    function test_updateTargetValidatorsLimits_FromDisabledToDisabled_withNonZeroTargetLimit() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.updateTargetValidatorsLimits(noId, 2, 10);
 
@@ -258,10 +220,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         assertEq(no.targetLimit, 0);
     }
 
-    function test_updateTargetValidatorsLimits_enableSoftLimit()
-        public
-        assertInvariants
-    {
+    function test_updateTargetValidatorsLimits_enableSoftLimit() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.updateTargetValidatorsLimits(noId, 0, 10);
 
@@ -270,10 +229,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 1, 10);
     }
 
-    function test_updateTargetValidatorsLimits_enableHardLimit()
-        public
-        assertInvariants
-    {
+    function test_updateTargetValidatorsLimits_enableHardLimit() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.updateTargetValidatorsLimits(noId, 0, 10);
 
@@ -282,10 +238,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 2, 10);
     }
 
-    function test_updateTargetValidatorsLimits_disableSoftLimit_withNonZeroTargetLimit()
-        public
-        assertInvariants
-    {
+    function test_updateTargetValidatorsLimits_disableSoftLimit_withNonZeroTargetLimit() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.updateTargetValidatorsLimits(noId, 1, 10);
 
@@ -294,10 +247,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 0, 10);
     }
 
-    function test_updateTargetValidatorsLimits_disableSoftLimit_withZeroTargetLimit()
-        public
-        assertInvariants
-    {
+    function test_updateTargetValidatorsLimits_disableSoftLimit_withZeroTargetLimit() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.updateTargetValidatorsLimits(noId, 1, 10);
 
@@ -306,10 +256,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 0, 0);
     }
 
-    function test_updateTargetValidatorsLimits_disableHardLimit_withNonZeroTargetLimit()
-        public
-        assertInvariants
-    {
+    function test_updateTargetValidatorsLimits_disableHardLimit_withNonZeroTargetLimit() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.updateTargetValidatorsLimits(noId, 2, 10);
 
@@ -318,10 +265,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 0, 10);
     }
 
-    function test_updateTargetValidatorsLimits_disableHardLimit_withZeroTargetLimit()
-        public
-        assertInvariants
-    {
+    function test_updateTargetValidatorsLimits_disableHardLimit_withZeroTargetLimit() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.updateTargetValidatorsLimits(noId, 2, 10);
 
@@ -330,9 +274,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 0, 0);
     }
 
-    function test_updateTargetValidatorsLimits_switchFromHardToSoftLimit()
-        public
-    {
+    function test_updateTargetValidatorsLimits_switchFromHardToSoftLimit() public {
         uint256 noId = createNodeOperator();
         module.updateTargetValidatorsLimits(noId, 2, 10);
 
@@ -341,9 +283,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 1, 5);
     }
 
-    function test_updateTargetValidatorsLimits_switchFromSoftToHardLimit()
-        public
-    {
+    function test_updateTargetValidatorsLimits_switchFromSoftToHardLimit() public {
         uint256 noId = createNodeOperator();
         module.updateTargetValidatorsLimits(noId, 1, 10);
 
@@ -352,9 +292,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 2, 5);
     }
 
-    function test_updateTargetValidatorsLimits_NoUnvetKeysWhenLimitDisabled()
-        public
-    {
+    function test_updateTargetValidatorsLimits_NoUnvetKeysWhenLimitDisabled() public {
         uint256 noId = createNodeOperator(2);
         module.updateTargetValidatorsLimits(noId, 1, 1);
         module.updateTargetValidatorsLimits(noId, 0, 1);
@@ -362,28 +300,18 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
         assertEq(no.totalVettedKeys, 2);
     }
 
-    function test_updateTargetValidatorsLimits_RevertWhen_NoNodeOperator()
-        public
-    {
+    function test_updateTargetValidatorsLimits_RevertWhen_NoNodeOperator() public {
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.updateTargetValidatorsLimits(0, 1, 1);
     }
 
-    function test_updateTargetValidatorsLimits_RevertWhen_TargetLimitExceedsUint32()
-        public
-    {
+    function test_updateTargetValidatorsLimits_RevertWhen_TargetLimitExceedsUint32() public {
         createNodeOperator(1);
         vm.expectRevert(IBaseModule.InvalidInput.selector);
-        module.updateTargetValidatorsLimits(
-            0,
-            1,
-            uint256(type(uint32).max) + 1
-        );
+        module.updateTargetValidatorsLimits(0, 1, uint256(type(uint32).max) + 1);
     }
 
-    function test_updateTargetValidatorsLimits_RevertWhen_TargetLimitModeExceedsMax()
-        public
-    {
+    function test_updateTargetValidatorsLimits_RevertWhen_TargetLimitModeExceedsMax() public {
         createNodeOperator(1);
         vm.expectRevert(IBaseModule.InvalidInput.selector);
         module.updateTargetValidatorsLimits(0, 3, 1);
@@ -391,10 +319,7 @@ abstract contract ModuleUpdateTargetValidatorsLimits is ModuleFixtures {
 }
 
 abstract contract ModuleUpdateExitedValidatorsCount is ModuleFixtures {
-    function test_updateExitedValidatorsCount_NonZero()
-        public
-        assertInvariants
-    {
+    function test_updateExitedValidatorsCount_NonZero() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
         uint256 nonce = module.getNonce();
@@ -431,32 +356,17 @@ abstract contract ModuleUnsafeUpdateValidatorsCount is ModuleFixtures {
 
         assertEq(noAfter.totalExitedKeys, noBefore.totalExitedKeys);
         assertEq(noAfter.stuckValidatorsCount, noBefore.stuckValidatorsCount);
-        assertEq(
-            noAfter.depositableValidatorsCount,
-            noBefore.depositableValidatorsCount
-        );
-        assertEq(
-            summaryAfter.totalExitedValidators,
-            summaryBefore.totalExitedValidators
-        );
-        assertEq(
-            summaryAfter.totalDepositedValidators,
-            summaryBefore.totalDepositedValidators
-        );
-        assertEq(
-            summaryAfter.depositableValidatorsCount,
-            summaryBefore.depositableValidatorsCount
-        );
+        assertEq(noAfter.depositableValidatorsCount, noBefore.depositableValidatorsCount);
+        assertEq(summaryAfter.totalExitedValidators, summaryBefore.totalExitedValidators);
+        assertEq(summaryAfter.totalDepositedValidators, summaryBefore.totalDepositedValidators);
+        assertEq(summaryAfter.depositableValidatorsCount, summaryBefore.depositableValidatorsCount);
         assertEq(module.getNonce(), nonce);
         assertEq(logs.length, 0);
     }
 }
 
 abstract contract ModuleGetStakingModuleSummary is ModuleFixtures {
-    function test_getStakingModuleSummary_depositableValidators()
-        public
-        assertInvariants
-    {
+    function test_getStakingModuleSummary_depositableValidators() public assertInvariants {
         uint256 first = createNodeOperator(1);
         uint256 second = createNodeOperator(2);
         StakingModuleSummary memory summary = getStakingModuleSummary();
@@ -468,10 +378,7 @@ abstract contract ModuleGetStakingModuleSummary is ModuleFixtures {
         assertEq(summary.depositableValidatorsCount, 3);
     }
 
-    function test_getStakingModuleSummary_depositedValidators()
-        public
-        assertInvariants
-    {
+    function test_getStakingModuleSummary_depositedValidators() public assertInvariants {
         uint256 first = createNodeOperator(1);
         uint256 second = createNodeOperator(2);
         StakingModuleSummary memory summary = getStakingModuleSummary();
@@ -488,10 +395,7 @@ abstract contract ModuleGetStakingModuleSummary is ModuleFixtures {
         assertEq(summary.totalDepositedValidators, 3);
     }
 
-    function test_getStakingModuleSummary_exitedValidators()
-        public
-        assertInvariants
-    {
+    function test_getStakingModuleSummary_exitedValidators() public assertInvariants {
         uint256 first = createNodeOperator(2);
         uint256 second = createNodeOperator(2);
         module.obtainDepositData(4, "");
@@ -499,14 +403,8 @@ abstract contract ModuleGetStakingModuleSummary is ModuleFixtures {
         assertEq(summary.totalExitedValidators, 0);
 
         module.updateExitedValidatorsCount(
-            bytes.concat(
-                bytes8(0x0000000000000000),
-                bytes8(0x0000000000000001)
-            ),
-            bytes.concat(
-                bytes16(0x00000000000000000000000000000001),
-                bytes16(0x00000000000000000000000000000002)
-            )
+            bytes.concat(bytes8(0x0000000000000000), bytes8(0x0000000000000001)),
+            bytes.concat(bytes16(0x00000000000000000000000000000001), bytes16(0x00000000000000000000000000000002))
         );
 
         summary = getStakingModuleSummary();
@@ -520,10 +418,7 @@ abstract contract ModuleGetStakingModuleSummary is ModuleFixtures {
 }
 
 abstract contract ModuleDepositableValidatorsCount is ModuleFixtures {
-    function test_depositableValidatorsCountChanges_OnDeposit()
-        public
-        assertInvariants
-    {
+    function test_depositableValidatorsCountChanges_OnDeposit() public assertInvariants {
         uint256 noId = createNodeOperator(7);
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 7);
         assertEq(getStakingModuleSummary().depositableValidatorsCount, 7);
@@ -532,34 +427,20 @@ abstract contract ModuleDepositableValidatorsCount is ModuleFixtures {
         assertEq(getStakingModuleSummary().depositableValidatorsCount, 4);
     }
 
-    function test_depositableValidatorsCountChanges_OnUnsafeUpdateExitedValidators()
-        public
-    {
+    function test_depositableValidatorsCountChanges_OnUnsafeUpdateExitedValidators() public {
         uint256 noId = createNodeOperator(7);
         createNodeOperator(2);
         module.obtainDepositData(4, "");
 
-        uint256 depositableBefore = module
-            .getNodeOperator(noId)
-            .depositableValidatorsCount;
-        uint256 totalDepositableBefore = getStakingModuleSummary()
-            .depositableValidatorsCount;
+        uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
+        uint256 totalDepositableBefore = getStakingModuleSummary().depositableValidatorsCount;
         module.unsafeUpdateValidatorsCount(noId, 1);
         // values are the same
-        assertEq(
-            module.getNodeOperator(noId).depositableValidatorsCount,
-            depositableBefore
-        );
-        assertEq(
-            getStakingModuleSummary().depositableValidatorsCount,
-            totalDepositableBefore
-        );
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, depositableBefore);
+        assertEq(getStakingModuleSummary().depositableValidatorsCount, totalDepositableBefore);
     }
 
-    function test_depositableValidatorsCountChanges_OnUnvetKeys()
-        public
-        assertInvariants
-    {
+    function test_depositableValidatorsCountChanges_OnUnvetKeys() public assertInvariants {
         uint256 noId = createNodeOperator(7);
         uint256 nonce = module.getNonce();
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 7);
@@ -569,18 +450,14 @@ abstract contract ModuleDepositableValidatorsCount is ModuleFixtures {
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function test_depositableValidatorsCountChanges_OnWithdrawal()
-        public
-        assertInvariants
-    {
+    function test_depositableValidatorsCountChanges_OnWithdrawal() public assertInvariants {
         uint256 noId = createNodeOperator(7);
         module.obtainDepositData(4, "");
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
 
         penalize(noId, BOND_SIZE * 3);
 
-        WithdrawnValidatorInfo[]
-            memory validatorInfos = new WithdrawnValidatorInfo[](3);
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](3);
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
@@ -598,8 +475,7 @@ abstract contract ModuleDepositableValidatorsCount is ModuleFixtures {
         validatorInfos[2] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 2,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE -
-                BOND_SIZE,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE - BOND_SIZE,
             slashingPenalty: 0,
             isSlashed: false
         }); // Large CL balance drop, that doesn't change the unbonded count.
@@ -610,48 +486,27 @@ abstract contract ModuleDepositableValidatorsCount is ModuleFixtures {
         assertEq(getStakingModuleSummary().depositableValidatorsCount, 2);
     }
 
-    function test_depositableValidatorsCountChanges_OnReportGeneralDelayedPenalty()
-        public
-        assertInvariants
-    {
+    function test_depositableValidatorsCountChanges_OnReportGeneralDelayedPenalty() public assertInvariants {
         uint256 noId = createNodeOperator(7);
         module.obtainDepositData(4, "");
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
-        module.reportGeneralDelayedPenalty(
-            noId,
-            bytes32(abi.encode(1)),
-            (BOND_SIZE * 3) / 2,
-            "Test penalty"
-        ); // Lock bond to unbond 2 validators.
+        module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), (BOND_SIZE * 3) / 2, "Test penalty"); // Lock bond to unbond 2 validators.
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 1);
         assertEq(getStakingModuleSummary().depositableValidatorsCount, 1);
     }
 
-    function test_depositableValidatorsCountChanges_OnReleaseGeneralDelayedPenalty()
-        public
-    {
+    function test_depositableValidatorsCountChanges_OnReleaseGeneralDelayedPenalty() public {
         uint256 noId = createNodeOperator(7);
         module.obtainDepositData(4, "");
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
-        module.reportGeneralDelayedPenalty(
-            noId,
-            bytes32(abi.encode(1)),
-            BOND_SIZE,
-            "Test penalty"
-        ); // Lock bond to unbond 2 validators (there's additional fine).
+        module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), BOND_SIZE, "Test penalty"); // Lock bond to unbond 2 validators (there's additional fine).
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 1);
-        module.cancelGeneralDelayedPenalty(
-            noId,
-            accounting.getLockedBondInfo(noId).amount
-        );
+        module.cancelGeneralDelayedPenalty(noId, accounting.getLockedBondInfo(noId).amount);
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
         assertEq(getStakingModuleSummary().depositableValidatorsCount, 3);
     }
 
-    function test_depositableValidatorsCountChanges_OnRemoveUnvetted()
-        public
-        assertInvariants
-    {
+    function test_depositableValidatorsCountChanges_OnRemoveUnvetted() public assertInvariants {
         uint256 noId = createNodeOperator(7);
         unvetKeys(noId, 3);
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
@@ -679,21 +534,13 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
         updateToBetterCurve();
         (, uint256 requiredAfter) = accounting.getBondSummary(noId);
 
-        assertGt(
-            requiredBefore,
-            requiredAfter,
-            "Required bond should decrease"
-        );
+        assertGt(requiredBefore, requiredAfter, "Required bond should decrease");
         assertEq(
             module.getNodeOperator(noId).depositableValidatorsCount,
             0,
             "Depositables should not change after curve update"
         );
-        assertEq(
-            accounting.getUnbondedKeysCount(noId),
-            0,
-            "Should be no unbonded keys"
-        );
+        assertEq(accounting.getUnbondedKeysCount(noId), 0, "Should be no unbonded keys");
 
         module.updateDepositableValidatorsCount(noId);
         assertEq(
@@ -711,21 +558,13 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
         updateToWorseCurve();
         (, uint256 requiredAfter) = accounting.getBondSummary(noId);
 
-        assertGt(
-            requiredAfter,
-            requiredBefore,
-            "Required bond should increase"
-        );
+        assertGt(requiredAfter, requiredBefore, "Required bond should increase");
         assertEq(
             module.getNodeOperator(noId).depositableValidatorsCount,
             0,
             "Depositables should not change after curve update"
         );
-        assertEq(
-            accounting.getUnbondedKeysCount(noId),
-            2,
-            "Should be unbonded keys"
-        );
+        assertEq(accounting.getUnbondedKeysCount(noId), 2, "Should be unbonded keys");
 
         module.updateDepositableValidatorsCount(noId);
         assertEq(
@@ -735,34 +574,21 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
         );
     }
 
-    function test_depositableOnly_UpdateToBetterCurve()
-        public
-        assertInvariants
-    {
+    function test_depositableOnly_UpdateToBetterCurve() public assertInvariants {
         uint256 noId = createNodeOperator(7);
-        uint256 depositableBefore = module
-            .getNodeOperator(noId)
-            .depositableValidatorsCount;
+        uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
 
         (, uint256 requiredBefore) = accounting.getBondSummary(noId);
         updateToBetterCurve();
         (, uint256 requiredAfter) = accounting.getBondSummary(noId);
 
-        assertGt(
-            requiredBefore,
-            requiredAfter,
-            "Required bond should decrease"
-        );
+        assertGt(requiredBefore, requiredAfter, "Required bond should decrease");
         assertEq(
             module.getNodeOperator(noId).depositableValidatorsCount,
             depositableBefore,
             "Depositables should not change after curve update"
         );
-        assertEq(
-            accounting.getUnbondedKeysCount(noId),
-            0,
-            "Should be no unbonded keys"
-        );
+        assertEq(accounting.getUnbondedKeysCount(noId), 0, "Should be no unbonded keys");
 
         module.updateDepositableValidatorsCount(noId);
         assertEq(
@@ -774,29 +600,19 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
 
     function test_depositableOnly_UpdateToWorseCurve() public assertInvariants {
         uint256 noId = createNodeOperator(7);
-        uint256 depositableBefore = module
-            .getNodeOperator(noId)
-            .depositableValidatorsCount;
+        uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
 
         (, uint256 requiredBefore) = accounting.getBondSummary(noId);
         updateToWorseCurve();
         (, uint256 requiredAfter) = accounting.getBondSummary(noId);
 
-        assertGt(
-            requiredAfter,
-            requiredBefore,
-            "Required bond should increase"
-        );
+        assertGt(requiredAfter, requiredBefore, "Required bond should increase");
         assertEq(
             module.getNodeOperator(noId).depositableValidatorsCount,
             depositableBefore,
             "Depositables should not change after curve update"
         );
-        assertEq(
-            accounting.getUnbondedKeysCount(noId),
-            2,
-            "Should be unbonded keys"
-        );
+        assertEq(accounting.getUnbondedKeysCount(noId), 2, "Should be unbonded keys");
 
         module.updateDepositableValidatorsCount(noId);
         assertEq(
@@ -806,10 +622,7 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
         );
     }
 
-    function test_partiallyUnbondedDepositedOnly_UpdateToBetterCurve()
-        public
-        assertInvariants
-    {
+    function test_partiallyUnbondedDepositedOnly_UpdateToBetterCurve() public assertInvariants {
         uint256 noId = createNodeOperator(7);
         module.obtainDepositData(7, "");
 
@@ -819,21 +632,13 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
             0,
             "Depositables should not change after penalization"
         );
-        assertEq(
-            accounting.getUnbondedKeysCount(noId),
-            1,
-            "Should be unbonded keys after penalization"
-        );
+        assertEq(accounting.getUnbondedKeysCount(noId), 1, "Should be unbonded keys after penalization");
 
         (, uint256 requiredBefore) = accounting.getBondSummary(noId);
         updateToBetterCurve();
         (, uint256 requiredAfter) = accounting.getBondSummary(noId);
 
-        assertGt(
-            requiredBefore,
-            requiredAfter,
-            "Required bond should decrease"
-        );
+        assertGt(requiredBefore, requiredAfter, "Required bond should decrease");
         assertEq(
             module.getNodeOperator(noId).depositableValidatorsCount,
             0,
@@ -849,10 +654,7 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
         );
     }
 
-    function test_partiallyUnbondedDepositedOnly_UpdateToWorseCurve()
-        public
-        assertInvariants
-    {
+    function test_partiallyUnbondedDepositedOnly_UpdateToWorseCurve() public assertInvariants {
         uint256 noId = createNodeOperator(7);
         module.obtainDepositData(7, "");
 
@@ -863,21 +665,13 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
             0,
             "Depositables should not change after penalization"
         );
-        assertEq(
-            accounting.getUnbondedKeysCount(noId),
-            1,
-            "Should be unbonded keys after penalization"
-        );
+        assertEq(accounting.getUnbondedKeysCount(noId), 1, "Should be unbonded keys after penalization");
 
         (, uint256 requiredBefore) = accounting.getBondSummary(noId);
         updateToWorseCurve();
         (, uint256 requiredAfter) = accounting.getBondSummary(noId);
 
-        assertGt(
-            requiredAfter,
-            requiredBefore,
-            "Required bond should increase"
-        );
+        assertGt(requiredAfter, requiredBefore, "Required bond should increase");
         assertEq(
             module.getNodeOperator(noId).depositableValidatorsCount,
             0,
@@ -893,14 +687,9 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
         );
     }
 
-    function test_partiallyUnbondedDepositableOnly_UpdateToBetterCurve()
-        public
-        assertInvariants
-    {
+    function test_partiallyUnbondedDepositableOnly_UpdateToBetterCurve() public assertInvariants {
         uint256 noId = createNodeOperator(7);
-        uint256 depositableBefore = module
-            .getNodeOperator(noId)
-            .depositableValidatorsCount;
+        uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
 
         penalize(noId, BOND_SIZE / 2);
 
@@ -909,31 +698,19 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
             depositableBefore - 1,
             "Depositables should decrease after penalization"
         );
-        assertEq(
-            accounting.getUnbondedKeysCount(noId),
-            1,
-            "Should be unbonded keys after penalization"
-        );
+        assertEq(accounting.getUnbondedKeysCount(noId), 1, "Should be unbonded keys after penalization");
 
         (, uint256 requiredBefore) = accounting.getBondSummary(noId);
         updateToBetterCurve();
         (, uint256 requiredAfter) = accounting.getBondSummary(noId);
 
-        assertGt(
-            requiredBefore,
-            requiredAfter,
-            "Required bond should decrease"
-        );
+        assertGt(requiredBefore, requiredAfter, "Required bond should decrease");
         assertEq(
             module.getNodeOperator(noId).depositableValidatorsCount,
             depositableBefore - 1,
             "Depositables should not change after curve update"
         );
-        assertEq(
-            accounting.getUnbondedKeysCount(noId),
-            0,
-            "Should be no unbonded keys after curve update"
-        );
+        assertEq(accounting.getUnbondedKeysCount(noId), 0, "Should be no unbonded keys after curve update");
 
         module.updateDepositableValidatorsCount(noId);
         assertEq(
@@ -943,14 +720,9 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
         );
     }
 
-    function test_partiallyUnbondedDepositableOnly_UpdateToWorseCurve()
-        public
-        assertInvariants
-    {
+    function test_partiallyUnbondedDepositableOnly_UpdateToWorseCurve() public assertInvariants {
         uint256 noId = createNodeOperator(7);
-        uint256 depositableBefore = module
-            .getNodeOperator(noId)
-            .depositableValidatorsCount;
+        uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
 
         penalize(noId, BOND_SIZE / 2);
 
@@ -959,31 +731,19 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
             depositableBefore - 1,
             "Depositables should decrease after penalization"
         );
-        assertEq(
-            accounting.getUnbondedKeysCount(noId),
-            1,
-            "Should be unbonded keys after penalization"
-        );
+        assertEq(accounting.getUnbondedKeysCount(noId), 1, "Should be unbonded keys after penalization");
 
         (, uint256 requiredBefore) = accounting.getBondSummary(noId);
         updateToWorseCurve();
         (, uint256 requiredAfter) = accounting.getBondSummary(noId);
 
-        assertGt(
-            requiredAfter,
-            requiredBefore,
-            "Required bond should increase"
-        );
+        assertGt(requiredAfter, requiredBefore, "Required bond should increase");
         assertEq(
             module.getNodeOperator(noId).depositableValidatorsCount,
             depositableBefore - 1,
             "Depositables should not change after curve update"
         );
-        assertEq(
-            accounting.getUnbondedKeysCount(noId),
-            2,
-            "Should be unbonded keys after curve update"
-        );
+        assertEq(accounting.getUnbondedKeysCount(noId), 2, "Should be unbonded keys after curve update");
 
         module.updateDepositableValidatorsCount(noId);
         assertEq(
@@ -993,15 +753,10 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
         );
     }
 
-    function test_partiallyUnbondedPartiallyDeposited_UpdateToBetterCurve()
-        public
-        assertInvariants
-    {
+    function test_partiallyUnbondedPartiallyDeposited_UpdateToBetterCurve() public assertInvariants {
         uint256 noId = createNodeOperator(7);
         module.obtainDepositData(4, "");
-        uint256 depositableBefore = module
-            .getNodeOperator(noId)
-            .depositableValidatorsCount;
+        uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
 
         penalize(noId, BOND_SIZE / 2);
 
@@ -1010,31 +765,19 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
             depositableBefore - 1,
             "Depositables should decrease after penalization"
         );
-        assertEq(
-            accounting.getUnbondedKeysCount(noId),
-            1,
-            "Should be unbonded keys after penalization"
-        );
+        assertEq(accounting.getUnbondedKeysCount(noId), 1, "Should be unbonded keys after penalization");
 
         (, uint256 requiredBefore) = accounting.getBondSummary(noId);
         updateToBetterCurve();
         (, uint256 requiredAfter) = accounting.getBondSummary(noId);
 
-        assertGt(
-            requiredBefore,
-            requiredAfter,
-            "Required bond should decrease"
-        );
+        assertGt(requiredBefore, requiredAfter, "Required bond should decrease");
         assertEq(
             module.getNodeOperator(noId).depositableValidatorsCount,
             depositableBefore - 1,
             "Depositables should not change after curve update"
         );
-        assertEq(
-            accounting.getUnbondedKeysCount(noId),
-            0,
-            "Should be no unbonded keys after curve update"
-        );
+        assertEq(accounting.getUnbondedKeysCount(noId), 0, "Should be no unbonded keys after curve update");
 
         module.updateDepositableValidatorsCount(noId);
         assertEq(
@@ -1044,15 +787,10 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
         );
     }
 
-    function test_partiallyUnbondedPartiallyDeposited_UpdateToWorseCurve()
-        public
-        assertInvariants
-    {
+    function test_partiallyUnbondedPartiallyDeposited_UpdateToWorseCurve() public assertInvariants {
         uint256 noId = createNodeOperator(7);
         module.obtainDepositData(4, "");
-        uint256 depositableBefore = module
-            .getNodeOperator(noId)
-            .depositableValidatorsCount;
+        uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
 
         penalize(noId, BOND_SIZE / 2);
 
@@ -1061,31 +799,19 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
             depositableBefore - 1,
             "Depositables should decrease after penalization"
         );
-        assertEq(
-            accounting.getUnbondedKeysCount(noId),
-            1,
-            "Should be unbonded keys after penalization"
-        );
+        assertEq(accounting.getUnbondedKeysCount(noId), 1, "Should be unbonded keys after penalization");
 
         (, uint256 requiredBefore) = accounting.getBondSummary(noId);
         updateToWorseCurve();
         (, uint256 requiredAfter) = accounting.getBondSummary(noId);
 
-        assertGt(
-            requiredAfter,
-            requiredBefore,
-            "Required bond should increase"
-        );
+        assertGt(requiredAfter, requiredBefore, "Required bond should increase");
         assertEq(
             module.getNodeOperator(noId).depositableValidatorsCount,
             depositableBefore - 1,
             "Depositables should not change after curve update"
         );
-        assertEq(
-            accounting.getUnbondedKeysCount(noId),
-            2,
-            "Should be unbonded keys after curve update"
-        );
+        assertEq(accounting.getUnbondedKeysCount(noId), 2, "Should be unbonded keys after curve update");
 
         module.updateDepositableValidatorsCount(noId);
         assertEq(

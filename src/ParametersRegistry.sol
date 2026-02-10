@@ -12,25 +12,16 @@ import { IParametersRegistry } from "./interfaces/IParametersRegistry.sol";
 /// @dev There are no upper limit checks except for the basis points (BP) values
 ///      since with the introduction of Dual Governance any malicious changes to the parameters can be objected by stETH holders.
 // solhint-disable-next-line max-states-count
-contract ParametersRegistry is
-    IParametersRegistry,
-    Initializable,
-    AccessControlEnumerableUpgradeable
-{
+contract ParametersRegistry is IParametersRegistry, Initializable, AccessControlEnumerableUpgradeable {
     using SafeCast for uint256;
 
     bytes32 public constant MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE =
         keccak256("MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE");
-    bytes32 public constant MANAGE_KEYS_LIMIT_ROLE =
-        keccak256("MANAGE_KEYS_LIMIT_ROLE");
-    bytes32 public constant MANAGE_QUEUE_CONFIG_ROLE =
-        keccak256("MANAGE_QUEUE_CONFIG_ROLE");
-    bytes32 public constant MANAGE_PERFORMANCE_PARAMETERS_ROLE =
-        keccak256("MANAGE_PERFORMANCE_PARAMETERS_ROLE");
-    bytes32 public constant MANAGE_REWARD_SHARE_ROLE =
-        keccak256("MANAGE_REWARD_SHARE_ROLE");
-    bytes32 public constant MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE =
-        keccak256("MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE");
+    bytes32 public constant MANAGE_KEYS_LIMIT_ROLE = keccak256("MANAGE_KEYS_LIMIT_ROLE");
+    bytes32 public constant MANAGE_QUEUE_CONFIG_ROLE = keccak256("MANAGE_QUEUE_CONFIG_ROLE");
+    bytes32 public constant MANAGE_PERFORMANCE_PARAMETERS_ROLE = keccak256("MANAGE_PERFORMANCE_PARAMETERS_ROLE");
+    bytes32 public constant MANAGE_REWARD_SHARE_ROLE = keccak256("MANAGE_REWARD_SHARE_ROLE");
+    bytes32 public constant MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE = keccak256("MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE");
 
     /// @dev Maximal value for basis points (BP)
     ///      1 BP = 0.01%
@@ -49,8 +40,7 @@ contract ParametersRegistry is
     mapping(uint256 curveId => MarkedUint248) internal _keyRemovalCharges;
 
     uint256 public defaultGeneralDelayedPenaltyAdditionalFine;
-    mapping(uint256 curveId => MarkedUint248)
-        internal _generalDelayedPenaltyAdditionalFines;
+    mapping(uint256 curveId => MarkedUint248) internal _generalDelayedPenaltyAdditionalFines;
 
     uint256 public defaultKeysLimit;
     mapping(uint256 curveId => MarkedUint248) internal _keysLimits;
@@ -62,14 +52,12 @@ contract ParametersRegistry is
     /// @dev Default value for the reward share. Can be only be set as a flat value due to possible sybil attacks
     ///      Decreased reward share for some validators > N will promote sybils. Increased reward share for validators > N will give large operators an advantage
     uint256 public defaultRewardShare;
-    mapping(uint256 curveId => KeyNumberValueInterval[])
-        internal _rewardShareData;
+    mapping(uint256 curveId => KeyNumberValueInterval[]) internal _rewardShareData;
 
     /// @dev Default value for the performance leeway. Can be only be set as a flat value due to possible sybil attacks
     ///      Decreased performance leeway for some validators > N will promote sybils. Increased performance leeway for validators > N will give large operators an advantage
     uint256 public defaultPerformanceLeeway;
-    mapping(uint256 curveId => KeyNumberValueInterval[])
-        internal _performanceLeewayData;
+    mapping(uint256 curveId => KeyNumberValueInterval[]) internal _performanceLeewayData;
 
     StrikesParams public defaultStrikesParams;
     mapping(uint256 curveId => StrikesParams) internal _strikesParams;
@@ -78,8 +66,7 @@ contract ParametersRegistry is
     mapping(uint256 curveId => MarkedUint248) internal _badPerformancePenalties;
 
     PerformanceCoefficients public defaultPerformanceCoefficients;
-    mapping(uint256 curveId => PerformanceCoefficients)
-        internal _performanceCoefficients;
+    mapping(uint256 curveId => PerformanceCoefficients) internal _performanceCoefficients;
 
     uint256 public defaultAllowedExitDelay;
     mapping(uint256 => uint256) internal _allowedExitDelay;
@@ -110,40 +97,27 @@ contract ParametersRegistry is
     /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
     ///      It is recommended to call this method in the same transaction as the deployment transaction
     ///      and perform extensive deployment verification before using the contract instance.
-    function initialize(
-        address admin,
-        InitializationData calldata data
-    ) external initializer {
+    function initialize(address admin, InitializationData calldata data) external initializer {
         if (admin == address(0)) {
             revert ZeroAdminAddress();
         }
 
         _setDefaultKeyRemovalCharge(data.defaultKeyRemovalCharge);
-        _setDefaultGeneralDelayedPenaltyAdditionalFine(
-            data.defaultGeneralDelayedPenaltyAdditionalFine
-        );
+        _setDefaultGeneralDelayedPenaltyAdditionalFine(data.defaultGeneralDelayedPenaltyAdditionalFine);
         _setDefaultKeysLimit(data.defaultKeysLimit);
         _setDefaultRewardShare(data.defaultRewardShare);
         _setDefaultPerformanceLeeway(data.defaultPerformanceLeeway);
-        _setDefaultStrikesParams(
-            data.defaultStrikesLifetime,
-            data.defaultStrikesThreshold
-        );
+        _setDefaultStrikesParams(data.defaultStrikesLifetime, data.defaultStrikesThreshold);
         _setDefaultBadPerformancePenalty(data.defaultBadPerformancePenalty);
         _setDefaultPerformanceCoefficients(
             data.defaultAttestationsWeight,
             data.defaultBlocksWeight,
             data.defaultSyncWeight
         );
-        _setDefaultQueueConfig(
-            data.defaultQueuePriority,
-            data.defaultQueueMaxDeposits
-        );
+        _setDefaultQueueConfig(data.defaultQueuePriority, data.defaultQueueMaxDeposits);
         _setDefaultAllowedExitDelay(data.defaultAllowedExitDelay);
         _setDefaultExitDelayFee(data.defaultExitDelayFee);
-        _setDefaultMaxElWithdrawalRequestFee(
-            data.defaultMaxElWithdrawalRequestFee
-        );
+        _setDefaultMaxElWithdrawalRequestFee(data.defaultMaxElWithdrawalRequestFee);
 
         __AccessControlEnumerable_init();
 
@@ -157,27 +131,19 @@ contract ParametersRegistry is
     /// @inheritdoc IParametersRegistry
     function setDefaultKeyRemovalCharge(
         uint256 keyRemovalCharge
-    )
-        external
-        onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE)
-    {
+    ) external onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
         _setDefaultKeyRemovalCharge(keyRemovalCharge);
     }
 
     /// @inheritdoc IParametersRegistry
     function setDefaultGeneralDelayedPenaltyAdditionalFine(
         uint256 fine
-    )
-        external
-        onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE)
-    {
+    ) external onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
         _setDefaultGeneralDelayedPenaltyAdditionalFine(fine);
     }
 
     /// @inheritdoc IParametersRegistry
-    function setDefaultKeysLimit(
-        uint256 limit
-    ) external onlyRoleMemberOrAdmin(MANAGE_KEYS_LIMIT_ROLE) {
+    function setDefaultKeysLimit(uint256 limit) external onlyRoleMemberOrAdmin(MANAGE_KEYS_LIMIT_ROLE) {
         _setDefaultKeysLimit(limit);
     }
 
@@ -190,9 +156,7 @@ contract ParametersRegistry is
     }
 
     /// @inheritdoc IParametersRegistry
-    function setDefaultRewardShare(
-        uint256 share
-    ) external onlyRoleMemberOrAdmin(MANAGE_REWARD_SHARE_ROLE) {
+    function setDefaultRewardShare(uint256 share) external onlyRoleMemberOrAdmin(MANAGE_REWARD_SHARE_ROLE) {
         _setDefaultRewardShare(share);
     }
 
@@ -224,11 +188,7 @@ contract ParametersRegistry is
         uint256 blocksWeight,
         uint256 syncWeight
     ) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
-        _setDefaultPerformanceCoefficients(
-            attestationsWeight,
-            blocksWeight,
-            syncWeight
-        );
+        _setDefaultPerformanceCoefficients(attestationsWeight, blocksWeight, syncWeight);
     }
 
     /// @inheritdoc IParametersRegistry
@@ -261,14 +221,8 @@ contract ParametersRegistry is
     function setKeyRemovalCharge(
         uint256 curveId,
         uint256 keyRemovalCharge
-    )
-        external
-        onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE)
-    {
-        _keyRemovalCharges[curveId] = MarkedUint248(
-            keyRemovalCharge.toUint248(),
-            true
-        );
+    ) external onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
+        _keyRemovalCharges[curveId] = MarkedUint248(keyRemovalCharge.toUint248(), true);
         emit KeyRemovalChargeSet(curveId, keyRemovalCharge);
     }
 
@@ -276,22 +230,13 @@ contract ParametersRegistry is
     function setGeneralDelayedPenaltyAdditionalFine(
         uint256 curveId,
         uint256 fine
-    )
-        external
-        onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE)
-    {
-        _generalDelayedPenaltyAdditionalFines[curveId] = MarkedUint248(
-            fine.toUint248(),
-            true
-        );
+    ) external onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
+        _generalDelayedPenaltyAdditionalFines[curveId] = MarkedUint248(fine.toUint248(), true);
         emit GeneralDelayedPenaltyAdditionalFineSet(curveId, fine);
     }
 
     /// @inheritdoc IParametersRegistry
-    function setKeysLimit(
-        uint256 curveId,
-        uint256 limit
-    ) external onlyRoleMemberOrAdmin(MANAGE_KEYS_LIMIT_ROLE) {
+    function setKeysLimit(uint256 curveId, uint256 limit) external onlyRoleMemberOrAdmin(MANAGE_KEYS_LIMIT_ROLE) {
         _keysLimits[curveId] = MarkedUint248(limit.toUint248(), true);
         emit KeysLimitSet(curveId, limit);
     }
@@ -303,10 +248,7 @@ contract ParametersRegistry is
         uint256 maxDeposits
     ) external onlyRoleMemberOrAdmin(MANAGE_QUEUE_CONFIG_ROLE) {
         _validateQueueConfig(priority, maxDeposits);
-        _queueConfigs[curveId] = QueueConfig({
-            priority: priority.toUint32(),
-            maxDeposits: maxDeposits.toUint32()
-        });
+        _queueConfigs[curveId] = QueueConfig({ priority: priority.toUint32(), maxDeposits: maxDeposits.toUint32() });
         emit QueueConfigSet(curveId, priority, maxDeposits);
     }
 
@@ -332,9 +274,7 @@ contract ParametersRegistry is
         KeyNumberValueInterval[] calldata data
     ) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
         _validateKeyNumberValueIntervals(data);
-        KeyNumberValueInterval[] storage intervals = _performanceLeewayData[
-            curveId
-        ];
+        KeyNumberValueInterval[] storage intervals = _performanceLeewayData[curveId];
         if (intervals.length > 0) {
             delete _performanceLeewayData[curveId];
         }
@@ -351,10 +291,7 @@ contract ParametersRegistry is
         uint256 threshold
     ) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
         _validateStrikesParams(lifetime, threshold);
-        _strikesParams[curveId] = StrikesParams(
-            lifetime.toUint32(),
-            threshold.toUint32()
-        );
+        _strikesParams[curveId] = StrikesParams(lifetime.toUint32(), threshold.toUint32());
         emit StrikesParamsSet(curveId, lifetime, threshold);
     }
 
@@ -363,10 +300,7 @@ contract ParametersRegistry is
         uint256 curveId,
         uint256 penalty
     ) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
-        _badPerformancePenalties[curveId] = MarkedUint248(
-            penalty.toUint248(),
-            true
-        );
+        _badPerformancePenalties[curveId] = MarkedUint248(penalty.toUint248(), true);
         emit BadPerformancePenaltySet(curveId, penalty);
     }
 
@@ -377,22 +311,13 @@ contract ParametersRegistry is
         uint256 blocksWeight,
         uint256 syncWeight
     ) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
-        _validatePerformanceCoefficients(
-            attestationsWeight,
-            blocksWeight,
-            syncWeight
-        );
+        _validatePerformanceCoefficients(attestationsWeight, blocksWeight, syncWeight);
         _performanceCoefficients[curveId] = PerformanceCoefficients(
             attestationsWeight.toUint32(),
             blocksWeight.toUint32(),
             syncWeight.toUint32()
         );
-        emit PerformanceCoefficientsSet(
-            curveId,
-            attestationsWeight,
-            blocksWeight,
-            syncWeight
-        );
+        emit PerformanceCoefficientsSet(curveId, attestationsWeight, blocksWeight, syncWeight);
     }
 
     /// @inheritdoc IParametersRegistry
@@ -419,10 +344,7 @@ contract ParametersRegistry is
         uint256 curveId,
         uint256 fee
     ) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
-        _maxElWithdrawalRequestFees[curveId] = MarkedUint248(
-            fee.toUint248(),
-            true
-        );
+        _maxElWithdrawalRequestFees[curveId] = MarkedUint248(fee.toUint248(), true);
         emit MaxElWithdrawalRequestFeeSet(curveId, fee);
     }
 
@@ -433,10 +355,7 @@ contract ParametersRegistry is
     /// @inheritdoc IParametersRegistry
     function unsetKeyRemovalCharge(
         uint256 curveId
-    )
-        external
-        onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE)
-    {
+    ) external onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
         delete _keyRemovalCharges[curveId];
         emit KeyRemovalChargeUnset(curveId);
     }
@@ -444,34 +363,25 @@ contract ParametersRegistry is
     /// @inheritdoc IParametersRegistry
     function unsetGeneralDelayedPenaltyAdditionalFine(
         uint256 curveId
-    )
-        external
-        onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE)
-    {
+    ) external onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
         delete _generalDelayedPenaltyAdditionalFines[curveId];
         emit GeneralDelayedPenaltyAdditionalFineUnset(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
-    function unsetKeysLimit(
-        uint256 curveId
-    ) external onlyRoleMemberOrAdmin(MANAGE_KEYS_LIMIT_ROLE) {
+    function unsetKeysLimit(uint256 curveId) external onlyRoleMemberOrAdmin(MANAGE_KEYS_LIMIT_ROLE) {
         delete _keysLimits[curveId];
         emit KeysLimitUnset(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
-    function unsetQueueConfig(
-        uint256 curveId
-    ) external onlyRoleMemberOrAdmin(MANAGE_QUEUE_CONFIG_ROLE) {
+    function unsetQueueConfig(uint256 curveId) external onlyRoleMemberOrAdmin(MANAGE_QUEUE_CONFIG_ROLE) {
         delete _queueConfigs[curveId];
         emit QueueConfigUnset(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
-    function unsetRewardShareData(
-        uint256 curveId
-    ) external onlyRoleMemberOrAdmin(MANAGE_REWARD_SHARE_ROLE) {
+    function unsetRewardShareData(uint256 curveId) external onlyRoleMemberOrAdmin(MANAGE_REWARD_SHARE_ROLE) {
         delete _rewardShareData[curveId];
         emit RewardShareDataUnset(curveId);
     }
@@ -485,9 +395,7 @@ contract ParametersRegistry is
     }
 
     /// @inheritdoc IParametersRegistry
-    function unsetStrikesParams(
-        uint256 curveId
-    ) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
+    function unsetStrikesParams(uint256 curveId) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
         delete _strikesParams[curveId];
         emit StrikesParamsUnset(curveId);
     }
@@ -517,9 +425,7 @@ contract ParametersRegistry is
     }
 
     /// @inheritdoc IParametersRegistry
-    function unsetExitDelayFee(
-        uint256 curveId
-    ) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
+    function unsetExitDelayFee(uint256 curveId) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
         delete _exitDelayFees[curveId];
         emit ExitDelayFeeUnset(curveId);
     }
@@ -537,54 +443,36 @@ contract ParametersRegistry is
     ////////////////////////////////////////////////////////////////////////////////
 
     /// @inheritdoc IParametersRegistry
-    function getKeyRemovalCharge(
-        uint256 curveId
-    ) external view returns (uint256 keyRemovalCharge) {
+    function getKeyRemovalCharge(uint256 curveId) external view returns (uint256 keyRemovalCharge) {
         MarkedUint248 storage data = _keyRemovalCharges[curveId];
         return data.isValue ? data.value : defaultKeyRemovalCharge;
     }
 
     /// @inheritdoc IParametersRegistry
-    function getGeneralDelayedPenaltyAdditionalFine(
-        uint256 curveId
-    ) external view returns (uint256 fine) {
-        MarkedUint248 storage data = _generalDelayedPenaltyAdditionalFines[
-            curveId
-        ];
-        return
-            data.isValue
-                ? data.value
-                : defaultGeneralDelayedPenaltyAdditionalFine;
+    function getGeneralDelayedPenaltyAdditionalFine(uint256 curveId) external view returns (uint256 fine) {
+        MarkedUint248 storage data = _generalDelayedPenaltyAdditionalFines[curveId];
+        return data.isValue ? data.value : defaultGeneralDelayedPenaltyAdditionalFine;
     }
 
     /// @inheritdoc IParametersRegistry
-    function getKeysLimit(
-        uint256 curveId
-    ) external view returns (uint256 limit) {
+    function getKeysLimit(uint256 curveId) external view returns (uint256 limit) {
         MarkedUint248 storage data = _keysLimits[curveId];
         return data.isValue ? data.value : defaultKeysLimit;
     }
 
     /// @inheritdoc IParametersRegistry
-    function getQueueConfig(
-        uint256 curveId
-    ) external view returns (uint32 queuePriority, uint32 maxDeposits) {
+    function getQueueConfig(uint256 curveId) external view returns (uint32 queuePriority, uint32 maxDeposits) {
         QueueConfig storage config = _queueConfigs[curveId];
 
         if (config.maxDeposits == 0) {
-            return (
-                defaultQueueConfig.priority,
-                defaultQueueConfig.maxDeposits
-            );
+            return (defaultQueueConfig.priority, defaultQueueConfig.maxDeposits);
         }
 
         return (config.priority, config.maxDeposits);
     }
 
     /// @inheritdoc IParametersRegistry
-    function getRewardShareData(
-        uint256 curveId
-    ) external view returns (KeyNumberValueInterval[] memory data) {
+    function getRewardShareData(uint256 curveId) external view returns (KeyNumberValueInterval[] memory data) {
         data = _rewardShareData[curveId];
         if (data.length == 0) {
             data = new KeyNumberValueInterval[](1);
@@ -593,9 +481,7 @@ contract ParametersRegistry is
     }
 
     /// @inheritdoc IParametersRegistry
-    function getPerformanceLeewayData(
-        uint256 curveId
-    ) external view returns (KeyNumberValueInterval[] memory data) {
+    function getPerformanceLeewayData(uint256 curveId) external view returns (KeyNumberValueInterval[] memory data) {
         data = _performanceLeewayData[curveId];
         if (data.length == 0) {
             data = new KeyNumberValueInterval[](1);
@@ -604,23 +490,16 @@ contract ParametersRegistry is
     }
 
     /// @inheritdoc IParametersRegistry
-    function getStrikesParams(
-        uint256 curveId
-    ) external view returns (uint256 lifetime, uint256 threshold) {
+    function getStrikesParams(uint256 curveId) external view returns (uint256 lifetime, uint256 threshold) {
         StrikesParams storage params = _strikesParams[curveId];
         if (params.threshold == 0) {
-            return (
-                defaultStrikesParams.lifetime,
-                defaultStrikesParams.threshold
-            );
+            return (defaultStrikesParams.lifetime, defaultStrikesParams.threshold);
         }
         return (params.lifetime, params.threshold);
     }
 
     /// @inheritdoc IParametersRegistry
-    function getBadPerformancePenalty(
-        uint256 curveId
-    ) external view returns (uint256 penalty) {
+    function getBadPerformancePenalty(uint256 curveId) external view returns (uint256 penalty) {
         MarkedUint248 storage data = _badPerformancePenalties[curveId];
         return data.isValue ? data.value : defaultBadPerformancePenalty;
     }
@@ -628,40 +507,20 @@ contract ParametersRegistry is
     /// @inheritdoc IParametersRegistry
     function getPerformanceCoefficients(
         uint256 curveId
-    )
-        external
-        view
-        returns (
-            uint256 attestationsWeight,
-            uint256 blocksWeight,
-            uint256 syncWeight
-        )
-    {
-        PerformanceCoefficients storage coefficients = _performanceCoefficients[
-            curveId
-        ];
-        if (
-            coefficients.attestationsWeight == 0 &&
-            coefficients.blocksWeight == 0 &&
-            coefficients.syncWeight == 0
-        ) {
+    ) external view returns (uint256 attestationsWeight, uint256 blocksWeight, uint256 syncWeight) {
+        PerformanceCoefficients storage coefficients = _performanceCoefficients[curveId];
+        if (coefficients.attestationsWeight == 0 && coefficients.blocksWeight == 0 && coefficients.syncWeight == 0) {
             return (
                 defaultPerformanceCoefficients.attestationsWeight,
                 defaultPerformanceCoefficients.blocksWeight,
                 defaultPerformanceCoefficients.syncWeight
             );
         }
-        return (
-            coefficients.attestationsWeight,
-            coefficients.blocksWeight,
-            coefficients.syncWeight
-        );
+        return (coefficients.attestationsWeight, coefficients.blocksWeight, coefficients.syncWeight);
     }
 
     /// @inheritdoc IParametersRegistry
-    function getAllowedExitDelay(
-        uint256 curveId
-    ) external view returns (uint256 delay) {
+    function getAllowedExitDelay(uint256 curveId) external view returns (uint256 delay) {
         delay = _allowedExitDelay[curveId];
         if (delay == 0) {
             return defaultAllowedExitDelay;
@@ -669,17 +528,13 @@ contract ParametersRegistry is
     }
 
     /// @inheritdoc IParametersRegistry
-    function getExitDelayFee(
-        uint256 curveId
-    ) external view returns (uint256 penalty) {
+    function getExitDelayFee(uint256 curveId) external view returns (uint256 penalty) {
         MarkedUint248 memory data = _exitDelayFees[curveId];
         return data.isValue ? data.value : defaultExitDelayFee;
     }
 
     /// @inheritdoc IParametersRegistry
-    function getMaxElWithdrawalRequestFee(
-        uint256 curveId
-    ) external view returns (uint256 fee) {
+    function getMaxElWithdrawalRequestFee(uint256 curveId) external view returns (uint256 fee) {
         MarkedUint248 memory data = _maxElWithdrawalRequestFees[curveId];
         return data.isValue ? data.value : defaultMaxElWithdrawalRequestFee;
     }
@@ -698,9 +553,7 @@ contract ParametersRegistry is
         emit DefaultKeyRemovalChargeSet(keyRemovalCharge);
     }
 
-    function _setDefaultGeneralDelayedPenaltyAdditionalFine(
-        uint256 fine
-    ) internal {
+    function _setDefaultGeneralDelayedPenaltyAdditionalFine(uint256 fine) internal {
         defaultGeneralDelayedPenaltyAdditionalFine = fine;
         emit DefaultGeneralDelayedPenaltyAdditionalFineSet(fine);
     }
@@ -728,15 +581,9 @@ contract ParametersRegistry is
         emit DefaultPerformanceLeewaySet(leeway);
     }
 
-    function _setDefaultStrikesParams(
-        uint256 lifetime,
-        uint256 threshold
-    ) internal {
+    function _setDefaultStrikesParams(uint256 lifetime, uint256 threshold) internal {
         _validateStrikesParams(lifetime, threshold);
-        defaultStrikesParams = StrikesParams({
-            lifetime: lifetime.toUint32(),
-            threshold: threshold.toUint32()
-        });
+        defaultStrikesParams = StrikesParams({ lifetime: lifetime.toUint32(), threshold: threshold.toUint32() });
         emit DefaultStrikesParamsSet(lifetime, threshold);
     }
 
@@ -750,32 +597,18 @@ contract ParametersRegistry is
         uint256 blocksWeight,
         uint256 syncWeight
     ) internal {
-        _validatePerformanceCoefficients(
-            attestationsWeight,
-            blocksWeight,
-            syncWeight
-        );
+        _validatePerformanceCoefficients(attestationsWeight, blocksWeight, syncWeight);
         defaultPerformanceCoefficients = PerformanceCoefficients({
             attestationsWeight: attestationsWeight.toUint32(),
             blocksWeight: blocksWeight.toUint32(),
             syncWeight: syncWeight.toUint32()
         });
-        emit DefaultPerformanceCoefficientsSet(
-            attestationsWeight,
-            blocksWeight,
-            syncWeight
-        );
+        emit DefaultPerformanceCoefficientsSet(attestationsWeight, blocksWeight, syncWeight);
     }
 
-    function _setDefaultQueueConfig(
-        uint256 priority,
-        uint256 maxDeposits
-    ) internal {
+    function _setDefaultQueueConfig(uint256 priority, uint256 maxDeposits) internal {
         _validateQueueConfig(priority, maxDeposits);
-        defaultQueueConfig = QueueConfig({
-            priority: priority.toUint32(),
-            maxDeposits: maxDeposits.toUint32()
-        });
+        defaultQueueConfig = QueueConfig({ priority: priority.toUint32(), maxDeposits: maxDeposits.toUint32() });
         emit DefaultQueueConfigSet(priority, maxDeposits);
     }
 
@@ -802,10 +635,7 @@ contract ParametersRegistry is
         }
     }
 
-    function _validateQueueConfig(
-        uint256 priority,
-        uint256 maxDeposits
-    ) internal view {
+    function _validateQueueConfig(uint256 priority, uint256 maxDeposits) internal view {
         if (priority > QUEUE_LOWEST_PRIORITY) {
             revert QueueCannotBeUsed();
         }
@@ -814,10 +644,7 @@ contract ParametersRegistry is
         }
     }
 
-    function _validateStrikesParams(
-        uint256 lifetime,
-        uint256 threshold
-    ) internal pure {
+    function _validateStrikesParams(uint256 lifetime, uint256 threshold) internal pure {
         if (threshold == 0 || lifetime == 0) {
             revert InvalidStrikesParams();
         }
@@ -839,9 +666,7 @@ contract ParametersRegistry is
         }
     }
 
-    function _validateKeyNumberValueIntervals(
-        KeyNumberValueInterval[] calldata intervals
-    ) private pure {
+    function _validateKeyNumberValueIntervals(KeyNumberValueInterval[] calldata intervals) private pure {
         if (intervals.length == 0) {
             revert InvalidKeyNumberValueIntervals();
         }
@@ -855,9 +680,7 @@ contract ParametersRegistry is
 
         for (uint256 i = 1; i < intervals.length; ++i) {
             unchecked {
-                if (
-                    intervals[i].minKeyNumber <= intervals[i - 1].minKeyNumber
-                ) {
+                if (intervals[i].minKeyNumber <= intervals[i - 1].minKeyNumber) {
                     revert InvalidKeyNumberValueIntervals();
                 }
                 if (intervals[i].value > MAX_BP) {

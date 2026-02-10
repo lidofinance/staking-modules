@@ -20,17 +20,9 @@ interface IEjector is IExitTypes {
     error DuplicateKeyIndex();
     error ZeroRefundRecipient();
 
-    event VoluntaryEjectionRequested(
-        uint256 indexed nodeOperatorId,
-        bytes pubkey,
-        address refundRecipient
-    );
+    event VoluntaryEjectionRequested(uint256 indexed nodeOperatorId, bytes pubkey, address refundRecipient);
 
-    event BadPerformerEjectionRequested(
-        uint256 indexed nodeOperatorId,
-        bytes pubkey,
-        address refundRecipient
-    );
+    event BadPerformerEjectionRequested(uint256 indexed nodeOperatorId, bytes pubkey, address refundRecipient);
 
     function PAUSE_ROLE() external view returns (bytes32);
 
@@ -81,15 +73,8 @@ interface IEjector is IExitTypes {
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndex index of deposited key to eject
     /// @param refundRecipient Address to send the refund to
-    function ejectBadPerformer(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        address refundRecipient
-    ) external payable;
+    function ejectBadPerformer(uint256 nodeOperatorId, uint256 keyIndex, address refundRecipient) external payable;
 
     /// @notice TriggerableWithdrawalsGateway implementation used by the contract.
-    function triggerableWithdrawalsGateway()
-        external
-        view
-        returns (ITriggerableWithdrawalsGateway);
+    function triggerableWithdrawalsGateway() external view returns (ITriggerableWithdrawalsGateway);
 }

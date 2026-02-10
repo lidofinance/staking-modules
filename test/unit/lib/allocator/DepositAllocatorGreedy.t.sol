@@ -20,13 +20,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr2(10, 0);
         uint256[] memory caps = _arr2(10, 10);
 
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            2,
-            1
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(weights, amounts, caps, 2, 1);
 
         assertEq(rest, 0);
         assertEq(fills[0], 0);
@@ -38,13 +32,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr3(0, 0, 0);
         uint256[] memory caps = _arr3(1, 10, 10);
 
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            7,
-            1
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(weights, amounts, caps, 7, 1);
 
         assertEq(fills[0], 1);
         assertEq(fills[1], 1);
@@ -57,13 +45,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr4(19, 21, 23, 32);
         uint256[] memory caps = _arr4(100, 100, 100, 100);
 
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            5,
-            1
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(weights, amounts, caps, 5, 1);
 
         assertEq(rest, 0);
         // Greedy allocator gives all inflow to the most underfilled bucket.
@@ -78,13 +60,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr2(100, 0);
         uint256[] memory caps = _arr2(100, 100);
 
-        (uint256[] memory fills, ) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            10,
-            1
-        );
+        (uint256[] memory fills, ) = _runAllocate(weights, amounts, caps, 10, 1);
 
         assertEq(fills[0], 0);
     }
@@ -118,13 +94,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr3(a0, a1, a2);
         uint256[] memory caps = _arr3(c0, c1, c2);
 
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            inflow,
-            step
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(weights, amounts, caps, inflow, step);
 
         assertEq(_sum(fills) + rest, inflow);
         assertLe(rest, inflow);
@@ -135,13 +105,7 @@ contract DepositAllocatorGreedyTest is Test {
 
     function test_edge_noOperators() public {
         uint256[] memory empty = new uint256[](0);
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            empty,
-            empty,
-            empty,
-            7,
-            1
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(empty, empty, empty, 7, 1);
 
         assertEq(rest, 7);
         assertEq(fills.length, 0);
@@ -152,13 +116,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr2(0, 0);
         uint256[] memory caps = _arr2(10, 10);
 
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            5,
-            1
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(weights, amounts, caps, 5, 1);
 
         assertEq(rest, 5);
         assertEq(_sum(fills), 0);
@@ -169,13 +127,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr2(0, 0);
         uint256[] memory caps = _arr2(0, 0);
 
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            5,
-            1
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(weights, amounts, caps, 5, 1);
 
         assertEq(rest, 5);
         assertEq(_sum(fills), 0);
@@ -186,13 +138,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr2(0, 0);
         uint256[] memory caps = _arr2(10, 10);
 
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            0,
-            1
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(weights, amounts, caps, 0, 1);
 
         assertEq(rest, 0);
         assertEq(_sum(fills), 0);
@@ -203,13 +149,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr3(0, 0, 0);
         uint256[] memory caps = _arr3(10, 10, 10);
 
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            6,
-            1
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(weights, amounts, caps, 6, 1);
 
         assertEq(rest, 0);
         assertEq(fills[0], 0);
@@ -222,13 +162,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr2(0, 0);
         uint256[] memory caps = _arr2(100, 100);
 
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            5,
-            10
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(weights, amounts, caps, 5, 10);
 
         assertEq(rest, 5);
         assertEq(_sum(fills), 0);
@@ -239,13 +173,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr2(0, 0);
         uint256[] memory caps = _arr2(100, 100);
 
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            9,
-            5
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(weights, amounts, caps, 9, 5);
 
         assertEq(rest, 4);
         assertEq(fills[0], 0);
@@ -257,13 +185,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr3(0, 0, 0);
         uint256[] memory caps = _arr3(10, 10, 10);
 
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            7,
-            1
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(weights, amounts, caps, 7, 1);
 
         assertEq(rest, 0);
         assertEq(_sum(fills), 7);
@@ -274,13 +196,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr3(0, 0, 0);
         uint256[] memory caps = _arr3(100, 100, 100);
 
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            1,
-            1
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(weights, amounts, caps, 1, 1);
 
         assertEq(rest, 0);
         assertEq(fills[0], 1);
@@ -293,13 +209,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr3(0, 0, 0);
         uint256[] memory caps = _arr3(0, 10, 10);
 
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            6,
-            1
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(weights, amounts, caps, 6, 1);
 
         assertEq(rest, 2);
         assertEq(fills[0], 0);
@@ -312,13 +222,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr2(0, 0);
         uint256[] memory caps = _arr2(2, 3);
 
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            10,
-            1
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(weights, amounts, caps, 10, 1);
 
         assertEq(rest, 5);
         assertEq(fills[0], 2);
@@ -330,13 +234,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr3(0, 0, 0);
         uint256[] memory caps = _arr3(3, 5, 10);
 
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            30,
-            4
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(weights, amounts, caps, 30, 4);
 
         assertEq(rest, 18);
         assertEq(fills[0], 0);
@@ -349,13 +247,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256[] memory amounts = _arr2(0, 9);
         uint256[] memory caps = _arr2(20, 20);
 
-        (uint256[] memory fills, uint256 rest) = _runAllocate(
-            weights,
-            amounts,
-            caps,
-            11,
-            2
-        );
+        (uint256[] memory fills, uint256 rest) = _runAllocate(weights, amounts, caps, 11, 2);
 
         assertEq(rest, 1);
         assertEq(fills[0], 10);
@@ -369,11 +261,7 @@ contract DepositAllocatorGreedyTest is Test {
         uint256 inflow,
         uint256 step
     ) internal returns (uint256[] memory fills, uint256 rest) {
-        AllocationState memory state = _buildState(
-            _copy(weights),
-            _copy(amounts),
-            _copy(caps)
-        );
+        AllocationState memory state = _buildState(_copy(weights), _copy(amounts), _copy(caps));
 
         (fills, rest) = harness.allocate(state, inflow, step);
     }
@@ -408,9 +296,7 @@ contract DepositAllocatorGreedyTest is Test {
         }
     }
 
-    function _copy(
-        uint256[] memory values
-    ) internal pure returns (uint256[] memory out) {
+    function _copy(uint256[] memory values) internal pure returns (uint256[] memory out) {
         uint256 n = values.length;
         out = new uint256[](n);
         unchecked {
@@ -420,9 +306,7 @@ contract DepositAllocatorGreedyTest is Test {
         }
     }
 
-    function _sum(
-        uint256[] memory values
-    ) internal pure returns (uint256 total) {
+    function _sum(uint256[] memory values) internal pure returns (uint256 total) {
         uint256 n = values.length;
         unchecked {
             for (uint256 i; i < n; ++i) {
@@ -431,32 +315,20 @@ contract DepositAllocatorGreedyTest is Test {
         }
     }
 
-    function _arr2(
-        uint256 a,
-        uint256 b
-    ) internal pure returns (uint256[] memory arr) {
+    function _arr2(uint256 a, uint256 b) internal pure returns (uint256[] memory arr) {
         arr = new uint256[](2);
         arr[0] = a;
         arr[1] = b;
     }
 
-    function _arr3(
-        uint256 a,
-        uint256 b,
-        uint256 c
-    ) internal pure returns (uint256[] memory arr) {
+    function _arr3(uint256 a, uint256 b, uint256 c) internal pure returns (uint256[] memory arr) {
         arr = new uint256[](3);
         arr[0] = a;
         arr[1] = b;
         arr[2] = c;
     }
 
-    function _arr4(
-        uint256 a,
-        uint256 b,
-        uint256 c,
-        uint256 d
-    ) internal pure returns (uint256[] memory arr) {
+    function _arr4(uint256 a, uint256 b, uint256 c, uint256 d) internal pure returns (uint256[] memory arr) {
         arr = new uint256[](4);
         arr[0] = a;
         arr[1] = b;

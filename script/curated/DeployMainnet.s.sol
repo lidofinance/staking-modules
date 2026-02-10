@@ -11,8 +11,7 @@ contract DeployMainnet is DeployBase {
         // Lido addresses
         config.lidoLocatorAddress = 0xC1d0b3DE6792Bf6b4b37EccdcC24e45978Cfd2Eb;
         config.aragonAgent = 0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c;
-        config
-            .easyTrackEVMScriptExecutor = 0xFE5986E06210aC1eCC1aDCafc0cc7f8D63B3F977;
+        config.easyTrackEVMScriptExecutor = 0xFE5986E06210aC1eCC1aDCafc0cc7f8D63B3F977;
         config.proxyAdmin = config.aragonAgent;
 
         // Oracle
@@ -54,18 +53,13 @@ contract DeployMainnet is DeployBase {
         config.minBondLockPeriod = 4 weeks; // TODO reconsider
         config.maxBondLockPeriod = 365 days; // TODO reconsider
         config.bondLockPeriod = 8 weeks; // TODO reconsider
-        config
-            .setResetBondCurveAddress = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider
-        config
-            .chargePenaltyRecipient = 0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c; // locator.treasury()
+        config.setResetBondCurveAddress = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider
+        config.chargePenaltyRecipient = 0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c; // locator.treasury()
 
         // Module
-        config.stakingModuleId = _nextStakingModuleId(
-            config.lidoLocatorAddress
-        );
+        config.stakingModuleId = _nextStakingModuleId(config.lidoLocatorAddress);
         config.moduleType = "curated-onchain-v1"; // TODO reconsider
-        config
-            .generalDelayedPenaltyReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider
+        config.generalDelayedPenaltyReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider
 
         // ParametersRegistry TODO reconsider
         config.defaultKeyRemovalCharge = 0;

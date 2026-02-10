@@ -18,13 +18,7 @@ abstract contract NoManagementBaseTest is ModuleTypeBase {
         address reward,
         bool extendedPermissions
     ) internal returns (uint256 noId) {
-        noId = integrationHelpers.addNodeOperatorWithManagement(
-            nodeOperator,
-            manager,
-            reward,
-            extendedPermissions,
-            1
-        );
+        noId = integrationHelpers.addNodeOperatorWithManagement(nodeOperator, manager, reward, extendedPermissions, 1);
     }
 }
 
@@ -42,11 +36,7 @@ abstract contract NoAddressesBasicPermissionsTestBase is NoManagementBaseTest {
     function test_changeManagerAddresses() public {
         address newManager = nextAddress("newManager");
 
-        uint256 noId = _createNodeOperator(
-            nodeOperator,
-            nodeOperator,
-            EXTENDED
-        );
+        uint256 noId = _createNodeOperator(nodeOperator, nodeOperator, EXTENDED);
         vm.prank(nodeOperator);
         vm.startSnapshotGas("module.proposeNodeOperatorManagerAddressChange");
         module.proposeNodeOperatorManagerAddressChange(noId, newManager);
@@ -57,20 +47,13 @@ abstract contract NoAddressesBasicPermissionsTestBase is NoManagementBaseTest {
         module.confirmNodeOperatorManagerAddressChange(noId);
         vm.stopSnapshotGas();
 
-        assertEq(
-            module.getNodeOperatorManagementProperties(noId).managerAddress,
-            newManager
-        );
+        assertEq(module.getNodeOperatorManagementProperties(noId).managerAddress, newManager);
     }
 
     function test_changeRewardAddresses() public {
         address newReward = nextAddress("newReward");
 
-        uint256 noId = _createNodeOperator(
-            nodeOperator,
-            nodeOperator,
-            EXTENDED
-        );
+        uint256 noId = _createNodeOperator(nodeOperator, nodeOperator, EXTENDED);
         vm.prank(nodeOperator);
         vm.startSnapshotGas("module.proposeNodeOperatorRewardAddressChange");
         module.proposeNodeOperatorRewardAddressChange(noId, newReward);
@@ -81,16 +64,11 @@ abstract contract NoAddressesBasicPermissionsTestBase is NoManagementBaseTest {
         module.confirmNodeOperatorRewardAddressChange(noId);
         vm.stopSnapshotGas();
 
-        assertEq(
-            module.getNodeOperatorManagementProperties(noId).rewardAddress,
-            newReward
-        );
+        assertEq(module.getNodeOperatorManagementProperties(noId).rewardAddress, newReward);
     }
 }
 
-abstract contract NoAddressesExtendedPermissionsTestBase is
-    NoAddressesBasicPermissionsTestBase
-{
+abstract contract NoAddressesExtendedPermissionsTestBase is NoAddressesBasicPermissionsTestBase {
     function _extended() internal pure override returns (bool) {
         return true;
     }
@@ -107,10 +85,7 @@ abstract contract NoAddressesPermissionsTestBase is NoManagementBaseTest {
         module.resetNodeOperatorManagerAddress(noId);
         vm.stopSnapshotGas();
 
-        assertEq(
-            module.getNodeOperatorManagementProperties(noId).managerAddress,
-            nodeOperator
-        );
+        assertEq(module.getNodeOperatorManagementProperties(noId).managerAddress, nodeOperator);
     }
 
     function test_changeRewardAddresses() public {
@@ -122,39 +97,18 @@ abstract contract NoAddressesPermissionsTestBase is NoManagementBaseTest {
         module.changeNodeOperatorRewardAddress(noId, newReward);
         vm.stopSnapshotGas();
 
-        assertEq(
-            module.getNodeOperatorManagementProperties(noId).rewardAddress,
-            newReward
-        );
+        assertEq(module.getNodeOperatorManagementProperties(noId).rewardAddress, newReward);
     }
 }
 
-contract NoAddressesBasicPermissionsTestCSM is
-    NoAddressesBasicPermissionsTestBase,
-    CSMIntegrationBase
-{}
+contract NoAddressesBasicPermissionsTestCSM is NoAddressesBasicPermissionsTestBase, CSMIntegrationBase {}
 
-contract NoAddressesBasicPermissionsTestCurated is
-    NoAddressesBasicPermissionsTestBase,
-    CuratedIntegrationBase
-{}
+contract NoAddressesBasicPermissionsTestCurated is NoAddressesBasicPermissionsTestBase, CuratedIntegrationBase {}
 
-contract NoAddressesExtendedPermissionsTestCSM is
-    NoAddressesExtendedPermissionsTestBase,
-    CSMIntegrationBase
-{}
+contract NoAddressesExtendedPermissionsTestCSM is NoAddressesExtendedPermissionsTestBase, CSMIntegrationBase {}
 
-contract NoAddressesExtendedPermissionsTestCurated is
-    NoAddressesExtendedPermissionsTestBase,
-    CuratedIntegrationBase
-{}
+contract NoAddressesExtendedPermissionsTestCurated is NoAddressesExtendedPermissionsTestBase, CuratedIntegrationBase {}
 
-contract NoAddressesPermissionsTestCSM is
-    NoAddressesPermissionsTestBase,
-    CSMIntegrationBase
-{}
+contract NoAddressesPermissionsTestCSM is NoAddressesPermissionsTestBase, CSMIntegrationBase {}
 
-contract NoAddressesPermissionsTestCurated is
-    NoAddressesPermissionsTestBase,
-    CuratedIntegrationBase
-{}
+contract NoAddressesPermissionsTestCurated is NoAddressesPermissionsTestBase, CuratedIntegrationBase {}

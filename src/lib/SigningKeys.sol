@@ -11,8 +11,7 @@ import { IStakingModule } from "../interfaces/IStakingModule.sol";
 library SigningKeys {
     using SigningKeys for bytes32;
 
-    bytes32 internal constant SIGNING_KEYS_POSITION =
-        keccak256("lido.CommunityStakingModule.signingKeysPosition");
+    bytes32 internal constant SIGNING_KEYS_POSITION = keccak256("lido.CommunityStakingModule.signingKeysPosition");
 
     uint64 internal constant PUBKEY_LENGTH = 48;
     uint64 internal constant SIGNATURE_LENGTH = 96;
@@ -39,10 +38,7 @@ library SigningKeys {
             revert InvalidKeysCount();
         }
         unchecked {
-            if (
-                pubkeys.length != keysCount * PUBKEY_LENGTH ||
-                signatures.length != keysCount * SIGNATURE_LENGTH
-            ) {
+            if (pubkeys.length != keysCount * PUBKEY_LENGTH || signatures.length != keysCount * SIGNATURE_LENGTH) {
                 revert InvalidLength();
             }
         }
@@ -52,10 +48,7 @@ library SigningKeys {
         bytes memory tmpKey = new bytes(48);
 
         for (uint256 i; i < keysCount; ) {
-            curOffset = _signingKeysPosition().getKeyOffset(
-                nodeOperatorId,
-                startIndex
-            );
+            curOffset = _signingKeysPosition().getKeyOffset(nodeOperatorId, startIndex);
             assembly {
                 let _ofs := add(pubkeys.offset, mul(i, 48)) // PUBKEY_LENGTH = 48
                 let _part1 := calldataload(_ofs) // bytes 0..31
@@ -98,11 +91,7 @@ library SigningKeys {
         uint256 keysCount,
         uint256 totalKeysCount
     ) internal returns (uint256) {
-        if (
-            keysCount == 0 ||
-            startIndex + keysCount > totalKeysCount ||
-            totalKeysCount > type(uint32).max
-        ) {
+        if (keysCount == 0 || startIndex + keysCount > totalKeysCount || totalKeysCount > type(uint32).max) {
             revert InvalidKeysCount();
         }
 
@@ -113,23 +102,14 @@ library SigningKeys {
         // removing from the last index
         unchecked {
             for (uint256 i = startIndex + keysCount; i > startIndex; ) {
-                curOffset = _signingKeysPosition().getKeyOffset(
-                    nodeOperatorId,
-                    i - 1
-                );
+                curOffset = _signingKeysPosition().getKeyOffset(nodeOperatorId, i - 1);
                 assembly {
                     // read key
-                    mstore(
-                        add(tmpKey, 0x30),
-                        shr(128, sload(add(curOffset, 1)))
-                    ) // bytes 16..47
+                    mstore(add(tmpKey, 0x30), shr(128, sload(add(curOffset, 1)))) // bytes 16..47
                     mstore(add(tmpKey, 0x20), sload(curOffset)) // bytes 0..31
                 }
                 if (i < totalKeysCount) {
-                    lastOffset = _signingKeysPosition().getKeyOffset(
-                        nodeOperatorId,
-                        totalKeysCount - 1
-                    );
+                    lastOffset = _signingKeysPosition().getKeyOffset(nodeOperatorId, totalKeysCount - 1);
                     // move last key to deleted key index
                     for (j = 0; j < 5; ) {
                         // load 160 bytes (5 slots) containing key and signature
@@ -175,10 +155,7 @@ library SigningKeys {
     ) internal view {
         uint256 curOffset;
         for (uint256 i; i < keysCount; ) {
-            curOffset = _signingKeysPosition().getKeyOffset(
-                nodeOperatorId,
-                startIndex + i
-            );
+            curOffset = _signingKeysPosition().getKeyOffset(nodeOperatorId, startIndex + i);
             assembly {
                 // read key
                 let _ofs := add(add(pubkeys, 0x20), mul(add(bufOffset, i), 48)) // PUBKEY_LENGTH = 48
@@ -203,10 +180,7 @@ library SigningKeys {
 
         pubkeys = new bytes(keysCount * PUBKEY_LENGTH);
         for (uint256 i; i < keysCount; ) {
-            curOffset = _signingKeysPosition().getKeyOffset(
-                nodeOperatorId,
-                startIndex + i
-            );
+            curOffset = _signingKeysPosition().getKeyOffset(nodeOperatorId, startIndex + i);
             assembly {
                 // read key
                 let offset := add(add(pubkeys, 0x20), mul(i, 48)) // PUBKEY_LENGTH = 48
@@ -217,24 +191,12 @@ library SigningKeys {
         }
     }
 
-    function initKeysSigsBuf(
-        uint256 count
-    ) internal pure returns (bytes memory, bytes memory) {
-        return (
-            new bytes(count * PUBKEY_LENGTH),
-            new bytes(count * SIGNATURE_LENGTH)
-        );
+    function initKeysSigsBuf(uint256 count) internal pure returns (bytes memory, bytes memory) {
+        return (new bytes(count * PUBKEY_LENGTH), new bytes(count * SIGNATURE_LENGTH));
     }
 
-    function getKeyOffset(
-        bytes32 position,
-        uint256 nodeOperatorId,
-        uint256 keyIndex
-    ) internal pure returns (uint256) {
-        return
-            uint256(
-                keccak256(abi.encodePacked(position, nodeOperatorId, keyIndex))
-            );
+    function getKeyOffset(bytes32 position, uint256 nodeOperatorId, uint256 keyIndex) internal pure returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(position, nodeOperatorId, keyIndex)));
     }
 
     function _signingKeysPosition() internal pure returns (bytes32) {

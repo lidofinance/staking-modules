@@ -14,18 +14,12 @@ import { IAccounting } from "src/interfaces/IAccounting.sol";
 
 contract BondCurveTest is BaseTest {
     function test_addBondCurve() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory curvePoints = new IBondCurve.BondCurveIntervalInput[](1);
-        curvePoints[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: 2 ether
-        });
+        IBondCurve.BondCurveIntervalInput[] memory curvePoints = new IBondCurve.BondCurveIntervalInput[](1);
+        curvePoints[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 2 ether });
         vm.prank(admin);
         uint256 addedId = accounting.addBondCurve(curvePoints);
 
-        IBondCurve.BondCurveData memory curve = accounting.getCurveInfo({
-            curveId: addedId
-        });
+        IBondCurve.BondCurveData memory curve = accounting.getCurveInfo({ curveId: addedId });
 
         assertEq(curve.intervals[0].minBond, 2 ether);
         assertEq(curve.intervals[0].trend, 2 ether);
@@ -38,21 +32,15 @@ contract BondCurveTest is BaseTest {
     }
 
     function test_updateBondCurve() public assertInvariants {
-        IBondCurve.BondCurveIntervalInput[]
-            memory curvePoints = new IBondCurve.BondCurveIntervalInput[](1);
-        curvePoints[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: 2 ether
-        });
+        IBondCurve.BondCurveIntervalInput[] memory curvePoints = new IBondCurve.BondCurveIntervalInput[](1);
+        curvePoints[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 2 ether });
 
         uint256 toUpdate = 0;
 
         vm.prank(admin);
         accounting.updateBondCurve(toUpdate, curvePoints);
 
-        IBondCurve.BondCurveData memory curve = accounting.getCurveInfo({
-            curveId: toUpdate
-        });
+        IBondCurve.BondCurveData memory curve = accounting.getCurveInfo({ curveId: toUpdate });
 
         assertEq(curve.intervals[0].minBond, 2 ether);
         assertEq(curve.intervals[0].trend, 2 ether);
@@ -61,28 +49,18 @@ contract BondCurveTest is BaseTest {
     function test_updateBondCurve_RevertWhen_DoesNotHaveRole() public {
         expectRoleRevert(stranger, accounting.MANAGE_BOND_CURVES_ROLE());
         vm.prank(stranger);
-        accounting.updateBondCurve(
-            0,
-            new IBondCurve.BondCurveIntervalInput[](0)
-        );
+        accounting.updateBondCurve(0, new IBondCurve.BondCurveIntervalInput[](0));
     }
 
     function test_updateBondCurve_RevertWhen_InvalidBondCurveId() public {
         vm.expectRevert(IBondCurve.InvalidBondCurveId.selector);
         vm.prank(admin);
-        accounting.updateBondCurve(
-            1,
-            new IBondCurve.BondCurveIntervalInput[](0)
-        );
+        accounting.updateBondCurve(1, new IBondCurve.BondCurveIntervalInput[](0));
     }
 
     function test_setBondCurve() public assertInvariants {
-        IBondCurve.BondCurveIntervalInput[]
-            memory curvePoints = new IBondCurve.BondCurveIntervalInput[](1);
-        curvePoints[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: 2 ether
-        });
+        IBondCurve.BondCurveIntervalInput[] memory curvePoints = new IBondCurve.BondCurveIntervalInput[](1);
+        curvePoints[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 2 ether });
 
         mock_getNodeOperatorsCount(1);
 
@@ -92,10 +70,7 @@ contract BondCurveTest is BaseTest {
 
         vm.expectCall(
             address(accounting.MODULE()),
-            abi.encodeWithSelector(
-                IBaseModule.onNodeOperatorBondCurveUpdated.selector,
-                0
-            )
+            abi.encodeWithSelector(IBaseModule.onNodeOperatorBondCurveUpdated.selector, 0)
         );
         accounting.setBondCurve({ nodeOperatorId: 0, curveId: addedId });
 
@@ -129,11 +104,7 @@ contract ClaimableBondTest is RewardsBaseTest {
 
         uint256 claimableBondShares = accounting.getClaimableBondShares(0);
 
-        assertEq(
-            claimableBondShares,
-            0,
-            "claimable bond shares should be zero"
-        );
+        assertEq(claimableBondShares, 0, "claimable bond shares should be zero");
     }
 
     function test_WithCurve() public override {
@@ -160,11 +131,7 @@ contract ClaimableBondTest is RewardsBaseTest {
 
         uint256 claimableBondShares = accounting.getClaimableBondShares(0);
 
-        assertEq(
-            claimableBondShares,
-            0,
-            "claimable bond shares should be zero"
-        );
+        assertEq(claimableBondShares, 0, "claimable bond shares should be zero");
     }
 
     function test_WithCurveAndLocked() public override {
@@ -206,11 +173,7 @@ contract ClaimableBondTest is RewardsBaseTest {
 
         uint256 claimableBondShares = accounting.getClaimableBondShares(0);
 
-        assertEq(
-            claimableBondShares,
-            0,
-            "claimable bond shares should be zero"
-        );
+        assertEq(claimableBondShares, 0, "claimable bond shares should be zero");
     }
 
     function test_WithBondDebt() public override {
@@ -220,11 +183,7 @@ contract ClaimableBondTest is RewardsBaseTest {
 
         uint256 claimableBondShares = accounting.getClaimableBondShares(0);
 
-        assertEq(
-            claimableBondShares,
-            0,
-            "claimable bond shares should be zero"
-        );
+        assertEq(claimableBondShares, 0, "claimable bond shares should be zero");
     }
 
     function test_WithBondAndOneWithdrawnValidator() public override {
@@ -279,11 +238,7 @@ contract ClaimableBondTest is RewardsBaseTest {
 
         uint256 claimableBondShares = accounting.getClaimableBondShares(0);
 
-        assertEq(
-            claimableBondShares,
-            0,
-            "claimable bond shares should be zero"
-        );
+        assertEq(claimableBondShares, 0, "claimable bond shares should be zero");
     }
 
     function test_WithMissingBondAndOneWithdrawnValidator() public override {
@@ -293,11 +248,7 @@ contract ClaimableBondTest is RewardsBaseTest {
 
         uint256 claimableBondShares = accounting.getClaimableBondShares(0);
 
-        assertEq(
-            claimableBondShares,
-            0,
-            "claimable bond shares should be zero"
-        );
+        assertEq(claimableBondShares, 0, "claimable bond shares should be zero");
     }
 }
 
@@ -378,10 +329,7 @@ contract LockBondETHTest is BaseTest {
         assertEq(accounting.getActualLockedBond(0), 0.6 ether);
     }
 
-    function test_compensateLockedBondETH_RevertWhen_ReceiveFailed()
-        public
-        assertInvariants
-    {
+    function test_compensateLockedBondETH_RevertWhen_ReceiveFailed() public assertInvariants {
         mock_getNodeOperatorsCount(1);
         FailedReceiverStub failedReceiver = new FailedReceiverStub();
         vm.mockCall(
@@ -399,9 +347,7 @@ contract LockBondETHTest is BaseTest {
         accounting.compensateLockedBondETH{ value: 0.4 ether }(0);
     }
 
-    function test_compensateLockedBondETH_RevertWhen_SenderIsNotModule()
-        public
-    {
+    function test_compensateLockedBondETH_RevertWhen_SenderIsNotModule() public {
         mock_getNodeOperatorsCount(1);
         vm.deal(stranger, 1 ether);
 
@@ -450,15 +396,11 @@ contract LockBondETHTest is BaseTest {
         vm.startPrank(address(stakingModule));
         accounting.lockBondETH(noId, amount);
 
-        expectNoCall(
-            address(burner),
-            abi.encodeWithSelector(IBurner.requestBurnMyShares.selector)
-        );
+        expectNoCall(address(burner), abi.encodeWithSelector(IBurner.requestBurnMyShares.selector));
         accounting.settleLockedBondETH(noId);
         vm.stopPrank();
 
-        Accounting.BondLockData memory bondLockAfter = accounting
-            .getLockedBondInfo(0);
+        Accounting.BondLockData memory bondLockAfter = accounting.getLockedBondInfo(0);
 
         assertEq(bondLockAfter.amount, 0);
         assertEq(bondLockAfter.until, 0);
@@ -466,10 +408,7 @@ contract LockBondETHTest is BaseTest {
         assertApproxEqAbs(accounting.getBondDebt(noId), amount, 1);
     }
 
-    function test_settleLockedBondETH_partialBurn_bondDebtCreated()
-        public
-        assertInvariants
-    {
+    function test_settleLockedBondETH_partialBurn_bondDebtCreated() public assertInvariants {
         mock_getNodeOperatorsCount(1);
         uint256 noId = 0;
 
@@ -481,29 +420,18 @@ contract LockBondETHTest is BaseTest {
         accounting.lockBondETH(noId, locked);
 
         uint256 bondSharesBefore = accounting.getBondShares(noId);
-        vm.expectCall(
-            locator.burner(),
-            abi.encodeWithSelector(
-                IBurner.requestBurnMyShares.selector,
-                bondSharesBefore
-            )
-        );
+        vm.expectCall(locator.burner(), abi.encodeWithSelector(IBurner.requestBurnMyShares.selector, bondSharesBefore));
 
         vm.prank(address(stakingModule));
         accounting.settleLockedBondETH(noId);
 
-        Accounting.BondLockData memory lockAfter = accounting.getLockedBondInfo(
-            noId
-        );
+        Accounting.BondLockData memory lockAfter = accounting.getLockedBondInfo(noId);
         assertEq(lockAfter.amount, 0);
         assertEq(lockAfter.until, 0);
         assertApproxEqAbs(accounting.getBondDebt(noId), locked - bond, 1);
     }
 
-    function test_settleLockedBondETH_restZero_removesLock()
-        public
-        assertInvariants
-    {
+    function test_settleLockedBondETH_restZero_removesLock() public assertInvariants {
         mock_getNodeOperatorsCount(1);
         uint256 noId = 0;
 
@@ -516,9 +444,7 @@ contract LockBondETHTest is BaseTest {
         vm.prank(address(stakingModule));
         accounting.settleLockedBondETH(noId);
 
-        Accounting.BondLockData memory lockAfter = accounting.getLockedBondInfo(
-            noId
-        );
+        Accounting.BondLockData memory lockAfter = accounting.getLockedBondInfo(noId);
         assertEq(lockAfter.amount, 0);
         assertEq(lockAfter.until, 0);
         assertEq(accounting.getActualLockedBond(noId), 0);
@@ -555,11 +481,7 @@ contract GetRequiredETHBondTest is GetRequiredBondBaseTest {
         assertEq(accounting.getRequiredBondForNextKeys(0, 0), 30 ether);
     }
 
-    function test_OneWithdrawnOneAddedValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_OneWithdrawnOneAddedValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         assertEq(accounting.getRequiredBondForNextKeys(0, 1), 32 ether);
     }
@@ -568,10 +490,7 @@ contract GetRequiredETHBondTest is GetRequiredBondBaseTest {
         _operator({ ongoing: 16, withdrawn: 0 });
         _deposit({ bond: 32 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
-        assertEq(
-            accounting.getRequiredBondForNextKeys(0, 0),
-            required - current
-        );
+        assertEq(accounting.getRequiredBondForNextKeys(0, 0), required - current);
     }
 
     function test_WithBondDebt() public override assertInvariants {
@@ -579,33 +498,20 @@ contract GetRequiredETHBondTest is GetRequiredBondBaseTest {
         _deposit({ bond: 32 ether });
         _debt({ amount: 1 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
-        assertEq(
-            accounting.getRequiredBondForNextKeys(0, 0),
-            required - current
-        );
+        assertEq(accounting.getRequiredBondForNextKeys(0, 0), required - current);
     }
 
-    function test_WithBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 32 ether });
         assertEq(accounting.getRequiredBondForNextKeys(0, 0), 0);
     }
 
-    function test_WithBondAndOneWithdrawnAndOneAddedValidator()
-        public
-        override
-    {
+    function test_WithBondAndOneWithdrawnAndOneAddedValidator() public override {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 32 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
-        assertEq(
-            accounting.getRequiredBondForNextKeys(0, 1),
-            2 ether - (current - required)
-        );
+        assertEq(accounting.getRequiredBondForNextKeys(0, 1), 2 ether - (current - required));
     }
 
     function test_WithExcessBond() public override assertInvariants {
@@ -614,20 +520,13 @@ contract GetRequiredETHBondTest is GetRequiredBondBaseTest {
         assertEq(accounting.getRequiredBondForNextKeys(0, 0), 0);
     }
 
-    function test_WithExcessBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithExcessBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 33 ether });
         assertEq(accounting.getRequiredBondForNextKeys(0, 0), 0);
     }
 
-    function test_WithExcessBondAndOneWithdrawnAndOneAddedValidator()
-        public
-        override
-    {
+    function test_WithExcessBondAndOneWithdrawnAndOneAddedValidator() public override {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 33 ether });
         assertEq(accounting.getRequiredBondForNextKeys(0, 1), 0);
@@ -637,37 +536,21 @@ contract GetRequiredETHBondTest is GetRequiredBondBaseTest {
         _operator({ ongoing: 16, withdrawn: 0 });
         _deposit({ bond: 16 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
-        assertEq(
-            accounting.getRequiredBondForNextKeys(0, 0),
-            required - current
-        );
+        assertEq(accounting.getRequiredBondForNextKeys(0, 0), required - current);
     }
 
-    function test_WithMissingBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithMissingBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 16 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
-        assertEq(
-            accounting.getRequiredBondForNextKeys(0, 0),
-            required - current
-        );
+        assertEq(accounting.getRequiredBondForNextKeys(0, 0), required - current);
     }
 
-    function test_WithMissingBondAndOneWithdrawnAndOneAddedValidator()
-        public
-        override
-    {
+    function test_WithMissingBondAndOneWithdrawnAndOneAddedValidator() public override {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 16 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
-        assertEq(
-            accounting.getRequiredBondForNextKeys(0, 1),
-            required - current + 2 ether
-        );
+        assertEq(accounting.getRequiredBondForNextKeys(0, 1), required - current + 2 ether);
     }
 }
 
@@ -675,30 +558,21 @@ contract GetRequiredWstETHBondTest is GetRequiredBondBaseTest {
     function test_default() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
-        assertEq(
-            accounting.getRequiredBondForNextKeysWstETH(0, 0),
-            wstETH.getWstETHByStETH(required - current)
-        );
+        assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0), wstETH.getWstETHByStETH(required - current));
     }
 
     function test_WithCurve() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
         _curve(curveWithDiscount);
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
-        assertEq(
-            accounting.getRequiredBondForNextKeysWstETH(0, 0),
-            wstETH.getWstETHByStETH(required - current)
-        );
+        assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0), wstETH.getWstETHByStETH(required - current));
     }
 
     function test_WithLocked() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
         _lock({ amount: 1 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
-        assertEq(
-            accounting.getRequiredBondForNextKeysWstETH(0, 0),
-            wstETH.getWstETHByStETH(required - current)
-        );
+        assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0), wstETH.getWstETHByStETH(required - current));
     }
 
     function test_WithCurveAndLocked() public override assertInvariants {
@@ -706,26 +580,16 @@ contract GetRequiredWstETHBondTest is GetRequiredBondBaseTest {
         _curve(curveWithDiscount);
         _lock({ amount: 1 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
-        assertEq(
-            accounting.getRequiredBondForNextKeysWstETH(0, 0),
-            wstETH.getWstETHByStETH(required - current)
-        );
+        assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0), wstETH.getWstETHByStETH(required - current));
     }
 
     function test_WithOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
-        assertEq(
-            accounting.getRequiredBondForNextKeysWstETH(0, 0),
-            wstETH.getWstETHByStETH(required - current)
-        );
+        assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0), wstETH.getWstETHByStETH(required - current));
     }
 
-    function test_OneWithdrawnOneAddedValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_OneWithdrawnOneAddedValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
         assertEq(
@@ -738,10 +602,7 @@ contract GetRequiredWstETHBondTest is GetRequiredBondBaseTest {
         _operator({ ongoing: 16, withdrawn: 0 });
         _deposit({ bond: 32 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
-        assertEq(
-            accounting.getRequiredBondForNextKeysWstETH(0, 0),
-            wstETH.getWstETHByStETH(required - current)
-        );
+        assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0), wstETH.getWstETHByStETH(required - current));
     }
 
     function test_WithBondDebt() public override assertInvariants {
@@ -749,26 +610,16 @@ contract GetRequiredWstETHBondTest is GetRequiredBondBaseTest {
         _deposit({ bond: 32 ether });
         _debt({ amount: 1 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
-        assertEq(
-            accounting.getRequiredBondForNextKeysWstETH(0, 0),
-            wstETH.getWstETHByStETH(required - current)
-        );
+        assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0), wstETH.getWstETHByStETH(required - current));
     }
 
-    function test_WithBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 32 ether });
         assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0), 0);
     }
 
-    function test_WithBondAndOneWithdrawnAndOneAddedValidator()
-        public
-        override
-    {
+    function test_WithBondAndOneWithdrawnAndOneAddedValidator() public override {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 32 ether });
         assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 1), 0);
@@ -780,20 +631,13 @@ contract GetRequiredWstETHBondTest is GetRequiredBondBaseTest {
         assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0), 0);
     }
 
-    function test_WithExcessBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithExcessBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 33 ether });
         assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0), 0);
     }
 
-    function test_WithExcessBondAndOneWithdrawnAndOneAddedValidator()
-        public
-        override
-    {
+    function test_WithExcessBondAndOneWithdrawnAndOneAddedValidator() public override {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 33 ether });
         assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 1), 0);
@@ -803,30 +647,17 @@ contract GetRequiredWstETHBondTest is GetRequiredBondBaseTest {
         _operator({ ongoing: 16, withdrawn: 0 });
         _deposit({ bond: 16 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
-        assertEq(
-            accounting.getRequiredBondForNextKeysWstETH(0, 0),
-            wstETH.getWstETHByStETH(required - current)
-        );
+        assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0), wstETH.getWstETHByStETH(required - current));
     }
 
-    function test_WithMissingBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithMissingBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 16 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
-        assertEq(
-            accounting.getRequiredBondForNextKeysWstETH(0, 0),
-            wstETH.getWstETHByStETH(required - current)
-        );
+        assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0), wstETH.getWstETHByStETH(required - current));
     }
 
-    function test_WithMissingBondAndOneWithdrawnAndOneAddedValidator()
-        public
-        override
-    {
+    function test_WithMissingBondAndOneWithdrawnAndOneAddedValidator() public override {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 16 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
@@ -840,47 +671,22 @@ contract GetRequiredWstETHBondTest is GetRequiredBondBaseTest {
 contract GetBondAmountByKeysCountWstETHTest is GetRequiredBondForKeysBaseTest {
     function test_default() public override assertInvariants {
         assertEq(accounting.getBondAmountByKeysCountWstETH(0, 0), 0);
-        assertEq(
-            accounting.getBondAmountByKeysCountWstETH(1, 0),
-            wstETH.getWstETHByStETH(2 ether)
-        );
-        assertEq(
-            accounting.getBondAmountByKeysCountWstETH(2, 0),
-            wstETH.getWstETHByStETH(4 ether)
-        );
-        assertEq(
-            accounting.getBondAmountByKeysCountWstETH(8, 0),
-            wstETH.getWstETHByStETH(16 ether)
-        );
+        assertEq(accounting.getBondAmountByKeysCountWstETH(1, 0), wstETH.getWstETHByStETH(2 ether));
+        assertEq(accounting.getBondAmountByKeysCountWstETH(2, 0), wstETH.getWstETHByStETH(4 ether));
+        assertEq(accounting.getBondAmountByKeysCountWstETH(8, 0), wstETH.getWstETHByStETH(16 ether));
     }
 
     function test_WithCurve() public override assertInvariants {
-        IBondCurve.BondCurveIntervalInput[]
-            memory defaultCurve = new IBondCurve.BondCurveIntervalInput[](2);
-        defaultCurve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: 2 ether
-        });
-        defaultCurve[1] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 2,
-            trend: 1 ether
-        });
+        IBondCurve.BondCurveIntervalInput[] memory defaultCurve = new IBondCurve.BondCurveIntervalInput[](2);
+        defaultCurve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 2 ether });
+        defaultCurve[1] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 2, trend: 1 ether });
 
         vm.startPrank(admin);
         uint256 curveId = accounting.addBondCurve(defaultCurve);
         assertEq(accounting.getBondAmountByKeysCountWstETH(0, curveId), 0);
-        assertEq(
-            accounting.getBondAmountByKeysCountWstETH(1, curveId),
-            wstETH.getWstETHByStETH(2 ether)
-        );
-        assertEq(
-            accounting.getBondAmountByKeysCountWstETH(2, curveId),
-            wstETH.getWstETHByStETH(3 ether)
-        );
-        assertEq(
-            accounting.getBondAmountByKeysCountWstETH(15, curveId),
-            wstETH.getWstETHByStETH(16 ether)
-        );
+        assertEq(accounting.getBondAmountByKeysCountWstETH(1, curveId), wstETH.getWstETHByStETH(2 ether));
+        assertEq(accounting.getBondAmountByKeysCountWstETH(2, curveId), wstETH.getWstETHByStETH(3 ether));
+        assertEq(accounting.getBondAmountByKeysCountWstETH(15, curveId), wstETH.getWstETHByStETH(16 ether));
     }
 }
 
@@ -951,11 +757,7 @@ contract GetBondSummaryTest is BondStateBaseTest {
         assertApproxEqAbs(required, 33 ether, 1 wei);
     }
 
-    function test_WithBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 32 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
@@ -971,11 +773,7 @@ contract GetBondSummaryTest is BondStateBaseTest {
         assertEq(required, 32 ether);
     }
 
-    function test_WithExcessBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithExcessBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 33 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
@@ -991,11 +789,7 @@ contract GetBondSummaryTest is BondStateBaseTest {
         assertEq(required, 32 ether);
     }
 
-    function test_WithMissingBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithMissingBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 29 ether });
         (uint256 current, uint256 required) = accounting.getBondSummary(0);
@@ -1007,9 +801,7 @@ contract GetBondSummaryTest is BondStateBaseTest {
 contract GetBondSummarySharesTest is BondStateBaseTest {
     function test_default() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
-        (uint256 current, uint256 required) = accounting.getBondSummaryShares(
-            0
-        );
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(0);
         assertEq(current, 0 ether);
         assertEq(required, stETH.getSharesByPooledEth(32 ether));
     }
@@ -1017,9 +809,7 @@ contract GetBondSummarySharesTest is BondStateBaseTest {
     function test_WithCurve() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
         _curve(curveWithDiscount);
-        (uint256 current, uint256 required) = accounting.getBondSummaryShares(
-            0
-        );
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(0);
         assertEq(current, 0 ether);
         assertEq(required, stETH.getSharesByPooledEth(17 ether));
     }
@@ -1027,9 +817,7 @@ contract GetBondSummarySharesTest is BondStateBaseTest {
     function test_WithLocked() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
         _lock({ amount: 1 ether });
-        (uint256 current, uint256 required) = accounting.getBondSummaryShares(
-            0
-        );
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(0);
         assertEq(current, 0 ether);
         assertEq(required, stETH.getSharesByPooledEth(33 ether));
     }
@@ -1037,9 +825,7 @@ contract GetBondSummarySharesTest is BondStateBaseTest {
     function test_WithLocked_MoreThanBond() public assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
         _lock({ amount: 100500 ether });
-        (uint256 current, uint256 required) = accounting.getBondSummaryShares(
-            0
-        );
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(0);
         assertEq(current, 0 ether);
         assertEq(required, stETH.getSharesByPooledEth(100532 ether));
     }
@@ -1048,18 +834,14 @@ contract GetBondSummarySharesTest is BondStateBaseTest {
         _operator({ ongoing: 16, withdrawn: 0 });
         _curve(curveWithDiscount);
         _lock({ amount: 1 ether });
-        (uint256 current, uint256 required) = accounting.getBondSummaryShares(
-            0
-        );
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(0);
         assertEq(current, 0 ether);
         assertEq(required, stETH.getSharesByPooledEth(18 ether));
     }
 
     function test_WithOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
-        (uint256 current, uint256 required) = accounting.getBondSummaryShares(
-            0
-        );
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(0);
         assertEq(current, 0 ether);
         assertEq(required, stETH.getSharesByPooledEth(30 ether));
     }
@@ -1067,9 +849,7 @@ contract GetBondSummarySharesTest is BondStateBaseTest {
     function test_WithBond() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
         _deposit({ bond: 32 ether });
-        (uint256 current, uint256 required) = accounting.getBondSummaryShares(
-            0
-        );
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(0);
         assertEq(current, stETH.getSharesByPooledEth(32 ether));
         assertEq(required, stETH.getSharesByPooledEth(32 ether));
     }
@@ -1078,27 +858,15 @@ contract GetBondSummarySharesTest is BondStateBaseTest {
         _operator({ ongoing: 16, withdrawn: 0 });
         _deposit({ bond: 32 ether });
         _debt({ amount: 1 ether });
-        (uint256 current, uint256 required) = accounting.getBondSummaryShares(
-            0
-        );
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(0);
         assertEq(current, 0);
-        assertApproxEqAbs(
-            required,
-            stETH.getSharesByPooledEth(32 ether + 1 ether),
-            1 wei
-        );
+        assertApproxEqAbs(required, stETH.getSharesByPooledEth(32 ether + 1 ether), 1 wei);
     }
 
-    function test_WithBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 32 ether });
-        (uint256 current, uint256 required) = accounting.getBondSummaryShares(
-            0
-        );
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(0);
         assertEq(current, stETH.getSharesByPooledEth(32 ether));
         assertEq(required, stETH.getSharesByPooledEth(30 ether));
     }
@@ -1106,23 +874,15 @@ contract GetBondSummarySharesTest is BondStateBaseTest {
     function test_WithExcessBond() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
         _deposit({ bond: 33 ether });
-        (uint256 current, uint256 required) = accounting.getBondSummaryShares(
-            0
-        );
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(0);
         assertEq(current, stETH.getSharesByPooledEth(33 ether));
         assertEq(required, stETH.getSharesByPooledEth(32 ether));
     }
 
-    function test_WithExcessBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithExcessBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 33 ether });
-        (uint256 current, uint256 required) = accounting.getBondSummaryShares(
-            0
-        );
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(0);
         assertEq(current, stETH.getSharesByPooledEth(33 ether));
         assertEq(required, stETH.getSharesByPooledEth(30 ether));
     }
@@ -1130,23 +890,15 @@ contract GetBondSummarySharesTest is BondStateBaseTest {
     function test_WithMissingBond() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
         _deposit({ bond: 29 ether });
-        (uint256 current, uint256 required) = accounting.getBondSummaryShares(
-            0
-        );
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(0);
         assertEq(current, stETH.getSharesByPooledEth(29 ether));
         assertEq(required, stETH.getSharesByPooledEth(32 ether));
     }
 
-    function test_WithMissingBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithMissingBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 29 ether });
-        (uint256 current, uint256 required) = accounting.getBondSummaryShares(
-            0
-        );
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(0);
         assertEq(current, stETH.getSharesByPooledEth(29 ether));
         assertEq(required, stETH.getSharesByPooledEth(30 ether));
     }
@@ -1158,8 +910,7 @@ contract ClaimableRewardsAndBondSharesTest is RewardsBaseTest {
         _deposit({ bond: 32 ether });
         _rewards({ fee: 0.1 ether });
 
-        uint256 claimableBondShares = accounting
-            .getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
+        uint256 claimableBondShares = accounting.getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
 
         assertEq(
             claimableBondShares,
@@ -1174,8 +925,7 @@ contract ClaimableRewardsAndBondSharesTest is RewardsBaseTest {
         _rewards({ fee: 0.1 ether });
         _curve(curveWithDiscount);
 
-        uint256 claimableBondShares = accounting
-            .getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
+        uint256 claimableBondShares = accounting.getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
 
         assertApproxEqAbs(
             claimableBondShares,
@@ -1191,8 +941,7 @@ contract ClaimableRewardsAndBondSharesTest is RewardsBaseTest {
         _rewards({ fee: 0.1 ether });
         _lock({ amount: 1 ether });
 
-        uint256 claimableBondShares = accounting
-            .getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
+        uint256 claimableBondShares = accounting.getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
 
         assertEq(
             claimableBondShares,
@@ -1207,8 +956,7 @@ contract ClaimableRewardsAndBondSharesTest is RewardsBaseTest {
         _rewards({ fee: 0.1 ether });
         _lock({ amount: 1.05 ether });
 
-        uint256 claimableBondShares = accounting
-            .getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
+        uint256 claimableBondShares = accounting.getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
 
         assertEq(
             claimableBondShares,
@@ -1224,8 +972,7 @@ contract ClaimableRewardsAndBondSharesTest is RewardsBaseTest {
         _curve(curveWithDiscount);
         _lock({ amount: 1 ether });
 
-        uint256 claimableBondShares = accounting
-            .getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
+        uint256 claimableBondShares = accounting.getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
 
         assertApproxEqAbs(
             claimableBondShares,
@@ -1240,8 +987,7 @@ contract ClaimableRewardsAndBondSharesTest is RewardsBaseTest {
         _deposit({ bond: 32 ether });
         _rewards({ fee: 0.1 ether });
 
-        uint256 claimableBondShares = accounting
-            .getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
+        uint256 claimableBondShares = accounting.getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
 
         assertApproxEqAbs(
             claimableBondShares,
@@ -1256,8 +1002,7 @@ contract ClaimableRewardsAndBondSharesTest is RewardsBaseTest {
         _deposit({ bond: 32 ether });
         _rewards({ fee: 0.1 ether });
 
-        uint256 claimableBondShares = accounting
-            .getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
+        uint256 claimableBondShares = accounting.getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
 
         assertEq(
             claimableBondShares,
@@ -1272,14 +1017,9 @@ contract ClaimableRewardsAndBondSharesTest is RewardsBaseTest {
         _rewards({ fee: 0.1 ether });
         _debt({ amount: 1 ether });
 
-        uint256 claimableBondShares = accounting
-            .getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
+        uint256 claimableBondShares = accounting.getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
 
-        assertEq(
-            claimableBondShares,
-            0,
-            "claimable bond shares should be zero"
-        );
+        assertEq(claimableBondShares, 0, "claimable bond shares should be zero");
     }
 
     function test_WithBondAndOneWithdrawnValidator() public override {
@@ -1287,8 +1027,7 @@ contract ClaimableRewardsAndBondSharesTest is RewardsBaseTest {
         _deposit({ bond: 32 ether });
         _rewards({ fee: 0.1 ether });
 
-        uint256 claimableBondShares = accounting
-            .getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
+        uint256 claimableBondShares = accounting.getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
 
         assertApproxEqAbs(
             claimableBondShares,
@@ -1303,8 +1042,7 @@ contract ClaimableRewardsAndBondSharesTest is RewardsBaseTest {
         _deposit({ bond: 33 ether });
         _rewards({ fee: 0.1 ether });
 
-        uint256 claimableBondShares = accounting
-            .getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
+        uint256 claimableBondShares = accounting.getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
 
         assertApproxEqAbs(
             claimableBondShares,
@@ -1319,8 +1057,7 @@ contract ClaimableRewardsAndBondSharesTest is RewardsBaseTest {
         _deposit({ bond: 33 ether });
         _rewards({ fee: 0.1 ether });
 
-        uint256 claimableBondShares = accounting
-            .getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
+        uint256 claimableBondShares = accounting.getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
 
         assertApproxEqAbs(
             claimableBondShares,
@@ -1335,14 +1072,9 @@ contract ClaimableRewardsAndBondSharesTest is RewardsBaseTest {
         _deposit({ bond: 16 ether });
         _rewards({ fee: 0.1 ether });
 
-        uint256 claimableBondShares = accounting
-            .getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
+        uint256 claimableBondShares = accounting.getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
 
-        assertEq(
-            claimableBondShares,
-            0,
-            "claimable bond shares should be zero"
-        );
+        assertEq(claimableBondShares, 0, "claimable bond shares should be zero");
     }
 
     function test_WithMissingBondAndOneWithdrawnValidator() public override {
@@ -1350,13 +1082,8 @@ contract ClaimableRewardsAndBondSharesTest is RewardsBaseTest {
         _deposit({ bond: 16 ether });
         _rewards({ fee: 0.1 ether });
 
-        uint256 claimableBondShares = accounting
-            .getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
+        uint256 claimableBondShares = accounting.getClaimableRewardsAndBondShares(0, leaf.shares, leaf.proof);
 
-        assertEq(
-            claimableBondShares,
-            0,
-            "claimable bond shares should be zero"
-        );
+        assertEq(claimableBondShares, 0, "claimable bond shares should be zero");
     }
 }

@@ -77,8 +77,7 @@ function concat(GIndex lhs, GIndex rhs) pure returns (GIndex) {
         revert IndexOutOfRange();
     }
 
-    return
-        pack((lindex << rhsMSbIndex) | (rindex ^ (1 << rhsMSbIndex)), pow(rhs));
+    return pack((lindex << rhsMSbIndex) | (rindex ^ (1 << rhsMSbIndex)), pow(rhs));
 }
 
 /// @dev Find last set.

@@ -13,11 +13,7 @@ import { IPermissionlessGate } from "./interfaces/IPermissionlessGate.sol";
 
 /// @title PermissionlessGate
 /// @notice Contract for adding new Node Operators without any restrictions
-contract PermissionlessGate is
-    IPermissionlessGate,
-    AccessControlEnumerable,
-    AssetRecoverer
-{
+contract PermissionlessGate is IPermissionlessGate, AccessControlEnumerable, AssetRecoverer {
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
 
     /// @dev Curve ID is the default bond curve ID from the accounting contract

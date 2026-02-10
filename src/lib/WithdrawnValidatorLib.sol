@@ -18,8 +18,7 @@ library WithdrawnValidatorLib {
 
     uint256 public constant PENALTY_QUOTIENT = 1 ether;
     /// @dev Acts as the denominator to calculate the scaled penalty.
-    uint256 public constant PENALTY_SCALE =
-        MIN_ACTIVATION_BALANCE / PENALTY_QUOTIENT;
+    uint256 public constant PENALTY_SCALE = MIN_ACTIVATION_BALANCE / PENALTY_QUOTIENT;
 
     function process(
         NodeOperator storage no,
@@ -45,21 +44,14 @@ library WithdrawnValidatorLib {
             ++no.totalWithdrawnKeys;
         }
 
-        bytes memory pubkey = SigningKeys.loadKeys(
+        bytes memory pubkey = SigningKeys.loadKeys(validatorInfo.nodeOperatorId, validatorInfo.keyIndex, 1);
+
+        ExitPenaltyInfo memory penaltyInfo = IBaseModule(address(this)).EXIT_PENALTIES().getExitPenaltyInfo(
             validatorInfo.nodeOperatorId,
-            validatorInfo.keyIndex,
-            1
+            pubkey
         );
 
-        ExitPenaltyInfo memory penaltyInfo = IBaseModule(address(this))
-            .EXIT_PENALTIES()
-            .getExitPenaltyInfo(validatorInfo.nodeOperatorId, pubkey);
-
-        penaltyCovered = _fulfillExitObligations(
-            validatorInfo,
-            penaltyInfo,
-            keyAddedBalance
-        );
+        penaltyCovered = _fulfillExitObligations(validatorInfo, penaltyInfo, keyAddedBalance);
 
         emit IBaseModule.ValidatorWithdrawn({
             nodeOperatorId: validatorInfo.nodeOperatorId,
@@ -84,28 +76,19 @@ library WithdrawnValidatorLib {
         uint256 feeSum;
 
         if (penaltyInfo.delayFee.isValue) {
-            feeSum = _scalePenaltyByMultiplier(
-                penaltyInfo.delayFee.value,
-                penaltyMultiplier
-            );
+            feeSum = _scalePenaltyByMultiplier(penaltyInfo.delayFee.value, penaltyMultiplier);
             chargeElWithdrawalRequestFee = true;
         }
 
         if (penaltyInfo.strikesPenalty.isValue) {
-            penaltySum = _scalePenaltyByMultiplier(
-                penaltyInfo.strikesPenalty.value,
-                penaltyMultiplier
-            );
+            penaltySum = _scalePenaltyByMultiplier(penaltyInfo.strikesPenalty.value, penaltyMultiplier);
             chargeElWithdrawalRequestFee = true;
         }
 
         // The EL withdrawal request fee is taken when either a delay was reported or the validator exited due to
         // strikes. Otherwise, the fee has already been paid by the node operator upon withdrawal trigger, or it is
         // a DAO decision to withdraw the validator before the withdrawal request becomes delayed.
-        if (
-            chargeElWithdrawalRequestFee &&
-            penaltyInfo.elWithdrawalRequestFee.value != 0
-        ) {
+        if (chargeElWithdrawalRequestFee && penaltyInfo.elWithdrawalRequestFee.value != 0) {
             // EL withdrawal request fee is not scaled because sending a withdrawal request for a validator does
             // not depend on the size of a validator.
             feeSum += penaltyInfo.elWithdrawalRequestFee.value;
@@ -126,10 +109,7 @@ library WithdrawnValidatorLib {
         // Confiscate penalties first to prioritize compensations for the stETH holders.
         if (penaltySum > 0) {
             // We still call `penalize` even if there's no bond left, for the lock to be created.
-            penaltyCovered = accounting.penalize(
-                validatorInfo.nodeOperatorId,
-                penaltySum
-            );
+            penaltyCovered = accounting.penalize(validatorInfo.nodeOperatorId, penaltySum);
         }
 
         // Charge fees second to avoid charging fees if the penalty is not covered,
@@ -150,10 +130,7 @@ library WithdrawnValidatorLib {
         penaltyMultiplier = exitBalance / PENALTY_QUOTIENT;
     }
 
-    function _scalePenaltyByMultiplier(
-        uint256 penalty,
-        uint256 multiplier
-    ) internal pure returns (uint256) {
+    function _scalePenaltyByMultiplier(uint256 penalty, uint256 multiplier) internal pure returns (uint256) {
         return (penalty * multiplier) / PENALTY_SCALE;
     }
 }

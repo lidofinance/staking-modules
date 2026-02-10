@@ -14,24 +14,14 @@ interface IERC20Permit is IERC2612 {
     /**
      * @notice Moves `_amount` from the caller's account to the `_recipient` account.
      */
-    function transfer(
-        address _recipient,
-        uint256 _amount
-    ) external returns (bool);
+    function transfer(address _recipient, uint256 _amount) external returns (bool);
 
     /**
      * @notice Moves `_amount` from the `_sender` account to the `_recipient` account.
      */
-    function transferFrom(
-        address _sender,
-        address _recipient,
-        uint256 _amount
-    ) external returns (bool);
+    function transferFrom(address _sender, address _recipient, uint256 _amount) external returns (bool);
 
     function approve(address _spender, uint256 _amount) external returns (bool);
 
-    function allowance(
-        address _owner,
-        address _spender
-    ) external view returns (uint256);
+    function allowance(address _owner, address _spender) external view returns (uint256);
 }

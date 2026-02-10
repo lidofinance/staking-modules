@@ -55,12 +55,7 @@ struct WithdrawnValidatorInfo {
 }
 
 /// @notice Base module interface for repository modules such as `ICSModule` and `ICuratedModule`.
-interface IBaseModule is
-    IStakingModule,
-    IAccessControlEnumerable,
-    INOAddresses,
-    IAssetRecovererLib
-{
+interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses, IAssetRecovererLib {
     event NodeOperatorAdded(
         uint256 indexed nodeOperatorId,
         address indexed managerAddress,
@@ -68,27 +63,12 @@ interface IBaseModule is
         bool extendedManagerPermissions
     );
     event ReferrerSet(uint256 indexed nodeOperatorId, address indexed referrer);
-    event DepositableSigningKeysCountChanged(
-        uint256 indexed nodeOperatorId,
-        uint256 depositableKeysCount
-    );
-    event VettedSigningKeysCountChanged(
-        uint256 indexed nodeOperatorId,
-        uint256 vettedKeysCount
-    );
+    event DepositableSigningKeysCountChanged(uint256 indexed nodeOperatorId, uint256 depositableKeysCount);
+    event VettedSigningKeysCountChanged(uint256 indexed nodeOperatorId, uint256 vettedKeysCount);
     event VettedSigningKeysCountDecreased(uint256 indexed nodeOperatorId);
-    event DepositedSigningKeysCountChanged(
-        uint256 indexed nodeOperatorId,
-        uint256 depositedKeysCount
-    );
-    event ExitedSigningKeysCountChanged(
-        uint256 indexed nodeOperatorId,
-        uint256 exitedKeysCount
-    );
-    event TotalSigningKeysCountChanged(
-        uint256 indexed nodeOperatorId,
-        uint256 totalKeysCount
-    );
+    event DepositedSigningKeysCountChanged(uint256 indexed nodeOperatorId, uint256 depositedKeysCount);
+    event ExitedSigningKeysCountChanged(uint256 indexed nodeOperatorId, uint256 exitedKeysCount);
+    event TotalSigningKeysCountChanged(uint256 indexed nodeOperatorId, uint256 totalKeysCount);
     event TargetValidatorsCountChanged(
         uint256 indexed nodeOperatorId,
         uint256 targetLimitMode,
@@ -101,16 +81,8 @@ interface IBaseModule is
         uint256 slashingPenalty,
         bytes pubkey
     );
-    event ValidatorSlashingReported(
-        uint256 indexed nodeOperatorId,
-        uint256 keyIndex,
-        bytes pubkey
-    );
-    event KeyAddedBalanceChanged(
-        uint256 indexed nodeOperatorId,
-        uint256 indexed keyIndex,
-        uint256 newTotal
-    );
+    event ValidatorSlashingReported(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
+    event KeyAddedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
     event KeyRemovalChargeApplied(uint256 indexed nodeOperatorId);
 
     error CannotAddKeys();
@@ -145,27 +117,15 @@ interface IBaseModule is
 
     function STAKING_ROUTER_ROLE() external view returns (bytes32);
 
-    function REPORT_GENERAL_DELAYED_PENALTY_ROLE()
-        external
-        view
-        returns (bytes32);
+    function REPORT_GENERAL_DELAYED_PENALTY_ROLE() external view returns (bytes32);
 
-    function SETTLE_GENERAL_DELAYED_PENALTY_ROLE()
-        external
-        view
-        returns (bytes32);
+    function SETTLE_GENERAL_DELAYED_PENALTY_ROLE() external view returns (bytes32);
 
     function VERIFIER_ROLE() external view returns (bytes32);
 
-    function REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE()
-        external
-        view
-        returns (bytes32);
+    function REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE() external view returns (bytes32);
 
-    function REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE()
-        external
-        view
-        returns (bytes32);
+    function REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE() external view returns (bytes32);
 
     function RECOVERER_ROLE() external view returns (bytes32);
 
@@ -278,42 +238,29 @@ interface IBaseModule is
     /// @notice Compensate general delayed penalty for the given Node Operator to prevent further validator exits
     /// @dev Can only be called by the Node Operator manager
     /// @param nodeOperatorId ID of the Node Operator
-    function compensateGeneralDelayedPenalty(
-        uint256 nodeOperatorId
-    ) external payable;
+    function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external payable;
 
     /// @notice Cancel previously reported and not settled general delayed penalty for the given Node Operator
     /// @notice The funds will be unlocked
     /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Amount of penalty to cancel
-    function cancelGeneralDelayedPenalty(
-        uint256 nodeOperatorId,
-        uint256 amount
-    ) external;
+    function cancelGeneralDelayedPenalty(uint256 nodeOperatorId, uint256 amount) external;
 
     /// @notice Settles locked bond and sets the target limit to 0 or the given Node Operators
     /// @dev SETTLE_GENERAL_DELAYED_PENALTY_ROLE role is expected to be assigned to Easy Track
     /// @param nodeOperatorIds IDs of the Node Operators
     /// @param maxAmounts Maximum amounts to settle for each Node Operator
-    function settleGeneralDelayedPenalty(
-        uint256[] memory nodeOperatorIds,
-        uint256[] memory maxAmounts
-    ) external;
+    function settleGeneralDelayedPenalty(uint256[] memory nodeOperatorIds, uint256[] memory maxAmounts) external;
 
     /// @notice Propose a new manager address for the Node Operator
     /// @param nodeOperatorId ID of the Node Operator
     /// @param proposedAddress Proposed manager address
-    function proposeNodeOperatorManagerAddressChange(
-        uint256 nodeOperatorId,
-        address proposedAddress
-    ) external;
+    function proposeNodeOperatorManagerAddressChange(uint256 nodeOperatorId, address proposedAddress) external;
 
     /// @notice Confirm a new manager address for the Node Operator.
     ///         Should be called from the currently proposed address
     /// @param nodeOperatorId ID of the Node Operator
-    function confirmNodeOperatorManagerAddressChange(
-        uint256 nodeOperatorId
-    ) external;
+    function confirmNodeOperatorManagerAddressChange(uint256 nodeOperatorId) external;
 
     /// @notice Reset the manager address to the reward address.
     ///         Should be called from the reward address
@@ -323,25 +270,17 @@ interface IBaseModule is
     /// @notice Propose a new reward address for the Node Operator
     /// @param nodeOperatorId ID of the Node Operator
     /// @param proposedAddress Proposed reward address
-    function proposeNodeOperatorRewardAddressChange(
-        uint256 nodeOperatorId,
-        address proposedAddress
-    ) external;
+    function proposeNodeOperatorRewardAddressChange(uint256 nodeOperatorId, address proposedAddress) external;
 
     /// @notice Confirm a new reward address for the Node Operator.
     ///         Should be called from the currently proposed address
     /// @param nodeOperatorId ID of the Node Operator
-    function confirmNodeOperatorRewardAddressChange(
-        uint256 nodeOperatorId
-    ) external;
+    function confirmNodeOperatorRewardAddressChange(uint256 nodeOperatorId) external;
 
     /// @notice Change rewardAddress if extendedManagerPermissions is enabled for the Node Operator
     /// @param nodeOperatorId ID of the Node Operator
     /// @param newAddress Proposed reward address
-    function changeNodeOperatorRewardAddress(
-        uint256 nodeOperatorId,
-        address newAddress
-    ) external;
+    function changeNodeOperatorRewardAddress(uint256 nodeOperatorId, address newAddress) external;
 
     /// @notice Update depositable validators data and enqueue all unqueued keys for the given Node Operator.
     ///         Unqueued stands for vetted but not enqueued keys.
@@ -359,9 +298,7 @@ interface IBaseModule is
     /// @notice Get Node Operator info
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Node Operator info
-    function getNodeOperator(
-        uint256 nodeOperatorId
-    ) external view returns (NodeOperator memory);
+    function getNodeOperator(uint256 nodeOperatorId) external view returns (NodeOperator memory);
 
     /// @notice Get Node Operator management properties
     /// @param nodeOperatorId ID of the Node Operator
@@ -373,16 +310,12 @@ interface IBaseModule is
     /// @notice Get Node Operator owner. Owner is manager address if `extendedManagerPermissions` is enabled and reward address otherwise
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Node Operator owner
-    function getNodeOperatorOwner(
-        uint256 nodeOperatorId
-    ) external view returns (address);
+    function getNodeOperatorOwner(uint256 nodeOperatorId) external view returns (address);
 
     /// @notice Get Node Operator non-withdrawn keys
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Non-withdrawn keys count
-    function getNodeOperatorNonWithdrawnKeys(
-        uint256 nodeOperatorId
-    ) external view returns (uint256);
+    function getNodeOperatorNonWithdrawnKeys(uint256 nodeOperatorId) external view returns (uint256);
 
     /// @notice Get Node Operator signing keys
     /// @param nodeOperatorId ID of the Node Operator
@@ -412,30 +345,20 @@ interface IBaseModule is
     /// @notice Called by `Verifier` contract. See `Verifier.processSlashedProof`.
     /// @param nodeOperatorId The ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
-    function onValidatorSlashed(
-        uint256 nodeOperatorId,
-        uint256 keyIndex
-    ) external;
+    function onValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external;
 
     /// @notice Increase tracked added balance for a particular key
     /// @dev The method is not expected to be called on 0x01 validator mode module
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     /// @param amount Amount to add to the tracked added balance (wei)
-    function increaseKeyAddedBalance(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        uint256 amount
-    ) external;
+    function increaseKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 amount) external;
 
     /// @notice Get tracked added balance for a particular key
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndex Index of the Key in the Node Operator's keys storage
     /// @return Tracked added balance (wei)
-    function getKeyAddedBalance(
-        uint256 nodeOperatorId,
-        uint256 keyIndex
-    ) external view returns (uint256);
+    function getKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256);
 
     /// @notice Report Node Operator's keys as withdrawn and charge penalties associated with exit if any.
     ///         A validator is considered withdrawn in the following cases:
@@ -448,34 +371,24 @@ interface IBaseModule is
     ///           balance of the validator has been moved to another validator.
     /// @notice Called by `Verifier` contract.
     /// @param validatorInfos An array WithdrawnValidatorInfo structs
-    function reportRegularWithdrawnValidators(
-        WithdrawnValidatorInfo[] calldata validatorInfos
-    ) external;
+    function reportRegularWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external;
 
     /// @notice Report withdrawn validators that have been slashed.
     /// @notice Called by the Easy Track EVM script executor via a motion started by the dedicated committee.
     /// @param validatorInfos An array WithdrawnValidatorInfo structs
-    function reportSlashedWithdrawnValidators(
-        WithdrawnValidatorInfo[] calldata validatorInfos
-    ) external;
+    function reportSlashedWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external;
 
     /// @notice Checks if a validator was reported as slashed
     /// @param nodeOperatorId The ID of the node operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     /// @return bool True if a validator was reported as slashed
-    function isValidatorSlashed(
-        uint256 nodeOperatorId,
-        uint256 keyIndex
-    ) external view returns (bool);
+    function isValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool);
 
     /// @notice Check if the given Node Operator's key is reported as withdrawn
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     /// @return Is validator reported as withdrawn or not
-    function isValidatorWithdrawn(
-        uint256 nodeOperatorId,
-        uint256 keyIndex
-    ) external view returns (bool);
+    function isValidatorWithdrawn(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool);
 
     /// @notice Remove keys for the Node Operator. Charging is module-specific (e.g., CSM applies a per-key fee).
     ///         This method is a part of the Optimistic Vetting scheme. After key deletion `totalVettedKeys`
@@ -484,9 +397,5 @@ interface IBaseModule is
     /// @param nodeOperatorId ID of the Node Operator
     /// @param startIndex Index of the first key
     /// @param keysCount Keys count to delete
-    function removeKeys(
-        uint256 nodeOperatorId,
-        uint256 startIndex,
-        uint256 keysCount
-    ) external;
+    function removeKeys(uint256 nodeOperatorId, uint256 startIndex, uint256 keysCount) external;
 }

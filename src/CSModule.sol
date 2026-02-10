@@ -31,10 +31,8 @@ contract CSModule is ICSModule, BaseModule {
 
     uint256 public immutable QUEUE_LOWEST_PRIORITY;
 
-    bytes32 public constant MANAGE_TOP_UP_QUEUE_ROLE =
-        keccak256("MANAGE_TOP_UP_QUEUE_ROLE");
-    bytes32 public constant REWIND_TOP_UP_QUEUE_ROLE =
-        keccak256("REWIND_TOP_UP_QUEUE_ROLE");
+    bytes32 public constant MANAGE_TOP_UP_QUEUE_ROLE = keccak256("MANAGE_TOP_UP_QUEUE_ROLE");
+    bytes32 public constant REWIND_TOP_UP_QUEUE_ROLE = keccak256("REWIND_TOP_UP_QUEUE_ROLE");
 
     // keccak256(abi.encode(uint256(keccak256("CSModule")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant CSMODULE_STORAGE_LOCATION =
@@ -48,25 +46,14 @@ contract CSModule is ICSModule, BaseModule {
         address parametersRegistry,
         address accounting,
         address exitPenalties
-    )
-        BaseModule(
-            moduleType,
-            lidoLocator,
-            parametersRegistry,
-            accounting,
-            exitPenalties
-        )
-    {
+    ) BaseModule(moduleType, lidoLocator, parametersRegistry, accounting, exitPenalties) {
         QUEUE_LOWEST_PRIORITY = PARAMETERS_REGISTRY.QUEUE_LOWEST_PRIORITY();
     }
 
     /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
     ///      It is recommended to call this method in the same transaction as the deployment transaction
     ///      and perform extensive deployment verification before using the contract instance.
-    function initialize(
-        address admin,
-        uint8 topUpQueueLimit
-    ) external reinitializer(INITIALIZED_VERSION) {
+    function initialize(address admin, uint8 topUpQueueLimit) external reinitializer(INITIALIZED_VERSION) {
         __BaseModule_init(admin);
 
         // Top-up queue limit = 0 is for 0x01 validators mode.
@@ -89,8 +76,7 @@ contract CSModule is ICSModule, BaseModule {
         uint256 totalWithdrawnValidators;
         unchecked {
             for (uint256 i; i < _nodeOperatorsCount; ++i) {
-                totalWithdrawnValidators += _nodeOperators[i]
-                    .totalWithdrawnKeys;
+                totalWithdrawnValidators += _nodeOperators[i].totalWithdrawnKeys;
             }
         }
         _totalWithdrawnValidators = totalWithdrawnValidators;
@@ -124,11 +110,7 @@ contract CSModule is ICSModule, BaseModule {
 
         while (true) {
             depositQueue = _depositQueueByPriority[priority];
-            for (
-                Batch item = depositQueue.peek();
-                !item.isNil();
-                item = depositQueue.peek()
-            ) {
+            for (Batch item = depositQueue.peek(); !item.isNil(); item = depositQueue.peek()) {
                 // NOTE: see the `enqueuedCount` note below.
                 unchecked {
                     uint32 noId = uint32(item.noId());
@@ -139,13 +121,7 @@ contract CSModule is ICSModule, BaseModule {
                     // Keys are bounded by keys in batch and depositable counts (they are uint32 values), so this fits the storage types.
                     // forge-lint: disable-next-line(unsafe-typecast)
                     uint32 keysCount = uint32(
-                        Math.min(
-                            Math.min(
-                                no.depositableValidatorsCount,
-                                keysInBatch
-                            ),
-                            depositsLeft
-                        )
+                        Math.min(Math.min(no.depositableValidatorsCount, keysInBatch), depositsLeft)
                     );
                     // `depositsLeft` is non-zero at this point all the time, so the check `depositsLeft > keysCount`
                     // covers the case when no depositable keys on the Node Operator have been left.
@@ -197,14 +173,10 @@ contract CSModule is ICSModule, BaseModule {
 
                     // It's impossible in practice to reach the limit of these variables.
                     loadedKeysCount += keysCount;
-                    uint32 totalDepositedKeys = no.totalDepositedKeys +
-                        keysCount;
+                    uint32 totalDepositedKeys = no.totalDepositedKeys + keysCount;
                     no.totalDepositedKeys = totalDepositedKeys;
 
-                    emit DepositedSigningKeysCountChanged(
-                        noId,
-                        totalDepositedKeys
-                    );
+                    emit DepositedSigningKeysCountChanged(noId, totalDepositedKeys);
 
                     // No need for `_updateDepositableValidatorsCount` call since we update the number directly.
                     uint32 newCount = no.depositableValidatorsCount - keysCount;
@@ -254,13 +226,12 @@ contract CSModule is ICSModule, BaseModule {
         _checkStakingRouterRole();
 
         // Cap top-ups so we don't over-allocate to keys that lost balance due to CL penalties.
-        uint256[] memory cappedTopUpLimits = NodeOperatorOps
-            .capTopUpLimitsByKeyBalance(
-                _keyAddedBalances,
-                operatorIds,
-                keyIndices,
-                topUpLimits
-            );
+        uint256[] memory cappedTopUpLimits = NodeOperatorOps.capTopUpLimitsByKeyBalance(
+            _keyAddedBalances,
+            operatorIds,
+            keyIndices,
+            topUpLimits
+        );
 
         allocations = TopUpQueueOps.allocateDeposits({
             topUpQueue: _topUpQueue(),
@@ -275,12 +246,7 @@ contract CSModule is ICSModule, BaseModule {
             return allocations;
         }
 
-        NodeOperatorOps.increaseKeyAddedBalancesByAllocations(
-            _keyAddedBalances,
-            operatorIds,
-            keyIndices,
-            allocations
-        );
+        NodeOperatorOps.increaseKeyAddedBalancesByAllocations(_keyAddedBalances, operatorIds, keyIndices, allocations);
 
         _incrementModuleNonce();
     }
@@ -323,9 +289,7 @@ contract CSModule is ICSModule, BaseModule {
         // The Node Operator is charged for the every removed key. It's motivated by the fact that the DAO should cleanup
         // the queue from the empty batches related to the Node Operator. It's possible to have multiple batches with only one
         // key in it, so it means the DAO should be able to cover removal costs for as much batches as keys removed in this case.
-        uint256 amountToCharge = _parametersRegistry().getKeyRemovalCharge(
-            _getBondCurveId(nodeOperatorId)
-        ) * keysCount;
+        uint256 amountToCharge = _parametersRegistry().getKeyRemovalCharge(_getBondCurveId(nodeOperatorId)) * keysCount;
 
         if (amountToCharge != 0) {
             _accounting().chargeFee(nodeOperatorId, amountToCharge);
@@ -345,10 +309,7 @@ contract CSModule is ICSModule, BaseModule {
         emit VettedSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
 
         // Nonce is updated below due to keys state change
-        _updateDepositableValidatorsCount({
-            nodeOperatorId: nodeOperatorId,
-            incrementNonceIfUpdated: false
-        });
+        _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: false });
         _incrementModuleNonce();
     }
 
@@ -363,11 +324,7 @@ contract CSModule is ICSModule, BaseModule {
     }
 
     /// @inheritdoc ICSModule
-    function getTopUpQueue()
-        external
-        view
-        returns (bool enabled, uint256 limit, uint256 length, uint256 head)
-    {
+    function getTopUpQueue() external view returns (bool enabled, uint256 limit, uint256 length, uint256 head) {
         TopUpQueueLib.Queue storage q = _topUpQueue();
         enabled = q.enabled;
         limit = q.limit;
@@ -376,9 +333,7 @@ contract CSModule is ICSModule, BaseModule {
     }
 
     /// @inheritdoc ICSModule
-    function getTopUpQueueItem(
-        uint256 index
-    ) external view returns (uint256 nodeOperatorId, uint256 keyIndex) {
+    function getTopUpQueueItem(uint256 index) external view returns (uint256 nodeOperatorId, uint256 keyIndex) {
         TopUpQueueItem item = _topUpQueue().at(index);
         nodeOperatorId = item.noId();
         keyIndex = item.keyIndex();
@@ -388,23 +343,13 @@ contract CSModule is ICSModule, BaseModule {
     /// @dev The function does nothing in CSM, since the information about the operator balances is not used in the
     ///      module. If it becomes needed in the future, the method should be implemented and the oracle should deliver
     ///      the actual balances.
-    function updateOperatorBalances(
-        uint256[] calldata,
-        uint256[] calldata,
-        uint256[] calldata,
-        uint256
-    ) external {
+    function updateOperatorBalances(uint256[] calldata, uint256[] calldata, uint256[] calldata, uint256) external {
         // NOTE: The function does nothing in CSM, see the docstring.
     }
 
     /// @inheritdoc IBaseModule
-    function onNodeOperatorBondCurveUpdated(
-        uint256 nodeOperatorId
-    ) external override(IBaseModule) {
-        _updateDepositableValidatorsCount({
-            nodeOperatorId: nodeOperatorId,
-            incrementNonceIfUpdated: true
-        });
+    function onNodeOperatorBondCurveUpdated(uint256 nodeOperatorId) external override(IBaseModule) {
+        _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: true });
     }
 
     /// @inheritdoc IStakingModule
@@ -412,45 +357,29 @@ contract CSModule is ICSModule, BaseModule {
         external
         view
         override(BaseModule, IStakingModule)
-        returns (
-            uint256 totalExitedValidators,
-            uint256 totalDepositedValidators,
-            uint256 depositableValidatorsCount
-        )
+        returns (uint256 totalExitedValidators, uint256 totalDepositedValidators, uint256 depositableValidatorsCount)
     {
         totalExitedValidators = _totalExitedValidators;
         totalDepositedValidators = _totalDepositedValidators;
         depositableValidatorsCount = _depositableValidatorsCount;
         if (_topUpQueueEnabled()) {
-            depositableValidatorsCount = Math.min(
-                depositableValidatorsCount,
-                _topUpQueue().capacity()
-            );
+            depositableValidatorsCount = Math.min(depositableValidatorsCount, _topUpQueue().capacity());
         }
     }
 
     /// @inheritdoc ICSModule
-    function depositQueuePointers(
-        uint256 queuePriority
-    ) external view returns (uint128 head, uint128 tail) {
-        DepositQueueLib.Queue storage q = _depositQueueByPriority[
-            queuePriority
-        ];
+    function depositQueuePointers(uint256 queuePriority) external view returns (uint128 head, uint128 tail) {
+        DepositQueueLib.Queue storage q = _depositQueueByPriority[queuePriority];
         return (q.head, q.tail);
     }
 
     /// @inheritdoc ICSModule
-    function depositQueueItem(
-        uint256 queuePriority,
-        uint128 index
-    ) external view returns (Batch) {
+    function depositQueueItem(uint256 queuePriority, uint128 index) external view returns (Batch) {
         return _depositQueueByPriority[queuePriority].at(index);
     }
 
     /// @inheritdoc ICSModule
-    function cleanDepositQueue(
-        uint256 maxItems
-    ) external returns (uint256 removed, uint256 lastRemovedAtDepth) {
+    function cleanDepositQueue(uint256 maxItems) external returns (uint256 removed, uint256 lastRemovedAtDepth) {
         return
             DepositQueueOps.cleanDepositQueue({
                 depositQueues: _depositQueueByPriority,
@@ -461,9 +390,7 @@ contract CSModule is ICSModule, BaseModule {
     }
 
     /// @inheritdoc ICSModule
-    function getKeysForTopUp(
-        uint256 maxKeyCount
-    ) external view returns (bytes[] memory pubkeys) {
+    function getKeysForTopUp(uint256 maxKeyCount) external view returns (bytes[] memory pubkeys) {
         _onlyEnabledTopUpQueue();
         uint256 keyCount = Math.min(maxKeyCount, _topUpQueue().length());
         pubkeys = new bytes[](keyCount);
@@ -480,12 +407,7 @@ contract CSModule is ICSModule, BaseModule {
         uint256 newCount,
         bool incrementNonceIfUpdated
     ) internal override returns (bool changed) {
-        changed = super._applyDepositableValidatorsCount(
-            no,
-            nodeOperatorId,
-            newCount,
-            incrementNonceIfUpdated
-        );
+        changed = super._applyDepositableValidatorsCount(no, nodeOperatorId, newCount, incrementNonceIfUpdated);
         DepositQueueOps.enqueueNodeOperatorKeys({
             nodeOperators: _nodeOperators,
             depositQueues: _depositQueueByPriority,

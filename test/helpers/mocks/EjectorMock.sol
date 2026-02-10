@@ -13,9 +13,5 @@ contract EjectorMock {
         MODULE = ICSModule(_module);
     }
 
-    function ejectBadPerformer(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        address refundRecipient
-    ) external payable {}
+    function ejectBadPerformer(uint256 nodeOperatorId, uint256 keyIndex, address refundRecipient) external payable {}
 }

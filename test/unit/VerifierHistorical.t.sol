@@ -36,9 +36,7 @@ GIndex constant NULL_GINDEX = GIndex.wrap(0);
 GIndex constant FIRST_WITHDRAWAL_DENEB = GIndex.wrap(
     0x0000000000000000000000000000000000000000000000000000000000e1c004
 );
-GIndex constant FIRST_VALIDATOR_DENEB = GIndex.wrap(
-    0x0000000000000000000000000000000000000000000000000056000000000028
-);
+GIndex constant FIRST_VALIDATOR_DENEB = GIndex.wrap(0x0000000000000000000000000000000000000000000000000056000000000028);
 GIndex constant FIRST_HISTORICAL_SUMMARY_DENEB = GIndex.wrap(
     0x0000000000000000000000000000000000000000000000000000007600000018
 );
@@ -70,13 +68,7 @@ contract VerifierHistoricalBase is Test, Utilities {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
-        vm.mockCall(
-            address(module),
-            abi.encodeWithSelector(
-                IBaseModule.reportRegularWithdrawnValidators.selector
-            ),
-            ""
-        );
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");
     }
 
     function _loadFixture(string memory fork) internal {
@@ -108,11 +100,9 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
                 gIFirstValidatorPrev: NULL_GINDEX,
                 gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
                 gIFirstHistoricalSummaryPrev: NULL_GINDEX,
-                gIFirstHistoricalSummaryCurr: GIndices
-                    .FIRST_HISTORICAL_SUMMARY_ELECTRA,
+                gIFirstHistoricalSummaryCurr: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
                 gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
-                gIFirstBlockRootInSummaryCurr: GIndices
-                    .FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
+                gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
                 gIFirstBalanceNodeCurr: NULL_GINDEX,
                 gIFirstPendingConsolidationPrev: NULL_GINDEX,
@@ -128,8 +118,7 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
     }
 
     function test_processHistoricalWithdrawalProof_HappyPath() public {
-        WithdrawnValidatorInfo[]
-            memory withdrawals = new WithdrawnValidatorInfo[](1);
+        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
         withdrawals[0] = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
@@ -140,52 +129,33 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
 
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(
-                IBaseModule.reportRegularWithdrawnValidators.selector,
-                withdrawals
-            )
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
         );
 
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processHistoricalWithdrawalProof_RevertWhen_UnsupportedSlot_RecentBlock()
-        public
-    {
-        fixture.data.recentBlock.header.slot = verifier
-            .FIRST_SUPPORTED_SLOT()
-            .dec();
+    function test_processHistoricalWithdrawalProof_RevertWhen_UnsupportedSlot_RecentBlock() public {
+        fixture.data.recentBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IVerifier.UnsupportedSlot.selector,
-                fixture.data.recentBlock.header.slot
-            )
+            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.recentBlock.header.slot)
         );
 
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processHistoricalWithdrawalProof_RevertWhen_UnsupportedSlot_WithdrawalBlock()
-        public
-    {
-        fixture.data.withdrawalBlock.header.slot = verifier
-            .FIRST_SUPPORTED_SLOT()
-            .dec();
+    function test_processHistoricalWithdrawalProof_RevertWhen_UnsupportedSlot_WithdrawalBlock() public {
+        fixture.data.withdrawalBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IVerifier.UnsupportedSlot.selector,
-                fixture.data.withdrawalBlock.header.slot
-            )
+            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.withdrawalBlock.header.slot)
         );
 
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processHistoricalWithdrawalProof_RevertWhen_InvalidRecentBlock()
-        public
-    {
+    function test_processHistoricalWithdrawalProof_RevertWhen_InvalidRecentBlock() public {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
             abi.encode(fixture.data.recentBlock.rootsTimestamp),
@@ -196,9 +166,7 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processHistoricalWithdrawalProof_RevertWhen_InvalidWithdrawalBlock()
-        public
-    {
+    function test_processHistoricalWithdrawalProof_RevertWhen_InvalidWithdrawalBlock() public {
         // Breaking something in the header.
         fixture.data.withdrawalBlock.header.parentRoot = someBytes32();
 
@@ -206,9 +174,7 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processHistoricalWithdrawalProof_RevertWhen_InvalidPublicKey()
-        public
-    {
+    function test_processHistoricalWithdrawalProof_RevertWhen_InvalidPublicKey() public {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
@@ -223,59 +189,42 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processHistoricalWithdrawalProof_RevertWhen_InvalidWithdrawalCredentials()
-        public
-    {
+    function test_processHistoricalWithdrawalProof_RevertWhen_InvalidWithdrawalCredentials() public {
         fixture.data.validator.object.withdrawalCredentials = someBytes32();
 
         vm.expectRevert(IVerifier.InvalidWithdrawalAddress.selector);
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processHistoricalWithdrawalProof_RevertWhen_InvalidWithdrawalAddress()
-        public
-    {
+    function test_processHistoricalWithdrawalProof_RevertWhen_InvalidWithdrawalAddress() public {
         fixture.data.withdrawal.object.withdrawalAddress = nextAddress();
 
         vm.expectRevert(IVerifier.InvalidWithdrawalAddress.selector);
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processHistoricalWithdrawalProof_RevertWhen_ValidatorIsNotWithdrawable()
-        public
-    {
-        fixture.data.validator.object.withdrawableEpoch =
-            fixture.data.recentBlock.header.slot.unwrap() /
-            32 +
-            1;
+    function test_processHistoricalWithdrawalProof_RevertWhen_ValidatorIsNotWithdrawable() public {
+        fixture.data.validator.object.withdrawableEpoch = fixture.data.recentBlock.header.slot.unwrap() / 32 + 1;
 
         vm.expectRevert(IVerifier.ValidatorIsNotWithdrawable.selector);
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processHistoricalWithdrawalProof_RevertWhen_ValidatorSlashed()
-        public
-    {
+    function test_processHistoricalWithdrawalProof_RevertWhen_ValidatorSlashed() public {
         fixture.data.validator.object.slashed = true;
 
         vm.expectRevert(IVerifier.ValidatorIsSlashed.selector);
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processHistoricalWithdrawalProof_RevertWhen_ValidatorIndexDoesNotMatch()
-        public
-    {
-        fixture.data.withdrawal.object.validatorIndex =
-            fixture.data.validator.index +
-            1;
+    function test_processHistoricalWithdrawalProof_RevertWhen_ValidatorIndexDoesNotMatch() public {
+        fixture.data.withdrawal.object.validatorIndex = fixture.data.validator.index + 1;
 
         vm.expectRevert(IVerifier.InvalidValidatorIndex.selector);
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processHistoricalWithdrawalProof_RevertWhen_PartialWithdrawal()
-        public
-    {
+    function test_processHistoricalWithdrawalProof_RevertWhen_PartialWithdrawal() public {
         fixture.data.withdrawal.object.amount = 15e9 - 1;
 
         vm.expectRevert(IVerifier.PartialWithdrawal.selector);
@@ -299,11 +248,9 @@ contract VerifierCrossForkHistoricalTest is VerifierHistoricalBase {
                 gIFirstValidatorPrev: FIRST_VALIDATOR_DENEB,
                 gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
                 gIFirstHistoricalSummaryPrev: FIRST_HISTORICAL_SUMMARY_DENEB,
-                gIFirstHistoricalSummaryCurr: GIndices
-                    .FIRST_HISTORICAL_SUMMARY_ELECTRA,
+                gIFirstHistoricalSummaryCurr: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
                 gIFirstBlockRootInSummaryPrev: FIRST_BLOCK_ROOT_IN_SUMMARY_DENEB,
-                gIFirstBlockRootInSummaryCurr: GIndices
-                    .FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
+                gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
                 gIFirstBalanceNodeCurr: NULL_GINDEX,
                 gIFirstPendingConsolidationPrev: NULL_GINDEX,
@@ -318,8 +265,7 @@ contract VerifierCrossForkHistoricalTest is VerifierHistoricalBase {
     }
 
     function test_processHistoricalWithdrawalProof_HappyPath() public {
-        WithdrawnValidatorInfo[]
-            memory withdrawals = new WithdrawnValidatorInfo[](1);
+        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
         withdrawals[0] = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
@@ -330,10 +276,7 @@ contract VerifierCrossForkHistoricalTest is VerifierHistoricalBase {
 
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(
-                IBaseModule.reportRegularWithdrawnValidators.selector,
-                withdrawals
-            )
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
         );
 
         verifier.processHistoricalWithdrawalProof(fixture.data);
@@ -356,11 +299,9 @@ contract VerifierCrossForkHistoricalAtPivotSlotTest is VerifierHistoricalBase {
                 gIFirstValidatorPrev: FIRST_VALIDATOR_DENEB,
                 gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
                 gIFirstHistoricalSummaryPrev: FIRST_HISTORICAL_SUMMARY_DENEB,
-                gIFirstHistoricalSummaryCurr: GIndices
-                    .FIRST_HISTORICAL_SUMMARY_ELECTRA,
+                gIFirstHistoricalSummaryCurr: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
                 gIFirstBlockRootInSummaryPrev: FIRST_BLOCK_ROOT_IN_SUMMARY_DENEB,
-                gIFirstBlockRootInSummaryCurr: GIndices
-                    .FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
+                gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
                 gIFirstBalanceNodeCurr: NULL_GINDEX,
                 gIFirstPendingConsolidationPrev: NULL_GINDEX,
@@ -375,8 +316,7 @@ contract VerifierCrossForkHistoricalAtPivotSlotTest is VerifierHistoricalBase {
     }
 
     function test_processHistoricalWithdrawalProof_HappyPath() public {
-        WithdrawnValidatorInfo[]
-            memory withdrawals = new WithdrawnValidatorInfo[](1);
+        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
         withdrawals[0] = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
@@ -387,10 +327,7 @@ contract VerifierCrossForkHistoricalAtPivotSlotTest is VerifierHistoricalBase {
 
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(
-                IBaseModule.reportRegularWithdrawnValidators.selector,
-                withdrawals
-            )
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
         );
 
         verifier.processHistoricalWithdrawalProof(fixture.data);

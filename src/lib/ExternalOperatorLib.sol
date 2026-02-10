@@ -16,16 +16,12 @@ library ExternalOperatorLib {
 
     error InvalidExternalOperatorDataEntry();
 
-    function uniqueKey(
-        IMetaRegistry.ExternalOperator memory self
-    ) internal pure returns (bytes32) {
+    function uniqueKey(IMetaRegistry.ExternalOperator memory self) internal pure returns (bytes32) {
         // NOTE: As long the first byte is dedicated to the operator type, the simple hashing is enough.
         return keccak256(self.data);
     }
 
-    function tryGetExtOpType(
-        IMetaRegistry.ExternalOperator memory self
-    ) internal pure returns (OperatorType) {
+    function tryGetExtOpType(IMetaRegistry.ExternalOperator memory self) internal pure returns (OperatorType) {
         // NOTE: Type guard for now; replace with a proper switch for more types.
         if (!_isNOR(self.data)) {
             revert InvalidExternalOperatorDataEntry();

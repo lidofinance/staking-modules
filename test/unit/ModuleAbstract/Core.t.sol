@@ -37,9 +37,7 @@ import { WstETHMock } from "../../helpers/mocks/WstETHMock.sol";
 import { ModuleFixtures } from "./_Base.t.sol";
 
 abstract contract ModuleFuzz is ModuleFixtures {
-    function testFuzz_CreateNodeOperator(
-        uint256 keysCount
-    ) public assertInvariants {
+    function testFuzz_CreateNodeOperator(uint256 keysCount) public assertInvariants {
         keysCount = bound(keysCount, 1, 99);
         createNodeOperator(keysCount);
         assertEq(module.getNodeOperatorsCount(), 1);
@@ -47,9 +45,7 @@ abstract contract ModuleFuzz is ModuleFixtures {
         assertEq(no.totalAddedKeys, keysCount);
     }
 
-    function testFuzz_CreateMultipleNodeOperators(
-        uint256 count
-    ) public assertInvariants {
+    function testFuzz_CreateMultipleNodeOperators(uint256 count) public assertInvariants {
         count = bound(count, 1, 100);
         for (uint256 i = 0; i < count; i++) {
             createNodeOperator(1);
@@ -138,13 +134,7 @@ abstract contract ModulePauseAffectingTest is ModuleFixtures {
 
         module.pauseFor(1 days);
         vm.expectRevert(PausableUntil.ResumedExpected.selector);
-        module.addValidatorKeysETH(
-            nodeOperator,
-            noId,
-            keysCount,
-            keys,
-            signatures
-        );
+        module.addValidatorKeysETH(nodeOperator, noId, keysCount, keys, signatures);
     }
 
     function test_addValidatorKeysStETH_RevertWhen_Paused() public {
@@ -193,32 +183,18 @@ contract MyModule is BaseModule {
         address parametersRegistry,
         address accounting,
         address exitPenalties
-    )
-        BaseModule(
-            moduleType,
-            lidoLocator,
-            parametersRegistry,
-            accounting,
-            exitPenalties
-        )
-    {
+    ) BaseModule(moduleType, lidoLocator, parametersRegistry, accounting, exitPenalties) {
         _disableInitializers();
     }
 
-    function initialize(
-        address admin
-    ) external reinitializer(INITIALIZED_VERSION) {
+    function initialize(address admin) external reinitializer(INITIALIZED_VERSION) {
         __BaseModule_init(admin);
     }
 
     function obtainDepositData(
         uint256 depositsCount,
         bytes calldata depositCalldata
-    )
-        external
-        virtual
-        returns (bytes memory publicKeys, bytes memory signatures)
-    {
+    ) external virtual returns (bytes memory publicKeys, bytes memory signatures) {
         revert NotImplementedInTest();
     }
 
@@ -238,11 +214,7 @@ contract MyModule is BaseModule {
         external
         view
         override
-        returns (
-            uint256 totalExitedValidators,
-            uint256 totalDepositedValidators,
-            uint256 depositableValidatorsCount
-        )
+        returns (uint256 totalExitedValidators, uint256 totalDepositedValidators, uint256 depositableValidatorsCount)
     {
         revert NotImplementedInTest();
     }
@@ -334,12 +306,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         module.grantRole(role, actor);
 
         vm.prank(actor);
-        module.reportGeneralDelayedPenalty(
-            noId,
-            bytes32(abi.encode(1)),
-            1 ether,
-            "Test penalty"
-        );
+        module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), 1 ether, "Test penalty");
     }
 
     function test_reportGeneralDelayedPenaltyRole_revert() public {
@@ -348,12 +315,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        module.reportGeneralDelayedPenalty(
-            noId,
-            bytes32(abi.encode(1)),
-            1 ether,
-            "Test penalty"
-        );
+        module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), 1 ether, "Test penalty");
     }
 
     function test_settleGeneralDelayedPenaltyRole() public {
@@ -363,10 +325,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         module.grantRole(role, actor);
 
         vm.prank(actor);
-        module.settleGeneralDelayedPenalty(
-            UintArr(noId),
-            UintArr(type(uint256).max)
-        );
+        module.settleGeneralDelayedPenalty(UintArr(noId), UintArr(type(uint256).max));
     }
 
     function test_settleGeneralDelayedPenaltyRole_revert() public {
@@ -375,10 +334,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        module.settleGeneralDelayedPenalty(
-            UintArr(noId),
-            UintArr(type(uint256).max)
-        );
+        module.settleGeneralDelayedPenalty(UintArr(noId), UintArr(type(uint256).max));
     }
 
     function test_verifierRole() public {
@@ -414,8 +370,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         module.obtainDepositData(1, "");
         vm.stopPrank();
 
-        WithdrawnValidatorInfo[]
-            memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
@@ -432,8 +387,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         uint256 noId = createNodeOperator();
         bytes32 role = module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE();
 
-        WithdrawnValidatorInfo[]
-            memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
@@ -459,8 +413,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         module.onValidatorSlashed(noId, 0);
         vm.stopPrank();
 
-        WithdrawnValidatorInfo[]
-            memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
@@ -477,8 +430,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         uint256 noId = createNodeOperator();
         bytes32 role = module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE();
 
-        WithdrawnValidatorInfo[]
-            memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
@@ -537,9 +489,7 @@ abstract contract ModuleStakingRouterAccessControl is ModuleFixtures {
         module.updateExitedValidatorsCount("", "");
     }
 
-    function test_stakingRouterRole_updateExitedValidatorsCount_revert()
-        public
-    {
+    function test_stakingRouterRole_updateExitedValidatorsCount_revert() public {
         bytes32 role = module.STAKING_ROUTER_ROLE();
 
         vm.prank(stranger);
@@ -557,9 +507,7 @@ abstract contract ModuleStakingRouterAccessControl is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 0, 0);
     }
 
-    function test_stakingRouterRole_updateTargetValidatorsLimits_revert()
-        public
-    {
+    function test_stakingRouterRole_updateTargetValidatorsLimits_revert() public {
         uint256 noId = createNodeOperator();
         bytes32 role = module.STAKING_ROUTER_ROLE();
 
@@ -568,9 +516,7 @@ abstract contract ModuleStakingRouterAccessControl is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 0, 0);
     }
 
-    function test_stakingRouterRole_onExitedAndStuckValidatorsCountsUpdated()
-        public
-    {
+    function test_stakingRouterRole_onExitedAndStuckValidatorsCountsUpdated() public {
         bytes32 role = module.STAKING_ROUTER_ROLE();
         vm.prank(admin);
         module.grantRole(role, actor);
@@ -579,10 +525,7 @@ abstract contract ModuleStakingRouterAccessControl is ModuleFixtures {
         module.onExitedAndStuckValidatorsCountsUpdated();
     }
 
-    function test_stakingRouterRole_onWithdrawalCredentialsChanged_noDepositable()
-        public
-        virtual
-    {
+    function test_stakingRouterRole_onWithdrawalCredentialsChanged_noDepositable() public virtual {
         bytes32 role = module.STAKING_ROUTER_ROLE();
         vm.prank(admin);
         module.grantRole(role, actor);
@@ -591,9 +534,7 @@ abstract contract ModuleStakingRouterAccessControl is ModuleFixtures {
         module.onWithdrawalCredentialsChanged();
     }
 
-    function test_stakingRouterRole_onWithdrawalCredentialsChanged_RoleRevert()
-        public
-    {
+    function test_stakingRouterRole_onWithdrawalCredentialsChanged_RoleRevert() public {
         bytes32 role = module.STAKING_ROUTER_ROLE();
 
         vm.prank(stranger);
@@ -643,19 +584,13 @@ abstract contract ModuleMisc is ModuleFixtures {
         assertEq(module.getInitializedVersion(), 3);
     }
 
-    function test_getActiveNodeOperatorsCount_OneOperator()
-        public
-        assertInvariants
-    {
+    function test_getActiveNodeOperatorsCount_OneOperator() public assertInvariants {
         createNodeOperator();
         uint256 noCount = module.getNodeOperatorsCount();
         assertEq(noCount, 1);
     }
 
-    function test_getActiveNodeOperatorsCount_MultipleOperators()
-        public
-        assertInvariants
-    {
+    function test_getActiveNodeOperatorsCount_MultipleOperators() public assertInvariants {
         createNodeOperator();
         createNodeOperator();
         createNodeOperator();
@@ -700,10 +635,7 @@ abstract contract ModuleMisc is ModuleFixtures {
         assertEq(noIdsActual, noIds);
     }
 
-    function test_getNodeOperatorIds_OffsetEqualsNodeOperatorsCount()
-        public
-        assertInvariants
-    {
+    function test_getNodeOperatorIds_OffsetEqualsNodeOperatorsCount() public assertInvariants {
         createNodeOperator();
         createNodeOperator();
         createNodeOperator();
@@ -716,9 +648,7 @@ abstract contract ModuleMisc is ModuleFixtures {
         assertEq(noIdsActual, noIds);
     }
 
-    function test_getNodeOperatorIds_OffsetHigherThanNodeOperatorsCount()
-        public
-    {
+    function test_getNodeOperatorIds_OffsetHigherThanNodeOperatorsCount() public {
         createNodeOperator();
         createNodeOperator();
         createNodeOperator();
@@ -744,9 +674,7 @@ abstract contract ModuleMisc is ModuleFixtures {
         assertEq(noIdsActual, noIds);
     }
 
-    function test_getNodeOperatorIds_ZeroLimitAndOffsetHigherThanNodeOperatorsCount()
-        public
-    {
+    function test_getNodeOperatorIds_ZeroLimitAndOffsetHigherThanNodeOperatorsCount() public {
         createNodeOperator();
         createNodeOperator();
         createNodeOperator();
@@ -798,10 +726,7 @@ abstract contract ModuleMisc is ModuleFixtures {
         assertEq(activeCount, 1);
     }
 
-    function test_getActiveNodeOperatorsCount_Multiple()
-        public
-        assertInvariants
-    {
+    function test_getActiveNodeOperatorsCount_Multiple() public assertInvariants {
         createNodeOperator();
         createNodeOperator();
         createNodeOperator();
@@ -811,10 +736,7 @@ abstract contract ModuleMisc is ModuleFixtures {
         assertEq(activeCount, 3);
     }
 
-    function test_getNodeOperatorManagementProperties()
-        public
-        assertInvariants
-    {
+    function test_getNodeOperatorManagementProperties() public assertInvariants {
         address manager = nextAddress();
         address reward = nextAddress();
         bool extended = true;
@@ -829,19 +751,14 @@ abstract contract ModuleMisc is ModuleFixtures {
             address(0)
         );
 
-        NodeOperatorManagementProperties memory props = module
-            .getNodeOperatorManagementProperties(noId);
+        NodeOperatorManagementProperties memory props = module.getNodeOperatorManagementProperties(noId);
         assertEq(props.managerAddress, manager);
         assertEq(props.rewardAddress, reward);
         assertEq(props.extendedManagerPermissions, extended);
     }
 
-    function test_getNodeOperatorManagementProperties_NoOperator()
-        public
-        assertInvariants
-    {
-        NodeOperatorManagementProperties memory props = module
-            .getNodeOperatorManagementProperties(0);
+    function test_getNodeOperatorManagementProperties_NoOperator() public assertInvariants {
+        NodeOperatorManagementProperties memory props = module.getNodeOperatorManagementProperties(0);
         assertEq(props.managerAddress, address(0));
         assertEq(props.rewardAddress, address(0));
         assertFalse(props.extendedManagerPermissions);
@@ -865,10 +782,7 @@ abstract contract ModuleMisc is ModuleFixtures {
         assertEq(module.getNodeOperatorOwner(noId), reward);
     }
 
-    function test_getNodeOperatorOwner_ExtendedPermissions()
-        public
-        assertInvariants
-    {
+    function test_getNodeOperatorOwner_ExtendedPermissions() public assertInvariants {
         address manager = nextAddress();
         address reward = nextAddress();
         bool extended = true;

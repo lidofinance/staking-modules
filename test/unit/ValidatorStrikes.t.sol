@@ -21,12 +21,7 @@ import { Utilities } from "../helpers/Utilities.sol";
 import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
 import { CSMMock } from "../helpers/mocks/CSMMock.sol";
 
-contract ValidatorStrikesTestBase is
-    Test,
-    Fixtures,
-    Utilities,
-    InvariantAsserts
-{
+contract ValidatorStrikesTestBase is Test, Fixtures, Utilities, InvariantAsserts {
     address internal admin;
     address internal stranger;
     address internal refundRecipient;
@@ -68,12 +63,7 @@ contract ValidatorStrikesTestBase is
         bool[] calldata proofFlags,
         address _refundRecipient
     ) external payable {
-        strikes.processBadPerformanceProof{ value: msg.value }(
-            keyStrikesList,
-            proof,
-            proofFlags,
-            _refundRecipient
-        );
+        strikes.processBadPerformanceProof{ value: msg.value }(keyStrikesList, proof, proofFlags, _refundRecipient);
     }
 }
 
@@ -88,12 +78,7 @@ contract ValidatorStrikesConstructorTest is ValidatorStrikesTestBase {
     }
 
     function test_constructor_happyPath() public {
-        strikes = new ValidatorStrikes(
-            address(module),
-            oracle,
-            exitPenalties,
-            address(module.PARAMETERS_REGISTRY())
-        );
+        strikes = new ValidatorStrikes(address(module), oracle, exitPenalties, address(module.PARAMETERS_REGISTRY()));
         assertEq(address(strikes.MODULE()), address(module));
         assertEq(strikes.ORACLE(), oracle);
         assertEq(address(strikes.EXIT_PENALTIES()), exitPenalties);
@@ -102,52 +87,28 @@ contract ValidatorStrikesConstructorTest is ValidatorStrikesTestBase {
     function test_constructor_RevertWhen_ZeroModuleAddress() public {
         address parametersRegistry = address(module.PARAMETERS_REGISTRY());
         vm.expectRevert(IValidatorStrikes.ZeroModuleAddress.selector);
-        new ValidatorStrikes(
-            address(0),
-            oracle,
-            exitPenalties,
-            parametersRegistry
-        );
+        new ValidatorStrikes(address(0), oracle, exitPenalties, parametersRegistry);
     }
 
     function test_constructor_RevertWhen_ZeroExitPenaltiesAddress() public {
         address parametersRegistry = address(module.PARAMETERS_REGISTRY());
         vm.expectRevert(IValidatorStrikes.ZeroExitPenaltiesAddress.selector);
-        new ValidatorStrikes(
-            address(module),
-            oracle,
-            address(0),
-            parametersRegistry
-        );
+        new ValidatorStrikes(address(module), oracle, address(0), parametersRegistry);
     }
 
-    function test_constructor_RevertWhen_ZeroParametersRegistryAddress()
-        public
-    {
-        vm.expectRevert(
-            IValidatorStrikes.ZeroParametersRegistryAddress.selector
-        );
+    function test_constructor_RevertWhen_ZeroParametersRegistryAddress() public {
+        vm.expectRevert(IValidatorStrikes.ZeroParametersRegistryAddress.selector);
         new ValidatorStrikes(exitPenalties, oracle, exitPenalties, address(0));
     }
 
     function test_constructor_RevertWhen_ZeroOracleAddress() public {
         address parametersRegistry = address(module.PARAMETERS_REGISTRY());
         vm.expectRevert(IValidatorStrikes.ZeroOracleAddress.selector);
-        new ValidatorStrikes(
-            exitPenalties,
-            address(0),
-            exitPenalties,
-            parametersRegistry
-        );
+        new ValidatorStrikes(exitPenalties, address(0), exitPenalties, parametersRegistry);
     }
 
     function test_initialize_happyPath() public {
-        strikes = new ValidatorStrikes(
-            address(module),
-            oracle,
-            exitPenalties,
-            address(module.PARAMETERS_REGISTRY())
-        );
+        strikes = new ValidatorStrikes(address(module), oracle, exitPenalties, address(module.PARAMETERS_REGISTRY()));
         _enableInitializers(address(strikes));
 
         vm.expectEmit(address(strikes));
@@ -160,12 +121,7 @@ contract ValidatorStrikesConstructorTest is ValidatorStrikesTestBase {
     }
 
     function test_initialize_RevertWhen_ZeroAdminAddress() public {
-        strikes = new ValidatorStrikes(
-            address(module),
-            oracle,
-            exitPenalties,
-            address(module.PARAMETERS_REGISTRY())
-        );
+        strikes = new ValidatorStrikes(address(module), oracle, exitPenalties, address(module.PARAMETERS_REGISTRY()));
         _enableInitializers(address(strikes));
 
         vm.expectRevert(IValidatorStrikes.ZeroAdminAddress.selector);
@@ -173,12 +129,7 @@ contract ValidatorStrikesConstructorTest is ValidatorStrikesTestBase {
     }
 
     function test_initialize_RevertWhen_ZeroEjectorAddress() public {
-        strikes = new ValidatorStrikes(
-            address(module),
-            oracle,
-            exitPenalties,
-            address(module.PARAMETERS_REGISTRY())
-        );
+        strikes = new ValidatorStrikes(address(module), oracle, exitPenalties, address(module.PARAMETERS_REGISTRY()));
         _enableInitializers(address(strikes));
 
         vm.expectRevert(IValidatorStrikes.ZeroEjectorAddress.selector);
@@ -196,12 +147,7 @@ contract ValidatorStrikesTest is ValidatorStrikesTestBase {
         exitPenalties = address(new ExitPenaltiesMock());
         ejector = address(new EjectorMock(address(module)));
 
-        strikes = new ValidatorStrikes(
-            address(module),
-            oracle,
-            exitPenalties,
-            address(module.PARAMETERS_REGISTRY())
-        );
+        strikes = new ValidatorStrikes(address(module), oracle, exitPenalties, address(module.PARAMETERS_REGISTRY()));
         _enableInitializers(address(strikes));
         strikes.initialize(admin, ejector);
 
@@ -271,10 +217,7 @@ contract ValidatorStrikesTest is ValidatorStrikesTestBase {
         assertEq(strikes.treeCid(), "");
     }
 
-    function test_processOracleReport_NonEmptySubsequentReport()
-        public
-        assertInvariants
-    {
+    function test_processOracleReport_NonEmptySubsequentReport() public assertInvariants {
         string memory treeCid = someCIDv0();
         bytes32 treeRoot = someBytes32();
         vm.prank(oracle);
@@ -312,18 +255,12 @@ contract ValidatorStrikesTest is ValidatorStrikesTestBase {
         assertEq(strikes.treeCid(), treeCid);
     }
 
-    function test_processOracleReport_RevertWhen_NotOracle()
-        public
-        assertInvariants
-    {
+    function test_processOracleReport_RevertWhen_NotOracle() public assertInvariants {
         vm.expectRevert(IValidatorStrikes.SenderIsNotOracle.selector);
         strikes.processOracleReport(bytes32(0), someCIDv0());
     }
 
-    function test_processOracleReport_RevertWhen_OnlyTreeRootEmpty()
-        public
-        assertInvariants
-    {
+    function test_processOracleReport_RevertWhen_OnlyTreeRootEmpty() public assertInvariants {
         vm.prank(oracle);
         strikes.processOracleReport(someBytes32(), someCIDv0());
 
@@ -332,10 +269,7 @@ contract ValidatorStrikesTest is ValidatorStrikesTestBase {
         strikes.processOracleReport(bytes32(0), someCIDv0());
     }
 
-    function test_processOracleReport_RevertWhen_OnlyTreeCidEmpty()
-        public
-        assertInvariants
-    {
+    function test_processOracleReport_RevertWhen_OnlyTreeCidEmpty() public assertInvariants {
         vm.prank(oracle);
         strikes.processOracleReport(someBytes32(), someCIDv0());
 
@@ -344,10 +278,7 @@ contract ValidatorStrikesTest is ValidatorStrikesTestBase {
         strikes.processOracleReport(someBytes32(), "");
     }
 
-    function test_processOracleReport_RevertWhen_OnlyRootUpdated()
-        public
-        assertInvariants
-    {
+    function test_processOracleReport_RevertWhen_OnlyRootUpdated() public assertInvariants {
         bytes32 root = someBytes32();
         string memory treeCid = someCIDv0();
 
@@ -359,10 +290,7 @@ contract ValidatorStrikesTest is ValidatorStrikesTestBase {
         strikes.processOracleReport(someBytes32(), treeCid);
     }
 
-    function test_processOracleReport_RevertWhen_OnlyCidUpdated()
-        public
-        assertInvariants
-    {
+    function test_processOracleReport_RevertWhen_OnlyCidUpdated() public assertInvariants {
         bytes32 root = someBytes32();
         string memory treeCid = someCIDv0();
 
@@ -425,12 +353,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         exitPenalties = address(new ExitPenaltiesMock());
         ejector = address(new EjectorMock(address(module)));
 
-        strikes = new ValidatorStrikes(
-            address(module),
-            oracle,
-            exitPenalties,
-            address(module.PARAMETERS_REGISTRY())
-        );
+        strikes = new ValidatorStrikes(address(module), oracle, exitPenalties, address(module.PARAMETERS_REGISTRY()));
         _enableInitializers(address(strikes));
         strikes.initialize(admin, ejector);
 
@@ -445,14 +368,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
             uint256[] memory strikesData = UintArr(100500, 0, 0);
             (bytes memory pubkey, ) = keysSignatures(1, i);
             leaves.push(
-                Leaf(
-                    IValidatorStrikes.KeyStrikes({
-                        nodeOperatorId: i,
-                        keyIndex: 0,
-                        data: strikesData
-                    }),
-                    pubkey
-                )
+                Leaf(IValidatorStrikes.KeyStrikes({ nodeOperatorId: i, keyIndex: 0, data: strikesData }), pubkey)
             );
             tree.pushLeaf(abi.encode(i, pubkey, strikesData));
         }
@@ -469,11 +385,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         (bytes memory pubkey, ) = keysSignatures(1);
         assertEq(
             this.hashLeaf(
-                IValidatorStrikes.KeyStrikes({
-                    nodeOperatorId: 42,
-                    keyIndex: 0,
-                    data: UintArr(100500)
-                }),
+                IValidatorStrikes.KeyStrikes({ nodeOperatorId: 42, keyIndex: 0, data: UintArr(100500) }),
                 pubkey
             ),
             // keccak256(bytes.concat(keccak256(abi.encode(42, pubkey, [100500])))) = 0x3a1e33fb3e7fe10371e522cee19c593a324542e57e4da98719979d7490d2eed7
@@ -485,8 +397,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         for (uint256 i; i < leaves.length; i++) {
             Leaf memory leaf = leaves[i];
 
-            IValidatorStrikes.KeyStrikes[]
-                memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
+            IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
             keyStrikesList[0] = leaf.keyStrikes;
 
             bytes[] memory pubkeys = new bytes[](1);
@@ -495,21 +406,13 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
             bytes32[] memory proof = tree.getProof(i);
             bool[] memory proofFlags = new bool[](proof.length);
 
-            bool isValid = this.verifyProof(
-                keyStrikesList,
-                pubkeys,
-                proof,
-                proofFlags
-            );
+            bool isValid = this.verifyProof(keyStrikesList, pubkeys, proof, proofFlags);
             assertTrue(isValid);
         }
     }
 
     function test_verifyProofAllLeaves() public withTreeOfLeavesCount(7) {
-        IValidatorStrikes.KeyStrikes[]
-            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](
-                leaves.length
-            );
+        IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](leaves.length);
         bytes[] memory pubkeys = new bytes[](leaves.length);
 
         for (uint256 i; i < leaves.length; ++i) {
@@ -522,18 +425,12 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
             proofFlags[i] = true;
         }
 
-        bool isValid = this.verifyProof(
-            keyStrikesList,
-            pubkeys,
-            new bytes32[](0),
-            proofFlags
-        );
+        bool isValid = this.verifyProof(keyStrikesList, pubkeys, new bytes32[](0), proofFlags);
         assertTrue(isValid);
     }
 
     function test_verifyProofTwoSiblings() public withTreeOfLeavesCount(7) {
-        IValidatorStrikes.KeyStrikes[]
-            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](2);
+        IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](2);
         keyStrikesList[0] = leaves[0].keyStrikes;
         keyStrikesList[1] = leaves[1].keyStrikes;
 
@@ -553,21 +450,12 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
             proofFlags[i] = false; // The rest from the proof
         }
 
-        bool isValid = this.verifyProof(
-            keyStrikesList,
-            pubkeys,
-            proof,
-            proofFlags
-        );
+        bool isValid = this.verifyProof(keyStrikesList, pubkeys, proof, proofFlags);
         assertTrue(isValid);
     }
 
-    function test_verifyProof_RevertWhen_WrongFlagsLength()
-        public
-        withTreeOfLeavesCount(7)
-    {
-        IValidatorStrikes.KeyStrikes[]
-            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
+    function test_verifyProof_RevertWhen_WrongFlagsLength() public withTreeOfLeavesCount(7) {
+        IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
         keyStrikesList[0] = leaves[0].keyStrikes;
 
         bytes[] memory pubkeys = new bytes[](1);
@@ -582,12 +470,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
                 proofFlags[i] = false;
             }
 
-            bool isValid = this.verifyProof(
-                keyStrikesList,
-                pubkeys,
-                proof,
-                proofFlags
-            );
+            bool isValid = this.verifyProof(keyStrikesList, pubkeys, proof, proofFlags);
             assertTrue(isValid);
         }
 
@@ -614,12 +497,8 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         }
     }
 
-    function test_verifyProofFails_InvalidProof()
-        public
-        withTreeOfLeavesCount(7)
-    {
-        IValidatorStrikes.KeyStrikes[]
-            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
+    function test_verifyProofFails_InvalidProof() public withTreeOfLeavesCount(7) {
+        IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
         keyStrikesList[0] = leaves[0].keyStrikes;
 
         bytes[] memory pubkeys = new bytes[](1);
@@ -634,21 +513,12 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
             proofFlags[i] = false;
         }
 
-        bool isValid = this.verifyProof(
-            keyStrikesList,
-            pubkeys,
-            proof,
-            proofFlags
-        );
+        bool isValid = this.verifyProof(keyStrikesList, pubkeys, proof, proofFlags);
         assertFalse(isValid);
     }
 
-    function test_verifyProofFails_InvalidLeaf()
-        public
-        withTreeOfLeavesCount(7)
-    {
-        IValidatorStrikes.KeyStrikes[]
-            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
+    function test_verifyProofFails_InvalidLeaf() public withTreeOfLeavesCount(7) {
+        IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
         keyStrikesList[0] = leaves[0].keyStrikes;
 
         bytes[] memory pubkeys = new bytes[](1);
@@ -661,19 +531,11 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
             proofFlags[i] = false;
         }
 
-        bool isValid = this.verifyProof(
-            keyStrikesList,
-            pubkeys,
-            proof,
-            proofFlags
-        );
+        bool isValid = this.verifyProof(keyStrikesList, pubkeys, proof, proofFlags);
         assertFalse(isValid);
     }
 
-    function testFuzz_processBadPerformanceProof_HappyPath(
-        uint256 a,
-        uint256 s
-    ) public withTreeOfLeavesCount(99) {
+    function testFuzz_processBadPerformanceProof_HappyPath(uint256 a, uint256 s) public withTreeOfLeavesCount(99) {
         // ----------------------------| indicies.length
         // <----------->| a
         // <---->| s
@@ -682,13 +544,8 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         s = bound(s, 1, a / 2 == 0 ? 1 : a / 2);
         uint256[] memory indicies = UintArr(a, a + s, a + s + s);
 
-        IValidatorStrikes.KeyStrikes[]
-            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](
-                indicies.length
-            );
-        (bytes32[] memory proof, bool[] memory proofFlags) = tree.getMultiProof(
-            indicies
-        );
+        IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](indicies.length);
+        (bytes32[] memory proof, bool[] memory proofFlags) = tree.getMultiProof(indicies);
 
         for (uint256 i; i < indicies.length; i++) {
             Leaf memory leaf = leaves[indicies[i]];
@@ -720,10 +577,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         );
     }
 
-    function test_processBadPerformanceProof_DefaultRefundRecipient()
-        public
-        withTreeOfLeavesCount(3)
-    {
+    function test_processBadPerformanceProof_DefaultRefundRecipient() public withTreeOfLeavesCount(3) {
         (
             Leaf memory leaf,
             IValidatorStrikes.KeyStrikes[] memory keyStrikesList,
@@ -742,27 +596,14 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
             )
         );
 
-        this.processBadPerformanceProof{ value: 1 }(
-            keyStrikesList,
-            proof,
-            proofFlags,
-            address(0)
-        );
+        this.processBadPerformanceProof{ value: 1 }(keyStrikesList, proof, proofFlags, address(0));
     }
 
-    function test_processBadPerformanceProof_valuePerKeyForwarded()
-        public
-        withTreeOfLeavesCount(2)
-    {
+    function test_processBadPerformanceProof_valuePerKeyForwarded() public withTreeOfLeavesCount(2) {
         uint256[] memory indicies = UintArr(0, 1);
 
-        IValidatorStrikes.KeyStrikes[]
-            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](
-                indicies.length
-            );
-        (bytes32[] memory proof, bool[] memory proofFlags) = tree.getMultiProof(
-            indicies
-        );
+        IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](indicies.length);
+        (bytes32[] memory proof, bool[] memory proofFlags) = tree.getMultiProof(indicies);
 
         for (uint256 i; i < indicies.length; i++) {
             Leaf memory leaf = leaves[indicies[i]];
@@ -793,18 +634,10 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
             );
         }
 
-        this.processBadPerformanceProof{ value: msgValue }(
-            keyStrikesList,
-            proof,
-            proofFlags,
-            refundRecipient
-        );
+        this.processBadPerformanceProof{ value: msgValue }(keyStrikesList, proof, proofFlags, refundRecipient);
     }
 
-    function test_processBadPerformanceProof_strikesAtThreshold()
-        public
-        withTreeOfLeavesCount(1)
-    {
+    function test_processBadPerformanceProof_strikesAtThreshold() public withTreeOfLeavesCount(1) {
         (
             Leaf memory leaf,
             IValidatorStrikes.KeyStrikes[] memory keyStrikesList,
@@ -838,25 +671,15 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
             )
         );
 
-        this.processBadPerformanceProof{ value: 1 }(
-            keyStrikesList,
-            proof,
-            proofFlags,
-            refundRecipient
-        );
+        this.processBadPerformanceProof{ value: 1 }(keyStrikesList, proof, proofFlags, refundRecipient);
     }
 
     function test_processBadPerformanceProof_RevertWhen_TreeNotSet() public {
         Leaf memory leaf;
-        leaf.keyStrikes = IValidatorStrikes.KeyStrikes({
-            nodeOperatorId: 1,
-            keyIndex: 0,
-            data: UintArr(1, 1, 1)
-        });
+        leaf.keyStrikes = IValidatorStrikes.KeyStrikes({ nodeOperatorId: 1, keyIndex: 0, data: UintArr(1, 1, 1) });
         (leaf.pubkey, ) = keysSignatures(1);
 
-        IValidatorStrikes.KeyStrikes[]
-            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
+        IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
         keyStrikesList[0] = leaf.keyStrikes;
 
         bytes32[] memory proof = new bytes32[](0);
@@ -865,12 +688,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         _mockModule(leaf);
 
         vm.expectRevert(IValidatorStrikes.InvalidProof.selector);
-        this.processBadPerformanceProof{ value: 1 }(
-            keyStrikesList,
-            proof,
-            proofFlags,
-            refundRecipient
-        );
+        this.processBadPerformanceProof{ value: 1 }(keyStrikesList, proof, proofFlags, refundRecipient);
     }
 
     function testFuzz_processBadPerformanceProof_RevertWhen_InvalidProof(
@@ -885,14 +703,9 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         s = bound(s, 1, a / 2 == 0 ? 1 : a / 2);
         uint256[] memory indicies = UintArr(a, a + s, a + s + s);
 
-        (bytes32[] memory proof, bool[] memory proofFlags) = tree.getMultiProof(
-            indicies
-        );
+        (bytes32[] memory proof, bool[] memory proofFlags) = tree.getMultiProof(indicies);
 
-        IValidatorStrikes.KeyStrikes[]
-            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](
-                indicies.length
-            );
+        IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](indicies.length);
         for (uint256 i; i < indicies.length; i++) {
             Leaf memory leaf = leaves[indicies[i]];
             keyStrikesList[i] = leaf.keyStrikes;
@@ -900,8 +713,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         }
 
         {
-            IValidatorStrikes.KeyStrikes[]
-                memory brokenStrikesList = keyStrikesList.copy();
+            IValidatorStrikes.KeyStrikes[] memory brokenStrikesList = keyStrikesList.copy();
             brokenStrikesList[0].nodeOperatorId++;
 
             vm.expectRevert(IValidatorStrikes.InvalidProof.selector);
@@ -934,10 +746,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         );
     }
 
-    function test_processBadPerformanceProof_RevertWhen_NotEnoughStrikesToEject()
-        public
-        withTreeOfLeavesCount(3)
-    {
+    function test_processBadPerformanceProof_RevertWhen_NotEnoughStrikesToEject() public withTreeOfLeavesCount(3) {
         (
             Leaf memory leaf,
             IValidatorStrikes.KeyStrikes[] memory keyStrikesList,
@@ -955,44 +764,23 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         _mockModule(leaf);
 
         vm.expectRevert(IValidatorStrikes.NotEnoughStrikesToEject.selector);
-        this.processBadPerformanceProof{ value: 1 }(
-            keyStrikesList,
-            proof,
-            proofFlags,
-            address(0)
-        );
+        this.processBadPerformanceProof{ value: 1 }(keyStrikesList, proof, proofFlags, address(0));
     }
 
-    function test_processBadPerformanceProof_RevertWhen_EmptyKeyStrikesList()
-        public
-    {
-        IValidatorStrikes.KeyStrikes[]
-            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](0);
+    function test_processBadPerformanceProof_RevertWhen_EmptyKeyStrikesList() public {
+        IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](0);
         bytes32[] memory proof = new bytes32[](0);
         bool[] memory proofFlags = new bool[](0);
 
         vm.expectRevert(IValidatorStrikes.EmptyKeyStrikesList.selector);
-        this.processBadPerformanceProof(
-            keyStrikesList,
-            proof,
-            proofFlags,
-            refundRecipient
-        );
+        this.processBadPerformanceProof(keyStrikesList, proof, proofFlags, refundRecipient);
     }
 
-    function test_processBadPerformanceProof_RevertWhen_ValueNotEvenlyDivisible()
-        public
-        withTreeOfLeavesCount(3)
-    {
+    function test_processBadPerformanceProof_RevertWhen_ValueNotEvenlyDivisible() public withTreeOfLeavesCount(3) {
         uint256[] memory indicies = UintArr(1, 2);
 
-        IValidatorStrikes.KeyStrikes[]
-            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](
-                indicies.length
-            );
-        (bytes32[] memory proof, bool[] memory proofFlags) = tree.getMultiProof(
-            indicies
-        );
+        IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](indicies.length);
+        (bytes32[] memory proof, bool[] memory proofFlags) = tree.getMultiProof(indicies);
 
         for (uint256 i; i < indicies.length; i++) {
             Leaf memory leaf = leaves[indicies[i]];
@@ -1000,27 +788,14 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
             _mockModule(leaf);
         }
         vm.expectRevert(IValidatorStrikes.ValueNotEvenlyDivisible.selector);
-        this.processBadPerformanceProof{ value: 11 wei }(
-            keyStrikesList,
-            proof,
-            proofFlags,
-            refundRecipient
-        );
+        this.processBadPerformanceProof{ value: 11 wei }(keyStrikesList, proof, proofFlags, refundRecipient);
     }
 
-    function test_processBadPerformanceProof_RevertWhen_ZeroMsgValue()
-        public
-        withTreeOfLeavesCount(3)
-    {
+    function test_processBadPerformanceProof_RevertWhen_ZeroMsgValue() public withTreeOfLeavesCount(3) {
         uint256[] memory indicies = UintArr(1, 2);
 
-        IValidatorStrikes.KeyStrikes[]
-            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](
-                indicies.length
-            );
-        (bytes32[] memory proof, bool[] memory proofFlags) = tree.getMultiProof(
-            indicies
-        );
+        IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](indicies.length);
+        (bytes32[] memory proof, bool[] memory proofFlags) = tree.getMultiProof(indicies);
 
         for (uint256 i; i < indicies.length; i++) {
             Leaf memory leaf = leaves[indicies[i]];
@@ -1028,27 +803,14 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
             _mockModule(leaf);
         }
         vm.expectRevert(IValidatorStrikes.ZeroMsgValue.selector);
-        this.processBadPerformanceProof{ value: 0 }(
-            keyStrikesList,
-            proof,
-            proofFlags,
-            refundRecipient
-        );
+        this.processBadPerformanceProof{ value: 0 }(keyStrikesList, proof, proofFlags, refundRecipient);
     }
 
-    function test_processBadPerformanceProof_okValue()
-        public
-        withTreeOfLeavesCount(3)
-    {
+    function test_processBadPerformanceProof_okValue() public withTreeOfLeavesCount(3) {
         uint256[] memory indicies = UintArr(1, 2);
 
-        IValidatorStrikes.KeyStrikes[]
-            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](
-                indicies.length
-            );
-        (bytes32[] memory proof, bool[] memory proofFlags) = tree.getMultiProof(
-            indicies
-        );
+        IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](indicies.length);
+        (bytes32[] memory proof, bool[] memory proofFlags) = tree.getMultiProof(indicies);
 
         for (uint256 i; i < indicies.length; i++) {
             Leaf memory leaf = leaves[indicies[i]];
@@ -1072,12 +834,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
                 )
             );
         }
-        this.processBadPerformanceProof{ value: 10 wei }(
-            keyStrikesList,
-            proof,
-            proofFlags,
-            refundRecipient
-        );
+        this.processBadPerformanceProof{ value: 10 wei }(keyStrikesList, proof, proofFlags, refundRecipient);
     }
 }
 
@@ -1095,18 +852,14 @@ library DeepCopy {
         }
     }
 
-    function copy(
-        bytes32[] memory arr
-    ) internal pure returns (bytes32[] memory buf) {
+    function copy(bytes32[] memory arr) internal pure returns (bytes32[] memory buf) {
         buf = new bytes32[](arr.length);
         for (uint256 i; i < buf.length; ++i) {
             buf[i] = arr[i];
         }
     }
 
-    function copy(
-        uint256[] memory arr
-    ) internal pure returns (uint256[] memory buf) {
+    function copy(uint256[] memory arr) internal pure returns (uint256[] memory buf) {
         buf = new uint256[](arr.length);
         for (uint256 i; i < buf.length; ++i) {
             buf[i] = arr[i];

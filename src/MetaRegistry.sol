@@ -17,11 +17,7 @@ import { IMetaRegistry, OperatorMetadata } from "./interfaces/IMetaRegistry.sol"
 import { ExternalOperatorLib, OperatorType } from "./lib/ExternalOperatorLib.sol";
 
 /// @notice Stores meta-operator group definitions for the curated module.
-contract MetaRegistry is
-    IMetaRegistry,
-    Initializable,
-    AccessControlEnumerableUpgradeable
-{
+contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUpgradeable {
     using ExternalOperatorLib for ExternalOperator;
 
     struct CachedOperatorGroup {
@@ -50,12 +46,9 @@ contract MetaRegistry is
         mapping(uint256 moduleId => address moduleAddress) moduleAddressCache;
     }
 
-    bytes32 public constant MANAGE_OPERATOR_GROUPS_ROLE =
-        keccak256("MANAGE_OPERATOR_GROUPS_ROLE");
-    bytes32 public constant SET_OPERATOR_INFO_ROLE =
-        keccak256("SET_OPERATOR_INFO_ROLE");
-    bytes32 public constant SET_BOND_CURVE_WEIGHT_ROLE =
-        keccak256("SET_BOND_CURVE_WEIGHT_ROLE");
+    bytes32 public constant MANAGE_OPERATOR_GROUPS_ROLE = keccak256("MANAGE_OPERATOR_GROUPS_ROLE");
+    bytes32 public constant SET_OPERATOR_INFO_ROLE = keccak256("SET_OPERATOR_INFO_ROLE");
+    bytes32 public constant SET_BOND_CURVE_WEIGHT_ROLE = keccak256("SET_BOND_CURVE_WEIGHT_ROLE");
 
     // ID of the stub node operator group that means "not in any group". This value is used for all node operators that are not assigned to any group, so it
     // can't be used as a real group ID.
@@ -103,10 +96,7 @@ contract MetaRegistry is
         _onlyExistingOperator(address(MODULE), nodeOperatorId);
 
         _storage().operatorMetadata[nodeOperatorId] = metadata;
-        emit OperatorMetadataSet({
-            nodeOperatorId: nodeOperatorId,
-            metadata: metadata
-        });
+        emit OperatorMetadataSet({ nodeOperatorId: nodeOperatorId, metadata: metadata });
     }
 
     /// @inheritdoc IMetaRegistry
@@ -119,9 +109,7 @@ contract MetaRegistry is
         if (owner == address(0)) revert NodeOperatorDoesNotExist();
         if (owner != msg.sender) revert SenderIsNotEligible();
 
-        OperatorMetadata storage stored = _storage().operatorMetadata[
-            nodeOperatorId
-        ];
+        OperatorMetadata storage stored = _storage().operatorMetadata[nodeOperatorId];
         bool ownerEditsRestricted = stored.ownerEditsRestricted;
         if (ownerEditsRestricted) {
             revert OwnerEditsRestricted();
@@ -130,16 +118,11 @@ contract MetaRegistry is
         stored.name = name;
         stored.description = description;
 
-        emit OperatorMetadataSet({
-            nodeOperatorId: nodeOperatorId,
-            metadata: stored
-        });
+        emit OperatorMetadataSet({ nodeOperatorId: nodeOperatorId, metadata: stored });
     }
 
     /// @inheritdoc IMetaRegistry
-    function getOperatorMetadata(
-        uint256 nodeOperatorId
-    ) external view returns (OperatorMetadata memory metadata) {
+    function getOperatorMetadata(uint256 nodeOperatorId) external view returns (OperatorMetadata memory metadata) {
         return _storage().operatorMetadata[nodeOperatorId];
     }
 
@@ -161,9 +144,7 @@ contract MetaRegistry is
     }
 
     /// @inheritdoc IMetaRegistry
-    function getOperatorGroup(
-        uint256 groupId
-    ) external view returns (OperatorGroup memory groupInfo) {
+    function getOperatorGroup(uint256 groupId) external view returns (OperatorGroup memory groupInfo) {
         MetaRegistryStorage storage $ = _storage();
         if (groupId >= $.groups.length) {
             revert InvalidOperatorGroupId();
@@ -188,35 +169,22 @@ contract MetaRegistry is
     }
 
     /// @inheritdoc IMetaRegistry
-    function getNodeOperatorGroupId(
-        uint256 nodeOperatorId
-    ) external view returns (uint256 operatorGroupId) {
-        operatorGroupId = _storage().groupIndex.groupIdByOperatorId[
-            nodeOperatorId
-        ];
+    function getNodeOperatorGroupId(uint256 nodeOperatorId) external view returns (uint256 operatorGroupId) {
+        operatorGroupId = _storage().groupIndex.groupIdByOperatorId[nodeOperatorId];
     }
 
     /// @inheritdoc IMetaRegistry
-    function getExternalOperatorGroupId(
-        ExternalOperator calldata op
-    ) external view returns (uint256 operatorGroupId) {
-        operatorGroupId = _storage().groupIndex.groupIdByExternalKey[
-            op.uniqueKey()
-        ];
+    function getExternalOperatorGroupId(ExternalOperator calldata op) external view returns (uint256 operatorGroupId) {
+        operatorGroupId = _storage().groupIndex.groupIdByExternalKey[op.uniqueKey()];
     }
 
     /// @inheritdoc IMetaRegistry
-    function getBondCurveWeight(
-        uint256 curveId
-    ) external view returns (uint256 weight) {
+    function getBondCurveWeight(uint256 curveId) external view returns (uint256 weight) {
         weight = _storage().bondCurveWeight[curveId];
     }
 
     /// @inheritdoc IMetaRegistry
-    function setBondCurveWeight(
-        uint256 curveId,
-        uint256 weight
-    ) external onlyRole(SET_BOND_CURVE_WEIGHT_ROLE) {
+    function setBondCurveWeight(uint256 curveId, uint256 weight) external onlyRole(SET_BOND_CURVE_WEIGHT_ROLE) {
         MetaRegistryStorage storage $ = _storage();
         if ($.bondCurveWeight[curveId] == weight) {
             revert SameBondCurveWeight();
@@ -230,9 +198,7 @@ contract MetaRegistry is
 
     /// @inheritdoc IMetaRegistry
     function refreshOperatorWeight(uint256 nodeOperatorId) external {
-        uint256 groupId = _storage().groupIndex.groupIdByOperatorId[
-            nodeOperatorId
-        ];
+        uint256 groupId = _storage().groupIndex.groupIdByOperatorId[nodeOperatorId];
         if (groupId == NO_GROUP_ID) {
             return;
         }
@@ -241,9 +207,7 @@ contract MetaRegistry is
     }
 
     /// @inheritdoc IMetaRegistry
-    function getNodeOperatorWeight(
-        uint256 noId
-    ) external view returns (uint256 weight) {
+    function getNodeOperatorWeight(uint256 noId) external view returns (uint256 weight) {
         MetaRegistryStorage storage $ = _storage();
         uint256 groupId = $.groupIndex.groupIdByOperatorId[noId];
         // If Node Operator is not in any group, it has no weight.
@@ -270,9 +234,7 @@ contract MetaRegistry is
             return (0, 0);
         }
 
-        uint256 totalExternalStake = _totalExternalStake(
-            $.groups[groupId].externalOperators
-        );
+        uint256 totalExternalStake = _totalExternalStake($.groups[groupId].externalOperators);
         if (totalExternalStake == 0) {
             return (weight, 0);
         }
@@ -293,9 +255,7 @@ contract MetaRegistry is
         operatorWeights = new uint256[](count);
 
         for (uint256 i; i < count; ++i) {
-            operatorWeights[i] = $.effectiveWeightCache.operatorEffectiveWeight[
-                nodeOperatorIds[i]
-            ];
+            operatorWeights[i] = $.effectiveWeightCache.operatorEffectiveWeight[nodeOperatorIds[i]];
         }
     }
 
@@ -313,10 +273,7 @@ contract MetaRegistry is
         emit OperatorGroupCreated(groupId, groupInfo);
     }
 
-    function _updateGroup(
-        uint256 groupId,
-        OperatorGroup calldata groupInfo
-    ) internal {
+    function _updateGroup(uint256 groupId, OperatorGroup calldata groupInfo) internal {
         _resetGroup(groupId);
 
         if (groupInfo.subNodeOperators.length == 0) {
@@ -348,19 +305,14 @@ contract MetaRegistry is
         }
 
         for (uint256 i; i < group.externalOperators.length; ++i) {
-            delete $.groupIndex.groupIdByExternalKey[
-                group.externalOperators[i].uniqueKey()
-            ];
+            delete $.groupIndex.groupIdByExternalKey[group.externalOperators[i].uniqueKey()];
         }
 
         delete group.subNodeOperatorIds;
         delete group.externalOperators;
     }
 
-    function _storeSubOperators(
-        uint256 groupId,
-        SubNodeOperator[] calldata subNodeOperators
-    ) internal {
+    function _storeSubOperators(uint256 groupId, SubNodeOperator[] calldata subNodeOperators) internal {
         MetaRegistryStorage storage $ = _storage();
         CachedOperatorGroup storage group = $.groups[groupId];
 
@@ -387,15 +339,10 @@ contract MetaRegistry is
 
         if (shareSum != MAX_BP) revert InvalidSubNodeOperatorShares();
 
-        $.effectiveWeightCache.groupEffectiveWeightSum[
-            groupId
-        ] = effectiveWeightSum;
+        $.effectiveWeightCache.groupEffectiveWeightSum[groupId] = effectiveWeightSum;
     }
 
-    function _storeExternalOperators(
-        uint256 groupId,
-        ExternalOperator[] calldata externalOperators
-    ) internal {
+    function _storeExternalOperators(uint256 groupId, ExternalOperator[] calldata externalOperators) internal {
         MetaRegistryStorage storage $ = _storage();
         CachedOperatorGroup storage group = $.groups[groupId];
 
@@ -433,52 +380,31 @@ contract MetaRegistry is
         }
     }
 
-    function _getLatestEffectiveWeight(
-        uint256 nodeOperatorId,
-        uint256 share
-    ) internal view returns (uint256) {
+    function _getLatestEffectiveWeight(uint256 nodeOperatorId, uint256 share) internal view returns (uint256) {
         uint256 baseWeight = _getOperatorBaseWeight(nodeOperatorId);
         if (baseWeight == 0 || share == 0) return 0;
         return Math.mulDiv(baseWeight, share, MAX_BP);
     }
 
-    function _getOperatorBaseWeight(
-        uint256 nodeOperatorId
-    ) internal view returns (uint256) {
-        return
-            _storage().bondCurveWeight[
-                ACCOUNTING.getBondCurveId(nodeOperatorId)
-            ];
+    function _getOperatorBaseWeight(uint256 nodeOperatorId) internal view returns (uint256) {
+        return _storage().bondCurveWeight[ACCOUNTING.getBondCurveId(nodeOperatorId)];
     }
 
-    function _setEffectiveWeight(
-        uint256 nodeOperatorId,
-        uint256 newWeight
-    ) internal returns (uint256 oldWeight) {
+    function _setEffectiveWeight(uint256 nodeOperatorId, uint256 newWeight) internal returns (uint256 oldWeight) {
         MetaRegistryStorage storage $ = _storage();
-        oldWeight = $.effectiveWeightCache.operatorEffectiveWeight[
-            nodeOperatorId
-        ];
+        oldWeight = $.effectiveWeightCache.operatorEffectiveWeight[nodeOperatorId];
 
         if (oldWeight == newWeight) {
             return oldWeight;
         }
 
-        $.effectiveWeightCache.operatorEffectiveWeight[
-            nodeOperatorId
-        ] = newWeight;
-        emit NodeOperatorEffectiveWeightChanged(
-            nodeOperatorId,
-            oldWeight,
-            newWeight
-        );
+        $.effectiveWeightCache.operatorEffectiveWeight[nodeOperatorId] = newWeight;
+        emit NodeOperatorEffectiveWeightChanged(nodeOperatorId, oldWeight, newWeight);
 
         MODULE.onNodeOperatorWeightChange(nodeOperatorId, newWeight);
     }
 
-    function _checkExternalOperatorExistsTypeNOR(
-        ExternalOperator memory op
-    ) internal {
+    function _checkExternalOperatorExistsTypeNOR(ExternalOperator memory op) internal {
         (uint8 moduleId, uint64 noId) = op.unpackEntryTypeNOR();
         address module = _getOrCacheModuleAddress(moduleId);
         _onlyExistingOperator(module, noId);
@@ -486,47 +412,32 @@ contract MetaRegistry is
 
     /// @dev Returns the module address for `moduleId`, resolving from
     ///      STAKING_ROUTER on cache miss.
-    function _getOrCacheModuleAddress(
-        uint8 moduleId
-    ) internal returns (address addr) {
+    function _getOrCacheModuleAddress(uint8 moduleId) internal returns (address addr) {
         addr = _storage().moduleAddressCache[moduleId];
         if (addr == address(0)) {
-            addr = STAKING_ROUTER
-                .getStakingModule(moduleId)
-                .stakingModuleAddress;
+            addr = STAKING_ROUTER.getStakingModule(moduleId).stakingModuleAddress;
             _storage().moduleAddressCache[moduleId] = addr;
         }
     }
 
     /// @dev Returns the cached module address. Reverts if the address was
     ///      never resolved via `_getOrCacheModuleAddress`.
-    function _getCachedModuleAddress(
-        uint8 moduleId
-    ) internal view returns (address addr) {
+    function _getCachedModuleAddress(uint8 moduleId) internal view returns (address addr) {
         addr = _storage().moduleAddressCache[moduleId];
         if (addr == address(0)) revert ModuleAddressNotCached();
     }
 
-    function _onlyExistingOperator(
-        address module,
-        uint256 nodeOperatorId
-    ) internal view {
+    function _onlyExistingOperator(address module, uint256 nodeOperatorId) internal view {
         if (!_nodeOperatorExists(module, nodeOperatorId)) {
             revert NodeOperatorDoesNotExist();
         }
     }
 
-    function _nodeOperatorExists(
-        address module,
-        uint256 nodeOperatorId
-    ) internal view returns (bool) {
+    function _nodeOperatorExists(address module, uint256 nodeOperatorId) internal view returns (bool) {
         return nodeOperatorId < IStakingModule(module).getNodeOperatorsCount();
     }
 
-    function _nodeOperatorOwner(
-        address module,
-        uint256 nodeOperatorId
-    ) internal view returns (address) {
+    function _nodeOperatorOwner(address module, uint256 nodeOperatorId) internal view returns (address) {
         return IBaseModule(module).getNodeOperatorOwner(nodeOperatorId);
     }
 
@@ -543,26 +454,15 @@ contract MetaRegistry is
         }
     }
 
-    function _getOperatorExternalStakeTypeNOR(
-        ExternalOperator memory op
-    ) internal view returns (uint256 stake) {
+    function _getOperatorExternalStakeTypeNOR(ExternalOperator memory op) internal view returns (uint256 stake) {
         (uint8 moduleId, uint64 noId) = op.unpackEntryTypeNOR();
 
         // NOTE: The module address is expected to be cached during _storeExternalOperators.
         address module = _getCachedModuleAddress(moduleId);
 
-        (
-            ,
-            ,
-            ,
-            ,
-            uint64 totalExitedValidators,
-            ,
-            uint64 totalDepositedValidators
-        ) = INodeOperatorsRegistry(module).getNodeOperator(noId, false);
-        stake =
-            (totalDepositedValidators - totalExitedValidators) *
-            EXTERNAL_STAKE_PER_VALIDATOR;
+        (, , , , uint64 totalExitedValidators, , uint64 totalDepositedValidators) = INodeOperatorsRegistry(module)
+            .getNodeOperator(noId, false);
+        stake = (totalDepositedValidators - totalExitedValidators) * EXTERNAL_STAKE_PER_VALIDATOR;
     }
 
     function _storage() internal pure returns (MetaRegistryStorage storage $) {

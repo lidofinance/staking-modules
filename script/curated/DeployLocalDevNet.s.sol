@@ -11,9 +11,7 @@ contract DeployLocalDevNet is DeployBase {
         // Lido addresses
         config.lidoLocatorAddress = vm.envAddress("CSM_LOCATOR_ADDRESS");
         config.aragonAgent = vm.envAddress("CSM_ARAGON_AGENT_ADDRESS");
-        config.easyTrackEVMScriptExecutor = vm.envAddress(
-            "EVM_SCRIPT_EXECUTOR_ADDRESS"
-        );
+        config.easyTrackEVMScriptExecutor = vm.envAddress("EVM_SCRIPT_EXECUTOR_ADDRESS");
         config.proxyAdmin = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
         // Oracle
@@ -29,20 +27,13 @@ contract DeployLocalDevNet is DeployBase {
         config.oracleMembers[2] = vm.envAddress("CSM_ORACLE_3_ADDRESS");
         config.hashConsensusQuorum = 2;
         // Verifier
-        config.slotsPerHistoricalRoot = vm.envOr(
-            "DEVNET_SLOTS_PER_HISTORICAL_ROOT",
-            uint256(8192)
-        );
+        config.slotsPerHistoricalRoot = vm.envOr("DEVNET_SLOTS_PER_HISTORICAL_ROOT", uint256(8192));
         config.gIFirstWithdrawal = GIndices.FIRST_WITHDRAWAL_ELECTRA;
         config.gIFirstValidator = GIndices.FIRST_VALIDATOR_ELECTRA;
         config.gIFirstHistoricalSummary = GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA; // prettier-ignore
         config.gIFirstBlockRootInSummary = GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA; // prettier-ignore
-        config.verifierFirstSupportedSlot =
-            vm.envUint("DEVNET_ELECTRA_EPOCH") *
-            config.slotsPerEpoch;
-        config.capellaSlot =
-            vm.envUint("DEVNET_CAPELLA_EPOCH") *
-            config.slotsPerEpoch;
+        config.verifierFirstSupportedSlot = vm.envUint("DEVNET_ELECTRA_EPOCH") * config.slotsPerEpoch;
+        config.capellaSlot = vm.envUint("DEVNET_CAPELLA_EPOCH") * config.slotsPerEpoch;
 
         // Accounting
         // 2.4 -> 1.3
@@ -52,18 +43,12 @@ contract DeployLocalDevNet is DeployBase {
         config.minBondLockPeriod = 1 days;
         config.maxBondLockPeriod = 7 days;
         config.bondLockPeriod = 1 days;
-        config.setResetBondCurveAddress = vm.envAddress(
-            "CSM_FIRST_ADMIN_ADDRESS"
-        ); // Dev team EOA
-        config.chargePenaltyRecipient = vm.envAddress(
-            "CSM_FIRST_ADMIN_ADDRESS"
-        ); // Dev team EOA
+        config.setResetBondCurveAddress = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
+        config.chargePenaltyRecipient = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
         // Module
         config.stakingModuleId = vm.envUint("CSM_STAKING_MODULE_ID");
         config.moduleType = "curated-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
-        config.generalDelayedPenaltyReporter = vm.envAddress(
-            "CSM_FIRST_ADMIN_ADDRESS"
-        ); // Dev team EOA
+        config.generalDelayedPenaltyReporter = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0;
@@ -91,27 +76,15 @@ contract DeployLocalDevNet is DeployBase {
             CuratedGateConfig storage primaryGate = config.curatedGates[0];
             primaryGate.bondCurve.push([1, 1 ether]); // TODO: adjust curve
             primaryGate.bondCurve.push([2, 1 ether]); // TODO: adjust curve
-            primaryGate.treeRoot = vm.envOr(
-                "CURATED_GATE_TREE_ROOT",
-                bytes32(uint256(0xdeadbeef))
-            ); // TODO: replace with generated root
-            primaryGate.treeCid = vm.envOr(
-                "CURATED_GATE_TREE_CID",
-                string("TODO: dev-tree-cid")
-            );
+            primaryGate.treeRoot = vm.envOr("CURATED_GATE_TREE_ROOT", bytes32(uint256(0xdeadbeef))); // TODO: replace with generated root
+            primaryGate.treeCid = vm.envOr("CURATED_GATE_TREE_CID", string("TODO: dev-tree-cid"));
 
-            primaryGate.params.keyRemovalCharge = vm.envOr(
-                "CURATED_GATE_KEY_REMOVAL_CHARGE",
-                uint256(0.01 ether)
-            );
+            primaryGate.params.keyRemovalCharge = vm.envOr("CURATED_GATE_KEY_REMOVAL_CHARGE", uint256(0.01 ether));
             primaryGate.params.generalDelayedPenaltyAdditionalFine = vm.envOr(
                 "CURATED_GATE_GENERAL_DELAYED_PENALTY_FINE",
                 uint256(0.05 ether)
             );
-            primaryGate.params.keysLimit = vm.envOr(
-                "CURATED_GATE_KEYS_LIMIT",
-                uint256(type(uint248).max)
-            );
+            primaryGate.params.keysLimit = vm.envOr("CURATED_GATE_KEYS_LIMIT", uint256(type(uint248).max));
             primaryGate.params.avgPerfLeewayData.push([1, 500]); // TODO
             primaryGate.params.rewardShareData.push([1, 10000]); // TODO
             primaryGate.params.rewardShareData.push([17, 5834]); // TODO
@@ -134,10 +107,7 @@ contract DeployLocalDevNet is DeployBase {
         config.sealDuration = 0;
         config.sealExpiryTimestamp = 0;
 
-        config.secondAdminAddress = vm.envOr(
-            "CSM_SECOND_ADMIN_ADDRESS",
-            address(0)
-        );
+        config.secondAdminAddress = vm.envOr("CSM_SECOND_ADMIN_ADDRESS", address(0));
 
         _setUp();
     }

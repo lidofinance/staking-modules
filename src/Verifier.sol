@@ -37,8 +37,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
     bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
 
     // See `BEACON_ROOTS_ADDRESS` constant in the EIP-4788.
-    address public constant BEACON_ROOTS =
-        0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02;
+    address public constant BEACON_ROOTS = 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02;
 
     uint64 public immutable SLOTS_PER_EPOCH;
 
@@ -149,23 +148,17 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         GI_FIRST_VALIDATOR_PREV = gindices.gIFirstValidatorPrev;
         GI_FIRST_VALIDATOR_CURR = gindices.gIFirstValidatorCurr;
 
-        GI_FIRST_HISTORICAL_SUMMARY_PREV = gindices
-            .gIFirstHistoricalSummaryPrev;
-        GI_FIRST_HISTORICAL_SUMMARY_CURR = gindices
-            .gIFirstHistoricalSummaryCurr;
+        GI_FIRST_HISTORICAL_SUMMARY_PREV = gindices.gIFirstHistoricalSummaryPrev;
+        GI_FIRST_HISTORICAL_SUMMARY_CURR = gindices.gIFirstHistoricalSummaryCurr;
 
-        GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV = gindices
-            .gIFirstBlockRootInSummaryPrev;
-        GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR = gindices
-            .gIFirstBlockRootInSummaryCurr;
+        GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV = gindices.gIFirstBlockRootInSummaryPrev;
+        GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR = gindices.gIFirstBlockRootInSummaryCurr;
 
         GI_FIRST_BALANCES_NODE_PREV = gindices.gIFirstBalanceNodePrev;
         GI_FIRST_BALANCES_NODE_CURR = gindices.gIFirstBalanceNodeCurr;
 
-        GI_FIRST_PENDING_CONSOLIDATION_PREV = gindices
-            .gIFirstPendingConsolidationPrev;
-        GI_FIRST_PENDING_CONSOLIDATION_CURR = gindices
-            .gIFirstPendingConsolidationCurr;
+        GI_FIRST_PENDING_CONSOLIDATION_PREV = gindices.gIFirstPendingConsolidationPrev;
+        GI_FIRST_PENDING_CONSOLIDATION_CURR = gindices.gIFirstPendingConsolidationCurr;
 
         FIRST_SUPPORTED_SLOT = firstSupportedSlot;
         PIVOT_SLOT = pivotSlot;
@@ -185,17 +178,13 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
     }
 
     /// @inheritdoc IVerifier
-    function processSlashedProof(
-        ProcessSlashedInput calldata data
-    ) external whenResumed {
+    function processSlashedProof(ProcessSlashedInput calldata data) external whenResumed {
         if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.recentBlock.header.slot);
         }
 
         {
-            bytes32 trustedHeaderRoot = _getParentBlockRoot(
-                data.recentBlock.rootsTimestamp
-            );
+            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.recentBlock.rootsTimestamp);
             if (trustedHeaderRoot != data.recentBlock.header.hashTreeRoot()) {
                 revert InvalidBlockHeader();
             }
@@ -206,11 +195,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         }
 
         {
-            bytes memory pubkey = MODULE.getSigningKeys(
-                data.validator.nodeOperatorId,
-                data.validator.keyIndex,
-                1
-            );
+            bytes memory pubkey = MODULE.getSigningKeys(data.validator.nodeOperatorId, data.validator.keyIndex, 1);
 
             if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) {
                 revert InvalidPublicKey();
@@ -221,43 +206,27 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
             proof: data.validator.proof,
             root: data.recentBlock.header.stateRoot,
             leaf: data.validator.object.hashTreeRoot(),
-            gI: _getValidatorGI(
-                data.validator.index,
-                data.recentBlock.header.slot
-            )
+            gI: _getValidatorGI(data.validator.index, data.recentBlock.header.slot)
         });
 
-        MODULE.onValidatorSlashed(
-            data.validator.nodeOperatorId,
-            data.validator.keyIndex
-        );
+        MODULE.onValidatorSlashed(data.validator.nodeOperatorId, data.validator.keyIndex);
     }
 
     /// @inheritdoc IVerifier
-    function processWithdrawalProof(
-        ProcessWithdrawalInput calldata data
-    ) external whenResumed {
+    function processWithdrawalProof(ProcessWithdrawalInput calldata data) external whenResumed {
         if (data.withdrawalBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.withdrawalBlock.header.slot);
         }
 
         {
-            bytes32 trustedHeaderRoot = _getParentBlockRoot(
-                data.withdrawalBlock.rootsTimestamp
-            );
-            if (
-                trustedHeaderRoot != data.withdrawalBlock.header.hashTreeRoot()
-            ) {
+            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.withdrawalBlock.rootsTimestamp);
+            if (trustedHeaderRoot != data.withdrawalBlock.header.hashTreeRoot()) {
                 revert InvalidBlockHeader();
             }
         }
 
         {
-            bytes memory pubkey = MODULE.getSigningKeys(
-                data.validator.nodeOperatorId,
-                data.validator.keyIndex,
-                1
-            );
+            bytes memory pubkey = MODULE.getSigningKeys(data.validator.nodeOperatorId, data.validator.keyIndex, 1);
 
             if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) {
                 revert InvalidPublicKey();
@@ -282,9 +251,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
     }
 
     /// @inheritdoc IVerifier
-    function processHistoricalWithdrawalProof(
-        ProcessHistoricalWithdrawalInput calldata data
-    ) external whenResumed {
+    function processHistoricalWithdrawalProof(ProcessHistoricalWithdrawalInput calldata data) external whenResumed {
         if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.recentBlock.header.slot);
         }
@@ -294,9 +261,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         }
 
         {
-            bytes32 trustedHeaderRoot = _getParentBlockRoot(
-                data.recentBlock.rootsTimestamp
-            );
+            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.recentBlock.rootsTimestamp);
             bytes32 headerRoot = data.recentBlock.header.hashTreeRoot();
             if (trustedHeaderRoot != headerRoot) {
                 revert InvalidBlockHeader();
@@ -304,11 +269,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         }
 
         {
-            bytes memory pubkey = MODULE.getSigningKeys(
-                data.validator.nodeOperatorId,
-                data.validator.keyIndex,
-                1
-            );
+            bytes memory pubkey = MODULE.getSigningKeys(data.validator.nodeOperatorId, data.validator.keyIndex, 1);
 
             if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) {
                 revert InvalidPublicKey();
@@ -319,10 +280,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
             proof: data.withdrawalBlock.proof,
             root: data.recentBlock.header.stateRoot,
             leaf: data.withdrawalBlock.header.hashTreeRoot(),
-            gI: _getHistoricalBlockRootGI(
-                data.recentBlock.header.slot,
-                data.withdrawalBlock.header.slot
-            )
+            gI: _getHistoricalBlockRootGI(data.recentBlock.header.slot, data.withdrawalBlock.header.slot)
         });
 
         uint256 withdrawalAmount = _processWithdrawalProof(
@@ -343,9 +301,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
     }
 
     /// @inheritdoc IVerifier
-    function processConsolidation(
-        ProcessConsolidationInput calldata data
-    ) external whenResumed {
+    function processConsolidation(ProcessConsolidationInput calldata data) external whenResumed {
         if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.recentBlock.header.slot);
         }
@@ -359,21 +315,14 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         }
 
         {
-            bytes memory pubkey = MODULE.getSigningKeys(
-                data.validator.nodeOperatorId,
-                data.validator.keyIndex,
-                1
-            );
+            bytes memory pubkey = MODULE.getSigningKeys(data.validator.nodeOperatorId, data.validator.keyIndex, 1);
 
             if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) {
                 revert InvalidPublicKey();
             }
         }
 
-        if (
-            _computeEpochAtSlot(data.recentBlock.header.slot) <
-            data.validator.object.withdrawableEpoch
-        ) {
+        if (_computeEpochAtSlot(data.recentBlock.header.slot) < data.validator.object.withdrawableEpoch) {
             revert ValidatorIsNotWithdrawable();
         }
 
@@ -383,9 +332,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
 
         // Verify recent block's header.
         {
-            bytes32 trustedHeaderRoot = _getParentBlockRoot(
-                data.recentBlock.rootsTimestamp
-            );
+            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.recentBlock.rootsTimestamp);
             bytes32 headerRoot = data.recentBlock.header.hashTreeRoot();
             if (trustedHeaderRoot != headerRoot) {
                 revert InvalidBlockHeader();
@@ -397,10 +344,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
             proof: data.consolidationBlock.proof,
             root: data.recentBlock.header.stateRoot,
             leaf: data.consolidationBlock.header.hashTreeRoot(),
-            gI: _getHistoricalBlockRootGI(
-                data.recentBlock.header.slot,
-                data.consolidationBlock.header.slot
-            )
+            gI: _getHistoricalBlockRootGI(data.recentBlock.header.slot, data.consolidationBlock.header.slot)
         });
 
         // Verify PendingConsolidation object against the consolidation block.
@@ -408,10 +352,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
             proof: data.consolidation.proof,
             root: data.consolidationBlock.header.stateRoot,
             leaf: data.consolidation.object.hashTreeRoot(),
-            gI: _getPendingConsolidationGI(
-                data.consolidation.offset,
-                data.consolidationBlock.header.slot
-            )
+            gI: _getPendingConsolidationGI(data.consolidation.offset, data.consolidationBlock.header.slot)
         });
 
         // Verify Validator object against the recent block.
@@ -419,10 +360,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
             proof: data.validator.proof,
             root: data.recentBlock.header.stateRoot,
             leaf: data.validator.object.hashTreeRoot(),
-            gI: _getValidatorGI(
-                data.validator.index,
-                data.recentBlock.header.slot
-            )
+            gI: _getValidatorGI(data.validator.index, data.recentBlock.header.slot)
         });
 
         // Verify validator's balance against the consolidation block.
@@ -451,29 +389,18 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         uint256 keyIndex,
         uint256 addedBalanceWei
     ) external whenResumed {
-        MODULE.increaseKeyAddedBalance(
-            nodeOperatorId,
-            keyIndex,
-            addedBalanceWei
-        );
+        MODULE.increaseKeyAddedBalance(nodeOperatorId, keyIndex, addedBalanceWei);
         // TODO implement
     }
 
-    function _reportSingleValidator(
-        WithdrawnValidatorInfo memory info
-    ) internal {
-        WithdrawnValidatorInfo[]
-            memory validatorExits = new WithdrawnValidatorInfo[](1);
+    function _reportSingleValidator(WithdrawnValidatorInfo memory info) internal {
+        WithdrawnValidatorInfo[] memory validatorExits = new WithdrawnValidatorInfo[](1);
         validatorExits[0] = info;
         MODULE.reportRegularWithdrawnValidators(validatorExits);
     }
 
-    function _getParentBlockRoot(
-        uint64 blockTimestamp
-    ) internal view returns (bytes32) {
-        (bool success, bytes memory data) = BEACON_ROOTS.staticcall(
-            abi.encode(blockTimestamp)
-        );
+    function _getParentBlockRoot(uint64 blockTimestamp) internal view returns (bytes32) {
+        (bool success, bytes memory data) = BEACON_ROOTS.staticcall(abi.encode(blockTimestamp));
 
         if (!success || data.length == 0) {
             revert RootNotFound();
@@ -488,10 +415,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         ValidatorWitness calldata validator,
         BeaconBlockHeader calldata header
     ) internal view returns (uint256 withdrawalAmount) {
-        if (
-            address(uint160(uint256(validator.object.withdrawalCredentials))) !=
-            WITHDRAWAL_ADDRESS
-        ) {
+        if (address(uint160(uint256(validator.object.withdrawalCredentials))) != WITHDRAWAL_ADDRESS) {
             revert InvalidWithdrawalAddress();
         }
         if (withdrawal.object.withdrawalAddress != WITHDRAWAL_ADDRESS) {
@@ -504,10 +428,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
             revert ValidatorIsSlashed();
         }
 
-        if (
-            _computeEpochAtSlot(header.slot) <
-            validator.object.withdrawableEpoch
-        ) {
+        if (_computeEpochAtSlot(header.slot) < validator.object.withdrawableEpoch) {
             revert ValidatorIsNotWithdrawable();
         }
 
@@ -567,18 +488,9 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
     ) internal view returns (uint64 balanceGwei) {
         GIndex gI;
 
-        (gI, balanceGwei) = _getValidatorBalanceNodeInfo(
-            balanceNode,
-            validatorIndex,
-            stateSlot
-        );
+        (gI, balanceGwei) = _getValidatorBalanceNodeInfo(balanceNode, validatorIndex, stateSlot);
 
-        SSZ.verifyProof({
-            proof: proof,
-            root: stateRoot,
-            leaf: balanceNode,
-            gI: gI
-        });
+        SSZ.verifyProof({ proof: proof, root: stateRoot, leaf: balanceNode, gI: gI });
     }
 
     /// @return gI Generalized index of the node for the `validatorIndex` and `stateSlot`.
@@ -603,64 +515,37 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         balanceGwei = uint64(uint256(balanceNode));
     }
 
-    function _getValidatorGI(
-        uint256 offset,
-        Slot stateSlot
-    ) internal view returns (GIndex) {
-        GIndex gI = stateSlot < PIVOT_SLOT
-            ? GI_FIRST_VALIDATOR_PREV
-            : GI_FIRST_VALIDATOR_CURR;
+    function _getValidatorGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
+        GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_VALIDATOR_PREV : GI_FIRST_VALIDATOR_CURR;
         return gI.shr(offset);
     }
 
-    function _getWithdrawalGI(
-        uint256 offset,
-        Slot stateSlot
-    ) internal view returns (GIndex) {
-        GIndex gI = stateSlot < PIVOT_SLOT
-            ? GI_FIRST_WITHDRAWAL_PREV
-            : GI_FIRST_WITHDRAWAL_CURR;
+    function _getWithdrawalGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
+        GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_WITHDRAWAL_PREV : GI_FIRST_WITHDRAWAL_CURR;
         return gI.shr(offset);
     }
 
-    function _getValidatorBalanceGI(
-        uint256 offset,
-        Slot stateSlot
-    ) internal view returns (GIndex) {
-        GIndex gI = stateSlot < PIVOT_SLOT
-            ? GI_FIRST_BALANCES_NODE_PREV
-            : GI_FIRST_BALANCES_NODE_CURR;
+    function _getValidatorBalanceGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
+        GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_BALANCES_NODE_PREV : GI_FIRST_BALANCES_NODE_CURR;
         return gI.shr(offset);
     }
 
-    function _getPendingConsolidationGI(
-        uint256 offset,
-        Slot stateSlot
-    ) internal view returns (GIndex) {
-        GIndex gI = stateSlot < PIVOT_SLOT
-            ? GI_FIRST_PENDING_CONSOLIDATION_PREV
-            : GI_FIRST_PENDING_CONSOLIDATION_CURR;
+    function _getPendingConsolidationGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
+        GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_PENDING_CONSOLIDATION_PREV : GI_FIRST_PENDING_CONSOLIDATION_CURR;
         return gI.shr(offset);
     }
 
-    function _getHistoricalBlockRootGI(
-        Slot recentSlot,
-        Slot targetSlot
-    ) internal view returns (GIndex gI) {
+    function _getHistoricalBlockRootGI(Slot recentSlot, Slot targetSlot) internal view returns (GIndex gI) {
         uint64 targetSlotShifted = targetSlot.unwrap() - CAPELLA_SLOT.unwrap();
         uint64 summaryIndex = targetSlotShifted / SLOTS_PER_HISTORICAL_ROOT;
         uint64 rootIndex = targetSlot.unwrap() % SLOTS_PER_HISTORICAL_ROOT;
 
-        Slot summaryCreatedAtSlot = Slot.wrap(
-            targetSlot.unwrap() - rootIndex + SLOTS_PER_HISTORICAL_ROOT
-        );
+        Slot summaryCreatedAtSlot = Slot.wrap(targetSlot.unwrap() - rootIndex + SLOTS_PER_HISTORICAL_ROOT);
         if (summaryCreatedAtSlot > recentSlot) {
             revert HistoricalSummaryDoesNotExist();
         }
 
-        gI = recentSlot < PIVOT_SLOT
-            ? GI_FIRST_HISTORICAL_SUMMARY_PREV
-            : GI_FIRST_HISTORICAL_SUMMARY_CURR;
+        gI = recentSlot < PIVOT_SLOT ? GI_FIRST_HISTORICAL_SUMMARY_PREV : GI_FIRST_HISTORICAL_SUMMARY_CURR;
 
         gI = gI.shr(summaryIndex); // historicalSummaries[summaryIndex]
         gI = gI.concat(

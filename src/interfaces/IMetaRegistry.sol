@@ -29,25 +29,12 @@ interface IMetaRegistry {
         ExternalOperator[] externalOperators;
     }
 
-    event OperatorGroupCreated(
-        uint256 indexed groupId,
-        OperatorGroup groupInfo
-    );
-    event OperatorGroupUpdated(
-        uint256 indexed groupId,
-        OperatorGroup groupInfo
-    );
+    event OperatorGroupCreated(uint256 indexed groupId, OperatorGroup groupInfo);
+    event OperatorGroupUpdated(uint256 indexed groupId, OperatorGroup groupInfo);
     event OperatorGroupCleared(uint256 indexed groupId);
     event BondCurveWeightSet(uint256 indexed curveId, uint256 weight);
-    event OperatorMetadataSet(
-        uint256 indexed nodeOperatorId,
-        OperatorMetadata metadata
-    );
-    event NodeOperatorEffectiveWeightChanged(
-        uint256 indexed nodeOperatorId,
-        uint256 oldWeight,
-        uint256 newWeight
-    );
+    event OperatorMetadataSet(uint256 indexed nodeOperatorId, OperatorMetadata metadata);
+    event NodeOperatorEffectiveWeightChanged(uint256 indexed nodeOperatorId, uint256 oldWeight, uint256 newWeight);
 
     error ZeroModuleAddress();
     error ZeroAccountingAddress();
@@ -92,10 +79,7 @@ interface IMetaRegistry {
     /// @notice Set or update metadata for a node operator (callable by SET_OPERATOR_INFO_ROLE).
     /// @param nodeOperatorId Node operator ID.
     /// @param metadata Metadata payload to persist.
-    function setOperatorMetadataAsAdmin(
-        uint256 nodeOperatorId,
-        OperatorMetadata calldata metadata
-    ) external;
+    function setOperatorMetadataAsAdmin(uint256 nodeOperatorId, OperatorMetadata calldata metadata) external;
 
     /// @notice Set or update metadata by the node operator owner.
     /// @param nodeOperatorId Node operator ID.
@@ -111,25 +95,18 @@ interface IMetaRegistry {
     /// @notice Get metadata for a node operator.
     /// @param nodeOperatorId Node operator ID.
     /// @return metadata Stored metadata struct.
-    function getOperatorMetadata(
-        uint256 nodeOperatorId
-    ) external view returns (OperatorMetadata memory metadata);
+    function getOperatorMetadata(uint256 nodeOperatorId) external view returns (OperatorMetadata memory metadata);
 
     /// @notice Create a new operator group or update an existing one.
     /// @param groupId Group ID to update, or NO_GROUP_ID to create.
     /// @param groupInfo Group definition.
     /// @dev Creating is allowed only when groupId == NO_GROUP_ID.
-    function createOrUpdateOperatorGroup(
-        uint256 groupId,
-        OperatorGroup calldata groupInfo
-    ) external;
+    function createOrUpdateOperatorGroup(uint256 groupId, OperatorGroup calldata groupInfo) external;
 
     /// @notice Fetch an operator group by ID.
     /// @param groupId Group ID to fetch.
     /// @return groupInfo Group definition.
-    function getOperatorGroup(
-        uint256 groupId
-    ) external view returns (OperatorGroup memory groupInfo);
+    function getOperatorGroup(uint256 groupId) external view returns (OperatorGroup memory groupInfo);
 
     /// @notice Returns total operator groups count.
     function getOperatorGroupsCount() external view returns (uint256 count);
@@ -137,23 +114,17 @@ interface IMetaRegistry {
     /// @notice Get Node Operator group ID (returns NO_GROUP_ID if the operator is not in any group).
     /// @param nodeOperatorId Node operator ID to query.
     /// @return operatorGroupId Group ID.
-    function getNodeOperatorGroupId(
-        uint256 nodeOperatorId
-    ) external view returns (uint256 operatorGroupId);
+    function getNodeOperatorGroupId(uint256 nodeOperatorId) external view returns (uint256 operatorGroupId);
 
     /// @notice Get External Operator group ID (returns NO_GROUP_ID if the operator is not in any group).
     /// @param op External operator.
     /// @return operatorGroupId Group ID.
-    function getExternalOperatorGroupId(
-        ExternalOperator calldata op
-    ) external view returns (uint256 operatorGroupId);
+    function getExternalOperatorGroupId(ExternalOperator calldata op) external view returns (uint256 operatorGroupId);
 
     /// @notice Returns base weight for the bond curve ID.
     /// @param curveId Bond curve ID.
     /// @return weight Base allocation weight.
-    function getBondCurveWeight(
-        uint256 curveId
-    ) external view returns (uint256 weight);
+    function getBondCurveWeight(uint256 curveId) external view returns (uint256 weight);
 
     /// @notice Set base weight for the bond curve ID (callable by SET_BOND_CURVE_WEIGHT_ROLE).
     /// @param curveId Bond curve ID.
@@ -164,9 +135,7 @@ interface IMetaRegistry {
     /// @param nodeOperatorId Node operator ID to query.
     /// @return weight Effective allocation weight.
     /// @dev Returns 0 if the operator is not in a group.
-    function getNodeOperatorWeight(
-        uint256 nodeOperatorId
-    ) external view returns (uint256 weight);
+    function getNodeOperatorWeight(uint256 nodeOperatorId) external view returns (uint256 weight);
 
     /// @notice Returns effective weight and external stake for the node operator.
     /// @param nodeOperatorId Node operator ID to query.

@@ -11,8 +11,7 @@ contract DeployMainnet is DeployBase {
         // Lido addresses
         config.lidoLocatorAddress = 0xC1d0b3DE6792Bf6b4b37EccdcC24e45978Cfd2Eb;
         config.aragonAgent = 0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c;
-        config
-            .easyTrackEVMScriptExecutor = 0xFE5986E06210aC1eCC1aDCafc0cc7f8D63B3F977;
+        config.easyTrackEVMScriptExecutor = 0xFE5986E06210aC1eCC1aDCafc0cc7f8D63B3F977;
         config.proxyAdmin = config.aragonAgent;
 
         // Oracle
@@ -56,18 +55,13 @@ contract DeployMainnet is DeployBase {
         config.minBondLockPeriod = 4 weeks;
         config.maxBondLockPeriod = 365 days;
         config.bondLockPeriod = 8 weeks;
-        config
-            .setResetBondCurveAddress = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
-        config
-            .chargePenaltyRecipient = 0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c; // locator.treasury()
+        config.setResetBondCurveAddress = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
+        config.chargePenaltyRecipient = 0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c; // locator.treasury()
 
         // Module
-        config.stakingModuleId = _nextStakingModuleId(
-            config.lidoLocatorAddress
-        );
+        config.stakingModuleId = _nextStakingModuleId(config.lidoLocatorAddress);
         config.moduleType = "community-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
-        config
-            .generalDelayedPenaltyReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
+        config.generalDelayedPenaltyReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
 
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0.02 ether;
@@ -89,21 +83,18 @@ contract DeployMainnet is DeployBase {
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
 
         // VettedGate
-        config
-            .identifiedCommunityStakersGateManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
+        config.identifiedCommunityStakersGateManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
         config.identifiedCommunityStakersGateCurveId = 2;
         config
             .identifiedCommunityStakersGateTreeRoot = 0x91545c42adde0f5d82e4c228f81449eab20349c1d31a8538e0468466f93495c5;
-        config
-            .identifiedCommunityStakersGateTreeCid = "bafkreido7ieacbe6nlhdivxfp2gd5kxovofngf6qdmahih4laihm675e2a";
+        config.identifiedCommunityStakersGateTreeCid = "bafkreido7ieacbe6nlhdivxfp2gd5kxovofngf6qdmahih4laihm675e2a";
         // 1.5 -> 1.3
         config.identifiedCommunityStakersGateBondCurve.push([1, 1.5 ether]);
         config.identifiedCommunityStakersGateBondCurve.push([2, 1.3 ether]);
 
         // Parameters for Identified Community Staker type
         config.identifiedCommunityStakersGateKeyRemovalCharge = 0.01 ether;
-        config
-            .identifiedCommunityStakersGateGeneralDelayedPenaltyAdditionalFine = 0.05 ether;
+        config.identifiedCommunityStakersGateGeneralDelayedPenaltyAdditionalFine = 0.05 ether;
         config.identifiedCommunityStakersGateKeysLimit = type(uint248).max;
         config.identifiedCommunityStakersGateAvgPerfLeewayData.push([1, 500]);
         config.identifiedCommunityStakersGateAvgPerfLeewayData.push([151, 300]);
@@ -113,15 +104,13 @@ contract DeployMainnet is DeployBase {
         config.identifiedCommunityStakersGateStrikesThreshold = 4;
         config.identifiedCommunityStakersGateQueuePriority = 0;
         config.identifiedCommunityStakersGateQueueMaxDeposits = 10;
-        config
-            .identifiedCommunityStakersGateBadPerformancePenalty = 0.172 ether;
+        config.identifiedCommunityStakersGateBadPerformancePenalty = 0.172 ether;
         config.identifiedCommunityStakersGateAttestationsWeight = 54;
         config.identifiedCommunityStakersGateBlocksWeight = 4;
         config.identifiedCommunityStakersGateSyncWeight = 2;
         config.identifiedCommunityStakersGateAllowedExitDelay = 5 days;
         config.identifiedCommunityStakersGateExitDelayFee = 0.05 ether;
-        config
-            .identifiedCommunityStakersGateMaxElWithdrawalRequestFee = 0.1 ether;
+        config.identifiedCommunityStakersGateMaxElWithdrawalRequestFee = 0.1 ether;
 
         // GateSeal
         config.gateSealFactory = 0x6C82877cAC5a7A739f16Ca0A89c0A328B8764A24;

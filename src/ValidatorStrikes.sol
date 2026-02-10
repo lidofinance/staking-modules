@@ -15,11 +15,7 @@ import { IEjector } from "./interfaces/IEjector.sol";
 import { IValidatorStrikes } from "./interfaces/IValidatorStrikes.sol";
 
 /// @author vgorkavenko
-contract ValidatorStrikes is
-    IValidatorStrikes,
-    Initializable,
-    AccessControlEnumerableUpgradeable
-{
+contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnumerableUpgradeable {
     address public immutable ORACLE;
     ICSModule public immutable MODULE;
     IAccounting public immutable ACCOUNTING;
@@ -39,12 +35,7 @@ contract ValidatorStrikes is
         _;
     }
 
-    constructor(
-        address module,
-        address oracle,
-        address exitPenalties,
-        address parametersRegistry
-    ) {
+    constructor(address module, address oracle, address exitPenalties, address parametersRegistry) {
         if (module == address(0)) {
             revert ZeroModuleAddress();
         }
@@ -82,17 +73,12 @@ contract ValidatorStrikes is
     }
 
     /// @inheritdoc IValidatorStrikes
-    function setEjector(
-        address _ejector
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setEjector(address _ejector) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setEjector(_ejector);
     }
 
     /// @inheritdoc IValidatorStrikes
-    function processOracleReport(
-        bytes32 _treeRoot,
-        string calldata _treeCid
-    ) external onlyOracle {
+    function processOracleReport(bytes32 _treeRoot, string calldata _treeCid) external onlyOracle {
         // @dev should be both empty or not empty
         bool isNewRootEmpty = _treeRoot == bytes32(0);
         bool isNewCidEmpty = bytes(_treeCid).length == 0;
@@ -110,8 +96,7 @@ contract ValidatorStrikes is
         }
 
         bool isSameRoot = _treeRoot == treeRoot;
-        bool isSameCid = keccak256(bytes(_treeCid)) ==
-            keccak256(bytes(treeCid));
+        bool isSameCid = keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid));
         if (isSameRoot != isSameCid) {
             revert InvalidReportData();
         }
@@ -147,29 +132,18 @@ contract ValidatorStrikes is
 
         bytes[] memory pubkeys = new bytes[](keyStrikesList.length);
         for (uint256 i; i < pubkeys.length; ++i) {
-            pubkeys[i] = MODULE.getSigningKeys(
-                keyStrikesList[i].nodeOperatorId,
-                keyStrikesList[i].keyIndex,
-                1
-            );
+            pubkeys[i] = MODULE.getSigningKeys(keyStrikesList[i].nodeOperatorId, keyStrikesList[i].keyIndex, 1);
         }
 
         if (!verifyProof(keyStrikesList, pubkeys, proof, proofFlags)) {
             revert InvalidProof();
         }
 
-        refundRecipient = refundRecipient == address(0)
-            ? msg.sender
-            : refundRecipient;
+        refundRecipient = refundRecipient == address(0) ? msg.sender : refundRecipient;
 
         uint256 valuePerKey = msg.value / keyStrikesList.length;
         for (uint256 i; i < keyStrikesList.length; ++i) {
-            _ejectByStrikes(
-                keyStrikesList[i],
-                pubkeys[i],
-                valuePerKey,
-                refundRecipient
-            );
+            _ejectByStrikes(keyStrikesList[i], pubkeys[i], valuePerKey, refundRecipient);
         }
     }
 
@@ -190,32 +164,12 @@ contract ValidatorStrikes is
             leaves[i] = hashLeaf(keyStrikesList[i], pubkeys[i]);
         }
 
-        return
-            MerkleProof.multiProofVerifyCalldata(
-                proof,
-                proofFlags,
-                treeRoot,
-                leaves
-            );
+        return MerkleProof.multiProofVerifyCalldata(proof, proofFlags, treeRoot, leaves);
     }
 
     /// @inheritdoc IValidatorStrikes
-    function hashLeaf(
-        KeyStrikes calldata keyStrikes,
-        bytes memory pubkey
-    ) public pure returns (bytes32) {
-        return
-            keccak256(
-                bytes.concat(
-                    keccak256(
-                        abi.encode(
-                            keyStrikes.nodeOperatorId,
-                            pubkey,
-                            keyStrikes.data
-                        )
-                    )
-                )
-            );
+    function hashLeaf(KeyStrikes calldata keyStrikes, bytes memory pubkey) public pure returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encode(keyStrikes.nodeOperatorId, pubkey, keyStrikes.data))));
     }
 
     function _setEjector(address _ejector) internal {
@@ -246,11 +200,7 @@ contract ValidatorStrikes is
 
         EXIT_PENALTIES.processStrikesReport(keyStrikes.nodeOperatorId, pubkey);
 
-        ejector.ejectBadPerformer{ value: value }(
-            keyStrikes.nodeOperatorId,
-            keyStrikes.keyIndex,
-            refundRecipient
-        );
+        ejector.ejectBadPerformer{ value: value }(keyStrikes.nodeOperatorId, keyStrikes.keyIndex, refundRecipient);
     }
 
     function _onlyOracle() internal view {

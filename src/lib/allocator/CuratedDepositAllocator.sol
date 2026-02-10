@@ -54,23 +54,12 @@ library CuratedDepositAllocator {
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 operatorsCount,
         uint256 depositsCount
-    )
-        external
-        view
-        returns (
-            uint256 allocated,
-            uint256[] memory operatorIds,
-            uint256[] memory allocations
-        )
-    {
+    ) external view returns (uint256 allocated, uint256[] memory operatorIds, uint256[] memory allocations) {
         if (depositsCount == 0) {
             return (0, new uint256[](0), new uint256[](0));
         }
 
-        DepositableOperatorsData memory data = _collectDepositableOperatorsData(
-            nodeOperators,
-            operatorsCount
-        );
+        DepositableOperatorsData memory data = _collectDepositableOperatorsData(nodeOperators, operatorsCount);
 
         uint256[] memory eligibleAllocations;
         (allocated, eligibleAllocations) = _computeAllocations({
@@ -79,11 +68,7 @@ library CuratedDepositAllocator {
             allocationAmount: depositsCount
         });
 
-        (operatorIds, allocations) = _compactAllocations(
-            data.operatorIds,
-            eligibleAllocations,
-            data.count
-        );
+        (operatorIds, allocations) = _compactAllocations(data.operatorIds, eligibleAllocations, data.count);
     }
 
     /// @notice Allocate top-up deposit amount across curated operators.
@@ -113,28 +98,19 @@ library CuratedDepositAllocator {
         uint256 operatorsCount,
         uint256 allocationAmount,
         uint256[] calldata operatorIds
-    )
-        external
-        view
-        returns (
-            uint256 allocated,
-            uint256[] memory allocatedOperatorIds,
-            uint256[] memory allocations
-        )
-    {
+    ) external view returns (uint256 allocated, uint256[] memory allocatedOperatorIds, uint256[] memory allocations) {
         if (allocationAmount == 0 || operatorIds.length == 0) {
             return (0, new uint256[](0), new uint256[](0));
         }
 
         // operatorsCount > 0 is guaranteed by the caller.
 
-        DepositableOperatorsData
-            memory data = _collectTopUpEligibleOperatorsData(
-                nodeOperators,
-                nodeOperatorBalances,
-                operatorsCount,
-                operatorIds
-            );
+        DepositableOperatorsData memory data = _collectTopUpEligibleOperatorsData(
+            nodeOperators,
+            nodeOperatorBalances,
+            operatorsCount,
+            operatorIds
+        );
         if (data.count == 0) {
             return (0, new uint256[](0), new uint256[](0));
         }
@@ -146,11 +122,7 @@ library CuratedDepositAllocator {
             allocationAmount: allocationAmount
         });
 
-        (allocatedOperatorIds, allocations) = _compactAllocations(
-            data.operatorIds,
-            eligibleAllocations,
-            data.count
-        );
+        (allocatedOperatorIds, allocations) = _compactAllocations(data.operatorIds, eligibleAllocations, data.count);
     }
 
     /// @dev Quantizes a value down to the nearest multiple of TOP_UP_STEP.
@@ -187,10 +159,11 @@ library CuratedDepositAllocator {
             );
         }
 
-        (
-            uint256[] memory allocUnits,
-            uint256 remainder
-        ) = DepositAllocatorGreedy._allocate(state, allocationAmount, step);
+        (uint256[] memory allocUnits, uint256 remainder) = DepositAllocatorGreedy._allocate(
+            state,
+            allocationAmount,
+            step
+        );
 
         allocated = allocationAmount - remainder;
         allocations = allocUnits;
@@ -200,11 +173,7 @@ library CuratedDepositAllocator {
         uint256[] memory operatorIds,
         uint256[] memory eligibleAllocations,
         uint256 count
-    )
-        internal
-        pure
-        returns (uint256[] memory compactIds, uint256[] memory allocations)
-    {
+    ) internal pure returns (uint256[] memory compactIds, uint256[] memory allocations) {
         compactIds = new uint256[](count);
         allocations = new uint256[](count);
         uint256 compactIndex;
@@ -234,8 +203,7 @@ library CuratedDepositAllocator {
         data.capacities = new uint256[](operatorsCount);
         data.operatorIds = new uint256[](operatorsCount);
 
-        IMetaRegistry metaRegistry = ICuratedModule(address(this))
-            .META_REGISTRY();
+        IMetaRegistry metaRegistry = ICuratedModule(address(this)).META_REGISTRY();
 
         uint256 eligibleCount;
         unchecked {
@@ -244,8 +212,7 @@ library CuratedDepositAllocator {
                 uint256 capacity = no.depositableValidatorsCount;
                 if (capacity == 0) continue;
 
-                (uint256 weight, uint256 externalStake) = metaRegistry
-                    .getNodeOperatorWeightAndExternalStake(i);
+                (uint256 weight, uint256 externalStake) = metaRegistry.getNodeOperatorWeightAndExternalStake(i);
                 if (weight == 0) continue;
 
                 // NOTE: To determine the count of validators a node operator would have in the module we calculate
@@ -253,9 +220,7 @@ library CuratedDepositAllocator {
                 // module. Since the CuratedModule supports 0x02 validators, the maximum value is MAX_EFFECTIVE_BALANCE.
                 uint256 current = no.totalDepositedKeys - no.totalWithdrawnKeys;
                 if (externalStake > 0) {
-                    current +=
-                        externalStake /
-                        WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE;
+                    current += externalStake / WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE;
                 }
 
                 data.sharesX96[eligibleCount] = weight;
@@ -343,8 +308,7 @@ library CuratedDepositAllocator {
         capacitiesByOperatorId = new uint256[](operatorsCount);
         currentStakeByOperatorId = new uint256[](operatorsCount);
 
-        IMetaRegistry metaRegistry = ICuratedModule(address(this))
-            .META_REGISTRY();
+        IMetaRegistry metaRegistry = ICuratedModule(address(this)).META_REGISTRY();
 
         // Build global share baseline across all eligible operators (non-zero weight + capacity).
         for (uint256 i; i < operatorsCount; ++i) {
@@ -353,8 +317,7 @@ library CuratedDepositAllocator {
             if (capacity == 0) continue;
             capacitiesByOperatorId[i] = capacity;
 
-            (uint256 weight, uint256 externalStake) = metaRegistry
-                .getNodeOperatorWeightAndExternalStake(i);
+            (uint256 weight, uint256 externalStake) = metaRegistry.getNodeOperatorWeightAndExternalStake(i);
             if (weight == 0) continue;
             weightsByOperatorId[i] = weight;
             weightSum += weight;
@@ -367,21 +330,15 @@ library CuratedDepositAllocator {
 
     /// @dev Maximum top-up capacity for an operator:
     ///      (active validators * 2048 ETH) - current balance, floored at zero.
-    function _topUpCapacity(
-        NodeOperator storage no,
-        uint256 balanceWei
-    ) internal view returns (uint256 capacity) {
+    function _topUpCapacity(NodeOperator storage no, uint256 balanceWei) internal view returns (uint256 capacity) {
         unchecked {
-            uint256 maxTotal = (no.totalDepositedKeys - no.totalWithdrawnKeys) *
-                MAX_EFFECTIVE_BALANCE;
+            uint256 maxTotal = (no.totalDepositedKeys - no.totalWithdrawnKeys) * MAX_EFFECTIVE_BALANCE;
             if (maxTotal > balanceWei) capacity = maxTotal - balanceWei;
         }
     }
 
     /// @dev Shrinks eligible arrays to the collected eligible count.
-    function _truncateDepositable(
-        DepositableOperatorsData memory data
-    ) internal pure {
+    function _truncateDepositable(DepositableOperatorsData memory data) internal pure {
         uint256 count = data.count;
         if (count == data.sharesX96.length) return;
         uint256[] memory sharesX96 = data.sharesX96;

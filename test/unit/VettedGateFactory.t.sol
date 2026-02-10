@@ -58,16 +58,9 @@ contract VettedGateFactoryTest is Test, Utilities {
         assertEq(gate.treeRoot(), root);
         assertEq(gate.treeCid(), cid);
 
-        AccessControlEnumerableUpgradeable gateAccess = AccessControlEnumerableUpgradeable(
-                instance
-            );
-        assertEq(
-            gateAccess.getRoleMemberCount(gateAccess.DEFAULT_ADMIN_ROLE()),
-            1
-        );
-        assertTrue(
-            gateAccess.hasRole(gateAccess.DEFAULT_ADMIN_ROLE(), address(this))
-        );
+        AccessControlEnumerableUpgradeable gateAccess = AccessControlEnumerableUpgradeable(instance);
+        assertEq(gateAccess.getRoleMemberCount(gateAccess.DEFAULT_ADMIN_ROLE()), 1);
+        assertTrue(gateAccess.hasRole(gateAccess.DEFAULT_ADMIN_ROLE(), address(this)));
 
         OssifiableProxy proxy = OssifiableProxy(payable(instance));
         assertEq(proxy.proxy__getAdmin(), address(this));

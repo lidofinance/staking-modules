@@ -50,52 +50,26 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
 
     function test_immutables() public view {
         assertEq(moduleImpl.getType(), deployParams.moduleType);
-        assertEq(
-            address(moduleImpl.LIDO_LOCATOR()),
-            deployParams.lidoLocatorAddress
-        );
-        assertEq(
-            address(moduleImpl.PARAMETERS_REGISTRY()),
-            address(parametersRegistry)
-        );
+        assertEq(address(moduleImpl.LIDO_LOCATOR()), deployParams.lidoLocatorAddress);
+        assertEq(address(moduleImpl.PARAMETERS_REGISTRY()), address(parametersRegistry));
         assertEq(address(moduleImpl.STETH()), address(lido));
         assertEq(address(moduleImpl.ACCOUNTING()), address(accounting));
         assertEq(address(moduleImpl.EXIT_PENALTIES()), address(exitPenalties));
-        assertEq(
-            address(moduleImpl.FEE_DISTRIBUTOR()),
-            address(feeDistributor)
-        );
+        assertEq(address(moduleImpl.FEE_DISTRIBUTOR()), address(feeDistributor));
     }
 
     function test_roles_onlyFull() public view {
-        assertTrue(
-            module.hasRole(
-                module.DEFAULT_ADMIN_ROLE(),
-                deployParams.aragonAgent
-            )
-        );
-        assertTrue(
-            module.getRoleMemberCount(module.DEFAULT_ADMIN_ROLE()) ==
-                adminsCount
-        );
+        assertTrue(module.hasRole(module.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
+        assertTrue(module.getRoleMemberCount(module.DEFAULT_ADMIN_ROLE()) == adminsCount);
 
-        assertTrue(
-            module.hasRole(
-                module.STAKING_ROUTER_ROLE(),
-                locator.stakingRouter()
-            )
-        );
+        assertTrue(module.hasRole(module.STAKING_ROUTER_ROLE(), locator.stakingRouter()));
         assertEq(module.getRoleMemberCount(module.STAKING_ROUTER_ROLE()), 1);
 
         assertTrue(module.hasRole(module.PAUSE_ROLE(), address(gateSeal)));
-        assertTrue(
-            module.hasRole(module.PAUSE_ROLE(), deployParams.resealManager)
-        );
+        assertTrue(module.hasRole(module.PAUSE_ROLE(), deployParams.resealManager));
         assertEq(module.getRoleMemberCount(module.PAUSE_ROLE()), 2);
 
-        assertTrue(
-            module.hasRole(module.RESUME_ROLE(), deployParams.resealManager)
-        );
+        assertTrue(module.hasRole(module.RESUME_ROLE(), deployParams.resealManager));
         assertEq(module.getRoleMemberCount(module.RESUME_ROLE()), 1);
 
         assertTrue(
@@ -104,12 +78,7 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
                 address(deployParams.generalDelayedPenaltyReporter)
             )
         );
-        assertEq(
-            module.getRoleMemberCount(
-                module.REPORT_GENERAL_DELAYED_PENALTY_ROLE()
-            ),
-            1
-        );
+        assertEq(module.getRoleMemberCount(module.REPORT_GENERAL_DELAYED_PENALTY_ROLE()), 1);
 
         assertTrue(
             module.hasRole(
@@ -117,39 +86,19 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
                 address(deployParams.easyTrackEVMScriptExecutor)
             )
         );
-        assertEq(
-            module.getRoleMemberCount(
-                module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE()
-            ),
-            1
-        );
+        assertEq(module.getRoleMemberCount(module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE()), 1);
 
         assertTrue(module.hasRole(module.VERIFIER_ROLE(), address(verifier)));
         assertEq(module.getRoleMemberCount(module.VERIFIER_ROLE()), 1);
-        assertTrue(
-            module.hasRole(
-                module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(),
-                address(verifier)
-            )
-        );
-        assertEq(
-            module.getRoleMemberCount(
-                module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE()
-            ),
-            1
-        );
+        assertTrue(module.hasRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), address(verifier)));
+        assertEq(module.getRoleMemberCount(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE()), 1);
         assertTrue(
             module.hasRole(
                 module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(),
                 address(deployParams.easyTrackEVMScriptExecutor)
             )
         );
-        assertEq(
-            module.getRoleMemberCount(
-                module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE()
-            ),
-            1
-        );
+        assertEq(module.getRoleMemberCount(module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE()), 1);
 
         assertEq(module.getRoleMemberCount(module.RECOVERER_ROLE()), 0);
     }
@@ -163,29 +112,14 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
     function test_state_onlyFull() public view {
         assertEq(accounting.DEFAULT_BOND_CURVE_ID(), 0);
 
-        assertEq(
-            address(accounting.FEE_DISTRIBUTOR()),
-            address(feeDistributor)
-        );
+        assertEq(address(accounting.FEE_DISTRIBUTOR()), address(feeDistributor));
         assertEq(accounting.getBondLockPeriod(), deployParams.bondLockPeriod);
 
-        assertEq(
-            accounting.chargePenaltyRecipient(),
-            deployParams.chargePenaltyRecipient
-        );
+        assertEq(accounting.chargePenaltyRecipient(), deployParams.chargePenaltyRecipient);
         IWithdrawalQueue wq = IWithdrawalQueue(locator.withdrawalQueue());
-        assertEq(
-            lido.allowance(address(accounting), wq.WSTETH()),
-            type(uint256).max
-        );
-        assertEq(
-            lido.allowance(address(accounting), address(wq)),
-            type(uint256).max
-        );
-        assertEq(
-            lido.allowance(address(accounting), locator.burner()),
-            type(uint256).max
-        );
+        assertEq(lido.allowance(address(accounting), wq.WSTETH()), type(uint256).max);
+        assertEq(lido.allowance(address(accounting), address(wq)), type(uint256).max);
+        assertEq(lido.allowance(address(accounting), locator.burner()), type(uint256).max);
         assertEq(accounting.getInitializedVersion(), 3);
     }
 
@@ -197,89 +131,39 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
         assertEq(address(accountingImpl.MODULE()), address(module));
         assertEq(address(accountingImpl.LIDO_LOCATOR()), address(locator));
         assertEq(address(accountingImpl.LIDO()), locator.lido());
-        assertEq(
-            address(accountingImpl.WITHDRAWAL_QUEUE()),
-            locator.withdrawalQueue()
-        );
-        assertEq(
-            address(accountingImpl.WSTETH()),
-            IWithdrawalQueue(locator.withdrawalQueue()).WSTETH()
-        );
+        assertEq(address(accountingImpl.WITHDRAWAL_QUEUE()), locator.withdrawalQueue());
+        assertEq(address(accountingImpl.WSTETH()), IWithdrawalQueue(locator.withdrawalQueue()).WSTETH());
 
-        assertEq(
-            accountingImpl.MIN_BOND_LOCK_PERIOD(),
-            deployParams.minBondLockPeriod
-        );
-        assertEq(
-            accountingImpl.MAX_BOND_LOCK_PERIOD(),
-            deployParams.maxBondLockPeriod
-        );
-        assertEq(
-            address(accountingImpl.FEE_DISTRIBUTOR()),
-            address(feeDistributor)
-        );
+        assertEq(accountingImpl.MIN_BOND_LOCK_PERIOD(), deployParams.minBondLockPeriod);
+        assertEq(accountingImpl.MAX_BOND_LOCK_PERIOD(), deployParams.maxBondLockPeriod);
+        assertEq(address(accountingImpl.FEE_DISTRIBUTOR()), address(feeDistributor));
     }
 
     function test_roles_onlyFull() public view {
-        assertTrue(
-            accounting.hasRole(
-                accounting.DEFAULT_ADMIN_ROLE(),
-                deployParams.aragonAgent
-            )
-        );
-        assertEq(
-            accounting.getRoleMemberCount(accounting.DEFAULT_ADMIN_ROLE()),
-            adminsCount
-        );
+        assertTrue(accounting.hasRole(accounting.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
+        assertEq(accounting.getRoleMemberCount(accounting.DEFAULT_ADMIN_ROLE()), adminsCount);
 
-        assertTrue(
-            accounting.hasRole(accounting.PAUSE_ROLE(), address(gateSeal))
-        );
-        assertTrue(
-            accounting.hasRole(
-                accounting.PAUSE_ROLE(),
-                deployParams.resealManager
-            )
-        );
+        assertTrue(accounting.hasRole(accounting.PAUSE_ROLE(), address(gateSeal)));
+        assertTrue(accounting.hasRole(accounting.PAUSE_ROLE(), deployParams.resealManager));
         assertEq(accounting.getRoleMemberCount(accounting.PAUSE_ROLE()), 2);
 
-        assertTrue(
-            accounting.hasRole(
-                accounting.RESUME_ROLE(),
-                deployParams.resealManager
-            )
-        );
+        assertTrue(accounting.hasRole(accounting.RESUME_ROLE(), deployParams.resealManager));
         assertEq(accounting.getRoleMemberCount(accounting.RESUME_ROLE()), 1);
 
-        assertTrue(
-            accounting.hasRole(
-                accounting.SET_BOND_CURVE_ROLE(),
-                deployParams.setResetBondCurveAddress
-            )
-        );
-        assertEq(
-            accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()),
-            2
-        );
+        assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), deployParams.setResetBondCurveAddress));
+        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 2);
 
-        assertEq(
-            accounting.getRoleMemberCount(keccak256("RESET_BOND_CURVE_ROLE")),
-            0
-        );
+        assertEq(accounting.getRoleMemberCount(keccak256("RESET_BOND_CURVE_ROLE")), 0);
 
-        assertEq(
-            accounting.getRoleMemberCount(accounting.MANAGE_BOND_CURVES_ROLE()),
-            0
-        );
+        assertEq(accounting.getRoleMemberCount(accounting.MANAGE_BOND_CURVES_ROLE()), 0);
 
         assertEq(accounting.getRoleMemberCount(accounting.RECOVERER_ROLE()), 0);
     }
 
     function test_proxy_onlyFull() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory defaultBondCurve = new IBondCurve.BondCurveIntervalInput[](
-                deployParams.defaultBondCurve.length
-            );
+        IBondCurve.BondCurveIntervalInput[] memory defaultBondCurve = new IBondCurve.BondCurveIntervalInput[](
+            deployParams.defaultBondCurve.length
+        );
         for (uint256 i = 0; i < deployParams.defaultBondCurve.length; i++) {
             defaultBondCurve[i] = IBondCurve.BondCurveIntervalInput({
                 minKeysCount: deployParams.defaultBondCurve[i][0],
@@ -301,9 +185,7 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
         assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
         assertFalse(proxy.proxy__getIsOssified());
 
-        Accounting accountingImpl = Accounting(
-            proxy.proxy__getImplementation()
-        );
+        Accounting accountingImpl = Accounting(proxy.proxy__getImplementation());
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         accountingImpl.initialize({
             bondCurve: defaultBondCurve,
@@ -319,10 +201,7 @@ contract FeeDistributorDeploymentTest is DeploymentBaseTest {
         assertEq(feeDistributor.totalClaimableShares(), 0);
         assertEq(feeDistributor.pendingSharesToDistribute(), 0);
         assertEq(feeDistributor.treeRoot(), bytes32(0));
-        assertEq(
-            keccak256(abi.encodePacked(feeDistributor.treeCid())),
-            keccak256("")
-        );
+        assertEq(keccak256(abi.encodePacked(feeDistributor.treeCid())), keccak256(""));
     }
 
     function test_state_onlyFull() public view {
@@ -337,59 +216,32 @@ contract FeeDistributorDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles_onlyFull() public view {
-        assertTrue(
-            feeDistributor.hasRole(
-                feeDistributor.DEFAULT_ADMIN_ROLE(),
-                deployParams.aragonAgent
-            )
-        );
-        assertEq(
-            feeDistributor.getRoleMemberCount(
-                feeDistributor.DEFAULT_ADMIN_ROLE()
-            ),
-            adminsCount
-        );
+        assertTrue(feeDistributor.hasRole(feeDistributor.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
+        assertEq(feeDistributor.getRoleMemberCount(feeDistributor.DEFAULT_ADMIN_ROLE()), adminsCount);
 
-        assertEq(
-            feeDistributor.getRoleMemberCount(feeDistributor.RECOVERER_ROLE()),
-            0
-        );
+        assertEq(feeDistributor.getRoleMemberCount(feeDistributor.RECOVERER_ROLE()), 0);
     }
 
     function test_proxy_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        feeDistributor.initialize({
-            admin: deployParams.aragonAgent,
-            _rebateRecipient: deployParams.aragonAgent
-        });
+        feeDistributor.initialize({ admin: deployParams.aragonAgent, _rebateRecipient: deployParams.aragonAgent });
 
-        OssifiableProxy proxy = OssifiableProxy(
-            payable(address(feeDistributor))
-        );
+        OssifiableProxy proxy = OssifiableProxy(payable(address(feeDistributor)));
 
         assertEq(proxy.proxy__getImplementation(), address(feeDistributorImpl));
         assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
         assertFalse(proxy.proxy__getIsOssified());
 
-        FeeDistributor distributorImpl = FeeDistributor(
-            proxy.proxy__getImplementation()
-        );
+        FeeDistributor distributorImpl = FeeDistributor(proxy.proxy__getImplementation());
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        distributorImpl.initialize({
-            admin: deployParams.aragonAgent,
-            _rebateRecipient: deployParams.aragonAgent
-        });
+        distributorImpl.initialize({ admin: deployParams.aragonAgent, _rebateRecipient: deployParams.aragonAgent });
     }
 }
 
 contract FeeOracleDeploymentTest is DeploymentBaseTest {
     function test_state_scratch_onlyFull() public view {
-        (
-            bytes32 hash,
-            uint256 refSlot,
-            uint256 processingDeadlineTime,
-            bool processingStarted
-        ) = oracle.getConsensusReport();
+        (bytes32 hash, uint256 refSlot, uint256 processingDeadlineTime, bool processingStarted) = oracle
+            .getConsensusReport();
         assertEq(hash, bytes32(0));
         assertEq(refSlot, 0);
         assertEq(processingDeadlineTime, 0);
@@ -407,49 +259,28 @@ contract FeeOracleDeploymentTest is DeploymentBaseTest {
     function test_immutables() public view {
         assertEq(oracleImpl.SECONDS_PER_SLOT(), deployParams.secondsPerSlot);
         assertEq(oracleImpl.GENESIS_TIME(), deployParams.clGenesisTime);
-        assertEq(
-            address(oracleImpl.FEE_DISTRIBUTOR()),
-            address(feeDistributor)
-        );
+        assertEq(address(oracleImpl.FEE_DISTRIBUTOR()), address(feeDistributor));
         assertEq(address(oracleImpl.STRIKES()), address(strikes));
     }
 
     function test_roles_onlyFull() public view {
-        assertTrue(
-            oracle.hasRole(
-                oracle.DEFAULT_ADMIN_ROLE(),
-                deployParams.aragonAgent
-            )
-        );
-        assertEq(
-            oracle.getRoleMemberCount(oracle.DEFAULT_ADMIN_ROLE()),
-            adminsCount
-        );
+        assertTrue(oracle.hasRole(oracle.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
+        assertEq(oracle.getRoleMemberCount(oracle.DEFAULT_ADMIN_ROLE()), adminsCount);
 
         assertTrue(oracle.hasRole(oracle.PAUSE_ROLE(), address(gateSeal)));
-        assertTrue(
-            oracle.hasRole(oracle.PAUSE_ROLE(), deployParams.resealManager)
-        );
+        assertTrue(oracle.hasRole(oracle.PAUSE_ROLE(), deployParams.resealManager));
         assertEq(oracle.getRoleMemberCount(oracle.PAUSE_ROLE()), 2);
 
-        assertTrue(
-            oracle.hasRole(oracle.RESUME_ROLE(), deployParams.resealManager)
-        );
+        assertTrue(oracle.hasRole(oracle.RESUME_ROLE(), deployParams.resealManager));
         assertEq(oracle.getRoleMemberCount(oracle.RESUME_ROLE()), 1);
 
         assertEq(oracle.getRoleMemberCount(oracle.SUBMIT_DATA_ROLE()), 0);
 
         assertEq(oracle.getRoleMemberCount(oracle.RECOVERER_ROLE()), 0);
 
-        assertEq(
-            oracle.getRoleMemberCount(oracle.MANAGE_CONSENSUS_CONTRACT_ROLE()),
-            0
-        );
+        assertEq(oracle.getRoleMemberCount(oracle.MANAGE_CONSENSUS_CONTRACT_ROLE()), 0);
 
-        assertEq(
-            oracle.getRoleMemberCount(oracle.MANAGE_CONSENSUS_VERSION_ROLE()),
-            0
-        );
+        assertEq(oracle.getRoleMemberCount(oracle.MANAGE_CONSENSUS_VERSION_ROLE()), 0);
     }
 
     function test_proxy_onlyFull() public {
@@ -482,97 +313,49 @@ contract HashConsensusDeploymentTest is DeploymentBaseTest {
     }
 
     function test_state() public view {
-        (
-            uint256 slotsPerEpoch,
-            uint256 secondsPerSlot,
-            uint256 genesisTime
-        ) = hashConsensus.getChainConfig();
+        (uint256 slotsPerEpoch, uint256 secondsPerSlot, uint256 genesisTime) = hashConsensus.getChainConfig();
         assertEq(slotsPerEpoch, deployParams.slotsPerEpoch);
         assertEq(secondsPerSlot, deployParams.secondsPerSlot);
         assertEq(genesisTime, deployParams.clGenesisTime);
 
-        (, uint256 epochsPerFrame, uint256 fastLaneLengthSlots) = hashConsensus
-            .getFrameConfig();
+        (, uint256 epochsPerFrame, uint256 fastLaneLengthSlots) = hashConsensus.getFrameConfig();
         assertEq(epochsPerFrame, deployParams.oracleReportEpochsPerFrame);
         assertEq(fastLaneLengthSlots, deployParams.fastLaneLengthSlots);
         assertEq(hashConsensus.getReportProcessor(), address(oracle));
         assertEq(hashConsensus.getQuorum(), deployParams.hashConsensusQuorum);
         (address[] memory members, ) = hashConsensus.getMembers();
-        assertEq(
-            keccak256(abi.encode(members)),
-            keccak256(abi.encode(deployParams.oracleMembers))
-        );
+        assertEq(keccak256(abi.encode(members)), keccak256(abi.encode(deployParams.oracleMembers)));
 
         // For test purposes AO and CSM Oracle members might be different on Hoodi testnet (chainId = 560048)
         if (block.chainid != 560048) {
             (address[] memory membersAo, ) = HashConsensus(
                 BaseOracle(locator.accountingOracle()).getConsensusContract()
             ).getMembers();
-            assertEq(
-                keccak256(abi.encode(membersAo)),
-                keccak256(abi.encode(members))
-            );
+            assertEq(keccak256(abi.encode(membersAo)), keccak256(abi.encode(members)));
         }
     }
 
     function test_roles() public {
-        assertTrue(
-            hashConsensus.hasRole(
-                hashConsensus.DEFAULT_ADMIN_ROLE(),
-                deployParams.aragonAgent
-            )
-        );
-        assertEq(
-            hashConsensus.getRoleMemberCount(
-                hashConsensus.DEFAULT_ADMIN_ROLE()
-            ),
-            adminsCount
-        );
+        assertTrue(hashConsensus.hasRole(hashConsensus.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
+        assertEq(hashConsensus.getRoleMemberCount(hashConsensus.DEFAULT_ADMIN_ROLE()), adminsCount);
 
-        assertEq(
-            hashConsensus.getRoleMemberCount(
-                hashConsensus.DISABLE_CONSENSUS_ROLE()
-            ),
-            0
-        );
+        assertEq(hashConsensus.getRoleMemberCount(hashConsensus.DISABLE_CONSENSUS_ROLE()), 0);
 
-        assertEq(
-            hashConsensus.getRoleMemberCount(
-                hashConsensus.MANAGE_REPORT_PROCESSOR_ROLE()
-            ),
-            0
-        );
+        assertEq(hashConsensus.getRoleMemberCount(hashConsensus.MANAGE_REPORT_PROCESSOR_ROLE()), 0);
 
         // Roles on Hoodi are custom
         if (block.chainid != 560048) {
-            assertTrue(
-                hashConsensus.hasRole(
-                    hashConsensus.MANAGE_MEMBERS_AND_QUORUM_ROLE(),
-                    deployParams.aragonAgent
-                )
-            );
-            assertEq(
-                hashConsensus.getRoleMemberCount(
-                    hashConsensus.MANAGE_MEMBERS_AND_QUORUM_ROLE()
-                ),
-                1
-            );
+            assertTrue(hashConsensus.hasRole(hashConsensus.MANAGE_MEMBERS_AND_QUORUM_ROLE(), deployParams.aragonAgent));
+            assertEq(hashConsensus.getRoleMemberCount(hashConsensus.MANAGE_MEMBERS_AND_QUORUM_ROLE()), 1);
 
             assertLe(
-                hashConsensus.getRoleMemberCount(
-                    hashConsensus.MANAGE_FRAME_CONFIG_ROLE()
-                ),
+                hashConsensus.getRoleMemberCount(hashConsensus.MANAGE_FRAME_CONFIG_ROLE()),
                 // TODO: The role is on TwoPhaseFrameConfigUpdate contract.
                 //       Return `0` back when the contract is ossified.
                 1
             );
 
-            assertEq(
-                hashConsensus.getRoleMemberCount(
-                    hashConsensus.MANAGE_FAST_LANE_CONFIG_ROLE()
-                ),
-                0
-            );
+            assertEq(hashConsensus.getRoleMemberCount(hashConsensus.MANAGE_FAST_LANE_CONFIG_ROLE()), 0);
         }
     }
 }
@@ -594,57 +377,24 @@ contract VerifierDeploymentTest is DeploymentBaseTest {
             GIndex.unwrap(verifier.GI_FIRST_HISTORICAL_SUMMARY_CURR()),
             GIndex.unwrap(deployParams.gIFirstHistoricalSummary)
         );
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_PREV()),
-            GIndex.unwrap(deployParams.gIFirstWithdrawal)
-        );
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_CURR()),
-            GIndex.unwrap(deployParams.gIFirstWithdrawal)
-        );
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_PREV()),
-            GIndex.unwrap(deployParams.gIFirstValidator)
-        );
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_CURR()),
-            GIndex.unwrap(deployParams.gIFirstValidator)
-        );
-        assertEq(
-            Slot.unwrap(verifier.FIRST_SUPPORTED_SLOT()),
-            deployParams.verifierFirstSupportedSlot
-        );
-        assertEq(
-            Slot.unwrap(verifier.PIVOT_SLOT()),
-            deployParams.verifierFirstSupportedSlot
-        );
-        assertEq(
-            Slot.unwrap(verifier.CAPELLA_SLOT()),
-            deployParams.capellaSlot
-        );
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_PREV()), GIndex.unwrap(deployParams.gIFirstWithdrawal));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_CURR()), GIndex.unwrap(deployParams.gIFirstWithdrawal));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_PREV()), GIndex.unwrap(deployParams.gIFirstValidator));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_CURR()), GIndex.unwrap(deployParams.gIFirstValidator));
+        assertEq(Slot.unwrap(verifier.FIRST_SUPPORTED_SLOT()), deployParams.verifierFirstSupportedSlot);
+        assertEq(Slot.unwrap(verifier.PIVOT_SLOT()), deployParams.verifierFirstSupportedSlot);
+        assertEq(Slot.unwrap(verifier.CAPELLA_SLOT()), deployParams.capellaSlot);
     }
 
     function test_roles() public view {
-        assertTrue(
-            verifier.hasRole(
-                verifier.DEFAULT_ADMIN_ROLE(),
-                deployParams.aragonAgent
-            )
-        );
-        assertEq(
-            verifier.getRoleMemberCount(verifier.DEFAULT_ADMIN_ROLE()),
-            adminsCount
-        );
+        assertTrue(verifier.hasRole(verifier.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
+        assertEq(verifier.getRoleMemberCount(verifier.DEFAULT_ADMIN_ROLE()), adminsCount);
 
         assertTrue(verifier.hasRole(verifier.PAUSE_ROLE(), address(gateSeal)));
-        assertTrue(
-            verifier.hasRole(verifier.PAUSE_ROLE(), deployParams.resealManager)
-        );
+        assertTrue(verifier.hasRole(verifier.PAUSE_ROLE(), deployParams.resealManager));
         assertEq(verifier.getRoleMemberCount(verifier.PAUSE_ROLE()), 2);
 
-        assertTrue(
-            verifier.hasRole(verifier.RESUME_ROLE(), deployParams.resealManager)
-        );
+        assertTrue(verifier.hasRole(verifier.RESUME_ROLE(), deployParams.resealManager));
         assertEq(verifier.getRoleMemberCount(verifier.RESUME_ROLE()), 1);
     }
 }
@@ -665,31 +415,17 @@ contract ValidatorStrikesDeploymentTest is DeploymentBaseTest {
         assertEq(address(strikesImpl.ACCOUNTING()), address(accounting));
         assertEq(address(strikesImpl.ORACLE()), address(oracle));
         assertEq(address(strikesImpl.EXIT_PENALTIES()), address(exitPenalties));
-        assertEq(
-            address(strikesImpl.PARAMETERS_REGISTRY()),
-            address(parametersRegistry)
-        );
+        assertEq(address(strikesImpl.PARAMETERS_REGISTRY()), address(parametersRegistry));
     }
 
     function test_roles() public view {
-        assertTrue(
-            strikes.hasRole(
-                strikes.DEFAULT_ADMIN_ROLE(),
-                deployParams.aragonAgent
-            )
-        );
-        assertEq(
-            strikes.getRoleMemberCount(strikes.DEFAULT_ADMIN_ROLE()),
-            adminsCount
-        );
+        assertTrue(strikes.hasRole(strikes.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
+        assertEq(strikes.getRoleMemberCount(strikes.DEFAULT_ADMIN_ROLE()), adminsCount);
     }
 
     function test_proxy() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        strikes.initialize({
-            admin: deployParams.aragonAgent,
-            _ejector: address(ejector)
-        });
+        strikes.initialize({ admin: deployParams.aragonAgent, _ejector: address(ejector) });
 
         OssifiableProxy proxy = OssifiableProxy(payable(address(strikes)));
 
@@ -697,14 +433,9 @@ contract ValidatorStrikesDeploymentTest is DeploymentBaseTest {
         assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
         assertFalse(proxy.proxy__getIsOssified());
 
-        ValidatorStrikes strikesImpl = ValidatorStrikes(
-            proxy.proxy__getImplementation()
-        );
+        ValidatorStrikes strikesImpl = ValidatorStrikes(proxy.proxy__getImplementation());
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        strikesImpl.initialize({
-            admin: deployParams.aragonAgent,
-            _ejector: address(ejector)
-        });
+        strikesImpl.initialize({ admin: deployParams.aragonAgent, _ejector: address(ejector) });
     }
 }
 
@@ -720,25 +451,13 @@ contract EjectorDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles() public view {
-        assertTrue(
-            ejector.hasRole(
-                ejector.DEFAULT_ADMIN_ROLE(),
-                deployParams.aragonAgent
-            )
-        );
-        assertEq(
-            ejector.getRoleMemberCount(ejector.DEFAULT_ADMIN_ROLE()),
-            adminsCount
-        );
+        assertTrue(ejector.hasRole(ejector.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
+        assertEq(ejector.getRoleMemberCount(ejector.DEFAULT_ADMIN_ROLE()), adminsCount);
         assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), address(gateSeal)));
-        assertTrue(
-            ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager)
-        );
+        assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager));
         assertEq(ejector.getRoleMemberCount(verifier.PAUSE_ROLE()), 2);
 
-        assertTrue(
-            ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager)
-        );
+        assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager));
         assertEq(ejector.getRoleMemberCount(verifier.RESUME_ROLE()), 1);
     }
 }
@@ -746,18 +465,13 @@ contract EjectorDeploymentTest is DeploymentBaseTest {
 contract ExitPenaltiesDeploymentTest is DeploymentBaseTest {
     function test_immutables() public view {
         assertEq(address(exitPenaltiesImpl.MODULE()), address(module));
-        assertEq(
-            address(exitPenaltiesImpl.PARAMETERS_REGISTRY()),
-            address(parametersRegistry)
-        );
+        assertEq(address(exitPenaltiesImpl.PARAMETERS_REGISTRY()), address(parametersRegistry));
         assertEq(address(exitPenaltiesImpl.ACCOUNTING()), address(accounting));
         assertEq(address(exitPenaltiesImpl.STRIKES()), address(strikes));
     }
 
     function test_proxy() public view {
-        OssifiableProxy proxy = OssifiableProxy(
-            payable(address(exitPenalties))
-        );
+        OssifiableProxy proxy = OssifiableProxy(payable(address(exitPenalties)));
 
         assertEq(proxy.proxy__getImplementation(), address(exitPenaltiesImpl));
         assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));

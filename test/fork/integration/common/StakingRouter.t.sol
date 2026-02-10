@@ -21,11 +21,7 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         _assertModuleEnqueuedCount();
         assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
-        assertAccountingBurnerApproval(
-            lido,
-            address(accounting),
-            locator.burner()
-        );
+        assertAccountingBurnerApproval(lido, address(accounting), locator.burner());
         assertAccountingUnusedStorageSlots(accounting);
         assertFeeDistributorClaimableShares(lido, feeDistributor);
         assertFeeDistributorTree(feeDistributor);
@@ -40,27 +36,12 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         module.grantRole(module.DEFAULT_ADMIN_ROLE(), address(this));
         vm.stopPrank();
 
-        agent = stakingRouter.getRoleMember(
-            stakingRouter.DEFAULT_ADMIN_ROLE(),
-            0
-        );
+        agent = stakingRouter.getRoleMember(stakingRouter.DEFAULT_ADMIN_ROLE(), 0);
         vm.startPrank(agent);
-        stakingRouter.grantRole(
-            stakingRouter.STAKING_MODULE_MANAGE_ROLE(),
-            agent
-        );
-        stakingRouter.grantRole(
-            stakingRouter.REPORT_REWARDS_MINTED_ROLE(),
-            agent
-        );
-        stakingRouter.grantRole(
-            stakingRouter.REPORT_EXITED_VALIDATORS_ROLE(),
-            agent
-        );
-        stakingRouter.grantRole(
-            stakingRouter.UNSAFE_SET_EXITED_VALIDATORS_ROLE(),
-            agent
-        );
+        stakingRouter.grantRole(stakingRouter.STAKING_MODULE_MANAGE_ROLE(), agent);
+        stakingRouter.grantRole(stakingRouter.REPORT_REWARDS_MINTED_ROLE(), agent);
+        stakingRouter.grantRole(stakingRouter.REPORT_EXITED_VALIDATORS_ROLE(), agent);
+        stakingRouter.grantRole(stakingRouter.UNSAFE_SET_EXITED_VALIDATORS_ROLE(), agent);
         vm.stopPrank();
 
         moduleId = findModule();
@@ -75,23 +56,18 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
     }
 
     function test_connectCSMToRouter() public view {
-        IStakingRouter.StakingModule memory moduleInfo = stakingRouter
-            .getStakingModule(moduleId);
+        IStakingRouter.StakingModule memory moduleInfo = stakingRouter.getStakingModule(moduleId);
         assertTrue(moduleInfo.stakingModuleAddress == address(module));
     }
 
     function test_validStakingModuleId() public view {
-        IStakingRouter.StakingModule memory moduleInfo = stakingRouter
-            .getStakingModule(ejector.STAKING_MODULE_ID());
+        IStakingRouter.StakingModule memory moduleInfo = stakingRouter.getStakingModule(ejector.STAKING_MODULE_ID());
         assertEq(moduleInfo.stakingModuleAddress, address(module));
     }
 
     function test_RouterDeposit() public assertInvariants {
-        (uint256 noId, uint256 keysCount) = integrationHelpers
-            .getDepositableNodeOperator(nextAddress());
-        uint256 depositedKeysBefore = module
-            .getNodeOperator(noId)
-            .totalDepositedKeys;
+        (uint256 noId, uint256 keysCount) = integrationHelpers.getDepositableNodeOperator(nextAddress());
+        uint256 depositedKeysBefore = module.getNodeOperator(noId).totalDepositedKeys;
 
         hugeDeposit();
 
@@ -103,13 +79,9 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
     function test_routerDepositOneBatch() public assertInvariants {
         hugeDeposit();
         uint256 keysCount = 30;
-        (, , uint256 depositableValidatorsCount) = module
-            .getStakingModuleSummary();
+        (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
         if (depositableValidatorsCount < keysCount) {
-            integrationHelpers.addNodeOperator(
-                nextAddress(),
-                keysCount - depositableValidatorsCount
-            );
+            integrationHelpers.addNodeOperator(nextAddress(), keysCount - depositableValidatorsCount);
         }
 
         vm.prank(locator.depositSecurityModule());
@@ -135,34 +107,20 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         rewards[0] = rewardsShares;
 
         vm.prank(agent);
-        vm.expectCall(
-            address(module),
-            abi.encodeCall(module.onRewardsMinted, (rewardsShares))
-        );
+        vm.expectCall(address(module), abi.encodeCall(module.onRewardsMinted, (rewardsShares)));
         stakingRouter.reportRewardsMinted(moduleIds, rewards);
 
         assertEq(lido.sharesOf(address(module)), 0);
-        assertEq(
-            lido.sharesOf(address(feeDistributor)),
-            prevShares + rewardsShares
-        );
+        assertEq(lido.sharesOf(address(feeDistributor)), prevShares + rewardsShares);
     }
 
     function test_decreaseVettedSigningKeysCount() public assertInvariants {
         address nodeOperatorManager = nextAddress();
         uint256 totalKeys = 10;
         uint256 newVetted = 2;
-        uint256 noId = integrationHelpers.addNodeOperator(
-            nodeOperatorManager,
-            totalKeys
-        );
+        uint256 noId = integrationHelpers.addNodeOperator(nodeOperatorManager, totalKeys);
 
-        vm.prank(
-            stakingRouter.getRoleMember(
-                stakingRouter.STAKING_MODULE_UNVETTING_ROLE(),
-                0
-            )
-        );
+        vm.prank(stakingRouter.getRoleMember(stakingRouter.STAKING_MODULE_UNVETTING_ROLE(), 0));
         vm.startSnapshotGas("StakingRouter.decreaseVettedSigningKeysCount");
         stakingRouter.decreaseStakingModuleVettedKeysCountByNodeOperator(
             moduleId,
@@ -178,34 +136,18 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
 
     function test_updateTargetValidatorsLimits() public assertInvariants {
         address nodeOperatorManager = nextAddress();
-        uint256 noId = integrationHelpers.addNodeOperator(
-            nodeOperatorManager,
-            5
-        );
+        uint256 noId = integrationHelpers.addNodeOperator(nodeOperatorManager, 5);
 
         vm.prank(agent);
         stakingRouter.updateTargetValidatorsLimits(moduleId, noId, 1, 2);
 
-        (
-            uint256 targetLimitMode,
-            uint256 targetValidatorsCount,
-            ,
-            ,
-            ,
-            ,
-            ,
-
-        ) = module.getNodeOperatorSummary(noId);
+        (uint256 targetLimitMode, uint256 targetValidatorsCount, , , , , , ) = module.getNodeOperatorSummary(noId);
         assertEq(targetLimitMode, 1);
         assertEq(targetValidatorsCount, 2);
     }
 
-    function test_reportStakingModuleExitedValidatorsCountByNodeOperator()
-        public
-        assertInvariants
-    {
-        (uint256 noId, uint256 keysCount) = integrationHelpers
-            .getDepositableNodeOperator(nextAddress());
+    function test_reportStakingModuleExitedValidatorsCountByNodeOperator() public assertInvariants {
+        (uint256 noId, uint256 keysCount) = integrationHelpers.getDepositableNodeOperator(nextAddress());
         uint256 exitedKeysBefore = module.getNodeOperator(noId).totalExitedKeys;
 
         hugeDeposit();
@@ -225,11 +167,9 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
     }
 
     function test_getStakingModuleSummary() public assertInvariants {
-        (uint256 noId, uint256 keysCount) = integrationHelpers
-            .getDepositableNodeOperator(nextAddress());
+        (uint256 noId, uint256 keysCount) = integrationHelpers.getDepositableNodeOperator(nextAddress());
 
-        IStakingRouter.StakingModuleSummary memory summaryOld = stakingRouter
-            .getStakingModuleSummary(moduleId);
+        IStakingRouter.StakingModuleSummary memory summaryOld = stakingRouter.getStakingModuleSummary(moduleId);
 
         hugeDeposit();
 
@@ -244,25 +184,14 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
             _encodeUint128Value(newExited)
         );
 
-        IStakingRouter.StakingModuleSummary memory summary = stakingRouter
-            .getStakingModuleSummary(moduleId);
-        assertEq(
-            summary.totalExitedValidators,
-            summaryOld.totalExitedValidators + 1
-        );
-        assertEq(
-            summary.totalDepositedValidators,
-            summaryOld.totalDepositedValidators + keysCount
-        );
-        assertEq(
-            summary.depositableValidatorsCount,
-            summaryOld.depositableValidatorsCount - keysCount
-        );
+        IStakingRouter.StakingModuleSummary memory summary = stakingRouter.getStakingModuleSummary(moduleId);
+        assertEq(summary.totalExitedValidators, summaryOld.totalExitedValidators + 1);
+        assertEq(summary.totalDepositedValidators, summaryOld.totalDepositedValidators + keysCount);
+        assertEq(summary.depositableValidatorsCount, summaryOld.depositableValidatorsCount - keysCount);
     }
 
     function test_getNodeOperatorSummary() public assertInvariants {
-        (uint256 noId, uint256 keysCount) = integrationHelpers
-            .getDepositableNodeOperator(nextAddress());
+        (uint256 noId, uint256 keysCount) = integrationHelpers.getDepositableNodeOperator(nextAddress());
 
         NodeOperator memory no = module.getNodeOperator(noId);
 
@@ -280,22 +209,15 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
             _encodeUint128Value(++exited)
         );
 
-        IStakingRouter.NodeOperatorSummary memory summary = stakingRouter
-            .getNodeOperatorSummary(moduleId, noId);
+        IStakingRouter.NodeOperatorSummary memory summary = stakingRouter.getNodeOperatorSummary(moduleId, noId);
         assertEq(summary.targetLimitMode, 0);
         assertEq(summary.targetValidatorsCount, 0);
         assertEq(summary.stuckValidatorsCount, 0);
         assertEq(summary.refundedValidatorsCount, 0);
         assertEq(summary.stuckPenaltyEndTimestamp, 0);
         assertEq(summary.totalExitedValidators, exited);
-        assertEq(
-            summary.totalDepositedValidators,
-            depositedValidatorsBefore + keysCount
-        );
-        assertEq(
-            summary.depositableValidatorsCount,
-            depositableValidatorsCount - keysCount
-        );
+        assertEq(summary.totalDepositedValidators, depositedValidatorsBefore + keysCount);
+        assertEq(summary.depositableValidatorsCount, depositableValidatorsCount - keysCount);
     }
 
     function test_unsafeSetExitedValidatorsCount() public assertInvariants {
@@ -305,9 +227,7 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         uint256 exited;
 
         for (;;) {
-            (noId, keysCount) = integrationHelpers.getDepositableNodeOperator(
-                nextAddress()
-            );
+            (noId, keysCount) = integrationHelpers.getDepositableNodeOperator(nextAddress());
             lidoDepositWithNoGasMetering(keysCount);
             NodeOperator memory noCurrent = module.getNodeOperator(noId);
             /// we need to be sure there are more than 1 keys for further checks
@@ -324,28 +244,19 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
             _encodeUint128Value(++exited)
         );
 
-        IStakingRouter.StakingModule memory moduleInfo = stakingRouter
-            .getStakingModule(moduleId);
+        IStakingRouter.StakingModule memory moduleInfo = stakingRouter.getStakingModule(moduleId);
 
         uint256 unsafeExited = exited;
 
-        IStakingRouter.ValidatorsCountsCorrection
-            memory correction = IStakingRouter.ValidatorsCountsCorrection({
-                currentModuleExitedValidatorsCount: moduleInfo
-                    .exitedValidatorsCount,
-                currentNodeOperatorExitedValidatorsCount: exited,
-                // dirty hack since prev call does not update total counts
-                newModuleExitedValidatorsCount: moduleInfo
-                    .exitedValidatorsCount,
-                newNodeOperatorExitedValidatorsCount: unsafeExited
-            });
+        IStakingRouter.ValidatorsCountsCorrection memory correction = IStakingRouter.ValidatorsCountsCorrection({
+            currentModuleExitedValidatorsCount: moduleInfo.exitedValidatorsCount,
+            currentNodeOperatorExitedValidatorsCount: exited,
+            // dirty hack since prev call does not update total counts
+            newModuleExitedValidatorsCount: moduleInfo.exitedValidatorsCount,
+            newNodeOperatorExitedValidatorsCount: unsafeExited
+        });
         vm.prank(agent);
-        stakingRouter.unsafeSetExitedValidatorsCount(
-            moduleId,
-            noId,
-            false,
-            correction
-        );
+        stakingRouter.unsafeSetExitedValidatorsCount(moduleId, noId, false, correction);
 
         NodeOperator memory noFinal = module.getNodeOperator(noId);
         assertEq(noFinal.totalExitedKeys, unsafeExited);
@@ -353,62 +264,25 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
 
     function test_reportValidatorExitDelay() public assertInvariants {
         uint256 totalKeys = 1;
-        uint256 noId = integrationHelpers.addNodeOperator(
-            nextAddress(),
-            totalKeys
-        );
+        uint256 noId = integrationHelpers.addNodeOperator(nextAddress(), totalKeys);
         bytes memory publicKey = module.getSigningKeys(noId, 0, 1);
         uint256 curveId = accounting.getBondCurveId(noId);
         uint256 exitDelay = parametersRegistry.getAllowedExitDelay(curveId);
-        assertFalse(
-            module.isValidatorExitDelayPenaltyApplicable(
-                noId,
-                12345,
-                publicKey,
-                exitDelay
-            )
-        );
+        assertFalse(module.isValidatorExitDelayPenaltyApplicable(noId, 12345, publicKey, exitDelay));
         exitDelay += 1;
-        assertTrue(
-            module.isValidatorExitDelayPenaltyApplicable(
-                noId,
-                12345,
-                publicKey,
-                exitDelay
-            )
-        );
+        assertTrue(module.isValidatorExitDelayPenaltyApplicable(noId, 12345, publicKey, exitDelay));
 
-        vm.prank(
-            stakingRouter.getRoleMember(
-                keccak256("REPORT_VALIDATOR_EXITING_STATUS_ROLE"),
-                0
-            )
-        );
-        stakingRouter.reportValidatorExitDelay(
-            moduleId,
-            noId,
-            12345,
-            publicKey,
-            exitDelay
-        );
+        vm.prank(stakingRouter.getRoleMember(keccak256("REPORT_VALIDATOR_EXITING_STATUS_ROLE"), 0));
+        stakingRouter.reportValidatorExitDelay(moduleId, noId, 12345, publicKey, exitDelay);
 
-        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(noId, publicKey);
-        uint256 expectedPenalty = parametersRegistry.getExitDelayFee(
-            accounting.getBondCurveId(noId)
-        );
+        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(noId, publicKey);
+        uint256 expectedPenalty = parametersRegistry.getExitDelayFee(accounting.getBondCurveId(noId));
 
         assertTrue(exitPenaltyInfo.delayFee.isValue);
         assertEq(exitPenaltyInfo.delayFee.value, expectedPenalty);
     }
 }
 
-contract StakingRouterIntegrationTestCSM is
-    StakingRouterIntegrationTestBase,
-    CSMIntegrationBase
-{}
+contract StakingRouterIntegrationTestCSM is StakingRouterIntegrationTestBase, CSMIntegrationBase {}
 
-contract StakingRouterIntegrationTestCurated is
-    StakingRouterIntegrationTestBase,
-    CuratedIntegrationBase
-{}
+contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase, CuratedIntegrationBase {}

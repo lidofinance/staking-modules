@@ -15,12 +15,7 @@ import { IFeeDistributor } from "./interfaces/IFeeDistributor.sol";
 import { IStETH } from "./interfaces/IStETH.sol";
 
 /// @author madlabman
-contract FeeDistributor is
-    IFeeDistributor,
-    Initializable,
-    AccessControlEnumerableUpgradeable,
-    AssetRecoverer
-{
+contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerableUpgradeable, AssetRecoverer {
     uint64 internal constant INITIALIZED_VERSION = 3;
 
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
@@ -39,15 +34,13 @@ contract FeeDistributor is
     string public logCid;
 
     /// @notice Amount of stETH shares sent to the Accounting in favor of the NO
-    mapping(uint256 nodeOperatorId => uint256 distributed)
-        public distributedShares;
+    mapping(uint256 nodeOperatorId => uint256 distributed) public distributedShares;
 
     /// @notice Total Amount of stETH shares available for claiming by NOs
     uint256 public totalClaimableShares;
 
     /// @notice Array of the distribution data history
-    mapping(uint256 index => DistributionData)
-        internal _distributionDataHistory;
+    mapping(uint256 index => DistributionData) internal _distributionDataHistory;
 
     /// @notice The number of _distributionDataHistory records
     uint256 public distributionDataHistoryCount;
@@ -87,10 +80,7 @@ contract FeeDistributor is
     /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
     ///      It is recommended to call this method in the same transaction as the deployment transaction
     ///      and perform extensive deployment verification before using the contract instance.
-    function initialize(
-        address admin,
-        address _rebateRecipient
-    ) external reinitializer(INITIALIZED_VERSION) {
+    function initialize(address admin, address _rebateRecipient) external reinitializer(INITIALIZED_VERSION) {
         if (admin == address(0)) {
             revert ZeroAdminAddress();
         }
@@ -109,9 +99,7 @@ contract FeeDistributor is
     function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {}
 
     /// @inheritdoc IFeeDistributor
-    function setRebateRecipient(
-        address _rebateRecipient
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setRebateRecipient(address _rebateRecipient) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setRebateRecipient(_rebateRecipient);
     }
 
@@ -121,11 +109,7 @@ contract FeeDistributor is
         uint256 cumulativeFeeShares,
         bytes32[] calldata proof
     ) external onlyAccounting returns (uint256 sharesToDistribute) {
-        sharesToDistribute = getFeesToDistribute(
-            nodeOperatorId,
-            cumulativeFeeShares,
-            proof
-        );
+        sharesToDistribute = getFeesToDistribute(nodeOperatorId, cumulativeFeeShares, proof);
 
         if (sharesToDistribute == 0) {
             return 0;
@@ -153,10 +137,7 @@ contract FeeDistributor is
         uint256 rebate,
         uint256 refSlot
     ) external onlyOracle {
-        if (
-            totalClaimableShares + distributed + rebate >
-            STETH.sharesOf(address(this))
-        ) {
+        if (totalClaimableShares + distributed + rebate > STETH.sharesOf(address(this))) {
             revert InvalidShares();
         }
 
@@ -187,11 +168,7 @@ contract FeeDistributor is
             treeRoot = _treeRoot;
             treeCid = _treeCid;
 
-            emit DistributionDataUpdated(
-                totalClaimableShares,
-                _treeRoot,
-                _treeCid
-            );
+            emit DistributionDataUpdated(totalClaimableShares, _treeRoot, _treeCid);
         }
 
         emit ModuleFeeDistributed(distributed);
@@ -213,9 +190,7 @@ contract FeeDistributor is
         logCid = _logCid;
         emit DistributionLogUpdated(_logCid);
 
-        _distributionDataHistory[
-            distributionDataHistoryCount
-        ] = DistributionData({
+        _distributionDataHistory[distributionDataHistoryCount] = DistributionData({
             refSlot: refSlot,
             treeRoot: treeRoot,
             treeCid: treeCid,
@@ -249,9 +224,7 @@ contract FeeDistributor is
     }
 
     /// @inheritdoc IFeeDistributor
-    function getHistoricalDistributionData(
-        uint256 index
-    ) external view returns (DistributionData memory) {
+    function getHistoricalDistributionData(uint256 index) external view returns (DistributionData memory) {
         return _distributionDataHistory[index];
     }
 
@@ -267,11 +240,7 @@ contract FeeDistributor is
             revert InvalidProof();
         }
 
-        bool isValid = MerkleProof.verifyCalldata(
-            proof,
-            treeRoot,
-            hashLeaf(nodeOperatorId, cumulativeFeeShares)
-        );
+        bool isValid = MerkleProof.verifyCalldata(proof, treeRoot, hashLeaf(nodeOperatorId, cumulativeFeeShares));
         if (!isValid) {
             revert InvalidProof();
         }
@@ -288,14 +257,8 @@ contract FeeDistributor is
     }
 
     /// @inheritdoc IFeeDistributor
-    function hashLeaf(
-        uint256 nodeOperatorId,
-        uint256 shares
-    ) public pure returns (bytes32) {
-        return
-            keccak256(
-                bytes.concat(keccak256(abi.encode(nodeOperatorId, shares)))
-            );
+    function hashLeaf(uint256 nodeOperatorId, uint256 shares) public pure returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encode(nodeOperatorId, shares))));
     }
 
     function _setRebateRecipient(address _rebateRecipient) internal {

@@ -15,20 +15,13 @@ import { IBaseModule, NodeOperatorManagementProperties } from "./interfaces/IBas
 import { IMerkleGate } from "./interfaces/IMerkleGate.sol";
 import { IVettedGate } from "./interfaces/IVettedGate.sol";
 
-contract VettedGate is
-    IVettedGate,
-    AccessControlEnumerableUpgradeable,
-    PausableUntil,
-    AssetRecoverer
-{
+contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, PausableUntil, AssetRecoverer {
     bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
     bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
     bytes32 public constant SET_TREE_ROLE = keccak256("SET_TREE_ROLE");
-    bytes32 public constant START_REFERRAL_SEASON_ROLE =
-        keccak256("START_REFERRAL_SEASON_ROLE");
-    bytes32 public constant END_REFERRAL_SEASON_ROLE =
-        keccak256("END_REFERRAL_SEASON_ROLE");
+    bytes32 public constant START_REFERRAL_SEASON_ROLE = keccak256("START_REFERRAL_SEASON_ROLE");
+    bytes32 public constant END_REFERRAL_SEASON_ROLE = keccak256("END_REFERRAL_SEASON_ROLE");
 
     /// @dev Address of the Staking Module
     IBaseModule public immutable MODULE;
@@ -135,21 +128,12 @@ contract VettedGate is
         season = referralProgramSeasonNumber + 1;
         referralProgramSeasonNumber = season;
 
-        emit ReferralProgramSeasonStarted(
-            season,
-            _referralCurveId,
-            _referralsThreshold
-        );
+        emit ReferralProgramSeasonStarted(season, _referralCurveId, _referralsThreshold);
     }
 
     /// @inheritdoc IVettedGate
-    function endCurrentReferralProgramSeason()
-        external
-        onlyRole(END_REFERRAL_SEASON_ROLE)
-    {
-        if (
-            !isReferralProgramSeasonActive || referralProgramSeasonNumber == 0
-        ) {
+    function endCurrentReferralProgramSeason() external onlyRole(END_REFERRAL_SEASON_ROLE) {
+        if (!isReferralProgramSeasonActive || referralProgramSeasonNumber == 0) {
             revert ReferralProgramIsNotActive();
         }
 
@@ -247,10 +231,7 @@ contract VettedGate is
     }
 
     /// @inheritdoc IVettedGate
-    function claimBondCurve(
-        uint256 nodeOperatorId,
-        bytes32[] calldata proof
-    ) external whenResumed {
+    function claimBondCurve(uint256 nodeOperatorId, bytes32[] calldata proof) external whenResumed {
         _onlyNodeOperatorOwner(nodeOperatorId);
 
         _consume(proof);
@@ -259,10 +240,7 @@ contract VettedGate is
     }
 
     /// @inheritdoc IVettedGate
-    function claimReferrerBondCurve(
-        uint256 nodeOperatorId,
-        bytes32[] calldata proof
-    ) external whenResumed {
+    function claimReferrerBondCurve(uint256 nodeOperatorId, bytes32[] calldata proof) external whenResumed {
         _onlyNodeOperatorOwner(nodeOperatorId);
 
         // @dev Only members from the current merkle tree can claim the referral bond curve
@@ -293,25 +271,17 @@ contract VettedGate is
     }
 
     /// @inheritdoc IMerkleGate
-    function setTreeParams(
-        bytes32 _treeRoot,
-        string calldata _treeCid
-    ) external onlyRole(SET_TREE_ROLE) {
+    function setTreeParams(bytes32 _treeRoot, string calldata _treeCid) external onlyRole(SET_TREE_ROLE) {
         _setTreeParams(_treeRoot, _treeCid);
     }
 
     /// @inheritdoc IVettedGate
-    function getReferralsCount(
-        address referrer
-    ) external view returns (uint256) {
+    function getReferralsCount(address referrer) external view returns (uint256) {
         return _referralCounts[_seasonedAddress(referrer)];
     }
 
     /// @inheritdoc IVettedGate
-    function getReferralsCount(
-        address referrer,
-        uint256 season
-    ) external view returns (uint256) {
+    function getReferralsCount(address referrer, uint256 season) external view returns (uint256) {
         return _referralCounts[_seasonedAddress(referrer, season)];
     }
 
@@ -331,10 +301,7 @@ contract VettedGate is
     }
 
     /// @inheritdoc IMerkleGate
-    function verifyProof(
-        address member,
-        bytes32[] calldata proof
-    ) public view returns (bool) {
+    function verifyProof(address member, bytes32[] calldata proof) public view returns (bool) {
         return MerkleProof.verifyCalldata(proof, treeRoot, hashLeaf(member));
     }
 
@@ -357,10 +324,7 @@ contract VettedGate is
         emit Consumed(msg.sender);
     }
 
-    function _setTreeParams(
-        bytes32 _treeRoot,
-        string calldata _treeCid
-    ) internal {
+    function _setTreeParams(bytes32 _treeRoot, string calldata _treeCid) internal {
         if (_treeRoot == bytes32(0)) {
             revert InvalidTreeRoot();
         }
@@ -381,24 +345,15 @@ contract VettedGate is
         emit TreeSet(_treeRoot, _treeCid);
     }
 
-    function _bumpReferralCount(
-        address referrer,
-        uint256 referralNodeOperatorId
-    ) internal {
+    function _bumpReferralCount(address referrer, uint256 referralNodeOperatorId) internal {
         uint256 season = referralProgramSeasonNumber;
-        if (
-            isReferralProgramSeasonActive &&
-            referrer != address(0) &&
-            referrer != msg.sender
-        ) {
+        if (isReferralProgramSeasonActive && referrer != address(0) && referrer != msg.sender) {
             _referralCounts[_seasonedAddress(referrer, season)] += 1;
             emit ReferralRecorded(referrer, season, referralNodeOperatorId);
         }
     }
 
-    function _seasonedAddress(
-        address referrer
-    ) internal view returns (bytes32) {
+    function _seasonedAddress(address referrer) internal view returns (bytes32) {
         return _seasonedAddress(referrer, referralProgramSeasonNumber);
     }
 
@@ -417,10 +372,7 @@ contract VettedGate is
         _checkRole(RECOVERER_ROLE);
     }
 
-    function _seasonedAddress(
-        address referrer,
-        uint256 season
-    ) internal pure returns (bytes32) {
+    function _seasonedAddress(address referrer, uint256 season) internal pure returns (bytes32) {
         return keccak256(abi.encode(referrer, season));
     }
 }

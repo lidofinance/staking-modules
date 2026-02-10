@@ -9,47 +9,14 @@ import { IWithdrawalQueue } from "./IWithdrawalQueue.sol";
 import { IWstETH } from "./IWstETH.sol";
 
 interface IBondCore {
-    event BondDepositedETH(
-        uint256 indexed nodeOperatorId,
-        address from,
-        uint256 amount
-    );
-    event BondDepositedStETH(
-        uint256 indexed nodeOperatorId,
-        address from,
-        uint256 amount
-    );
-    event BondDepositedWstETH(
-        uint256 indexed nodeOperatorId,
-        address from,
-        uint256 amount
-    );
-    event BondClaimedUnstETH(
-        uint256 indexed nodeOperatorId,
-        address to,
-        uint256 amount,
-        uint256 requestId
-    );
-    event BondClaimedStETH(
-        uint256 indexed nodeOperatorId,
-        address to,
-        uint256 amount
-    );
-    event BondClaimedWstETH(
-        uint256 indexed nodeOperatorId,
-        address to,
-        uint256 amount
-    );
-    event BondBurned(
-        uint256 indexed nodeOperatorId,
-        uint256 amountToBurn,
-        uint256 burnedAmount
-    );
-    event BondCharged(
-        uint256 indexed nodeOperatorId,
-        uint256 toChargeAmount,
-        uint256 chargedAmount
-    );
+    event BondDepositedETH(uint256 indexed nodeOperatorId, address from, uint256 amount);
+    event BondDepositedStETH(uint256 indexed nodeOperatorId, address from, uint256 amount);
+    event BondDepositedWstETH(uint256 indexed nodeOperatorId, address from, uint256 amount);
+    event BondClaimedUnstETH(uint256 indexed nodeOperatorId, address to, uint256 amount, uint256 requestId);
+    event BondClaimedStETH(uint256 indexed nodeOperatorId, address to, uint256 amount);
+    event BondClaimedWstETH(uint256 indexed nodeOperatorId, address to, uint256 amount);
+    event BondBurned(uint256 indexed nodeOperatorId, uint256 amountToBurn, uint256 burnedAmount);
+    event BondCharged(uint256 indexed nodeOperatorId, uint256 toChargeAmount, uint256 chargedAmount);
     event BondDebtIncreased(uint256 indexed nodeOperatorId, uint256 amount);
     event BondDebtCovered(uint256 indexed nodeOperatorId, uint256 amount);
 
@@ -71,9 +38,7 @@ interface IBondCore {
     /// @notice Get bond shares (stETH) for the given Node Operator
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Bond in stETH shares
-    function getBondShares(
-        uint256 nodeOperatorId
-    ) external view returns (uint256);
+    function getBondShares(uint256 nodeOperatorId) external view returns (uint256);
 
     /// @notice Get bond amount in ETH (stETH) for the given Node Operator
     /// @param nodeOperatorId ID of the Node Operator
@@ -85,7 +50,5 @@ interface IBondCore {
     ///         Any bond debt will be covered as soon as the Node Operator deposits more bond or receives rewards.
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Bond debt in ETH
-    function getBondDebt(
-        uint256 nodeOperatorId
-    ) external view returns (uint256);
+    function getBondDebt(uint256 nodeOperatorId) external view returns (uint256);
 }

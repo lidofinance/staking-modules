@@ -17,12 +17,7 @@ import { IMetaRegistry, OperatorMetadata } from "./interfaces/IMetaRegistry.sol"
 import { IAccounting } from "./interfaces/IAccounting.sol";
 
 /// @notice Merkle gate for Curated Module v2
-contract CuratedGate is
-    ICuratedGate,
-    AccessControlEnumerableUpgradeable,
-    PausableUntil,
-    AssetRecoverer
-{
+contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, PausableUntil, AssetRecoverer {
     bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
     bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
@@ -104,12 +99,11 @@ contract CuratedGate is
         _consume(proof);
 
         // Enforce extendedManagerPermissions = true; accept manager/reward from args
-        NodeOperatorManagementProperties
-            memory props = NodeOperatorManagementProperties({
-                managerAddress: managerAddress,
-                rewardAddress: rewardAddress,
-                extendedManagerPermissions: true
-            });
+        NodeOperatorManagementProperties memory props = NodeOperatorManagementProperties({
+            managerAddress: managerAddress,
+            rewardAddress: rewardAddress,
+            extendedManagerPermissions: true
+        });
 
         nodeOperatorId = MODULE.createNodeOperator({
             from: msg.sender,
@@ -133,10 +127,7 @@ contract CuratedGate is
     }
 
     /// @inheritdoc IMerkleGate
-    function setTreeParams(
-        bytes32 _treeRoot,
-        string calldata _treeCid
-    ) external onlyRole(SET_TREE_ROLE) {
+    function setTreeParams(bytes32 _treeRoot, string calldata _treeCid) external onlyRole(SET_TREE_ROLE) {
         _setTreeParams(_treeRoot, _treeCid);
     }
 
@@ -151,10 +142,7 @@ contract CuratedGate is
     }
 
     /// @inheritdoc IMerkleGate
-    function verifyProof(
-        address member,
-        bytes32[] calldata proof
-    ) public view returns (bool) {
+    function verifyProof(address member, bytes32[] calldata proof) public view returns (bool) {
         return MerkleProof.verifyCalldata(proof, treeRoot, hashLeaf(member));
     }
 
@@ -170,10 +158,7 @@ contract CuratedGate is
         emit Consumed(msg.sender);
     }
 
-    function _setTreeParams(
-        bytes32 _treeRoot,
-        string calldata _treeCid
-    ) internal {
+    function _setTreeParams(bytes32 _treeRoot, string calldata _treeCid) internal {
         if (_treeRoot == bytes32(0)) revert InvalidTreeRoot();
         if (_treeRoot == treeRoot) revert InvalidTreeRoot();
         if (bytes(_treeCid).length == 0) revert InvalidTreeCid();

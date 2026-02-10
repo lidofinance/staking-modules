@@ -28,11 +28,7 @@ contract VettedGateFactory is IVettedGateFactory {
         address admin
     ) external returns (address instance) {
         instance = address(
-            new OssifiableProxy({
-                implementation_: VETTED_GATE_IMPL,
-                data_: new bytes(0),
-                admin_: admin
-            })
+            new OssifiableProxy({ implementation_: VETTED_GATE_IMPL, data_: new bytes(0), admin_: admin })
         );
 
         VettedGate(instance).initialize(curveId, treeRoot, treeCid, admin);

@@ -26,10 +26,7 @@ abstract contract ProxyUpgradesBase is ModuleTypeBase {
         });
         vm.prank(proxy.proxy__getAdmin());
         proxy.proxy__upgradeTo(address(newAccounting));
-        assertEq(
-            accounting.MAX_BOND_LOCK_PERIOD(),
-            currentMaxBondLockPeriod + 10
-        );
+        assertEq(accounting.MAX_BOND_LOCK_PERIOD(), currentMaxBondLockPeriod + 10);
     }
 
     function test_AccountingUpgradeToAndCall() public {
@@ -42,15 +39,9 @@ abstract contract ProxyUpgradesBase is ModuleTypeBase {
             minBondLockPeriod: accounting.MIN_BOND_LOCK_PERIOD(),
             maxBondLockPeriod: currentMaxBondLockPeriod + 10
         });
-        address contractAdmin = accounting.getRoleMember(
-            accounting.DEFAULT_ADMIN_ROLE(),
-            0
-        );
+        address contractAdmin = accounting.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0);
         vm.startPrank(contractAdmin);
-        accounting.grantRole(
-            accounting.PAUSE_ROLE(),
-            address(proxy.proxy__getAdmin())
-        );
+        accounting.grantRole(accounting.PAUSE_ROLE(), address(proxy.proxy__getAdmin()));
         vm.stopPrank();
         assertFalse(accounting.isPaused());
         vm.prank(proxy.proxy__getAdmin());
@@ -58,10 +49,7 @@ abstract contract ProxyUpgradesBase is ModuleTypeBase {
             address(newAccounting),
             abi.encodeWithSelector(newAccounting.pauseFor.selector, 100500)
         );
-        assertEq(
-            accounting.MAX_BOND_LOCK_PERIOD(),
-            currentMaxBondLockPeriod + 10
-        );
+        assertEq(accounting.MAX_BOND_LOCK_PERIOD(), currentMaxBondLockPeriod + 10);
         assertTrue(accounting.isPaused());
     }
 
@@ -86,10 +74,7 @@ abstract contract ProxyUpgradesBase is ModuleTypeBase {
             secondsPerSlot: oracle.SECONDS_PER_SLOT(),
             genesisTime: block.timestamp
         });
-        address contractAdmin = oracle.getRoleMember(
-            oracle.DEFAULT_ADMIN_ROLE(),
-            0
-        );
+        address contractAdmin = oracle.getRoleMember(oracle.DEFAULT_ADMIN_ROLE(), 0);
         vm.startPrank(contractAdmin);
         oracle.grantRole(oracle.PAUSE_ROLE(), address(proxy.proxy__getAdmin()));
         vm.stopPrank();
@@ -104,9 +89,7 @@ abstract contract ProxyUpgradesBase is ModuleTypeBase {
     }
 
     function test_FeeDistributorUpgradeTo() public {
-        OssifiableProxy proxy = OssifiableProxy(
-            payable(address(feeDistributor))
-        );
+        OssifiableProxy proxy = OssifiableProxy(payable(address(feeDistributor)));
         FeeDistributor newFeeDistributor = new FeeDistributor({
             stETH: locator.lido(),
             accounting: address(1337),
@@ -122,7 +105,4 @@ abstract contract ProxyUpgradesBase is ModuleTypeBase {
 
 contract ProxyUpgradesCommonCSM is ProxyUpgradesBase, CSMIntegrationBase {}
 
-contract ProxyUpgradesCommonCurated is
-    ProxyUpgradesBase,
-    CuratedIntegrationBase
-{}
+contract ProxyUpgradesCommonCurated is ProxyUpgradesBase, CuratedIntegrationBase {}

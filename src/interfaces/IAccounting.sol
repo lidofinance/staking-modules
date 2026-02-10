@@ -27,10 +27,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
 
     event BondLockCompensated(uint256 indexed nodeOperatorId, uint256 amount);
     event ChargePenaltyRecipientSet(address chargePenaltyRecipient);
-    event CustomRewardsClaimerSet(
-        uint256 indexed nodeOperatorId,
-        address rewardsClaimer
-    );
+    event CustomRewardsClaimerSet(uint256 indexed nodeOperatorId, address rewardsClaimer);
 
     error SenderIsNotModule();
     error SenderIsNotEligible();
@@ -73,9 +70,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
 
     /// @notice Set charge recipient address
     /// @param _chargePenaltyRecipient Charge recipient address
-    function setChargePenaltyRecipient(
-        address _chargePenaltyRecipient
-    ) external;
+    function setChargePenaltyRecipient(address _chargePenaltyRecipient) external;
 
     /// @notice Set bond lock period
     /// @param period Period in seconds to retain bond lock
@@ -97,9 +92,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     /// @notice Add a new bond curve
     /// @param bondCurve Bond curve definition to add
     /// @return id Id of the added curve
-    function addBondCurve(
-        BondCurveIntervalInput[] calldata bondCurve
-    ) external returns (uint256 id);
+    function addBondCurve(BondCurveIntervalInput[] calldata bondCurve) external returns (uint256 id);
 
     /// @notice Update existing bond curve
     /// @dev If the curve is updated to a curve with higher values for any point,
@@ -108,45 +101,31 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     ///      in staking module might be required to ensure that the keys pointers are consistent.
     /// @param curveId Bond curve ID to update
     /// @param bondCurve Bond curve definition
-    function updateBondCurve(
-        uint256 curveId,
-        BondCurveIntervalInput[] calldata bondCurve
-    ) external;
+    function updateBondCurve(uint256 curveId, BondCurveIntervalInput[] calldata bondCurve) external;
 
     /// @notice Set custom rewards claimer for the given Node Operator. This address will be able to claim rewards on behalf of the Node Operator.
     ///         The rewards will be transferred to the Node Operator's reward address as usual.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param rewardsClaimer Address allowed to claim rewards on behalf of the Node Operator
-    function setCustomRewardsClaimer(
-        uint256 nodeOperatorId,
-        address rewardsClaimer
-    ) external;
+    function setCustomRewardsClaimer(uint256 nodeOperatorId, address rewardsClaimer) external;
 
     /// @notice Get the custom rewards claimer for the given Node Operator. This address is allowed to claim rewards on behalf of the Node Operator.
     ///         The rewards are still transferred to the Node Operator's reward address as usual.
     /// @param nodeOperatorId ID of the Node Operator
     /// @return rewardsClaimer Address allowed to claim rewards on behalf of the Node Operator
-    function getCustomRewardsClaimer(
-        uint256 nodeOperatorId
-    ) external view returns (address);
+    function getCustomRewardsClaimer(uint256 nodeOperatorId) external view returns (address);
 
     /// @notice Get the required bond in ETH (inc. missed and excess) for the given Node Operator to upload new deposit data
     /// @param nodeOperatorId ID of the Node Operator
     /// @param additionalKeys Number of new keys to add
     /// @return Required bond amount in ETH
-    function getRequiredBondForNextKeys(
-        uint256 nodeOperatorId,
-        uint256 additionalKeys
-    ) external view returns (uint256);
+    function getRequiredBondForNextKeys(uint256 nodeOperatorId, uint256 additionalKeys) external view returns (uint256);
 
     /// @notice Get the bond amount in wstETH required for the `keysCount` keys using the default bond curve
     /// @param keysCount Keys count to calculate the required bond amount
     /// @param curveId Id of the curve to perform calculations against
     /// @return wstETH amount required for the `keysCount`
-    function getBondAmountByKeysCountWstETH(
-        uint256 keysCount,
-        uint256 curveId
-    ) external view returns (uint256);
+    function getBondAmountByKeysCountWstETH(uint256 keysCount, uint256 curveId) external view returns (uint256);
 
     /// @notice Get the required bond in wstETH (inc. missed and excess) for the given Node Operator to upload new keys
     /// @param nodeOperatorId ID of the Node Operator
@@ -160,30 +139,22 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     /// @notice Set fee splits for the given Node Operator
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Array of FeeSplit structs defining recipients and their shares in basis points
-    function getFeeSplits(
-        uint256 nodeOperatorId
-    ) external view returns (FeeSplit[] memory);
+    function getFeeSplits(uint256 nodeOperatorId) external view returns (FeeSplit[] memory);
 
     /// @notice Get the number of the pending shares to be split for the given Node Operator
-    function getPendingSharesToSplit(
-        uint256 nodeOperatorId
-    ) external view returns (uint256);
+    function getPendingSharesToSplit(uint256 nodeOperatorId) external view returns (uint256);
 
     /// @notice Get the number of the unbonded keys
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Unbonded keys count
-    function getUnbondedKeysCount(
-        uint256 nodeOperatorId
-    ) external view returns (uint256);
+    function getUnbondedKeysCount(uint256 nodeOperatorId) external view returns (uint256);
 
     /// @notice Get the number of the unbonded keys to be ejected using a forcedTargetLimit
     ///         Locked bond is not considered for this calculation to allow Node Operators to
     ///         compensate the locked bond via `compensateLockedBondETH` method before the ejection happens
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Unbonded keys count
-    function getUnbondedKeysCountToEject(
-        uint256 nodeOperatorId
-    ) external view returns (uint256);
+    function getUnbondedKeysCountToEject(uint256 nodeOperatorId) external view returns (uint256);
 
     /// @notice Get current and required bond amounts in ETH (stETH) for the given Node Operator
     /// @dev To calculate excess bond amount subtract `required` from `current` value.
@@ -191,9 +162,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     /// @param nodeOperatorId ID of the Node Operator
     /// @return current Current bond amount in ETH
     /// @return required Required bond amount in ETH
-    function getBondSummary(
-        uint256 nodeOperatorId
-    ) external view returns (uint256 current, uint256 required);
+    function getBondSummary(uint256 nodeOperatorId) external view returns (uint256 current, uint256 required);
 
     /// @notice Get current and required bond amounts in stETH shares for the given Node Operator
     /// @dev To calculate excess bond amount subtract `required` from `current` value.
@@ -201,16 +170,12 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     /// @param nodeOperatorId ID of the Node Operator
     /// @return current Current bond amount in stETH shares
     /// @return required Required bond amount in stETH shares
-    function getBondSummaryShares(
-        uint256 nodeOperatorId
-    ) external view returns (uint256 current, uint256 required);
+    function getBondSummaryShares(uint256 nodeOperatorId) external view returns (uint256 current, uint256 required);
 
     /// @notice Get current claimable bond in stETH shares for the given Node Operator
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Current claimable bond in stETH shares
-    function getClaimableBondShares(
-        uint256 nodeOperatorId
-    ) external view returns (uint256);
+    function getClaimableBondShares(uint256 nodeOperatorId) external view returns (uint256);
 
     /// @notice Get current claimable bond in stETH shares for the given Node Operator
     ///         Includes potential rewards distributed by the Fee Distributor
@@ -242,11 +207,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     /// @param nodeOperatorId ID of the Node Operator
     /// @param wstETHAmount Amount of wstETH to deposit
     /// @param permit wstETH permit for the contract
-    function depositWstETH(
-        uint256 nodeOperatorId,
-        uint256 wstETHAmount,
-        PermitInput calldata permit
-    ) external;
+    function depositWstETH(uint256 nodeOperatorId, uint256 wstETHAmount, PermitInput calldata permit) external;
 
     /// @notice Deposit user's stETH to the bond for the given Node Operator
     /// @dev Called by staking module exclusively. Staking module should check node operator existence and update depositable validators count
@@ -266,11 +227,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     /// @param nodeOperatorId ID of the Node Operator
     /// @param stETHAmount Amount of stETH to deposit
     /// @param permit stETH permit for the contract
-    function depositStETH(
-        uint256 nodeOperatorId,
-        uint256 stETHAmount,
-        PermitInput calldata permit
-    ) external;
+    function depositStETH(uint256 nodeOperatorId, uint256 stETHAmount, PermitInput calldata permit) external;
 
     /// @notice Stake user's ETH with Lido and deposit stETH to the bond
     /// @dev Called by staking module exclusively. Staking module should check node operator existence and update depositable validators count
@@ -342,10 +299,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Amount to release in ETH (stETH)
-    function releaseLockedBondETH(
-        uint256 nodeOperatorId,
-        uint256 amount
-    ) external;
+    function releaseLockedBondETH(uint256 nodeOperatorId, uint256 amount) external;
 
     /// @notice Settle locked bond ETH for the given Node Operator
     /// @dev Called by staking module exclusively
@@ -369,10 +323,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Amount to penalize in ETH (stETH)
     /// @return fullyBurned True if the bond was fully burned, false otherwise
-    function penalize(
-        uint256 nodeOperatorId,
-        uint256 amount
-    ) external returns (bool fullyBurned);
+    function penalize(uint256 nodeOperatorId, uint256 amount) external returns (bool fullyBurned);
 
     /// @notice Charge fee from bond by transferring stETH shares of the given Node Operator to the charge recipient
     /// @dev Charge confiscation has a priority over the locked bond.

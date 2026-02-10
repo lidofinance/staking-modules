@@ -41,19 +41,11 @@ contract ReportProcessorMock is IReportAsyncProcessor {
         _lastProcessingRefSlot = refSlot;
     }
 
-    function getLastCall_submitReport()
-        external
-        view
-        returns (SubmitReportCall memory)
-    {
+    function getLastCall_submitReport() external view returns (SubmitReportCall memory) {
         return _submitReportLastCall;
     }
 
-    function getLastCall_discardReport()
-        external
-        view
-        returns (DiscardReportCall memory)
-    {
+    function getLastCall_discardReport() external view returns (DiscardReportCall memory) {
         return _discardReportLastCall;
     }
 
@@ -73,11 +65,7 @@ contract ReportProcessorMock is IReportAsyncProcessor {
         return _consensusContract;
     }
 
-    function submitConsensusReport(
-        bytes32 report,
-        uint256 refSlot,
-        uint256 deadline
-    ) external {
+    function submitConsensusReport(bytes32 report, uint256 refSlot, uint256 deadline) external {
         _submitReportLastCall.report = report;
         _submitReportLastCall.refSlot = refSlot;
         _submitReportLastCall.deadline = deadline;

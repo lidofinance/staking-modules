@@ -27,9 +27,7 @@ contract InvariantAsserts is Test {
         return profileHash == keccak256(abi.encodePacked("ci"));
     }
 
-    function _isCiQuickProfile(
-        bytes32 profileHash
-    ) internal pure returns (bool) {
+    function _isCiQuickProfile(bytes32 profileHash) internal pure returns (bool) {
         return profileHash == keccak256(abi.encodePacked("ci_quick"));
     }
 
@@ -38,17 +36,14 @@ contract InvariantAsserts is Test {
             return true;
         }
         bytes32 profileHash = _profileHash();
-        bool isCIProfile = _isCiProfile(profileHash) ||
-            _isCiQuickProfile(profileHash);
+        bool isCIProfile = _isCiProfile(profileHash) || _isCiQuickProfile(profileHash);
         bool forkIsActive;
         try vm.activeFork() returns (uint256) {
             forkIsActive = true;
         } catch {}
         skip = !isCIProfile && forkIsActive;
         if (skip) {
-            console.log(
-                "WARN: Skipping invariants. It only runs with FOUNDRY_PROFILE=ci or ci_quick and active fork"
-            );
+            console.log("WARN: Skipping invariants. It only runs with FOUNDRY_PROFILE=ci or ci_quick and active fork");
             _skipped = true;
         }
     }
@@ -65,9 +60,7 @@ contract InvariantAsserts is Test {
         } catch {}
         skip = !isCIProfile && forkIsActive;
         if (skip) {
-            console.log(
-                "WARN: Skipping long fork test. It only runs with FOUNDRY_PROFILE=ci and active fork"
-            );
+            console.log("WARN: Skipping long fork test. It only runs with FOUNDRY_PROFILE=ci and active fork");
             _skippedLongForkTest = true;
         }
     }
@@ -89,21 +82,9 @@ contract InvariantAsserts is Test {
         for (uint256 noId = 0; noId < noCount; noId++) {
             no = csm.getNodeOperator(noId);
 
-            assertGe(
-                no.totalAddedKeys,
-                no.totalDepositedKeys,
-                "assert added >= deposited"
-            );
-            assertGe(
-                no.totalDepositedKeys,
-                no.totalWithdrawnKeys,
-                "assert deposited >= withdrawn"
-            );
-            assertGe(
-                no.totalVettedKeys,
-                no.totalDepositedKeys,
-                "assert vetted >= deposited"
-            );
+            assertGe(no.totalAddedKeys, no.totalDepositedKeys, "assert added >= deposited");
+            assertGe(no.totalDepositedKeys, no.totalWithdrawnKeys, "assert deposited >= withdrawn");
+            assertGe(no.totalVettedKeys, no.totalDepositedKeys, "assert vetted >= deposited");
 
             assertGe(
                 no.totalDepositedKeys - no.totalExitedKeys,
@@ -122,16 +103,8 @@ contract InvariantAsserts is Test {
                 "assert added - deposited >= depositable"
             );
 
-            assertNotEq(
-                no.proposedManagerAddress,
-                no.managerAddress,
-                "assert proposed != manager"
-            );
-            assertNotEq(
-                no.proposedRewardAddress,
-                no.rewardAddress,
-                "assert proposed != reward"
-            );
+            assertNotEq(no.proposedManagerAddress, no.managerAddress, "assert proposed != manager");
+            assertNotEq(no.proposedRewardAddress, no.rewardAddress, "assert proposed != reward");
             assertNotEq(no.managerAddress, address(0), "assert manager != 0");
             assertNotEq(no.rewardAddress, address(0), "assert reward != 0");
 
@@ -140,26 +113,11 @@ contract InvariantAsserts is Test {
             totalDepositableValidators += no.depositableValidatorsCount;
         }
 
-        (
-            uint256 _totalExitedValidators,
-            uint256 _totalDepositedValidators,
-            uint256 _depositableValidatorsCount
-        ) = csm.getStakingModuleSummary();
-        assertEq(
-            totalExitedValidators,
-            _totalExitedValidators,
-            "assert total exited"
-        );
-        assertEq(
-            totalDepositedValidators,
-            _totalDepositedValidators,
-            "assert total deposited"
-        );
-        assertEq(
-            totalDepositableValidators,
-            _depositableValidatorsCount,
-            "assert depositable"
-        );
+        (uint256 _totalExitedValidators, uint256 _totalDepositedValidators, uint256 _depositableValidatorsCount) = csm
+            .getStakingModuleSummary();
+        assertEq(totalExitedValidators, _totalExitedValidators, "assert total exited");
+        assertEq(totalDepositedValidators, _totalDepositedValidators, "assert total deposited");
+        assertEq(totalDepositableValidators, _depositableValidatorsCount, "assert depositable");
     }
 
     mapping(uint256 => uint256) batchKeys;
@@ -186,16 +144,8 @@ contract InvariantAsserts is Test {
 
         for (uint256 noId = 0; noId < noCount; noId++) {
             no = csm.getNodeOperator(noId);
-            assertEq(
-                no.enqueuedCount,
-                batchKeys[noId],
-                "assert enqueued == batch keys"
-            );
-            assertGe(
-                no.enqueuedCount,
-                no.depositableValidatorsCount,
-                "assert enqueued >= depositable"
-            );
+            assertEq(no.enqueuedCount, batchKeys[noId], "assert enqueued == batch keys");
+            assertGe(no.enqueuedCount, no.depositableValidatorsCount, "assert enqueued >= depositable");
         }
     }
 
@@ -213,11 +163,7 @@ contract InvariantAsserts is Test {
         assertEq(slot2, bytes32(0), "assert __freeSlot2 is empty");
     }
 
-    function assertAccountingTotalBondShares(
-        uint256 nodeOperatorsCount,
-        IStETH steth,
-        Accounting accounting
-    ) public {
+    function assertAccountingTotalBondShares(uint256 nodeOperatorsCount, IStETH steth, Accounting accounting) public {
         if (skipInvariants()) {
             return;
         }
@@ -229,22 +175,11 @@ contract InvariantAsserts is Test {
         for (uint256 noId = 0; noId < nodeOperatorsCount; noId++) {
             totalNodeOperatorsShares += accounting.getBondShares(noId);
         }
-        assertEq(
-            totalNodeOperatorsShares,
-            accounting.totalBondShares(),
-            "total shares mismatch"
-        );
-        assertGe(
-            steth.sharesOf(address(accounting)),
-            accounting.totalBondShares(),
-            "assert balance >= total shares"
-        );
+        assertEq(totalNodeOperatorsShares, accounting.totalBondShares(), "total shares mismatch");
+        assertGe(steth.sharesOf(address(accounting)), accounting.totalBondShares(), "assert balance >= total shares");
     }
 
-    function assertAccountingBondDebts(
-        uint256 nodeOperatorsCount,
-        Accounting accounting
-    ) public {
+    function assertAccountingBondDebts(uint256 nodeOperatorsCount, Accounting accounting) public {
         if (skipInvariants()) {
             return;
         }
@@ -261,19 +196,11 @@ contract InvariantAsserts is Test {
         }
     }
 
-    function assertAccountingBurnerApproval(
-        IStETH steth,
-        address accounting,
-        address burner
-    ) public {
+    function assertAccountingBurnerApproval(IStETH steth, address accounting, address burner) public {
         if (skipInvariants()) {
             return;
         }
-        assertGe(
-            steth.allowance(accounting, burner),
-            type(uint128).max,
-            "assert allowance"
-        );
+        assertGe(steth.allowance(accounting, burner), type(uint128).max, "assert allowance");
     }
 
     function assertAccountingUnusedStorageSlots(Accounting accounting) public {
@@ -285,10 +212,7 @@ contract InvariantAsserts is Test {
         assertEq(value, bytes32(0), "assert _feeDistributorOld is empty");
     }
 
-    function assertFeeDistributorClaimableShares(
-        IStETH lido,
-        FeeDistributor feeDistributor
-    ) public {
+    function assertFeeDistributorClaimableShares(IStETH lido, FeeDistributor feeDistributor) public {
         if (skipInvariants()) {
             return;
         }
@@ -304,17 +228,9 @@ contract InvariantAsserts is Test {
             return;
         }
         if (feeDistributor.treeRoot() == bytes32(0)) {
-            assertEq(
-                feeDistributor.treeCid(),
-                "",
-                "tree doesn't exist, but has CID"
-            );
+            assertEq(feeDistributor.treeCid(), "", "tree doesn't exist, but has CID");
         } else {
-            assertNotEq(
-                feeDistributor.treeCid(),
-                "",
-                "tree exists, but has no CID"
-            );
+            assertNotEq(feeDistributor.treeCid(), "", "tree exists, but has no CID");
         }
     }
 

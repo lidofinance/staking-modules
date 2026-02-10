@@ -131,9 +131,7 @@ contract BondLockTest is Test {
         uint256 noId = 0;
 
         bondLock.lock(noId, 1 ether);
-        BondLock.BondLockData memory lockBefore = bondLock.getLockedBondInfo(
-            noId
-        );
+        BondLock.BondLockData memory lockBefore = bondLock.getLockedBondInfo(noId);
         vm.warp(block.timestamp + 1 hours);
 
         bondLock.lock(noId, 1 ether);
@@ -147,9 +145,7 @@ contract BondLockTest is Test {
         uint256 period = bondLock.getBondLockPeriod();
 
         bondLock.lock(noId, 1 ether);
-        BondLock.BondLockData memory lockBefore = bondLock.getLockedBondInfo(
-            noId
-        );
+        BondLock.BondLockData memory lockBefore = bondLock.getLockedBondInfo(noId);
         vm.warp(lockBefore.until);
 
         bondLock.lock(noId, 1 ether);
@@ -163,9 +159,7 @@ contract BondLockTest is Test {
         uint256 period = bondLock.getBondLockPeriod();
 
         bondLock.lock(noId, 1 ether);
-        BondLock.BondLockData memory lockBefore = bondLock.getLockedBondInfo(
-            noId
-        );
+        BondLock.BondLockData memory lockBefore = bondLock.getLockedBondInfo(noId);
         vm.warp(lockBefore.until + 1 hours);
 
         bondLock.lock(noId, 1 ether);
@@ -178,9 +172,7 @@ contract BondLockTest is Test {
         uint256 noId = 0;
 
         bondLock.lock(noId, 1 ether);
-        BondLock.BondLockData memory lockBefore = bondLock.getLockedBondInfo(
-            noId
-        );
+        BondLock.BondLockData memory lockBefore = bondLock.getLockedBondInfo(noId);
 
         bondLock.setBondLockPeriod(4 weeks);
 
@@ -199,13 +191,7 @@ contract BondLockTest is Test {
 
     function test_lock_RevertWhen_AmountExceedsMax() public {
         uint256 lock = uint256(type(uint128).max) + 1;
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                SafeCast.SafeCastOverflowedUintDowncast.selector,
-                128,
-                lock
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(SafeCast.SafeCastOverflowedUintDowncast.selector, 128, lock));
         bondLock.lock(0, lock);
     }
 

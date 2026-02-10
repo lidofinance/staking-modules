@@ -26,17 +26,10 @@ interface IFeeDistributor is IAssetRecovererLib {
     }
 
     /// @dev Emitted when fees are distributed
-    event OperatorFeeDistributed(
-        uint256 indexed nodeOperatorId,
-        uint256 shares
-    );
+    event OperatorFeeDistributed(uint256 indexed nodeOperatorId, uint256 shares);
 
     /// @dev Emitted when distribution data is updated
-    event DistributionDataUpdated(
-        uint256 totalClaimableShares,
-        bytes32 treeRoot,
-        string treeCid
-    );
+    event DistributionDataUpdated(uint256 totalClaimableShares, bytes32 treeRoot, string treeCid);
 
     /// @dev Emitted when distribution log is updated
     event DistributionLogUpdated(string logCid);
@@ -141,17 +134,12 @@ interface IFeeDistributor is IAssetRecovererLib {
     /// @notice Get the historical record of distribution data
     /// @param index Historical entry index
     /// @return Historical distribution data
-    function getHistoricalDistributionData(
-        uint256 index
-    ) external view returns (DistributionData memory);
+    function getHistoricalDistributionData(uint256 index) external view returns (DistributionData memory);
 
     /// @notice Get a hash of a leaf
     /// @param nodeOperatorId ID of the Node Operator
     /// @param shares Amount of stETH shares
     /// @return Hash of the leaf
     /// @dev Double hash the leaf to prevent second preimage attacks
-    function hashLeaf(
-        uint256 nodeOperatorId,
-        uint256 shares
-    ) external pure returns (bytes32);
+    function hashLeaf(uint256 nodeOperatorId, uint256 shares) external pure returns (bytes32);
 }

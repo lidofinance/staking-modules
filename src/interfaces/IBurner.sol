@@ -10,19 +10,13 @@ interface IBurner {
 
     function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
 
-    function getRoleMember(
-        bytes32 role,
-        uint256 index
-    ) external view returns (address);
+    function getRoleMember(bytes32 role, uint256 index) external view returns (address);
 
     function grantRole(bytes32 role, address account) external;
 
     function revokeRole(bytes32 role, address account) external;
 
-    function hasRole(
-        bytes32 role,
-        address account
-    ) external view returns (bool);
+    function hasRole(bytes32 role, address account) external view returns (bool);
 
     function requestBurnMyShares(uint256 _sharesAmountToBurn) external;
 }

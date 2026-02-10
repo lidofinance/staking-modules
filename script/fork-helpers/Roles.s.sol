@@ -14,11 +14,7 @@ import { Utilities } from "../../test/helpers/Utilities.sol";
 contract Roles is Script, DeploymentFixtures, ForkHelpersCommon, Utilities {
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
-    function grantRole(
-        bytes32 role,
-        IAccessControlEnumerable where,
-        address who
-    ) external {
+    function grantRole(bytes32 role, IAccessControlEnumerable where, address who) external {
         address admin = where.getRoleMember(DEFAULT_ADMIN_ROLE, 0);
         vm.startBroadcast(admin);
         where.grantRole(role, who);

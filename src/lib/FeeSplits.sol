@@ -9,10 +9,7 @@ import { IFeeDistributor } from "../interfaces/IFeeDistributor.sol";
 /// Library for managing FeeSplits
 /// @dev the only use of this to be a library is to save Accounting contract size via delegatecalls
 interface IFeeSplits {
-    event FeeSplitsSet(
-        uint256 indexed nodeOperatorId,
-        IAccounting.FeeSplit[] feeSplits
-    );
+    event FeeSplitsSet(uint256 indexed nodeOperatorId, IAccounting.FeeSplit[] feeSplits);
 
     error PendingSharesExist();
     error UndistributedSharesExist();
@@ -44,13 +41,7 @@ library FeeSplits {
             revert IFeeSplits.PendingSharesExist();
         }
 
-        if (
-            feeDistributor.getFeesToDistribute(
-                nodeOperatorId,
-                cumulativeFeeShares,
-                rewardsProof
-            ) != 0
-        ) {
+        if (feeDistributor.getFeesToDistribute(nodeOperatorId, cumulativeFeeShares, rewardsProof) != 0) {
             revert IFeeSplits.UndistributedSharesExist();
         }
 
@@ -96,9 +87,7 @@ library FeeSplits {
             maxSharesToSplit = pending;
         }
 
-        IAccounting.FeeSplit[] storage splits = feeSplitsStorage[
-            nodeOperatorId
-        ];
+        IAccounting.FeeSplit[] storage splits = feeSplitsStorage[nodeOperatorId];
         for (uint256 i; i < splits.length; ++i) {
             IAccounting.FeeSplit storage feeSplit = splits[i];
             // NOTE: Due to rounding error, final operator's part might contain some dust.

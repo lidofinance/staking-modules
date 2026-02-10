@@ -58,9 +58,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
     ) external onlyModule {
         uint256 curveId = ACCOUNTING.getBondCurveId(nodeOperatorId);
 
-        uint256 allowedExitDelay = PARAMETERS_REGISTRY.getAllowedExitDelay(
-            curveId
-        );
+        uint256 allowedExitDelay = PARAMETERS_REGISTRY.getAllowedExitDelay(curveId);
         if (eligibleToExitInSec <= allowedExitDelay) {
             revert ValidatorExitDelayNotApplicable();
         }
@@ -95,16 +93,11 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
             return;
         }
         uint256 curveId = ACCOUNTING.getBondCurveId(nodeOperatorId);
-        uint256 maxFee = PARAMETERS_REGISTRY.getMaxElWithdrawalRequestFee(
-            curveId
-        );
+        uint256 maxFee = PARAMETERS_REGISTRY.getMaxElWithdrawalRequestFee(curveId);
 
         uint256 fee = Math.min(elWithdrawalRequestFeePaid, maxFee);
 
-        exitPenaltyInfo.elWithdrawalRequestFee = MarkedUint248(
-            fee.toUint248(),
-            true
-        );
+        exitPenaltyInfo.elWithdrawalRequestFee = MarkedUint248(fee.toUint248(), true);
         emit TriggeredExitFeeRecorded({
             nodeOperatorId: nodeOperatorId,
             exitType: exitType,
@@ -115,10 +108,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
     }
 
     /// @inheritdoc IExitPenalties
-    function processStrikesReport(
-        uint256 nodeOperatorId,
-        bytes calldata publicKey
-    ) external onlyStrikes {
+    function processStrikesReport(uint256 nodeOperatorId, bytes calldata publicKey) external onlyStrikes {
         bytes32 keyPointer = _keyPointer(nodeOperatorId, publicKey);
         ExitPenaltyInfo storage exitPenaltyInfo = _exitPenaltyInfo[keyPointer];
         if (exitPenaltyInfo.strikesPenalty.isValue) {
@@ -127,10 +117,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
 
         uint256 curveId = ACCOUNTING.getBondCurveId(nodeOperatorId);
         uint256 penalty = PARAMETERS_REGISTRY.getBadPerformancePenalty(curveId);
-        exitPenaltyInfo.strikesPenalty = MarkedUint248(
-            penalty.toUint248(),
-            true
-        );
+        exitPenaltyInfo.strikesPenalty = MarkedUint248(penalty.toUint248(), true);
         emit StrikesPenaltyProcessed(nodeOperatorId, publicKey, penalty);
     }
 
@@ -144,9 +131,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
         uint256 eligibleToExitInSec
     ) external view onlyModule returns (bool) {
         uint256 curveId = ACCOUNTING.getBondCurveId(nodeOperatorId);
-        uint256 allowedExitDelay = PARAMETERS_REGISTRY.getAllowedExitDelay(
-            curveId
-        );
+        uint256 allowedExitDelay = PARAMETERS_REGISTRY.getAllowedExitDelay(curveId);
         if (eligibleToExitInSec <= allowedExitDelay) {
             return false;
         }
@@ -176,10 +161,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
         }
     }
 
-    function _keyPointer(
-        uint256 nodeOperatorId,
-        bytes calldata publicKey
-    ) internal pure returns (bytes32) {
+    function _keyPointer(uint256 nodeOperatorId, bytes calldata publicKey) internal pure returns (bytes32) {
         return keccak256(abi.encode(nodeOperatorId, publicKey));
     }
 }

@@ -10,21 +10,15 @@ import { ExternalOperatorLib, OperatorType } from "src/lib/ExternalOperatorLib.s
 contract Library {
     using ExternalOperatorLib for IMetaRegistry.ExternalOperator;
 
-    function uniqueKey(
-        IMetaRegistry.ExternalOperator calldata op
-    ) external pure returns (bytes32) {
+    function uniqueKey(IMetaRegistry.ExternalOperator calldata op) external pure returns (bytes32) {
         return op.uniqueKey();
     }
 
-    function tryGetExtOpType(
-        IMetaRegistry.ExternalOperator calldata op
-    ) external pure returns (OperatorType) {
+    function tryGetExtOpType(IMetaRegistry.ExternalOperator calldata op) external pure returns (OperatorType) {
         return op.tryGetExtOpType();
     }
 
-    function unpackEntryTypeNOR(
-        IMetaRegistry.ExternalOperator calldata op
-    ) external pure returns (uint8, uint64) {
+    function unpackEntryTypeNOR(IMetaRegistry.ExternalOperator calldata op) external pure returns (uint8, uint64) {
         return op.unpackEntryTypeNOR();
     }
 }
@@ -39,10 +33,7 @@ contract ExternalOperatorLibTest is Test {
     }
 
     function testFuzz_uniqueKey(bytes calldata data) public view {
-        assertEq(
-            lib.uniqueKey(IMetaRegistry.ExternalOperator(data)),
-            keccak256(data)
-        );
+        assertEq(lib.uniqueKey(IMetaRegistry.ExternalOperator(data)), keccak256(data));
     }
 
     function testFuzz_uniqueKey_differentNOREntries(
@@ -52,73 +43,40 @@ contract ExternalOperatorLibTest is Test {
         uint64 noIdB
     ) public view {
         vm.assume(moduleIdA != moduleIdB || noIdA != noIdB);
-        assertTrue(
-            lib.uniqueKey(norEntry(moduleIdA, noIdA)) !=
-                lib.uniqueKey(norEntry(moduleIdB, noIdB))
-        );
+        assertTrue(lib.uniqueKey(norEntry(moduleIdA, noIdA)) != lib.uniqueKey(norEntry(moduleIdB, noIdB)));
     }
 
-    function testFuzz_unpackEntryTypeNOR(
-        uint8 moduleId,
-        uint64 noId
-    ) public view {
+    function testFuzz_unpackEntryTypeNOR(uint8 moduleId, uint64 noId) public view {
         (uint8 m, uint64 n) = lib.unpackEntryTypeNOR(norEntry(moduleId, noId));
         assertEq(m, moduleId);
         assertEq(n, noId);
     }
 
     function test_tryGetExtOpType() public view {
-        assertEq(
-            uint8(lib.tryGetExtOpType(norEntry(1, 0))),
-            uint8(OperatorType.NOR)
-        );
+        assertEq(uint8(lib.tryGetExtOpType(norEntry(1, 0))), uint8(OperatorType.NOR));
     }
 
     function test_tryGetExtOpType_revertWhen_wrongType() public {
-        vm.expectRevert(
-            ExternalOperatorLib.InvalidExternalOperatorDataEntry.selector
-        );
-        lib.tryGetExtOpType(
-            IMetaRegistry.ExternalOperator(abi.encode(type(OperatorType).max))
-        );
+        vm.expectRevert(ExternalOperatorLib.InvalidExternalOperatorDataEntry.selector);
+        lib.tryGetExtOpType(IMetaRegistry.ExternalOperator(abi.encode(type(OperatorType).max)));
     }
 
     function test_tryGetExtOpType_revertWhen_tooShort() public {
-        vm.expectRevert(
-            ExternalOperatorLib.InvalidExternalOperatorDataEntry.selector
-        );
-        lib.tryGetExtOpType(
-            IMetaRegistry.ExternalOperator(
-                new bytes(ExternalOperatorLib.ENTRY_LEN_NOR - 1)
-            )
-        );
+        vm.expectRevert(ExternalOperatorLib.InvalidExternalOperatorDataEntry.selector);
+        lib.tryGetExtOpType(IMetaRegistry.ExternalOperator(new bytes(ExternalOperatorLib.ENTRY_LEN_NOR - 1)));
     }
 
     function test_tryGetExtOpType_revertWhen_tooLong() public {
-        vm.expectRevert(
-            ExternalOperatorLib.InvalidExternalOperatorDataEntry.selector
-        );
-        lib.tryGetExtOpType(
-            IMetaRegistry.ExternalOperator(
-                new bytes(ExternalOperatorLib.ENTRY_LEN_NOR + 1)
-            )
-        );
+        vm.expectRevert(ExternalOperatorLib.InvalidExternalOperatorDataEntry.selector);
+        lib.tryGetExtOpType(IMetaRegistry.ExternalOperator(new bytes(ExternalOperatorLib.ENTRY_LEN_NOR + 1)));
     }
 
     function test_tryGetExtOpType_revertWhen_empty() public {
-        vm.expectRevert(
-            ExternalOperatorLib.InvalidExternalOperatorDataEntry.selector
-        );
+        vm.expectRevert(ExternalOperatorLib.InvalidExternalOperatorDataEntry.selector);
         lib.tryGetExtOpType(IMetaRegistry.ExternalOperator(""));
     }
 
-    function norEntry(
-        uint8 moduleId,
-        uint64 noId
-    ) internal pure returns (IMetaRegistry.ExternalOperator memory) {
-        return
-            IMetaRegistry.ExternalOperator(
-                abi.encodePacked(uint8(OperatorType.NOR), moduleId, noId)
-            );
+    function norEntry(uint8 moduleId, uint64 noId) internal pure returns (IMetaRegistry.ExternalOperator memory) {
+        return IMetaRegistry.ExternalOperator(abi.encodePacked(uint8(OperatorType.NOR), moduleId, noId));
     }
 }

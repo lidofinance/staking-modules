@@ -19,30 +19,18 @@ import { LidoLocatorMock } from "./LidoLocatorMock.sol";
 contract CSMMock is Utilities, Fixtures {
     NodeOperator internal mockNodeOperator;
     uint256 internal nodeOperatorsCount;
-    mapping(uint256 => mapping(uint256 => bool))
-        internal isValidatorWithdrawnByKey;
+    mapping(uint256 => mapping(uint256 => bool)) internal isValidatorWithdrawnByKey;
     IAccounting public immutable ACCOUNTING;
     IParametersRegistry public immutable PARAMETERS_REGISTRY;
     LidoLocatorMock public immutable LIDO_LOCATOR;
     NodeOperatorManagementProperties internal managementProperties;
 
     constructor() {
-        PARAMETERS_REGISTRY = IParametersRegistry(
-            address(new ParametersRegistryMock())
-        );
+        PARAMETERS_REGISTRY = IParametersRegistry(address(new ParametersRegistryMock()));
         WstETHMock wstETH;
         LidoMock lido;
         (LIDO_LOCATOR, wstETH, lido, , ) = initLido();
-        ACCOUNTING = IAccounting(
-            address(
-                new AccountingMock(
-                    2 ether,
-                    address(wstETH),
-                    address(lido),
-                    address(1337)
-                )
-            )
-        );
+        ACCOUNTING = IAccounting(address(new AccountingMock(2 ether, address(wstETH), address(lido), address(1337))));
     }
 
     function accounting() external view returns (IAccounting) {
@@ -58,9 +46,7 @@ contract CSMMock is Utilities, Fixtures {
         mockNodeOperator.totalDepositedKeys = uint32(count);
     }
 
-    function getNodeOperator(
-        uint256 /* nodeOperatorId */
-    ) external view returns (NodeOperator memory) {
+    function getNodeOperator(uint256 /* nodeOperatorId */) external view returns (NodeOperator memory) {
         return mockNodeOperator;
     }
 
@@ -76,9 +62,7 @@ contract CSMMock is Utilities, Fixtures {
         return managementProperties;
     }
 
-    function getNodeOperatorOwner(
-        uint256 nodeOperatorId
-    ) external view returns (address) {
+    function getNodeOperatorOwner(uint256 nodeOperatorId) external view returns (address) {
         if (nodeOperatorId != 0) {
             return address(0);
         }
@@ -88,18 +72,11 @@ contract CSMMock is Utilities, Fixtures {
                 : managementProperties.rewardAddress;
     }
 
-    function mock_setIsValidatorWithdrawn(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        bool value
-    ) external {
+    function mock_setIsValidatorWithdrawn(uint256 nodeOperatorId, uint256 keyIndex, bool value) external {
         isValidatorWithdrawnByKey[nodeOperatorId][keyIndex] = value;
     }
 
-    function isValidatorWithdrawn(
-        uint256 nodeOperatorId,
-        uint256 keyIndex
-    ) external view returns (bool) {
+    function isValidatorWithdrawn(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool) {
         return isValidatorWithdrawnByKey[nodeOperatorId][keyIndex];
     }
 
@@ -156,9 +133,7 @@ contract CSMMock is Utilities, Fixtures {
         (pubkeys, ) = keysSignatures(keysCount, startIndex);
     }
 
-    function exitDeadlineThreshold(
-        uint256 /* nodeOperatorId */
-    ) external view returns (uint256) {
+    function exitDeadlineThreshold(uint256 /* nodeOperatorId */) external view returns (uint256) {
         return PARAMETERS_REGISTRY.getAllowedExitDelay(0);
     }
 }

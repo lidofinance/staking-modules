@@ -40,12 +40,7 @@ abstract contract ModuleCreateNodeOperator is ModuleFixtures {
     function test_createNodeOperator() public assertInvariants {
         uint256 nonce = module.getNonce();
         vm.expectEmit(address(module));
-        emit IBaseModule.NodeOperatorAdded(
-            0,
-            nodeOperator,
-            nodeOperator,
-            false
-        );
+        emit IBaseModule.NodeOperatorAdded(0, nodeOperator, nodeOperator, false);
 
         uint256 nodeOperatorId = module.createNodeOperator(
             nodeOperator,
@@ -61,10 +56,7 @@ abstract contract ModuleCreateNodeOperator is ModuleFixtures {
         assertEq(nodeOperatorId, 0);
     }
 
-    function test_createNodeOperator_withCustomAddresses()
-        public
-        assertInvariants
-    {
+    function test_createNodeOperator_withCustomAddresses() public assertInvariants {
         address manager = address(154);
         address reward = address(42);
 
@@ -86,10 +78,7 @@ abstract contract ModuleCreateNodeOperator is ModuleFixtures {
         assertEq(no.extendedManagerPermissions, false);
     }
 
-    function test_createNodeOperator_withExtendedManagerPermissions()
-        public
-        assertInvariants
-    {
+    function test_createNodeOperator_withExtendedManagerPermissions() public assertInvariants {
         address manager = address(154);
         address reward = address(42);
 
@@ -114,12 +103,7 @@ abstract contract ModuleCreateNodeOperator is ModuleFixtures {
     function test_createNodeOperator_withReferrer() public assertInvariants {
         {
             vm.expectEmit(address(module));
-            emit IBaseModule.NodeOperatorAdded(
-                0,
-                nodeOperator,
-                nodeOperator,
-                false
-            );
+            emit IBaseModule.NodeOperatorAdded(0, nodeOperator, nodeOperator, false);
             vm.expectEmit(address(module));
             emit IBaseModule.ReferrerSet(0, address(154));
         }
@@ -150,12 +134,11 @@ abstract contract ModuleCreateNodeOperator is ModuleFixtures {
     function test_createNodeOperator_multipleInSameTx() public {
         address manager = nextAddress("MANAGER");
         address referrer = nextAddress("REFERRER");
-        NodeOperatorManagementProperties
-            memory props = NodeOperatorManagementProperties({
-                managerAddress: manager,
-                rewardAddress: address(0),
-                extendedManagerPermissions: false
-            });
+        NodeOperatorManagementProperties memory props = NodeOperatorManagementProperties({
+            managerAddress: manager,
+            rewardAddress: address(0),
+            extendedManagerPermissions: false
+        });
         uint256 nonceBefore = module.getNonce();
         uint256 countBefore = module.getNodeOperatorsCount();
 
@@ -183,15 +166,11 @@ abstract contract ModuleGetNodeOperatorNonWithdrawnKeys is ModuleFixtures {
         assertEq(keys, 3);
     }
 
-    function test_getNodeOperatorNonWithdrawnKeys_WithdrawnKeys()
-        public
-        assertInvariants
-    {
+    function test_getNodeOperatorNonWithdrawnKeys_WithdrawnKeys() public assertInvariants {
         uint256 noId = createNodeOperator(3);
         module.obtainDepositData(3, "");
 
-        WithdrawnValidatorInfo[]
-            memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
 
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
@@ -206,20 +185,14 @@ abstract contract ModuleGetNodeOperatorNonWithdrawnKeys is ModuleFixtures {
         assertEq(keys, 2);
     }
 
-    function test_getNodeOperatorNonWithdrawnKeys_ZeroWhenNoNodeOperator()
-        public
-        view
-    {
+    function test_getNodeOperatorNonWithdrawnKeys_ZeroWhenNoNodeOperator() public view {
         uint256 keys = module.getNodeOperatorNonWithdrawnKeys(0);
         assertEq(keys, 0);
     }
 }
 
 abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
-    function test_getNodeOperatorSummary_defaultValues()
-        public
-        assertInvariants
-    {
+    function test_getNodeOperatorSummary_defaultValues() public assertInvariants {
         uint256 noId = createNodeOperator(1);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
@@ -233,10 +206,7 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         assertEq(summary.depositableValidatorsCount, 1);
     }
 
-    function test_getNodeOperatorSummary_depositedKey()
-        public
-        assertInvariants
-    {
+    function test_getNodeOperatorSummary_depositedKey() public assertInvariants {
         uint256 noId = createNodeOperator(2);
 
         module.obtainDepositData(1, "");
@@ -246,32 +216,18 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         assertEq(summary.totalDepositedValidators, 1);
     }
 
-    function test_getNodeOperatorSummary_softTargetLimit()
-        public
-        assertInvariants
-    {
+    function test_getNodeOperatorSummary_softTargetLimit() public assertInvariants {
         uint256 noId = createNodeOperator(3);
 
         module.updateTargetValidatorsLimits(noId, 1, 1);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.targetValidatorsCount,
-            1,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 1, "targetValidatorsCount mismatch");
         assertEq(summary.targetLimitMode, 1, "targetLimitMode mismatch");
-        assertEq(
-            summary.depositableValidatorsCount,
-            1,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 1, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_softTargetLimitAndDeposited()
-        public
-        assertInvariants
-    {
+    function test_getNodeOperatorSummary_softTargetLimitAndDeposited() public assertInvariants {
         uint256 noId = createNodeOperator(3);
 
         module.obtainDepositData(1, "");
@@ -279,66 +235,34 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 1, 1);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.targetValidatorsCount,
-            1,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 1, "targetValidatorsCount mismatch");
         assertEq(summary.targetLimitMode, 1, "targetLimitMode mismatch");
-        assertEq(
-            summary.depositableValidatorsCount,
-            0,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 0, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_softTargetLimitAboveTotalKeys()
-        public
-    {
+    function test_getNodeOperatorSummary_softTargetLimitAboveTotalKeys() public {
         uint256 noId = createNodeOperator(3);
 
         module.updateTargetValidatorsLimits(noId, 1, 5);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.targetValidatorsCount,
-            5,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 5, "targetValidatorsCount mismatch");
         assertEq(summary.targetLimitMode, 1, "targetLimitMode mismatch");
-        assertEq(
-            summary.depositableValidatorsCount,
-            3,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 3, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_hardTargetLimit()
-        public
-        assertInvariants
-    {
+    function test_getNodeOperatorSummary_hardTargetLimit() public assertInvariants {
         uint256 noId = createNodeOperator(3);
 
         module.updateTargetValidatorsLimits(noId, 2, 1);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.targetValidatorsCount,
-            1,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 1, "targetValidatorsCount mismatch");
         assertEq(summary.targetLimitMode, 2, "targetLimitMode mismatch");
-        assertEq(
-            summary.depositableValidatorsCount,
-            1,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 1, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_hardTargetLimitAndDeposited()
-        public
-        assertInvariants
-    {
+    function test_getNodeOperatorSummary_hardTargetLimitAndDeposited() public assertInvariants {
         uint256 noId = createNodeOperator(3);
 
         module.obtainDepositData(1, "");
@@ -346,43 +270,23 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         module.updateTargetValidatorsLimits(noId, 2, 1);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.targetValidatorsCount,
-            1,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 1, "targetValidatorsCount mismatch");
         assertEq(summary.targetLimitMode, 2, "targetLimitMode mismatch");
-        assertEq(
-            summary.depositableValidatorsCount,
-            0,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 0, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_hardTargetLimitAboveTotalKeys()
-        public
-    {
+    function test_getNodeOperatorSummary_hardTargetLimitAboveTotalKeys() public {
         uint256 noId = createNodeOperator(3);
 
         module.updateTargetValidatorsLimits(noId, 2, 5);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.targetValidatorsCount,
-            5,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 5, "targetValidatorsCount mismatch");
         assertEq(summary.targetLimitMode, 2, "targetLimitMode mismatch");
-        assertEq(
-            summary.depositableValidatorsCount,
-            3,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 3, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_targetLimitEqualToDepositedKeys()
-        public
-    {
+    function test_getNodeOperatorSummary_targetLimitEqualToDepositedKeys() public {
         uint256 noId = createNodeOperator(3);
 
         module.obtainDepositData(1, "");
@@ -391,21 +295,11 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
         assertEq(summary.targetLimitMode, 1, "targetLimitMode mismatch");
-        assertEq(
-            summary.targetValidatorsCount,
-            1,
-            "targetValidatorsCount mismatch"
-        );
-        assertEq(
-            summary.depositableValidatorsCount,
-            0,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 1, "targetValidatorsCount mismatch");
+        assertEq(summary.depositableValidatorsCount, 0, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_targetLimitLowerThanDepositedKeys()
-        public
-    {
+    function test_getNodeOperatorSummary_targetLimitLowerThanDepositedKeys() public {
         uint256 noId = createNodeOperator(3);
 
         module.obtainDepositData(2, "");
@@ -414,90 +308,48 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
         assertEq(summary.targetLimitMode, 1, "targetLimitMode mismatch");
-        assertEq(
-            summary.targetValidatorsCount,
-            1,
-            "targetValidatorsCount mismatch"
-        );
-        assertEq(
-            summary.depositableValidatorsCount,
-            0,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 1, "targetValidatorsCount mismatch");
+        assertEq(summary.depositableValidatorsCount, 0, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_targetLimitLowerThanVettedKeys()
-        public
-    {
+    function test_getNodeOperatorSummary_targetLimitLowerThanVettedKeys() public {
         uint256 noId = createNodeOperator(3);
 
         module.updateTargetValidatorsLimits(noId, 1, 2);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
         assertEq(summary.targetLimitMode, 1, "targetLimitMode mismatch");
-        assertEq(
-            summary.targetValidatorsCount,
-            2,
-            "targetValidatorsCount mismatch"
-        );
-        assertEq(
-            summary.depositableValidatorsCount,
-            2,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 2, "targetValidatorsCount mismatch");
+        assertEq(summary.depositableValidatorsCount, 2, "depositableValidatorsCount mismatch");
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalVettedKeys, 3); // Should NOT be unvetted.
     }
 
-    function test_getNodeOperatorSummary_targetLimitHigherThanVettedKeys()
-        public
-    {
+    function test_getNodeOperatorSummary_targetLimitHigherThanVettedKeys() public {
         uint256 noId = createNodeOperator(3);
 
         module.updateTargetValidatorsLimits(noId, 1, 9);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
         assertEq(summary.targetLimitMode, 1, "targetLimitMode mismatch");
-        assertEq(
-            summary.targetValidatorsCount,
-            9,
-            "targetValidatorsCount mismatch"
-        );
-        assertEq(
-            summary.depositableValidatorsCount,
-            3,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 9, "targetValidatorsCount mismatch");
+        assertEq(summary.depositableValidatorsCount, 3, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_noTargetLimitDueToLockedBond()
-        public
-        assertInvariants
-    {
+    function test_getNodeOperatorSummary_noTargetLimitDueToLockedBond() public assertInvariants {
         uint256 noId = createNodeOperator(3);
 
         module.obtainDepositData(3, "");
 
-        module.reportGeneralDelayedPenalty(
-            noId,
-            bytes32(abi.encode(1)),
-            BOND_SIZE / 2,
-            "Test penalty"
-        );
+        module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), BOND_SIZE / 2, "Test penalty");
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
         assertEq(summary.targetLimitMode, 0, "targetLimitMode mismatch");
-        assertEq(
-            summary.targetValidatorsCount,
-            0,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 0, "targetValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_targetLimitDueToUnbondedDeposited()
-        public
-    {
+    function test_getNodeOperatorSummary_targetLimitDueToUnbondedDeposited() public {
         uint256 noId = createNodeOperator(3);
 
         module.obtainDepositData(3, "");
@@ -506,16 +358,10 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
         assertEq(summary.targetLimitMode, 2, "targetLimitMode mismatch");
-        assertEq(
-            summary.targetValidatorsCount,
-            2,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 2, "targetValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_noTargetLimitDueToUnbondedNonDeposited()
-        public
-    {
+    function test_getNodeOperatorSummary_noTargetLimitDueToUnbondedNonDeposited() public {
         uint256 noId = createNodeOperator(3);
 
         module.obtainDepositData(2, "");
@@ -524,17 +370,10 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
         assertEq(summary.targetLimitMode, 0, "targetLimitMode mismatch");
-        assertEq(
-            summary.targetValidatorsCount,
-            0,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 0, "targetValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_targetLimitDueToAllUnbonded()
-        public
-        assertInvariants
-    {
+    function test_getNodeOperatorSummary_targetLimitDueToAllUnbonded() public assertInvariants {
         uint256 noId = createNodeOperator(3);
 
         module.obtainDepositData(2, "");
@@ -543,16 +382,10 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
         assertEq(summary.targetLimitMode, 2, "targetLimitMode mismatch");
-        assertEq(
-            summary.targetValidatorsCount,
-            0,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 0, "targetValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_hardTargetLimitLowerThanUnbonded()
-        public
-    {
+    function test_getNodeOperatorSummary_hardTargetLimitLowerThanUnbonded() public {
         uint256 noId = createNodeOperator(5);
 
         module.updateTargetValidatorsLimits(noId, 2, 1);
@@ -560,22 +393,12 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         penalize(noId, BOND_SIZE / 2);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.targetValidatorsCount,
-            1,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 1, "targetValidatorsCount mismatch");
         assertEq(summary.targetLimitMode, 2, "targetLimitMode mismatch");
-        assertEq(
-            summary.depositableValidatorsCount,
-            1,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 1, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_hardTargetLimitLowerThanUnbonded_deposited()
-        public
-    {
+    function test_getNodeOperatorSummary_hardTargetLimitLowerThanUnbonded_deposited() public {
         uint256 noId = createNodeOperator(5);
 
         module.obtainDepositData(1, "");
@@ -585,22 +408,12 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         penalize(noId, BOND_SIZE / 2);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.targetValidatorsCount,
-            2,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 2, "targetValidatorsCount mismatch");
         assertEq(summary.targetLimitMode, 2, "targetLimitMode mismatch");
-        assertEq(
-            summary.depositableValidatorsCount,
-            1,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 1, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_hardTargetLimitGreaterThanUnbondedNonDeposited()
-        public
-    {
+    function test_getNodeOperatorSummary_hardTargetLimitGreaterThanUnbondedNonDeposited() public {
         uint256 noId = createNodeOperator(5);
 
         module.updateTargetValidatorsLimits(noId, 2, 4);
@@ -608,22 +421,12 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         penalize(noId, BOND_SIZE + 100 wei);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.targetValidatorsCount,
-            4,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 4, "targetValidatorsCount mismatch");
         assertEq(summary.targetLimitMode, 2, "targetLimitMode mismatch");
-        assertEq(
-            summary.depositableValidatorsCount,
-            3,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 3, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_hardTargetLimitGreaterThanUnbondedDeposited()
-        public
-    {
+    function test_getNodeOperatorSummary_hardTargetLimitGreaterThanUnbondedDeposited() public {
         uint256 noId = createNodeOperator(5);
 
         module.obtainDepositData(4, "");
@@ -633,23 +436,12 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         penalize(noId, BOND_SIZE + 100 wei);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.targetValidatorsCount,
-            3,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 3, "targetValidatorsCount mismatch");
         assertEq(summary.targetLimitMode, 2, "targetLimitMode mismatch");
-        assertEq(
-            summary.depositableValidatorsCount,
-            0,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 0, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_hardTargetLimitEqualUnbonded()
-        public
-        assertInvariants
-    {
+    function test_getNodeOperatorSummary_hardTargetLimitEqualUnbonded() public assertInvariants {
         uint256 noId = createNodeOperator(5);
 
         module.updateTargetValidatorsLimits(noId, 2, 4);
@@ -657,22 +449,12 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         penalize(noId, BOND_SIZE / 2);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.targetValidatorsCount,
-            4,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 4, "targetValidatorsCount mismatch");
         assertEq(summary.targetLimitMode, 2, "targetLimitMode mismatch");
-        assertEq(
-            summary.depositableValidatorsCount,
-            4,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 4, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_softTargetLimitLowerThanUnbondedNonDeposited()
-        public
-    {
+    function test_getNodeOperatorSummary_softTargetLimitLowerThanUnbondedNonDeposited() public {
         uint256 noId = createNodeOperator(5);
 
         module.updateTargetValidatorsLimits(noId, 1, 1);
@@ -680,22 +462,12 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         penalize(noId, BOND_SIZE / 2);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.targetValidatorsCount,
-            1,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 1, "targetValidatorsCount mismatch");
         assertEq(summary.targetLimitMode, 1, "targetLimitMode mismatch");
-        assertEq(
-            summary.depositableValidatorsCount,
-            1,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 1, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_softTargetLimitLowerThanUnbondedDeposited()
-        public
-    {
+    function test_getNodeOperatorSummary_softTargetLimitLowerThanUnbondedDeposited() public {
         uint256 noId = createNodeOperator(5);
 
         module.obtainDepositData(5, "");
@@ -705,22 +477,12 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         penalize(noId, BOND_SIZE / 2);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.targetValidatorsCount,
-            1,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 1, "targetValidatorsCount mismatch");
         assertEq(summary.targetLimitMode, 2, "targetLimitMode mismatch");
-        assertEq(
-            summary.depositableValidatorsCount,
-            0,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 0, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_softTargetLimitGreaterThanUnbondedNonDeposited()
-        public
-    {
+    function test_getNodeOperatorSummary_softTargetLimitGreaterThanUnbondedNonDeposited() public {
         uint256 noId = createNodeOperator(5);
 
         module.updateTargetValidatorsLimits(noId, 1, 4);
@@ -728,22 +490,12 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         penalize(noId, BOND_SIZE + 100 wei);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.targetValidatorsCount,
-            4,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 4, "targetValidatorsCount mismatch");
         assertEq(summary.targetLimitMode, 1, "targetLimitMode mismatch");
-        assertEq(
-            summary.depositableValidatorsCount,
-            3,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 3, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_softTargetLimitGreaterThanUnbondedDeposited()
-        public
-    {
+    function test_getNodeOperatorSummary_softTargetLimitGreaterThanUnbondedDeposited() public {
         uint256 noId = createNodeOperator(5);
 
         module.obtainDepositData(4, "");
@@ -753,22 +505,12 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         penalize(noId, BOND_SIZE + 100 wei);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.targetValidatorsCount,
-            3,
-            "targetValidatorsCount mismatch"
-        );
+        assertEq(summary.targetValidatorsCount, 3, "targetValidatorsCount mismatch");
         assertEq(summary.targetLimitMode, 2, "targetLimitMode mismatch");
-        assertEq(
-            summary.depositableValidatorsCount,
-            0,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 0, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_unbondedGreaterThanTotalMinusDeposited()
-        public
-    {
+    function test_getNodeOperatorSummary_unbondedGreaterThanTotalMinusDeposited() public {
         uint256 noId = createNodeOperator(5);
 
         module.obtainDepositData(3, "");
@@ -776,16 +518,10 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         penalize(noId, BOND_SIZE * 3);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.depositableValidatorsCount,
-            0,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 0, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_unbondedEqualToTotalMinusDeposited()
-        public
-    {
+    function test_getNodeOperatorSummary_unbondedEqualToTotalMinusDeposited() public {
         uint256 noId = createNodeOperator(5);
 
         module.obtainDepositData(3, "");
@@ -793,16 +529,10 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         penalize(noId, BOND_SIZE * 2);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.depositableValidatorsCount,
-            0,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 0, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_unbondedGreaterThanTotalMinusVetted()
-        public
-    {
+    function test_getNodeOperatorSummary_unbondedGreaterThanTotalMinusVetted() public {
         uint256 noId = createNodeOperator(5);
 
         unvetKeys(noId, 4);
@@ -810,16 +540,10 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         penalize(noId, BOND_SIZE * 2);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.depositableValidatorsCount,
-            3,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 3, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_unbondedEqualToTotalMinusVetted()
-        public
-    {
+    function test_getNodeOperatorSummary_unbondedEqualToTotalMinusVetted() public {
         uint256 noId = createNodeOperator(5);
 
         unvetKeys(noId, 4);
@@ -827,16 +551,10 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         penalize(noId, BOND_SIZE);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.depositableValidatorsCount,
-            4,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 4, "depositableValidatorsCount mismatch");
     }
 
-    function test_getNodeOperatorSummary_unbondedLessThanTotalMinusVetted()
-        public
-    {
+    function test_getNodeOperatorSummary_unbondedLessThanTotalMinusVetted() public {
         uint256 noId = createNodeOperator(5);
 
         unvetKeys(noId, 3);
@@ -844,11 +562,7 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         penalize(noId, BOND_SIZE);
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
-        assertEq(
-            summary.depositableValidatorsCount,
-            3,
-            "depositableValidatorsCount mismatch"
-        );
+        assertEq(summary.depositableValidatorsCount, 3, "depositableValidatorsCount mismatch");
     }
 }
 
@@ -867,9 +581,7 @@ abstract contract ModuleGetNodeOperator is ModuleFixtures {
     }
 }
 
-abstract contract ModuleProposeNodeOperatorManagerAddressChange is
-    ModuleFixtures
-{
+abstract contract ModuleProposeNodeOperatorManagerAddressChange is ModuleFixtures {
     function test_proposeNodeOperatorManagerAddressChange() public {
         uint256 noId = createNodeOperator();
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -877,11 +589,7 @@ abstract contract ModuleProposeNodeOperatorManagerAddressChange is
         assertEq(no.rewardAddress, nodeOperator);
 
         vm.expectEmit(address(module));
-        emit INOAddresses.NodeOperatorManagerAddressChangeProposed(
-            noId,
-            address(0),
-            stranger
-        );
+        emit INOAddresses.NodeOperatorManagerAddressChangeProposed(noId, address(0), stranger);
         vm.prank(nodeOperator);
         module.proposeNodeOperatorManagerAddressChange(noId, stranger);
         assertEq(no.managerAddress, nodeOperator);
@@ -898,35 +606,25 @@ abstract contract ModuleProposeNodeOperatorManagerAddressChange is
         module.proposeNodeOperatorManagerAddressChange(noId, stranger);
 
         vm.expectEmit(address(module));
-        emit INOAddresses.NodeOperatorManagerAddressChangeProposed(
-            noId,
-            stranger,
-            strangerNumberTwo
-        );
+        emit INOAddresses.NodeOperatorManagerAddressChangeProposed(noId, stranger, strangerNumberTwo);
         vm.prank(nodeOperator);
         module.proposeNodeOperatorManagerAddressChange(noId, strangerNumberTwo);
         assertEq(no.managerAddress, nodeOperator);
         assertEq(no.rewardAddress, nodeOperator);
     }
 
-    function test_proposeNodeOperatorManagerAddressChange_RevertWhen_NoNodeOperator()
-        public
-    {
+    function test_proposeNodeOperatorManagerAddressChange_RevertWhen_NoNodeOperator() public {
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.proposeNodeOperatorManagerAddressChange(0, stranger);
     }
 
-    function test_proposeNodeOperatorManagerAddressChange_RevertWhen_NotManager()
-        public
-    {
+    function test_proposeNodeOperatorManagerAddressChange_RevertWhen_NotManager() public {
         uint256 noId = createNodeOperator();
         vm.expectRevert(INOAddresses.SenderIsNotManagerAddress.selector);
         module.proposeNodeOperatorManagerAddressChange(noId, stranger);
     }
 
-    function test_proposeNodeOperatorManagerAddressChange_RevertWhen_AlreadyProposed()
-        public
-    {
+    function test_proposeNodeOperatorManagerAddressChange_RevertWhen_AlreadyProposed() public {
         uint256 noId = createNodeOperator();
         vm.prank(nodeOperator);
         module.proposeNodeOperatorManagerAddressChange(noId, stranger);
@@ -936,9 +634,7 @@ abstract contract ModuleProposeNodeOperatorManagerAddressChange is
         module.proposeNodeOperatorManagerAddressChange(noId, stranger);
     }
 
-    function test_proposeNodeOperatorManagerAddressChange_RevertWhen_SameAddressProposed()
-        public
-    {
+    function test_proposeNodeOperatorManagerAddressChange_RevertWhen_SameAddressProposed() public {
         uint256 noId = createNodeOperator();
         vm.expectRevert(INOAddresses.SameAddress.selector);
         vm.prank(nodeOperator);
@@ -946,9 +642,7 @@ abstract contract ModuleProposeNodeOperatorManagerAddressChange is
     }
 }
 
-abstract contract ModuleConfirmNodeOperatorManagerAddressChange is
-    ModuleFixtures
-{
+abstract contract ModuleConfirmNodeOperatorManagerAddressChange is ModuleFixtures {
     function test_confirmNodeOperatorManagerAddressChange() public {
         uint256 noId = createNodeOperator();
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -959,11 +653,7 @@ abstract contract ModuleConfirmNodeOperatorManagerAddressChange is
         module.proposeNodeOperatorManagerAddressChange(noId, stranger);
 
         vm.expectEmit(address(module));
-        emit INOAddresses.NodeOperatorManagerAddressChanged(
-            noId,
-            nodeOperator,
-            stranger
-        );
+        emit INOAddresses.NodeOperatorManagerAddressChanged(noId, nodeOperator, stranger);
         vm.prank(stranger);
         module.confirmNodeOperatorManagerAddressChange(noId);
 
@@ -972,25 +662,19 @@ abstract contract ModuleConfirmNodeOperatorManagerAddressChange is
         assertEq(no.rewardAddress, nodeOperator);
     }
 
-    function test_confirmNodeOperatorManagerAddressChange_RevertWhen_NoNodeOperator()
-        public
-    {
+    function test_confirmNodeOperatorManagerAddressChange_RevertWhen_NoNodeOperator() public {
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.confirmNodeOperatorManagerAddressChange(0);
     }
 
-    function test_confirmNodeOperatorManagerAddressChange_RevertWhen_NotProposed()
-        public
-    {
+    function test_confirmNodeOperatorManagerAddressChange_RevertWhen_NotProposed() public {
         uint256 noId = createNodeOperator();
         vm.expectRevert(INOAddresses.SenderIsNotProposedAddress.selector);
         vm.prank(stranger);
         module.confirmNodeOperatorManagerAddressChange(noId);
     }
 
-    function test_confirmNodeOperatorManagerAddressChange_RevertWhen_OtherProposed()
-        public
-    {
+    function test_confirmNodeOperatorManagerAddressChange_RevertWhen_OtherProposed() public {
         uint256 noId = createNodeOperator();
         vm.prank(nodeOperator);
         module.proposeNodeOperatorManagerAddressChange(noId, stranger);
@@ -1001,9 +685,7 @@ abstract contract ModuleConfirmNodeOperatorManagerAddressChange is
     }
 }
 
-abstract contract ModuleProposeNodeOperatorRewardAddressChange is
-    ModuleFixtures
-{
+abstract contract ModuleProposeNodeOperatorRewardAddressChange is ModuleFixtures {
     function test_proposeNodeOperatorRewardAddressChange() public {
         uint256 noId = createNodeOperator();
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -1011,11 +693,7 @@ abstract contract ModuleProposeNodeOperatorRewardAddressChange is
         assertEq(no.rewardAddress, nodeOperator);
 
         vm.expectEmit(address(module));
-        emit INOAddresses.NodeOperatorRewardAddressChangeProposed(
-            noId,
-            address(0),
-            stranger
-        );
+        emit INOAddresses.NodeOperatorRewardAddressChangeProposed(noId, address(0), stranger);
         vm.prank(nodeOperator);
         module.proposeNodeOperatorRewardAddressChange(noId, stranger);
         assertEq(no.managerAddress, nodeOperator);
@@ -1032,35 +710,25 @@ abstract contract ModuleProposeNodeOperatorRewardAddressChange is
         module.proposeNodeOperatorRewardAddressChange(noId, stranger);
 
         vm.expectEmit(address(module));
-        emit INOAddresses.NodeOperatorRewardAddressChangeProposed(
-            noId,
-            stranger,
-            strangerNumberTwo
-        );
+        emit INOAddresses.NodeOperatorRewardAddressChangeProposed(noId, stranger, strangerNumberTwo);
         vm.prank(nodeOperator);
         module.proposeNodeOperatorRewardAddressChange(noId, strangerNumberTwo);
         assertEq(no.managerAddress, nodeOperator);
         assertEq(no.rewardAddress, nodeOperator);
     }
 
-    function test_proposeNodeOperatorRewardAddressChange_RevertWhen_NoNodeOperator()
-        public
-    {
+    function test_proposeNodeOperatorRewardAddressChange_RevertWhen_NoNodeOperator() public {
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.proposeNodeOperatorRewardAddressChange(0, stranger);
     }
 
-    function test_proposeNodeOperatorRewardAddressChange_RevertWhen_NotRewardAddress()
-        public
-    {
+    function test_proposeNodeOperatorRewardAddressChange_RevertWhen_NotRewardAddress() public {
         uint256 noId = createNodeOperator();
         vm.expectRevert(INOAddresses.SenderIsNotRewardAddress.selector);
         module.proposeNodeOperatorRewardAddressChange(noId, stranger);
     }
 
-    function test_proposeNodeOperatorRewardAddressChange_RevertWhen_AlreadyProposed()
-        public
-    {
+    function test_proposeNodeOperatorRewardAddressChange_RevertWhen_AlreadyProposed() public {
         uint256 noId = createNodeOperator();
         vm.prank(nodeOperator);
         module.proposeNodeOperatorRewardAddressChange(noId, stranger);
@@ -1070,9 +738,7 @@ abstract contract ModuleProposeNodeOperatorRewardAddressChange is
         module.proposeNodeOperatorRewardAddressChange(noId, stranger);
     }
 
-    function test_proposeNodeOperatorRewardAddressChange_RevertWhen_SameAddressProposed()
-        public
-    {
+    function test_proposeNodeOperatorRewardAddressChange_RevertWhen_SameAddressProposed() public {
         uint256 noId = createNodeOperator();
         vm.expectRevert(INOAddresses.SameAddress.selector);
         vm.prank(nodeOperator);
@@ -1080,9 +746,7 @@ abstract contract ModuleProposeNodeOperatorRewardAddressChange is
     }
 }
 
-abstract contract ModuleConfirmNodeOperatorRewardAddressChange is
-    ModuleFixtures
-{
+abstract contract ModuleConfirmNodeOperatorRewardAddressChange is ModuleFixtures {
     function test_confirmNodeOperatorRewardAddressChange() public {
         uint256 noId = createNodeOperator();
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -1093,11 +757,7 @@ abstract contract ModuleConfirmNodeOperatorRewardAddressChange is
         module.proposeNodeOperatorRewardAddressChange(noId, stranger);
 
         vm.expectEmit(address(module));
-        emit INOAddresses.NodeOperatorRewardAddressChanged(
-            noId,
-            nodeOperator,
-            stranger
-        );
+        emit INOAddresses.NodeOperatorRewardAddressChanged(noId, nodeOperator, stranger);
         vm.prank(stranger);
         module.confirmNodeOperatorRewardAddressChange(noId);
 
@@ -1106,25 +766,19 @@ abstract contract ModuleConfirmNodeOperatorRewardAddressChange is
         assertEq(no.rewardAddress, stranger);
     }
 
-    function test_confirmNodeOperatorRewardAddressChange_RevertWhen_NoNodeOperator()
-        public
-    {
+    function test_confirmNodeOperatorRewardAddressChange_RevertWhen_NoNodeOperator() public {
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.confirmNodeOperatorRewardAddressChange(0);
     }
 
-    function test_confirmNodeOperatorRewardAddressChange_RevertWhen_NotProposed()
-        public
-    {
+    function test_confirmNodeOperatorRewardAddressChange_RevertWhen_NotProposed() public {
         uint256 noId = createNodeOperator();
         vm.expectRevert(INOAddresses.SenderIsNotProposedAddress.selector);
         vm.prank(stranger);
         module.confirmNodeOperatorRewardAddressChange(noId);
     }
 
-    function test_confirmNodeOperatorRewardAddressChange_RevertWhen_OtherProposed()
-        public
-    {
+    function test_confirmNodeOperatorRewardAddressChange_RevertWhen_OtherProposed() public {
         uint256 noId = createNodeOperator();
         vm.prank(nodeOperator);
         module.proposeNodeOperatorRewardAddressChange(noId, stranger);
@@ -1145,11 +799,7 @@ abstract contract ModuleResetNodeOperatorManagerAddress is ModuleFixtures {
         module.confirmNodeOperatorRewardAddressChange(noId);
 
         vm.expectEmit(address(module));
-        emit INOAddresses.NodeOperatorManagerAddressChanged(
-            noId,
-            nodeOperator,
-            stranger
-        );
+        emit INOAddresses.NodeOperatorManagerAddressChanged(noId, nodeOperator, stranger);
         vm.prank(stranger);
         module.resetNodeOperatorManagerAddress(noId);
 
@@ -1158,9 +808,7 @@ abstract contract ModuleResetNodeOperatorManagerAddress is ModuleFixtures {
         assertEq(no.rewardAddress, stranger);
     }
 
-    function test_resetNodeOperatorManagerAddress_proposedManagerAddressIsReset()
-        public
-    {
+    function test_resetNodeOperatorManagerAddress_proposedManagerAddressIsReset() public {
         uint256 noId = createNodeOperator();
         address manager = nextAddress("MANAGER");
 
@@ -1179,34 +827,26 @@ abstract contract ModuleResetNodeOperatorManagerAddress is ModuleFixtures {
         module.confirmNodeOperatorManagerAddressChange(noId);
     }
 
-    function test_resetNodeOperatorManagerAddress_RevertWhen_NoNodeOperator()
-        public
-    {
+    function test_resetNodeOperatorManagerAddress_RevertWhen_NoNodeOperator() public {
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.resetNodeOperatorManagerAddress(0);
     }
 
-    function test_resetNodeOperatorManagerAddress_RevertWhen_NotRewardAddress()
-        public
-    {
+    function test_resetNodeOperatorManagerAddress_RevertWhen_NotRewardAddress() public {
         uint256 noId = createNodeOperator();
         vm.expectRevert(INOAddresses.SenderIsNotRewardAddress.selector);
         vm.prank(stranger);
         module.resetNodeOperatorManagerAddress(noId);
     }
 
-    function test_resetNodeOperatorManagerAddress_RevertWhen_SameAddress()
-        public
-    {
+    function test_resetNodeOperatorManagerAddress_RevertWhen_SameAddress() public {
         uint256 noId = createNodeOperator();
         vm.expectRevert(INOAddresses.SameAddress.selector);
         vm.prank(nodeOperator);
         module.resetNodeOperatorManagerAddress(noId);
     }
 
-    function test_resetNodeOperatorManagerAddress_RevertWhen_ExtendedPermissions()
-        public
-    {
+    function test_resetNodeOperatorManagerAddress_RevertWhen_ExtendedPermissions() public {
         uint256 noId = createNodeOperator(true);
         vm.expectRevert(INOAddresses.MethodCallIsNotAllowed.selector);
         vm.prank(nodeOperator);
@@ -1219,11 +859,7 @@ abstract contract ModuleChangeNodeOperatorRewardAddress is ModuleFixtures {
         uint256 noId = createNodeOperator(true);
 
         vm.expectEmit(address(module));
-        emit INOAddresses.NodeOperatorRewardAddressChanged(
-            noId,
-            nodeOperator,
-            stranger
-        );
+        emit INOAddresses.NodeOperatorRewardAddressChanged(noId, nodeOperator, stranger);
         vm.prank(nodeOperator);
         module.changeNodeOperatorRewardAddress(noId, stranger);
 
@@ -1232,9 +868,7 @@ abstract contract ModuleChangeNodeOperatorRewardAddress is ModuleFixtures {
         assertEq(no.rewardAddress, stranger);
     }
 
-    function test_changeNodeOperatorRewardAddress_proposedRewardAddressReset()
-        public
-    {
+    function test_changeNodeOperatorRewardAddress_proposedRewardAddressReset() public {
         uint256 noId = createNodeOperator(true);
 
         vm.startPrank(nodeOperator);
@@ -1248,44 +882,34 @@ abstract contract ModuleChangeNodeOperatorRewardAddress is ModuleFixtures {
         assertEq(no.proposedRewardAddress, address(0));
     }
 
-    function test_changeNodeOperatorRewardAddress_RevertWhen_NoNodeOperator()
-        public
-    {
+    function test_changeNodeOperatorRewardAddress_RevertWhen_NoNodeOperator() public {
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         vm.prank(nodeOperator);
         module.changeNodeOperatorRewardAddress(0, stranger);
     }
 
-    function test_changeNodeOperatorRewardAddress_RevertWhen_SameAddress()
-        public
-    {
+    function test_changeNodeOperatorRewardAddress_RevertWhen_SameAddress() public {
         uint256 noId = createNodeOperator(true);
         vm.expectRevert(INOAddresses.SameAddress.selector);
         vm.prank(nodeOperator);
         module.changeNodeOperatorRewardAddress(noId, nodeOperator);
     }
 
-    function test_changeNodeOperatorRewardAddress_RevertWhen_ZeroRewardAddress()
-        public
-    {
+    function test_changeNodeOperatorRewardAddress_RevertWhen_ZeroRewardAddress() public {
         uint256 noId = createNodeOperator(true);
         vm.expectRevert(INOAddresses.ZeroRewardAddress.selector);
         vm.prank(nodeOperator);
         module.changeNodeOperatorRewardAddress(noId, address(0));
     }
 
-    function test_changeNodeOperatorRewardAddress_RevertWhen_NotManagerAddress()
-        public
-    {
+    function test_changeNodeOperatorRewardAddress_RevertWhen_NotManagerAddress() public {
         uint256 noId = createNodeOperator(true);
         vm.expectRevert(INOAddresses.SenderIsNotManagerAddress.selector);
         vm.prank(stranger);
         module.changeNodeOperatorRewardAddress(noId, stranger);
     }
 
-    function test_changeNodeOperatorRewardAddress_RevertWhen_SenderIsRewardAddress()
-        public
-    {
+    function test_changeNodeOperatorRewardAddress_RevertWhen_SenderIsRewardAddress() public {
         uint256 noId = createNodeOperator(nodeOperator, stranger, true);
 
         vm.expectRevert(INOAddresses.SenderIsNotManagerAddress.selector);
@@ -1293,9 +917,7 @@ abstract contract ModuleChangeNodeOperatorRewardAddress is ModuleFixtures {
         module.changeNodeOperatorRewardAddress(noId, nodeOperator);
     }
 
-    function test_changeNodeOperatorRewardAddress_RevertWhen_NoExtendedPermissions()
-        public
-    {
+    function test_changeNodeOperatorRewardAddress_RevertWhen_NoExtendedPermissions() public {
         uint256 noId = createNodeOperator(false);
         vm.expectRevert(INOAddresses.MethodCallIsNotAllowed.selector);
         vm.prank(nodeOperator);
@@ -1319,20 +941,9 @@ abstract contract ModuleCreateNodeOperators is ModuleFixtures {
                 }),
                 address(0)
             );
-            uint256 amount = module.ACCOUNTING().getRequiredBondForNextKeys(
-                noId,
-                keysCount
-            );
-            (bytes memory keys, bytes memory signatures) = keysSignatures(
-                keysCount
-            );
-            module.addValidatorKeysETH{ value: amount }(
-                managerAddress,
-                noId,
-                keysCount,
-                keys,
-                signatures
-            );
+            uint256 amount = module.ACCOUNTING().getRequiredBondForNextKeys(noId, keysCount);
+            (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
+            module.addValidatorKeysETH{ value: amount }(managerAddress, noId, keysCount, keys, signatures);
         }
     }
 }

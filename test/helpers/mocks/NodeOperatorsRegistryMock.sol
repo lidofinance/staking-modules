@@ -23,10 +23,7 @@ contract NodeOperatorsRegistryMock is INodeOperatorsRegistry {
         nodeOperatorsCount = count;
     }
 
-    function mock_setNodeOperator(
-        uint256 nodeOperatorId,
-        NodeOperatorData calldata data
-    ) external {
+    function mock_setNodeOperator(uint256 nodeOperatorId, NodeOperatorData calldata data) external {
         nodeOperators[nodeOperatorId] = data;
     }
 

@@ -72,11 +72,7 @@ library NOAddresses {
 
         no.proposedManagerAddress = proposedAddress;
 
-        emit INOAddresses.NodeOperatorManagerAddressChangeProposed(
-            nodeOperatorId,
-            oldProposedAddress,
-            proposedAddress
-        );
+        emit INOAddresses.NodeOperatorManagerAddressChangeProposed(nodeOperatorId, oldProposedAddress, proposedAddress);
     }
 
     /// @notice Confirm a new manager address for the Node Operator.
@@ -100,11 +96,7 @@ library NOAddresses {
         no.managerAddress = msg.sender;
         delete no.proposedManagerAddress;
 
-        emit INOAddresses.NodeOperatorManagerAddressChanged(
-            nodeOperatorId,
-            oldManagerAddress,
-            msg.sender
-        );
+        emit INOAddresses.NodeOperatorManagerAddressChanged(nodeOperatorId, oldManagerAddress, msg.sender);
     }
 
     /// @notice Propose a new reward address for the Node Operator
@@ -138,11 +130,7 @@ library NOAddresses {
 
         no.proposedRewardAddress = proposedAddress;
 
-        emit INOAddresses.NodeOperatorRewardAddressChangeProposed(
-            nodeOperatorId,
-            oldProposedAddress,
-            proposedAddress
-        );
+        emit INOAddresses.NodeOperatorRewardAddressChangeProposed(nodeOperatorId, oldProposedAddress, proposedAddress);
     }
 
     /// @notice Confirm a new reward address for the Node Operator.
@@ -166,11 +154,7 @@ library NOAddresses {
         no.rewardAddress = msg.sender;
         delete no.proposedRewardAddress;
 
-        emit INOAddresses.NodeOperatorRewardAddressChanged(
-            nodeOperatorId,
-            oldRewardAddress,
-            msg.sender
-        );
+        emit INOAddresses.NodeOperatorRewardAddressChanged(nodeOperatorId, oldRewardAddress, msg.sender);
     }
 
     /// @notice Reset the manager address to the reward address.
@@ -207,11 +191,7 @@ library NOAddresses {
             delete no.proposedManagerAddress;
         }
 
-        emit INOAddresses.NodeOperatorManagerAddressChanged(
-            nodeOperatorId,
-            previousManagerAddress,
-            rewardAddress
-        );
+        emit INOAddresses.NodeOperatorManagerAddressChanged(nodeOperatorId, previousManagerAddress, rewardAddress);
     }
 
     /// @notice Change rewardAddress if extendedManagerPermissions is enabled for the Node Operator.
@@ -254,11 +234,7 @@ library NOAddresses {
             delete no.proposedRewardAddress;
         }
 
-        emit INOAddresses.NodeOperatorRewardAddressChanged(
-            nodeOperatorId,
-            oldRewardAddress,
-            newAddress
-        );
+        emit INOAddresses.NodeOperatorRewardAddressChanged(nodeOperatorId, oldRewardAddress, newAddress);
     }
 
     /// @notice Change both reward and manager addresses of a node operator.
@@ -298,21 +274,13 @@ library NOAddresses {
         if (!isSameManagerAddress) {
             no.managerAddress = newManagerAddress;
 
-            emit INOAddresses.NodeOperatorManagerAddressChanged(
-                nodeOperatorId,
-                oldManagerAddress,
-                newManagerAddress
-            );
+            emit INOAddresses.NodeOperatorManagerAddressChanged(nodeOperatorId, oldManagerAddress, newManagerAddress);
         }
 
         if (!isSameRewardAddress) {
             no.rewardAddress = newRewardAddress;
 
-            emit INOAddresses.NodeOperatorRewardAddressChanged(
-                nodeOperatorId,
-                oldRewardAddress,
-                newRewardAddress
-            );
+            emit INOAddresses.NodeOperatorRewardAddressChanged(nodeOperatorId, oldRewardAddress, newRewardAddress);
         }
     }
 }

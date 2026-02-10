@@ -25,12 +25,7 @@ contract ERC721Testable is ERC721 {
 contract ERC1155Testable is ERC1155 {
     constructor() ERC1155("") {}
 
-    function mint(
-        address to,
-        uint256 tokenId,
-        uint256 amount,
-        bytes memory data
-    ) public {
+    function mint(address to, uint256 tokenId, uint256 amount, bytes memory data) public {
         _mint(to, tokenId, amount, data);
     }
 }

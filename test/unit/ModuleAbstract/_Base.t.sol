@@ -35,12 +35,7 @@ import { Stub } from "../../helpers/mocks/Stub.sol";
 import { Utilities } from "../../helpers/Utilities.sol";
 import { WstETHMock } from "../../helpers/mocks/WstETHMock.sol";
 
-abstract contract ModuleFixtures is
-    Test,
-    Fixtures,
-    Utilities,
-    InvariantAsserts
-{
+abstract contract ModuleFixtures is Test, Fixtures, Utilities, InvariantAsserts {
     enum ModuleType {
         Community,
         Curated
@@ -111,16 +106,11 @@ abstract contract ModuleFixtures is
         return createNodeOperator(nodeOperator, keysCount);
     }
 
-    function createNodeOperator(
-        bool extendedManagerPermissions
-    ) internal returns (uint256) {
+    function createNodeOperator(bool extendedManagerPermissions) internal returns (uint256) {
         return createNodeOperator(nodeOperator, extendedManagerPermissions);
     }
 
-    function createNodeOperator(
-        address managerAddress,
-        uint256 keysCount
-    ) internal returns (uint256 nodeOperatorId) {
+    function createNodeOperator(address managerAddress, uint256 keysCount) internal returns (uint256 nodeOperatorId) {
         nodeOperatorId = createNodeOperator(managerAddress, false);
         if (keysCount > 0) {
             uploadMoreKeys(nodeOperatorId, keysCount);
@@ -137,10 +127,7 @@ abstract contract ModuleFixtures is
         uploadMoreKeys(nodeOperatorId, keysCount, keys, signatures);
     }
 
-    function createNodeOperator(
-        address managerAddress,
-        bool extendedManagerPermissions
-    ) internal returns (uint256) {
+    function createNodeOperator(address managerAddress, bool extendedManagerPermissions) internal returns (uint256) {
         return
             module.createNodeOperator(
                 managerAddress,
@@ -177,23 +164,12 @@ abstract contract ModuleFixtures is
         return uint248(value);
     }
 
-    function uploadMoreKeys(
-        uint256 noId,
-        uint256 keysCount,
-        bytes memory keys,
-        bytes memory signatures
-    ) internal {
+    function uploadMoreKeys(uint256 noId, uint256 keysCount, bytes memory keys, bytes memory signatures) internal {
         uint256 amount = accounting.getRequiredBondForNextKeys(noId, keysCount);
         address managerAddress = module.getNodeOperator(noId).managerAddress;
         vm.deal(managerAddress, amount);
         vm.prank(managerAddress);
-        module.addValidatorKeysETH{ value: amount }(
-            managerAddress,
-            noId,
-            keysCount,
-            keys,
-            signatures
-        );
+        module.addValidatorKeysETH{ value: amount }(managerAddress, noId, keysCount, keys, signatures);
     }
 
     function uploadMoreKeys(uint256 noId, uint256 keysCount) internal {
@@ -201,13 +177,8 @@ abstract contract ModuleFixtures is
         uint256 startIndex;
 
         while (remaining > 0) {
-            uint256 batch = remaining > KEYS_UPLOAD_BATCH
-                ? KEYS_UPLOAD_BATCH
-                : remaining;
-            (bytes memory keys, bytes memory signatures) = keysSignatures(
-                batch,
-                startIndex
-            );
+            uint256 batch = remaining > KEYS_UPLOAD_BATCH ? KEYS_UPLOAD_BATCH : remaining;
+            (bytes memory keys, bytes memory signatures) = keysSignatures(batch, startIndex);
             uploadMoreKeys(noId, batch, keys, signatures);
             remaining -= batch;
             startIndex += batch;
@@ -215,22 +186,15 @@ abstract contract ModuleFixtures is
     }
 
     function unvetKeys(uint256 noId, uint256 to) internal {
-        module.decreaseVettedSigningKeysCount(
-            _encodeNodeOperatorId(noId),
-            _encodeUint128Value(to)
-        );
+        module.decreaseVettedSigningKeysCount(_encodeNodeOperatorId(noId), _encodeUint128Value(to));
     }
 
     function setExited(uint256 noId, uint256 to) internal {
-        module.updateExitedValidatorsCount(
-            _encodeNodeOperatorId(noId),
-            _encodeUint128Value(to)
-        );
+        module.updateExitedValidatorsCount(_encodeNodeOperatorId(noId), _encodeUint128Value(to));
     }
 
     function withdrawKey(uint256 noId, uint256 /* keyIndex */) internal {
-        WithdrawnValidatorInfo[]
-            memory withdrawalsInfo = new WithdrawnValidatorInfo[](1);
+        WithdrawnValidatorInfo[] memory withdrawalsInfo = new WithdrawnValidatorInfo[](1);
         withdrawalsInfo[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
@@ -241,9 +205,7 @@ abstract contract ModuleFixtures is
         module.reportRegularWithdrawnValidators(withdrawalsInfo);
     }
 
-    function getNodeOperatorSummary(
-        uint256 noId
-    ) public view returns (NodeOperatorSummary memory) {
+    function getNodeOperatorSummary(uint256 noId) public view returns (NodeOperatorSummary memory) {
         (
             uint256 targetLimitMode,
             uint256 targetValidatorsCount,
@@ -267,16 +229,9 @@ abstract contract ModuleFixtures is
             });
     }
 
-    function getStakingModuleSummary()
-        public
-        view
-        returns (StakingModuleSummary memory)
-    {
-        (
-            uint256 totalExitedValidators,
-            uint256 totalDepositedValidators,
-            uint256 depositableValidatorsCount
-        ) = module.getStakingModuleSummary();
+    function getStakingModuleSummary() public view returns (StakingModuleSummary memory) {
+        (uint256 totalExitedValidators, uint256 totalDepositedValidators, uint256 depositableValidatorsCount) = module
+            .getStakingModuleSummary();
         return
             StakingModuleSummary({
                 totalExitedValidators: totalExitedValidators,

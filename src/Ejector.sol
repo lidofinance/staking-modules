@@ -16,13 +16,7 @@ import { IEjector } from "./interfaces/IEjector.sol";
 import { ICSModule } from "./interfaces/ICSModule.sol";
 import { ITriggerableWithdrawalsGateway, ValidatorData } from "./interfaces/ITriggerableWithdrawalsGateway.sol";
 
-contract Ejector is
-    IEjector,
-    ExitTypes,
-    AccessControlEnumerable,
-    PausableUntil,
-    AssetRecoverer
-{
+contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil, AssetRecoverer {
     bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
     bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
@@ -36,12 +30,7 @@ contract Ejector is
         _;
     }
 
-    constructor(
-        address module,
-        address strikes,
-        uint256 stakingModuleId,
-        address admin
-    ) {
+    constructor(address module, address strikes, uint256 stakingModuleId, address admin) {
         if (module == address(0)) {
             revert ZeroModuleAddress();
         }
@@ -89,10 +78,7 @@ contract Ejector is
             // A key must be deposited to prevent ejecting unvetted keys that can intersect with
             // other modules.
             uint256 maxKeyIndex = startFrom + keysCount;
-            if (
-                maxKeyIndex >
-                MODULE.getNodeOperator(nodeOperatorId).totalDepositedKeys
-            ) {
+            if (maxKeyIndex > MODULE.getNodeOperator(nodeOperatorId).totalDepositedKeys) {
                 revert SigningKeysInvalidOffset();
             }
             // A key must be non-withdrawn to restrict unlimited exit requests consuming sanity
@@ -106,11 +92,7 @@ contract Ejector is
             }
         }
 
-        bytes memory pubkeys = MODULE.getSigningKeys(
-            nodeOperatorId,
-            startFrom,
-            keysCount
-        );
+        bytes memory pubkeys = MODULE.getSigningKeys(nodeOperatorId, startFrom, keysCount);
         ValidatorData[] memory exitsData = new ValidatorData[](keysCount);
         for (uint256 i; i < keysCount; ++i) {
             bytes memory pubkey = new bytes(SigningKeys.PUBKEY_LENGTH);
@@ -133,9 +115,11 @@ contract Ejector is
         }
 
         // @dev This call might revert if the limits are exceeded on the protocol side.
-        triggerableWithdrawalsGateway().triggerFullWithdrawals{
-            value: msg.value
-        }(exitsData, refundRecipient, VOLUNTARY_EXIT_TYPE_ID);
+        triggerableWithdrawalsGateway().triggerFullWithdrawals{ value: msg.value }(
+            exitsData,
+            refundRecipient,
+            VOLUNTARY_EXIT_TYPE_ID
+        );
     }
 
     /// @dev Additional method for non-sequential keys to save gas and decrease fee amount compared
@@ -155,12 +139,8 @@ contract Ejector is
         // Default to sender if no refund recipient is specified
         refundRecipient = _msgSenderIfEmpty(refundRecipient);
 
-        uint256 totalDepositedKeys = MODULE
-            .getNodeOperator(nodeOperatorId)
-            .totalDepositedKeys;
-        ValidatorData[] memory exitsData = new ValidatorData[](
-            keyIndices.length
-        );
+        uint256 totalDepositedKeys = MODULE.getNodeOperator(nodeOperatorId).totalDepositedKeys;
+        ValidatorData[] memory exitsData = new ValidatorData[](keyIndices.length);
         TransientUintUintMap seen = TransientUintUintMapLib.create();
         for (uint256 i = 0; i < keyIndices.length; i++) {
             // Skip duplicate keys in the input array
@@ -181,11 +161,7 @@ contract Ejector is
             if (MODULE.isValidatorWithdrawn(nodeOperatorId, keyIndices[i])) {
                 revert AlreadyWithdrawn();
             }
-            bytes memory pubkey = MODULE.getSigningKeys(
-                nodeOperatorId,
-                keyIndices[i],
-                1
-            );
+            bytes memory pubkey = MODULE.getSigningKeys(nodeOperatorId, keyIndices[i], 1);
             exitsData[i] = ValidatorData({
                 stakingModuleId: STAKING_MODULE_ID,
                 nodeOperatorId: nodeOperatorId,
@@ -199,9 +175,11 @@ contract Ejector is
         }
 
         // @dev This call might revert if the limits are exceeded on the protocol side.
-        triggerableWithdrawalsGateway().triggerFullWithdrawals{
-            value: msg.value
-        }(exitsData, refundRecipient, VOLUNTARY_EXIT_TYPE_ID);
+        triggerableWithdrawalsGateway().triggerFullWithdrawals{ value: msg.value }(
+            exitsData,
+            refundRecipient,
+            VOLUNTARY_EXIT_TYPE_ID
+        );
     }
 
     /// @inheritdoc IEjector
@@ -212,10 +190,7 @@ contract Ejector is
     ) external payable whenResumed onlyStrikes {
         // A key must be deposited to prevent ejecting unvetted keys that can intersect with
         // other modules.
-        if (
-            keyIndex >=
-            MODULE.getNodeOperator(nodeOperatorId).totalDepositedKeys
-        ) {
+        if (keyIndex >= MODULE.getNodeOperator(nodeOperatorId).totalDepositedKeys) {
             revert SigningKeysInvalidOffset();
         }
         // A key must be non-withdrawn to restrict unlimited exit requests consuming sanity checker
@@ -231,11 +206,7 @@ contract Ejector is
         }
 
         ValidatorData[] memory exitsData = new ValidatorData[](1);
-        bytes memory pubkey = MODULE.getSigningKeys(
-            nodeOperatorId,
-            keyIndex,
-            1
-        );
+        bytes memory pubkey = MODULE.getSigningKeys(nodeOperatorId, keyIndex, 1);
         exitsData[0] = ValidatorData({
             stakingModuleId: STAKING_MODULE_ID,
             nodeOperatorId: nodeOperatorId,
@@ -248,21 +219,16 @@ contract Ejector is
         });
 
         // @dev This call might revert if the limits are exceeded on the protocol side.
-        triggerableWithdrawalsGateway().triggerFullWithdrawals{
-            value: msg.value
-        }(exitsData, refundRecipient, STRIKES_EXIT_TYPE_ID);
+        triggerableWithdrawalsGateway().triggerFullWithdrawals{ value: msg.value }(
+            exitsData,
+            refundRecipient,
+            STRIKES_EXIT_TYPE_ID
+        );
     }
 
     /// @inheritdoc IEjector
-    function triggerableWithdrawalsGateway()
-        public
-        view
-        returns (ITriggerableWithdrawalsGateway)
-    {
-        return
-            ITriggerableWithdrawalsGateway(
-                MODULE.LIDO_LOCATOR().triggerableWithdrawalsGateway()
-            );
+    function triggerableWithdrawalsGateway() public view returns (ITriggerableWithdrawalsGateway) {
+        return ITriggerableWithdrawalsGateway(MODULE.LIDO_LOCATOR().triggerableWithdrawalsGateway());
     }
 
     function _msgSenderIfEmpty(address input) internal view returns (address) {

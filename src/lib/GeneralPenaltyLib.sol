@@ -15,14 +15,8 @@ interface IGeneralPenalty {
         uint256 additionalFine,
         string details
     );
-    event GeneralDelayedPenaltyCancelled(
-        uint256 indexed nodeOperatorId,
-        uint256 amount
-    );
-    event GeneralDelayedPenaltyCompensated(
-        uint256 indexed nodeOperatorId,
-        uint256 amount
-    );
+    event GeneralDelayedPenaltyCancelled(uint256 indexed nodeOperatorId, uint256 amount);
+    event GeneralDelayedPenaltyCompensated(uint256 indexed nodeOperatorId, uint256 amount);
     event GeneralDelayedPenaltySettled(uint256 indexed nodeOperatorId);
 
     error ZeroPenaltyType();
@@ -43,9 +37,7 @@ library GeneralPenalty {
         IAccounting accounting = module.ACCOUNTING();
 
         uint256 curveId = accounting.getBondCurveId(nodeOperatorId);
-        uint256 additionalFine = module
-            .PARAMETERS_REGISTRY()
-            .getGeneralDelayedPenaltyAdditionalFine(curveId);
+        uint256 additionalFine = module.PARAMETERS_REGISTRY().getGeneralDelayedPenaltyAdditionalFine(curveId);
 
         uint256 totalAmount = amount + additionalFine;
 
@@ -66,27 +58,18 @@ library GeneralPenalty {
         module.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
-    function cancelGeneralDelayedPenalty(
-        uint256 nodeOperatorId,
-        uint256 amount
-    ) external {
+    function cancelGeneralDelayedPenalty(uint256 nodeOperatorId, uint256 amount) external {
         IBaseModule module = IBaseModule(address(this));
         IAccounting accounting = module.ACCOUNTING();
 
         accounting.releaseLockedBondETH(nodeOperatorId, amount);
 
-        emit IGeneralPenalty.GeneralDelayedPenaltyCancelled(
-            nodeOperatorId,
-            amount
-        );
+        emit IGeneralPenalty.GeneralDelayedPenaltyCancelled(nodeOperatorId, amount);
 
         module.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
-    function settleGeneralDelayedPenalty(
-        uint256 nodeOperatorId,
-        uint256 maxAmount
-    ) external returns (bool) {
+    function settleGeneralDelayedPenalty(uint256 nodeOperatorId, uint256 maxAmount) external returns (bool) {
         IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
         uint256 locked = accounting.getActualLockedBond(nodeOperatorId);
         if (locked == 0 || locked > maxAmount) {
@@ -105,10 +88,7 @@ library GeneralPenalty {
 
         accounting.compensateLockedBondETH{ value: msg.value }(nodeOperatorId);
 
-        emit IGeneralPenalty.GeneralDelayedPenaltyCompensated(
-            nodeOperatorId,
-            msg.value
-        );
+        emit IGeneralPenalty.GeneralDelayedPenaltyCompensated(nodeOperatorId, msg.value);
 
         module.updateDepositableValidatorsCount(nodeOperatorId);
     }

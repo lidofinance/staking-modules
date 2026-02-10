@@ -37,11 +37,7 @@ import { WstETHMock } from "../../helpers/mocks/WstETHMock.sol";
 import { ModuleFixtures } from "./_Base.t.sol";
 
 abstract contract ModuleAddValidatorKeys is ModuleFixtures {
-    function test_AddValidatorKeysWstETH()
-        public
-        assertInvariants
-        brutalizeMemory
-    {
+    function test_AddValidatorKeysWstETH() public assertInvariants brutalizeMemory {
         uint256 noId = createNodeOperator();
         uint256 toWrap = BOND_SIZE + 1 wei;
         vm.deal(nodeOperator, toWrap);
@@ -68,11 +64,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function test_AddValidatorKeysWstETH_keysLimit_withdrawnKeys()
-        public
-        assertInvariants
-        brutalizeMemory
-    {
+    function test_AddValidatorKeysWstETH_keysLimit_withdrawnKeys() public assertInvariants brutalizeMemory {
         parametersRegistry.setKeysLimit(0, 1);
 
         uint256 noId = createNodeOperator();
@@ -103,18 +95,10 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
         );
     }
 
-    function test_AddValidatorKeysWstETH_withTargetLimitSet()
-        public
-        assertInvariants
-        brutalizeMemory
-    {
+    function test_AddValidatorKeysWstETH_withTargetLimitSet() public assertInvariants brutalizeMemory {
         uint256 noId = createNodeOperator();
 
-        module.updateTargetValidatorsLimits({
-            nodeOperatorId: noId,
-            targetLimitMode: 1,
-            targetLimit: 0
-        });
+        module.updateTargetValidatorsLimits({ nodeOperatorId: noId, targetLimitMode: 1, targetLimit: 0 });
 
         uint256 toWrap = BOND_SIZE + 1 wei;
         vm.deal(nodeOperator, toWrap);
@@ -144,11 +128,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
         assertEq(no.depositableValidatorsCount, 0);
     }
 
-    function test_AddValidatorKeysWstETH_withPermit()
-        public
-        assertInvariants
-        brutalizeMemory
-    {
+    function test_AddValidatorKeysWstETH_withPermit() public assertInvariants brutalizeMemory {
         uint256 noId = createNodeOperator();
         uint256 toWrap = BOND_SIZE + 1 wei;
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
@@ -183,11 +163,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function test_AddValidatorKeysStETH()
-        public
-        assertInvariants
-        brutalizeMemory
-    {
+    function test_AddValidatorKeysStETH() public assertInvariants brutalizeMemory {
         uint256 noId = createNodeOperator();
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
 
@@ -208,22 +184,12 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             1,
             keys,
             signatures,
-            IAccounting.PermitInput({
-                value: BOND_SIZE,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: BOND_SIZE, deadline: 0, v: 0, r: 0, s: 0 })
         );
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function test_AddValidatorKeysStETH_keysLimit_withdrawnKeys()
-        public
-        assertInvariants
-        brutalizeMemory
-    {
+    function test_AddValidatorKeysStETH_keysLimit_withdrawnKeys() public assertInvariants brutalizeMemory {
         parametersRegistry.setKeysLimit(0, 1);
 
         uint256 noId = createNodeOperator();
@@ -248,28 +214,14 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             1,
             keys,
             signatures,
-            IAccounting.PermitInput({
-                value: BOND_SIZE,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: BOND_SIZE, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 
-    function test_AddValidatorKeysStETH_withTargetLimitSet()
-        public
-        assertInvariants
-        brutalizeMemory
-    {
+    function test_AddValidatorKeysStETH_withTargetLimitSet() public assertInvariants brutalizeMemory {
         uint256 noId = createNodeOperator();
 
-        module.updateTargetValidatorsLimits({
-            nodeOperatorId: noId,
-            targetLimitMode: 1,
-            targetLimit: 0
-        });
+        module.updateTargetValidatorsLimits({ nodeOperatorId: noId, targetLimitMode: 1, targetLimit: 0 });
 
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
 
@@ -290,24 +242,14 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             1,
             keys,
             signatures,
-            IAccounting.PermitInput({
-                value: BOND_SIZE,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: BOND_SIZE, deadline: 0, v: 0, r: 0, s: 0 })
         );
         assertEq(module.getNonce(), nonce + 1);
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.depositableValidatorsCount, 0);
     }
 
-    function test_AddValidatorKeysStETH_withPermit()
-        public
-        assertInvariants
-        brutalizeMemory
-    {
+    function test_AddValidatorKeysStETH_withPermit() public assertInvariants brutalizeMemory {
         uint256 noId = createNodeOperator();
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
 
@@ -342,11 +284,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function test_AddValidatorKeysETH()
-        public
-        assertInvariants
-        brutalizeMemory
-    {
+    function test_AddValidatorKeysETH() public assertInvariants brutalizeMemory {
         uint256 noId = createNodeOperator();
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
 
@@ -361,21 +299,11 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
         }
         vm.prank(nodeOperator);
-        module.addValidatorKeysETH{ value: required }(
-            nodeOperator,
-            noId,
-            1,
-            keys,
-            signatures
-        );
+        module.addValidatorKeysETH{ value: required }(nodeOperator, noId, 1, keys, signatures);
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function test_AddValidatorKeysETH_keysLimit_withdrawnKeys()
-        public
-        assertInvariants
-        brutalizeMemory
-    {
+    function test_AddValidatorKeysETH_keysLimit_withdrawnKeys() public assertInvariants brutalizeMemory {
         parametersRegistry.setKeysLimit(0, 1);
 
         uint256 noId = createNodeOperator();
@@ -394,27 +322,13 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
         }
         vm.prank(nodeOperator);
-        module.addValidatorKeysETH{ value: required }(
-            nodeOperator,
-            noId,
-            1,
-            keys,
-            signatures
-        );
+        module.addValidatorKeysETH{ value: required }(nodeOperator, noId, 1, keys, signatures);
     }
 
-    function test_AddValidatorKeysETH_withTargetLimitSet()
-        public
-        assertInvariants
-        brutalizeMemory
-    {
+    function test_AddValidatorKeysETH_withTargetLimitSet() public assertInvariants brutalizeMemory {
         uint256 noId = createNodeOperator();
 
-        module.updateTargetValidatorsLimits({
-            nodeOperatorId: noId,
-            targetLimitMode: 1,
-            targetLimit: 0
-        });
+        module.updateTargetValidatorsLimits({ nodeOperatorId: noId, targetLimitMode: 1, targetLimit: 0 });
 
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
 
@@ -429,23 +343,13 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             vm.expectEmit(address(module));
             emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
         }
-        module.addValidatorKeysETH{ value: required }(
-            nodeOperator,
-            noId,
-            1,
-            keys,
-            signatures
-        );
+        module.addValidatorKeysETH{ value: required }(nodeOperator, noId, 1, keys, signatures);
         assertEq(module.getNonce(), nonce + 1);
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.depositableValidatorsCount, 0);
     }
 
-    function test_AddValidatorKeysETH_withMoreEthThanRequired()
-        public
-        assertInvariants
-        brutalizeMemory
-    {
+    function test_AddValidatorKeysETH_withMoreEthThanRequired() public assertInvariants brutalizeMemory {
         uint256 noId = createNodeOperator();
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
 
@@ -461,13 +365,7 @@ abstract contract ModuleAddValidatorKeys is ModuleFixtures {
             vm.expectEmit(address(module));
             emit IBaseModule.TotalSigningKeysCountChanged(noId, 2);
         }
-        module.addValidatorKeysETH{ value: deposit }(
-            nodeOperator,
-            noId,
-            1,
-            keys,
-            signatures
-        );
+        module.addValidatorKeysETH{ value: deposit }(nodeOperator, noId, 1, keys, signatures);
         assertEq(module.getNonce(), nonce + 1);
     }
 }
@@ -484,9 +382,7 @@ contract GateWithTestCapabilities is Test, Utilities {
         accounting = module.ACCOUNTING();
         ILidoLocator locator = module.LIDO_LOCATOR();
         stETH = LidoMock(locator.lido());
-        wstETH = WstETHMock(
-            IWithdrawalQueue(locator.withdrawalQueue()).WSTETH()
-        );
+        wstETH = WstETHMock(IWithdrawalQueue(locator.withdrawalQueue()).WSTETH());
         stETH.approve(address(wstETH), UINT256_MAX);
     }
 
@@ -506,21 +402,12 @@ contract GateWithTestCapabilities is Test, Utilities {
             referrer: address(0)
         });
 
-        uint256 required = accounting.getRequiredBondForNextKeys(
-            noId,
-            keyCount
-        );
+        uint256 required = accounting.getRequiredBondForNextKeys(noId, keyCount);
         vm.deal(address(this), required);
 
         uint256 nonce = module.getNonce();
 
-        module.addValidatorKeysETH{ value: required }(
-            owner,
-            noId,
-            keyCount,
-            keys,
-            sigs
-        );
+        module.addValidatorKeysETH{ value: required }(owner, noId, keyCount, keys, sigs);
 
         assertEq(module.getNonce(), ++nonce);
     }
@@ -550,30 +437,13 @@ contract GateWithTestCapabilities is Test, Utilities {
         uint256 nonce = module.getNonce();
 
         for (uint256 i; i < ids.length; i++) {
-            bytes memory _keys = slice(
-                keys,
-                ids[i] - firstId * 48,
-                operatorKeyCount * 48
-            );
-            bytes memory _sigs = slice(
-                sigs,
-                ids[i] - firstId * 96,
-                operatorKeyCount * 96
-            );
+            bytes memory _keys = slice(keys, ids[i] - firstId * 48, operatorKeyCount * 48);
+            bytes memory _sigs = slice(sigs, ids[i] - firstId * 96, operatorKeyCount * 96);
 
-            uint256 required = accounting.getRequiredBondForNextKeys(
-                ids[i],
-                operatorKeyCount
-            );
+            uint256 required = accounting.getRequiredBondForNextKeys(ids[i], operatorKeyCount);
             vm.deal(address(this), required);
 
-            module.addValidatorKeysETH{ value: required }(
-                owner,
-                ids[i],
-                operatorKeyCount,
-                _keys,
-                _sigs
-            );
+            module.addValidatorKeysETH{ value: required }(owner, ids[i], operatorKeyCount, _keys, _sigs);
 
             assertEq(module.getNonce(), ++nonce);
         }
@@ -595,10 +465,7 @@ contract GateWithTestCapabilities is Test, Utilities {
             referrer: address(0)
         });
 
-        uint256 required = accounting.getRequiredBondForNextKeys(
-            noId,
-            keyCount
-        );
+        uint256 required = accounting.getRequiredBondForNextKeys(noId, keyCount);
         uint256 toWrap = required + 1 wei;
         vm.deal(address(this), toWrap);
         stETH.submit{ value: toWrap }(address(0));
@@ -642,21 +509,10 @@ contract GateWithTestCapabilities is Test, Utilities {
         uint256 nonce = module.getNonce();
 
         for (uint256 i; i < ids.length; i++) {
-            bytes memory _keys = slice(
-                keys,
-                ids[i] - firstId * 48,
-                operatorKeyCount * 48
-            );
-            bytes memory _sigs = slice(
-                sigs,
-                ids[i] - firstId * 96,
-                operatorKeyCount * 96
-            );
+            bytes memory _keys = slice(keys, ids[i] - firstId * 48, operatorKeyCount * 48);
+            bytes memory _sigs = slice(sigs, ids[i] - firstId * 96, operatorKeyCount * 96);
 
-            uint256 required = accounting.getRequiredBondForNextKeys(
-                ids[i],
-                operatorKeyCount
-            );
+            uint256 required = accounting.getRequiredBondForNextKeys(ids[i], operatorKeyCount);
             uint256 ethAmountToSend = required + 1 wei;
             vm.deal(address(this), ethAmountToSend);
             stETH.submit{ value: ethAmountToSend }(address(0));
@@ -667,13 +523,7 @@ contract GateWithTestCapabilities is Test, Utilities {
                 operatorKeyCount,
                 _keys,
                 _sigs,
-                IAccounting.PermitInput({
-                    value: 0,
-                    deadline: 0,
-                    v: 0,
-                    r: 0,
-                    s: 0
-                })
+                IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
             );
 
             assertEq(module.getNonce(), ++nonce);
@@ -696,10 +546,7 @@ contract GateWithTestCapabilities is Test, Utilities {
             referrer: address(0)
         });
 
-        uint256 required = accounting.getRequiredBondForNextKeys(
-            noId,
-            keyCount
-        );
+        uint256 required = accounting.getRequiredBondForNextKeys(noId, keyCount);
         uint256 toWrap = required + 1 wei;
         vm.deal(address(this), toWrap);
 
@@ -741,21 +588,10 @@ contract GateWithTestCapabilities is Test, Utilities {
         uint256 nonce = module.getNonce();
 
         for (uint256 i; i < ids.length; i++) {
-            bytes memory _keys = slice(
-                keys,
-                ids[i] - firstId * 48,
-                operatorKeyCount * 48
-            );
-            bytes memory _sigs = slice(
-                sigs,
-                ids[i] - firstId * 96,
-                operatorKeyCount * 96
-            );
+            bytes memory _keys = slice(keys, ids[i] - firstId * 48, operatorKeyCount * 48);
+            bytes memory _sigs = slice(sigs, ids[i] - firstId * 96, operatorKeyCount * 96);
 
-            uint256 required = accounting.getRequiredBondForNextKeys(
-                ids[i],
-                operatorKeyCount
-            );
+            uint256 required = accounting.getRequiredBondForNextKeys(ids[i], operatorKeyCount);
 
             uint256 toWrap = required + 1 wei;
             vm.deal(address(this), toWrap);
@@ -768,13 +604,7 @@ contract GateWithTestCapabilities is Test, Utilities {
                 operatorKeyCount,
                 _keys,
                 _sigs,
-                IAccounting.PermitInput({
-                    value: 0,
-                    deadline: 0,
-                    v: 0,
-                    r: 0,
-                    s: 0
-                })
+                IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
             );
 
             assertEq(module.getNonce(), ++nonce);
@@ -792,118 +622,52 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
         _;
     }
 
-    function test_GateAddValidatorKeysETH()
-        public
-        assertInvariants
-        brutalizeMemory
-        withGate
-    {
+    function test_GateAddValidatorKeysETH() public assertInvariants brutalizeMemory withGate {
         uint256 keyCount = 3;
         (bytes memory keys, bytes memory sigs) = keysSignatures(keyCount);
-        gate.createNodeOperatorWithKeysWithETHBond(
-            nodeOperator,
-            keyCount,
-            keys,
-            sigs
-        );
+        gate.createNodeOperatorWithKeysWithETHBond(nodeOperator, keyCount, keys, sigs);
     }
 
-    function test_GateAddValidatorKeysETH_MultipleOperators()
-        public
-        assertInvariants
-        brutalizeMemory
-        withGate
-    {
+    function test_GateAddValidatorKeysETH_MultipleOperators() public assertInvariants brutalizeMemory withGate {
         uint256 operatorCount = 3;
         uint256 operatorKeyCount = 1;
         uint256 keyCount = operatorCount * operatorKeyCount;
 
         (bytes memory keys, bytes memory sigs) = keysSignatures(keyCount);
-        gate.batchCreateNodeOperatorWithKeysWithETHBond(
-            nodeOperator,
-            operatorCount,
-            operatorKeyCount,
-            keys,
-            sigs
-        );
+        gate.batchCreateNodeOperatorWithKeysWithETHBond(nodeOperator, operatorCount, operatorKeyCount, keys, sigs);
     }
 
-    function test_GateAddValidatorKeysStETH()
-        public
-        assertInvariants
-        brutalizeMemory
-        withGate
-    {
+    function test_GateAddValidatorKeysStETH() public assertInvariants brutalizeMemory withGate {
         uint256 keyCount = 3;
         (bytes memory keys, bytes memory sigs) = keysSignatures(keyCount);
-        gate.createNodeOperatorWithKeysWithStETHBond(
-            nodeOperator,
-            keyCount,
-            keys,
-            sigs
-        );
+        gate.createNodeOperatorWithKeysWithStETHBond(nodeOperator, keyCount, keys, sigs);
     }
 
-    function test_GateAddValidatorKeysStETH_MultipleOperators()
-        public
-        assertInvariants
-        brutalizeMemory
-        withGate
-    {
+    function test_GateAddValidatorKeysStETH_MultipleOperators() public assertInvariants brutalizeMemory withGate {
         uint256 operatorCount = 3;
         uint256 operatorKeyCount = 1;
         uint256 keyCount = operatorCount * operatorKeyCount;
 
         (bytes memory keys, bytes memory sigs) = keysSignatures(keyCount);
-        gate.batchCreateNodeOperatorWithKeysWithStETHBond(
-            nodeOperator,
-            operatorCount,
-            operatorKeyCount,
-            keys,
-            sigs
-        );
+        gate.batchCreateNodeOperatorWithKeysWithStETHBond(nodeOperator, operatorCount, operatorKeyCount, keys, sigs);
     }
 
-    function test_GateAddValidatorKeysWstETH()
-        public
-        assertInvariants
-        brutalizeMemory
-        withGate
-    {
+    function test_GateAddValidatorKeysWstETH() public assertInvariants brutalizeMemory withGate {
         uint256 keyCount = 3;
         (bytes memory keys, bytes memory sigs) = keysSignatures(keyCount);
-        gate.createNodeOperatorWithKeysWithWstETHBond(
-            nodeOperator,
-            keyCount,
-            keys,
-            sigs
-        );
+        gate.createNodeOperatorWithKeysWithWstETHBond(nodeOperator, keyCount, keys, sigs);
     }
 
-    function test_AddValidatorKeysWstETH_MultipleOperators()
-        public
-        assertInvariants
-        brutalizeMemory
-        withGate
-    {
+    function test_AddValidatorKeysWstETH_MultipleOperators() public assertInvariants brutalizeMemory withGate {
         uint256 operatorCount = 3;
         uint256 operatorKeyCount = 1;
         uint256 keyCount = operatorCount * operatorKeyCount;
 
         (bytes memory keys, bytes memory sigs) = keysSignatures(keyCount);
-        gate.batchCreateNodeOperatorWithKeysWithWstETHBond(
-            nodeOperator,
-            operatorCount,
-            operatorKeyCount,
-            keys,
-            sigs
-        );
+        gate.batchCreateNodeOperatorWithKeysWithWstETHBond(nodeOperator, operatorCount, operatorKeyCount, keys, sigs);
     }
 
-    function test_AddValidatorKeysETH_RevertWhenCalledFromAnotherGate()
-        public
-        assertInvariants
-    {
+    function test_AddValidatorKeysETH_RevertWhenCalledFromAnotherGate() public assertInvariants {
         address gateOne = nextAddress("GATE_ONE");
         address gateTwo = nextAddress("GATE_TWO");
 
@@ -929,20 +693,11 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
             vm.expectRevert(IBaseModule.CannotAddKeys.selector);
 
             vm.prank(gateTwo);
-            module.addValidatorKeysETH{ value: required }(
-                nodeOperator,
-                noId,
-                1,
-                keys,
-                signatures
-            );
+            module.addValidatorKeysETH{ value: required }(nodeOperator, noId, 1, keys, signatures);
         }
     }
 
-    function test_AddValidatorKeysStETH_RevertWhenCalledFromAnotherGate()
-        public
-        assertInvariants
-    {
+    function test_AddValidatorKeysStETH_RevertWhenCalledFromAnotherGate() public assertInvariants {
         address gateOne = nextAddress("GATE_ONE");
         address gateTwo = nextAddress("GATE_TWO");
 
@@ -971,21 +726,12 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
                 1,
                 keys,
                 signatures,
-                IAccounting.PermitInput({
-                    value: 0,
-                    deadline: 0,
-                    v: 0,
-                    r: 0,
-                    s: 0
-                })
+                IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
             );
         }
     }
 
-    function test_AddValidatorKeysWstETH_RevertWhenCalledFromAnotherGate()
-        public
-        assertInvariants
-    {
+    function test_AddValidatorKeysWstETH_RevertWhenCalledFromAnotherGate() public assertInvariants {
         address gateOne = nextAddress("GATE_ONE");
         address gateTwo = nextAddress("GATE_TWO");
 
@@ -1014,29 +760,14 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
                 1,
                 keys,
                 signatures,
-                IAccounting.PermitInput({
-                    value: 0,
-                    deadline: 0,
-                    v: 0,
-                    r: 0,
-                    s: 0
-                })
+                IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
             );
         }
     }
 
-    function test_GateAddValidatorKeysETH_RevertWhenCalledTwice()
-        public
-        assertInvariants
-        withGate
-    {
+    function test_GateAddValidatorKeysETH_RevertWhenCalledTwice() public assertInvariants withGate {
         (bytes memory keys, bytes memory sigs) = keysSignatures(1);
-        uint256 noId = gate.createNodeOperatorWithKeysWithETHBond(
-            nodeOperator,
-            1,
-            keys,
-            sigs
-        );
+        uint256 noId = gate.createNodeOperatorWithKeysWithETHBond(nodeOperator, 1, keys, sigs);
 
         (keys, sigs) = keysSignatures(1, 1);
 
@@ -1048,18 +779,9 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
         }
     }
 
-    function test_GateAddValidatorKeysStETH_RevertWhenCalledTwice()
-        public
-        assertInvariants
-        withGate
-    {
+    function test_GateAddValidatorKeysStETH_RevertWhenCalledTwice() public assertInvariants withGate {
         (bytes memory keys, bytes memory sigs) = keysSignatures(1);
-        uint256 noId = gate.createNodeOperatorWithKeysWithStETHBond(
-            nodeOperator,
-            1,
-            keys,
-            sigs
-        );
+        uint256 noId = gate.createNodeOperatorWithKeysWithStETHBond(nodeOperator, 1, keys, sigs);
 
         (keys, sigs) = keysSignatures(1, 1);
         {
@@ -1072,29 +794,14 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
                 1,
                 keys,
                 sigs,
-                IAccounting.PermitInput({
-                    value: 0,
-                    deadline: 0,
-                    v: 0,
-                    r: 0,
-                    s: 0
-                })
+                IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
             );
         }
     }
 
-    function test_GateAddValidatorKeysWstETH_RevertWhenCalledTwice()
-        public
-        assertInvariants
-        withGate
-    {
+    function test_GateAddValidatorKeysWstETH_RevertWhenCalledTwice() public assertInvariants withGate {
         (bytes memory keys, bytes memory sigs) = keysSignatures(1);
-        uint256 noId = gate.createNodeOperatorWithKeysWithWstETHBond(
-            nodeOperator,
-            1,
-            keys,
-            sigs
-        );
+        uint256 noId = gate.createNodeOperatorWithKeysWithWstETHBond(nodeOperator, 1, keys, sigs);
 
         (keys, sigs) = keysSignatures(1, 1);
 
@@ -1108,22 +815,14 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
                 1,
                 keys,
                 sigs,
-                IAccounting.PermitInput({
-                    value: 0,
-                    deadline: 0,
-                    v: 0,
-                    r: 0,
-                    s: 0
-                })
+                IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 })
             );
         }
     }
 }
 
 abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
-    function beforeTestSetup(
-        bytes4 /* testSelector */
-    ) public pure returns (bytes[] memory beforeTestCalldata) {
+    function beforeTestSetup(bytes4 /* testSelector */) public pure returns (bytes[] memory beforeTestCalldata) {
         beforeTestCalldata = new bytes[](1);
         beforeTestCalldata[0] = abi.encodePacked(this.beforeEach.selector);
     }
@@ -1138,13 +837,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
         vm.deal(stranger, required);
         vm.expectRevert(IBaseModule.SenderIsNotEligible.selector);
         vm.prank(stranger);
-        module.addValidatorKeysETH{ value: required }(
-            stranger,
-            noId,
-            1,
-            new bytes(0),
-            new bytes(0)
-        );
+        module.addValidatorKeysETH{ value: required }(stranger, noId, 1, new bytes(0), new bytes(0));
     }
 
     function test_AddValidatorKeysETH_RevertWhen_CannotAddKeys() public {
@@ -1157,36 +850,19 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
 
         vm.expectRevert(IBaseModule.CannotAddKeys.selector);
         vm.prank(stranger);
-        module.addValidatorKeysETH{ value: required }(
-            nodeOperator,
-            noId,
-            1,
-            new bytes(0),
-            new bytes(0)
-        );
+        module.addValidatorKeysETH{ value: required }(nodeOperator, noId, 1, new bytes(0), new bytes(0));
     }
 
-    function test_AddValidatorKeysETH_RevertWhen_NoKeys()
-        public
-        assertInvariants
-    {
+    function test_AddValidatorKeysETH_RevertWhen_NoKeys() public assertInvariants {
         uint256 noId = module.getNodeOperatorsCount() - 1;
         uint256 required = accounting.getRequiredBondForNextKeys(0, 0);
         vm.deal(nodeOperator, required);
         vm.expectRevert(SigningKeys.InvalidKeysCount.selector);
         vm.prank(nodeOperator);
-        module.addValidatorKeysETH{ value: required }(
-            nodeOperator,
-            noId,
-            0,
-            new bytes(0),
-            new bytes(0)
-        );
+        module.addValidatorKeysETH{ value: required }(nodeOperator, noId, 0, new bytes(0), new bytes(0));
     }
 
-    function test_AddValidatorKeysETH_RevertWhen_KeysAndSigsLengthMismatch()
-        public
-    {
+    function test_AddValidatorKeysETH_RevertWhen_KeysAndSigsLengthMismatch() public {
         uint256 noId = module.getNodeOperatorsCount() - 1;
         uint16 keysCount = 1;
         (bytes memory keys, ) = keysSignatures(keysCount);
@@ -1196,44 +872,23 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
 
         vm.expectRevert(SigningKeys.InvalidLength.selector);
         vm.prank(nodeOperator);
-        module.addValidatorKeysETH{ value: required }(
-            nodeOperator,
-            noId,
-            keysCount,
-            keys,
-            new bytes(0)
-        );
+        module.addValidatorKeysETH{ value: required }(nodeOperator, noId, keysCount, keys, new bytes(0));
     }
 
-    function test_AddValidatorKeysETH_RevertWhen_ZeroKey()
-        public
-        assertInvariants
-    {
+    function test_AddValidatorKeysETH_RevertWhen_ZeroKey() public assertInvariants {
         uint256 noId = module.getNodeOperatorsCount() - 1;
         uint16 keysCount = 1;
-        (
-            bytes memory keys,
-            bytes memory signatures
-        ) = keysSignaturesWithZeroKey(keysCount, 0);
+        (bytes memory keys, bytes memory signatures) = keysSignaturesWithZeroKey(keysCount, 0);
 
         uint256 required = accounting.getRequiredBondForNextKeys(0, 1);
         vm.deal(nodeOperator, required);
 
         vm.expectRevert(SigningKeys.EmptyKey.selector);
         vm.prank(nodeOperator);
-        module.addValidatorKeysETH{ value: required }(
-            nodeOperator,
-            noId,
-            keysCount,
-            keys,
-            signatures
-        );
+        module.addValidatorKeysETH{ value: required }(nodeOperator, noId, keysCount, keys, signatures);
     }
 
-    function test_AddValidatorKeysETH_RevertWhen_KeysLimitExceeded()
-        public
-        assertInvariants
-    {
+    function test_AddValidatorKeysETH_RevertWhen_KeysLimitExceeded() public assertInvariants {
         uint256 noId = createNodeOperator();
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
 
@@ -1244,18 +899,10 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
 
         vm.expectRevert(IBaseModule.KeysLimitExceeded.selector);
         vm.prank(nodeOperator);
-        module.addValidatorKeysETH{ value: required }(
-            nodeOperator,
-            noId,
-            1,
-            keys,
-            signatures
-        );
+        module.addValidatorKeysETH{ value: required }(nodeOperator, noId, 1, keys, signatures);
     }
 
-    function test_AddValidatorKeysStETH_RevertWhen_SenderIsNotEligible()
-        public
-    {
+    function test_AddValidatorKeysStETH_RevertWhen_SenderIsNotEligible() public {
         uint256 noId = module.getNodeOperatorsCount() - 1;
         vm.deal(nodeOperator, BOND_SIZE + 1 wei);
         vm.prank(nodeOperator);
@@ -1294,10 +941,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
         );
     }
 
-    function test_AddValidatorKeysStETH_RevertWhen_NoKeys()
-        public
-        assertInvariants
-    {
+    function test_AddValidatorKeysStETH_RevertWhen_NoKeys() public assertInvariants {
         uint256 noId = module.getNodeOperatorsCount() - 1;
         vm.deal(nodeOperator, BOND_SIZE + 1 wei);
         vm.startPrank(nodeOperator);
@@ -1314,9 +958,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
         );
     }
 
-    function test_AddValidatorKeysStETH_RevertWhen_KeysAndSigsLengthMismatch()
-        public
-    {
+    function test_AddValidatorKeysStETH_RevertWhen_KeysAndSigsLengthMismatch() public {
         uint256 noId = module.getNodeOperatorsCount() - 1;
         uint16 keysCount = 1;
         (bytes memory keys, ) = keysSignatures(keysCount);
@@ -1332,26 +974,14 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
             keysCount,
             keys,
             new bytes(0),
-            IAccounting.PermitInput({
-                value: BOND_SIZE,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: BOND_SIZE, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 
-    function test_AddValidatorKeysStETH_RevertWhen_ZeroKey()
-        public
-        assertInvariants
-    {
+    function test_AddValidatorKeysStETH_RevertWhen_ZeroKey() public assertInvariants {
         uint256 noId = module.getNodeOperatorsCount() - 1;
         uint16 keysCount = 1;
-        (
-            bytes memory keys,
-            bytes memory signatures
-        ) = keysSignaturesWithZeroKey(keysCount, 0);
+        (bytes memory keys, bytes memory signatures) = keysSignaturesWithZeroKey(keysCount, 0);
 
         vm.deal(nodeOperator, BOND_SIZE + 1 wei);
         vm.startPrank(nodeOperator);
@@ -1364,20 +994,11 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
             keysCount,
             keys,
             signatures,
-            IAccounting.PermitInput({
-                value: BOND_SIZE,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: BOND_SIZE, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 
-    function test_AddValidatorKeysETH_RevertWhen_InvalidAmount()
-        public
-        assertInvariants
-    {
+    function test_AddValidatorKeysETH_RevertWhen_InvalidAmount() public assertInvariants {
         uint256 noId = createNodeOperator();
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
 
@@ -1386,19 +1007,10 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
 
         vm.expectRevert(IBaseModule.InvalidAmount.selector);
         vm.prank(nodeOperator);
-        module.addValidatorKeysETH{ value: required - 1 ether }(
-            nodeOperator,
-            noId,
-            1,
-            keys,
-            signatures
-        );
+        module.addValidatorKeysETH{ value: required - 1 ether }(nodeOperator, noId, 1, keys, signatures);
     }
 
-    function test_AddValidatorKeysStETH_RevertWhen_KeysLimitExceeded()
-        public
-        assertInvariants
-    {
+    function test_AddValidatorKeysStETH_RevertWhen_KeysLimitExceeded() public assertInvariants {
         uint256 noId = createNodeOperator();
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
 
@@ -1415,19 +1027,11 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
             1,
             keys,
             signatures,
-            IAccounting.PermitInput({
-                value: BOND_SIZE,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            })
+            IAccounting.PermitInput({ value: BOND_SIZE, deadline: 0, v: 0, r: 0, s: 0 })
         );
     }
 
-    function test_AddValidatorKeysWstETH_RevertWhen_SenderIsNotEligible()
-        public
-    {
+    function test_AddValidatorKeysWstETH_RevertWhen_SenderIsNotEligible() public {
         uint256 noId = module.getNodeOperatorsCount() - 1;
         uint256 toWrap = BOND_SIZE + 1 wei;
         vm.deal(nodeOperator, toWrap);
@@ -1474,10 +1078,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
         );
     }
 
-    function test_AddValidatorKeysWstETH_RevertWhen_NoKeys()
-        public
-        assertInvariants
-    {
+    function test_AddValidatorKeysWstETH_RevertWhen_NoKeys() public assertInvariants {
         uint256 noId = module.getNodeOperatorsCount() - 1;
         uint256 toWrap = BOND_SIZE + 1 wei;
         vm.deal(nodeOperator, toWrap);
@@ -1497,9 +1098,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
         );
     }
 
-    function test_AddValidatorKeysWstETH_RevertWhen_KeysAndSigsLengthMismatch()
-        public
-    {
+    function test_AddValidatorKeysWstETH_RevertWhen_KeysAndSigsLengthMismatch() public {
         uint256 noId = module.getNodeOperatorsCount() - 1;
         uint16 keysCount = 1;
         uint256 toWrap = BOND_SIZE + 1 wei;
@@ -1521,10 +1120,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
         );
     }
 
-    function test_AddValidatorKeysWstETH_RevertWhen_ZeroKey()
-        public
-        assertInvariants
-    {
+    function test_AddValidatorKeysWstETH_RevertWhen_ZeroKey() public assertInvariants {
         uint256 noId = module.getNodeOperatorsCount() - 1;
         uint16 keysCount = 1;
         uint256 toWrap = BOND_SIZE + 1 wei;
@@ -1533,10 +1129,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
         stETH.submit{ value: toWrap }(address(0));
         stETH.approve(address(wstETH), UINT256_MAX);
         wstETH.wrap(toWrap);
-        (
-            bytes memory keys,
-            bytes memory signatures
-        ) = keysSignaturesWithZeroKey(keysCount, 0);
+        (bytes memory keys, bytes memory signatures) = keysSignaturesWithZeroKey(keysCount, 0);
 
         vm.expectRevert(SigningKeys.EmptyKey.selector);
         module.addValidatorKeysWstETH(
@@ -1549,10 +1142,7 @@ abstract contract ModuleAddValidatorKeysNegative is ModuleFixtures {
         );
     }
 
-    function test_AddValidatorKeysWstETH_RevertWhen_KeysLimitExceeded()
-        public
-        assertInvariants
-    {
+    function test_AddValidatorKeysWstETH_RevertWhen_KeysLimitExceeded() public assertInvariants {
         uint256 noId = createNodeOperator();
         uint256 toWrap = BOND_SIZE + 1 wei;
         vm.deal(nodeOperator, toWrap);

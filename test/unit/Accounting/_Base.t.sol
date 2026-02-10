@@ -53,11 +53,7 @@ contract AccountingFixtures is Test, Fixtures, Utilities, InvariantAsserts {
         emit AssertInvariants();
         assertAccountingTotalBondShares(nodeOperatorsCount, stETH, accounting);
         assertAccountingBondDebts(nodeOperatorsCount, accounting);
-        assertAccountingBurnerApproval(
-            stETH,
-            address(accounting),
-            address(burner)
-        );
+        assertAccountingBurnerApproval(stETH, address(accounting), address(burner));
         assertAccountingUnusedStorageSlots(accounting);
         vm.resumeGasMetering();
     }
@@ -65,23 +61,16 @@ contract AccountingFixtures is Test, Fixtures, Utilities, InvariantAsserts {
     function mock_getNodeOperatorsCount(uint256 returnValue) internal {
         vm.mockCall(
             address(stakingModule),
-            abi.encodeWithSelector(
-                IStakingModule.getNodeOperatorsCount.selector
-            ),
+            abi.encodeWithSelector(IStakingModule.getNodeOperatorsCount.selector),
             abi.encode(returnValue)
         );
         nodeOperatorsCount = returnValue;
     }
 
-    function mock_getNodeOperatorNonWithdrawnKeys(
-        uint256 returnValue
-    ) internal {
+    function mock_getNodeOperatorNonWithdrawnKeys(uint256 returnValue) internal {
         vm.mockCall(
             address(stakingModule),
-            abi.encodeWithSelector(
-                IBaseModule.getNodeOperatorNonWithdrawnKeys.selector,
-                0
-            ),
+            abi.encodeWithSelector(IBaseModule.getNodeOperatorNonWithdrawnKeys.selector, 0),
             abi.encode(returnValue)
         );
     }
@@ -89,23 +78,15 @@ contract AccountingFixtures is Test, Fixtures, Utilities, InvariantAsserts {
     function mock_updateDepositableValidatorsCount() internal {
         vm.mockCall(
             address(stakingModule),
-            abi.encodeWithSelector(
-                IBaseModule.updateDepositableValidatorsCount.selector,
-                0
-            ),
+            abi.encodeWithSelector(IBaseModule.updateDepositableValidatorsCount.selector, 0),
             ""
         );
     }
 
-    function mock_onNodeOperatorBondCurveUpdated(
-        uint256 nodeOperatorId
-    ) internal {
+    function mock_onNodeOperatorBondCurveUpdated(uint256 nodeOperatorId) internal {
         vm.mockCall(
             address(stakingModule),
-            abi.encodeWithSelector(
-                IBaseModule.onNodeOperatorBondCurveUpdated.selector,
-                nodeOperatorId
-            ),
+            abi.encodeWithSelector(IBaseModule.onNodeOperatorBondCurveUpdated.selector, nodeOperatorId),
             ""
         );
     }
@@ -113,10 +94,7 @@ contract AccountingFixtures is Test, Fixtures, Utilities, InvariantAsserts {
     function mock_getNodeOperatorOwner(address owner) internal {
         vm.mockCall(
             address(stakingModule),
-            abi.encodeWithSelector(
-                IBaseModule.getNodeOperatorOwner.selector,
-                0
-            ),
+            abi.encodeWithSelector(IBaseModule.getNodeOperatorOwner.selector, 0),
             abi.encode(owner)
         );
     }
@@ -128,17 +106,8 @@ contract AccountingFixtures is Test, Fixtures, Utilities, InvariantAsserts {
     ) internal {
         vm.mockCall(
             address(stakingModule),
-            abi.encodeWithSelector(
-                IBaseModule.getNodeOperatorManagementProperties.selector,
-                0
-            ),
-            abi.encode(
-                NodeOperatorManagementProperties(
-                    managerAddress,
-                    rewardAddress,
-                    extendedManagerPermissions
-                )
-            )
+            abi.encodeWithSelector(IBaseModule.getNodeOperatorManagementProperties.selector, 0),
+            abi.encode(NodeOperatorManagementProperties(managerAddress, rewardAddress, extendedManagerPermissions))
         );
     }
 
@@ -167,12 +136,8 @@ contract BaseTest is AccountingFixtures {
         mock_updateDepositableValidatorsCount();
         mock_onNodeOperatorBondCurveUpdated(0);
 
-        IBondCurve.BondCurveIntervalInput[]
-            memory curve = new IBondCurve.BondCurveIntervalInput[](1);
-        curve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: 2 ether
-        });
+        IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
+        curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 2 ether });
 
         feeDistributor = new DistributorMock(address(stETH));
 
@@ -188,12 +153,7 @@ contract BaseTest is AccountingFixtures {
 
         _enableInitializers(address(accounting));
 
-        accounting.initialize(
-            curve,
-            admin,
-            8 weeks,
-            testChargePenaltyRecipient
-        );
+        accounting.initialize(curve, admin, 8 weeks, testChargePenaltyRecipient);
 
         vm.startPrank(admin);
 
@@ -212,10 +172,7 @@ contract BaseTest is AccountingFixtures {
     function _deposit(uint256 bond) internal virtual {
         vm.deal(address(stakingModule), bond);
         vm.prank(address(stakingModule));
-        accounting.depositETH{ value: bond }({
-            from: address(0),
-            nodeOperatorId: 0
-        });
+        accounting.depositETH{ value: bond }({ from: address(0), nodeOperatorId: 0 });
     }
 }
 
@@ -246,30 +203,10 @@ abstract contract BondStateBaseTest is BondAmountModifiersTest, BaseTest {
     IBondCurve.BondCurveIntervalInput[] public individualCurve;
 
     constructor() {
-        curveWithDiscount.push(
-            IBondCurve.BondCurveIntervalInput({
-                minKeysCount: 1,
-                trend: 2 ether
-            })
-        );
-        curveWithDiscount.push(
-            IBondCurve.BondCurveIntervalInput({
-                minKeysCount: 2,
-                trend: 1 ether
-            })
-        );
-        individualCurve.push(
-            IBondCurve.BondCurveIntervalInput({
-                minKeysCount: 1,
-                trend: 1.8 ether
-            })
-        );
-        individualCurve.push(
-            IBondCurve.BondCurveIntervalInput({
-                minKeysCount: 2,
-                trend: 0.9 ether
-            })
-        );
+        curveWithDiscount.push(IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 2 ether }));
+        curveWithDiscount.push(IBondCurve.BondCurveIntervalInput({ minKeysCount: 2, trend: 1 ether }));
+        individualCurve.push(IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 1.8 ether }));
+        individualCurve.push(IBondCurve.BondCurveIntervalInput({ minKeysCount: 2, trend: 0.9 ether }));
     }
 
     function setUp() public virtual override {
@@ -277,9 +214,7 @@ abstract contract BondStateBaseTest is BondAmountModifiersTest, BaseTest {
         mock_getNodeOperatorManagementProperties(user, user, false);
     }
 
-    function _curve(
-        IBondCurve.BondCurveIntervalInput[] memory curve
-    ) internal virtual {
+    function _curve(IBondCurve.BondCurveIntervalInput[] memory curve) internal virtual {
         vm.startPrank(admin);
         uint256 curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(0, curveId);
@@ -320,19 +255,13 @@ abstract contract GetRequiredBondBaseTest is BondStateBaseTest {
 
     function test_WithBondAndOneWithdrawnAndOneAddedValidator() public virtual;
 
-    function test_WithExcessBondAndOneWithdrawnAndOneAddedValidator()
-        public
-        virtual;
+    function test_WithExcessBondAndOneWithdrawnAndOneAddedValidator() public virtual;
 
-    function test_WithMissingBondAndOneWithdrawnAndOneAddedValidator()
-        public
-        virtual;
+    function test_WithMissingBondAndOneWithdrawnAndOneAddedValidator() public virtual;
 }
 
 abstract contract GetRequiredBondForKeysBaseTest is BaseTest {
-    function _curve(
-        IBondCurve.BondCurveIntervalInput[] memory curve
-    ) internal virtual {
+    function _curve(IBondCurve.BondCurveIntervalInput[] memory curve) internal virtual {
         vm.startPrank(admin);
         uint256 curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(0, curveId);
@@ -377,11 +306,7 @@ abstract contract RewardsBaseTest is BondStateBaseTest {
         wstETHAsFee = wstETH.getWstETHByStETH(stETHAsFee);
         unstETHAsFee = stETH.getPooledEthByShares(sharesAsFee);
         unstETHSharesAsFee = stETH.getSharesByPooledEth(unstETHAsFee);
-        leaf = RewardsLeaf({
-            proof: new bytes32[](1),
-            nodeOperatorId: 0,
-            shares: sharesAsFee
-        });
+        leaf = RewardsLeaf({ proof: new bytes32[](1), nodeOperatorId: 0, shares: sharesAsFee });
     }
 }
 

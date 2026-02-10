@@ -56,20 +56,14 @@ library TopUpQueueOps {
 
         for (uint256 i; i < keyCount; i++) {
             TopUpQueueItem item = topUpQueue.at(0);
-            if (
-                data.operatorIds[i] != item.noId() ||
-                data.keyIndices[i] != item.keyIndex()
-            ) {
+            if (data.operatorIds[i] != item.noId() || data.keyIndices[i] != item.keyIndex()) {
                 revert ICSModule.InvalidTopUpOrder();
             }
 
             _verifyModuleKey(item.noId(), item.keyIndex(), pubkeys[i]);
 
             if (maxDepositAmount > 0) {
-                allocations[i] = Math.min(
-                    data.topUpLimits[i],
-                    maxDepositAmount
-                );
+                allocations[i] = Math.min(data.topUpLimits[i], maxDepositAmount);
                 maxDepositAmount -= allocations[i];
             }
 
@@ -81,19 +75,11 @@ library TopUpQueueOps {
         }
     }
 
-    function _verifyModuleKey(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        bytes memory key
-    ) private view {
+    function _verifyModuleKey(uint256 nodeOperatorId, uint256 keyIndex, bytes memory key) private view {
         if (key.length != SigningKeys.PUBKEY_LENGTH) {
             revert IBaseModule.InvalidInput();
         }
-        bytes memory keyFromStorage = SigningKeys.loadKeys(
-            nodeOperatorId,
-            keyIndex,
-            1
-        );
+        bytes memory keyFromStorage = SigningKeys.loadKeys(nodeOperatorId, keyIndex, 1);
 
         if (keccak256(key) != keccak256(keyFromStorage)) {
             revert ICSModule.InvalidSigningKey();

@@ -47,10 +47,7 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         assertEq(module.getRoleMemberCount(role), gatesCount);
 
         for (uint256 i = 0; i < gatesCount; ++i) {
-            assertTrue(
-                module.hasRole(role, curatedGates[i]),
-                "gate missing module role"
-            );
+            assertTrue(module.hasRole(role, curatedGates[i]), "gate missing module role");
         }
     }
 
@@ -58,17 +55,13 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         curatedModule.initialize({ admin: deployParams.aragonAgent });
 
-        OssifiableProxy proxy = OssifiableProxy(
-            payable(address(curatedModule))
-        );
+        OssifiableProxy proxy = OssifiableProxy(payable(address(curatedModule)));
 
         assertEq(proxy.proxy__getImplementation(), address(moduleImpl));
         assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
         assertFalse(proxy.proxy__getIsOssified());
 
-        ICuratedModule moduleImpl = ICuratedModule(
-            proxy.proxy__getImplementation()
-        );
+        ICuratedModule moduleImpl = ICuratedModule(proxy.proxy__getImplementation());
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         moduleImpl.initialize({ admin: deployParams.aragonAgent });
     }
@@ -78,32 +71,20 @@ contract MetaRegistryDeploymentTest is DeploymentBaseTest {
     function test_state_onlyFull() public view {
         assertEq(metaRegistry.getOperatorGroupsCount(), 1);
 
-        IMetaRegistry.OperatorGroup memory groupInfo = metaRegistry
-            .getOperatorGroup(metaRegistry.NO_GROUP_ID());
+        IMetaRegistry.OperatorGroup memory groupInfo = metaRegistry.getOperatorGroup(metaRegistry.NO_GROUP_ID());
         assertEq(groupInfo.subNodeOperators.length, 0);
         assertEq(groupInfo.externalOperators.length, 0);
     }
 
     function test_roles_onlyFull() public view {
-        assertEq(
-            metaRegistry.getRoleMemberCount(metaRegistry.DEFAULT_ADMIN_ROLE()),
-            adminsCount
-        );
-        assertTrue(
-            metaRegistry.hasRole(
-                metaRegistry.DEFAULT_ADMIN_ROLE(),
-                deployParams.aragonAgent
-            )
-        );
+        assertEq(metaRegistry.getRoleMemberCount(metaRegistry.DEFAULT_ADMIN_ROLE()), adminsCount);
+        assertTrue(metaRegistry.hasRole(metaRegistry.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
 
         bytes32 setterRole = metaRegistry.SET_OPERATOR_INFO_ROLE();
         uint256 gatesCount = curatedGates.length;
         assertEq(metaRegistry.getRoleMemberCount(setterRole), gatesCount);
         for (uint256 i = 0; i < gatesCount; ++i) {
-            assertTrue(
-                metaRegistry.hasRole(setterRole, curatedGates[i]),
-                "gate missing metaRegistry setter role"
-            );
+            assertTrue(metaRegistry.hasRole(setterRole, curatedGates[i]), "gate missing metaRegistry setter role");
         }
     }
 }
@@ -145,125 +126,66 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
 
             GateCurveParams memory params = deployParams.curatedGates[i].params;
 
+            assertEq(parametersRegistry.getKeyRemovalCharge(curveId), params.keyRemovalCharge);
             assertEq(
-                parametersRegistry.getKeyRemovalCharge(curveId),
-                params.keyRemovalCharge
-            );
-            assertEq(
-                parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(
-                    curveId
-                ),
+                parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(curveId),
                 params.generalDelayedPenaltyAdditionalFine
             );
-            assertEq(
-                parametersRegistry.getKeysLimit(curveId),
-                params.keysLimit
-            );
+            assertEq(parametersRegistry.getKeysLimit(curveId), params.keysLimit);
 
-            IParametersRegistry.KeyNumberValueInterval[]
-                memory avgPerfLeewayData = parametersRegistry
-                    .getPerformanceLeewayData(curveId);
+            IParametersRegistry.KeyNumberValueInterval[] memory avgPerfLeewayData = parametersRegistry
+                .getPerformanceLeewayData(curveId);
             if (params.avgPerfLeewayData.length == 0) {
                 assertEq(avgPerfLeewayData.length, 1);
                 assertEq(avgPerfLeewayData[0].minKeyNumber, 1);
-                assertEq(
-                    avgPerfLeewayData[0].value,
-                    deployParams.defaultAvgPerfLeewayBP
-                );
+                assertEq(avgPerfLeewayData[0].value, deployParams.defaultAvgPerfLeewayBP);
             } else {
-                assertEq(
-                    avgPerfLeewayData.length,
-                    params.avgPerfLeewayData.length
-                );
+                assertEq(avgPerfLeewayData.length, params.avgPerfLeewayData.length);
                 for (uint256 j = 0; j < avgPerfLeewayData.length; ++j) {
-                    assertEq(
-                        avgPerfLeewayData[j].minKeyNumber,
-                        params.avgPerfLeewayData[j][0]
-                    );
-                    assertEq(
-                        avgPerfLeewayData[j].value,
-                        params.avgPerfLeewayData[j][1]
-                    );
+                    assertEq(avgPerfLeewayData[j].minKeyNumber, params.avgPerfLeewayData[j][0]);
+                    assertEq(avgPerfLeewayData[j].value, params.avgPerfLeewayData[j][1]);
                 }
             }
 
-            IParametersRegistry.KeyNumberValueInterval[]
-                memory rewardShareData = parametersRegistry.getRewardShareData(
-                    curveId
-                );
+            IParametersRegistry.KeyNumberValueInterval[] memory rewardShareData = parametersRegistry.getRewardShareData(
+                curveId
+            );
             if (params.rewardShareData.length == 0) {
                 assertEq(rewardShareData.length, 1);
                 assertEq(rewardShareData[0].minKeyNumber, 1);
-                assertEq(
-                    rewardShareData[0].value,
-                    deployParams.defaultRewardShareBP
-                );
+                assertEq(rewardShareData[0].value, deployParams.defaultRewardShareBP);
             } else {
                 assertEq(rewardShareData.length, params.rewardShareData.length);
                 for (uint256 j = 0; j < rewardShareData.length; ++j) {
-                    assertEq(
-                        rewardShareData[j].minKeyNumber,
-                        params.rewardShareData[j][0]
-                    );
-                    assertEq(
-                        rewardShareData[j].value,
-                        params.rewardShareData[j][1]
-                    );
+                    assertEq(rewardShareData[j].minKeyNumber, params.rewardShareData[j][0]);
+                    assertEq(rewardShareData[j].value, params.rewardShareData[j][1]);
                 }
             }
 
-            (
-                uint256 strikesLifetime,
-                uint256 strikesThreshold
-            ) = parametersRegistry.getStrikesParams(curveId);
+            (uint256 strikesLifetime, uint256 strikesThreshold) = parametersRegistry.getStrikesParams(curveId);
             if (params.strikesThreshold == 0) {
-                assertEq(
-                    strikesLifetime,
-                    deployParams.defaultStrikesLifetimeFrames
-                );
-                assertEq(
-                    strikesThreshold,
-                    deployParams.defaultStrikesThreshold
-                );
+                assertEq(strikesLifetime, deployParams.defaultStrikesLifetimeFrames);
+                assertEq(strikesThreshold, deployParams.defaultStrikesThreshold);
             } else {
                 assertEq(strikesLifetime, params.strikesLifetimeFrames);
                 assertEq(strikesThreshold, params.strikesThreshold);
             }
 
-            (
-                uint256 queuePriority,
-                uint256 queueMaxDeposits
-            ) = parametersRegistry.getQueueConfig(curveId);
+            (uint256 queuePriority, uint256 queueMaxDeposits) = parametersRegistry.getQueueConfig(curveId);
             if (params.queueMaxDeposits == 0) {
                 assertEq(queuePriority, deployParams.defaultQueuePriority);
-                assertEq(
-                    queueMaxDeposits,
-                    deployParams.defaultQueueMaxDeposits
-                );
+                assertEq(queueMaxDeposits, deployParams.defaultQueueMaxDeposits);
             } else {
                 assertEq(queuePriority, params.queuePriority);
                 assertEq(queueMaxDeposits, params.queueMaxDeposits);
             }
 
-            assertEq(
-                parametersRegistry.getBadPerformancePenalty(curveId),
-                params.badPerformancePenalty
-            );
+            assertEq(parametersRegistry.getBadPerformancePenalty(curveId), params.badPerformancePenalty);
 
-            (
-                uint256 attestationsWeight,
-                uint256 blocksWeight,
-                uint256 syncWeight
-            ) = parametersRegistry.getPerformanceCoefficients(curveId);
-            if (
-                params.attestationsWeight == 0 &&
-                params.blocksWeight == 0 &&
-                params.syncWeight == 0
-            ) {
-                assertEq(
-                    attestationsWeight,
-                    deployParams.defaultAttestationsWeight
-                );
+            (uint256 attestationsWeight, uint256 blocksWeight, uint256 syncWeight) = parametersRegistry
+                .getPerformanceCoefficients(curveId);
+            if (params.attestationsWeight == 0 && params.blocksWeight == 0 && params.syncWeight == 0) {
+                assertEq(attestationsWeight, deployParams.defaultAttestationsWeight);
                 assertEq(blocksWeight, deployParams.defaultBlocksWeight);
                 assertEq(syncWeight, deployParams.defaultSyncWeight);
             } else {
@@ -272,18 +194,9 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
                 assertEq(syncWeight, params.syncWeight);
             }
 
-            assertEq(
-                parametersRegistry.getAllowedExitDelay(curveId),
-                params.allowedExitDelay
-            );
-            assertEq(
-                parametersRegistry.getExitDelayFee(curveId),
-                params.exitDelayFee
-            );
-            assertEq(
-                parametersRegistry.getMaxElWithdrawalRequestFee(curveId),
-                params.maxElWithdrawalRequestFee
-            );
+            assertEq(parametersRegistry.getAllowedExitDelay(curveId), params.allowedExitDelay);
+            assertEq(parametersRegistry.getExitDelayFee(curveId), params.exitDelayFee);
+            assertEq(parametersRegistry.getMaxElWithdrawalRequestFee(curveId), params.maxElWithdrawalRequestFee);
 
             // FIXME: add MetaRegistry-level assertions here to replace
             // the removed deposit-allocation-weight checks.
@@ -296,16 +209,8 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
         assertTrue(implementation != address(0), "factory implementation zero");
         for (uint256 i = 0; i < gatesCount; ++i) {
             OssifiableProxy proxy = OssifiableProxy(payable(curatedGates[i]));
-            assertEq(
-                proxy.proxy__getImplementation(),
-                implementation,
-                "gate implementation mismatch"
-            );
-            assertEq(
-                proxy.proxy__getAdmin(),
-                deployParams.proxyAdmin,
-                "gate proxy admin mismatch"
-            );
+            assertEq(proxy.proxy__getImplementation(), implementation, "gate implementation mismatch");
+            assertEq(proxy.proxy__getAdmin(), deployParams.proxyAdmin, "gate proxy admin mismatch");
         }
     }
 
@@ -316,41 +221,17 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
         for (uint256 i = 0; i < gatesCount; ++i) {
             {
                 CuratedGate gate = CuratedGate(curatedGates[i]);
-                assertEq(
-                    gate.getRoleMemberCount(gate.DEFAULT_ADMIN_ROLE()),
-                    adminsCount
-                );
-                assertTrue(
-                    gate.hasRole(
-                        gate.DEFAULT_ADMIN_ROLE(),
-                        deployParams.aragonAgent
-                    ),
-                    "missing aragon admin"
-                );
+                assertEq(gate.getRoleMemberCount(gate.DEFAULT_ADMIN_ROLE()), adminsCount);
+                assertTrue(gate.hasRole(gate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent), "missing aragon admin");
 
                 // Operational roles
+                assertTrue(gate.hasRole(gate.PAUSE_ROLE(), deployParams.resealManager), "missing pause role");
+                assertTrue(gate.hasRole(gate.RESUME_ROLE(), deployParams.resealManager), "missing resume role");
                 assertTrue(
-                    gate.hasRole(gate.PAUSE_ROLE(), deployParams.resealManager),
-                    "missing pause role"
-                );
-                assertTrue(
-                    gate.hasRole(
-                        gate.RESUME_ROLE(),
-                        deployParams.resealManager
-                    ),
-                    "missing resume role"
-                );
-                assertTrue(
-                    gate.hasRole(
-                        gate.SET_TREE_ROLE(),
-                        deployParams.easyTrackEVMScriptExecutor
-                    ),
+                    gate.hasRole(gate.SET_TREE_ROLE(), deployParams.easyTrackEVMScriptExecutor),
                     "missing set tree role"
                 );
-                assertTrue(
-                    gate.hasRole(gate.PAUSE_ROLE(), address(gateSeal)),
-                    "missing gate seal pause role"
-                );
+                assertTrue(gate.hasRole(gate.PAUSE_ROLE(), address(gateSeal)), "missing gate seal pause role");
             }
         }
     }
@@ -361,16 +242,8 @@ contract GateSealDeploymentTest is DeploymentBaseTest {
         assertTrue(address(gateSeal) != address(0), "gate seal missing");
         address committee = gateSeal.get_sealing_committee();
         assertEq(committee, deployParams.sealingCommittee, "committee");
-        assertEq(
-            gateSeal.get_seal_duration_seconds(),
-            deployParams.sealDuration,
-            "seal duration"
-        );
-        assertEq(
-            gateSeal.get_expiry_timestamp(),
-            deployParams.sealExpiryTimestamp,
-            "expiry"
-        );
+        assertEq(gateSeal.get_seal_duration_seconds(), deployParams.sealDuration, "seal duration");
+        assertEq(gateSeal.get_expiry_timestamp(), deployParams.sealExpiryTimestamp, "expiry");
     }
 
     function test_sealables() public view {
@@ -388,35 +261,14 @@ contract GateSealDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles() public view {
-        assertTrue(
-            curatedModule.hasRole(
-                curatedModule.PAUSE_ROLE(),
-                address(gateSeal)
-            ),
-            "curated module pause role"
-        );
-        assertTrue(
-            accounting.hasRole(accounting.PAUSE_ROLE(), address(gateSeal)),
-            "accounting pause role"
-        );
-        assertTrue(
-            oracle.hasRole(oracle.PAUSE_ROLE(), address(gateSeal)),
-            "oracle pause role"
-        );
-        assertTrue(
-            verifier.hasRole(verifier.PAUSE_ROLE(), address(gateSeal)),
-            "verifier pause role"
-        );
-        assertTrue(
-            ejector.hasRole(ejector.PAUSE_ROLE(), address(gateSeal)),
-            "ejector pause role"
-        );
+        assertTrue(curatedModule.hasRole(curatedModule.PAUSE_ROLE(), address(gateSeal)), "curated module pause role");
+        assertTrue(accounting.hasRole(accounting.PAUSE_ROLE(), address(gateSeal)), "accounting pause role");
+        assertTrue(oracle.hasRole(oracle.PAUSE_ROLE(), address(gateSeal)), "oracle pause role");
+        assertTrue(verifier.hasRole(verifier.PAUSE_ROLE(), address(gateSeal)), "verifier pause role");
+        assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), address(gateSeal)), "ejector pause role");
         for (uint256 i = 0; i < curatedGates.length; ++i) {
             CuratedGate gate = CuratedGate(curatedGates[i]);
-            assertTrue(
-                gate.hasRole(gate.PAUSE_ROLE(), address(gateSeal)),
-                "gate pause role"
-            );
+            assertTrue(gate.hasRole(gate.PAUSE_ROLE(), address(gateSeal)), "gate pause role");
         }
     }
 }
