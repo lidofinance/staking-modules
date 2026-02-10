@@ -12,6 +12,7 @@ interface IFeeSplits {
     event FeeSplitsSet(uint256 indexed nodeOperatorId, IAccounting.FeeSplit[] feeSplits);
 
     error PendingSharesExist();
+    error EmptyProofAllowedOnlyForEmptyFeeSplits();
     error UndistributedSharesExist();
     error TooManySplits();
     error TooManySplitShares();
@@ -32,26 +33,22 @@ library FeeSplits {
         bytes32[] calldata rewardsProof,
         IAccounting.FeeSplit[] calldata feeSplits
     ) external {
-        uint256 len = feeSplits.length;
-        if (len > MAX_FEE_SPLITS) revert IFeeSplits.TooManySplits();
         if (pendingSharesToSplitStorage[nodeOperatorId] > 0) revert IFeeSplits.PendingSharesExist();
-        if (feeDistributor.getFeesToDistribute(nodeOperatorId, cumulativeFeeShares, rewardsProof) != 0) {
-            revert IFeeSplits.UndistributedSharesExist();
+
+        if (rewardsProof.length == 0) {
+            if (feeSplitsStorage[nodeOperatorId].length != 0)
+                revert IFeeSplits.EmptyProofAllowedOnlyForEmptyFeeSplits();
+        } else {
+            if (feeDistributor.getFeesToDistribute(nodeOperatorId, cumulativeFeeShares, rewardsProof) != 0) {
+                revert IFeeSplits.UndistributedSharesExist();
+            }
         }
 
-        uint256 totalShare = 0;
-        for (uint256 i = 0; i < len; ++i) {
-            IAccounting.FeeSplit calldata fs = feeSplits[i];
-            if (fs.recipient == address(0)) revert IFeeSplits.ZeroSplitRecipient();
-            if (fs.share == 0) revert IFeeSplits.ZeroSplitShare();
-            totalShare += fs.share;
-        }
-        // totalShare might be lower than MAX_BP. The remainder goes to the Node Operator's bond
-        if (totalShare > MAX_BP) revert IFeeSplits.TooManySplitShares();
+        uint256 len = _validateFeeSplits(feeSplits);
 
         IAccounting.FeeSplit[] storage dst = feeSplitsStorage[nodeOperatorId];
         delete feeSplitsStorage[nodeOperatorId];
-        for (uint256 i = 0; i < len; i++) {
+        for (uint256 i; i < len; ++i) {
             dst.push(feeSplits[i]);
         }
 
@@ -94,5 +91,21 @@ library FeeSplits {
         uint256 nodeOperatorId
     ) external view returns (bool) {
         return feeSplitsStorage[nodeOperatorId].length != 0;
+    }
+
+    function _validateFeeSplits(IAccounting.FeeSplit[] calldata feeSplits) private pure returns (uint256 len) {
+        len = feeSplits.length;
+        if (len > MAX_FEE_SPLITS) revert IFeeSplits.TooManySplits();
+
+        uint256 totalShare;
+        for (uint256 i; i < len; ++i) {
+            IAccounting.FeeSplit calldata fs = feeSplits[i];
+            if (fs.recipient == address(0)) revert IFeeSplits.ZeroSplitRecipient();
+            if (fs.share == 0) revert IFeeSplits.ZeroSplitShare();
+            totalShare += fs.share;
+        }
+
+        // totalShare might be lower than MAX_BP. The remainder goes to the Node Operator's bond.
+        if (totalShare > MAX_BP) revert IFeeSplits.TooManySplitShares();
     }
 }

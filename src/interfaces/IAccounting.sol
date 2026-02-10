@@ -136,7 +136,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
         uint256 additionalKeys
     ) external view returns (uint256);
 
-    /// @notice Set fee splits for the given Node Operator
+    /// @notice Get active fee splits for the given Node Operator
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Array of FeeSplit structs defining recipients and their shares in basis points
     function getFeeSplits(uint256 nodeOperatorId) external view returns (FeeSplit[] memory);

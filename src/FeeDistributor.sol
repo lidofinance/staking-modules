@@ -125,22 +125,20 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
     ) external onlyOracle {
         if (totalClaimableShares + distributed + rebate > STETH.sharesOf(address(this))) revert InvalidShares();
         if (distributed == 0 && rebate > 0) revert InvalidReportData();
-        if (distributed > 0) {
-            if (bytes(_treeCid).length == 0) revert InvalidTreeCid();
-            if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid))) revert InvalidTreeCid();
-            if (_treeRoot == bytes32(0)) revert InvalidTreeRoot();
-            if (_treeRoot == treeRoot) revert InvalidTreeRoot();
+        if (bytes(_treeCid).length == 0) revert InvalidTreeCid();
+        if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid))) revert InvalidTreeCid();
+        if (_treeRoot == bytes32(0)) revert InvalidTreeRoot();
+        if (_treeRoot == treeRoot) revert InvalidTreeRoot();
 
+        if (distributed > 0) {
             // Doesn't overflow because of the very first check.
             unchecked {
                 totalClaimableShares += distributed;
             }
-
-            treeRoot = _treeRoot;
-            treeCid = _treeCid;
-
-            emit DistributionDataUpdated(totalClaimableShares, _treeRoot, _treeCid);
         }
+        treeRoot = _treeRoot;
+        treeCid = _treeCid;
+        emit DistributionDataUpdated(totalClaimableShares, _treeRoot, _treeCid);
 
         emit ModuleFeeDistributed(distributed);
 
