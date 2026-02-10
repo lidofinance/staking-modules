@@ -60,6 +60,9 @@ contract CSModule is ICSModule, BaseModule {
         QUEUE_LOWEST_PRIORITY = PARAMETERS_REGISTRY.QUEUE_LOWEST_PRIORITY();
     }
 
+    /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
+    ///      It is recommended to call this method in the same transaction as the deployment transaction
+    ///      and perform extensive deployment verification before using the contract instance.
     function initialize(
         address admin,
         uint8 topUpQueueLimit
@@ -73,6 +76,7 @@ contract CSModule is ICSModule, BaseModule {
 
     /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing version 2 deployment.
     ///      If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
+    ///      To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
     function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {
         // Clean `__freeSlot1` and `__freeSlot2` since the storage slots are no longer needed in version 3.
         assembly ("memory-safe") {
