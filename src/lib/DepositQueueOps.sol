@@ -24,9 +24,7 @@ library DepositQueueOps {
         removed = 0;
         lastRemovedAtDepth = 0;
 
-        if (maxItems == 0) {
-            return (0, 0);
-        }
+        if (maxItems == 0) return (0, 0);
 
         // NOTE: We need one unique hash map per function invocation to be able to track batches of
         // the same operator across multiple queues.
@@ -65,9 +63,7 @@ library DepositQueueOps {
             }
 
             // NOTE: If we stopped in the middle of a queue, we also stop processing further queues.
-            if (!reachedOutOfQueue) {
-                break;
-            }
+            if (!reachedOutOfQueue) break;
 
             unchecked {
                 totalVisited += visitedPerQueue;
@@ -77,9 +73,7 @@ library DepositQueueOps {
             unchecked {
                 ++priority;
             }
-            if (priority > queueLowestPriority) {
-                break;
-            }
+            if (priority > queueLowestPriority) break;
         }
     }
 
@@ -94,9 +88,7 @@ library DepositQueueOps {
         visited = 0;
         reachedOutOfQueue = false;
 
-        if (maxItems == 0) {
-            revert IDepositQueueLib.DepositQueueLookupNoLimit();
-        }
+        if (maxItems == 0) revert IDepositQueueLib.DepositQueueLookupNoLimit();
 
         Batch prevItem;
         uint128 indexOfPrev;
@@ -156,9 +148,7 @@ library DepositQueueOps {
         NodeOperator storage no = nodeOperators[nodeOperatorId];
         uint32 depositable = no.depositableValidatorsCount;
         uint32 enqueued = no.enqueuedCount;
-        if (depositable <= enqueued) {
-            return;
-        }
+        if (depositable <= enqueued) return;
 
         uint32 toEnqueue;
         unchecked {
@@ -175,9 +165,7 @@ library DepositQueueOps {
                 if (maxDeposits > depositedAndQueued) {
                     uint32 priorityDepositsLeft = maxDeposits - depositedAndQueued;
                     uint32 count = toEnqueue;
-                    if (count > priorityDepositsLeft) {
-                        count = priorityDepositsLeft;
-                    }
+                    if (count > priorityDepositsLeft) count = priorityDepositsLeft;
 
                     _enqueueNodeOperatorKeys({
                         queue: depositQueues[priority],

@@ -55,9 +55,7 @@ contract PausableUntil {
 
     function _pauseFor(uint256 duration) internal {
         _checkResumed();
-        if (duration == 0) {
-            revert ZeroPauseDuration();
-        }
+        if (duration == 0) revert ZeroPauseDuration();
 
         uint256 resumeSince;
         if (duration == PAUSE_INFINITELY) {
@@ -70,9 +68,7 @@ contract PausableUntil {
 
     function _pauseUntil(uint256 pauseUntilInclusive) internal {
         _checkResumed();
-        if (pauseUntilInclusive < block.timestamp) {
-            revert PauseUntilMustBeInFuture();
-        }
+        if (pauseUntilInclusive < block.timestamp) revert PauseUntilMustBeInFuture();
 
         uint256 resumeSince;
         if (pauseUntilInclusive != PAUSE_INFINITELY) {
@@ -93,14 +89,10 @@ contract PausableUntil {
     }
 
     function _checkPaused() internal view {
-        if (!isPaused()) {
-            revert PausedExpected();
-        }
+        if (!isPaused()) revert PausedExpected();
     }
 
     function _checkResumed() internal view {
-        if (isPaused()) {
-            revert ResumedExpected();
-        }
+        if (isPaused()) revert ResumedExpected();
     }
 }

@@ -36,18 +36,10 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
     }
 
     constructor(address module, address oracle, address exitPenalties, address parametersRegistry) {
-        if (module == address(0)) {
-            revert ZeroModuleAddress();
-        }
-        if (oracle == address(0)) {
-            revert ZeroOracleAddress();
-        }
-        if (exitPenalties == address(0)) {
-            revert ZeroExitPenaltiesAddress();
-        }
-        if (parametersRegistry == address(0)) {
-            revert ZeroParametersRegistryAddress();
-        }
+        if (module == address(0)) revert ZeroModuleAddress();
+        if (oracle == address(0)) revert ZeroOracleAddress();
+        if (exitPenalties == address(0)) revert ZeroExitPenaltiesAddress();
+        if (parametersRegistry == address(0)) revert ZeroParametersRegistryAddress();
 
         MODULE = ICSModule(module);
         ACCOUNTING = MODULE.ACCOUNTING();
@@ -62,9 +54,7 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
     ///      It is recommended to call this method in the same transaction as the deployment transaction
     ///      and perform extensive deployment verification before using the contract instance.
     function initialize(address admin, address _ejector) external initializer {
-        if (admin == address(0)) {
-            revert ZeroAdminAddress();
-        }
+        if (admin == address(0)) revert ZeroAdminAddress();
 
         _setEjector(_ejector);
 
@@ -82,9 +72,7 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
         // @dev should be both empty or not empty
         bool isNewRootEmpty = _treeRoot == bytes32(0);
         bool isNewCidEmpty = bytes(_treeCid).length == 0;
-        if (isNewRootEmpty != isNewCidEmpty) {
-            revert InvalidReportData();
-        }
+        if (isNewRootEmpty != isNewCidEmpty) revert InvalidReportData();
 
         if (isNewRootEmpty) {
             if (treeRoot != bytes32(0)) {
@@ -97,9 +85,7 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
 
         bool isSameRoot = _treeRoot == treeRoot;
         bool isSameCid = keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid));
-        if (isSameRoot != isSameCid) {
-            revert InvalidReportData();
-        }
+        if (isSameRoot != isSameCid) revert InvalidReportData();
 
         if (!isSameRoot) {
             treeRoot = _treeRoot;
@@ -118,26 +104,18 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
         // NOTE: We allow empty proofs to be delivered because there’s no way to use the tree’s
         // internal nodes without brute-forcing the input data.
 
-        if (keyStrikesList.length == 0) {
-            revert EmptyKeyStrikesList();
-        }
+        if (keyStrikesList.length == 0) revert EmptyKeyStrikesList();
 
-        if (msg.value == 0) {
-            revert ZeroMsgValue();
-        }
+        if (msg.value == 0) revert ZeroMsgValue();
 
-        if (msg.value % keyStrikesList.length > 0) {
-            revert ValueNotEvenlyDivisible();
-        }
+        if (msg.value % keyStrikesList.length > 0) revert ValueNotEvenlyDivisible();
 
         bytes[] memory pubkeys = new bytes[](keyStrikesList.length);
         for (uint256 i; i < pubkeys.length; ++i) {
             pubkeys[i] = MODULE.getSigningKeys(keyStrikesList[i].nodeOperatorId, keyStrikesList[i].keyIndex, 1);
         }
 
-        if (!verifyProof(keyStrikesList, pubkeys, proof, proofFlags)) {
-            revert InvalidProof();
-        }
+        if (!verifyProof(keyStrikesList, pubkeys, proof, proofFlags)) revert InvalidProof();
 
         refundRecipient = refundRecipient == address(0) ? msg.sender : refundRecipient;
 
@@ -173,9 +151,7 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
     }
 
     function _setEjector(address _ejector) internal {
-        if (_ejector == address(0)) {
-            revert ZeroEjectorAddress();
-        }
+        if (_ejector == address(0)) revert ZeroEjectorAddress();
         ejector = IEjector(_ejector);
         emit EjectorSet(_ejector);
     }
@@ -194,9 +170,7 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
         uint256 curveId = ACCOUNTING.getBondCurveId(keyStrikes.nodeOperatorId);
 
         (, uint256 threshold) = PARAMETERS_REGISTRY.getStrikesParams(curveId);
-        if (strikes < threshold) {
-            revert NotEnoughStrikesToEject();
-        }
+        if (strikes < threshold) revert NotEnoughStrikesToEject();
 
         EXIT_PENALTIES.processStrikesReport(keyStrikes.nodeOperatorId, pubkey);
 
@@ -204,8 +178,6 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
     }
 
     function _onlyOracle() internal view {
-        if (msg.sender != ORACLE) {
-            revert SenderIsNotOracle();
-        }
+        if (msg.sender != ORACLE) revert SenderIsNotOracle();
     }
 }

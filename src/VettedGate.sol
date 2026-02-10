@@ -60,9 +60,7 @@ contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, Pausable
     mapping(bytes32 => bool) internal _consumedReferrers;
 
     constructor(address module) {
-        if (module == address(0)) {
-            revert ZeroModuleAddress();
-        }
+        if (module == address(0)) revert ZeroModuleAddress();
 
         MODULE = IBaseModule(module);
         ACCOUNTING = IAccounting(MODULE.ACCOUNTING());
@@ -81,16 +79,12 @@ contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, Pausable
     ) external initializer {
         __AccessControlEnumerable_init();
 
-        if (_curveId == ACCOUNTING.DEFAULT_BOND_CURVE_ID()) {
-            revert InvalidCurveId();
-        }
+        if (_curveId == ACCOUNTING.DEFAULT_BOND_CURVE_ID()) revert InvalidCurveId();
 
         // @dev there is no check for curve existence as this contract might be created before the curve is added
         curveId = _curveId;
 
-        if (admin == address(0)) {
-            revert ZeroAdminAddress();
-        }
+        if (admin == address(0)) revert ZeroAdminAddress();
 
         _setTreeParams(_treeRoot, _treeCid);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -111,15 +105,9 @@ contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, Pausable
         uint256 _referralCurveId,
         uint256 _referralsThreshold
     ) external onlyRole(START_REFERRAL_SEASON_ROLE) returns (uint256 season) {
-        if (isReferralProgramSeasonActive) {
-            revert ReferralProgramIsActive();
-        }
-        if (_referralCurveId == ACCOUNTING.DEFAULT_BOND_CURVE_ID()) {
-            revert InvalidCurveId();
-        }
-        if (_referralsThreshold == 0) {
-            revert InvalidReferralsThreshold();
-        }
+        if (isReferralProgramSeasonActive) revert ReferralProgramIsActive();
+        if (_referralCurveId == ACCOUNTING.DEFAULT_BOND_CURVE_ID()) revert InvalidCurveId();
+        if (_referralsThreshold == 0) revert InvalidReferralsThreshold();
 
         referralCurveId = _referralCurveId;
         referralsThreshold = _referralsThreshold;
@@ -133,9 +121,7 @@ contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, Pausable
 
     /// @inheritdoc IVettedGate
     function endCurrentReferralProgramSeason() external onlyRole(END_REFERRAL_SEASON_ROLE) {
-        if (!isReferralProgramSeasonActive || referralProgramSeasonNumber == 0) {
-            revert ReferralProgramIsNotActive();
-        }
+        if (!isReferralProgramSeasonActive || referralProgramSeasonNumber == 0) revert ReferralProgramIsNotActive();
 
         isReferralProgramSeasonActive = false;
 
@@ -244,24 +230,16 @@ contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, Pausable
         _onlyNodeOperatorOwner(nodeOperatorId);
 
         // @dev Only members from the current merkle tree can claim the referral bond curve
-        if (!verifyProof(msg.sender, proof)) {
-            revert InvalidProof();
-        }
+        if (!verifyProof(msg.sender, proof)) revert InvalidProof();
 
-        if (!isReferralProgramSeasonActive) {
-            revert ReferralProgramIsNotActive();
-        }
+        if (!isReferralProgramSeasonActive) revert ReferralProgramIsNotActive();
 
         uint256 season = referralProgramSeasonNumber;
         bytes32 referrer = _seasonedAddress(msg.sender, season);
 
-        if (_referralCounts[referrer] < referralsThreshold) {
-            revert NotEnoughReferrals();
-        }
+        if (_referralCounts[referrer] < referralsThreshold) revert NotEnoughReferrals();
 
-        if (_consumedReferrers[referrer]) {
-            revert AlreadyConsumed();
-        }
+        if (_consumedReferrers[referrer]) revert AlreadyConsumed();
 
         _consumedReferrers[referrer] = true;
 
@@ -311,13 +289,9 @@ contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, Pausable
     }
 
     function _consume(bytes32[] calldata proof) internal {
-        if (isConsumed(msg.sender)) {
-            revert AlreadyConsumed();
-        }
+        if (isConsumed(msg.sender)) revert AlreadyConsumed();
 
-        if (!verifyProof(msg.sender, proof)) {
-            revert InvalidProof();
-        }
+        if (!verifyProof(msg.sender, proof)) revert InvalidProof();
 
         _consumedAddresses[msg.sender] = true;
 
@@ -325,19 +299,11 @@ contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, Pausable
     }
 
     function _setTreeParams(bytes32 _treeRoot, string calldata _treeCid) internal {
-        if (_treeRoot == bytes32(0)) {
-            revert InvalidTreeRoot();
-        }
-        if (_treeRoot == treeRoot) {
-            revert InvalidTreeRoot();
-        }
+        if (_treeRoot == bytes32(0)) revert InvalidTreeRoot();
+        if (_treeRoot == treeRoot) revert InvalidTreeRoot();
 
-        if (bytes(_treeCid).length == 0) {
-            revert InvalidTreeCid();
-        }
-        if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid))) {
-            revert InvalidTreeCid();
-        }
+        if (bytes(_treeCid).length == 0) revert InvalidTreeCid();
+        if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid))) revert InvalidTreeCid();
 
         treeRoot = _treeRoot;
         treeCid = _treeCid;
@@ -360,12 +326,8 @@ contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, Pausable
     /// @dev Verifies that the sender is the owner of the node operator
     function _onlyNodeOperatorOwner(uint256 nodeOperatorId) internal view {
         address owner = MODULE.getNodeOperatorOwner(nodeOperatorId);
-        if (owner == address(0)) {
-            revert NodeOperatorDoesNotExist();
-        }
-        if (owner != msg.sender) {
-            revert NotAllowedToClaim();
-        }
+        if (owner == address(0)) revert NodeOperatorDoesNotExist();
+        if (owner != msg.sender) revert NotAllowedToClaim();
     }
 
     function _onlyRecoverer() internal view override {

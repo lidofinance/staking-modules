@@ -64,9 +64,7 @@ contract Utilities is CommonBase {
         for (uint256 i = startIndex; i < startIndex + keysCount; i++) {
             bytes memory index = abi.encodePacked(i + 1);
             bytes memory key = bytes.concat(new bytes(48 - index.length), index);
-            if (i == uint32(startIndex) + uint32(zeroKeyIndex)) {
-                key = new bytes(48);
-            }
+            if (i == uint32(startIndex) + uint32(zeroKeyIndex)) key = new bytes(48);
             bytes memory sign = bytes.concat(new bytes(96 - index.length), index);
             keys = bytes.concat(keys, key);
             signatures = bytes.concat(signatures, sign);
@@ -100,9 +98,7 @@ contract Utilities is CommonBase {
             seed = buf;
 
             for (uint256 i = 0; i < 32; i++) {
-                if (length == 0) {
-                    return b;
-                }
+                if (length == 0) return b;
                 length--;
                 b[length] = buf[i];
             }
@@ -130,9 +126,7 @@ contract Utilities is CommonBase {
     }
 
     function checkChainId(uint256 chainId) public view {
-        if (chainId != block.chainid) {
-            revert("wrong chain id");
-        }
+        if (chainId != block.chainid) revert("wrong chain id");
     }
 
     function expectNoCall(address where, bytes memory data) internal {
@@ -279,13 +273,9 @@ contract Utilities is CommonBase {
             // Check the value of the zero slot.
             zeroSlotIsNotZero := mload(0x60)
         }
-        if (freeMemoryPointerOverflowed) {
-            revert FreeMemoryPointerOverflowed();
-        }
+        if (freeMemoryPointerOverflowed) revert FreeMemoryPointerOverflowed();
 
-        if (zeroSlotIsNotZero) {
-            revert ZeroSlotIsNotZero();
-        }
+        if (zeroSlotIsNotZero) revert ZeroSlotIsNotZero();
     }
 
     /// See https://github.com/Vectorized/solady - MIT licensed.
@@ -300,9 +290,7 @@ contract Utilities is CommonBase {
 
 function hasLog(Vm.Log[] memory self, bytes32 topic) pure returns (bool) {
     for (uint256 i = 0; i < self.length; ++i) {
-        if (self[i].topics[0] == topic) {
-            return true;
-        }
+        if (self[i].topics[0] == topic) return true;
     }
 
     return false;

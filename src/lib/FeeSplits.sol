@@ -33,13 +33,9 @@ library FeeSplits {
         IAccounting.FeeSplit[] calldata feeSplits
     ) external {
         uint256 len = feeSplits.length;
-        if (len > MAX_FEE_SPLITS) {
-            revert IFeeSplits.TooManySplits();
-        }
+        if (len > MAX_FEE_SPLITS) revert IFeeSplits.TooManySplits();
 
-        if (pendingSharesToSplitStorage[nodeOperatorId] > 0) {
-            revert IFeeSplits.PendingSharesExist();
-        }
+        if (pendingSharesToSplitStorage[nodeOperatorId] > 0) revert IFeeSplits.PendingSharesExist();
 
         if (feeDistributor.getFeesToDistribute(nodeOperatorId, cumulativeFeeShares, rewardsProof) != 0) {
             revert IFeeSplits.UndistributedSharesExist();
@@ -48,18 +44,12 @@ library FeeSplits {
         uint256 totalShare = 0;
         for (uint256 i = 0; i < len; ++i) {
             IAccounting.FeeSplit calldata fs = feeSplits[i];
-            if (fs.recipient == address(0)) {
-                revert IFeeSplits.ZeroSplitRecipient();
-            }
-            if (fs.share == 0) {
-                revert IFeeSplits.ZeroSplitShare();
-            }
+            if (fs.recipient == address(0)) revert IFeeSplits.ZeroSplitRecipient();
+            if (fs.share == 0) revert IFeeSplits.ZeroSplitShare();
             totalShare += fs.share;
         }
         // totalShare might be lower than MAX_BP. The remainder goes to the Node Operator's bond
-        if (totalShare > MAX_BP) {
-            revert IFeeSplits.TooManySplitShares();
-        }
+        if (totalShare > MAX_BP) revert IFeeSplits.TooManySplitShares();
 
         IAccounting.FeeSplit[] storage dst = feeSplitsStorage[nodeOperatorId];
         delete feeSplitsStorage[nodeOperatorId];
@@ -77,15 +67,11 @@ library FeeSplits {
         uint256 nodeOperatorId,
         uint256 maxSharesToSplit
     ) external returns (uint256 transferred) {
-        if (maxSharesToSplit == 0) {
-            return 0;
-        }
+        if (maxSharesToSplit == 0) return 0;
 
         // NOTE: `pending` is stETH shares. It contains operator's and splits recipients' parts. May accumulate over time.
         uint256 pending = pendingSharesToSplitStorage[nodeOperatorId];
-        if (maxSharesToSplit > pending) {
-            maxSharesToSplit = pending;
-        }
+        if (maxSharesToSplit > pending) maxSharesToSplit = pending;
 
         IAccounting.FeeSplit[] storage splits = feeSplitsStorage[nodeOperatorId];
         for (uint256 i; i < splits.length; ++i) {

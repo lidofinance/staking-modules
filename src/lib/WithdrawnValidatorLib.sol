@@ -32,13 +32,9 @@ library WithdrawnValidatorLib {
 
         // For slashed validator this value should reflect pre-slashing, hence non-zero balance.
         // For non-slashed validator it will reflect the withdrawal amount, hence it cannot be zero either.
-        if (validatorInfo.exitBalance == 0) {
-            revert IBaseModule.ZeroExitBalance();
-        }
+        if (validatorInfo.exitBalance == 0) revert IBaseModule.ZeroExitBalance();
 
-        if (validatorInfo.keyIndex >= no.totalDepositedKeys) {
-            revert IBaseModule.SigningKeysInvalidOffset();
-        }
+        if (validatorInfo.keyIndex >= no.totalDepositedKeys) revert IBaseModule.SigningKeysInvalidOffset();
 
         unchecked {
             ++no.totalWithdrawnKeys;
@@ -115,9 +111,7 @@ library WithdrawnValidatorLib {
         // Charge fees second to avoid charging fees if the penalty is not covered,
         // as the fees are meant to cover the costs of processing the withdrawal incurred by the protocol maintainers.
         // stETH holders should have first priority to be compensated, so the fees are charged only if the penalty is covered.
-        if (feeSum > 0) {
-            accounting.chargeFee(validatorInfo.nodeOperatorId, feeSum);
-        }
+        if (feeSum > 0) accounting.chargeFee(validatorInfo.nodeOperatorId, feeSum);
     }
 
     /// @dev Acts as the numerator to calculate the scaled penalty.

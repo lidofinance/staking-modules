@@ -69,9 +69,7 @@ contract StETHMock is IStETH {
      * @notice Moves `_amount` token amount from the caller's account to the `_recipient` account.
      */
     function transferFrom(address _sender, address _recipient, uint256 _amount) public returns (bool) {
-        if (_allowances[_sender][_recipient] < _amount) {
-            revert AllowanceExceeded(_sender, _recipient);
-        }
+        if (_allowances[_sender][_recipient] < _amount) revert AllowanceExceeded(_sender, _recipient);
         uint256 _sharesToTransfer = getSharesByPooledEth(_amount);
         transferSharesFrom(_sender, _recipient, _sharesToTransfer);
         return true;
@@ -84,9 +82,7 @@ contract StETHMock is IStETH {
     }
 
     function transferShares(address _recipient, uint256 _sharesAmount) public returns (uint256) {
-        if (shares[msg.sender] < _sharesAmount) {
-            revert NotEnoughShares(shares[msg.sender]);
-        }
+        if (shares[msg.sender] < _sharesAmount) revert NotEnoughShares(shares[msg.sender]);
         shares[msg.sender] -= _sharesAmount;
         shares[_recipient] += _sharesAmount;
         return getPooledEthByShares(_sharesAmount);
@@ -99,9 +95,7 @@ contract StETHMock is IStETH {
         if (_allowances[_sender][_recipient] < getPooledEthByShares(_sharesAmount)) {
             revert AllowanceExceeded(_sender, _recipient);
         }
-        if (shares[_sender] < _sharesAmount) {
-            revert NotEnoughShares(shares[_sender]);
-        }
+        if (shares[_sender] < _sharesAmount) revert NotEnoughShares(shares[_sender]);
         shares[_sender] -= _sharesAmount;
         shares[_recipient] += _sharesAmount;
         return _sharesAmount;

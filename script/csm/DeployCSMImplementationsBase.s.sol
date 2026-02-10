@@ -32,14 +32,10 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
     error MissingCSModuleAddress();
 
     function _deploy() internal {
-        if (chainId != block.chainid) {
-            revert ChainIdMismatch({ actual: block.chainid, expected: chainId });
-        }
+        if (chainId != block.chainid) revert ChainIdMismatch({ actual: block.chainid, expected: chainId });
 
         bool skipLegacyQueueCheck = vm.envOr("SKIP_LEGACY_QUEUE_CHECK", false);
-        if (!skipLegacyQueueCheck) {
-            _ensureLegacyQueueDrained();
-        }
+        if (!skipLegacyQueueCheck) _ensureLegacyQueueDrained();
         artifactDir = vm.envOr("ARTIFACTS_DIR", string("./artifacts/local/"));
 
         vm.startBroadcast();
@@ -135,9 +131,7 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             gateSealV3 = _deployGateSeal(sealables);
 
             if (config.secondAdminAddress != address(0)) {
-                if (config.secondAdminAddress == deployer) {
-                    revert InvalidSecondAdmin();
-                }
+                if (config.secondAdminAddress == deployer) revert InvalidSecondAdmin();
                 _grantSecondAdminsForNewContracts();
             }
 
@@ -198,26 +192,20 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
     }
 
     function _grantSecondAdminsForNewContracts() internal {
-        if (keccak256(abi.encodePacked(chainName)) == keccak256("mainnet")) {
-            revert CannotBeUsedInMainnet();
-        }
+        if (keccak256(abi.encodePacked(chainName)) == keccak256("mainnet")) revert CannotBeUsedInMainnet();
         ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         verifierV3.grantRole(verifierV3.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         permissionlessGate.grantRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
     }
 
     function _ensureLegacyQueueDrained() internal {
-        if (address(csm) == address(0)) {
-            revert MissingCSModuleAddress();
-        }
+        if (address(csm) == address(0)) revert MissingCSModuleAddress();
 
         // QueueLib.Queue packs head/tail into a single slot. See forge inspect output for slot indexes.
         bytes32 queuePointers = vm.load(address(csm), LEGACY_QUEUE_SLOT);
         uint128 head = uint128(uint256(queuePointers));
         uint128 tail = uint128(uint256(queuePointers) >> 128);
 
-        if (head != tail) {
-            revert LegacyQueueNotEmpty(head, tail);
-        }
+        if (head != tail) revert LegacyQueueNotEmpty(head, tail);
     }
 }

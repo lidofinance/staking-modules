@@ -46,16 +46,12 @@ abstract contract DeployTwoPhaseFrameConfigUpdateBase is Script {
         string memory mainDeployPath = string(
             abi.encodePacked("./artifacts/", chainName, "/deploy-", chainName, ".json")
         );
-        if (!vm.exists(mainDeployPath)) {
-            revert MainDeploymentNotFound(mainDeployPath);
-        }
+        if (!vm.exists(mainDeployPath)) revert MainDeploymentNotFound(mainDeployPath);
 
         string memory mainDeployJson = vm.readFile(mainDeployPath);
         address oracle = vm.parseJsonAddress(mainDeployJson, ".FeeOracle");
 
-        if (oracle == address(0)) {
-            revert InvalidOracleAddress();
-        }
+        if (oracle == address(0)) revert InvalidOracleAddress();
 
         vm.startBroadcast();
         (, deployer, ) = vm.readCallers();

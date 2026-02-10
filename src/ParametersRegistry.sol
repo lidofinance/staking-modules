@@ -85,9 +85,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     // TODO: queueLowestPriority does not make sense for the CuratedModule, so setting to 0 might mean it's not used and
     // we can revert in other methods.
     constructor(uint256 queueLowestPriority) {
-        if (queueLowestPriority == 0) {
-            revert ZeroQueueLowestPriority();
-        }
+        if (queueLowestPriority == 0) revert ZeroQueueLowestPriority();
 
         QUEUE_LOWEST_PRIORITY = queueLowestPriority;
 
@@ -98,9 +96,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     ///      It is recommended to call this method in the same transaction as the deployment transaction
     ///      and perform extensive deployment verification before using the contract instance.
     function initialize(address admin, InitializationData calldata data) external initializer {
-        if (admin == address(0)) {
-            revert ZeroAdminAddress();
-        }
+        if (admin == address(0)) revert ZeroAdminAddress();
 
         _setDefaultKeyRemovalCharge(data.defaultKeyRemovalCharge);
         _setDefaultGeneralDelayedPenaltyAdditionalFine(data.defaultGeneralDelayedPenaltyAdditionalFine);
@@ -259,9 +255,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     ) external onlyRoleMemberOrAdmin(MANAGE_REWARD_SHARE_ROLE) {
         _validateKeyNumberValueIntervals(data);
         KeyNumberValueInterval[] storage intervals = _rewardShareData[curveId];
-        if (intervals.length > 0) {
-            delete _rewardShareData[curveId];
-        }
+        if (intervals.length > 0) delete _rewardShareData[curveId];
         for (uint256 i = 0; i < data.length; ++i) {
             intervals.push(data[i]);
         }
@@ -275,9 +269,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     ) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
         _validateKeyNumberValueIntervals(data);
         KeyNumberValueInterval[] storage intervals = _performanceLeewayData[curveId];
-        if (intervals.length > 0) {
-            delete _performanceLeewayData[curveId];
-        }
+        if (intervals.length > 0) delete _performanceLeewayData[curveId];
         for (uint256 i = 0; i < data.length; ++i) {
             intervals.push(data[i]);
         }
@@ -464,9 +456,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     function getQueueConfig(uint256 curveId) external view returns (uint32 queuePriority, uint32 maxDeposits) {
         QueueConfig storage config = _queueConfigs[curveId];
 
-        if (config.maxDeposits == 0) {
-            return (defaultQueueConfig.priority, defaultQueueConfig.maxDeposits);
-        }
+        if (config.maxDeposits == 0) return (defaultQueueConfig.priority, defaultQueueConfig.maxDeposits);
 
         return (config.priority, config.maxDeposits);
     }
@@ -492,9 +482,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     /// @inheritdoc IParametersRegistry
     function getStrikesParams(uint256 curveId) external view returns (uint256 lifetime, uint256 threshold) {
         StrikesParams storage params = _strikesParams[curveId];
-        if (params.threshold == 0) {
-            return (defaultStrikesParams.lifetime, defaultStrikesParams.threshold);
-        }
+        if (params.threshold == 0) return (defaultStrikesParams.lifetime, defaultStrikesParams.threshold);
         return (params.lifetime, params.threshold);
     }
 
@@ -522,9 +510,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     /// @inheritdoc IParametersRegistry
     function getAllowedExitDelay(uint256 curveId) external view returns (uint256 delay) {
         delay = _allowedExitDelay[curveId];
-        if (delay == 0) {
-            return defaultAllowedExitDelay;
-        }
+        if (delay == 0) return defaultAllowedExitDelay;
     }
 
     /// @inheritdoc IParametersRegistry
@@ -564,18 +550,14 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     }
 
     function _setDefaultRewardShare(uint256 share) internal {
-        if (share > MAX_BP) {
-            revert InvalidRewardShareData();
-        }
+        if (share > MAX_BP) revert InvalidRewardShareData();
 
         defaultRewardShare = share;
         emit DefaultRewardShareSet(share);
     }
 
     function _setDefaultPerformanceLeeway(uint256 leeway) internal {
-        if (leeway > MAX_BP) {
-            revert InvalidPerformanceLeewayData();
-        }
+        if (leeway > MAX_BP) revert InvalidPerformanceLeewayData();
 
         defaultPerformanceLeeway = leeway;
         emit DefaultPerformanceLeewaySet(leeway);
@@ -636,24 +618,16 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     }
 
     function _validateQueueConfig(uint256 priority, uint256 maxDeposits) internal view {
-        if (priority > QUEUE_LOWEST_PRIORITY) {
-            revert QueueCannotBeUsed();
-        }
-        if (maxDeposits == 0) {
-            revert ZeroMaxDeposits();
-        }
+        if (priority > QUEUE_LOWEST_PRIORITY) revert QueueCannotBeUsed();
+        if (maxDeposits == 0) revert ZeroMaxDeposits();
     }
 
     function _validateStrikesParams(uint256 lifetime, uint256 threshold) internal pure {
-        if (threshold == 0 || lifetime == 0) {
-            revert InvalidStrikesParams();
-        }
+        if (threshold == 0 || lifetime == 0) revert InvalidStrikesParams();
     }
 
     function _validateAllowedExitDelay(uint256 delay) internal pure {
-        if (delay == 0) {
-            revert InvalidAllowedExitDelay();
-        }
+        if (delay == 0) revert InvalidAllowedExitDelay();
     }
 
     function _validatePerformanceCoefficients(
@@ -661,31 +635,19 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         uint256 blocksWeight,
         uint256 syncWeight
     ) internal pure {
-        if (attestationsWeight == 0 && blocksWeight == 0 && syncWeight == 0) {
-            revert InvalidPerformanceCoefficients();
-        }
+        if (attestationsWeight == 0 && blocksWeight == 0 && syncWeight == 0) revert InvalidPerformanceCoefficients();
     }
 
     function _validateKeyNumberValueIntervals(KeyNumberValueInterval[] calldata intervals) private pure {
-        if (intervals.length == 0) {
-            revert InvalidKeyNumberValueIntervals();
-        }
-        if (intervals[0].minKeyNumber != 1) {
-            revert InvalidKeyNumberValueIntervals();
-        }
+        if (intervals.length == 0) revert InvalidKeyNumberValueIntervals();
+        if (intervals[0].minKeyNumber != 1) revert InvalidKeyNumberValueIntervals();
 
-        if (intervals[0].value > MAX_BP) {
-            revert InvalidKeyNumberValueIntervals();
-        }
+        if (intervals[0].value > MAX_BP) revert InvalidKeyNumberValueIntervals();
 
         for (uint256 i = 1; i < intervals.length; ++i) {
             unchecked {
-                if (intervals[i].minKeyNumber <= intervals[i - 1].minKeyNumber) {
-                    revert InvalidKeyNumberValueIntervals();
-                }
-                if (intervals[i].value > MAX_BP) {
-                    revert InvalidKeyNumberValueIntervals();
-                }
+                if (intervals[i].minKeyNumber <= intervals[i - 1].minKeyNumber) revert InvalidKeyNumberValueIntervals();
+                if (intervals[i].value > MAX_BP) revert InvalidKeyNumberValueIntervals();
             }
         }
     }

@@ -55,9 +55,7 @@ library CuratedDepositAllocator {
         uint256 operatorsCount,
         uint256 depositsCount
     ) external view returns (uint256 allocated, uint256[] memory operatorIds, uint256[] memory allocations) {
-        if (depositsCount == 0) {
-            return (0, new uint256[](0), new uint256[](0));
-        }
+        if (depositsCount == 0) return (0, new uint256[](0), new uint256[](0));
 
         DepositableOperatorsData memory data = _collectDepositableOperatorsData(nodeOperators, operatorsCount);
 
@@ -99,9 +97,7 @@ library CuratedDepositAllocator {
         uint256 allocationAmount,
         uint256[] calldata operatorIds
     ) external view returns (uint256 allocated, uint256[] memory allocatedOperatorIds, uint256[] memory allocations) {
-        if (allocationAmount == 0 || operatorIds.length == 0) {
-            return (0, new uint256[](0), new uint256[](0));
-        }
+        if (allocationAmount == 0 || operatorIds.length == 0) return (0, new uint256[](0), new uint256[](0));
 
         // operatorsCount > 0 is guaranteed by the caller.
 
@@ -111,9 +107,7 @@ library CuratedDepositAllocator {
             operatorsCount,
             operatorIds
         );
-        if (data.count == 0) {
-            return (0, new uint256[](0), new uint256[](0));
-        }
+        if (data.count == 0) return (0, new uint256[](0), new uint256[](0));
 
         uint256[] memory eligibleAllocations;
         (allocated, eligibleAllocations) = _computeAllocations({
@@ -219,9 +213,7 @@ library CuratedDepositAllocator {
                 // allocation for, we divide the external stake by the maximum stake a validator might have in this
                 // module. Since the CuratedModule supports 0x02 validators, the maximum value is MAX_EFFECTIVE_BALANCE.
                 uint256 current = no.totalDepositedKeys - no.totalWithdrawnKeys;
-                if (externalStake > 0) {
-                    current += externalStake / WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE;
-                }
+                if (externalStake > 0) current += externalStake / WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE;
 
                 data.sharesX96[eligibleCount] = weight;
                 data.currents[eligibleCount] = current;

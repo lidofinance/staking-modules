@@ -44,9 +44,7 @@ abstract contract OracleTestBase is ModuleTypeBase {
         feesTree = new MerkleTree();
         strikesTree = new MerkleTree();
 
-        if (module.isPaused()) {
-            module.resume();
-        }
+        if (module.isPaused()) module.resume();
 
         hugeDeposit();
 
@@ -85,9 +83,7 @@ abstract contract OracleTestBase is ModuleTypeBase {
         uint256 frameStartWithOffset = GENESIS_TIME +
             (refSlot + SLOTS_PER_EPOCH * EPOCHS_PER_FRAME + 1) *
             SECONDS_PER_SLOT;
-        if (frameStartWithOffset > block.timestamp) {
-            vm.warp(block.timestamp + frameStartWithOffset - block.timestamp);
-        }
+        if (frameStartWithOffset > block.timestamp) vm.warp(block.timestamp + frameStartWithOffset - block.timestamp);
     }
 
     function prepareReport(

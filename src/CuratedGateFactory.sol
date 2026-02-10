@@ -11,9 +11,7 @@ contract CuratedGateFactory is ICuratedGateFactory {
     address public immutable CURATED_GATE_IMPL;
 
     constructor(address curatedGateImpl) {
-        if (curatedGateImpl == address(0)) {
-            revert ZeroImplementationAddress();
-        }
+        if (curatedGateImpl == address(0)) revert ZeroImplementationAddress();
         CURATED_GATE_IMPL = curatedGateImpl;
     }
 

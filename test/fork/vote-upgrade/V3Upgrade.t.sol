@@ -156,9 +156,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_csmNodeOperatorsState() public {
-        if (skipLongForkTest()) {
-            return;
-        }
+        if (skipLongForkTest()) return;
         NodeOperator memory noBefore;
         NodeOperator memory noAfter;
         for (uint256 noId = 0; noId < module.getNodeOperatorsCount(); noId++) {
@@ -359,9 +357,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_accountingCurvesState() public {
-        if (skipLongForkTest()) {
-            return;
-        }
+        if (skipLongForkTest()) return;
         vm.selectFork(forkIdBeforeUpgrade);
         uint256 curvesCountBefore = accounting.getCurvesCount();
 
@@ -387,9 +383,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_accountingNodeOperatorsState() public {
-        if (skipLongForkTest()) {
-            return;
-        }
+        if (skipLongForkTest()) return;
         uint256 curveBefore;
         uint256 curveAfter;
         uint256 bondBefore;
@@ -452,9 +446,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_feeDistributorNodeOperatorState() public {
-        if (skipLongForkTest()) {
-            return;
-        }
+        if (skipLongForkTest()) return;
         uint256 distributedSharesBefore;
         uint256 distributedSharesAfter;
         for (uint256 noId = 0; noId < module.getNodeOperatorsCount(); noId++) {

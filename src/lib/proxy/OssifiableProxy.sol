@@ -93,11 +93,7 @@ contract OssifiableProxy is ERC1967Proxy {
 
     function _onlyAdmin() internal view {
         address admin = ERC1967Utils.getAdmin();
-        if (admin == address(0)) {
-            revert ProxyIsOssified();
-        }
-        if (admin != msg.sender) {
-            revert NotAdmin();
-        }
+        if (admin == address(0)) revert ProxyIsOssified();
+        if (admin != msg.sender) revert NotAdmin();
     }
 }

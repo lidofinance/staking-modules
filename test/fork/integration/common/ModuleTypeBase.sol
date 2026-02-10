@@ -24,9 +24,7 @@ abstract contract ModuleTypeBase is DeploymentFixtures, Utilities, InvariantAsse
 abstract contract CSMIntegrationBase is ModuleTypeBase {
     function _setUpModule() internal override {
         _forkAndInitialize();
-        if (moduleType != ModuleType.Community) {
-            vm.skip(true);
-        }
+        if (moduleType != ModuleType.Community) vm.skip(true);
         integrationHelpers = new CSMIntegrationHelpers(module, accounting, stakingRouter, permissionlessGate);
     }
 
@@ -38,9 +36,7 @@ abstract contract CSMIntegrationBase is ModuleTypeBase {
 abstract contract CuratedIntegrationBase is ModuleTypeBase {
     function _setUpModule() internal override {
         _forkAndInitialize();
-        if (moduleType != ModuleType.Curated) {
-            vm.skip(true);
-        }
+        if (moduleType != ModuleType.Curated) vm.skip(true);
         integrationHelpers = new CuratedIntegrationHelpers(module, accounting, stakingRouter, curatedGates);
     }
 

@@ -40,9 +40,7 @@ contract StakingRouterMock {
                 break;
             }
         }
-        if (!exists) {
-            _moduleIds.push(moduleId);
-        }
+        if (!exists) _moduleIds.push(moduleId);
     }
 
     function getStakingModules() external view returns (IStakingRouter.StakingModule[] memory res) {
@@ -55,9 +53,7 @@ contract StakingRouterMock {
 
     function getStakingModule(uint256 moduleId) external view returns (IStakingRouter.StakingModule memory) {
         IStakingRouter.StakingModule memory module = _modules[moduleId];
-        if (module.stakingModuleAddress == address(0)) {
-            revert StakingModuleUnregistered();
-        }
+        if (module.stakingModuleAddress == address(0)) revert StakingModuleUnregistered();
         return module;
     }
 

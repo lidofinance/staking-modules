@@ -47,16 +47,10 @@ abstract contract BondLock is IBondLock, Initializable {
     uint256 public immutable MAX_BOND_LOCK_PERIOD;
 
     constructor(uint256 minBondLockPeriod, uint256 maxBondLockPeriod) {
-        if (minBondLockPeriod == 0) {
-            revert InvalidBondLockPeriod();
-        }
-        if (minBondLockPeriod > maxBondLockPeriod) {
-            revert InvalidBondLockPeriod();
-        }
+        if (minBondLockPeriod == 0) revert InvalidBondLockPeriod();
+        if (minBondLockPeriod > maxBondLockPeriod) revert InvalidBondLockPeriod();
         // period can not be more than type(uint64).max to avoid overflow when setting bond lock
-        if (maxBondLockPeriod > type(uint64).max) {
-            revert InvalidBondLockPeriod();
-        }
+        if (maxBondLockPeriod > type(uint64).max) revert InvalidBondLockPeriod();
         MIN_BOND_LOCK_PERIOD = minBondLockPeriod;
         MAX_BOND_LOCK_PERIOD = maxBondLockPeriod;
     }
@@ -80,29 +74,19 @@ abstract contract BondLock is IBondLock, Initializable {
     /// @dev Lock bond amount for the given Node Operator until the period.
     function _lock(uint256 nodeOperatorId, uint256 amount) internal {
         BondLockStorage storage $ = _getBondLockStorage();
-        if (amount == 0) {
-            revert InvalidBondLockAmount();
-        }
+        if (amount == 0) revert InvalidBondLockAmount();
         BondLockData memory lock = $.bondLock[nodeOperatorId];
-        if (lock.until > block.timestamp) {
-            amount += lock.amount;
-        }
+        if (lock.until > block.timestamp) amount += lock.amount;
         uint256 until = block.timestamp + $.bondLockPeriod;
-        if (lock.until > until) {
-            until = lock.until;
-        }
+        if (lock.until > until) until = lock.until;
         _changeBondLock({ nodeOperatorId: nodeOperatorId, amount: amount, until: until });
     }
 
     /// @dev Unlock the locked bond amount for the given Node Operator without changing the lock period
     function _unlock(uint256 nodeOperatorId, uint256 amount) internal {
-        if (amount == 0) {
-            revert InvalidBondLockAmount();
-        }
+        if (amount == 0) revert InvalidBondLockAmount();
         uint256 locked = getActualLockedBond(nodeOperatorId);
-        if (locked < amount) {
-            revert InvalidBondLockAmount();
-        }
+        if (locked < amount) revert InvalidBondLockAmount();
         unchecked {
             _changeBondLock(nodeOperatorId, locked - amount, _getBondLockStorage().bondLock[nodeOperatorId].until);
         }
@@ -128,13 +112,9 @@ abstract contract BondLock is IBondLock, Initializable {
 
     /// @dev Set default bond lock period. That period will be added to the block timestamp of the lock translation to determine the bond lock duration
     function _setBondLockPeriod(uint256 period) internal {
-        if (period < MIN_BOND_LOCK_PERIOD || period > MAX_BOND_LOCK_PERIOD) {
-            revert InvalidBondLockPeriod();
-        }
+        if (period < MIN_BOND_LOCK_PERIOD || period > MAX_BOND_LOCK_PERIOD) revert InvalidBondLockPeriod();
         uint256 currentPeriod = _getBondLockStorage().bondLockPeriod;
-        if (currentPeriod == period) {
-            return;
-        }
+        if (currentPeriod == period) return;
         _getBondLockStorage().bondLockPeriod = period;
         emit BondLockPeriodChanged(period);
     }

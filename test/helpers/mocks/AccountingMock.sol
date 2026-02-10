@@ -88,15 +88,11 @@ contract AccountingMock {
     function lockBondETH(uint256 nodeOperatorId, uint256 amount) external {
         // Production storage keeps bond lock amounts/timestamps in uint128,
         // and the mock only ever touches small ether values, so the cast is safe.
-        if (amount > type(uint128).max) {
-            revert BondLockAmountTooLarge();
-        }
+        if (amount > type(uint128).max) revert BondLockAmountTooLarge();
         // forge-lint: disable-next-line(unsafe-typecast)
         bondLock[nodeOperatorId].amount += uint128(amount);
         uint256 unlockTs = block.timestamp + DEFAULT_BOND_LOCK_PERIOD;
-        if (unlockTs > type(uint128).max) {
-            revert BondLockUnlockTimeTooLarge();
-        }
+        if (unlockTs > type(uint128).max) revert BondLockUnlockTimeTooLarge();
         // forge-lint: disable-next-line(unsafe-typecast)
         uint128 unlockAt = uint128(unlockTs);
         bondLock[nodeOperatorId].until = unlockAt;
@@ -121,14 +117,10 @@ contract AccountingMock {
 
     function compensateLockedBondETH(uint256 nodeOperatorId) external payable {
         // Compensation values are bounded by msg.value (<= uint128 in tests), matching storage type.
-        if (msg.value > type(uint128).max) {
-            revert BondLockAmountTooLarge();
-        }
+        if (msg.value > type(uint128).max) revert BondLockAmountTooLarge();
         // forge-lint: disable-next-line(unsafe-typecast)
         bondLock[nodeOperatorId].amount -= uint128(msg.value);
-        if (bondLock[nodeOperatorId].amount < 0) {
-            bondLock[nodeOperatorId].until = 0;
-        }
+        if (bondLock[nodeOperatorId].amount < 0) bondLock[nodeOperatorId].until = 0;
     }
 
     function setBondCurve(uint256 nodeOperatorId, uint256 curveId) external {
@@ -150,9 +142,7 @@ contract AccountingMock {
     function addBondCurve(IBondCurve.BondCurveIntervalInput[] calldata curve) external returns (uint256 curveId) {
         curveId = bondCurves.length;
         uint256 trend = bondCurves[0];
-        if (curve.length > 0) {
-            trend = curve[0].trend;
-        }
+        if (curve.length > 0) trend = curve[0].trend;
         bondCurves.push(trend);
         _nextCurveId = bondCurves.length;
     }
@@ -212,9 +202,7 @@ contract AccountingMock {
     }
 
     function getActualLockedBond(uint256 nodeOperatorId) public view returns (uint256) {
-        if (bondLock[nodeOperatorId].until <= block.timestamp) {
-            return 0;
-        }
+        if (bondLock[nodeOperatorId].until <= block.timestamp) return 0;
         return bondLock[nodeOperatorId].amount;
     }
 
@@ -233,9 +221,7 @@ contract AccountingMock {
     function getUnbondedKeysCount(uint256 nodeOperatorId) external view returns (uint256) {
         (uint256 current, uint256 required) = getBondSummary(nodeOperatorId);
         current += 10 wei;
-        if (current >= required) {
-            return 0;
-        }
+        if (current >= required) return 0;
         return (required - current) / bondCurves[operatorBondCurveId[nodeOperatorId]] + 1;
     }
 
@@ -243,9 +229,7 @@ contract AccountingMock {
         (uint256 current, uint256 required) = getBondSummary(nodeOperatorId);
         current += 10 wei;
         required -= getActualLockedBond(nodeOperatorId);
-        if (current >= required) {
-            return 0;
-        }
+        if (current >= required) return 0;
         return (required - current) / bondCurves[operatorBondCurveId[nodeOperatorId]] + 1;
     }
 

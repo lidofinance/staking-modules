@@ -34,15 +34,9 @@ contract OneShotCurveSetup is IOneShotCurveSetup {
     ScalarOverride public maxElWithdrawalRequestFeeOverride;
 
     constructor(address accounting_, address registry_, ConstructorParams memory params) {
-        if (accounting_ == address(0)) {
-            revert ZeroAccountingAddress();
-        }
-        if (registry_ == address(0)) {
-            revert ZeroRegistryAddress();
-        }
-        if (params.bondCurve.length == 0) {
-            revert EmptyBondCurve();
-        }
+        if (accounting_ == address(0)) revert ZeroAccountingAddress();
+        if (registry_ == address(0)) revert ZeroRegistryAddress();
+        if (params.bondCurve.length == 0) revert EmptyBondCurve();
 
         ACCOUNTING = IAccounting(accounting_);
         REGISTRY = IParametersRegistry(registry_);
@@ -65,9 +59,7 @@ contract OneShotCurveSetup is IOneShotCurveSetup {
     }
 
     function execute() external override returns (uint256 curveId) {
-        if (executed) {
-            revert AlreadyExecuted();
-        }
+        if (executed) revert AlreadyExecuted();
         executed = true;
 
         curveId = ACCOUNTING.addBondCurve(bondCurve);
@@ -78,21 +70,15 @@ contract OneShotCurveSetup is IOneShotCurveSetup {
     }
 
     function _applyParameterOverrides(uint256 curveId) internal {
-        if (keyRemovalChargeOverride.isSet) {
-            REGISTRY.setKeyRemovalCharge(curveId, keyRemovalChargeOverride.value);
-        }
+        if (keyRemovalChargeOverride.isSet) REGISTRY.setKeyRemovalCharge(curveId, keyRemovalChargeOverride.value);
         if (generalDelayedPenaltyFineOverride.isSet) {
             REGISTRY.setGeneralDelayedPenaltyAdditionalFine(curveId, generalDelayedPenaltyFineOverride.value);
         }
-        if (keysLimitOverride.isSet) {
-            REGISTRY.setKeysLimit(curveId, keysLimitOverride.value);
-        }
+        if (keysLimitOverride.isSet) REGISTRY.setKeysLimit(curveId, keysLimitOverride.value);
         if (queueConfigOverride.isSet) {
             REGISTRY.setQueueConfig(curveId, queueConfigOverride.priority, queueConfigOverride.maxDeposits);
         }
-        if (rewardShareDataOverride.isSet) {
-            REGISTRY.setRewardShareData(curveId, rewardShareDataOverride.data);
-        }
+        if (rewardShareDataOverride.isSet) REGISTRY.setRewardShareData(curveId, rewardShareDataOverride.data);
         if (performanceLeewayDataOverride.isSet) {
             REGISTRY.setPerformanceLeewayData(curveId, performanceLeewayDataOverride.data);
         }
@@ -110,12 +96,8 @@ contract OneShotCurveSetup is IOneShotCurveSetup {
                 performanceCoefficientsOverride.syncWeight
             );
         }
-        if (allowedExitDelayOverride.isSet) {
-            REGISTRY.setAllowedExitDelay(curveId, allowedExitDelayOverride.value);
-        }
-        if (exitDelayFeeOverride.isSet) {
-            REGISTRY.setExitDelayFee(curveId, exitDelayFeeOverride.value);
-        }
+        if (allowedExitDelayOverride.isSet) REGISTRY.setAllowedExitDelay(curveId, allowedExitDelayOverride.value);
+        if (exitDelayFeeOverride.isSet) REGISTRY.setExitDelayFee(curveId, exitDelayFeeOverride.value);
         if (maxElWithdrawalRequestFeeOverride.isSet) {
             REGISTRY.setMaxElWithdrawalRequestFee(curveId, maxElWithdrawalRequestFeeOverride.value);
         }

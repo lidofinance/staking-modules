@@ -24,9 +24,7 @@ contract CuratedGateCreateNodeOperatorTest is CuratedIntegrationBase {
         gate.grantRole(gate.RESUME_ROLE(), address(this));
         vm.stopPrank();
 
-        if (gate.isPaused()) {
-            gate.resume();
-        }
+        if (gate.isPaused()) gate.resume();
     }
 
     function test_createNodeOperator_setsMetadataAndCurve() public {

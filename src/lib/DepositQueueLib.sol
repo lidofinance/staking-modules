@@ -120,9 +120,7 @@ library DepositQueueLib {
     function dequeue(Queue storage self) internal returns (Batch item) {
         item = peek(self);
 
-        if (item.isNil()) {
-            revert IDepositQueueLib.DepositQueueIsEmpty();
-        }
+        if (item.isNil()) revert IDepositQueueLib.DepositQueueIsEmpty();
 
         self.head = item.next();
     }

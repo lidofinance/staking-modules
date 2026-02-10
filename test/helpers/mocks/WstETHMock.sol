@@ -44,18 +44,14 @@ contract WstETHMock {
     }
 
     function transferFrom(address sender, address recipient, uint256 amount) public returns (bool) {
-        if (_balance[sender] < amount) {
-            revert NotEnoughBalance(_balance[sender]);
-        }
+        if (_balance[sender] < amount) revert NotEnoughBalance(_balance[sender]);
         _balance[sender] -= amount;
         _balance[recipient] += amount;
         return true;
     }
 
     function transfer(address recipient, uint256 amount) public returns (bool) {
-        if (_balance[msg.sender] < amount) {
-            revert NotEnoughBalance(_balance[msg.sender]);
-        }
+        if (_balance[msg.sender] < amount) revert NotEnoughBalance(_balance[msg.sender]);
         _balance[msg.sender] -= amount;
         _balance[recipient] += amount;
         return true;

@@ -20,9 +20,7 @@ library NodeOperatorOps {
         uint256 offset,
         uint256 limit
     ) external pure returns (uint256[] memory nodeOperatorIds) {
-        if (offset >= nodeOperatorsCount || limit == 0) {
-            return nodeOperatorIds;
-        }
+        if (offset >= nodeOperatorsCount || limit == 0) return nodeOperatorIds;
 
         unchecked {
             uint256 idsCount = nodeOperatorsCount - offset;
@@ -42,9 +40,7 @@ library NodeOperatorOps {
         NodeOperatorManagementProperties calldata managementProperties,
         address referrer
     ) external {
-        if (from == address(0)) {
-            revert IBaseModule.ZeroSenderAddress();
-        }
+        if (from == address(0)) revert IBaseModule.ZeroSenderAddress();
 
         NodeOperator storage no = nodeOperators[nodeOperatorId];
 
@@ -67,9 +63,7 @@ library NodeOperatorOps {
             managementProperties.extendedManagerPermissions
         );
 
-        if (referrer != address(0)) {
-            emit IBaseModule.ReferrerSet(nodeOperatorId, referrer);
-        }
+        if (referrer != address(0)) emit IBaseModule.ReferrerSet(nodeOperatorId, referrer);
     }
 
     function setTargetLimit(
@@ -78,26 +72,16 @@ library NodeOperatorOps {
         uint256 targetLimitMode,
         uint256 targetLimit
     ) external {
-        if (targetLimitMode > FORCED_TARGET_LIMIT_MODE_ID) {
-            revert IBaseModule.InvalidInput();
-        }
-        if (targetLimit > type(uint32).max) {
-            revert IBaseModule.InvalidInput();
-        }
+        if (targetLimitMode > FORCED_TARGET_LIMIT_MODE_ID) revert IBaseModule.InvalidInput();
+        if (targetLimit > type(uint32).max) revert IBaseModule.InvalidInput();
 
         NodeOperator storage no = nodeOperators[nodeOperatorId];
 
-        if (no.managerAddress == address(0)) {
-            revert IBaseModule.NodeOperatorDoesNotExist();
-        }
+        if (no.managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
 
-        if (targetLimitMode == 0) {
-            targetLimit = 0;
-        }
+        if (targetLimitMode == 0) targetLimit = 0;
 
-        if (no.targetLimitMode == targetLimitMode && no.targetLimit == targetLimit) {
-            return;
-        }
+        if (no.targetLimitMode == targetLimitMode && no.targetLimit == targetLimit) return;
 
         // `targetLimitMode` is validated against FORCED_TARGET_LIMIT_MODE_ID (fits uint8).
         // forge-lint: disable-next-line(unsafe-typecast)
@@ -161,17 +145,11 @@ library NodeOperatorOps {
 
             NodeOperator storage no = nodeOperators[nodeOperatorId];
 
-            if (no.managerAddress == address(0)) {
-                revert IBaseModule.NodeOperatorDoesNotExist();
-            }
+            if (no.managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
 
-            if (vettedSigningKeysCount >= no.totalVettedKeys) {
-                revert IBaseModule.InvalidVetKeysPointer();
-            }
+            if (vettedSigningKeysCount >= no.totalVettedKeys) revert IBaseModule.InvalidVetKeysPointer();
 
-            if (vettedSigningKeysCount < no.totalDepositedKeys) {
-                revert IBaseModule.InvalidVetKeysPointer();
-            }
+            if (vettedSigningKeysCount < no.totalDepositedKeys) revert IBaseModule.InvalidVetKeysPointer();
 
             // NodeOperator.totalVettedKeys and totalDepositedKeys are uint32 slots; the checks above keep
             // `vettedSigningKeysCount` within those limits, so this cast is safe.
@@ -205,9 +183,7 @@ library NodeOperatorOps {
         )
     {
         NodeOperator storage no = nodeOperators[nodeOperatorId];
-        if (no.managerAddress == address(0)) {
-            revert IBaseModule.NodeOperatorDoesNotExist();
-        }
+        if (no.managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
 
         uint256 totalUnbondedKeys = accounting.getUnbondedKeysCountToEject(nodeOperatorId);
         uint256 totalNonDepositedKeys = no.totalAddedKeys - no.totalDepositedKeys;
@@ -216,9 +192,7 @@ library NodeOperatorOps {
             unchecked {
                 targetValidatorsCount = no.totalAddedKeys - no.totalWithdrawnKeys - totalUnbondedKeys;
             }
-            if (no.targetLimitMode > 0) {
-                targetValidatorsCount = Math.min(targetValidatorsCount, no.targetLimit);
-            }
+            if (no.targetLimitMode > 0) targetValidatorsCount = Math.min(targetValidatorsCount, no.targetLimit);
         } else {
             targetLimitMode = no.targetLimitMode;
             targetValidatorsCount = no.targetLimit;
@@ -240,14 +214,10 @@ library NodeOperatorOps {
         uint256 incrementWei
     ) external {
         NodeOperator storage no = nodeOperators[nodeOperatorId];
-        if (keyIndex >= no.totalDepositedKeys) {
-            revert IBaseModule.SigningKeysInvalidOffset();
-        }
+        if (keyIndex >= no.totalDepositedKeys) revert IBaseModule.SigningKeysInvalidOffset();
 
         uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
-        if (isValidatorWithdrawn[pointer]) {
-            revert IBaseModule.InvalidWithdrawnValidatorInfo();
-        }
+        if (isValidatorWithdrawn[pointer]) revert IBaseModule.InvalidWithdrawnValidatorInfo();
 
         _increaseKeyAddedBalance(keyAddedBalances, nodeOperatorId, keyIndex, incrementWei);
     }
@@ -260,9 +230,7 @@ library NodeOperatorOps {
     ) external {
         for (uint256 i; i < allocations.length; ++i) {
             uint256 allocationWei = allocations[i];
-            if (allocationWei == 0) {
-                continue;
-            }
+            if (allocationWei == 0) continue;
             _increaseKeyAddedBalance(keyAddedBalances, operatorIds[i], keyIndices[i], allocationWei);
         }
     }
@@ -326,9 +294,7 @@ library NodeOperatorOps {
         uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
         uint256 current = keyAddedBalances[pointer];
         uint256 cap = _keyAddedBalanceCap();
-        if (current == cap) {
-            return;
-        }
+        if (current == cap) return;
         uint256 updatedBalance = Math.min(cap, current + incrementWei);
         keyAddedBalances[pointer] = updatedBalance;
         emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, updatedBalance);

@@ -96,9 +96,7 @@ contract CSModule is ICSModule, BaseModule {
         _checkStakingRouterRole();
 
         (publicKeys, signatures) = SigningKeys.initKeysSigsBuf(depositsCount);
-        if (depositsCount == 0) {
-            return (publicKeys, signatures);
-        }
+        if (depositsCount == 0) return (publicKeys, signatures);
 
         uint256 depositsLeft = depositsCount;
         uint256 loadedKeysCount = 0;
@@ -145,9 +143,7 @@ contract CSModule is ICSModule, BaseModule {
                     }
 
                     // NOTE: This condition is located here to allow for the correct removal of the batch for the Node Operators with no depositable keys
-                    if (keysCount == 0) {
-                        continue;
-                    }
+                    if (keysCount == 0) continue;
 
                     if (topUpQueueEnabled) {
                         uint32 keyIndexBase = no.totalDepositedKeys;
@@ -184,22 +180,16 @@ contract CSModule is ICSModule, BaseModule {
                     emit DepositableSigningKeysCountChanged(noId, newCount);
 
                     depositsLeft -= keysCount;
-                    if (depositsLeft == 0) {
-                        break;
-                    }
+                    if (depositsLeft == 0) break;
                 }
             }
             unchecked {
                 ++priority;
             }
-            if (priority > _queueLowestPriority() || depositsLeft == 0) {
-                break;
-            }
+            if (priority > _queueLowestPriority() || depositsLeft == 0) break;
         }
 
-        if (loadedKeysCount != depositsCount) {
-            revert NotEnoughKeys();
-        }
+        if (loadedKeysCount != depositsCount) revert NotEnoughKeys();
 
         unchecked {
             // Deposits counts are capped by queue length (< 2^32) and the storage slots are uint64.
@@ -242,9 +232,7 @@ contract CSModule is ICSModule, BaseModule {
             topUpLimits: cappedTopUpLimits
         });
 
-        if (allocations.length == 0) {
-            return allocations;
-        }
+        if (allocations.length == 0) return allocations;
 
         NodeOperatorOps.increaseKeyAddedBalancesByAllocations(_keyAddedBalances, operatorIds, keyIndices, allocations);
 
@@ -255,12 +243,8 @@ contract CSModule is ICSModule, BaseModule {
     function setTopUpQueueLimit(uint256 limit) external {
         _checkRole(MANAGE_TOP_UP_QUEUE_ROLE);
         _onlyEnabledTopUpQueue();
-        if (limit == 0) {
-            revert ZeroTopUpQueueLimit();
-        }
-        if (limit == _topUpQueue().limit) {
-            revert SameTopUpQueueLimit();
-        }
+        if (limit == 0) revert ZeroTopUpQueueLimit();
+        if (limit == _topUpQueue().limit) revert SameTopUpQueueLimit();
         _topUpQueue().limit = limit.toUint8();
         emit TopUpQueueLimitSet(limit);
         _incrementModuleNonce();
@@ -275,9 +259,7 @@ contract CSModule is ICSModule, BaseModule {
         _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
 
-        if (startIndex < no.totalDepositedKeys) {
-            revert SigningKeysInvalidOffset();
-        }
+        if (startIndex < no.totalDepositedKeys) revert SigningKeysInvalidOffset();
 
         uint256 newTotalSigningKeys = SigningKeys.removeKeysSigs({
             nodeOperatorId: nodeOperatorId,
@@ -420,18 +402,14 @@ contract CSModule is ICSModule, BaseModule {
 
     /// @dev Setting `topUpQueueLimit` to 0 effectively disables the top-up queue permanently.
     function _initTopUpQueue(uint8 topUpQueueLimit) internal {
-        if (topUpQueueLimit == 0) {
-            return;
-        }
+        if (topUpQueueLimit == 0) return;
         _topUpQueue().enabled = true;
         _topUpQueue().limit = topUpQueueLimit;
         emit TopUpQueueLimitSet(topUpQueueLimit);
     }
 
     function _onlyEnabledTopUpQueue() internal view {
-        if (!_topUpQueueEnabled()) {
-            revert TopUpQueueDisabled();
-        }
+        if (!_topUpQueueEnabled()) revert TopUpQueueDisabled();
     }
 
     function _topUpQueue() internal view returns (TopUpQueueLib.Queue storage) {

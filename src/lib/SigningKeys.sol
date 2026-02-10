@@ -34,9 +34,7 @@ library SigningKeys {
         bytes calldata pubkeys,
         bytes calldata signatures
     ) internal returns (uint256) {
-        if (keysCount == 0 || startIndex + keysCount > type(uint32).max) {
-            revert InvalidKeysCount();
-        }
+        if (keysCount == 0 || startIndex + keysCount > type(uint32).max) revert InvalidKeysCount();
         unchecked {
             if (pubkeys.length != keysCount * PUBKEY_LENGTH || signatures.length != keysCount * SIGNATURE_LENGTH) {
                 revert InvalidLength();
@@ -58,9 +56,7 @@ library SigningKeys {
                 mstore(add(tmpKey, 0x20), _part1) // store 1st part with overwrite bytes 16-31
             }
 
-            if (isEmpty) {
-                revert EmptyKey();
-            }
+            if (isEmpty) revert EmptyKey();
 
             assembly {
                 // store key

@@ -168,9 +168,7 @@ abstract contract DeployBase is Script {
 
     function run(string memory _gitRef) external virtual {
         gitRef = _gitRef;
-        if (chainId != block.chainid) {
-            revert ChainIdMismatch({ actual: block.chainid, expected: chainId });
-        }
+        if (chainId != block.chainid) revert ChainIdMismatch({ actual: block.chainid, expected: chainId });
         HashConsensus accountingConsensus = HashConsensus(
             BaseOracle(locator.accountingOracle()).getConsensusContract()
         );
@@ -496,9 +494,7 @@ abstract contract DeployBase is Script {
             csm.grantRole(csm.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(), config.easyTrackEVMScriptExecutor);
 
             if (config.secondAdminAddress != address(0)) {
-                if (config.secondAdminAddress == deployer) {
-                    revert InvalidSecondAdmin();
-                }
+                if (config.secondAdminAddress == deployer) revert InvalidSecondAdmin();
                 _grantSecondAdmins();
             }
 
@@ -602,9 +598,7 @@ abstract contract DeployBase is Script {
     }
 
     function _grantSecondAdmins() internal {
-        if (keccak256(abi.encodePacked(chainName)) == keccak256("mainnet")) {
-            revert CannotBeUsedInMainnet();
-        }
+        if (keccak256(abi.encodePacked(chainName)) == keccak256("mainnet")) revert CannotBeUsedInMainnet();
         csm.grantRole(csm.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         accounting.grantRole(accounting.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         oracle.grantRole(oracle.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);

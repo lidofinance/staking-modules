@@ -32,9 +32,7 @@ contract InvariantAsserts is Test {
     }
 
     function skipInvariants() public returns (bool skip) {
-        if (_skipped) {
-            return true;
-        }
+        if (_skipped) return true;
         bytes32 profileHash = _profileHash();
         bool isCIProfile = _isCiProfile(profileHash) || _isCiQuickProfile(profileHash);
         bool forkIsActive;
@@ -49,9 +47,7 @@ contract InvariantAsserts is Test {
     }
 
     function skipLongForkTest() public returns (bool skip) {
-        if (_skippedLongForkTest) {
-            return true;
-        }
+        if (_skippedLongForkTest) return true;
         bytes32 profileHash = _profileHash();
         bool isCIProfile = _isCiProfile(profileHash);
         bool forkIsActive;
@@ -66,12 +62,8 @@ contract InvariantAsserts is Test {
     }
 
     function assertModuleKeys(IBaseModule csm) public {
-        if (skipInvariants()) {
-            return;
-        }
-        if (skipLongForkTest()) {
-            return;
-        }
+        if (skipInvariants()) return;
+        if (skipLongForkTest()) return;
         uint256 noCount = csm.getNodeOperatorsCount();
         NodeOperator memory no;
 
@@ -123,12 +115,8 @@ contract InvariantAsserts is Test {
     mapping(uint256 => uint256) batchKeys;
 
     function assertModuleEnqueuedCount(ICSModule csm) public {
-        if (skipInvariants()) {
-            return;
-        }
-        if (skipLongForkTest()) {
-            return;
-        }
+        if (skipInvariants()) return;
+        if (skipLongForkTest()) return;
         uint256 noCount = csm.getNodeOperatorsCount();
         NodeOperator memory no;
 
@@ -152,9 +140,7 @@ contract InvariantAsserts is Test {
     function assertModuleUnusedStorageSlots(IBaseModule module) public {
         // @see ModuleLinearStorage.
 
-        if (skipInvariants()) {
-            return;
-        }
+        if (skipInvariants()) return;
 
         bytes32 slot1 = vm.load(address(module), bytes32(uint256(1)));
         bytes32 slot2 = vm.load(address(module), bytes32(uint256(2)));
@@ -164,12 +150,8 @@ contract InvariantAsserts is Test {
     }
 
     function assertAccountingTotalBondShares(uint256 nodeOperatorsCount, IStETH steth, Accounting accounting) public {
-        if (skipInvariants()) {
-            return;
-        }
-        if (skipLongForkTest()) {
-            return;
-        }
+        if (skipInvariants()) return;
+        if (skipLongForkTest()) return;
         uint256 totalNodeOperatorsShares;
 
         for (uint256 noId = 0; noId < nodeOperatorsCount; noId++) {
@@ -180,42 +162,30 @@ contract InvariantAsserts is Test {
     }
 
     function assertAccountingBondDebts(uint256 nodeOperatorsCount, Accounting accounting) public {
-        if (skipInvariants()) {
-            return;
-        }
-        if (skipLongForkTest()) {
-            return;
-        }
+        if (skipInvariants()) return;
+        if (skipLongForkTest()) return;
 
         for (uint256 noId = 0; noId < nodeOperatorsCount; noId++) {
             uint256 debt = accounting.getBondDebt(noId);
             uint256 bond = accounting.getBond(noId);
-            if (debt > 0) {
-                assertEq(bond, 0, "assert debt > 0 => bond == 0");
-            }
+            if (debt > 0) assertEq(bond, 0, "assert debt > 0 => bond == 0");
         }
     }
 
     function assertAccountingBurnerApproval(IStETH steth, address accounting, address burner) public {
-        if (skipInvariants()) {
-            return;
-        }
+        if (skipInvariants()) return;
         assertGe(steth.allowance(accounting, burner), type(uint128).max, "assert allowance");
     }
 
     function assertAccountingUnusedStorageSlots(Accounting accounting) public {
-        if (skipInvariants()) {
-            return;
-        }
+        if (skipInvariants()) return;
         // _feeDistributorOld
         bytes32 value = vm.load(address(accounting), bytes32(uint256(0)));
         assertEq(value, bytes32(0), "assert _feeDistributorOld is empty");
     }
 
     function assertFeeDistributorClaimableShares(IStETH lido, FeeDistributor feeDistributor) public {
-        if (skipInvariants()) {
-            return;
-        }
+        if (skipInvariants()) return;
         assertGe(
             lido.sharesOf(address(feeDistributor)),
             feeDistributor.totalClaimableShares(),
@@ -224,9 +194,7 @@ contract InvariantAsserts is Test {
     }
 
     function assertFeeDistributorTree(FeeDistributor feeDistributor) public {
-        if (skipInvariants()) {
-            return;
-        }
+        if (skipInvariants()) return;
         if (feeDistributor.treeRoot() == bytes32(0)) {
             assertEq(feeDistributor.treeCid(), "", "tree doesn't exist, but has CID");
         } else {
@@ -235,9 +203,7 @@ contract InvariantAsserts is Test {
     }
 
     function assertFeeOracleUnusedStorageSlots(FeeOracle feeOracle) public {
-        if (skipInvariants()) {
-            return;
-        }
+        if (skipInvariants()) return;
         bytes32 value;
         // _feeDistributor
         value = vm.load(address(feeOracle), bytes32(uint256(0)));
@@ -249,9 +215,7 @@ contract InvariantAsserts is Test {
     }
 
     function assertStrikesTree(ValidatorStrikes strikes) public {
-        if (skipInvariants()) {
-            return;
-        }
+        if (skipInvariants()) return;
         if (strikes.treeRoot() == bytes32(0)) {
             assertEq(strikes.treeCid(), "", "tree doesn't exist, but has CID");
         } else {

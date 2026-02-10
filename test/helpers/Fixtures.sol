@@ -471,9 +471,7 @@ contract DeploymentHelpers is Test {
     }
 
     function parseCommonDeployParams(string memory config) internal view returns (CommonDeployParams memory params) {
-        if (bytes(config).length == 0) {
-            return params;
-        }
+        if (bytes(config).length == 0) return params;
 
         if (vm.keyExistsJson(config, ".CuratedModule")) {
             CuratedDeployParams memory decoded = abi.decode(
@@ -726,9 +724,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         uint256[] memory ids = stakingRouter.getStakingModuleIds();
         for (uint256 i = ids.length - 1; i > 0; i--) {
             IStakingRouter.StakingModule memory moduleInfo = stakingRouter.getStakingModule(ids[i]);
-            if (moduleInfo.stakingModuleAddress == address(module)) {
-                return ids[i];
-            }
+            if (moduleInfo.stakingModuleAddress == address(module)) return ids[i];
         }
         revert ModuleNotFound();
     }
@@ -775,9 +771,7 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
         uint256 nosCount = module.getNodeOperatorsCount();
         for (; noId < nosCount; ++noId) {
             NodeOperator memory no = module.getNodeOperator(noId);
-            if (no.totalDepositedKeys - no.totalWithdrawnKeys >= keysCount) {
-                return noId;
-            }
+            if (no.totalDepositedKeys - no.totalWithdrawnKeys >= keysCount) return noId;
         }
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
         (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
@@ -803,9 +797,7 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
                     } else {
                         sequentialKeys = 0;
                     }
-                    if (sequentialKeys == keysCount) {
-                        return (noId, i - (keysCount - 1));
-                    }
+                    if (sequentialKeys == keysCount) return (noId, i - (keysCount - 1));
                 }
             }
         }
@@ -870,9 +862,7 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
         for (uint256 i = 0; i <= module.QUEUE_LOWEST_PRIORITY(); ++i) {
             (uint128 head, ) = module.depositQueuePointers(i);
             Batch batch = module.depositQueueItem(i, head);
-            if (!batch.isNil()) {
-                return (batch.noId(), batch.keys());
-            }
+            if (!batch.isNil()) return (batch.noId(), batch.keys());
         }
         keysCount = 5;
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
@@ -953,9 +943,7 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
     }
 
     function _prepareCuratedGate(address member) internal returns (CuratedGate gate, bytes32[] memory proof) {
-        if (curatedGates.length == 0) {
-            revert ModuleNotFound();
-        }
+        if (curatedGates.length == 0) revert ModuleNotFound();
 
         gate = CuratedGate(curatedGates[0]);
         address admin = gate.getRoleMember(gate.DEFAULT_ADMIN_ROLE(), 0);
@@ -964,9 +952,7 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         gate.grantRole(gate.RESUME_ROLE(), address(this));
         vm.stopPrank();
 
-        if (gate.isPaused()) {
-            gate.resume();
-        }
+        if (gate.isPaused()) gate.resume();
 
         address extra = nextAddress("curated-proof");
         MerkleTree tree = new MerkleTree();
@@ -990,9 +976,7 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         vm.stopPrank();
 
         // TODO: Think about more realistic weight, so far the units are unclear.
-        if (r.getBondCurveWeight(curveId) == 0) {
-            r.setBondCurveWeight(curveId, 1);
-        }
+        if (r.getBondCurveWeight(curveId) == 0) r.setBondCurveWeight(curveId, 1);
 
         uint256 groupId = r.getNodeOperatorGroupId(nodeOperatorId);
         if (groupId == r.NO_GROUP_ID()) {
@@ -1009,16 +993,12 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
 
         CuratedModule cm = CuratedModule(address(module));
         uint256 left = cm.getNodeOperatorWeightsToUpdateCount();
-        if (left > 0) {
-            cm.batchUpdateNodeOperatorWeights(left);
-        }
+        if (left > 0) cm.batchUpdateNodeOperatorWeights(left);
     }
 
     function _ensureCreateNodeOperatorRole() internal {
         bytes32 role = module.CREATE_NODE_OPERATOR_ROLE();
-        if (module.hasRole(role, address(this))) {
-            return;
-        }
+        if (module.hasRole(role, address(this))) return;
 
         address admin = module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0);
         vm.prank(admin);

@@ -168,9 +168,7 @@ contract CSMCommon is ModuleFixtures {
 
             for (;;) {
                 Batch item = csm.depositQueueItem(p, curr);
-                if (item.isNil()) {
-                    break;
-                }
+                if (item.isNil()) break;
 
                 uint256 noId = item.noId();
                 uint256 keysInBatch = item.keys();
@@ -221,9 +219,7 @@ contract CSMCommon is ModuleFixtures {
     function _getTopUpQueueCapacity() internal view returns (uint256) {
         (, uint256 limit, uint256 length, ) = csm.getTopUpQueue();
 
-        if (limit > length) {
-            return limit - length;
-        }
+        if (limit > length) return limit - length;
         return 0;
     }
 }

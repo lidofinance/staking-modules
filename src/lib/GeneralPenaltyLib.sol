@@ -29,9 +29,7 @@ library GeneralPenalty {
         uint256 amount,
         string calldata details
     ) external {
-        if (penaltyType == bytes32(0)) {
-            revert IGeneralPenalty.ZeroPenaltyType();
-        }
+        if (penaltyType == bytes32(0)) revert IGeneralPenalty.ZeroPenaltyType();
 
         IBaseModule module = IBaseModule(address(this));
         IAccounting accounting = module.ACCOUNTING();
@@ -41,9 +39,7 @@ library GeneralPenalty {
 
         uint256 totalAmount = amount + additionalFine;
 
-        if (totalAmount == 0) {
-            revert IBaseModule.InvalidAmount();
-        }
+        if (totalAmount == 0) revert IBaseModule.InvalidAmount();
 
         accounting.lockBondETH(nodeOperatorId, totalAmount);
 

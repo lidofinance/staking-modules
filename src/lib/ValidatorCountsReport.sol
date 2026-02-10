@@ -15,9 +15,7 @@ library ValidatorCountsReport {
             ok := and(eq(ids.length, mul(len, 8)), eq(counts.length, mul(len, 16)))
         }
 
-        if (!ok) {
-            revert InvalidReportData();
-        }
+        if (!ok) revert InvalidReportData();
     }
 
     function next(

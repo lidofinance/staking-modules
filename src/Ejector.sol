@@ -31,15 +31,9 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
     }
 
     constructor(address module, address strikes, uint256 stakingModuleId, address admin) {
-        if (module == address(0)) {
-            revert ZeroModuleAddress();
-        }
-        if (strikes == address(0)) {
-            revert ZeroStrikesAddress();
-        }
-        if (admin == address(0)) {
-            revert ZeroAdminAddress();
-        }
+        if (module == address(0)) revert ZeroModuleAddress();
+        if (strikes == address(0)) revert ZeroStrikesAddress();
+        if (admin == address(0)) revert ZeroAdminAddress();
 
         STRIKES = strikes;
         MODULE = ICSModule(module);
@@ -67,9 +61,7 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
     ) external payable whenResumed {
         _onlyNodeOperatorOwner(nodeOperatorId);
 
-        if (keysCount == 0) {
-            revert NothingToEject();
-        }
+        if (keysCount == 0) revert NothingToEject();
 
         // Default to sender if no refund recipient is specified
         refundRecipient = _msgSenderIfEmpty(refundRecipient);
@@ -86,9 +78,7 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
             // But, it will eventually be withdrawn, so potentially malicious behaviour stops when
             // there are no active keys available
             for (uint256 i = startFrom; i < maxKeyIndex; ++i) {
-                if (MODULE.isValidatorWithdrawn(nodeOperatorId, i)) {
-                    revert AlreadyWithdrawn();
-                }
+                if (MODULE.isValidatorWithdrawn(nodeOperatorId, i)) revert AlreadyWithdrawn();
             }
         }
 
@@ -132,9 +122,7 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
     ) external payable whenResumed {
         _onlyNodeOperatorOwner(nodeOperatorId);
 
-        if (keyIndices.length == 0) {
-            revert NothingToEject();
-        }
+        if (keyIndices.length == 0) revert NothingToEject();
 
         // Default to sender if no refund recipient is specified
         refundRecipient = _msgSenderIfEmpty(refundRecipient);
@@ -144,23 +132,17 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
         TransientUintUintMap seen = TransientUintUintMapLib.create();
         for (uint256 i = 0; i < keyIndices.length; i++) {
             // Skip duplicate keys in the input array
-            if (seen.get(keyIndices[i]) != 0) {
-                revert DuplicateKeyIndex();
-            }
+            if (seen.get(keyIndices[i]) != 0) revert DuplicateKeyIndex();
             seen.set(keyIndices[i], 1);
 
             // A key must be deposited to prevent ejecting unvetted keys that can intersect with
             // other modules.
-            if (keyIndices[i] >= totalDepositedKeys) {
-                revert SigningKeysInvalidOffset();
-            }
+            if (keyIndices[i] >= totalDepositedKeys) revert SigningKeysInvalidOffset();
             // A key must be non-withdrawn to restrict unlimited exit requests consuming sanity
             // checker limits, although a deposited key can be requested to exit multiple times.
             // But, it will eventually be withdrawn, so potentially malicious behaviour stops when
             // there are no active keys available
-            if (MODULE.isValidatorWithdrawn(nodeOperatorId, keyIndices[i])) {
-                revert AlreadyWithdrawn();
-            }
+            if (MODULE.isValidatorWithdrawn(nodeOperatorId, keyIndices[i])) revert AlreadyWithdrawn();
             bytes memory pubkey = MODULE.getSigningKeys(nodeOperatorId, keyIndices[i], 1);
             exitsData[i] = ValidatorData({
                 stakingModuleId: STAKING_MODULE_ID,
@@ -190,20 +172,14 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
     ) external payable whenResumed onlyStrikes {
         // A key must be deposited to prevent ejecting unvetted keys that can intersect with
         // other modules.
-        if (keyIndex >= MODULE.getNodeOperator(nodeOperatorId).totalDepositedKeys) {
-            revert SigningKeysInvalidOffset();
-        }
+        if (keyIndex >= MODULE.getNodeOperator(nodeOperatorId).totalDepositedKeys) revert SigningKeysInvalidOffset();
         // A key must be non-withdrawn to restrict unlimited exit requests consuming sanity checker
         // limits, although a deposited key can be requested to exit multiple times. But, it will
         // eventually be withdrawn, so potentially malicious behaviour stops when there are no
         // active keys available
-        if (MODULE.isValidatorWithdrawn(nodeOperatorId, keyIndex)) {
-            revert AlreadyWithdrawn();
-        }
+        if (MODULE.isValidatorWithdrawn(nodeOperatorId, keyIndex)) revert AlreadyWithdrawn();
 
-        if (refundRecipient == address(0)) {
-            revert ZeroRefundRecipient();
-        }
+        if (refundRecipient == address(0)) revert ZeroRefundRecipient();
 
         ValidatorData[] memory exitsData = new ValidatorData[](1);
         bytes memory pubkey = MODULE.getSigningKeys(nodeOperatorId, keyIndex, 1);
@@ -236,20 +212,14 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
     }
 
     function _onlyStrikes() internal view {
-        if (msg.sender != STRIKES) {
-            revert SenderIsNotStrikes();
-        }
+        if (msg.sender != STRIKES) revert SenderIsNotStrikes();
     }
 
     /// @dev Verifies that the sender is the owner of the node operator
     function _onlyNodeOperatorOwner(uint256 nodeOperatorId) internal view {
         address owner = MODULE.getNodeOperatorOwner(nodeOperatorId);
-        if (owner == address(0)) {
-            revert NodeOperatorDoesNotExist();
-        }
-        if (owner != msg.sender) {
-            revert SenderIsNotEligible();
-        }
+        if (owner == address(0)) revert NodeOperatorDoesNotExist();
+        if (owner != msg.sender) revert SenderIsNotEligible();
     }
 
     function _onlyRecoverer() internal view override {

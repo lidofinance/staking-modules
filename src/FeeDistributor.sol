@@ -59,16 +59,10 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
     }
 
     constructor(address stETH, address accounting, address oracle) {
-        if (accounting == address(0)) {
-            revert ZeroAccountingAddress();
-        }
-        if (oracle == address(0)) {
-            revert ZeroOracleAddress();
-        }
+        if (accounting == address(0)) revert ZeroAccountingAddress();
+        if (oracle == address(0)) revert ZeroOracleAddress();
 
-        if (stETH == address(0)) {
-            revert ZeroStEthAddress();
-        }
+        if (stETH == address(0)) revert ZeroStEthAddress();
 
         ACCOUNTING = accounting;
         STETH = IStETH(stETH);
@@ -81,9 +75,7 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
     ///      It is recommended to call this method in the same transaction as the deployment transaction
     ///      and perform extensive deployment verification before using the contract instance.
     function initialize(address admin, address _rebateRecipient) external reinitializer(INITIALIZED_VERSION) {
-        if (admin == address(0)) {
-            revert ZeroAdminAddress();
-        }
+        if (admin == address(0)) revert ZeroAdminAddress();
 
         _setRebateRecipient(_rebateRecipient);
 
@@ -111,13 +103,9 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
     ) external onlyAccounting returns (uint256 sharesToDistribute) {
         sharesToDistribute = getFeesToDistribute(nodeOperatorId, cumulativeFeeShares, proof);
 
-        if (sharesToDistribute == 0) {
-            return 0;
-        }
+        if (sharesToDistribute == 0) return 0;
 
-        if (totalClaimableShares < sharesToDistribute) {
-            revert NotEnoughShares();
-        }
+        if (totalClaimableShares < sharesToDistribute) revert NotEnoughShares();
 
         unchecked {
             totalClaimableShares -= sharesToDistribute;
@@ -137,28 +125,16 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
         uint256 rebate,
         uint256 refSlot
     ) external onlyOracle {
-        if (totalClaimableShares + distributed + rebate > STETH.sharesOf(address(this))) {
-            revert InvalidShares();
-        }
+        if (totalClaimableShares + distributed + rebate > STETH.sharesOf(address(this))) revert InvalidShares();
 
-        if (distributed == 0 && rebate > 0) {
-            revert InvalidReportData();
-        }
+        if (distributed == 0 && rebate > 0) revert InvalidReportData();
 
         if (distributed > 0) {
-            if (bytes(_treeCid).length == 0) {
-                revert InvalidTreeCid();
-            }
-            if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid))) {
-                revert InvalidTreeCid();
-            }
+            if (bytes(_treeCid).length == 0) revert InvalidTreeCid();
+            if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid))) revert InvalidTreeCid();
 
-            if (_treeRoot == bytes32(0)) {
-                revert InvalidTreeRoot();
-            }
-            if (_treeRoot == treeRoot) {
-                revert InvalidTreeRoot();
-            }
+            if (_treeRoot == bytes32(0)) revert InvalidTreeRoot();
+            if (_treeRoot == treeRoot) revert InvalidTreeRoot();
 
             // Doesn't overflow because of the very first check.
             unchecked {
@@ -180,12 +156,8 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
 
         // NOTE: Make sure off-chain tooling provides a distinct CID of a log even for empty reports, e.g. by mixing
         // in a frame identifier such as reference slot to a file.
-        if (bytes(_logCid).length == 0) {
-            revert InvalidLogCID();
-        }
-        if (keccak256(bytes(_logCid)) == keccak256(bytes(logCid))) {
-            revert InvalidLogCID();
-        }
+        if (bytes(_logCid).length == 0) revert InvalidLogCID();
+        if (keccak256(bytes(_logCid)) == keccak256(bytes(logCid))) revert InvalidLogCID();
 
         logCid = _logCid;
         emit DistributionLogUpdated(_logCid);
@@ -207,9 +179,7 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
     /// @inheritdoc AssetRecoverer
     function recoverERC20(address token, uint256 amount) external override {
         _onlyRecoverer();
-        if (token == address(STETH)) {
-            revert NotAllowedToRecover();
-        }
+        if (token == address(STETH)) revert NotAllowedToRecover();
         AssetRecovererLib.recoverERC20(token, amount);
     }
 
@@ -236,14 +206,10 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
     ) public view returns (uint256 sharesToDistribute) {
         // NOTE: We reject empty proofs to separate two business logic paths on the level of
         // Accounting.sol (see _pullFeeRewards function invocations) with and without a proof.
-        if (proof.length == 0) {
-            revert InvalidProof();
-        }
+        if (proof.length == 0) revert InvalidProof();
 
         bool isValid = MerkleProof.verifyCalldata(proof, treeRoot, hashLeaf(nodeOperatorId, cumulativeFeeShares));
-        if (!isValid) {
-            revert InvalidProof();
-        }
+        if (!isValid) revert InvalidProof();
 
         uint256 _distributedShares = distributedShares[nodeOperatorId];
         if (_distributedShares > cumulativeFeeShares) {
@@ -262,24 +228,18 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
     }
 
     function _setRebateRecipient(address _rebateRecipient) internal {
-        if (_rebateRecipient == address(0)) {
-            revert ZeroRebateRecipientAddress();
-        }
+        if (_rebateRecipient == address(0)) revert ZeroRebateRecipientAddress();
 
         rebateRecipient = _rebateRecipient;
         emit RebateRecipientSet(_rebateRecipient);
     }
 
     function _onlyAccounting() internal view {
-        if (msg.sender != ACCOUNTING) {
-            revert SenderIsNotAccounting();
-        }
+        if (msg.sender != ACCOUNTING) revert SenderIsNotAccounting();
     }
 
     function _onlyOracle() internal view {
-        if (msg.sender != ORACLE) {
-            revert SenderIsNotOracle();
-        }
+        if (msg.sender != ORACLE) revert SenderIsNotOracle();
     }
 
     function _onlyRecoverer() internal view override {

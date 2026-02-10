@@ -47,9 +47,7 @@ contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, Pausab
     mapping(address => bool) internal _consumedAddresses;
 
     constructor(address module) {
-        if (module == address(0)) {
-            revert ZeroModuleAddress();
-        }
+        if (module == address(0)) revert ZeroModuleAddress();
 
         MODULE = ICuratedModule(module);
         ACCOUNTING = MODULE.ACCOUNTING();
@@ -71,9 +69,7 @@ contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, Pausab
 
         __AccessControlEnumerable_init();
         curveId = _curveId;
-        if (_curveId == ACCOUNTING.DEFAULT_BOND_CURVE_ID()) {
-            _defaultCurveSet = true;
-        }
+        if (_curveId == ACCOUNTING.DEFAULT_BOND_CURVE_ID()) _defaultCurveSet = true;
         _setTreeParams(_treeRoot, _treeCid);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
@@ -112,9 +108,7 @@ contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, Pausab
         });
 
         // Apply instance-specific custom curve
-        if (!_defaultCurveSet) {
-            ACCOUNTING.setBondCurve(nodeOperatorId, curveId);
-        }
+        if (!_defaultCurveSet) ACCOUNTING.setBondCurve(nodeOperatorId, curveId);
 
         // Persist metadata in separate storage
         OperatorMetadata memory metadata = OperatorMetadata({
@@ -162,9 +156,7 @@ contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, Pausab
         if (_treeRoot == bytes32(0)) revert InvalidTreeRoot();
         if (_treeRoot == treeRoot) revert InvalidTreeRoot();
         if (bytes(_treeCid).length == 0) revert InvalidTreeCid();
-        if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid))) {
-            revert InvalidTreeCid();
-        }
+        if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid))) revert InvalidTreeCid();
         treeRoot = _treeRoot;
         treeCid = _treeCid;
         emit TreeSet(_treeRoot, _treeCid);

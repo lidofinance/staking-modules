@@ -13,9 +13,7 @@ contract VettedGateFactory is IVettedGateFactory {
     address public immutable VETTED_GATE_IMPL;
 
     constructor(address vettedGateImpl) {
-        if (vettedGateImpl == address(0)) {
-            revert ZeroImplementationAddress();
-        }
+        if (vettedGateImpl == address(0)) revert ZeroImplementationAddress();
 
         VETTED_GATE_IMPL = vettedGateImpl;
     }

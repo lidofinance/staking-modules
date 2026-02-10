@@ -574,9 +574,7 @@ contract BondCurveFuzz is Test {
         IBondCurve.BondCurveInterval[] memory intervals,
         uint256 bondToCheck
     ) public pure returns (uint256) {
-        if (bondToCheck < intervals[0].minBond) {
-            return 0;
-        }
+        if (bondToCheck < intervals[0].minBond) return 0;
 
         uint256 neededIndex = 0;
         uint256 minBondAcc = intervals[0].trend;
@@ -588,9 +586,7 @@ contract BondCurveFuzz is Test {
                     (intervals[i].minKeysCount - intervals[i - 1].minKeysCount - 1) *
                     intervals[i - 1].trend;
             }
-            if (bondToCheck == minBondAcc) {
-                return intervals[i].minKeysCount;
-            }
+            if (bondToCheck == minBondAcc) return intervals[i].minKeysCount;
             if (i < intervals.length - 1) {
                 uint256 nextMinBond = minBondAcc +
                     intervals[i + 1].trend +
@@ -598,9 +594,7 @@ contract BondCurveFuzz is Test {
                     intervals[i].trend;
                 if (bondToCheck < nextMinBond) {
                     uint256 maxBondInInterval = nextMinBond - intervals[i + 1].trend;
-                    if (bondToCheck > maxBondInInterval) {
-                        bondToCheck = maxBondInInterval;
-                    }
+                    if (bondToCheck > maxBondInInterval) bondToCheck = maxBondInInterval;
                     neededIndex = i;
                     break;
                 }

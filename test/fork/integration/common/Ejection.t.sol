@@ -19,9 +19,7 @@ abstract contract EjectionTestBase is ModuleTypeBase {
     function setUp() public {
         _setUpModule();
 
-        if (module.isPaused()) {
-            module.resume();
-        }
+        if (module.isPaused()) module.resume();
     }
 
     function _prepareWithdrawalRequestData(bytes memory pubkey) internal pure returns (bytes memory request) {

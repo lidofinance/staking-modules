@@ -186,25 +186,17 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
         address admin,
         address reportProcessor
     ) {
-        if (slotsPerEpoch == 0) {
-            revert InvalidChainConfig();
-        }
+        if (slotsPerEpoch == 0) revert InvalidChainConfig();
 
-        if (secondsPerSlot == 0) {
-            revert InvalidChainConfig();
-        }
+        if (secondsPerSlot == 0) revert InvalidChainConfig();
 
         SLOTS_PER_EPOCH = slotsPerEpoch.toUint64();
         SECONDS_PER_SLOT = secondsPerSlot.toUint64();
         GENESIS_TIME = genesisTime.toUint64();
 
-        if (admin == address(0)) {
-            revert AdminCannotBeZero();
-        }
+        if (admin == address(0)) revert AdminCannotBeZero();
 
-        if (reportProcessor == address(0)) {
-            revert ReportProcessorCannotBeZero();
-        }
+        if (reportProcessor == address(0)) revert ReportProcessorCannotBeZero();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
 
@@ -273,9 +265,7 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
     function updateInitialEpoch(uint256 initialEpoch) external onlyRole(DEFAULT_ADMIN_ROLE) {
         FrameConfig memory prevConfig = _frameConfig;
 
-        if (_computeEpochAtTimestamp(_getTime()) >= prevConfig.initialEpoch) {
-            revert InitialEpochAlreadyArrived();
-        }
+        if (_computeEpochAtTimestamp(_getTime()) >= prevConfig.initialEpoch) revert InitialEpochAlreadyArrived();
 
         _setFrameConfig(initialEpoch, prevConfig.epochsPerFrame, prevConfig.fastLaneLengthSlots, prevConfig);
 
@@ -440,9 +430,7 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
     /// @notice Returns report variants and their support for the current reference slot.
     ///
     function getReportVariants() external view returns (bytes32[] memory variants, uint256[] memory support) {
-        if (_reportingState.lastReportRefSlot != _getCurrentFrame().refSlot) {
-            return (variants, support);
-        }
+        if (_reportingState.lastReportRefSlot != _getCurrentFrame().refSlot) return (variants, support);
 
         uint256 variantsLength = _reportVariantsLength;
         variants = new bytes32[](variantsLength);
@@ -541,13 +529,9 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
         uint256 fastLaneLengthSlots,
         FrameConfig memory prevConfig
     ) internal {
-        if (epochsPerFrame == 0) {
-            revert EpochsPerFrameCannotBeZero();
-        }
+        if (epochsPerFrame == 0) revert EpochsPerFrameCannotBeZero();
 
-        if (fastLaneLengthSlots > epochsPerFrame * SLOTS_PER_EPOCH) {
-            revert FastLanePeriodCannotBeLongerThanFrame();
-        }
+        if (fastLaneLengthSlots > epochsPerFrame * SLOTS_PER_EPOCH) revert FastLanePeriodCannotBeLongerThanFrame();
 
         _frameConfig = FrameConfig(initialEpoch.toUint64(), epochsPerFrame.toUint64(), fastLaneLengthSlots.toUint64());
 
@@ -555,9 +539,7 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
             emit FrameConfigSet(initialEpoch, epochsPerFrame);
         }
 
-        if (fastLaneLengthSlots != prevConfig.fastLaneLengthSlots) {
-            emit FastLaneConfigSet(fastLaneLengthSlots);
-        }
+        if (fastLaneLengthSlots != prevConfig.fastLaneLengthSlots) emit FastLaneConfigSet(fastLaneLengthSlots);
     }
 
     function _getCurrentFrame() internal view returns (ConsensusFrame memory) {
@@ -605,9 +587,7 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
 
     function _computeFrameIndex(uint256 timestamp, FrameConfig memory config) internal view returns (uint256) {
         uint256 epoch = _computeEpochAtTimestamp(timestamp);
-        if (epoch < config.initialEpoch) {
-            revert InitialEpochIsYetToArrive();
-        }
+        if (epoch < config.initialEpoch) revert InitialEpochIsYetToArrive();
         return (epoch - config.initialEpoch) / config.epochsPerFrame;
     }
 
@@ -648,22 +628,16 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
 
     function _getMemberIndex(address addr) internal view returns (uint256) {
         uint256 index1b = _memberIndices1b[addr];
-        if (index1b == 0) {
-            revert NonMember();
-        }
+        if (index1b == 0) revert NonMember();
         unchecked {
             return uint256(index1b - 1);
         }
     }
 
     function _addMember(address addr, uint256 quorum) internal {
-        if (_isMember(addr)) {
-            revert DuplicateMember();
-        }
+        if (_isMember(addr)) revert DuplicateMember();
 
-        if (addr == address(0)) {
-            revert AddressCannotBeZero();
-        }
+        if (addr == address(0)) revert AddressCannotBeZero();
 
         _memberStates.push(MemberState(0, 0));
         _memberAddresses.push(addr);
@@ -778,17 +752,11 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
     ///
 
     function _submitReport(uint256 slot, bytes32 report, uint256 consensusVersion) internal {
-        if (slot == 0) {
-            revert InvalidSlot();
-        }
+        if (slot == 0) revert InvalidSlot();
 
-        if (slot > type(uint64).max) {
-            revert NumericOverflow();
-        }
+        if (slot > type(uint64).max) revert NumericOverflow();
 
-        if (report == ZERO_HASH) {
-            revert EmptyReport();
-        }
+        if (report == ZERO_HASH) revert EmptyReport();
 
         uint256 memberIndex = _getMemberIndex(_msgSender());
         MemberState memory memberState = _memberStates[memberIndex];
@@ -803,13 +771,9 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
         FrameConfig memory config = _frameConfig;
         ConsensusFrame memory frame = _getFrameAtTimestamp(timestamp, config);
 
-        if (slot != frame.refSlot) {
-            revert InvalidSlot();
-        }
+        if (slot != frame.refSlot) revert InvalidSlot();
 
-        if (currentSlot > frame.reportProcessingDeadlineSlot) {
-            revert StaleReport();
-        }
+        if (currentSlot > frame.reportProcessingDeadlineSlot) revert StaleReport();
 
         if (currentSlot <= frame.refSlot + config.fastLaneLengthSlots && !_isFastLaneMember(memberIndex, frame.index)) {
             revert NonFastLaneMemberCannotReportWithinFastLaneInterval();
@@ -851,9 +815,7 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
                 revert DuplicateReport();
             } else {
                 uint256 support = --_reportVariants[prevVarIndex].support;
-                if (support == _quorum - 1) {
-                    prevConsensusLost = true;
-                }
+                if (support == _quorum - 1) prevConsensusLost = true;
             }
         }
 
@@ -877,9 +839,7 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
 
         if (support >= _quorum) {
             _consensusReached(frame, report, varIndex, support);
-        } else if (prevConsensusLost) {
-            _consensusNotReached(frame);
-        }
+        } else if (prevConsensusLost) _consensusNotReached(frame);
     }
 
     function _consensusReached(
@@ -911,9 +871,7 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
     }
 
     function _setQuorumAndCheckConsensus(uint256 quorum, uint256 totalMembers) internal {
-        if (quorum <= totalMembers / 2) {
-            revert QuorumTooSmall(totalMembers / 2 + 1, quorum);
-        }
+        if (quorum <= totalMembers / 2) revert QuorumTooSmall(totalMembers / 2 + 1, quorum);
 
         // we're explicitly allowing quorum values greater than the number of members to
         // allow effectively disabling the oracle in case something unpredictable happens
@@ -928,9 +886,7 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
             emit QuorumSet(quorum, totalMembers, prevQuorum);
         }
 
-        if (_computeEpochAtTimestamp(_getTime()) >= _frameConfig.initialEpoch) {
-            _checkConsensus(quorum);
-        }
+        if (_computeEpochAtTimestamp(_getTime()) >= _frameConfig.initialEpoch) _checkConsensus(quorum);
     }
 
     function _checkConsensus(uint256 quorum) internal {
@@ -1000,13 +956,9 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
 
     function _setReportProcessor(address newProcessor) internal {
         address prevProcessor = _reportProcessor;
-        if (newProcessor == address(0)) {
-            revert ReportProcessorCannotBeZero();
-        }
+        if (newProcessor == address(0)) revert ReportProcessorCannotBeZero();
 
-        if (newProcessor == prevProcessor) {
-            revert NewProcessorCannotBeTheSame();
-        }
+        if (newProcessor == prevProcessor) revert NewProcessorCannotBeTheSame();
 
         _reportProcessor = newProcessor;
         emit ReportProcessorSet(newProcessor, prevProcessor);

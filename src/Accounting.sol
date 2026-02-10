@@ -68,12 +68,8 @@ contract Accounting is
         uint256 minBondLockPeriod,
         uint256 maxBondLockPeriod
     ) BondCore(lidoLocator) BondLock(minBondLockPeriod, maxBondLockPeriod) {
-        if (module == address(0)) {
-            revert ZeroModuleAddress();
-        }
-        if (feeDistributor == address(0)) {
-            revert ZeroFeeDistributorAddress();
-        }
+        if (module == address(0)) revert ZeroModuleAddress();
+        if (feeDistributor == address(0)) revert ZeroFeeDistributorAddress();
 
         MODULE = IBaseModule(module);
         FEE_DISTRIBUTOR = IFeeDistributor(feeDistributor);
@@ -98,9 +94,7 @@ contract Accounting is
         __BondCurve_init(bondCurve);
         __BondLock_init(bondLockPeriod);
 
-        if (admin == address(0)) {
-            revert ZeroAdminAddress();
-        }
+        if (admin == address(0)) revert ZeroAdminAddress();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
 
@@ -297,9 +291,7 @@ contract Accounting is
     /// @inheritdoc IAccounting
     function compensateLockedBondETH(uint256 nodeOperatorId) external payable onlyModule {
         (bool success, ) = LIDO_LOCATOR.elRewardsVault().call{ value: msg.value }("");
-        if (!success) {
-            revert ElRewardsVaultReceiveFailed();
-        }
+        if (!success) revert ElRewardsVaultReceiveFailed();
 
         BondLock._unlock(nodeOperatorId, msg.value);
         emit BondLockCompensated(nodeOperatorId, msg.value);
@@ -340,9 +332,7 @@ contract Accounting is
     /// @inheritdoc IAccounting
     function setCustomRewardsClaimer(uint256 nodeOperatorId, address rewardsClaimer) external {
         _onlyNodeOperatorOwner(nodeOperatorId);
-        if (rewardsClaimer == _rewardsClaimers[nodeOperatorId]) {
-            revert SameAddress();
-        }
+        if (rewardsClaimer == _rewardsClaimers[nodeOperatorId]) revert SameAddress();
         _rewardsClaimers[nodeOperatorId] = rewardsClaimer;
         emit CustomRewardsClaimerSet(nodeOperatorId, rewardsClaimer);
     }
@@ -350,9 +340,7 @@ contract Accounting is
     /// @inheritdoc AssetRecoverer
     function recoverERC20(address token, uint256 amount) external override {
         _onlyRecoverer();
-        if (token == address(LIDO)) {
-            revert NotAllowedToRecover();
-        }
+        if (token == address(LIDO)) revert NotAllowedToRecover();
         AssetRecovererLib.recoverERC20(token, amount);
     }
 
@@ -467,9 +455,7 @@ contract Accounting is
             uint256 distributed = FEE_DISTRIBUTOR.distributeFees(nodeOperatorId, cumulativeFeeShares, rewardsProof);
             if (distributed != 0) {
                 BondCore._increaseBond(nodeOperatorId, distributed);
-                if (hasSplits) {
-                    _pendingSharesToSplit[nodeOperatorId] += distributed;
-                }
+                if (hasSplits) _pendingSharesToSplit[nodeOperatorId] += distributed;
             }
         }
         claimableShares = _getClaimableBondShares(nodeOperatorId);
@@ -532,9 +518,7 @@ contract Accounting is
         uint256 nonWithdrawnKeys = MODULE.getNodeOperatorNonWithdrawnKeys(nodeOperatorId);
         uint256 currentBond = BondCore.getBond(nodeOperatorId);
         uint256 bondDebt = BondCore.getBondDebt(nodeOperatorId);
-        if (bondDebt > currentBond) {
-            return nonWithdrawnKeys;
-        }
+        if (bondDebt > currentBond) return nonWithdrawnKeys;
         unchecked {
             currentBond -= bondDebt;
         }
@@ -543,9 +527,7 @@ contract Accounting is
         if (includeLockedBond) {
             uint256 lockedBond = BondLock.getActualLockedBond(nodeOperatorId);
             // We use strict condition here since in rare case of equality the outcome of the function will not change
-            if (lockedBond > currentBond) {
-                return nonWithdrawnKeys;
-            }
+            if (lockedBond > currentBond) return nonWithdrawnKeys;
             unchecked {
                 currentBond -= lockedBond;
             }
@@ -565,44 +547,32 @@ contract Accounting is
     }
 
     function _onlyExistingNodeOperator(uint256 nodeOperatorId) internal view {
-        if (nodeOperatorId < IStakingModule(address(MODULE)).getNodeOperatorsCount()) {
-            return;
-        }
+        if (nodeOperatorId < IStakingModule(address(MODULE)).getNodeOperatorsCount()) return;
 
         revert NodeOperatorDoesNotExist();
     }
 
     function _onlyNodeOperatorOwner(uint256 nodeOperatorId) internal view {
-        if (MODULE.getNodeOperatorOwner(nodeOperatorId) != msg.sender) {
-            revert SenderIsNotEligible();
-        }
+        if (MODULE.getNodeOperatorOwner(nodeOperatorId) != msg.sender) revert SenderIsNotEligible();
     }
 
     function _onlyModule() internal view {
-        if (msg.sender != address(MODULE)) {
-            revert SenderIsNotModule();
-        }
+        if (msg.sender != address(MODULE)) revert SenderIsNotModule();
     }
 
     function _checkAndGetEligibleNodeOperatorProperties(
         uint256 nodeOperatorId
     ) internal view returns (NodeOperatorManagementProperties memory no) {
         no = MODULE.getNodeOperatorManagementProperties(nodeOperatorId);
-        if (no.managerAddress == address(0)) {
-            revert NodeOperatorDoesNotExist();
-        }
+        if (no.managerAddress == address(0)) revert NodeOperatorDoesNotExist();
 
         if (no.managerAddress != msg.sender && no.rewardAddress != msg.sender) {
-            if (_rewardsClaimers[nodeOperatorId] != msg.sender) {
-                revert SenderIsNotEligible();
-            }
+            if (_rewardsClaimers[nodeOperatorId] != msg.sender) revert SenderIsNotEligible();
         }
     }
 
     function _setChargePenaltyRecipient(address _chargePenaltyRecipient) private {
-        if (_chargePenaltyRecipient == address(0)) {
-            revert ZeroChargePenaltyRecipientAddress();
-        }
+        if (_chargePenaltyRecipient == address(0)) revert ZeroChargePenaltyRecipientAddress();
         chargePenaltyRecipient = _chargePenaltyRecipient;
         emit ChargePenaltyRecipientSet(_chargePenaltyRecipient);
     }

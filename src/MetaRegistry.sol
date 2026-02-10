@@ -77,9 +77,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
     /// @inheritdoc IMetaRegistry
     function initialize(address admin) external initializer {
-        if (admin == address(0)) {
-            revert ZeroAdminAddress();
-        }
+        if (admin == address(0)) revert ZeroAdminAddress();
 
         __AccessControlEnumerable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -111,9 +109,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
         OperatorMetadata storage stored = _storage().operatorMetadata[nodeOperatorId];
         bool ownerEditsRestricted = stored.ownerEditsRestricted;
-        if (ownerEditsRestricted) {
-            revert OwnerEditsRestricted();
-        }
+        if (ownerEditsRestricted) revert OwnerEditsRestricted();
 
         stored.name = name;
         stored.description = description;
@@ -132,9 +128,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         OperatorGroup calldata groupInfo
     ) external onlyRole(MANAGE_OPERATOR_GROUPS_ROLE) {
         MetaRegistryStorage storage $ = _storage();
-        if (groupId >= $.groups.length) {
-            revert InvalidOperatorGroupId();
-        }
+        if (groupId >= $.groups.length) revert InvalidOperatorGroupId();
 
         if (groupId == NO_GROUP_ID) {
             _createGroup(groupInfo);
@@ -146,9 +140,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     /// @inheritdoc IMetaRegistry
     function getOperatorGroup(uint256 groupId) external view returns (OperatorGroup memory groupInfo) {
         MetaRegistryStorage storage $ = _storage();
-        if (groupId >= $.groups.length) {
-            revert InvalidOperatorGroupId();
-        }
+        if (groupId >= $.groups.length) revert InvalidOperatorGroupId();
 
         CachedOperatorGroup storage group = $.groups[groupId];
         uint256 subOpCount = group.subNodeOperatorIds.length;
@@ -186,9 +178,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     /// @inheritdoc IMetaRegistry
     function setBondCurveWeight(uint256 curveId, uint256 weight) external onlyRole(SET_BOND_CURVE_WEIGHT_ROLE) {
         MetaRegistryStorage storage $ = _storage();
-        if ($.bondCurveWeight[curveId] == weight) {
-            revert SameBondCurveWeight();
-        }
+        if ($.bondCurveWeight[curveId] == weight) revert SameBondCurveWeight();
 
         $.bondCurveWeight[curveId] = weight;
         emit BondCurveWeightSet(curveId, weight);
@@ -199,9 +189,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     /// @inheritdoc IMetaRegistry
     function refreshOperatorWeight(uint256 nodeOperatorId) external {
         uint256 groupId = _storage().groupIndex.groupIdByOperatorId[nodeOperatorId];
-        if (groupId == NO_GROUP_ID) {
-            return;
-        }
+        if (groupId == NO_GROUP_ID) return;
 
         _refreshOperatorWeight(groupId, nodeOperatorId);
     }
@@ -211,9 +199,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         MetaRegistryStorage storage $ = _storage();
         uint256 groupId = $.groupIndex.groupIdByOperatorId[noId];
         // If Node Operator is not in any group, it has no weight.
-        if (groupId == NO_GROUP_ID) {
-            return 0;
-        }
+        if (groupId == NO_GROUP_ID) return 0;
         weight = $.effectiveWeightCache.operatorEffectiveWeight[noId];
     }
 
@@ -224,20 +210,14 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         MetaRegistryStorage storage $ = _storage();
         uint256 groupId = $.groupIndex.groupIdByOperatorId[noId];
         // If Node Operator is not in any group, it has no weight and external stake.
-        if (groupId == NO_GROUP_ID) {
-            return (0, 0);
-        }
+        if (groupId == NO_GROUP_ID) return (0, 0);
 
         weight = $.effectiveWeightCache.operatorEffectiveWeight[noId];
         // If the operator has no weight, it can't have external stake either, so we can skip the calculations.
-        if (weight == 0) {
-            return (0, 0);
-        }
+        if (weight == 0) return (0, 0);
 
         uint256 totalExternalStake = _totalExternalStake($.groups[groupId].externalOperators);
-        if (totalExternalStake == 0) {
-            return (weight, 0);
-        }
+        if (totalExternalStake == 0) return (weight, 0);
 
         externalStake = Math.mulDiv(
             totalExternalStake,
@@ -260,9 +240,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     }
 
     function _createGroup(OperatorGroup calldata groupInfo) internal {
-        if (groupInfo.subNodeOperators.length == 0) {
-            revert InvalidOperatorGroup();
-        }
+        if (groupInfo.subNodeOperators.length == 0) revert InvalidOperatorGroup();
 
         MetaRegistryStorage storage $ = _storage();
         uint256 groupId = $.groups.length;
@@ -278,9 +256,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
         if (groupInfo.subNodeOperators.length == 0) {
             // NOTE: Sanity check for an empty group in `groupInfo`.
-            if (groupInfo.externalOperators.length != 0) {
-                revert InvalidOperatorGroup();
-            }
+            if (groupInfo.externalOperators.length != 0) revert InvalidOperatorGroup();
 
             emit OperatorGroupCleared(groupId);
         } else {
@@ -324,9 +300,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
             _onlyExistingOperator(address(MODULE), noId);
 
-            if ($.groupIndex.groupIdByOperatorId[noId] != NO_GROUP_ID) {
-                revert NodeOperatorAlreadyInGroup(noId);
-            }
+            if ($.groupIndex.groupIdByOperatorId[noId] != NO_GROUP_ID) revert NodeOperatorAlreadyInGroup(noId);
             $.groupIndex.groupIdByOperatorId[noId] = groupId;
             $.groupIndex.shareByOperatorId[noId] = share;
             group.subNodeOperatorIds.push(noId);
@@ -350,14 +324,10 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             ExternalOperator memory op = externalOperators[i];
             bytes32 extKey = op.uniqueKey();
 
-            if ($.groupIndex.groupIdByExternalKey[extKey] != NO_GROUP_ID) {
-                revert AlreadyUsedAsExternalOperator();
-            }
+            if ($.groupIndex.groupIdByExternalKey[extKey] != NO_GROUP_ID) revert AlreadyUsedAsExternalOperator();
 
             OperatorType opType = op.tryGetExtOpType();
-            if (opType == OperatorType.NOR) {
-                _checkExternalOperatorExistsTypeNOR(op);
-            }
+            if (opType == OperatorType.NOR) _checkExternalOperatorExistsTypeNOR(op);
 
             $.groupIndex.groupIdByExternalKey[extKey] = groupId;
             group.externalOperators.push(op);
@@ -394,9 +364,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         MetaRegistryStorage storage $ = _storage();
         oldWeight = $.effectiveWeightCache.operatorEffectiveWeight[nodeOperatorId];
 
-        if (oldWeight == newWeight) {
-            return oldWeight;
-        }
+        if (oldWeight == newWeight) return oldWeight;
 
         $.effectiveWeightCache.operatorEffectiveWeight[nodeOperatorId] = newWeight;
         emit NodeOperatorEffectiveWeightChanged(nodeOperatorId, oldWeight, newWeight);
@@ -428,9 +396,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     }
 
     function _onlyExistingOperator(address module, uint256 nodeOperatorId) internal view {
-        if (!_nodeOperatorExists(module, nodeOperatorId)) {
-            revert NodeOperatorDoesNotExist();
-        }
+        if (!_nodeOperatorExists(module, nodeOperatorId)) revert NodeOperatorDoesNotExist();
     }
 
     function _nodeOperatorExists(address module, uint256 nodeOperatorId) internal view returns (bool) {
@@ -448,9 +414,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             ExternalOperator memory op = externalOperators[i];
 
             OperatorType opType = op.tryGetExtOpType();
-            if (opType == OperatorType.NOR) {
-                totalExternalStake += _getOperatorExternalStakeTypeNOR(op);
-            }
+            if (opType == OperatorType.NOR) totalExternalStake += _getOperatorExternalStakeTypeNOR(op);
         }
     }
 

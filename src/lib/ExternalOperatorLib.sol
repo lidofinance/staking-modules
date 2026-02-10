@@ -23,9 +23,7 @@ library ExternalOperatorLib {
 
     function tryGetExtOpType(IMetaRegistry.ExternalOperator memory self) internal pure returns (OperatorType) {
         // NOTE: Type guard for now; replace with a proper switch for more types.
-        if (!_isNOR(self.data)) {
-            revert InvalidExternalOperatorDataEntry();
-        }
+        if (!_isNOR(self.data)) revert InvalidExternalOperatorDataEntry();
 
         return OperatorType.NOR;
     }
@@ -38,9 +36,7 @@ library ExternalOperatorLib {
     }
 
     function _isNOR(bytes memory data) internal pure returns (bool) {
-        if (data.length != ENTRY_LEN_NOR) {
-            return false;
-        }
+        if (data.length != ENTRY_LEN_NOR) return false;
 
         return data[0] == bytes1(uint8(OperatorType.NOR));
     }

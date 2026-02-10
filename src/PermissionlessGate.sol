@@ -24,12 +24,8 @@ contract PermissionlessGate is IPermissionlessGate, AccessControlEnumerable, Ass
     IBaseModule public immutable MODULE;
 
     constructor(address module, address admin) {
-        if (module == address(0)) {
-            revert ZeroModuleAddress();
-        }
-        if (admin == address(0)) {
-            revert ZeroAdminAddress();
-        }
+        if (module == address(0)) revert ZeroModuleAddress();
+        if (admin == address(0)) revert ZeroAdminAddress();
 
         MODULE = IBaseModule(module);
         CURVE_ID = MODULE.ACCOUNTING().DEFAULT_BOND_CURVE_ID();

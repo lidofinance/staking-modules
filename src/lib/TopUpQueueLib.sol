@@ -49,25 +49,19 @@ library TopUpQueueLib {
     }
 
     function enqueue(Queue storage self, TopUpQueueItem item) internal {
-        if (self.capacity() == 0) {
-            revert ITopUpQueueLib.TopUpQueueIsFull();
-        }
+        if (self.capacity() == 0) revert ITopUpQueueLib.TopUpQueueIsFull();
 
         self.items.push(item);
     }
 
     function dequeue(Queue storage self) internal {
-        if (self.length() == 0) {
-            revert ITopUpQueueLib.TopUpQueueIsEmpty();
-        }
+        if (self.length() == 0) revert ITopUpQueueLib.TopUpQueueIsEmpty();
 
         self.head++;
     }
 
     function rewind(Queue storage self, uint32 to) internal {
-        if (to >= self.head) {
-            revert ITopUpQueueLib.RewindForward();
-        }
+        if (to >= self.head) revert ITopUpQueueLib.RewindForward();
 
         self.head = to;
     }

@@ -35,9 +35,7 @@ library BondCurves {
         IBondCurve.BondCurveIntervalInput[] calldata intervals
     ) external {
         unchecked {
-            if (curveId > bondCurvesStorage.bondCurves.length - 1) {
-                revert IBondCurve.InvalidBondCurveId();
-            }
+            if (curveId > bondCurvesStorage.bondCurves.length - 1) revert IBondCurve.InvalidBondCurveId();
         }
 
         _check(intervals);
@@ -51,9 +49,7 @@ library BondCurves {
         uint256 curveId
     ) external view returns (uint256) {
         IBondCurve.BondCurveInterval[] storage intervals = bondCurvesStorage.bondCurves[curveId].intervals;
-        if (keys == 0) {
-            return 0;
-        }
+        if (keys == 0) return 0;
 
         unchecked {
             uint256 low = 0;
@@ -79,9 +75,7 @@ library BondCurves {
         IBondCurve.BondCurveInterval[] storage intervals = bondCurvesStorage.bondCurves[curveId].intervals;
 
         // intervals[0].minBond is essentially the amount of bond required for the very first key
-        if (amount < intervals[0].minBond) {
-            return 0;
-        }
+        if (amount < intervals[0].minBond) return 0;
 
         unchecked {
             uint256 low = 0;
@@ -107,9 +101,7 @@ library BondCurves {
             //
             if (low < intervals.length - 1) {
                 interval = intervals[low + 1];
-                if (amount > interval.minBond - interval.trend) {
-                    return interval.minKeysCount - 1;
-                }
+                if (amount > interval.minBond - interval.trend) return interval.minKeysCount - 1;
             }
             interval = intervals[low];
             return interval.minKeysCount + (amount - interval.minBond) / interval.trend;
@@ -144,22 +136,16 @@ library BondCurves {
             revert IBondCurves.InvalidBondCurveLength();
         }
 
-        if (intervals[0].minKeysCount != 1) {
-            revert IBondCurves.InvalidBondCurveValues();
-        }
+        if (intervals[0].minKeysCount != 1) revert IBondCurves.InvalidBondCurveValues();
 
-        if (intervals[0].trend == 0) {
-            revert IBondCurves.InvalidBondCurveValues();
-        }
+        if (intervals[0].trend == 0) revert IBondCurves.InvalidBondCurveValues();
 
         for (uint256 i = 1; i < intervals.length; ++i) {
             unchecked {
                 if (intervals[i].minKeysCount <= intervals[i - 1].minKeysCount) {
                     revert IBondCurves.InvalidBondCurveValues();
                 }
-                if (intervals[i].trend == 0) {
-                    revert IBondCurves.InvalidBondCurveValues();
-                }
+                if (intervals[i].trend == 0) revert IBondCurves.InvalidBondCurveValues();
             }
         }
     }

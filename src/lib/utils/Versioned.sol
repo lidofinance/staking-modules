@@ -36,31 +36,23 @@ contract Versioned {
 
     /// @dev Sets the contract version to N. Should be called from the initialize() function.
     function _initializeContractVersionTo(uint256 version) internal {
-        if (version == 0) {
-            revert InvalidContractVersion();
-        }
+        if (version == 0) revert InvalidContractVersion();
 
-        if (getContractVersion() != 0) {
-            revert NonZeroContractVersionOnInit();
-        }
+        if (getContractVersion() != 0) revert NonZeroContractVersionOnInit();
 
         _setContractVersion(version);
     }
 
     /// @dev Updates the contract version. Should be called from a finalizeUpgrade_vN() function.
     function _updateContractVersion(uint256 newVersion) internal {
-        if (newVersion != getContractVersion() + 1) {
-            revert InvalidContractVersionIncrement();
-        }
+        if (newVersion != getContractVersion() + 1) revert InvalidContractVersionIncrement();
 
         _setContractVersion(newVersion);
     }
 
     function _checkContractVersion(uint256 version) internal view {
         uint256 expectedVersion = getContractVersion();
-        if (version != expectedVersion) {
-            revert UnexpectedContractVersion(expectedVersion, version);
-        }
+        if (version != expectedVersion) revert UnexpectedContractVersion(expectedVersion, version);
     }
 
     function _setContractVersion(uint256 version) private {

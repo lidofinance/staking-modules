@@ -34,9 +34,7 @@ library AssetRecovererLib {
     function recoverEther() external {
         uint256 amount = address(this).balance;
         (bool success, ) = msg.sender.call{ value: amount }("");
-        if (!success) {
-            revert IAssetRecovererLib.FailedToSendEther();
-        }
+        if (!success) revert IAssetRecovererLib.FailedToSendEther();
 
         emit IAssetRecovererLib.EtherRecovered(msg.sender, amount);
     }

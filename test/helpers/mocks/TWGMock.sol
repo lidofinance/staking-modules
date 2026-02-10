@@ -19,12 +19,8 @@ contract TWGMock {
         uint256 /* exitType */
     ) external payable {
         uint256 refund = (msg.value * MOCK_REFUND_PERCENTAGE_BP) / 10000;
-        if (refund == 0) {
-            return;
-        }
+        if (refund == 0) return;
         (bool success, ) = refundRecipient.call{ value: refund }("");
-        if (!success) {
-            revert TransferFailed();
-        }
+        if (!success) revert TransferFailed();
     }
 }

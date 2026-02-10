@@ -43,9 +43,7 @@ abstract contract BondCore is IBondCore {
         0x23f334b9eb5378c2a1573857b8f9d9ca79959360a69e73d3f16848e56ec92100;
 
     constructor(address lidoLocator) {
-        if (lidoLocator == address(0)) {
-            revert ZeroLocatorAddress();
-        }
+        if (lidoLocator == address(0)) revert ZeroLocatorAddress();
         LIDO_LOCATOR = ILidoLocator(lidoLocator);
         LIDO = ILido(LIDO_LOCATOR.lido());
         WITHDRAWAL_QUEUE = IWithdrawalQueue(LIDO_LOCATOR.withdrawalQueue());
@@ -74,9 +72,7 @@ abstract contract BondCore is IBondCore {
 
     /// @dev Stake user's ETH with Lido and stores stETH shares as Node Operator's bond shares
     function _depositETH(address from, uint256 nodeOperatorId) internal {
-        if (msg.value == 0) {
-            return;
-        }
+        if (msg.value == 0) return;
 
         uint256 shares = LIDO.submit{ value: msg.value }({ _referral: address(0) });
         _increaseBond(nodeOperatorId, shares);
@@ -85,9 +81,7 @@ abstract contract BondCore is IBondCore {
 
     /// @dev Transfer user's stETH to the contract and stores stETH shares as Node Operator's bond shares
     function _depositStETH(address from, uint256 nodeOperatorId, uint256 amount) internal {
-        if (amount == 0) {
-            return;
-        }
+        if (amount == 0) return;
 
         uint256 shares = _sharesByEth(amount);
         LIDO.transferSharesFrom(from, address(this), shares);
@@ -97,9 +91,7 @@ abstract contract BondCore is IBondCore {
 
     /// @dev Transfer user's wstETH to the contract, unwrap and store stETH shares as Node Operator's bond shares
     function _depositWstETH(address from, uint256 nodeOperatorId, uint256 amount) internal {
-        if (amount == 0) {
-            return;
-        }
+        if (amount == 0) return;
 
         WSTETH.transferFrom(from, address(this), amount);
         uint256 sharesBefore = LIDO.sharesOf(address(this));
@@ -110,9 +102,7 @@ abstract contract BondCore is IBondCore {
     }
 
     function _increaseBond(uint256 nodeOperatorId, uint256 shares) internal {
-        if (shares == 0) {
-            return;
-        }
+        if (shares == 0) return;
 
         BondCoreStorage storage $ = _getBondCoreStorage();
         unchecked {
@@ -135,9 +125,7 @@ abstract contract BondCore is IBondCore {
         uint256 sharesToClaim = requestedAmountToClaim < _ethByShares(claimableShares)
             ? _sharesByEth(requestedAmountToClaim)
             : claimableShares;
-        if (sharesToClaim == 0) {
-            revert NothingToClaim();
-        }
+        if (sharesToClaim == 0) revert NothingToClaim();
 
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = _ethByShares(sharesToClaim);
@@ -160,9 +148,7 @@ abstract contract BondCore is IBondCore {
         sharesToClaim = requestedAmountToClaim < _ethByShares(claimableShares)
             ? _sharesByEth(requestedAmountToClaim)
             : claimableShares;
-        if (sharesToClaim == 0) {
-            revert NothingToClaim();
-        }
+        if (sharesToClaim == 0) revert NothingToClaim();
 
         _unsafeReduceBond(nodeOperatorId, sharesToClaim);
 
@@ -178,9 +164,7 @@ abstract contract BondCore is IBondCore {
         address to
     ) internal returns (uint256 wstETHAmount) {
         uint256 sharesToClaim = requestedAmountToClaim < claimableShares ? requestedAmountToClaim : claimableShares;
-        if (sharesToClaim == 0) {
-            revert NothingToClaim();
-        }
+        if (sharesToClaim == 0) revert NothingToClaim();
 
         uint256 sharesBefore = LIDO.sharesOf(address(this));
         wstETHAmount = WSTETH.wrap(_ethByShares(sharesToClaim));
@@ -207,9 +191,7 @@ abstract contract BondCore is IBondCore {
         uint256 chargedShares = _reduceBond(nodeOperatorId, toChargeShares);
 
         // If no bond already or the amount to charge is zero
-        if (chargedShares == 0) {
-            return;
-        }
+        if (chargedShares == 0) return;
 
         uint256 chargedEth = LIDO.transferShares(recipient, chargedShares);
 
@@ -225,18 +207,14 @@ abstract contract BondCore is IBondCore {
 
     /// @dev Shortcut for Lido's getSharesByPooledEth
     function _sharesByEth(uint256 ethAmount) internal view returns (uint256) {
-        if (ethAmount == 0) {
-            return 0;
-        }
+        if (ethAmount == 0) return 0;
 
         return LIDO.getSharesByPooledEth(ethAmount);
     }
 
     /// @dev Shortcut for Lido's getPooledEthByShares
     function _ethByShares(uint256 shares) internal view returns (uint256) {
-        if (shares == 0) {
-            return 0;
-        }
+        if (shares == 0) return 0;
 
         return LIDO.getPooledEthByShares(shares);
     }
@@ -253,9 +231,7 @@ abstract contract BondCore is IBondCore {
         uint256 burnedShares = _reduceBond(nodeOperatorId, sharesToBurn);
 
         // If no bond already or the amount to burn is zero
-        if (burnedShares == 0) {
-            return amount;
-        }
+        if (burnedShares == 0) return amount;
 
         uint256 amountToBurn = _ethByShares(sharesToBurn);
         uint256 amountBurned = _ethByShares(burnedShares);
@@ -271,21 +247,15 @@ abstract contract BondCore is IBondCore {
     function _coverBondDebt(uint256 nodeOperatorId) private {
         BondCoreStorage storage $ = _getBondCoreStorage();
         uint256 debt = $.bondDebt[nodeOperatorId];
-        if (debt == 0) {
-            return;
-        }
+        if (debt == 0) return;
         uint256 notBurnedDebt = _burnWithoutDebt(nodeOperatorId, debt);
-        if (notBurnedDebt == debt) {
-            return;
-        }
+        if (notBurnedDebt == debt) return;
         $.bondDebt[nodeOperatorId] = notBurnedDebt;
         emit BondDebtCovered(nodeOperatorId, debt - notBurnedDebt);
     }
 
     function _increaseBondDebt(uint256 nodeOperatorId, uint256 amount) private {
-        if (amount == 0) {
-            return;
-        }
+        if (amount == 0) return;
         BondCoreStorage storage $ = _getBondCoreStorage();
         $.bondDebt[nodeOperatorId] += amount;
         emit BondDebtIncreased(nodeOperatorId, amount);

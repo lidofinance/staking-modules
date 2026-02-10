@@ -44,9 +44,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         address exitPenalties,
         address metaRegistry
     ) BaseModule(moduleType, lidoLocator, parametersRegistry, accounting, exitPenalties) {
-        if (metaRegistry == address(0)) {
-            revert ZeroMetaRegistryAddress();
-        }
+        if (metaRegistry == address(0)) revert ZeroMetaRegistryAddress();
 
         META_REGISTRY = IMetaRegistry(metaRegistry);
     }
@@ -68,9 +66,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
         (uint256 allocated, uint256[] memory operatorIds, uint256[] memory allocations) = CuratedDepositAllocator
             .allocateInitialDeposits(_nodeOperators, _nodeOperatorsCount, depositsCount);
-        if (allocated == 0) {
-            return (publicKeys, signatures);
-        }
+        if (allocated == 0) return (publicKeys, signatures);
         (publicKeys, signatures) = SigningKeys.initKeysSigsBuf(allocated);
 
         uint256 loadedKeysCount;
@@ -120,9 +116,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         _checkStakingRouterRole();
         _requireNodeOperatorWeightsUpToDate();
 
-        if (maxDepositAmount == 0) {
-            return new uint256[](0);
-        }
+        if (maxDepositAmount == 0) return new uint256[](0);
 
         if (
             pubkeys.length != keyIndices.length ||
@@ -162,9 +156,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
         for (uint256 i; i < operatorsCount; ++i) {
             uint256 operatorId = operatorIds[i];
-            if (operatorId >= nodeOperatorsCount) {
-                revert NodeOperatorDoesNotExist();
-            }
+            if (operatorId >= nodeOperatorsCount) revert NodeOperatorDoesNotExist();
 
             _setOperatorBalance($, operatorId, (validatorsBalancesGwei[i] + pendingBalancesGwei[i]) * 1 gwei);
         }
@@ -218,9 +210,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
     /// @inheritdoc ICuratedModule
     function onNodeOperatorWeightChange(uint256 nodeOperatorId, uint256 newWeight) external {
-        if (msg.sender != address(_metaRegistry())) {
-            revert SenderIsNotMetaRegistry();
-        }
+        if (msg.sender != address(_metaRegistry())) revert SenderIsNotMetaRegistry();
 
         if (newWeight == 0) {
             _applyDepositableValidatorsCount({
@@ -237,9 +227,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
     /// @inheritdoc ICuratedModule
     function requestFullOperatorWeightsUpdate() external {
-        if (msg.sender != address(_metaRegistry())) {
-            revert SenderIsNotMetaRegistry();
-        }
+        if (msg.sender != address(_metaRegistry())) revert SenderIsNotMetaRegistry();
 
         _storage().upToDateOperatorWeightsCount = 0;
         _incrementModuleNonce();
@@ -247,16 +235,12 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
     /// @inheritdoc ICuratedModule
     function batchUpdateNodeOperatorWeights(uint256 maxCount) external override returns (uint256 operatorsLeft) {
-        if (maxCount == 0) {
-            revert InvalidMaxCount();
-        }
+        if (maxCount == 0) revert InvalidMaxCount();
 
         CuratedModuleStorage storage $ = _storage();
         uint256 operatorsCount = _nodeOperatorsCount;
         uint256 noId = $.upToDateOperatorWeightsCount;
-        if (noId == operatorsCount) {
-            return 0;
-        }
+        if (noId == operatorsCount) return 0;
 
         uint256 limit = Math.min(noId + maxCount, operatorsCount);
 
@@ -287,9 +271,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         _requireNodeOperatorWeightsUpToDate();
 
         uint256 operatorsCount = _nodeOperatorsCount;
-        if (maxDepositAmount == 0 || operatorsCount == 0) {
-            return (0, new uint256[](0), new uint256[](0));
-        }
+        if (maxDepositAmount == 0 || operatorsCount == 0) return (0, new uint256[](0), new uint256[](0));
 
         uint256[] memory allOperatorIds = new uint256[](operatorsCount);
         for (uint256 i; i < operatorsCount; ++i) {
@@ -313,9 +295,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     ) internal override returns (bool depositableChanged) {
         if (newCount > 0) {
             uint256 weight = _metaRegistry().getNodeOperatorWeight(nodeOperatorId);
-            if (weight == 0) {
-                newCount = 0;
-            }
+            if (weight == 0) newCount = 0;
         }
 
         depositableChanged = super._applyDepositableValidatorsCount({
@@ -341,9 +321,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             // TODO: Move to NodeOperatorOps and unify with CSM
             uint256 operatorId = operatorIds[i];
             uint256 keyIndex = keyIndices[i];
-            if (keyIndex >= _nodeOperators[operatorId].totalDepositedKeys) {
-                revert SigningKeysInvalidOffset();
-            }
+            if (keyIndex >= _nodeOperators[operatorId].totalDepositedKeys) revert SigningKeysInvalidOffset();
             if (keccak256(pubkeys[i]) != keccak256(SigningKeys.loadKeys(operatorId, keyIndex, 1))) {
                 revert PubkeyMismatch();
             }

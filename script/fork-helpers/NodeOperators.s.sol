@@ -119,9 +119,7 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
 
     function deposit(uint256 depositCount) external broadcastStakingRouter {
         (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
-        if (depositCount > depositableValidatorsCount) {
-            depositCount = depositableValidatorsCount;
-        }
+        if (depositCount > depositableValidatorsCount) depositCount = depositableValidatorsCount;
         (, uint256 totalDepositedValidators, ) = module.getStakingModuleSummary();
 
         module.obtainDepositData(depositCount, "");
@@ -270,9 +268,7 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         uint256[] memory ids = stakingRouter.getStakingModuleIds();
         for (uint256 i = ids.length - 1; i > 0; i--) {
             IStakingRouter.StakingModule memory moduleInfo = stakingRouter.getStakingModule(ids[i]);
-            if (moduleInfo.stakingModuleAddress == address(module)) {
-                return ids[i];
-            }
+            if (moduleInfo.stakingModuleAddress == address(module)) return ids[i];
         }
         revert NodeOperatorsModuleNotFound();
     }

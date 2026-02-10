@@ -14,9 +14,7 @@ contract MerkleTree {
     }
 
     function getProof(uint256 index) public view returns (bytes32[] memory proof) {
-        if (tree.length == 1) {
-            return proof;
-        }
+        if (tree.length == 1) return proof;
 
         uint256 i = tree.length - 1 - index;
         uint256 proofLength = _log2(i + 1);
@@ -100,9 +98,7 @@ contract MerkleTree {
         for (uint256 i = tree.length - 1 - leaves.length; ; --i) {
             tree[i] = _hashPair(tree[2 * i + 1], tree[2 * i + 2]);
 
-            if (i == 0) {
-                break;
-            }
+            if (i == 0) break;
         }
     }
 

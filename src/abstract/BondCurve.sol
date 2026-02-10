@@ -76,9 +76,7 @@ abstract contract BondCurve is IBondCurve, Initializable {
     // solhint-disable-next-line func-name-mixedcase
     function __BondCurve_init(BondCurveIntervalInput[] calldata defaultBondCurveIntervals) internal onlyInitializing {
         uint256 addedId = _addBondCurve(defaultBondCurveIntervals);
-        if (addedId != DEFAULT_BOND_CURVE_ID) {
-            revert InvalidInitializationCurveId();
-        }
+        if (addedId != DEFAULT_BOND_CURVE_ID) revert InvalidInitializationCurveId();
     }
 
     /// @dev Add a new bond curve to the array
@@ -98,9 +96,7 @@ abstract contract BondCurve is IBondCurve, Initializable {
     function _setBondCurve(uint256 nodeOperatorId, uint256 curveId) internal {
         BondCurveStorage storage $ = _getBondCurveStorage();
         unchecked {
-            if (curveId > $.bondCurves.length - 1) {
-                revert InvalidBondCurveId();
-            }
+            if (curveId > $.bondCurves.length - 1) revert InvalidBondCurveId();
         }
         $.operatorBondCurveId[nodeOperatorId] = curveId;
         emit BondCurveSet(nodeOperatorId, curveId);
@@ -109,9 +105,7 @@ abstract contract BondCurve is IBondCurve, Initializable {
     function _getCurveInfo(uint256 curveId) private view returns (BondCurveData storage) {
         BondCurveStorage storage $ = _getBondCurveStorage();
         unchecked {
-            if (curveId > $.bondCurves.length - 1) {
-                revert InvalidBondCurveId();
-            }
+            if (curveId > $.bondCurves.length - 1) revert InvalidBondCurveId();
         }
 
         return $.bondCurves[curveId];

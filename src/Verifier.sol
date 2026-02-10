@@ -108,33 +108,19 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         Slot capellaSlot,
         address admin
     ) {
-        if (withdrawalAddress == address(0)) {
-            revert ZeroWithdrawalAddress();
-        }
+        if (withdrawalAddress == address(0)) revert ZeroWithdrawalAddress();
 
-        if (module == address(0)) {
-            revert ZeroModuleAddress();
-        }
+        if (module == address(0)) revert ZeroModuleAddress();
 
-        if (admin == address(0)) {
-            revert ZeroAdminAddress();
-        }
+        if (admin == address(0)) revert ZeroAdminAddress();
 
-        if (slotsPerEpoch == 0) {
-            revert InvalidChainConfig();
-        }
+        if (slotsPerEpoch == 0) revert InvalidChainConfig();
 
-        if (slotsPerHistoricalRoot == 0) {
-            revert InvalidChainConfig();
-        }
+        if (slotsPerHistoricalRoot == 0) revert InvalidChainConfig();
 
-        if (firstSupportedSlot > pivotSlot) {
-            revert InvalidPivotSlot();
-        }
+        if (firstSupportedSlot > pivotSlot) revert InvalidPivotSlot();
 
-        if (capellaSlot > firstSupportedSlot) {
-            revert InvalidCapellaSlot();
-        }
+        if (capellaSlot > firstSupportedSlot) revert InvalidCapellaSlot();
 
         WITHDRAWAL_ADDRESS = withdrawalAddress;
         MODULE = IBaseModule(module);
@@ -179,27 +165,19 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
 
     /// @inheritdoc IVerifier
     function processSlashedProof(ProcessSlashedInput calldata data) external whenResumed {
-        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(data.recentBlock.header.slot);
-        }
+        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) revert UnsupportedSlot(data.recentBlock.header.slot);
 
         {
             bytes32 trustedHeaderRoot = _getParentBlockRoot(data.recentBlock.rootsTimestamp);
-            if (trustedHeaderRoot != data.recentBlock.header.hashTreeRoot()) {
-                revert InvalidBlockHeader();
-            }
+            if (trustedHeaderRoot != data.recentBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
         }
 
-        if (!data.validator.object.slashed) {
-            revert ValidatorIsNotSlashed();
-        }
+        if (!data.validator.object.slashed) revert ValidatorIsNotSlashed();
 
         {
             bytes memory pubkey = MODULE.getSigningKeys(data.validator.nodeOperatorId, data.validator.keyIndex, 1);
 
-            if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) {
-                revert InvalidPublicKey();
-            }
+            if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
         }
 
         SSZ.verifyProof({
@@ -220,17 +198,13 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
 
         {
             bytes32 trustedHeaderRoot = _getParentBlockRoot(data.withdrawalBlock.rootsTimestamp);
-            if (trustedHeaderRoot != data.withdrawalBlock.header.hashTreeRoot()) {
-                revert InvalidBlockHeader();
-            }
+            if (trustedHeaderRoot != data.withdrawalBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
         }
 
         {
             bytes memory pubkey = MODULE.getSigningKeys(data.validator.nodeOperatorId, data.validator.keyIndex, 1);
 
-            if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) {
-                revert InvalidPublicKey();
-            }
+            if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
         }
 
         uint256 withdrawalAmount = _processWithdrawalProof(
@@ -252,9 +226,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
 
     /// @inheritdoc IVerifier
     function processHistoricalWithdrawalProof(ProcessHistoricalWithdrawalInput calldata data) external whenResumed {
-        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(data.recentBlock.header.slot);
-        }
+        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) revert UnsupportedSlot(data.recentBlock.header.slot);
 
         if (data.withdrawalBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.withdrawalBlock.header.slot);
@@ -263,17 +235,13 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         {
             bytes32 trustedHeaderRoot = _getParentBlockRoot(data.recentBlock.rootsTimestamp);
             bytes32 headerRoot = data.recentBlock.header.hashTreeRoot();
-            if (trustedHeaderRoot != headerRoot) {
-                revert InvalidBlockHeader();
-            }
+            if (trustedHeaderRoot != headerRoot) revert InvalidBlockHeader();
         }
 
         {
             bytes memory pubkey = MODULE.getSigningKeys(data.validator.nodeOperatorId, data.validator.keyIndex, 1);
 
-            if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) {
-                revert InvalidPublicKey();
-            }
+            if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
         }
 
         SSZ.verifyProof({
@@ -302,41 +270,31 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
 
     /// @inheritdoc IVerifier
     function processConsolidation(ProcessConsolidationInput calldata data) external whenResumed {
-        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(data.recentBlock.header.slot);
-        }
+        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) revert UnsupportedSlot(data.recentBlock.header.slot);
 
         if (data.consolidationBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.consolidationBlock.header.slot);
         }
 
-        if (data.validator.object.slashed) {
-            revert ValidatorIsSlashed();
-        }
+        if (data.validator.object.slashed) revert ValidatorIsSlashed();
 
         {
             bytes memory pubkey = MODULE.getSigningKeys(data.validator.nodeOperatorId, data.validator.keyIndex, 1);
 
-            if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) {
-                revert InvalidPublicKey();
-            }
+            if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
         }
 
         if (_computeEpochAtSlot(data.recentBlock.header.slot) < data.validator.object.withdrawableEpoch) {
             revert ValidatorIsNotWithdrawable();
         }
 
-        if (data.consolidation.object.sourceIndex != data.validator.index) {
-            revert InvalidConsolidationSource();
-        }
+        if (data.consolidation.object.sourceIndex != data.validator.index) revert InvalidConsolidationSource();
 
         // Verify recent block's header.
         {
             bytes32 trustedHeaderRoot = _getParentBlockRoot(data.recentBlock.rootsTimestamp);
             bytes32 headerRoot = data.recentBlock.header.hashTreeRoot();
-            if (trustedHeaderRoot != headerRoot) {
-                revert InvalidBlockHeader();
-            }
+            if (trustedHeaderRoot != headerRoot) revert InvalidBlockHeader();
         }
 
         // Verify consolidation block header.
@@ -402,9 +360,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
     function _getParentBlockRoot(uint64 blockTimestamp) internal view returns (bytes32) {
         (bool success, bytes memory data) = BEACON_ROOTS.staticcall(abi.encode(blockTimestamp));
 
-        if (!success || data.length == 0) {
-            revert RootNotFound();
-        }
+        if (!success || data.length == 0) revert RootNotFound();
 
         return abi.decode(data, (bytes32));
     }
@@ -418,23 +374,15 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         if (address(uint160(uint256(validator.object.withdrawalCredentials))) != WITHDRAWAL_ADDRESS) {
             revert InvalidWithdrawalAddress();
         }
-        if (withdrawal.object.withdrawalAddress != WITHDRAWAL_ADDRESS) {
-            revert InvalidWithdrawalAddress();
-        }
+        if (withdrawal.object.withdrawalAddress != WITHDRAWAL_ADDRESS) revert InvalidWithdrawalAddress();
 
         // The methods in this contract do not accept proofs of withdrawals from slashed validators. It is proposed that
         // such withdrawals be processed off-chain and reported directly to the CSModule using EasyTracks.
-        if (validator.object.slashed) {
-            revert ValidatorIsSlashed();
-        }
+        if (validator.object.slashed) revert ValidatorIsSlashed();
 
-        if (_computeEpochAtSlot(header.slot) < validator.object.withdrawableEpoch) {
-            revert ValidatorIsNotWithdrawable();
-        }
+        if (_computeEpochAtSlot(header.slot) < validator.object.withdrawableEpoch) revert ValidatorIsNotWithdrawable();
 
-        if (withdrawal.object.validatorIndex != validator.index) {
-            revert InvalidValidatorIndex();
-        }
+        if (withdrawal.object.validatorIndex != validator.index) revert InvalidValidatorIndex();
 
         // See https://hackmd.io/1wM8vqeNTjqt4pC3XoCUKQ
         //
@@ -459,9 +407,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         // it is proposed to acknowledge possibility of the attack
         // and be ready to propose a corresponding vote to the DAO if it will ever happen
         withdrawalAmount = withdrawal.object.amountWei();
-        if (withdrawalAmount < 15 ether) {
-            revert PartialWithdrawal();
-        }
+        if (withdrawalAmount < 15 ether) revert PartialWithdrawal();
 
         SSZ.verifyProof({
             proof: validator.proof,
@@ -541,9 +487,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         uint64 rootIndex = targetSlot.unwrap() % SLOTS_PER_HISTORICAL_ROOT;
 
         Slot summaryCreatedAtSlot = Slot.wrap(targetSlot.unwrap() - rootIndex + SLOTS_PER_HISTORICAL_ROOT);
-        if (summaryCreatedAtSlot > recentSlot) {
-            revert HistoricalSummaryDoesNotExist();
-        }
+        if (summaryCreatedAtSlot > recentSlot) revert HistoricalSummaryDoesNotExist();
 
         gI = recentSlot < PIVOT_SLOT ? GI_FIRST_HISTORICAL_SUMMARY_PREV : GI_FIRST_HISTORICAL_SUMMARY_CURR;
 

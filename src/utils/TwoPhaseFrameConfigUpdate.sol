@@ -81,21 +81,13 @@ contract TwoPhaseFrameConfigUpdate {
     error UnexpectedLastProcessingRefSlot(uint256 actual, uint256 expected);
 
     constructor(address oracle, PhasesConfig memory phasesConfig) {
-        if (oracle == address(0)) {
-            revert ZeroOracleAddress();
-        }
+        if (oracle == address(0)) revert ZeroOracleAddress();
 
-        if (phasesConfig.reportsToProcessBeforeOffsetPhase == 0) {
-            revert ZeroReportsToEnableUpdate();
-        }
+        if (phasesConfig.reportsToProcessBeforeOffsetPhase == 0) revert ZeroReportsToEnableUpdate();
 
-        if (phasesConfig.reportsToProcessBeforeRestorePhase == 0) {
-            revert ZeroReportsToEnableUpdate();
-        }
+        if (phasesConfig.reportsToProcessBeforeRestorePhase == 0) revert ZeroReportsToEnableUpdate();
 
-        if (phasesConfig.offsetPhaseEpochsPerFrame == 0) {
-            revert ZeroEpochsPerFrame();
-        }
+        if (phasesConfig.offsetPhaseEpochsPerFrame == 0) revert ZeroEpochsPerFrame();
 
         ORACLE = IReportAsyncProcessor(oracle);
         HASH_CONSENSUS = IConsensusContract(ORACLE.getConsensusContract());
@@ -109,14 +101,10 @@ contract TwoPhaseFrameConfigUpdate {
         uint256 lastProcessingRefSlot = ORACLE.getLastProcessingRefSlot();
 
         (uint256 currentRefSlot, ) = HASH_CONSENSUS.getCurrentFrame();
-        if (currentRefSlot != lastProcessingRefSlot) {
-            revert CurrentReportMainPhaseIsNotCompleted();
-        }
+        if (currentRefSlot != lastProcessingRefSlot) revert CurrentReportMainPhaseIsNotCompleted();
 
         // Typically, the Lido oracles wait for ref slot finalization, which takes at least 2 epochs.
-        if (phasesConfig.restorePhaseFastLaneLengthSlots < SLOTS_PER_EPOCH * 2) {
-            revert FastLaneTooShort();
-        }
+        if (phasesConfig.restorePhaseFastLaneLengthSlots < SLOTS_PER_EPOCH * 2) revert FastLaneTooShort();
 
         if (phasesConfig.restorePhaseFastLaneLengthSlots > currentEpochsPerFrame * slotsPerEpoch) {
             revert FastLanePeriodCannotBeLongerThanFrame();
@@ -137,9 +125,7 @@ contract TwoPhaseFrameConfigUpdate {
         uint256 offsetExpirationSlot = offsetExpectedProcessingRefSlot + minEpochsPerFrame * slotsPerEpoch;
 
         uint256 currentSlot = _getCurrentSlot();
-        if (currentSlot >= offsetExpirationSlot) {
-            revert PhaseExpired(currentSlot, offsetExpirationSlot);
-        }
+        if (currentSlot >= offsetExpirationSlot) revert PhaseExpired(currentSlot, offsetExpirationSlot);
 
         // Calculate pivot ref slot for the restore phase (based on the offset phase completion)
         uint256 restoreExpectedProcessingRefSlot = offsetExpectedProcessingRefSlot +
@@ -176,9 +162,7 @@ contract TwoPhaseFrameConfigUpdate {
     }
 
     function executeRestorePhase() external {
-        if (!offsetPhase.executed) {
-            revert OffsetPhaseNotExecuted();
-        }
+        if (!offsetPhase.executed) revert OffsetPhaseNotExecuted();
 
         PhaseState storage phase = restorePhase;
         _validate(phase);
@@ -193,9 +177,7 @@ contract TwoPhaseFrameConfigUpdate {
 
     /// @dev Fallback to renounce the role if phases are expired.
     function renounceRoleWhenExpired() external {
-        if (!_isExpired(offsetPhase) && !_isExpired(restorePhase)) {
-            revert NoneOfPhasesExpired();
-        }
+        if (!_isExpired(offsetPhase) && !_isExpired(restorePhase)) revert NoneOfPhasesExpired();
 
         _renounceRole();
     }
@@ -205,9 +187,7 @@ contract TwoPhaseFrameConfigUpdate {
     }
 
     function isReadyForRestorePhase() external view returns (bool ready) {
-        if (!offsetPhase.executed) {
-            return false;
-        }
+        if (!offsetPhase.executed) return false;
 
         return _isReady(restorePhase);
     }
@@ -221,9 +201,7 @@ contract TwoPhaseFrameConfigUpdate {
     }
 
     function _validate(PhaseState storage phaseState) internal view {
-        if (phaseState.executed) {
-            revert PhaseAlreadyExecuted();
-        }
+        if (phaseState.executed) revert PhaseAlreadyExecuted();
 
         (bool hasExpectedRefSlot, uint256 lastProcessingRefSlot) = _hasExpectedRefSlot(phaseState);
         if (!hasExpectedRefSlot) {
@@ -232,9 +210,7 @@ contract TwoPhaseFrameConfigUpdate {
 
         uint256 currentSlot = _getCurrentSlot();
         uint256 expirationSlot = phaseState.expirationSlot;
-        if (currentSlot >= expirationSlot) {
-            revert PhaseExpired(currentSlot, expirationSlot);
-        }
+        if (currentSlot >= expirationSlot) revert PhaseExpired(currentSlot, expirationSlot);
     }
 
     function _getCurrentSlot() internal view returns (uint256 currentSlot) {
@@ -242,9 +218,7 @@ contract TwoPhaseFrameConfigUpdate {
     }
 
     function _isReady(PhaseState storage phaseState) internal view returns (bool ready) {
-        if (phaseState.executed || _getCurrentSlot() >= phaseState.expirationSlot) {
-            return false;
-        }
+        if (phaseState.executed || _getCurrentSlot() >= phaseState.expirationSlot) return false;
         (ready, ) = _hasExpectedRefSlot(phaseState);
     }
 
