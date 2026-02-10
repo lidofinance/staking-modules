@@ -810,7 +810,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr2(op0, op1), _extOperatorsArr0());
 
-        uint256[] memory weightsBefore = registry.getOperatorsWeights(
+        uint256[] memory weightsBefore = registry.getOperatorWeights(
             UintArr(0, 1)
         );
         assertEq(weightsBefore[0], 6000);
@@ -824,7 +824,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
             _extOperatorsArr0()
         );
 
-        uint256[] memory weightsAfter = registry.getOperatorsWeights(
+        uint256[] memory weightsAfter = registry.getOperatorWeights(
             UintArr(0, 1)
         );
         assertEq(weightsAfter[0], 0);
@@ -841,7 +841,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
-        uint256[] memory weightsBefore = registry.getOperatorsWeights(
+        uint256[] memory weightsBefore = registry.getOperatorWeights(
             UintArr(0)
         );
         assertEq(weightsBefore[0], CURVE_WEIGHT);
@@ -850,9 +850,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         vm.prank(groupManager);
         _updateGroup(newGroupId, _subOperatorsArr0(), _extOperatorsArr0());
 
-        uint256[] memory weightsAfter = registry.getOperatorsWeights(
-            UintArr(0)
-        );
+        uint256[] memory weightsAfter = registry.getOperatorWeights(UintArr(0));
         assertEq(weightsAfter[0], 0);
     }
 
@@ -879,7 +877,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         uint256 membership = registry.getNodeOperatorGroupId(0);
         assertEq(membership, groupId2);
 
-        uint256[] memory weights = registry.getOperatorsWeights(UintArr(0));
+        uint256[] memory weights = registry.getOperatorWeights(UintArr(0));
         assertEq(weights[0], CURVE_WEIGHT);
     }
 
@@ -1075,7 +1073,7 @@ contract MetaRegistryTestGroupsGetters is MetaRegistryTestGroupsBase {
 }
 
 contract MetaRegistryTestWeights is MetaRegistryTestGroupsBase {
-    function test_getOperatorsWeights_ReturnsWeightsInOrder() public {
+    function test_getOperatorWeights_ReturnsWeightsInOrder() public {
         _setBondCurveWeight(0, CURVE_WEIGHT);
 
         IMetaRegistry.SubNodeOperator[]
@@ -1092,17 +1090,17 @@ contract MetaRegistryTestWeights is MetaRegistryTestGroupsBase {
         vm.prank(groupManager);
         _createGroup(subOperators, _extOperatorsArr0());
 
-        uint256[] memory weights = registry.getOperatorsWeights(UintArr(0, 1));
+        uint256[] memory weights = registry.getOperatorWeights(UintArr(0, 1));
         assertEq(weights, UintArr(7000, 3000));
     }
 
-    function test_getOperatorsWeights_ReturnsEmptyWhenNoIds() public {
-        uint256[] memory weights = registry.getOperatorsWeights(UintArr());
+    function test_getOperatorWeights_ReturnsEmptyWhenNoIds() public {
+        uint256[] memory weights = registry.getOperatorWeights(UintArr());
         assertEq(weights.length, 0);
     }
 
-    function test_getOperatorsWeights_ReturnsZeroWhenNotInGroup() public {
-        uint256[] memory weights = registry.getOperatorsWeights(UintArr(2));
+    function test_getOperatorWeights_ReturnsZeroWhenNotInGroup() public {
+        uint256[] memory weights = registry.getOperatorWeights(UintArr(2));
         assertEq(weights, UintArr(0));
     }
 

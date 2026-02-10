@@ -1738,7 +1738,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         bytes memory wrongKey = module.getSigningKeys(noId, 0, 1);
         wrongKey[0] = bytes1(uint8(wrongKey[0]) ^ 0x01);
 
-        vm.expectRevert(ICuratedModule.PubkeyMismatch.selector);
+        vm.expectRevert(IBaseModule.PubkeyMismatch.selector);
         cm.allocateDeposits(
             1 ether,
             BytesArr(wrongKey),
@@ -2011,7 +2011,7 @@ contract CuratedNodeOperatorWeightsToUpdateCount is CuratedCommon {
 }
 
 contract CuratedGetOperatorsWeights is CuratedCommon {
-    function test_getOperatorsWeights_ReturnsMetaRegistryValues()
+    function test_getOperatorWeights_ReturnsMetaRegistryValues()
         public
         assertInvariants
     {
@@ -2023,17 +2023,17 @@ contract CuratedGetOperatorsWeights is CuratedCommon {
         vm.mockCall(
             address(metaRegistry),
             abi.encodeWithSelector(
-                IMetaRegistry.getOperatorsWeights.selector,
+                IMetaRegistry.getOperatorWeights.selector,
                 operatorIds
             ),
             abi.encode(expectedWeights)
         );
 
-        uint256[] memory weights = cm.getOperatorsWeights(operatorIds);
+        uint256[] memory weights = cm.getOperatorWeights(operatorIds);
         assertEq(weights, expectedWeights);
     }
 
-    function test_getOperatorsWeights_RevertWhen_WeightsUpdateInProgress()
+    function test_getOperatorWeights_RevertWhen_WeightsUpdateInProgress()
         public
         assertInvariants
     {
@@ -2045,7 +2045,7 @@ contract CuratedGetOperatorsWeights is CuratedCommon {
         vm.expectRevert(
             ICuratedModule.NodeOperatorWeightsUpdateInProgress.selector
         );
-        cm.getOperatorsWeights(UintArr(0));
+        cm.getOperatorWeights(UintArr(0));
     }
 }
 

@@ -122,6 +122,7 @@ interface IBaseModule is
     error ValidatorSlashingAlreadyReported();
     error InvalidWithdrawnValidatorInfo();
 
+    error PubkeyMismatch();
     error InvalidAmount();
     error InvalidInput();
     error NotEnoughKeys();

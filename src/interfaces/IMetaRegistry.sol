@@ -180,7 +180,7 @@ interface IMetaRegistry {
     /// @notice Returns allocation weights for the given node operators.
     /// @param nodeOperatorIds Node operator IDs to query.
     /// @return operatorWeights Weights aligned with nodeOperatorIds.
-    function getOperatorsWeights(
+    function getOperatorWeights(
         uint256[] calldata nodeOperatorIds
     ) external view returns (uint256[] memory operatorWeights);
 

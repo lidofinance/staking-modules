@@ -14,10 +14,6 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
     );
     event NodeOperatorWeightsUpToDate();
 
-    error NotImplemented();
-    error PublicKeyIsWithdrawn();
-    error PublicKeyIsSlashed();
-    error PubkeyMismatch();
     error ZeroMetaRegistryAddress();
     error SenderIsNotMetaRegistry();
     error InvalidMaxCount();
@@ -71,7 +67,7 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
     /// @dev Provides weights from the on-chain allocation strategy used by the module.
     /// @param operatorIds Node operator IDs to query.
     /// @return operatorWeights Weights aligned with operatorIds.
-    function getOperatorsWeights(
+    function getOperatorWeights(
         uint256[] calldata operatorIds
     ) external view returns (uint256[] memory operatorWeights);
 

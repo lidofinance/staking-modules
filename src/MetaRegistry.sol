@@ -285,7 +285,7 @@ contract MetaRegistry is
     }
 
     /// @inheritdoc IMetaRegistry
-    function getOperatorsWeights(
+    function getOperatorWeights(
         uint256[] calldata nodeOperatorIds
     ) external view returns (uint256[] memory operatorWeights) {
         MetaRegistryStorage storage $ = _storage();
