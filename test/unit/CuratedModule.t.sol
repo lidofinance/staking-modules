@@ -645,7 +645,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(2048 ether / 1 gwei, 0), UintArr(0, 0), 0);
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(2048 ether / 1 gwei, 0), 0);
 
         bytes memory key = module.getSigningKeys(secondId, 0, 1);
 
@@ -672,7 +672,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         accounting.setBondCurve(secondId, curveId);
         _mockOperatorWeight(secondId, 3);
 
-        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(0, 0), UintArr(0, 0), 0);
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(0, 0), 0);
 
         bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
         bytes memory key1 = module.getSigningKeys(firstId, 1, 1);
@@ -689,7 +689,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[0], 1 ether);
         assertEq(allocations[1], 0);
 
-        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(allocations[0] / 1 gwei, 0), UintArr(0, 0), 0);
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(allocations[0] / 1 gwei, 0), 0);
 
         uint256[] memory secondAllocations = cm.allocateDeposits(
             7 ether,
@@ -707,7 +707,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
 
-        cm.updateOperatorBalances(UintArr(noId), UintArr(2047 ether / 1 gwei), UintArr(0), 0);
+        cm.updateOperatorBalances(UintArr(noId), UintArr(2047 ether / 1 gwei), 0);
 
         bytes memory key = module.getSigningKeys(noId, 0, 1);
 
@@ -726,7 +726,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
 
-        cm.updateOperatorBalances(UintArr(noId), UintArr(2048 ether / 1 gwei), UintArr(0), 0);
+        cm.updateOperatorBalances(UintArr(noId), UintArr(2048 ether / 1 gwei), 0);
 
         bytes memory key = module.getSigningKeys(noId, 0, 1);
 
@@ -794,7 +794,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 wideId = createNodeOperator(2);
         module.obtainDepositData(3, "");
 
-        cm.updateOperatorBalances(UintArr(cappedId, wideId), UintArr(2000 ether / 1 gwei, 0), UintArr(0, 0), 0);
+        cm.updateOperatorBalances(UintArr(cappedId, wideId), UintArr(2000 ether / 1 gwei, 0), 0);
 
         bytes memory cappedKey = module.getSigningKeys(cappedId, 0, 1);
         bytes memory wideKey = module.getSigningKeys(wideId, 0, 1);
@@ -835,12 +835,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         accounting.setBondCurve(includedId, curveId);
         _mockOperatorWeight(includedId, 1);
 
-        cm.updateOperatorBalances(
-            UintArr(omittedHeavyId, omittedMidId, includedId),
-            UintArr(0, 0, 0),
-            UintArr(0, 0, 0),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(omittedHeavyId, omittedMidId, includedId), UintArr(0, 0, 0), 0);
 
         bytes memory key = module.getSigningKeys(includedId, 0, 1);
         uint256 depositAmount = 111 ether;
@@ -969,7 +964,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(10, 10), UintArr(0, 0), 0);
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(10, 10), 0);
 
         (, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(2 ether);
 
@@ -1020,7 +1015,6 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
             cm.updateOperatorBalances(
                 UintArr(firstId, secondId),
                 UintArr(balances[0] / 1 gwei, balances[1] / 1 gwei),
-                UintArr(0, 0),
                 0
             );
 
@@ -1055,7 +1049,6 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
             cm.updateOperatorBalances(
                 UintArr(firstId, secondId),
                 UintArr(balances[0] / 1 gwei, balances[1] / 1 gwei),
-                UintArr(0, 0),
                 0
             );
 
@@ -1108,7 +1101,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(2048 ether / 1 gwei, 0), UintArr(0, 0), 0);
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(2048 ether / 1 gwei, 0), 0);
 
         (, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(4 ether);
 
@@ -1121,7 +1114,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
 
-        cm.updateOperatorBalances(UintArr(noId), UintArr(2047 ether / 1 gwei), UintArr(0), 0);
+        cm.updateOperatorBalances(UintArr(noId), UintArr(2047 ether / 1 gwei), 0);
 
         (, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(10 ether);
 
@@ -1135,7 +1128,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(10_000_000_000, 0), UintArr(0, 0), 0);
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(10_000_000_000, 0), 0);
 
         (, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(1 ether);
 
@@ -1149,7 +1142,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(10, 0), UintArr(0, 0), 0);
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(10, 0), 0);
 
         (, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(2 ether);
 
@@ -1164,7 +1157,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(10, 10), UintArr(0, 0), 0);
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(10, 10), 0);
 
         bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
         bytes memory key1 = module.getSigningKeys(secondId, 0, 1);
@@ -1217,7 +1210,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
 
-        cm.updateOperatorBalances(UintArr(noId), UintArr(10), UintArr(0), 0);
+        cm.updateOperatorBalances(UintArr(noId), UintArr(10), 0);
 
         bytes memory key = module.getSigningKeys(noId, 0, 1);
 
@@ -1237,7 +1230,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 weightedId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        cm.updateOperatorBalances(UintArr(zeroWeightId, weightedId), UintArr(10, 10), UintArr(0, 0), 0);
+        cm.updateOperatorBalances(UintArr(zeroWeightId, weightedId), UintArr(10, 10), 0);
 
         IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
         curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: BOND_SIZE });
@@ -1266,7 +1259,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(10_000_000_000, 0), UintArr(0, 0), 0);
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(10_000_000_000, 0), 0);
 
         bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
         bytes memory key1 = module.getSigningKeys(secondId, 0, 1);
@@ -1288,7 +1281,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
 
-        cm.updateOperatorBalances(UintArr(noId), UintArr(10), UintArr(0), 0);
+        cm.updateOperatorBalances(UintArr(noId), UintArr(10), 0);
 
         bytes memory key = module.getSigningKeys(noId, 0, 1);
         uint256 limitWei = 10 ether;
@@ -1387,8 +1380,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         cm.updateOperatorBalances({
             operatorIds: UintArr(firstId, secondId),
-            validatorsBalancesGwei: UintArr(5 ether / 1 gwei, 5 ether / 1 gwei),
-            pendingBalancesGwei: UintArr(0, 0),
+            totalBalancesGwei: UintArr(5 ether / 1 gwei, 5 ether / 1 gwei),
             refSlot: 0
         });
 
@@ -1433,7 +1425,7 @@ contract CuratedUpdateOperatorBalances is CuratedCommon {
         uint256 secondId = createNodeOperator(1);
 
         uint256 nonce = module.getNonce();
-        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(10, 20), UintArr(3, 4), 0);
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(13, 24), 0);
 
         assertEq(module.getNonce(), nonce + 1);
         assertEq(cm.getNodeOperatorBalance(firstId), 13 gwei);
@@ -1444,14 +1436,14 @@ contract CuratedUpdateOperatorBalances is CuratedCommon {
         createNodeOperator(1);
 
         vm.expectRevert(IBaseModule.InvalidInput.selector);
-        cm.updateOperatorBalances(UintArr(0), UintArr(1, 2), UintArr(3), 0);
+        cm.updateOperatorBalances(UintArr(0), UintArr(1, 2), 0);
     }
 
     function test_updateOperatorBalances_RevertWhen_NodeOperatorDoesNotExist() public {
         createNodeOperator(1);
 
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
-        cm.updateOperatorBalances(UintArr(1), UintArr(1), UintArr(1), 0);
+        cm.updateOperatorBalances(UintArr(1), UintArr(1), 0);
     }
 
     function test_updateOperatorBalances_RevertWhen_NotStakingRouter() public {
@@ -1459,7 +1451,7 @@ contract CuratedUpdateOperatorBalances is CuratedCommon {
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        cm.updateOperatorBalances(UintArr(), UintArr(), UintArr(), 0);
+        cm.updateOperatorBalances(UintArr(), UintArr(), 0);
     }
 }
 
