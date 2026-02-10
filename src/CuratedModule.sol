@@ -449,13 +449,14 @@ contract CuratedModule is ICuratedModule, BaseModule {
         // TODO: Add capped top-up limits like in CSM
 
         uint256[] memory perOperatorIncrements;
-        (allocations, perOperatorIncrements) = _distributeTopUpAllocations({
-            operatorIds: operatorIds,
-            topUpLimits: topUpLimits,
-            allocatedOperatorIds: allocatedOperatorIds,
-            operatorAllocations: operatorAllocations,
-            operatorsCount: _nodeOperatorsCount
-        });
+        (allocations, perOperatorIncrements) = NodeOperatorOps
+            .distributeTopUpAllocations({
+                operatorIds: operatorIds,
+                topUpLimits: topUpLimits,
+                allocatedOperatorIds: allocatedOperatorIds,
+                operatorAllocations: operatorAllocations,
+                operatorsCount: _nodeOperatorsCount
+            });
 
         NodeOperatorOps.increaseKeyAddedBalancesByAllocations(
             _keyAddedBalances,
@@ -488,51 +489,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
             // Trim the uniqueOperatorIds array to the actual count of unique ids.
             assembly {
                 mstore(uniqueOperatorIds, count)
-            }
-        }
-    }
-
-    /// @dev Distribute per-operator allocations to per-key allocations with per-key limits.
-    function _distributeTopUpAllocations(
-        uint256[] calldata operatorIds,
-        uint256[] calldata topUpLimits,
-        uint256[] memory allocatedOperatorIds,
-        uint256[] memory operatorAllocations,
-        uint256 operatorsCount
-    )
-        internal
-        returns (
-            uint256[] memory allocations,
-            uint256[] memory perOperatorIncrements
-        )
-    {
-        // topUpLimits are per-key and aligned with operatorIds/keyIndices order.
-        allocations = new uint256[](operatorIds.length);
-        // NOTE: Use a full operatorsCount-sized array for O(1) lookups; operator counts are small enough
-        // that a compact map would add overhead and can be worse overall.
-        uint256[] memory perOperatorAllocations = new uint256[](operatorsCount);
-        for (uint256 i; i < allocatedOperatorIds.length; ++i) {
-            perOperatorAllocations[
-                allocatedOperatorIds[i]
-            ] = operatorAllocations[i];
-        }
-
-        perOperatorIncrements = new uint256[](operatorsCount);
-        unchecked {
-            for (uint256 i; i < operatorIds.length; ++i) {
-                uint256 operatorId = operatorIds[i];
-                uint256 remaining = perOperatorAllocations[operatorId] -
-                    perOperatorIncrements[operatorId];
-                if (remaining == 0) continue;
-
-                uint256 limit = CuratedDepositAllocator.quantizeForTopUp(
-                    topUpLimits[i]
-                );
-                if (limit == 0) continue;
-
-                uint256 amount = Math.min(remaining, limit);
-                allocations[i] = amount;
-                perOperatorIncrements[operatorId] += amount;
             }
         }
     }
