@@ -137,16 +137,14 @@ interface IMetaRegistry {
     /// @notice Get Node Operator group ID (returns NO_GROUP_ID if the operator is not in any group).
     /// @param nodeOperatorId Node operator ID to query.
     /// @return operatorGroupId Group ID.
-    // TODO: Rename to getNodeOperatorGroupId
-    function getNodeOperatorGroupMembership(
+    function getNodeOperatorGroupId(
         uint256 nodeOperatorId
     ) external view returns (uint256 operatorGroupId);
 
     /// @notice Get External Operator group ID (returns NO_GROUP_ID if the operator is not in any group).
     /// @param op External operator.
     /// @return operatorGroupId Group ID.
-    // TODO: Rename to getExternalOperatorGroupId
-    function getExternalOperatorGroupMembership(
+    function getExternalOperatorGroupId(
         ExternalOperator calldata op
     ) external view returns (uint256 operatorGroupId);
 

@@ -188,7 +188,7 @@ contract MetaRegistry is
     }
 
     /// @inheritdoc IMetaRegistry
-    function getNodeOperatorGroupMembership(
+    function getNodeOperatorGroupId(
         uint256 nodeOperatorId
     ) external view returns (uint256 operatorGroupId) {
         operatorGroupId = _storage().groupIndex.groupIdByOperatorId[
@@ -197,7 +197,7 @@ contract MetaRegistry is
     }
 
     /// @inheritdoc IMetaRegistry
-    function getExternalOperatorGroupMembership(
+    function getExternalOperatorGroupId(
         ExternalOperator calldata op
     ) external view returns (uint256 operatorGroupId) {
         operatorGroupId = _storage().groupIndex.groupIdByExternalKey[

@@ -465,19 +465,15 @@ contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
         _createGroup(subNodeOperators, externalOperators);
 
         assertEq(registry.getOperatorGroupsCount(), 2);
-        uint256 groupId0 = registry.getNodeOperatorGroupMembership(
-            op0.nodeOperatorId
-        );
+        uint256 groupId0 = registry.getNodeOperatorGroupId(op0.nodeOperatorId);
         assertTrue(groupId0 != NO_GROUP_ID);
         assertEq(groupId0, newGroupId);
 
-        uint256 groupId1 = registry.getNodeOperatorGroupMembership(
-            op1.nodeOperatorId
-        );
+        uint256 groupId1 = registry.getNodeOperatorGroupId(op1.nodeOperatorId);
         assertTrue(groupId1 != NO_GROUP_ID);
         assertEq(groupId1, newGroupId);
 
-        uint256 externalGroupId = registry.getExternalOperatorGroupMembership(
+        uint256 externalGroupId = registry.getExternalOperatorGroupId(
             _externalOperator(externalData)
         );
         assertTrue(externalGroupId != NO_GROUP_ID);
@@ -749,12 +745,12 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         assertEq(groupInfo.externalOperators.length, 1);
         assertEq(groupInfo.externalOperators[0].data, updatedExternal);
 
-        uint256 oldGroupId = registry.getExternalOperatorGroupMembership(
+        uint256 oldGroupId = registry.getExternalOperatorGroupId(
             _externalOperator(initialExternal)
         );
         assertEq(oldGroupId, NO_GROUP_ID);
 
-        uint256 groupId = registry.getExternalOperatorGroupMembership(
+        uint256 groupId = registry.getExternalOperatorGroupId(
             _externalOperator(updatedExternal)
         );
         assertTrue(groupId != NO_GROUP_ID);
@@ -791,10 +787,10 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         vm.prank(groupManager);
         _updateGroup(newGroupId, _subOperatorsArr0(), _extOperatorsArr0());
 
-        uint256 groupId = registry.getNodeOperatorGroupMembership(0);
+        uint256 groupId = registry.getNodeOperatorGroupId(0);
         assertEq(groupId, NO_GROUP_ID);
 
-        uint256 externalGroupId = registry.getExternalOperatorGroupMembership(
+        uint256 externalGroupId = registry.getExternalOperatorGroupId(
             _externalOperator(externalData)
         );
         assertEq(externalGroupId, NO_GROUP_ID);
@@ -880,7 +876,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
-        uint256 membership = registry.getNodeOperatorGroupMembership(0);
+        uint256 membership = registry.getNodeOperatorGroupId(0);
         assertEq(membership, groupId2);
 
         uint256[] memory weights = registry.getOperatorsWeights(UintArr(0));
@@ -1037,21 +1033,17 @@ contract MetaRegistryTestGroupsGetters is MetaRegistryTestGroupsBase {
         assertEq(registry.getOperatorGroupsCount(), 3);
     }
 
-    function test_getNodeOperatorGroupMembership_ReturnsFalseWhenDoesNotExist()
-        public
-    {
+    function test_getNodeOperatorGroupId_ReturnsFalseWhenDoesNotExist() public {
         uint256 nonExistentGroupId = registry.getOperatorGroupsCount();
-        uint256 groupId = registry.getNodeOperatorGroupMembership(
-            nonExistentGroupId
-        );
+        uint256 groupId = registry.getNodeOperatorGroupId(nonExistentGroupId);
         assertEq(groupId, NO_GROUP_ID);
     }
 
-    function test_getExternalOperatorGroupMembership_ReturnsFalseWhenDoesNotExist()
+    function test_getExternalOperatorGroupId_ReturnsFalseWhenDoesNotExist()
         public
     {
         uint256 nonExistentNoId = externalModule.getNodeOperatorsCount();
-        uint256 groupId = registry.getExternalOperatorGroupMembership(
+        uint256 groupId = registry.getExternalOperatorGroupId(
             _externalOperator(
                 _norData(uint8(EXTERNAL_MODULE_ID), uint64(nonExistentNoId))
             )
@@ -1072,10 +1064,10 @@ contract MetaRegistryTestGroupsGetters is MetaRegistryTestGroupsBase {
         vm.prank(groupManager);
         _updateGroup(1, _subOperatorsArr0(), _extOperatorsArr0());
 
-        uint256 groupId = registry.getNodeOperatorGroupMembership(0);
+        uint256 groupId = registry.getNodeOperatorGroupId(0);
         assertEq(groupId, NO_GROUP_ID);
 
-        uint256 externalGroupId = registry.getExternalOperatorGroupMembership(
+        uint256 externalGroupId = registry.getExternalOperatorGroupId(
             _externalOperator(externalData)
         );
         assertEq(externalGroupId, NO_GROUP_ID);

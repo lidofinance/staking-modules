@@ -1291,7 +1291,7 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
             r.setBondCurveWeight(curveId, 1);
         }
 
-        uint256 groupId = r.getNodeOperatorGroupMembership(nodeOperatorId);
+        uint256 groupId = r.getNodeOperatorGroupId(nodeOperatorId);
         if (groupId == r.NO_GROUP_ID()) {
             IMetaRegistry.SubNodeOperator[]
                 memory subs = new IMetaRegistry.SubNodeOperator[](1);
