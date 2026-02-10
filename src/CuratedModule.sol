@@ -204,9 +204,11 @@ contract CuratedModule is ICuratedModule, BaseModule {
                 revert NodeOperatorDoesNotExist();
             }
 
-            uint256 balanceWei = (validatorsBalancesGwei[i] +
-                pendingBalancesGwei[i]) * 1 gwei;
-            _setOperatorBalance($, operatorId, balanceWei);
+            _setOperatorBalance(
+                $,
+                operatorId,
+                (validatorsBalancesGwei[i] + pendingBalancesGwei[i]) * 1 gwei
+            );
         }
         _incrementModuleNonce();
     }
