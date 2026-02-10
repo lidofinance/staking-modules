@@ -84,10 +84,7 @@ contract DeployLocalDevNet is DeployBase {
                 "CURATED_GATE_GENERAL_DELAYED_PENALTY_FINE",
                 uint256(0.05 ether)
             );
-            primaryGate.params.keysLimit = vm.envOr(
-                "CURATED_GATE_KEYS_LIMIT",
-                uint256(type(uint248).max)
-            );
+            primaryGate.params.keysLimit = vm.envOr("CURATED_GATE_KEYS_LIMIT", uint256(type(uint248).max));
             primaryGate.params.avgPerfLeewayData.push([1, 10000]); // TODO
             primaryGate.params.rewardShareData.push([1, 10000]); // TODO
             primaryGate.params.rewardShareData.push([17, 5834]); // TODO
@@ -99,6 +96,7 @@ contract DeployLocalDevNet is DeployBase {
             primaryGate.params.attestationsWeight = 60; // TODO
             primaryGate.params.blocksWeight = 4; // TODO
             primaryGate.params.syncWeight = 0; // TODO
+            primaryGate.params.metaRegistryBondCurveWeight = 1; // TODO reconsider
             primaryGate.params.allowedExitDelay = 8 days; // TODO
             primaryGate.params.exitDelayFee = 0.05 ether; // TODO
             primaryGate.params.maxElWithdrawalRequestFee = 0.05 ether; // TODO

@@ -222,8 +222,7 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
             assertEq(parametersRegistry.getExitDelayFee(curveId), params.exitDelayFee);
             assertEq(parametersRegistry.getMaxElWithdrawalRequestFee(curveId), params.maxElWithdrawalRequestFee);
 
-            // FIXME: add MetaRegistry-level assertions here to replace
-            // the removed deposit-allocation-weight checks.
+            assertEq(metaRegistry.getBondCurveWeight(curveId), params.metaRegistryBondCurveWeight);
         }
     }
 

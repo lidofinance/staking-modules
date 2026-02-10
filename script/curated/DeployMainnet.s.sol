@@ -104,6 +104,7 @@ contract DeployMainnet is DeployBase {
             primaryGate.params.attestationsWeight = 54; // TODO
             primaryGate.params.blocksWeight = 4; // TODO
             primaryGate.params.syncWeight = 2; // TODO
+            primaryGate.params.metaRegistryBondCurveWeight = 1; // TODO reconsider
             primaryGate.params.allowedExitDelay = 5 days; // TODO
             primaryGate.params.exitDelayFee = 0.05 ether; // TODO
             primaryGate.params.maxElWithdrawalRequestFee = 0.1 ether; // TODO

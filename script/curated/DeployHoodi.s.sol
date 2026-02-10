@@ -102,6 +102,7 @@ contract DeployHoodi is DeployBase {
             primaryGate.params.attestationsWeight = 52; // TODO
             primaryGate.params.blocksWeight = 6; // TODO
             primaryGate.params.syncWeight = 2; // TODO
+            primaryGate.params.metaRegistryBondCurveWeight = 1; // TODO reconsider
             primaryGate.params.allowedExitDelay = 3 days; // TODO
             primaryGate.params.exitDelayFee = 0.02 ether; // TODO
             primaryGate.params.maxElWithdrawalRequestFee = 0.05 ether; // TODO

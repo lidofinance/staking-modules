@@ -175,17 +175,7 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             if (!vm.exists(artifactDir)) {
                 vm.createDir(artifactDir, true);
             }
-            vm.writeJson(
-                deployJson.str,
-                string(
-                    abi.encodePacked(
-                        artifactDir,
-                        "upgrade-",
-                        chainName,
-                        ".json"
-                    )
-                )
-            );
+            vm.writeJson(deployJson.str, string(abi.encodePacked(artifactDir, "upgrade-", chainName, ".json")));
         }
 
         vm.stopBroadcast();
