@@ -15,6 +15,7 @@ anvil_port := env_var_or_default("ANVIL_PORT", "8545")
 anvil_rpc_url := "http://" + anvil_host + ":" + anvil_port
 disable_code_size_limit := if env("DISABLE_CODE_SIZE_LIMIT", "") != "" { "--disable-code-size-limit" } else { "" }
 
+# Shared deployment helpers
 _deploy-generic deploy_script_path rpc_url *args:
     FOUNDRY_PROFILE=deploy \
         forge script {{deploy_script_path}} --sig="run(string)" --rpc-url {{rpc_url}} --broadcast --slow {{args}} -- `git rev-parse HEAD`
@@ -32,26 +33,104 @@ _deploy-live-generic-dry deploy_script_path *args:
 _verify-live-generic deploy_script_path *args:
     forge script {{deploy_script_path}} --sig="run(string)" --rpc-url ${RPC_URL} --verify {{args}} --unlocked -- `git rev-parse HEAD`
 
-_copy-run-latest script_name rpc_url dest_path:
+# Shared artifact helpers
+_copy-broadcast-json script_name rpc_url dry_prefix json_name dest_path:
     just _copy-file \
-        ./broadcast/{{script_name}}.s.sol/`cast chain-id --rpc-url={{rpc_url}}`/run-latest.json \
-        {{dest_path}}
-
-_copy-run-latest-dry script_name rpc_url dest_path:
-    just _copy-file \
-        ./broadcast/{{script_name}}.s.sol/`cast chain-id --rpc-url={{rpc_url}}`/dry-run/run-latest.json \
+        ./broadcast/{{script_name}}.s.sol/$(cast chain-id --rpc-url "{{rpc_url}}"){{dry_prefix}}/{{json_name}} \
         {{dest_path}}
 
 _copy-file src_path dest_path:
-    mkdir -p `dirname {{dest_path}}`
-    cp {{src_path}} {{dest_path}}
+    mkdir -p "$(dirname "{{dest_path}}")"
+    cp "{{src_path}}" "{{dest_path}}"
 
+# Shared local fork helpers
+_local-private-key:
+    @jq -re '.private_keys[0]' localhost.json
+
+# Start local anvil fork when needed.
+# Prints owned PID; prints nothing when reusing an already running fork.
+_fork-up:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if nc -z -w 1 {{anvil_host}} {{anvil_port}} > /dev/null 2>&1; then
+        just _warn "anvil process is already running at {{anvil_rpc_url}}; reusing existing process." >&2
+        exit 0
+    fi
+
+    rpc_url="${RPC_URL:-}"
+    if [ -z "${rpc_url}" ]; then
+        just _warn "RPC_URL is required to start anvil fork." >&2
+        exit 1
+    fi
+
+    anvil -f "${rpc_url}" --host {{anvil_host}} --port {{anvil_port}} \
+        --config-out localhost.json {{disable_code_size_limit}} --timeout 90000 \
+        > /dev/null 2>&1 < /dev/null &
+    anvil_pid=$!
+    # Guard against hanging forever when anvil fails to accept connections.
+    start_deadline_epoch=$(( $(date +%s) + 60 ))
+
+    while ! nc -z -w 1 {{anvil_host}} {{anvil_port}} > /dev/null 2>&1; do
+        if ! kill -0 "${anvil_pid}" 2>/dev/null; then
+            wait "${anvil_pid}" || true
+            just _warn "failed to start anvil at {{anvil_rpc_url}}." >&2
+            exit 1
+        fi
+
+        if [ "$(date +%s)" -ge "${start_deadline_epoch}" ]; then
+            kill "${anvil_pid}" 2>/dev/null || true
+            wait "${anvil_pid}" || true
+            just _warn "timed out waiting for anvil at {{anvil_rpc_url}}." >&2
+            exit 1
+        fi
+
+        sleep 1
+    done
+
+    printf "%s\n" "${anvil_pid}"
+
+_fork-up-and-down:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Emit snippet for `eval`: bind pid and install cleanup trap in the caller shell.
+    # If fork is reused (already running), owned_anvil_pid is empty and cleanup is a no-op.
+    owned_anvil_pid="$(just _fork-up)"
+    cat <<EOF
+    owned_anvil_pid="${owned_anvil_pid}"
+    if [ -n "\${owned_anvil_pid}" ]; then
+        just _info "local anvil fork started at {{anvil_rpc_url}} (pid: \${owned_anvil_pid}); it will be stopped on recipe exit."
+    fi
+
+    __fork_cleanup() {
+        if [ -z "\${owned_anvil_pid}" ]; then
+            return 0
+        fi
+
+        if ! kill -0 "\${owned_anvil_pid}" 2>/dev/null; then
+            return 0
+        fi
+
+        if ! ps -p "\${owned_anvil_pid}" -o comm= 2>/dev/null | grep -qx "anvil"; then
+            return 0
+        fi
+
+        if kill "\${owned_anvil_pid}" 2>/dev/null; then
+            just _info "local anvil fork stopped (pid: \${owned_anvil_pid})."
+        fi
+    }
+    trap __fork_cleanup EXIT
+    EOF
+
+# Recipe modules
 import? ".local.just"
 import "fork.just"
 import "csm.just"
 import "csm0x02.just"
 import "curated.just"
 
+# Default and top-level workflows
 default: clean deps build test-all
 
 build *args:
@@ -81,8 +160,26 @@ lint:
     yarn lint:check
 
 test-all:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Run unit tests in parallel with local fork flows, but always wait to preserve failures.
     just test-unit &
-    just test-local
+    unit_pid=$!
+
+    if ! just test-local; then
+        wait "${unit_pid}" || true
+        exit 1
+    fi
+
+    wait "${unit_pid}"
+
+# Run all local fork deployment/integration flows across modules.
+# Must be sequential because local flows share one anvil endpoint.
+test-local *args:
+    just test-csm-local {{args}}
+    just test-curated-local {{args}}
+    just test-csm0x02-local {{args}}
 
 # Run all unit tests
 test-unit *args:
@@ -162,7 +259,7 @@ diffyscan-contracts *args:
 
 oz-upgrades:
     #!/usr/bin/env bash
-    set -euxo pipefail
+    set -euo pipefail
 
     FOUNDRY_PROFILE=upgrades just build --skip=script,test
 
@@ -202,9 +299,9 @@ oz-upgrades:
     rm -rf "$TMP_DIR"
 
 make-fork *args:
-    @if pgrep -x "anvil" > /dev/null; \
-        then just _warn "anvil process is already running in the background. Make sure it's connected to the right network and in the right state."; \
-        else anvil -f ${RPC_URL} --host {{anvil_host}} --port {{anvil_port}} --config-out localhost.json {{disable_code_size_limit}} --timeout 90000 {{args}}; \
+    @if nc -z -w 1 {{anvil_host}} {{anvil_port}} > /dev/null 2>&1; \
+        then just _warn "anvil process is already running at {{anvil_rpc_url}}. Make sure it's connected to the right network and in the right state."; \
+        else exec anvil -f ${RPC_URL} --host {{anvil_host}} --port {{anvil_port}} --config-out localhost.json {{disable_code_size_limit}} --timeout 90000 {{args}}; \
     fi
 
 kill-fork:
@@ -240,3 +337,6 @@ _deploy-utils module_name contract_name rpc_url artifacts_dir dry-prefix *args:
 
 _warn message:
     @tput setaf 3 && printf "[WARNING]" && tput sgr0 && echo " {{message}}"
+
+_info message:
+    @tput setaf 6 && printf "[INFO]" && tput sgr0 && echo " {{message}}"
