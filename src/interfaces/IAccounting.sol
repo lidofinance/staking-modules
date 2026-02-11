@@ -78,10 +78,15 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
 
     /// @notice Set fee splits for the given Node Operator
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param cumulativeFeeShares Cumulative fee stETH shares for the Node Operator
-    /// @param rewardsProof Merkle proof of the rewards
+    /// @param cumulativeFeeShares Cumulative fee stETH shares for the Node Operator. Optional
+    /// @param rewardsProof Merkle proof of the rewards. Optional
     /// @param feeSplits Array of FeeSplit structs defining recipients and their shares in basis points
     ///                  Total shares must be <= 10_000 (100%). Remainder goes to the Node Operator's bond
+    /// @dev  We are not checking for pending fees to distribute if there are no splits currently set;
+    ///       `cumulativeFeeShares` and `rewardsProof` parameters are not required in this case.
+    ///       This allows splitting rewards that were distributed for the operator before the splits are set.
+    ///       The node operator explicitly opts into this behavior.
+    ///       If the splits are currently set, then should be no pending fees to distribute to make changes.
     function setFeeSplits(
         uint256 nodeOperatorId,
         uint256 cumulativeFeeShares,
