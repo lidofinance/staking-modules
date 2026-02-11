@@ -180,7 +180,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     /// @inheritdoc ICuratedModule
-    function onNodeOperatorWeightChange(uint256 nodeOperatorId, uint256 newWeight) external {
+    function notifyNodeOperatorWeightChange(uint256 nodeOperatorId, uint256 newWeight) external {
         if (msg.sender != address(_metaRegistry())) revert SenderIsNotMetaRegistry();
         if (newWeight == 0) {
             _applyDepositableValidatorsCount({
