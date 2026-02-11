@@ -12,7 +12,6 @@ interface IFeeSplits {
     event FeeSplitsSet(uint256 indexed nodeOperatorId, IAccounting.FeeSplit[] feeSplits);
 
     error PendingSharesExist();
-    error EmptyProofAllowedOnlyForEmptyFeeSplits();
     error UndistributedSharesExist();
     error TooManySplits();
     error TooManySplitShares();
