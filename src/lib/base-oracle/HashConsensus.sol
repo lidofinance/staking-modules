@@ -26,10 +26,7 @@ import { IConsensusContract } from "./interfaces/IConsensusContract.sol";
 /// might be impractical or even impossible to transmit and process.
 ///
 // solhint-disable ordering
-contract HashConsensus is
-    IConsensusContract,
-    AccessControlEnumerableUpgradeable
-{
+contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable {
     using SafeCast for uint256;
 
     struct FrameConfig {
@@ -81,29 +78,24 @@ contract HashConsensus is
 
     /// @notice An ACL role granting the permission to modify members list members and
     /// change the quorum by calling addMember, removeMember, and setQuorum functions.
-    bytes32 public constant MANAGE_MEMBERS_AND_QUORUM_ROLE =
-        keccak256("MANAGE_MEMBERS_AND_QUORUM_ROLE");
+    bytes32 public constant MANAGE_MEMBERS_AND_QUORUM_ROLE = keccak256("MANAGE_MEMBERS_AND_QUORUM_ROLE");
 
     /// @notice An ACL role granting the permission to disable the consensus by calling
     /// the disableConsensus function. Enabling the consensus back requires the possession
     /// of the MANAGE_QUORUM_ROLE.
-    bytes32 public constant DISABLE_CONSENSUS_ROLE =
-        keccak256("DISABLE_CONSENSUS_ROLE");
+    bytes32 public constant DISABLE_CONSENSUS_ROLE = keccak256("DISABLE_CONSENSUS_ROLE");
 
     /// @notice An ACL role granting the permission to change reporting interval duration
     /// and fast lane reporting interval length by calling setFrameConfig.
-    bytes32 public constant MANAGE_FRAME_CONFIG_ROLE =
-        keccak256("MANAGE_FRAME_CONFIG_ROLE");
+    bytes32 public constant MANAGE_FRAME_CONFIG_ROLE = keccak256("MANAGE_FRAME_CONFIG_ROLE");
 
     /// @notice An ACL role granting the permission to change fast lane reporting interval
     /// length by calling setFastLaneLengthSlots.
-    bytes32 public constant MANAGE_FAST_LANE_CONFIG_ROLE =
-        keccak256("MANAGE_FAST_LANE_CONFIG_ROLE");
+    bytes32 public constant MANAGE_FAST_LANE_CONFIG_ROLE = keccak256("MANAGE_FAST_LANE_CONFIG_ROLE");
 
     /// @notice An ACL role granting the permission to change the report processor
     /// contract by calling setReportProcessor.
-    bytes32 public constant MANAGE_REPORT_PROCESSOR_ROLE =
-        keccak256("MANAGE_REPORT_PROCESSOR_ROLE");
+    bytes32 public constant MANAGE_REPORT_PROCESSOR_ROLE = keccak256("MANAGE_REPORT_PROCESSOR_ROLE");
 
     /// @dev A quorum value that effectively disables the oracle.
     uint256 internal constant UNREACHABLE_QUORUM = type(uint256).max;
@@ -151,36 +143,13 @@ contract HashConsensus is
 
     event FrameConfigSet(uint256 newInitialEpoch, uint256 newEpochsPerFrame);
     event FastLaneConfigSet(uint256 fastLaneLengthSlots);
-    event MemberAdded(
-        address indexed addr,
-        uint256 newTotalMembers,
-        uint256 newQuorum
-    );
-    event MemberRemoved(
-        address indexed addr,
-        uint256 newTotalMembers,
-        uint256 newQuorum
-    );
-    event QuorumSet(
-        uint256 newQuorum,
-        uint256 totalMembers,
-        uint256 prevQuorum
-    );
-    event ReportReceived(
-        uint256 indexed refSlot,
-        address indexed member,
-        bytes32 report
-    );
-    event ConsensusReached(
-        uint256 indexed refSlot,
-        bytes32 report,
-        uint256 support
-    );
+    event MemberAdded(address indexed addr, uint256 newTotalMembers, uint256 newQuorum);
+    event MemberRemoved(address indexed addr, uint256 newTotalMembers, uint256 newQuorum);
+    event QuorumSet(uint256 newQuorum, uint256 totalMembers, uint256 prevQuorum);
+    event ReportReceived(uint256 indexed refSlot, address indexed member, bytes32 report);
+    event ConsensusReached(uint256 indexed refSlot, bytes32 report, uint256 support);
     event ConsensusLost(uint256 indexed refSlot);
-    event ReportProcessorSet(
-        address indexed processor,
-        address indexed prevProcessor
-    );
+    event ReportProcessorSet(address indexed processor, address indexed prevProcessor);
 
     error InvalidChainConfig();
     error NumericOverflow();
@@ -217,35 +186,20 @@ contract HashConsensus is
         address admin,
         address reportProcessor
     ) {
-        if (slotsPerEpoch == 0) {
-            revert InvalidChainConfig();
-        }
-
-        if (secondsPerSlot == 0) {
-            revert InvalidChainConfig();
-        }
+        if (slotsPerEpoch == 0) revert InvalidChainConfig();
+        if (secondsPerSlot == 0) revert InvalidChainConfig();
 
         SLOTS_PER_EPOCH = slotsPerEpoch.toUint64();
         SECONDS_PER_SLOT = secondsPerSlot.toUint64();
         GENESIS_TIME = genesisTime.toUint64();
 
-        if (admin == address(0)) {
-            revert AdminCannotBeZero();
-        }
-
-        if (reportProcessor == address(0)) {
-            revert ReportProcessorCannotBeZero();
-        }
+        if (admin == address(0)) revert AdminCannotBeZero();
+        if (reportProcessor == address(0)) revert ReportProcessorCannotBeZero();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
 
         uint256 farFutureEpoch = _computeEpochAtTimestamp(type(uint64).max);
-        _setFrameConfig(
-            farFutureEpoch,
-            epochsPerFrame,
-            fastLaneLengthSlots,
-            FrameConfig(0, 0, 0)
-        );
+        _setFrameConfig(farFutureEpoch, epochsPerFrame, fastLaneLengthSlots, FrameConfig(0, 0, 0));
 
         _reportProcessor = reportProcessor;
     }
@@ -260,11 +214,7 @@ contract HashConsensus is
     function getChainConfig()
         external
         view
-        returns (
-            uint256 slotsPerEpoch,
-            uint256 secondsPerSlot,
-            uint256 genesisTime
-        )
+        returns (uint256 slotsPerEpoch, uint256 secondsPerSlot, uint256 genesisTime)
     {
         return (SLOTS_PER_EPOCH, SECONDS_PER_SLOT, GENESIS_TIME);
     }
@@ -278,18 +228,10 @@ contract HashConsensus is
     function getFrameConfig()
         external
         view
-        returns (
-            uint256 initialEpoch,
-            uint256 epochsPerFrame,
-            uint256 fastLaneLengthSlots
-        )
+        returns (uint256 initialEpoch, uint256 epochsPerFrame, uint256 fastLaneLengthSlots)
     {
         FrameConfig memory config = _frameConfig;
-        return (
-            config.initialEpoch,
-            config.epochsPerFrame,
-            config.fastLaneLengthSlots
-        );
+        return (config.initialEpoch, config.epochsPerFrame, config.fastLaneLengthSlots);
     }
 
     /// @notice Returns the current reporting frame.
@@ -302,11 +244,7 @@ contract HashConsensus is
     /// @return reportProcessingDeadlineSlot The last slot at which the report can be processed by
     ///         the report processor contract.
     ///
-    function getCurrentFrame()
-        external
-        view
-        returns (uint256 refSlot, uint256 reportProcessingDeadlineSlot)
-    {
+    function getCurrentFrame() external view returns (uint256 refSlot, uint256 reportProcessingDeadlineSlot) {
         ConsensusFrame memory frame = _getCurrentFrame();
         return (frame.refSlot, frame.reportProcessingDeadlineSlot);
     }
@@ -322,21 +260,12 @@ contract HashConsensus is
     ///
     /// @param initialEpoch The new initial epoch.
     ///
-    function updateInitialEpoch(
-        uint256 initialEpoch
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateInitialEpoch(uint256 initialEpoch) external onlyRole(DEFAULT_ADMIN_ROLE) {
         FrameConfig memory prevConfig = _frameConfig;
 
-        if (_computeEpochAtTimestamp(_getTime()) >= prevConfig.initialEpoch) {
-            revert InitialEpochAlreadyArrived();
-        }
+        if (_computeEpochAtTimestamp(_getTime()) >= prevConfig.initialEpoch) revert InitialEpochAlreadyArrived();
 
-        _setFrameConfig(
-            initialEpoch,
-            prevConfig.epochsPerFrame,
-            prevConfig.fastLaneLengthSlots,
-            prevConfig
-        );
+        _setFrameConfig(initialEpoch, prevConfig.epochsPerFrame, prevConfig.fastLaneLengthSlots, prevConfig);
 
         if (_getInitialFrame().refSlot < _getLastProcessingRefSlot()) {
             revert InitialEpochRefSlotCannotBeEarlierThanProcessingSlot();
@@ -355,16 +284,8 @@ contract HashConsensus is
         // Updates epochsPerFrame in a way that either keeps the current reference slot the same
         // or increases it by at least the minimum of old and new frame sizes.
         uint256 timestamp = _getTime();
-        uint256 currentFrameStartEpoch = _computeFrameStartEpoch(
-            timestamp,
-            _frameConfig
-        );
-        _setFrameConfig(
-            currentFrameStartEpoch,
-            epochsPerFrame,
-            fastLaneLengthSlots,
-            _frameConfig
-        );
+        uint256 currentFrameStartEpoch = _computeFrameStartEpoch(timestamp, _frameConfig);
+        _setFrameConfig(currentFrameStartEpoch, epochsPerFrame, fastLaneLengthSlots, _frameConfig);
     }
 
     ///
@@ -408,23 +329,14 @@ contract HashConsensus is
     function getIsFastLaneMember(address addr) external view returns (bool) {
         uint256 index1b = _memberIndices1b[addr];
         unchecked {
-            return
-                index1b > 0 &&
-                _isFastLaneMember(index1b - 1, _getCurrentFrame().index);
+            return index1b > 0 && _isFastLaneMember(index1b - 1, _getCurrentFrame().index);
         }
     }
 
     /// @notice Returns all current members, together with the last reference slot each member
     /// submitted a report for.
     ///
-    function getMembers()
-        external
-        view
-        returns (
-            address[] memory addresses,
-            uint256[] memory lastReportedRefSlots
-        )
-    {
+    function getMembers() external view returns (address[] memory addresses, uint256[] memory lastReportedRefSlots) {
         return _getMembers(false);
     }
 
@@ -436,10 +348,7 @@ contract HashConsensus is
     function getFastLaneMembers()
         external
         view
-        returns (
-            address[] memory addresses,
-            uint256[] memory lastReportedRefSlots
-        )
+        returns (address[] memory addresses, uint256[] memory lastReportedRefSlots)
     {
         return _getMembers(true);
     }
@@ -452,23 +361,15 @@ contract HashConsensus is
     ///        it to zero disables the fast lane subset, allowing any oracle to report starting from
     ///        the first slot of a frame and until the frame's reporting deadline.
     ///
-    function setFastLaneLengthSlots(
-        uint256 fastLaneLengthSlots
-    ) external onlyRole(MANAGE_FAST_LANE_CONFIG_ROLE) {
+    function setFastLaneLengthSlots(uint256 fastLaneLengthSlots) external onlyRole(MANAGE_FAST_LANE_CONFIG_ROLE) {
         _setFastLaneLengthSlots(fastLaneLengthSlots);
     }
 
-    function addMember(
-        address addr,
-        uint256 quorum
-    ) external onlyRole(MANAGE_MEMBERS_AND_QUORUM_ROLE) {
+    function addMember(address addr, uint256 quorum) external onlyRole(MANAGE_MEMBERS_AND_QUORUM_ROLE) {
         _addMember(addr, quorum);
     }
 
-    function removeMember(
-        address addr,
-        uint256 quorum
-    ) external onlyRole(MANAGE_MEMBERS_AND_QUORUM_ROLE) {
+    function removeMember(address addr, uint256 quorum) external onlyRole(MANAGE_MEMBERS_AND_QUORUM_ROLE) {
         _removeMember(addr, quorum);
     }
 
@@ -496,9 +397,7 @@ contract HashConsensus is
         return _reportProcessor;
     }
 
-    function setReportProcessor(
-        address newProcessor
-    ) external onlyRole(MANAGE_REPORT_PROCESSOR_ROLE) {
+    function setReportProcessor(address newProcessor) external onlyRole(MANAGE_REPORT_PROCESSOR_ROLE) {
         _setReportProcessor(newProcessor);
     }
 
@@ -519,11 +418,7 @@ contract HashConsensus is
     function getConsensusState()
         external
         view
-        returns (
-            uint256 refSlot,
-            bytes32 consensusReport,
-            bool isReportProcessing
-        )
+        returns (uint256 refSlot, bytes32 consensusReport, bool isReportProcessing)
     {
         refSlot = _getCurrentFrame().refSlot;
         (consensusReport, , ) = _getConsensusReport(refSlot, _quorum);
@@ -532,14 +427,8 @@ contract HashConsensus is
 
     /// @notice Returns report variants and their support for the current reference slot.
     ///
-    function getReportVariants()
-        external
-        view
-        returns (bytes32[] memory variants, uint256[] memory support)
-    {
-        if (_reportingState.lastReportRefSlot != _getCurrentFrame().refSlot) {
-            return (variants, support);
-        }
+    function getReportVariants() external view returns (bytes32[] memory variants, uint256[] memory support) {
+        if (_reportingState.lastReportRefSlot != _getCurrentFrame().refSlot) return (variants, support);
 
         uint256 variantsLength = _reportVariantsLength;
         variants = new bytes32[](variantsLength);
@@ -579,15 +468,10 @@ contract HashConsensus is
     /// @param addr The member address.
     /// @return result See the docs for `MemberConsensusState`.
     ///
-    function getConsensusStateForMember(
-        address addr
-    ) external view returns (MemberConsensusState memory result) {
+    function getConsensusStateForMember(address addr) external view returns (MemberConsensusState memory result) {
         ConsensusFrame memory frame = _getCurrentFrame();
         result.currentFrameRefSlot = frame.refSlot;
-        (result.currentFrameConsensusReport, , ) = _getConsensusReport(
-            frame.refSlot,
-            _quorum
-        );
+        (result.currentFrameConsensusReport, , ) = _getConsensusReport(frame.refSlot, _quorum);
 
         uint256 index = _memberIndices1b[addr];
         result.isMember = index != 0;
@@ -599,8 +483,7 @@ contract HashConsensus is
             MemberState memory memberState = _memberStates[index];
 
             result.lastMemberReportRefSlot = memberState.lastReportRefSlot;
-            result.currentFrameMemberReport = result.lastMemberReportRefSlot ==
-                frame.refSlot
+            result.currentFrameMemberReport = result.lastMemberReportRefSlot == frame.refSlot
                 ? _reportVariants[memberState.lastReportVariantIndex].hash
                 : ZERO_HASH;
 
@@ -613,8 +496,7 @@ contract HashConsensus is
             result.isFastLane = _isFastLaneMember(index, frame.index);
 
             if (!result.isFastLane && result.canReport) {
-                result.canReport =
-                    slot > frame.refSlot + _frameConfig.fastLaneLengthSlots;
+                result.canReport = slot > frame.refSlot + _frameConfig.fastLaneLengthSlots;
             }
         }
     }
@@ -631,11 +513,7 @@ contract HashConsensus is
     ///        match the version returned by the currently set consensus report processor,
     ///        or zero if no report processor is set.
     ///
-    function submitReport(
-        uint256 slot,
-        bytes32 report,
-        uint256 consensusVersion
-    ) external {
+    function submitReport(uint256 slot, bytes32 report, uint256 consensusVersion) external {
         _submitReport(slot, report, consensusVersion);
     }
 
@@ -649,30 +527,15 @@ contract HashConsensus is
         uint256 fastLaneLengthSlots,
         FrameConfig memory prevConfig
     ) internal {
-        if (epochsPerFrame == 0) {
-            revert EpochsPerFrameCannotBeZero();
-        }
+        if (epochsPerFrame == 0) revert EpochsPerFrameCannotBeZero();
+        if (fastLaneLengthSlots > epochsPerFrame * SLOTS_PER_EPOCH) revert FastLanePeriodCannotBeLongerThanFrame();
 
-        if (fastLaneLengthSlots > epochsPerFrame * SLOTS_PER_EPOCH) {
-            revert FastLanePeriodCannotBeLongerThanFrame();
-        }
+        _frameConfig = FrameConfig(initialEpoch.toUint64(), epochsPerFrame.toUint64(), fastLaneLengthSlots.toUint64());
 
-        _frameConfig = FrameConfig(
-            initialEpoch.toUint64(),
-            epochsPerFrame.toUint64(),
-            fastLaneLengthSlots.toUint64()
-        );
-
-        if (
-            initialEpoch != prevConfig.initialEpoch ||
-            epochsPerFrame != prevConfig.epochsPerFrame
-        ) {
+        if (initialEpoch != prevConfig.initialEpoch || epochsPerFrame != prevConfig.epochsPerFrame) {
             emit FrameConfigSet(initialEpoch, epochsPerFrame);
         }
-
-        if (fastLaneLengthSlots != prevConfig.fastLaneLengthSlots) {
-            emit FastLaneConfigSet(fastLaneLengthSlots);
-        }
+        if (fastLaneLengthSlots != prevConfig.fastLaneLengthSlots) emit FastLaneConfigSet(fastLaneLengthSlots);
     }
 
     function _getCurrentFrame() internal view returns (ConsensusFrame memory) {
@@ -694,35 +557,21 @@ contract HashConsensus is
         uint256 frameIndex,
         FrameConfig memory config
     ) internal view returns (ConsensusFrame memory) {
-        uint256 frameStartEpoch = _computeStartEpochOfFrameWithIndex(
-            frameIndex,
-            config
-        );
+        uint256 frameStartEpoch = _computeStartEpochOfFrameWithIndex(frameIndex, config);
         uint256 frameStartSlot = _computeStartSlotAtEpoch(frameStartEpoch);
-        uint256 nextFrameStartSlot = frameStartSlot +
-            config.epochsPerFrame *
-            SLOTS_PER_EPOCH;
+        uint256 nextFrameStartSlot = frameStartSlot + config.epochsPerFrame * SLOTS_PER_EPOCH;
 
         // forge-lint: disable-next-item(unsafe-typecast)
         return
             ConsensusFrame({
                 index: frameIndex,
                 refSlot: uint64(frameStartSlot - 1),
-                reportProcessingDeadlineSlot: uint64(
-                    nextFrameStartSlot - 1 - DEADLINE_SLOT_OFFSET
-                )
+                reportProcessingDeadlineSlot: uint64(nextFrameStartSlot - 1 - DEADLINE_SLOT_OFFSET)
             });
     }
 
-    function _computeFrameStartEpoch(
-        uint256 timestamp,
-        FrameConfig memory config
-    ) internal view returns (uint256) {
-        return
-            _computeStartEpochOfFrameWithIndex(
-                _computeFrameIndex(timestamp, config),
-                config
-            );
+    function _computeFrameStartEpoch(uint256 timestamp, FrameConfig memory config) internal view returns (uint256) {
+        return _computeStartEpochOfFrameWithIndex(_computeFrameIndex(timestamp, config), config);
     }
 
     function _computeStartEpochOfFrameWithIndex(
@@ -732,27 +581,18 @@ contract HashConsensus is
         return config.initialEpoch + frameIndex * config.epochsPerFrame;
     }
 
-    function _computeFrameIndex(
-        uint256 timestamp,
-        FrameConfig memory config
-    ) internal view returns (uint256) {
+    function _computeFrameIndex(uint256 timestamp, FrameConfig memory config) internal view returns (uint256) {
         uint256 epoch = _computeEpochAtTimestamp(timestamp);
-        if (epoch < config.initialEpoch) {
-            revert InitialEpochIsYetToArrive();
-        }
+        if (epoch < config.initialEpoch) revert InitialEpochIsYetToArrive();
         return (epoch - config.initialEpoch) / config.epochsPerFrame;
     }
 
-    function _computeTimestampAtSlot(
-        uint256 slot
-    ) internal view returns (uint256) {
+    function _computeTimestampAtSlot(uint256 slot) internal view returns (uint256) {
         // See: github.com/ethereum/consensus-specs/blob/dev/specs/bellatrix/beacon-chain.md#compute_timestamp_at_slot
         return GENESIS_TIME + slot * SECONDS_PER_SLOT;
     }
 
-    function _computeSlotAtTimestamp(
-        uint256 timestamp
-    ) internal view returns (uint256) {
+    function _computeSlotAtTimestamp(uint256 timestamp) internal view returns (uint256) {
         return (timestamp - GENESIS_TIME) / SECONDS_PER_SLOT;
     }
 
@@ -761,15 +601,11 @@ contract HashConsensus is
         return slot / SLOTS_PER_EPOCH;
     }
 
-    function _computeEpochAtTimestamp(
-        uint256 timestamp
-    ) internal view returns (uint256) {
+    function _computeEpochAtTimestamp(uint256 timestamp) internal view returns (uint256) {
         return _computeEpochAtSlot(_computeSlotAtTimestamp(timestamp));
     }
 
-    function _computeStartSlotAtEpoch(
-        uint256 epoch
-    ) internal view returns (uint256) {
+    function _computeStartSlotAtEpoch(uint256 epoch) internal view returns (uint256) {
         // See: github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_start_slot_at_epoch
         return epoch * SLOTS_PER_EPOCH;
     }
@@ -788,22 +624,15 @@ contract HashConsensus is
 
     function _getMemberIndex(address addr) internal view returns (uint256) {
         uint256 index1b = _memberIndices1b[addr];
-        if (index1b == 0) {
-            revert NonMember();
-        }
+        if (index1b == 0) revert NonMember();
         unchecked {
             return uint256(index1b - 1);
         }
     }
 
     function _addMember(address addr, uint256 quorum) internal {
-        if (_isMember(addr)) {
-            revert DuplicateMember();
-        }
-
-        if (addr == address(0)) {
-            revert AddressCannotBeZero();
-        }
+        if (_isMember(addr)) revert DuplicateMember();
+        if (addr == address(0)) revert AddressCannotBeZero();
 
         _memberStates.push(MemberState(0, 0));
         _memberAddresses.push(addr);
@@ -840,10 +669,7 @@ contract HashConsensus is
             // member reported at least once
             ConsensusFrame memory frame = _getCurrentFrame();
 
-            if (
-                memberState.lastReportRefSlot == frame.refSlot &&
-                _getLastProcessingRefSlot() < frame.refSlot
-            ) {
+            if (memberState.lastReportRefSlot == frame.refSlot && _getLastProcessingRefSlot() < frame.refSlot) {
                 // member reported for the current ref. slot and the consensus report
                 // is not processing yet => need to cancel the member's report
                 --_reportVariants[memberState.lastReportVariantIndex].support;
@@ -855,9 +681,7 @@ contract HashConsensus is
 
     function _setFastLaneLengthSlots(uint256 fastLaneLengthSlots) internal {
         FrameConfig memory frameConfig = _frameConfig;
-        if (
-            fastLaneLengthSlots > frameConfig.epochsPerFrame * SLOTS_PER_EPOCH
-        ) {
+        if (fastLaneLengthSlots > frameConfig.epochsPerFrame * SLOTS_PER_EPOCH) {
             revert FastLanePeriodCannotBeLongerThanFrame();
         }
         if (fastLaneLengthSlots != frameConfig.fastLaneLengthSlots) {
@@ -885,45 +709,23 @@ contract HashConsensus is
     /// @dev Tests whether the member with the given `index` is in the fast lane subset for the
     /// given reporting `frameIndex`.
     ///
-    function _isFastLaneMember(
-        uint256 index,
-        uint256 frameIndex
-    ) internal view returns (bool) {
+    function _isFastLaneMember(uint256 index, uint256 frameIndex) internal view returns (bool) {
         uint256 totalMembers = _memberStates.length;
-        (uint256 flLeft, uint256 flPastRight) = _getFastLaneSubset(
-            frameIndex,
-            totalMembers
-        );
+        (uint256 flLeft, uint256 flPastRight) = _getFastLaneSubset(frameIndex, totalMembers);
         unchecked {
-            return (flPastRight != 0 &&
-                pointInClosedIntervalModN(
-                    index,
-                    flLeft,
-                    flPastRight - 1,
-                    totalMembers
-                ));
+            return (flPastRight != 0 && pointInClosedIntervalModN(index, flLeft, flPastRight - 1, totalMembers));
         }
     }
 
     function _getMembers(
         bool fastLane
-    )
-        internal
-        view
-        returns (
-            address[] memory addresses,
-            uint256[] memory lastReportedRefSlots
-        )
-    {
+    ) internal view returns (address[] memory addresses, uint256[] memory lastReportedRefSlots) {
         uint256 totalMembers = _memberStates.length;
         uint256 left;
         uint256 right;
 
         if (fastLane) {
-            (left, right) = _getFastLaneSubset(
-                _getCurrentFrame().index,
-                totalMembers
-            );
+            (left, right) = _getFastLaneSubset(_getCurrentFrame().index, totalMembers);
         } else {
             right = totalMembers;
         }
@@ -944,32 +746,17 @@ contract HashConsensus is
     /// Implementation: consensus
     ///
 
-    function _submitReport(
-        uint256 slot,
-        bytes32 report,
-        uint256 consensusVersion
-    ) internal {
-        if (slot == 0) {
-            revert InvalidSlot();
-        }
-
-        if (slot > type(uint64).max) {
-            revert NumericOverflow();
-        }
-
-        if (report == ZERO_HASH) {
-            revert EmptyReport();
-        }
+    function _submitReport(uint256 slot, bytes32 report, uint256 consensusVersion) internal {
+        if (slot == 0) revert InvalidSlot();
+        if (slot > type(uint64).max) revert NumericOverflow();
+        if (report == ZERO_HASH) revert EmptyReport();
 
         uint256 memberIndex = _getMemberIndex(_msgSender());
         MemberState memory memberState = _memberStates[memberIndex];
 
         uint256 expectedConsensusVersion = _getConsensusVersion();
         if (consensusVersion != expectedConsensusVersion) {
-            revert UnexpectedConsensusVersion(
-                expectedConsensusVersion,
-                consensusVersion
-            );
+            revert UnexpectedConsensusVersion(expectedConsensusVersion, consensusVersion);
         }
 
         uint256 timestamp = _getTime();
@@ -977,21 +764,11 @@ contract HashConsensus is
         FrameConfig memory config = _frameConfig;
         ConsensusFrame memory frame = _getFrameAtTimestamp(timestamp, config);
 
-        if (slot != frame.refSlot) {
-            revert InvalidSlot();
-        }
-
-        if (currentSlot > frame.reportProcessingDeadlineSlot) {
-            revert StaleReport();
-        }
-
-        if (
-            currentSlot <= frame.refSlot + config.fastLaneLengthSlots &&
-            !_isFastLaneMember(memberIndex, frame.index)
-        ) {
+        if (slot != frame.refSlot) revert InvalidSlot();
+        if (currentSlot > frame.reportProcessingDeadlineSlot) revert StaleReport();
+        if (currentSlot <= frame.refSlot + config.fastLaneLengthSlots && !_isFastLaneMember(memberIndex, frame.index)) {
             revert NonFastLaneMemberCannotReportWithinFastLaneInterval();
         }
-
         if (slot <= _getLastProcessingRefSlot()) {
             // consensus for the ref. slot was already reached and consensus report is processing
             if (slot == memberState.lastReportRefSlot) {
@@ -1017,10 +794,7 @@ contract HashConsensus is
         uint64 varIndex = 0;
         bool prevConsensusLost = false;
 
-        while (
-            varIndex < variantsLength &&
-            _reportVariants[varIndex].hash != report
-        ) {
+        while (varIndex < variantsLength && _reportVariants[varIndex].hash != report) {
             ++varIndex;
         }
 
@@ -1031,9 +805,7 @@ contract HashConsensus is
                 revert DuplicateReport();
             } else {
                 uint256 support = --_reportVariants[prevVarIndex].support;
-                if (support == _quorum - 1) {
-                    prevConsensusLost = true;
-                }
+                if (support == _quorum - 1) prevConsensusLost = true;
             }
         }
 
@@ -1043,10 +815,7 @@ contract HashConsensus is
             support = ++_reportVariants[varIndex].support;
         } else {
             support = 1;
-            _reportVariants[varIndex] = ReportVariant({
-                hash: report,
-                support: 1
-            });
+            _reportVariants[varIndex] = ReportVariant({ hash: report, support: 1 });
             _reportVariantsLength = ++variantsLength;
         }
 
@@ -1060,9 +829,7 @@ contract HashConsensus is
 
         if (support >= _quorum) {
             _consensusReached(frame, report, varIndex, support);
-        } else if (prevConsensusLost) {
-            _consensusNotReached(frame);
-        }
+        } else if (prevConsensusLost) _consensusNotReached(frame);
     }
 
     function _consensusReached(
@@ -1093,13 +860,8 @@ contract HashConsensus is
         }
     }
 
-    function _setQuorumAndCheckConsensus(
-        uint256 quorum,
-        uint256 totalMembers
-    ) internal {
-        if (quorum <= totalMembers / 2) {
-            revert QuorumTooSmall(totalMembers / 2 + 1, quorum);
-        }
+    function _setQuorumAndCheckConsensus(uint256 quorum, uint256 totalMembers) internal {
+        if (quorum <= totalMembers / 2) revert QuorumTooSmall(totalMembers / 2 + 1, quorum);
 
         // we're explicitly allowing quorum values greater than the number of members to
         // allow effectively disabling the oracle in case something unpredictable happens
@@ -1107,45 +869,32 @@ contract HashConsensus is
         uint256 prevQuorum = _quorum;
         if (quorum != prevQuorum) {
             _checkRole(
-                quorum == UNREACHABLE_QUORUM
-                    ? DISABLE_CONSENSUS_ROLE
-                    : MANAGE_MEMBERS_AND_QUORUM_ROLE,
+                quorum == UNREACHABLE_QUORUM ? DISABLE_CONSENSUS_ROLE : MANAGE_MEMBERS_AND_QUORUM_ROLE,
                 _msgSender()
             );
             _quorum = quorum;
             emit QuorumSet(quorum, totalMembers, prevQuorum);
         }
-
-        if (_computeEpochAtTimestamp(_getTime()) >= _frameConfig.initialEpoch) {
-            _checkConsensus(quorum);
-        }
+        if (_computeEpochAtTimestamp(_getTime()) >= _frameConfig.initialEpoch) _checkConsensus(quorum);
     }
 
     function _checkConsensus(uint256 quorum) internal {
         uint256 timestamp = _getTime();
-        ConsensusFrame memory frame = _getFrameAtTimestamp(
-            timestamp,
-            _frameConfig
-        );
+        ConsensusFrame memory frame = _getFrameAtTimestamp(timestamp, _frameConfig);
 
-        if (
-            _computeSlotAtTimestamp(timestamp) >
-            frame.reportProcessingDeadlineSlot
-        ) {
+        if (_computeSlotAtTimestamp(timestamp) > frame.reportProcessingDeadlineSlot) {
             // a report for the current ref. slot cannot be processed anymore
             return;
         }
-
         if (_getLastProcessingRefSlot() >= frame.refSlot) {
             // a consensus report for the current ref. slot is already being processed
             return;
         }
 
-        (
-            bytes32 consensusReport,
-            int256 consensusVariantIndex,
-            uint256 support
-        ) = _getConsensusReport(frame.refSlot, quorum);
+        (bytes32 consensusReport, int256 consensusVariantIndex, uint256 support) = _getConsensusReport(
+            frame.refSlot,
+            quorum
+        );
 
         if (consensusVariantIndex >= 0) {
             _consensusReached(
@@ -1163,11 +912,7 @@ contract HashConsensus is
     function _getConsensusReport(
         uint256 currentRefSlot,
         uint256 quorum
-    )
-        internal
-        view
-        returns (bytes32 report, int256 variantIndex, uint256 support)
-    {
+    ) internal view returns (bytes32 report, int256 variantIndex, uint256 support) {
         if (_reportingState.lastReportRefSlot != currentRefSlot) {
             // there were no reports for the current ref. slot
             return (ZERO_HASH, -1, 0);
@@ -1199,13 +944,8 @@ contract HashConsensus is
 
     function _setReportProcessor(address newProcessor) internal {
         address prevProcessor = _reportProcessor;
-        if (newProcessor == address(0)) {
-            revert ReportProcessorCannotBeZero();
-        }
-
-        if (newProcessor == prevProcessor) {
-            revert NewProcessorCannotBeTheSame();
-        }
+        if (newProcessor == address(0)) revert ReportProcessorCannotBeZero();
+        if (newProcessor == prevProcessor) revert NewProcessorCannotBeTheSame();
 
         _reportProcessor = newProcessor;
         emit ReportProcessorSet(newProcessor, prevProcessor);
@@ -1213,32 +953,24 @@ contract HashConsensus is
         ConsensusFrame memory frame = _getCurrentFrame();
         uint256 lastConsensusRefSlot = _reportingState.lastConsensusRefSlot;
 
-        uint256 processingRefSlotPrev = IReportAsyncProcessor(prevProcessor)
-            .getLastProcessingRefSlot();
-        uint256 processingRefSlotNext = IReportAsyncProcessor(newProcessor)
-            .getLastProcessingRefSlot();
+        uint256 processingRefSlotPrev = IReportAsyncProcessor(prevProcessor).getLastProcessingRefSlot();
+        uint256 processingRefSlotNext = IReportAsyncProcessor(newProcessor).getLastProcessingRefSlot();
 
         if (
             processingRefSlotPrev < frame.refSlot &&
             processingRefSlotNext < frame.refSlot &&
             lastConsensusRefSlot == frame.refSlot
         ) {
-            bytes32 report = _reportVariants[
-                _reportingState.lastConsensusVariantIndex
-            ].hash;
+            bytes32 report = _reportVariants[_reportingState.lastConsensusVariantIndex].hash;
             _submitReportForProcessing(frame, report);
         }
     }
 
     function _getLastProcessingRefSlot() internal view returns (uint256) {
-        return
-            IReportAsyncProcessor(_reportProcessor).getLastProcessingRefSlot();
+        return IReportAsyncProcessor(_reportProcessor).getLastProcessingRefSlot();
     }
 
-    function _submitReportForProcessing(
-        ConsensusFrame memory frame,
-        bytes32 report
-    ) internal {
+    function _submitReportForProcessing(ConsensusFrame memory frame, bytes32 report) internal {
         IReportAsyncProcessor(_reportProcessor).submitConsensusReport(
             report,
             frame.refSlot,
@@ -1247,9 +979,7 @@ contract HashConsensus is
     }
 
     function _cancelReportProcessing(ConsensusFrame memory frame) internal {
-        IReportAsyncProcessor(_reportProcessor).discardConsensusReport(
-            frame.refSlot
-        );
+        IReportAsyncProcessor(_reportProcessor).discardConsensusReport(frame.refSlot);
     }
 
     function _getConsensusVersion() internal view returns (uint256) {
@@ -1257,11 +987,6 @@ contract HashConsensus is
     }
 }
 
-function pointInClosedIntervalModN(
-    uint256 x,
-    uint256 a,
-    uint256 b,
-    uint256 n
-) pure returns (bool) {
+function pointInClosedIntervalModN(uint256 x, uint256 a, uint256 b, uint256 n) pure returns (bool) {
     return (x + n - a) % n <= (b - a) % n;
 }

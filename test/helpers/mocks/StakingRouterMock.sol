@@ -16,9 +16,7 @@ contract StakingRouterMock {
         uint256 length = modules.length;
         for (uint256 i = 0; i < length; ++i) {
             uint256 moduleId = i + 1; // module ids start at 1
-            IStakingRouter.StakingModule storage moduleData = _modules[
-                moduleId
-            ];
+            IStakingRouter.StakingModule storage moduleData = _modules[moduleId];
             // Test IDs grow sequentially from 1, so they never exceed the uint24 field used on mainnet.
             // forge-lint: disable-next-line(unsafe-typecast)
             moduleData.id = uint24(moduleId);
@@ -42,16 +40,10 @@ contract StakingRouterMock {
                 break;
             }
         }
-        if (!exists) {
-            _moduleIds.push(moduleId);
-        }
+        if (!exists) _moduleIds.push(moduleId);
     }
 
-    function getStakingModules()
-        external
-        view
-        returns (IStakingRouter.StakingModule[] memory res)
-    {
+    function getStakingModules() external view returns (IStakingRouter.StakingModule[] memory res) {
         uint256 length = _moduleIds.length;
         res = new IStakingRouter.StakingModule[](length);
         for (uint256 i = 0; i < length; ++i) {
@@ -59,14 +51,14 @@ contract StakingRouterMock {
         }
     }
 
-    function getStakingModule(
-        uint256 moduleId
-    ) external view returns (IStakingRouter.StakingModule memory) {
+    function getStakingModule(uint256 moduleId) external view returns (IStakingRouter.StakingModule memory) {
         IStakingRouter.StakingModule memory module = _modules[moduleId];
-        if (module.stakingModuleAddress == address(0)) {
-            revert StakingModuleUnregistered();
-        }
+        if (module.stakingModuleAddress == address(0)) revert StakingModuleUnregistered();
         return module;
+    }
+
+    function getStakingModulesCount() public view returns (uint256) {
+        return _moduleIds.length;
     }
 
     function _clearModules() internal {

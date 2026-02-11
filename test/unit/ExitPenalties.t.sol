@@ -24,62 +24,39 @@ contract ExitPenaltiesTestBase is Test, Utilities, Fixtures {
 
     function setUp() public {
         csm = new CSMMock();
-        parametersRegistry = ParametersRegistryMock(
-            address(csm.PARAMETERS_REGISTRY())
-        );
+        parametersRegistry = ParametersRegistryMock(address(csm.PARAMETERS_REGISTRY()));
         accounting = CSMMock(csm).accounting();
         strikes = new ValidatorStrikesMock();
         stranger = nextAddress("STRANGER");
         admin = nextAddress("ADMIN");
 
-        exitPenalties = new ExitPenalties(
-            address(csm),
-            address(parametersRegistry),
-            address(strikes)
-        );
+        exitPenalties = new ExitPenalties(address(csm), address(parametersRegistry), address(strikes));
         _enableInitializers(address(exitPenalties));
     }
 }
 
 contract ExitPenaltiesTestMisc is ExitPenaltiesTestBase {
     function test_constructor() public {
-        exitPenalties = new ExitPenalties(
-            address(csm),
-            address(parametersRegistry),
-            address(strikes)
-        );
+        exitPenalties = new ExitPenalties(address(csm), address(parametersRegistry), address(strikes));
         assertEq(address(exitPenalties.MODULE()), address(csm));
-        assertEq(
-            address(exitPenalties.PARAMETERS_REGISTRY()),
-            address(parametersRegistry)
-        );
+        assertEq(address(exitPenalties.PARAMETERS_REGISTRY()), address(parametersRegistry));
         assertEq(address(exitPenalties.ACCOUNTING()), address(accounting));
         assertEq(address(exitPenalties.STRIKES()), address(strikes));
     }
 
     function test_constructor_RevertWhen_ZeroModuleAddress() public {
         vm.expectRevert(IExitPenalties.ZeroModuleAddress.selector);
-        new ExitPenalties(
-            address(0),
-            address(parametersRegistry),
-            address(strikes)
-        );
+        new ExitPenalties(address(0), address(parametersRegistry), address(strikes));
     }
 
-    function test_constructor_RevertWhen_ZeroParametersRegistryAddress()
-        public
-    {
+    function test_constructor_RevertWhen_ZeroParametersRegistryAddress() public {
         vm.expectRevert(IExitPenalties.ZeroParametersRegistryAddress.selector);
         new ExitPenalties(address(csm), address(0), address(strikes));
     }
 
     function test_constructor_RevertWhen_ZeroStrikesAddress() public {
         vm.expectRevert(IExitPenalties.ZeroStrikesAddress.selector);
-        new ExitPenalties(
-            address(csm),
-            address(parametersRegistry),
-            address(0)
-        );
+        new ExitPenalties(address(csm), address(parametersRegistry), address(0));
     }
 }
 
@@ -90,16 +67,11 @@ contract ExitPenaltiesTestProcessExitDelayReport is ExitPenaltiesTestBase {
         uint256 penalty = parametersRegistry.getExitDelayFee(0);
 
         vm.expectEmit(address(exitPenalties));
-        emit IExitPenalties.ValidatorExitDelayProcessed(
-            NO_ID,
-            publicKey,
-            penalty
-        );
+        emit IExitPenalties.ValidatorExitDelayProcessed(NO_ID, publicKey, penalty);
         vm.prank(address(csm));
         exitPenalties.processExitDelayReport(NO_ID, publicKey, eligibleToExit);
 
-        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(NO_ID, publicKey);
+        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(exitPenaltyInfo.delayFee.value, penalty);
     }
 
@@ -108,21 +80,10 @@ contract ExitPenaltiesTestProcessExitDelayReport is ExitPenaltiesTestBase {
         bytes memory publicKey = randomBytes(48);
 
         vm.prank(address(csm));
-        vm.expectRevert(
-            IExitPenalties.ValidatorExitDelayNotApplicable.selector
-        );
-        exitPenalties.processExitDelayReport(
-            NO_ID,
-            publicKey,
-            eligibleToExit - 1 seconds
-        );
-        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(NO_ID, publicKey);
-        assertEq(
-            exitPenaltyInfo.delayFee.isValue,
-            false,
-            "Penalty should not be applied"
-        );
+        vm.expectRevert(IExitPenalties.ValidatorExitDelayNotApplicable.selector);
+        exitPenalties.processExitDelayReport(NO_ID, publicKey, eligibleToExit - 1 seconds);
+        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(NO_ID, publicKey);
+        assertEq(exitPenaltyInfo.delayFee.isValue, false, "Penalty should not be applied");
     }
 
     function test_processExitDelayReport_ignoreWhen_alreadyReported() public {
@@ -136,18 +97,9 @@ contract ExitPenaltiesTestProcessExitDelayReport is ExitPenaltiesTestBase {
         parametersRegistry.setExitDelayFee(0, penalty + 1);
 
         vm.prank(address(csm));
-        exitPenalties.processExitDelayReport(
-            NO_ID,
-            publicKey,
-            eligibleToExit + 1
-        );
-        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(NO_ID, publicKey);
-        assertEq(
-            exitPenaltyInfo.delayFee.value,
-            penalty,
-            "Penalty should not be updated"
-        );
+        exitPenalties.processExitDelayReport(NO_ID, publicKey, eligibleToExit + 1);
+        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(NO_ID, publicKey);
+        assertEq(exitPenaltyInfo.delayFee.value, penalty, "Penalty should not be updated");
     }
 
     function test_processExitDelayReport_revertWhen_SenderIsNotModule() public {
@@ -167,18 +119,11 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
         uint256 exitType = exitPenalties.VOLUNTARY_EXIT_TYPE_ID() + 1;
 
         vm.expectEmit(address(exitPenalties));
-        emit IExitPenalties.TriggeredExitFeeRecorded(
-            NO_ID,
-            exitType,
-            publicKey,
-            paidFee,
-            paidFee
-        );
+        emit IExitPenalties.TriggeredExitFeeRecorded(NO_ID, exitType, publicKey, paidFee, paidFee);
         vm.prank(address(csm));
         exitPenalties.processTriggeredExit(NO_ID, publicKey, paidFee, exitType);
 
-        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(NO_ID, publicKey);
+        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(exitPenaltyInfo.elWithdrawalRequestFee.value, paidFee);
     }
 
@@ -190,18 +135,11 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
         parametersRegistry.setMaxElWithdrawalRequestFee(0, 0);
 
         vm.expectEmit(address(exitPenalties));
-        emit IExitPenalties.TriggeredExitFeeRecorded(
-            NO_ID,
-            exitType,
-            publicKey,
-            paidFee,
-            0
-        );
+        emit IExitPenalties.TriggeredExitFeeRecorded(NO_ID, exitType, publicKey, paidFee, 0);
         vm.prank(address(csm));
         exitPenalties.processTriggeredExit(NO_ID, publicKey, paidFee, exitType);
 
-        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(NO_ID, publicKey);
+        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(exitPenaltyInfo.elWithdrawalRequestFee.isValue, true);
         assertEq(exitPenaltyInfo.elWithdrawalRequestFee.value, 0);
     }
@@ -219,8 +157,7 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
         Vm.Log[] memory entries = vm.getRecordedLogs();
         assertEq(entries.length, 0);
 
-        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(NO_ID, publicKey);
+        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(exitPenaltyInfo.elWithdrawalRequestFee.value, 0);
     }
 
@@ -231,33 +168,18 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
         uint256 exitType = exitPenalties.VOLUNTARY_EXIT_TYPE_ID() + 1;
 
         vm.prank(address(csm));
-        exitPenalties.processTriggeredExit(
-            NO_ID,
-            publicKey,
-            initialPaidFee,
-            exitType
-        );
+        exitPenalties.processTriggeredExit(NO_ID, publicKey, initialPaidFee, exitType);
 
         vm.recordLogs();
 
         vm.prank(address(csm));
-        exitPenalties.processTriggeredExit(
-            NO_ID,
-            publicKey,
-            newPaidFee,
-            exitType
-        );
+        exitPenalties.processTriggeredExit(NO_ID, publicKey, newPaidFee, exitType);
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
         assertEq(entries.length, 0);
 
-        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(NO_ID, publicKey);
-        assertEq(
-            exitPenaltyInfo.elWithdrawalRequestFee.value,
-            initialPaidFee,
-            "paid fee should not be updated"
-        );
+        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(NO_ID, publicKey);
+        assertEq(exitPenaltyInfo.elWithdrawalRequestFee.value, initialPaidFee, "paid fee should not be updated");
     }
 
     function test_processTriggeredExit_feeMoreThanMax() public {
@@ -269,13 +191,8 @@ contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
         vm.prank(address(csm));
         exitPenalties.processTriggeredExit(NO_ID, publicKey, paidFee, exitType);
 
-        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(NO_ID, publicKey);
-        assertEq(
-            exitPenaltyInfo.elWithdrawalRequestFee.value,
-            maxFee,
-            "paid fee should be capped to max fee"
-        );
+        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(NO_ID, publicKey);
+        assertEq(exitPenaltyInfo.elWithdrawalRequestFee.value, maxFee, "paid fee should be capped to max fee");
     }
 
     function test_processTriggeredExit_revertWhen_SenderIsNotModule() public {
@@ -299,8 +216,7 @@ contract ExitPenaltiesTestProcessStrikesReport is ExitPenaltiesTestBase {
         vm.prank(address(strikes));
         exitPenalties.processStrikesReport(NO_ID, publicKey);
 
-        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(NO_ID, publicKey);
+        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(NO_ID, publicKey);
         assertEq(exitPenaltyInfo.strikesPenalty.value, penalty);
     }
 
@@ -320,13 +236,8 @@ contract ExitPenaltiesTestProcessStrikesReport is ExitPenaltiesTestBase {
         Vm.Log[] memory entries = vm.getRecordedLogs();
         assertEq(entries.length, 0);
 
-        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(NO_ID, publicKey);
-        assertEq(
-            exitPenaltyInfo.strikesPenalty.value,
-            penalty,
-            "penalty should not be updated"
-        );
+        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(NO_ID, publicKey);
+        assertEq(exitPenaltyInfo.strikesPenalty.value, penalty, "penalty should not be updated");
     }
 
     function test_processStrikesReport_revertWhen_SenderIsNotStrikes() public {
@@ -337,19 +248,13 @@ contract ExitPenaltiesTestProcessStrikesReport is ExitPenaltiesTestBase {
     }
 }
 
-contract ExitPenaltiesTestIsValidatorExitDelayPenaltyApplicable is
-    ExitPenaltiesTestBase
-{
+contract ExitPenaltiesTestIsValidatorExitDelayPenaltyApplicable is ExitPenaltiesTestBase {
     function test_isValidatorExitDelayPenaltyApplicable_notDelayedYet() public {
         uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID);
         bytes memory publicKey = randomBytes(48);
 
         vm.prank(address(csm));
-        bool applicable = exitPenalties.isValidatorExitDelayPenaltyApplicable(
-            NO_ID,
-            publicKey,
-            eligibleToExit
-        );
+        bool applicable = exitPenalties.isValidatorExitDelayPenaltyApplicable(NO_ID, publicKey, eligibleToExit);
         assertFalse(applicable, "Penalty should not be applicable yet");
     }
 
@@ -358,17 +263,11 @@ contract ExitPenaltiesTestIsValidatorExitDelayPenaltyApplicable is
         bytes memory publicKey = randomBytes(48);
 
         vm.prank(address(csm));
-        bool applicable = exitPenalties.isValidatorExitDelayPenaltyApplicable(
-            NO_ID,
-            publicKey,
-            eligibleToExit
-        );
+        bool applicable = exitPenalties.isValidatorExitDelayPenaltyApplicable(NO_ID, publicKey, eligibleToExit);
         assertTrue(applicable, "Penalty should be applicable");
     }
 
-    function test_isValidatorExitDelayPenaltyApplicable_alreadyReported()
-        public
-    {
+    function test_isValidatorExitDelayPenaltyApplicable_alreadyReported() public {
         uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID) + 1;
         bytes memory publicKey = randomBytes(48);
 
@@ -376,26 +275,16 @@ contract ExitPenaltiesTestIsValidatorExitDelayPenaltyApplicable is
         exitPenalties.processExitDelayReport(NO_ID, publicKey, eligibleToExit);
 
         vm.prank(address(csm));
-        bool applicable = exitPenalties.isValidatorExitDelayPenaltyApplicable(
-            NO_ID,
-            publicKey,
-            eligibleToExit
-        );
+        bool applicable = exitPenalties.isValidatorExitDelayPenaltyApplicable(NO_ID, publicKey, eligibleToExit);
         assertFalse(applicable, "Penalty should not be applicable anymore");
     }
 
-    function test_isValidatorExitDelayPenaltyApplicable_revertWhen_SenderIsNotModule()
-        public
-    {
+    function test_isValidatorExitDelayPenaltyApplicable_revertWhen_SenderIsNotModule() public {
         uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID) + 1;
         bytes memory publicKey = randomBytes(48);
 
         vm.prank(stranger);
         vm.expectRevert(IExitPenalties.SenderIsNotModule.selector);
-        exitPenalties.isValidatorExitDelayPenaltyApplicable(
-            NO_ID,
-            publicKey,
-            eligibleToExit
-        );
+        exitPenalties.isValidatorExitDelayPenaltyApplicable(NO_ID, publicKey, eligibleToExit);
     }
 }

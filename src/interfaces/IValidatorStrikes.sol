@@ -73,10 +73,7 @@ interface IValidatorStrikes {
     /// @param _treeRoot Root of the Merkle tree
     /// @param _treeCid an IPFS CID of the tree
     /// @dev New tree might be empty and it is valid value because of `strikesLifetime`
-    function processOracleReport(
-        bytes32 _treeRoot,
-        string calldata _treeCid
-    ) external;
+    function processOracleReport(bytes32 _treeRoot, string calldata _treeCid) external;
 
     /// @notice Check the contract accepts the provided multi-proof
     /// @param keyStrikesList List of KeyStrikes structs
@@ -95,10 +92,7 @@ interface IValidatorStrikes {
     /// @param pubkey Public key
     /// @return Hash of the leaf
     /// @dev Double hash the leaf to prevent second pre-image attacks
-    function hashLeaf(
-        KeyStrikes calldata keyStrikes,
-        bytes calldata pubkey
-    ) external pure returns (bytes32);
+    function hashLeaf(KeyStrikes calldata keyStrikes, bytes calldata pubkey) external pure returns (bytes32);
 
     /// @notice Returns the initialized version of the contract
     function getInitializedVersion() external view returns (uint64);

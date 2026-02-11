@@ -20,46 +20,25 @@ contract ExitPenaltiesMock is IExitPenalties, ExitTypes {
         return address(0);
     }
 
-    function processExitDelayReport(
-        uint256,
-        bytes calldata,
-        uint256
-    ) external {}
+    function processExitDelayReport(uint256, bytes calldata, uint256) external {}
 
-    function processTriggeredExit(
-        uint256,
-        bytes calldata,
-        uint256,
-        uint256
-    ) external {}
+    function processTriggeredExit(uint256, bytes calldata, uint256, uint256) external {}
 
-    function processStrikesReport(
-        uint256 nodeOperatorId,
-        bytes calldata publicKey
-    ) external {}
+    function processStrikesReport(uint256 nodeOperatorId, bytes calldata publicKey) external {}
 
     function mock_isValidatorExitDelayPenaltyApplicable(bool flag) external {
         applicable = flag;
     }
 
-    function isValidatorExitDelayPenaltyApplicable(
-        uint256,
-        bytes calldata,
-        uint256
-    ) external view returns (bool) {
+    function isValidatorExitDelayPenaltyApplicable(uint256, bytes calldata, uint256) external view returns (bool) {
         return applicable;
     }
 
-    function mock_setDelayedExitPenaltyInfo(
-        ExitPenaltyInfo memory _penaltyInfo
-    ) external {
+    function mock_setDelayedExitPenaltyInfo(ExitPenaltyInfo memory _penaltyInfo) external {
         penaltyInfo = _penaltyInfo;
     }
 
-    function getExitPenaltyInfo(
-        uint256,
-        bytes calldata
-    ) external view returns (ExitPenaltyInfo memory) {
+    function getExitPenaltyInfo(uint256, bytes calldata) external view returns (ExitPenaltyInfo memory) {
         return penaltyInfo;
     }
 

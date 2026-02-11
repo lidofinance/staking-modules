@@ -13,9 +13,7 @@ error IndexOutOfRange();
 /// @param p Is a power of a tree level the node belongs to.
 /// @return GIndex
 function pack(uint256 gI, uint8 p) pure returns (GIndex) {
-    if (gI > type(uint248).max) {
-        revert IndexOutOfRange();
-    }
+    if (gI > type(uint248).max) revert IndexOutOfRange();
 
     // NOTE: We can consider adding additional metadata like a fork version.
     return GIndex.wrap(bytes32((gI << 8) | p));
@@ -46,9 +44,7 @@ function shr(GIndex self, uint256 n) pure returns (GIndex) {
     uint256 i = index(self);
     uint256 w = width(self);
 
-    if ((i % w) + n >= w) {
-        revert IndexOutOfRange();
-    }
+    if ((i % w) + n >= w) revert IndexOutOfRange();
 
     return pack(i + n, pow(self));
 }
@@ -58,9 +54,7 @@ function shl(GIndex self, uint256 n) pure returns (GIndex) {
     uint256 i = index(self);
     uint256 w = width(self);
 
-    if (i % w < n) {
-        revert IndexOutOfRange();
-    }
+    if (i % w < n) revert IndexOutOfRange();
 
     return pack(i - n, pow(self));
 }
@@ -73,12 +67,9 @@ function concat(GIndex lhs, GIndex rhs) pure returns (GIndex) {
     uint256 lhsMSbIndex = fls(lindex);
     uint256 rhsMSbIndex = fls(rindex);
 
-    if (lhsMSbIndex + 1 + rhsMSbIndex > 248) {
-        revert IndexOutOfRange();
-    }
+    if (lhsMSbIndex + 1 + rhsMSbIndex > 248) revert IndexOutOfRange();
 
-    return
-        pack((lindex << rhsMSbIndex) | (rindex ^ (1 << rhsMSbIndex)), pow(rhs));
+    return pack((lindex << rhsMSbIndex) | (rindex ^ (1 << rhsMSbIndex)), pow(rhs));
 }
 
 /// @dev Find last set.
@@ -86,9 +77,7 @@ function concat(GIndex lhs, GIndex rhs) pure returns (GIndex) {
 /// counting from the least significant bit position.
 /// If `x` is zero, returns 256.
 function fls(uint256 x) pure returns (uint256 r) {
-    if (x == 0) {
-        return 256;
-    }
+    if (x == 0) return 256;
 
     assembly ("memory-safe") {
         r := sub(255, clz(x))

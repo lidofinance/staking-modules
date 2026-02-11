@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import { BondCurves } from "../lib/BondCurves.sol";
+import { BondCurvesLib } from "../lib/BondCurvesLib.sol";
 
 import { IBondCurve } from "../interfaces/IBondCurve.sol";
 
@@ -49,76 +49,45 @@ abstract contract BondCurve is IBondCurve, Initializable {
     }
 
     /// @inheritdoc IBondCurve
-    function getCurveInfo(
-        uint256 curveId
-    ) external view returns (BondCurveData memory) {
+    function getCurveInfo(uint256 curveId) external view returns (BondCurveData memory) {
         return _getCurveInfo(curveId);
     }
 
     /// @inheritdoc IBondCurve
-    function getBondCurve(
-        uint256 nodeOperatorId
-    ) external view returns (BondCurveData memory) {
+    function getBondCurve(uint256 nodeOperatorId) external view returns (BondCurveData memory) {
         return _getCurveInfo(getBondCurveId(nodeOperatorId));
     }
 
     /// @inheritdoc IBondCurve
-    function getBondCurveId(
-        uint256 nodeOperatorId
-    ) public view returns (uint256) {
+    function getBondCurveId(uint256 nodeOperatorId) public view returns (uint256) {
         return _getBondCurveStorage().operatorBondCurveId[nodeOperatorId];
     }
 
     /// @inheritdoc IBondCurve
-    function getBondAmountByKeysCount(
-        uint256 keys,
-        uint256 curveId
-    ) public view returns (uint256) {
-        return
-            BondCurves.getBondAmountByKeysCount(
-                _getBondCurveStorage(),
-                keys,
-                curveId
-            );
+    function getBondAmountByKeysCount(uint256 keys, uint256 curveId) public view returns (uint256) {
+        return BondCurvesLib.getBondAmountByKeysCount(_getBondCurveStorage(), keys, curveId);
     }
 
     /// @inheritdoc IBondCurve
-    function getKeysCountByBondAmount(
-        uint256 amount,
-        uint256 curveId
-    ) public view returns (uint256) {
-        return
-            BondCurves.getKeysCountByBondAmount(
-                _getBondCurveStorage(),
-                amount,
-                curveId
-            );
+    function getKeysCountByBondAmount(uint256 amount, uint256 curveId) public view returns (uint256) {
+        return BondCurvesLib.getKeysCountByBondAmount(_getBondCurveStorage(), amount, curveId);
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function __BondCurve_init(
-        BondCurveIntervalInput[] calldata defaultBondCurveIntervals
-    ) internal onlyInitializing {
+    function __BondCurve_init(BondCurveIntervalInput[] calldata defaultBondCurveIntervals) internal onlyInitializing {
         uint256 addedId = _addBondCurve(defaultBondCurveIntervals);
-        if (addedId != DEFAULT_BOND_CURVE_ID) {
-            revert InvalidInitializationCurveId();
-        }
+        if (addedId != DEFAULT_BOND_CURVE_ID) revert InvalidInitializationCurveId();
     }
 
     /// @dev Add a new bond curve to the array
-    function _addBondCurve(
-        BondCurveIntervalInput[] calldata intervals
-    ) internal returns (uint256 curveId) {
-        curveId = BondCurves.addBondCurve(_getBondCurveStorage(), intervals);
+    function _addBondCurve(BondCurveIntervalInput[] calldata intervals) internal returns (uint256 curveId) {
+        curveId = BondCurvesLib.addBondCurve(_getBondCurveStorage(), intervals);
         emit BondCurveAdded(curveId, intervals);
     }
 
     /// @dev Update existing bond curve
-    function _updateBondCurve(
-        uint256 curveId,
-        BondCurveIntervalInput[] calldata intervals
-    ) internal {
-        BondCurves.updateBondCurve(_getBondCurveStorage(), curveId, intervals);
+    function _updateBondCurve(uint256 curveId, BondCurveIntervalInput[] calldata intervals) internal {
+        BondCurvesLib.updateBondCurve(_getBondCurveStorage(), curveId, intervals);
         emit BondCurveUpdated(curveId, intervals);
     }
 
@@ -127,32 +96,23 @@ abstract contract BondCurve is IBondCurve, Initializable {
     function _setBondCurve(uint256 nodeOperatorId, uint256 curveId) internal {
         BondCurveStorage storage $ = _getBondCurveStorage();
         unchecked {
-            if (curveId > $.bondCurves.length - 1) {
-                revert InvalidBondCurveId();
-            }
+            if (curveId > $.bondCurves.length - 1) revert InvalidBondCurveId();
         }
+        // TODO: revert if the curve the same
         $.operatorBondCurveId[nodeOperatorId] = curveId;
         emit BondCurveSet(nodeOperatorId, curveId);
     }
 
-    function _getCurveInfo(
-        uint256 curveId
-    ) private view returns (BondCurveData storage) {
+    function _getCurveInfo(uint256 curveId) private view returns (BondCurveData storage) {
         BondCurveStorage storage $ = _getBondCurveStorage();
         unchecked {
-            if (curveId > $.bondCurves.length - 1) {
-                revert InvalidBondCurveId();
-            }
+            if (curveId > $.bondCurves.length - 1) revert InvalidBondCurveId();
         }
 
         return $.bondCurves[curveId];
     }
 
-    function _getBondCurveStorage()
-        private
-        pure
-        returns (BondCurveStorage storage $)
-    {
+    function _getBondCurveStorage() private pure returns (BondCurveStorage storage $) {
         assembly {
             $.slot := BOND_CURVE_STORAGE_LOCATION
         }

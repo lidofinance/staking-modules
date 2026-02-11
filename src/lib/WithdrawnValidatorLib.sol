@@ -18,42 +18,35 @@ library WithdrawnValidatorLib {
 
     uint256 public constant PENALTY_QUOTIENT = 1 ether;
     /// @dev Acts as the denominator to calculate the scaled penalty.
-    uint256 public constant PENALTY_SCALE =
-        MIN_ACTIVATION_BALANCE / PENALTY_QUOTIENT;
+    uint256 public constant PENALTY_SCALE = MIN_ACTIVATION_BALANCE / PENALTY_QUOTIENT;
 
     function process(
         NodeOperator storage no,
-        WithdrawnValidatorInfo calldata validatorInfo
-    ) external returns (bool penaltiesCovered) {
+        WithdrawnValidatorInfo calldata validatorInfo,
+        bool isSlashed,
+        uint256 keyAddedBalance
+    ) external returns (bool penaltyCovered) {
         if (validatorInfo.slashingPenalty > 0 && !validatorInfo.isSlashed) {
             revert IBaseModule.InvalidWithdrawnValidatorInfo();
         }
 
         // For slashed validator this value should reflect pre-slashing, hence non-zero balance.
         // For non-slashed validator it will reflect the withdrawal amount, hence it cannot be zero either.
-        if (validatorInfo.exitBalance == 0) {
-            revert IBaseModule.ZeroExitBalance();
-        }
-
-        if (validatorInfo.keyIndex >= no.totalDepositedKeys) {
-            revert IBaseModule.SigningKeysInvalidOffset();
-        }
+        if (validatorInfo.exitBalance == 0) revert IBaseModule.ZeroExitBalance();
+        if (validatorInfo.keyIndex >= no.totalDepositedKeys) revert IBaseModule.SigningKeysInvalidOffset();
 
         unchecked {
             ++no.totalWithdrawnKeys;
         }
 
-        bytes memory pubkey = SigningKeys.loadKeys(
+        bytes memory pubkey = SigningKeys.loadKeys(validatorInfo.nodeOperatorId, validatorInfo.keyIndex, 1);
+
+        ExitPenaltyInfo memory penaltyInfo = IBaseModule(address(this)).EXIT_PENALTIES().getExitPenaltyInfo(
             validatorInfo.nodeOperatorId,
-            validatorInfo.keyIndex,
-            1
+            pubkey
         );
 
-        ExitPenaltyInfo memory penaltyInfo = IBaseModule(address(this))
-            .EXIT_PENALTIES()
-            .getExitPenaltyInfo(validatorInfo.nodeOperatorId, pubkey);
-
-        penaltiesCovered = _fulfillExitObligations(validatorInfo, penaltyInfo);
+        penaltyCovered = _fulfillExitObligations(validatorInfo, penaltyInfo, keyAddedBalance);
 
         emit IBaseModule.ValidatorWithdrawn({
             nodeOperatorId: validatorInfo.nodeOperatorId,
@@ -68,8 +61,9 @@ library WithdrawnValidatorLib {
     // should be greater than 2^245, which is about 5.6 * 10^55 ethers.
     function _fulfillExitObligations(
         WithdrawnValidatorInfo calldata validatorInfo,
-        ExitPenaltyInfo memory penaltyInfo
-    ) internal returns (bool penaltiesCovered) {
+        ExitPenaltyInfo memory penaltyInfo,
+        uint256 keyAddedBalance
+    ) internal returns (bool penaltyCovered) {
         bool chargeElWithdrawalRequestFee = false;
 
         uint256 penaltyMultiplier = _getPenaltyMultiplier(validatorInfo);
@@ -77,58 +71,45 @@ library WithdrawnValidatorLib {
         uint256 feeSum;
 
         if (penaltyInfo.delayFee.isValue) {
-            feeSum = _scalePenaltyByMultiplier(
-                penaltyInfo.delayFee.value,
-                penaltyMultiplier
-            );
+            feeSum = _scalePenaltyByMultiplier(penaltyInfo.delayFee.value, penaltyMultiplier);
             chargeElWithdrawalRequestFee = true;
         }
-
         if (penaltyInfo.strikesPenalty.isValue) {
-            penaltySum = _scalePenaltyByMultiplier(
-                penaltyInfo.strikesPenalty.value,
-                penaltyMultiplier
-            );
+            penaltySum = _scalePenaltyByMultiplier(penaltyInfo.strikesPenalty.value, penaltyMultiplier);
             chargeElWithdrawalRequestFee = true;
         }
 
         // The EL withdrawal request fee is taken when either a delay was reported or the validator exited due to
         // strikes. Otherwise, the fee has already been paid by the node operator upon withdrawal trigger, or it is
         // a DAO decision to withdraw the validator before the withdrawal request becomes delayed.
-        if (
-            chargeElWithdrawalRequestFee &&
-            penaltyInfo.elWithdrawalRequestFee.value != 0
-        ) {
+        if (chargeElWithdrawalRequestFee && penaltyInfo.elWithdrawalRequestFee.value != 0) {
             // EL withdrawal request fee is not scaled because sending a withdrawal request for a validator does
             // not depend on the size of a validator.
             feeSum += penaltyInfo.elWithdrawalRequestFee.value;
         }
 
+        uint256 minExpectedBalance = MIN_ACTIVATION_BALANCE + keyAddedBalance;
         if (validatorInfo.isSlashed) {
             // Slashing penalty doesn't scale because all the losses are already accounted.
             penaltySum += validatorInfo.slashingPenalty;
-        } else if (validatorInfo.exitBalance < MIN_ACTIVATION_BALANCE) {
-            penaltySum += MIN_ACTIVATION_BALANCE - validatorInfo.exitBalance;
+        } else if (validatorInfo.exitBalance < minExpectedBalance) {
+            penaltySum += minExpectedBalance - validatorInfo.exitBalance;
         }
 
         IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
 
-        penaltiesCovered = true;
+        penaltyCovered = true;
 
-        if (feeSum > 0) {
-            penaltiesCovered = accounting.chargeFee(
-                validatorInfo.nodeOperatorId,
-                feeSum
-            );
-        }
-
+        // Confiscate penalties first to prioritize compensations for the stETH holders.
         if (penaltySum > 0) {
             // We still call `penalize` even if there's no bond left, for the lock to be created.
-            penaltiesCovered = accounting.penalize(
-                validatorInfo.nodeOperatorId,
-                penaltySum
-            );
+            penaltyCovered = accounting.penalize(validatorInfo.nodeOperatorId, penaltySum);
         }
+
+        // Charge fees second to avoid charging fees if the penalty is not covered,
+        // as the fees are meant to cover the costs of processing the withdrawal incurred by the protocol maintainers.
+        // stETH holders should have first priority to be compensated, so the fees are charged only if the penalty is covered.
+        if (feeSum > 0) accounting.chargeFee(validatorInfo.nodeOperatorId, feeSum);
     }
 
     /// @dev Acts as the numerator to calculate the scaled penalty.
@@ -141,10 +122,7 @@ library WithdrawnValidatorLib {
         penaltyMultiplier = exitBalance / PENALTY_QUOTIENT;
     }
 
-    function _scalePenaltyByMultiplier(
-        uint256 penalty,
-        uint256 multiplier
-    ) internal pure returns (uint256) {
+    function _scalePenaltyByMultiplier(uint256 penalty, uint256 multiplier) internal pure returns (uint256) {
         return (penalty * multiplier) / PENALTY_SCALE;
     }
 }

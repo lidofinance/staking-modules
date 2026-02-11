@@ -3,20 +3,10 @@
 
 pragma solidity 0.8.33;
 
-import { Test } from "forge-std/Test.sol";
+import { PermitHelper } from "../../../helpers/Permit.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
-import { Utilities } from "../../helpers/Utilities.sol";
-import { PermitHelper } from "../../helpers/Permit.sol";
-import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
-
-contract RecoverIntegrationTest is
-    Test,
-    Utilities,
-    PermitHelper,
-    DeploymentFixtures,
-    InvariantAsserts
-{
+abstract contract RecoverIntegrationTestBase is ModuleTypeBase, PermitHelper {
     address internal user;
     address internal recoverer;
 
@@ -25,14 +15,10 @@ contract RecoverIntegrationTest is
         vm.pauseGasMetering();
         uint256 noCount = module.getNodeOperatorsCount();
         assertModuleKeys(module);
-        assertModuleEnqueuedCount(module);
+        _assertModuleEnqueuedCount();
         assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
-        assertAccountingBurnerApproval(
-            lido,
-            address(accounting),
-            locator.burner()
-        );
+        assertAccountingBurnerApproval(lido, address(accounting), locator.burner());
         assertAccountingUnusedStorageSlots(accounting);
         assertFeeDistributorClaimableShares(lido, feeDistributor);
         assertFeeDistributorTree(feeDistributor);
@@ -41,9 +27,7 @@ contract RecoverIntegrationTest is
     }
 
     function setUp() public {
-        Env memory env = envVars();
-        vm.createSelectFork(env.RPC_URL);
-        initializeFromDeployment();
+        _setUpModule();
 
         recoverer = nextAddress("Recoverer");
         user = nextAddress("User");
@@ -55,15 +39,11 @@ contract RecoverIntegrationTest is
         handleStakingLimit();
         handleBunkerMode();
 
-        vm.startPrank(
-            accounting.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0)
-        );
+        vm.startPrank(accounting.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0));
         accounting.grantRole(accounting.RECOVERER_ROLE(), recoverer);
         vm.stopPrank();
 
-        vm.startPrank(
-            feeDistributor.getRoleMember(feeDistributor.DEFAULT_ADMIN_ROLE(), 0)
-        );
+        vm.startPrank(feeDistributor.getRoleMember(feeDistributor.DEFAULT_ADMIN_ROLE(), 0));
         feeDistributor.grantRole(feeDistributor.RECOVERER_ROLE(), recoverer);
         vm.stopPrank();
 
@@ -124,8 +104,7 @@ contract RecoverIntegrationTest is
     function test_recoverStETH_fromAccounting() public assertInvariants {
         assertEq(lido.sharesOf(recoverer), 0);
 
-        uint256 surplusBefore = lido.sharesOf(address(accounting)) -
-            accounting.totalBondShares();
+        uint256 surplusBefore = lido.sharesOf(address(accounting)) - accounting.totalBondShares();
 
         uint256 amount = 1 ether;
         vm.startPrank(user);
@@ -236,3 +215,7 @@ contract RecoverIntegrationTest is
         assertEq(wstETH.balanceOf(recoverer), amountWstETH);
     }
 }
+
+contract RecoverIntegrationTestCSM is RecoverIntegrationTestBase, CSMIntegrationBase {}
+
+contract RecoverIntegrationTestCurated is RecoverIntegrationTestBase, CuratedIntegrationBase {}

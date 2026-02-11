@@ -22,7 +22,7 @@ library TopUpQueueOps {
 
     function allocateDeposits(
         TopUpQueueLib.Queue storage topUpQueue,
-        uint256 depositAmount,
+        uint256 maxDepositAmount,
         bytes[] calldata pubkeys,
         uint256[] calldata keyIndices,
         uint256[] calldata operatorIds,
@@ -42,67 +42,40 @@ library TopUpQueueOps {
             topUpLimits: topUpLimits
         });
 
-        return _allocateDeposits(topUpQueue, depositAmount, pubkeys, data);
+        return _allocateDeposits(topUpQueue, maxDepositAmount, pubkeys, data);
     }
 
     function _allocateDeposits(
         TopUpQueueLib.Queue storage topUpQueue,
-        uint256 depositAmount,
+        uint256 maxDepositAmount,
         bytes[] calldata pubkeys,
         TopUpKeyParams memory data
     ) private returns (uint256[] memory allocations) {
         uint256 keyCount = data.keyIndices.length;
         allocations = new uint256[](keyCount);
 
-        bool lastItemPartiallyDeposited;
         for (uint256 i; i < keyCount; i++) {
-            if (lastItemPartiallyDeposited) {
-                revert ICSModule.UnexpectedExtraKey();
-            }
-
             TopUpQueueItem item = topUpQueue.at(0);
-
-            if (
-                data.operatorIds[i] != item.noId() ||
-                data.keyIndices[i] != item.keyIndex()
-            ) {
+            if (data.operatorIds[i] != item.noId() || data.keyIndices[i] != item.keyIndex()) {
                 revert ICSModule.InvalidTopUpOrder();
             }
 
-            {
-                bytes memory key = pubkeys[i];
-                if (key.length != SigningKeys.PUBKEY_LENGTH) {
-                    revert IBaseModule.InvalidInput();
-                }
-                _verifyModuleKey(item.noId(), item.keyIndex(), key);
-            }
+            _verifyModuleKey(item.noId(), item.keyIndex(), pubkeys[i]);
 
-            if (depositAmount > 0) {
-                allocations[i] = Math.min(data.topUpLimits[i], depositAmount);
-                depositAmount -= allocations[i];
+            if (maxDepositAmount > 0) {
+                allocations[i] = Math.min(data.topUpLimits[i], maxDepositAmount);
+                maxDepositAmount -= allocations[i];
             }
-
             if (allocations[i] == data.topUpLimits[i]) {
                 topUpQueue.dequeue();
-            } else {
-                lastItemPartiallyDeposited = true;
-            }
+            } else if (i < keyCount - 1) revert ICSModule.UnexpectedExtraKey();
         }
     }
 
-    function _verifyModuleKey(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        bytes memory key
-    ) private view {
-        bytes memory keyFromStorage = SigningKeys.loadKeys(
-            nodeOperatorId,
-            keyIndex,
-            1
-        );
+    function _verifyModuleKey(uint256 nodeOperatorId, uint256 keyIndex, bytes memory key) private view {
+        if (key.length != SigningKeys.PUBKEY_LENGTH) revert IBaseModule.InvalidInput();
+        bytes memory keyFromStorage = SigningKeys.loadKeys(nodeOperatorId, keyIndex, 1);
 
-        if (keccak256(key) != keccak256(keyFromStorage)) {
-            revert ICSModule.InvalidSigningKey();
-        }
+        if (keccak256(key) != keccak256(keyFromStorage)) revert ICSModule.InvalidSigningKey();
     }
 }

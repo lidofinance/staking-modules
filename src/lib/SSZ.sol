@@ -11,9 +11,7 @@ library SSZ {
     error BranchHasExtraItem();
     error InvalidProof();
 
-    function hashTreeRoot(
-        BeaconBlockHeader memory header
-    ) internal view returns (bytes32 root) {
+    function hashTreeRoot(BeaconBlockHeader memory header) internal view returns (bytes32 root) {
         root = bytes32(0);
 
         bytes32[8] memory nodes = [
@@ -82,9 +80,7 @@ library SSZ {
         }
     }
 
-    function hashTreeRoot(
-        Validator memory validator
-    ) internal view returns (bytes32 root) {
+    function hashTreeRoot(Validator memory validator) internal view returns (bytes32 root) {
         root = bytes32(0);
 
         bytes32 pubkeyRoot;
@@ -174,12 +170,7 @@ library SSZ {
 
     /// @notice Modified version of `verify` from Solady `MerkleProofLib` to support generalized indices and sha256 precompile.
     /// @dev Reverts if `leaf` doesn't exist in the Merkle tree with `root`, given `proof`.
-    function verifyProof(
-        bytes32[] calldata proof,
-        bytes32 root,
-        bytes32 leaf,
-        GIndex gI
-    ) internal view {
+    function verifyProof(bytes32[] calldata proof, bytes32 root, bytes32 leaf, GIndex gI) internal view {
         uint256 index = gI.index();
 
         assembly ("memory-safe") {
@@ -248,18 +239,11 @@ library SSZ {
     }
 
     // Inspired by https://github.com/succinctlabs/telepathy-contracts/blob/5aa4bb7/src/libraries/SimpleSerialize.sol#L59
-    function hashTreeRoot(
-        Withdrawal memory withdrawal
-    ) internal pure returns (bytes32) {
+    function hashTreeRoot(Withdrawal memory withdrawal) internal pure returns (bytes32) {
         return
             sha256(
                 bytes.concat(
-                    sha256(
-                        bytes.concat(
-                            toLittleEndian(withdrawal.index),
-                            toLittleEndian(withdrawal.validatorIndex)
-                        )
-                    ),
+                    sha256(bytes.concat(toLittleEndian(withdrawal.index), toLittleEndian(withdrawal.validatorIndex))),
                     sha256(
                         bytes.concat(
                             bytes20(withdrawal.withdrawalAddress),
@@ -271,16 +255,9 @@ library SSZ {
             );
     }
 
-    function hashTreeRoot(
-        PendingConsolidation memory consolidation
-    ) internal pure returns (bytes32) {
+    function hashTreeRoot(PendingConsolidation memory consolidation) internal pure returns (bytes32) {
         return
-            sha256(
-                bytes.concat(
-                    toLittleEndian(consolidation.sourceIndex),
-                    toLittleEndian(consolidation.targetIndex)
-                )
-            );
+            sha256(bytes.concat(toLittleEndian(consolidation.sourceIndex), toLittleEndian(consolidation.targetIndex)));
     }
 
     function toLittleEndian(uint256 v) internal pure returns (bytes32) {
@@ -294,33 +271,17 @@ library SSZ {
     // See https://github.com/succinctlabs/telepathy-contracts/blob/5aa4bb7/src/libraries/SimpleSerialize.sol#L17-L28
     function endianReverse(bytes32 v) internal pure returns (bytes32) {
         v =
-            ((v &
-                0xFF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00) >>
-                8) |
-            ((v &
-                0x00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF) <<
-                8);
+            ((v & 0xFF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00) >> 8) |
+            ((v & 0x00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF) << 8);
         v =
-            ((v &
-                0xFFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000) >>
-                16) |
-            ((v &
-                0x0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF) <<
-                16);
+            ((v & 0xFFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000) >> 16) |
+            ((v & 0x0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF) << 16);
         v =
-            ((v &
-                0xFFFFFFFF00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF00000000) >>
-                32) |
-            ((v &
-                0x00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF) <<
-                32);
+            ((v & 0xFFFFFFFF00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF00000000) >> 32) |
+            ((v & 0x00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF) << 32);
         v =
-            ((v &
-                0xFFFFFFFFFFFFFFFF0000000000000000FFFFFFFFFFFFFFFF0000000000000000) >>
-                64) |
-            ((v &
-                0x0000000000000000FFFFFFFFFFFFFFFF0000000000000000FFFFFFFFFFFFFFFF) <<
-                64);
+            ((v & 0xFFFFFFFFFFFFFFFF0000000000000000FFFFFFFFFFFFFFFF0000000000000000) >> 64) |
+            ((v & 0x0000000000000000FFFFFFFFFFFFFFFF0000000000000000FFFFFFFFFFFFFFFF) << 64);
         v = (v >> 128) | (v << 128);
         return v;
     }

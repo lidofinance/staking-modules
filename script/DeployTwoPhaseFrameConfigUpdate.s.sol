@@ -35,62 +35,36 @@ abstract contract DeployTwoPhaseFrameConfigUpdateBase is Script {
         gitRef = _gitRef;
 
         if (expectedChainId != block.chainid) {
-            revert ChainIdMismatch({
-                actual: block.chainid,
-                expected: expectedChainId
-            });
+            revert ChainIdMismatch({ actual: block.chainid, expected: expectedChainId });
         }
 
         artifactDir = vm.envOr(
             "ARTIFACTS_DIR",
-            string(
-                abi.encodePacked(
-                    "./artifacts/",
-                    chainName,
-                    "/utils/TwoPhaseFrameConfigUpdate/"
-                )
-            )
+            string(abi.encodePacked("./artifacts/", chainName, "/utils/TwoPhaseFrameConfigUpdate/"))
         );
 
         string memory mainDeployPath = string(
-            abi.encodePacked(
-                "./artifacts/",
-                chainName,
-                "/deploy-",
-                chainName,
-                ".json"
-            )
+            abi.encodePacked("./artifacts/", chainName, "/deploy-", chainName, ".json")
         );
-        if (!vm.exists(mainDeployPath)) {
-            revert MainDeploymentNotFound(mainDeployPath);
-        }
+        if (!vm.exists(mainDeployPath)) revert MainDeploymentNotFound(mainDeployPath);
 
         string memory mainDeployJson = vm.readFile(mainDeployPath);
         address oracle = vm.parseJsonAddress(mainDeployJson, ".FeeOracle");
 
-        if (oracle == address(0)) {
-            revert InvalidOracleAddress();
-        }
+        if (oracle == address(0)) revert InvalidOracleAddress();
 
         vm.startBroadcast();
         (, deployer, ) = vm.readCallers();
         vm.label(deployer, "DEPLOYER");
 
-        TwoPhaseFrameConfigUpdate.PhasesConfig
-            memory phasesConfig = TwoPhaseFrameConfigUpdate.PhasesConfig({
-                reportsToProcessBeforeOffsetPhase: config
-                    .reportsToProcessBeforeOffsetPhase,
-                reportsToProcessBeforeRestorePhase: config
-                    .reportsToProcessBeforeRestorePhase,
-                offsetPhaseEpochsPerFrame: config.offsetPhaseEpochsPerFrame,
-                restorePhaseFastLaneLengthSlots: config
-                    .restorePhaseFastLaneLengthSlots
-            });
+        TwoPhaseFrameConfigUpdate.PhasesConfig memory phasesConfig = TwoPhaseFrameConfigUpdate.PhasesConfig({
+            reportsToProcessBeforeOffsetPhase: config.reportsToProcessBeforeOffsetPhase,
+            reportsToProcessBeforeRestorePhase: config.reportsToProcessBeforeRestorePhase,
+            offsetPhaseEpochsPerFrame: config.offsetPhaseEpochsPerFrame,
+            restorePhaseFastLaneLengthSlots: config.restorePhaseFastLaneLengthSlots
+        });
 
-        TwoPhaseFrameConfigUpdate twoPhaseFrameUpdate = new TwoPhaseFrameConfigUpdate(
-                oracle,
-                phasesConfig
-            );
+        TwoPhaseFrameConfigUpdate twoPhaseFrameUpdate = new TwoPhaseFrameConfigUpdate(oracle, phasesConfig);
         deployed = address(twoPhaseFrameUpdate);
 
         vm.label(deployed, "TwoPhaseFrameConfigUpdate");
@@ -117,9 +91,6 @@ abstract contract DeployTwoPhaseFrameConfigUpdateBase is Script {
     }
 
     function _deployJsonFilename() internal view returns (string memory) {
-        return
-            string(
-                abi.encodePacked(artifactDir, "deploy-", chainName, ".json")
-            );
+        return string(abi.encodePacked(artifactDir, "deploy-", chainName, ".json"));
     }
 }

@@ -9,15 +9,8 @@ import { WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 
 contract Library {
-    function scalePenaltyByMultiplier(
-        uint256 penalty,
-        uint256 multiplier
-    ) external pure returns (uint256) {
-        return
-            WithdrawnValidatorLib._scalePenaltyByMultiplier(
-                penalty,
-                multiplier
-            );
+    function scalePenaltyByMultiplier(uint256 penalty, uint256 multiplier) external pure returns (uint256) {
+        return WithdrawnValidatorLib._scalePenaltyByMultiplier(penalty, multiplier);
     }
 
     function getPenaltyMultiplier(

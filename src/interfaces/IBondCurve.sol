@@ -58,14 +58,8 @@ interface IBondCurve {
         uint256 trend;
     }
 
-    event BondCurveAdded(
-        uint256 indexed curveId,
-        BondCurveIntervalInput[] bondCurveIntervals
-    );
-    event BondCurveUpdated(
-        uint256 indexed curveId,
-        BondCurveIntervalInput[] bondCurveIntervals
-    );
+    event BondCurveAdded(uint256 indexed curveId, BondCurveIntervalInput[] bondCurveIntervals);
+    event BondCurveUpdated(uint256 indexed curveId, BondCurveIntervalInput[] bondCurveIntervals);
     event BondCurveSet(uint256 indexed nodeOperatorId, uint256 curveId);
 
     error InvalidBondCurveLength();
@@ -83,23 +77,17 @@ interface IBondCurve {
     /// @param curveId Curve id to get bond curve for
     /// @return Bond curve
     /// @dev Reverts if `curveId` is invalid
-    function getCurveInfo(
-        uint256 curveId
-    ) external view returns (BondCurveData memory);
+    function getCurveInfo(uint256 curveId) external view returns (BondCurveData memory);
 
     /// @notice Get bond curve for the given Node Operator
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Bond curve
-    function getBondCurve(
-        uint256 nodeOperatorId
-    ) external view returns (BondCurveData memory);
+    function getBondCurve(uint256 nodeOperatorId) external view returns (BondCurveData memory);
 
     /// @notice Get bond curve ID for the given Node Operator
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Bond curve ID
-    function getBondCurveId(
-        uint256 nodeOperatorId
-    ) external view returns (uint256);
+    function getBondCurveId(uint256 nodeOperatorId) external view returns (uint256);
 
     /// @notice Get required bond in ETH for the given number of keys for default bond curve
     /// @dev To calculate the amount for the new keys 2 calls are required:
@@ -107,17 +95,11 @@ interface IBondCurve {
     /// @param keys Number of keys to get required bond for
     /// @param curveId Id of the curve to perform calculations against
     /// @return Amount for particular keys count
-    function getBondAmountByKeysCount(
-        uint256 keys,
-        uint256 curveId
-    ) external view returns (uint256);
+    function getBondAmountByKeysCount(uint256 keys, uint256 curveId) external view returns (uint256);
 
     /// @notice Get keys count for the given bond amount with default bond curve
     /// @param amount Bond amount in ETH (stETH)to get keys count for
     /// @param curveId Id of the curve to perform calculations against
     /// @return Keys count
-    function getKeysCountByBondAmount(
-        uint256 amount,
-        uint256 curveId
-    ) external view returns (uint256);
+    function getKeysCountByBondAmount(uint256 amount, uint256 curveId) external view returns (uint256);
 }

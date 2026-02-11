@@ -64,9 +64,7 @@ interface IStakingModule {
     /// @notice Returns the number of seconds after which a validator is considered late.
     /// @param _nodeOperatorId The ID of the node operator.
     /// @return The exit deadline threshold in seconds.
-    function exitDeadlineThreshold(
-        uint256 _nodeOperatorId
-    ) external view returns (uint256);
+    function exitDeadlineThreshold(uint256 _nodeOperatorId) external view returns (uint256);
 
     /// @notice Returns the type of the staking module
     /// @return Module type
@@ -82,11 +80,7 @@ interface IStakingModule {
     function getStakingModuleSummary()
         external
         view
-        returns (
-            uint256 totalExitedValidators,
-            uint256 totalDepositedValidators,
-            uint256 depositableValidatorsCount
-        );
+        returns (uint256 totalExitedValidators, uint256 totalDepositedValidators, uint256 depositableValidatorsCount);
 
     /// @notice Returns all-validators summary belonging to the node operator with the given id
     /// @param nodeOperatorId id of the operator to return report for
@@ -140,18 +134,13 @@ interface IStakingModule {
 
     /// @notice Returns if the node operator with given id is active
     /// @param nodeOperatorId Id of the node operator
-    function getNodeOperatorIsActive(
-        uint256 nodeOperatorId
-    ) external view returns (bool);
+    function getNodeOperatorIsActive(uint256 nodeOperatorId) external view returns (bool);
 
     /// @notice Returns up to `limit` node operator ids starting from the `offset`. The order of
     ///     the returned ids is not defined and might change between calls.
     /// @dev This view must not revert in case of invalid data passed. When `offset` exceeds the
     ///     total node operators count or when `limit` is equal to 0 MUST be returned empty array.
-    function getNodeOperatorIds(
-        uint256 offset,
-        uint256 limit
-    ) external view returns (uint256[] memory nodeOperatorIds);
+    function getNodeOperatorIds(uint256 offset, uint256 limit) external view returns (uint256[] memory nodeOperatorIds);
 
     /// @notice Called by StakingRouter to signal that stETH rewards were minted for this module.
     /// @param totalShares Amount of stETH shares that were minted to reward all node operators.
@@ -192,14 +181,10 @@ interface IStakingModule {
     ///      'unsafely' means that this method can both increase and decrease exited and stuck counters
     /// @param _nodeOperatorId Id of the node operator
     /// @param _exitedValidatorsCount New number of EXITED validators for the node operator
-    function unsafeUpdateValidatorsCount(
-        uint256 _nodeOperatorId,
-        uint256 _exitedValidatorsCount
-    ) external;
+    function unsafeUpdateValidatorsCount(uint256 _nodeOperatorId, uint256 _exitedValidatorsCount) external;
 
     /// @notice Obtains deposit data to be used by StakingRouter to deposit to the Ethereum Deposit
     ///     contract
-    /// @dev The method MUST revert when the staking module has not enough deposit data items
     /// @param depositsCount Number of deposits to be done
     /// @param depositCalldata Staking module defined data encoded as bytes.
     ///        IMPORTANT: depositCalldata MUST NOT modify the deposit data set of the staking module
@@ -232,7 +217,7 @@ interface IStakingModule {
 }
 
 interface IStakingModuleV2 {
-    /// @notice Validates provided keys and calculates deposit allocations for top-up
+    /// @notice Validates that provided keys belong to the corresponding operators in the module and calculates deposit allocations for top-up
     /// @dev Reverts if any key doesn't belong to the module or data is invalid
     /// @param maxDepositAmount Total ether amount available for top-up (must be multiple of 1 gwei)
     /// @param pubkeys List of validator public keys to top up
@@ -251,15 +236,14 @@ interface IStakingModuleV2 {
         uint256[] calldata topUpLimits
     ) external returns (uint256[] memory allocations);
 
-    /// @notice Method called Third phase not
-    /// @param operatorIds Indices of operators
-    /// @param validatorsBalancesGwei Total validator balance nominated in Gwei
-    /// @param pendingBalancesGwei Total validator pending balance nominated in Gwei
-    /// @param refSlot Accounting oracle ref slot
+    /// @notice Called by StakingRouter to update node operator total balances.
+    /// @dev Total balances are denominated in gwei.
+    /// @param operatorIds Node operator IDs to update balances for.
+    /// @param totalBalancesGwei Total balances (validators + pending) aligned with operatorIds.
+    /// @param refSlot Accounting oracle ref slot.
     function updateOperatorBalances(
         uint256[] calldata operatorIds,
-        uint256[] calldata validatorsBalancesGwei,
-        uint256[] calldata pendingBalancesGwei,
+        uint256[] calldata totalBalancesGwei,
         uint256 refSlot
     ) external;
 }

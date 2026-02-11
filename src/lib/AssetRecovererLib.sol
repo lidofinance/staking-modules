@@ -10,23 +10,10 @@ import { ILido } from "../interfaces/ILido.sol";
 
 interface IAssetRecovererLib {
     event EtherRecovered(address indexed recipient, uint256 amount);
-    event ERC20Recovered(
-        address indexed token,
-        address indexed recipient,
-        uint256 amount
-    );
+    event ERC20Recovered(address indexed token, address indexed recipient, uint256 amount);
     event StETHSharesRecovered(address indexed recipient, uint256 shares);
-    event ERC721Recovered(
-        address indexed token,
-        uint256 tokenId,
-        address indexed recipient
-    );
-    event ERC1155Recovered(
-        address indexed token,
-        uint256 tokenId,
-        address indexed recipient,
-        uint256 amount
-    );
+    event ERC721Recovered(address indexed token, uint256 tokenId, address indexed recipient);
+    event ERC1155Recovered(address indexed token, uint256 tokenId, address indexed recipient, uint256 amount);
 
     error FailedToSendEther();
     error NotAllowedToRecover();
@@ -47,9 +34,7 @@ library AssetRecovererLib {
     function recoverEther() external {
         uint256 amount = address(this).balance;
         (bool success, ) = msg.sender.call{ value: amount }("");
-        if (!success) {
-            revert IAssetRecovererLib.FailedToSendEther();
-        }
+        if (!success) revert IAssetRecovererLib.FailedToSendEther();
 
         emit IAssetRecovererLib.EtherRecovered(msg.sender, amount);
     }
@@ -96,18 +81,7 @@ library AssetRecovererLib {
      */
     function recoverERC1155(address token, uint256 tokenId) external {
         uint256 amount = IERC1155(token).balanceOf(address(this), tokenId);
-        IERC1155(token).safeTransferFrom({
-            from: address(this),
-            to: msg.sender,
-            id: tokenId,
-            value: amount,
-            data: ""
-        });
-        emit IAssetRecovererLib.ERC1155Recovered(
-            token,
-            tokenId,
-            msg.sender,
-            amount
-        );
+        IERC1155(token).safeTransferFrom({ from: address(this), to: msg.sender, id: tokenId, value: amount, data: "" });
+        emit IAssetRecovererLib.ERC1155Recovered(token, tokenId, msg.sender, amount);
     }
 }

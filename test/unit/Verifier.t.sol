@@ -57,9 +57,7 @@ contract VerifierTestBase is Test, Utilities {
 
     string internal fixturesPath = "./test/fixtures/Verifier/";
 
-    function _readFixture(
-        string memory filename
-    ) internal noGasMetering returns (bytes memory data) {
+    function _readFixture(string memory filename) internal noGasMetering returns (bytes memory data) {
         string memory path = string.concat(fixturesPath, filename);
         string memory json = vm.readFile(path);
         data = json.parseRaw("$");
@@ -104,71 +102,24 @@ contract VerifierTestConstructor is VerifierTestBase {
         assertEq(address(verifier.WITHDRAWAL_ADDRESS()), withdrawalAddress);
         assertEq(address(verifier.MODULE()), address(module));
         assertEq(verifier.SLOTS_PER_EPOCH(), 32);
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_PREV()),
-            GIndex.unwrap(pack(0xe1c0, 4))
-        );
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_CURR()),
-            GIndex.unwrap(pack(0xe1c1, 4))
-        );
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_PREV()),
-            GIndex.unwrap(pack(0x560000000000, 40))
-        );
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_CURR()),
-            GIndex.unwrap(pack(0x560000000001, 40))
-        );
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_HISTORICAL_SUMMARY_PREV()),
-            GIndex.unwrap(pack(0xfff0, 4))
-        );
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_HISTORICAL_SUMMARY_CURR()),
-            GIndex.unwrap(pack(0xffff, 4))
-        );
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV()),
-            GIndex.unwrap(pack(0x4000, 13))
-        );
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR()),
-            GIndex.unwrap(pack(0x4001, 13))
-        );
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_PREV()),
-            GIndex.unwrap(pack(0x160000000000, 40))
-        );
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_CURR()),
-            GIndex.unwrap(pack(0x160000000001, 40))
-        );
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_PENDING_CONSOLIDATION_PREV()),
-            GIndex.unwrap(pack(0x3200000, 18))
-        );
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_PENDING_CONSOLIDATION_CURR()),
-            GIndex.unwrap(pack(0x3200001, 18))
-        );
-        assertEq(
-            Slot.unwrap(verifier.FIRST_SUPPORTED_SLOT()),
-            Slot.unwrap(firstSupportedSlot)
-        );
-        assertEq(
-            Slot.unwrap(verifier.PIVOT_SLOT()),
-            Slot.unwrap(Slot.wrap(100_501))
-        );
-        assertEq(
-            Slot.unwrap(verifier.CAPELLA_SLOT()),
-            Slot.unwrap(Slot.wrap(42))
-        );
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_PREV()), GIndex.unwrap(pack(0xe1c0, 4)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_CURR()), GIndex.unwrap(pack(0xe1c1, 4)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_PREV()), GIndex.unwrap(pack(0x560000000000, 40)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_CURR()), GIndex.unwrap(pack(0x560000000001, 40)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_HISTORICAL_SUMMARY_PREV()), GIndex.unwrap(pack(0xfff0, 4)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_HISTORICAL_SUMMARY_CURR()), GIndex.unwrap(pack(0xffff, 4)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV()), GIndex.unwrap(pack(0x4000, 13)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR()), GIndex.unwrap(pack(0x4001, 13)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_PREV()), GIndex.unwrap(pack(0x160000000000, 40)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_CURR()), GIndex.unwrap(pack(0x160000000001, 40)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_PENDING_CONSOLIDATION_PREV()), GIndex.unwrap(pack(0x3200000, 18)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_PENDING_CONSOLIDATION_CURR()), GIndex.unwrap(pack(0x3200001, 18)));
+        assertEq(Slot.unwrap(verifier.FIRST_SUPPORTED_SLOT()), Slot.unwrap(firstSupportedSlot));
+        assertEq(Slot.unwrap(verifier.PIVOT_SLOT()), Slot.unwrap(Slot.wrap(100_501)));
+        assertEq(Slot.unwrap(verifier.CAPELLA_SLOT()), Slot.unwrap(Slot.wrap(42)));
     }
 
-    function test_constructor_RevertWhen_InvalidChainConfig_SlotsPerEpoch()
-        public
-    {
+    function test_constructor_RevertWhen_InvalidChainConfig_SlotsPerEpoch() public {
         vm.expectRevert(IVerifier.InvalidChainConfig.selector);
         verifier = new Verifier({
             withdrawalAddress: nextAddress(),
@@ -196,9 +147,7 @@ contract VerifierTestConstructor is VerifierTestBase {
         });
     }
 
-    function test_constructor_RevertWhen_InvalidChainConfig_SlotsPerHistoricalRoot()
-        public
-    {
+    function test_constructor_RevertWhen_InvalidChainConfig_SlotsPerHistoricalRoot() public {
         vm.expectRevert(IVerifier.InvalidChainConfig.selector);
         verifier = new Verifier({
             withdrawalAddress: nextAddress(),
@@ -420,8 +369,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
     }
 
     function test_processWithdrawalProof_HappyPath() public {
-        WithdrawnValidatorInfo[]
-            memory withdrawals = new WithdrawnValidatorInfo[](1);
+        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
         withdrawals[0] = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
             keyIndex: 0,
@@ -432,10 +380,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
 
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(
-                IBaseModule.reportRegularWithdrawnValidators.selector,
-                withdrawals
-            )
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
         );
 
         verifier.processWithdrawalProof(fixture.data);
@@ -450,25 +395,16 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         test_processWithdrawalProof_HappyPath();
     }
 
-    function test_processWithdrawalProof_RevertWhen_WithdrawalBlockSlotUnsupported()
-        public
-    {
-        fixture.data.withdrawalBlock.header.slot = verifier
-            .FIRST_SUPPORTED_SLOT()
-            .dec();
+    function test_processWithdrawalProof_RevertWhen_WithdrawalBlockSlotUnsupported() public {
+        fixture.data.withdrawalBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IVerifier.UnsupportedSlot.selector,
-                fixture.data.withdrawalBlock.header.slot
-            )
+            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.withdrawalBlock.header.slot)
         );
         verifier.processWithdrawalProof(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhen_InvalidWithdrawalBlock()
-        public
-    {
+    function test_processWithdrawalProof_RevertWhen_InvalidWithdrawalBlock() public {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
             abi.encode(fixture.data.withdrawalBlock.rootsTimestamp),
@@ -479,18 +415,14 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         verifier.processWithdrawalProof(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhen_InvalidWithdrawalCredentials()
-        public
-    {
+    function test_processWithdrawalProof_RevertWhen_InvalidWithdrawalCredentials() public {
         fixture.data.validator.object.withdrawalCredentials = someBytes32();
 
         vm.expectRevert(IVerifier.InvalidWithdrawalAddress.selector);
         verifier.processWithdrawalProof(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhen_InvalidWithdrawalAddress()
-        public
-    {
+    function test_processWithdrawalProof_RevertWhen_InvalidWithdrawalAddress() public {
         fixture.data.withdrawal.object.withdrawalAddress = nextAddress();
 
         vm.expectRevert(IVerifier.InvalidWithdrawalAddress.selector);
@@ -519,24 +451,15 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         verifier.processWithdrawalProof(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhen_ValidatorIsNotWithdrawable()
-        public
-    {
-        fixture.data.validator.object.withdrawableEpoch =
-            fixture.data.withdrawalBlock.header.slot.unwrap() /
-            32 +
-            1;
+    function test_processWithdrawalProof_RevertWhen_ValidatorIsNotWithdrawable() public {
+        fixture.data.validator.object.withdrawableEpoch = fixture.data.withdrawalBlock.header.slot.unwrap() / 32 + 1;
 
         vm.expectRevert(IVerifier.ValidatorIsNotWithdrawable.selector);
         verifier.processWithdrawalProof(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhen_ValidatorIndexDoesNotMatch()
-        public
-    {
-        fixture.data.withdrawal.object.validatorIndex =
-            fixture.data.validator.index +
-            1;
+    function test_processWithdrawalProof_RevertWhen_ValidatorIndexDoesNotMatch() public {
+        fixture.data.withdrawal.object.validatorIndex = fixture.data.validator.index + 1;
 
         vm.expectRevert(IVerifier.InvalidValidatorIndex.selector);
         verifier.processWithdrawalProof(fixture.data);
@@ -649,13 +572,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
-        vm.mockCall(
-            address(module),
-            abi.encodeWithSelector(
-                IBaseModule.reportRegularWithdrawnValidators.selector
-            ),
-            ""
-        );
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");
     }
 
     function _loadFixture() internal {
@@ -724,11 +641,7 @@ contract VerifierSlashingTest is VerifierTestBase {
 
         _setMocks();
 
-        assertGt(
-            verifier.FIRST_SUPPORTED_SLOT().unwrap(),
-            0,
-            "Non-zero slot needed for tests"
-        );
+        assertGt(verifier.FIRST_SUPPORTED_SLOT().unwrap(), 0, "Non-zero slot needed for tests");
     }
 
     function test_processSlashed_HappyPath() public {
@@ -748,25 +661,15 @@ contract VerifierSlashingTest is VerifierTestBase {
         vm.prank(admin);
         verifier.pauseFor(100_500);
 
-        vm.expectRevert(
-            PausableUntil.ResumedExpected.selector,
-            address(verifier)
-        );
+        vm.expectRevert(PausableUntil.ResumedExpected.selector, address(verifier));
         verifier.processSlashedProof(fixture.data);
     }
 
-    function test_processSlashed_RevertWhen_RecentBlockSlotUnsupported()
-        public
-    {
-        fixture.data.recentBlock.header.slot = verifier
-            .FIRST_SUPPORTED_SLOT()
-            .dec();
+    function test_processSlashed_RevertWhen_RecentBlockSlotUnsupported() public {
+        fixture.data.recentBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IVerifier.UnsupportedSlot.selector,
-                fixture.data.recentBlock.header.slot
-            )
+            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.recentBlock.header.slot)
         );
         verifier.processSlashedProof(fixture.data);
     }
@@ -824,11 +727,7 @@ contract VerifierSlashingTest is VerifierTestBase {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
-        vm.mockCall(
-            address(module),
-            abi.encodeWithSelector(IBaseModule.onValidatorSlashed.selector),
-            ""
-        );
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.onValidatorSlashed.selector), "");
     }
 
     function _loadFixture() internal {
@@ -868,20 +767,14 @@ contract VerifierConsolidationTest is VerifierTestBase {
                 gIFirstWithdrawalCurr: NULL_GINDEX,
                 gIFirstValidatorPrev: GIndices.FIRST_VALIDATOR_ELECTRA,
                 gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
-                gIFirstHistoricalSummaryPrev: GIndices
-                    .FIRST_HISTORICAL_SUMMARY_ELECTRA,
-                gIFirstHistoricalSummaryCurr: GIndices
-                    .FIRST_HISTORICAL_SUMMARY_ELECTRA,
-                gIFirstBlockRootInSummaryPrev: GIndices
-                    .FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
-                gIFirstBlockRootInSummaryCurr: GIndices
-                    .FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
+                gIFirstHistoricalSummaryPrev: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
+                gIFirstHistoricalSummaryCurr: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
+                gIFirstBlockRootInSummaryPrev: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
+                gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
                 gIFirstBalanceNodePrev: GIndices.FIRST_BALANCE_NODE_ELECTRA,
                 gIFirstBalanceNodeCurr: GIndices.FIRST_BALANCE_NODE_ELECTRA,
-                gIFirstPendingConsolidationPrev: GIndices
-                    .FIRST_PENDING_CONSOLIDATION_ELECTRA,
-                gIFirstPendingConsolidationCurr: GIndices
-                    .FIRST_PENDING_CONSOLIDATION_ELECTRA
+                gIFirstPendingConsolidationPrev: GIndices.FIRST_PENDING_CONSOLIDATION_ELECTRA,
+                gIFirstPendingConsolidationCurr: GIndices.FIRST_PENDING_CONSOLIDATION_ELECTRA
             }),
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192),
@@ -899,16 +792,11 @@ contract VerifierConsolidationTest is VerifierTestBase {
 
         _setMocks();
 
-        assertGt(
-            verifier.FIRST_SUPPORTED_SLOT().unwrap(),
-            0,
-            "Non-zero slot needed for tests"
-        );
+        assertGt(verifier.FIRST_SUPPORTED_SLOT().unwrap(), 0, "Non-zero slot needed for tests");
     }
 
     function test_processConsolidationProof_HappyPath() public {
-        WithdrawnValidatorInfo[]
-            memory withdrawals = new WithdrawnValidatorInfo[](1);
+        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
         withdrawals[0] = WithdrawnValidatorInfo({
             nodeOperatorId: fixture.data.validator.nodeOperatorId,
             keyIndex: fixture.data.validator.keyIndex,
@@ -919,10 +807,7 @@ contract VerifierConsolidationTest is VerifierTestBase {
 
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(
-                IBaseModule.reportRegularWithdrawnValidators.selector,
-                withdrawals
-            )
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
         );
 
         verifier.processConsolidation(fixture.data);
@@ -937,34 +822,20 @@ contract VerifierConsolidationTest is VerifierTestBase {
         verifier.processConsolidation(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_RecentBlockSlotUnsupported()
-        public
-    {
-        fixture.data.recentBlock.header.slot = verifier
-            .FIRST_SUPPORTED_SLOT()
-            .dec();
+    function test_processConsolidation_RevertWhen_RecentBlockSlotUnsupported() public {
+        fixture.data.recentBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IVerifier.UnsupportedSlot.selector,
-                fixture.data.recentBlock.header.slot
-            )
+            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.recentBlock.header.slot)
         );
         verifier.processConsolidation(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_ConsolidationBlockSlotUnsupported()
-        public
-    {
-        fixture.data.consolidationBlock.header.slot = verifier
-            .FIRST_SUPPORTED_SLOT()
-            .dec();
+    function test_processConsolidation_RevertWhen_ConsolidationBlockSlotUnsupported() public {
+        fixture.data.consolidationBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IVerifier.UnsupportedSlot.selector,
-                fixture.data.consolidationBlock.header.slot
-            )
+            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.consolidationBlock.header.slot)
         );
         verifier.processConsolidation(fixture.data);
     }
@@ -983,23 +854,14 @@ contract VerifierConsolidationTest is VerifierTestBase {
         verifier.processConsolidation(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_ValidatorIsNotWithdrawable()
-        public
-    {
-        fixture.data.validator.object.withdrawableEpoch =
-            fixture.data.recentBlock.header.slot.unwrap() /
-            32 +
-            1;
+    function test_processConsolidation_RevertWhen_ValidatorIsNotWithdrawable() public {
+        fixture.data.validator.object.withdrawableEpoch = fixture.data.recentBlock.header.slot.unwrap() / 32 + 1;
         vm.expectRevert(IVerifier.ValidatorIsNotWithdrawable.selector);
         verifier.processConsolidation(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_InvalidConsolidationSource()
-        public
-    {
-        fixture.data.consolidation.object.sourceIndex =
-            fixture.data.validator.index +
-            1;
+    function test_processConsolidation_RevertWhen_InvalidConsolidationSource() public {
+        fixture.data.consolidation.object.sourceIndex = fixture.data.validator.index + 1;
         vm.expectRevert(IVerifier.InvalidConsolidationSource.selector);
         verifier.processConsolidation(fixture.data);
     }
@@ -1032,13 +894,7 @@ contract VerifierConsolidationTest is VerifierTestBase {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
-        vm.mockCall(
-            address(module),
-            abi.encodeWithSelector(
-                IBaseModule.reportRegularWithdrawnValidators.selector
-            ),
-            ""
-        );
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");
     }
 
     function _loadFixture() internal {
@@ -1188,38 +1044,23 @@ contract VerifierTestable is Verifier {
         )
     {}
 
-    function getValidatorGI(
-        uint256 offset,
-        Slot stateSlot
-    ) external view returns (GIndex) {
+    function getValidatorGI(uint256 offset, Slot stateSlot) external view returns (GIndex) {
         return _getValidatorGI(offset, stateSlot);
     }
 
-    function getWithdrawalGI(
-        uint256 offset,
-        Slot stateSlot
-    ) external view returns (GIndex) {
+    function getWithdrawalGI(uint256 offset, Slot stateSlot) external view returns (GIndex) {
         return _getWithdrawalGI(offset, stateSlot);
     }
 
-    function getValidatorBalanceGI(
-        uint256 offset,
-        Slot stateSlot
-    ) external view returns (GIndex) {
+    function getValidatorBalanceGI(uint256 offset, Slot stateSlot) external view returns (GIndex) {
         return _getValidatorBalanceGI(offset, stateSlot);
     }
 
-    function getPendingConsolidationGI(
-        uint256 offset,
-        Slot stateSlot
-    ) external view returns (GIndex) {
+    function getPendingConsolidationGI(uint256 offset, Slot stateSlot) external view returns (GIndex) {
         return _getPendingConsolidationGI(offset, stateSlot);
     }
 
-    function getHistoricalBlockRootGI(
-        Slot recentSlot,
-        Slot targetSlot
-    ) external view returns (GIndex) {
+    function getHistoricalBlockRootGI(Slot recentSlot, Slot targetSlot) external view returns (GIndex) {
         return _getHistoricalBlockRootGI(recentSlot, targetSlot);
     }
 
@@ -1230,14 +1071,7 @@ contract VerifierTestable is Verifier {
         Slot stateSlot,
         bytes32[] calldata proof
     ) external view returns (uint256) {
-        return
-            _verifyValidatorBalance(
-                validatorIndex,
-                balanceNode,
-                stateRoot,
-                stateSlot,
-                proof
-            );
+        return _verifyValidatorBalance(validatorIndex, balanceNode, stateRoot, stateSlot, proof);
     }
 
     function getValidatorBalanceNodeInfo(
@@ -1245,17 +1079,10 @@ contract VerifierTestable is Verifier {
         uint256 validatorIndex,
         Slot stateSlot
     ) external view returns (GIndex gI, uint256 balance) {
-        return
-            _getValidatorBalanceNodeInfo(
-                balanceNode,
-                validatorIndex,
-                stateSlot
-            );
+        return _getValidatorBalanceNodeInfo(balanceNode, validatorIndex, stateSlot);
     }
 
-    function getParentBlockRoot(
-        uint64 blockTimestamp
-    ) external view returns (bytes32) {
+    function getParentBlockRoot(uint64 blockTimestamp) external view returns (bytes32) {
         return _getParentBlockRoot(blockTimestamp);
     }
 }
@@ -1588,9 +1415,7 @@ contract VerifierGIndexTest is Test, Utilities {
         assertEq(gI.unwrap(), pack(0x2d800003202a, 13).unwrap());
     }
 
-    function test_getHistoricalBlockRootGI_RevertWhen_SummaryCannotExist()
-        public
-    {
+    function test_getHistoricalBlockRootGI_RevertWhen_SummaryCannotExist() public {
         Slot recentSlot;
         Slot targetSlot;
 
@@ -1716,9 +1541,7 @@ contract VerifierGIndexCapellaZeroTest is Test, Utilities {
         assertEq(gI.unwrap(), pack(0x2d8000036895, 13).unwrap());
     }
 
-    function test_getHistoricalBlockRootGI_RevertWhen_SummaryCannotExist()
-        public
-    {
+    function test_getHistoricalBlockRootGI_RevertWhen_SummaryCannotExist() public {
         Slot recentSlot;
         Slot targetSlot;
 
@@ -1944,8 +1767,7 @@ contract VerifierParentBlockRootTest is Test, Utilities {
     // The code is obtained via `cast code 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02`
     bytes internal BEACON_ROOTS_CODE =
         hex"3373fffffffffffffffffffffffffffffffffffffffe14604d57602036146024575f5ffd5b5f35801560495762001fff810690815414603c575f5ffd5b62001fff01545f5260205ff35b5f5ffd5b62001fff42064281555f359062001fff015500";
-    address internal SYSTEM_ADDRESS =
-        0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE;
+    address internal SYSTEM_ADDRESS = 0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE;
 
     function setUp() public virtual {
         module = new Stub();
@@ -1977,10 +1799,7 @@ contract VerifierParentBlockRootTest is Test, Utilities {
         });
     }
 
-    function testFuzz_getParentBlockRoot_HappyPath(
-        bytes32 expected,
-        uint64 ts
-    ) public {
+    function testFuzz_getParentBlockRoot_HappyPath(bytes32 expected, uint64 ts) public {
         vm.assume(ts > 0); // The EIP-4788 reverts with 0 as an input.
 
         vm.etch(verifier.BEACON_ROOTS(), BEACON_ROOTS_CODE);
@@ -1989,9 +1808,7 @@ contract VerifierParentBlockRootTest is Test, Utilities {
         {
             vm.startPrank(SYSTEM_ADDRESS);
             vm.warp(ts);
-            (bool success, ) = verifier.BEACON_ROOTS().call(
-                abi.encode(expected)
-            );
+            (bool success, ) = verifier.BEACON_ROOTS().call(abi.encode(expected));
             assertTrue(success);
             vm.stopPrank();
         }

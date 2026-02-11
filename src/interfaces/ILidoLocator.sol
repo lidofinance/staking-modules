@@ -10,10 +10,7 @@ interface ILidoLocator {
 
     function burner() external view returns (address);
 
-    function coreComponents()
-        external
-        view
-        returns (address, address, address, address, address, address);
+    function coreComponents() external view returns (address, address, address, address, address, address);
 
     function depositSecurityModule() external view returns (address);
 

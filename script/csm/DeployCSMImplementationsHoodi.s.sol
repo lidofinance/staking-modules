@@ -20,37 +20,20 @@ import { Verifier } from "../../src/Verifier.sol";
 import { DeploymentHelpers } from "../../test/helpers/Fixtures.sol";
 import { DeployHoodi } from "./DeployHoodi.s.sol";
 
-contract DeployCSMImplementationsHoodi is
-    DeployCSMImplementationsBase,
-    DeployHoodi,
-    DeploymentHelpers
-{
-    function deploy(
-        string memory deploymentConfigPath,
-        string memory _gitRef
-    ) external {
+contract DeployCSMImplementationsHoodi is DeployCSMImplementationsBase, DeployHoodi, DeploymentHelpers {
+    function deploy(string memory deploymentConfigPath, string memory _gitRef) external {
         gitRef = _gitRef;
-        string memory deploymentConfigContent = vm.readFile(
-            deploymentConfigPath
-        );
-        DeploymentConfig memory deploymentConfig = parseDeploymentConfig(
-            deploymentConfigContent
-        );
+        string memory deploymentConfigContent = vm.readFile(deploymentConfigPath);
+        DeploymentConfig memory deploymentConfig = parseDeploymentConfig(deploymentConfigContent);
 
         csm = CSModule(deploymentConfig.csm);
         earlyAdoption = deploymentConfig.earlyAdoption;
         accounting = Accounting(deploymentConfig.accounting);
         oracle = FeeOracle(deploymentConfig.oracle);
         feeDistributor = FeeDistributor(deploymentConfig.feeDistributor);
-        permissionlessGate = PermissionlessGate(
-            deploymentConfig.permissionlessGate
-        );
-        parametersRegistry = ParametersRegistry(
-            deploymentConfig.parametersRegistry
-        );
-        vettedGateFactory = VettedGateFactory(
-            deploymentConfig.vettedGateFactory
-        );
+        permissionlessGate = PermissionlessGate(deploymentConfig.permissionlessGate);
+        parametersRegistry = ParametersRegistry(deploymentConfig.parametersRegistry);
+        vettedGateFactory = VettedGateFactory(deploymentConfig.vettedGateFactory);
         vettedGate = VettedGate(deploymentConfig.vettedGate);
         exitPenalties = ExitPenalties(deploymentConfig.exitPenalties);
         ejector = Ejector(payable(deploymentConfig.ejector));

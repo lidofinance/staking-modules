@@ -3,69 +3,15 @@
 
 pragma solidity 0.8.33;
 
-import { Test } from "forge-std/Test.sol";
-
 import { OssifiableProxy } from "../../../../src/lib/proxy/OssifiableProxy.sol";
-import { CSModule } from "../../../../src/CSModule.sol";
 import { Accounting } from "../../../../src/Accounting.sol";
 import { FeeDistributor } from "../../../../src/FeeDistributor.sol";
 import { FeeOracle } from "../../../../src/FeeOracle.sol";
-import { Utilities } from "../../../helpers/Utilities.sol";
-import { DeploymentFixtures } from "../../../helpers/Fixtures.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
-contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
-    constructor() {
-        Env memory env = envVars();
-        vm.createSelectFork(env.RPC_URL);
-        initializeFromDeployment();
-    }
-
-    function test_CSModuleUpgradeTo() public {
-        OssifiableProxy proxy = OssifiableProxy(payable(address(module)));
-        CSModule newModule = new CSModule({
-            moduleType: "CSMv3",
-            lidoLocator: address(module.LIDO_LOCATOR()),
-            parametersRegistry: address(module.PARAMETERS_REGISTRY()),
-            accounting: address(module.ACCOUNTING()),
-            exitPenalties: address(module.EXIT_PENALTIES())
-        });
-        vm.prank(proxy.proxy__getAdmin());
-        proxy.proxy__upgradeTo(address(newModule));
-        assertEq(module.getType(), "CSMv3");
-    }
-
-    function test_CSModuleUpgradeToAndCall() public {
-        OssifiableProxy proxy = OssifiableProxy(payable(address(module)));
-        CSModule newModule = new CSModule({
-            moduleType: "CSMv3",
-            lidoLocator: address(module.LIDO_LOCATOR()),
-            parametersRegistry: address(module.PARAMETERS_REGISTRY()),
-            accounting: address(module.ACCOUNTING()),
-            exitPenalties: address(module.EXIT_PENALTIES())
-        });
-        address contractAdmin = module.getRoleMember(
-            module.DEFAULT_ADMIN_ROLE(),
-            0
-        );
-        vm.startPrank(contractAdmin);
-        module.grantRole(
-            module.RESUME_ROLE(),
-            address(proxy.proxy__getAdmin())
-        );
-        module.grantRole(module.PAUSE_ROLE(), address(proxy.proxy__getAdmin()));
-        vm.stopPrank();
-        if (!module.isPaused()) {
-            vm.prank(proxy.proxy__getAdmin());
-            module.pauseFor(100500);
-        }
-        assertTrue(module.isPaused());
-        vm.prank(proxy.proxy__getAdmin());
-        proxy.proxy__upgradeToAndCall(
-            address(newModule),
-            abi.encodeWithSelector(newModule.resume.selector, 1)
-        );
-        assertEq(module.getType(), "CSMv3");
-        assertFalse(module.isPaused());
+abstract contract ProxyUpgradesBase is ModuleTypeBase {
+    function setUp() public {
+        _setUpModule();
     }
 
     function test_AccountingUpgradeTo() public {
@@ -80,10 +26,7 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
         });
         vm.prank(proxy.proxy__getAdmin());
         proxy.proxy__upgradeTo(address(newAccounting));
-        assertEq(
-            accounting.MAX_BOND_LOCK_PERIOD(),
-            currentMaxBondLockPeriod + 10
-        );
+        assertEq(accounting.MAX_BOND_LOCK_PERIOD(), currentMaxBondLockPeriod + 10);
     }
 
     function test_AccountingUpgradeToAndCall() public {
@@ -96,15 +39,9 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
             minBondLockPeriod: accounting.MIN_BOND_LOCK_PERIOD(),
             maxBondLockPeriod: currentMaxBondLockPeriod + 10
         });
-        address contractAdmin = accounting.getRoleMember(
-            accounting.DEFAULT_ADMIN_ROLE(),
-            0
-        );
+        address contractAdmin = accounting.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0);
         vm.startPrank(contractAdmin);
-        accounting.grantRole(
-            accounting.PAUSE_ROLE(),
-            address(proxy.proxy__getAdmin())
-        );
+        accounting.grantRole(accounting.PAUSE_ROLE(), address(proxy.proxy__getAdmin()));
         vm.stopPrank();
         assertFalse(accounting.isPaused());
         vm.prank(proxy.proxy__getAdmin());
@@ -112,10 +49,7 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
             address(newAccounting),
             abi.encodeWithSelector(newAccounting.pauseFor.selector, 100500)
         );
-        assertEq(
-            accounting.MAX_BOND_LOCK_PERIOD(),
-            currentMaxBondLockPeriod + 10
-        );
+        assertEq(accounting.MAX_BOND_LOCK_PERIOD(), currentMaxBondLockPeriod + 10);
         assertTrue(accounting.isPaused());
     }
 
@@ -140,10 +74,7 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
             secondsPerSlot: oracle.SECONDS_PER_SLOT(),
             genesisTime: block.timestamp
         });
-        address contractAdmin = oracle.getRoleMember(
-            oracle.DEFAULT_ADMIN_ROLE(),
-            0
-        );
+        address contractAdmin = oracle.getRoleMember(oracle.DEFAULT_ADMIN_ROLE(), 0);
         vm.startPrank(contractAdmin);
         oracle.grantRole(oracle.PAUSE_ROLE(), address(proxy.proxy__getAdmin()));
         vm.stopPrank();
@@ -158,9 +89,7 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
     }
 
     function test_FeeDistributorUpgradeTo() public {
-        OssifiableProxy proxy = OssifiableProxy(
-            payable(address(feeDistributor))
-        );
+        OssifiableProxy proxy = OssifiableProxy(payable(address(feeDistributor)));
         FeeDistributor newFeeDistributor = new FeeDistributor({
             stETH: locator.lido(),
             accounting: address(1337),
@@ -173,3 +102,7 @@ contract ProxyUpgrades is Test, Utilities, DeploymentFixtures {
 
     // upgradeToAndCall test seems useless for FeeDistributor
 }
+
+contract ProxyUpgradesCommonCSM is ProxyUpgradesBase, CSMIntegrationBase {}
+
+contract ProxyUpgradesCommonCurated is ProxyUpgradesBase, CuratedIntegrationBase {}

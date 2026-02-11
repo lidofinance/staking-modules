@@ -11,9 +11,7 @@ contract CuratedGateFactory is ICuratedGateFactory {
     address public immutable CURATED_GATE_IMPL;
 
     constructor(address curatedGateImpl) {
-        if (curatedGateImpl == address(0)) {
-            revert ZeroImplementationAddress();
-        }
+        if (curatedGateImpl == address(0)) revert ZeroImplementationAddress();
         CURATED_GATE_IMPL = curatedGateImpl;
     }
 
@@ -25,11 +23,7 @@ contract CuratedGateFactory is ICuratedGateFactory {
         address admin
     ) external returns (address instance) {
         instance = address(
-            new OssifiableProxy({
-                implementation_: CURATED_GATE_IMPL,
-                admin_: admin,
-                data_: new bytes(0)
-            })
+            new OssifiableProxy({ implementation_: CURATED_GATE_IMPL, admin_: admin, data_: new bytes(0) })
         );
 
         CuratedGate(instance).initialize(curveId, treeRoot, treeCid, admin);

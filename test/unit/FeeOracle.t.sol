@@ -47,8 +47,7 @@ contract FeeOracleTest is Test, Utilities, InvariantAsserts {
         uint256 genesisTime;
     }
 
-    address internal constant ORACLE_ADMIN =
-        address(uint160(uint256(keccak256("ORACLE_ADMIN"))));
+    address internal constant ORACLE_ADMIN = address(uint160(uint256(keccak256("ORACLE_ADMIN"))));
 
     uint256 internal constant CONSENSUS_VERSION = 4;
     uint256 internal constant INITIAL_EPOCH = 17;
@@ -70,11 +69,7 @@ contract FeeOracleTest is Test, Utilities, InvariantAsserts {
     }
 
     function setUp() public {
-        chainConfig = ChainConfig({
-            secondsPerSlot: 12,
-            slotsPerEpoch: 32,
-            genesisTime: 0
-        });
+        chainConfig = ChainConfig({ secondsPerSlot: 12, slotsPerEpoch: 32, genesisTime: 0 });
 
         vm.label(ORACLE_ADMIN, "ORACLE_ADMIN");
         _vmSetEpoch(INITIAL_EPOCH);
@@ -142,10 +137,7 @@ contract FeeOracleTest is Test, Utilities, InvariantAsserts {
         assertLt(startSlot, refSlot);
     }
 
-    function test_submitReportData_RevertWhen_InvalidReportSender()
-        public
-        assertInvariants
-    {
+    function test_submitReportData_RevertWhen_InvalidReportSender() public assertInvariants {
         {
             _deployFeeOracleAndHashConsensus(_lastSlotOfEpoch(1));
             _grantAllRolesToAdmin();
@@ -342,9 +334,7 @@ contract FeeOracleTest is Test, Utilities, InvariantAsserts {
 
         oracle.initialize(address(this), address(consensus), CONSENSUS_VERSION);
 
-        vm.assertTrue(
-            oracle.hasRole(oracle.DEFAULT_ADMIN_ROLE(), address(this))
-        );
+        vm.assertTrue(oracle.hasRole(oracle.DEFAULT_ADMIN_ROLE(), address(this)));
         assertEq(oracle.getContractVersion(), 3);
         assertEq(oracle.getConsensusVersion(), CONSENSUS_VERSION);
     }
@@ -401,9 +391,7 @@ contract FeeOracleTest is Test, Utilities, InvariantAsserts {
         oracle.recoverEther();
     }
 
-    function _deployFeeOracleAndHashConsensus(
-        uint256 /* lastProcessingRefSlot */
-    ) internal {
+    function _deployFeeOracleAndHashConsensus(uint256 /* lastProcessingRefSlot */) internal {
         oracle = new FeeOracleForTest({
             feeDistributor: address(distributor),
             strikes: address(strikes),
@@ -492,10 +480,7 @@ contract FeeOracleTest is Test, Utilities, InvariantAsserts {
     }
 
     function _epochsInDays(uint256 daysCount) internal view returns (uint256) {
-        return
-            (daysCount * 24 * 60 * 60) /
-            chainConfig.secondsPerSlot /
-            chainConfig.slotsPerEpoch;
+        return (daysCount * 24 * 60 * 60) / chainConfig.secondsPerSlot / chainConfig.slotsPerEpoch;
     }
 
     function _lastSlotOfEpoch(uint256 epoch) internal pure returns (uint256) {

@@ -76,7 +76,6 @@ test-curated-local *args:
 
     just test-deployment-full-afterVote {{args}}
 
-    # TODO uncomment once integration tests are ready for curated
-    # just test-integration {{args}}
+    just test-integration {{args}}
 
     just kill-fork

@@ -27,28 +27,18 @@ contract ParametersRegistryMock {
     uint256 public allowedExitDelay = 1 weeks;
     uint256 public exitDelayFee = 0.1 ether;
     uint256 public maxElWithdrawalRequestFee = 1 ether;
-    uint256 public depositAllocationWeight = 1;
 
     mapping(uint256 curveId => MarkedQueueConfig) internal _queueConfigs;
-    mapping(uint256 curveId => uint256) internal _depositAllocationWeights;
-    mapping(uint256 curveId => bool) internal _hasDepositAllocationWeight;
 
-    function getKeyRemovalCharge(
-        uint256 /* curveId */
-    ) external view returns (uint256) {
+    function getKeyRemovalCharge(uint256 /* curveId */) external view returns (uint256) {
         return keyRemovalCharge;
     }
 
-    function setKeyRemovalCharge(
-        uint256 /* curveId */,
-        uint256 charge
-    ) external {
+    function setKeyRemovalCharge(uint256 /* curveId */, uint256 charge) external {
         keyRemovalCharge = charge;
     }
 
-    function getKeysLimit(
-        uint256 /* curveId */
-    ) external view returns (uint256) {
+    function getKeysLimit(uint256 /* curveId */) external view returns (uint256) {
         return keysLimit;
     }
 
@@ -56,52 +46,32 @@ contract ParametersRegistryMock {
         keysLimit = limit;
     }
 
-    function setGeneralDelayedPenaltyAdditionalFine(
-        uint256 /* curveId */,
-        uint256 fine
-    ) external {
+    function setGeneralDelayedPenaltyAdditionalFine(uint256 /* curveId */, uint256 fine) external {
         additionalFine = fine;
     }
 
-    function getGeneralDelayedPenaltyAdditionalFine(
-        uint256 /* curveId */
-    ) external view returns (uint256) {
+    function getGeneralDelayedPenaltyAdditionalFine(uint256 /* curveId */) external view returns (uint256) {
         return additionalFine;
     }
 
-    function getStrikesParams(
-        uint256 /* curveId */
-    ) external view returns (uint256, uint256) {
+    function getStrikesParams(uint256 /* curveId */) external view returns (uint256, uint256) {
         return (strikesLifetime, strikesThreshold);
     }
 
-    function setStrikesParams(
-        uint256 /* curveId */,
-        uint256 lifetime,
-        uint256 threshold
-    ) external {
+    function setStrikesParams(uint256 /* curveId */, uint256 lifetime, uint256 threshold) external {
         strikesLifetime = lifetime;
         strikesThreshold = threshold;
     }
 
-    function getBadPerformancePenalty(
-        uint256 /* curveId */
-    ) external view returns (uint256) {
+    function getBadPerformancePenalty(uint256 /* curveId */) external view returns (uint256) {
         return badPerformancePenalty;
     }
 
-    function setBadPerformancePenalty(
-        uint256 /* curveId */,
-        uint256 penalty
-    ) external {
+    function setBadPerformancePenalty(uint256 /* curveId */, uint256 penalty) external {
         badPerformancePenalty = penalty;
     }
 
-    function setQueueConfig(
-        uint256 curveId,
-        uint256 priority,
-        uint256 maxDeposits
-    ) external {
+    function setQueueConfig(uint256 curveId, uint256 priority, uint256 maxDeposits) external {
         _queueConfigs[curveId] = MarkedQueueConfig({
             // Both values are tiny in tests (priority <= QUEUE_LOWEST_PRIORITY, maxDeposits <= keysLimit < 2^32), so the truncating cast is safe.
             // forge-lint: disable-next-line(unsafe-typecast)
@@ -112,19 +82,11 @@ contract ParametersRegistryMock {
         });
     }
 
-    function setRewardShareData(
-        uint256,
-        IParametersRegistry.KeyNumberValueInterval[] calldata
-    ) external {}
+    function setRewardShareData(uint256, IParametersRegistry.KeyNumberValueInterval[] calldata) external {}
 
-    function setPerformanceLeewayData(
-        uint256,
-        IParametersRegistry.KeyNumberValueInterval[] calldata
-    ) external {}
+    function setPerformanceLeewayData(uint256, IParametersRegistry.KeyNumberValueInterval[] calldata) external {}
 
-    function getQueueConfig(
-        uint256 curveId
-    ) external view returns (uint32 priority, uint32 maxDeposits) {
+    function getQueueConfig(uint256 curveId) external view returns (uint32 priority, uint32 maxDeposits) {
         MarkedQueueConfig storage config = _queueConfigs[curveId];
 
         if (!config.isValue) {
@@ -137,9 +99,7 @@ contract ParametersRegistryMock {
         return (config.priority, config.maxDeposits);
     }
 
-    function getAllowedExitDelay(
-        uint256 /* curveId */
-    ) external view returns (uint256) {
+    function getAllowedExitDelay(uint256 /* curveId */) external view returns (uint256) {
         return allowedExitDelay;
     }
 
@@ -147,9 +107,7 @@ contract ParametersRegistryMock {
         allowedExitDelay = delay;
     }
 
-    function getExitDelayFee(
-        uint256 /* curveId */
-    ) external view returns (uint256) {
+    function getExitDelayFee(uint256 /* curveId */) external view returns (uint256) {
         return exitDelayFee;
     }
 
@@ -157,53 +115,13 @@ contract ParametersRegistryMock {
         exitDelayFee = fee;
     }
 
-    function getMaxElWithdrawalRequestFee(
-        uint256 /* curveId */
-    ) external view returns (uint256) {
+    function getMaxElWithdrawalRequestFee(uint256 /* curveId */) external view returns (uint256) {
         return maxElWithdrawalRequestFee;
     }
 
-    function setMaxElWithdrawalRequestFee(
-        uint256 /* curveId */,
-        uint256 _maxElWithdrawalRequestFee
-    ) external {
+    function setMaxElWithdrawalRequestFee(uint256 /* curveId */, uint256 _maxElWithdrawalRequestFee) external {
         maxElWithdrawalRequestFee = _maxElWithdrawalRequestFee;
     }
 
-    function defaultDepositAllocationWeight() external view returns (uint256) {
-        return depositAllocationWeight;
-    }
-
-    function getDepositAllocationWeight(
-        uint256 curveId
-    ) external view returns (uint256) {
-        if (_hasDepositAllocationWeight[curveId]) {
-            return _depositAllocationWeights[curveId];
-        }
-        return depositAllocationWeight;
-    }
-
-    function setDepositAllocationWeight(
-        uint256 curveId,
-        uint256 weight
-    ) external {
-        _hasDepositAllocationWeight[curveId] = true;
-        _depositAllocationWeights[curveId] = weight;
-    }
-
-    function unsetDepositAllocationWeight(uint256 curveId) external {
-        delete _depositAllocationWeights[curveId];
-        _hasDepositAllocationWeight[curveId] = false;
-    }
-
-    function setDefaultDepositAllocationWeight(uint256 weight) external {
-        depositAllocationWeight = weight;
-    }
-
-    function setPerformanceCoefficients(
-        uint256,
-        uint256,
-        uint256,
-        uint256
-    ) external {}
+    function setPerformanceCoefficients(uint256, uint256, uint256, uint256) external {}
 }

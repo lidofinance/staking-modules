@@ -3,18 +3,13 @@
 
 pragma solidity 0.8.33;
 
-import { Test } from "forge-std/Test.sol";
+import { MerkleTree } from "../../../helpers/MerkleTree.sol";
+import { VettedGate } from "../../../../src/VettedGate.sol";
+import { CSMIntegrationBase } from "../common/ModuleTypeBase.sol";
 
-import { Utilities } from "../../helpers/Utilities.sol";
-import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { MerkleTree } from "../../helpers/MerkleTree.sol";
-import { VettedGate } from "../../../src/VettedGate.sol";
-
-contract MiscTest is Test, Utilities, DeploymentFixtures {
+contract MiscTest is CSMIntegrationBase {
     function setUp() public {
-        Env memory env = envVars();
-        vm.createSelectFork(env.RPC_URL);
-        initializeFromDeployment();
+        _setUpModule();
     }
 }
 
@@ -28,12 +23,7 @@ contract VettedGateFactoryTest is MiscTest {
         string memory cid = "someOtherCid";
 
         vm.startSnapshotGas("VettedGateFactory.create");
-        address instance = vettedGateFactory.create(
-            curveId,
-            root,
-            cid,
-            address(this)
-        );
+        address instance = vettedGateFactory.create(curveId, root, cid, address(this));
         vm.stopSnapshotGas();
 
         VettedGate gate = VettedGate(instance);

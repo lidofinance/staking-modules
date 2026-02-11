@@ -43,12 +43,7 @@ contract OssifiableProxyTest is Test, Utilities {
     }
 
     function test_constructor_revertWhenZeroAdmin() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ERC1967Utils.ERC1967InvalidAdmin.selector,
-                address(0)
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(ERC1967Utils.ERC1967InvalidAdmin.selector, address(0)));
         new OssifiableProxy(address(currentImpl), address(0), "0x");
     }
 
@@ -129,10 +124,7 @@ contract OssifiableProxyTest is Test, Utilities {
     function test_upgradeToAndCall_RevertWhenNotAdmin() public {
         vm.prank(stranger);
         vm.expectRevert(OssifiableProxy.NotAdmin.selector);
-        proxy.proxy__upgradeToAndCall(
-            address(nextImpl),
-            abi.encodeWithSelector(nextImpl.initialize.selector, 1)
-        );
+        proxy.proxy__upgradeToAndCall(address(nextImpl), abi.encodeWithSelector(nextImpl.initialize.selector, 1));
     }
 
     function test_upgradeToAndCall_RevertWhenOssified() public {
@@ -141,23 +133,14 @@ contract OssifiableProxyTest is Test, Utilities {
         assertTrue(proxy.proxy__getIsOssified());
 
         vm.expectRevert(OssifiableProxy.ProxyIsOssified.selector);
-        proxy.proxy__upgradeToAndCall(
-            address(nextImpl),
-            abi.encodeWithSelector(nextImpl.initialize.selector, 1)
-        );
+        proxy.proxy__upgradeToAndCall(address(nextImpl), abi.encodeWithSelector(nextImpl.initialize.selector, 1));
     }
 
     function test_upgradeToAndCall() public {
         vm.prank(admin);
-        proxy.proxy__upgradeToAndCall(
-            address(nextImpl),
-            abi.encodeWithSelector(nextImpl.initialize.selector, 1)
-        );
+        proxy.proxy__upgradeToAndCall(address(nextImpl), abi.encodeWithSelector(nextImpl.initialize.selector, 1));
         assertEq(proxy.proxy__getImplementation(), address(nextImpl));
-        assertEq(
-            InitializableImplementationStub(payable(address(proxy))).version(),
-            1
-        );
+        assertEq(InitializableImplementationStub(payable(address(proxy))).version(), 1);
     }
 
     function test_receive() public {
@@ -172,9 +155,7 @@ contract OssifiableProxyTest is Test, Utilities {
 
     function test_fallback() public {
         vm.prank(admin);
-        uint256 version = InitializableImplementationStub(
-            payable(address(proxy))
-        ).version();
+        uint256 version = InitializableImplementationStub(payable(address(proxy))).version();
         assertEq(version, 0);
     }
 }

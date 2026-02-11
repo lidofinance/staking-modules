@@ -10,8 +10,7 @@ import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.so
 contract Utilities is CommonBase {
     using Strings for uint256;
 
-    bytes constant BASE58ALPHABET =
-        bytes("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz");
+    bytes constant BASE58ALPHABET = bytes("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz");
 
     bytes32 internal seed = keccak256("seed sEed seEd");
 
@@ -31,28 +30,17 @@ contract Utilities is CommonBase {
         return a;
     }
 
-    function keysSignatures(
-        uint256 keysCount
-    ) public pure returns (bytes memory, bytes memory) {
+    function keysSignatures(uint256 keysCount) public pure returns (bytes memory, bytes memory) {
         return keysSignatures(keysCount, 0);
     }
 
-    function keysSignatures(
-        uint256 keysCount,
-        uint256 startIndex
-    ) public pure returns (bytes memory, bytes memory) {
+    function keysSignatures(uint256 keysCount, uint256 startIndex) public pure returns (bytes memory, bytes memory) {
         bytes memory keys;
         bytes memory signatures;
         for (uint256 i = startIndex; i < startIndex + keysCount; i++) {
             bytes memory index = abi.encodePacked(i + 1);
-            bytes memory key = bytes.concat(
-                new bytes(48 - index.length),
-                index
-            );
-            bytes memory sign = bytes.concat(
-                new bytes(96 - index.length),
-                index
-            );
+            bytes memory key = bytes.concat(new bytes(48 - index.length), index);
+            bytes memory sign = bytes.concat(new bytes(96 - index.length), index);
             keys = bytes.concat(keys, key);
             signatures = bytes.concat(signatures, sign);
         }
@@ -75,44 +63,28 @@ contract Utilities is CommonBase {
         bytes memory signatures;
         for (uint256 i = startIndex; i < startIndex + keysCount; i++) {
             bytes memory index = abi.encodePacked(i + 1);
-            bytes memory key = bytes.concat(
-                new bytes(48 - index.length),
-                index
-            );
-            if (i == uint32(startIndex) + uint32(zeroKeyIndex)) {
-                key = new bytes(48);
-            }
-            bytes memory sign = bytes.concat(
-                new bytes(96 - index.length),
-                index
-            );
+            bytes memory key = bytes.concat(new bytes(48 - index.length), index);
+            if (i == uint32(startIndex) + uint32(zeroKeyIndex)) key = new bytes(48);
+            bytes memory sign = bytes.concat(new bytes(96 - index.length), index);
             keys = bytes.concat(keys, key);
             signatures = bytes.concat(signatures, sign);
         }
         return (keys, signatures);
     }
 
-    function _encodeNodeOperatorId(
-        uint256 noId
-    ) internal pure returns (bytes memory) {
+    function _encodeNodeOperatorId(uint256 noId) internal pure returns (bytes memory) {
         // Node operator ids are sequential and bounded (< 2^32), so squeezing into 64 bits matches production encoding.
         // forge-lint: disable-next-line(unsafe-typecast)
         return bytes.concat(bytes8(uint64(noId)));
     }
 
-    function _encodeNodeOperatorPair(
-        uint256 firstNoId,
-        uint256 secondNoId
-    ) internal pure returns (bytes memory) {
+    function _encodeNodeOperatorPair(uint256 firstNoId, uint256 secondNoId) internal pure returns (bytes memory) {
         // Both ids share the same bound, letting us pack them into 16 bytes.
         // forge-lint: disable-next-item(unsafe-typecast)
-        return
-            bytes.concat(bytes8(uint64(firstNoId)), bytes8(uint64(secondNoId)));
+        return bytes.concat(bytes8(uint64(firstNoId)), bytes8(uint64(secondNoId)));
     }
 
-    function _encodeUint128Value(
-        uint256 value
-    ) internal pure returns (bytes memory) {
+    function _encodeUint128Value(uint256 value) internal pure returns (bytes memory) {
         // Test amounts are tiny (< 2 ether or a handful of keys) and trivially fit in 128 bits.
         // forge-lint: disable-next-line(unsafe-typecast)
         return bytes.concat(bytes16(uint128(value)));
@@ -126,9 +98,7 @@ contract Utilities is CommonBase {
             seed = buf;
 
             for (uint256 i = 0; i < 32; i++) {
-                if (length == 0) {
-                    return b;
-                }
+                if (length == 0) return b;
                 length--;
                 b[length] = buf[i];
             }
@@ -156,9 +126,7 @@ contract Utilities is CommonBase {
     }
 
     function checkChainId(uint256 chainId) public view {
-        if (chainId != block.chainid) {
-            revert("wrong chain id");
-        }
+        if (chainId != block.chainid) revert("wrong chain id");
     }
 
     function expectNoCall(address where, bytes memory data) internal {
@@ -167,11 +135,7 @@ contract Utilities is CommonBase {
 
     function expectRoleRevert(address account, bytes32 neededRole) internal {
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector,
-                account,
-                neededRole
-            )
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, account, neededRole)
         );
     }
 
@@ -187,21 +151,14 @@ contract Utilities is CommonBase {
         return arr;
     }
 
-    function UintArr(
-        uint256 e0,
-        uint256 e1
-    ) public pure returns (uint256[] memory) {
+    function UintArr(uint256 e0, uint256 e1) public pure returns (uint256[] memory) {
         uint256[] memory arr = new uint256[](2);
         arr[0] = e0;
         arr[1] = e1;
         return arr;
     }
 
-    function UintArr(
-        uint256 e0,
-        uint256 e1,
-        uint256 e2
-    ) public pure returns (uint256[] memory) {
+    function UintArr(uint256 e0, uint256 e1, uint256 e2) public pure returns (uint256[] memory) {
         uint256[] memory arr = new uint256[](3);
         arr[0] = e0;
         arr[1] = e1;
@@ -215,21 +172,14 @@ contract Utilities is CommonBase {
         return arr;
     }
 
-    function BytesArr(
-        bytes memory e0,
-        bytes memory e1
-    ) public pure returns (bytes[] memory) {
+    function BytesArr(bytes memory e0, bytes memory e1) public pure returns (bytes[] memory) {
         bytes[] memory arr = new bytes[](2);
         arr[0] = e0;
         arr[1] = e1;
         return arr;
     }
 
-    function BytesArr(
-        bytes memory e0,
-        bytes memory e1,
-        bytes memory e2
-    ) public pure returns (bytes[] memory) {
+    function BytesArr(bytes memory e0, bytes memory e1, bytes memory e2) public pure returns (bytes[] memory) {
         bytes[] memory arr = new bytes[](3);
         arr[0] = e0;
         arr[1] = e1;
@@ -237,11 +187,7 @@ contract Utilities is CommonBase {
         return arr;
     }
 
-    function slice(
-        bytes memory subject,
-        uint256 offset,
-        uint256 length
-    ) public pure returns (bytes memory result) {
+    function slice(bytes memory subject, uint256 offset, uint256 length) public pure returns (bytes memory result) {
         result = new bytes(length);
         for (uint256 i; i < length; ++i) {
             result[i] = subject[offset + i];
@@ -327,13 +273,8 @@ contract Utilities is CommonBase {
             // Check the value of the zero slot.
             zeroSlotIsNotZero := mload(0x60)
         }
-        if (freeMemoryPointerOverflowed) {
-            revert FreeMemoryPointerOverflowed();
-        }
-
-        if (zeroSlotIsNotZero) {
-            revert ZeroSlotIsNotZero();
-        }
+        if (freeMemoryPointerOverflowed) revert FreeMemoryPointerOverflowed();
+        if (zeroSlotIsNotZero) revert ZeroSlotIsNotZero();
     }
 
     /// See https://github.com/Vectorized/solady - MIT licensed.
@@ -348,9 +289,7 @@ contract Utilities is CommonBase {
 
 function hasLog(Vm.Log[] memory self, bytes32 topic) pure returns (bool) {
     for (uint256 i = 0; i < self.length; ++i) {
-        if (self[i].topics[0] == topic) {
-            return true;
-        }
+        if (self[i].topics[0] == topic) return true;
     }
 
     return false;

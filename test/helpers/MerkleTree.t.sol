@@ -16,52 +16,20 @@ contract MerkleTreeTest is Test, Utilities {
     }
 
     function test_treeRoot() public {
-        tree.pushLeaf(
-            abi.encode(
-                address(0x1111111111111111111111111111111111111111),
-                5000000000000000000
-            )
-        );
-        tree.pushLeaf(
-            abi.encode(
-                address(0x2222222222222222222222222222222222222222),
-                2500000000000000000
-            )
-        );
-        tree.pushLeaf(
-            abi.encode(
-                address(0x3333333333333333333333333333333333333333),
-                3500000000000000000
-            )
-        );
-        tree.pushLeaf(
-            abi.encode(
-                address(0x4444444444444444444444444444444444444444),
-                4500000000000000000
-            )
-        );
-        tree.pushLeaf(
-            abi.encode(
-                address(0x5555555555555555555555555555555555555555),
-                5500000000000000000
-            )
-        );
+        tree.pushLeaf(abi.encode(address(0x1111111111111111111111111111111111111111), 5000000000000000000));
+        tree.pushLeaf(abi.encode(address(0x2222222222222222222222222222222222222222), 2500000000000000000));
+        tree.pushLeaf(abi.encode(address(0x3333333333333333333333333333333333333333), 3500000000000000000));
+        tree.pushLeaf(abi.encode(address(0x4444444444444444444444444444444444444444), 4500000000000000000));
+        tree.pushLeaf(abi.encode(address(0x5555555555555555555555555555555555555555), 5500000000000000000));
 
-        assertEq(
-            tree.root(),
-            0x3b75a59075b62bc3a8647c5e576c8464cde52c84890afbaffa0c7e312009bea9
-        );
+        assertEq(tree.root(), 0x3b75a59075b62bc3a8647c5e576c8464cde52c84890afbaffa0c7e312009bea9);
     }
 
     function test_treeWithSingleElement() public {
         bytes memory leaf0 = abi.encode(42);
         tree.pushLeaf(leaf0);
         bytes32[] memory proof = tree.getProof(0);
-        bool isValid = MerkleProof.verify(
-            proof,
-            tree.root(),
-            tree.hashLeaf(leaf0)
-        );
+        bool isValid = MerkleProof.verify(proof, tree.root(), tree.hashLeaf(leaf0));
         assertTrue(isValid);
         assertEq(tree.root(), tree.hashLeaf(leaf0));
     }
@@ -89,12 +57,7 @@ contract MerkleTreeTest is Test, Utilities {
 
         bool[] memory proofFlags;
         (proof, proofFlags) = tree.getMultiProof(UintArr(0, 1));
-        isValid = MerkleProof.multiProofVerify(
-            proof,
-            proofFlags,
-            tree.root(),
-            leaves
-        );
+        isValid = MerkleProof.multiProofVerify(proof, proofFlags, tree.root(), leaves);
         assertTrue(isValid);
     }
 
@@ -130,12 +93,7 @@ contract MerkleTreeTest is Test, Utilities {
             leaves[1] = tree.hashLeaf(leaf1);
 
             (proof, proofFlags) = tree.getMultiProof(UintArr(0, 1));
-            isValid = MerkleProof.multiProofVerify(
-                proof,
-                proofFlags,
-                tree.root(),
-                leaves
-            );
+            isValid = MerkleProof.multiProofVerify(proof, proofFlags, tree.root(), leaves);
             assertTrue(isValid);
         }
 
@@ -145,12 +103,7 @@ contract MerkleTreeTest is Test, Utilities {
             leaves[1] = tree.hashLeaf(leaf2);
 
             (proof, proofFlags) = tree.getMultiProof(UintArr(1, 2));
-            isValid = MerkleProof.multiProofVerify(
-                proof,
-                proofFlags,
-                tree.root(),
-                leaves
-            );
+            isValid = MerkleProof.multiProofVerify(proof, proofFlags, tree.root(), leaves);
             assertTrue(isValid);
         }
 
@@ -160,12 +113,7 @@ contract MerkleTreeTest is Test, Utilities {
             leaves[1] = tree.hashLeaf(leaf2);
 
             (proof, proofFlags) = tree.getMultiProof(UintArr(0, 2));
-            isValid = MerkleProof.multiProofVerify(
-                proof,
-                proofFlags,
-                tree.root(),
-                leaves
-            );
+            isValid = MerkleProof.multiProofVerify(proof, proofFlags, tree.root(), leaves);
             assertTrue(isValid);
         }
 
@@ -176,12 +124,7 @@ contract MerkleTreeTest is Test, Utilities {
             leaves[2] = tree.hashLeaf(leaf2);
 
             (proof, proofFlags) = tree.getMultiProof(UintArr(0, 1, 2));
-            isValid = MerkleProof.multiProofVerify(
-                proof,
-                proofFlags,
-                tree.root(),
-                leaves
-            );
+            isValid = MerkleProof.multiProofVerify(proof, proofFlags, tree.root(), leaves);
             assertTrue(isValid);
         }
     }

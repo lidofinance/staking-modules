@@ -3,23 +3,28 @@
 
 pragma solidity 0.8.33;
 
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
+import { CuratedDepositAllocator } from "src/lib/allocator/CuratedDepositAllocator.sol";
 import { CuratedModule } from "src/CuratedModule.sol";
+import { IBaseModule, INOAddresses, NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
+import { IBondCurve } from "src/interfaces/IBondCurve.sol";
+import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
+import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
+
 import { Stub } from "../helpers/mocks/Stub.sol";
 import { ParametersRegistryMock } from "../helpers/mocks/ParametersRegistryMock.sol";
 import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
-import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
-import { IBaseModule, INOAddresses, NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
-import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
-import { CSModule } from "src/CSModule.sol";
-import { CuratedDepositAllocator } from "src/lib/allocator/CuratedDepositAllocator.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 // forge-lint: disable-next-line(unaliased-plain-import)
 import "./ModuleAbstract/ModuleAbstract.t.sol";
 
 contract CuratedCommon is ModuleFixtures {
-    CuratedModule cm;
+    ICuratedModule cm;
+    Stub internal metaRegistry;
+    uint256 internal constant DEFAULT_OPERATOR_WEIGHT = 1;
+    uint256 internal constant MAX_MOCKED_OPERATORS = 256;
 
     function moduleType() internal pure override returns (ModuleType) {
         return ModuleType.Curated;
@@ -40,25 +45,19 @@ contract CuratedCommon is ModuleFixtures {
         parametersRegistry = new ParametersRegistryMock();
         exitPenalties = new ExitPenaltiesMock();
 
-        IBondCurve.BondCurveIntervalInput[]
-            memory curve = new IBondCurve.BondCurveIntervalInput[](1);
-        curve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: BOND_SIZE
-        });
-        accounting = new AccountingMock(
-            BOND_SIZE,
-            address(wstETH),
-            address(stETH),
-            address(feeDistributor)
-        );
+        IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
+        curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: BOND_SIZE });
+        accounting = new AccountingMock(BOND_SIZE, address(wstETH), address(stETH), address(feeDistributor));
 
+        metaRegistry = new Stub();
+        _mockMetaOperatorDefaults();
         module = new CuratedModule({
             moduleType: "curated-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaRegistry: address(metaRegistry)
         });
         cm = CuratedModule(address(module));
 
@@ -86,29 +85,73 @@ contract CuratedCommon is ModuleFixtures {
         module.grantRole(module.DEFAULT_ADMIN_ROLE(), address(this));
         module.grantRole(module.STAKING_ROUTER_ROLE(), address(this));
         module.grantRole(module.STAKING_ROUTER_ROLE(), stakingRouter);
-        module.grantRole(
-            module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(),
-            address(this)
-        );
-        module.grantRole(
-            module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
-            address(this)
-        );
+        module.grantRole(module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(), address(this));
+        module.grantRole(module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), address(this));
         module.grantRole(module.VERIFIER_ROLE(), address(this));
-        module.grantRole(
-            module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(),
-            address(this)
-        );
-        module.grantRole(
-            module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(),
-            address(this)
-        );
+        module.grantRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), address(this));
+        module.grantRole(module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(), address(this));
         vm.stopPrank();
+    }
+
+    function _mockMetaOperatorDefaults() internal {
+        for (uint256 i; i < MAX_MOCKED_OPERATORS; ++i) {
+            _mockOperatorGroupMembership(i, true);
+            _mockOperatorWeightUpdated(i, false);
+            _mockOperatorWeight(i, DEFAULT_OPERATOR_WEIGHT);
+        }
+    }
+
+    function _mockAllOperatorWeights(uint256 weight) internal {
+        uint256 count = module.getNodeOperatorsCount();
+        for (uint256 i; i < count; ++i) {
+            _mockOperatorWeight(i, weight);
+        }
+    }
+
+    function _mockOperatorWeight(uint256 nodeOperatorId, uint256 weight) internal {
+        _mockOperatorWeightAndExternalStake(nodeOperatorId, weight, 0);
+    }
+
+    function _mockOperatorWeightAndExternalStake(
+        uint256 nodeOperatorId,
+        uint256 weight,
+        uint256 externalStake
+    ) internal {
+        vm.mockCall(
+            address(metaRegistry),
+            abi.encodeWithSelector(IMetaRegistry.getNodeOperatorWeight.selector, nodeOperatorId),
+            abi.encode(weight)
+        );
+        vm.mockCall(
+            address(metaRegistry),
+            abi.encodeWithSelector(IMetaRegistry.getNodeOperatorWeightAndExternalStake.selector, nodeOperatorId),
+            abi.encode(weight, externalStake)
+        );
+    }
+
+    function _mockOperatorGroupMembership(uint256 nodeOperatorId, bool isInGroup) internal {
+        vm.mockCall(
+            address(metaRegistry),
+            abi.encodeWithSelector(IMetaRegistry.getNodeOperatorGroupId.selector, nodeOperatorId),
+            abi.encode(isInGroup, 0)
+        );
+    }
+
+    function _mockOperatorWeightUpdated(uint256 nodeOperatorId, bool changed) internal {
+        vm.mockCall(
+            address(metaRegistry),
+            abi.encodeWithSelector(IMetaRegistry.refreshOperatorWeight.selector, nodeOperatorId),
+            abi.encode(changed)
+        );
     }
 
     function _moduleInvariants() internal override {
         assertModuleKeys(module);
         assertModuleUnusedStorageSlots(module);
+
+        uint256 operatorsCount = cm.getNodeOperatorsCount();
+        uint256 operatorsLeft = cm.getNodeOperatorWeightsToUpdateCount();
+        assertLe(operatorsLeft, operatorsCount, "weights update counter");
     }
 }
 
@@ -132,14 +175,12 @@ contract CuratedInitialize is CuratedCommon {
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaRegistry: address(metaRegistry)
         });
         assertEq(module.getType(), "curated-module");
         assertEq(address(module.LIDO_LOCATOR()), address(locator));
-        assertEq(
-            address(module.PARAMETERS_REGISTRY()),
-            address(parametersRegistry)
-        );
+        assertEq(address(module.PARAMETERS_REGISTRY()), address(parametersRegistry));
         assertEq(address(module.ACCOUNTING()), address(accounting));
         assertEq(address(module.EXIT_PENALTIES()), address(exitPenalties));
     }
@@ -151,7 +192,8 @@ contract CuratedInitialize is CuratedCommon {
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaRegistry: address(metaRegistry)
         });
     }
 
@@ -162,42 +204,47 @@ contract CuratedInitialize is CuratedCommon {
             lidoLocator: address(0),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaRegistry: address(metaRegistry)
         });
     }
 
-    function test_constructor_RevertWhen_ZeroParametersRegistryAddress()
-        public
-    {
+    function test_constructor_RevertWhen_ZeroParametersRegistryAddress() public {
+        Stub registry = new Stub();
         vm.expectRevert(IBaseModule.ZeroParametersRegistryAddress.selector);
         new CuratedModule({
             moduleType: "curated-module",
             lidoLocator: address(locator),
             parametersRegistry: address(0),
             accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaRegistry: address(metaRegistry)
         });
     }
 
     function test_constructor_RevertWhen_ZeroAccountingAddress() public {
+        Stub registry = new Stub();
         vm.expectRevert(IBaseModule.ZeroAccountingAddress.selector);
         new CuratedModule({
             moduleType: "curated-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(0),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaRegistry: address(metaRegistry)
         });
     }
 
     function test_constructor_RevertWhen_ZeroExitPenaltiesAddress() public {
+        Stub registry = new Stub();
         vm.expectRevert(IBaseModule.ZeroExitPenaltiesAddress.selector);
         new CuratedModule({
             moduleType: "curated-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
-            exitPenalties: address(0)
+            exitPenalties: address(0),
+            metaRegistry: address(metaRegistry)
         });
     }
 
@@ -207,7 +254,8 @@ contract CuratedInitialize is CuratedCommon {
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaRegistry: address(metaRegistry)
         });
 
         vm.expectRevert(Initializable.InvalidInitialization.selector);
@@ -220,7 +268,8 @@ contract CuratedInitialize is CuratedCommon {
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaRegistry: address(metaRegistry)
         });
 
         _enableInitializers(address(module));
@@ -237,7 +286,8 @@ contract CuratedInitialize is CuratedCommon {
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
             accounting: address(accounting),
-            exitPenalties: address(exitPenalties)
+            exitPenalties: address(exitPenalties),
+            metaRegistry: address(metaRegistry)
         });
 
         _enableInitializers(address(module));
@@ -254,21 +304,12 @@ contract CuratedCreateNodeOperator is ModuleCreateNodeOperator, CuratedCommon {}
 
 contract CuratedAddValidatorKeys is ModuleAddValidatorKeys, CuratedCommon {}
 
-contract CuratedAddValidatorKeysViaGate is
-    ModuleAddValidatorKeysViaGate,
-    CuratedCommon
-{}
+contract CuratedAddValidatorKeysViaGate is ModuleAddValidatorKeysViaGate, CuratedCommon {}
 
-contract CuratedAddValidatorKeysNegative is
-    ModuleAddValidatorKeysNegative,
-    CuratedCommon
-{}
+contract CuratedAddValidatorKeysNegative is ModuleAddValidatorKeysNegative, CuratedCommon {}
 
 contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
-    function test_obtainDepositData_MultipleOperators()
-        public
-        assertInvariants
-    {
+    function test_obtainDepositData_MultipleOperators() public assertInvariants {
         uint256 firstId = createNodeOperator(2);
         uint256 secondId = createNodeOperator(3);
         uint256 thirdId = createNodeOperator(1);
@@ -281,19 +322,12 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         emit IBaseModule.DepositableSigningKeysCountChanged(thirdId, 0);
         module.obtainDepositData(6, "");
 
-        (
-            ,
-            uint256 totalDepositedValidators,
-            uint256 depositableValidatorsCount
-        ) = module.getStakingModuleSummary();
+        (, uint256 totalDepositedValidators, uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
         assertEq(totalDepositedValidators, 5);
         assertEq(depositableValidatorsCount, 1);
     }
 
-    function test_obtainDepositData_updatesOperatorBalances()
-        public
-        assertInvariants
-    {
+    function test_obtainDepositData_updatesOperatorBalances() public assertInvariants {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
 
@@ -304,38 +338,20 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         uint256 firstBalance = cm.getNodeOperatorBalance(firstId);
         uint256 secondBalance = cm.getNodeOperatorBalance(secondId);
 
-        assertEq(
-            firstBalance,
-            uint256(first.totalDepositedKeys) *
-                CuratedDepositAllocator.MIN_ACTIVATION_BALANCE
-        );
-        assertEq(
-            secondBalance,
-            uint256(second.totalDepositedKeys) *
-                CuratedDepositAllocator.MIN_ACTIVATION_BALANCE
-        );
-        assertEq(
-            firstBalance + secondBalance,
-            CuratedDepositAllocator.MIN_ACTIVATION_BALANCE
-        );
+        assertEq(firstBalance, uint256(first.totalDepositedKeys) * CuratedDepositAllocator.MIN_ACTIVATION_BALANCE);
+        assertEq(secondBalance, uint256(second.totalDepositedKeys) * CuratedDepositAllocator.MIN_ACTIVATION_BALANCE);
+        assertEq(firstBalance + secondBalance, CuratedDepositAllocator.MIN_ACTIVATION_BALANCE);
     }
 
-    function test_obtainDepositData_DistributesByWeight()
-        public
-        assertInvariants
-    {
+    function test_obtainDepositData_DistributesByWeight() public assertInvariants {
         uint256 first = createNodeOperator(4);
         uint256 second = createNodeOperator(4);
 
-        IBondCurve.BondCurveIntervalInput[]
-            memory curve = new IBondCurve.BondCurveIntervalInput[](1);
-        curve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: BOND_SIZE
-        });
+        IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
+        curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: BOND_SIZE });
         uint256 curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(second, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 3);
+        _mockOperatorWeight(second, 3);
 
         (bytes memory pubkeys, ) = module.obtainDepositData(4, "");
 
@@ -352,19 +368,36 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         assertEq(pubkeys, expectedKeys);
     }
 
-    function test_obtainDepositData_LeavesRemainderOnCap()
-        public
-        assertInvariants
-    {
+    function test_obtainDepositData_ExternalStakeUses2048EthNormalization() public assertInvariants {
+        uint256 noId0 = createNodeOperator(10);
+        uint256 noId1 = createNodeOperator(10);
+
+        _mockOperatorWeightAndExternalStake({ nodeOperatorId: noId0, weight: 1, externalStake: 2048 ether });
+        _mockOperatorWeightAndExternalStake({ nodeOperatorId: noId1, weight: 1, externalStake: 0 });
+
+        module.obtainDepositData(4, "");
+
+        NodeOperator memory no0 = module.getNodeOperator(noId0);
+        NodeOperator memory no1 = module.getNodeOperator(noId1);
+
+        // currents = [1, 0]
+        // inflow = 4
+        // targetTotal = 1 + 4 = 5
+        // targets = [ceil(5/2), ceil(5/2)] = [3, 3]
+        // imbalances = [2, 3]
+        // deposits greedy => [1, 3]
+        assertEq(no0.totalDepositedKeys, 1);
+        assertEq(no1.totalDepositedKeys, 3);
+    }
+
+    function test_obtainDepositData_LeavesRemainderOnCap() public assertInvariants {
         uint256 first = createNodeOperator(1);
         uint256 second = createNodeOperator(10);
 
-        (, uint256 totalDepositedBefore, uint256 depositableBefore) = module
-            .getStakingModuleSummary();
+        (, uint256 totalDepositedBefore, uint256 depositableBefore) = module.getStakingModuleSummary();
         uint256 nonceBefore = module.getNonce();
 
-        (bytes memory pubkeys, bytes memory signatures) = module
-            .obtainDepositData(4, "");
+        (bytes memory pubkeys, bytes memory signatures) = module.obtainDepositData(4, "");
 
         NodeOperator memory no0 = module.getNodeOperator(first);
         NodeOperator memory no1 = module.getNodeOperator(second);
@@ -381,17 +414,13 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         );
         assertEq(pubkeys, expectedKeys);
 
-        (, uint256 totalDepositedAfter, uint256 depositableAfter) = module
-            .getStakingModuleSummary();
+        (, uint256 totalDepositedAfter, uint256 depositableAfter) = module.getStakingModuleSummary();
         assertEq(totalDepositedAfter, totalDepositedBefore + allocated);
         assertEq(depositableAfter, depositableBefore - allocated);
         assertEq(module.getNonce(), nonceBefore + 1);
     }
 
-    function test_obtainDepositData_SkipsZeroCapacityOperator()
-        public
-        assertInvariants
-    {
+    function test_obtainDepositData_SkipsZeroCapacityOperator() public assertInvariants {
         uint256 first = createNodeOperator(0);
         uint256 second = createNodeOperator(4);
 
@@ -407,10 +436,7 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         assertEq(pubkeys, expectedKeys);
     }
 
-    function test_obtainDepositData_RebalancesUsingCurrent()
-        public
-        assertInvariants
-    {
+    function test_obtainDepositData_RebalancesUsingCurrent() public assertInvariants {
         uint256 first = createNodeOperator(4);
         uint256 second = createNodeOperator(0);
 
@@ -444,44 +470,15 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         assertEq(pubkeys, expectedKeys);
     }
 
-    function test_obtainDepositData_RevertWhen_ZeroWeights()
-        public
-        assertInvariants
-    {
-        uint256 first = createNodeOperator(1);
-        uint256 second = createNodeOperator(1);
-
-        IBondCurve.BondCurveIntervalInput[]
-            memory curve = new IBondCurve.BondCurveIntervalInput[](1);
-        curve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: BOND_SIZE
-        });
-        uint256 curveId = accounting.addBondCurve(curve);
-        accounting.setBondCurve(first, curveId);
-        accounting.setBondCurve(second, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 0);
-
-        vm.expectRevert(IBaseModule.NotEnoughKeys.selector);
-        module.obtainDepositData(1, "");
-    }
-
-    function test_obtainDepositData_RevertWhen_WeightedCapacityTooLow()
-        public
-        assertInvariants
-    {
+    function test_obtainDepositData_RevertWhen_WeightedCapacityTooLow() public assertInvariants {
         uint256 zeroWeightId = createNodeOperator(2);
         uint256 weightedId = createNodeOperator(1);
 
-        IBondCurve.BondCurveIntervalInput[]
-            memory curve = new IBondCurve.BondCurveIntervalInput[](1);
-        curve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: BOND_SIZE
-        });
+        IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
+        curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: BOND_SIZE });
         uint256 curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(zeroWeightId, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 0);
+        _mockOperatorWeight(zeroWeightId, 0);
 
         bytes memory expectedKeys = module.getSigningKeys(weightedId, 0, 1);
         (bytes memory pubkeys, ) = module.obtainDepositData(2, "");
@@ -493,23 +490,16 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         assertEq(pubkeys, expectedKeys);
     }
 
-    function test_obtainDepositData_CompactAllocationSkipsZeroWeightOperator()
-        public
-        assertInvariants
-    {
+    function test_obtainDepositData_CompactAllocationSkipsZeroWeightOperator() public assertInvariants {
         uint256 zeroWeightId = createNodeOperator(1);
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
 
-        IBondCurve.BondCurveIntervalInput[]
-            memory curve = new IBondCurve.BondCurveIntervalInput[](1);
-        curve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: BOND_SIZE
-        });
+        IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
+        curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: BOND_SIZE });
         uint256 curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(zeroWeightId, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 0);
+        _mockOperatorWeight(zeroWeightId, 0);
 
         bytes memory expectedKeys = module.getSigningKeys(firstId, 0, 1);
         (bytes memory pubkeys, ) = module.obtainDepositData(1, "");
@@ -524,10 +514,7 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         assertEq(pubkeys, expectedKeys);
     }
 
-    function test_obtainDepositData_SingleDepositToUnderfilledOperator()
-        public
-        assertInvariants
-    {
+    function test_obtainDepositData_SingleDepositToUnderfilledOperator() public assertInvariants {
         uint256 firstId = createNodeOperator(2);
         uint256 secondId = createNodeOperator(2);
 
@@ -544,28 +531,13 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         assertEq(pubkeys, expectedKeys);
     }
 
-    function test_obtainDepositData_RevertWhen_AllZeroCapacity()
-        public
-        assertInvariants
-    {
-        createNodeOperator(0);
-        createNodeOperator(0);
-
-        vm.expectRevert(IBaseModule.NotEnoughKeys.selector);
-        module.obtainDepositData(1, "");
-    }
-
-    function test_obtainDepositData_WithdrawnKeysAffectAllocation()
-        public
-        assertInvariants
-    {
+    function test_obtainDepositData_WithdrawnKeysAffectAllocation() public assertInvariants {
         uint256 firstId = createNodeOperator(2);
         uint256 secondId = createNodeOperator(2);
 
         module.obtainDepositData(2, "");
 
-        WithdrawnValidatorInfo[]
-            memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: firstId,
             keyIndex: 0,
@@ -588,10 +560,7 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
 }
 
 contract CuratedTopUpObtainDepositData is CuratedCommon {
-    function test_topUpObtainDepositData_singleKey_fullAllocation()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_singleKey_fullAllocation() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
 
@@ -610,10 +579,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[0], 3 ether);
     }
 
-    function test_topUpObtainDepositData_updatesOperatorBalances()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_updatesOperatorBalances() public assertInvariants {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
@@ -632,20 +598,11 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         );
 
         assertEq(allocations.length, 2);
-        assertEq(
-            cm.getNodeOperatorBalance(firstId),
-            firstBalanceBefore + allocations[0]
-        );
-        assertEq(
-            cm.getNodeOperatorBalance(secondId),
-            secondBalanceBefore + allocations[1]
-        );
+        assertEq(cm.getNodeOperatorBalance(firstId), firstBalanceBefore + allocations[0]);
+        assertEq(cm.getNodeOperatorBalance(secondId), secondBalanceBefore + allocations[1]);
     }
 
-    function test_topUpObtainDepositData_multipleKeys_sequentialAllocation()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_multipleKeys_sequentialAllocation() public assertInvariants {
         uint256 noId = createNodeOperator(2);
         module.obtainDepositData(2, "");
 
@@ -665,10 +622,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[1], 2 ether);
     }
 
-    function test_topUpObtainDepositData_globalShareBaselineMissingOperators()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_globalShareBaselineMissingOperators() public assertInvariants {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
@@ -686,20 +640,12 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[0], 1 ether);
     }
 
-    function test_topUpObtainDepositData_zeroCapacityExcludedFromShare()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_zeroCapacityExcludedFromShare() public assertInvariants {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        cm.updateOperatorBalances(
-            UintArr(firstId, secondId),
-            UintArr(2048 ether / 1 gwei, 0),
-            UintArr(0, 0),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(2048 ether / 1 gwei, 0), 0);
 
         bytes memory key = module.getSigningKeys(secondId, 0, 1);
 
@@ -714,31 +660,19 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[0], 4 ether);
     }
 
-    function test_topUpObtainDepositData_balanceUpdateRespectsGlobalShare()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_balanceUpdateRespectsGlobalShare() public assertInvariants {
         uint256 firstId = createNodeOperator(2);
         uint256 secondId = createNodeOperator(1);
 
         module.obtainDepositData(3, "");
 
-        IBondCurve.BondCurveIntervalInput[]
-            memory curve = new IBondCurve.BondCurveIntervalInput[](1);
-        curve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: BOND_SIZE
-        });
+        IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
+        curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: BOND_SIZE });
         uint256 curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(secondId, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 3);
+        _mockOperatorWeight(secondId, 3);
 
-        cm.updateOperatorBalances(
-            UintArr(firstId, secondId),
-            UintArr(0, 0),
-            UintArr(0, 0),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(0, 0), 0);
 
         bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
         bytes memory key1 = module.getSigningKeys(firstId, 1, 1);
@@ -755,12 +689,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[0], 1 ether);
         assertEq(allocations[1], 0);
 
-        cm.updateOperatorBalances(
-            UintArr(firstId, secondId),
-            UintArr(allocations[0] / 1 gwei, 0),
-            UintArr(0, 0),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(allocations[0] / 1 gwei, 0), 0);
 
         uint256[] memory secondAllocations = cm.allocateDeposits(
             7 ether,
@@ -774,19 +703,11 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(secondAllocations[1], 0);
     }
 
-    function test_topUpObtainDepositData_capacityCapsAllocation()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_capacityCapsAllocation() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
 
-        cm.updateOperatorBalances(
-            UintArr(noId),
-            UintArr(2047 ether / 1 gwei),
-            UintArr(0),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(noId), UintArr(2047 ether / 1 gwei), 0);
 
         bytes memory key = module.getSigningKeys(noId, 0, 1);
 
@@ -801,19 +722,11 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[0], 1 ether);
     }
 
-    function test_topUpObtainDepositData_fullBalanceSkipsAllocation()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_fullBalanceSkipsAllocation() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
 
-        cm.updateOperatorBalances(
-            UintArr(noId),
-            UintArr(2048 ether / 1 gwei),
-            UintArr(0),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(noId), UintArr(2048 ether / 1 gwei), 0);
 
         bytes memory key = module.getSigningKeys(noId, 0, 1);
 
@@ -828,10 +741,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[0], 0);
     }
 
-    function test_topUpObtainDepositData_limitsAlignedPerKey()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_limitsAlignedPerKey() public assertInvariants {
         uint256 noId = createNodeOperator(2);
         module.obtainDepositData(2, "");
 
@@ -850,30 +760,18 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[1], 4 ether);
     }
 
-    function test_topUpObtainDepositData_zeroDepositSkipsValidation()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_zeroDepositSkipsValidation() public assertInvariants {
         uint256 nonce = module.getNonce();
         bytes[] memory invalidPubkeys = new bytes[](1);
         invalidPubkeys[0] = new bytes(47);
 
-        uint256[] memory allocations = cm.allocateDeposits(
-            0,
-            invalidPubkeys,
-            UintArr(),
-            UintArr(1),
-            UintArr(1, 2)
-        );
+        uint256[] memory allocations = cm.allocateDeposits(0, invalidPubkeys, UintArr(), UintArr(1), UintArr(1, 2));
 
         assertEq(allocations.length, 0);
         assertEq(module.getNonce(), nonce);
     }
 
-    function test_topUpObtainDepositData_roundsDownToStep()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_roundsDownToStep() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
 
@@ -891,20 +789,12 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[0], 2 ether);
     }
 
-    function test_topUpObtainDepositData_capacityCapLeavesRemainder()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_capacityCapLeavesRemainder() public assertInvariants {
         uint256 cappedId = createNodeOperator(1);
         uint256 wideId = createNodeOperator(2);
         module.obtainDepositData(3, "");
 
-        cm.updateOperatorBalances(
-            UintArr(cappedId, wideId),
-            UintArr(2000 ether / 1 gwei, 0),
-            UintArr(0, 0),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(cappedId, wideId), UintArr(2000 ether / 1 gwei, 0), 0);
 
         bytes memory cappedKey = module.getSigningKeys(cappedId, 0, 1);
         bytes memory wideKey = module.getSigningKeys(wideId, 0, 1);
@@ -924,40 +814,28 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[0] + allocations[1], 2148 ether);
     }
 
-    function test_topUpObtainDepositData_globalBaselineHeavilyOmitted()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_globalBaselineHeavilyOmitted() public assertInvariants {
         uint256 omittedHeavyId = createNodeOperator(1);
         uint256 omittedMidId = createNodeOperator(1);
         uint256 includedId = createNodeOperator(1);
         module.obtainDepositData(3, "");
 
-        IBondCurve.BondCurveIntervalInput[]
-            memory curve = new IBondCurve.BondCurveIntervalInput[](1);
-        curve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: BOND_SIZE
-        });
+        IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
+        curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: BOND_SIZE });
 
         uint256 curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(omittedHeavyId, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 100);
+        _mockOperatorWeight(omittedHeavyId, 100);
 
         curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(omittedMidId, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 10);
+        _mockOperatorWeight(omittedMidId, 10);
 
         curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(includedId, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 1);
+        _mockOperatorWeight(includedId, 1);
 
-        cm.updateOperatorBalances(
-            UintArr(omittedHeavyId, omittedMidId, includedId),
-            UintArr(0, 0, 0),
-            UintArr(0, 0, 0),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(omittedHeavyId, omittedMidId, includedId), UintArr(0, 0, 0), 0);
 
         bytes memory key = module.getSigningKeys(includedId, 0, 1);
         uint256 depositAmount = 111 ether;
@@ -973,10 +851,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[0], 1 ether);
     }
 
-    function test_topUpObtainDepositData_limitsLeaveRemainder()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_limitsLeaveRemainder() public assertInvariants {
         uint256 noId = createNodeOperator(2);
         module.obtainDepositData(2, "");
 
@@ -995,10 +870,26 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[1], 3 ether);
     }
 
-    function test_topUpObtainDepositData_matchesPredepositAllocation()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_topUpLimitsRoundedToStep() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        module.obtainDepositData(2, "");
+
+        bytes memory key0 = module.getSigningKeys(noId, 0, 1);
+        bytes memory key1 = module.getSigningKeys(noId, 1, 1);
+
+        uint256[] memory allocations = cm.allocateDeposits(
+            10 ether,
+            BytesArr(key0, key1),
+            UintArr(0, 1),
+            UintArr(noId, noId),
+            UintArr(2.5 ether, 3.1 ether)
+        );
+
+        assertEq(allocations[0], 2 ether);
+        assertEq(allocations[1], 3 ether);
+    }
+
+    function test_topUpObtainDepositData_matchesPredepositAllocation() public assertInvariants {
         uint256 operatorsCount = 5;
         uint256[] memory weights = new uint256[](operatorsCount);
         weights[0] = 1;
@@ -1010,12 +901,8 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256[] memory operatorIds = new uint256[](operatorsCount);
         uint256 weightSum;
 
-        IBondCurve.BondCurveIntervalInput[]
-            memory curve = new IBondCurve.BondCurveIntervalInput[](1);
-        curve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: BOND_SIZE
-        });
+        IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
+        curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: BOND_SIZE });
 
         for (uint256 i; i < operatorsCount; ++i) {
             uint256 weight = weights[i];
@@ -1023,7 +910,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
             uint256 curveId = accounting.addBondCurve(curve);
             accounting.setBondCurve(operatorIds[i], curveId);
-            parametersRegistry.setDepositAllocationWeight(curveId, weight);
+            _mockOperatorWeight(operatorIds[i], weight);
 
             weightSum += weight;
         }
@@ -1032,9 +919,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         uint256[] memory baseDeposited = new uint256[](operatorsCount);
         for (uint256 i; i < operatorsCount; ++i) {
-            baseDeposited[i] = module
-                .getNodeOperator(operatorIds[i])
-                .totalDepositedKeys;
+            baseDeposited[i] = module.getNodeOperator(operatorIds[i]).totalDepositedKeys;
         }
 
         uint256 snapshot = vm.snapshot();
@@ -1043,9 +928,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         uint256[] memory predepositAllocations = new uint256[](operatorsCount);
         for (uint256 i; i < operatorsCount; ++i) {
-            predepositAllocations[i] =
-                module.getNodeOperator(operatorIds[i]).totalDepositedKeys -
-                baseDeposited[i];
+            predepositAllocations[i] = module.getNodeOperator(operatorIds[i]).totalDepositedKeys - baseDeposited[i];
         }
 
         vm.revertTo(snapshot);
@@ -1053,8 +936,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         bytes[] memory pubkeys = new bytes[](operatorsCount);
         uint256[] memory keyIndices = new uint256[](operatorsCount);
         uint256[] memory topUpLimits = new uint256[](operatorsCount);
-        uint256 depositAmount = weightSum *
-            CuratedDepositAllocator.MIN_ACTIVATION_BALANCE;
+        uint256 depositAmount = weightSum * CuratedDepositAllocator.MIN_ACTIVATION_BALANCE;
 
         for (uint256 i; i < operatorsCount; ++i) {
             bytes memory key = module.getSigningKeys(operatorIds[i], 0, 1);
@@ -1073,31 +955,18 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
 
         assertEq(topUpAllocations.length, operatorsCount);
         for (uint256 i; i < operatorsCount; ++i) {
-            assertEq(
-                topUpAllocations[i],
-                predepositAllocations[i] *
-                    CuratedDepositAllocator.MIN_ACTIVATION_BALANCE
-            );
+            assertEq(topUpAllocations[i], predepositAllocations[i] * CuratedDepositAllocator.MIN_ACTIVATION_BALANCE);
         }
     }
 
-    function test_getDepositsAllocation_matchesObtainDepositData()
-        public
-        assertInvariants
-    {
+    function test_getDepositsAllocation_matchesObtainDepositData() public assertInvariants {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        cm.updateOperatorBalances(
-            UintArr(firstId, secondId),
-            UintArr(10, 10),
-            UintArr(0, 0),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(10, 10), 0);
 
-        (, uint256[] memory ids, uint256[] memory allocs) = cm
-            .getDepositsAllocation(2 ether);
+        (, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(2 ether);
 
         bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
         bytes memory key1 = module.getSigningKeys(secondId, 0, 1);
@@ -1118,29 +987,23 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocs[1], keyAllocations[1]);
     }
 
-    function test_getDepositsAllocation_matchesObtainDepositData_twoSteps()
-        public
-        assertInvariants
-    {
+    function test_getDepositsAllocation_matchesObtainDepositData_twoSteps() public assertInvariants {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
 
         module.obtainDepositData(2, "");
 
         {
-            IBondCurve.BondCurveIntervalInput[]
-                memory curve = new IBondCurve.BondCurveIntervalInput[](1);
-            curve[0] = IBondCurve.BondCurveIntervalInput({
-                minKeysCount: 1,
-                trend: BOND_SIZE
-            });
+            IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
+            curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: BOND_SIZE });
             uint256 curveId = accounting.addBondCurve(curve);
             accounting.setBondCurve(firstId, curveId);
-            parametersRegistry.setDepositAllocationWeight(curveId, 1);
             curveId = accounting.addBondCurve(curve);
             accounting.setBondCurve(secondId, curveId);
-            parametersRegistry.setDepositAllocationWeight(curveId, 2);
         }
+
+        _mockOperatorWeight(firstId, 1);
+        _mockOperatorWeight(secondId, 2);
 
         uint256[2] memory balances = [uint256(1 ether), uint256(2 ether)];
         {
@@ -1152,12 +1015,10 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
             cm.updateOperatorBalances(
                 UintArr(firstId, secondId),
                 UintArr(balances[0] / 1 gwei, balances[1] / 1 gwei),
-                UintArr(0, 0),
                 0
             );
 
-            (, uint256[] memory ids, uint256[] memory allocs) = cm
-                .getDepositsAllocation(3 ether);
+            (, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(3 ether);
             assertEq(ids.length, 2);
             assertEq(allocs.length, 2);
             assertEq(ids[0], firstId);
@@ -1188,12 +1049,10 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
             cm.updateOperatorBalances(
                 UintArr(firstId, secondId),
                 UintArr(balances[0] / 1 gwei, balances[1] / 1 gwei),
-                UintArr(0, 0),
                 0
             );
 
-            (, uint256[] memory ids, uint256[] memory allocs) = cm
-                .getDepositsAllocation(3 ether);
+            (, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(3 ether);
             assertEq(ids.length, 2);
             assertEq(allocs.length, 2);
             assertEq(ids[0], firstId);
@@ -1213,128 +1072,79 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         }
     }
 
-    function test_getDepositsAllocation_zeroDepositReturnsEmpty()
-        public
-        assertInvariants
-    {
-        (, uint256[] memory ids, uint256[] memory allocs) = cm
-            .getDepositsAllocation(0);
+    function test_getDepositsAllocation_zeroDepositReturnsEmpty() public assertInvariants {
+        (, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(0);
         assertEq(ids.length, 0);
         assertEq(allocs.length, 0);
     }
 
-    function test_getDepositsAllocation_noOperatorsReturnsEmpty()
-        public
-        assertInvariants
-    {
-        (, uint256[] memory ids, uint256[] memory allocs) = cm
-            .getDepositsAllocation(1 ether);
+    function test_getDepositsAllocation_noOperatorsReturnsEmpty() public assertInvariants {
+        (, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(1 ether);
         assertEq(ids.length, 0);
         assertEq(allocs.length, 0);
     }
 
-    function test_getDepositsAllocation_allZeroWeightsReturnsEmpty()
-        public
-        assertInvariants
-    {
+    function test_getDepositsAllocation_allZeroWeightsReturnsEmpty() public assertInvariants {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        parametersRegistry.setDefaultDepositAllocationWeight(0);
-
-        (, uint256[] memory ids, uint256[] memory allocs) = cm
-            .getDepositsAllocation(2 ether);
+        _mockAllOperatorWeights(0);
+        (, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(2 ether);
 
         assertEq(ids.length, 0);
         assertEq(allocs.length, 0);
     }
 
-    function test_getDepositsAllocation_zeroCapacityExcludedFromShare()
-        public
-        assertInvariants
-    {
+    function test_getDepositsAllocation_zeroCapacityExcludedFromShare() public assertInvariants {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        cm.updateOperatorBalances(
-            UintArr(firstId, secondId),
-            UintArr(2048 ether / 1 gwei, 0),
-            UintArr(0, 0),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(2048 ether / 1 gwei, 0), 0);
 
-        (, uint256[] memory ids, uint256[] memory allocs) = cm
-            .getDepositsAllocation(4 ether);
+        (, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(4 ether);
 
         assertEq(ids.length, 1);
         assertEq(ids[0], secondId);
         assertEq(allocs[0], 4 ether);
     }
 
-    function test_getDepositsAllocation_capacityCapsAllocation()
-        public
-        assertInvariants
-    {
+    function test_getDepositsAllocation_capacityCapsAllocation() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
 
-        cm.updateOperatorBalances(
-            UintArr(noId),
-            UintArr(2047 ether / 1 gwei),
-            UintArr(0),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(noId), UintArr(2047 ether / 1 gwei), 0);
 
-        (, uint256[] memory ids, uint256[] memory allocs) = cm
-            .getDepositsAllocation(10 ether);
+        (, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(10 ether);
 
         assertEq(ids.length, 1);
         assertEq(ids[0], noId);
         assertEq(allocs[0], 1 ether);
     }
 
-    function test_getDepositsAllocation_balancesReweightAllocation()
-        public
-        assertInvariants
-    {
+    function test_getDepositsAllocation_balancesReweightAllocation() public assertInvariants {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        cm.updateOperatorBalances(
-            UintArr(firstId, secondId),
-            UintArr(10_000_000_000, 0),
-            UintArr(0, 0),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(10_000_000_000, 0), 0);
 
-        (, uint256[] memory ids, uint256[] memory allocs) = cm
-            .getDepositsAllocation(1 ether);
+        (, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(1 ether);
 
         assertEq(ids.length, 1);
         assertEq(ids[0], secondId);
         assertEq(allocs[0], 1 ether);
     }
 
-    function test_getDepositsAllocation_compactOutputSkipsZeroAllocations()
-        public
-        assertInvariants
-    {
+    function test_getDepositsAllocation_compactOutputSkipsZeroAllocations() public assertInvariants {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        cm.updateOperatorBalances(
-            UintArr(firstId, secondId),
-            UintArr(10, 0),
-            UintArr(0, 0),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(10, 0), 0);
 
-        (, uint256[] memory ids, uint256[] memory allocs) = cm
-            .getDepositsAllocation(2 ether);
+        (, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(2 ether);
 
         assertEq(ids.length, 1);
         assertEq(allocs.length, 1);
@@ -1342,20 +1152,12 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocs[0], 1 ether);
     }
 
-    function test_topUpObtainDepositData_limitsDoNotAffectShare()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_limitsDoNotAffectShare() public assertInvariants {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        cm.updateOperatorBalances(
-            UintArr(firstId, secondId),
-            UintArr(10, 10),
-            UintArr(0, 0),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(10, 10), 0);
 
         bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
         bytes memory key1 = module.getSigningKeys(secondId, 0, 1);
@@ -1374,37 +1176,24 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[0] + allocations[1], 6 ether);
     }
 
-    function test_topUpObtainDepositData_emptyKeysReturnsEmpty()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_emptyKeysReturnsEmpty() public assertInvariants {
         uint256 nonce = module.getNonce();
-        uint256[] memory allocations = cm.allocateDeposits(
-            1 ether,
-            new bytes[](0),
-            UintArr(),
-            UintArr(),
-            UintArr()
-        );
+        uint256[] memory allocations = cm.allocateDeposits(1 ether, new bytes[](0), UintArr(), UintArr(), UintArr());
 
         assertEq(allocations.length, 0);
         assertEq(module.getNonce(), nonce + 1);
     }
 
-    function test_topUpObtainDepositData_allZeroWeightsReturnsZeroAllocations()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_allZeroWeightsReturnsZeroAllocations() public assertInvariants {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
-
-        parametersRegistry.setDefaultDepositAllocationWeight(0);
 
         bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
         bytes memory key1 = module.getSigningKeys(secondId, 0, 1);
         uint256 limitWei = 2 ether;
 
+        _mockAllOperatorWeights(0);
         uint256[] memory allocations = cm.allocateDeposits(
             2 ether,
             BytesArr(key0, key1),
@@ -1417,14 +1206,11 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[1], 0);
     }
 
-    function test_topUpObtainDepositData_zeroLimitSkipsAllocation()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_zeroLimitSkipsAllocation() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
 
-        cm.updateOperatorBalances(UintArr(noId), UintArr(10), UintArr(0), 0);
+        cm.updateOperatorBalances(UintArr(noId), UintArr(10), 0);
 
         bytes memory key = module.getSigningKeys(noId, 0, 1);
 
@@ -1439,30 +1225,18 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[0], 0);
     }
 
-    function test_topUpObtainDepositData_zeroWeightOperatorSkipped()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_zeroWeightOperatorSkipped() public assertInvariants {
         uint256 zeroWeightId = createNodeOperator(1);
         uint256 weightedId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        cm.updateOperatorBalances(
-            UintArr(zeroWeightId, weightedId),
-            UintArr(10, 10),
-            UintArr(0, 0),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(zeroWeightId, weightedId), UintArr(10, 10), 0);
 
-        IBondCurve.BondCurveIntervalInput[]
-            memory curve = new IBondCurve.BondCurveIntervalInput[](1);
-        curve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: BOND_SIZE
-        });
+        IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
+        curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: BOND_SIZE });
         uint256 curveId = accounting.addBondCurve(curve);
         accounting.setBondCurve(zeroWeightId, curveId);
-        parametersRegistry.setDepositAllocationWeight(curveId, 0);
+        _mockOperatorWeight(zeroWeightId, 0);
 
         bytes memory key0 = module.getSigningKeys(zeroWeightId, 0, 1);
         bytes memory key1 = module.getSigningKeys(weightedId, 0, 1);
@@ -1480,20 +1254,12 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[1], 1 ether);
     }
 
-    function test_topUpObtainDepositData_balancesReweightAllocation()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_balancesReweightAllocation() public assertInvariants {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
 
-        cm.updateOperatorBalances(
-            UintArr(firstId, secondId),
-            UintArr(10_000_000_000, 0),
-            UintArr(0, 0),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(10_000_000_000, 0), 0);
 
         bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
         bytes memory key1 = module.getSigningKeys(secondId, 0, 1);
@@ -1511,14 +1277,11 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[1], 1 ether);
     }
 
-    function test_topUpObtainDepositData_belowStepAllocatesZero()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_belowStepAllocatesZero() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
 
-        cm.updateOperatorBalances(UintArr(noId), UintArr(10), UintArr(0), 0);
+        cm.updateOperatorBalances(UintArr(noId), UintArr(10), 0);
 
         bytes memory key = module.getSigningKeys(noId, 0, 1);
         uint256 limitWei = 10 ether;
@@ -1542,177 +1305,127 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         cm.allocateDeposits(0, new bytes[](0), UintArr(), UintArr(), UintArr());
     }
 
-    function test_topUpObtainDepositData_zeroDepositReturnsEmpty()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_zeroDepositReturnsEmpty() public assertInvariants {
         uint256 nonce = module.getNonce();
-        uint256[] memory allocations = cm.allocateDeposits(
-            0,
-            new bytes[](0),
-            UintArr(),
-            UintArr(),
-            UintArr()
-        );
+        uint256[] memory allocations = cm.allocateDeposits(0, new bytes[](0), UintArr(), UintArr(), UintArr());
 
         assertEq(allocations.length, 0);
         assertEq(module.getNonce(), nonce);
     }
 
-    function test_topUpObtainDepositData_revertWhen_LengthMismatch()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_revertWhen_LengthMismatch() public assertInvariants {
         createNodeOperator(1);
 
         vm.expectRevert(IBaseModule.InvalidInput.selector);
-        cm.allocateDeposits(
-            1 ether,
-            new bytes[](0),
-            UintArr(),
-            UintArr(0),
-            UintArr()
-        );
+        cm.allocateDeposits(1 ether, new bytes[](0), UintArr(), UintArr(0), UintArr());
     }
 
-    function test_topUpObtainDepositData_revertWhen_OperatorIdOutOfRange()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_revertWhen_OperatorIdOutOfRange() public assertInvariants {
         createNodeOperator(1);
 
         vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
-        cm.allocateDeposits(
-            1 ether,
-            BytesArr(new bytes(48)),
-            UintArr(0),
-            UintArr(1),
-            UintArr(1 ether)
-        );
+        cm.allocateDeposits(1 ether, BytesArr(new bytes(48)), UintArr(0), UintArr(1), UintArr(1 ether));
     }
 
-    function test_topUpObtainDepositData_revertWhen_PubkeysLengthMismatch()
-        public
-        assertInvariants
-    {
-        uint256 noId = createNodeOperator(1);
-        module.obtainDepositData(1, "");
-
-        vm.expectRevert(IBaseModule.InvalidInput.selector);
-        cm.allocateDeposits(
-            1 ether,
-            BytesArr(new bytes(47)),
-            UintArr(0),
-            UintArr(noId),
-            UintArr(1 ether)
-        );
-    }
-
-    function test_topUpObtainDepositData_revertWhen_KeyIndexOutOfRange()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_revertWhen_KeyIndexOutOfRange() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
 
         bytes memory key = module.getSigningKeys(noId, 0, 1);
 
         vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
-        cm.allocateDeposits(
-            1 ether,
-            BytesArr(key),
-            UintArr(1),
-            UintArr(noId),
-            UintArr(1 ether)
-        );
+        cm.allocateDeposits(1 ether, BytesArr(key), UintArr(1), UintArr(noId), UintArr(1 ether));
     }
 
-    function test_topUpObtainDepositData_revertWhen_PublicKeyWithdrawn()
-        public
-        assertInvariants
-    {
-        uint256 noId = createNodeOperator(1);
-        module.obtainDepositData(1, "");
-
-        WithdrawnValidatorInfo[]
-            memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 0,
-            exitBalance: CuratedDepositAllocator.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-        module.reportRegularWithdrawnValidators(validatorInfos);
-
-        bytes memory key = module.getSigningKeys(noId, 0, 1);
-
-        vm.expectRevert(ICuratedModule.PublicKeyIsWithdrawn.selector);
-        cm.allocateDeposits(
-            1 ether,
-            BytesArr(key),
-            UintArr(0),
-            UintArr(noId),
-            UintArr(1 ether)
-        );
-    }
-
-    function test_topUpObtainDepositData_revertWhen_PublicKeyIsSlashed()
-        public
-        assertInvariants
-    {
-        uint256 noId = createNodeOperator(1);
-        module.obtainDepositData(1, "");
-        module.onValidatorSlashed(noId, 0);
-
-        bytes memory key = module.getSigningKeys(noId, 0, 1);
-
-        vm.expectRevert(ICuratedModule.PublicKeyIsSlashed.selector);
-        cm.allocateDeposits(
-            1 ether,
-            BytesArr(key),
-            UintArr(0),
-            UintArr(noId),
-            UintArr(1 ether)
-        );
-    }
-
-    function test_topUpObtainDepositData_revertWhen_PubkeyMismatch()
-        public
-        assertInvariants
-    {
+    function test_topUpObtainDepositData_revertWhen_PubkeyMismatch() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
 
         bytes memory wrongKey = module.getSigningKeys(noId, 0, 1);
         wrongKey[0] = bytes1(uint8(wrongKey[0]) ^ 0x01);
 
-        vm.expectRevert(ICuratedModule.PubkeyMismatch.selector);
-        cm.allocateDeposits(
-            1 ether,
-            BytesArr(wrongKey),
-            UintArr(0),
-            UintArr(noId),
-            UintArr(1 ether)
+        vm.expectRevert(IBaseModule.PubkeyMismatch.selector);
+        cm.allocateDeposits(1 ether, BytesArr(wrongKey), UintArr(0), UintArr(noId), UintArr(1 ether));
+    }
+
+    function test_getDepositsAllocation_externalStakeReducesAllocation() public assertInvariants {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        module.obtainDepositData(2, "");
+
+        // Both operators have equal weight and the same internal balance.
+        // Operator 0 additionally has 4 ether of external stake.
+        _mockOperatorWeightAndExternalStake(firstId, 1, 4 ether);
+
+        // currents = [32 + 4, 32] = [36, 32]
+        // inflow = 6
+        // targetTotal = 68 + 6 = 74
+        // targets = [ceil(74/2), ceil(74/2)] = [37, 37]
+        // imbalances = [1, 5]
+        // deposits greedy => [1, 5]
+        (uint256 allocated, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(6 ether);
+
+        assertEq(allocated, 6 ether);
+        assertEq(ids.length, 2);
+        assertEq(ids[0], firstId);
+        assertEq(ids[1], secondId);
+        assertEq(allocs[0], 1 ether);
+        assertEq(allocs[1], 5 ether);
+    }
+
+    function test_topUpObtainDepositData_externalStakeReducesAllocation() public assertInvariants {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        module.obtainDepositData(2, "");
+
+        cm.updateOperatorBalances({
+            operatorIds: UintArr(firstId, secondId),
+            totalBalancesGwei: UintArr(5 ether / 1 gwei, 5 ether / 1 gwei),
+            refSlot: 0
+        });
+
+        // Operator 0 has large external stake; operator 1 has none.
+        _mockOperatorWeightAndExternalStake(firstId, 1, 10 ether);
+
+        bytes memory key0 = module.getSigningKeys(firstId, 0, 1);
+        bytes memory key1 = module.getSigningKeys(secondId, 0, 1);
+
+        // currents = [5 + 10, 5] = [15, 5]
+        // inflow = 2
+        // targetTotal = 20 + 2 = 22
+        // targets = [ceil(22/2), ceil(22/2)] = [11, 11]
+        // imbalances = [0, 6]
+        // deposits greedy => [0, 2]
+        uint256[] memory allocations = cm.allocateDeposits(
+            2 ether,
+            BytesArr(key0, key1),
+            UintArr(0, 0),
+            UintArr(firstId, secondId),
+            UintArr(32 ether, 32 ether)
         );
+
+        assertEq(allocations[0], 0);
+        assertEq(allocations[1], 2 ether);
+    }
+
+    function test_getDepositsAllocation_RevertWhen_WeightsUpdateInProgress() public assertInvariants {
+        createNodeOperator(1);
+
+        vm.prank(address(metaRegistry));
+        cm.requestFullOperatorWeightsUpdate();
+
+        vm.expectRevert(ICuratedModule.NodeOperatorWeightsUpdateInProgress.selector);
+        cm.getDepositsAllocation(1 ether);
     }
 }
 
 contract CuratedUpdateOperatorBalances is CuratedCommon {
-    function test_updateOperatorBalances_storesBalancesAndIncrementsNonce()
-        public
-        assertInvariants
-    {
+    function test_updateOperatorBalances_storesBalancesAndIncrementsNonce() public assertInvariants {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
 
         uint256 nonce = module.getNonce();
-        cm.updateOperatorBalances(
-            UintArr(firstId, secondId),
-            UintArr(10, 20),
-            UintArr(3, 4),
-            0
-        );
+        cm.updateOperatorBalances(UintArr(firstId, secondId), UintArr(13, 24), 0);
 
         assertEq(module.getNonce(), nonce + 1);
         assertEq(cm.getNodeOperatorBalance(firstId), 13 gwei);
@@ -1723,16 +1436,14 @@ contract CuratedUpdateOperatorBalances is CuratedCommon {
         createNodeOperator(1);
 
         vm.expectRevert(IBaseModule.InvalidInput.selector);
-        cm.updateOperatorBalances(UintArr(0), UintArr(1, 2), UintArr(3), 0);
+        cm.updateOperatorBalances(UintArr(0), UintArr(1, 2), 0);
     }
 
-    function test_updateOperatorBalances_RevertWhen_NodeOperatorDoesNotExist()
-        public
-    {
+    function test_updateOperatorBalances_RevertWhen_NodeOperatorDoesNotExist() public {
         createNodeOperator(1);
 
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
-        cm.updateOperatorBalances(UintArr(1), UintArr(1), UintArr(1), 0);
+        cm.updateOperatorBalances(UintArr(1), UintArr(1), 0);
     }
 
     function test_updateOperatorBalances_RevertWhen_NotStakingRouter() public {
@@ -1740,7 +1451,135 @@ contract CuratedUpdateOperatorBalances is CuratedCommon {
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        cm.updateOperatorBalances(UintArr(), UintArr(), UintArr(), 0);
+        cm.updateOperatorBalances(UintArr(), UintArr(), 0);
+    }
+}
+
+contract CuratedNodeOperatorWeightsToUpdateCount is CuratedCommon {
+    function test_getNodeOperatorWeightsToUpdateCount() public {
+        createNodeOperator(1);
+        createNodeOperator(1);
+        createNodeOperator(1);
+
+        assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 0);
+
+        vm.prank(address(metaRegistry));
+        cm.requestFullOperatorWeightsUpdate();
+
+        assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 3);
+
+        uint256 operatorsLeft = cm.batchUpdateNodeOperatorWeights(2);
+        assertEq(operatorsLeft, 1);
+        assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 1);
+
+        operatorsLeft = cm.batchUpdateNodeOperatorWeights(5);
+        assertEq(operatorsLeft, 0);
+        assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 0);
+    }
+
+    function test_batchUpdateNodeOperatorWeights_EmitsUpToDateWhen_AllProcessed() public assertInvariants {
+        createNodeOperator(1);
+        createNodeOperator(1);
+
+        vm.prank(address(metaRegistry));
+        cm.requestFullOperatorWeightsUpdate();
+
+        vm.expectEmit(address(cm));
+        emit ICuratedModule.NodeOperatorWeightsUpToDate();
+
+        uint256 operatorsLeft = cm.batchUpdateNodeOperatorWeights(2);
+        assertEq(operatorsLeft, 0);
+    }
+
+    function test_batchUpdateNodeOperatorWeights_NoEmitAndNoNonceIncrementWhen_PartialBatch() public assertInvariants {
+        createNodeOperator(1);
+        createNodeOperator(1);
+        createNodeOperator(1);
+
+        vm.prank(address(metaRegistry));
+        cm.requestFullOperatorWeightsUpdate();
+
+        uint256 nonce = module.getNonce();
+
+        vm.recordLogs();
+        uint256 operatorsLeft = cm.batchUpdateNodeOperatorWeights(2);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            assertTrue(
+                logs[i].topics[0] != ICuratedModule.NodeOperatorWeightsUpToDate.selector,
+                "unexpected NodeOperatorWeightsUpToDate event"
+            );
+        }
+
+        assertEq(operatorsLeft, 1);
+        assertEq(module.getNonce(), nonce);
+    }
+
+    function test_batchUpdateNodeOperatorWeights_NoEmitWhen_AlreadyUpToDate() public assertInvariants {
+        createNodeOperator(1);
+
+        uint256 nonce = module.getNonce();
+
+        vm.recordLogs();
+        uint256 operatorsLeft = cm.batchUpdateNodeOperatorWeights(1);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            assertTrue(
+                logs[i].topics[0] != ICuratedModule.NodeOperatorWeightsUpToDate.selector,
+                "unexpected NodeOperatorWeightsUpToDate event"
+            );
+        }
+
+        assertEq(operatorsLeft, 0);
+        assertEq(module.getNonce(), nonce);
+    }
+
+    function test_batchUpdateNodeOperatorWeights_RefreshesWeightsInOrderAcrossBatches() public assertInvariants {
+        createNodeOperator(1);
+        createNodeOperator(1);
+        createNodeOperator(1);
+
+        vm.prank(address(metaRegistry));
+        cm.requestFullOperatorWeightsUpdate();
+
+        vm.expectCall(address(metaRegistry), abi.encodeWithSelector(IMetaRegistry.refreshOperatorWeight.selector, 0));
+        vm.expectCall(address(metaRegistry), abi.encodeWithSelector(IMetaRegistry.refreshOperatorWeight.selector, 1));
+        uint256 operatorsLeft = cm.batchUpdateNodeOperatorWeights(2);
+        assertEq(operatorsLeft, 1);
+
+        vm.expectCall(address(metaRegistry), abi.encodeWithSelector(IMetaRegistry.refreshOperatorWeight.selector, 2));
+        operatorsLeft = cm.batchUpdateNodeOperatorWeights(2);
+        assertEq(operatorsLeft, 0);
+    }
+}
+
+contract CuratedGetOperatorsWeights is CuratedCommon {
+    function test_getOperatorWeights_ReturnsMetaRegistryValues() public assertInvariants {
+        createNodeOperator(1);
+        createNodeOperator(1);
+
+        uint256[] memory operatorIds = UintArr(0, 1);
+        uint256[] memory expectedWeights = UintArr(42, 7);
+        vm.mockCall(
+            address(metaRegistry),
+            abi.encodeWithSelector(IMetaRegistry.getOperatorWeights.selector, operatorIds),
+            abi.encode(expectedWeights)
+        );
+
+        uint256[] memory weights = cm.getOperatorWeights(operatorIds);
+        assertEq(weights, expectedWeights);
+    }
+
+    function test_getOperatorWeights_RevertWhen_WeightsUpdateInProgress() public assertInvariants {
+        createNodeOperator(1);
+
+        vm.prank(address(metaRegistry));
+        cm.requestFullOperatorWeightsUpdate();
+
+        vm.expectRevert(ICuratedModule.NodeOperatorWeightsUpdateInProgress.selector);
+        cm.getOperatorWeights(UintArr(0));
     }
 }
 
@@ -1754,122 +1593,109 @@ contract CuratedConfirmNodeOperatorManagerAddressChange is
     CuratedCommon
 {}
 
-contract CuratedProposeNodeOperatorRewardAddressChange is
-    ModuleProposeNodeOperatorRewardAddressChange,
-    CuratedCommon
-{}
+contract CuratedProposeNodeOperatorRewardAddressChange is ModuleProposeNodeOperatorRewardAddressChange, CuratedCommon {}
 
-contract CuratedConfirmNodeOperatorRewardAddressChange is
-    ModuleConfirmNodeOperatorRewardAddressChange,
-    CuratedCommon
-{}
+contract CuratedConfirmNodeOperatorRewardAddressChange is ModuleConfirmNodeOperatorRewardAddressChange, CuratedCommon {}
 
-contract CuratedResetNodeOperatorManagerAddress is
-    ModuleResetNodeOperatorManagerAddress,
-    CuratedCommon
-{}
+contract CuratedResetNodeOperatorManagerAddress is ModuleResetNodeOperatorManagerAddress, CuratedCommon {}
 
-contract CuratedChangeNodeOperatorRewardAddress is
-    ModuleChangeNodeOperatorRewardAddress,
-    CuratedCommon
-{}
+contract CuratedChangeNodeOperatorRewardAddress is ModuleChangeNodeOperatorRewardAddress, CuratedCommon {}
 
 contract CuratedVetKeys is ModuleVetKeys, CuratedCommon {}
 
-contract CuratedDecreaseVettedSigningKeysCount is
-    ModuleDecreaseVettedSigningKeysCount,
-    CuratedCommon
-{}
+contract CuratedDecreaseVettedSigningKeysCount is ModuleDecreaseVettedSigningKeysCount, CuratedCommon {}
 
 contract CuratedGetSigningKeys is ModuleGetSigningKeys, CuratedCommon {}
 
-contract CuratedGetSigningKeysWithSignatures is
-    ModuleGetSigningKeysWithSignatures,
-    CuratedCommon
-{}
+contract CuratedGetSigningKeysWithSignatures is ModuleGetSigningKeysWithSignatures, CuratedCommon {}
 
 contract CuratedRemoveKeys is ModuleRemoveKeys, CuratedCommon {}
 
 contract CuratedRemoveKeysReverts is ModuleRemoveKeysReverts, CuratedCommon {}
 
-contract CuratedGetNodeOperatorNonWithdrawnKeys is
-    ModuleGetNodeOperatorNonWithdrawnKeys,
-    CuratedCommon
-{}
+contract CuratedGetNodeOperatorNonWithdrawnKeys is ModuleGetNodeOperatorNonWithdrawnKeys, CuratedCommon {}
 
-contract CuratedGetNodeOperatorSummary is
-    ModuleGetNodeOperatorSummary,
-    CuratedCommon
-{}
+contract CuratedGetNodeOperatorSummary is ModuleGetNodeOperatorSummary, CuratedCommon {}
 
 contract CuratedGetNodeOperator is ModuleGetNodeOperator, CuratedCommon {}
 
-contract CuratedUpdateTargetValidatorsLimits is
-    ModuleUpdateTargetValidatorsLimits,
-    CuratedCommon
-{}
+contract CuratedUpdateTargetValidatorsLimits is ModuleUpdateTargetValidatorsLimits, CuratedCommon {}
 
-contract CuratedUpdateExitedValidatorsCount is
-    ModuleUpdateExitedValidatorsCount,
-    CuratedCommon
-{}
+contract CuratedUpdateExitedValidatorsCount is ModuleUpdateExitedValidatorsCount, CuratedCommon {}
 
-contract CuratedUnsafeUpdateValidatorsCount is
-    ModuleUnsafeUpdateValidatorsCount,
-    CuratedCommon
-{}
+contract CuratedUnsafeUpdateValidatorsCount is ModuleUnsafeUpdateValidatorsCount, CuratedCommon {}
 
-contract CuratedReportGeneralDelayedPenalty is
-    ModuleReportGeneralDelayedPenalty,
-    CuratedCommon
-{}
+contract CuratedReportGeneralDelayedPenalty is ModuleReportGeneralDelayedPenalty, CuratedCommon {}
 
-contract CuratedCancelGeneralDelayedPenalty is
-    ModuleCancelGeneralDelayedPenalty,
-    CuratedCommon
-{}
+contract CuratedCancelGeneralDelayedPenalty is ModuleCancelGeneralDelayedPenalty, CuratedCommon {}
 
-contract CuratedSettleGeneralDelayedPenaltyBasic is
-    ModuleSettleGeneralDelayedPenaltyBasic,
-    CuratedCommon
-{}
+contract CuratedSettleGeneralDelayedPenaltyBasic is ModuleSettleGeneralDelayedPenaltyBasic, CuratedCommon {}
 
-contract CuratedSettleGeneralDelayedPenaltyAdvanced is
-    ModuleSettleGeneralDelayedPenaltyAdvanced,
-    CuratedCommon
-{}
+contract CuratedSettleGeneralDelayedPenaltyAdvanced is ModuleSettleGeneralDelayedPenaltyAdvanced, CuratedCommon {}
 
-contract CuratedCompensateGeneralDelayedPenalty is
-    ModuleCompensateGeneralDelayedPenalty,
-    CuratedCommon
-{}
+contract CuratedCompensateGeneralDelayedPenalty is ModuleCompensateGeneralDelayedPenalty, CuratedCommon {}
 
-contract CuratedReportWithdrawnValidators is
-    ModuleReportWithdrawnValidators,
-    CuratedCommon
-{}
+contract CuratedReportWithdrawnValidators is ModuleReportWithdrawnValidators, CuratedCommon {}
 
-contract CuratedGetStakingModuleSummary is
-    ModuleGetStakingModuleSummary,
-    CuratedCommon
-{}
+contract CuratedKeyAddedBalance is ModuleKeyAddedBalance, CuratedCommon {}
+
+contract CuratedTopUpKeyAddedBalance is CuratedCommon {
+    function test_topUp_emitsKeyAddedBalanceChanged() public {
+        createNodeOperator(1);
+        cm.obtainDepositData(1, "");
+
+        bytes memory key = cm.getSigningKeys(0, 0, 1);
+        bytes[] memory pubkeys = BytesArr(key);
+
+        vm.expectEmit(address(cm));
+        emit IBaseModule.KeyAddedBalanceChanged(0, 0, 5 ether);
+
+        cm.allocateDeposits({
+            maxDepositAmount: 5 ether,
+            pubkeys: pubkeys,
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(5 ether)
+        });
+    }
+
+    function test_topUp_noEmitWhenKeyAtCap() public {
+        createNodeOperator(1);
+        cm.obtainDepositData(1, "");
+
+        uint256 cap = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
+        cm.increaseKeyAddedBalance(0, 0, cap);
+
+        bytes memory key = cm.getSigningKeys(0, 0, 1);
+        bytes[] memory pubkeys = BytesArr(key);
+
+        vm.recordLogs();
+        cm.allocateDeposits({
+            maxDepositAmount: 5 ether,
+            pubkeys: pubkeys,
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(5 ether)
+        });
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 signature = keccak256("KeyAddedBalanceChanged(uint256,uint256,uint256)");
+        for (uint256 i; i < entries.length; ++i) {
+            assertNotEq(entries[i].topics[0], signature);
+        }
+    }
+}
+
+contract CuratedGetStakingModuleSummary is ModuleGetStakingModuleSummary, CuratedCommon {}
 
 contract CuratedAccessControl is ModuleAccessControl, CuratedCommonNoRoles {}
 
-contract CuratedStakingRouterAccessControl is
-    ModuleStakingRouterAccessControl,
-    CuratedCommonNoRoles
-{
-    function test_stakingRouterRole_onWithdrawalCredentialsChanged_noDepositable()
-        public
-        override
-    {
+contract CuratedStakingRouterAccessControl is ModuleStakingRouterAccessControl, CuratedCommonNoRoles {
+    function test_stakingRouterRole_onWithdrawalCredentialsChanged_noDepositable() public override {
         vm.skip(true);
     }
 
-    function test_stakingRouterRole_onWithdrawalCredentialsChanged_withDepositable()
-        public
-    {
+    function test_stakingRouterRole_onWithdrawalCredentialsChanged_withDepositable() public {
         createNodeOperator();
         bytes32 role = module.STAKING_ROUTER_ROLE();
         vm.prank(admin);
@@ -1882,19 +1708,13 @@ contract CuratedStakingRouterAccessControl is
     }
 }
 
-contract CuratedDepositableValidatorsCount is
-    ModuleDepositableValidatorsCount,
-    CuratedCommon
-{
-    function test_updateDepositableValidatorsCount_zeroWeightNullifiesDepositable()
-        public
-        assertInvariants
-    {
+contract CuratedDepositableValidatorsCount is ModuleDepositableValidatorsCount, CuratedCommon {
+    function test_updateDepositableValidatorsCount_zeroWeightNullifiesDepositable() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 1);
         assertEq(getStakingModuleSummary().depositableValidatorsCount, 1);
 
-        parametersRegistry.setDefaultDepositAllocationWeight(0);
+        _mockOperatorWeight(noId, 0);
         module.updateDepositableValidatorsCount(noId);
 
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 0);
@@ -1902,10 +1722,7 @@ contract CuratedDepositableValidatorsCount is
     }
 }
 
-contract CuratedNodeOperatorStateAfterUpdateCurve is
-    ModuleNodeOperatorStateAfterUpdateCurve,
-    CuratedCommon
-{}
+contract CuratedNodeOperatorStateAfterUpdateCurve is ModuleNodeOperatorStateAfterUpdateCurve, CuratedCommon {}
 
 contract CuratedOnRewardsMinted is ModuleOnRewardsMinted, CuratedCommon {}
 
@@ -1917,35 +1734,18 @@ contract CuratedMisc is ModuleMisc, CuratedCommon {
     }
 }
 
-contract CuratedExitDeadlineThreshold is
-    ModuleExitDeadlineThreshold,
-    CuratedCommon
-{}
+contract CuratedExitDeadlineThreshold is ModuleExitDeadlineThreshold, CuratedCommon {}
 
-contract CuratedIsValidatorExitDelayPenaltyApplicable is
-    ModuleIsValidatorExitDelayPenaltyApplicable,
-    CuratedCommon
-{}
+contract CuratedIsValidatorExitDelayPenaltyApplicable is ModuleIsValidatorExitDelayPenaltyApplicable, CuratedCommon {}
 
-contract CuratedReportValidatorExitDelay is
-    ModuleReportValidatorExitDelay,
-    CuratedCommon
-{}
+contract CuratedReportValidatorExitDelay is ModuleReportValidatorExitDelay, CuratedCommon {}
 
-contract CuratedOnValidatorExitTriggered is
-    ModuleOnValidatorExitTriggered,
-    CuratedCommon
-{}
+contract CuratedOnValidatorExitTriggered is ModuleOnValidatorExitTriggered, CuratedCommon {}
 
-contract CuratedCreateNodeOperators is
-    ModuleCreateNodeOperators,
-    CuratedCommon
-{}
+contract CuratedCreateNodeOperators is ModuleCreateNodeOperators, CuratedCommon {}
 
 contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
-    function test_changeNodeOperatorAddresses_NoExtendedManagerPermissions_SingleOwner()
-        public
-    {
+    function test_changeNodeOperatorAddresses_NoExtendedManagerPermissions_SingleOwner() public {
         uint256 noId = cm.createNodeOperator(
             nodeOperator,
             NodeOperatorManagementProperties({
@@ -1964,18 +1764,10 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         address rewards = nextAddress();
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorManagerAddressChanged(
-            noId,
-            nodeOperator,
-            manager
-        );
+        emit INOAddresses.NodeOperatorManagerAddressChanged(noId, nodeOperator, manager);
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorRewardAddressChanged(
-            noId,
-            nodeOperator,
-            rewards
-        );
+        emit INOAddresses.NodeOperatorRewardAddressChanged(noId, nodeOperator, rewards);
 
         cm.changeNodeOperatorAddresses(noId, manager, rewards);
 
@@ -1984,9 +1776,7 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         assertEq(no.rewardAddress, rewards);
     }
 
-    function test_changeNodeOperatorAddresses_NoExtendedManagerPermissions_SeparateManagerReward()
-        public
-    {
+    function test_changeNodeOperatorAddresses_NoExtendedManagerPermissions_SeparateManagerReward() public {
         address managerToChange = nextAddress();
         address rewardsToChange = nextAddress();
 
@@ -2008,18 +1798,10 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         address rewards = nextAddress();
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorManagerAddressChanged(
-            noId,
-            managerToChange,
-            manager
-        );
+        emit INOAddresses.NodeOperatorManagerAddressChanged(noId, managerToChange, manager);
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorRewardAddressChanged(
-            noId,
-            rewardsToChange,
-            rewards
-        );
+        emit INOAddresses.NodeOperatorRewardAddressChanged(noId, rewardsToChange, rewards);
 
         cm.changeNodeOperatorAddresses(noId, manager, rewards);
 
@@ -2028,9 +1810,7 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         assertEq(no.rewardAddress, rewards);
     }
 
-    function test_changeNodeOperatorAddresses_ExtendedManagerPermissions_SingleOwner()
-        public
-    {
+    function test_changeNodeOperatorAddresses_ExtendedManagerPermissions_SingleOwner() public {
         uint256 noId = cm.createNodeOperator(
             nodeOperator,
             NodeOperatorManagementProperties({
@@ -2049,18 +1829,10 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         address rewards = nextAddress();
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorManagerAddressChanged(
-            noId,
-            nodeOperator,
-            manager
-        );
+        emit INOAddresses.NodeOperatorManagerAddressChanged(noId, nodeOperator, manager);
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorRewardAddressChanged(
-            noId,
-            nodeOperator,
-            rewards
-        );
+        emit INOAddresses.NodeOperatorRewardAddressChanged(noId, nodeOperator, rewards);
 
         cm.changeNodeOperatorAddresses(noId, manager, rewards);
 
@@ -2069,9 +1841,7 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         assertEq(no.rewardAddress, rewards);
     }
 
-    function test_changeNodeOperatorAddresses_ExtendedManagerPermissions_SeparateManagerReward()
-        public
-    {
+    function test_changeNodeOperatorAddresses_ExtendedManagerPermissions_SeparateManagerReward() public {
         address managerToChange = nextAddress();
         address rewardsToChange = nextAddress();
 
@@ -2093,18 +1863,10 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         address rewards = nextAddress();
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorManagerAddressChanged(
-            noId,
-            managerToChange,
-            manager
-        );
+        emit INOAddresses.NodeOperatorManagerAddressChanged(noId, managerToChange, manager);
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorRewardAddressChanged(
-            noId,
-            rewardsToChange,
-            rewards
-        );
+        emit INOAddresses.NodeOperatorRewardAddressChanged(noId, rewardsToChange, rewards);
 
         cm.changeNodeOperatorAddresses(noId, manager, rewards);
 
@@ -2138,11 +1900,7 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
 
         {
             vm.expectEmit(address(cm));
-            emit INOAddresses.NodeOperatorRewardAddressChanged(
-                noId,
-                rewardsToChange,
-                rewards
-            );
+            emit INOAddresses.NodeOperatorRewardAddressChanged(noId, rewardsToChange, rewards);
 
             vm.recordLogs();
             cm.changeNodeOperatorAddresses(noId, managerToChange, rewards);
@@ -2152,11 +1910,7 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
 
         {
             vm.expectEmit(address(cm));
-            emit INOAddresses.NodeOperatorManagerAddressChanged(
-                noId,
-                managerToChange,
-                manager
-            );
+            emit INOAddresses.NodeOperatorManagerAddressChanged(noId, managerToChange, manager);
 
             vm.recordLogs();
             cm.changeNodeOperatorAddresses(noId, manager, rewardsToChange);
@@ -2165,9 +1919,7 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         vm.revertToState(snapshot);
     }
 
-    function test_changeNodeOperatorAddresses_RevertsIfOperatorDoesNotExist()
-        public
-    {
+    function test_changeNodeOperatorAddresses_RevertsIfOperatorDoesNotExist() public {
         vm.startPrank(admin);
         cm.grantRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
         vm.stopPrank();
@@ -2180,9 +1932,7 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
     }
 
     function test_changeNodeOperatorAddresses_RevertsIfHasNoRole() public {
-        assertFalse(
-            cm.hasRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this))
-        );
+        assertFalse(cm.hasRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this)));
 
         address manager = nextAddress();
         address rewards = nextAddress();
@@ -2191,9 +1941,7 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         cm.changeNodeOperatorAddresses(0, manager, rewards);
     }
 
-    function test_changeNodeOperatorAddresses_RevertsIfTheSameAddresses()
-        public
-    {
+    function test_changeNodeOperatorAddresses_RevertsIfTheSameAddresses() public {
         address manager = nextAddress();
         address rewards = nextAddress();
 
@@ -2215,9 +1963,7 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         cm.changeNodeOperatorAddresses(noId, manager, rewards);
     }
 
-    function test_changeNodeOperatorAddresses_RevertsIfZeroAddressProvided()
-        public
-    {
+    function test_changeNodeOperatorAddresses_RevertsIfZeroAddressProvided() public {
         uint256 noId = cm.createNodeOperator(
             nodeOperator,
             NodeOperatorManagementProperties({

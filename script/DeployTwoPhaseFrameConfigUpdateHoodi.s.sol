@@ -5,9 +5,7 @@ pragma solidity 0.8.33;
 
 import { DeployTwoPhaseFrameConfigUpdateBase } from "./DeployTwoPhaseFrameConfigUpdate.s.sol";
 
-contract DeployTwoPhaseFrameConfigUpdateHoodi is
-    DeployTwoPhaseFrameConfigUpdateBase
-{
+contract DeployTwoPhaseFrameConfigUpdateHoodi is DeployTwoPhaseFrameConfigUpdateBase {
     constructor() DeployTwoPhaseFrameConfigUpdateBase("hoodi", 560048) {
         config.reportsToProcessBeforeOffsetPhase = 1;
         config.reportsToProcessBeforeRestorePhase = 1;

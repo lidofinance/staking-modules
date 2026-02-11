@@ -6,10 +6,7 @@ pragma solidity 0.8.33;
 interface IVEBO {
     function SUBMIT_DATA_ROLE() external view returns (bytes32);
 
-    function getRoleMember(
-        bytes32 role,
-        uint256 index
-    ) external view returns (address);
+    function getRoleMember(bytes32 role, uint256 index) external view returns (address);
 
     function grantRole(bytes32 role, address account) external;
 
@@ -22,18 +19,9 @@ interface IVEBO {
     function getConsensusReport()
         external
         view
-        returns (
-            bytes32 hash,
-            uint256 refSlot,
-            uint256 processingDeadlineTime,
-            bool processingStarted
-        );
+        returns (bytes32 hash, uint256 refSlot, uint256 processingDeadlineTime, bool processingStarted);
 
-    function submitConsensusReport(
-        bytes32 reportHash,
-        uint256 refSlot,
-        uint256 deadline
-    ) external;
+    function submitConsensusReport(bytes32 reportHash, uint256 refSlot, uint256 deadline) external;
 
     struct ReportData {
         ///
@@ -63,8 +51,5 @@ interface IVEBO {
         bytes data;
     }
 
-    function submitReportData(
-        ReportData calldata data,
-        uint256 contractVersion
-    ) external;
+    function submitReportData(ReportData calldata data, uint256 contractVersion) external;
 }

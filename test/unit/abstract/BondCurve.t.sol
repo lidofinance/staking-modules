@@ -11,22 +11,15 @@ import { BondCurve } from "src/abstract/BondCurve.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 
 contract BondCurveTestable is BondCurve {
-    function initialize(
-        IBondCurve.BondCurveIntervalInput[] calldata bondCurve
-    ) public initializer {
+    function initialize(IBondCurve.BondCurveIntervalInput[] calldata bondCurve) public initializer {
         __BondCurve_init(bondCurve);
     }
 
-    function addBondCurve(
-        IBondCurve.BondCurveIntervalInput[] calldata _bondCurve
-    ) external returns (uint256) {
+    function addBondCurve(IBondCurve.BondCurveIntervalInput[] calldata _bondCurve) external returns (uint256) {
         return _addBondCurve(_bondCurve);
     }
 
-    function updateBondCurve(
-        uint256 curveId,
-        IBondCurve.BondCurveIntervalInput[] calldata _bondCurve
-    ) external {
+    function updateBondCurve(uint256 curveId, IBondCurve.BondCurveIntervalInput[] calldata _bondCurve) external {
         _updateBondCurve(curveId, _bondCurve);
     }
 
@@ -43,8 +36,7 @@ contract BondCurveInitTest is Test {
     }
 
     function test_initialize_revertWhen_InvalidInitializationCurveId() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 2 ether);
 
         bondCurve.addBondCurve(_bondCurve);
@@ -58,8 +50,7 @@ contract BondCurveTest is Test {
     BondCurveTestable public bondCurve;
 
     function setUp() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](2);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](2);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 2 ether);
         _bondCurve[1] = IBondCurve.BondCurveIntervalInput(3, 1 ether);
         bondCurve = new BondCurveTestable();
@@ -86,8 +77,7 @@ contract BondCurveTest is Test {
     }
 
     function test_addBondCurve() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 16 ether);
 
         uint256 curvesCount = bondCurve.getCurvesCount();
@@ -107,8 +97,7 @@ contract BondCurveTest is Test {
     }
 
     function test_addBondCurve_SeveralIntervals() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](4);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](4);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 16 ether);
         _bondCurve[1] = IBondCurve.BondCurveIntervalInput(10, 1 ether);
         _bondCurve[2] = IBondCurve.BondCurveIntervalInput(33, 0.5 ether);
@@ -148,8 +137,7 @@ contract BondCurveTest is Test {
     }
 
     function test_addBondCurve_RevertWhen_ZeroTrend() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 0 ether);
 
         vm.expectRevert(IBondCurve.InvalidBondCurveValues.selector);
@@ -157,8 +145,7 @@ contract BondCurveTest is Test {
     }
 
     function test_addBondCurve_RevertWhen_ZeroTrendSecondInterval() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](2);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](2);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 1 ether);
         _bondCurve[1] = IBondCurve.BondCurveIntervalInput(2, 0 ether);
 
@@ -166,11 +153,8 @@ contract BondCurveTest is Test {
         bondCurve.addBondCurve(_bondCurve);
     }
 
-    function test_addBondCurve_RevertWhen_FirstIntervalStartsFromNonOne()
-        public
-    {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+    function test_addBondCurve_RevertWhen_FirstIntervalStartsFromNonOne() public {
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(2, 1 ether);
 
         vm.expectRevert(IBondCurve.InvalidBondCurveValues.selector);
@@ -178,8 +162,7 @@ contract BondCurveTest is Test {
     }
 
     function test_addBondCurve_RevertWhen_UnsortedIntervals() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](2);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](2);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 2 ether);
         _bondCurve[1] = IBondCurve.BondCurveIntervalInput(1, 1 ether);
 
@@ -188,8 +171,7 @@ contract BondCurveTest is Test {
     }
 
     function test_updateBondCurve() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 16 ether);
 
         uint256 toUpdateId = 0;
@@ -199,9 +181,7 @@ contract BondCurveTest is Test {
 
         bondCurve.updateBondCurve(toUpdateId, _bondCurve);
 
-        IBondCurve.BondCurveData memory updated = bondCurve.getCurveInfo(
-            toUpdateId
-        );
+        IBondCurve.BondCurveData memory updated = bondCurve.getCurveInfo(toUpdateId);
 
         assertEq(updated.intervals.length, 1);
         assertEq(updated.intervals[0].minKeysCount, 1);
@@ -210,8 +190,7 @@ contract BondCurveTest is Test {
     }
 
     function test_updateBondCurve_SeveralIntervals() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](4);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](4);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 16 ether);
         _bondCurve[1] = IBondCurve.BondCurveIntervalInput(10, 1 ether);
         _bondCurve[2] = IBondCurve.BondCurveIntervalInput(33, 0.5 ether);
@@ -221,9 +200,7 @@ contract BondCurveTest is Test {
 
         bondCurve.updateBondCurve(toUpdateId, _bondCurve);
 
-        IBondCurve.BondCurveData memory updated = bondCurve.getCurveInfo(
-            toUpdateId
-        );
+        IBondCurve.BondCurveData memory updated = bondCurve.getCurveInfo(toUpdateId);
 
         assertEq(updated.intervals.length, 4);
         assertEq(updated.intervals[0].minKeysCount, 1);
@@ -243,29 +220,18 @@ contract BondCurveTest is Test {
         assertEq(updated.intervals[3].trend, 10 ether);
     }
 
-    function test_updateBondCurve_RevertWhen_LessThanMinBondCurveLength()
-        public
-    {
+    function test_updateBondCurve_RevertWhen_LessThanMinBondCurveLength() public {
         vm.expectRevert(IBondCurve.InvalidBondCurveLength.selector);
-        bondCurve.updateBondCurve(
-            0,
-            new IBondCurve.BondCurveIntervalInput[](0)
-        );
+        bondCurve.updateBondCurve(0, new IBondCurve.BondCurveIntervalInput[](0));
     }
 
-    function test_updateBondCurve_RevertWhen_MoreThanMaxBondCurveLength()
-        public
-    {
+    function test_updateBondCurve_RevertWhen_MoreThanMaxBondCurveLength() public {
         vm.expectRevert(IBondCurve.InvalidBondCurveLength.selector);
-        bondCurve.updateBondCurve(
-            0,
-            new IBondCurve.BondCurveIntervalInput[](101)
-        );
+        bondCurve.updateBondCurve(0, new IBondCurve.BondCurveIntervalInput[](101));
     }
 
     function test_updateBondCurve_RevertWhen_ZeroTrend() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 0 ether);
 
         vm.expectRevert(IBondCurve.InvalidBondCurveValues.selector);
@@ -273,8 +239,7 @@ contract BondCurveTest is Test {
     }
 
     function test_updateBondCurve_RevertWhen_ZeroTrendSecondInterval() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](2);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](2);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 1 ether);
         _bondCurve[1] = IBondCurve.BondCurveIntervalInput(2, 0 ether);
 
@@ -282,11 +247,8 @@ contract BondCurveTest is Test {
         bondCurve.updateBondCurve(0, _bondCurve);
     }
 
-    function test_updateBondCurve_RevertWhen_FirstIntervalStartsFromNonOne()
-        public
-    {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+    function test_updateBondCurve_RevertWhen_FirstIntervalStartsFromNonOne() public {
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(2, 1 ether);
 
         vm.expectRevert(IBondCurve.InvalidBondCurveValues.selector);
@@ -294,8 +256,7 @@ contract BondCurveTest is Test {
     }
 
     function test_updateBondCurve_RevertWhen_UnsortedIntervals() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](2);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](2);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 2 ether);
         _bondCurve[1] = IBondCurve.BondCurveIntervalInput(1, 1 ether);
 
@@ -304,8 +265,7 @@ contract BondCurveTest is Test {
     }
 
     function test_updateBondCurve_RevertWhen_InvalidBondCurveId() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 16 ether);
 
         vm.expectRevert(IBondCurve.InvalidBondCurveId.selector);
@@ -314,8 +274,7 @@ contract BondCurveTest is Test {
 
     function test_setBondCurve() public {
         uint256 noId = 0;
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 16 ether);
         uint256 addedId = bondCurve.addBondCurve(_bondCurve);
 
@@ -332,8 +291,7 @@ contract BondCurveTest is Test {
     }
 
     function test_getCurvesCount() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 16 ether);
 
         bondCurve.addBondCurve(_bondCurve);
@@ -361,31 +319,23 @@ contract BondCurveTest is Test {
     function test_getKeysCountByBondAmount_noOverflowWithMaxUint() public view {
         IBondCurve.BondCurveData memory curve = bondCurve.getBondCurve(0);
         uint256 len = curve.intervals.length;
-        IBondCurve.BondCurveInterval memory lastInterval = curve.intervals[
-            len - 1
-        ];
+        IBondCurve.BondCurveInterval memory lastInterval = curve.intervals[len - 1];
         uint256 amount = type(uint256).max;
 
         assertEq(
             bondCurve.getKeysCountByBondAmount(amount, 0),
-            lastInterval.minKeysCount +
-                (amount - lastInterval.minBond) /
-                lastInterval.trend
+            lastInterval.minKeysCount + (amount - lastInterval.minBond) / lastInterval.trend
         );
     }
 
     function test_getKeysCountByBondAmount_noOverflowWithMinUint() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 1 wei);
         uint256 curveId = bondCurve.addBondCurve(_bondCurve);
 
         uint256 amount = type(uint256).max;
 
-        assertEq(
-            bondCurve.getKeysCountByBondAmount(amount, curveId),
-            type(uint256).max
-        );
+        assertEq(bondCurve.getKeysCountByBondAmount(amount, curveId), type(uint256).max);
     }
 
     function test_getBondAmountByKeysCount_default() public view {
@@ -397,8 +347,7 @@ contract BondCurveTest is Test {
     }
 
     function test_getKeysCountByCurveValue_individual() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 1 ether);
         uint256 curveId = bondCurve.addBondCurve(_bondCurve);
 
@@ -415,8 +364,7 @@ contract BondCurveTest is Test {
     }
 
     function test_getKeysCountByBondAmount_singlePointCurve() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 2 ether);
         uint256 curveId = bondCurve.addBondCurve(_bondCurve);
 
@@ -429,8 +377,7 @@ contract BondCurveTest is Test {
     }
 
     function test_getKeysCountByBondAmount_twoPointsCurve() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](2);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](2);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 2 ether);
         _bondCurve[1] = IBondCurve.BondCurveIntervalInput(2, 1.5 ether);
 
@@ -447,29 +394,18 @@ contract BondCurveTest is Test {
     }
 
     function test_getKeysCountByBondAmount_tenPointsCurve() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 1 ether);
         uint256 curveId = bondCurve.addBondCurve(_bondCurve);
 
         for (uint256 i = 0; i < 10; i++) {
-            assertEq(
-                bondCurve.getKeysCountByBondAmount(i * 1 ether, curveId),
-                i
-            );
-            assertEq(
-                bondCurve.getKeysCountByBondAmount(
-                    i * 1 ether + 0.5 ether,
-                    curveId
-                ),
-                i
-            );
+            assertEq(bondCurve.getKeysCountByBondAmount(i * 1 ether, curveId), i);
+            assertEq(bondCurve.getKeysCountByBondAmount(i * 1 ether + 0.5 ether, curveId), i);
         }
     }
 
     function test_getBondAmountByKeysCount_individual() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 1 ether);
         uint256 curveId = bondCurve.addBondCurve(_bondCurve);
 
@@ -488,8 +424,7 @@ contract BondCurveTest is Test {
     }
 
     function test_getBondAmountByKeysCount_bigCurve() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](3);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](3);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 1.5 ether);
         _bondCurve[1] = IBondCurve.BondCurveIntervalInput(2, 1 ether);
         _bondCurve[2] = IBondCurve.BondCurveIntervalInput(4, 0.5 ether);
@@ -505,42 +440,24 @@ contract BondCurveTest is Test {
     }
 
     function test_viceVersa_OneInterval() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 0.33 ether);
 
         uint256 curveId = bondCurve.addBondCurve(_bondCurve);
 
         for (uint256 keysIn = 0; keysIn < 100; ++keysIn) {
-            uint256 bondOut = bondCurve.getBondAmountByKeysCount(
-                keysIn,
-                curveId
-            );
-            assertEq(
-                bondCurve.getKeysCountByBondAmount(bondOut, curveId),
-                keysIn
-            );
+            uint256 bondOut = bondCurve.getBondAmountByKeysCount(keysIn, curveId);
+            assertEq(bondCurve.getKeysCountByBondAmount(bondOut, curveId), keysIn);
         }
 
-        for (
-            uint256 bondIn = 0 ether;
-            bondIn < 33 ether;
-            bondIn += 0.33 ether
-        ) {
-            uint256 keysOut = bondCurve.getKeysCountByBondAmount(
-                bondIn,
-                curveId
-            );
-            assertGe(
-                bondIn,
-                bondCurve.getBondAmountByKeysCount(keysOut, curveId)
-            );
+        for (uint256 bondIn = 0 ether; bondIn < 33 ether; bondIn += 0.33 ether) {
+            uint256 keysOut = bondCurve.getKeysCountByBondAmount(bondIn, curveId);
+            assertGe(bondIn, bondCurve.getBondAmountByKeysCount(keysOut, curveId));
         }
     }
 
     function test_viceVersa_ThreeIntervals() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](3);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](3);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 1.5 ether);
         _bondCurve[1] = IBondCurve.BondCurveIntervalInput(2, 1 ether);
         _bondCurve[2] = IBondCurve.BondCurveIntervalInput(4, 0.5 ether);
@@ -548,71 +465,35 @@ contract BondCurveTest is Test {
         uint256 curveId = bondCurve.addBondCurve(_bondCurve);
 
         for (uint256 keysIn = 0; keysIn < 100; ++keysIn) {
-            uint256 bondOut = bondCurve.getBondAmountByKeysCount(
-                keysIn,
-                curveId
-            );
-            assertEq(
-                bondCurve.getKeysCountByBondAmount(bondOut, curveId),
-                keysIn
-            );
+            uint256 bondOut = bondCurve.getBondAmountByKeysCount(keysIn, curveId);
+            assertEq(bondCurve.getKeysCountByBondAmount(bondOut, curveId), keysIn);
         }
 
-        for (
-            uint256 bondIn = 0 ether;
-            bondIn < 33 ether;
-            bondIn += 0.33 ether
-        ) {
-            uint256 keysOut = bondCurve.getKeysCountByBondAmount(
-                bondIn,
-                curveId
-            );
-            assertGe(
-                bondIn,
-                bondCurve.getBondAmountByKeysCount(keysOut, curveId)
-            );
+        for (uint256 bondIn = 0 ether; bondIn < 33 ether; bondIn += 0.33 ether) {
+            uint256 keysOut = bondCurve.getKeysCountByBondAmount(bondIn, curveId);
+            assertGe(bondIn, bondCurve.getBondAmountByKeysCount(keysOut, curveId));
         }
     }
 
     function test_viceVersa_SixIntervals() public {
-        IBondCurve.BondCurveIntervalInput[]
-            memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](6);
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](6);
         _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 1.5 ether);
         _bondCurve[1] = IBondCurve.BondCurveIntervalInput(2, 1 ether);
         _bondCurve[2] = IBondCurve.BondCurveIntervalInput(4, 0.5 ether);
         _bondCurve[3] = IBondCurve.BondCurveIntervalInput(5, 0.5 ether + 1 wei);
-        _bondCurve[4] = IBondCurve.BondCurveIntervalInput(
-            13,
-            1.11 ether - 1 wei
-        );
+        _bondCurve[4] = IBondCurve.BondCurveIntervalInput(13, 1.11 ether - 1 wei);
         _bondCurve[5] = IBondCurve.BondCurveIntervalInput(16, 0.01 ether);
 
         uint256 curveId = bondCurve.addBondCurve(_bondCurve);
 
         for (uint256 keysIn = 0; keysIn < 100; ++keysIn) {
-            uint256 bondOut = bondCurve.getBondAmountByKeysCount(
-                keysIn,
-                curveId
-            );
-            assertEq(
-                bondCurve.getKeysCountByBondAmount(bondOut, curveId),
-                keysIn
-            );
+            uint256 bondOut = bondCurve.getBondAmountByKeysCount(keysIn, curveId);
+            assertEq(bondCurve.getKeysCountByBondAmount(bondOut, curveId), keysIn);
         }
 
-        for (
-            uint256 bondIn = 0 ether;
-            bondIn < 33 ether;
-            bondIn += 0.33 ether
-        ) {
-            uint256 keysOut = bondCurve.getKeysCountByBondAmount(
-                bondIn,
-                curveId
-            );
-            assertGe(
-                bondIn,
-                bondCurve.getBondAmountByKeysCount(keysOut, curveId)
-            );
+        for (uint256 bondIn = 0 ether; bondIn < 33 ether; bondIn += 0.33 ether) {
+            uint256 keysOut = bondCurve.getKeysCountByBondAmount(bondIn, curveId);
+            assertGe(bondIn, bondCurve.getBondAmountByKeysCount(keysOut, curveId));
         }
     }
 }
@@ -631,70 +512,35 @@ contract BondCurveFuzz is Test {
         uint256 bondToCheck
     ) public {
         uint256[2][] memory _bondCurve;
-        (_bondCurve, keysToCheck, bondToCheck) = prepareInputs(
-            minKeysCount,
-            trend,
-            keysToCheck,
-            bondToCheck
-        );
+        (_bondCurve, keysToCheck, bondToCheck) = prepareInputs(minKeysCount, trend, keysToCheck, bondToCheck);
         bondCurve = new BondCurveTestable();
-        IBondCurve.BondCurveIntervalInput[]
-            memory bondCurveInput = new IBondCurve.BondCurveIntervalInput[](
-                _bondCurve.length
-            );
+        IBondCurve.BondCurveIntervalInput[] memory bondCurveInput = new IBondCurve.BondCurveIntervalInput[](
+            _bondCurve.length
+        );
         for (uint256 i = 0; i < _bondCurve.length; ++i) {
-            bondCurveInput[i] = IBondCurve.BondCurveIntervalInput(
-                _bondCurve[i][0],
-                _bondCurve[i][1]
-            );
+            bondCurveInput[i] = IBondCurve.BondCurveIntervalInput(_bondCurve[i][0], _bondCurve[i][1]);
         }
         bondCurve.initialize(bondCurveInput);
-        IBondCurve.BondCurveData memory defaultBondCurve = bondCurve
-            .getCurveInfo(0);
+        IBondCurve.BondCurveData memory defaultBondCurve = bondCurve.getCurveInfo(0);
 
         // Compare contract output with different algorithm
-        uint256 keysCountSecondOpinion = getKeysCountByBondAmountSecondOpinion(
-            defaultBondCurve.intervals,
-            bondToCheck
-        );
+        uint256 keysCountSecondOpinion = getKeysCountByBondAmountSecondOpinion(defaultBondCurve.intervals, bondToCheck);
         uint256 keysCount = bondCurve.getKeysCountByBondAmount(bondToCheck, 0);
-        assertEq(
-            keysCount,
-            keysCountSecondOpinion,
-            "keysCount != keysCountSecondOpinion"
-        );
+        assertEq(keysCount, keysCountSecondOpinion, "keysCount != keysCountSecondOpinion");
         // Can't check this fully, because of the rounding (`bondToCheck` can be "between" two keys amounts).
         // So it is enough to check that one less or equal than another
-        uint256 bondMinKeysCount = bondCurve.getBondAmountByKeysCount(
-            keysCount,
-            0
-        );
-        assertGe(
-            bondToCheck,
-            bondMinKeysCount,
-            "bondminKeysCount > bondToCheck"
-        );
+        uint256 bondMinKeysCount = bondCurve.getBondAmountByKeysCount(keysCount, 0);
+        assertGe(bondToCheck, bondMinKeysCount, "bondminKeysCount > bondToCheck");
 
         uint256 bondAmountSecondOpinion = getBondAmountByKeysCountSecondOpinion(
             defaultBondCurve.intervals,
             keysToCheck
         );
         uint256 bondAmount = bondCurve.getBondAmountByKeysCount(keysToCheck, 0);
-        assertEq(
-            bondAmount,
-            bondAmountSecondOpinion,
-            "bondAmount != bondOutSecondOpinion"
-        );
+        assertEq(bondAmount, bondAmountSecondOpinion, "bondAmount != bondOutSecondOpinion");
         // Check that values are the same in both directions
-        uint256 keysMinBondAmount = bondCurve.getKeysCountByBondAmount(
-            bondAmount,
-            0
-        );
-        assertEq(
-            keysMinBondAmount,
-            keysToCheck,
-            "keysMinBondAmount != keysToCheck"
-        );
+        uint256 keysMinBondAmount = bondCurve.getKeysCountByBondAmount(bondAmount, 0);
+        assertEq(keysMinBondAmount, keysToCheck, "keysMinBondAmount != keysToCheck");
     }
 
     /// NOTE: Ugly, ineffective version of binary search algorithm from the contract.
@@ -710,16 +556,11 @@ contract BondCurveFuzz is Test {
                 // Current trend + difference between current and previous minKeysCount multiplied by previous trend
                 minBondAcc +=
                     intervals[i].trend +
-                    (intervals[i].minKeysCount -
-                        intervals[i - 1].minKeysCount -
-                        1) *
+                    (intervals[i].minKeysCount - intervals[i - 1].minKeysCount - 1) *
                     intervals[i - 1].trend;
             }
             if (keysToCheck >= intervals[i].minKeysCount) {
-                bondAmount =
-                    minBondAcc +
-                    (keysToCheck - intervals[i].minKeysCount) *
-                    intervals[i].trend;
+                bondAmount = minBondAcc + (keysToCheck - intervals[i].minKeysCount) * intervals[i].trend;
             } else {
                 break;
             }
@@ -733,9 +574,7 @@ contract BondCurveFuzz is Test {
         IBondCurve.BondCurveInterval[] memory intervals,
         uint256 bondToCheck
     ) public pure returns (uint256) {
-        if (bondToCheck < intervals[0].minBond) {
-            return 0;
-        }
+        if (bondToCheck < intervals[0].minBond) return 0;
 
         uint256 neededIndex = 0;
         uint256 minBondAcc = intervals[0].trend;
@@ -744,27 +583,18 @@ contract BondCurveFuzz is Test {
                 // Current trend + difference between current and previous minKeysCount multiplied by previous trend
                 minBondAcc +=
                     intervals[i].trend +
-                    (intervals[i].minKeysCount -
-                        intervals[i - 1].minKeysCount -
-                        1) *
+                    (intervals[i].minKeysCount - intervals[i - 1].minKeysCount - 1) *
                     intervals[i - 1].trend;
             }
-            if (bondToCheck == minBondAcc) {
-                return intervals[i].minKeysCount;
-            }
+            if (bondToCheck == minBondAcc) return intervals[i].minKeysCount;
             if (i < intervals.length - 1) {
                 uint256 nextMinBond = minBondAcc +
                     intervals[i + 1].trend +
-                    (intervals[i + 1].minKeysCount -
-                        intervals[i].minKeysCount -
-                        1) *
+                    (intervals[i + 1].minKeysCount - intervals[i].minKeysCount - 1) *
                     intervals[i].trend;
                 if (bondToCheck < nextMinBond) {
-                    uint256 maxBondInInterval = nextMinBond -
-                        intervals[i + 1].trend;
-                    if (bondToCheck > maxBondInInterval) {
-                        bondToCheck = maxBondInInterval;
-                    }
+                    uint256 maxBondInInterval = nextMinBond - intervals[i + 1].trend;
+                    if (bondToCheck > maxBondInInterval) bondToCheck = maxBondInInterval;
                     neededIndex = i;
                     break;
                 }
@@ -772,10 +602,7 @@ contract BondCurveFuzz is Test {
             neededIndex = i;
         }
 
-        return
-            intervals[neededIndex].minKeysCount +
-            (bondToCheck - minBondAcc) /
-            intervals[neededIndex].trend;
+        return intervals[neededIndex].minKeysCount + (bondToCheck - minBondAcc) / intervals[neededIndex].trend;
     }
 
     function prepareInputs(
@@ -790,15 +617,11 @@ contract BondCurveFuzz is Test {
         // Assume: intervals.length > 0
         uint256 intervalsCount = Math.max(
             1,
-            Math.min(minKeysCount.length, trend.length) %
-                MAX_BOND_CURVE_INTERVALS_COUNT
+            Math.min(minKeysCount.length, trend.length) % MAX_BOND_CURVE_INTERVALS_COUNT
         );
         for (uint256 i = 0; i < intervalsCount; ++i) {
             // Assume: minKeysCount[i] > 0
-            minKeysCount[i] = Math.max(
-                1,
-                minKeysCount[i] % MAX_FROM_KEYS_COUNT_VALUE
-            );
+            minKeysCount[i] = Math.max(1, minKeysCount[i] % MAX_FROM_KEYS_COUNT_VALUE);
             // Assume: trend[i] > 0
             trend[i] = Math.max(1 wei, trend[i] % MAX_TREND_VALUE);
         }
@@ -813,10 +636,7 @@ contract BondCurveFuzz is Test {
         for (uint256 i = 0; i < n; i++) {
             for (uint256 j = 0; j < n - 1; j++) {
                 if (minKeysCount[j] > minKeysCount[j + 1]) {
-                    (minKeysCount[j], minKeysCount[j + 1]) = (
-                        minKeysCount[j + 1],
-                        minKeysCount[j]
-                    );
+                    (minKeysCount[j], minKeysCount[j + 1]) = (minKeysCount[j + 1], minKeysCount[j]);
                 }
                 if (minKeysCount[j] == minKeysCount[j + 1]) {
                     // Make it different because we need to have unique values

@@ -13,16 +13,11 @@ import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMerkleGate } from "./interfaces/IMerkleGate.sol";
 import { ICuratedGate } from "./interfaces/ICuratedGate.sol";
 import { NodeOperatorManagementProperties } from "./interfaces/IBaseModule.sol";
-import { IOperatorsData, OperatorInfo } from "./interfaces/IOperatorsData.sol";
+import { IMetaRegistry, OperatorMetadata } from "./interfaces/IMetaRegistry.sol";
 import { IAccounting } from "./interfaces/IAccounting.sol";
 
 /// @notice Merkle gate for Curated Module v2
-contract CuratedGate is
-    ICuratedGate,
-    AccessControlEnumerableUpgradeable,
-    PausableUntil,
-    AssetRecoverer
-{
+contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, PausableUntil, AssetRecoverer {
     bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
     bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
@@ -32,13 +27,10 @@ contract CuratedGate is
     ICuratedModule public immutable MODULE;
 
     /// @inheritdoc ICuratedGate
-    uint256 public immutable MODULE_ID;
-
-    /// @inheritdoc ICuratedGate
     IAccounting public immutable ACCOUNTING;
 
     /// @inheritdoc ICuratedGate
-    IOperatorsData public immutable OPERATORS_DATA;
+    IMetaRegistry public immutable META_REGISTRY;
 
     /// @inheritdoc IMerkleGate
     bytes32 public treeRoot;
@@ -54,17 +46,19 @@ contract CuratedGate is
     /// @dev Tracks whether an address already consumed its eligibility
     mapping(address => bool) internal _consumedAddresses;
 
-    constructor(address module, uint256 moduleId, address operatorsData) {
+    constructor(address module) {
         if (module == address(0)) revert ZeroModuleAddress();
-        if (moduleId == 0) revert ZeroModuleId();
-        if (operatorsData == address(0)) revert ZeroOperatorsDataAddress();
+
         MODULE = ICuratedModule(module);
-        MODULE_ID = moduleId;
         ACCOUNTING = MODULE.ACCOUNTING();
-        OPERATORS_DATA = IOperatorsData(operatorsData);
+        META_REGISTRY = MODULE.META_REGISTRY();
+
         _disableInitializers();
     }
 
+    /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
+    ///      It is recommended to call this method in the same transaction as the deployment transaction
+    ///      and perform extensive deployment verification before using the contract instance.
     function initialize(
         uint256 _curveId,
         bytes32 _treeRoot,
@@ -75,9 +69,7 @@ contract CuratedGate is
 
         __AccessControlEnumerable_init();
         curveId = _curveId;
-        if (_curveId == ACCOUNTING.DEFAULT_BOND_CURVE_ID()) {
-            _defaultCurveSet = true;
-        }
+        if (_curveId == ACCOUNTING.DEFAULT_BOND_CURVE_ID()) _defaultCurveSet = true;
         _setTreeParams(_treeRoot, _treeCid);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
@@ -103,12 +95,11 @@ contract CuratedGate is
         _consume(proof);
 
         // Enforce extendedManagerPermissions = true; accept manager/reward from args
-        NodeOperatorManagementProperties
-            memory props = NodeOperatorManagementProperties({
-                managerAddress: managerAddress,
-                rewardAddress: rewardAddress,
-                extendedManagerPermissions: true
-            });
+        NodeOperatorManagementProperties memory props = NodeOperatorManagementProperties({
+            managerAddress: managerAddress,
+            rewardAddress: rewardAddress,
+            extendedManagerPermissions: true
+        });
 
         nodeOperatorId = MODULE.createNodeOperator({
             from: msg.sender,
@@ -117,25 +108,20 @@ contract CuratedGate is
         });
 
         // Apply instance-specific custom curve
-        if (!_defaultCurveSet) {
-            ACCOUNTING.setBondCurve(nodeOperatorId, curveId);
-        }
+        if (!_defaultCurveSet) ACCOUNTING.setBondCurve(nodeOperatorId, curveId);
 
         // Persist metadata in separate storage
-        OperatorInfo memory metadata = OperatorInfo({
+        OperatorMetadata memory metadata = OperatorMetadata({
             name: name,
             description: description,
             ownerEditsRestricted: false
         });
 
-        OPERATORS_DATA.set(MODULE_ID, nodeOperatorId, metadata);
+        META_REGISTRY.setOperatorMetadataAsAdmin(nodeOperatorId, metadata);
     }
 
     /// @inheritdoc IMerkleGate
-    function setTreeParams(
-        bytes32 _treeRoot,
-        string calldata _treeCid
-    ) external onlyRole(SET_TREE_ROLE) {
+    function setTreeParams(bytes32 _treeRoot, string calldata _treeCid) external onlyRole(SET_TREE_ROLE) {
         _setTreeParams(_treeRoot, _treeCid);
     }
 
@@ -150,10 +136,7 @@ contract CuratedGate is
     }
 
     /// @inheritdoc IMerkleGate
-    function verifyProof(
-        address member,
-        bytes32[] calldata proof
-    ) public view returns (bool) {
+    function verifyProof(address member, bytes32[] calldata proof) public view returns (bool) {
         return MerkleProof.verifyCalldata(proof, treeRoot, hashLeaf(member));
     }
 
@@ -169,15 +152,11 @@ contract CuratedGate is
         emit Consumed(msg.sender);
     }
 
-    function _setTreeParams(
-        bytes32 _treeRoot,
-        string calldata _treeCid
-    ) internal {
+    function _setTreeParams(bytes32 _treeRoot, string calldata _treeCid) internal {
         if (_treeRoot == bytes32(0)) revert InvalidTreeRoot();
         if (_treeRoot == treeRoot) revert InvalidTreeRoot();
         if (bytes(_treeCid).length == 0) revert InvalidTreeCid();
-        if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid)))
-            revert InvalidTreeCid();
+        if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid))) revert InvalidTreeCid();
         treeRoot = _treeRoot;
         treeCid = _treeCid;
         emit TreeSet(_treeRoot, _treeCid);

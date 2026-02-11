@@ -6,18 +6,20 @@
 - `test/`: Forge tests (`*.t.sol`), plus `test/fork/*` for fork/integration and deployment tests.
 - `script/`: Forge scripts (deploy/verify, per-chain variants).
 - `artifacts/`, `broadcast/`, `out/`, `cache/`: build, deploy, and fork outputs.
-- `lib/`, `node_modules/`: dependencies; see `remappings.txt`.
-- `docs/`, `digest/`: documentation and design notes.
+- `gists/`: small code examples related to the module.
+- `node_modules/`: dependencies; see `remappings.txt`.
+- `docs/`: documentation and design notes.
 
 ## Build, Test, and Development Commands
 
 - `just deps`: install production deps; `just deps-dev`: dev deps + husky.
 - `just`: clean, deps, build, and run all tests.
-- `just build`: Forge build (skips tests/scripts); `forge build` works too.
+- `just build`: build the project skipping tests and scripts (preferable for faster iterations); use `forge build` for compile all files of the project.
 - `just test-unit`: unit tests only; `just test-all`: unit + fork suites.
 - `just test-local`: spins up anvil fork, deploys, runs deployment+integration tests.
 - `just coverage` | `just coverage-lcov`: coverage (LCOV saved; see `lcov.html`).
 - Linting: `yarn lint:check` (prettier + solhint), `yarn lint:fix`, `yarn lint:solhint`.
+- Diff: `git diff --no-ext-diff`
 
 ## Coding Style & Naming Conventions
 
@@ -25,7 +27,15 @@
 - Linting: Solhint (`.solhint.json`) with `solhint:recommended` and `solhint-plugin-lido-csm`.
 - Versions: enforce `pragma solidity 0.8.33` (`compiler-version` rule).
 - Naming: contracts/libraries `CamelCase` (e.g., `CSModule`, `AssetRecovererLib`), interfaces `IName` (rule: `interface-starts-with-i`).
+- Inline assembly should be well documented, preferably every non-trivial line with its own comment.
 - Conventions: prefer custom errors, calldata parameters, and struct packing (gas rules). Immutable vars styled as constants.
+- Keep things in one function unless composable or reusable.
+- Prefer short variable names where possible. Prefer same length variable names for related things.
+- Prefer early returns to else statements.
+- While refactoring keep comments added from existing implementations where applicable.
+- Make sure external functions in contracts and interfaces have proper natspec.
+- Avoid using magic numbers, prefer re-using or defining constants.
+- When last I looked, the year was 2026.
 
 ## Testing Guidelines
 
@@ -33,6 +43,7 @@
 - Structure: unit tests in `test/*.t.sol`; fork suites under `test/fork/*` (deployment/integration).
 - Run: `just test-unit` for fast cycles; `CHAIN`/`RPC_URL` required for fork tests. Example: `export CHAIN=hoodi && export RPC_URL=<https-url>`.
 - Coverage: `just coverage-lcov` produces LCOV output (commit if relevant).
+- After making changes to the source code make sure you've either ran build command or unit tests.
 
 ## Commit & Pull Request Guidelines
 

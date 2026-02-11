@@ -32,17 +32,10 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
     error MissingCSModuleAddress();
 
     function _deploy() internal {
-        if (chainId != block.chainid) {
-            revert ChainIdMismatch({
-                actual: block.chainid,
-                expected: chainId
-            });
-        }
+        if (chainId != block.chainid) revert ChainIdMismatch({ actual: block.chainid, expected: chainId });
 
         bool skipLegacyQueueCheck = vm.envOr("SKIP_LEGACY_QUEUE_CHECK", false);
-        if (!skipLegacyQueueCheck) {
-            _ensureLegacyQueueDrained();
-        }
+        if (!skipLegacyQueueCheck) _ensureLegacyQueueDrained();
         artifactDir = vm.envOr("ARTIFACTS_DIR", string("./artifacts/local/"));
 
         vm.startBroadcast();
@@ -50,9 +43,7 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
         vm.label(deployer, "DEPLOYER");
 
         {
-            ParametersRegistry parametersRegistryImpl = new ParametersRegistry(
-                config.queueLowestPriority
-            );
+            ParametersRegistry parametersRegistryImpl = new ParametersRegistry(config.queueLowestPriority);
 
             Accounting accountingImpl = new Accounting({
                 lidoLocator: config.lidoLocatorAddress,
@@ -98,15 +89,9 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
                 address(strikes)
             );
 
-            uint256 stakingModuleId = Ejector(address(ejector))
-                .STAKING_MODULE_ID();
+            uint256 stakingModuleId = Ejector(address(ejector)).STAKING_MODULE_ID();
 
-            ejector = new Ejector(
-                address(csm),
-                address(strikes),
-                stakingModuleId,
-                deployer
-            );
+            ejector = new Ejector(address(csm), address(strikes), stakingModuleId, deployer);
 
             permissionlessGate = new PermissionlessGate(address(csm), deployer);
 
@@ -146,17 +131,12 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             gateSealV3 = _deployGateSeal(sealables);
 
             if (config.secondAdminAddress != address(0)) {
-                if (config.secondAdminAddress == deployer) {
-                    revert InvalidSecondAdmin();
-                }
+                if (config.secondAdminAddress == deployer) revert InvalidSecondAdmin();
                 _grantSecondAdminsForNewContracts();
             }
 
             verifierV3.grantRole(verifierV3.PAUSE_ROLE(), config.resealManager);
-            verifierV3.grantRole(
-                verifierV3.RESUME_ROLE(),
-                config.resealManager
-            );
+            verifierV3.grantRole(verifierV3.RESUME_ROLE(), config.resealManager);
             ejector.grantRole(ejector.PAUSE_ROLE(), config.resealManager);
             ejector.grantRole(ejector.RESUME_ROLE(), config.resealManager);
 
@@ -164,26 +144,16 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             ejector.revokeRole(ejector.DEFAULT_ADMIN_ROLE(), deployer);
 
-            permissionlessGate.grantRole(
-                permissionlessGate.DEFAULT_ADMIN_ROLE(),
-                config.aragonAgent
-            );
-            permissionlessGate.revokeRole(
-                permissionlessGate.DEFAULT_ADMIN_ROLE(),
-                deployer
-            );
+            permissionlessGate.grantRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
+            permissionlessGate.revokeRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), deployer);
 
             verifierV3.grantRole(verifierV3.PAUSE_ROLE(), gateSealV3);
-            verifierV3.grantRole(
-                verifierV3.DEFAULT_ADMIN_ROLE(),
-                config.aragonAgent
-            );
+            verifierV3.grantRole(verifierV3.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             verifierV3.revokeRole(verifierV3.DEFAULT_ADMIN_ROLE(), deployer);
 
             config.stakingModuleId = stakingModuleId;
             config.identifiedCommunityStakersGateCurveId = vettedGate.curveId();
-            config.identifiedCommunityStakersGateTreeRoot = vettedGate
-                .treeRoot();
+            config.identifiedCommunityStakersGateTreeRoot = vettedGate.treeRoot();
             config.identifiedCommunityStakersGateTreeCid = vettedGate.treeCid();
 
             JsonObj memory deployJson = Json.newObj("artifact");
@@ -191,10 +161,7 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             deployJson.set("CSModule", address(csm));
             deployJson.set("CSModuleImpl", address(csmImpl));
             deployJson.set("ParametersRegistry", address(parametersRegistry));
-            deployJson.set(
-                "ParametersRegistryImpl",
-                address(parametersRegistryImpl)
-            );
+            deployJson.set("ParametersRegistryImpl", address(parametersRegistryImpl));
             deployJson.set("Accounting", address(accounting));
             deployJson.set("AccountingImpl", address(accountingImpl));
             deployJson.set("FeeOracle", address(oracle));
@@ -218,52 +185,27 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             deployJson.set("GateSealV3", gateSealV3);
             deployJson.set("DeployParams", abi.encode(config));
             deployJson.set("git-ref", gitRef);
-            vm.writeJson(
-                deployJson.str,
-                string(
-                    abi.encodePacked(
-                        artifactDir,
-                        "upgrade-",
-                        chainName,
-                        ".json"
-                    )
-                )
-            );
+            vm.writeJson(deployJson.str, string(abi.encodePacked(artifactDir, "upgrade-", chainName, ".json")));
         }
 
         vm.stopBroadcast();
     }
 
     function _grantSecondAdminsForNewContracts() internal {
-        if (keccak256(abi.encodePacked(chainName)) == keccak256("mainnet")) {
-            revert CannotBeUsedInMainnet();
-        }
-        ejector.grantRole(
-            ejector.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
-        verifierV3.grantRole(
-            verifierV3.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
-        permissionlessGate.grantRole(
-            permissionlessGate.DEFAULT_ADMIN_ROLE(),
-            config.secondAdminAddress
-        );
+        if (keccak256(abi.encodePacked(chainName)) == keccak256("mainnet")) revert CannotBeUsedInMainnet();
+        ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        verifierV3.grantRole(verifierV3.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        permissionlessGate.grantRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
     }
 
     function _ensureLegacyQueueDrained() internal {
-        if (address(csm) == address(0)) {
-            revert MissingCSModuleAddress();
-        }
+        if (address(csm) == address(0)) revert MissingCSModuleAddress();
 
         // QueueLib.Queue packs head/tail into a single slot. See forge inspect output for slot indexes.
         bytes32 queuePointers = vm.load(address(csm), LEGACY_QUEUE_SLOT);
         uint128 head = uint128(uint256(queuePointers));
         uint128 tail = uint128(uint256(queuePointers) >> 128);
 
-        if (head != tail) {
-            revert LegacyQueueNotEmpty(head, tail);
-        }
+        if (head != tail) revert LegacyQueueNotEmpty(head, tail);
     }
 }

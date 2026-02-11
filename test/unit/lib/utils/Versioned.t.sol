@@ -16,31 +16,18 @@ contract VersionedTest is Test {
 
     function setUp() public {
         impl = new VersionedImpl();
-        consumer = VersionedImpl(
-            address(
-                new OssifiableProxy(address(impl), address(this), new bytes(0))
-            )
-        );
+        consumer = VersionedImpl(address(new OssifiableProxy(address(impl), address(this), new bytes(0))));
     }
 
     function test_constructor_PetrifiesImplementation() public view {
         assertEq(impl.getContractVersion(), PETRIFIED_VERSION);
     }
 
-    function test_getContractVersionPosition_ReturnsStorageSlotPosition()
-        public
-        view
-    {
-        assertEq(
-            consumer.getContractVersionPosition(),
-            keccak256("lido.Versioned.contractVersion")
-        );
+    function test_getContractVersionPosition_ReturnsStorageSlotPosition() public view {
+        assertEq(consumer.getContractVersionPosition(), keccak256("lido.Versioned.contractVersion"));
     }
 
-    function test_getPetrifiedVersionMark_ReturnsPetrifiedVersion()
-        public
-        view
-    {
+    function test_getPetrifiedVersionMark_ReturnsPetrifiedVersion() public view {
         assertEq(consumer.getPetrifiedVersionMark(), PETRIFIED_VERSION);
     }
 
@@ -51,11 +38,7 @@ contract VersionedTest is Test {
     function test_checkContractVersion_RevertsIfVersionsDoNotMatch() public {
         uint256 expectedVersion = 1;
         vm.expectRevert(
-            abi.encodeWithSelector(
-                Versioned.UnexpectedContractVersion.selector,
-                INITIAL_VERSION,
-                expectedVersion
-            )
+            abi.encodeWithSelector(Versioned.UnexpectedContractVersion.selector, INITIAL_VERSION, expectedVersion)
         );
         consumer.checkContractVersion(expectedVersion);
     }
