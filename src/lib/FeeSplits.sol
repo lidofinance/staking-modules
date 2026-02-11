@@ -35,13 +35,15 @@ library FeeSplits {
     ) external {
         if (pendingSharesToSplitStorage[nodeOperatorId] > 0) revert IFeeSplits.PendingSharesExist();
 
-        if (rewardsProof.length == 0) {
-            if (feeSplitsStorage[nodeOperatorId].length != 0)
-                revert IFeeSplits.EmptyProofAllowedOnlyForEmptyFeeSplits();
-        } else {
-            if (feeDistributor.getFeesToDistribute(nodeOperatorId, cumulativeFeeShares, rewardsProof) != 0) {
-                revert IFeeSplits.UndistributedSharesExist();
-            }
+        // NOTE: Initial split setup intentionally skips the undistributed fees check.
+        //       This allows splitting rewards that were distributed for the operator before the initial split configuration was set.
+        //       The node operator explicitly opts into this behavior.
+        //       For any next change, require fully distributed fees on the operator.
+        if (
+            feeSplitsStorage[nodeOperatorId].length != 0 &&
+            feeDistributor.getFeesToDistribute(nodeOperatorId, cumulativeFeeShares, rewardsProof) != 0
+        ) {
+            revert IFeeSplits.UndistributedSharesExist();
         }
 
         uint256 len = _validateFeeSplits(feeSplits);

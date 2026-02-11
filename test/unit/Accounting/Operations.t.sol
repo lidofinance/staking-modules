@@ -280,17 +280,46 @@ contract FeeSplitsTest is BaseTest {
         accounting.setFeeSplits(0, 0, new bytes32[](0), newSplits);
     }
 
-    function test_setFeeSplits_revertWhen_UndistributedFees() public {
+    function test_setFeeSplits_revertWhen_UndistributedFeesOnUpdate() public {
         uint256 feeShares = 1 ether;
         stETH.mintShares(address(feeDistributor), feeShares);
         mock_getNodeOperatorOwner(user);
 
-        IAccounting.FeeSplit[] memory splits = new IAccounting.FeeSplit[](1);
-        splits[0] = IAccounting.FeeSplit({ recipient: address(1), share: 5000 });
+        IAccounting.FeeSplit[] memory initialSplits = new IAccounting.FeeSplit[](1);
+        initialSplits[0] = IAccounting.FeeSplit({ recipient: address(1), share: 5000 });
+        vm.prank(user);
+        accounting.setFeeSplits(0, 0, new bytes32[](0), initialSplits);
+
+        IAccounting.FeeSplit[] memory newSplits = new IAccounting.FeeSplit[](1);
+        newSplits[0] = IAccounting.FeeSplit({ recipient: address(2), share: 4000 });
 
         vm.expectRevert(IFeeSplits.UndistributedSharesExist.selector);
         vm.prank(user);
-        accounting.setFeeSplits(0, feeShares, new bytes32[](0), splits);
+        accounting.setFeeSplits(0, feeShares, new bytes32[](0), newSplits);
+    }
+
+    function test_setFeeSplits_initialSet_splitsDistributedRewardsOnNextProofPull() public {
+        uint256 feeShares = 1 ether;
+        stETH.mintShares(address(feeDistributor), feeShares);
+
+        IAccounting.FeeSplit[] memory splits = new IAccounting.FeeSplit[](1);
+        splits[0] = IAccounting.FeeSplit({ recipient: address(1), share: 5000 });
+
+        mock_getNodeOperatorOwner(user);
+        vm.prank(user);
+        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+
+        uint256 recipientSharesBefore = stETH.sharesOf(splits[0].recipient);
+        uint256 bondSharesBefore = accounting.getBondShares(0);
+
+        mock_getNodeOperatorsCount(1);
+        mock_getNodeOperatorNonWithdrawnKeys(0);
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
+
+        uint256 expectedSplit = (feeShares * splits[0].share) / 10000;
+        assertEq(stETH.sharesOf(splits[0].recipient), recipientSharesBefore + expectedSplit);
+        assertEq(accounting.getPendingSharesToSplit(0), 0);
+        assertEq(accounting.getBondShares(0), bondSharesBefore + feeShares - expectedSplit);
     }
 
     function test_setFeeSplits_updateExistingSplits() public {
