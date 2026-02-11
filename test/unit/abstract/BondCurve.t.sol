@@ -285,6 +285,11 @@ contract BondCurveTest is Test {
         assertEq(bondCurve.getBondCurveId(noId), addedId);
     }
 
+    function test_setBondCurve_RevertWhen_SameBondCurveId() public {
+        vm.expectRevert(IBondCurve.SameBondCurveId.selector);
+        bondCurve.setBondCurve(0, 0);
+    }
+
     function test_setBondCurve_RevertWhen_NoExistingCurveId() public {
         vm.expectRevert(IBondCurve.InvalidBondCurveId.selector);
         bondCurve.setBondCurve(0, 100500);

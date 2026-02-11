@@ -37,6 +37,7 @@ abstract contract BondCore is IBondCore {
     ILido public immutable LIDO;
     IWithdrawalQueue public immutable WITHDRAWAL_QUEUE;
     IWstETH public immutable WSTETH;
+    IBurner public immutable BURNER;
 
     // keccak256(abi.encode(uint256(keccak256("CSBondCore")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant BOND_CORE_STORAGE_LOCATION =
@@ -48,6 +49,7 @@ abstract contract BondCore is IBondCore {
         LIDO = ILido(LIDO_LOCATOR.lido());
         WITHDRAWAL_QUEUE = IWithdrawalQueue(LIDO_LOCATOR.withdrawalQueue());
         WSTETH = IWstETH(WITHDRAWAL_QUEUE.WSTETH());
+        BURNER = IBurner(LIDO_LOCATOR.burner());
     }
 
     /// @inheritdoc IBondCore
@@ -236,7 +238,7 @@ abstract contract BondCore is IBondCore {
         // If no bond already or the amount to burn is zero
         if (effectiveSharesToBurn == 0) return amount;
 
-        IBurner(LIDO_LOCATOR.burner()).requestBurnMyShares(effectiveSharesToBurn);
+        BURNER.requestBurnMyShares(effectiveSharesToBurn);
 
         uint256 amountToBurn = _ethByShares(sharesToBurn);
         uint256 amountBurned = _ethByShares(effectiveSharesToBurn);

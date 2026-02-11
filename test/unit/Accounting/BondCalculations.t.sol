@@ -89,6 +89,13 @@ contract BondCurveTest is BaseTest {
         accounting.setBondCurve({ nodeOperatorId: 0, curveId: 2 });
     }
 
+    function test_setBondCurve_RevertWhen_SameBondCurveId() public {
+        mock_getNodeOperatorsCount(1);
+        vm.expectRevert(IBondCurve.SameBondCurveId.selector);
+        vm.prank(admin);
+        accounting.setBondCurve({ nodeOperatorId: 0, curveId: 0 });
+    }
+
     function test_setBondCurve_RevertWhen_DoesNotHaveRole() public {
         expectRoleRevert(stranger, accounting.SET_BOND_CURVE_ROLE());
         vm.prank(stranger);
