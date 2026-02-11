@@ -90,7 +90,6 @@ struct CuratedDeployParams {
     uint256 minBondLockPeriod;
     uint256 maxBondLockPeriod;
     uint256 bondLockPeriod;
-    address setResetBondCurveAddress;
     address chargePenaltyRecipient;
     // Module
     uint256 stakingModuleId;
@@ -466,8 +465,6 @@ abstract contract DeployBase is Script {
             verifier.grantRole(verifier.RESUME_ROLE(), config.resealManager);
             ejector.grantRole(ejector.PAUSE_ROLE(), config.resealManager);
             ejector.grantRole(ejector.RESUME_ROLE(), config.resealManager);
-
-            accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), address(config.setResetBondCurveAddress));
 
             curatedModule.grantRole(
                 curatedModule.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),

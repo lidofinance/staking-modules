@@ -102,7 +102,7 @@ contract DeploymentHelpers is Test {
         uint256 VOTE_PREV_BLOCK;
     }
 
-    // Intersection of DeployParams and CuratedDeployParams
+    // Shared deployment params used across deployment assertions.
     struct CommonDeployParams {
         address lidoLocatorAddress;
         address aragonAgent;
@@ -112,7 +112,6 @@ contract DeploymentHelpers is Test {
         address resealManager;
         address secondAdminAddress;
         address chargePenaltyRecipient;
-        address setResetBondCurveAddress;
         uint256 stakingModuleId;
         bytes32 moduleType;
         uint256 queueLowestPriority;
@@ -424,7 +423,6 @@ contract DeploymentHelpers is Test {
         dst.minBondLockPeriod = src.minBondLockPeriod;
         dst.maxBondLockPeriod = src.maxBondLockPeriod;
         dst.bondLockPeriod = src.bondLockPeriod;
-        dst.setResetBondCurveAddress = src.setResetBondCurveAddress;
         dst.chargePenaltyRecipient = src.chargePenaltyRecipient;
 
         // Module
@@ -484,7 +482,6 @@ contract DeploymentHelpers is Test {
             params.resealManager = decoded.resealManager;
             params.secondAdminAddress = decoded.secondAdminAddress;
             params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
-            params.setResetBondCurveAddress = decoded.setResetBondCurveAddress;
             params.stakingModuleId = decoded.stakingModuleId;
             params.moduleType = decoded.moduleType;
             params.queueLowestPriority = decoded.queueLowestPriority;
@@ -518,7 +515,6 @@ contract DeploymentHelpers is Test {
             params.resealManager = decoded.resealManager;
             params.secondAdminAddress = decoded.secondAdminAddress;
             params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
-            params.setResetBondCurveAddress = decoded.setResetBondCurveAddress;
             params.stakingModuleId = decoded.stakingModuleId;
             params.moduleType = decoded.moduleType;
             params.queueLowestPriority = decoded.queueLowestPriority;

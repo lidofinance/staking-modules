@@ -53,7 +53,6 @@ contract DeployMainnet is DeployBase {
         config.minBondLockPeriod = 4 weeks; // TODO reconsider
         config.maxBondLockPeriod = 365 days; // TODO reconsider
         config.bondLockPeriod = 8 weeks; // TODO reconsider
-        config.setResetBondCurveAddress = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider
         config.chargePenaltyRecipient = 0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c; // locator.treasury()
 
         // Module

@@ -75,8 +75,8 @@ contract BondCoreTestable is BondCore {
         _charge(nodeOperatorId, amount, recipient);
     }
 
-    function increaseBond(uint256 nodeOperatorId, uint256 shares) external {
-        _increaseBond(nodeOperatorId, shares);
+    function creditBondShares(uint256 nodeOperatorId, uint256 shares) external {
+        _creditBondShares(nodeOperatorId, shares);
     }
 }
 
@@ -283,8 +283,10 @@ contract BondCoreStETHTest is BondCoreTestBase {
         stETH.approve(address(bondCore), 1 ether);
         vm.stopPrank();
 
+        uint256 depositedAmount = ethToSharesToEth(1 ether);
+
         vm.expectEmit(address(bondCore));
-        emit IBondCore.BondDepositedStETH(0, user, 1 ether);
+        emit IBondCore.BondDepositedStETH(0, user, depositedAmount);
 
         bondCore.depositStETH(user, 0, 1 ether);
         uint256 shares = stETH.getSharesByPooledEth(1 ether);
@@ -308,13 +310,14 @@ contract BondCoreStETHTest is BondCoreTestBase {
 
         uint256 toBurn = ethToSharesToEth(debt);
         uint256 burned = ethToSharesToEth(debt);
+        uint256 depositedAmount = ethToSharesToEth(deposit);
 
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondBurned(0, toBurn, burned);
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondDebtCovered(0, debt);
         vm.expectEmit(address(bondCore));
-        emit IBondCore.BondDepositedStETH(0, user, deposit);
+        emit IBondCore.BondDepositedStETH(0, user, depositedAmount);
 
         bondCore.depositStETH(user, 0, deposit);
 
@@ -335,13 +338,14 @@ contract BondCoreStETHTest is BondCoreTestBase {
 
         uint256 toBurn = ethToSharesToEth(debt);
         uint256 burned = ethToSharesToEth(deposit);
+        uint256 depositedAmount = ethToSharesToEth(deposit);
 
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondBurned(0, toBurn, burned);
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondDebtCovered(0, deposit);
         vm.expectEmit(address(bondCore));
-        emit IBondCore.BondDepositedStETH(0, user, deposit);
+        emit IBondCore.BondDepositedStETH(0, user, depositedAmount);
 
         bondCore.depositStETH(user, 0, deposit);
 
@@ -750,7 +754,7 @@ contract BondCoreDebtTest is BondCoreTestBase {
         uint256 sharesToIncrease = _prepareForIncreaseBond(0, 10 ether);
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondDebtCovered(0, debt);
-        bondCore.increaseBond(0, sharesToIncrease);
+        bondCore.creditBondShares(0, sharesToIncrease);
 
         assertEq(bondCore.getBondDebt(0), 0);
     }
@@ -764,7 +768,7 @@ contract BondCoreDebtTest is BondCoreTestBase {
         uint256 sharesToIncrease = _prepareForIncreaseBond(0, bondAmount);
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondDebtCovered(0, bondAmount);
-        bondCore.increaseBond(0, sharesToIncrease);
+        bondCore.creditBondShares(0, sharesToIncrease);
 
         assertEq(bondCore.getBondDebt(0), debt - bondAmount);
     }
@@ -777,7 +781,7 @@ contract BondCoreDebtTest is BondCoreTestBase {
 
         // Should not emit any events when there is no debt
         vm.recordLogs();
-        bondCore.increaseBond(0, sharesToIncrease);
+        bondCore.creditBondShares(0, sharesToIncrease);
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
         // Verify no events were emitted
@@ -791,7 +795,7 @@ contract BondCoreDebtTest is BondCoreTestBase {
 
         // Should not emit any events when there is no bond to cover debt
         vm.recordLogs();
-        bondCore.increaseBond(0, 0);
+        bondCore.creditBondShares(0, 0);
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
         // Verify no events were emitted

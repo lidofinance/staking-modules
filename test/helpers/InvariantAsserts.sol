@@ -177,11 +177,9 @@ contract InvariantAsserts is Test {
         assertGe(steth.allowance(accounting, burner), type(uint128).max, "assert allowance");
     }
 
-    function assertAccountingUnusedStorageSlots(Accounting accounting) public {
+    function assertAccountingUnusedStorageSlots(Accounting) public {
         if (skipInvariants()) return;
-        // _feeDistributorOld
-        bytes32 value = vm.load(address(accounting), bytes32(uint256(0)));
-        assertEq(value, bytes32(0), "assert _feeDistributorOld is empty");
+        // NOTE: slot 0 is intentionally reused for `_rewardsClaimers`.
     }
 
     function assertFeeDistributorClaimableShares(IStETH lido, FeeDistributor feeDistributor) public {
