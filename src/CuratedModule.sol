@@ -139,14 +139,13 @@ contract CuratedModule is ICuratedModule, BaseModule {
     /// @inheritdoc IStakingModuleV2
     function updateOperatorBalances(
         uint256[] calldata operatorIds,
-        uint256[] calldata validatorsBalancesGwei,
-        uint256[] calldata pendingBalancesGwei,
+        uint256[] calldata totalBalancesGwei,
         uint256 /* refSlot */
     ) external {
         _checkStakingRouterRole();
         // TODO: Move operator balances ops into internal lib
         uint256 operatorsCount = operatorIds.length;
-        if (operatorsCount != validatorsBalancesGwei.length || operatorsCount != pendingBalancesGwei.length) {
+        if (operatorsCount != totalBalancesGwei.length) {
             revert InvalidInput();
         }
 
@@ -157,7 +156,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             uint256 operatorId = operatorIds[i];
             if (operatorId >= nodeOperatorsCount) revert NodeOperatorDoesNotExist();
 
-            _setOperatorBalance($, operatorId, (validatorsBalancesGwei[i] + pendingBalancesGwei[i]) * 1 gwei);
+            _setOperatorBalance($, operatorId, totalBalancesGwei[i] * 1 gwei);
         }
         _incrementModuleNonce();
     }

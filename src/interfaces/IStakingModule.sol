@@ -236,15 +236,14 @@ interface IStakingModuleV2 {
         uint256[] calldata topUpLimits
     ) external returns (uint256[] memory allocations);
 
-    /// @notice Method called Third phase not
-    /// @param operatorIds Indices of operators
-    /// @param validatorsBalancesGwei Total validator balance nominated in Gwei
-    /// @param pendingBalancesGwei Total validator pending balance nominated in Gwei
-    /// @param refSlot Accounting oracle ref slot
+    /// @notice Called by StakingRouter to update node operator total balances.
+    /// @dev Total balances are denominated in gwei.
+    /// @param operatorIds Node operator IDs to update balances for.
+    /// @param totalBalancesGwei Total balances (validators + pending) aligned with operatorIds.
+    /// @param refSlot Accounting oracle ref slot.
     function updateOperatorBalances(
         uint256[] calldata operatorIds,
-        uint256[] calldata validatorsBalancesGwei,
-        uint256[] calldata pendingBalancesGwei,
+        uint256[] calldata totalBalancesGwei,
         uint256 refSlot
     ) external;
 }
