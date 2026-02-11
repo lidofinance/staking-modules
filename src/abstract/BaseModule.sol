@@ -137,7 +137,7 @@ abstract contract BaseModule is
         address from,
         NodeOperatorManagementProperties calldata managementProperties,
         address referrer
-    ) public virtual whenResumed returns (uint256 nodeOperatorId) {
+    ) external whenResumed returns (uint256 nodeOperatorId) {
         _checkCreateNodeOperatorRole();
         nodeOperatorId = _nodeOperatorsCount;
         OperatorTracker.recordCreator(nodeOperatorId);

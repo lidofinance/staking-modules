@@ -957,18 +957,6 @@ contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
         assertEq(registry.getBondCurveWeight(0), 123);
     }
 
-    function test_setBondCurveWeight_EmitsAndCallsHook() public {
-        vm.expectCall(
-            address(module),
-            abi.encodeWithSelector(ICuratedModule.requestFullOperatorWeightsUpdate.selector)
-        );
-        vm.expectEmit(address(registry));
-        emit IMetaRegistry.BondCurveWeightSet(0, 123);
-
-        vm.prank(bondCurveWeightManager);
-        registry.setBondCurveWeight(0, 123);
-    }
-
     function test_setBondCurveWeight_RevertWhen_NoRole() public {
         expectRoleRevert(stranger, registry.SET_BOND_CURVE_WEIGHT_ROLE());
         vm.prank(stranger);
