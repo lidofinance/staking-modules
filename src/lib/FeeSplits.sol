@@ -34,10 +34,10 @@ library FeeSplits {
     ) external {
         if (pendingSharesToSplitStorage[nodeOperatorId] > 0) revert IFeeSplits.PendingSharesExist();
 
-        // NOTE: Initial split setup intentionally skips the undistributed fees check.
-        //       This allows splitting rewards that were distributed for the operator before the initial split configuration was set.
+        // NOTE: We are not checking for pending fees to distribute if there are no splits currently set.
+        //       This allows splitting rewards that were distributed for the operator before the splits are set.
         //       The node operator explicitly opts into this behavior.
-        //       For any next change, require fully distributed fees on the operator.
+        //       If the splits are currently set, then should be no pending fees to distribute to make changes.
         if (
             feeSplitsStorage[nodeOperatorId].length != 0 &&
             feeDistributor.getFeesToDistribute(nodeOperatorId, cumulativeFeeShares, rewardsProof) != 0
