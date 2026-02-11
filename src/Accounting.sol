@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
+
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
 import { BondCore } from "./abstract/BondCore.sol";
@@ -41,23 +42,20 @@ contract Accounting is
 
     IBaseModule public immutable MODULE;
     IFeeDistributor public immutable FEE_DISTRIBUTOR;
-    /// @dev DEPRECATED
-    /// @custom:oz-renamed-from feeDistributor
-    IFeeDistributor internal _feeDistributorOld;
+
+    mapping(uint256 nodeOperatorId => address rewardsClaimer) internal _rewardsClaimers;
     address public chargePenaltyRecipient;
 
     mapping(uint256 nodeOperatorId => FeeSplit[]) internal _feeSplits;
     mapping(uint256 nodeOperatorId => uint256 pendingSharesToSplit) internal _pendingSharesToSplit;
-
-    mapping(uint256 nodeOperatorId => address rewardsClaimer) internal _rewardsClaimers;
 
     modifier onlyModule() {
         _onlyModule();
         _;
     }
 
-    /// @param lidoLocator Lido locator contract address
-    /// @param module Community Staking Module contract address
+    /// @param lidoLocator Lido Locator contract address
+    /// @param module Staking Module contract address
     /// @param feeDistributor Fee Distributor contract address
     /// @param minBondLockPeriod Min time in seconds for the bondLock period
     /// @param maxBondLockPeriod Max time in seconds for the bondLock period
@@ -102,6 +100,7 @@ contract Accounting is
 
         LIDO.approve(address(WSTETH), type(uint256).max);
         LIDO.approve(address(WITHDRAWAL_QUEUE), type(uint256).max);
+        // TODO put burner into an immutable as it's upgradeable now
         LIDO.approve(LIDO_LOCATOR.burner(), type(uint256).max);
     }
 
@@ -134,9 +133,9 @@ contract Accounting is
     /// @inheritdoc IAccounting
     function setFeeSplits(
         uint256 nodeOperatorId,
+        FeeSplit[] calldata feeSplits,
         uint256 cumulativeFeeShares,
-        bytes32[] calldata rewardsProof,
-        FeeSplit[] calldata feeSplits
+        bytes32[] calldata rewardsProof
     ) external {
         _onlyNodeOperatorOwner(nodeOperatorId);
         FeeSplits.setFeeSplits({
@@ -246,6 +245,8 @@ contract Accounting is
         MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
+    // TODO continue review from this line
+
     /// @inheritdoc IAccounting
     function claimRewardsWstETH(
         uint256 nodeOperatorId,
@@ -353,6 +354,7 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
+    // TODO can be removed due to the fact that burner is upgradeable now
     function renewBurnerAllowance() external {
         LIDO.approve(LIDO_LOCATOR.burner(), type(uint256).max);
     }
@@ -454,7 +456,7 @@ contract Accounting is
         if (rewardsProof.length != 0) {
             uint256 distributed = FEE_DISTRIBUTOR.distributeFees(nodeOperatorId, cumulativeFeeShares, rewardsProof);
             if (distributed != 0) {
-                BondCore._increaseBond(nodeOperatorId, distributed);
+                BondCore._creditBondShares(nodeOperatorId, distributed);
                 if (hasSplits) _pendingSharesToSplit[nodeOperatorId] += distributed;
             }
         }
@@ -475,6 +477,7 @@ contract Accounting is
                 }
             }
         }
+        // TODO emit events for _pendingSharesToSplit changes or not
     }
 
     function _unwrapPermitIfRequired(address token, address from, PermitInput calldata permit) internal {

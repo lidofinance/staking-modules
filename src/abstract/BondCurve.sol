@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import { BondCurves } from "../lib/BondCurves.sol";
+import { BondCurvesLib } from "../lib/BondCurvesLib.sol";
 
 import { IBondCurve } from "../interfaces/IBondCurve.sol";
 
@@ -65,12 +65,12 @@ abstract contract BondCurve is IBondCurve, Initializable {
 
     /// @inheritdoc IBondCurve
     function getBondAmountByKeysCount(uint256 keys, uint256 curveId) public view returns (uint256) {
-        return BondCurves.getBondAmountByKeysCount(_getBondCurveStorage(), keys, curveId);
+        return BondCurvesLib.getBondAmountByKeysCount(_getBondCurveStorage(), keys, curveId);
     }
 
     /// @inheritdoc IBondCurve
     function getKeysCountByBondAmount(uint256 amount, uint256 curveId) public view returns (uint256) {
-        return BondCurves.getKeysCountByBondAmount(_getBondCurveStorage(), amount, curveId);
+        return BondCurvesLib.getKeysCountByBondAmount(_getBondCurveStorage(), amount, curveId);
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -81,13 +81,13 @@ abstract contract BondCurve is IBondCurve, Initializable {
 
     /// @dev Add a new bond curve to the array
     function _addBondCurve(BondCurveIntervalInput[] calldata intervals) internal returns (uint256 curveId) {
-        curveId = BondCurves.addBondCurve(_getBondCurveStorage(), intervals);
+        curveId = BondCurvesLib.addBondCurve(_getBondCurveStorage(), intervals);
         emit BondCurveAdded(curveId, intervals);
     }
 
     /// @dev Update existing bond curve
     function _updateBondCurve(uint256 curveId, BondCurveIntervalInput[] calldata intervals) internal {
-        BondCurves.updateBondCurve(_getBondCurveStorage(), curveId, intervals);
+        BondCurvesLib.updateBondCurve(_getBondCurveStorage(), curveId, intervals);
         emit BondCurveUpdated(curveId, intervals);
     }
 
@@ -98,6 +98,7 @@ abstract contract BondCurve is IBondCurve, Initializable {
         unchecked {
             if (curveId > $.bondCurves.length - 1) revert InvalidBondCurveId();
         }
+        // TODO: revert if the curve the same
         $.operatorBondCurveId[nodeOperatorId] = curveId;
         emit BondCurveSet(nodeOperatorId, curveId);
     }

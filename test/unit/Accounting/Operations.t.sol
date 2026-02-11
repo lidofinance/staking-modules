@@ -174,7 +174,7 @@ contract FeeSplitsTest is BaseTest {
         vm.expectEmit(address(accounting));
         emit IFeeSplits.FeeSplitsSet(0, splits);
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        accounting.setFeeSplits(0, splits, 0, new bytes32[](0));
 
         IAccounting.FeeSplit[] memory actual = accounting.getFeeSplits(0);
         assertEq(actual.length, splits.length);
@@ -191,7 +191,7 @@ contract FeeSplitsTest is BaseTest {
         vm.expectEmit(address(accounting));
         emit IFeeSplits.FeeSplitsSet(0, splits);
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        accounting.setFeeSplits(0, splits, 0, new bytes32[](0));
 
         IAccounting.FeeSplit[] memory actual = accounting.getFeeSplits(0);
         assertEq(actual.length, 0);
@@ -205,7 +205,7 @@ contract FeeSplitsTest is BaseTest {
 
         vm.expectRevert(IAccounting.SenderIsNotEligible.selector);
         vm.prank(stranger);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        accounting.setFeeSplits(0, splits, 0, new bytes32[](0));
     }
 
     function test_setFeeSplits_revertWhen_TooManySplits() public {
@@ -219,7 +219,7 @@ contract FeeSplitsTest is BaseTest {
 
         vm.expectRevert(IFeeSplits.TooManySplits.selector);
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        accounting.setFeeSplits(0, splits, 0, new bytes32[](0));
     }
 
     function test_setFeeSplits_revertWhen_TooManySplitShares() public {
@@ -230,7 +230,7 @@ contract FeeSplitsTest is BaseTest {
 
         vm.expectRevert(IFeeSplits.TooManySplitShares.selector);
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        accounting.setFeeSplits(0, splits, 0, new bytes32[](0));
     }
 
     function test_setFeeSplits_revertWhen_ZeroSplitRecipient() public {
@@ -241,7 +241,7 @@ contract FeeSplitsTest is BaseTest {
 
         vm.expectRevert(IFeeSplits.ZeroSplitRecipient.selector);
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        accounting.setFeeSplits(0, splits, 0, new bytes32[](0));
     }
 
     function test_setFeeSplits_revertWhen_ZeroSplitShare() public {
@@ -252,7 +252,7 @@ contract FeeSplitsTest is BaseTest {
 
         vm.expectRevert(IFeeSplits.ZeroSplitShare.selector);
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        accounting.setFeeSplits(0, splits, 0, new bytes32[](0));
     }
 
     function test_setFeeSplits_revertWhen_PendingShares() public {
@@ -261,7 +261,7 @@ contract FeeSplitsTest is BaseTest {
         mock_getNodeOperatorOwner(user);
 
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), initialSplits);
+        accounting.setFeeSplits(0, initialSplits, 0, new bytes32[](0));
 
         uint256 feeShares = 1 ether;
         stETH.mintShares(address(feeDistributor), feeShares);
@@ -277,7 +277,7 @@ contract FeeSplitsTest is BaseTest {
 
         vm.expectRevert(IFeeSplits.PendingSharesExist.selector);
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), newSplits);
+        accounting.setFeeSplits(0, newSplits, 0, new bytes32[](0));
     }
 
     function test_setFeeSplits_revertWhen_UndistributedFeesOnUpdate() public {
@@ -288,14 +288,14 @@ contract FeeSplitsTest is BaseTest {
         IAccounting.FeeSplit[] memory initialSplits = new IAccounting.FeeSplit[](1);
         initialSplits[0] = IAccounting.FeeSplit({ recipient: address(1), share: 5000 });
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), initialSplits);
+        accounting.setFeeSplits(0, initialSplits, 0, new bytes32[](0));
 
         IAccounting.FeeSplit[] memory newSplits = new IAccounting.FeeSplit[](1);
         newSplits[0] = IAccounting.FeeSplit({ recipient: address(2), share: 4000 });
 
         vm.expectRevert(IFeeSplits.UndistributedSharesExist.selector);
         vm.prank(user);
-        accounting.setFeeSplits(0, feeShares, new bytes32[](0), newSplits);
+        accounting.setFeeSplits(0, newSplits, feeShares, new bytes32[](0));
     }
 
     function test_setFeeSplits_initialSet_splitsDistributedRewardsOnNextProofPull() public {
@@ -307,7 +307,7 @@ contract FeeSplitsTest is BaseTest {
 
         mock_getNodeOperatorOwner(user);
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        accounting.setFeeSplits(0, splits, 0, new bytes32[](0));
 
         uint256 recipientSharesBefore = stETH.sharesOf(splits[0].recipient);
         uint256 bondSharesBefore = accounting.getBondShares(0);
@@ -329,7 +329,7 @@ contract FeeSplitsTest is BaseTest {
         mock_getNodeOperatorOwner(user);
 
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), initialSplits);
+        accounting.setFeeSplits(0, initialSplits, 0, new bytes32[](0));
 
         IAccounting.FeeSplit[] memory current = accounting.getFeeSplits(0);
         assertEq(current.length, 2);
@@ -342,7 +342,7 @@ contract FeeSplitsTest is BaseTest {
         vm.expectEmit(address(accounting));
         emit IFeeSplits.FeeSplitsSet(0, newSplits);
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), newSplits);
+        accounting.setFeeSplits(0, newSplits, 0, new bytes32[](0));
 
         IAccounting.FeeSplit[] memory updated = accounting.getFeeSplits(0);
         assertEq(updated.length, 1);
@@ -357,7 +357,7 @@ contract FeeSplitsTest is BaseTest {
         mock_getNodeOperatorOwner(user);
 
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), initialSplits);
+        accounting.setFeeSplits(0, initialSplits, 0, new bytes32[](0));
 
         IAccounting.FeeSplit[] memory current = accounting.getFeeSplits(0);
         assertEq(current.length, 2);
@@ -369,7 +369,7 @@ contract FeeSplitsTest is BaseTest {
         vm.expectEmit(address(accounting));
         emit IFeeSplits.FeeSplitsSet(0, newSplits);
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), newSplits);
+        accounting.setFeeSplits(0, newSplits, 0, new bytes32[](0));
 
         IAccounting.FeeSplit[] memory updated = accounting.getFeeSplits(0);
         assertEq(updated.length, 0);
@@ -384,7 +384,7 @@ contract FeeSplitsTest is BaseTest {
         vm.expectEmit(address(accounting));
         emit IFeeSplits.FeeSplitsSet(0, splits);
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        accounting.setFeeSplits(0, splits, 0, new bytes32[](0));
 
         IAccounting.FeeSplit[] memory actual = accounting.getFeeSplits(0);
         assertEq(actual.length, 2);
@@ -617,7 +617,7 @@ contract PullFeeRewardsTest is BaseTest {
     function _setFeeSplits(IAccounting.FeeSplit[] memory splits) internal {
         mock_getNodeOperatorOwner(user);
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        accounting.setFeeSplits(0, splits, 0, new bytes32[](0));
     }
 
     function _captureSplitShares(
@@ -1157,7 +1157,7 @@ contract ClaimRewardsWithFeeSplitsTest is BaseTest {
         mock_getNodeOperatorManagementProperties(user, user, false);
 
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        accounting.setFeeSplits(0, splits, 0, new bytes32[](0));
 
         // Setup fee rewards
         uint256 feeShares = 1 ether;
@@ -1193,7 +1193,7 @@ contract ClaimRewardsWithFeeSplitsTest is BaseTest {
         mock_getNodeOperatorManagementProperties(user, user, false);
 
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        accounting.setFeeSplits(0, splits, 0, new bytes32[](0));
 
         uint256 feeShares = 0.8 ether;
         stETH.mintShares(address(feeDistributor), feeShares);
@@ -1219,7 +1219,7 @@ contract ClaimRewardsWithFeeSplitsTest is BaseTest {
         mock_getNodeOperatorManagementProperties(user, user, false);
 
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        accounting.setFeeSplits(0, splits, 0, new bytes32[](0));
 
         uint256 feeShares = 1.2 ether;
         stETH.mintShares(address(feeDistributor), feeShares);
@@ -1241,7 +1241,7 @@ contract ClaimRewardsWithFeeSplitsTest is BaseTest {
         mock_getNodeOperatorManagementProperties(user, user, false);
 
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        accounting.setFeeSplits(0, splits, 0, new bytes32[](0));
 
         uint256 sharesBefore = stETH.sharesOf(splits[0].recipient);
         uint256 userBalanceBefore = stETH.balanceOf(user);
@@ -1265,7 +1265,7 @@ contract ClaimRewardsWithFeeSplitsTest is BaseTest {
         mock_getNodeOperatorOwner(user);
         mock_getNodeOperatorManagementProperties(user, user, false);
         vm.prank(user);
-        accounting.setFeeSplits(0, 0, new bytes32[](0), splits);
+        accounting.setFeeSplits(0, splits, 0, new bytes32[](0));
 
         // Ensure no claimable: for 1 key more than current bond
         _operator({ ongoing: 17, withdrawn: 0 });

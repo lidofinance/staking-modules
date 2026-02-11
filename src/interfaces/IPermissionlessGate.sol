@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
+
 import { IBaseModule, NodeOperatorManagementProperties } from "./IBaseModule.sol";
 import { IAccounting } from "./IAccounting.sol";
 

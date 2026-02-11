@@ -150,9 +150,6 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
         assertTrue(accounting.hasRole(accounting.RESUME_ROLE(), deployParams.resealManager));
         assertEq(accounting.getRoleMemberCount(accounting.RESUME_ROLE()), 1);
 
-        assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), deployParams.setResetBondCurveAddress));
-        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 2);
-
         assertEq(accounting.getRoleMemberCount(keccak256("RESET_BOND_CURVE_ROLE")), 0);
 
         assertEq(accounting.getRoleMemberCount(accounting.MANAGE_BOND_CURVES_ROLE()), 0);

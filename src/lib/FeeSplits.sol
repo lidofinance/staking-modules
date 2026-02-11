@@ -29,9 +29,9 @@ library FeeSplits {
         mapping(uint256 => uint256) storage pendingSharesToSplitStorage,
         IFeeDistributor feeDistributor,
         uint256 nodeOperatorId,
+        IAccounting.FeeSplit[] calldata feeSplits,
         uint256 cumulativeFeeShares,
-        bytes32[] calldata rewardsProof,
-        IAccounting.FeeSplit[] calldata feeSplits
+        bytes32[] calldata rewardsProof
     ) external {
         if (pendingSharesToSplitStorage[nodeOperatorId] > 0) revert IFeeSplits.PendingSharesExist();
 
@@ -62,15 +62,14 @@ library FeeSplits {
     ) external returns (uint256 transferred) {
         if (maxSharesToSplit == 0) return 0;
 
-        // NOTE: `pending` is stETH shares. It contains operator's and splits recipients' parts. May accumulate over time.
+        // NOTE: `pending` is stETH shares. It contains operator's and splits recipients' shares. May accumulate over time.
         uint256 pending = pendingSharesToSplitStorage[nodeOperatorId];
         if (maxSharesToSplit > pending) maxSharesToSplit = pending;
 
         IAccounting.FeeSplit[] storage splits = feeSplitsStorage[nodeOperatorId];
         for (uint256 i; i < splits.length; ++i) {
             IAccounting.FeeSplit storage feeSplit = splits[i];
-            // NOTE: Due to rounding error, final operator's part might contain some dust.
-            //      There is a known issue that the transfer amount may differ slightly depending on when the split was made due to `pending` accumulation.
+            // NOTE: Due to rounding error, final operator's share might contain some dust.
             uint256 amount = (maxSharesToSplit * feeSplit.share) / MAX_BP;
             if (amount != 0) {
                 lido.transferShares(feeSplit.recipient, amount);
@@ -78,10 +77,9 @@ library FeeSplits {
             }
         }
 
-        // NOTE: Most of the time `newPending` will be 0 after the split.
-        //      It might be non-zero in case of operator's debt due to bond lock or any other reason of bond insufficiency.
-        uint256 newPending = pending - maxSharesToSplit;
-        pendingSharesToSplitStorage[nodeOperatorId] = newPending;
+        // NOTE: Most of the time remaining value will be 0 after the split.
+        //       It might be non-zero in case of operator's debt due to bond lock or any other reason of bond insufficiency.
+        pendingSharesToSplitStorage[nodeOperatorId] = pending - maxSharesToSplit;
     }
 
     function hasSplits(

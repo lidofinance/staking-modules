@@ -67,7 +67,9 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
 
 contract AccountingDeploymentTest is DeploymentBaseTest {
     function test_roles_onlyFull() public view {
+        assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), deployParams.setResetBondCurveAddress));
         assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(vettedGate)));
+        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 2);
     }
 }
 

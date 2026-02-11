@@ -75,7 +75,7 @@ abstract contract BondCore is IBondCore {
         if (msg.value == 0) return;
 
         uint256 shares = LIDO.submit{ value: msg.value }({ _referral: address(0) });
-        _increaseBond(nodeOperatorId, shares);
+        _creditBondShares(nodeOperatorId, shares);
         emit BondDepositedETH(nodeOperatorId, from, msg.value);
     }
 
@@ -85,8 +85,8 @@ abstract contract BondCore is IBondCore {
 
         uint256 shares = _sharesByEth(amount);
         LIDO.transferSharesFrom(from, address(this), shares);
-        _increaseBond(nodeOperatorId, shares);
-        emit BondDepositedStETH(nodeOperatorId, from, amount);
+        _creditBondShares(nodeOperatorId, shares);
+        emit BondDepositedStETH(nodeOperatorId, from, _ethByShares(shares));
     }
 
     /// @dev Transfer user's wstETH to the contract, unwrap and store stETH shares as Node Operator's bond shares
@@ -97,11 +97,11 @@ abstract contract BondCore is IBondCore {
         uint256 sharesBefore = LIDO.sharesOf(address(this));
         WSTETH.unwrap(amount);
         uint256 sharesAfter = LIDO.sharesOf(address(this));
-        _increaseBond(nodeOperatorId, sharesAfter - sharesBefore);
+        _creditBondShares(nodeOperatorId, sharesAfter - sharesBefore);
         emit BondDepositedWstETH(nodeOperatorId, from, amount);
     }
 
-    function _increaseBond(uint256 nodeOperatorId, uint256 shares) internal {
+    function _creditBondShares(uint256 nodeOperatorId, uint256 shares) internal {
         if (shares == 0) return;
 
         BondCoreStorage storage $ = _getBondCoreStorage();
@@ -179,7 +179,7 @@ abstract contract BondCore is IBondCore {
     /// @param amount Bond amount to burn in ETH (stETH)
     /// @return notBurnedAmount Amount in ETH that was not burned due to insufficient bond shares
     function _burn(uint256 nodeOperatorId, uint256 amount) internal returns (uint256 notBurnedAmount) {
-        notBurnedAmount = _burnWithoutDebt(nodeOperatorId, amount);
+        notBurnedAmount = _burnWithoutCreatingDebt(nodeOperatorId, amount);
         _increaseBondDebt(nodeOperatorId, notBurnedAmount);
     }
 
@@ -226,20 +226,23 @@ abstract contract BondCore is IBondCore {
         _unsafeReduceBond(nodeOperatorId, reducedShares);
     }
 
-    function _burnWithoutDebt(uint256 nodeOperatorId, uint256 amount) private returns (uint256 notBurnedAmount) {
+    function _burnWithoutCreatingDebt(
+        uint256 nodeOperatorId,
+        uint256 amount
+    ) private returns (uint256 notBurnedAmount) {
         uint256 sharesToBurn = _sharesByEth(amount);
-        uint256 burnedShares = _reduceBond(nodeOperatorId, sharesToBurn);
+        uint256 effectiveSharesToBurn = _reduceBond(nodeOperatorId, sharesToBurn);
 
         // If no bond already or the amount to burn is zero
-        if (burnedShares == 0) return amount;
+        if (effectiveSharesToBurn == 0) return amount;
+
+        IBurner(LIDO_LOCATOR.burner()).requestBurnMyShares(effectiveSharesToBurn);
 
         uint256 amountToBurn = _ethByShares(sharesToBurn);
-        uint256 amountBurned = _ethByShares(burnedShares);
+        uint256 amountBurned = _ethByShares(effectiveSharesToBurn);
         unchecked {
             notBurnedAmount = amountToBurn - amountBurned;
         }
-
-        IBurner(LIDO_LOCATOR.burner()).requestBurnMyShares(burnedShares);
 
         emit BondBurned(nodeOperatorId, amountToBurn, amountBurned);
     }
@@ -248,7 +251,7 @@ abstract contract BondCore is IBondCore {
         BondCoreStorage storage $ = _getBondCoreStorage();
         uint256 debt = $.bondDebt[nodeOperatorId];
         if (debt == 0) return;
-        uint256 notBurnedDebt = _burnWithoutDebt(nodeOperatorId, debt);
+        uint256 notBurnedDebt = _burnWithoutCreatingDebt(nodeOperatorId, debt);
         if (notBurnedDebt == debt) return;
         $.bondDebt[nodeOperatorId] = notBurnedDebt;
         emit BondDebtCovered(nodeOperatorId, debt - notBurnedDebt);

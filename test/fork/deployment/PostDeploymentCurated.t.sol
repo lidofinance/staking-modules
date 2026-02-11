@@ -215,6 +215,9 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
     function test_roles() public view {
         uint256 gatesCount = curatedGates.length;
         assertGt(gatesCount, 0, "no curated gates deployed");
+        bytes32 setBondCurveRole = accounting.SET_BOND_CURVE_ROLE();
+        uint256 defaultCurveId = accounting.DEFAULT_BOND_CURVE_ID();
+        uint256 setBondCurveRoleMembers;
 
         for (uint256 i = 0; i < gatesCount; ++i) {
             {
@@ -230,8 +233,20 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
                     "missing set tree role"
                 );
                 assertTrue(gate.hasRole(gate.PAUSE_ROLE(), address(gateSeal)), "missing gate seal pause role");
+
+                bool hasCustomCurve = gate.curveId() != defaultCurveId;
+                assertEq(
+                    accounting.hasRole(setBondCurveRole, address(gate)),
+                    hasCustomCurve,
+                    "unexpected set bond curve role"
+                );
+                if (hasCustomCurve) {
+                    setBondCurveRoleMembers += 1;
+                }
             }
         }
+
+        assertEq(accounting.getRoleMemberCount(setBondCurveRole), setBondCurveRoleMembers, "set bond curve roles");
     }
 }
 
