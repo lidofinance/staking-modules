@@ -867,6 +867,28 @@ contract MetaRegistryTestWeights is MetaRegistryTestGroupsBase {
         assertEq(weights, UintArr(0));
     }
 
+    function test_getNodeOperatorWeight() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+
+        IMetaRegistry.SubNodeOperator[] memory subOperators = new IMetaRegistry.SubNodeOperator[](2);
+        subOperators[0] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: 7000 });
+        subOperators[1] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: 3000 });
+
+        vm.prank(groupManager);
+        _createGroup(subOperators, _extOperatorsArr0());
+
+        uint256 weight = registry.getNodeOperatorWeight(0);
+        assertEq(weight, 7000);
+
+        weight = registry.getNodeOperatorWeight(1);
+        assertEq(weight, 3000);
+    }
+
+    function test_getNodeOperatorWeight_ReturnsZeroWhenNotInGroup() public {
+        uint256 weight = registry.getNodeOperatorWeight(2);
+        assertEq(weight, 0);
+    }
+
     function test_getNodeOperatorWeightAndExternalStake_ReturnsZeroWhenNotInGroup() public {
         (uint256 weight, uint256 externalStake) = registry.getNodeOperatorWeightAndExternalStake(0);
         assertEq(weight, 0);

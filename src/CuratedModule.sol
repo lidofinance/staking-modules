@@ -347,5 +347,3 @@ contract CuratedModule is ICuratedModule, BaseModule {
         }
     }
 }
-
-// Last review ended here

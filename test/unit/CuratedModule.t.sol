@@ -1864,3 +1864,49 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         cm.changeNodeOperatorAddresses(noId, manager, address(0));
     }
 }
+
+contract CuratedHooks is CuratedCommon {
+    function test_notifyNodeOperatorWeightChange_bumpsNonce() public {
+        uint256 noId = cm.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: nextAddress(),
+                rewardAddress: nextAddress(),
+                extendedManagerPermissions: false
+            }),
+            address(0)
+        );
+
+        uint256 oldNonce = cm.getNonce();
+        address metaRegistry = address(cm.META_REGISTRY());
+        vm.prank(metaRegistry);
+        cm.notifyNodeOperatorWeightChange(noId, 154);
+
+        uint256 newNonce = cm.getNonce();
+        assertEq(newNonce, oldNonce + 1);
+    }
+
+    function test_notifyNodeOperatorWeightChange_depositableIsZeroWhenWeightIsZero() public {
+        uint256 noId = cm.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: nextAddress(),
+                rewardAddress: nextAddress(),
+                extendedManagerPermissions: false
+            }),
+            address(0)
+        );
+
+        address metaRegistry = address(cm.META_REGISTRY());
+        vm.prank(metaRegistry);
+        cm.notifyNodeOperatorWeightChange(noId, 0);
+
+        NodeOperator memory no = cm.getNodeOperator(noId);
+        assertEq(no.depositableValidatorsCount, 0);
+    }
+
+    function test_notifyNodeOperatorWeightChange_revertWhen_NotMetaRegistry() public {
+        vm.expectRevert(ICuratedModule.SenderIsNotMetaRegistry.selector);
+        cm.notifyNodeOperatorWeightChange(0, 0);
+    }
+}
