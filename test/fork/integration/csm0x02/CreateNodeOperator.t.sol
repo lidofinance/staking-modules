@@ -17,14 +17,9 @@ contract PermissionlessCreateNodeOperator0x02Test is CSM0x02IntegrationBase {
 
     function test_createNodeOperatorETH_setsCurveAndBond() public {
         uint256 keysCount = 2;
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
 
-        uint256 amount = accounting.getBondAmountByKeysCount(
-            keysCount,
-            permissionlessGate.CURVE_ID()
-        );
+        uint256 amount = accounting.getBondAmountByKeysCount(keysCount, permissionlessGate.CURVE_ID());
 
         address nodeOperator = nextAddress("NodeOperator");
         vm.deal(nodeOperator, amount);
@@ -45,20 +40,8 @@ contract PermissionlessCreateNodeOperator0x02Test is CSM0x02IntegrationBase {
             referrer: address(0)
         });
 
-        assertEq(
-            accounting.getBondCurveId(noId),
-            permissionlessGate.CURVE_ID(),
-            "bond curve mismatch"
-        );
-        assertEq(
-            accounting.getBondShares(noId),
-            shares,
-            "bond shares mismatch"
-        );
-        assertEq(
-            accounting.totalBondShares(),
-            preTotalShares + shares,
-            "total bond shares mismatch"
-        );
+        assertEq(accounting.getBondCurveId(noId), permissionlessGate.CURVE_ID(), "bond curve mismatch");
+        assertEq(accounting.getBondShares(noId), shares, "bond shares mismatch");
+        assertEq(accounting.totalBondShares(), preTotalShares + shares, "total bond shares mismatch");
     }
 }

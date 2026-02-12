@@ -46,80 +46,43 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
     function test_roles_onlyFull() public view {
         bytes32 role = accounting.SET_BOND_CURVE_ROLE();
         assertEq(accounting.getRoleMemberCount(role), 1);
-        assertTrue(
-            accounting.hasRole(role, deployParams.setResetBondCurveAddress)
-        );
+        assertTrue(accounting.hasRole(role, deployParams.setResetBondCurveAddress));
     }
 }
 
 contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
     function test_immutables() public view {
-        assertEq(
-            parametersRegistryImpl.QUEUE_LOWEST_PRIORITY(),
-            deployParams.queueLowestPriority
-        );
+        assertEq(parametersRegistryImpl.QUEUE_LOWEST_PRIORITY(), deployParams.queueLowestPriority);
     }
 
     function test_state() public view {
-        assertEq(
-            parametersRegistry.defaultKeyRemovalCharge(),
-            deployParams.defaultKeyRemovalCharge
-        );
+        assertEq(parametersRegistry.defaultKeyRemovalCharge(), deployParams.defaultKeyRemovalCharge);
         assertEq(
             parametersRegistry.defaultGeneralDelayedPenaltyAdditionalFine(),
             deployParams.defaultGeneralDelayedPenaltyAdditionalFine
         );
-        assertEq(
-            parametersRegistry.defaultKeysLimit(),
-            deployParams.defaultKeysLimit
-        );
-        assertEq(
-            parametersRegistry.defaultRewardShare(),
-            deployParams.defaultRewardShareBP
-        );
-        assertEq(
-            parametersRegistry.defaultPerformanceLeeway(),
-            deployParams.defaultAvgPerfLeewayBP
-        );
-        (uint256 strikesLifetime, uint256 strikesThreshold) = parametersRegistry
-            .defaultStrikesParams();
+        assertEq(parametersRegistry.defaultKeysLimit(), deployParams.defaultKeysLimit);
+        assertEq(parametersRegistry.defaultRewardShare(), deployParams.defaultRewardShareBP);
+        assertEq(parametersRegistry.defaultPerformanceLeeway(), deployParams.defaultAvgPerfLeewayBP);
+        (uint256 strikesLifetime, uint256 strikesThreshold) = parametersRegistry.defaultStrikesParams();
         assertEq(strikesLifetime, deployParams.defaultStrikesLifetimeFrames);
         assertEq(strikesThreshold, deployParams.defaultStrikesThreshold);
 
-        (uint256 priority, uint256 maxDeposits) = parametersRegistry
-            .defaultQueueConfig();
+        (uint256 priority, uint256 maxDeposits) = parametersRegistry.defaultQueueConfig();
         assertEq(priority, deployParams.defaultQueuePriority);
         assertEq(maxDeposits, deployParams.defaultQueueMaxDeposits);
 
-        assertEq(
-            parametersRegistry.defaultBadPerformancePenalty(),
-            deployParams.defaultBadPerformancePenalty
-        );
+        assertEq(parametersRegistry.defaultBadPerformancePenalty(), deployParams.defaultBadPerformancePenalty);
 
-        (
-            uint256 attestationsWeight,
-            uint256 blocksWeight,
-            uint256 syncWeight
-        ) = parametersRegistry.defaultPerformanceCoefficients();
+        (uint256 attestationsWeight, uint256 blocksWeight, uint256 syncWeight) = parametersRegistry
+            .defaultPerformanceCoefficients();
         assertEq(attestationsWeight, deployParams.defaultAttestationsWeight);
         assertEq(blocksWeight, deployParams.defaultBlocksWeight);
         assertEq(syncWeight, deployParams.defaultSyncWeight);
-        assertEq(
-            parametersRegistry.defaultAllowedExitDelay(),
-            deployParams.defaultAllowedExitDelay
-        );
-        assertEq(
-            parametersRegistry.defaultExitDelayFee(),
-            deployParams.defaultExitDelayFee
-        );
-        assertEq(
-            parametersRegistry.defaultMaxElWithdrawalRequestFee(),
-            deployParams.defaultMaxElWithdrawalRequestFee
-        );
-        assertEq(
-            parametersRegistry.defaultDepositAllocationWeight(),
-            deployParams.defaultDepositAllocationWeight
-        );
+        assertEq(parametersRegistry.defaultAllowedExitDelay(), deployParams.defaultAllowedExitDelay);
+        assertEq(parametersRegistry.defaultExitDelayFee(), deployParams.defaultExitDelayFee);
+        assertEq(parametersRegistry.defaultMaxElWithdrawalRequestFee(), deployParams.defaultMaxElWithdrawalRequestFee);
+        assertEq(parametersRegistry.defaultDepositAllocationWeight(), deployParams.defaultDepositAllocationWeight);
         assertEq(parametersRegistry.getInitializedVersion(), 1);
     }
 }
@@ -132,16 +95,8 @@ contract GateSealDeploymentTest is DeploymentBaseTest {
         assertTrue(address(gateSeal) != address(0), "gate seal missing");
         address committee = gateSeal.get_sealing_committee();
         assertEq(committee, deployParams.sealingCommittee, "committee");
-        assertEq(
-            gateSeal.get_seal_duration_seconds(),
-            deployParams.sealDuration,
-            "seal duration"
-        );
-        assertEq(
-            gateSeal.get_expiry_timestamp(),
-            deployParams.sealExpiryTimestamp,
-            "expiry"
-        );
+        assertEq(gateSeal.get_seal_duration_seconds(), deployParams.sealDuration, "seal duration");
+        assertEq(gateSeal.get_expiry_timestamp(), deployParams.sealExpiryTimestamp, "expiry");
     }
 
     function test_sealables() public view {
@@ -161,30 +116,12 @@ contract GateSealDeploymentTest is DeploymentBaseTest {
 contract PermissionlessGateDeploymentTest is DeploymentBaseTest {
     function test_immutables() public view {
         assertEq(address(permissionlessGate.MODULE()), address(module));
-        assertEq(
-            permissionlessGate.CURVE_ID(),
-            accounting.DEFAULT_BOND_CURVE_ID()
-        );
+        assertEq(permissionlessGate.CURVE_ID(), accounting.DEFAULT_BOND_CURVE_ID());
     }
 
     function test_roles() public view {
-        assertTrue(
-            permissionlessGate.hasRole(
-                permissionlessGate.DEFAULT_ADMIN_ROLE(),
-                deployParams.aragonAgent
-            )
-        );
-        assertEq(
-            permissionlessGate.getRoleMemberCount(
-                permissionlessGate.DEFAULT_ADMIN_ROLE()
-            ),
-            adminsCount
-        );
-        assertEq(
-            permissionlessGate.getRoleMemberCount(
-                permissionlessGate.RECOVERER_ROLE()
-            ),
-            0
-        );
+        assertTrue(permissionlessGate.hasRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
+        assertEq(permissionlessGate.getRoleMemberCount(permissionlessGate.DEFAULT_ADMIN_ROLE()), adminsCount);
+        assertEq(permissionlessGate.getRoleMemberCount(permissionlessGate.RECOVERER_ROLE()), 0);
     }
 }

@@ -14,11 +14,7 @@ contract ObtainDepositDataTestCSM0x02 is CSM0x02IntegrationBase {
         _assertModuleEnqueuedCount();
         assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
-        assertAccountingBurnerApproval(
-            lido,
-            address(accounting),
-            locator.burner()
-        );
+        assertAccountingBurnerApproval(lido, address(accounting), locator.burner());
         assertAccountingUnusedStorageSlots(accounting);
         assertFeeDistributorClaimableShares(lido, feeDistributor);
         assertFeeDistributorTree(feeDistributor);
@@ -37,20 +33,17 @@ contract ObtainDepositDataTestCSM0x02 is CSM0x02IntegrationBase {
     function test_obtainDepositData_updatesCounts() public assertInvariants {
         integrationHelpers.getDepositableNodeOperator(nextAddress());
 
-        (, uint256 totalDepositedBefore, uint256 depositableBefore) = module
-            .getStakingModuleSummary();
+        (, uint256 totalDepositedBefore, uint256 depositableBefore) = module.getStakingModuleSummary();
         uint256 request = depositableBefore > 2 ? 2 : depositableBefore;
 
         vm.prank(address(stakingRouter));
-        (bytes memory pubkeys, bytes memory signatures) = module
-            .obtainDepositData(request, "");
+        (bytes memory pubkeys, bytes memory signatures) = module.obtainDepositData(request, "");
 
         uint256 allocated = pubkeys.length / 48;
         assertEq(pubkeys.length, allocated * 48);
         assertEq(signatures.length, allocated * 96);
 
-        (, uint256 totalDepositedAfter, uint256 depositableAfter) = module
-            .getStakingModuleSummary();
+        (, uint256 totalDepositedAfter, uint256 depositableAfter) = module.getStakingModuleSummary();
         assertEq(totalDepositedAfter, totalDepositedBefore + allocated);
         assertEq(depositableAfter, depositableBefore - allocated);
     }

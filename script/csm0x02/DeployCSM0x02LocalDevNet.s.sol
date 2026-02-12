@@ -7,15 +7,11 @@ import { DeployCSM0x02Base } from "./DeployCSM0x02Base.s.sol";
 import { GIndices } from "../constants/GIndices.sol";
 
 contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
-    constructor()
-        DeployCSM0x02Base("local-devnet", vm.envUint("DEVNET_CHAIN_ID"))
-    {
+    constructor() DeployCSM0x02Base("local-devnet", vm.envUint("DEVNET_CHAIN_ID")) {
         // Lido addresses
         config.lidoLocatorAddress = vm.envAddress("CSM_LOCATOR_ADDRESS");
         config.aragonAgent = vm.envAddress("CSM_ARAGON_AGENT_ADDRESS");
-        config.easyTrackEVMScriptExecutor = vm.envAddress(
-            "EVM_SCRIPT_EXECUTOR_ADDRESS"
-        );
+        config.easyTrackEVMScriptExecutor = vm.envAddress("EVM_SCRIPT_EXECUTOR_ADDRESS");
         config.proxyAdmin = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
         // Oracle
@@ -31,23 +27,15 @@ contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
         config.oracleMembers[2] = vm.envAddress("CSM_ORACLE_3_ADDRESS");
         config.hashConsensusQuorum = 2;
         // Verifier
-        config.slotsPerHistoricalRoot = vm.envOr(
-            "DEVNET_SLOTS_PER_HISTORICAL_ROOT",
-            uint256(8192)
-        );
+        config.slotsPerHistoricalRoot = vm.envOr("DEVNET_SLOTS_PER_HISTORICAL_ROOT", uint256(8192));
         config.gIFirstWithdrawal = GIndices.FIRST_WITHDRAWAL_ELECTRA;
         config.gIFirstValidator = GIndices.FIRST_VALIDATOR_ELECTRA;
         config.gIFirstHistoricalSummary = GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA; // prettier-ignore
         config.gIFirstBlockRootInSummary = GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA; // prettier-ignore
         config.gIFirstBalanceNode = GIndices.FIRST_BALANCE_NODE_ELECTRA;
-        config.gIFirstPendingConsolidation = GIndices
-            .FIRST_PENDING_CONSOLIDATION_ELECTRA;
-        config.verifierFirstSupportedSlot =
-            vm.envUint("DEVNET_ELECTRA_EPOCH") *
-            config.slotsPerEpoch;
-        config.capellaSlot =
-            vm.envUint("DEVNET_CAPELLA_EPOCH") *
-            config.slotsPerEpoch;
+        config.gIFirstPendingConsolidation = GIndices.FIRST_PENDING_CONSOLIDATION_ELECTRA;
+        config.verifierFirstSupportedSlot = vm.envUint("DEVNET_ELECTRA_EPOCH") * config.slotsPerEpoch;
+        config.capellaSlot = vm.envUint("DEVNET_CAPELLA_EPOCH") * config.slotsPerEpoch;
 
         // Accounting
         // TODO: Set proper default bond curve values for CSM0x02.
@@ -58,18 +46,12 @@ contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
         config.minBondLockPeriod = 1 days;
         config.maxBondLockPeriod = 7 days;
         config.bondLockPeriod = 1 days;
-        config.setResetBondCurveAddress = vm.envAddress(
-            "CSM_FIRST_ADMIN_ADDRESS"
-        ); // Dev team EOA
-        config.chargePenaltyRecipient = vm.envAddress(
-            "CSM_FIRST_ADMIN_ADDRESS"
-        ); // Dev team EOA
+        config.setResetBondCurveAddress = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
+        config.chargePenaltyRecipient = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
         // Module
         config.stakingModuleId = vm.envUint("CSM_STAKING_MODULE_ID");
         config.moduleType = "community-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
-        config.generalDelayedPenaltyReporter = vm.envAddress(
-            "CSM_FIRST_ADMIN_ADDRESS"
-        ); // Dev team EOA
+        config.generalDelayedPenaltyReporter = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0.05 ether;
@@ -99,10 +81,7 @@ contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
         // DG
         config.resealManager = vm.envAddress("CSM_RESEAL_MANAGER_ADDRESS");
 
-        config.secondAdminAddress = vm.envOr(
-            "CSM_SECOND_ADMIN_ADDRESS",
-            address(0)
-        );
+        config.secondAdminAddress = vm.envOr("CSM_SECOND_ADMIN_ADDRESS", address(0));
 
         _setUp();
     }

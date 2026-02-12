@@ -9,10 +9,7 @@ import { IAccounting } from "src/interfaces/IAccounting.sol";
 import { PermitHelper } from "../../../helpers/Permit.sol";
 import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
-abstract contract AccountingIntegrationTestBase is
-    ModuleTypeBase,
-    PermitHelper
-{
+abstract contract AccountingIntegrationTestBase is ModuleTypeBase, PermitHelper {
     address internal user;
     address internal nodeOperator;
     uint256 internal userPrivateKey;
@@ -25,11 +22,7 @@ abstract contract AccountingIntegrationTestBase is
         _assertModuleEnqueuedCount();
         assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
-        assertAccountingBurnerApproval(
-            lido,
-            address(accounting),
-            locator.burner()
-        );
+        assertAccountingBurnerApproval(lido, address(accounting), locator.burner());
         assertAccountingUnusedStorageSlots(accounting);
         assertFeeDistributorClaimableShares(lido, feeDistributor);
         assertFeeDistributorTree(feeDistributor);
@@ -107,9 +100,7 @@ abstract contract DepositTestBase is AccountingIntegrationTestBase {
         lido.approve(address(wstETH), type(uint256).max);
         uint256 wstETHAmount = wstETH.wrap(32 ether);
 
-        uint256 shares = lido.getSharesByPooledEth(
-            wstETH.getStETHByWstETH(wstETHAmount)
-        );
+        uint256 shares = lido.getSharesByPooledEth(wstETH.getStETHByWstETH(wstETHAmount));
 
         uint256 preShares = accounting.getBondShares(defaultNoId);
         uint256 preTotalShares = accounting.totalBondShares();
@@ -150,13 +141,7 @@ abstract contract DepositTestBase is AccountingIntegrationTestBase {
         accounting.depositStETH(
             defaultNoId,
             32 ether,
-            IAccounting.PermitInput({
-                value: 32 ether,
-                deadline: type(uint256).max,
-                v: v,
-                r: r,
-                s: s
-            })
+            IAccounting.PermitInput({ value: 32 ether, deadline: type(uint256).max, v: v, r: r, s: s })
         );
         vm.stopSnapshotGas();
 
@@ -182,9 +167,7 @@ abstract contract DepositTestBase is AccountingIntegrationTestBase {
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, digest);
 
-        uint256 shares = lido.getSharesByPooledEth(
-            wstETH.getStETHByWstETH(wstETHAmount)
-        );
+        uint256 shares = lido.getSharesByPooledEth(wstETH.getStETHByWstETH(wstETHAmount));
 
         uint256 preShares = accounting.getBondShares(defaultNoId);
         uint256 preTotalShares = accounting.totalBondShares();
@@ -193,13 +176,7 @@ abstract contract DepositTestBase is AccountingIntegrationTestBase {
         accounting.depositWstETH(
             defaultNoId,
             wstETHAmount,
-            IAccounting.PermitInput({
-                value: wstETHAmount + 10 wei,
-                deadline: type(uint256).max,
-                v: v,
-                r: r,
-                s: s
-            })
+            IAccounting.PermitInput({ value: wstETHAmount + 10 wei, deadline: type(uint256).max, v: v, r: r, s: s })
         );
         vm.stopSnapshotGas();
 
@@ -236,24 +213,13 @@ abstract contract AddValidatorKeysTestBase is AccountingIntegrationTestBase {
 
     function test_addValidatorKeysETH() public assertInvariants {
         uint256 keysCount = _keysCount();
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
-        );
-        uint256 amount = accounting.getRequiredBondForNextKeys(
-            defaultNoId,
-            keysCount
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
+        uint256 amount = accounting.getRequiredBondForNextKeys(defaultNoId, keysCount);
         vm.deal(nodeOperator, amount);
 
         vm.startPrank(nodeOperator);
         vm.startSnapshotGas("Module.addValidatorKeysETH");
-        module.addValidatorKeysETH{ value: amount }(
-            nodeOperator,
-            defaultNoId,
-            keysCount,
-            keys,
-            signatures
-        );
+        module.addValidatorKeysETH{ value: amount }(nodeOperator, defaultNoId, keysCount, keys, signatures);
         vm.stopSnapshotGas();
         vm.stopPrank();
 
@@ -263,19 +229,14 @@ abstract contract AddValidatorKeysTestBase is AccountingIntegrationTestBase {
 
     function test_addValidatorKeysStETH() public assertInvariants {
         uint256 keysCount = _keysCount();
-        uint256 amount = accounting.getRequiredBondForNextKeys(
-            defaultNoId,
-            keysCount
-        );
+        uint256 amount = accounting.getRequiredBondForNextKeys(defaultNoId, keysCount);
         vm.startPrank(nodeOperator);
         vm.deal(nodeOperator, amount);
         lido.submit{ value: amount }(address(0));
 
         lido.approve(address(accounting), type(uint256).max);
 
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
 
         vm.startSnapshotGas("Module.addValidatorKeysStETH");
         module.addValidatorKeysStETH(
@@ -295,10 +256,7 @@ abstract contract AddValidatorKeysTestBase is AccountingIntegrationTestBase {
 
     function test_addValidatorKeysWstETH() public assertInvariants {
         uint256 keysCount = _keysCount();
-        uint256 amount = accounting.getRequiredBondForNextKeys(
-            defaultNoId,
-            keysCount
-        );
+        uint256 amount = accounting.getRequiredBondForNextKeys(defaultNoId, keysCount);
         vm.startPrank(nodeOperator);
         vm.deal(nodeOperator, amount);
         lido.submit{ value: amount }(address(0));
@@ -306,9 +264,7 @@ abstract contract AddValidatorKeysTestBase is AccountingIntegrationTestBase {
 
         wstETH.approve(address(accounting), type(uint256).max);
 
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
         wstETH.wrap(amount);
 
         vm.startSnapshotGas("Module.addValidatorKeysWstETH");
@@ -328,55 +284,37 @@ abstract contract AddValidatorKeysTestBase is AccountingIntegrationTestBase {
     }
 }
 
-contract AddValidatorKeysTestCSM is
-    AddValidatorKeysTestBase,
-    CSMIntegrationBase
-{
+contract AddValidatorKeysTestCSM is AddValidatorKeysTestBase, CSMIntegrationBase {
     function _keysCount() internal pure override returns (uint256) {
         return 1;
     }
 }
 
-contract AddValidatorKeysTestCSM0x02 is
-    AddValidatorKeysTestBase,
-    CSM0x02IntegrationBase
-{
+contract AddValidatorKeysTestCSM0x02 is AddValidatorKeysTestBase, CSM0x02IntegrationBase {
     function _keysCount() internal pure override returns (uint256) {
         return 1;
     }
 }
 
-contract AddValidatorKeysTestCurated is
-    AddValidatorKeysTestBase,
-    CuratedIntegrationBase
-{
+contract AddValidatorKeysTestCurated is AddValidatorKeysTestBase, CuratedIntegrationBase {
     function _keysCount() internal pure override returns (uint256) {
         return 1;
     }
 }
 
-contract AddValidatorKeys10KeysTestCSM is
-    AddValidatorKeysTestBase,
-    CSMIntegrationBase
-{
+contract AddValidatorKeys10KeysTestCSM is AddValidatorKeysTestBase, CSMIntegrationBase {
     function _keysCount() internal pure override returns (uint256) {
         return 10;
     }
 }
 
-contract AddValidatorKeys10KeysTestCSM0x02 is
-    AddValidatorKeysTestBase,
-    CSM0x02IntegrationBase
-{
+contract AddValidatorKeys10KeysTestCSM0x02 is AddValidatorKeysTestBase, CSM0x02IntegrationBase {
     function _keysCount() internal pure override returns (uint256) {
         return 10;
     }
 }
 
-contract AddValidatorKeys10KeysTestCurated is
-    AddValidatorKeysTestBase,
-    CuratedIntegrationBase
-{
+contract AddValidatorKeys10KeysTestCurated is AddValidatorKeysTestBase, CuratedIntegrationBase {
     function _keysCount() internal pure override returns (uint256) {
         return 10;
     }
@@ -389,10 +327,7 @@ abstract contract RemoveKeysTestBase is AccountingIntegrationTestBase {
 
     function setUp() public virtual override {
         super.setUp();
-        defaultNoId = integrationHelpers.addNodeOperator(
-            nodeOperator,
-            initialKeysCount
-        );
+        defaultNoId = integrationHelpers.addNodeOperator(nodeOperator, initialKeysCount);
         bondCurveId = accounting.getBondCurveId(defaultNoId);
     }
 
@@ -401,12 +336,7 @@ abstract contract RemoveKeysTestBase is AccountingIntegrationTestBase {
 
         (uint256 bondBefore, ) = accounting.getBondSummary(defaultNoId);
 
-        vm.startPrank(
-            parametersRegistry.getRoleMember(
-                parametersRegistry.DEFAULT_ADMIN_ROLE(),
-                0
-            )
-        );
+        vm.startPrank(parametersRegistry.getRoleMember(parametersRegistry.DEFAULT_ADMIN_ROLE(), 0));
         parametersRegistry.setKeyRemovalCharge(bondCurveId, 0);
         vm.stopPrank();
 
@@ -444,24 +374,13 @@ abstract contract RemoveKeysTestBase is AccountingIntegrationTestBase {
         );
 
         uint256 additionalKeysCount = 2;
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            additionalKeysCount
-        );
-        uint256 amount = accounting.getRequiredBondForNextKeys(
-            noId,
-            additionalKeysCount
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(additionalKeysCount);
+        uint256 amount = accounting.getRequiredBondForNextKeys(noId, additionalKeysCount);
         vm.deal(nodeOperator, amount);
 
         vm.startPrank(nodeOperator);
         vm.startSnapshotGas("Module.addValidatorKeysETH");
-        module.addValidatorKeysETH{ value: amount }(
-            nodeOperator,
-            noId,
-            additionalKeysCount,
-            keys,
-            signatures
-        );
+        module.addValidatorKeysETH{ value: amount }(nodeOperator, noId, additionalKeysCount, keys, signatures);
         vm.stopSnapshotGas();
         vm.stopPrank();
 
@@ -469,19 +388,12 @@ abstract contract RemoveKeysTestBase is AccountingIntegrationTestBase {
 
         vm.startPrank(nodeOperator);
         vm.startSnapshotGas("Module.removeKeys");
-        module.removeKeys(
-            noId,
-            keysCount - keysCountToRemove - 1,
-            keysCountToRemove
-        );
+        module.removeKeys(noId, keysCount - keysCountToRemove - 1, keysCountToRemove);
         vm.stopSnapshotGas();
         vm.stopPrank();
 
         NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(
-            no.totalAddedKeys,
-            keysCount + additionalKeysCount - keysCountToRemove
-        );
+        assertEq(no.totalAddedKeys, keysCount + additionalKeysCount - keysCountToRemove);
         assertEq(no.totalVettedKeys, no.totalAddedKeys);
     }
 }
@@ -492,9 +404,7 @@ contract RemoveKeysTestCSM is RemoveKeysTestBase, CSMIntegrationBase {
 
         (uint256 bondBefore, ) = accounting.getBondSummary(defaultNoId);
 
-        uint256 keyRemovalCharge = parametersRegistry.getKeyRemovalCharge(
-            bondCurveId
-        );
+        uint256 keyRemovalCharge = parametersRegistry.getKeyRemovalCharge(bondCurveId);
 
         vm.startPrank(nodeOperator);
         vm.startSnapshotGas("CSM.removeKeys");
@@ -517,9 +427,7 @@ contract RemoveKeysTestCSM0x02 is RemoveKeysTestBase, CSM0x02IntegrationBase {
 
         (uint256 bondBefore, ) = accounting.getBondSummary(defaultNoId);
 
-        uint256 keyRemovalCharge = parametersRegistry.getKeyRemovalCharge(
-            bondCurveId
-        );
+        uint256 keyRemovalCharge = parametersRegistry.getKeyRemovalCharge(bondCurveId);
 
         vm.startPrank(nodeOperator);
         vm.startSnapshotGas("CSM0x02.removeKeys");
@@ -542,12 +450,7 @@ contract RemoveKeysTestCurated is RemoveKeysTestBase, CuratedIntegrationBase {
 
         (uint256 bondBefore, ) = accounting.getBondSummary(defaultNoId);
 
-        vm.startPrank(
-            parametersRegistry.getRoleMember(
-                parametersRegistry.DEFAULT_ADMIN_ROLE(),
-                0
-            )
-        );
+        vm.startPrank(parametersRegistry.getRoleMember(parametersRegistry.DEFAULT_ADMIN_ROLE(), 0));
         parametersRegistry.setKeyRemovalCharge(bondCurveId, 1);
         vm.stopPrank();
 
