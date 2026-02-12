@@ -83,7 +83,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     ///       This allows splitting rewards that were distributed for the operator before the splits are set.
     ///       The node operator explicitly opts into this behavior.
     ///       If the splits are currently set, then should be no pending fees to distribute to make changes.
-    function setFeeSplits(
+    function updateFeeSplits(
         uint256 nodeOperatorId,
         FeeSplit[] calldata feeSplits,
         uint256 cumulativeFeeShares,

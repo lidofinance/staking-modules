@@ -128,7 +128,7 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function setFeeSplits(
+    function updateFeeSplits(
         uint256 nodeOperatorId,
         FeeSplit[] calldata feeSplits,
         uint256 cumulativeFeeShares,
@@ -139,9 +139,9 @@ contract Accounting is
             FeeSplits.hasSplits(nodeOperatorId) &&
             FEE_DISTRIBUTOR.getFeesToDistribute(nodeOperatorId, cumulativeFeeShares, rewardsProof) != 0
         ) {
-            revert UndistributedSharesExist();
+            revert FeeSplitsChangeWithUndestributedRewards();
         }
-        FeeSplits._setFeeSplits(nodeOperatorId, feeSplits);
+        FeeSplits._updateFeeSplits(nodeOperatorId, feeSplits);
     }
 
     /// @inheritdoc IAccounting
@@ -436,12 +436,16 @@ contract Accounting is
             uint256 distributed = FEE_DISTRIBUTOR.distributeFees(nodeOperatorId, cumulativeFeeShares, rewardsProof);
             if (distributed != 0) {
                 BondCore._creditBondShares(nodeOperatorId, distributed);
-                if (hasSplits) FeeSplits._increasePending(nodeOperatorId, distributed);
+                // NOTE: All rewards are subject to a split set as of the rewards allocation date.
+                //       Any penalties in favour of the protocol should not reduce the amount of the rewards to be split.
+                //       Any rewards used to cover protocol penalties should be split later from the new rewards
+                //       or the Node Operator bond during claim operations.
+                if (hasSplits) FeeSplits._increasePendingSharesToSplit(nodeOperatorId, distributed);
             }
         }
         claimableShares = _getClaimableBondShares(nodeOperatorId);
         if (hasSplits && claimableShares != 0 && !isPaused()) {
-            (SplitTransfer[] memory transfers, uint256 splitBaseShares) = FeeSplits.getFeeSplitTransfers(
+            (SplitTransfer[] memory transfers, uint256 sharesToSplit) = FeeSplits.getFeeSplitTransfers(
                 nodeOperatorId,
                 claimableShares
             );
@@ -453,10 +457,10 @@ contract Accounting is
                     transferredShares += shares;
                 }
             }
-            // NOTE: `splitBaseShares` is the whole split operation base. It includes
-            //      the Node Operator's retained shares (split remainder), so we
-            //      must decrease pending by the base, not by transferred shares sum.
-            FeeSplits._decreasePending(nodeOperatorId, splitBaseShares);
+            // NOTE: `sharesToSplit` is the whole split operation base. It includes
+            //       the Node Operator's retained shares (split remainder), so we
+            //       must decrease pending by the base, not by transferred shares sum.
+            FeeSplits._decreasePendingSharesToSplit(nodeOperatorId, sharesToSplit);
             BondCore._unsafeReduceBond(nodeOperatorId, transferredShares);
             // NOTE: It is safe to use unchecked here since `transferredShares` is always <= `claimableShares`
             unchecked {

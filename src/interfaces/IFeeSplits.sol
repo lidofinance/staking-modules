@@ -18,7 +18,7 @@ interface IFeeSplits {
     event PendingSharesToSplitChanged(uint256 indexed nodeOperatorId, uint256 pendingSharesToSplit);
 
     error PendingSharesExist();
-    error UndistributedSharesExist();
+    error FeeSplitsChangeWithUndestributedRewards();
     error TooManySplits();
     error TooManySplitShares();
     error ZeroSplitRecipient();
@@ -39,10 +39,10 @@ interface IFeeSplits {
     /// @param nodeOperatorId ID of the Node Operator
     /// @param claimableShares Max shares that can be used as split operation base
     /// @return transfers Shares amounts to transfer to each split recipient
-    /// @return splitBaseShares Actual split operation base used for calculations
-    /// @dev The returned `splitBaseShares` includes the retained remainder that stays on the Node Operator bond
+    /// @return sharesToSplit Actual split operation base used for calculations
+    /// @dev The returned `sharesToSplit` includes the retained remainder that stays on the Node Operator bond
     function getFeeSplitTransfers(
         uint256 nodeOperatorId,
         uint256 claimableShares
-    ) external view returns (SplitTransfer[] memory transfers, uint256 splitBaseShares);
+    ) external view returns (SplitTransfer[] memory transfers, uint256 sharesToSplit);
 }

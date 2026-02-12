@@ -42,19 +42,19 @@ abstract contract FeeSplits is IFeeSplits {
     function getFeeSplitTransfers(
         uint256 nodeOperatorId,
         uint256 claimableShares
-    ) public view returns (SplitTransfer[] memory transfers, uint256 splitBaseShares) {
+    ) public view returns (SplitTransfer[] memory transfers, uint256 sharesToSplit) {
         FeeSplitsStorage storage $ = _getFeeSplitsStorage();
         uint256 pending = $.pendingSharesToSplit[nodeOperatorId];
         if (pending == 0) return (new SplitTransfer[](0), 0);
-        splitBaseShares = claimableShares > pending ? pending : claimableShares;
-        if (splitBaseShares == 0) return (new SplitTransfer[](0), 0);
+        sharesToSplit = claimableShares > pending ? pending : claimableShares;
+        if (sharesToSplit == 0) return (new SplitTransfer[](0), 0);
 
         FeeSplit[] storage splits = $.feeSplits[nodeOperatorId];
         transfers = new SplitTransfer[](splits.length);
         for (uint256 i; i < splits.length; ++i) {
             FeeSplit storage feeSplit = splits[i];
             // NOTE: Due to rounding error, final operator's share might contain some dust.
-            uint256 amount = (splitBaseShares * feeSplit.share) / MAX_BP;
+            uint256 amount = (sharesToSplit * feeSplit.share) / MAX_BP;
             transfers[i] = SplitTransfer({ recipient: feeSplit.recipient, shares: amount });
         }
     }
@@ -64,7 +64,7 @@ abstract contract FeeSplits is IFeeSplits {
         return _getFeeSplitsStorage().feeSplits[nodeOperatorId].length != 0;
     }
 
-    function _setFeeSplits(uint256 nodeOperatorId, FeeSplit[] calldata feeSplits) internal {
+    function _updateFeeSplits(uint256 nodeOperatorId, FeeSplit[] calldata feeSplits) internal {
         FeeSplitsStorage storage $ = _getFeeSplitsStorage();
         if ($.pendingSharesToSplit[nodeOperatorId] > 0) revert PendingSharesExist();
 
@@ -79,7 +79,7 @@ abstract contract FeeSplits is IFeeSplits {
         emit FeeSplitsSet(nodeOperatorId, feeSplits);
     }
 
-    function _increasePending(uint256 nodeOperatorId, uint256 shares) internal {
+    function _increasePendingSharesToSplit(uint256 nodeOperatorId, uint256 shares) internal {
         if (shares == 0) return;
         FeeSplitsStorage storage $ = _getFeeSplitsStorage();
         uint256 newPendingSharesToSplit = $.pendingSharesToSplit[nodeOperatorId] + shares;
@@ -87,10 +87,12 @@ abstract contract FeeSplits is IFeeSplits {
         emit PendingSharesToSplitChanged(nodeOperatorId, newPendingSharesToSplit);
     }
 
-    function _decreasePending(uint256 nodeOperatorId, uint256 shares) internal {
+    function _decreasePendingSharesToSplit(uint256 nodeOperatorId, uint256 shares) internal {
         if (shares == 0) return;
         FeeSplitsStorage storage $ = _getFeeSplitsStorage();
-        uint256 newPendingSharesToSplit = $.pendingSharesToSplit[nodeOperatorId] - shares;
+        uint256 current = $.pendingSharesToSplit[nodeOperatorId];
+        shares = shares > current ? current : shares;
+        uint256 newPendingSharesToSplit = current - (shares);
         $.pendingSharesToSplit[nodeOperatorId] = newPendingSharesToSplit;
         emit PendingSharesToSplitChanged(nodeOperatorId, newPendingSharesToSplit);
     }
