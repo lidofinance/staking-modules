@@ -150,7 +150,8 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
         assertTrue(accounting.hasRole(accounting.RESUME_ROLE(), deployParams.resealManager));
         assertEq(accounting.getRoleMemberCount(accounting.RESUME_ROLE()), 1);
 
-        assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), deployParams.setResetBondCurveAddress));
+        if (moduleType != ModuleType.Curated)
+            assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), deployParams.setResetBondCurveAddress));
 
         assertEq(accounting.getRoleMemberCount(keccak256("RESET_BOND_CURVE_ROLE")), 0);
 
@@ -454,10 +455,10 @@ contract EjectorDeploymentTest is DeploymentBaseTest {
         assertEq(ejector.getRoleMemberCount(ejector.DEFAULT_ADMIN_ROLE()), adminsCount);
         assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), address(gateSeal)));
         assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager));
-        assertEq(ejector.getRoleMemberCount(verifier.PAUSE_ROLE()), 2);
+        assertEq(ejector.getRoleMemberCount(ejector.PAUSE_ROLE()), 2);
 
-        assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager));
-        assertEq(ejector.getRoleMemberCount(verifier.RESUME_ROLE()), 1);
+        assertTrue(ejector.hasRole(ejector.RESUME_ROLE(), deployParams.resealManager));
+        assertEq(ejector.getRoleMemberCount(ejector.RESUME_ROLE()), 1);
     }
 }
 

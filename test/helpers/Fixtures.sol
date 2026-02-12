@@ -48,6 +48,7 @@ import { WstETHMock } from "./mocks/WstETHMock.sol";
 import { LidoLocatorMock } from "./mocks/LidoLocatorMock.sol";
 import { BurnerMock } from "./mocks/BurnerMock.sol";
 import { WithdrawalQueueMock } from "./mocks/WithdrawalQueueMock.sol";
+import { StakingRouterMock } from "./mocks/StakingRouterMock.sol";
 import { Stub } from "./mocks/Stub.sol";
 import { TWGMock } from "./mocks/TWGMock.sol";
 
@@ -65,7 +66,7 @@ contract Fixtures is StdCheats, Test {
         wstETH = new WstETHMock(address(stETH));
         wq = new WithdrawalQueueMock(address(wstETH), address(stETH));
         Stub treasury = new Stub();
-        Stub stakingRouter = new Stub();
+        StakingRouterMock stakingRouter = new StakingRouterMock();
         TWGMock twg = new TWGMock();
         locator = new LidoLocatorMock(
             address(stETH),
