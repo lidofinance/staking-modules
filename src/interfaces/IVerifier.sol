@@ -106,6 +106,7 @@ interface IVerifier {
     error InvalidPivotSlot();
     error InvalidCapellaSlot();
     error HistoricalSummaryDoesNotExist();
+    error NotImplemented();
 
     function PAUSE_ROLE() external view returns (bytes32);
 

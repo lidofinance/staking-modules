@@ -14,6 +14,7 @@ import { NOAddresses } from "./lib/NOAddresses.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "./lib/TransientUintUintMapLib.sol";
 import { CuratedDepositAllocator } from "./lib/allocator/CuratedDepositAllocator.sol";
+import { CuratedOperatorBalancesOps } from "./lib/CuratedOperatorBalancesOps.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
 
 contract CuratedModule is ICuratedModule, BaseModule {
@@ -90,7 +91,11 @@ contract CuratedModule is ICuratedModule, BaseModule {
             no.depositableValidatorsCount = depositableValidatorsCount;
             emit DepositableSigningKeysCountChanged(operatorId, depositableValidatorsCount);
 
-            _increaseOperatorBalance($, operatorId, allocation * CuratedDepositAllocator.MIN_ACTIVATION_BALANCE);
+            CuratedOperatorBalancesOps.increaseBalance(
+                $.operatorBalances,
+                operatorId,
+                allocation * CuratedDepositAllocator.MIN_ACTIVATION_BALANCE
+            );
         }
         unchecked {
             _depositableValidatorsCount -= uint64(allocated);
@@ -119,39 +124,33 @@ contract CuratedModule is ICuratedModule, BaseModule {
             revert InvalidInput();
         }
 
-        // NOTE: StakingRouter is expected to provide per-key top-up limits capped
-        // by MAX_EFFECTIVE_BALANCE and avoid duplicate (operatorId, keyIndex)
+        // NOTE: StakingRouter is expected to avoid duplicate (operatorId, keyIndex)
         // entries in a single request.
 
         _validateTopUpPublicKeys(pubkeys, keyIndices, operatorIds);
-        allocations = _allocateTopUps(maxDepositAmount, operatorIds, keyIndices, topUpLimits);
 
-        // TODO: Do we need to check for zero allocations here?
+        // Cap top-ups so we don't over-allocate to keys that lost balance due to CL penalties.
+        uint256[] memory cappedTopUpLimits = NodeOperatorOps.capTopUpLimitsByKeyBalance(
+            _keyAddedBalances,
+            operatorIds,
+            keyIndices,
+            topUpLimits
+        );
+
+        allocations = _allocateTopUps(maxDepositAmount, operatorIds, keyIndices, cappedTopUpLimits);
+
         _incrementModuleNonce();
     }
 
     /// @inheritdoc IStakingModuleV2
-    function updateOperatorBalances(
-        uint256[] calldata operatorIds,
-        uint256[] calldata totalBalancesGwei,
-        uint256 /* refSlot */
-    ) external {
+    function updateOperatorBalances(bytes calldata operatorIds, bytes calldata totalBalancesGwei) external {
         _checkStakingRouterRole();
-        // TODO: Move operator balances ops into internal lib
-        uint256 operatorsCount = operatorIds.length;
-        if (operatorsCount != totalBalancesGwei.length) {
-            revert InvalidInput();
-        }
-
-        CuratedModuleStorage storage $ = _storage();
-        uint256 nodeOperatorsCount = _nodeOperatorsCount;
-
-        for (uint256 i; i < operatorsCount; ++i) {
-            uint256 operatorId = operatorIds[i];
-            if (operatorId >= nodeOperatorsCount) revert NodeOperatorDoesNotExist();
-
-            _setOperatorBalance($, operatorId, totalBalancesGwei[i] * 1 gwei);
-        }
+        CuratedOperatorBalancesOps.applyReportedBalances(
+            _storage().operatorBalances,
+            _nodeOperatorsCount,
+            operatorIds,
+            totalBalancesGwei
+        );
         _incrementModuleNonce();
     }
 
@@ -246,13 +245,10 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256[] calldata operatorIds
     ) internal view {
         for (uint256 i; i < pubkeys.length; ++i) {
-            // TODO: Move to NodeOperatorOps and unify with CSM
             uint256 operatorId = operatorIds[i];
             uint256 keyIndex = keyIndices[i];
             if (keyIndex >= _nodeOperators[operatorId].totalDepositedKeys) revert SigningKeysInvalidOffset();
-            if (keccak256(pubkeys[i]) != keccak256(SigningKeys.loadKeys(operatorId, keyIndex, 1))) {
-                revert PubkeyMismatch();
-            }
+            SigningKeys.verifySigningKey(operatorId, keyIndex, pubkeys[i]);
         }
     }
 
@@ -260,7 +256,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256 maxDepositAmount,
         uint256[] calldata operatorIds,
         uint256[] calldata keyIndices,
-        uint256[] calldata topUpLimits
+        uint256[] memory topUpLimits
     ) internal returns (uint256[] memory allocations) {
         uint256[] memory uniqueOperatorIds = _uniqueOperatorIds(operatorIds);
         (, uint256[] memory allocatedOperatorIds, uint256[] memory operatorAllocations) = CuratedDepositAllocator
@@ -272,8 +268,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
                 operatorIds: uniqueOperatorIds
             });
 
-        // TODO: Add capped top-up limits like in CSM
-
         uint256[] memory perOperatorIncrements;
         (allocations, perOperatorIncrements) = NodeOperatorOps.distributeTopUpAllocations({
             operatorIds: operatorIds,
@@ -284,10 +278,11 @@ contract CuratedModule is ICuratedModule, BaseModule {
         });
 
         NodeOperatorOps.increaseKeyAddedBalancesByAllocations(_keyAddedBalances, operatorIds, keyIndices, allocations);
-        _increaseOperatorBalancesByAllocations({
-            uniqueOperatorIds: uniqueOperatorIds,
-            perOperatorIncrements: perOperatorIncrements
-        });
+        CuratedOperatorBalancesOps.increaseByAllocations(
+            _storage().operatorBalances,
+            uniqueOperatorIds,
+            perOperatorIncrements
+        );
     }
 
     /// @dev Deduplicate operator ids for allocation to avoid overweighting by repeated keys.
@@ -309,32 +304,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
                 mstore(uniqueOperatorIds, count)
             }
         }
-    }
-
-    function _increaseOperatorBalancesByAllocations(
-        uint256[] memory uniqueOperatorIds,
-        uint256[] memory perOperatorIncrements
-    ) internal {
-        CuratedModuleStorage storage $ = _storage();
-        for (uint256 i; i < uniqueOperatorIds.length; ++i) {
-            uint256 operatorId = uniqueOperatorIds[i];
-            uint256 increment = perOperatorIncrements[operatorId];
-            if (increment == 0) continue;
-            _increaseOperatorBalance($, operatorId, increment);
-        }
-    }
-
-    function _increaseOperatorBalance(
-        CuratedModuleStorage storage $,
-        uint256 operatorId,
-        uint256 incrementWei
-    ) internal {
-        _setOperatorBalance($, operatorId, $.operatorBalances[operatorId] + incrementWei);
-    }
-
-    function _setOperatorBalance(CuratedModuleStorage storage $, uint256 operatorId, uint256 balanceWei) internal {
-        $.operatorBalances[operatorId] = balanceWei;
-        emit NodeOperatorBalanceUpdated(operatorId, balanceWei);
     }
 
     function _metaRegistry() internal view returns (IMetaRegistry) {

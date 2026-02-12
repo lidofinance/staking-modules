@@ -90,6 +90,18 @@ contract Utilities is CommonBase {
         return bytes.concat(bytes16(uint128(value)));
     }
 
+    function _encodeNodeOperatorIds(uint256[] memory noIds) internal pure returns (bytes memory encoded) {
+        for (uint256 i; i < noIds.length; ++i) {
+            encoded = bytes.concat(encoded, _encodeNodeOperatorId(noIds[i]));
+        }
+    }
+
+    function _encodeUint128Values(uint256[] memory values) internal pure returns (bytes memory encoded) {
+        for (uint256 i; i < values.length; ++i) {
+            encoded = bytes.concat(encoded, _encodeUint128Value(values[i]));
+        }
+    }
+
     function randomBytes(uint256 length) public returns (bytes memory b) {
         b = new bytes(length);
 
