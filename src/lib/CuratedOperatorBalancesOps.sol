@@ -5,24 +5,22 @@ pragma solidity 0.8.33;
 
 import { IBaseModule } from "../interfaces/IBaseModule.sol";
 import { ICuratedModule } from "../interfaces/ICuratedModule.sol";
+import { ValidatorCountsReport } from "./ValidatorCountsReport.sol";
 
 /// @dev The library is used to reduce CuratedModule bytecode size and keep balance ops centralized.
 library CuratedOperatorBalancesOps {
     function applyReportedBalances(
         mapping(uint256 => uint256) storage operatorBalances,
         uint256 nodeOperatorsCount,
-        uint256[] calldata operatorIds,
-        uint256[] calldata totalBalancesGwei
+        bytes calldata operatorIds,
+        bytes calldata totalBalancesGwei
     ) external {
-        uint256 operatorsCount = operatorIds.length;
-        if (operatorsCount != totalBalancesGwei.length) {
-            revert IBaseModule.InvalidInput();
-        }
+        uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(operatorIds, totalBalancesGwei);
 
-        for (uint256 i; i < operatorsCount; ++i) {
-            uint256 operatorId = operatorIds[i];
+        for (uint256 i; i < operatorsInReport; ++i) {
+            (uint256 operatorId, uint256 balanceGwei) = ValidatorCountsReport.next(operatorIds, totalBalancesGwei, i);
             if (operatorId >= nodeOperatorsCount) revert IBaseModule.NodeOperatorDoesNotExist();
-            _setBalance(operatorBalances, operatorId, totalBalancesGwei[i] * 1 gwei);
+            _setBalance(operatorBalances, operatorId, balanceGwei * 1 gwei);
         }
     }
 

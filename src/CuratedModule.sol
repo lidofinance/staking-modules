@@ -143,11 +143,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     /// @inheritdoc IStakingModuleV2
-    function updateOperatorBalances(
-        uint256[] calldata operatorIds,
-        uint256[] calldata totalBalancesGwei,
-        uint256 /* refSlot */
-    ) external {
+    function updateOperatorBalances(bytes calldata operatorIds, bytes calldata totalBalancesGwei) external {
         _checkStakingRouterRole();
         CuratedOperatorBalancesOps.applyReportedBalances(
             _storage().operatorBalances,

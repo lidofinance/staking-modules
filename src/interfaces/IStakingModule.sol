@@ -238,12 +238,9 @@ interface IStakingModuleV2 {
 
     /// @notice Called by StakingRouter to update node operator total balances.
     /// @dev Total balances are denominated in gwei.
-    /// @param operatorIds Node operator IDs to update balances for.
-    /// @param totalBalancesGwei Total balances (validators + pending) aligned with operatorIds.
-    /// @param refSlot Accounting oracle ref slot.
-    function updateOperatorBalances(
-        uint256[] calldata operatorIds,
-        uint256[] calldata totalBalancesGwei,
-        uint256 refSlot
-    ) external;
+    /// @dev Input format matches validator counts updates from StakingRouter:
+    ///      `operatorIds` packs ids as bytes8 entries and `totalBalancesGwei` packs values as bytes16 entries.
+    /// @param operatorIds Bytes packed array of node operator IDs.
+    /// @param totalBalancesGwei Bytes packed array of total balances (validators + pending), in gwei.
+    function updateOperatorBalances(bytes calldata operatorIds, bytes calldata totalBalancesGwei) external;
 }
