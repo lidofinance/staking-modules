@@ -31,9 +31,9 @@ library CuratedOperatorBalancesOps {
     ) external {
         for (uint256 i; i < uniqueOperatorIds.length; ++i) {
             uint256 operatorId = uniqueOperatorIds[i];
-            uint256 increment = perOperatorIncrements[operatorId];
-            if (increment == 0) continue;
-            _setBalance(operatorBalances, operatorId, operatorBalances[operatorId] + increment);
+            uint256 incrementWei = perOperatorIncrements[operatorId];
+            if (incrementWei == 0) continue;
+            _setBalance(operatorBalances, operatorId, operatorBalances[operatorId] + incrementWei);
         }
     }
 
