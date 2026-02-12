@@ -18,7 +18,7 @@ interface IFeeSplits {
     event PendingSharesToSplitChanged(uint256 indexed nodeOperatorId, uint256 pendingSharesToSplit);
 
     error PendingSharesExist();
-    error FeeSplitsChangeWithUndestributedRewards();
+    error FeeSplitsChangeWithUndistributedRewards();
     error TooManySplits();
     error TooManySplitShares();
     error ZeroSplitRecipient();

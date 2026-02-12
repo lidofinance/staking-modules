@@ -294,7 +294,7 @@ contract FeeSplitsTest is BaseTest {
         IFeeSplits.FeeSplit[] memory newSplits = new IFeeSplits.FeeSplit[](1);
         newSplits[0] = IFeeSplits.FeeSplit({ recipient: address(2), share: 4000 });
 
-        vm.expectRevert(IFeeSplits.FeeSplitsChangeWithUndestributedRewards.selector);
+        vm.expectRevert(IFeeSplits.FeeSplitsChangeWithUndistributedRewards.selector);
         vm.prank(user);
         accounting.updateFeeSplits(0, newSplits, feeShares, new bytes32[](0));
     }

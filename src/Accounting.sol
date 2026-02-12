@@ -139,7 +139,7 @@ contract Accounting is
             FeeSplits.hasSplits(nodeOperatorId) &&
             FEE_DISTRIBUTOR.getFeesToDistribute(nodeOperatorId, cumulativeFeeShares, rewardsProof) != 0
         ) {
-            revert FeeSplitsChangeWithUndestributedRewards();
+            revert FeeSplitsChangeWithUndistributedRewards();
         }
         FeeSplits._updateFeeSplits(nodeOperatorId, feeSplits);
     }
