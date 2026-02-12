@@ -3,8 +3,6 @@
 
 pragma solidity 0.8.33;
 
-import { NodeOperator } from "src/interfaces/IBaseModule.sol";
-
 import { CSMIntegrationBase } from "../common/ModuleTypeBase.sol";
 
 contract ObtainDepositDataTestCSM is CSMIntegrationBase {

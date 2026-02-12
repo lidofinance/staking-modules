@@ -6,7 +6,6 @@ pragma solidity 0.8.33;
 import { Test } from "forge-std/Test.sol";
 import { Batch, createBatch, DepositQueueLib, IDepositQueueLib } from "src/lib/DepositQueueLib.sol";
 import { NodeOperator } from "src/interfaces/IBaseModule.sol";
-import { TransientUintUintMap, TransientUintUintMapLib } from "src/lib/TransientUintUintMapLib.sol";
 
 // Wrap the library internal methods to make an actual call to them.
 // Supposed to be used with `expectRevert` cheatcode and to pass

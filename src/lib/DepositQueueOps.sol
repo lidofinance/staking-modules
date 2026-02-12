@@ -77,6 +77,58 @@ library DepositQueueOps {
         }
     }
 
+    function enqueueNodeOperatorKeys(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        mapping(uint256 => DepositQueueLib.Queue) storage depositQueues,
+        IParametersRegistry parametersRegistry,
+        IAccounting accounting,
+        uint256 queueLowestPriority,
+        uint256 nodeOperatorId
+    ) external {
+        NodeOperator storage no = nodeOperators[nodeOperatorId];
+        uint32 depositable = no.depositableValidatorsCount;
+        uint32 enqueued = no.enqueuedCount;
+        if (depositable <= enqueued) return;
+
+        uint32 toEnqueue;
+        unchecked {
+            toEnqueue = depositable - enqueued;
+        }
+
+        (uint32 priority, uint32 maxDeposits) = parametersRegistry.getQueueConfig(
+            accounting.getBondCurveId(nodeOperatorId)
+        );
+        // If Node Operator is eligible for priority queue, try to enqueue there first.
+        if (priority < queueLowestPriority) {
+            unchecked {
+                uint32 depositedAndQueued = no.totalDepositedKeys + enqueued;
+                if (maxDeposits > depositedAndQueued) {
+                    uint32 priorityDepositsLeft = maxDeposits - depositedAndQueued;
+                    uint32 count = toEnqueue;
+                    if (count > priorityDepositsLeft) count = priorityDepositsLeft;
+
+                    _enqueueNodeOperatorKeys({
+                        queue: depositQueues[priority],
+                        no: no,
+                        nodeOperatorId: nodeOperatorId,
+                        queuePriority: priority,
+                        count: count
+                    });
+                    toEnqueue -= count;
+                }
+            }
+        }
+        if (toEnqueue > 0) {
+            _enqueueNodeOperatorKeys({
+                queue: depositQueues[queueLowestPriority],
+                no: no,
+                nodeOperatorId: nodeOperatorId,
+                queuePriority: queueLowestPriority,
+                count: toEnqueue
+            });
+        }
+    }
+
     function _clean(
         DepositQueueLib.Queue storage queue,
         mapping(uint256 => NodeOperator) storage nodeOperators,
@@ -134,58 +186,6 @@ library DepositQueueOps {
             }
 
             curr = item.next();
-        }
-    }
-
-    function enqueueNodeOperatorKeys(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        mapping(uint256 => DepositQueueLib.Queue) storage depositQueues,
-        IParametersRegistry parametersRegistry,
-        IAccounting accounting,
-        uint256 queueLowestPriority,
-        uint256 nodeOperatorId
-    ) external {
-        NodeOperator storage no = nodeOperators[nodeOperatorId];
-        uint32 depositable = no.depositableValidatorsCount;
-        uint32 enqueued = no.enqueuedCount;
-        if (depositable <= enqueued) return;
-
-        uint32 toEnqueue;
-        unchecked {
-            toEnqueue = depositable - enqueued;
-        }
-
-        (uint32 priority, uint32 maxDeposits) = parametersRegistry.getQueueConfig(
-            accounting.getBondCurveId(nodeOperatorId)
-        );
-        // If Node Operator is eligible for priority queue, try to enqueue there first.
-        if (priority < queueLowestPriority) {
-            unchecked {
-                uint32 depositedAndQueued = no.totalDepositedKeys + enqueued;
-                if (maxDeposits > depositedAndQueued) {
-                    uint32 priorityDepositsLeft = maxDeposits - depositedAndQueued;
-                    uint32 count = toEnqueue;
-                    if (count > priorityDepositsLeft) count = priorityDepositsLeft;
-
-                    _enqueueNodeOperatorKeys({
-                        queue: depositQueues[priority],
-                        no: no,
-                        nodeOperatorId: nodeOperatorId,
-                        queuePriority: priority,
-                        count: count
-                    });
-                    toEnqueue -= count;
-                }
-            }
-        }
-        if (toEnqueue > 0) {
-            _enqueueNodeOperatorKeys({
-                queue: depositQueues[queueLowestPriority],
-                no: no,
-                nodeOperatorId: nodeOperatorId,
-                queuePriority: queueLowestPriority,
-                count: toEnqueue
-            });
         }
     }
 

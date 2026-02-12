@@ -15,9 +15,6 @@ import { WithdrawnValidatorLib } from "../WithdrawnValidatorLib.sol";
 ///      - totalWithdrawnKeys <= totalDepositedKeys per operator.
 ///      - each operatorId < operatorsCount.
 library CuratedDepositAllocator {
-    uint256 public constant MAX_EFFECTIVE_BALANCE = 2048 ether;
-    uint256 public constant MIN_ACTIVATION_BALANCE = 32 ether;
-
     struct DepositableOperatorsData {
         // Per-operator allocation shares scaled by DepositAllocatorGreedy.S_SCALE (2^96).
         // During collection this temporarily stores raw weights and is normalized in-place
@@ -30,6 +27,9 @@ library CuratedDepositAllocator {
         uint256 weightSum; // Sum of weights across eligible operators (for share calculation).
         uint256 totalCurrent; // Sum of current amounts across eligible operators (units match `currents`).
     }
+
+    uint256 public constant MAX_EFFECTIVE_BALANCE = 2048 ether;
+    uint256 public constant MIN_ACTIVATION_BALANCE = 32 ether;
 
     uint256 internal constant DEPOSIT_STEP = 1;
     // 1 ETH: consensus EFFECTIVE_BALANCE_INCREMENT (and MIN_DEPOSIT_AMOUNT) are 1e9 gwei,
@@ -116,73 +116,6 @@ library CuratedDepositAllocator {
         });
 
         (allocatedOperatorIds, allocations) = _compactAllocations(data.operatorIds, eligibleAllocations, data.count);
-    }
-
-    /// @dev Quantizes a value down to the nearest multiple of TOP_UP_STEP.
-    function quantizeForTopUp(uint256 value) internal pure returns (uint256) {
-        return DepositAllocatorGreedy._quantize(value, TOP_UP_STEP);
-    }
-
-    /// @dev Builds AllocationState and runs the configured allocator in-memory.
-    ///      Expects operatorsData arrays already filtered/truncated to eligible operators.
-    function _computeAllocations(
-        DepositableOperatorsData memory operatorsData,
-        uint256 step,
-        uint256 allocationAmount
-    ) internal pure returns (uint256 allocated, uint256[] memory allocations) {
-        uint256 n = operatorsData.sharesX96.length;
-        // allocationAmount > 0, n > 0, and step > 0 are guaranteed by the callers.
-
-        AllocationState memory state;
-        state.sharesX96 = operatorsData.sharesX96;
-        state.currents = operatorsData.currents;
-        state.capacities = operatorsData.capacities;
-        state.totalCurrent = operatorsData.totalCurrent;
-
-        // weightSum > 0 is guaranteed by the collectors for any non-empty input.
-        for (uint256 i; i < n; ++i) {
-            // Note: no zero-check here. Collectors filter out zero weights and truncate
-            // arrays to eligibleCount, so sharesX96 entries are non-zero for i < n.
-
-            // Convert raw weights to X96 shares in-place (reuses the same array).
-            state.sharesX96[i] = Math.mulDiv(
-                state.sharesX96[i],
-                DepositAllocatorGreedy.S_SCALE,
-                operatorsData.weightSum
-            );
-        }
-
-        (uint256[] memory allocUnits, uint256 remainder) = DepositAllocatorGreedy._allocate(
-            state,
-            allocationAmount,
-            step
-        );
-
-        allocated = allocationAmount - remainder;
-        allocations = allocUnits;
-    }
-
-    function _compactAllocations(
-        uint256[] memory operatorIds,
-        uint256[] memory eligibleAllocations,
-        uint256 count
-    ) internal pure returns (uint256[] memory compactIds, uint256[] memory allocations) {
-        compactIds = new uint256[](count);
-        allocations = new uint256[](count);
-        uint256 compactIndex;
-        for (uint256 i; i < count; ++i) {
-            uint256 allocation = eligibleAllocations[i];
-            if (allocation == 0) continue;
-            compactIds[compactIndex] = operatorIds[i];
-            allocations[compactIndex] = allocation;
-            ++compactIndex;
-        }
-        if (compactIndex != count) {
-            assembly {
-                mstore(compactIds, compactIndex)
-                mstore(allocations, compactIndex)
-            }
-        }
     }
 
     /// @dev Collect eligible operators for deposit allocation.
@@ -325,6 +258,73 @@ library CuratedDepositAllocator {
         unchecked {
             uint256 maxTotal = (no.totalDepositedKeys - no.totalWithdrawnKeys) * MAX_EFFECTIVE_BALANCE;
             if (maxTotal > balanceWei) capacity = maxTotal - balanceWei;
+        }
+    }
+
+    /// @dev Quantizes a value down to the nearest multiple of TOP_UP_STEP.
+    function quantizeForTopUp(uint256 value) internal pure returns (uint256) {
+        return DepositAllocatorGreedy._quantize(value, TOP_UP_STEP);
+    }
+
+    /// @dev Builds AllocationState and runs the configured allocator in-memory.
+    ///      Expects operatorsData arrays already filtered/truncated to eligible operators.
+    function _computeAllocations(
+        DepositableOperatorsData memory operatorsData,
+        uint256 step,
+        uint256 allocationAmount
+    ) internal pure returns (uint256 allocated, uint256[] memory allocations) {
+        uint256 n = operatorsData.sharesX96.length;
+        // allocationAmount > 0, n > 0, and step > 0 are guaranteed by the callers.
+
+        AllocationState memory state;
+        state.sharesX96 = operatorsData.sharesX96;
+        state.currents = operatorsData.currents;
+        state.capacities = operatorsData.capacities;
+        state.totalCurrent = operatorsData.totalCurrent;
+
+        // weightSum > 0 is guaranteed by the collectors for any non-empty input.
+        for (uint256 i; i < n; ++i) {
+            // Note: no zero-check here. Collectors filter out zero weights and truncate
+            // arrays to eligibleCount, so sharesX96 entries are non-zero for i < n.
+
+            // Convert raw weights to X96 shares in-place (reuses the same array).
+            state.sharesX96[i] = Math.mulDiv(
+                state.sharesX96[i],
+                DepositAllocatorGreedy.S_SCALE,
+                operatorsData.weightSum
+            );
+        }
+
+        (uint256[] memory allocUnits, uint256 remainder) = DepositAllocatorGreedy._allocate(
+            state,
+            allocationAmount,
+            step
+        );
+
+        allocated = allocationAmount - remainder;
+        allocations = allocUnits;
+    }
+
+    function _compactAllocations(
+        uint256[] memory operatorIds,
+        uint256[] memory eligibleAllocations,
+        uint256 count
+    ) internal pure returns (uint256[] memory compactIds, uint256[] memory allocations) {
+        compactIds = new uint256[](count);
+        allocations = new uint256[](count);
+        uint256 compactIndex;
+        for (uint256 i; i < count; ++i) {
+            uint256 allocation = eligibleAllocations[i];
+            if (allocation == 0) continue;
+            compactIds[compactIndex] = operatorIds[i];
+            allocations[compactIndex] = allocation;
+            ++compactIndex;
+        }
+        if (compactIndex != count) {
+            assembly {
+                mstore(compactIds, compactIndex)
+                mstore(allocations, compactIndex)
+            }
         }
     }
 

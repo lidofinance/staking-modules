@@ -972,6 +972,7 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         uint256 groupId = r.getNodeOperatorGroupId(nodeOperatorId);
         if (groupId == r.NO_GROUP_ID()) {
             IMetaRegistry.SubNodeOperator[] memory subs = new IMetaRegistry.SubNodeOperator[](1);
+            // forge-lint: disable-next-line(unsafe-typecast)
             subs[0] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: uint64(nodeOperatorId), share: 10000 });
             r.createOrUpdateOperatorGroup(
                 r.NO_GROUP_ID(),

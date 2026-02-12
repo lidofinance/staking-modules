@@ -22,7 +22,7 @@ library OperatorTracker {
         return address(uint160(map().get(nodeOperatorId)));
     }
 
-    function map() private view returns (TransientUintUintMap) {
+    function map() private pure returns (TransientUintUintMap) {
         return TransientUintUintMapLib.load(OPERATORS_CREATED_IN_TX_MAP_TSLOT);
     }
 }
