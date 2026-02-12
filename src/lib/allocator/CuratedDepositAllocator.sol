@@ -36,7 +36,6 @@ library CuratedDepositAllocator {
     // so this is the smallest effective-balance step; EIP‑7251 keeps that increment.
     uint256 internal constant TOP_UP_STEP = 1 ether;
 
-    // TODO: Rename to `allocateInitialDeposits`
     /// @notice Allocate new validator deposits across curated operators.
     /// @dev Input preparation and iteration behavior:
     ///      - Only operators with capacity > 0 and non-zero allocation weight are included.

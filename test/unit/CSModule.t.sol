@@ -14,6 +14,7 @@ import { CSModule } from "src/CSModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { IBaseModule, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 import { IDepositQueueLib } from "src/lib/DepositQueueLib.sol";
+import { SigningKeys } from "src/lib/SigningKeys.sol";
 import { ITopUpQueueLib } from "src/lib/TopUpQueueLib.sol";
 import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
@@ -1001,7 +1002,7 @@ contract CSMTopUpQueue is CSMCommon {
             topUpLimits: UintArr(4)
         });
 
-        vm.expectRevert(ICSModule.InvalidSigningKey.selector);
+        vm.expectRevert(SigningKeys.InvalidSigningKey.selector);
         csm.allocateDeposits({
             maxDepositAmount: 3,
             pubkeys: pubkeys,
@@ -1049,7 +1050,7 @@ contract CSMTopUpQueue is CSMCommon {
         csm.obtainDepositData(1, "");
 
         bytes[] memory pubkeys = BytesArr(new bytes(47));
-        vm.expectRevert(IBaseModule.InvalidInput.selector);
+        vm.expectRevert(SigningKeys.InvalidSigningKey.selector);
         csm.allocateDeposits({
             maxDepositAmount: 1,
             pubkeys: pubkeys,
