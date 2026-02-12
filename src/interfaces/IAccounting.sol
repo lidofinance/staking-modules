@@ -78,11 +78,12 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     ///                  Total shares must be <= 10_000 (100%). Remainder goes to the Node Operator's bond
     /// @param cumulativeFeeShares Cumulative fee stETH shares for the Node Operator. Optional
     /// @param rewardsProof Merkle proof of the rewards. Optional
-    /// @dev  We are not checking for pending fees to distribute if there are no splits currently set;
-    ///       `cumulativeFeeShares` and `rewardsProof` parameters are not required in this case.
-    ///       This allows splitting rewards that were distributed for the operator before the splits are set.
-    ///       The node operator explicitly opts into this behavior.
-    ///       If the splits are currently set, then should be no pending fees to distribute to make changes.
+    /// @dev FeeSplits can be updated either when there are no splits currently or when there are splits now,
+    ///      provided all node operator rewards are distributed and split. It is possible to set splits while
+    ///      there are undistributed node operator rewards and no splits are currently set.
+    ///      This will result in all undistributed node operator rewards being split.
+    ///      If a node operator has never received any node operator rewards, they can set initial splits.
+    ///      However, further change will be possible only after getting and splitting the first rewards.
     function updateFeeSplits(
         uint256 nodeOperatorId,
         FeeSplit[] calldata feeSplits,
