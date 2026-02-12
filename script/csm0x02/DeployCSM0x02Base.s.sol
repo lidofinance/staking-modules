@@ -384,9 +384,7 @@ abstract contract DeployCSM0x02Base is Script {
             csm.grantRole(csm.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(), config.easyTrackEVMScriptExecutor);
 
             if (config.secondAdminAddress != address(0)) {
-                if (config.secondAdminAddress == deployer) {
-                    revert InvalidSecondAdmin();
-                }
+                if (config.secondAdminAddress == deployer) revert InvalidSecondAdmin();
                 _grantSecondAdmins();
             }
 
@@ -484,9 +482,7 @@ abstract contract DeployCSM0x02Base is Script {
     }
 
     function _grantSecondAdmins() internal {
-        if (keccak256(abi.encodePacked(chainName)) == keccak256("mainnet")) {
-            revert CannotBeUsedInMainnet();
-        }
+        if (keccak256(abi.encodePacked(chainName)) == keccak256("mainnet")) revert CannotBeUsedInMainnet();
         csm.grantRole(csm.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         accounting.grantRole(accounting.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         oracle.grantRole(oracle.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);

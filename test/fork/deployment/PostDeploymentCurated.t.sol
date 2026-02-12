@@ -240,9 +240,7 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
                     hasCustomCurve,
                     "unexpected set bond curve role"
                 );
-                if (hasCustomCurve) {
-                    setBondCurveRoleMembers += 1;
-                }
+                if (hasCustomCurve) setBondCurveRoleMembers += 1;
             }
         }
 

@@ -477,9 +477,7 @@ contract DeploymentHelpers is Test {
     }
 
     function parseCommonDeployParams(string memory config) internal view returns (CommonDeployParams memory params) {
-        if (bytes(config).length == 0) {
-            return params;
-        }
+        if (bytes(config).length == 0) return params;
 
         if (vm.keyExistsJson(config, ".CuratedModule")) {
             CuratedDeployParams memory decoded = abi.decode(
@@ -810,9 +808,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         uint256[] memory ids = stakingRouter.getStakingModuleIds();
         for (uint256 i = ids.length - 1; i > 0; i--) {
             IStakingRouter.StakingModule memory moduleInfo = stakingRouter.getStakingModule(ids[i]);
-            if (moduleInfo.stakingModuleAddress == address(module)) {
-                return ids[i];
-            }
+            if (moduleInfo.stakingModuleAddress == address(module)) return ids[i];
         }
         revert ModuleNotFound();
     }
@@ -859,9 +855,7 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
         uint256 nosCount = module.getNodeOperatorsCount();
         for (; noId < nosCount; ++noId) {
             NodeOperator memory no = module.getNodeOperator(noId);
-            if (no.totalDepositedKeys - no.totalWithdrawnKeys >= keysCount) {
-                return noId;
-            }
+            if (no.totalDepositedKeys - no.totalWithdrawnKeys >= keysCount) return noId;
         }
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
         (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
@@ -887,9 +881,7 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
                     } else {
                         sequentialKeys = 0;
                     }
-                    if (sequentialKeys == keysCount) {
-                        return (noId, i - (keysCount - 1));
-                    }
+                    if (sequentialKeys == keysCount) return (noId, i - (keysCount - 1));
                 }
             }
         }
@@ -954,9 +946,7 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
         for (uint256 i = 0; i <= module.QUEUE_LOWEST_PRIORITY(); ++i) {
             (uint128 head, ) = module.depositQueuePointers(i);
             Batch batch = module.depositQueueItem(i, head);
-            if (!batch.isNil()) {
-                return (batch.noId(), batch.keys());
-            }
+            if (!batch.isNil()) return (batch.noId(), batch.keys());
         }
         keysCount = 5;
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);

@@ -18,9 +18,7 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         Env memory env = envVars();
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
-        if (moduleType != ModuleType.Community0x02) {
-            vm.skip(true);
-        }
+        if (moduleType != ModuleType.Community0x02) vm.skip(true);
         deployParams = parseDeployParams0x02(env.DEPLOY_CONFIG);
         adminsCount = block.chainid == 1 ? 1 : 2;
     }
@@ -88,9 +86,7 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
 
 contract GateSealDeploymentTest is DeploymentBaseTest {
     function test_configuration() public view {
-        if (deployParams.gateSealFactory == address(0)) {
-            return;
-        }
+        if (deployParams.gateSealFactory == address(0)) return;
         assertTrue(address(gateSeal) != address(0), "gate seal missing");
         address committee = gateSeal.get_sealing_committee();
         assertEq(committee, deployParams.sealingCommittee, "committee");
@@ -99,9 +95,7 @@ contract GateSealDeploymentTest is DeploymentBaseTest {
     }
 
     function test_sealables() public view {
-        if (deployParams.gateSealFactory == address(0)) {
-            return;
-        }
+        if (deployParams.gateSealFactory == address(0)) return;
         address[] memory sealables = gateSeal.get_sealables();
         assertEq(sealables.length, 5, "sealables length");
         assertEq(sealables[0], address(module), "module mismatch");

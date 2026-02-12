@@ -83,9 +83,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
     function addCuratedModule() external {
         initializeFromDeployment();
-        if (moduleType != ModuleType.Curated) {
-            revert WrongModuleType();
-        }
+        if (moduleType != ModuleType.Curated) revert WrongModuleType();
 
         IStakingRouter stakingRouter = IStakingRouter(locator.stakingRouter());
         IBurner burner = IBurner(locator.burner());
@@ -133,9 +131,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
     function upgrade() external {
         _setUp();
-        if (moduleType != ModuleType.Community) {
-            revert WrongModuleType();
-        }
+        if (moduleType != ModuleType.Community) revert WrongModuleType();
 
         Env memory env = envVars();
         DeploymentConfig memory deploymentConfig;
