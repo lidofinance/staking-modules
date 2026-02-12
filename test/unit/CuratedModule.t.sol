@@ -6,6 +6,7 @@ pragma solidity 0.8.33;
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import { CuratedDepositAllocator } from "src/lib/allocator/CuratedDepositAllocator.sol";
+import { SigningKeys } from "src/lib/SigningKeys.sol";
 import { CuratedModule } from "src/CuratedModule.sol";
 import { IBaseModule, INOAddresses, NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
@@ -785,7 +786,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[0], 2 ether);
     }
 
-    function test_topUpObtainDepositData_capacityCapLeavesRemainder() public assertInvariants {
+    function test_topUpObtainDepositData_capacityAndKeyCapsLeaveRemainder() public assertInvariants {
         uint256 cappedId = createNodeOperator(1);
         uint256 wideId = createNodeOperator(2);
         module.obtainDepositData(3, "");
@@ -806,8 +807,27 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         );
 
         assertEq(allocations[0], 48 ether);
-        assertEq(allocations[1], 2100 ether);
-        assertEq(allocations[0] + allocations[1], 2148 ether);
+        assertEq(allocations[1], 2016 ether);
+        assertEq(allocations[0] + allocations[1], 2064 ether);
+    }
+
+    function test_topUpObtainDepositData_keyCapBoundsSingleKeyAllocation() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        module.obtainDepositData(2, "");
+
+        bytes memory key = module.getSigningKeys(noId, 0, 1);
+        uint256[] memory allocations = cm.allocateDeposits(
+            5000 ether,
+            BytesArr(key),
+            UintArr(0),
+            UintArr(noId),
+            UintArr(5000 ether)
+        );
+
+        assertEq(
+            allocations[0],
+            WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE
+        );
     }
 
     function test_topUpObtainDepositData_globalBaselineHeavilyOmitted() public assertInvariants {
@@ -1340,7 +1360,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         bytes memory wrongKey = module.getSigningKeys(noId, 0, 1);
         wrongKey[0] = bytes1(uint8(wrongKey[0]) ^ 0x01);
 
-        vm.expectRevert(IBaseModule.PubkeyMismatch.selector);
+        vm.expectRevert(SigningKeys.InvalidSigningKey.selector);
         cm.allocateDeposits(1 ether, BytesArr(wrongKey), UintArr(0), UintArr(noId), UintArr(1 ether));
     }
 

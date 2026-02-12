@@ -60,7 +60,7 @@ library TopUpQueueOps {
                 revert ICSModule.InvalidTopUpOrder();
             }
 
-            _verifyModuleKey(item.noId(), item.keyIndex(), pubkeys[i]);
+            SigningKeys.verifySigningKey(item.noId(), item.keyIndex(), pubkeys[i]);
 
             if (maxDepositAmount > 0) {
                 allocations[i] = Math.min(data.topUpLimits[i], maxDepositAmount);
@@ -70,12 +70,5 @@ library TopUpQueueOps {
                 topUpQueue.dequeue();
             } else if (i < keyCount - 1) revert ICSModule.UnexpectedExtraKey();
         }
-    }
-
-    function _verifyModuleKey(uint256 nodeOperatorId, uint256 keyIndex, bytes memory key) private view {
-        if (key.length != SigningKeys.PUBKEY_LENGTH) revert IBaseModule.InvalidInput();
-        bytes memory keyFromStorage = SigningKeys.loadKeys(nodeOperatorId, keyIndex, 1);
-
-        if (keccak256(key) != keccak256(keyFromStorage)) revert ICSModule.InvalidSigningKey();
     }
 }
