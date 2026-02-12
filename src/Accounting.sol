@@ -163,7 +163,7 @@ contract Accounting is
     function setBondCurve(uint256 nodeOperatorId, uint256 curveId) external onlyRole(SET_BOND_CURVE_ROLE) {
         _onlyExistingNodeOperator(nodeOperatorId);
         BondCurve._setBondCurve(nodeOperatorId, curveId);
-        MODULE.onNodeOperatorBondCurveUpdated(nodeOperatorId);
+        MODULE.onNodeOperatorBondCurveChange(nodeOperatorId);
     }
 
     /// @inheritdoc IAccounting

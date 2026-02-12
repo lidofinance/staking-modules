@@ -18,7 +18,5 @@ contract CuratedMock is CSMMock {
         metaRegistry = IMetaRegistry(value);
     }
 
-    function onNodeOperatorWeightChange(uint256, uint256) external {}
-
-    function requestFullOperatorWeightsUpdate() external {}
+    function notifyNodeOperatorWeightChange(uint256, uint256) external {}
 }

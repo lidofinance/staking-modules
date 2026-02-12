@@ -181,8 +181,6 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
         $.bondCurveWeight[curveId] = weight;
         emit BondCurveWeightSet(curveId, weight);
-
-        MODULE.requestFullOperatorWeightsUpdate();
     }
 
     /// @inheritdoc IMetaRegistry
@@ -275,8 +273,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             uint256 noId = group.subNodeOperatorIds[i];
             delete $.groupIndex.groupIdByOperatorId[noId];
             delete $.groupIndex.shareByOperatorId[noId];
-            delete $.effectiveWeightCache.operatorEffectiveWeight[noId];
-            MODULE.onNodeOperatorWeightChange(noId, 0);
+            _setEffectiveWeight(noId, 0);
         }
 
         for (uint256 i; i < group.externalOperators.length; ++i) {
@@ -368,7 +365,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         $.effectiveWeightCache.operatorEffectiveWeight[nodeOperatorId] = newWeight;
         emit NodeOperatorEffectiveWeightChanged(nodeOperatorId, oldWeight, newWeight);
 
-        MODULE.onNodeOperatorWeightChange(nodeOperatorId, newWeight);
+        MODULE.notifyNodeOperatorWeightChange(nodeOperatorId, newWeight);
     }
 
     function _checkExternalOperatorExistsTypeNOR(ExternalOperator memory op) internal {

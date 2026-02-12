@@ -219,7 +219,7 @@ contract MyModule is BaseModule {
         revert NotImplementedInTest();
     }
 
-    function onNodeOperatorBondCurveUpdated(uint256 nodeOperatorId) external {
+    function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external {
         revert NotImplementedInTest();
     }
 

@@ -148,10 +148,6 @@ contract CuratedCommon is ModuleFixtures {
     function _moduleInvariants() internal override {
         assertModuleKeys(module);
         assertModuleUnusedStorageSlots(module);
-
-        uint256 operatorsCount = cm.getNodeOperatorsCount();
-        uint256 operatorsLeft = cm.getNodeOperatorWeightsToUpdateCount();
-        assertLe(operatorsLeft, operatorsCount, "weights update counter");
     }
 }
 
@@ -1407,16 +1403,6 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[0], 0);
         assertEq(allocations[1], 2 ether);
     }
-
-    function test_getDepositsAllocation_RevertWhen_WeightsUpdateInProgress() public assertInvariants {
-        createNodeOperator(1);
-
-        vm.prank(address(metaRegistry));
-        cm.requestFullOperatorWeightsUpdate();
-
-        vm.expectRevert(ICuratedModule.NodeOperatorWeightsUpdateInProgress.selector);
-        cm.getDepositsAllocation(1 ether);
-    }
 }
 
 contract CuratedUpdateOperatorBalances is CuratedCommon {
@@ -1455,106 +1441,6 @@ contract CuratedUpdateOperatorBalances is CuratedCommon {
     }
 }
 
-contract CuratedNodeOperatorWeightsToUpdateCount is CuratedCommon {
-    function test_getNodeOperatorWeightsToUpdateCount() public {
-        createNodeOperator(1);
-        createNodeOperator(1);
-        createNodeOperator(1);
-
-        assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 0);
-
-        vm.prank(address(metaRegistry));
-        cm.requestFullOperatorWeightsUpdate();
-
-        assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 3);
-
-        uint256 operatorsLeft = cm.batchUpdateNodeOperatorWeights(2);
-        assertEq(operatorsLeft, 1);
-        assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 1);
-
-        operatorsLeft = cm.batchUpdateNodeOperatorWeights(5);
-        assertEq(operatorsLeft, 0);
-        assertEq(cm.getNodeOperatorWeightsToUpdateCount(), 0);
-    }
-
-    function test_batchUpdateNodeOperatorWeights_EmitsUpToDateWhen_AllProcessed() public assertInvariants {
-        createNodeOperator(1);
-        createNodeOperator(1);
-
-        vm.prank(address(metaRegistry));
-        cm.requestFullOperatorWeightsUpdate();
-
-        vm.expectEmit(address(cm));
-        emit ICuratedModule.NodeOperatorWeightsUpToDate();
-
-        uint256 operatorsLeft = cm.batchUpdateNodeOperatorWeights(2);
-        assertEq(operatorsLeft, 0);
-    }
-
-    function test_batchUpdateNodeOperatorWeights_NoEmitAndNoNonceIncrementWhen_PartialBatch() public assertInvariants {
-        createNodeOperator(1);
-        createNodeOperator(1);
-        createNodeOperator(1);
-
-        vm.prank(address(metaRegistry));
-        cm.requestFullOperatorWeightsUpdate();
-
-        uint256 nonce = module.getNonce();
-
-        vm.recordLogs();
-        uint256 operatorsLeft = cm.batchUpdateNodeOperatorWeights(2);
-
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        for (uint256 i; i < logs.length; ++i) {
-            assertTrue(
-                logs[i].topics[0] != ICuratedModule.NodeOperatorWeightsUpToDate.selector,
-                "unexpected NodeOperatorWeightsUpToDate event"
-            );
-        }
-
-        assertEq(operatorsLeft, 1);
-        assertEq(module.getNonce(), nonce);
-    }
-
-    function test_batchUpdateNodeOperatorWeights_NoEmitWhen_AlreadyUpToDate() public assertInvariants {
-        createNodeOperator(1);
-
-        uint256 nonce = module.getNonce();
-
-        vm.recordLogs();
-        uint256 operatorsLeft = cm.batchUpdateNodeOperatorWeights(1);
-
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        for (uint256 i; i < logs.length; ++i) {
-            assertTrue(
-                logs[i].topics[0] != ICuratedModule.NodeOperatorWeightsUpToDate.selector,
-                "unexpected NodeOperatorWeightsUpToDate event"
-            );
-        }
-
-        assertEq(operatorsLeft, 0);
-        assertEq(module.getNonce(), nonce);
-    }
-
-    function test_batchUpdateNodeOperatorWeights_RefreshesWeightsInOrderAcrossBatches() public assertInvariants {
-        createNodeOperator(1);
-        createNodeOperator(1);
-        createNodeOperator(1);
-
-        vm.prank(address(metaRegistry));
-        cm.requestFullOperatorWeightsUpdate();
-
-        vm.expectCall(address(metaRegistry), abi.encodeWithSelector(IMetaRegistry.refreshOperatorWeight.selector, 0));
-        vm.expectCall(address(metaRegistry), abi.encodeWithSelector(IMetaRegistry.refreshOperatorWeight.selector, 1));
-        uint256 operatorsLeft = cm.batchUpdateNodeOperatorWeights(2);
-        assertEq(operatorsLeft, 1);
-
-        vm.expectCall(address(metaRegistry), abi.encodeWithSelector(IMetaRegistry.refreshOperatorWeight.selector, 2));
-        operatorsLeft = cm.batchUpdateNodeOperatorWeights(2);
-        assertEq(operatorsLeft, 0);
-    }
-}
-
 contract CuratedGetOperatorsWeights is CuratedCommon {
     function test_getOperatorWeights_ReturnsMetaRegistryValues() public assertInvariants {
         createNodeOperator(1);
@@ -1570,16 +1456,6 @@ contract CuratedGetOperatorsWeights is CuratedCommon {
 
         uint256[] memory weights = cm.getOperatorWeights(operatorIds);
         assertEq(weights, expectedWeights);
-    }
-
-    function test_getOperatorWeights_RevertWhen_WeightsUpdateInProgress() public assertInvariants {
-        createNodeOperator(1);
-
-        vm.prank(address(metaRegistry));
-        cm.requestFullOperatorWeightsUpdate();
-
-        vm.expectRevert(ICuratedModule.NodeOperatorWeightsUpdateInProgress.selector);
-        cm.getOperatorWeights(UintArr(0));
     }
 }
 
@@ -1986,5 +1862,51 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
 
         vm.expectRevert(INOAddresses.ZeroRewardAddress.selector);
         cm.changeNodeOperatorAddresses(noId, manager, address(0));
+    }
+}
+
+contract CuratedHooks is CuratedCommon {
+    function test_notifyNodeOperatorWeightChange_bumpsNonce() public {
+        uint256 noId = cm.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: nextAddress(),
+                rewardAddress: nextAddress(),
+                extendedManagerPermissions: false
+            }),
+            address(0)
+        );
+
+        uint256 oldNonce = cm.getNonce();
+        address metaRegistry = address(cm.META_REGISTRY());
+        vm.prank(metaRegistry);
+        cm.notifyNodeOperatorWeightChange(noId, 154);
+
+        uint256 newNonce = cm.getNonce();
+        assertEq(newNonce, oldNonce + 1);
+    }
+
+    function test_notifyNodeOperatorWeightChange_depositableIsZeroWhenWeightIsZero() public {
+        uint256 noId = cm.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: nextAddress(),
+                rewardAddress: nextAddress(),
+                extendedManagerPermissions: false
+            }),
+            address(0)
+        );
+
+        address metaRegistry = address(cm.META_REGISTRY());
+        vm.prank(metaRegistry);
+        cm.notifyNodeOperatorWeightChange(noId, 0);
+
+        NodeOperator memory no = cm.getNodeOperator(noId);
+        assertEq(no.depositableValidatorsCount, 0);
+    }
+
+    function test_notifyNodeOperatorWeightChange_revertWhen_NotMetaRegistry() public {
+        vm.expectRevert(ICuratedModule.SenderIsNotMetaRegistry.selector);
+        cm.notifyNodeOperatorWeightChange(0, 0);
     }
 }

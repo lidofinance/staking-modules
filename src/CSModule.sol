@@ -329,7 +329,7 @@ contract CSModule is ICSModule, BaseModule {
     }
 
     /// @inheritdoc IBaseModule
-    function onNodeOperatorBondCurveUpdated(uint256 nodeOperatorId) external override(IBaseModule) {
+    function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external override(IBaseModule) {
         _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: true });
     }
 
