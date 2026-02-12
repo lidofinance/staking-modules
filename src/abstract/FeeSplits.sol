@@ -14,16 +14,16 @@ import { IFeeSplits } from "../interfaces/IFeeSplits.sol";
 /// Internal non-view methods should be used in the Module contract with
 /// additional requirements (if any).
 abstract contract FeeSplits is IFeeSplits {
-    /// @custom:storage-location erc7201:CSFeeSplits
+    /// @custom:storage-location erc7201:FeeSplits
     struct FeeSplitsStorage {
         mapping(uint256 nodeOperatorId => FeeSplit[]) feeSplits;
         // NOTE: Contains operator's and splits recipients' shares. May accumulate over time.
         mapping(uint256 nodeOperatorId => uint256 pendingToSplit) pendingSharesToSplit;
     }
 
-    // keccak256(abi.encode(uint256(keccak256("CSFeeSplits")) - 1)) & ~bytes32(uint256(0xff))
+    // keccak256(abi.encode(uint256(keccak256("FeeSplits")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant FEE_SPLITS_STORAGE_LOCATION =
-        0x2d632ecf467f374a9bf907badfef136703ee5ef740442f54791f83dc16d0a200;
+        0xac5584dcb35bfb1b3f4187762b10cb284ff937e63b5eb675e2e8e8876c7ee000;
 
     uint256 internal constant MAX_BP = 10_000;
     uint256 public constant MAX_FEE_SPLITS = 10;
