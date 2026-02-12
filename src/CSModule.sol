@@ -324,7 +324,7 @@ contract CSModule is ICSModule, BaseModule {
     /// @dev The function does nothing in CSM, since the information about the operator balances is not used in the
     ///      module. If it becomes needed in the future, the method should be implemented and the oracle should deliver
     ///      the actual balances.
-    function updateOperatorBalances(uint256[] calldata, uint256[] calldata, uint256) external {
+    function updateOperatorBalances(bytes calldata, bytes calldata) external {
         // NOTE: The function does nothing in CSM, see the docstring.
     }
 
