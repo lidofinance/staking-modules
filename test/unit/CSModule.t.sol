@@ -486,6 +486,36 @@ contract CSMObtainDepositData is ModuleObtainDepositData, CSMCommon {
         assertEq(depositableValidatorsCount, 0);
     }
 
+    function test_obtainDepositData_AcrossDifferentQueues() public assertInvariants {
+        uint256 noId = createNodeOperator(0);
+
+        parametersRegistry.setQueueConfig({ curveId: 0, priority: 0, maxDeposits: 10 });
+        uploadMoreKeys(noId, 20);
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.DepositableSigningKeysCountChanged(noId, 5);
+        module.obtainDepositData(15, "");
+
+        (, uint256 totalDepositedValidators, uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
+        assertEq(totalDepositedValidators, 15);
+        assertEq(depositableValidatorsCount, 5);
+    }
+
+    function test_obtainDepositData_AcrossDifferentQueues_OnlyOneQueueProcessed() public assertInvariants {
+        uint256 noId = createNodeOperator(0);
+
+        parametersRegistry.setQueueConfig({ curveId: 0, priority: 0, maxDeposits: 10 });
+        uploadMoreKeys(noId, 20);
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.DepositableSigningKeysCountChanged(noId, 10);
+        module.obtainDepositData(10, "");
+
+        (, uint256 totalDepositedValidators, uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
+        assertEq(totalDepositedValidators, 10);
+        assertEq(depositableValidatorsCount, 10);
+    }
+
     function test_obtainDepositData_zeroDeposits_enqueuedCount() public assertInvariants {
         uint256 noId = createNodeOperator();
 
@@ -511,6 +541,13 @@ contract CSMObtainDepositData is ModuleObtainDepositData, CSMCommon {
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.enqueuedCount, 0);
+    }
+
+    function test_obtainDepositData_RevertWhen_NotEnoughKeys() public assertInvariants {
+        uint256 noId = createNodeOperator(1);
+
+        vm.expectRevert(IBaseModule.NotEnoughKeys.selector);
+        module.obtainDepositData(2, "");
     }
 
     function testFuzz_obtainDepositData_OneOperator_enqueuedCount(
@@ -1926,6 +1963,25 @@ contract CSMRecoverERC20 is ModuleRecoverERC20, CSMCommon {}
 contract CSMMisc is ModuleMisc, CSMCommon {
     function test_getInitializedVersion() public view override {
         assertEq(module.getInitializedVersion(), 3);
+    }
+
+    function test_onNodeOperatorBondCurveChange_updatesDepositable() public assertInvariants {
+        uint256 noId = createNodeOperator(4);
+
+        uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
+        assertEq(depositableBefore, 4);
+
+        accounting.updateBondCurve(0, BOND_SIZE * 2);
+        csm.onNodeOperatorBondCurveChange(0);
+
+        uint256 depositableAfter = module.getNodeOperator(noId).depositableValidatorsCount;
+        assertEq(depositableAfter, 2);
+    }
+
+    function test_updateOperatorBalances() public assertInvariants {
+        // Just a test to check that nothing is happening and invariants hold.
+        uint256 noId = createNodeOperator(3);
+        csm.updateOperatorBalances(randomBytes(48), randomBytes(48));
     }
 }
 

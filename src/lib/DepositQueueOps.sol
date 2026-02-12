@@ -36,7 +36,7 @@ library DepositQueueOps {
         // NOTE: The highest priority to start iterations with. Priorities are ordered like 0, 1, 2, ...
         uint256 priority = 0;
 
-        while (true) {
+        while (priority <= queueLowestPriority) {
             queue = depositQueues[priority];
 
             (
@@ -73,7 +73,6 @@ library DepositQueueOps {
             unchecked {
                 ++priority;
             }
-            if (priority > queueLowestPriority) break;
         }
     }
 
@@ -140,6 +139,7 @@ library DepositQueueOps {
         visited = 0;
         reachedOutOfQueue = false;
 
+        // TODO: Looks unreachable
         if (maxItems == 0) revert IDepositQueueLib.DepositQueueLookupNoLimit();
 
         Batch prevItem;

@@ -537,6 +537,11 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
         assertEq(summary.depositableValidatorsCount, 3, "depositableValidatorsCount mismatch");
     }
+
+    function test_getNodeOperatorSummary_revertWhen_NodeOperatorDoesNotExist() public {
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
+        NodeOperatorSummary memory summary = getNodeOperatorSummary(0);
+    }
 }
 
 abstract contract ModuleGetNodeOperator is ModuleFixtures {

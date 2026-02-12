@@ -246,6 +246,19 @@ contract CuratedInitialize is CuratedCommon {
         });
     }
 
+    function test_constructor_RevertWhen_ZeroMetaRegistryAddress() public {
+        Stub registry = new Stub();
+        vm.expectRevert(ICuratedModule.ZeroMetaRegistryAddress.selector);
+        new CuratedModule({
+            moduleType: "curated-module",
+            lidoLocator: address(locator),
+            parametersRegistry: address(parametersRegistry),
+            accounting: address(accounting),
+            exitPenalties: address(exitPenalties),
+            metaRegistry: address(0)
+        });
+    }
+
     function test_constructor_RevertWhen_InitOnImpl() public {
         CuratedModule module = new CuratedModule({
             moduleType: "curated-module",
@@ -1673,6 +1686,32 @@ contract CuratedRecoverERC20 is ModuleRecoverERC20, CuratedCommon {}
 contract CuratedMisc is ModuleMisc, CuratedCommon {
     function test_getInitializedVersion() public view override {
         assertEq(module.getInitializedVersion(), 1);
+    }
+
+    function test_onNodeOperatorBondCurveChange_updatesDepositable() public assertInvariants {
+        uint256 noId = createNodeOperator(4);
+
+        uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
+        assertEq(depositableBefore, 4);
+
+        accounting.updateBondCurve(0, BOND_SIZE * 2);
+        cm.onNodeOperatorBondCurveChange(noId);
+
+        uint256 depositableAfter = module.getNodeOperator(noId).depositableValidatorsCount;
+        assertEq(depositableAfter, 2);
+    }
+
+    function test_onNodeOperatorBondCurveChange_ZeroDepositableIfWeightIsZero() public assertInvariants {
+        uint256 noId = createNodeOperator(4);
+
+        uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
+        assertEq(depositableBefore, 4);
+
+        _mockOperatorWeight(noId, 0);
+        cm.onNodeOperatorBondCurveChange(noId);
+
+        uint256 depositableAfter = module.getNodeOperator(noId).depositableValidatorsCount;
+        assertEq(depositableAfter, 0);
     }
 }
 

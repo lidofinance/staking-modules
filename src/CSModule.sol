@@ -106,7 +106,7 @@ contract CSModule is ICSModule, BaseModule {
         // NOTE: The highest priority to start iterations with. Priorities are ordered like 0, 1, 2, ...
         uint256 priority = 0;
 
-        while (true) {
+        while (depositsLeft > 0 && priority <= _queueLowestPriority()) {
             depositQueue = _depositQueueByPriority[priority];
             for (Batch item = depositQueue.peek(); !item.isNil(); item = depositQueue.peek()) {
                 // NOTE: see the `enqueuedCount` note below.
@@ -185,7 +185,6 @@ contract CSModule is ICSModule, BaseModule {
             unchecked {
                 ++priority;
             }
-            if (priority > _queueLowestPriority() || depositsLeft == 0) break;
         }
 
         if (loadedKeysCount != depositsCount) revert NotEnoughKeys();
