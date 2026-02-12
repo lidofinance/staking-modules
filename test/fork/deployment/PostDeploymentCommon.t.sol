@@ -10,7 +10,6 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
-import { CSModule } from "../../../src/CSModule.sol";
 import { Accounting } from "../../../src/Accounting.sol";
 import { HashConsensus } from "../../../src/lib/base-oracle/HashConsensus.sol";
 import { FeeDistributor } from "../../../src/FeeDistributor.sol";

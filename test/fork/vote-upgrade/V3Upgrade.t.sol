@@ -12,7 +12,6 @@ import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
 import { NodeOperator } from "../../../src/interfaces/IBaseModule.sol";
 import { IBondLock } from "../../../src/interfaces/IBondLock.sol";
 import { IBondCurve } from "../../../src/interfaces/IBondCurve.sol";
-import { IParametersRegistry } from "../../../src/interfaces/IParametersRegistry.sol";
 import { ITriggerableWithdrawalsGateway } from "../../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
 

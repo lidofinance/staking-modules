@@ -43,6 +43,7 @@ contract CSMMock is Utilities, Fixtures {
 
     function mock_setNodeOperatorTotalDepositedKeys(uint256 count) external {
         // Storage uses uint32; tests keep values in range.
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockNodeOperator.totalDepositedKeys = uint32(count);
     }
 

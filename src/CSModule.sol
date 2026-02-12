@@ -304,6 +304,22 @@ contract CSModule is ICSModule, BaseModule {
         _incrementModuleNonce();
     }
 
+    /// @inheritdoc IBaseModule
+    function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external override(IBaseModule) {
+        _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: true });
+    }
+
+    /// @inheritdoc ICSModule
+    function cleanDepositQueue(uint256 maxItems) external returns (uint256 removed, uint256 lastRemovedAtDepth) {
+        return
+            DepositQueueOps.cleanDepositQueue({
+                depositQueues: _depositQueueByPriority,
+                nodeOperators: _nodeOperators,
+                queueLowestPriority: _queueLowestPriority(),
+                maxItems: maxItems
+            });
+    }
+
     /// @inheritdoc ICSModule
     function getTopUpQueue() external view returns (bool enabled, uint256 limit, uint256 length, uint256 head) {
         TopUpQueueLib.Queue storage q = _topUpQueue();
@@ -324,13 +340,9 @@ contract CSModule is ICSModule, BaseModule {
     /// @dev The function does nothing in CSM, since the information about the operator balances is not used in the
     ///      module. If it becomes needed in the future, the method should be implemented and the oracle should deliver
     ///      the actual balances.
-    function updateOperatorBalances(bytes calldata, bytes calldata) external {
+    // solhint-disable-next-line no-empty-blocks
+    function updateOperatorBalances(bytes calldata, bytes calldata) external view {
         // NOTE: The function does nothing in CSM, see the docstring.
-    }
-
-    /// @inheritdoc IBaseModule
-    function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external override(IBaseModule) {
-        _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: true });
     }
 
     /// @inheritdoc IStakingModule
@@ -357,17 +369,6 @@ contract CSModule is ICSModule, BaseModule {
     /// @inheritdoc ICSModule
     function depositQueueItem(uint256 queuePriority, uint128 index) external view returns (Batch) {
         return _depositQueueByPriority[queuePriority].at(index);
-    }
-
-    /// @inheritdoc ICSModule
-    function cleanDepositQueue(uint256 maxItems) external returns (uint256 removed, uint256 lastRemovedAtDepth) {
-        return
-            DepositQueueOps.cleanDepositQueue({
-                depositQueues: _depositQueueByPriority,
-                nodeOperators: _nodeOperators,
-                queueLowestPriority: _queueLowestPriority(),
-                maxItems: maxItems
-            });
     }
 
     /// @inheritdoc ICSModule

@@ -83,10 +83,14 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
             loadedKeysCount += allocation;
 
+            // `allocation` is capped by depositableValidatorsCount which is uint32.
+            // forge-lint: disable-next-line(unsafe-typecast)
             uint32 totalDepositedKeys = no.totalDepositedKeys + uint32(allocation);
             no.totalDepositedKeys = totalDepositedKeys;
             emit DepositedSigningKeysCountChanged(operatorId, totalDepositedKeys);
 
+            // `allocation` is capped by depositableValidatorsCount which is uint32.
+            // forge-lint: disable-next-line(unsafe-typecast)
             uint32 depositableValidatorsCount = no.depositableValidatorsCount - uint32(allocation);
             no.depositableValidatorsCount = depositableValidatorsCount;
             emit DepositableSigningKeysCountChanged(operatorId, depositableValidatorsCount);
@@ -98,7 +102,11 @@ contract CuratedModule is ICuratedModule, BaseModule {
             );
         }
         unchecked {
+            // `allocated` is capped by _depositableValidatorsCount which is uint64.
+            // forge-lint: disable-next-line(unsafe-typecast)
             _depositableValidatorsCount -= uint64(allocated);
+            // `allocated` is capped by _depositableValidatorsCount which is uint64.
+            // forge-lint: disable-next-line(unsafe-typecast)
             _totalDepositedValidators += uint64(allocated);
         }
 
@@ -155,13 +163,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     /// @inheritdoc ICuratedModule
-    function getOperatorWeights(
-        uint256[] calldata operatorIds
-    ) external view returns (uint256[] memory operatorWeights) {
-        return _metaRegistry().getOperatorWeights(operatorIds);
-    }
-
-    /// @inheritdoc ICuratedModule
     function changeNodeOperatorAddresses(
         uint256 nodeOperatorId,
         address newManagerAddress,
@@ -192,6 +193,13 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
         // NOTE: We always increment the nonce since weight change might affect the expected deposit allocation.
         _incrementModuleNonce();
+    }
+
+    /// @inheritdoc ICuratedModule
+    function getOperatorWeights(
+        uint256[] calldata operatorIds
+    ) external view returns (uint256[] memory operatorWeights) {
+        return _metaRegistry().getOperatorWeights(operatorIds);
     }
 
     /// @inheritdoc ICuratedModule
@@ -237,19 +245,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
             newCount: newCount,
             incrementNonceIfUpdated: incrementNonceIfUpdated
         });
-    }
-
-    function _validateTopUpPublicKeys(
-        bytes[] calldata pubkeys,
-        uint256[] calldata keyIndices,
-        uint256[] calldata operatorIds
-    ) internal view {
-        for (uint256 i; i < pubkeys.length; ++i) {
-            uint256 operatorId = operatorIds[i];
-            uint256 keyIndex = keyIndices[i];
-            if (keyIndex >= _nodeOperators[operatorId].totalDepositedKeys) revert SigningKeysInvalidOffset();
-            SigningKeys.verifySigningKey(operatorId, keyIndex, pubkeys[i]);
-        }
     }
 
     function _allocateTopUps(
@@ -303,6 +298,19 @@ contract CuratedModule is ICuratedModule, BaseModule {
             assembly {
                 mstore(uniqueOperatorIds, count)
             }
+        }
+    }
+
+    function _validateTopUpPublicKeys(
+        bytes[] calldata pubkeys,
+        uint256[] calldata keyIndices,
+        uint256[] calldata operatorIds
+    ) internal view {
+        for (uint256 i; i < pubkeys.length; ++i) {
+            uint256 operatorId = operatorIds[i];
+            uint256 keyIndex = keyIndices[i];
+            if (keyIndex >= _nodeOperators[operatorId].totalDepositedKeys) revert SigningKeysInvalidOffset();
+            SigningKeys.verifySigningKey(operatorId, keyIndex, pubkeys[i]);
         }
     }
 

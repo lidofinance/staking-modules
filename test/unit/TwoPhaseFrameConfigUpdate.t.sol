@@ -3,8 +3,8 @@
 
 pragma solidity 0.8.33;
 
-import "forge-std/Test.sol";
-import "src/utils/TwoPhaseFrameConfigUpdate.sol";
+import { Test } from "forge-std/Test.sol";
+import { TwoPhaseFrameConfigUpdate } from "src/utils/TwoPhaseFrameConfigUpdate.sol";
 import { ReportProcessorMock } from "../helpers/mocks/ReportProcessorMock.sol";
 import { MockConsensusContract } from "../helpers/mocks/ConsensusContractMock.sol";
 
