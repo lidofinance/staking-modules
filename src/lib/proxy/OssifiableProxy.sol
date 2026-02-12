@@ -27,11 +27,7 @@ contract OssifiableProxy is ERC1967Proxy {
     /// @param admin_ Address of the admin of the proxy
     /// @param data_ Data used in a delegate call to implementation. The delegate call will be
     ///     skipped if the data is empty bytes
-    constructor(
-        address implementation_,
-        address admin_,
-        bytes memory data_
-    ) ERC1967Proxy(implementation_, data_) {
+    constructor(address implementation_, address admin_, bytes memory data_) ERC1967Proxy(implementation_, data_) {
         ERC1967Utils.changeAdmin(admin_);
     }
 
@@ -73,10 +69,7 @@ contract OssifiableProxy is ERC1967Proxy {
     /// @param newImplementation_ Address of the new implementation
     /// @param setupCalldata_ Data for the setup call. The call is skipped if setupCalldata_ is empty
     // solhint-disable-next-line func-name-mixedcase
-    function proxy__upgradeToAndCall(
-        address newImplementation_,
-        bytes calldata setupCalldata_
-    ) external onlyAdmin {
+    function proxy__upgradeToAndCall(address newImplementation_, bytes calldata setupCalldata_) external onlyAdmin {
         ERC1967Utils.upgradeToAndCall(newImplementation_, setupCalldata_);
     }
 
@@ -100,11 +93,7 @@ contract OssifiableProxy is ERC1967Proxy {
 
     function _onlyAdmin() internal view {
         address admin = ERC1967Utils.getAdmin();
-        if (admin == address(0)) {
-            revert ProxyIsOssified();
-        }
-        if (admin != msg.sender) {
-            revert NotAdmin();
-        }
+        if (admin == address(0)) revert ProxyIsOssified();
+        if (admin != msg.sender) revert NotAdmin();
     }
 }

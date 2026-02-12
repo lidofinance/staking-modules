@@ -13,11 +13,7 @@ interface IBondLock {
         uint128 until;
     }
 
-    event BondLockChanged(
-        uint256 indexed nodeOperatorId,
-        uint256 newAmount,
-        uint256 until
-    );
+    event BondLockChanged(uint256 indexed nodeOperatorId, uint256 newAmount, uint256 until);
     event BondLockRemoved(uint256 indexed nodeOperatorId);
 
     event BondLockPeriodChanged(uint256 period);
@@ -36,14 +32,10 @@ interface IBondLock {
     /// @notice Get information about the locked bond for the given Node Operator
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Locked bond info
-    function getLockedBondInfo(
-        uint256 nodeOperatorId
-    ) external view returns (BondLockData memory);
+    function getLockedBondInfo(uint256 nodeOperatorId) external view returns (BondLockData memory);
 
     /// @notice Get amount of the locked bond in ETH (stETH) by the given Node Operator
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Amount of the actual locked bond
-    function getActualLockedBond(
-        uint256 nodeOperatorId
-    ) external view returns (uint256);
+    function getActualLockedBond(uint256 nodeOperatorId) external view returns (uint256);
 }

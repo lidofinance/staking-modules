@@ -32,19 +32,10 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
 
         if (!_isEmpty(env.UTILS_DEPLOY_CONFIG)) {
             string memory utilsConfig = vm.readFile(env.UTILS_DEPLOY_CONFIG);
-            address deployed = vm.parseJsonAddress(
-                utilsConfig,
-                ".TwoPhaseFrameConfigUpdate"
-            );
-            assertTrue(
-                deployed.code.length > 0,
-                "TwoPhaseFrameConfigUpdate not deployed on fork"
-            );
+            address deployed = vm.parseJsonAddress(utilsConfig, ".TwoPhaseFrameConfigUpdate");
+            assertTrue(deployed.code.length > 0, "TwoPhaseFrameConfigUpdate not deployed on fork");
 
-            bytes memory encodedParams = vm.parseJsonBytes(
-                utilsConfig,
-                ".TwoPhaseFrameConfigUpdateParams"
-            );
+            bytes memory encodedParams = vm.parseJsonBytes(utilsConfig, ".TwoPhaseFrameConfigUpdateParams");
             (
                 reportsToProcessBeforeOffsetPhase,
                 reportsToProcessBeforeRestorePhase,
@@ -53,11 +44,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
             ) = abi.decode(encodedParams, (uint256, uint256, uint256, uint256));
 
             updater = TwoPhaseFrameConfigUpdate(deployed);
-            assertEq(
-                address(updater.ORACLE()),
-                address(oracle),
-                "Utility oracle mismatch"
-            );
+            assertEq(address(updater.ORACLE()), address(oracle), "Utility oracle mismatch");
         } else {
             reportsToProcessBeforeOffsetPhase = 1;
             reportsToProcessBeforeRestorePhase = 1;
@@ -66,18 +53,14 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
 
             _ensureOracleIsAtCurrentFrame();
 
-            TwoPhaseFrameConfigUpdate.PhasesConfig
-                memory phasesConfig = TwoPhaseFrameConfigUpdate.PhasesConfig({
-                    reportsToProcessBeforeOffsetPhase: reportsToProcessBeforeOffsetPhase,
-                    reportsToProcessBeforeRestorePhase: reportsToProcessBeforeRestorePhase,
-                    offsetPhaseEpochsPerFrame: offsetPhaseEpochsPerFrame,
-                    restorePhaseFastLaneLengthSlots: restorePhaseFastLaneLengthSlots
-                });
+            TwoPhaseFrameConfigUpdate.PhasesConfig memory phasesConfig = TwoPhaseFrameConfigUpdate.PhasesConfig({
+                reportsToProcessBeforeOffsetPhase: reportsToProcessBeforeOffsetPhase,
+                reportsToProcessBeforeRestorePhase: reportsToProcessBeforeRestorePhase,
+                offsetPhaseEpochsPerFrame: offsetPhaseEpochsPerFrame,
+                restorePhaseFastLaneLengthSlots: restorePhaseFastLaneLengthSlots
+            });
 
-            updater = new TwoPhaseFrameConfigUpdate(
-                address(oracle),
-                phasesConfig
-            );
+            updater = new TwoPhaseFrameConfigUpdate(address(oracle), phasesConfig);
         }
 
         bytes32 manageFrameRole = hashConsensus.MANAGE_FRAME_CONFIG_ROLE();
@@ -111,11 +94,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         (address[] memory members, ) = hashConsensus.getFastLaneMembers();
         for (uint256 i; i < members.length; i++) {
             vm.prank(members[i]);
-            hashConsensus.submitReport(
-                currentRefSlot,
-                reportHash,
-                consensusVersion
-            );
+            hashConsensus.submitReport(currentRefSlot, reportHash, consensusVersion);
         }
 
         bytes32 submitRole = oracle.SUBMIT_DATA_ROLE();
@@ -132,10 +111,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         vm.skip(_isEmpty(env.UTILS_DEPLOY_CONFIG));
 
         string memory utilsConfig = vm.readFile(env.UTILS_DEPLOY_CONFIG);
-        bytes memory encodedParams = vm.parseJsonBytes(
-            utilsConfig,
-            ".TwoPhaseFrameConfigUpdateParams"
-        );
+        bytes memory encodedParams = vm.parseJsonBytes(utilsConfig, ".TwoPhaseFrameConfigUpdateParams");
         (
             uint256 reportsToProcessBeforeOffsetPhaseFromConfig,
             uint256 reportsToProcessBeforeRestorePhaseFromConfig,
@@ -154,63 +130,44 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
 
             ) = updater.offsetPhase();
 
-            (
-                uint256 restoreExpectedProcessingRefSlot,
-                ,
-                ,
-                uint256 restoreFastLaneLengthSlotsActual,
-
-            ) = updater.restorePhase();
+            (uint256 restoreExpectedProcessingRefSlot, , , uint256 restoreFastLaneLengthSlotsActual, ) = updater
+                .restorePhase();
 
             assertEq(
                 offsetPhaseEpochsPerFrameActual,
                 offsetPhaseEpochsPerFrameFromConfig,
                 "Offset phase epochsPerFrame mismatch"
             );
-            assertEq(
-                offsetFastLaneLengthSlotsActual,
-                0,
-                "Offset phase fast lane should be disabled"
-            );
+            assertEq(offsetFastLaneLengthSlotsActual, 0, "Offset phase fast lane should be disabled");
             assertEq(
                 restoreFastLaneLengthSlotsActual,
                 restorePhaseFastLaneLengthSlotsFromConfig,
                 "Restore phase fast lane length mismatch"
             );
             assertEq(
-                restoreExpectedProcessingRefSlot -
-                    offsetExpectedProcessingRefSlot,
-                reportsToProcessBeforeRestorePhaseFromConfig *
-                    offsetPhaseEpochsPerFrameFromConfig *
-                    slotsPerEpoch,
+                restoreExpectedProcessingRefSlot - offsetExpectedProcessingRefSlot,
+                reportsToProcessBeforeRestorePhaseFromConfig * offsetPhaseEpochsPerFrameFromConfig * slotsPerEpoch,
                 "Restore phase expected ref slot mismatch"
             );
         }
 
         // Check reportsToProcessBeforeOffsetPhase by deployment time
         {
-            uint256 deployBlockNumber = _utilsDeployBlockNumber(
-                env.UTILS_DEPLOY_CONFIG
-            );
+            uint256 deployBlockNumber = _utilsDeployBlockNumber(env.UTILS_DEPLOY_CONFIG);
             vm.createSelectFork(env.RPC_URL, deployBlockNumber);
 
-            uint256 lastProcessingRefSlotAtDeployTime = oracle
-                .getLastProcessingRefSlot();
-            (uint256 currentRefSlotAtDeployTime, ) = hashConsensus
-                .getCurrentFrame();
+            uint256 lastProcessingRefSlotAtDeployTime = oracle.getLastProcessingRefSlot();
+            (uint256 currentRefSlotAtDeployTime, ) = hashConsensus.getCurrentFrame();
             assertEq(
                 currentRefSlotAtDeployTime,
                 lastProcessingRefSlotAtDeployTime,
                 "Sanity: report main phase not completed at deploy time"
             );
 
-            (, uint256 currentEpochsPerFrameAtDeployTime, ) = hashConsensus
-                .getFrameConfig();
-            (uint256 slotsPerEpochAtDeployTime, , ) = hashConsensus
-                .getChainConfig();
+            (, uint256 currentEpochsPerFrameAtDeployTime, ) = hashConsensus.getFrameConfig();
+            (uint256 slotsPerEpochAtDeployTime, , ) = hashConsensus.getChainConfig();
 
-            (uint256 offsetExpectedProcessingRefSlot, , , , ) = updater
-                .offsetPhase();
+            (uint256 offsetExpectedProcessingRefSlot, , , , ) = updater.offsetPhase();
             assertEq(
                 offsetExpectedProcessingRefSlot,
                 lastProcessingRefSlotAtDeployTime +
@@ -222,26 +179,16 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         }
     }
 
-    function _utilsDeployBlockNumber(
-        string memory utilsDeployConfigPath
-    ) internal returns (uint256 deployBlockNumber) {
-        string memory transactionsPath = string.concat(
-            _dirOf(utilsDeployConfigPath),
-            "transactions.json"
-        );
+    function _utilsDeployBlockNumber(string memory utilsDeployConfigPath) internal returns (uint256 deployBlockNumber) {
+        string memory transactionsPath = string.concat(_dirOf(utilsDeployConfigPath), "transactions.json");
         vm.skip(!vm.exists(transactionsPath));
 
         string memory transactionsJson = vm.readFile(transactionsPath);
-        string memory deployBlockNumberHex = vm.parseJsonString(
-            transactionsJson,
-            ".receipts[0].blockNumber"
-        );
+        string memory deployBlockNumberHex = vm.parseJsonString(transactionsJson, ".receipts[0].blockNumber");
         deployBlockNumber = vm.parseUint(deployBlockNumberHex);
     }
 
-    function _dirOf(
-        string memory path
-    ) internal pure returns (string memory dir) {
+    function _dirOf(string memory path) internal pure returns (string memory dir) {
         bytes memory b = bytes(path);
         if (b.length == 0) return "";
 
@@ -276,20 +223,10 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
                 bool executed
             ) = updater.offsetPhase();
             assertFalse(executed, "Offset phase should not be executed");
-            assertEq(
-                epochsPerFrame,
-                offsetPhaseEpochsPerFrame,
-                "Offset phase epochs per frame mismatch"
-            );
-            assertEq(
-                fastLaneSlots,
-                0,
-                "Offset phase fast lane should be disabled"
-            );
+            assertEq(epochsPerFrame, offsetPhaseEpochsPerFrame, "Offset phase epochs per frame mismatch");
+            assertEq(fastLaneSlots, 0, "Offset phase fast lane should be disabled");
 
-            uint256 minEpochsPerFrame = epochsPerFrame < currentEpochsPerFrame
-                ? epochsPerFrame
-                : currentEpochsPerFrame;
+            uint256 minEpochsPerFrame = epochsPerFrame < currentEpochsPerFrame ? epochsPerFrame : currentEpochsPerFrame;
             assertEq(
                 expirationSlot,
                 expectedRefSlot + (minEpochsPerFrame * slotsPerEpoch),
@@ -309,19 +246,10 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
                 bool executed
             ) = updater.restorePhase();
             assertFalse(executed, "Restore phase should not be executed");
-            assertEq(
-                epochsPerFrame,
-                currentEpochsPerFrame,
-                "Restore phase should keep current frame length"
-            );
-            assertEq(
-                fastLaneSlots,
-                restorePhaseFastLaneLengthSlots,
-                "Restore phase fast lane length mismatch"
-            );
+            assertEq(epochsPerFrame, currentEpochsPerFrame, "Restore phase should keep current frame length");
+            assertEq(fastLaneSlots, restorePhaseFastLaneLengthSlots, "Restore phase fast lane length mismatch");
 
-            uint256 minEpochsPerFrame = offsetEpochsPerFrameFromState <
-                epochsPerFrame
+            uint256 minEpochsPerFrame = offsetEpochsPerFrameFromState < epochsPerFrame
                 ? offsetEpochsPerFrameFromState
                 : epochsPerFrame;
             assertEq(
@@ -335,9 +263,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
 
         {
             uint256 expectedRestoreExpectedProcessingRefSlot = offsetExpectedProcessingRefSlot +
-                    (reportsToProcessBeforeRestorePhase *
-                        offsetEpochsPerFrameFromState *
-                        slotsPerEpoch);
+                (reportsToProcessBeforeRestorePhase * offsetEpochsPerFrameFromState * slotsPerEpoch);
             assertEq(
                 restoreExpectedProcessingRefSlot,
                 expectedRestoreExpectedProcessingRefSlot,
@@ -353,20 +279,12 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
 
         // Warp time to align with offset phase scenario (one frame after deployment)
         {
-            uint256 warpTime = genesisTime +
-                (offsetExpectedProcessingRefSlot + 47) *
-                secondsPerSlot; // +47 = random offset within frame
+            uint256 warpTime = genesisTime + (offsetExpectedProcessingRefSlot + 47) * secondsPerSlot; // +47 = random offset within frame
             vm.warp(warpTime);
         }
 
-        assertTrue(
-            updater.isReadyForOffsetPhase(),
-            "Should be ready for offset phase"
-        );
-        assertFalse(
-            updater.isReadyForRestorePhase(),
-            "Should not be ready for restore phase yet"
-        );
+        assertTrue(updater.isReadyForOffsetPhase(), "Should be ready for offset phase");
+        assertFalse(updater.isReadyForRestorePhase(), "Should not be ready for restore phase yet");
 
         updater.executeOffsetPhase();
 
@@ -387,11 +305,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
                 offsetEpochsPerFrameFromState,
                 "Offset phase should set configured frame length"
             );
-            assertEq(
-                offsetPhaseFastLaneSlotsActual,
-                0,
-                "Fast lane slots should be 0 on offset phase"
-            );
+            assertEq(offsetPhaseFastLaneSlotsActual, 0, "Fast lane slots should be 0 on offset phase");
         }
 
         vm.mockCall(
@@ -403,15 +317,12 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         // Warp time to align with one frame processing after offset execution
         {
             uint256 calculatedOffsetFirstFrameRefSlot = offsetExpectedProcessingRefSlot +
-                    (offsetEpochsPerFrameFromState * slotsPerEpoch);
+                (offsetEpochsPerFrameFromState * slotsPerEpoch);
 
-            uint256 warpTime = genesisTime +
-                (calculatedOffsetFirstFrameRefSlot + 34) *
-                secondsPerSlot; // +34 = random offset within frame
+            uint256 warpTime = genesisTime + (calculatedOffsetFirstFrameRefSlot + 34) * secondsPerSlot; // +34 = random offset within frame
             vm.warp(warpTime);
 
-            (uint256 offsetFirstFrameRefSlot, ) = hashConsensus
-                .getCurrentFrame();
+            (uint256 offsetFirstFrameRefSlot, ) = hashConsensus.getCurrentFrame();
             assertEq(
                 offsetFirstFrameRefSlot,
                 calculatedOffsetFirstFrameRefSlot,
@@ -419,11 +330,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
             );
         }
 
-        vm.warp(
-            genesisTime +
-                (restoreExpectedProcessingRefSlot + 34) *
-                secondsPerSlot
-        );
+        vm.warp(genesisTime + (restoreExpectedProcessingRefSlot + 34) * secondsPerSlot);
         (uint256 restoreFrameRefSlot, ) = hashConsensus.getCurrentFrame();
         assertEq(
             restoreFrameRefSlot,
@@ -431,10 +338,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
             "Restore phase frame should progress correctly"
         );
 
-        assertTrue(
-            updater.isReadyForRestorePhase(),
-            "Should be ready for restore phase"
-        );
+        assertTrue(updater.isReadyForRestorePhase(), "Should be ready for restore phase");
 
         updater.executeRestorePhase();
 
@@ -466,14 +370,8 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
             (, , , , bool offsetPhaseExecutedFlag) = updater.offsetPhase();
             (, , , , bool restorePhaseExecutedFlag) = updater.restorePhase();
 
-            assertTrue(
-                offsetPhaseExecutedFlag,
-                "Offset phase should be executed"
-            );
-            assertTrue(
-                restorePhaseExecutedFlag,
-                "Restore phase should be executed"
-            );
+            assertTrue(offsetPhaseExecutedFlag, "Offset phase should be executed");
+            assertTrue(restorePhaseExecutedFlag, "Restore phase should be executed");
         }
 
         bytes32 manageFrameRole = hashConsensus.MANAGE_FRAME_CONFIG_ROLE();
@@ -506,8 +404,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         uint256 genesisTime = updater.GENESIS_TIME();
         uint256 secondsPerSlot = updater.SECONDS_PER_SLOT();
 
-        (uint256 offsetExpectedProcessingRefSlot, , , , ) = updater
-            .offsetPhase();
+        (uint256 offsetExpectedProcessingRefSlot, , , , ) = updater.offsetPhase();
 
         // Mock oracle ref slot to allow offset phase execution
         vm.mockCall(
@@ -517,18 +414,14 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         );
 
         // Warp into the offset phase frame window
-        vm.warp(
-            genesisTime + (offsetExpectedProcessingRefSlot + 1) * secondsPerSlot
-        );
+        vm.warp(genesisTime + (offsetExpectedProcessingRefSlot + 1) * secondsPerSlot);
 
         updater.executeOffsetPhase();
 
         (, uint256 restorePhaseExpirationSlot, , , ) = updater.restorePhase();
 
         // Warp past restore phase expiration without executing it
-        vm.warp(
-            genesisTime + (restorePhaseExpirationSlot + 1) * secondsPerSlot
-        );
+        vm.warp(genesisTime + (restorePhaseExpirationSlot + 1) * secondsPerSlot);
 
         updater.renounceRoleWhenExpired();
 

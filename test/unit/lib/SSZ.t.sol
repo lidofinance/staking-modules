@@ -15,12 +15,7 @@ import { Utilities } from "test/helpers/Utilities.sol";
 // Supposed to be used with `expectRevert` cheatcode and to pass
 // calldata arguments.
 contract Library {
-    function verifyProof(
-        bytes32[] calldata proof,
-        bytes32 root,
-        bytes32 leaf,
-        GIndex gI
-    ) external view {
+    function verifyProof(bytes32[] calldata proof, bytes32 root, bytes32 leaf, GIndex gI) external view {
         SSZ.verifyProof(proof, root, leaf, gI);
     }
 }
@@ -34,9 +29,7 @@ contract SSZTest is Utilities, Test {
 
     function test_toLittleEndianUint() public pure {
         uint256 v = 0x1234567890ABCDEF;
-        bytes32 expected = bytes32(
-            bytes.concat(hex"EFCDAB9078563412", bytes24(0))
-        );
+        bytes32 expected = bytes32(bytes.concat(hex"EFCDAB9078563412", bytes24(0)));
         bytes32 actual = SSZ.toLittleEndian(v);
         assertEq(actual, expected);
     }
@@ -98,19 +91,12 @@ contract SSZTest is Utilities, Test {
         assertEq(actual, expected);
     }
 
-    function testFuzz_withdrawalRoot_memory(
-        Withdrawal memory w
-    ) public view brutalizeMemory {
+    function testFuzz_withdrawalRoot_memory(Withdrawal memory w) public view brutalizeMemory {
         SSZ.hashTreeRoot(w);
     }
 
     function test_withdrawalRoot_AllZeroes() public pure {
-        Withdrawal memory w = Withdrawal({
-            index: 0,
-            validatorIndex: 0,
-            withdrawalAddress: address(0),
-            amount: 0
-        });
+        Withdrawal memory w = Withdrawal({ index: 0, validatorIndex: 0, withdrawalAddress: address(0), amount: 0 });
         bytes32 expected = 0xdb56114e00fdd4c1f85c892bf35ac9a89289aaecb1ebd0a96cde606a748b5d71;
         bytes32 actual = SSZ.hashTreeRoot(w);
         assertEq(actual, expected);
@@ -213,9 +199,7 @@ contract SSZTest is Utilities, Test {
         assertEq(actual, expected);
     }
 
-    function testFuzz_validatorRoot_memory(
-        Validator memory v
-    ) public view brutalizeMemory {
+    function testFuzz_validatorRoot_memory(Validator memory v) public view brutalizeMemory {
         SSZ.hashTreeRoot(v);
     }
 
@@ -262,9 +246,7 @@ contract SSZTest is Utilities, Test {
         assertEq(actual, expected);
     }
 
-    function testFuzz_BeaconBlockHeaderRoot_memory(
-        BeaconBlockHeader memory h
-    ) public view brutalizeMemory {
+    function testFuzz_BeaconBlockHeaderRoot_memory(BeaconBlockHeader memory h) public view brutalizeMemory {
         SSZ.hashTreeRoot(h);
     }
 
@@ -276,10 +258,7 @@ contract SSZTest is Utilities, Test {
         // consolidation.targetIndex = 68209;
         // consolidation.hashTreeRoot();
 
-        PendingConsolidation memory c = PendingConsolidation({
-            sourceIndex: 87270,
-            targetIndex: 68209
-        });
+        PendingConsolidation memory c = PendingConsolidation({ sourceIndex: 87270, targetIndex: 68209 });
 
         bytes32 expected = 0xca8072e50620350824fb4c5b3788b1efefd3b56720dd2bd274d47515e419088d;
         bytes32 actual = SSZ.hashTreeRoot(c);
@@ -287,10 +266,7 @@ contract SSZTest is Utilities, Test {
     }
 
     function test_PendingConsolidationRoot_AllZeroes() public pure {
-        PendingConsolidation memory c = PendingConsolidation({
-            sourceIndex: 0,
-            targetIndex: 0
-        });
+        PendingConsolidation memory c = PendingConsolidation({ sourceIndex: 0, targetIndex: 0 });
 
         bytes32 expected = 0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b;
         bytes32 actual = SSZ.hashTreeRoot(c);
@@ -312,9 +288,7 @@ contract SSZTest is Utilities, Test {
         assertEq(actual, expected);
     }
 
-    function testFuzz_PendingConsolidation_memory(
-        PendingConsolidation memory c
-    ) public view brutalizeMemory {
+    function testFuzz_PendingConsolidation_memory(PendingConsolidation memory c) public view brutalizeMemory {
         SSZ.hashTreeRoot(c);
     }
 
@@ -435,10 +409,7 @@ contract SSZTest is Utilities, Test {
         );
     }
 
-    function test_verifyProof_RevertWhen_BranchHasExtraItem()
-        public
-        brutalizeMemory
-    {
+    function test_verifyProof_RevertWhen_BranchHasExtraItem() public brutalizeMemory {
         bytes32[] memory proof = new bytes32[](2);
 
         // prettier-ignore
@@ -457,10 +428,7 @@ contract SSZTest is Utilities, Test {
         );
     }
 
-    function test_verifyProof_RevertWhen_BranchHasMissingItem()
-        public
-        brutalizeMemory
-    {
+    function test_verifyProof_RevertWhen_BranchHasMissingItem() public brutalizeMemory {
         bytes32[] memory proof = new bytes32[](2);
 
         // prettier-ignore

@@ -37,11 +37,7 @@ library DepositAllocatorGreedy {
         uint256 step
     ) internal pure returns (uint256[] memory allocations, uint256 remainder) {
         uint256 n = state.sharesX96.length;
-        uint256[] memory imbalances = _computeImbalances(
-            state,
-            allocationAmount,
-            step
-        );
+        uint256[] memory imbalances = _computeImbalances(state, allocationAmount, step);
         allocations = new uint256[](n);
 
         uint256[] memory idx = _sortedIndicesByImbalanceDesc(imbalances);
@@ -49,10 +45,7 @@ library DepositAllocatorGreedy {
         uint256 remaining = allocationAmount;
         for (uint256 i; i < n && remaining > 0; ++i) {
             uint256 opIdx = idx[i];
-            uint256 possible = Math.min(
-                imbalances[opIdx],
-                _quantize(state.capacities[opIdx], step)
-            );
+            uint256 possible = Math.min(imbalances[opIdx], _quantize(state.capacities[opIdx], step));
             if (possible == 0) continue;
 
             uint256 toGive = Math.min(possible, _quantize(remaining, step));
@@ -69,19 +62,14 @@ library DepositAllocatorGreedy {
         remainder = remaining;
     }
 
-    function _quantize(
-        uint256 value,
-        uint256 step
-    ) internal pure returns (uint256) {
+    function _quantize(uint256 value, uint256 step) internal pure returns (uint256) {
         if (step < 2 || value == 0) return value;
         unchecked {
             return value - (value % step);
         }
     }
 
-    function _sortedIndicesByImbalanceDesc(
-        uint256[] memory imbalances
-    ) internal pure returns (uint256[] memory idx) {
+    function _sortedIndicesByImbalanceDesc(uint256[] memory imbalances) internal pure returns (uint256[] memory idx) {
         uint256 n = imbalances.length;
         idx = new uint256[](n);
         unchecked {
@@ -109,12 +97,7 @@ library DepositAllocatorGreedy {
         uint256 targetTotal = state.totalCurrent + allocationAmount;
         for (uint256 i; i < n; ++i) {
             // NOTE: Rounding up to avoid cases when 10 keys aren't allocated over 100 equal operators
-            uint256 target = Math.mulDiv(
-                state.sharesX96[i],
-                targetTotal,
-                S_SCALE,
-                Math.Rounding.Ceil
-            );
+            uint256 target = Math.mulDiv(state.sharesX96[i], targetTotal, S_SCALE, Math.Rounding.Ceil);
             uint256 current = state.currents[i];
             if (target <= current) continue;
             unchecked {

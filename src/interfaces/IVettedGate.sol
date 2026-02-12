@@ -9,17 +9,9 @@ import { IAccounting } from "./IAccounting.sol";
 
 interface IVettedGate is IMerkleGate {
     event ReferrerConsumed(address indexed referrer, uint256 indexed season);
-    event ReferralProgramSeasonStarted(
-        uint256 indexed season,
-        uint256 referralCurveId,
-        uint256 referralsThreshold
-    );
+    event ReferralProgramSeasonStarted(uint256 indexed season, uint256 referralCurveId, uint256 referralsThreshold);
     event ReferralProgramSeasonEnded(uint256 indexed season);
-    event ReferralRecorded(
-        address indexed referrer,
-        uint256 indexed season,
-        uint256 indexed referralNodeOperatorId
-    );
+    event ReferralRecorded(address indexed referrer, uint256 indexed season, uint256 indexed referralNodeOperatorId);
 
     error InvalidCurveId();
     error ZeroModuleAddress();
@@ -164,18 +156,12 @@ interface IVettedGate is IMerkleGate {
     /// @param proof Merkle proof of the sender being eligible to join via the gate
     /// @dev Should be called by the reward address of the Node Operator
     ///      In case of the extended manager permissions, should be called by the manager address
-    function claimBondCurve(
-        uint256 nodeOperatorId,
-        bytes32[] calldata proof
-    ) external;
+    function claimBondCurve(uint256 nodeOperatorId, bytes32[] calldata proof) external;
 
     /// @notice Claim the referral program bond curve for the eligible Node Operator
     /// @param nodeOperatorId Id of the Node Operator
     /// @param proof Merkle proof of the sender being eligible to join via the gate
-    function claimReferrerBondCurve(
-        uint256 nodeOperatorId,
-        bytes32[] calldata proof
-    ) external;
+    function claimReferrerBondCurve(uint256 nodeOperatorId, bytes32[] calldata proof) external;
 
     /// @notice Check if the address has already consumed referral program bond curve
     /// @param referrer Address to check
@@ -185,16 +171,11 @@ interface IVettedGate is IMerkleGate {
     /// @notice Get the number of referrals for the given referrer in the current or last season
     /// @param referrer Referrer address
     /// @return Number of referrals for the given referrer in the current or last season
-    function getReferralsCount(
-        address referrer
-    ) external view returns (uint256);
+    function getReferralsCount(address referrer) external view returns (uint256);
 
     /// @notice Get the number of referrals for the given referrer in the given season
     /// @param referrer Referrer address
     /// @param season Season number
     /// @return Number of referrals for the given referrer in the given season
-    function getReferralsCount(
-        address referrer,
-        uint256 season
-    ) external view returns (uint256);
+    function getReferralsCount(address referrer, uint256 season) external view returns (uint256);
 }

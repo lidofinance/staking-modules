@@ -33,19 +33,13 @@ interface IMerkleGate {
     /// @notice Update Merkle tree params
     /// @param _treeRoot New root
     /// @param _treeCid New CID
-    function setTreeParams(
-        bytes32 _treeRoot,
-        string calldata _treeCid
-    ) external;
+    function setTreeParams(bytes32 _treeRoot, string calldata _treeCid) external;
 
     /// @notice Returns whether a member already consumed eligibility
     function isConsumed(address member) external view returns (bool);
 
     /// @notice Verify proof for a member against current tree
-    function verifyProof(
-        address member,
-        bytes32[] calldata proof
-    ) external view returns (bool);
+    function verifyProof(address member, bytes32[] calldata proof) external view returns (bool);
 
     /// @notice Hash leaf encoding for addresses in the Merkle tree
     function hashLeaf(address member) external pure returns (bytes32);

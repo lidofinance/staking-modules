@@ -54,10 +54,7 @@ contract TopUpQueueLibTest is Test, Utilities {
     }
 
     function test_newTopUpQueueItem() public {
-        assertEq(
-            newTopUpQueueItem(0xbfd25afa, 0xb99a6659).unwrap(),
-            0xbfd25afab99a6659
-        );
+        assertEq(newTopUpQueueItem(0xbfd25afa, 0xb99a6659).unwrap(), 0xbfd25afab99a6659);
     }
 
     function testFuzz_packAndUnpack(uint32 noId, uint32 keyIndex) public {
@@ -66,11 +63,7 @@ contract TopUpQueueLibTest is Test, Utilities {
         assertEq(buf.keyIndex(), keyIndex);
     }
 
-    function testFuzz_enqueue(
-        TopUpQueueItem a,
-        TopUpQueueItem b,
-        TopUpQueueItem c
-    ) public {
+    function testFuzz_enqueue(TopUpQueueItem a, TopUpQueueItem b, TopUpQueueItem c) public {
         vm.assume(!a.eq(b));
         vm.assume(!b.eq(c));
         vm.assume(!a.eq(c));
@@ -167,11 +160,7 @@ contract TopUpQueueLibTest is Test, Utilities {
         assertEq(q.length(), 0);
     }
 
-    function testFuzz_at(
-        TopUpQueueItem a,
-        TopUpQueueItem b,
-        TopUpQueueItem c
-    ) public {
+    function testFuzz_at(TopUpQueueItem a, TopUpQueueItem b, TopUpQueueItem c) public {
         q.setLimit(3);
         q.enqueue(a);
         q.enqueue(b);

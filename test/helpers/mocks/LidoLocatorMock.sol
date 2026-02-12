@@ -12,15 +12,7 @@ contract LidoLocatorMock {
     address public sr;
     address public twg;
 
-    constructor(
-        address _lido,
-        address _burner,
-        address _wq,
-        address _el,
-        address _t,
-        address _sr,
-        address _twg
-    ) {
+    constructor(address _lido, address _burner, address _wq, address _el, address _t, address _sr, address _twg) {
         l = _lido;
         b = _burner;
         wq = _wq;

@@ -18,9 +18,7 @@ library OperatorTracker {
         map().set(nodeOperatorId, 0);
     }
 
-    function getCreator(
-        uint256 nodeOperatorId
-    ) internal view returns (address) {
+    function getCreator(uint256 nodeOperatorId) internal view returns (address) {
         return address(uint160(map().get(nodeOperatorId)));
     }
 

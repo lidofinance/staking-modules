@@ -28,10 +28,7 @@ contract GIndexTest is Test {
     using Strings for uint256;
 
     GIndex internal ZERO = GIndex.wrap(bytes32(0));
-    GIndex internal ROOT =
-        GIndex.wrap(
-            0x0000000000000000000000000000000000000000000000000000000000000100
-        );
+    GIndex internal ROOT = GIndex.wrap(0x0000000000000000000000000000000000000000000000000000000000000100);
     GIndex internal MAX = GIndex.wrap(bytes32(type(uint256).max));
 
     Library internal lib;
@@ -50,11 +47,7 @@ contract GIndexTest is Test {
             "Invalid gindex encoded"
         );
 
-        assertEq(
-            MAX.unwrap(),
-            bytes32(type(uint256).max),
-            "Invalid gindex encoded"
-        );
+        assertEq(MAX.unwrap(), bytes32(type(uint256).max), "Invalid gindex encoded");
     }
 
     function test_isRootTrue() public view {
@@ -77,41 +70,15 @@ contract GIndexTest is Test {
         assertFalse(gI.isRoot(), "Expected [2048,4].isRoot() to be false");
 
         gI = pack(type(uint248).max, type(uint8).max);
-        assertFalse(
-            gI.isRoot(),
-            "Expected [uint248.max,uint8.max].isRoot() to be false"
-        );
+        assertFalse(gI.isRoot(), "Expected [uint248.max,uint8.max].isRoot() to be false");
     }
 
     function test_concat() public view {
-        assertEq(
-            pack(2, 99).concat(pack(3, 99)).unwrap(),
-            pack(5, 99).unwrap()
-        );
-        assertEq(
-            pack(31, 99).concat(pack(3, 99)).unwrap(),
-            pack(63, 99).unwrap()
-        );
-        assertEq(
-            pack(31, 99).concat(pack(6, 99)).unwrap(),
-            pack(126, 99).unwrap()
-        );
-        assertEq(
-            ROOT
-                .concat(pack(2, 1))
-                .concat(pack(5, 1))
-                .concat(pack(9, 1))
-                .unwrap(),
-            pack(73, 1).unwrap()
-        );
-        assertEq(
-            ROOT
-                .concat(pack(2, 9))
-                .concat(pack(5, 1))
-                .concat(pack(9, 4))
-                .unwrap(),
-            pack(73, 4).unwrap()
-        );
+        assertEq(pack(2, 99).concat(pack(3, 99)).unwrap(), pack(5, 99).unwrap());
+        assertEq(pack(31, 99).concat(pack(3, 99)).unwrap(), pack(63, 99).unwrap());
+        assertEq(pack(31, 99).concat(pack(6, 99)).unwrap(), pack(126, 99).unwrap());
+        assertEq(ROOT.concat(pack(2, 1)).concat(pack(5, 1)).concat(pack(9, 1)).unwrap(), pack(73, 1).unwrap());
+        assertEq(ROOT.concat(pack(2, 9)).concat(pack(5, 1)).concat(pack(9, 4)).unwrap(), pack(73, 4).unwrap());
 
         assertEq(ROOT.concat(MAX).unwrap(), MAX.unwrap());
     }
@@ -143,11 +110,7 @@ contract GIndexTest is Test {
 
     function testFuzz_concat_WithRoot(GIndex rhs) public view {
         vm.assume(rhs.index() > 0);
-        assertEq(
-            ROOT.concat(rhs).unwrap(),
-            rhs.unwrap(),
-            "`concat` with a root should return right-hand side value"
-        );
+        assertEq(ROOT.concat(rhs).unwrap(), rhs.unwrap(), "`concat` with a root should return right-hand side value");
     }
 
     function testFuzz_unpack(uint248 index, uint8 pow) public pure {
@@ -218,19 +181,13 @@ contract GIndexTest is Test {
         lib.shr(gIParent.concat(pack(1023, 4)), 1);
     }
 
-    function testFuzz_shr_OffTheWidth_AfterConcat(
-        GIndex lhs,
-        GIndex rhs,
-        uint256 shift
-    ) public {
+    function testFuzz_shr_OffTheWidth_AfterConcat(GIndex lhs, GIndex rhs, uint256 shift) public {
         // Indices concatenation overflow protection.
         vm.assume(fls(lhs.index()) + 1 + fls(rhs.index()) < 248);
         vm.assume(rhs.index() >= rhs.width());
         unchecked {
             vm.assume(rhs.width() + shift > rhs.width());
-            vm.assume(
-                lhs.concat(rhs).index() + shift > lhs.concat(rhs).index()
-            );
+            vm.assume(lhs.concat(rhs).index() + shift > lhs.concat(rhs).index());
         }
 
         vm.expectRevert(IndexOutOfRange.selector);
@@ -299,11 +256,7 @@ contract GIndexTest is Test {
         lib.shl(gIParent.concat(pack(1023, 4)), 16);
     }
 
-    function testFuzz_shl_OffTheWidth_AfterConcat(
-        GIndex lhs,
-        GIndex rhs,
-        uint256 shift
-    ) public {
+    function testFuzz_shl_OffTheWidth_AfterConcat(GIndex lhs, GIndex rhs, uint256 shift) public {
         // Indices concatenation overflow protection.
         vm.assume(fls(lhs.index()) + 1 + fls(rhs.index()) < 248);
         vm.assume(rhs.index() >= rhs.width());

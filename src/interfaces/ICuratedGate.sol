@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { IMerkleGate } from "./IMerkleGate.sol";
 import { ICuratedModule } from "./ICuratedModule.sol";
-import { IOperatorsData } from "./IOperatorsData.sol";
+import { IMetaRegistry } from "./IMetaRegistry.sol";
 import { IAccounting } from "./IAccounting.sol";
 
 /// @title Curated Gate Interface
@@ -14,8 +14,7 @@ interface ICuratedGate is IMerkleGate {
     /// Errors
     error InvalidCurveId();
     error ZeroModuleAddress();
-    error ZeroModuleId();
-    error ZeroOperatorsDataAddress();
+    error ZeroMetaRegistryAddress();
     error ZeroAdminAddress();
 
     function PAUSE_ROLE() external view returns (bytes32);
@@ -27,14 +26,11 @@ interface ICuratedGate is IMerkleGate {
     /// @return MODULE Curated module reference
     function MODULE() external view returns (ICuratedModule);
 
-    /// @return MODULE_ID Curated module id cached for OperatorsData integration
-    function MODULE_ID() external view returns (uint256);
-
     /// @return ACCOUNTING Accounting reference
     function ACCOUNTING() external view returns (IAccounting);
 
-    /// @return OPERATORS_DATA Operators metadata storage reference
-    function OPERATORS_DATA() external view returns (IOperatorsData);
+    /// @return META_REGISTRY Operators metadata registry reference
+    function META_REGISTRY() external view returns (IMetaRegistry);
 
     /// @return curveId Instance-specific custom curve id
     function curveId() external view returns (uint256);
@@ -47,7 +43,7 @@ interface ICuratedGate is IMerkleGate {
     function resume() external;
 
     /// @notice Create an empty Node Operator for the caller if eligible.
-    ///         Stores provided name/description in OperatorsData. Marks caller as consumed.
+    ///         Stores provided name/description in MetaRegistry. Marks caller as consumed.
     /// @param name Display name of the Node Operator
     /// @param description Description of the Node Operator
     /// @param managerAddress Address to set as manager; if zero, defaults will be used by the module

@@ -129,15 +129,9 @@ interface IVerifier {
 
     function GI_FIRST_HISTORICAL_SUMMARY_CURR() external view returns (GIndex);
 
-    function GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV()
-        external
-        view
-        returns (GIndex);
+    function GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV() external view returns (GIndex);
 
-    function GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR()
-        external
-        view
-        returns (GIndex);
+    function GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR() external view returns (GIndex);
 
     function FIRST_SUPPORTED_SLOT() external view returns (Slot);
 
@@ -165,32 +159,22 @@ interface IVerifier {
     /// determining the exact penalty amounts and calling the `IBaseModule.reportSlashedWithdrawnValidators` method via
     /// an EasyTrack motion.
     /// @param data @see ProcessWithdrawalInput
-    function processWithdrawalProof(
-        ProcessWithdrawalInput calldata data
-    ) external;
+    function processWithdrawalProof(ProcessWithdrawalInput calldata data) external;
 
     /// @notice Verify withdrawal proof against historical summaries data and report withdrawal to the module for valid proofs
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
     /// determining the exact penalty amounts and calling the `IBaseModule.reportSlashedWithdrawnValidators` method via
     /// an EasyTrack motion.
     /// @param data @see ProcessHistoricalWithdrawalInput
-    function processHistoricalWithdrawalProof(
-        ProcessHistoricalWithdrawalInput calldata data
-    ) external;
+    function processHistoricalWithdrawalProof(ProcessHistoricalWithdrawalInput calldata data) external;
 
     /// @notice Processes a validator's consolidation from a module's validator. The balance before consolidation is
     /// assumed to be the withdrawal balance.
     /// @dev The caveat is that a pending consolidation is processed later, making it impossible to account for losses
     /// or rewards during the waiting period, as there's no indication of consolidation processing in the state.
     /// @param data @see ProcessConsolidationInput
-    function processConsolidation(
-        ProcessConsolidationInput calldata data
-    ) external;
+    function processConsolidation(ProcessConsolidationInput calldata data) external;
 
     /// @notice Stub method for incoming consolidation request proofs.
-    function processIncomingConsolidation(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        uint256 addedBalanceWei
-    ) external;
+    function processIncomingConsolidation(uint256 nodeOperatorId, uint256 keyIndex, uint256 addedBalanceWei) external;
 }

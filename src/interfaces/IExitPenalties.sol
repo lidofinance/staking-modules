@@ -27,11 +27,7 @@ interface IExitPenalties is IExitTypes {
     error SenderIsNotStrikes();
     error ValidatorExitDelayNotApplicable();
 
-    event ValidatorExitDelayProcessed(
-        uint256 indexed nodeOperatorId,
-        bytes pubkey,
-        uint256 delayFee
-    );
+    event ValidatorExitDelayProcessed(uint256 indexed nodeOperatorId, bytes pubkey, uint256 delayFee);
     event TriggeredExitFeeRecorded(
         uint256 indexed nodeOperatorId,
         uint256 indexed exitType,
@@ -39,11 +35,7 @@ interface IExitPenalties is IExitTypes {
         uint256 withdrawalRequestPaidFee,
         uint256 withdrawalRequestRecordedFee
     );
-    event StrikesPenaltyProcessed(
-        uint256 indexed nodeOperatorId,
-        bytes pubkey,
-        uint256 strikesPenalty
-    );
+    event StrikesPenaltyProcessed(uint256 indexed nodeOperatorId, bytes pubkey, uint256 strikesPenalty);
 
     function MODULE() external view returns (IBaseModule);
 
@@ -79,10 +71,7 @@ interface IExitPenalties is IExitTypes {
     /// @notice Process the strikes report
     /// @param nodeOperatorId ID of the Node Operator
     /// @param publicKey Public key of the validator
-    function processStrikesReport(
-        uint256 nodeOperatorId,
-        bytes calldata publicKey
-    ) external;
+    function processStrikesReport(uint256 nodeOperatorId, bytes calldata publicKey) external;
 
     /// @notice Determines whether a validator exit status should be updated and will have affect on Node Operator.
     /// @dev called only by the module

@@ -109,10 +109,7 @@ contract VettedGateTest is VettedGateTestBase {
     function test_constructor() public {
         vettedGate = new VettedGate(csm);
         assertEq(address(vettedGate.MODULE()), csm);
-        assertEq(
-            address(vettedGate.ACCOUNTING()),
-            address(IBaseModule(csm).ACCOUNTING())
-        );
+        assertEq(address(vettedGate.ACCOUNTING()), address(IBaseModule(csm).ACCOUNTING()));
     }
 
     function test_constructor_RevertWhen_ZeroModuleAddress() public {
@@ -131,14 +128,8 @@ contract VettedGateTest is VettedGateTestBase {
         assertEq(vettedGate.curveId(), curveId);
         assertEq(vettedGate.treeRoot(), root);
         assertEq(keccak256(bytes(vettedGate.treeCid())), keccak256(bytes(cid)));
-        assertEq(
-            vettedGate.getRoleMemberCount(vettedGate.DEFAULT_ADMIN_ROLE()),
-            1
-        );
-        assertEq(
-            vettedGate.getRoleMember(vettedGate.DEFAULT_ADMIN_ROLE(), 0),
-            admin
-        );
+        assertEq(vettedGate.getRoleMemberCount(vettedGate.DEFAULT_ADMIN_ROLE()), 1);
+        assertEq(vettedGate.getRoleMember(vettedGate.DEFAULT_ADMIN_ROLE(), 0), admin);
         assertEq(vettedGate.getInitializedVersion(), 1);
     }
 
@@ -213,25 +204,17 @@ contract VettedGateTest is VettedGateTestBase {
     }
 
     function test_verifyProof() public view {
-        assertTrue(
-            vettedGate.verifyProof(nodeOperator, merkleTree.getProof(0))
-        );
+        assertTrue(vettedGate.verifyProof(nodeOperator, merkleTree.getProof(0)));
         assertFalse(vettedGate.verifyProof(stranger, merkleTree.getProof(0)));
     }
 
     function test_hashLeaf() public view {
         // keccak256(bytes.concat(keccak256(abi.encode(address(154))))) = 0x0f7ac7a58332324fa3de7b7a4a05de303436d846e292fa579646a7496f0c2c1a
-        assertEq(
-            vettedGate.hashLeaf(address(154)),
-            0x0f7ac7a58332324fa3de7b7a4a05de303436d846e292fa579646a7496f0c2c1a
-        );
+        assertEq(vettedGate.hashLeaf(address(154)), 0x0f7ac7a58332324fa3de7b7a4a05de303436d846e292fa579646a7496f0c2c1a);
     }
 
     function testFuzz_hashLeaf(address addr) public view {
-        assertEq(
-            vettedGate.hashLeaf(addr),
-            keccak256(bytes.concat(keccak256(abi.encode(addr))))
-        );
+        assertEq(vettedGate.hashLeaf(addr), keccak256(bytes.concat(keccak256(abi.encode(addr)))));
     }
 
     function test_recovererRole() public {
@@ -249,9 +232,7 @@ contract VettedGateTest is VettedGateTestBase {
         bytes32 newRoot = newTree.root();
         string memory newCid = "newCid";
 
-        assertTrue(
-            vettedGate.verifyProof(nodeOperator, merkleTree.getProof(0))
-        );
+        assertTrue(vettedGate.verifyProof(nodeOperator, merkleTree.getProof(0)));
         assertFalse(vettedGate.verifyProof(stranger, newTree.getProof(0)));
 
         vm.startPrank(admin);
@@ -264,13 +245,8 @@ contract VettedGateTest is VettedGateTestBase {
         vm.stopPrank();
 
         assertEq(vettedGate.treeRoot(), newRoot);
-        assertEq(
-            keccak256(bytes(vettedGate.treeCid())),
-            keccak256(bytes(newCid))
-        );
-        assertFalse(
-            vettedGate.verifyProof(nodeOperator, merkleTree.getProof(0))
-        );
+        assertEq(keccak256(bytes(vettedGate.treeCid())), keccak256(bytes(newCid)));
+        assertFalse(vettedGate.verifyProof(nodeOperator, merkleTree.getProof(0)));
         assertTrue(vettedGate.verifyProof(stranger, newTree.getProof(0)));
     }
 
@@ -368,13 +344,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             proof,
             stranger
         );
@@ -402,13 +372,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             proof,
             stranger
         );
@@ -508,13 +472,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             proof,
             address(0)
         );
@@ -530,13 +488,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             proof,
             address(0)
         );
@@ -556,13 +508,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             invalidProof,
             address(0)
         );
@@ -587,13 +533,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             proof,
             address(0)
         );
@@ -613,13 +553,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             proof,
             address(0)
         );
@@ -635,13 +569,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             proof,
             address(0)
         );
@@ -661,13 +589,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             invalidProof,
             address(0)
         );
@@ -692,13 +614,7 @@ contract VettedGateTest is VettedGateTestBase {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             proof,
             address(0)
         );
@@ -714,11 +630,7 @@ contract VettedGateTest is VettedGateTestBase {
 
         vm.expectCall(
             address(vettedGate.ACCOUNTING()),
-            abi.encodeWithSelector(
-                IAccounting.setBondCurve.selector,
-                0,
-                vettedGate.curveId()
-            )
+            abi.encodeWithSelector(IAccounting.setBondCurve.selector, 0, vettedGate.curveId())
         );
         vm.expectEmit(address(vettedGate));
         emit IMerkleGate.Consumed(nodeOperator);
@@ -925,9 +837,7 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
         vettedGate.endCurrentReferralProgramSeason();
     }
 
-    function test_endCurrentReferralProgramSeason_revertWhen_seasonAlreadyEnded()
-        public
-    {
+    function test_endCurrentReferralProgramSeason_revertWhen_seasonAlreadyEnded() public {
         vm.prank(admin);
         vettedGate.endCurrentReferralProgramSeason();
 
@@ -949,16 +859,9 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
         uint256 referralsThreshold = 3;
 
         vm.expectEmit(address(vettedGate));
-        emit IVettedGate.ReferralProgramSeasonStarted(
-            newSeason,
-            referralCurveId,
-            referralsThreshold
-        );
+        emit IVettedGate.ReferralProgramSeasonStarted(newSeason, referralCurveId, referralsThreshold);
         vm.prank(admin);
-        vettedGate.startNewReferralProgramSeason(
-            referralCurveId,
-            referralsThreshold
-        );
+        vettedGate.startNewReferralProgramSeason(referralCurveId, referralsThreshold);
 
         assertEq(vettedGate.referralCurveId(), referralCurveId);
         assertEq(vettedGate.referralsThreshold(), referralsThreshold);
@@ -977,15 +880,10 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
 
         expectRoleRevert(stranger, vettedGate.START_REFERRAL_SEASON_ROLE());
         vm.prank(stranger);
-        vettedGate.startNewReferralProgramSeason(
-            referralCurveId,
-            referralsThreshold
-        );
+        vettedGate.startNewReferralProgramSeason(referralCurveId, referralsThreshold);
     }
 
-    function test_startNewReferralProgramSeason_revertWhen_InvalidReferralsThreshold()
-        public
-    {
+    function test_startNewReferralProgramSeason_revertWhen_InvalidReferralsThreshold() public {
         vm.prank(admin);
         vettedGate.endCurrentReferralProgramSeason();
 
@@ -994,43 +892,28 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
 
         vm.expectRevert(IVettedGate.InvalidReferralsThreshold.selector);
         vm.prank(admin);
-        vettedGate.startNewReferralProgramSeason(
-            referralCurveId,
-            referralsThreshold
-        );
+        vettedGate.startNewReferralProgramSeason(referralCurveId, referralsThreshold);
     }
 
-    function test_startNewReferralProgramSeason_revertWhen_ReferralProgramIsActive()
-        public
-    {
+    function test_startNewReferralProgramSeason_revertWhen_ReferralProgramIsActive() public {
         uint256 referralCurveId = 3;
         uint256 referralsThreshold = 3;
 
         vm.expectRevert(IVettedGate.ReferralProgramIsActive.selector);
         vm.prank(admin);
-        vettedGate.startNewReferralProgramSeason(
-            referralCurveId,
-            referralsThreshold
-        );
+        vettedGate.startNewReferralProgramSeason(referralCurveId, referralsThreshold);
     }
 
-    function test_startNewReferralProgramSeason_revertWhen_InvalidCurveId()
-        public
-    {
+    function test_startNewReferralProgramSeason_revertWhen_InvalidCurveId() public {
         vm.prank(admin);
         vettedGate.endCurrentReferralProgramSeason();
 
-        uint256 referralCurveId = CSMMock(csm)
-            .accounting()
-            .DEFAULT_BOND_CURVE_ID();
+        uint256 referralCurveId = CSMMock(csm).accounting().DEFAULT_BOND_CURVE_ID();
         uint256 referralsThreshold = 3;
 
         vm.expectRevert(IVettedGate.InvalidCurveId.selector);
         vm.prank(admin);
-        vettedGate.startNewReferralProgramSeason(
-            referralCurveId,
-            referralsThreshold
-        );
+        vettedGate.startNewReferralProgramSeason(referralCurveId, referralsThreshold);
     }
 
     function test_claimReferrerBondCurve_fromRewardAddress() public {
@@ -1046,11 +929,7 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
 
         vm.expectCall(
             address(vettedGate.ACCOUNTING()),
-            abi.encodeWithSelector(
-                IAccounting.setBondCurve.selector,
-                0,
-                vettedGate.referralCurveId()
-            )
+            abi.encodeWithSelector(IAccounting.setBondCurve.selector, 0, vettedGate.referralCurveId())
         );
         vm.expectEmit(address(vettedGate));
         emit IVettedGate.ReferrerConsumed(stranger, season);
@@ -1060,9 +939,7 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
         assertTrue(vettedGate.isReferrerConsumed(stranger));
     }
 
-    function test_claimReferrerBondCurve_fromRewardAddress_joinedViaGateBefore()
-        public
-    {
+    function test_claimReferrerBondCurve_fromRewardAddress_joinedViaGateBefore() public {
         NodeOperatorManagementProperties memory no;
         no.managerAddress = nextAddress();
         no.rewardAddress = stranger;
@@ -1075,11 +952,7 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
 
         vm.expectCall(
             address(vettedGate.ACCOUNTING()),
-            abi.encodeWithSelector(
-                IAccounting.setBondCurve.selector,
-                0,
-                vettedGate.referralCurveId()
-            )
+            abi.encodeWithSelector(IAccounting.setBondCurve.selector, 0, vettedGate.referralCurveId())
         );
         vm.expectEmit(address(vettedGate));
         emit IVettedGate.ReferrerConsumed(stranger, season);
@@ -1093,9 +966,7 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
         assertTrue(vettedGate.isReferrerConsumed(stranger));
     }
 
-    function test_claimReferrerBondCurve_fromRewardAddress_revertWhen_NotAllowedToClaim()
-        public
-    {
+    function test_claimReferrerBondCurve_fromRewardAddress_revertWhen_NotAllowedToClaim() public {
         NodeOperatorManagementProperties memory no;
         no.managerAddress = nextAddress();
         no.rewardAddress = stranger;
@@ -1122,11 +993,7 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
 
         vm.expectCall(
             address(vettedGate.ACCOUNTING()),
-            abi.encodeWithSelector(
-                IAccounting.setBondCurve.selector,
-                0,
-                vettedGate.referralCurveId()
-            )
+            abi.encodeWithSelector(IAccounting.setBondCurve.selector, 0, vettedGate.referralCurveId())
         );
         vm.expectEmit(address(vettedGate));
         emit IVettedGate.ReferrerConsumed(stranger, season);
@@ -1136,9 +1003,7 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
         assertTrue(vettedGate.isReferrerConsumed(stranger));
     }
 
-    function test_claimReferrerBondCurve_fromManagerAddress_joinedViaGateBefore()
-        public
-    {
+    function test_claimReferrerBondCurve_fromManagerAddress_joinedViaGateBefore() public {
         NodeOperatorManagementProperties memory no;
         no.managerAddress = stranger;
         no.rewardAddress = nextAddress();
@@ -1151,11 +1016,7 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
 
         vm.expectCall(
             address(vettedGate.ACCOUNTING()),
-            abi.encodeWithSelector(
-                IAccounting.setBondCurve.selector,
-                0,
-                vettedGate.referralCurveId()
-            )
+            abi.encodeWithSelector(IAccounting.setBondCurve.selector, 0, vettedGate.referralCurveId())
         );
         vm.expectEmit(address(vettedGate));
         emit IVettedGate.ReferrerConsumed(stranger, season);
@@ -1169,9 +1030,7 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
         assertTrue(vettedGate.isReferrerConsumed(stranger));
     }
 
-    function test_claimReferrerBondCurve_fromManagerAddress_revertWhen_NotAllowedToClaim()
-        public
-    {
+    function test_claimReferrerBondCurve_fromManagerAddress_revertWhen_NotAllowedToClaim() public {
         NodeOperatorManagementProperties memory no;
         no.managerAddress = stranger;
         no.rewardAddress = nextAddress();
@@ -1186,9 +1045,7 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
         vettedGate.claimReferrerBondCurve(0, proof);
     }
 
-    function test_claimReferrerBondCurve_revertWhen_ReferralProgramIsNotActive()
-        public
-    {
+    function test_claimReferrerBondCurve_revertWhen_ReferralProgramIsNotActive() public {
         NodeOperatorManagementProperties memory no;
         no.managerAddress = stranger;
         no.rewardAddress = nextAddress();
@@ -1206,9 +1063,7 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
         vettedGate.claimReferrerBondCurve(0, proof);
     }
 
-    function test_claimReferrerBondCurve_revertWhen_NotEnoughReferrals()
-        public
-    {
+    function test_claimReferrerBondCurve_revertWhen_NotEnoughReferrals() public {
         NodeOperatorManagementProperties memory no;
         no.managerAddress = stranger;
         no.rewardAddress = nextAddress();
@@ -1254,9 +1109,7 @@ contract VettedGateReferralProgramTest is VettedGateTestBase {
         vettedGate.claimReferrerBondCurve(0, proof);
     }
 
-    function test_claimReferrerBondCurve_revertWhen_NodeOperatorDoesNotExist()
-        public
-    {
+    function test_claimReferrerBondCurve_revertWhen_NodeOperatorDoesNotExist() public {
         bytes32[] memory proof = merkleTree.getProof(1);
 
         _addReferrals();
@@ -1285,16 +1138,9 @@ contract VettedGateReferralProgramNoSeasonsTest is VettedGateTestBase {
         uint256 referralsThreshold = 3;
 
         vm.expectEmit(address(vettedGate));
-        emit IVettedGate.ReferralProgramSeasonStarted(
-            season,
-            referralCurveId,
-            referralsThreshold
-        );
+        emit IVettedGate.ReferralProgramSeasonStarted(season, referralCurveId, referralsThreshold);
         vm.prank(admin);
-        vettedGate.startNewReferralProgramSeason(
-            referralCurveId,
-            referralsThreshold
-        );
+        vettedGate.startNewReferralProgramSeason(referralCurveId, referralsThreshold);
 
         assertEq(vettedGate.referralCurveId(), referralCurveId);
         assertEq(vettedGate.referralsThreshold(), referralsThreshold);
@@ -1309,29 +1155,19 @@ contract VettedGateReferralProgramNoSeasonsTest is VettedGateTestBase {
 
         expectRoleRevert(stranger, vettedGate.START_REFERRAL_SEASON_ROLE());
         vm.prank(stranger);
-        vettedGate.startNewReferralProgramSeason(
-            referralCurveId,
-            referralsThreshold
-        );
+        vettedGate.startNewReferralProgramSeason(referralCurveId, referralsThreshold);
     }
 
-    function test_startNewReferralProgramSeason_revertWhen_InvalidReferralsThreshold()
-        public
-    {
+    function test_startNewReferralProgramSeason_revertWhen_InvalidReferralsThreshold() public {
         uint256 referralCurveId = 3;
         uint256 referralsThreshold = 0;
 
         vm.expectRevert(IVettedGate.InvalidReferralsThreshold.selector);
         vm.prank(admin);
-        vettedGate.startNewReferralProgramSeason(
-            referralCurveId,
-            referralsThreshold
-        );
+        vettedGate.startNewReferralProgramSeason(referralCurveId, referralsThreshold);
     }
 
-    function test_endCurrentReferralProgramSeason_revertWhen_noSeasonYet()
-        public
-    {
+    function test_endCurrentReferralProgramSeason_revertWhen_noSeasonYet() public {
         vm.expectRevert(IVettedGate.ReferralProgramIsNotActive.selector);
         vm.prank(admin);
         vettedGate.endCurrentReferralProgramSeason();

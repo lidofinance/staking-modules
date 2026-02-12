@@ -27,7 +27,7 @@ import { ExitPenalties } from "src/ExitPenalties.sol";
 import { ValidatorStrikes } from "src/ValidatorStrikes.sol";
 import { Verifier } from "src/Verifier.sol";
 import { CuratedModule } from "src/CuratedModule.sol";
-import { OperatorsData } from "src/OperatorsData.sol";
+import { MetaRegistry } from "src/MetaRegistry.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { CuratedGateFactory } from "src/CuratedGateFactory.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
@@ -50,24 +50,14 @@ import { Stub } from "./mocks/Stub.sol";
 import { TWGMock } from "./mocks/TWGMock.sol";
 
 contract Fixtures is StdCheats, Test {
-    bytes32 public constant INITIALIZABLE_STORAGE =
-        0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00;
+    bytes32 public constant INITIALIZABLE_STORAGE = 0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00;
 
     function initLido()
         public
-        returns (
-            LidoLocatorMock locator,
-            WstETHMock wstETH,
-            LidoMock stETH,
-            BurnerMock burner,
-            WithdrawalQueueMock wq
-        )
+        returns (LidoLocatorMock locator, WstETHMock wstETH, LidoMock stETH, BurnerMock burner, WithdrawalQueueMock wq)
     {
         stETH = new LidoMock({ _totalPooledEther: 8013386371917025835991984 });
-        stETH.mintShares({
-            _account: address(stETH),
-            _sharesAmount: 7059313073779349112833523
-        });
+        stETH.mintShares({ _account: address(stETH), _sharesAmount: 7059313073779349112833523 });
         burner = new BurnerMock(address(stETH));
         Stub elVault = new Stub();
         wstETH = new WstETHMock(address(stETH));
@@ -198,8 +188,8 @@ contract DeploymentHelpers is Test {
         address strikesImpl;
         address verifier;
         address hashConsensus;
-        address operatorsData;
-        address operatorsDataImpl;
+        address metaRegistry;
+        address metaRegistryImpl;
         address curatedGateFactory;
         address[] curatedGates;
         address gateSeal;
@@ -218,9 +208,7 @@ contract DeploymentHelpers is Test {
         return env;
     }
 
-    function parseDeploymentConfig(
-        string memory config
-    ) public returns (DeploymentConfig memory deploymentConfig) {
+    function parseDeploymentConfig(string memory config) public returns (DeploymentConfig memory deploymentConfig) {
         deploymentConfig.chainId = vm.parseJsonUint(config, ".ChainId");
 
         deploymentConfig.csm = vm.parseJsonAddress(config, ".CSModule");
@@ -229,145 +217,79 @@ contract DeploymentHelpers is Test {
         deploymentConfig.csmImpl = vm.parseJsonAddress(config, ".CSModuleImpl");
         vm.label(deploymentConfig.csmImpl, "moduleImpl");
 
-        deploymentConfig.permissionlessGate = vm.parseJsonAddress(
-            config,
-            ".PermissionlessGate"
-        );
+        deploymentConfig.permissionlessGate = vm.parseJsonAddress(config, ".PermissionlessGate");
         vm.label(deploymentConfig.permissionlessGate, "permissionlessGate");
 
-        deploymentConfig.vettedGateFactory = vm.parseJsonAddress(
-            config,
-            ".VettedGateFactory"
-        );
+        deploymentConfig.vettedGateFactory = vm.parseJsonAddress(config, ".VettedGateFactory");
         vm.label(deploymentConfig.vettedGateFactory, "vettedGateFactory");
 
-        deploymentConfig.vettedGate = vm.parseJsonAddress(
-            config,
-            ".VettedGate"
-        );
+        deploymentConfig.vettedGate = vm.parseJsonAddress(config, ".VettedGate");
         vm.label(deploymentConfig.vettedGate, "vettedGate");
 
-        deploymentConfig.vettedGateImpl = vm.parseJsonAddress(
-            config,
-            ".VettedGateImpl"
-        );
+        deploymentConfig.vettedGateImpl = vm.parseJsonAddress(config, ".VettedGateImpl");
         vm.label(deploymentConfig.vettedGateImpl, "vettedGateImpl");
 
-        deploymentConfig.parametersRegistry = vm.parseJsonAddress(
-            config,
-            ".ParametersRegistry"
-        );
+        deploymentConfig.parametersRegistry = vm.parseJsonAddress(config, ".ParametersRegistry");
         vm.label(deploymentConfig.parametersRegistry, "parametersRegistry");
 
-        deploymentConfig.parametersRegistryImpl = vm.parseJsonAddress(
-            config,
-            ".ParametersRegistryImpl"
-        );
-        vm.label(
-            deploymentConfig.parametersRegistryImpl,
-            "parametersRegistryImpl"
-        );
+        deploymentConfig.parametersRegistryImpl = vm.parseJsonAddress(config, ".ParametersRegistryImpl");
+        vm.label(deploymentConfig.parametersRegistryImpl, "parametersRegistryImpl");
 
-        deploymentConfig.exitPenalties = vm.parseJsonAddress(
-            config,
-            ".ExitPenalties"
-        );
+        deploymentConfig.exitPenalties = vm.parseJsonAddress(config, ".ExitPenalties");
         vm.label(deploymentConfig.exitPenalties, "exitPenalties");
 
-        deploymentConfig.exitPenaltiesImpl = vm.parseJsonAddress(
-            config,
-            ".ExitPenaltiesImpl"
-        );
+        deploymentConfig.exitPenaltiesImpl = vm.parseJsonAddress(config, ".ExitPenaltiesImpl");
         vm.label(deploymentConfig.exitPenaltiesImpl, "exitPenaltiesImpl");
 
-        deploymentConfig.strikes = vm.parseJsonAddress(
-            config,
-            ".ValidatorStrikes"
-        );
+        deploymentConfig.strikes = vm.parseJsonAddress(config, ".ValidatorStrikes");
         vm.label(deploymentConfig.strikes, "strikes");
 
-        deploymentConfig.strikesImpl = vm.parseJsonAddress(
-            config,
-            ".ValidatorStrikesImpl"
-        );
+        deploymentConfig.strikesImpl = vm.parseJsonAddress(config, ".ValidatorStrikesImpl");
         vm.label(deploymentConfig.strikesImpl, "strikesImpl");
 
         deploymentConfig.ejector = vm.parseJsonAddress(config, ".Ejector");
         vm.label(deploymentConfig.ejector, "ejector");
 
-        deploymentConfig.accounting = vm.parseJsonAddress(
-            config,
-            ".Accounting"
-        );
+        deploymentConfig.accounting = vm.parseJsonAddress(config, ".Accounting");
         vm.label(deploymentConfig.accounting, "accounting");
 
-        deploymentConfig.accountingImpl = vm.parseJsonAddress(
-            config,
-            ".AccountingImpl"
-        );
+        deploymentConfig.accountingImpl = vm.parseJsonAddress(config, ".AccountingImpl");
         vm.label(deploymentConfig.accounting, "accountingImpl");
 
         deploymentConfig.oracle = vm.parseJsonAddress(config, ".FeeOracle");
         vm.label(deploymentConfig.oracle, "oracle");
 
-        deploymentConfig.oracleImpl = vm.parseJsonAddress(
-            config,
-            ".FeeOracleImpl"
-        );
+        deploymentConfig.oracleImpl = vm.parseJsonAddress(config, ".FeeOracleImpl");
         vm.label(deploymentConfig.oracleImpl, "oracleImpl");
 
-        deploymentConfig.feeDistributor = vm.parseJsonAddress(
-            config,
-            ".FeeDistributor"
-        );
+        deploymentConfig.feeDistributor = vm.parseJsonAddress(config, ".FeeDistributor");
         vm.label(deploymentConfig.feeDistributor, "feeDistributor");
 
-        deploymentConfig.feeDistributorImpl = vm.parseJsonAddress(
-            config,
-            ".FeeDistributorImpl"
-        );
+        deploymentConfig.feeDistributorImpl = vm.parseJsonAddress(config, ".FeeDistributorImpl");
         vm.label(deploymentConfig.feeDistributorImpl, "feeDistributorImpl");
 
         deploymentConfig.verifier = vm.parseJsonAddress(config, ".Verifier");
         if (vm.keyExistsJson(config, ".VerifierV3")) {
-            deploymentConfig.verifierV3 = vm.parseJsonAddress(
-                config,
-                ".VerifierV3"
-            );
+            deploymentConfig.verifierV3 = vm.parseJsonAddress(config, ".VerifierV3");
             vm.label(deploymentConfig.verifierV3, "verifierV3");
         } else if (vm.keyExistsJson(config, ".VerifierV2")) {
-            deploymentConfig.verifierV3 = vm.parseJsonAddress(
-                config,
-                ".VerifierV2"
-            );
+            deploymentConfig.verifierV3 = vm.parseJsonAddress(config, ".VerifierV2");
             vm.label(deploymentConfig.verifierV3, "verifierV3");
         }
         vm.label(deploymentConfig.verifier, "verifier");
 
-        deploymentConfig.hashConsensus = vm.parseJsonAddress(
-            config,
-            ".HashConsensus"
-        );
+        deploymentConfig.hashConsensus = vm.parseJsonAddress(config, ".HashConsensus");
         vm.label(deploymentConfig.hashConsensus, "hashConsensus");
 
-        deploymentConfig.lidoLocator = vm.parseJsonAddress(
-            config,
-            ".LidoLocator"
-        );
+        deploymentConfig.lidoLocator = vm.parseJsonAddress(config, ".LidoLocator");
         vm.label(deploymentConfig.lidoLocator, "LidoLocator");
 
         deploymentConfig.gateSeal = vm.parseJsonAddress(config, ".GateSeal");
         if (vm.keyExistsJson(config, ".GateSealV3")) {
-            deploymentConfig.gateSealV3 = vm.parseJsonAddress(
-                config,
-                ".GateSealV3"
-            );
+            deploymentConfig.gateSealV3 = vm.parseJsonAddress(config, ".GateSealV3");
             vm.label(deploymentConfig.gateSealV3, "GateSealV3");
         } else if (vm.keyExistsJson(config, ".GateSealV2")) {
-            deploymentConfig.gateSealV3 = vm.parseJsonAddress(
-                config,
-                ".GateSealV2"
-            );
+            deploymentConfig.gateSealV3 = vm.parseJsonAddress(config, ".GateSealV2");
             vm.label(deploymentConfig.gateSealV3, "GateSealV3");
         }
         vm.label(deploymentConfig.gateSeal, "GateSeal");
@@ -378,134 +300,68 @@ contract DeploymentHelpers is Test {
     ) public returns (CuratedDeploymentConfig memory deploymentConfig) {
         deploymentConfig.chainId = vm.parseJsonUint(config, ".ChainId");
 
-        deploymentConfig.curatedModule = vm.parseJsonAddress(
-            config,
-            ".CuratedModule"
-        );
+        deploymentConfig.curatedModule = vm.parseJsonAddress(config, ".CuratedModule");
         vm.label(deploymentConfig.curatedModule, "curatedModule");
 
-        deploymentConfig.curatedModuleImpl = vm.parseJsonAddress(
-            config,
-            ".CuratedModuleImpl"
-        );
+        deploymentConfig.curatedModuleImpl = vm.parseJsonAddress(config, ".CuratedModuleImpl");
         vm.label(deploymentConfig.curatedModuleImpl, "curatedModuleImpl");
 
-        deploymentConfig.parametersRegistry = vm.parseJsonAddress(
-            config,
-            ".ParametersRegistry"
-        );
-        vm.label(
-            deploymentConfig.parametersRegistry,
-            "curatedParametersRegistry"
-        );
+        deploymentConfig.parametersRegistry = vm.parseJsonAddress(config, ".ParametersRegistry");
+        vm.label(deploymentConfig.parametersRegistry, "curatedParametersRegistry");
 
-        deploymentConfig.parametersRegistryImpl = vm.parseJsonAddress(
-            config,
-            ".ParametersRegistryImpl"
-        );
-        vm.label(
-            deploymentConfig.parametersRegistryImpl,
-            "curatedParametersRegistryImpl"
-        );
+        deploymentConfig.parametersRegistryImpl = vm.parseJsonAddress(config, ".ParametersRegistryImpl");
+        vm.label(deploymentConfig.parametersRegistryImpl, "curatedParametersRegistryImpl");
 
-        deploymentConfig.accounting = vm.parseJsonAddress(
-            config,
-            ".Accounting"
-        );
+        deploymentConfig.accounting = vm.parseJsonAddress(config, ".Accounting");
         vm.label(deploymentConfig.accounting, "curatedAccounting");
 
-        deploymentConfig.accountingImpl = vm.parseJsonAddress(
-            config,
-            ".AccountingImpl"
-        );
+        deploymentConfig.accountingImpl = vm.parseJsonAddress(config, ".AccountingImpl");
         vm.label(deploymentConfig.accountingImpl, "curatedAccountingImpl");
 
         deploymentConfig.oracle = vm.parseJsonAddress(config, ".FeeOracle");
         vm.label(deploymentConfig.oracle, "curatedOracle");
 
-        deploymentConfig.oracleImpl = vm.parseJsonAddress(
-            config,
-            ".FeeOracleImpl"
-        );
+        deploymentConfig.oracleImpl = vm.parseJsonAddress(config, ".FeeOracleImpl");
         vm.label(deploymentConfig.oracleImpl, "curatedOracleImpl");
 
-        deploymentConfig.feeDistributor = vm.parseJsonAddress(
-            config,
-            ".FeeDistributor"
-        );
+        deploymentConfig.feeDistributor = vm.parseJsonAddress(config, ".FeeDistributor");
         vm.label(deploymentConfig.feeDistributor, "curatedFeeDistributor");
 
-        deploymentConfig.feeDistributorImpl = vm.parseJsonAddress(
-            config,
-            ".FeeDistributorImpl"
-        );
-        vm.label(
-            deploymentConfig.feeDistributorImpl,
-            "curatedFeeDistributorImpl"
-        );
+        deploymentConfig.feeDistributorImpl = vm.parseJsonAddress(config, ".FeeDistributorImpl");
+        vm.label(deploymentConfig.feeDistributorImpl, "curatedFeeDistributorImpl");
 
-        deploymentConfig.exitPenalties = vm.parseJsonAddress(
-            config,
-            ".ExitPenalties"
-        );
+        deploymentConfig.exitPenalties = vm.parseJsonAddress(config, ".ExitPenalties");
         vm.label(deploymentConfig.exitPenalties, "curatedExitPenalties");
 
-        deploymentConfig.exitPenaltiesImpl = vm.parseJsonAddress(
-            config,
-            ".ExitPenaltiesImpl"
-        );
-        vm.label(
-            deploymentConfig.exitPenaltiesImpl,
-            "curatedExitPenaltiesImpl"
-        );
+        deploymentConfig.exitPenaltiesImpl = vm.parseJsonAddress(config, ".ExitPenaltiesImpl");
+        vm.label(deploymentConfig.exitPenaltiesImpl, "curatedExitPenaltiesImpl");
 
         deploymentConfig.ejector = vm.parseJsonAddress(config, ".Ejector");
         vm.label(deploymentConfig.ejector, "curatedEjector");
 
-        deploymentConfig.strikes = vm.parseJsonAddress(
-            config,
-            ".ValidatorStrikes"
-        );
+        deploymentConfig.strikes = vm.parseJsonAddress(config, ".ValidatorStrikes");
         vm.label(deploymentConfig.strikes, "curatedStrikes");
 
-        deploymentConfig.strikesImpl = vm.parseJsonAddress(
-            config,
-            ".ValidatorStrikesImpl"
-        );
+        deploymentConfig.strikesImpl = vm.parseJsonAddress(config, ".ValidatorStrikesImpl");
         vm.label(deploymentConfig.strikesImpl, "curatedStrikesImpl");
 
         deploymentConfig.verifier = vm.parseJsonAddress(config, ".Verifier");
         vm.label(deploymentConfig.verifier, "curatedVerifier");
 
-        deploymentConfig.hashConsensus = vm.parseJsonAddress(
-            config,
-            ".HashConsensus"
-        );
+        deploymentConfig.hashConsensus = vm.parseJsonAddress(config, ".HashConsensus");
         vm.label(deploymentConfig.hashConsensus, "curatedHashConsensus");
 
-        deploymentConfig.operatorsData = vm.parseJsonAddress(
-            config,
-            ".OperatorsData"
-        );
-        vm.label(deploymentConfig.operatorsData, "operatorsData");
+        deploymentConfig.metaRegistry = vm.parseJsonAddress(config, ".MetaRegistry");
+        vm.label(deploymentConfig.metaRegistry, "metaRegistry");
 
-        deploymentConfig.operatorsDataImpl = vm.parseJsonAddress(
-            config,
-            ".OperatorsDataImpl"
-        );
-        vm.label(deploymentConfig.operatorsDataImpl, "operatorsDataImpl");
+        deploymentConfig.metaRegistryImpl = vm.parseJsonAddress(config, ".MetaRegistryImpl");
+        vm.label(deploymentConfig.metaRegistryImpl, "metaRegistryImpl");
 
-        deploymentConfig.curatedGateFactory = vm.parseJsonAddress(
-            config,
-            ".CuratedGateFactory"
-        );
+        deploymentConfig.curatedGateFactory = vm.parseJsonAddress(config, ".CuratedGateFactory");
         vm.label(deploymentConfig.curatedGateFactory, "curatedGateFactory");
 
         if (vm.keyExistsJson(config, ".CuratedGates")) {
-            deploymentConfig.curatedGates = vm.parseJsonAddressArray(
-                config,
-                ".CuratedGates"
-            );
+            deploymentConfig.curatedGates = vm.parseJsonAddressArray(config, ".CuratedGates");
             uint256 gatesLength = deploymentConfig.curatedGates.length;
             for (uint256 i = 0; i < gatesLength; ++i) {
                 vm.label(deploymentConfig.curatedGates[i], "curatedGate");
@@ -513,51 +369,27 @@ contract DeploymentHelpers is Test {
         }
 
         if (vm.keyExistsJson(config, ".GateSeal")) {
-            deploymentConfig.gateSeal = vm.parseJsonAddress(
-                config,
-                ".GateSeal"
-            );
+            deploymentConfig.gateSeal = vm.parseJsonAddress(config, ".GateSeal");
             vm.label(deploymentConfig.gateSeal, "curatedGateSeal");
         }
 
-        deploymentConfig.lidoLocator = vm.parseJsonAddress(
-            config,
-            ".LidoLocator"
-        );
+        deploymentConfig.lidoLocator = vm.parseJsonAddress(config, ".LidoLocator");
         vm.label(deploymentConfig.lidoLocator, "curatedLidoLocator");
     }
 
-    function parseDeployParams(
-        string memory deployConfigPath
-    ) internal view returns (DeployParams memory) {
+    function parseDeployParams(string memory deployConfigPath) internal view returns (DeployParams memory) {
         string memory config = vm.readFile(deployConfigPath);
-        return
-            abi.decode(
-                vm.parseJsonBytes(config, ".DeployParams"),
-                (DeployParams)
-            );
+        return abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (DeployParams));
     }
 
-    function parseDeployParams0x02(
-        string memory deployConfigPath
-    ) internal view returns (DeployCSM0x02Params memory) {
+    function parseDeployParams0x02(string memory deployConfigPath) internal view returns (DeployCSM0x02Params memory) {
         string memory config = vm.readFile(deployConfigPath);
-        return
-            abi.decode(
-                vm.parseJsonBytes(config, ".DeployParams"),
-                (DeployCSM0x02Params)
-            );
+        return abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (DeployCSM0x02Params));
     }
 
-    function updateCuratedDeployParams(
-        CuratedDeployParams storage dst,
-        string memory deployConfigPath
-    ) internal {
+    function updateCuratedDeployParams(CuratedDeployParams storage dst, string memory deployConfigPath) internal {
         string memory config = vm.readFile(deployConfigPath);
-        CuratedDeployParams memory src = abi.decode(
-            vm.parseJsonBytes(config, ".DeployParams"),
-            (CuratedDeployParams)
-        );
+        CuratedDeployParams memory src = abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (CuratedDeployParams));
         // copy every value separately to avoid `Unimplemented feature` error from solc when copying memory array of structs into storage
         // Lido addresses
         dst.lidoLocatorAddress = src.lidoLocatorAddress;
@@ -609,8 +441,7 @@ contract DeploymentHelpers is Test {
         // ParametersRegistry
         dst.queueLowestPriority = src.queueLowestPriority;
         dst.defaultKeyRemovalCharge = src.defaultKeyRemovalCharge;
-        dst.defaultGeneralDelayedPenaltyAdditionalFine = src
-            .defaultGeneralDelayedPenaltyAdditionalFine;
+        dst.defaultGeneralDelayedPenaltyAdditionalFine = src.defaultGeneralDelayedPenaltyAdditionalFine;
         dst.defaultKeysLimit = src.defaultKeysLimit;
         dst.defaultAvgPerfLeewayBP = src.defaultAvgPerfLeewayBP;
         dst.defaultRewardShareBP = src.defaultRewardShareBP;
@@ -624,8 +455,7 @@ contract DeploymentHelpers is Test {
         dst.defaultSyncWeight = src.defaultSyncWeight;
         dst.defaultAllowedExitDelay = src.defaultAllowedExitDelay;
         dst.defaultExitDelayFee = src.defaultExitDelayFee;
-        dst.defaultMaxElWithdrawalRequestFee = src
-            .defaultMaxElWithdrawalRequestFee;
+        dst.defaultMaxElWithdrawalRequestFee = src.defaultMaxElWithdrawalRequestFee;
         dst.defaultDepositAllocationWeight = src.defaultDepositAllocationWeight;
         dst.identifiedCommunityStakersGateDepositAllocationWeight = src
             .identifiedCommunityStakersGateDepositAllocationWeight;
@@ -648,9 +478,7 @@ contract DeploymentHelpers is Test {
         dst.secondAdminAddress = src.secondAdminAddress;
     }
 
-    function parseCommonDeployParams(
-        string memory config
-    ) internal view returns (CommonDeployParams memory params) {
+    function parseCommonDeployParams(string memory config) internal view returns (CommonDeployParams memory params) {
         if (bytes(config).length == 0) {
             return params;
         }
@@ -662,15 +490,9 @@ contract DeploymentHelpers is Test {
             );
             return _fillCommonFromCurated(params, decoded);
         } else {
-            address vettedGateFactory = vm.parseJsonAddress(
-                config,
-                ".VettedGateFactory"
-            );
+            address vettedGateFactory = vm.parseJsonAddress(config, ".VettedGateFactory");
             address vettedGate = vm.parseJsonAddress(config, ".VettedGate");
-            address vettedGateImpl = vm.parseJsonAddress(
-                config,
-                ".VettedGateImpl"
-            );
+            address vettedGateImpl = vm.parseJsonAddress(config, ".VettedGateImpl");
             bool isCsm0x02 = vettedGateFactory == address(0) &&
                 vettedGate == address(0) &&
                 vettedGateImpl == address(0);
@@ -681,10 +503,7 @@ contract DeploymentHelpers is Test {
                 );
                 return _fillCommonFromCommunity0x02(params, decoded);
             } else {
-                DeployParams memory decoded = abi.decode(
-                    vm.parseJsonBytes(config, ".DeployParams"),
-                    (DeployParams)
-                );
+                DeployParams memory decoded = abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (DeployParams));
                 return _fillCommonFromCommunity(params, decoded);
             }
         }
@@ -698,8 +517,7 @@ contract DeploymentHelpers is Test {
         params.aragonAgent = decoded.aragonAgent;
         params.proxyAdmin = decoded.proxyAdmin;
         params.easyTrackEVMScriptExecutor = decoded.easyTrackEVMScriptExecutor;
-        params.generalDelayedPenaltyReporter = decoded
-            .generalDelayedPenaltyReporter;
+        params.generalDelayedPenaltyReporter = decoded.generalDelayedPenaltyReporter;
         params.resealManager = decoded.resealManager;
         params.secondAdminAddress = decoded.secondAdminAddress;
         params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
@@ -723,8 +541,7 @@ contract DeploymentHelpers is Test {
         params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
         params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
         params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
-        params.gIFirstPendingConsolidation = decoded
-            .gIFirstPendingConsolidation;
+        params.gIFirstPendingConsolidation = decoded.gIFirstPendingConsolidation;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.defaultBondCurve = decoded.defaultBondCurve;
@@ -739,8 +556,7 @@ contract DeploymentHelpers is Test {
         params.aragonAgent = decoded.aragonAgent;
         params.proxyAdmin = decoded.proxyAdmin;
         params.easyTrackEVMScriptExecutor = decoded.easyTrackEVMScriptExecutor;
-        params.generalDelayedPenaltyReporter = decoded
-            .generalDelayedPenaltyReporter;
+        params.generalDelayedPenaltyReporter = decoded.generalDelayedPenaltyReporter;
         params.resealManager = decoded.resealManager;
         params.secondAdminAddress = decoded.secondAdminAddress;
         params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
@@ -764,13 +580,11 @@ contract DeploymentHelpers is Test {
         params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
         params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
         params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
-        params.gIFirstPendingConsolidation = decoded
-            .gIFirstPendingConsolidation;
+        params.gIFirstPendingConsolidation = decoded.gIFirstPendingConsolidation;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.defaultBondCurve = decoded.defaultBondCurve;
-        params.defaultDepositAllocationWeight = decoded
-            .defaultDepositAllocationWeight;
+        params.defaultDepositAllocationWeight = decoded.defaultDepositAllocationWeight;
         params.identifiedCommunityStakersGateDepositAllocationWeight = decoded
             .identifiedCommunityStakersGateDepositAllocationWeight;
         return params;
@@ -784,8 +598,7 @@ contract DeploymentHelpers is Test {
         params.aragonAgent = decoded.aragonAgent;
         params.proxyAdmin = decoded.proxyAdmin;
         params.easyTrackEVMScriptExecutor = decoded.easyTrackEVMScriptExecutor;
-        params.generalDelayedPenaltyReporter = decoded
-            .generalDelayedPenaltyReporter;
+        params.generalDelayedPenaltyReporter = decoded.generalDelayedPenaltyReporter;
         params.resealManager = decoded.resealManager;
         params.secondAdminAddress = decoded.secondAdminAddress;
         params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
@@ -809,19 +622,16 @@ contract DeploymentHelpers is Test {
         params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
         params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
         params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
-        params.gIFirstPendingConsolidation = decoded
-            .gIFirstPendingConsolidation;
+        params.gIFirstPendingConsolidation = decoded.gIFirstPendingConsolidation;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.defaultBondCurve = decoded.defaultBondCurve;
-        params.defaultDepositAllocationWeight = decoded
-            .defaultDepositAllocationWeight;
+        params.defaultDepositAllocationWeight = decoded.defaultDepositAllocationWeight;
         return params;
     }
 
     function _isEmpty(string memory s) internal pure returns (bool) {
-        return
-            keccak256(abi.encodePacked(s)) == keccak256(abi.encodePacked(""));
+        return keccak256(abi.encodePacked(s)) == keccak256(abi.encodePacked(""));
     }
 }
 
@@ -864,7 +674,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     IBurner public burner;
     CuratedModule public curatedModule;
     CuratedModule public curatedModuleImpl;
-    OperatorsData public operatorsData;
+    MetaRegistry public metaRegistry;
     CuratedGateFactory public curatedGateFactory;
     address[] public curatedGates;
 
@@ -883,9 +693,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     }
 
     function _initializeCommunity(string memory config) internal {
-        DeploymentConfig memory deploymentConfig = parseDeploymentConfig(
-            config
-        );
+        DeploymentConfig memory deploymentConfig = parseDeploymentConfig(config);
         assertEq(deploymentConfig.chainId, block.chainid, "ChainId mismatch");
 
         if (
@@ -900,18 +708,10 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
 
         module = CSModule(deploymentConfig.csm);
         moduleImpl = CSModule(deploymentConfig.csmImpl);
-        parametersRegistry = ParametersRegistry(
-            deploymentConfig.parametersRegistry
-        );
-        parametersRegistryImpl = ParametersRegistry(
-            deploymentConfig.parametersRegistryImpl
-        );
-        permissionlessGate = PermissionlessGate(
-            deploymentConfig.permissionlessGate
-        );
-        vettedGateFactory = VettedGateFactory(
-            deploymentConfig.vettedGateFactory
-        );
+        parametersRegistry = ParametersRegistry(deploymentConfig.parametersRegistry);
+        parametersRegistryImpl = ParametersRegistry(deploymentConfig.parametersRegistryImpl);
+        permissionlessGate = PermissionlessGate(deploymentConfig.permissionlessGate);
+        vettedGateFactory = VettedGateFactory(deploymentConfig.vettedGateFactory);
         vettedGate = VettedGate(deploymentConfig.vettedGate);
         vettedGateImpl = VettedGate(deploymentConfig.vettedGateImpl);
         earlyAdoption = deploymentConfig.earlyAdoption;
@@ -920,18 +720,14 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         oracle = FeeOracle(deploymentConfig.oracle);
         oracleImpl = FeeOracle(deploymentConfig.oracleImpl);
         feeDistributor = FeeDistributor(deploymentConfig.feeDistributor);
-        feeDistributorImpl = FeeDistributor(
-            deploymentConfig.feeDistributorImpl
-        );
+        feeDistributorImpl = FeeDistributor(deploymentConfig.feeDistributorImpl);
         exitPenalties = ExitPenalties(deploymentConfig.exitPenalties);
         exitPenaltiesImpl = ExitPenalties(deploymentConfig.exitPenaltiesImpl);
         ejector = Ejector(payable(deploymentConfig.ejector));
         strikes = ValidatorStrikes(deploymentConfig.strikes);
         strikesImpl = ValidatorStrikes(deploymentConfig.strikesImpl);
         verifier = Verifier(
-            deploymentConfig.verifierV3 == address(0)
-                ? deploymentConfig.verifier
-                : deploymentConfig.verifierV3
+            deploymentConfig.verifierV3 == address(0) ? deploymentConfig.verifier : deploymentConfig.verifierV3
         );
         hashConsensus = HashConsensus(deploymentConfig.hashConsensus);
         locator = ILidoLocator(deploymentConfig.lidoLocator);
@@ -939,16 +735,13 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         stakingRouter = IStakingRouter(locator.stakingRouter());
         wstETH = IWstETH(IWithdrawalQueue(locator.withdrawalQueue()).WSTETH());
         gateSeal = IGateSeal(
-            deploymentConfig.gateSealV3 == address(0)
-                ? deploymentConfig.gateSeal
-                : deploymentConfig.gateSealV3
+            deploymentConfig.gateSealV3 == address(0) ? deploymentConfig.gateSeal : deploymentConfig.gateSealV3
         );
         burner = IBurner(locator.burner());
     }
 
     function _initializeCurated(string memory config) internal {
-        CuratedDeploymentConfig
-            memory deploymentConfig = parseCuratedDeploymentConfig(config);
+        CuratedDeploymentConfig memory deploymentConfig = parseCuratedDeploymentConfig(config);
         assertEq(deploymentConfig.chainId, block.chainid, "ChainId mismatch");
 
         moduleType = ModuleType.Curated;
@@ -956,12 +749,8 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         curatedModuleImpl = CuratedModule(deploymentConfig.curatedModuleImpl);
         module = CSModule(deploymentConfig.curatedModule);
         moduleImpl = CSModule(deploymentConfig.curatedModuleImpl);
-        parametersRegistry = ParametersRegistry(
-            deploymentConfig.parametersRegistry
-        );
-        parametersRegistryImpl = ParametersRegistry(
-            deploymentConfig.parametersRegistryImpl
-        );
+        parametersRegistry = ParametersRegistry(deploymentConfig.parametersRegistry);
+        parametersRegistryImpl = ParametersRegistry(deploymentConfig.parametersRegistryImpl);
         permissionlessGate = PermissionlessGate(address(0));
         vettedGateFactory = VettedGateFactory(address(0));
         vettedGate = VettedGate(address(0));
@@ -972,9 +761,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         oracle = FeeOracle(deploymentConfig.oracle);
         oracleImpl = FeeOracle(deploymentConfig.oracleImpl);
         feeDistributor = FeeDistributor(deploymentConfig.feeDistributor);
-        feeDistributorImpl = FeeDistributor(
-            deploymentConfig.feeDistributorImpl
-        );
+        feeDistributorImpl = FeeDistributor(deploymentConfig.feeDistributorImpl);
         exitPenalties = ExitPenalties(deploymentConfig.exitPenalties);
         exitPenaltiesImpl = ExitPenalties(deploymentConfig.exitPenaltiesImpl);
         ejector = Ejector(payable(deploymentConfig.ejector));
@@ -989,18 +776,13 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         gateSeal = IGateSeal(deploymentConfig.gateSeal);
         burner = IBurner(locator.burner());
 
-        operatorsData = OperatorsData(deploymentConfig.operatorsData);
-        curatedGateFactory = CuratedGateFactory(
-            deploymentConfig.curatedGateFactory
-        );
+        metaRegistry = MetaRegistry(deploymentConfig.metaRegistry);
+        curatedGateFactory = CuratedGateFactory(deploymentConfig.curatedGateFactory);
         curatedGates = deploymentConfig.curatedGates;
     }
 
     function handleStakingLimit() public {
-        address agent = stakingRouter.getRoleMember(
-            stakingRouter.DEFAULT_ADMIN_ROLE(),
-            0
-        );
+        address agent = stakingRouter.getRoleMember(stakingRouter.DEFAULT_ADMIN_ROLE(), 0);
         IACL acl = IACL(IKernel(lido.kernel()).acl());
         bytes32 role = lido.STAKING_CONTROL_ROLE();
         vm.prank(acl.getPermissionManager(address(lido), role));
@@ -1033,8 +815,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     function findModule() internal view returns (uint256) {
         uint256[] memory ids = stakingRouter.getStakingModuleIds();
         for (uint256 i = ids.length - 1; i > 0; i--) {
-            IStakingRouter.StakingModule memory moduleInfo = stakingRouter
-                .getStakingModule(ids[i]);
+            IStakingRouter.StakingModule memory moduleInfo = stakingRouter.getStakingModule(ids[i]);
             if (moduleInfo.stakingModuleAddress == address(module)) {
                 return ids[i];
             }
@@ -1046,10 +827,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
 contract DeploymentFixtures is DeploymentFixturesBase {}
 
 interface IForkIntegrationHelpers {
-    function addNodeOperator(
-        address from,
-        uint256 keysCount
-    ) external returns (uint256 nodeOperatorId);
+    function addNodeOperator(address from, uint256 keysCount) external returns (uint256 nodeOperatorId);
 
     function addNodeOperatorWithManagement(
         address from,
@@ -1059,14 +837,9 @@ interface IForkIntegrationHelpers {
         uint256 keysCount
     ) external returns (uint256 nodeOperatorId);
 
-    function getDepositableNodeOperator(
-        address nodeOperatorAddress
-    ) external returns (uint256 noId, uint256 keysCount);
+    function getDepositableNodeOperator(address nodeOperatorAddress) external returns (uint256 noId, uint256 keysCount);
 
-    function getDepositedNodeOperator(
-        address nodeOperatorAddress,
-        uint256 keysCount
-    ) external returns (uint256 noId);
+    function getDepositedNodeOperator(address nodeOperatorAddress, uint256 keysCount) external returns (uint256 noId);
 
     function getDepositedNodeOperatorWithSequentialActiveKeys(
         address nodeOperatorAddress,
@@ -1074,19 +847,12 @@ interface IForkIntegrationHelpers {
     ) external returns (uint256 noId, uint256 startIndex);
 }
 
-abstract contract ForkIntegrationHelpersBase is
-    Utilities,
-    IForkIntegrationHelpers
-{
+abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpers {
     CSModule internal module;
     Accounting internal accounting;
     IStakingRouter internal stakingRouter;
 
-    constructor(
-        CSModule module_,
-        Accounting accounting_,
-        IStakingRouter stakingRouter_
-    ) {
+    constructor(CSModule module_, Accounting accounting_, IStakingRouter stakingRouter_) {
         module = module_;
         accounting = accounting_;
         stakingRouter = stakingRouter_;
@@ -1104,8 +870,7 @@ abstract contract ForkIntegrationHelpersBase is
             }
         }
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
-        (, , uint256 depositableValidatorsCount) = module
-            .getStakingModuleSummary();
+        (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
         vm.startPrank(address(stakingRouter));
         // potentially time-consuming or reverting due to block/tx gas limit
         module.obtainDepositData(depositableValidatorsCount, "");
@@ -1135,8 +900,7 @@ abstract contract ForkIntegrationHelpersBase is
             }
         }
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
-        (, , uint256 depositableValidatorsCount) = module
-            .getStakingModuleSummary();
+        (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
         vm.startPrank(address(stakingRouter));
         // potentially time-consuming or reverting due to block/tx gas limit
         module.obtainDepositData(depositableValidatorsCount, "");
@@ -1144,10 +908,7 @@ abstract contract ForkIntegrationHelpersBase is
         return (noId, 0);
     }
 
-    function _addNodeOperator(
-        address from,
-        uint256 keysCount
-    ) internal virtual returns (uint256 nodeOperatorId);
+    function _addNodeOperator(address from, uint256 keysCount) internal virtual returns (uint256 nodeOperatorId);
 }
 
 contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
@@ -1162,18 +923,8 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
         permissionlessGate = permissionlessGate_;
     }
 
-    function addNodeOperator(
-        address from,
-        uint256 keysCount
-    ) external override returns (uint256 nodeOperatorId) {
-        return
-            this.addNodeOperatorWithManagement(
-                from,
-                address(0),
-                address(0),
-                false,
-                keysCount
-            );
+    function addNodeOperator(address from, uint256 keysCount) external override returns (uint256 nodeOperatorId) {
+        return this.addNodeOperatorWithManagement(from, address(0), address(0), false, keysCount);
     }
 
     function addNodeOperatorWithManagement(
@@ -1183,19 +934,12 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
         bool extendedPermissions,
         uint256 keysCount
     ) external override returns (uint256 nodeOperatorId) {
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
-        );
-        uint256 amount = accounting.getBondAmountByKeysCount(
-            keysCount,
-            permissionlessGate.CURVE_ID()
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
+        uint256 amount = accounting.getBondAmountByKeysCount(keysCount, permissionlessGate.CURVE_ID());
         vm.deal(from, amount);
 
         vm.prank(from);
-        nodeOperatorId = permissionlessGate.addNodeOperatorETH{
-            value: amount
-        }({
+        nodeOperatorId = permissionlessGate.addNodeOperatorETH{ value: amount }({
             keysCount: keysCount,
             publicKeys: keys,
             signatures: signatures,
@@ -1211,8 +955,7 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
     function getDepositableNodeOperator(
         address nodeOperatorAddress
     ) external override returns (uint256 noId, uint256 keysCount) {
-        (, , uint256 depositableValidatorsCount) = module
-            .getStakingModuleSummary();
+        (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
         module.cleanDepositQueue({ maxItems: 2 * depositableValidatorsCount });
         for (uint256 i = 0; i <= module.QUEUE_LOWEST_PRIORITY(); ++i) {
             (uint128 head, ) = module.depositQueuePointers(i);
@@ -1225,10 +968,7 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
     }
 
-    function _addNodeOperator(
-        address from,
-        uint256 keysCount
-    ) internal override returns (uint256 nodeOperatorId) {
+    function _addNodeOperator(address from, uint256 keysCount) internal override returns (uint256 nodeOperatorId) {
         return this.addNodeOperator(from, keysCount);
     }
 }
@@ -1250,39 +990,19 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         curatedGates = curatedGates_;
     }
 
-    function addNodeOperator(
-        address from,
-        uint256 keysCount
-    ) external override returns (uint256 nodeOperatorId) {
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
-        );
+    function addNodeOperator(address from, uint256 keysCount) external override returns (uint256 nodeOperatorId) {
+        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
         (CuratedGate gate, bytes32[] memory proof) = _prepareCuratedGate(from);
         _ensureDepositAllocationWeight(gate.curveId());
 
         vm.prank(from);
-        nodeOperatorId = gate.createNodeOperator(
-            "test",
-            "test",
-            address(0),
-            address(0),
-            proof
-        );
+        nodeOperatorId = gate.createNodeOperator("test", "test", address(0), address(0), proof);
 
-        uint256 amount = accounting.getBondAmountByKeysCount(
-            keysCount,
-            gate.curveId()
-        );
+        uint256 amount = accounting.getBondAmountByKeysCount(keysCount, gate.curveId());
         vm.deal(from, amount);
 
         vm.prank(from);
-        module.addValidatorKeysETH{ value: amount }(
-            from,
-            nodeOperatorId,
-            keysCount,
-            keys,
-            signatures
-        );
+        module.addValidatorKeysETH{ value: amount }(from, nodeOperatorId, keysCount, keys, signatures);
     }
 
     function addNodeOperatorWithManagement(
@@ -1293,33 +1013,21 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         uint256 keysCount
     ) external override returns (uint256 nodeOperatorId) {
         _ensureCreateNodeOperatorRole();
-        NodeOperatorManagementProperties
-            memory props = NodeOperatorManagementProperties({
-                managerAddress: manager,
-                rewardAddress: reward,
-                extendedManagerPermissions: extendedPermissions
-            });
+        NodeOperatorManagementProperties memory props = NodeOperatorManagementProperties({
+            managerAddress: manager,
+            rewardAddress: reward,
+            extendedManagerPermissions: extendedPermissions
+        });
 
         nodeOperatorId = module.createNodeOperator(from, props, address(0));
 
         address managerAddress = manager == address(0) ? from : manager;
-        (bytes memory keys, bytes memory signatures) = keysSignatures(
-            keysCount
-        );
-        uint256 amount = accounting.getBondAmountByKeysCount(
-            keysCount,
-            accounting.getBondCurveId(nodeOperatorId)
-        );
+        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
+        uint256 amount = accounting.getBondAmountByKeysCount(keysCount, accounting.getBondCurveId(nodeOperatorId));
         vm.deal(managerAddress, amount);
 
         vm.prank(managerAddress);
-        module.addValidatorKeysETH{ value: amount }(
-            managerAddress,
-            nodeOperatorId,
-            keysCount,
-            keys,
-            signatures
-        );
+        module.addValidatorKeysETH{ value: amount }(managerAddress, nodeOperatorId, keysCount, keys, signatures);
     }
 
     function getDepositableNodeOperator(
@@ -1329,16 +1037,11 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
     }
 
-    function _addNodeOperator(
-        address from,
-        uint256 keysCount
-    ) internal override returns (uint256 nodeOperatorId) {
+    function _addNodeOperator(address from, uint256 keysCount) internal override returns (uint256 nodeOperatorId) {
         return this.addNodeOperator(from, keysCount);
     }
 
-    function _prepareCuratedGate(
-        address member
-    ) internal returns (CuratedGate gate, bytes32[] memory proof) {
+    function _prepareCuratedGate(address member) internal returns (CuratedGate gate, bytes32[] memory proof) {
         if (curatedGates.length == 0) {
             revert ModuleNotFound();
         }
@@ -1359,10 +1062,7 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         tree.pushLeaf(abi.encode(member));
         // Add a second leaf to allow unique roots even if member repeats.
         tree.pushLeaf(abi.encode(extra));
-        string memory cid = string.concat(
-            "cid-",
-            vm.toString(uint256(uint160(extra)))
-        );
+        string memory cid = string.concat("cid-", vm.toString(uint256(uint160(extra))));
         gate.setTreeParams(tree.root(), cid);
 
         proof = tree.getProof(0);
@@ -1373,10 +1073,7 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
             return;
         }
 
-        address admin = parametersRegistry.getRoleMember(
-            parametersRegistry.DEFAULT_ADMIN_ROLE(),
-            0
-        );
+        address admin = parametersRegistry.getRoleMember(parametersRegistry.DEFAULT_ADMIN_ROLE(), 0);
         vm.prank(admin);
         parametersRegistry.setDepositAllocationWeight(curveId, 1);
     }

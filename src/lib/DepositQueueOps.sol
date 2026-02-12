@@ -24,9 +24,7 @@ library DepositQueueOps {
         removed = 0;
         lastRemovedAtDepth = 0;
 
-        if (maxItems == 0) {
-            return (0, 0);
-        }
+        if (maxItems == 0) return (0, 0);
 
         // NOTE: We need one unique hash map per function invocation to be able to track batches of
         // the same operator across multiple queues.
@@ -59,17 +57,13 @@ library DepositQueueOps {
                     // lastRemovedAtDepthPerQueue: 3
                     // lastRemovedAtDepth: 6+3=9
 
-                    lastRemovedAtDepth =
-                        totalVisited +
-                        lastRemovedAtDepthPerQueue;
+                    lastRemovedAtDepth = totalVisited + lastRemovedAtDepthPerQueue;
                     removed += removedPerQueue;
                 }
             }
 
             // NOTE: If we stopped in the middle of a queue, we also stop processing further queues.
-            if (!reachedOutOfQueue) {
-                break;
-            }
+            if (!reachedOutOfQueue) break;
 
             unchecked {
                 totalVisited += visitedPerQueue;
@@ -79,9 +73,7 @@ library DepositQueueOps {
             unchecked {
                 ++priority;
             }
-            if (priority > queueLowestPriority) {
-                break;
-            }
+            if (priority > queueLowestPriority) break;
         }
     }
 
@@ -90,23 +82,13 @@ library DepositQueueOps {
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 maxItems,
         TransientUintUintMap queueLookup
-    )
-        private
-        returns (
-            uint256 removed,
-            uint256 lastRemovedAtDepth,
-            uint256 visited,
-            bool reachedOutOfQueue
-        )
-    {
+    ) private returns (uint256 removed, uint256 lastRemovedAtDepth, uint256 visited, bool reachedOutOfQueue) {
         removed = 0;
         lastRemovedAtDepth = 0;
         visited = 0;
         reachedOutOfQueue = false;
 
-        if (maxItems == 0) {
-            revert IDepositQueueLib.DepositQueueLookupNoLimit();
-        }
+        if (maxItems == 0) revert IDepositQueueLib.DepositQueueLookupNoLimit();
 
         Batch prevItem;
         uint128 indexOfPrev;
@@ -166,28 +148,24 @@ library DepositQueueOps {
         NodeOperator storage no = nodeOperators[nodeOperatorId];
         uint32 depositable = no.depositableValidatorsCount;
         uint32 enqueued = no.enqueuedCount;
-        if (depositable <= enqueued) {
-            return;
-        }
+        if (depositable <= enqueued) return;
 
         uint32 toEnqueue;
         unchecked {
             toEnqueue = depositable - enqueued;
         }
 
-        (uint32 priority, uint32 maxDeposits) = parametersRegistry
-            .getQueueConfig(accounting.getBondCurveId(nodeOperatorId));
+        (uint32 priority, uint32 maxDeposits) = parametersRegistry.getQueueConfig(
+            accounting.getBondCurveId(nodeOperatorId)
+        );
         // If Node Operator is eligible for priority queue, try to enqueue there first.
         if (priority < queueLowestPriority) {
             unchecked {
                 uint32 depositedAndQueued = no.totalDepositedKeys + enqueued;
                 if (maxDeposits > depositedAndQueued) {
-                    uint32 priorityDepositsLeft = maxDeposits -
-                        depositedAndQueued;
+                    uint32 priorityDepositsLeft = maxDeposits - depositedAndQueued;
                     uint32 count = toEnqueue;
-                    if (count > priorityDepositsLeft) {
-                        count = priorityDepositsLeft;
-                    }
+                    if (count > priorityDepositsLeft) count = priorityDepositsLeft;
 
                     _enqueueNodeOperatorKeys({
                         queue: depositQueues[priority],
@@ -200,7 +178,6 @@ library DepositQueueOps {
                 }
             }
         }
-
         if (toEnqueue > 0) {
             _enqueueNodeOperatorKeys({
                 queue: depositQueues[queueLowestPriority],

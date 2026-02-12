@@ -14,18 +14,10 @@ import { Utilities } from "test/helpers/Utilities.sol";
 
 import { ForkHelpersCommon } from "./Common.sol";
 
-contract NodeOperators is
-    Script,
-    DeploymentFixtures,
-    ForkHelpersCommon,
-    Utilities
-{
+contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utilities {
     modifier broadcastPenaltyReporter() {
         _setUp();
-        address penaltyReporter = module.getRoleMember(
-            module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
-            0
-        );
+        address penaltyReporter = module.getRoleMember(module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), 0);
         _setBalance(penaltyReporter);
         vm.startBroadcast(penaltyReporter);
         _;
@@ -34,10 +26,7 @@ contract NodeOperators is
 
     modifier broadcastPenaltySettler() {
         _setUp();
-        address penaltySettler = module.getRoleMember(
-            module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(),
-            0
-        );
+        address penaltySettler = module.getRoleMember(module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(), 0);
         _setBalance(penaltySettler);
         vm.startBroadcast(penaltySettler);
         _;
@@ -80,9 +69,7 @@ contract NodeOperators is
 
     modifier broadcastProposedManager(uint256 noId) {
         _setUp();
-        address nodeOperator = module
-            .getNodeOperator(noId)
-            .proposedManagerAddress;
+        address nodeOperator = module.getNodeOperator(noId).proposedManagerAddress;
         _setBalance(nodeOperator);
         vm.startBroadcast(nodeOperator);
         _;
@@ -100,103 +87,59 @@ contract NodeOperators is
 
     modifier broadcastProposedReward(uint256 noId) {
         _setUp();
-        address nodeOperator = module
-            .getNodeOperator(noId)
-            .proposedRewardAddress;
+        address nodeOperator = module.getNodeOperator(noId).proposedRewardAddress;
         _setBalance(nodeOperator);
         vm.startBroadcast(nodeOperator);
         _;
         vm.stopBroadcast();
     }
 
-    function proposeManagerAddress(
-        uint256 noId,
-        address managerAddress
-    ) external broadcastManager(noId) {
+    function proposeManagerAddress(uint256 noId, address managerAddress) external broadcastManager(noId) {
         module.proposeNodeOperatorManagerAddressChange(noId, managerAddress);
     }
 
-    function proposeRewardAddress(
-        uint256 noId,
-        address rewardAddress
-    ) external broadcastReward(noId) {
+    function proposeRewardAddress(uint256 noId, address rewardAddress) external broadcastReward(noId) {
         module.proposeNodeOperatorRewardAddressChange(noId, rewardAddress);
     }
 
-    function confirmManagerAddress(
-        uint256 noId
-    ) external broadcastProposedManager(noId) {
+    function confirmManagerAddress(uint256 noId) external broadcastProposedManager(noId) {
         module.confirmNodeOperatorManagerAddressChange(noId);
     }
 
-    function confirmRewardAddress(
-        uint256 noId
-    ) external broadcastProposedReward(noId) {
+    function confirmRewardAddress(uint256 noId) external broadcastProposedReward(noId) {
         module.confirmNodeOperatorRewardAddressChange(noId);
     }
 
-    function addKeys(
-        uint256 noId,
-        uint256 keysCount
-    ) external broadcastManager(noId) {
+    function addKeys(uint256 noId, uint256 keysCount) external broadcastManager(noId) {
         uint256 amount = accounting.getRequiredBondForNextKeys(noId, keysCount);
         bytes memory keys = randomBytes(48 * keysCount);
         bytes memory signatures = randomBytes(96 * keysCount);
-        module.addValidatorKeysETH{ value: amount }(
-            msg.sender,
-            noId,
-            keysCount,
-            keys,
-            signatures
-        );
+        module.addValidatorKeysETH{ value: amount }(msg.sender, noId, keysCount, keys, signatures);
     }
 
     function deposit(uint256 depositCount) external broadcastStakingRouter {
-        (, , uint256 depositableValidatorsCount) = module
-            .getStakingModuleSummary();
-        if (depositCount > depositableValidatorsCount) {
-            depositCount = depositableValidatorsCount;
-        }
-        (, uint256 totalDepositedValidators, ) = module
-            .getStakingModuleSummary();
+        (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
+        if (depositCount > depositableValidatorsCount) depositCount = depositableValidatorsCount;
+        (, uint256 totalDepositedValidators, ) = module.getStakingModuleSummary();
 
         module.obtainDepositData(depositCount, "");
 
-        (, uint256 totalDepositedValidatorsAfter, ) = module
-            .getStakingModuleSummary();
-        assertEq(
-            totalDepositedValidatorsAfter,
-            totalDepositedValidators + depositCount
-        );
+        (, uint256 totalDepositedValidatorsAfter, ) = module.getStakingModuleSummary();
+        assertEq(totalDepositedValidatorsAfter, totalDepositedValidators + depositCount);
     }
 
-    function removeKey(
-        uint256 noId,
-        uint256 keyIndex
-    ) external broadcastManager(noId) {
+    function removeKey(uint256 noId, uint256 keyIndex) external broadcastManager(noId) {
         module.removeKeys(noId, keyIndex, 1);
     }
 
-    function unvet(
-        uint256 noId,
-        uint256 vettedKeysCount
-    ) external broadcastStakingRouter {
-        module.decreaseVettedSigningKeysCount(
-            _encodeNodeOperatorId(noId),
-            _encodeUint128Value(vettedKeysCount)
-        );
+    function unvet(uint256 noId, uint256 vettedKeysCount) external broadcastStakingRouter {
+        module.decreaseVettedSigningKeysCount(_encodeNodeOperatorId(noId), _encodeUint128Value(vettedKeysCount));
 
         assertEq(module.getNodeOperator(noId).totalVettedKeys, vettedKeysCount);
     }
 
-    function exit(
-        uint256 noId,
-        uint256 exitedKeysCount
-    ) external broadcastStakingRouter {
-        module.updateExitedValidatorsCount(
-            _encodeNodeOperatorId(noId),
-            _encodeUint128Value(exitedKeysCount)
-        );
+    function exit(uint256 noId, uint256 exitedKeysCount) external broadcastStakingRouter {
+        module.updateExitedValidatorsCount(_encodeNodeOperatorId(noId), _encodeUint128Value(exitedKeysCount));
 
         assertEq(module.getNodeOperator(noId).totalExitedKeys, exitedKeysCount);
     }
@@ -211,33 +154,17 @@ contract NodeOperators is
         uint256 exitBalance,
         uint256 slashingPenalty
     ) external broadcastVerifier {
-        uint256 withdrawnBefore = module
-            .getNodeOperator(noId)
-            .totalWithdrawnKeys;
+        uint256 withdrawnBefore = module.getNodeOperator(noId).totalWithdrawnKeys;
 
-        WithdrawnValidatorInfo[]
-            memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo(
-            noId,
-            keyIndex,
-            exitBalance,
-            slashingPenalty,
-            slashingPenalty > 0
-        );
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo(noId, keyIndex, exitBalance, slashingPenalty, slashingPenalty > 0);
         module.reportRegularWithdrawnValidators(validatorInfos);
 
         assertTrue(module.isValidatorWithdrawn(noId, keyIndex));
-        assertEq(
-            module.getNodeOperator(noId).totalWithdrawnKeys,
-            withdrawnBefore + 1
-        );
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, withdrawnBefore + 1);
     }
 
-    function targetLimit(
-        uint256 noId,
-        uint256 targetLimitMode,
-        uint256 limit
-    ) external broadcastStakingRouter {
+    function targetLimit(uint256 noId, uint256 targetLimitMode, uint256 limit) external broadcastStakingRouter {
         module.updateTargetValidatorsLimits(noId, targetLimitMode, limit);
 
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -245,36 +172,21 @@ contract NodeOperators is
         assertEq(no.targetLimitMode, targetLimitMode);
     }
 
-    function reportGeneralDelayedPenalty(
-        uint256 noId,
-        uint256 amount
-    ) external broadcastPenaltyReporter {
+    function reportGeneralDelayedPenalty(uint256 noId, uint256 amount) external broadcastPenaltyReporter {
         uint256 lockedBefore = accounting.getActualLockedBond(noId);
 
-        module.reportGeneralDelayedPenalty(
-            noId,
-            bytes32(abi.encode(1)),
-            amount,
-            "Test penalty"
-        );
+        module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), amount, "Test penalty");
 
         uint256 lockedAfter = accounting.getActualLockedBond(noId);
         assertEq(
             lockedAfter,
             lockedBefore +
                 amount +
-                module
-                    .PARAMETERS_REGISTRY()
-                    .getGeneralDelayedPenaltyAdditionalFine(
-                        accounting.getBondCurveId(noId)
-                    )
+                module.PARAMETERS_REGISTRY().getGeneralDelayedPenaltyAdditionalFine(accounting.getBondCurveId(noId))
         );
     }
 
-    function cancelGeneralDelayedPenalty(
-        uint256 noId,
-        uint256 amount
-    ) external broadcastPenaltyReporter {
+    function cancelGeneralDelayedPenalty(uint256 noId, uint256 amount) external broadcastPenaltyReporter {
         uint256 lockedBefore = accounting.getActualLockedBond(noId);
 
         module.cancelGeneralDelayedPenalty(noId, amount);
@@ -283,9 +195,7 @@ contract NodeOperators is
         assertEq(lockedAfter, lockedBefore - amount);
     }
 
-    function settleGeneralDelayedPenalty(
-        uint256 noId
-    ) external broadcastPenaltySettler {
+    function settleGeneralDelayedPenalty(uint256 noId) external broadcastPenaltySettler {
         uint256[] memory noIds = new uint256[](1);
         noIds[0] = noId;
         uint256[] memory maxAmounts = new uint256[](1);
@@ -295,10 +205,7 @@ contract NodeOperators is
         assertEq(accounting.getActualLockedBond(noId), 0);
     }
 
-    function compensateGeneralDelayedPenalty(
-        uint256 noId,
-        uint256 amount
-    ) external broadcastStranger {
+    function compensateGeneralDelayedPenalty(uint256 noId, uint256 amount) external broadcastStranger {
         uint256 lockedBefore = accounting.getActualLockedBond(noId);
 
         module.compensateGeneralDelayedPenalty{ value: amount }(noId);
@@ -306,11 +213,7 @@ contract NodeOperators is
         assertEq(accounting.getActualLockedBond(noId), lockedBefore - amount);
     }
 
-    function exitRequest(
-        uint256 noId,
-        uint256 validatorIndex,
-        bytes calldata validatorPubKey
-    ) external {
+    function exitRequest(uint256 noId, uint256 validatorIndex, bytes calldata validatorPubKey) external {
         _setUp();
         IVEBO vebo = IVEBO(locator.validatorsExitBusOracle());
         bytes memory data;
@@ -326,12 +229,7 @@ contract NodeOperators is
         (, uint256 refSlot, , ) = vebo.getConsensusReport();
         uint256 reportRefSlot = refSlot + 1;
 
-        data = abi.encodePacked(
-            moduleId,
-            nodeOpId,
-            _validatorIndex,
-            validatorPubKey
-        );
+        data = abi.encodePacked(moduleId, nodeOpId, _validatorIndex, validatorPubKey);
         IVEBO.ReportData memory report = IVEBO.ReportData({
             consensusVersion: vebo.getConsensusVersion(),
             refSlot: reportRefSlot,
@@ -344,11 +242,7 @@ contract NodeOperators is
         _setBalance(consensus);
 
         vm.startBroadcast(consensus);
-        vebo.submitConsensusReport(
-            keccak256(abi.encode(report)),
-            reportRefSlot,
-            block.timestamp + 1 days
-        );
+        vebo.submitConsensusReport(keccak256(abi.encode(report)), reportRefSlot, block.timestamp + 1 days);
         vm.stopBroadcast();
 
         address veboSubmitter = _prepareVEBOSubmitter(vebo);
@@ -357,9 +251,7 @@ contract NodeOperators is
         vm.stopBroadcast();
     }
 
-    function _prepareVEBOSubmitter(
-        IVEBO vebo
-    ) internal returns (address veboSubmitter) {
+    function _prepareVEBOSubmitter(IVEBO vebo) internal returns (address veboSubmitter) {
         address veboAdmin = _prepareAdmin(address(vebo));
         veboSubmitter = nextAddress();
 
@@ -375,11 +267,8 @@ contract NodeOperators is
     function _getModuleId() internal view returns (uint256) {
         uint256[] memory ids = stakingRouter.getStakingModuleIds();
         for (uint256 i = ids.length - 1; i > 0; i--) {
-            IStakingRouter.StakingModule memory moduleInfo = stakingRouter
-                .getStakingModule(ids[i]);
-            if (moduleInfo.stakingModuleAddress == address(module)) {
-                return ids[i];
-            }
+            IStakingRouter.StakingModule memory moduleInfo = stakingRouter.getStakingModule(ids[i]);
+            if (moduleInfo.stakingModuleAddress == address(module)) return ids[i];
         }
         revert NodeOperatorsModuleNotFound();
     }

@@ -9,17 +9,12 @@ contract StETHMock is IStETH {
     uint256 public totalPooledEther;
     uint256 public totalShares;
     mapping(address => uint256) public shares;
-    mapping(address account => mapping(address spender => uint256))
-        private _allowances;
+    mapping(address account => mapping(address spender => uint256)) private _allowances;
 
     error NotEnoughShares(uint256 balance);
     error AllowanceExceeded(address owner, address spender);
 
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 
     constructor(uint256 _totalPooledEther) {
         totalPooledEther = _totalPooledEther;
@@ -39,9 +34,7 @@ contract StETHMock is IStETH {
      * @param _sharesAmount shares amount
      * @dev dual to `getSharesByPooledEth`.
      */
-    function getPooledEthByShares(
-        uint256 _sharesAmount
-    ) public view returns (uint256) {
+    function getPooledEthByShares(uint256 _sharesAmount) public view returns (uint256) {
         return (_sharesAmount * totalPooledEther) / totalShares;
     }
 
@@ -50,9 +43,7 @@ contract StETHMock is IStETH {
      * @param _pooledEthAmount stETH amount
      * @dev dual to `getPooledEthByShares`.
      */
-    function getSharesByPooledEth(
-        uint256 _pooledEthAmount
-    ) public view returns (uint256) {
+    function getSharesByPooledEth(uint256 _pooledEthAmount) public view returns (uint256) {
         return (_pooledEthAmount * totalShares) / totalPooledEther;
     }
 
@@ -77,35 +68,21 @@ contract StETHMock is IStETH {
     /**
      * @notice Moves `_amount` token amount from the caller's account to the `_recipient` account.
      */
-    function transferFrom(
-        address _sender,
-        address _recipient,
-        uint256 _amount
-    ) public returns (bool) {
-        if (_allowances[_sender][_recipient] < _amount) {
-            revert AllowanceExceeded(_sender, _recipient);
-        }
+    function transferFrom(address _sender, address _recipient, uint256 _amount) public returns (bool) {
+        if (_allowances[_sender][_recipient] < _amount) revert AllowanceExceeded(_sender, _recipient);
         uint256 _sharesToTransfer = getSharesByPooledEth(_amount);
         transferSharesFrom(_sender, _recipient, _sharesToTransfer);
         return true;
     }
 
-    function transfer(
-        address _recipient,
-        uint256 _amount
-    ) public returns (bool) {
+    function transfer(address _recipient, uint256 _amount) public returns (bool) {
         uint256 _sharesToTransfer = getSharesByPooledEth(_amount);
         transferShares(_recipient, _sharesToTransfer);
         return true;
     }
 
-    function transferShares(
-        address _recipient,
-        uint256 _sharesAmount
-    ) public returns (uint256) {
-        if (shares[msg.sender] < _sharesAmount) {
-            revert NotEnoughShares(shares[msg.sender]);
-        }
+    function transferShares(address _recipient, uint256 _sharesAmount) public returns (uint256) {
+        if (shares[msg.sender] < _sharesAmount) revert NotEnoughShares(shares[msg.sender]);
         shares[msg.sender] -= _sharesAmount;
         shares[_recipient] += _sharesAmount;
         return getPooledEthByShares(_sharesAmount);
@@ -114,37 +91,22 @@ contract StETHMock is IStETH {
     /**
      * @notice Transfer `_sharesAmount` stETH shares from `_sender` to `_receiver` using allowance.
      */
-    function transferSharesFrom(
-        address _sender,
-        address _recipient,
-        uint256 _sharesAmount
-    ) public returns (uint256) {
-        if (
-            _allowances[_sender][_recipient] <
-            getPooledEthByShares(_sharesAmount)
-        ) {
+    function transferSharesFrom(address _sender, address _recipient, uint256 _sharesAmount) public returns (uint256) {
+        if (_allowances[_sender][_recipient] < getPooledEthByShares(_sharesAmount)) {
             revert AllowanceExceeded(_sender, _recipient);
         }
-        if (shares[_sender] < _sharesAmount) {
-            revert NotEnoughShares(shares[_sender]);
-        }
+        if (shares[_sender] < _sharesAmount) revert NotEnoughShares(shares[_sender]);
         shares[_sender] -= _sharesAmount;
         shares[_recipient] += _sharesAmount;
         return _sharesAmount;
     }
 
-    function approve(
-        address spender,
-        uint256 value
-    ) public virtual returns (bool) {
+    function approve(address spender, uint256 value) public virtual returns (bool) {
         _allowances[msg.sender][spender] = value;
         return true;
     }
 
-    function allowance(
-        address _owner,
-        address _spender
-    ) external view returns (uint256) {
+    function allowance(address _owner, address _spender) external view returns (uint256) {
         return _allowances[_owner][_spender];
     }
 

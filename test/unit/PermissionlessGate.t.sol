@@ -71,13 +71,7 @@ contract PermissionlessGateTest is Test, Utilities {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             address(0)
         );
     }
@@ -93,13 +87,7 @@ contract PermissionlessGateTest is Test, Utilities {
                 rewardAddress: address(0),
                 extendedManagerPermissions: false
             }),
-            IAccounting.PermitInput({
-                value: 0,
-                deadline: 0,
-                v: 0,
-                r: 0,
-                s: 0
-            }),
+            IAccounting.PermitInput({ value: 0, deadline: 0, v: 0, r: 0, s: 0 }),
             address(0)
         );
     }

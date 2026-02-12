@@ -19,7 +19,8 @@ contract ProxyUpgradesCurated is CuratedIntegrationBase {
             lidoLocator: address(module.LIDO_LOCATOR()),
             parametersRegistry: address(module.PARAMETERS_REGISTRY()),
             accounting: address(module.ACCOUNTING()),
-            exitPenalties: address(module.EXIT_PENALTIES())
+            exitPenalties: address(module.EXIT_PENALTIES()),
+            metaRegistry: address(CuratedModule(address(module)).META_REGISTRY())
         });
         vm.prank(proxy.proxy__getAdmin());
         proxy.proxy__upgradeTo(address(newModule));
@@ -33,17 +34,12 @@ contract ProxyUpgradesCurated is CuratedIntegrationBase {
             lidoLocator: address(module.LIDO_LOCATOR()),
             parametersRegistry: address(module.PARAMETERS_REGISTRY()),
             accounting: address(module.ACCOUNTING()),
-            exitPenalties: address(module.EXIT_PENALTIES())
+            exitPenalties: address(module.EXIT_PENALTIES()),
+            metaRegistry: address(CuratedModule(address(module)).META_REGISTRY())
         });
-        address contractAdmin = module.getRoleMember(
-            module.DEFAULT_ADMIN_ROLE(),
-            0
-        );
+        address contractAdmin = module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0);
         vm.startPrank(contractAdmin);
-        module.grantRole(
-            module.RESUME_ROLE(),
-            address(proxy.proxy__getAdmin())
-        );
+        module.grantRole(module.RESUME_ROLE(), address(proxy.proxy__getAdmin()));
         module.grantRole(module.PAUSE_ROLE(), address(proxy.proxy__getAdmin()));
         vm.stopPrank();
         if (!module.isPaused()) {
@@ -52,10 +48,7 @@ contract ProxyUpgradesCurated is CuratedIntegrationBase {
         }
         assertTrue(module.isPaused());
         vm.prank(proxy.proxy__getAdmin());
-        proxy.proxy__upgradeToAndCall(
-            address(newModule),
-            abi.encodeWithSelector(newModule.resume.selector, 1)
-        );
+        proxy.proxy__upgradeToAndCall(address(newModule), abi.encodeWithSelector(newModule.resume.selector, 1));
         assertEq(module.getType(), "CuratedV3");
         assertFalse(module.isPaused());
     }

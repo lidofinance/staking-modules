@@ -7,10 +7,7 @@ import { Test } from "forge-std/Test.sol";
 import { ValidatorCountsReport } from "src/lib/ValidatorCountsReport.sol";
 
 contract ReportCaller {
-    function safeCountOperators(
-        bytes calldata ids,
-        bytes calldata counts
-    ) public pure returns (uint256) {
+    function safeCountOperators(bytes calldata ids, bytes calldata counts) public pure returns (uint256) {
         return ValidatorCountsReport.safeCountOperators(ids, counts);
     }
 
@@ -52,10 +49,7 @@ contract ValidatorCountsReportTest is Test {
     function test_safeCountOperators_invalidCountsLength() public {
         (bytes memory ids, bytes memory counts) = (
             bytes.concat(bytes8(0x0000000000000001)),
-            bytes.concat(
-                bytes16(0x00000000000000000000000000000001),
-                bytes4(0x00000001)
-            )
+            bytes.concat(bytes16(0x00000000000000000000000000000001), bytes4(0x00000001))
         );
 
         vm.expectRevert(ValidatorCountsReport.InvalidReportData.selector);
@@ -64,10 +58,7 @@ contract ValidatorCountsReportTest is Test {
 
     function test_safeCountOperators_differentItemsCount() public {
         (bytes memory ids, bytes memory counts) = (
-            bytes.concat(
-                bytes8(0x0000000000000001),
-                bytes8(0x0000000000000002)
-            ),
+            bytes.concat(bytes8(0x0000000000000001), bytes8(0x0000000000000002)),
             bytes.concat(bytes16(0x00000000000000000000000000000001))
         );
 
@@ -97,14 +88,8 @@ contract ValidatorCountsReportTest is Test {
 
     function test_nextWithOffset() public view {
         (bytes memory ids, bytes memory counts) = (
-            bytes.concat(
-                bytes8(0x0000000000000001),
-                bytes8(0x0000000000000002)
-            ),
-            bytes.concat(
-                bytes16(0x00000000000000000000000000000001),
-                bytes16(0x00000000000000000000000000000002)
-            )
+            bytes.concat(bytes8(0x0000000000000001), bytes8(0x0000000000000002)),
+            bytes.concat(bytes16(0x00000000000000000000000000000001), bytes16(0x00000000000000000000000000000002))
         );
 
         (uint256 nodeOperatorId, uint256 count) = caller.next(ids, counts, 1);

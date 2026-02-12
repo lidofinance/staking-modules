@@ -15,12 +15,7 @@ import { IFeeDistributor } from "./interfaces/IFeeDistributor.sol";
 import { IStETH } from "./interfaces/IStETH.sol";
 
 /// @author madlabman
-contract FeeDistributor is
-    IFeeDistributor,
-    Initializable,
-    AccessControlEnumerableUpgradeable,
-    AssetRecoverer
-{
+contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerableUpgradeable, AssetRecoverer {
     uint64 internal constant INITIALIZED_VERSION = 3;
 
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
@@ -39,15 +34,13 @@ contract FeeDistributor is
     string public logCid;
 
     /// @notice Amount of stETH shares sent to the Accounting in favor of the NO
-    mapping(uint256 nodeOperatorId => uint256 distributed)
-        public distributedShares;
+    mapping(uint256 nodeOperatorId => uint256 distributed) public distributedShares;
 
     /// @notice Total Amount of stETH shares available for claiming by NOs
     uint256 public totalClaimableShares;
 
     /// @notice Array of the distribution data history
-    mapping(uint256 index => DistributionData)
-        internal _distributionDataHistory;
+    mapping(uint256 index => DistributionData) internal _distributionDataHistory;
 
     /// @notice The number of _distributionDataHistory records
     uint256 public distributionDataHistoryCount;
@@ -66,16 +59,9 @@ contract FeeDistributor is
     }
 
     constructor(address stETH, address accounting, address oracle) {
-        if (accounting == address(0)) {
-            revert ZeroAccountingAddress();
-        }
-        if (oracle == address(0)) {
-            revert ZeroOracleAddress();
-        }
-
-        if (stETH == address(0)) {
-            revert ZeroStEthAddress();
-        }
+        if (accounting == address(0)) revert ZeroAccountingAddress();
+        if (oracle == address(0)) revert ZeroOracleAddress();
+        if (stETH == address(0)) revert ZeroStEthAddress();
 
         ACCOUNTING = accounting;
         STETH = IStETH(stETH);
@@ -84,13 +70,11 @@ contract FeeDistributor is
         _disableInitializers();
     }
 
-    function initialize(
-        address admin,
-        address _rebateRecipient
-    ) external reinitializer(INITIALIZED_VERSION) {
-        if (admin == address(0)) {
-            revert ZeroAdminAddress();
-        }
+    /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
+    ///      It is recommended to call this method in the same transaction as the deployment transaction
+    ///      and perform extensive deployment verification before using the contract instance.
+    function initialize(address admin, address _rebateRecipient) external reinitializer(INITIALIZED_VERSION) {
+        if (admin == address(0)) revert ZeroAdminAddress();
 
         _setRebateRecipient(_rebateRecipient);
 
@@ -101,13 +85,12 @@ contract FeeDistributor is
 
     /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing
     ///      version 2 deployment. If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
+    ///      To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
     // solhint-disable-next-line no-empty-blocks
     function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {}
 
     /// @inheritdoc IFeeDistributor
-    function setRebateRecipient(
-        address _rebateRecipient
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setRebateRecipient(address _rebateRecipient) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setRebateRecipient(_rebateRecipient);
     }
 
@@ -117,19 +100,10 @@ contract FeeDistributor is
         uint256 cumulativeFeeShares,
         bytes32[] calldata proof
     ) external onlyAccounting returns (uint256 sharesToDistribute) {
-        sharesToDistribute = getFeesToDistribute(
-            nodeOperatorId,
-            cumulativeFeeShares,
-            proof
-        );
+        sharesToDistribute = getFeesToDistribute(nodeOperatorId, cumulativeFeeShares, proof);
 
-        if (sharesToDistribute == 0) {
-            return 0;
-        }
-
-        if (totalClaimableShares < sharesToDistribute) {
-            revert NotEnoughShares();
-        }
+        if (sharesToDistribute == 0) return 0;
+        if (totalClaimableShares < sharesToDistribute) revert NotEnoughShares();
 
         unchecked {
             totalClaimableShares -= sharesToDistribute;
@@ -149,31 +123,13 @@ contract FeeDistributor is
         uint256 rebate,
         uint256 refSlot
     ) external onlyOracle {
-        if (
-            totalClaimableShares + distributed + rebate >
-            STETH.sharesOf(address(this))
-        ) {
-            revert InvalidShares();
-        }
-
-        if (distributed == 0 && rebate > 0) {
-            revert InvalidReportData();
-        }
-
+        if (totalClaimableShares + distributed + rebate > STETH.sharesOf(address(this))) revert InvalidShares();
+        if (distributed == 0 && rebate > 0) revert InvalidReportData();
         if (distributed > 0) {
-            if (bytes(_treeCid).length == 0) {
-                revert InvalidTreeCid();
-            }
-            if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid))) {
-                revert InvalidTreeCid();
-            }
-
-            if (_treeRoot == bytes32(0)) {
-                revert InvalidTreeRoot();
-            }
-            if (_treeRoot == treeRoot) {
-                revert InvalidTreeRoot();
-            }
+            if (bytes(_treeCid).length == 0) revert InvalidTreeCid();
+            if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid))) revert InvalidTreeCid();
+            if (_treeRoot == bytes32(0)) revert InvalidTreeRoot();
+            if (_treeRoot == treeRoot) revert InvalidTreeRoot();
 
             // Doesn't overflow because of the very first check.
             unchecked {
@@ -183,11 +139,7 @@ contract FeeDistributor is
             treeRoot = _treeRoot;
             treeCid = _treeCid;
 
-            emit DistributionDataUpdated(
-                totalClaimableShares,
-                _treeRoot,
-                _treeCid
-            );
+            emit DistributionDataUpdated(totalClaimableShares, _treeRoot, _treeCid);
         }
 
         emit ModuleFeeDistributed(distributed);
@@ -199,19 +151,13 @@ contract FeeDistributor is
 
         // NOTE: Make sure off-chain tooling provides a distinct CID of a log even for empty reports, e.g. by mixing
         // in a frame identifier such as reference slot to a file.
-        if (bytes(_logCid).length == 0) {
-            revert InvalidLogCID();
-        }
-        if (keccak256(bytes(_logCid)) == keccak256(bytes(logCid))) {
-            revert InvalidLogCID();
-        }
+        if (bytes(_logCid).length == 0) revert InvalidLogCID();
+        if (keccak256(bytes(_logCid)) == keccak256(bytes(logCid))) revert InvalidLogCID();
 
         logCid = _logCid;
         emit DistributionLogUpdated(_logCid);
 
-        _distributionDataHistory[
-            distributionDataHistoryCount
-        ] = DistributionData({
+        _distributionDataHistory[distributionDataHistoryCount] = DistributionData({
             refSlot: refSlot,
             treeRoot: treeRoot,
             treeCid: treeCid,
@@ -228,9 +174,7 @@ contract FeeDistributor is
     /// @inheritdoc AssetRecoverer
     function recoverERC20(address token, uint256 amount) external override {
         _onlyRecoverer();
-        if (token == address(STETH)) {
-            revert NotAllowedToRecover();
-        }
+        if (token == address(STETH)) revert NotAllowedToRecover();
         AssetRecovererLib.recoverERC20(token, amount);
     }
 
@@ -245,9 +189,7 @@ contract FeeDistributor is
     }
 
     /// @inheritdoc IFeeDistributor
-    function getHistoricalDistributionData(
-        uint256 index
-    ) external view returns (DistributionData memory) {
+    function getHistoricalDistributionData(uint256 index) external view returns (DistributionData memory) {
         return _distributionDataHistory[index];
     }
 
@@ -259,18 +201,10 @@ contract FeeDistributor is
     ) public view returns (uint256 sharesToDistribute) {
         // NOTE: We reject empty proofs to separate two business logic paths on the level of
         // Accounting.sol (see _pullFeeRewards function invocations) with and without a proof.
-        if (proof.length == 0) {
-            revert InvalidProof();
-        }
+        if (proof.length == 0) revert InvalidProof();
 
-        bool isValid = MerkleProof.verifyCalldata(
-            proof,
-            treeRoot,
-            hashLeaf(nodeOperatorId, cumulativeFeeShares)
-        );
-        if (!isValid) {
-            revert InvalidProof();
-        }
+        bool isValid = MerkleProof.verifyCalldata(proof, treeRoot, hashLeaf(nodeOperatorId, cumulativeFeeShares));
+        if (!isValid) revert InvalidProof();
 
         uint256 _distributedShares = distributedShares[nodeOperatorId];
         if (_distributedShares > cumulativeFeeShares) {
@@ -284,35 +218,23 @@ contract FeeDistributor is
     }
 
     /// @inheritdoc IFeeDistributor
-    function hashLeaf(
-        uint256 nodeOperatorId,
-        uint256 shares
-    ) public pure returns (bytes32) {
-        return
-            keccak256(
-                bytes.concat(keccak256(abi.encode(nodeOperatorId, shares)))
-            );
+    function hashLeaf(uint256 nodeOperatorId, uint256 shares) public pure returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encode(nodeOperatorId, shares))));
     }
 
     function _setRebateRecipient(address _rebateRecipient) internal {
-        if (_rebateRecipient == address(0)) {
-            revert ZeroRebateRecipientAddress();
-        }
+        if (_rebateRecipient == address(0)) revert ZeroRebateRecipientAddress();
 
         rebateRecipient = _rebateRecipient;
         emit RebateRecipientSet(_rebateRecipient);
     }
 
     function _onlyAccounting() internal view {
-        if (msg.sender != ACCOUNTING) {
-            revert SenderIsNotAccounting();
-        }
+        if (msg.sender != ACCOUNTING) revert SenderIsNotAccounting();
     }
 
     function _onlyOracle() internal view {
-        if (msg.sender != ORACLE) {
-            revert SenderIsNotOracle();
-        }
+        if (msg.sender != ORACLE) revert SenderIsNotOracle();
     }
 
     function _onlyRecoverer() internal view override {

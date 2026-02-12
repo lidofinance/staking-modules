@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
+
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
 import { BondCore } from "./abstract/BondCore.sol";
@@ -35,33 +36,26 @@ contract Accounting is
 
     bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
     bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
-    bytes32 public constant MANAGE_BOND_CURVES_ROLE =
-        keccak256("MANAGE_BOND_CURVES_ROLE");
-    bytes32 public constant SET_BOND_CURVE_ROLE =
-        keccak256("SET_BOND_CURVE_ROLE");
+    bytes32 public constant MANAGE_BOND_CURVES_ROLE = keccak256("MANAGE_BOND_CURVES_ROLE");
+    bytes32 public constant SET_BOND_CURVE_ROLE = keccak256("SET_BOND_CURVE_ROLE");
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
 
     IBaseModule public immutable MODULE;
     IFeeDistributor public immutable FEE_DISTRIBUTOR;
-    /// @dev DEPRECATED
-    /// @custom:oz-renamed-from feeDistributor
-    IFeeDistributor internal _feeDistributorOld;
+
+    mapping(uint256 nodeOperatorId => address rewardsClaimer) internal _rewardsClaimers;
     address public chargePenaltyRecipient;
 
     mapping(uint256 nodeOperatorId => FeeSplit[]) internal _feeSplits;
-    mapping(uint256 nodeOperatorId => uint256 pendingSharesToSplit)
-        internal _pendingSharesToSplit;
-
-    mapping(uint256 nodeOperatorId => address rewardsClaimer)
-        internal _rewardsClaimers;
+    mapping(uint256 nodeOperatorId => uint256 pendingSharesToSplit) internal _pendingSharesToSplit;
 
     modifier onlyModule() {
         _onlyModule();
         _;
     }
 
-    /// @param lidoLocator Lido locator contract address
-    /// @param module Community Staking Module contract address
+    /// @param lidoLocator Lido Locator contract address
+    /// @param module Staking Module contract address
     /// @param feeDistributor Fee Distributor contract address
     /// @param minBondLockPeriod Min time in seconds for the bondLock period
     /// @param maxBondLockPeriod Max time in seconds for the bondLock period
@@ -72,12 +66,8 @@ contract Accounting is
         uint256 minBondLockPeriod,
         uint256 maxBondLockPeriod
     ) BondCore(lidoLocator) BondLock(minBondLockPeriod, maxBondLockPeriod) {
-        if (module == address(0)) {
-            revert ZeroModuleAddress();
-        }
-        if (feeDistributor == address(0)) {
-            revert ZeroFeeDistributorAddress();
-        }
+        if (module == address(0)) revert ZeroModuleAddress();
+        if (feeDistributor == address(0)) revert ZeroFeeDistributorAddress();
 
         MODULE = IBaseModule(module);
         FEE_DISTRIBUTOR = IFeeDistributor(feeDistributor);
@@ -85,6 +75,9 @@ contract Accounting is
         _disableInitializers();
     }
 
+    /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
+    ///      It is recommended to call this method in the same transaction as the deployment transaction
+    ///      and perform extensive deployment verification before using the contract instance.
     /// @param bondCurve Initial bond curve
     /// @param admin Admin role member address
     /// @param bondLockPeriod Bond lock period in seconds
@@ -99,9 +92,7 @@ contract Accounting is
         __BondCurve_init(bondCurve);
         __BondLock_init(bondLockPeriod);
 
-        if (admin == address(0)) {
-            revert ZeroAdminAddress();
-        }
+        if (admin == address(0)) revert ZeroAdminAddress();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
 
@@ -109,11 +100,13 @@ contract Accounting is
 
         LIDO.approve(address(WSTETH), type(uint256).max);
         LIDO.approve(address(WITHDRAWAL_QUEUE), type(uint256).max);
+        // TODO put burner into an immutable as it's upgradeable now
         LIDO.approve(LIDO_LOCATOR.burner(), type(uint256).max);
     }
 
     /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing version 2 deployment.
     ///      If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
+    ///      To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
     // solhint-disable-next-line no-empty-blocks
     function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {}
 
@@ -128,25 +121,21 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function setChargePenaltyRecipient(
-        address _chargePenaltyRecipient
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setChargePenaltyRecipient(address _chargePenaltyRecipient) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setChargePenaltyRecipient(_chargePenaltyRecipient);
     }
 
     /// @inheritdoc IAccounting
-    function setBondLockPeriod(
-        uint256 period
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setBondLockPeriod(uint256 period) external onlyRole(DEFAULT_ADMIN_ROLE) {
         BondLock._setBondLockPeriod(period);
     }
 
     /// @inheritdoc IAccounting
     function setFeeSplits(
         uint256 nodeOperatorId,
+        FeeSplit[] calldata feeSplits,
         uint256 cumulativeFeeShares,
-        bytes32[] calldata rewardsProof,
-        FeeSplit[] calldata feeSplits
+        bytes32[] calldata rewardsProof
     ) external {
         _onlyNodeOperatorOwner(nodeOperatorId);
         FeeSplits.setFeeSplits({
@@ -176,20 +165,14 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function setBondCurve(
-        uint256 nodeOperatorId,
-        uint256 curveId
-    ) external onlyRole(SET_BOND_CURVE_ROLE) {
+    function setBondCurve(uint256 nodeOperatorId, uint256 curveId) external onlyRole(SET_BOND_CURVE_ROLE) {
         _onlyExistingNodeOperator(nodeOperatorId);
         BondCurve._setBondCurve(nodeOperatorId, curveId);
-        MODULE.updateDepositableValidatorsCount(nodeOperatorId);
+        MODULE.onNodeOperatorBondCurveChange(nodeOperatorId);
     }
 
     /// @inheritdoc IAccounting
-    function depositETH(
-        address from,
-        uint256 nodeOperatorId
-    ) external payable whenResumed onlyModule {
+    function depositETH(address from, uint256 nodeOperatorId) external payable whenResumed onlyModule {
         BondCore._depositETH(from, nodeOperatorId);
     }
 
@@ -253,26 +236,16 @@ contract Accounting is
         uint256 cumulativeFeeShares,
         bytes32[] calldata rewardsProof
     ) external whenResumed returns (uint256 claimedShares) {
-        NodeOperatorManagementProperties
-            memory no = _checkAndGetEligibleNodeOperatorProperties(
-                nodeOperatorId
-            );
+        NodeOperatorManagementProperties memory no = _checkAndGetEligibleNodeOperatorProperties(nodeOperatorId);
 
-        uint256 claimableShares = _pullAndSplitFeeRewards(
-            nodeOperatorId,
-            cumulativeFeeShares,
-            rewardsProof
-        );
+        uint256 claimableShares = _pullAndSplitFeeRewards(nodeOperatorId, cumulativeFeeShares, rewardsProof);
         if (stETHAmount != 0 && claimableShares != 0) {
-            claimedShares = BondCore._claimStETH(
-                nodeOperatorId,
-                stETHAmount,
-                claimableShares,
-                no.rewardAddress
-            );
+            claimedShares = BondCore._claimStETH(nodeOperatorId, stETHAmount, claimableShares, no.rewardAddress);
         }
         MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
+
+    // TODO continue review from this line
 
     /// @inheritdoc IAccounting
     function claimRewardsWstETH(
@@ -281,23 +254,11 @@ contract Accounting is
         uint256 cumulativeFeeShares,
         bytes32[] calldata rewardsProof
     ) external whenResumed returns (uint256 claimedWstETH) {
-        NodeOperatorManagementProperties
-            memory no = _checkAndGetEligibleNodeOperatorProperties(
-                nodeOperatorId
-            );
+        NodeOperatorManagementProperties memory no = _checkAndGetEligibleNodeOperatorProperties(nodeOperatorId);
 
-        uint256 claimableShares = _pullAndSplitFeeRewards(
-            nodeOperatorId,
-            cumulativeFeeShares,
-            rewardsProof
-        );
+        uint256 claimableShares = _pullAndSplitFeeRewards(nodeOperatorId, cumulativeFeeShares, rewardsProof);
         if (wstETHAmount != 0 && claimableShares != 0) {
-            claimedWstETH = BondCore._claimWstETH(
-                nodeOperatorId,
-                wstETHAmount,
-                claimableShares,
-                no.rewardAddress
-            );
+            claimedWstETH = BondCore._claimWstETH(nodeOperatorId, wstETHAmount, claimableShares, no.rewardAddress);
         }
         MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
@@ -309,53 +270,29 @@ contract Accounting is
         uint256 cumulativeFeeShares,
         bytes32[] calldata rewardsProof
     ) external whenResumed returns (uint256 requestId) {
-        NodeOperatorManagementProperties
-            memory no = _checkAndGetEligibleNodeOperatorProperties(
-                nodeOperatorId
-            );
+        NodeOperatorManagementProperties memory no = _checkAndGetEligibleNodeOperatorProperties(nodeOperatorId);
 
-        uint256 claimableShares = _pullAndSplitFeeRewards(
-            nodeOperatorId,
-            cumulativeFeeShares,
-            rewardsProof
-        );
+        uint256 claimableShares = _pullAndSplitFeeRewards(nodeOperatorId, cumulativeFeeShares, rewardsProof);
         if (stETHAmount != 0 && claimableShares != 0) {
-            requestId = BondCore._claimUnstETH(
-                nodeOperatorId,
-                stETHAmount,
-                claimableShares,
-                no.rewardAddress
-            );
+            requestId = BondCore._claimUnstETH(nodeOperatorId, stETHAmount, claimableShares, no.rewardAddress);
         }
         MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
     /// @inheritdoc IAccounting
-    function lockBondETH(
-        uint256 nodeOperatorId,
-        uint256 amount
-    ) external onlyModule {
+    function lockBondETH(uint256 nodeOperatorId, uint256 amount) external onlyModule {
         BondLock._lock(nodeOperatorId, amount);
     }
 
     /// @inheritdoc IAccounting
-    function releaseLockedBondETH(
-        uint256 nodeOperatorId,
-        uint256 amount
-    ) external onlyModule {
+    function releaseLockedBondETH(uint256 nodeOperatorId, uint256 amount) external onlyModule {
         BondLock._unlock(nodeOperatorId, amount);
     }
 
     /// @inheritdoc IAccounting
-    function compensateLockedBondETH(
-        uint256 nodeOperatorId
-    ) external payable onlyModule {
-        (bool success, ) = LIDO_LOCATOR.elRewardsVault().call{
-            value: msg.value
-        }("");
-        if (!success) {
-            revert ElRewardsVaultReceiveFailed();
-        }
+    function compensateLockedBondETH(uint256 nodeOperatorId) external payable onlyModule {
+        (bool success, ) = LIDO_LOCATOR.elRewardsVault().call{ value: msg.value }("");
+        if (!success) revert ElRewardsVaultReceiveFailed();
 
         BondLock._unlock(nodeOperatorId, msg.value);
         emit BondLockCompensated(nodeOperatorId, msg.value);
@@ -372,19 +309,13 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function penalize(
-        uint256 nodeOperatorId,
-        uint256 amount
-    ) external onlyModule returns (bool fullyBurned) {
+    function penalize(uint256 nodeOperatorId, uint256 amount) external onlyModule returns (bool fullyBurned) {
         uint256 notBurnedAmount = BondCore._burn(nodeOperatorId, amount);
         fullyBurned = notBurnedAmount == 0;
     }
 
     /// @inheritdoc IAccounting
-    function chargeFee(
-        uint256 nodeOperatorId,
-        uint256 amount
-    ) external onlyModule {
+    function chargeFee(uint256 nodeOperatorId, uint256 amount) external onlyModule {
         BondCore._charge(nodeOperatorId, amount, chargePenaltyRecipient);
     }
 
@@ -395,23 +326,14 @@ contract Accounting is
         bytes32[] calldata rewardsProof
     ) external {
         _onlyExistingNodeOperator(nodeOperatorId);
-        _pullAndSplitFeeRewards(
-            nodeOperatorId,
-            cumulativeFeeShares,
-            rewardsProof
-        );
+        _pullAndSplitFeeRewards(nodeOperatorId, cumulativeFeeShares, rewardsProof);
         MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
     /// @inheritdoc IAccounting
-    function setCustomRewardsClaimer(
-        uint256 nodeOperatorId,
-        address rewardsClaimer
-    ) external {
+    function setCustomRewardsClaimer(uint256 nodeOperatorId, address rewardsClaimer) external {
         _onlyNodeOperatorOwner(nodeOperatorId);
-        if (rewardsClaimer == _rewardsClaimers[nodeOperatorId]) {
-            revert SameAddress();
-        }
+        if (rewardsClaimer == _rewardsClaimers[nodeOperatorId]) revert SameAddress();
         _rewardsClaimers[nodeOperatorId] = rewardsClaimer;
         emit CustomRewardsClaimerSet(nodeOperatorId, rewardsClaimer);
     }
@@ -419,9 +341,7 @@ contract Accounting is
     /// @inheritdoc AssetRecoverer
     function recoverERC20(address token, uint256 amount) external override {
         _onlyRecoverer();
-        if (token == address(LIDO)) {
-            revert NotAllowedToRecover();
-        }
+        if (token == address(LIDO)) revert NotAllowedToRecover();
         AssetRecovererLib.recoverERC20(token, amount);
     }
 
@@ -434,6 +354,7 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
+    // TODO can be removed due to the fact that burner is upgradeable now
     function renewBurnerAllowance() external {
         LIDO.approve(LIDO_LOCATOR.burner(), type(uint256).max);
     }
@@ -444,57 +365,33 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function getFeeSplits(
-        uint256 nodeOperatorId
-    ) external view returns (FeeSplit[] memory) {
+    function getFeeSplits(uint256 nodeOperatorId) external view returns (FeeSplit[] memory) {
         return _feeSplits[nodeOperatorId];
     }
 
     /// @inheritdoc IAccounting
-    function getCustomRewardsClaimer(
-        uint256 nodeOperatorId
-    ) external view returns (address) {
+    function getCustomRewardsClaimer(uint256 nodeOperatorId) external view returns (address) {
         return _rewardsClaimers[nodeOperatorId];
     }
 
     /// @inheritdoc IAccounting
-    function getPendingSharesToSplit(
-        uint256 nodeOperatorId
-    ) external view returns (uint256) {
+    function getPendingSharesToSplit(uint256 nodeOperatorId) external view returns (uint256) {
         return _pendingSharesToSplit[nodeOperatorId];
     }
 
     /// @inheritdoc IAccounting
-    function getUnbondedKeysCount(
-        uint256 nodeOperatorId
-    ) external view returns (uint256) {
-        return
-            _getUnbondedKeysCount({
-                nodeOperatorId: nodeOperatorId,
-                includeLockedBond: true
-            });
+    function getUnbondedKeysCount(uint256 nodeOperatorId) external view returns (uint256) {
+        return _getUnbondedKeysCount({ nodeOperatorId: nodeOperatorId, includeLockedBond: true });
     }
 
     /// @inheritdoc IAccounting
-    function getUnbondedKeysCountToEject(
-        uint256 nodeOperatorId
-    ) external view returns (uint256) {
-        return
-            _getUnbondedKeysCount({
-                nodeOperatorId: nodeOperatorId,
-                includeLockedBond: false
-            });
+    function getUnbondedKeysCountToEject(uint256 nodeOperatorId) external view returns (uint256) {
+        return _getUnbondedKeysCount({ nodeOperatorId: nodeOperatorId, includeLockedBond: false });
     }
 
     /// @inheritdoc IAccounting
-    function getBondAmountByKeysCountWstETH(
-        uint256 keysCount,
-        uint256 curveId
-    ) external view returns (uint256) {
-        return
-            _sharesByEth(
-                BondCurve.getBondAmountByKeysCount(keysCount, curveId)
-            );
+    function getBondAmountByKeysCountWstETH(uint256 keysCount, uint256 curveId) external view returns (uint256) {
+        return _sharesByEth(BondCurve.getBondAmountByKeysCount(keysCount, curveId));
     }
 
     /// @inheritdoc IAccounting
@@ -502,16 +399,11 @@ contract Accounting is
         uint256 nodeOperatorId,
         uint256 additionalKeys
     ) external view returns (uint256) {
-        return
-            _sharesByEth(
-                getRequiredBondForNextKeys(nodeOperatorId, additionalKeys)
-            );
+        return _sharesByEth(getRequiredBondForNextKeys(nodeOperatorId, additionalKeys));
     }
 
     /// @inheritdoc IAccounting
-    function getClaimableBondShares(
-        uint256 nodeOperatorId
-    ) external view returns (uint256) {
+    function getClaimableBondShares(uint256 nodeOperatorId) external view returns (uint256) {
         return _getClaimableBondShares(nodeOperatorId);
     }
 
@@ -527,40 +419,28 @@ contract Accounting is
             rewardsProof
         );
 
-        (uint256 current, uint256 required) = getBondSummaryShares(
-            nodeOperatorId
-        );
+        (uint256 current, uint256 required) = getBondSummaryShares(nodeOperatorId);
         current = current + feesToDistribute;
 
         return current > required ? current - required : 0;
     }
 
     /// @inheritdoc IAccounting
-    function getBondSummary(
-        uint256 nodeOperatorId
-    ) public view returns (uint256 current, uint256 required) {
+    function getBondSummary(uint256 nodeOperatorId) public view returns (uint256 current, uint256 required) {
         current = BondCore.getBond(nodeOperatorId);
         required = _getRequiredBond(nodeOperatorId, 0);
     }
 
     /// @inheritdoc IAccounting
-    function getBondSummaryShares(
-        uint256 nodeOperatorId
-    ) public view returns (uint256 current, uint256 required) {
+    function getBondSummaryShares(uint256 nodeOperatorId) public view returns (uint256 current, uint256 required) {
         current = BondCore.getBondShares(nodeOperatorId);
         required = _getRequiredBondShares(nodeOperatorId, 0);
     }
 
     /// @inheritdoc IAccounting
-    function getRequiredBondForNextKeys(
-        uint256 nodeOperatorId,
-        uint256 additionalKeys
-    ) public view returns (uint256) {
+    function getRequiredBondForNextKeys(uint256 nodeOperatorId, uint256 additionalKeys) public view returns (uint256) {
         uint256 current = BondCore.getBond(nodeOperatorId);
-        uint256 totalRequired = _getRequiredBond(
-            nodeOperatorId,
-            additionalKeys
-        );
+        uint256 totalRequired = _getRequiredBond(nodeOperatorId, additionalKeys);
 
         unchecked {
             return totalRequired > current ? totalRequired - current : 0;
@@ -574,16 +454,10 @@ contract Accounting is
     ) internal returns (uint256 claimableShares) {
         bool hasSplits = FeeSplits.hasSplits(_feeSplits, nodeOperatorId);
         if (rewardsProof.length != 0) {
-            uint256 distributed = FEE_DISTRIBUTOR.distributeFees(
-                nodeOperatorId,
-                cumulativeFeeShares,
-                rewardsProof
-            );
+            uint256 distributed = FEE_DISTRIBUTOR.distributeFees(nodeOperatorId, cumulativeFeeShares, rewardsProof);
             if (distributed != 0) {
-                BondCore._increaseBond(nodeOperatorId, distributed);
-                if (hasSplits) {
-                    _pendingSharesToSplit[nodeOperatorId] += distributed;
-                }
+                BondCore._creditBondShares(nodeOperatorId, distributed);
+                if (hasSplits) _pendingSharesToSplit[nodeOperatorId] += distributed;
             }
         }
         claimableShares = _getClaimableBondShares(nodeOperatorId);
@@ -603,17 +477,11 @@ contract Accounting is
                 }
             }
         }
+        // TODO emit events for _pendingSharesToSplit changes or not
     }
 
-    function _unwrapPermitIfRequired(
-        address token,
-        address from,
-        PermitInput calldata permit
-    ) internal {
-        if (
-            permit.value > 0 &&
-            IERC20Permit(token).allowance(from, address(this)) < permit.value
-        ) {
+    function _unwrapPermitIfRequired(address token, address from, PermitInput calldata permit) internal {
+        if (permit.value > 0 && IERC20Permit(token).allowance(from, address(this)) < permit.value) {
             IERC20Permit(token).permit({
                 owner: from,
                 spender: address(this),
@@ -627,59 +495,33 @@ contract Accounting is
     }
 
     /// @dev Calculates claimable bond shares accounting for locked bond and withdrawn validators
-    function _getClaimableBondShares(
-        uint256 nodeOperatorId
-    ) internal view returns (uint256) {
+    function _getClaimableBondShares(uint256 nodeOperatorId) internal view returns (uint256) {
         unchecked {
-            (
-                uint256 currentShares,
-                uint256 requiredShares
-            ) = getBondSummaryShares(nodeOperatorId);
-            return
-                currentShares > requiredShares
-                    ? currentShares - requiredShares
-                    : 0;
+            (uint256 currentShares, uint256 requiredShares) = getBondSummaryShares(nodeOperatorId);
+            return currentShares > requiredShares ? currentShares - requiredShares : 0;
         }
     }
 
-    function _getRequiredBond(
-        uint256 nodeOperatorId,
-        uint256 additionalKeys
-    ) internal view returns (uint256) {
+    function _getRequiredBond(uint256 nodeOperatorId, uint256 additionalKeys) internal view returns (uint256) {
         uint256 curveId = BondCurve.getBondCurveId(nodeOperatorId);
-        uint256 nonWithdrawnKeys = MODULE.getNodeOperatorNonWithdrawnKeys(
-            nodeOperatorId
-        );
-        uint256 requiredBondForKeys = BondCurve.getBondAmountByKeysCount(
-            nonWithdrawnKeys + additionalKeys,
-            curveId
-        );
+        uint256 nonWithdrawnKeys = MODULE.getNodeOperatorNonWithdrawnKeys(nodeOperatorId);
+        uint256 requiredBondForKeys = BondCurve.getBondAmountByKeysCount(nonWithdrawnKeys + additionalKeys, curveId);
         uint256 actualLockedBond = BondLock.getActualLockedBond(nodeOperatorId);
         uint256 bondDebt = BondCore.getBondDebt(nodeOperatorId);
 
         return requiredBondForKeys + actualLockedBond + bondDebt;
     }
 
-    function _getRequiredBondShares(
-        uint256 nodeOperatorId,
-        uint256 additionalKeys
-    ) internal view returns (uint256) {
+    function _getRequiredBondShares(uint256 nodeOperatorId, uint256 additionalKeys) internal view returns (uint256) {
         return _sharesByEth(_getRequiredBond(nodeOperatorId, additionalKeys));
     }
 
     /// @dev Unbonded stands for the amount of keys not fully covered with bond
-    function _getUnbondedKeysCount(
-        uint256 nodeOperatorId,
-        bool includeLockedBond
-    ) internal view returns (uint256) {
-        uint256 nonWithdrawnKeys = MODULE.getNodeOperatorNonWithdrawnKeys(
-            nodeOperatorId
-        );
+    function _getUnbondedKeysCount(uint256 nodeOperatorId, bool includeLockedBond) internal view returns (uint256) {
+        uint256 nonWithdrawnKeys = MODULE.getNodeOperatorNonWithdrawnKeys(nodeOperatorId);
         uint256 currentBond = BondCore.getBond(nodeOperatorId);
         uint256 bondDebt = BondCore.getBondDebt(nodeOperatorId);
-        if (bondDebt > currentBond) {
-            return nonWithdrawnKeys;
-        }
+        if (bondDebt > currentBond) return nonWithdrawnKeys;
         unchecked {
             currentBond -= bondDebt;
         }
@@ -688,9 +530,7 @@ contract Accounting is
         if (includeLockedBond) {
             uint256 lockedBond = BondLock.getActualLockedBond(nodeOperatorId);
             // We use strict condition here since in rare case of equality the outcome of the function will not change
-            if (lockedBond > currentBond) {
-                return nonWithdrawnKeys;
-            }
+            if (lockedBond > currentBond) return nonWithdrawnKeys;
             unchecked {
                 currentBond -= lockedBond;
             }
@@ -702,8 +542,7 @@ contract Accounting is
             currentBond + 10 wei,
             BondCurve.getBondCurveId(nodeOperatorId)
         );
-        return
-            nonWithdrawnKeys > bondedKeys ? nonWithdrawnKeys - bondedKeys : 0;
+        return nonWithdrawnKeys > bondedKeys ? nonWithdrawnKeys - bondedKeys : 0;
     }
 
     function _onlyRecoverer() internal view override {
@@ -711,49 +550,31 @@ contract Accounting is
     }
 
     function _onlyExistingNodeOperator(uint256 nodeOperatorId) internal view {
-        if (
-            nodeOperatorId <
-            IStakingModule(address(MODULE)).getNodeOperatorsCount()
-        ) {
-            return;
-        }
+        if (nodeOperatorId < IStakingModule(address(MODULE)).getNodeOperatorsCount()) return;
 
         revert NodeOperatorDoesNotExist();
     }
 
     function _onlyNodeOperatorOwner(uint256 nodeOperatorId) internal view {
-        if (MODULE.getNodeOperatorOwner(nodeOperatorId) != msg.sender) {
-            revert SenderIsNotEligible();
-        }
+        if (MODULE.getNodeOperatorOwner(nodeOperatorId) != msg.sender) revert SenderIsNotEligible();
     }
 
     function _onlyModule() internal view {
-        if (msg.sender != address(MODULE)) {
-            revert SenderIsNotModule();
-        }
+        if (msg.sender != address(MODULE)) revert SenderIsNotModule();
     }
 
     function _checkAndGetEligibleNodeOperatorProperties(
         uint256 nodeOperatorId
     ) internal view returns (NodeOperatorManagementProperties memory no) {
         no = MODULE.getNodeOperatorManagementProperties(nodeOperatorId);
-        if (no.managerAddress == address(0)) {
-            revert NodeOperatorDoesNotExist();
-        }
-
+        if (no.managerAddress == address(0)) revert NodeOperatorDoesNotExist();
         if (no.managerAddress != msg.sender && no.rewardAddress != msg.sender) {
-            if (_rewardsClaimers[nodeOperatorId] != msg.sender) {
-                revert SenderIsNotEligible();
-            }
+            if (_rewardsClaimers[nodeOperatorId] != msg.sender) revert SenderIsNotEligible();
         }
     }
 
-    function _setChargePenaltyRecipient(
-        address _chargePenaltyRecipient
-    ) private {
-        if (_chargePenaltyRecipient == address(0)) {
-            revert ZeroChargePenaltyRecipientAddress();
-        }
+    function _setChargePenaltyRecipient(address _chargePenaltyRecipient) private {
+        if (_chargePenaltyRecipient == address(0)) revert ZeroChargePenaltyRecipientAddress();
         chargePenaltyRecipient = _chargePenaltyRecipient;
         emit ChargePenaltyRecipientSet(_chargePenaltyRecipient);
     }

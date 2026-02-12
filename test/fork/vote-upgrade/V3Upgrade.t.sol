@@ -17,9 +17,7 @@ import { ITriggerableWithdrawalsGateway } from "../../../src/interfaces/ITrigger
 import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
 
 interface IPrevCSParametersRegistry {
-    function defaultElRewardsStealingAdditionalFine()
-        external
-        returns (uint256);
+    function defaultElRewardsStealingAdditionalFine() external returns (uint256);
 
     function defaultExitDelayPenalty() external returns (uint256);
 }
@@ -28,12 +26,7 @@ interface IParametersRegistryV2 {
     function defaultMaxWithdrawalRequestFee() external view returns (uint256);
 }
 
-contract V3UpgradeTestBase is
-    Test,
-    Utilities,
-    DeploymentFixtures,
-    InvariantAsserts
-{
+contract V3UpgradeTestBase is Test, Utilities, DeploymentFixtures, InvariantAsserts {
     bytes32 internal constant REPORT_EL_REWARDS_STEALING_PENALTY_ROLE =
         keccak256("REPORT_EL_REWARDS_STEALING_PENALTY_ROLE");
     bytes32 internal constant SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE =
@@ -76,17 +69,9 @@ contract VoteChangesTest is V3UpgradeTestBase {
         OssifiableProxy csmProxy = OssifiableProxy(payable(address(module)));
 
         vm.selectFork(forkIdBeforeUpgrade);
-        address member0 = module.getRoleMember(
-            module.CREATE_NODE_OPERATOR_ROLE(),
-            0
-        );
-        address member1 = module.getRoleMember(
-            module.CREATE_NODE_OPERATOR_ROLE(),
-            1
-        );
-        address oldPermissionlessGate = member0 == address(vettedGate)
-            ? member1
-            : member0;
+        address member0 = module.getRoleMember(module.CREATE_NODE_OPERATOR_ROLE(), 0);
+        address member1 = module.getRoleMember(module.CREATE_NODE_OPERATOR_ROLE(), 1);
+        address oldPermissionlessGate = member0 == address(vettedGate) ? member1 : member0;
         address implBefore = csmProxy.proxy__getImplementation();
 
         vm.selectFork(forkIdAfterUpgrade);
@@ -97,135 +82,49 @@ contract VoteChangesTest is V3UpgradeTestBase {
 
         assertEq(module.getInitializedVersion(), 3);
 
-        assertTrue(
-            module.hasRole(
-                module.CREATE_NODE_OPERATOR_ROLE(),
-                address(permissionlessGate)
-            )
-        );
+        assertTrue(module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), address(permissionlessGate)));
         assertNotEq(oldPermissionlessGate, address(permissionlessGate));
-        assertFalse(
-            module.hasRole(
-                module.CREATE_NODE_OPERATOR_ROLE(),
-                oldPermissionlessGate
-            )
-        );
-        assertTrue(
-            module.hasRole(
-                module.CREATE_NODE_OPERATOR_ROLE(),
-                address(vettedGate)
-            )
-        );
-        assertEq(
-            module.getRoleMemberCount(module.CREATE_NODE_OPERATOR_ROLE()),
-            2
-        );
+        assertFalse(module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), oldPermissionlessGate));
+        assertTrue(module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), address(vettedGate)));
+        assertEq(module.getRoleMemberCount(module.CREATE_NODE_OPERATOR_ROLE()), 2);
 
-        assertFalse(
-            module.hasRole(module.VERIFIER_ROLE(), deploymentConfig.verifier)
-        );
-        assertTrue(
-            module.hasRole(module.VERIFIER_ROLE(), deploymentConfig.verifierV3)
-        );
+        assertFalse(module.hasRole(module.VERIFIER_ROLE(), deploymentConfig.verifier));
+        assertTrue(module.hasRole(module.VERIFIER_ROLE(), deploymentConfig.verifierV3));
         assertEq(module.getRoleMemberCount(module.VERIFIER_ROLE()), 1);
 
-        assertTrue(
-            module.hasRole(
-                module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(),
-                deploymentConfig.verifierV3
-            )
-        );
-        assertEq(
-            module.getRoleMemberCount(
-                module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE()
-            ),
-            1
-        );
+        assertTrue(module.hasRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), deploymentConfig.verifierV3));
+        assertEq(module.getRoleMemberCount(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE()), 1);
 
         assertTrue(
-            module.hasRole(
-                module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(),
-                deployParams.easyTrackEVMScriptExecutor
-            )
+            module.hasRole(module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(), deployParams.easyTrackEVMScriptExecutor)
         );
-        assertEq(
-            module.getRoleMemberCount(
-                module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE()
-            ),
-            1
-        );
+        assertEq(module.getRoleMemberCount(module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE()), 1);
 
         assertTrue(
-            module.hasRole(
-                module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
-                deployParams.generalDelayedPenaltyReporter
-            )
+            module.hasRole(module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), deployParams.generalDelayedPenaltyReporter)
         );
-        assertEq(
-            module.getRoleMemberCount(
-                module.REPORT_GENERAL_DELAYED_PENALTY_ROLE()
-            ),
-            1
-        );
+        assertEq(module.getRoleMemberCount(module.REPORT_GENERAL_DELAYED_PENALTY_ROLE()), 1);
 
         assertTrue(
-            module.hasRole(
-                module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(),
-                deployParams.easyTrackEVMScriptExecutor
-            )
+            module.hasRole(module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(), deployParams.easyTrackEVMScriptExecutor)
         );
-        assertEq(
-            module.getRoleMemberCount(
-                module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE()
-            ),
-            1
-        );
+        assertEq(module.getRoleMemberCount(module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE()), 1);
 
-        assertEq(
-            module.getRoleMemberCount(REPORT_EL_REWARDS_STEALING_PENALTY_ROLE),
-            0
-        );
-        assertEq(
-            module.getRoleMemberCount(SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE),
-            0
-        );
+        assertEq(module.getRoleMemberCount(REPORT_EL_REWARDS_STEALING_PENALTY_ROLE), 0);
+        assertEq(module.getRoleMemberCount(SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE), 0);
 
-        assertFalse(
-            module.hasRole(module.PAUSE_ROLE(), deploymentConfig.gateSeal)
-        );
-        assertTrue(
-            module.hasRole(module.PAUSE_ROLE(), deploymentConfig.gateSealV3)
-        );
+        assertFalse(module.hasRole(module.PAUSE_ROLE(), deploymentConfig.gateSeal));
+        assertTrue(module.hasRole(module.PAUSE_ROLE(), deploymentConfig.gateSealV3));
     }
 
     function test_burnerRoleChanges() public {
         vm.selectFork(forkIdBeforeUpgrade);
-        assertTrue(
-            burner.hasRole(
-                burner.REQUEST_BURN_SHARES_ROLE(),
-                address(accounting)
-            )
-        );
-        assertFalse(
-            burner.hasRole(
-                burner.REQUEST_BURN_MY_STETH_ROLE(),
-                address(accounting)
-            )
-        );
+        assertTrue(burner.hasRole(burner.REQUEST_BURN_SHARES_ROLE(), address(accounting)));
+        assertFalse(burner.hasRole(burner.REQUEST_BURN_MY_STETH_ROLE(), address(accounting)));
 
         vm.selectFork(forkIdAfterUpgrade);
-        assertFalse(
-            burner.hasRole(
-                burner.REQUEST_BURN_SHARES_ROLE(),
-                address(accounting)
-            )
-        );
-        assertTrue(
-            burner.hasRole(
-                burner.REQUEST_BURN_MY_STETH_ROLE(),
-                address(accounting)
-            )
-        );
+        assertFalse(burner.hasRole(burner.REQUEST_BURN_SHARES_ROLE(), address(accounting)));
+        assertTrue(burner.hasRole(burner.REQUEST_BURN_MY_STETH_ROLE(), address(accounting)));
     }
 
     function test_csmState() public {
@@ -253,11 +152,18 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(nonceBefore, nonceAfter);
         assertEq(totalExitedValidatorsBefore, totalExitedValidatorsAfter);
         assertEq(totalDepositedValidatorsBefore, totalDepositedValidatorsAfter);
-        assertEq(
-            depositableValidatorsCountBefore,
-            depositableValidatorsCountAfter
-        );
+        assertEq(depositableValidatorsCountBefore, depositableValidatorsCountAfter);
         assertEq(totalNodeOperatorsBefore, totalNodeOperatorsAfter);
+    }
+
+    function test_csmQueuePriorityRange() public {
+        vm.selectFork(forkIdBeforeUpgrade);
+        uint256 queueLowestPriorityBefore = module.QUEUE_LOWEST_PRIORITY();
+
+        vm.selectFork(forkIdAfterUpgrade);
+        uint256 queueLowestPriorityAfter = module.QUEUE_LOWEST_PRIORITY();
+
+        assertGe(queueLowestPriorityAfter, queueLowestPriorityBefore, "queue priority range shrunk");
     }
 
     function test_csmStorageSlotsBeforeUpgrade() public {
@@ -265,22 +171,12 @@ contract VoteChangesTest is V3UpgradeTestBase {
         bytes32 slot3 = vm.load(address(module), bytes32(uint256(3)));
         bytes32 slot4 = vm.load(address(module), bytes32(uint256(4)));
 
-        assertEq(
-            slot3,
-            bytes32(0),
-            "assert _totalWithdrawnValidators is empty before upgrade"
-        );
-        assertEq(
-            slot4,
-            bytes32(0),
-            "assert _keyAddedBalances base slot is empty before upgrade"
-        );
+        assertEq(slot3, bytes32(0), "assert _totalWithdrawnValidators is empty before upgrade");
+        assertEq(slot4, bytes32(0), "assert _keyAddedBalances base slot is empty before upgrade");
     }
 
     function test_csmNodeOperatorsState() public {
-        if (skipLongForkTest()) {
-            return;
-        }
+        if (skipLongForkTest()) return;
         NodeOperator memory noBefore;
         NodeOperator memory noAfter;
         for (uint256 noId = 0; noId < module.getNodeOperatorsCount(); noId++) {
@@ -289,72 +185,24 @@ contract VoteChangesTest is V3UpgradeTestBase {
             vm.selectFork(forkIdAfterUpgrade);
             noAfter = module.getNodeOperator(noId);
 
-            assertEq(
-                noBefore.totalAddedKeys,
-                noAfter.totalAddedKeys,
-                "totalAddedKeys"
-            );
-            assertEq(
-                noBefore.totalWithdrawnKeys,
-                noAfter.totalWithdrawnKeys,
-                "totalWithdrawnKeys"
-            );
-            assertEq(
-                noBefore.totalDepositedKeys,
-                noAfter.totalDepositedKeys,
-                "totalDepositedKeys"
-            );
-            assertEq(
-                noBefore.totalVettedKeys,
-                noAfter.totalVettedKeys,
-                "totalVettedKeys"
-            );
-            assertEq(
-                noBefore.stuckValidatorsCount,
-                noAfter.stuckValidatorsCount,
-                "stuckValidatorsCount"
-            );
+            assertEq(noBefore.totalAddedKeys, noAfter.totalAddedKeys, "totalAddedKeys");
+            assertEq(noBefore.totalWithdrawnKeys, noAfter.totalWithdrawnKeys, "totalWithdrawnKeys");
+            assertEq(noBefore.totalDepositedKeys, noAfter.totalDepositedKeys, "totalDepositedKeys");
+            assertEq(noBefore.totalVettedKeys, noAfter.totalVettedKeys, "totalVettedKeys");
+            assertEq(noBefore.stuckValidatorsCount, noAfter.stuckValidatorsCount, "stuckValidatorsCount");
             assertEq(
                 noBefore.depositableValidatorsCount,
                 noAfter.depositableValidatorsCount,
                 "depositableValidatorsCount"
             );
             assertEq(noBefore.targetLimit, noAfter.targetLimit, "targetLimit");
-            assertEq(
-                noBefore.targetLimitMode,
-                noAfter.targetLimitMode,
-                "targetLimitMode"
-            );
-            assertEq(
-                noBefore.totalExitedKeys,
-                noAfter.totalExitedKeys,
-                "totalExitedKeys"
-            );
-            assertEq(
-                noBefore.enqueuedCount,
-                noAfter.enqueuedCount,
-                "enqueuedCount"
-            );
-            assertEq(
-                noBefore.managerAddress,
-                noAfter.managerAddress,
-                "managerAddress"
-            );
-            assertEq(
-                noBefore.proposedManagerAddress,
-                noAfter.proposedManagerAddress,
-                "proposedManagerAddress"
-            );
-            assertEq(
-                noBefore.rewardAddress,
-                noAfter.rewardAddress,
-                "rewardAddress"
-            );
-            assertEq(
-                noBefore.proposedRewardAddress,
-                noAfter.proposedRewardAddress,
-                "proposedRewardAddress"
-            );
+            assertEq(noBefore.targetLimitMode, noAfter.targetLimitMode, "targetLimitMode");
+            assertEq(noBefore.totalExitedKeys, noAfter.totalExitedKeys, "totalExitedKeys");
+            assertEq(noBefore.enqueuedCount, noAfter.enqueuedCount, "enqueuedCount");
+            assertEq(noBefore.managerAddress, noAfter.managerAddress, "managerAddress");
+            assertEq(noBefore.proposedManagerAddress, noAfter.proposedManagerAddress, "proposedManagerAddress");
+            assertEq(noBefore.rewardAddress, noAfter.rewardAddress, "rewardAddress");
+            assertEq(noBefore.proposedRewardAddress, noAfter.proposedRewardAddress, "proposedRewardAddress");
             assertEq(
                 noBefore.extendedManagerPermissions,
                 noAfter.extendedManagerPermissions,
@@ -364,9 +212,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_parametersRegistryChanges() public {
-        OssifiableProxy parametersRegistryProxy = OssifiableProxy(
-            payable(address(parametersRegistry))
-        );
+        OssifiableProxy parametersRegistryProxy = OssifiableProxy(payable(address(parametersRegistry)));
 
         vm.selectFork(forkIdBeforeUpgrade);
         address implBefore = parametersRegistryProxy.proxy__getImplementation();
@@ -389,7 +235,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
         beforeValue = parametersRegistry.QUEUE_LOWEST_PRIORITY();
         vm.selectFork(forkIdAfterUpgrade);
         afterValue = parametersRegistry.QUEUE_LOWEST_PRIORITY();
-        assertEq(beforeValue, afterValue, "queueLowestPriority");
+        assertGe(afterValue, beforeValue, "queueLowestPriority");
 
         vm.selectFork(forkIdBeforeUpgrade);
         beforeValue = parametersRegistry.defaultKeyRemovalCharge();
@@ -398,16 +244,10 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(beforeValue, afterValue, "defaultKeyRemovalCharge");
 
         vm.selectFork(forkIdBeforeUpgrade);
-        beforeValue = IPrevCSParametersRegistry(address(parametersRegistry))
-            .defaultElRewardsStealingAdditionalFine();
+        beforeValue = IPrevCSParametersRegistry(address(parametersRegistry)).defaultElRewardsStealingAdditionalFine();
         vm.selectFork(forkIdAfterUpgrade);
-        afterValue = parametersRegistry
-            .defaultGeneralDelayedPenaltyAdditionalFine();
-        assertEq(
-            beforeValue,
-            afterValue,
-            "defaultGeneralDelayedPenaltyAdditionalFine"
-        );
+        afterValue = parametersRegistry.defaultGeneralDelayedPenaltyAdditionalFine();
+        assertEq(beforeValue, afterValue, "defaultGeneralDelayedPenaltyAdditionalFine");
 
         vm.selectFork(forkIdBeforeUpgrade);
         beforeValue = parametersRegistry.defaultKeysLimit();
@@ -421,17 +261,11 @@ contract VoteChangesTest is V3UpgradeTestBase {
             uint32 afterPriority;
             uint32 afterMaxDeposits;
             vm.selectFork(forkIdBeforeUpgrade);
-            (beforePriority, beforeMaxDeposits) = parametersRegistry
-                .defaultQueueConfig();
+            (beforePriority, beforeMaxDeposits) = parametersRegistry.defaultQueueConfig();
             vm.selectFork(forkIdAfterUpgrade);
-            (afterPriority, afterMaxDeposits) = parametersRegistry
-                .defaultQueueConfig();
+            (afterPriority, afterMaxDeposits) = parametersRegistry.defaultQueueConfig();
             assertEq(beforePriority, afterPriority, "defaultQueuePriority");
-            assertEq(
-                beforeMaxDeposits,
-                afterMaxDeposits,
-                "defaultQueueMaxDeposits"
-            );
+            assertEq(beforeMaxDeposits, afterMaxDeposits, "defaultQueueMaxDeposits");
         }
 
         vm.selectFork(forkIdBeforeUpgrade);
@@ -452,17 +286,11 @@ contract VoteChangesTest is V3UpgradeTestBase {
             uint32 afterLifetime;
             uint32 afterThreshold;
             vm.selectFork(forkIdBeforeUpgrade);
-            (beforeLifetime, beforeThreshold) = parametersRegistry
-                .defaultStrikesParams();
+            (beforeLifetime, beforeThreshold) = parametersRegistry.defaultStrikesParams();
             vm.selectFork(forkIdAfterUpgrade);
-            (afterLifetime, afterThreshold) = parametersRegistry
-                .defaultStrikesParams();
+            (afterLifetime, afterThreshold) = parametersRegistry.defaultStrikesParams();
             assertEq(beforeLifetime, afterLifetime, "defaultStrikesLifetime");
-            assertEq(
-                beforeThreshold,
-                afterThreshold,
-                "defaultStrikesThreshold"
-            );
+            assertEq(beforeThreshold, afterThreshold, "defaultStrikesThreshold");
         }
 
         vm.selectFork(forkIdBeforeUpgrade);
@@ -479,27 +307,13 @@ contract VoteChangesTest is V3UpgradeTestBase {
             uint32 afterBlocksWeight;
             uint32 afterSyncWeight;
             vm.selectFork(forkIdBeforeUpgrade);
-            (
-                beforeAttestationsWeight,
-                beforeBlocksWeight,
-                beforeSyncWeight
-            ) = parametersRegistry.defaultPerformanceCoefficients();
+            (beforeAttestationsWeight, beforeBlocksWeight, beforeSyncWeight) = parametersRegistry
+                .defaultPerformanceCoefficients();
             vm.selectFork(forkIdAfterUpgrade);
-            (
-                afterAttestationsWeight,
-                afterBlocksWeight,
-                afterSyncWeight
-            ) = parametersRegistry.defaultPerformanceCoefficients();
-            assertEq(
-                beforeAttestationsWeight,
-                afterAttestationsWeight,
-                "defaultAttestationsWeight"
-            );
-            assertEq(
-                beforeBlocksWeight,
-                afterBlocksWeight,
-                "defaultBlocksWeight"
-            );
+            (afterAttestationsWeight, afterBlocksWeight, afterSyncWeight) = parametersRegistry
+                .defaultPerformanceCoefficients();
+            assertEq(beforeAttestationsWeight, afterAttestationsWeight, "defaultAttestationsWeight");
+            assertEq(beforeBlocksWeight, afterBlocksWeight, "defaultBlocksWeight");
             assertEq(beforeSyncWeight, afterSyncWeight, "defaultSyncWeight");
         }
 
@@ -510,24 +324,20 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(beforeValue, afterValue, "defaultAllowedExitDelay");
 
         vm.selectFork(forkIdBeforeUpgrade);
-        beforeValue = IPrevCSParametersRegistry(address(parametersRegistry))
-            .defaultExitDelayPenalty();
+        beforeValue = IPrevCSParametersRegistry(address(parametersRegistry)).defaultExitDelayPenalty();
         vm.selectFork(forkIdAfterUpgrade);
         afterValue = parametersRegistry.defaultExitDelayFee();
         assertEq(beforeValue, afterValue, "defaultExitDelayFee");
 
         vm.selectFork(forkIdBeforeUpgrade);
-        beforeValue = IParametersRegistryV2(address(parametersRegistry))
-            .defaultMaxWithdrawalRequestFee();
+        beforeValue = IParametersRegistryV2(address(parametersRegistry)).defaultMaxWithdrawalRequestFee();
         vm.selectFork(forkIdAfterUpgrade);
         afterValue = parametersRegistry.defaultMaxElWithdrawalRequestFee();
         assertEq(beforeValue, afterValue, "defaultMaxElWithdrawalRequestFee");
     }
 
     function test_accountingChanges() public {
-        OssifiableProxy accountingProxy = OssifiableProxy(
-            payable(address(accounting))
-        );
+        OssifiableProxy accountingProxy = OssifiableProxy(payable(address(accounting)));
 
         vm.selectFork(forkIdBeforeUpgrade);
         address implBefore = accountingProxy.proxy__getImplementation();
@@ -540,62 +350,25 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(implAfter, address(accountingImpl));
         assertEq(versionBefore + 1, accounting.getInitializedVersion());
 
-        assertTrue(
-            accounting.hasRole(
-                accounting.SET_BOND_CURVE_ROLE(),
-                deployParams.setResetBondCurveAddress
-            )
-        );
-        assertTrue(
-            accounting.hasRole(
-                accounting.SET_BOND_CURVE_ROLE(),
-                address(vettedGate)
-            )
-        );
-        assertEq(
-            accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()),
-            2
-        );
-        assertFalse(
-            accounting.hasRole(
-                accounting.SET_BOND_CURVE_ROLE(),
-                address(permissionlessGate)
-            )
-        );
-        assertFalse(
-            accounting.hasRole(
-                accounting.SET_BOND_CURVE_ROLE(),
-                address(module)
-            )
-        );
+        assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), deployParams.setResetBondCurveAddress));
+        assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(vettedGate)));
+        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 2);
+        assertFalse(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(permissionlessGate)));
+        assertFalse(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(module)));
 
-        assertFalse(
-            accounting.hasRole(
-                accounting.PAUSE_ROLE(),
-                deploymentConfig.gateSeal
-            )
-        );
-        assertTrue(
-            accounting.hasRole(
-                accounting.PAUSE_ROLE(),
-                deploymentConfig.gateSealV3
-            )
-        );
+        assertFalse(accounting.hasRole(accounting.PAUSE_ROLE(), deploymentConfig.gateSeal));
+        assertTrue(accounting.hasRole(accounting.PAUSE_ROLE(), deploymentConfig.gateSealV3));
     }
 
     function test_accountingState() public {
         vm.selectFork(forkIdBeforeUpgrade);
         address feeDistributorBefore = address(accounting.FEE_DISTRIBUTOR());
-        address chargePenaltyRecipientBefore = address(
-            accounting.chargePenaltyRecipient()
-        );
+        address chargePenaltyRecipientBefore = address(accounting.chargePenaltyRecipient());
         uint256 totalBondSharesBefore = accounting.totalBondShares();
 
         vm.selectFork(forkIdAfterUpgrade);
         address feeDistributorAfter = address(accounting.FEE_DISTRIBUTOR());
-        address chargePenaltyRecipientAfter = address(
-            accounting.chargePenaltyRecipient()
-        );
+        address chargePenaltyRecipientAfter = address(accounting.chargePenaltyRecipient());
         uint256 totalBondSharesAfter = accounting.totalBondShares();
 
         assertEq(feeDistributorBefore, feeDistributorAfter);
@@ -604,9 +377,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_accountingCurvesState() public {
-        if (skipLongForkTest()) {
-            return;
-        }
+        if (skipLongForkTest()) return;
         vm.selectFork(forkIdBeforeUpgrade);
         uint256 curvesCountBefore = accounting.getCurvesCount();
 
@@ -616,49 +387,23 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(curvesCountBefore, curvesCountAfter, "curvesCount");
         for (uint256 curveId = 0; curveId < curvesCountBefore; curveId++) {
             vm.selectFork(forkIdBeforeUpgrade);
-            IBondCurve.BondCurveData memory curveBefore = accounting
-                .getCurveInfo(curveId);
+            IBondCurve.BondCurveData memory curveBefore = accounting.getCurveInfo(curveId);
             vm.selectFork(forkIdAfterUpgrade);
-            IBondCurve.BondCurveData memory curveAfter = accounting
-                .getCurveInfo(curveId);
+            IBondCurve.BondCurveData memory curveAfter = accounting.getCurveInfo(curveId);
 
-            assertEq(
-                curveBefore.intervals.length,
-                curveAfter.intervals.length,
-                "curve intervals length"
-            );
-            for (
-                uint256 intervalId = 0;
-                intervalId < curveBefore.intervals.length;
-                intervalId++
-            ) {
-                IBondCurve.BondCurveInterval memory beforeInterval = curveBefore
-                    .intervals[intervalId];
-                IBondCurve.BondCurveInterval memory afterInterval = curveAfter
-                    .intervals[intervalId];
-                assertEq(
-                    beforeInterval.minKeysCount,
-                    afterInterval.minKeysCount,
-                    "curve interval minKeysCount"
-                );
-                assertEq(
-                    beforeInterval.minBond,
-                    afterInterval.minBond,
-                    "curve interval minBond"
-                );
-                assertEq(
-                    beforeInterval.trend,
-                    afterInterval.trend,
-                    "curve interval trend"
-                );
+            assertEq(curveBefore.intervals.length, curveAfter.intervals.length, "curve intervals length");
+            for (uint256 intervalId = 0; intervalId < curveBefore.intervals.length; intervalId++) {
+                IBondCurve.BondCurveInterval memory beforeInterval = curveBefore.intervals[intervalId];
+                IBondCurve.BondCurveInterval memory afterInterval = curveAfter.intervals[intervalId];
+                assertEq(beforeInterval.minKeysCount, afterInterval.minKeysCount, "curve interval minKeysCount");
+                assertEq(beforeInterval.minBond, afterInterval.minBond, "curve interval minBond");
+                assertEq(beforeInterval.trend, afterInterval.trend, "curve interval trend");
             }
         }
     }
 
     function test_accountingNodeOperatorsState() public {
-        if (skipLongForkTest()) {
-            return;
-        }
+        if (skipLongForkTest()) return;
         uint256 curveBefore;
         uint256 curveAfter;
         uint256 bondBefore;
@@ -681,23 +426,13 @@ contract VoteChangesTest is V3UpgradeTestBase {
             assertEq(curveBefore, curveAfter, "bond curve");
             assertEq(bondBefore, bondAfter, "bond amount");
             assertEq(requiredBefore, requiredAfter, "required bond amount");
-            assertEq(
-                bondLockBefore.amount,
-                bondLockAfter.amount,
-                "bond lock amount"
-            );
-            assertEq(
-                bondLockBefore.until,
-                bondLockAfter.until,
-                "bond lock until"
-            );
+            assertEq(bondLockBefore.amount, bondLockAfter.amount, "bond lock amount");
+            assertEq(bondLockBefore.until, bondLockAfter.until, "bond lock until");
         }
     }
 
     function test_feeDistributorChanges() public {
-        OssifiableProxy feeDistributorProxy = OssifiableProxy(
-            payable(address(feeDistributor))
-        );
+        OssifiableProxy feeDistributorProxy = OssifiableProxy(payable(address(feeDistributor)));
         vm.selectFork(forkIdBeforeUpgrade);
         address implBefore = feeDistributorProxy.proxy__getImplementation();
 
@@ -716,29 +451,22 @@ contract VoteChangesTest is V3UpgradeTestBase {
         bytes32 treeRootBefore = feeDistributor.treeRoot();
         string memory treeCidBefore = feeDistributor.treeCid();
         string memory logCidBefore = feeDistributor.logCid();
-        uint256 totalClaimableSharesBefore = feeDistributor
-            .totalClaimableShares();
+        uint256 totalClaimableSharesBefore = feeDistributor.totalClaimableShares();
 
         vm.selectFork(forkIdAfterUpgrade);
         bytes32 treeRootAfter = feeDistributor.treeRoot();
         string memory treeCidAfter = feeDistributor.treeCid();
         string memory logCidAfter = feeDistributor.logCid();
-        uint256 totalClaimableSharesAfter = feeDistributor
-            .totalClaimableShares();
+        uint256 totalClaimableSharesAfter = feeDistributor.totalClaimableShares();
 
         assertEq(treeRootBefore, treeRootAfter);
-        assertEq(
-            keccak256(bytes(treeCidBefore)),
-            keccak256(bytes(treeCidAfter))
-        );
+        assertEq(keccak256(bytes(treeCidBefore)), keccak256(bytes(treeCidAfter)));
         assertEq(keccak256(bytes(logCidBefore)), keccak256(bytes(logCidAfter)));
         assertEq(totalClaimableSharesBefore, totalClaimableSharesAfter);
     }
 
     function test_feeDistributorNodeOperatorState() public {
-        if (skipLongForkTest()) {
-            return;
-        }
+        if (skipLongForkTest()) return;
         uint256 distributedSharesBefore;
         uint256 distributedSharesAfter;
         for (uint256 noId = 0; noId < module.getNodeOperatorsCount(); noId++) {
@@ -748,11 +476,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
             vm.selectFork(forkIdAfterUpgrade);
             distributedSharesAfter = feeDistributor.distributedShares(noId);
 
-            assertEq(
-                distributedSharesBefore,
-                distributedSharesAfter,
-                "distributed shares"
-            );
+            assertEq(distributedSharesBefore, distributedSharesAfter, "distributed shares");
         }
     }
 
@@ -770,21 +494,15 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(oracleImpl));
 
-        assertFalse(
-            oracle.hasRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSeal)
-        );
-        assertTrue(
-            oracle.hasRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSealV3)
-        );
+        assertFalse(oracle.hasRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSeal));
+        assertTrue(oracle.hasRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSealV3));
 
         assertEq(oracle.getContractVersion(), contractVersionBefore + 1);
         assertEq(oracle.getConsensusVersion(), consensusVersionBefore + 1);
     }
 
     function test_validatorStrikesChanges() public {
-        OssifiableProxy strikesProxy = OssifiableProxy(
-            payable(address(strikes))
-        );
+        OssifiableProxy strikesProxy = OssifiableProxy(payable(address(strikes)));
 
         vm.selectFork(forkIdBeforeUpgrade);
         address implBefore = strikesProxy.proxy__getImplementation();
@@ -798,39 +516,23 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(strikesImpl));
         assertEq(strikes.treeRoot(), treeRootBefore);
-        assertEq(
-            keccak256(bytes(strikes.treeCid())),
-            keccak256(bytes(treeCidBefore))
-        );
+        assertEq(keccak256(bytes(strikes.treeCid())), keccak256(bytes(treeCidBefore)));
 
         assertEq(address(strikes.ejector()), deploymentConfig.ejector);
         assertNotEq(address(strikes.ejector()), ejectorBefore);
 
-        ITriggerableWithdrawalsGateway twg = ITriggerableWithdrawalsGateway(
-            locator.triggerableWithdrawalsGateway()
-        );
+        ITriggerableWithdrawalsGateway twg = ITriggerableWithdrawalsGateway(locator.triggerableWithdrawalsGateway());
 
         vm.selectFork(forkIdBeforeUpgrade);
-        assertTrue(
-            twg.hasRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), ejectorBefore)
-        );
+        assertTrue(twg.hasRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), ejectorBefore));
 
         vm.selectFork(forkIdAfterUpgrade);
-        assertFalse(
-            twg.hasRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), ejectorBefore)
-        );
-        assertTrue(
-            twg.hasRole(
-                twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(),
-                deploymentConfig.ejector
-            )
-        );
+        assertFalse(twg.hasRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), ejectorBefore));
+        assertTrue(twg.hasRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), deploymentConfig.ejector));
     }
 
     function test_vettedGateChanges() public {
-        OssifiableProxy vettedGateProxy = OssifiableProxy(
-            payable(address(vettedGate))
-        );
+        OssifiableProxy vettedGateProxy = OssifiableProxy(payable(address(vettedGate)));
 
         vm.selectFork(forkIdBeforeUpgrade);
         address implBefore = vettedGateProxy.proxy__getImplementation();
@@ -838,12 +540,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
         string memory treeCidBefore = vettedGate.treeCid();
         uint64 versionBefore = vettedGate.getInitializedVersion();
 
-        assertTrue(
-            vettedGate.hasRole(
-                vettedGate.PAUSE_ROLE(),
-                deploymentConfig.gateSeal
-            )
-        );
+        assertTrue(vettedGate.hasRole(vettedGate.PAUSE_ROLE(), deploymentConfig.gateSeal));
 
         vm.selectFork(forkIdAfterUpgrade);
         address implAfter = vettedGateProxy.proxy__getImplementation();
@@ -852,29 +549,14 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(implAfter, address(vettedGateImpl));
         assertEq(vettedGate.getInitializedVersion(), versionBefore);
         assertEq(vettedGate.treeRoot(), treeRootBefore);
-        assertEq(
-            keccak256(bytes(vettedGate.treeCid())),
-            keccak256(bytes(treeCidBefore))
-        );
+        assertEq(keccak256(bytes(vettedGate.treeCid())), keccak256(bytes(treeCidBefore)));
 
-        assertFalse(
-            vettedGate.hasRole(
-                vettedGate.PAUSE_ROLE(),
-                deploymentConfig.gateSeal
-            )
-        );
-        assertTrue(
-            vettedGate.hasRole(
-                vettedGate.PAUSE_ROLE(),
-                deploymentConfig.gateSealV3
-            )
-        );
+        assertFalse(vettedGate.hasRole(vettedGate.PAUSE_ROLE(), deploymentConfig.gateSeal));
+        assertTrue(vettedGate.hasRole(vettedGate.PAUSE_ROLE(), deploymentConfig.gateSealV3));
     }
 
     function test_exitPenaltiesChanges() public {
-        OssifiableProxy exitPenaltiesProxy = OssifiableProxy(
-            payable(address(exitPenalties))
-        );
+        OssifiableProxy exitPenaltiesProxy = OssifiableProxy(payable(address(exitPenalties)));
 
         vm.selectFork(forkIdBeforeUpgrade);
         address implBefore = exitPenaltiesProxy.proxy__getImplementation();

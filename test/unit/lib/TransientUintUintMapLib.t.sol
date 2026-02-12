@@ -12,11 +12,7 @@ import { Utilities } from "../../helpers/Utilities.sol";
 contract TransientUintUintMapLibTest is Test, Utilities {
     using Strings for uint256;
 
-    function testFuzz_dictAddAndGetValue(
-        uint256 k,
-        uint256 v,
-        uint256 s
-    ) public brutalizeMemory {
+    function testFuzz_dictAddAndGetValue(uint256 k, uint256 v, uint256 s) public brutalizeMemory {
         // There's no overflow check in the `add` function.
         unchecked {
             vm.assume(v + s > v);
@@ -31,50 +27,28 @@ contract TransientUintUintMapLibTest is Test, Utilities {
         dict.add(k, v);
         dict.add(k, s);
         r = dict.get(k);
-        assertEq(
-            r,
-            sum,
-            string.concat("expected=", sum.toString(), " actual=", r.toString())
-        );
+        assertEq(r, sum, string.concat("expected=", sum.toString(), " actual=", r.toString()));
 
         // Consequent read of the same key should return the same value.
         r = dict.get(k);
-        assertEq(
-            r,
-            sum,
-            string.concat("expected=", sum.toString(), " actual=", r.toString())
-        );
+        assertEq(r, sum, string.concat("expected=", sum.toString(), " actual=", r.toString()));
     }
 
-    function testFuzz_dictSetAndGetValue(
-        uint256 k,
-        uint256 v
-    ) public brutalizeMemory {
+    function testFuzz_dictSetAndGetValue(uint256 k, uint256 v) public brutalizeMemory {
         uint256 r;
 
         TransientUintUintMap dict = TransientUintUintMapLib.create();
 
         dict.set(k, v);
         r = dict.get(k);
-        assertEq(
-            r,
-            v,
-            string.concat("expected=", v.toString(), " actual=", r.toString())
-        );
+        assertEq(r, v, string.concat("expected=", v.toString(), " actual=", r.toString()));
 
         // Consequent read of the same key should return the same value.
         r = dict.get(k);
-        assertEq(
-            r,
-            v,
-            string.concat("expected=", v.toString(), " actual=", r.toString())
-        );
+        assertEq(r, v, string.concat("expected=", v.toString(), " actual=", r.toString()));
     }
 
-    function testFuzz_noIntersections(
-        uint256 a,
-        uint256 b
-    ) public brutalizeMemory {
+    function testFuzz_noIntersections(uint256 a, uint256 b) public brutalizeMemory {
         vm.assume(a != b);
 
         TransientUintUintMap dict1 = TransientUintUintMapLib.create();
@@ -104,17 +78,9 @@ contract TransientUintUintMapLibTest is Test, Utilities {
         uint256 r;
 
         r = dict1.get(k);
-        assertEq(
-            r,
-            v,
-            string.concat("expected=", v.toString(), " actual=", r.toString())
-        );
+        assertEq(r, v, string.concat("expected=", v.toString(), " actual=", r.toString()));
 
         r = dict2.get(k);
-        assertEq(
-            r,
-            v,
-            string.concat("expected=", v.toString(), " actual=", r.toString())
-        );
+        assertEq(r, v, string.concat("expected=", v.toString(), " actual=", r.toString()));
     }
 }

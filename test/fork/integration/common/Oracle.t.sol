@@ -25,11 +25,7 @@ abstract contract OracleTestBase is ModuleTypeBase {
         _assertModuleEnqueuedCount();
         assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
-        assertAccountingBurnerApproval(
-            lido,
-            address(accounting),
-            locator.burner()
-        );
+        assertAccountingBurnerApproval(lido, address(accounting), locator.burner());
         assertAccountingUnusedStorageSlots(accounting);
         assertFeeDistributorClaimableShares(lido, feeDistributor);
         assertFeeDistributorTree(feeDistributor);
@@ -48,17 +44,14 @@ abstract contract OracleTestBase is ModuleTypeBase {
         feesTree = new MerkleTree();
         strikesTree = new MerkleTree();
 
-        if (module.isPaused()) {
-            module.resume();
-        }
+        if (module.isPaused()) module.resume();
 
         hugeDeposit();
 
         refundRecipient = nextAddress("refundRecipient");
         uint256 keysCount;
         uint256 moduleId = findModule();
-        (nodeOperatorId, keysCount) = integrationHelpers
-            .getDepositableNodeOperator(nextAddress());
+        (nodeOperatorId, keysCount) = integrationHelpers.getDepositableNodeOperator(nextAddress());
         vm.prank(locator.depositSecurityModule());
         lido.deposit(keysCount, moduleId, "");
     }
@@ -73,21 +66,11 @@ abstract contract OracleTestBase is ModuleTypeBase {
     }
 
     function waitForNextRefSlot() public {
-        (
-            uint256 SLOTS_PER_EPOCH,
-            uint256 SECONDS_PER_SLOT,
-            uint256 GENESIS_TIME
-        ) = hashConsensus.getChainConfig();
+        (uint256 SLOTS_PER_EPOCH, uint256 SECONDS_PER_SLOT, uint256 GENESIS_TIME) = hashConsensus.getChainConfig();
         (uint256 initialEpoch, , ) = hashConsensus.getFrameConfig();
-        uint256 epoch = (block.timestamp - GENESIS_TIME) /
-            SECONDS_PER_SLOT /
-            SLOTS_PER_EPOCH;
+        uint256 epoch = (block.timestamp - GENESIS_TIME) / SECONDS_PER_SLOT / SLOTS_PER_EPOCH;
         if (epoch < initialEpoch) {
-            uint256 targetTime = GENESIS_TIME +
-                1 +
-                initialEpoch *
-                SLOTS_PER_EPOCH *
-                SECONDS_PER_SLOT;
+            uint256 targetTime = GENESIS_TIME + 1 + initialEpoch * SLOTS_PER_EPOCH * SECONDS_PER_SLOT;
             uint256 currentTime = block.timestamp;
             if (targetTime > currentTime) {
                 uint256 sleepTime = targetTime - currentTime;
@@ -100,9 +83,7 @@ abstract contract OracleTestBase is ModuleTypeBase {
         uint256 frameStartWithOffset = GENESIS_TIME +
             (refSlot + SLOTS_PER_EPOCH * EPOCHS_PER_FRAME + 1) *
             SECONDS_PER_SLOT;
-        if (frameStartWithOffset > block.timestamp) {
-            vm.warp(block.timestamp + frameStartWithOffset - block.timestamp);
-        }
+        if (frameStartWithOffset > block.timestamp) vm.warp(block.timestamp + frameStartWithOffset - block.timestamp);
     }
 
     function prepareReport(
@@ -139,18 +120,10 @@ abstract contract OracleTestBase is ModuleTypeBase {
 
         uint256[] memory strikesData = new uint256[](1);
         strikesData[0] = 0;
-        strikesTree.pushLeaf(
-            abi.encode(nodeOperatorId, randomBytes(48), strikesData)
-        );
-        strikesTree.pushLeaf(
-            abi.encode(nodeOperatorId + 1, randomBytes(48), strikesData)
-        );
+        strikesTree.pushLeaf(abi.encode(nodeOperatorId, randomBytes(48), strikesData));
+        strikesTree.pushLeaf(abi.encode(nodeOperatorId + 1, randomBytes(48), strikesData));
 
-        IFeeOracle.ReportData memory data = prepareReport(
-            feesTree.root(),
-            distributed,
-            strikesTree.root()
-        );
+        IFeeOracle.ReportData memory data = prepareReport(feesTree.root(), distributed, strikesTree.root());
         uint256 contractVersion = oracle.getContractVersion();
         (address[] memory addresses, ) = hashConsensus.getMembers();
         vm.startPrank(addresses[0]);
@@ -161,11 +134,7 @@ abstract contract OracleTestBase is ModuleTypeBase {
 
         assertEq(feeDistributor.pendingSharesToDistribute(), 0);
         assertEq(
-            feeDistributor.getFeesToDistribute(
-                nodeOperatorId,
-                claimed + distributed,
-                feesTree.getProof(0)
-            ),
+            feeDistributor.getFeesToDistribute(nodeOperatorId, claimed + distributed, feesTree.getProof(0)),
             distributed
         );
     }
@@ -173,28 +142,18 @@ abstract contract OracleTestBase is ModuleTypeBase {
     function test_reportStrikes() public assertInvariants {
         uint256 distributed = 0;
         feesTree.pushLeaf(abi.encode(type(uint64).max, 0));
-        uint256 keyIndex = module
-            .getNodeOperator(nodeOperatorId)
-            .totalDepositedKeys - 1;
+        uint256 keyIndex = module.getNodeOperator(nodeOperatorId).totalDepositedKeys - 1;
         bytes memory key = module.getSigningKeys(nodeOperatorId, keyIndex, 1);
 
-        (, uint256 threshold) = parametersRegistry.getStrikesParams(
-            accounting.getBondCurveId(nodeOperatorId)
-        );
+        (, uint256 threshold) = parametersRegistry.getStrikesParams(accounting.getBondCurveId(nodeOperatorId));
         uint256[] memory strikesData = new uint256[](threshold);
         for (uint256 i = 0; i < threshold; i++) {
             strikesData[i] = 1;
         }
         strikesTree.pushLeaf(abi.encode(nodeOperatorId, key, strikesData));
-        strikesTree.pushLeaf(
-            abi.encode(nodeOperatorId + 1, randomBytes(48), strikesData)
-        );
+        strikesTree.pushLeaf(abi.encode(nodeOperatorId + 1, randomBytes(48), strikesData));
 
-        IFeeOracle.ReportData memory data = prepareReport(
-            feesTree.root(),
-            distributed,
-            strikesTree.root()
-        );
+        IFeeOracle.ReportData memory data = prepareReport(feesTree.root(), distributed, strikesTree.root());
         uint256 contractVersion = oracle.getContractVersion();
         (address[] memory addresses, ) = hashConsensus.getMembers();
         vm.startPrank(addresses[0]);
@@ -204,19 +163,14 @@ abstract contract OracleTestBase is ModuleTypeBase {
         vm.stopPrank();
 
         bytes32[] memory proof = strikesTree.getProof(0);
-        uint256 penalty = parametersRegistry.getBadPerformancePenalty(
-            accounting.getBondCurveId(nodeOperatorId)
-        );
+        uint256 penalty = parametersRegistry.getBadPerformancePenalty(accounting.getBondCurveId(nodeOperatorId));
 
         uint256 initialBalance = 1 ether;
         vm.deal(refundRecipient, initialBalance);
         vm.prank(refundRecipient);
-        uint256 expectedWithdrawalFee = IWithdrawalVault(
-            locator.withdrawalVault()
-        ).getWithdrawalRequestFee();
+        uint256 expectedWithdrawalFee = IWithdrawalVault(locator.withdrawalVault()).getWithdrawalRequestFee();
 
-        IValidatorStrikes.KeyStrikes[]
-            memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
+        IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
         keyStrikesList[0] = IValidatorStrikes.KeyStrikes({
             nodeOperatorId: nodeOperatorId,
             keyIndex: keyIndex,
@@ -225,33 +179,17 @@ abstract contract OracleTestBase is ModuleTypeBase {
         bool[] memory proofFlags = new bool[](proof.length);
 
         vm.expectEmit(address(exitPenalties));
-        emit IExitPenalties.StrikesPenaltyProcessed(
-            nodeOperatorId,
-            key,
-            penalty
-        );
+        emit IExitPenalties.StrikesPenaltyProcessed(nodeOperatorId, key, penalty);
         vm.prank(refundRecipient);
         vm.startSnapshotGas("ValidatorStrikes.processBadPerformanceProof");
-        this.processBadPerformanceProof{ value: 1 ether }(
-            keyStrikesList,
-            proof,
-            proofFlags,
-            refundRecipient
-        );
+        this.processBadPerformanceProof{ value: 1 ether }(keyStrikesList, proof, proofFlags, refundRecipient);
         vm.stopSnapshotGas();
 
-        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties
-            .getExitPenaltyInfo(nodeOperatorId, key);
+        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(nodeOperatorId, key);
         assertEq(exitPenaltyInfo.strikesPenalty.value, penalty);
         assertTrue(exitPenaltyInfo.elWithdrawalRequestFee.isValue);
-        assertEq(
-            exitPenaltyInfo.elWithdrawalRequestFee.value,
-            expectedWithdrawalFee
-        );
-        assertEq(
-            refundRecipient.balance,
-            initialBalance - expectedWithdrawalFee
-        );
+        assertEq(exitPenaltyInfo.elWithdrawalRequestFee.value, expectedWithdrawalFee);
+        assertEq(refundRecipient.balance, initialBalance - expectedWithdrawalFee);
     }
 
     function processBadPerformanceProof(
@@ -260,12 +198,7 @@ abstract contract OracleTestBase is ModuleTypeBase {
         bool[] calldata proofFlags,
         address _refundRecipient
     ) external payable {
-        strikes.processBadPerformanceProof{ value: msg.value }(
-            keyStrikes,
-            proof,
-            proofFlags,
-            _refundRecipient
-        );
+        strikes.processBadPerformanceProof{ value: msg.value }(keyStrikes, proof, proofFlags, _refundRecipient);
     }
 }
 

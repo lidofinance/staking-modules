@@ -53,10 +53,7 @@ interface IFeeOracle is IAssetRecovererLib {
     /// @notice Submit the data for a committee report
     /// @param data Data for a committee report
     /// @param contractVersion Version of the oracle consensus rules
-    function submitReportData(
-        ReportData calldata data,
-        uint256 contractVersion
-    ) external;
+    function submitReportData(ReportData calldata data, uint256 contractVersion) external;
 
     /// @notice Resume accepting oracle reports
     function resume() external;

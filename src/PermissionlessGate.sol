@@ -13,11 +13,7 @@ import { IPermissionlessGate } from "./interfaces/IPermissionlessGate.sol";
 
 /// @title PermissionlessGate
 /// @notice Contract for adding new Node Operators without any restrictions
-contract PermissionlessGate is
-    IPermissionlessGate,
-    AccessControlEnumerable,
-    AssetRecoverer
-{
+contract PermissionlessGate is IPermissionlessGate, AccessControlEnumerable, AssetRecoverer {
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
 
     /// @dev Curve ID is the default bond curve ID from the accounting contract
@@ -28,12 +24,8 @@ contract PermissionlessGate is
     IBaseModule public immutable MODULE;
 
     constructor(address module, address admin) {
-        if (module == address(0)) {
-            revert ZeroModuleAddress();
-        }
-        if (admin == address(0)) {
-            revert ZeroAdminAddress();
-        }
+        if (module == address(0)) revert ZeroModuleAddress();
+        if (admin == address(0)) revert ZeroAdminAddress();
 
         MODULE = IBaseModule(module);
         CURVE_ID = MODULE.ACCOUNTING().DEFAULT_BOND_CURVE_ID();

@@ -18,16 +18,8 @@ contract MockConsensusContract is IConsensusContract {
     mapping(address => uint256) internal _memberIndices1b;
     mapping(bytes32 => mapping(address => bool)) private _roles;
 
-    event RoleGranted(
-        bytes32 indexed role,
-        address indexed account,
-        address indexed sender
-    );
-    event RoleRevoked(
-        bytes32 indexed role,
-        address indexed account,
-        address indexed sender
-    );
+    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
+    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
 
     struct ConsensusFrame {
         uint256 index;
@@ -76,26 +68,14 @@ contract MockConsensusContract is IConsensusContract {
         return _memberIndices1b[addr] != 0;
     }
 
-    function getCurrentFrame()
-        external
-        view
-        returns (uint256 refSlot, uint256 reportProcessingDeadlineSlot)
-    {
-        return (
-            _consensusFrame.refSlot,
-            _consensusFrame.reportProcessingDeadlineSlot
-        );
+    function getCurrentFrame() external view returns (uint256 refSlot, uint256 reportProcessingDeadlineSlot) {
+        return (_consensusFrame.refSlot, _consensusFrame.reportProcessingDeadlineSlot);
     }
 
-    function setCurrentFrame(
-        uint256 index,
-        uint256 refSlot,
-        uint256 reportProcessingDeadlineSlot
-    ) external {
+    function setCurrentFrame(uint256 index, uint256 refSlot, uint256 reportProcessingDeadlineSlot) external {
         _consensusFrame.index = index;
         _consensusFrame.refSlot = refSlot;
-        _consensusFrame
-            .reportProcessingDeadlineSlot = reportProcessingDeadlineSlot;
+        _consensusFrame.reportProcessingDeadlineSlot = reportProcessingDeadlineSlot;
     }
 
     function setInitialRefSlot(uint256 initialRefSlot) external {
@@ -105,11 +85,7 @@ contract MockConsensusContract is IConsensusContract {
     function getChainConfig()
         external
         view
-        returns (
-            uint256 slotsPerEpoch,
-            uint256 secondsPerSlot,
-            uint256 genesisTime
-        )
+        returns (uint256 slotsPerEpoch, uint256 secondsPerSlot, uint256 genesisTime)
     {
         return (SLOTS_PER_EPOCH, SECONDS_PER_SLOT, GENESIS_TIME);
     }
@@ -117,17 +93,9 @@ contract MockConsensusContract is IConsensusContract {
     function getFrameConfig()
         external
         view
-        returns (
-            uint256 initialEpoch,
-            uint256 epochsPerFrame,
-            uint256 fastLaneLengthSlots
-        )
+        returns (uint256 initialEpoch, uint256 epochsPerFrame, uint256 fastLaneLengthSlots)
     {
-        return (
-            _frameConfig.initialEpoch,
-            _frameConfig.epochsPerFrame,
-            _frameConfig.fastLaneLengthSlots
-        );
+        return (_frameConfig.initialEpoch, _frameConfig.epochsPerFrame, _frameConfig.fastLaneLengthSlots);
     }
 
     function getInitialRefSlot() external view returns (uint256) {
@@ -138,10 +106,7 @@ contract MockConsensusContract is IConsensusContract {
         return keccak256("MANAGE_FRAME_CONFIG_ROLE");
     }
 
-    function setFrameConfig(
-        uint256 epochsPerFrame,
-        uint256 fastLaneLengthSlots
-    ) external {
+    function setFrameConfig(uint256 epochsPerFrame, uint256 fastLaneLengthSlots) external {
         _frameConfig.epochsPerFrame = epochsPerFrame.toUint64();
         _frameConfig.fastLaneLengthSlots = fastLaneLengthSlots.toUint64();
         lastSetEpochsPerFrame = epochsPerFrame;
@@ -153,16 +118,8 @@ contract MockConsensusContract is IConsensusContract {
         lastSetFastLaneLengthSlots = 0;
     }
 
-    function _setFrameConfig(
-        uint256 initialEpoch,
-        uint256 epochsPerFrame,
-        uint256 fastLaneLengthSlots
-    ) internal {
-        _frameConfig = FrameConfig(
-            initialEpoch.toUint64(),
-            epochsPerFrame.toUint64(),
-            fastLaneLengthSlots.toUint64()
-        );
+    function _setFrameConfig(uint256 initialEpoch, uint256 epochsPerFrame, uint256 fastLaneLengthSlots) internal {
+        _frameConfig = FrameConfig(initialEpoch.toUint64(), epochsPerFrame.toUint64(), fastLaneLengthSlots.toUint64());
     }
 
     // AccessControl methods for role management
@@ -182,10 +139,7 @@ contract MockConsensusContract is IConsensusContract {
         emit RoleRevoked(role, account, msg.sender);
     }
 
-    function hasRole(
-        bytes32 role,
-        address account
-    ) external view returns (bool) {
+    function hasRole(bytes32 role, address account) external view returns (bool) {
         return _roles[role][account];
     }
 }

@@ -43,10 +43,7 @@ function next(Batch self) pure returns (uint128 n) {
 function setKeys(Batch self, uint256 keysCount) pure returns (Batch) {
     assembly {
         self := or(
-            and(
-                self,
-                0xffffffffffffffff0000000000000000ffffffffffffffffffffffffffffffff
-            ),
+            and(self, 0xffffffffffffffff0000000000000000ffffffffffffffffffffffffffffffff),
             shl(128, and(keysCount, 0xffffffffffffffff))
         ) // self.keys = keysCount
     }
@@ -57,23 +54,14 @@ function setKeys(Batch self, uint256 keysCount) pure returns (Batch) {
 /// @dev can be unsafe if the From batch is previous to the self
 function setNext(Batch self, uint128 nextIndex) pure returns (Batch) {
     assembly {
-        self := or(
-            and(
-                self,
-                0xffffffffffffffffffffffffffffffff00000000000000000000000000000000
-            ),
-            nextIndex
-        ) // self.next = next
+        self := or(and(self, 0xffffffffffffffffffffffffffffffff00000000000000000000000000000000), nextIndex) // self.next = next
     }
     return self;
 }
 
 /// @dev Instantiate a new Batch to be added to the queue. The `next` field will be determined upon the enqueue.
 /// @dev Parameters are uint256 to make usage easier.
-function createBatch(
-    uint256 nodeOperatorId,
-    uint256 keysCount
-) pure returns (Batch item) {
+function createBatch(uint256 nodeOperatorId, uint256 keysCount) pure returns (Batch item) {
     // Queue slots reserve 64 bits for node operator IDs; upstream module numbers are capped well
     // below that limit, so truncation cannot occur.
     // forge-lint: disable-next-line(unsafe-typecast)
@@ -115,22 +103,12 @@ library DepositQueueLib {
     /////
     /// Internal methods
     /////
-    function enqueue(
-        Queue storage self,
-        uint256 nodeOperatorId,
-        uint256 keysCount
-    ) internal returns (Batch item) {
+    function enqueue(Queue storage self, uint256 nodeOperatorId, uint256 keysCount) internal returns (Batch item) {
         uint128 tail = self.tail;
         item = createBatch(nodeOperatorId, keysCount);
 
         assembly {
-            item := or(
-                and(
-                    item,
-                    0xffffffffffffffffffffffffffffffff00000000000000000000000000000000
-                ),
-                add(tail, 1)
-            ) // item.next = self.tail + 1;
+            item := or(and(item, 0xffffffffffffffffffffffffffffffff00000000000000000000000000000000), add(tail, 1)) // item.next = self.tail + 1;
         }
 
         self.queue[tail] = item;
@@ -142,9 +120,7 @@ library DepositQueueLib {
     function dequeue(Queue storage self) internal returns (Batch item) {
         item = peek(self);
 
-        if (item.isNil()) {
-            revert IDepositQueueLib.DepositQueueIsEmpty();
-        }
+        if (item.isNil()) revert IDepositQueueLib.DepositQueueIsEmpty();
 
         self.head = item.next();
     }
@@ -153,10 +129,7 @@ library DepositQueueLib {
         return self.queue[self.head];
     }
 
-    function at(
-        Queue storage self,
-        uint128 index
-    ) internal view returns (Batch) {
+    function at(Queue storage self, uint128 index) internal view returns (Batch) {
         return self.queue[index];
     }
 }

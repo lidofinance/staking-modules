@@ -19,9 +19,7 @@ contract AssetRecovererTestable is AssetRecoverer, ERC1155Holder {
     }
 
     function _onlyRecoverer() internal view override {
-        if (msg.sender != recoverer) {
-            revert OnlyRecoverer();
-        }
+        if (msg.sender != recoverer) revert OnlyRecoverer();
     }
 }
 

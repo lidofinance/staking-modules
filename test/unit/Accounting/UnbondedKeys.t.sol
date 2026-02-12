@@ -63,11 +63,7 @@ contract GetUnbondedKeysCountTest is BondStateBaseTest {
         assertEq(accounting.getUnbondedKeysCount(0), 16);
     }
 
-    function test_WithBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 11.5 ether });
         assertEq(accounting.getUnbondedKeysCount(0), 10);
@@ -79,11 +75,7 @@ contract GetUnbondedKeysCountTest is BondStateBaseTest {
         assertEq(accounting.getUnbondedKeysCount(0), 0);
     }
 
-    function test_WithExcessBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithExcessBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 33 ether });
         assertEq(accounting.getUnbondedKeysCount(0), 0);
@@ -95,11 +87,7 @@ contract GetUnbondedKeysCountTest is BondStateBaseTest {
         assertEq(accounting.getUnbondedKeysCount(0), 14);
     }
 
-    function test_WithMissingBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithMissingBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 5.75 ether });
         assertEq(accounting.getUnbondedKeysCount(0), 13);
@@ -107,16 +95,9 @@ contract GetUnbondedKeysCountTest is BondStateBaseTest {
 
     function test_WithCustomSmolCurve() public assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
-        IBondCurve.BondCurveIntervalInput[]
-            memory curve = new IBondCurve.BondCurveIntervalInput[](2);
-        curve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: 2 ether
-        });
-        curve[1] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 2,
-            trend: 1 ether
-        });
+        IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](2);
+        curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 2 ether });
+        curve[1] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 2, trend: 1 ether });
         _curve(curve);
         _deposit({ bond: 2.5 ether });
         assertEq(accounting.getUnbondedKeysCount(0), 15);
@@ -124,12 +105,8 @@ contract GetUnbondedKeysCountTest is BondStateBaseTest {
 
     function test_WithCustomHugeCurve_1() public assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
-        IBondCurve.BondCurveIntervalInput[]
-            memory curve = new IBondCurve.BondCurveIntervalInput[](1);
-        curve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: 1 ether
-        });
+        IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
+        curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 1 ether });
         _curve(curve);
         _deposit({ bond: 3.5 ether });
         assertEq(accounting.getUnbondedKeysCount(0), 13);
@@ -137,12 +114,8 @@ contract GetUnbondedKeysCountTest is BondStateBaseTest {
 
     function test_WithCustomHugeCurve_2() public assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
-        IBondCurve.BondCurveIntervalInput[]
-            memory curve = new IBondCurve.BondCurveIntervalInput[](1);
-        curve[0] = IBondCurve.BondCurveIntervalInput({
-            minKeysCount: 1,
-            trend: 1 ether
-        });
+        IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
+        curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 1 ether });
         _curve(curve);
         _deposit({ bond: 8.5 ether });
         assertEq(accounting.getUnbondedKeysCount(0), 8);
@@ -204,11 +177,7 @@ contract GetUnbondedKeysCountToEjectTest is BondStateBaseTest {
         assertEq(accounting.getUnbondedKeysCountToEject(0), 16);
     }
 
-    function test_WithBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 11.5 ether });
         assertEq(accounting.getUnbondedKeysCountToEject(0), 10);
@@ -220,11 +189,7 @@ contract GetUnbondedKeysCountToEjectTest is BondStateBaseTest {
         assertEq(accounting.getUnbondedKeysCountToEject(0), 0);
     }
 
-    function test_WithExcessBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithExcessBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 33 ether });
         assertEq(accounting.getUnbondedKeysCountToEject(0), 0);
@@ -236,11 +201,7 @@ contract GetUnbondedKeysCountToEjectTest is BondStateBaseTest {
         assertEq(accounting.getUnbondedKeysCountToEject(0), 14);
     }
 
-    function test_WithMissingBondAndOneWithdrawnValidator()
-        public
-        override
-        assertInvariants
-    {
+    function test_WithMissingBondAndOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 5.75 ether });
         assertEq(accounting.getUnbondedKeysCountToEject(0), 13);

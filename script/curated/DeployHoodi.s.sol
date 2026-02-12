@@ -11,8 +11,7 @@ contract DeployHoodi is DeployBase {
         // Lido addresses
         config.lidoLocatorAddress = 0xe2EF9536DAAAEBFf5b1c130957AB3E80056b06D8;
         config.aragonAgent = 0x0534aA41907c9631fae990960bCC72d75fA7cfeD;
-        config
-            .easyTrackEVMScriptExecutor = 0x79a20FD0FA36453B2F45eAbab19bfef43575Ba9E;
+        config.easyTrackEVMScriptExecutor = 0x79a20FD0FA36453B2F45eAbab19bfef43575Ba9E;
         config.proxyAdmin = config.aragonAgent;
 
         // Oracle
@@ -56,17 +55,11 @@ contract DeployHoodi is DeployBase {
         config.minBondLockPeriod = 1 days;
         config.maxBondLockPeriod = 365 days;
         config.bondLockPeriod = 8 weeks;
-        config
-            .setResetBondCurveAddress = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
-        config
-            .chargePenaltyRecipient = 0x0534aA41907c9631fae990960bCC72d75fA7cfeD; // locator.treasury()
+        config.chargePenaltyRecipient = 0x0534aA41907c9631fae990960bCC72d75fA7cfeD; // locator.treasury()
         // Module
-        config.stakingModuleId = _nextStakingModuleId(
-            config.lidoLocatorAddress
-        );
+        config.stakingModuleId = _nextStakingModuleId(config.lidoLocatorAddress);
         config.moduleType = "curated-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
-        config
-            .generalDelayedPenaltyReporter = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
+        config.generalDelayedPenaltyReporter = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
 
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0;
@@ -112,7 +105,6 @@ contract DeployHoodi is DeployBase {
             primaryGate.params.allowedExitDelay = 3 days; // TODO
             primaryGate.params.exitDelayFee = 0.02 ether; // TODO
             primaryGate.params.maxElWithdrawalRequestFee = 0.05 ether; // TODO
-            primaryGate.params.depositAllocationWeight = 1; // TODO: reconsider
         }
 
         // GateSeal

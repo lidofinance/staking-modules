@@ -5,35 +5,12 @@ pragma solidity 0.8.33;
 
 interface IStakingRouter {
     event ContractVersionSet(uint256 version);
-    event ExitedAndStuckValidatorsCountsUpdateFailed(
-        uint256 indexed stakingModuleId,
-        bytes lowLevelRevertData
-    );
-    event RewardsMintedReportFailed(
-        uint256 indexed stakingModuleId,
-        bytes lowLevelRevertData
-    );
-    event RoleAdminChanged(
-        bytes32 indexed role,
-        bytes32 indexed previousAdminRole,
-        bytes32 indexed newAdminRole
-    );
-    event RoleGranted(
-        bytes32 indexed role,
-        address indexed account,
-        address indexed sender
-    );
-    event RoleRevoked(
-        bytes32 indexed role,
-        address indexed account,
-        address indexed sender
-    );
-    event StakingModuleAdded(
-        uint256 indexed stakingModuleId,
-        address stakingModule,
-        string name,
-        address createdBy
-    );
+    event ExitedAndStuckValidatorsCountsUpdateFailed(uint256 indexed stakingModuleId, bytes lowLevelRevertData);
+    event RewardsMintedReportFailed(uint256 indexed stakingModuleId, bytes lowLevelRevertData);
+    event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole);
+    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
+    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
+    event StakingModuleAdded(uint256 indexed stakingModuleId, address stakingModule, string name, address createdBy);
     event StakingModuleExitedValidatorsIncompleteReporting(
         uint256 indexed stakingModuleId,
         uint256 unreportedExitedValidatorsCount
@@ -60,29 +37,13 @@ interface IStakingRouter {
         uint256 priorityExitShareThreshold,
         address setBy
     );
-    event StakingModuleStatusSet(
-        uint256 indexed stakingModuleId,
-        uint8 status,
-        address setBy
-    );
-    event StakingRouterETHDeposited(
-        uint256 indexed stakingModuleId,
-        uint256 amount
-    );
-    event WithdrawalCredentialsSet(
-        bytes32 withdrawalCredentials,
-        address setBy
-    );
-    event WithdrawalsCredentialsChangeFailed(
-        uint256 indexed stakingModuleId,
-        bytes lowLevelRevertData
-    );
+    event StakingModuleStatusSet(uint256 indexed stakingModuleId, uint8 status, address setBy);
+    event StakingRouterETHDeposited(uint256 indexed stakingModuleId, uint256 amount);
+    event WithdrawalCredentialsSet(bytes32 withdrawalCredentials, address setBy);
+    event WithdrawalsCredentialsChangeFailed(uint256 indexed stakingModuleId, bytes lowLevelRevertData);
 
     error AppAuthLidoFailed();
-    error ArraysLengthMismatch(
-        uint256 firstArrayLength,
-        uint256 secondArrayLength
-    );
+    error ArraysLengthMismatch(uint256 firstArrayLength, uint256 secondArrayLength);
     error DepositContractZeroAddress();
     error DirectETHTransfer();
     error EmptyWithdrawalsCredentials();
@@ -174,10 +135,7 @@ interface IStakingRouter {
 
     function FEE_PRECISION_POINTS() external view returns (uint256);
 
-    function MANAGE_WITHDRAWAL_CREDENTIALS_ROLE()
-        external
-        view
-        returns (bytes32);
+    function MANAGE_WITHDRAWAL_CREDENTIALS_ROLE() external view returns (bytes32);
 
     function MAX_STAKING_MODULES_COUNT() external view returns (uint256);
 
@@ -193,10 +151,7 @@ interface IStakingRouter {
 
     function TOTAL_BASIS_POINTS() external view returns (uint256);
 
-    function UNSAFE_SET_EXITED_VALIDATORS_ROLE()
-        external
-        view
-        returns (bytes32);
+    function UNSAFE_SET_EXITED_VALIDATORS_ROLE() external view returns (bytes32);
 
     function addStakingModule(
         string memory _name,
@@ -215,24 +170,13 @@ interface IStakingRouter {
         bytes memory _vettedSigningKeysCounts
     ) external;
 
-    function deposit(
-        uint256 _depositsCount,
-        uint256 _stakingModuleId,
-        bytes memory _depositCalldata
-    ) external payable;
+    function deposit(uint256 _depositsCount, uint256 _stakingModuleId, bytes memory _depositCalldata) external payable;
 
-    function finalizeUpgrade_v2(
-        uint256[] memory _priorityExitShareThresholds
-    ) external;
+    function finalizeUpgrade_v2(uint256[] memory _priorityExitShareThresholds) external;
 
-    function getAllNodeOperatorDigests(
-        uint256 _stakingModuleId
-    ) external view returns (NodeOperatorDigest[] memory);
+    function getAllNodeOperatorDigests(uint256 _stakingModuleId) external view returns (NodeOperatorDigest[] memory);
 
-    function getAllStakingModuleDigests()
-        external
-        view
-        returns (StakingModuleDigest[] memory);
+    function getAllStakingModuleDigests() external view returns (StakingModuleDigest[] memory);
 
     function getContractVersion() external view returns (uint256);
 
@@ -260,10 +204,7 @@ interface IStakingRouter {
 
     function getRoleAdmin(bytes32 role) external view returns (bytes32);
 
-    function getRoleMember(
-        bytes32 role,
-        uint256 index
-    ) external view returns (address);
+    function getRoleMember(bytes32 role, uint256 index) external view returns (address);
 
     function getRoleMemberCount(bytes32 role) external view returns (uint256);
 
@@ -277,9 +218,7 @@ interface IStakingRouter {
         view
         returns (uint16 modulesFee, uint16 treasuryFee);
 
-    function getStakingModule(
-        uint256 _stakingModuleId
-    ) external view returns (StakingModule memory);
+    function getStakingModule(uint256 _stakingModuleId) external view returns (StakingModule memory);
 
     function getStakingModuleActiveValidatorsCount(
         uint256 _stakingModuleId
@@ -289,56 +228,34 @@ interface IStakingRouter {
         uint256[] memory _stakingModuleIds
     ) external view returns (StakingModuleDigest[] memory digests);
 
-    function getStakingModuleIds()
-        external
-        view
-        returns (uint256[] memory stakingModuleIds);
+    function getStakingModuleIds() external view returns (uint256[] memory stakingModuleIds);
 
-    function getStakingModuleIsActive(
-        uint256 _stakingModuleId
-    ) external view returns (bool);
+    function getStakingModuleIsActive(uint256 _stakingModuleId) external view returns (bool);
 
-    function getStakingModuleIsDepositsPaused(
-        uint256 _stakingModuleId
-    ) external view returns (bool);
+    function getStakingModuleIsDepositsPaused(uint256 _stakingModuleId) external view returns (bool);
 
-    function getStakingModuleIsStopped(
-        uint256 _stakingModuleId
-    ) external view returns (bool);
+    function getStakingModuleIsStopped(uint256 _stakingModuleId) external view returns (bool);
 
-    function getStakingModuleLastDepositBlock(
-        uint256 _stakingModuleId
-    ) external view returns (uint256);
+    function getStakingModuleLastDepositBlock(uint256 _stakingModuleId) external view returns (uint256);
 
     function getStakingModuleMaxDepositsCount(
         uint256 _stakingModuleId,
         uint256 _maxDepositsValue
     ) external view returns (uint256);
 
-    function getStakingModuleMaxDepositsPerBlock(
-        uint256 _stakingModuleId
-    ) external view returns (uint256);
+    function getStakingModuleMaxDepositsPerBlock(uint256 _stakingModuleId) external view returns (uint256);
 
-    function getStakingModuleMinDepositBlockDistance(
-        uint256 _stakingModuleId
-    ) external view returns (uint256);
+    function getStakingModuleMinDepositBlockDistance(uint256 _stakingModuleId) external view returns (uint256);
 
-    function getStakingModuleNonce(
-        uint256 _stakingModuleId
-    ) external view returns (uint256);
+    function getStakingModuleNonce(uint256 _stakingModuleId) external view returns (uint256);
 
-    function getStakingModuleStatus(
-        uint256 _stakingModuleId
-    ) external view returns (uint8);
+    function getStakingModuleStatus(uint256 _stakingModuleId) external view returns (uint8);
 
     function getStakingModuleSummary(
         uint256 _stakingModuleId
     ) external view returns (StakingModuleSummary memory summary);
 
-    function getStakingModules()
-        external
-        view
-        returns (StakingModule[] memory res);
+    function getStakingModules() external view returns (StakingModule[] memory res);
 
     function getStakingModulesCount() external view returns (uint256);
 
@@ -359,29 +276,17 @@ interface IStakingRouter {
 
     function grantRole(bytes32 role, address account) external;
 
-    function hasRole(
-        bytes32 role,
-        address account
-    ) external view returns (bool);
+    function hasRole(bytes32 role, address account) external view returns (bool);
 
-    function hasStakingModule(
-        uint256 _stakingModuleId
-    ) external view returns (bool);
+    function hasStakingModule(uint256 _stakingModuleId) external view returns (bool);
 
-    function initialize(
-        address _admin,
-        address _lido,
-        bytes32 _withdrawalCredentials
-    ) external;
+    function initialize(address _admin, address _lido, bytes32 _withdrawalCredentials) external;
 
     function onValidatorsCountsByNodeOperatorReportingFinished() external;
 
     function renounceRole(bytes32 role, address account) external;
 
-    function reportRewardsMinted(
-        uint256[] memory _stakingModuleIds,
-        uint256[] memory _totalShares
-    ) external;
+    function reportRewardsMinted(uint256[] memory _stakingModuleIds, uint256[] memory _totalShares) external;
 
     function reportValidatorExitDelay(
         uint256 _stakingModuleId,
@@ -405,10 +310,7 @@ interface IStakingRouter {
 
     function revokeRole(bytes32 role, address account) external;
 
-    function setStakingModuleStatus(
-        uint256 _stakingModuleId,
-        uint8 _status
-    ) external;
+    function setStakingModuleStatus(uint256 _stakingModuleId, uint8 _status) external;
 
     function setWithdrawalCredentials(bytes32 _withdrawalCredentials) external;
 

@@ -13,12 +13,8 @@ contract MerkleTree {
         return tree.length == 0 ? bytes32(0) : tree[0];
     }
 
-    function getProof(
-        uint256 index
-    ) public view returns (bytes32[] memory proof) {
-        if (tree.length == 1) {
-            return proof;
-        }
+    function getProof(uint256 index) public view returns (bytes32[] memory proof) {
+        if (tree.length == 1) return proof;
 
         uint256 i = tree.length - 1 - index;
         uint256 proofLength = _log2(i + 1);
@@ -102,9 +98,7 @@ contract MerkleTree {
         for (uint256 i = tree.length - 1 - leaves.length; ; --i) {
             tree[i] = _hashPair(tree[2 * i + 1], tree[2 * i + 2]);
 
-            if (i == 0) {
-                break;
-            }
+            if (i == 0) break;
         }
     }
 
@@ -122,9 +116,6 @@ contract MerkleTree {
     }
 
     function _hashPair(bytes32 a, bytes32 b) private pure returns (bytes32) {
-        return
-            a < b
-                ? keccak256(bytes.concat(a, b))
-                : keccak256(bytes.concat(b, a));
+        return a < b ? keccak256(bytes.concat(a, b)) : keccak256(bytes.concat(b, a));
     }
 }

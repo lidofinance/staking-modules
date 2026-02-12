@@ -5,10 +5,7 @@ pragma solidity 0.8.33;
 contract ValidatorStrikesMock {
     constructor() {}
 
-    function processOracleReport(
-        bytes32 _treeRoot,
-        string calldata _treeCid
-    ) external {
+    function processOracleReport(bytes32 _treeRoot, string calldata _treeCid) external {
         // do nothing
     }
 

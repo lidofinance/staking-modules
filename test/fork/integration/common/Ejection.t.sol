@@ -19,14 +19,10 @@ abstract contract EjectionTestBase is ModuleTypeBase {
     function setUp() public {
         _setUpModule();
 
-        if (module.isPaused()) {
-            module.resume();
-        }
+        if (module.isPaused()) module.resume();
     }
 
-    function _prepareWithdrawalRequestData(
-        bytes memory pubkey
-    ) internal pure returns (bytes memory request) {
+    function _prepareWithdrawalRequestData(bytes memory pubkey) internal pure returns (bytes memory request) {
         request = new bytes(56); // 48 bytes for pubkey + 8 bytes for amount (0)
         assembly {
             let requestPtr := add(request, 0x20)
@@ -38,34 +34,26 @@ abstract contract EjectionTestBase is ModuleTypeBase {
 
     function test_voluntaryEject() public {
         uint256 startFrom;
-        (nodeOperatorId, startFrom) = integrationHelpers
-            .getDepositedNodeOperatorWithSequentialActiveKeys(
-                nextAddress(),
-                KEYS_COUNT
-            );
+        (nodeOperatorId, startFrom) = integrationHelpers.getDepositedNodeOperatorWithSequentialActiveKeys(
+            nextAddress(),
+            KEYS_COUNT
+        );
 
         uint256 initialBalance = 1 ether;
         address operatorOwner = module.getNodeOperatorOwner(nodeOperatorId);
         vm.deal(operatorOwner, initialBalance);
-        uint256 expectedFee = IWithdrawalVault(locator.withdrawalVault())
-            .getWithdrawalRequestFee();
+        uint256 expectedFee = IWithdrawalVault(locator.withdrawalVault()).getWithdrawalRequestFee();
 
         uint256 VOLUNTARY_EXIT_TYPE_ID = ejector.VOLUNTARY_EXIT_TYPE_ID();
         address withdrawalVault = locator.withdrawalVault();
         bytes[] memory pubkeys = new bytes[](KEYS_COUNT);
 
         for (uint256 i = 0; i < KEYS_COUNT; i++) {
-            pubkeys[i] = module.getSigningKeys(
-                nodeOperatorId,
-                startFrom + i,
-                1
-            );
+            pubkeys[i] = module.getSigningKeys(nodeOperatorId, startFrom + i, 1);
         }
         for (uint256 i = 0; i < KEYS_COUNT; i++) {
             vm.expectEmit(withdrawalVault);
-            emit IWithdrawalVault.WithdrawalRequestAdded(
-                _prepareWithdrawalRequestData(pubkeys[i])
-            );
+            emit IWithdrawalVault.WithdrawalRequestAdded(_prepareWithdrawalRequestData(pubkeys[i]));
             vm.expectCall(
                 address(module),
                 abi.encodeWithSelector(
@@ -80,31 +68,19 @@ abstract contract EjectionTestBase is ModuleTypeBase {
 
         vm.prank(operatorOwner);
         vm.startSnapshotGas("Ejector.voluntaryEject");
-        ejector.voluntaryEject{ value: initialBalance }(
-            nodeOperatorId,
-            startFrom,
-            KEYS_COUNT,
-            operatorOwner
-        );
+        ejector.voluntaryEject{ value: initialBalance }(nodeOperatorId, startFrom, KEYS_COUNT, operatorOwner);
         vm.stopSnapshotGas();
 
-        vm.assertEq(
-            operatorOwner.balance,
-            initialBalance - expectedFee * KEYS_COUNT
-        );
+        vm.assertEq(operatorOwner.balance, initialBalance - expectedFee * KEYS_COUNT);
     }
 
     function test_voluntaryEjectByArray() public {
-        nodeOperatorId = integrationHelpers.getDepositedNodeOperator(
-            nextAddress(),
-            KEYS_COUNT
-        );
+        nodeOperatorId = integrationHelpers.getDepositedNodeOperator(nextAddress(), KEYS_COUNT);
 
         uint256 initialBalance = 1 ether;
         address operatorOwner = module.getNodeOperatorOwner(nodeOperatorId);
         vm.deal(operatorOwner, initialBalance);
-        uint256 expectedFee = IWithdrawalVault(locator.withdrawalVault())
-            .getWithdrawalRequestFee();
+        uint256 expectedFee = IWithdrawalVault(locator.withdrawalVault()).getWithdrawalRequestFee();
 
         uint256 VOLUNTARY_EXIT_TYPE_ID = ejector.VOLUNTARY_EXIT_TYPE_ID();
         address withdrawalVault = locator.withdrawalVault();
@@ -128,9 +104,7 @@ abstract contract EjectionTestBase is ModuleTypeBase {
 
         for (uint256 i = 0; i < KEYS_COUNT; i++) {
             vm.expectEmit(withdrawalVault);
-            emit IWithdrawalVault.WithdrawalRequestAdded(
-                _prepareWithdrawalRequestData(pubkeys[i])
-            );
+            emit IWithdrawalVault.WithdrawalRequestAdded(_prepareWithdrawalRequestData(pubkeys[i]));
             vm.expectCall(
                 address(module),
                 abi.encodeWithSelector(
@@ -144,17 +118,10 @@ abstract contract EjectionTestBase is ModuleTypeBase {
         }
         vm.prank(operatorOwner);
         vm.startSnapshotGas("Ejector.voluntaryEjectByArray");
-        ejector.voluntaryEjectByArray{ value: initialBalance }(
-            nodeOperatorId,
-            keyIds,
-            operatorOwner
-        );
+        ejector.voluntaryEjectByArray{ value: initialBalance }(nodeOperatorId, keyIds, operatorOwner);
         vm.stopSnapshotGas();
 
-        vm.assertEq(
-            operatorOwner.balance,
-            initialBalance - expectedFee * KEYS_COUNT
-        );
+        vm.assertEq(operatorOwner.balance, initialBalance - expectedFee * KEYS_COUNT);
     }
 }
 

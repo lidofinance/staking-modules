@@ -1,11 +1,11 @@
 [profile.default]
-solc = "0.8.33"
 evm_version = "osaka"
 optimizer = true
 optimizer_runs = 0 # REVISE IN THE FUTURE
 bytecode_hash = "none" # The metadata hash removed from the bytecode (not the metadata itself).
 # uncomment this to inspect storage layouts in build artifacts
 # extra_output = ["storageLayout"]
+verbosity = 3
 
 src = "src"
 out = "out"

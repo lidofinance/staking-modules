@@ -26,11 +26,7 @@ interface IReportAsyncProcessor {
     /// submit it using this same function, or to lose the consensus on the submitted report,
     /// notifying the processor via `discardConsensusReport`.
     ///
-    function submitConsensusReport(
-        bytes32 report,
-        uint256 refSlot,
-        uint256 deadline
-    ) external;
+    function submitConsensusReport(bytes32 report, uint256 refSlot, uint256 deadline) external;
 
     /// @notice Notifies that the report for the given ref. slot is not a consensus report anymore
     /// and should be discarded. This can happen when a member changes their report, is removed
