@@ -625,12 +625,7 @@ abstract contract BaseModule is
             if (info.isSlashed && !_isValidatorSlashed[pointer]) revert SlashingPenaltyIsNotApplicable();
 
             NodeOperator storage no = _nodeOperators[info.nodeOperatorId];
-            bool penaltyCovered = WithdrawnValidatorLib.process(
-                no,
-                info,
-                _isValidatorSlashed[pointer],
-                _keyAddedBalances[pointer]
-            );
+            bool penaltyCovered = WithdrawnValidatorLib.process(no, info, _keyAddedBalances[pointer]);
             if (!penaltyCovered) _onUncompensatedPenalty(info.nodeOperatorId);
 
             _updateDepositableValidatorsCount({ nodeOperatorId: info.nodeOperatorId, incrementNonceIfUpdated: false });
