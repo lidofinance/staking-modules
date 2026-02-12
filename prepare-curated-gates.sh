@@ -43,15 +43,15 @@ get_admin() {
 ACCOUNTING=$(jq -r '.Accounting' "$CM_DEPLOY_CONFIG")
 GATE_FACTORY=$(jq -r '.CuratedGateFactory' "$CM_DEPLOY_CONFIG")
 CURATED_MODULE=$(jq -r '.CuratedModule' "$CM_DEPLOY_CONFIG")
-OPERATORS_DATA=$(jq -r '.OperatorsData' "$CM_DEPLOY_CONFIG")
+META_REGISTRY=$(jq -r '.MetaRegistry' "$CM_DEPLOY_CONFIG")
 
 # Get admins and impersonate
 ACCOUNTING_ADMIN=$(get_admin "$ACCOUNTING")
 MODULE_ADMIN=$(get_admin "$CURATED_MODULE")
-OPERATORS_DATA_ADMIN=$(get_admin "$OPERATORS_DATA")
+META_REGISTRY_ADMIN=$(get_admin "$META_REGISTRY")
 cast rpc anvil_impersonateAccount "$ACCOUNTING_ADMIN" --rpc-url="$RPC_URL" > /dev/null
 cast rpc anvil_impersonateAccount "$MODULE_ADMIN" --rpc-url="$RPC_URL" > /dev/null
-cast rpc anvil_impersonateAccount "$OPERATORS_DATA_ADMIN" --rpc-url="$RPC_URL" > /dev/null
+cast rpc anvil_impersonateAccount "$META_REGISTRY_ADMIN" --rpc-url="$RPC_URL" > /dev/null
 
 # Role hashes
 MANAGE_CURVES_ROLE=$(cast keccak "MANAGE_BOND_CURVES_ROLE")
@@ -68,9 +68,9 @@ cast send "$CURATED_MODULE" "grantRole(bytes32,address)" \
 cast send "$ACCOUNTING" "grantRole(bytes32,address)" \
   "$DEFAULT_ADMIN_ROLE" "$SENDER" \
   --rpc-url="$RPC_URL" --chain-id="$CHAIN_ID" --unlocked --from="$ACCOUNTING_ADMIN" > /dev/null
-cast send "$OPERATORS_DATA" "grantRole(bytes32,address)" \
+cast send "$META_REGISTRY" "grantRole(bytes32,address)" \
   "$DEFAULT_ADMIN_ROLE" "$SENDER" \
-  --rpc-url="$RPC_URL" --chain-id="$CHAIN_ID" --unlocked --from="$OPERATORS_DATA_ADMIN" > /dev/null
+  --rpc-url="$RPC_URL" --chain-id="$CHAIN_ID" --unlocked --from="$META_REGISTRY_ADMIN" > /dev/null
 
 # Bond curves for curveIds 2-7 (curveId 1 already exists from prepare-modules.sh)
 # Format: [(minKeys, trendWei), ...]
@@ -99,7 +99,7 @@ TREE_CID="TODO: ipfs-cid"
 # Role hashes for gates
 CREATE_NO_ROLE=$(cast keccak "CREATE_NODE_OPERATOR_ROLE")
 SET_CURVE_ROLE=$(cast keccak "SET_BOND_CURVE_ROLE")
-SETTER_ROLE=$(cast keccak "SETTER_ROLE")
+SET_OPERATOR_INFO_ROLE=$(cast keccak "SET_OPERATOR_INFO_ROLE")
 
 # Verify initial curves count (curveIds 0 and 1 should exist)
 echo ">>> Getting curves count..."
@@ -152,8 +152,8 @@ for i in "${!CURVES[@]}"; do
   cast send "$ACCOUNTING" "grantRole(bytes32,address)" \
     "$SET_CURVE_ROLE" "$NEW_GATE" \
     --rpc-url="$RPC_URL" --chain-id="$CHAIN_ID" --unlocked --from="$SENDER" > /dev/null
-  cast send "$OPERATORS_DATA" "grantRole(bytes32,address)" \
-    "$SETTER_ROLE" "$NEW_GATE" \
+  cast send "$META_REGISTRY" "grantRole(bytes32,address)" \
+    "$SET_OPERATOR_INFO_ROLE" "$NEW_GATE" \
     --rpc-url="$RPC_URL" --chain-id="$CHAIN_ID" --unlocked --from="$SENDER" > /dev/null
 
   # Update deploy config JSON
@@ -172,7 +172,7 @@ cast send "$CURATED_MODULE" "revokeRole(bytes32,address)" \
 cast send "$ACCOUNTING" "revokeRole(bytes32,address)" \
   "$DEFAULT_ADMIN_ROLE" "$SENDER" \
   --rpc-url="$RPC_URL" --chain-id="$CHAIN_ID" --unlocked --from="$SENDER" > /dev/null
-cast send "$OPERATORS_DATA" "revokeRole(bytes32,address)" \
+cast send "$META_REGISTRY" "revokeRole(bytes32,address)" \
   "$DEFAULT_ADMIN_ROLE" "$SENDER" \
   --rpc-url="$RPC_URL" --chain-id="$CHAIN_ID" --unlocked --from="$SENDER" > /dev/null
 
