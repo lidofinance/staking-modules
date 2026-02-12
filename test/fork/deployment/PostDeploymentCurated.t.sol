@@ -26,9 +26,7 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         Env memory env = envVars();
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
-        if (moduleType != ModuleType.Curated) {
-            vm.skip(true);
-        }
+        if (moduleType != ModuleType.Curated) vm.skip(true);
         string memory config = vm.readFile(env.DEPLOY_CONFIG);
         // mutates storage variable
         updateCuratedDeployParams(deployParams, env.DEPLOY_CONFIG);
@@ -67,17 +65,6 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
     }
 }
 
-contract AccountingDeploymentTest is DeploymentBaseTest {
-    function test_roles_onlyFull() public view {
-        bytes32 role = accounting.SET_BOND_CURVE_ROLE();
-        assertEq(accounting.getRoleMemberCount(role), 2);
-        assertTrue(accounting.hasRole(role, deployParams.setResetBondCurveAddress));
-        for (uint256 i = 0; i < curatedGates.length; ++i) {
-            assertTrue(accounting.hasRole(role, curatedGates[i]));
-        }
-    }
-}
-
 contract MetaRegistryDeploymentTest is DeploymentBaseTest {
     function test_state_onlyFull() public view {
         assertEq(metaRegistry.getOperatorGroupsCount(), 1);
@@ -111,7 +98,6 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
             assertEq(address(gate.MODULE()), address(module));
             assertEq(address(gate.ACCOUNTING()), address(accounting));
             assertEq(address(gate.META_REGISTRY()), address(metaRegistry));
-            assertEq(gate.MODULE_ID(), deployParams.stakingModuleId);
         }
     }
 
@@ -132,7 +118,6 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
     function test_curveParameters() public view {
         uint256 gatesCount = curatedGates.length;
         assertGt(gatesCount, 0, "no curated gates deployed");
-        assertEq(parametersRegistry.defaultDepositAllocationWeight(), deployParams.defaultDepositAllocationWeight);
         for (uint256 i = 0; i < gatesCount; ++i) {
             CuratedGate gate = CuratedGate(curatedGates[i]);
             uint256 curveId = gate.curveId();
@@ -211,19 +196,8 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
             assertEq(parametersRegistry.getExitDelayFee(curveId), params.exitDelayFee);
             assertEq(parametersRegistry.getMaxElWithdrawalRequestFee(curveId), params.maxElWithdrawalRequestFee);
 
-            if (params.depositAllocationWeight != 0) {
-                assertEq(
-                    parametersRegistry.getDepositAllocationWeight(curveId),
-                    params.depositAllocationWeight,
-                    "gate deposit allocation weight"
-                );
-            } else {
-                assertEq(
-                    parametersRegistry.getDepositAllocationWeight(curveId),
-                    deployParams.defaultDepositAllocationWeight,
-                    "gate deposit allocation weight default"
-                );
-            }
+            // FIXME: add MetaRegistry-level assertions here to replace
+            // the removed deposit-allocation-weight checks.
         }
     }
 
@@ -241,6 +215,9 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
     function test_roles() public view {
         uint256 gatesCount = curatedGates.length;
         assertGt(gatesCount, 0, "no curated gates deployed");
+        bytes32 setBondCurveRole = accounting.SET_BOND_CURVE_ROLE();
+        uint256 defaultCurveId = accounting.DEFAULT_BOND_CURVE_ID();
+        uint256 setBondCurveRoleMembers;
 
         for (uint256 i = 0; i < gatesCount; ++i) {
             {
@@ -256,8 +233,20 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
                     "missing set tree role"
                 );
                 assertTrue(gate.hasRole(gate.PAUSE_ROLE(), address(gateSeal)), "missing gate seal pause role");
+
+                bool hasCustomCurve = gate.curveId() != defaultCurveId;
+                assertEq(
+                    accounting.hasRole(setBondCurveRole, address(gate)),
+                    hasCustomCurve,
+                    "unexpected set bond curve role"
+                );
+                if (hasCustomCurve) {
+                    setBondCurveRoleMembers += 1;
+                }
             }
         }
+
+        assertEq(accounting.getRoleMemberCount(setBondCurveRole), setBondCurveRoleMembers, "set bond curve roles");
     }
 }
 

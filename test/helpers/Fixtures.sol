@@ -28,6 +28,8 @@ import { ValidatorStrikes } from "src/ValidatorStrikes.sol";
 import { Verifier } from "src/Verifier.sol";
 import { CuratedModule } from "src/CuratedModule.sol";
 import { MetaRegistry } from "src/MetaRegistry.sol";
+import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
+import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { CuratedGateFactory } from "src/CuratedGateFactory.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
@@ -430,7 +432,6 @@ contract DeploymentHelpers is Test {
         dst.minBondLockPeriod = src.minBondLockPeriod;
         dst.maxBondLockPeriod = src.maxBondLockPeriod;
         dst.bondLockPeriod = src.bondLockPeriod;
-        dst.setResetBondCurveAddress = src.setResetBondCurveAddress;
         dst.chargePenaltyRecipient = src.chargePenaltyRecipient;
 
         // Module
@@ -456,9 +457,6 @@ contract DeploymentHelpers is Test {
         dst.defaultAllowedExitDelay = src.defaultAllowedExitDelay;
         dst.defaultExitDelayFee = src.defaultExitDelayFee;
         dst.defaultMaxElWithdrawalRequestFee = src.defaultMaxElWithdrawalRequestFee;
-        dst.defaultDepositAllocationWeight = src.defaultDepositAllocationWeight;
-        dst.identifiedCommunityStakersGateDepositAllocationWeight = src
-            .identifiedCommunityStakersGateDepositAllocationWeight;
 
         // Curated gates
         for (uint256 i; i < src.curatedGates.length; ++i) {
@@ -521,7 +519,6 @@ contract DeploymentHelpers is Test {
         params.resealManager = decoded.resealManager;
         params.secondAdminAddress = decoded.secondAdminAddress;
         params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
-        params.setResetBondCurveAddress = decoded.setResetBondCurveAddress;
         params.stakingModuleId = decoded.stakingModuleId;
         params.moduleType = decoded.moduleType;
         params.queueLowestPriority = decoded.queueLowestPriority;
@@ -584,9 +581,6 @@ contract DeploymentHelpers is Test {
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.defaultBondCurve = decoded.defaultBondCurve;
-        params.defaultDepositAllocationWeight = decoded.defaultDepositAllocationWeight;
-        params.identifiedCommunityStakersGateDepositAllocationWeight = decoded
-            .identifiedCommunityStakersGateDepositAllocationWeight;
         return params;
     }
 
@@ -974,7 +968,6 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
 }
 
 contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
-    ParametersRegistry internal parametersRegistry;
     address[] internal curatedGates;
 
     error ModuleNotFound();
@@ -983,20 +976,19 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         CSModule module_,
         Accounting accounting_,
         IStakingRouter stakingRouter_,
-        ParametersRegistry parametersRegistry_,
         address[] memory curatedGates_
     ) ForkIntegrationHelpersBase(module_, accounting_, stakingRouter_) {
-        parametersRegistry = parametersRegistry_;
         curatedGates = curatedGates_;
     }
 
     function addNodeOperator(address from, uint256 keysCount) external override returns (uint256 nodeOperatorId) {
         (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
         (CuratedGate gate, bytes32[] memory proof) = _prepareCuratedGate(from);
-        _ensureDepositAllocationWeight(gate.curveId());
 
         vm.prank(from);
         nodeOperatorId = gate.createNodeOperator("test", "test", address(0), address(0), proof);
+
+        _ensureMetaRegistrySetup(nodeOperatorId, gate.curveId());
 
         uint256 amount = accounting.getBondAmountByKeysCount(keysCount, gate.curveId());
         vm.deal(from, amount);
@@ -1021,6 +1013,9 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
 
         nodeOperatorId = module.createNodeOperator(from, props, address(0));
 
+        uint256 curveId = accounting.getBondCurveId(nodeOperatorId);
+        _ensureMetaRegistrySetup(nodeOperatorId, curveId);
+
         address managerAddress = manager == address(0) ? from : manager;
         (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
         uint256 amount = accounting.getBondAmountByKeysCount(keysCount, accounting.getBondCurveId(nodeOperatorId));
@@ -1042,9 +1037,7 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
     }
 
     function _prepareCuratedGate(address member) internal returns (CuratedGate gate, bytes32[] memory proof) {
-        if (curatedGates.length == 0) {
-            revert ModuleNotFound();
-        }
+        if (curatedGates.length == 0) revert ModuleNotFound();
 
         gate = CuratedGate(curatedGates[0]);
         address admin = gate.getRoleMember(gate.DEFAULT_ADMIN_ROLE(), 0);
@@ -1053,9 +1046,7 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         gate.grantRole(gate.RESUME_ROLE(), address(this));
         vm.stopPrank();
 
-        if (gate.isPaused()) {
-            gate.resume();
-        }
+        if (gate.isPaused()) gate.resume();
 
         address extra = nextAddress("curated-proof");
         MerkleTree tree = new MerkleTree();
@@ -1068,21 +1059,41 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         proof = tree.getProof(0);
     }
 
-    function _ensureDepositAllocationWeight(uint256 curveId) internal {
-        if (parametersRegistry.getDepositAllocationWeight(curveId) != 0) {
-            return;
-        }
+    function _ensureMetaRegistrySetup(uint256 nodeOperatorId, uint256 curveId) internal {
+        MetaRegistry r = MetaRegistry(address(ICuratedModule(address(module)).META_REGISTRY()));
 
-        address admin = parametersRegistry.getRoleMember(parametersRegistry.DEFAULT_ADMIN_ROLE(), 0);
-        vm.prank(admin);
-        parametersRegistry.setDepositAllocationWeight(curveId, 1);
+        address admin = r.getRoleMember(r.DEFAULT_ADMIN_ROLE(), 0);
+
+        vm.startPrank(admin);
+        r.grantRole(r.MANAGE_OPERATOR_GROUPS_ROLE(), address(this));
+        r.grantRole(r.SET_BOND_CURVE_WEIGHT_ROLE(), address(this));
+        vm.stopPrank();
+
+        uint256 groupId = r.getNodeOperatorGroupId(nodeOperatorId);
+        if (groupId == r.NO_GROUP_ID()) {
+            IMetaRegistry.SubNodeOperator[] memory subs = new IMetaRegistry.SubNodeOperator[](1);
+            subs[0] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: uint64(nodeOperatorId), share: 10000 });
+            r.createOrUpdateOperatorGroup(
+                r.NO_GROUP_ID(),
+                IMetaRegistry.OperatorGroup({
+                    subNodeOperators: subs,
+                    externalOperators: new IMetaRegistry.ExternalOperator[](0)
+                })
+            );
+        }
+        // TODO: Think about more realistic weight, so far the units are unclear.
+        if (r.getBondCurveWeight(curveId) == 0) {
+            r.setBondCurveWeight(curveId, 1);
+            CuratedModule cm = CuratedModule(address(module));
+            for (uint256 i = 0; i < cm.getNodeOperatorsCount(); ++i) {
+                r.refreshOperatorWeight(i);
+            }
+        }
     }
 
     function _ensureCreateNodeOperatorRole() internal {
         bytes32 role = module.CREATE_NODE_OPERATOR_ROLE();
-        if (module.hasRole(role, address(this))) {
-            return;
-        }
+        if (module.hasRole(role, address(this))) return;
 
         address admin = module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0);
         vm.prank(admin);

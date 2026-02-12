@@ -226,8 +226,7 @@ abstract contract DeployCSM0x02Base is Script {
                     defaultSyncWeight: config.defaultSyncWeight,
                     defaultAllowedExitDelay: config.defaultAllowedExitDelay,
                     defaultExitDelayFee: config.defaultExitDelayFee,
-                    defaultMaxElWithdrawalRequestFee: config.defaultMaxElWithdrawalRequestFee,
-                    defaultDepositAllocationWeight: config.defaultDepositAllocationWeight
+                    defaultMaxElWithdrawalRequestFee: config.defaultMaxElWithdrawalRequestFee
                 })
             });
 

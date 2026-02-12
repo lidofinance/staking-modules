@@ -25,9 +25,7 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         Env memory env = envVars();
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
-        if (moduleType != ModuleType.Community) {
-            vm.skip(true);
-        }
+        if (moduleType != ModuleType.Community) vm.skip(true);
         deployParams = parseDeployParams(env.DEPLOY_CONFIG);
         adminsCount = block.chainid == 1 ? 1 : 2;
     }
@@ -69,10 +67,9 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
 
 contract AccountingDeploymentTest is DeploymentBaseTest {
     function test_roles_onlyFull() public view {
-        bytes32 role = accounting.SET_BOND_CURVE_ROLE();
-        assertEq(accounting.getRoleMemberCount(role), 2);
-        assertTrue(accounting.hasRole(role, deployParams.setResetBondCurveAddress));
-        assertTrue(accounting.hasRole(role, address(vettedGate)));
+        assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), deployParams.setResetBondCurveAddress));
+        assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(vettedGate)));
+        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 2);
     }
 }
 
@@ -81,7 +78,7 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
         assertEq(parametersRegistryImpl.QUEUE_LOWEST_PRIORITY(), deployParams.queueLowestPriority);
     }
 
-    function test_state_onlyFull() public view {
+    function test_state() public view {
         assertEq(parametersRegistry.defaultKeyRemovalCharge(), deployParams.defaultKeyRemovalCharge);
         assertEq(
             parametersRegistry.defaultGeneralDelayedPenaltyAdditionalFine(),
@@ -108,7 +105,6 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
         assertEq(parametersRegistry.defaultAllowedExitDelay(), deployParams.defaultAllowedExitDelay);
         assertEq(parametersRegistry.defaultExitDelayFee(), deployParams.defaultExitDelayFee);
         assertEq(parametersRegistry.defaultMaxElWithdrawalRequestFee(), deployParams.defaultMaxElWithdrawalRequestFee);
-        assertEq(parametersRegistry.defaultDepositAllocationWeight(), deployParams.defaultDepositAllocationWeight);
         assertEq(parametersRegistry.getInitializedVersion(), 1);
 
         // Params for Identified Community Staker type
@@ -182,12 +178,6 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
             parametersRegistry.getMaxElWithdrawalRequestFee(identifiedCommunityStakersGateCurveId),
             deployParams.identifiedCommunityStakersGateMaxElWithdrawalRequestFee
         );
-        if (deployParams.identifiedCommunityStakersGateDepositAllocationWeight != 0) {
-            assertEq(
-                parametersRegistry.getDepositAllocationWeight(identifiedCommunityStakersGateCurveId),
-                deployParams.identifiedCommunityStakersGateDepositAllocationWeight
-            );
-        }
         // Params for Legacy EA type
         uint256 legacyEaBondCurveId = identifiedCommunityStakersGateCurveId - 1;
         assertEq(parametersRegistry.getKeyRemovalCharge(legacyEaBondCurveId), deployParams.defaultKeyRemovalCharge);
@@ -241,12 +231,12 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
         );
     }
 
-    function test_roles_onlyFull() public view {
+    function test_roles() public view {
         assertTrue(parametersRegistry.hasRole(parametersRegistry.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(parametersRegistry.getRoleMemberCount(parametersRegistry.DEFAULT_ADMIN_ROLE()), adminsCount);
     }
 
-    function test_proxy_onlyFull() public {
+    function test_proxy() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         parametersRegistry.initialize({
             admin: deployParams.aragonAgent,
@@ -266,8 +256,7 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
                 defaultSyncWeight: deployParams.defaultSyncWeight,
                 defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
                 defaultExitDelayFee: deployParams.defaultExitDelayFee,
-                defaultMaxElWithdrawalRequestFee: deployParams.defaultMaxElWithdrawalRequestFee,
-                defaultDepositAllocationWeight: deployParams.defaultDepositAllocationWeight
+                defaultMaxElWithdrawalRequestFee: deployParams.defaultMaxElWithdrawalRequestFee
             })
         });
 
@@ -297,8 +286,7 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
                 defaultSyncWeight: deployParams.defaultSyncWeight,
                 defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
                 defaultExitDelayFee: deployParams.defaultExitDelayFee,
-                defaultMaxElWithdrawalRequestFee: deployParams.defaultMaxElWithdrawalRequestFee,
-                defaultDepositAllocationWeight: deployParams.defaultDepositAllocationWeight
+                defaultMaxElWithdrawalRequestFee: deployParams.defaultMaxElWithdrawalRequestFee
             })
         });
     }
@@ -326,7 +314,7 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
         assertEq(address(vettedGateImpl.ACCOUNTING()), address(accounting));
     }
 
-    function test_roles_onlyFull() public view {
+    function test_roles() public view {
         assertTrue(vettedGate.hasRole(vettedGate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(oracle.getRoleMemberCount(oracle.DEFAULT_ADMIN_ROLE()), adminsCount);
 
@@ -354,7 +342,7 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
         assertEq(vettedGate.getRoleMemberCount(vettedGate.END_REFERRAL_SEASON_ROLE()), 1);
     }
 
-    function test_proxy_onlyFull() public {
+    function test_proxy() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         vettedGate.initialize({
             _curveId: 1,
