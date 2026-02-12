@@ -66,6 +66,7 @@ interface IBondCurve {
     error InvalidBondCurveValues();
     error InvalidBondCurveId();
     error InvalidInitializationCurveId();
+    error SameBondCurveId();
 
     function DEFAULT_BOND_CURVE_ID() external view returns (uint256);
 

@@ -9,20 +9,16 @@ import { IBondCore } from "./IBondCore.sol";
 import { IBondCurve } from "./IBondCurve.sol";
 import { IBondLock } from "./IBondLock.sol";
 import { IFeeDistributor } from "./IFeeDistributor.sol";
+import { IFeeSplits } from "./IFeeSplits.sol";
 import { IBaseModule } from "./IBaseModule.sol";
 
-interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
+interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRecovererLib {
     struct PermitInput {
         uint256 value;
         uint256 deadline;
         uint8 v;
         bytes32 r;
         bytes32 s;
-    }
-
-    struct FeeSplit {
-        address recipient;
-        uint256 share; // in basis points
     }
 
     event BondLockCompensated(uint256 indexed nodeOperatorId, uint256 amount);
@@ -82,12 +78,13 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
     ///                  Total shares must be <= 10_000 (100%). Remainder goes to the Node Operator's bond
     /// @param cumulativeFeeShares Cumulative fee stETH shares for the Node Operator. Optional
     /// @param rewardsProof Merkle proof of the rewards. Optional
-    /// @dev  We are not checking for pending fees to distribute if there are no splits currently set;
-    ///       `cumulativeFeeShares` and `rewardsProof` parameters are not required in this case.
-    ///       This allows splitting rewards that were distributed for the operator before the splits are set.
-    ///       The node operator explicitly opts into this behavior.
-    ///       If the splits are currently set, then should be no pending fees to distribute to make changes.
-    function setFeeSplits(
+    /// @dev FeeSplits can be updated either when there are no splits currently or when there are splits now,
+    ///      provided all node operator rewards are distributed and split. It is possible to set splits while
+    ///      there are undistributed node operator rewards and no splits are currently set.
+    ///      This will result in all undistributed node operator rewards being split.
+    ///      If a node operator has never received any node operator rewards, they can set initial splits.
+    ///      However, further change will be possible only after getting and splitting the first rewards.
+    function updateFeeSplits(
         uint256 nodeOperatorId,
         FeeSplit[] calldata feeSplits,
         uint256 cumulativeFeeShares,
@@ -140,14 +137,6 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
         uint256 nodeOperatorId,
         uint256 additionalKeys
     ) external view returns (uint256);
-
-    /// @notice Get active fee splits for the given Node Operator
-    /// @param nodeOperatorId ID of the Node Operator
-    /// @return Array of FeeSplit structs defining recipients and their shares in basis points
-    function getFeeSplits(uint256 nodeOperatorId) external view returns (FeeSplit[] memory);
-
-    /// @notice Get the number of the pending shares to be split for the given Node Operator
-    function getPendingSharesToSplit(uint256 nodeOperatorId) external view returns (uint256);
 
     /// @notice Get the number of the unbonded keys
     /// @param nodeOperatorId ID of the Node Operator
@@ -347,7 +336,4 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IAssetRecovererLib {
         uint256 cumulativeFeeShares,
         bytes32[] calldata rewardsProof
     ) external;
-
-    /// @notice Service method to update allowance to Burner in case it has changed
-    function renewBurnerAllowance() external;
 }

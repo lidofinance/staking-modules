@@ -20,10 +20,10 @@ event FeeSplitsSet(uint256 indexed nodeOperatorId, IAccounting.FeeSplit[] feeSpl
 error PendingSharesExist();
 ```
 
-### UndistributedSharesExist
+### FeeSplitsChangeWithUndestributedRewards
 
 ```solidity
-error UndistributedSharesExist();
+error FeeSplitsChangeWithUndestributedRewards();
 ```
 
 ### TooManySplits
