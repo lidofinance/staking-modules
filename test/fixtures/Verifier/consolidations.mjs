@@ -13,7 +13,7 @@ import {
 } from "@chainsafe/persistent-merkle-tree";
 import { encodeParameters } from "web3-eth-abi";
 
-import VerifierConsolidationTest from "../../../out/Verifier.t.sol/VerifierConsolidationTest.json" with { type: "json" };
+import VerifierModuleSourceConsolidationTest from "../../../out/Verifier.t.sol/VerifierModuleSourceConsolidationTest.json" with { type: "json" };
 
 const MIN_VALIDATOR_WITHDRAWABILITY_DELAY = 256;
 const SLOTS_PER_HISTORICAL_ROOT = 8192;
@@ -238,7 +238,7 @@ function main(opts) {
     },
   };
 
-  const ffi_interface = VerifierConsolidationTest.abi.find(
+  const ffi_interface = VerifierModuleSourceConsolidationTest.abi.find(
     (e) => e.name == "ffi_interface",
   );
   assert(ffi_interface);

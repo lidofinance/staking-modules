@@ -156,11 +156,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         if (!data.validator.object.slashed) revert ValidatorIsNotSlashed();
 
         {
-            bytes memory pubkey = MODULE.getSigningKeys(
-                data.moduleKeyId.nodeOperatorId,
-                data.moduleKeyId.keyIndex,
-                1
-            );
+            bytes memory pubkey = MODULE.getSigningKeys(data.moduleKeyId.nodeOperatorId, data.moduleKeyId.keyIndex, 1);
 
             if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
         }
@@ -172,10 +168,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             gI: _getValidatorGI(data.validator.index, data.recentBlock.header.slot)
         });
 
-        MODULE.onValidatorSlashed(
-            data.moduleKeyId.nodeOperatorId,
-            data.moduleKeyId.keyIndex
-        );
+        MODULE.onValidatorSlashed(data.moduleKeyId.nodeOperatorId, data.moduleKeyId.keyIndex);
     }
 
     /// @inheritdoc IVerifier
@@ -190,11 +183,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         }
 
         {
-            bytes memory pubkey = MODULE.getSigningKeys(
-                data.moduleKeyId.nodeOperatorId,
-                data.moduleKeyId.keyIndex,
-                1
-            );
+            bytes memory pubkey = MODULE.getSigningKeys(data.moduleKeyId.nodeOperatorId, data.moduleKeyId.keyIndex, 1);
 
             if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
         }
@@ -230,11 +219,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         }
 
         {
-            bytes memory pubkey = MODULE.getSigningKeys(
-                data.moduleKeyId.nodeOperatorId,
-                data.moduleKeyId.keyIndex,
-                1
-            );
+            bytes memory pubkey = MODULE.getSigningKeys(data.moduleKeyId.nodeOperatorId, data.moduleKeyId.keyIndex, 1);
 
             if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
         }
@@ -264,19 +249,19 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     }
 
     /// @inheritdoc IVerifier
-    function processConsolidation(ProcessConsolidationInput calldata data) external whenResumed {
-        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) revert UnsupportedSlot(data.recentBlock.header.slot);
+    function processModuleSourceConsolidation(
+        ProcessModuleSourceConsolidationInput calldata data
+    ) external whenResumed {
+        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.recentBlock.header.slot);
+        }
         if (data.consolidationBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.consolidationBlock.header.slot);
         }
         if (data.validator.object.slashed) revert ValidatorIsSlashed();
 
         {
-            bytes memory pubkey = MODULE.getSigningKeys(
-                data.moduleKeyId.nodeOperatorId,
-                data.moduleKeyId.keyIndex,
-                1
-            );
+            bytes memory pubkey = MODULE.getSigningKeys(data.moduleKeyId.nodeOperatorId, data.moduleKeyId.keyIndex, 1);
 
             if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
         }
@@ -327,9 +312,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         });
 
         uint64 effectiveBalanceGwei = data.validator.object.effectiveBalance;
-        uint64 consolidatedBalanceGwei = balanceGwei < effectiveBalanceGwei
-            ? balanceGwei
-            : effectiveBalanceGwei;
+        uint64 consolidatedBalanceGwei = balanceGwei < effectiveBalanceGwei ? balanceGwei : effectiveBalanceGwei;
 
         _reportSingleValidator(
             WithdrawnValidatorInfo({

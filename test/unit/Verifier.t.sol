@@ -746,13 +746,13 @@ contract VerifierSlashingTest is VerifierTestBase {
     function ffi_interface(Fixture memory) external {}
 }
 
-contract VerifierConsolidationTest is VerifierTestBase {
+contract VerifierModuleSourceConsolidationTest is VerifierTestBase {
     using Strings for uint256;
 
     struct Fixture {
         bytes32 blockRoot;
         uint256 balanceWei;
-        IVerifier.ProcessConsolidationInput data;
+        IVerifier.ProcessModuleSourceConsolidationInput data;
     }
 
     Fixture internal fixture;
@@ -800,7 +800,7 @@ contract VerifierConsolidationTest is VerifierTestBase {
         assertGt(verifier.FIRST_SUPPORTED_SLOT().unwrap(), 0, "Non-zero slot needed for tests");
     }
 
-    function test_processConsolidationProof_EffectiveBalanceAboveActual() public {
+    function test_processModuleSourceConsolidationProof_EffectiveBalanceAboveActual() public {
         _loadFixtureWithBalances({ balance: weiToGwei(31.8 ether), effectiveBalance: weiToGwei(32 ether) });
         _setMocks();
 
@@ -818,10 +818,10 @@ contract VerifierConsolidationTest is VerifierTestBase {
             abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
         );
 
-        verifier.processConsolidation(fixture.data);
+        verifier.processModuleSourceConsolidation(fixture.data);
     }
 
-    function test_processConsolidationProof_ActualBalanceAboveEffective() public {
+    function test_processModuleSourceConsolidationProof_ActualBalanceAboveEffective() public {
         _loadFixtureWithBalances({ balance: weiToGwei(32.7 ether), effectiveBalance: weiToGwei(32 ether) });
         _setMocks();
 
@@ -839,63 +839,63 @@ contract VerifierConsolidationTest is VerifierTestBase {
             abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
         );
 
-        verifier.processConsolidation(fixture.data);
+        verifier.processModuleSourceConsolidation(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhenPaused() public {
+    function test_processModuleSourceConsolidation_RevertWhenPaused() public {
         vm.prank(admin);
         verifier.pauseFor(100_500);
         assertTrue(verifier.isPaused());
 
         vm.expectRevert(PausableUntil.ResumedExpected.selector);
-        verifier.processConsolidation(fixture.data);
+        verifier.processModuleSourceConsolidation(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_RecentBlockSlotUnsupported() public {
+    function test_processModuleSourceConsolidation_RevertWhen_RecentBlockSlotUnsupported() public {
         fixture.data.recentBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
         vm.expectRevert(
             abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.recentBlock.header.slot)
         );
-        verifier.processConsolidation(fixture.data);
+        verifier.processModuleSourceConsolidation(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_ConsolidationBlockSlotUnsupported() public {
+    function test_processModuleSourceConsolidation_RevertWhen_ConsolidationBlockSlotUnsupported() public {
         fixture.data.consolidationBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
         vm.expectRevert(
             abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.consolidationBlock.header.slot)
         );
-        verifier.processConsolidation(fixture.data);
+        verifier.processModuleSourceConsolidation(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_Slashed() public {
+    function test_processModuleSourceConsolidation_RevertWhen_Slashed() public {
         fixture.data.validator.object.slashed = true;
 
         vm.expectRevert(IVerifier.ValidatorIsSlashed.selector);
-        verifier.processConsolidation(fixture.data);
+        verifier.processModuleSourceConsolidation(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_InvalidPublicKey() public {
+    function test_processModuleSourceConsolidation_RevertWhen_InvalidPublicKey() public {
         fixture.data.validator.object.pubkey = hex"deadbeef";
 
         vm.expectRevert(IVerifier.InvalidPublicKey.selector);
-        verifier.processConsolidation(fixture.data);
+        verifier.processModuleSourceConsolidation(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_ValidatorIsNotWithdrawable() public {
+    function test_processModuleSourceConsolidation_RevertWhen_ValidatorIsNotWithdrawable() public {
         fixture.data.validator.object.withdrawableEpoch = fixture.data.recentBlock.header.slot.unwrap() / 32 + 1;
         vm.expectRevert(IVerifier.ValidatorIsNotWithdrawable.selector);
-        verifier.processConsolidation(fixture.data);
+        verifier.processModuleSourceConsolidation(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_InvalidConsolidationSource() public {
+    function test_processModuleSourceConsolidation_RevertWhen_InvalidConsolidationSource() public {
         fixture.data.consolidation.object.sourceIndex = fixture.data.validator.index + 1;
         vm.expectRevert(IVerifier.InvalidConsolidationSource.selector);
-        verifier.processConsolidation(fixture.data);
+        verifier.processModuleSourceConsolidation(fixture.data);
     }
 
-    function test_processConsolidation_RevertWhen_InvalidBlockHeader() public {
+    function test_processModuleSourceConsolidation_RevertWhen_InvalidBlockHeader() public {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
             abi.encode(fixture.data.recentBlock.rootsTimestamp),
@@ -903,7 +903,7 @@ contract VerifierConsolidationTest is VerifierTestBase {
         );
 
         vm.expectRevert(IVerifier.InvalidBlockHeader.selector);
-        verifier.processConsolidation(fixture.data);
+        verifier.processModuleSourceConsolidation(fixture.data);
     }
 
     function _setMocks() internal {

@@ -63,7 +63,7 @@ interface IVerifier {
         bytes32[] proof;
     }
 
-    struct ProcessConsolidationInput {
+    struct ProcessModuleSourceConsolidationInput {
         PendingConsolidationWitness consolidation;
         ValidatorWitness validator;
         ModuleKeyId moduleKeyId;
@@ -169,8 +169,8 @@ interface IVerifier {
     /// assumed to be the withdrawal balance.
     /// @dev The caveat is that a pending consolidation is processed later, making it impossible to account for losses
     /// or rewards during the waiting period, as there's no indication of consolidation processing in the state.
-    /// @param data @see ProcessConsolidationInput
-    function processConsolidation(ProcessConsolidationInput calldata data) external;
+    /// @param data @see ProcessModuleSourceConsolidationInput
+    function processModuleSourceConsolidation(ProcessModuleSourceConsolidationInput calldata data) external;
 
     /// @notice Stub method for incoming consolidation request proofs.
     function processIncomingConsolidation(uint256 nodeOperatorId, uint256 keyIndex, uint256 addedBalanceWei) external;
