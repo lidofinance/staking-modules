@@ -118,11 +118,6 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     }
 
     /// @inheritdoc IMetaRegistry
-    function getOperatorMetadata(uint256 nodeOperatorId) external view returns (OperatorMetadata memory metadata) {
-        return _storage().operatorMetadata[nodeOperatorId];
-    }
-
-    /// @inheritdoc IMetaRegistry
     function createOrUpdateOperatorGroup(
         uint256 groupId,
         OperatorGroup calldata groupInfo
@@ -134,6 +129,28 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         } else {
             _updateGroup(groupId, groupInfo);
         }
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function setBondCurveWeight(uint256 curveId, uint256 weight) external onlyRole(SET_BOND_CURVE_WEIGHT_ROLE) {
+        MetaRegistryStorage storage $ = _storage();
+        if ($.bondCurveWeight[curveId] == weight) revert SameBondCurveWeight();
+
+        $.bondCurveWeight[curveId] = weight;
+        emit BondCurveWeightSet(curveId, weight);
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function refreshOperatorWeight(uint256 nodeOperatorId) external {
+        uint256 groupId = _storage().groupIndex.groupIdByOperatorId[nodeOperatorId];
+        if (groupId == NO_GROUP_ID) return;
+
+        _refreshOperatorWeight(groupId, nodeOperatorId);
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function getOperatorMetadata(uint256 nodeOperatorId) external view returns (OperatorMetadata memory metadata) {
+        return _storage().operatorMetadata[nodeOperatorId];
     }
 
     /// @inheritdoc IMetaRegistry
@@ -172,25 +189,6 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     /// @inheritdoc IMetaRegistry
     function getBondCurveWeight(uint256 curveId) external view returns (uint256 weight) {
         weight = _storage().bondCurveWeight[curveId];
-    }
-
-    /// @inheritdoc IMetaRegistry
-    function setBondCurveWeight(uint256 curveId, uint256 weight) external onlyRole(SET_BOND_CURVE_WEIGHT_ROLE) {
-        MetaRegistryStorage storage $ = _storage();
-        if ($.bondCurveWeight[curveId] == weight) revert SameBondCurveWeight();
-
-        $.bondCurveWeight[curveId] = weight;
-        emit BondCurveWeightSet(curveId, weight);
-
-        MODULE.requestFullOperatorWeightsUpdate();
-    }
-
-    /// @inheritdoc IMetaRegistry
-    function refreshOperatorWeight(uint256 nodeOperatorId) external {
-        uint256 groupId = _storage().groupIndex.groupIdByOperatorId[nodeOperatorId];
-        if (groupId == NO_GROUP_ID) return;
-
-        _refreshOperatorWeight(groupId, nodeOperatorId);
     }
 
     /// @inheritdoc IMetaRegistry
@@ -275,8 +273,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             uint256 noId = group.subNodeOperatorIds[i];
             delete $.groupIndex.groupIdByOperatorId[noId];
             delete $.groupIndex.shareByOperatorId[noId];
-            delete $.effectiveWeightCache.operatorEffectiveWeight[noId];
-            MODULE.onNodeOperatorWeightChange(noId, 0);
+            _setEffectiveWeight(noId, 0);
         }
 
         for (uint256 i; i < group.externalOperators.length; ++i) {
@@ -349,16 +346,6 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         }
     }
 
-    function _getLatestEffectiveWeight(uint256 nodeOperatorId, uint256 share) internal view returns (uint256) {
-        uint256 baseWeight = _getOperatorBaseWeight(nodeOperatorId);
-        if (baseWeight == 0 || share == 0) return 0;
-        return Math.mulDiv(baseWeight, share, MAX_BP);
-    }
-
-    function _getOperatorBaseWeight(uint256 nodeOperatorId) internal view returns (uint256) {
-        return _storage().bondCurveWeight[ACCOUNTING.getBondCurveId(nodeOperatorId)];
-    }
-
     function _setEffectiveWeight(uint256 nodeOperatorId, uint256 newWeight) internal returns (uint256 oldWeight) {
         MetaRegistryStorage storage $ = _storage();
         oldWeight = $.effectiveWeightCache.operatorEffectiveWeight[nodeOperatorId];
@@ -368,7 +355,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         $.effectiveWeightCache.operatorEffectiveWeight[nodeOperatorId] = newWeight;
         emit NodeOperatorEffectiveWeightChanged(nodeOperatorId, oldWeight, newWeight);
 
-        MODULE.onNodeOperatorWeightChange(nodeOperatorId, newWeight);
+        MODULE.notifyNodeOperatorWeightChange(nodeOperatorId, newWeight);
     }
 
     function _checkExternalOperatorExistsTypeNOR(ExternalOperator memory op) internal {
@@ -385,6 +372,16 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             addr = STAKING_ROUTER.getStakingModule(moduleId).stakingModuleAddress;
             _storage().moduleAddressCache[moduleId] = addr;
         }
+    }
+
+    function _getLatestEffectiveWeight(uint256 nodeOperatorId, uint256 share) internal view returns (uint256) {
+        uint256 baseWeight = _getOperatorBaseWeight(nodeOperatorId);
+        if (baseWeight == 0 || share == 0) return 0;
+        return Math.mulDiv(baseWeight, share, MAX_BP);
+    }
+
+    function _getOperatorBaseWeight(uint256 nodeOperatorId) internal view returns (uint256) {
+        return _storage().bondCurveWeight[ACCOUNTING.getBondCurveId(nodeOperatorId)];
     }
 
     /// @dev Returns the cached module address. Reverts if the address was

@@ -969,12 +969,10 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         r.grantRole(r.SET_BOND_CURVE_WEIGHT_ROLE(), address(this));
         vm.stopPrank();
 
-        // TODO: Think about more realistic weight, so far the units are unclear.
-        if (r.getBondCurveWeight(curveId) == 0) r.setBondCurveWeight(curveId, 1);
-
         uint256 groupId = r.getNodeOperatorGroupId(nodeOperatorId);
         if (groupId == r.NO_GROUP_ID()) {
             IMetaRegistry.SubNodeOperator[] memory subs = new IMetaRegistry.SubNodeOperator[](1);
+            // forge-lint: disable-next-line(unsafe-typecast)
             subs[0] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: uint64(nodeOperatorId), share: 10000 });
             r.createOrUpdateOperatorGroup(
                 r.NO_GROUP_ID(),
@@ -984,10 +982,14 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
                 })
             );
         }
-
-        CuratedModule cm = CuratedModule(address(module));
-        uint256 left = cm.getNodeOperatorWeightsToUpdateCount();
-        if (left > 0) cm.batchUpdateNodeOperatorWeights(left);
+        // TODO: Think about more realistic weight, so far the units are unclear.
+        if (r.getBondCurveWeight(curveId) == 0) {
+            r.setBondCurveWeight(curveId, 1);
+            CuratedModule cm = CuratedModule(address(module));
+            for (uint256 i = 0; i < cm.getNodeOperatorsCount(); ++i) {
+                r.refreshOperatorWeight(i);
+            }
+        }
     }
 
     function _ensureCreateNodeOperatorRole() internal {

@@ -70,7 +70,7 @@ contract BondCurveTest is BaseTest {
 
         vm.expectCall(
             address(accounting.MODULE()),
-            abi.encodeWithSelector(IBaseModule.onNodeOperatorBondCurveUpdated.selector, 0)
+            abi.encodeWithSelector(IBaseModule.onNodeOperatorBondCurveChange.selector, 0)
         );
         accounting.setBondCurve({ nodeOperatorId: 0, curveId: addedId });
 
@@ -87,6 +87,13 @@ contract BondCurveTest is BaseTest {
         vm.expectRevert(IAccounting.NodeOperatorDoesNotExist.selector);
         vm.prank(admin);
         accounting.setBondCurve({ nodeOperatorId: 0, curveId: 2 });
+    }
+
+    function test_setBondCurve_RevertWhen_SameBondCurveId() public {
+        mock_getNodeOperatorsCount(1);
+        vm.expectRevert(IBondCurve.SameBondCurveId.selector);
+        vm.prank(admin);
+        accounting.setBondCurve({ nodeOperatorId: 0, curveId: 0 });
     }
 
     function test_setBondCurve_RevertWhen_DoesNotHaveRole() public {

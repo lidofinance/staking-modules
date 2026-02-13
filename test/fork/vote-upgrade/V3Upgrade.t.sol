@@ -12,7 +12,6 @@ import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
 import { NodeOperator } from "../../../src/interfaces/IBaseModule.sol";
 import { IBondLock } from "../../../src/interfaces/IBondLock.sol";
 import { IBondCurve } from "../../../src/interfaces/IBondCurve.sol";
-import { IParametersRegistry } from "../../../src/interfaces/IParametersRegistry.sol";
 import { ITriggerableWithdrawalsGateway } from "../../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
 
@@ -146,6 +145,16 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(totalNodeOperatorsBefore, totalNodeOperatorsAfter);
     }
 
+    function test_csmQueuePriorityRange() public {
+        vm.selectFork(forkIdBeforeUpgrade);
+        uint256 queueLowestPriorityBefore = module.QUEUE_LOWEST_PRIORITY();
+
+        vm.selectFork(forkIdAfterUpgrade);
+        uint256 queueLowestPriorityAfter = module.QUEUE_LOWEST_PRIORITY();
+
+        assertGe(queueLowestPriorityAfter, queueLowestPriorityBefore, "queue priority range shrunk");
+    }
+
     function test_csmStorageSlotsBeforeUpgrade() public {
         vm.selectFork(forkIdBeforeUpgrade);
         bytes32 slot3 = vm.load(address(module), bytes32(uint256(3)));
@@ -215,7 +224,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
         beforeValue = parametersRegistry.QUEUE_LOWEST_PRIORITY();
         vm.selectFork(forkIdAfterUpgrade);
         afterValue = parametersRegistry.QUEUE_LOWEST_PRIORITY();
-        assertEq(beforeValue, afterValue, "queueLowestPriority");
+        assertGe(afterValue, beforeValue, "queueLowestPriority");
 
         vm.selectFork(forkIdBeforeUpgrade);
         beforeValue = parametersRegistry.defaultKeyRemovalCharge();

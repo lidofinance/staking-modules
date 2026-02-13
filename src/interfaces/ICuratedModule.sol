@@ -33,18 +33,7 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
     /// @notice Notifies the module about the weight change of a node operator.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param newWeight The new weight of the node operator.
-    function onNodeOperatorWeightChange(uint256 nodeOperatorId, uint256 newWeight) external;
-
-    /// @notice Request refreshing node operator weights for all operators.
-    function requestFullOperatorWeightsUpdate() external;
-
-    /// @notice Process node operator weight updates in order.
-    /// @param maxCount Maximum operators to process in this call.
-    /// @return operatorsLeft Number of operators left to process.
-    function batchUpdateNodeOperatorWeights(uint256 maxCount) external returns (uint256 operatorsLeft);
-
-    /// @notice Returns the count of node operators left to update weights for.
-    function getNodeOperatorWeightsToUpdateCount() external view returns (uint256);
+    function notifyNodeOperatorWeightChange(uint256 nodeOperatorId, uint256 newWeight) external;
 
     /// @notice Returns stored operator balance (validators + pending).
     /// @param operatorId ID of the Node Operator

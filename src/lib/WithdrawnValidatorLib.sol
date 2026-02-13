@@ -23,7 +23,6 @@ library WithdrawnValidatorLib {
     function process(
         NodeOperator storage no,
         WithdrawnValidatorInfo calldata validatorInfo,
-        bool isSlashed,
         uint256 keyAddedBalance
     ) external returns (bool penaltyCovered) {
         if (validatorInfo.slashingPenalty > 0 && !validatorInfo.isSlashed) {

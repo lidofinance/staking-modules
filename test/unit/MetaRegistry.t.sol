@@ -9,15 +9,12 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { MetaRegistry } from "src/MetaRegistry.sol";
 import { IMetaRegistry, OperatorMetadata } from "src/interfaces/IMetaRegistry.sol";
-import { IBaseModule, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
+import { NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
-import { ExternalOperatorLib } from "src/lib/ExternalOperatorLib.sol";
-import { IStakingModule } from "src/interfaces/IStakingModule.sol";
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
-import { ILidoLocator } from "src/interfaces/ILidoLocator.sol";
+import { ExternalOperatorLib } from "src/lib/ExternalOperatorLib.sol";
 
 import { CuratedMock } from "../helpers/mocks/CuratedMock.sol";
-import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
 import { NodeOperatorsRegistryMock } from "../helpers/mocks/NodeOperatorsRegistryMock.sol";
 import { StakingRouterMock } from "../helpers/mocks/StakingRouterMock.sol";
 import { Utilities } from "../helpers/Utilities.sol";
@@ -49,8 +46,8 @@ contract MetaRegistryTestBase is Test, Utilities, Fixtures {
 
     OperatorMetadata internal emptyOperatorMetadata;
 
-    uint256 internal constant MODULE_ID = 1;
-    uint256 internal constant EXTERNAL_MODULE_ID = MODULE_ID + 1;
+    uint8 internal constant MODULE_ID = 1;
+    uint8 internal constant EXTERNAL_MODULE_ID = MODULE_ID + 1;
     uint256 internal constant NO_GROUP_ID = 0;
     uint256 internal constant CURVE_WEIGHT = 10000;
     uint16 internal constant MAX_BP = 10000;
@@ -160,7 +157,7 @@ contract MetaRegistryTestGroupsBase is MetaRegistryTestBase {
         uint16 share,
         uint64 externalNodeOperatorId
     ) internal returns (bytes memory externalData) {
-        externalData = _norData(uint8(EXTERNAL_MODULE_ID), externalNodeOperatorId);
+        externalData = _norData(EXTERNAL_MODULE_ID, externalNodeOperatorId);
         IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(externalData);
 
         vm.prank(groupManager);
@@ -368,7 +365,7 @@ contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
     function test_createGroup_CreatesGroup() public {
         IMetaRegistry.SubNodeOperator memory op0 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: 6000 });
         IMetaRegistry.SubNodeOperator memory op1 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: 4000 });
-        bytes memory externalData = _norData(uint8(EXTERNAL_MODULE_ID), 0);
+        bytes memory externalData = _norData(EXTERNAL_MODULE_ID, 0);
         IMetaRegistry.SubNodeOperator[] memory subNodeOperators = _subOperatorsArr2(op0, op1);
         IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(externalData);
 
@@ -443,6 +440,7 @@ contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
 
         vm.expectRevert(IMetaRegistry.NodeOperatorDoesNotExist.selector);
         vm.prank(groupManager);
+        // forge-lint: disable-next-line(unsafe-typecast)
         _createGroup(_subOperatorsArr1(uint64(nonExistentNoId), MAX_BP), _extOperatorsArr0());
     }
 
@@ -467,7 +465,7 @@ contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
     function test_createGroup_RevertWhen_ExternalOperatorDuplicatedInGroup() public {
         externalModule.mock_setNodeOperatorsCount(1);
         IMetaRegistry.ExternalOperator[] memory externalOperators = new IMetaRegistry.ExternalOperator[](2);
-        IMetaRegistry.ExternalOperator memory op = _externalOperator(_norData(uint8(EXTERNAL_MODULE_ID), 0));
+        IMetaRegistry.ExternalOperator memory op = _externalOperator(_norData(EXTERNAL_MODULE_ID, 0));
 
         externalOperators[0] = op;
         externalOperators[1] = op;
@@ -495,7 +493,7 @@ contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
 
     function test_createGroup_RevertWhen_ExternalOperatorTypeUnsupported() public {
         IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(
-            abi.encodePacked(uint8(1), uint8(EXTERNAL_MODULE_ID), uint64(0))
+            abi.encodePacked(uint8(1), EXTERNAL_MODULE_ID, uint64(0))
         );
         vm.expectRevert(ExternalOperatorLib.InvalidExternalOperatorDataEntry.selector);
         vm.prank(groupManager);
@@ -515,16 +513,18 @@ contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
     function test_createGroup_RevertWhen_ExternalNodeOperatorDoesNotExist() public {
         uint256 nonExistentNoId = externalModule.getNodeOperatorsCount();
         IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(
-            _norData(uint8(EXTERNAL_MODULE_ID), uint64(nonExistentNoId))
+            // forge-lint: disable-next-line(unsafe-typecast)
+            _norData(EXTERNAL_MODULE_ID, uint64(nonExistentNoId))
         );
 
         vm.startPrank(groupManager);
         vm.expectRevert(IMetaRegistry.NodeOperatorDoesNotExist.selector);
+        // forge-lint: disable-next-line(unsafe-typecast)
         _createGroup(_subOperatorsArr1(uint64(nonExistentNoId), MAX_BP), externalOperators);
         vm.stopPrank();
     }
 
-    function test_createGroup_CallsOnNodeOperatorWeightChange() public {
+    function test_createGroup_CallsNotifyNodeOperatorWeightChange() public {
         _setBondCurveWeight(0, CURVE_WEIGHT);
 
         IMetaRegistry.SubNodeOperator memory op0 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: 6000 });
@@ -532,11 +532,11 @@ contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
 
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(ICuratedModule.onNodeOperatorWeightChange.selector, uint256(op0.nodeOperatorId))
+            abi.encodeWithSelector(ICuratedModule.notifyNodeOperatorWeightChange.selector, uint256(op0.nodeOperatorId))
         );
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(ICuratedModule.onNodeOperatorWeightChange.selector, uint256(op1.nodeOperatorId))
+            abi.encodeWithSelector(ICuratedModule.notifyNodeOperatorWeightChange.selector, uint256(op1.nodeOperatorId))
         );
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr2(op0, op1), _extOperatorsArr0());
@@ -573,7 +573,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
 
         bytes memory initialExternal = _createDefaultGroupWithExternal(0, MAX_BP, 0);
 
-        bytes memory updatedExternal = _norData(uint8(EXTERNAL_MODULE_ID), 1);
+        bytes memory updatedExternal = _norData(EXTERNAL_MODULE_ID, 1);
         IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(updatedExternal);
 
         vm.prank(groupManager);
@@ -704,9 +704,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
     function test_updateGroup_RevertWhen_SubOperatorsEmptyButExternalNotEmpty() public {
         externalModule.mock_setNodeOperatorsCount(1);
 
-        IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(
-            _norData(uint8(EXTERNAL_MODULE_ID), 0)
-        );
+        IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(_norData(EXTERNAL_MODULE_ID, 0));
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
         uint256 groupId = registry.getOperatorGroupsCount() - 1;
@@ -731,7 +729,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         vm.stopPrank();
     }
 
-    function test_updateGroup_CallsOnNodeOperatorWeightChange() public {
+    function test_updateGroup_CallsNotifyNodeOperatorWeightChange() public {
         _setBondCurveWeight(0, CURVE_WEIGHT);
 
         uint256 newGroupId = registry.getOperatorGroupsCount();
@@ -741,24 +739,25 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         // Calls for both removed and added operators.
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(ICuratedModule.onNodeOperatorWeightChange.selector, uint256(0))
+            abi.encodeWithSelector(ICuratedModule.notifyNodeOperatorWeightChange.selector, uint256(0))
         );
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(ICuratedModule.onNodeOperatorWeightChange.selector, uint256(1))
+            abi.encodeWithSelector(ICuratedModule.notifyNodeOperatorWeightChange.selector, uint256(1))
         );
         vm.prank(groupManager);
         _updateGroup(newGroupId, _subOperatorsArr1(1, MAX_BP), _extOperatorsArr0());
     }
 
-    function test_updateGroup_CallsOnNodeOperatorWeightChangeOnEmptyUpdate() public {
+    function test_updateGroup_CallsNotifyNodeOperatorWeightChangeOnEmptyUpdate() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
         uint256 newGroupId = registry.getOperatorGroupsCount();
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
         vm.expectCall(
             address(module),
-            abi.encodeWithSelector(ICuratedModule.onNodeOperatorWeightChange.selector, uint256(0))
+            abi.encodeWithSelector(ICuratedModule.notifyNodeOperatorWeightChange.selector, uint256(0))
         );
         vm.prank(groupManager);
         _updateGroup(newGroupId, _subOperatorsArr0(), _extOperatorsArr0());
@@ -770,7 +769,7 @@ contract MetaRegistryTestGroupsGetters is MetaRegistryTestGroupsBase {
         IMetaRegistry.SubNodeOperator memory op0 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: 7000 });
         IMetaRegistry.SubNodeOperator memory op1 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: 3000 });
         IMetaRegistry.SubNodeOperator[] memory subOperators = _subOperatorsArr2(op0, op1);
-        bytes memory externalData = _norData(uint8(EXTERNAL_MODULE_ID), 0);
+        bytes memory externalData = _norData(EXTERNAL_MODULE_ID, 0);
         IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(externalData);
         uint256 newGroupId = registry.getOperatorGroupsCount();
 
@@ -816,7 +815,8 @@ contract MetaRegistryTestGroupsGetters is MetaRegistryTestGroupsBase {
     function test_getExternalOperatorGroupId_ReturnsFalseWhenDoesNotExist() public {
         uint256 nonExistentNoId = externalModule.getNodeOperatorsCount();
         uint256 groupId = registry.getExternalOperatorGroupId(
-            _externalOperator(_norData(uint8(EXTERNAL_MODULE_ID), uint64(nonExistentNoId)))
+            // forge-lint: disable-next-line(unsafe-typecast)
+            _externalOperator(_norData(EXTERNAL_MODULE_ID, uint64(nonExistentNoId)))
         );
         assertEq(groupId, NO_GROUP_ID);
     }
@@ -824,7 +824,7 @@ contract MetaRegistryTestGroupsGetters is MetaRegistryTestGroupsBase {
     function test_membership_ReturnsFalseAfterUpdateToEmpty() public {
         externalModule.mock_setNodeOperatorsCount(1);
 
-        bytes memory externalData = _norData(uint8(EXTERNAL_MODULE_ID), 0);
+        bytes memory externalData = _norData(EXTERNAL_MODULE_ID, 0);
         IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(externalData);
 
         vm.prank(groupManager);
@@ -864,6 +864,28 @@ contract MetaRegistryTestWeights is MetaRegistryTestGroupsBase {
     function test_getOperatorWeights_ReturnsZeroWhenNotInGroup() public {
         uint256[] memory weights = registry.getOperatorWeights(UintArr(2));
         assertEq(weights, UintArr(0));
+    }
+
+    function test_getNodeOperatorWeight() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+
+        IMetaRegistry.SubNodeOperator[] memory subOperators = new IMetaRegistry.SubNodeOperator[](2);
+        subOperators[0] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: 7000 });
+        subOperators[1] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: 3000 });
+
+        vm.prank(groupManager);
+        _createGroup(subOperators, _extOperatorsArr0());
+
+        uint256 weight = registry.getNodeOperatorWeight(0);
+        assertEq(weight, 7000);
+
+        weight = registry.getNodeOperatorWeight(1);
+        assertEq(weight, 3000);
+    }
+
+    function test_getNodeOperatorWeight_ReturnsZeroWhenNotInGroup() public {
+        uint256 weight = registry.getNodeOperatorWeight(2);
+        assertEq(weight, 0);
     }
 
     function test_getNodeOperatorWeightAndExternalStake_ReturnsZeroWhenNotInGroup() public {
@@ -912,9 +934,7 @@ contract MetaRegistryTestWeights is MetaRegistryTestGroupsBase {
         IMetaRegistry.SubNodeOperator memory op0 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: 5000 });
         IMetaRegistry.SubNodeOperator memory op1 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: 5000 });
         IMetaRegistry.SubNodeOperator[] memory subOperators = _subOperatorsArr2(op0, op1);
-        IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(
-            _norData(uint8(EXTERNAL_MODULE_ID), 0)
-        );
+        IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(_norData(EXTERNAL_MODULE_ID, 0));
 
         vm.prank(groupManager);
         _createGroup(subOperators, externalOperators);
@@ -934,9 +954,7 @@ contract MetaRegistryTestWeights is MetaRegistryTestGroupsBase {
 
         _setBondCurveWeight(0, CURVE_WEIGHT);
         IMetaRegistry.SubNodeOperator[] memory subOperators = _subOperatorsArr1(0, MAX_BP);
-        IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(
-            _norData(uint8(EXTERNAL_MODULE_ID), 0)
-        );
+        IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(_norData(EXTERNAL_MODULE_ID, 0));
 
         vm.prank(groupManager);
         _createGroup(subOperators, externalOperators);
@@ -955,18 +973,6 @@ contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
         registry.setBondCurveWeight(0, 123);
 
         assertEq(registry.getBondCurveWeight(0), 123);
-    }
-
-    function test_setBondCurveWeight_EmitsAndCallsHook() public {
-        vm.expectCall(
-            address(module),
-            abi.encodeWithSelector(ICuratedModule.requestFullOperatorWeightsUpdate.selector)
-        );
-        vm.expectEmit(address(registry));
-        emit IMetaRegistry.BondCurveWeightSet(0, 123);
-
-        vm.prank(bondCurveWeightManager);
-        registry.setBondCurveWeight(0, 123);
     }
 
     function test_setBondCurveWeight_RevertWhen_NoRole() public {
@@ -989,7 +995,7 @@ contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
     function test_refreshOperatorWeight_NoOpWhen_NotInGroup() public {
         expectNoCall(
             address(module),
-            abi.encodeWithSelector(ICuratedModule.onNodeOperatorWeightChange.selector, uint256(0))
+            abi.encodeWithSelector(ICuratedModule.notifyNodeOperatorWeightChange.selector, uint256(0))
         );
         registry.refreshOperatorWeight(0);
 
@@ -1084,7 +1090,7 @@ contract MetaRegistryTestModuleAddressCache is MetaRegistryTestGroupsBase {
             abi.encodeWithSelector(IStakingRouter.getStakingModule.selector, EXTERNAL_MODULE_ID)
         );
         vm.prank(groupManager);
-        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr1(_norData(uint8(EXTERNAL_MODULE_ID), 0)));
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr1(_norData(EXTERNAL_MODULE_ID, 0)));
 
         assertEq(registry.mock_getModuleAddressInCache(EXTERNAL_MODULE_ID), address(externalModule));
     }
@@ -1105,7 +1111,7 @@ contract MetaRegistryTestModuleAddressCache is MetaRegistryTestGroupsBase {
         stakingRouter.setModules(modules);
 
         vm.prank(groupManager);
-        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr1(_norData(uint8(EXTERNAL_MODULE_ID), 0)));
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr1(_norData(EXTERNAL_MODULE_ID, 0)));
     }
 
     function test_getNodeOperatorWeightAndExternalStake_RevertWhen_ModuleAddressNotCached() public {
@@ -1114,7 +1120,7 @@ contract MetaRegistryTestModuleAddressCache is MetaRegistryTestGroupsBase {
         _setExternalNodeOperator(0, 1, 2);
 
         vm.prank(groupManager);
-        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr1(_norData(uint8(EXTERNAL_MODULE_ID), 0)));
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr1(_norData(EXTERNAL_MODULE_ID, 0)));
 
         // Clear the cache entry to simulate the invariant violation.
         registry.mock_setModuleAddressInCache(EXTERNAL_MODULE_ID, address(0));

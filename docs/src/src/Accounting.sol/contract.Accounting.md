@@ -219,13 +219,13 @@ function setBondLockPeriod(uint256 period) external onlyRole(DEFAULT_ADMIN_ROLE)
 |`period`|`uint256`|Period in seconds to retain bond lock|
 
 
-### setFeeSplits
+### updateFeeSplits
 
 Set fee splits for the given Node Operator
 
 
 ```solidity
-function setFeeSplits(
+function updateFeeSplits(
     uint256 nodeOperatorId,
     uint256 cumulativeFeeShares,
     bytes32[] calldata rewardsProof,

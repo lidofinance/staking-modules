@@ -291,9 +291,9 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param nodeOperatorId ID of the Node Operator
     function updateDepositableValidatorsCount(uint256 nodeOperatorId) external;
 
-    /// @notice Notify the module about a node operator bond curve update.
+    /// @notice Notify the module about a node operator bond curve change.
     /// @param nodeOperatorId ID of the Node Operator
-    function onNodeOperatorBondCurveUpdated(uint256 nodeOperatorId) external;
+    function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external;
 
     /// @notice Get Node Operator info
     /// @param nodeOperatorId ID of the Node Operator

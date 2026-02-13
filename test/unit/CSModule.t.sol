@@ -3,17 +3,17 @@
 
 pragma solidity 0.8.33;
 
-import { CommonBase } from "forge-std/Base.sol";
+import { console } from "forge-std/console.sol";
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
+import { Batch } from "src/lib/DepositQueueLib.sol";
 import { CSModule } from "src/CSModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { IBaseModule, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
-import { IDepositQueueLib } from "src/lib/DepositQueueLib.sol";
 import { ITopUpQueueLib } from "src/lib/TopUpQueueLib.sol";
 import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
@@ -1001,7 +1001,7 @@ contract CSMTopUpQueue is CSMCommon {
             topUpLimits: UintArr(4)
         });
 
-        vm.expectRevert(ICSModule.InvalidSigningKey.selector);
+        vm.expectRevert(SigningKeys.InvalidSigningKey.selector);
         csm.allocateDeposits({
             maxDepositAmount: 3,
             pubkeys: pubkeys,
@@ -1049,7 +1049,7 @@ contract CSMTopUpQueue is CSMCommon {
         csm.obtainDepositData(1, "");
 
         bytes[] memory pubkeys = BytesArr(new bytes(47));
-        vm.expectRevert(IBaseModule.InvalidInput.selector);
+        vm.expectRevert(SigningKeys.InvalidSigningKey.selector);
         csm.allocateDeposits({
             maxDepositAmount: 1,
             pubkeys: pubkeys,
@@ -1120,7 +1120,7 @@ contract CSMTopUpQueue is CSMCommon {
         csm.getKeysForTopUp(0);
     }
 
-    function test_setTopUpQueueLimit(uint8 limit) public {
+    function test_setTopUpQueueLimit() public {
         for (uint256 limit = 1; limit < 256; ++limit) {
             csm.setTopUpQueueLimit(limit);
             assertEq(_getTopUpQueueLimit(), limit);
@@ -1833,6 +1833,7 @@ contract CSMFinalizeUpgradeV3 is CSMCommon {
 
         module.reportRegularWithdrawnValidators(validatorInfos);
 
+        // forge-lint: disable-next-line(unsafe-typecast)
         expectedTotalWithdrawn = uint64(operatorsCount);
 
         vm.store(address(module), TOTAL_WITHDRAWN_VALIDATORS_SLOT, bytes32(0));

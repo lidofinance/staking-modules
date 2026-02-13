@@ -15,24 +15,6 @@ import { WithdrawnValidatorLib } from "./WithdrawnValidatorLib.sol";
 
 /// @dev The library is used to reduce BaseModule bytecode size.
 library NodeOperatorOps {
-    function getNodeOperatorIds(
-        uint256 nodeOperatorsCount,
-        uint256 offset,
-        uint256 limit
-    ) external pure returns (uint256[] memory nodeOperatorIds) {
-        if (offset >= nodeOperatorsCount || limit == 0) return nodeOperatorIds;
-
-        unchecked {
-            uint256 idsCount = nodeOperatorsCount - offset;
-            if (idsCount > limit) idsCount = limit;
-
-            nodeOperatorIds = new uint256[](idsCount);
-            for (uint256 i; i < idsCount; ++i) {
-                nodeOperatorIds[i] = offset++;
-            }
-        }
-    }
-
     function createNodeOperator(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,
@@ -160,6 +142,36 @@ library NodeOperatorOps {
         }
     }
 
+    function increaseKeyAddedBalance(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        mapping(uint256 => bool) storage isValidatorWithdrawn,
+        mapping(uint256 => uint256) storage keyAddedBalances,
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 incrementWei
+    ) external {
+        NodeOperator storage no = nodeOperators[nodeOperatorId];
+        if (keyIndex >= no.totalDepositedKeys) revert IBaseModule.SigningKeysInvalidOffset();
+
+        uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
+        if (isValidatorWithdrawn[pointer]) revert IBaseModule.InvalidWithdrawnValidatorInfo();
+
+        _increaseKeyAddedBalance(keyAddedBalances, nodeOperatorId, keyIndex, incrementWei);
+    }
+
+    function increaseKeyAddedBalancesByAllocations(
+        mapping(uint256 => uint256) storage keyAddedBalances,
+        uint256[] calldata operatorIds,
+        uint256[] calldata keyIndices,
+        uint256[] calldata allocations
+    ) external {
+        for (uint256 i; i < allocations.length; ++i) {
+            uint256 allocationWei = allocations[i];
+            if (allocationWei == 0) continue;
+            _increaseKeyAddedBalance(keyAddedBalances, operatorIds[i], keyIndices[i], allocationWei);
+        }
+    }
+
     function getNodeOperatorSummary(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,
@@ -201,36 +213,6 @@ library NodeOperatorOps {
         depositableValidatorsCount = no.depositableValidatorsCount;
     }
 
-    function increaseKeyAddedBalance(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        mapping(uint256 => bool) storage isValidatorWithdrawn,
-        mapping(uint256 => uint256) storage keyAddedBalances,
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        uint256 incrementWei
-    ) external {
-        NodeOperator storage no = nodeOperators[nodeOperatorId];
-        if (keyIndex >= no.totalDepositedKeys) revert IBaseModule.SigningKeysInvalidOffset();
-
-        uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
-        if (isValidatorWithdrawn[pointer]) revert IBaseModule.InvalidWithdrawnValidatorInfo();
-
-        _increaseKeyAddedBalance(keyAddedBalances, nodeOperatorId, keyIndex, incrementWei);
-    }
-
-    function increaseKeyAddedBalancesByAllocations(
-        mapping(uint256 => uint256) storage keyAddedBalances,
-        uint256[] calldata operatorIds,
-        uint256[] calldata keyIndices,
-        uint256[] calldata allocations
-    ) external {
-        for (uint256 i; i < allocations.length; ++i) {
-            uint256 allocationWei = allocations[i];
-            if (allocationWei == 0) continue;
-            _increaseKeyAddedBalance(keyAddedBalances, operatorIds[i], keyIndices[i], allocationWei);
-        }
-    }
-
     function capTopUpLimitsByKeyBalance(
         mapping(uint256 => uint256) storage keyAddedBalances,
         uint256[] calldata operatorIds,
@@ -244,6 +226,24 @@ library NodeOperatorOps {
             uint256 keyAddedBalance = keyAddedBalances[_keyPointer(operatorIds[i], keyIndices[i])];
             uint256 remaining = keyAddedBalance >= cap ? 0 : cap - keyAddedBalance;
             cappedTopUpLimits[i] = Math.min(topUpLimits[i], remaining);
+        }
+    }
+
+    function getNodeOperatorIds(
+        uint256 nodeOperatorsCount,
+        uint256 offset,
+        uint256 limit
+    ) external pure returns (uint256[] memory nodeOperatorIds) {
+        if (offset >= nodeOperatorsCount || limit == 0) return nodeOperatorIds;
+
+        unchecked {
+            uint256 idsCount = nodeOperatorsCount - offset;
+            if (idsCount > limit) idsCount = limit;
+
+            nodeOperatorIds = new uint256[](idsCount);
+            for (uint256 i; i < idsCount; ++i) {
+                nodeOperatorIds[i] = offset++;
+            }
         }
     }
 

@@ -127,6 +127,8 @@ interface IMetaRegistry {
     function getBondCurveWeight(uint256 curveId) external view returns (uint256 weight);
 
     /// @notice Set base weight for the bond curve ID (callable by SET_BOND_CURVE_WEIGHT_ROLE).
+    /// @dev Effective weights for operators using the curve will not be updated automatically.
+    ///      refreshOperatorWeight() must be called for the affected operators to update their effective weights.
     /// @param curveId Bond curve ID.
     /// @param weight Base allocation weight.
     function setBondCurveWeight(uint256 curveId, uint256 weight) external;

@@ -339,6 +339,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
     ) external whenResumed {
         MODULE.increaseKeyAddedBalance(nodeOperatorId, keyIndex, addedBalanceWei);
         // TODO implement
+        revert NotImplemented();
     }
 
     function _reportSingleValidator(WithdrawnValidatorInfo memory info) internal {

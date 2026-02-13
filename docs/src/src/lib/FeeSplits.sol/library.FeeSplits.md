@@ -18,11 +18,11 @@ uint256 public constant MAX_FEE_SPLITS = 10
 
 
 ## Functions
-### setFeeSplits
+### updateFeeSplits
 
 
 ```solidity
-function setFeeSplits(
+function updateFeeSplits(
     mapping(uint256 => IAccounting.FeeSplit[]) storage feeSplitsStorage,
     mapping(uint256 => uint256) storage pendingSharesToSplitStorage,
     IFeeDistributor feeDistributor,
