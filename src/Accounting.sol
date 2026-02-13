@@ -240,8 +240,6 @@ contract Accounting is
         MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
-    // TODO continue review from this line
-
     /// @inheritdoc IAccounting
     function claimRewardsWstETH(
         uint256 nodeOperatorId,
@@ -285,6 +283,7 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
+    // TODO make this method compensating from bond instead of direct transfer
     function compensateLockedBondETH(uint256 nodeOperatorId) external payable onlyModule {
         (bool success, ) = LIDO_LOCATOR.elRewardsVault().call{ value: msg.value }("");
         if (!success) revert ElRewardsVaultReceiveFailed();
@@ -304,9 +303,9 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function penalize(uint256 nodeOperatorId, uint256 amount) external onlyModule returns (bool fullyBurned) {
+    function penalize(uint256 nodeOperatorId, uint256 amount) external onlyModule returns (bool penaltyCovered) {
         uint256 notBurnedAmount = BondCore._burn(nodeOperatorId, amount);
-        fullyBurned = notBurnedAmount == 0;
+        penaltyCovered = notBurnedAmount == 0;
     }
 
     /// @inheritdoc IAccounting
@@ -445,7 +444,7 @@ contract Accounting is
         }
         claimableShares = _getClaimableBondShares(nodeOperatorId);
         if (hasSplits && claimableShares != 0 && !isPaused()) {
-            (SplitTransfer[] memory transfers, uint256 sharesToSplit) = FeeSplits.getFeeSplitTransfers(
+            (SplitTransfer[] memory transfers, uint256 splittableShares) = FeeSplits.getFeeSplitTransfers(
                 nodeOperatorId,
                 claimableShares
             );
@@ -457,10 +456,10 @@ contract Accounting is
                     transferredShares += shares;
                 }
             }
-            // NOTE: `sharesToSplit` is the whole split operation base. It includes
+            // NOTE: `splittableShares` is the whole split operation base. It includes
             //       the Node Operator's retained shares (split remainder), so we
             //       must decrease pending by the base, not by transferred shares sum.
-            FeeSplits._decreasePendingSharesToSplit(nodeOperatorId, sharesToSplit);
+            FeeSplits._decreasePendingSharesToSplit(nodeOperatorId, splittableShares);
             BondCore._unsafeReduceBond(nodeOperatorId, transferredShares);
             // NOTE: It is safe to use unchecked here since `transferredShares` is always <= `claimableShares`
             unchecked {
