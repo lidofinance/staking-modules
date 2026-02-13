@@ -549,7 +549,7 @@ contract PenalizeTest is BaseTest {
         uint256 amountToBurn = bond + 1 ether; // burn more than bond
 
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(0, 1 ether); // lock some bond
+        accounting.lockBond(0, 1 ether); // lock some bond
         Accounting.BondLockData memory bondLockBefore = accounting.getLockedBondInfo(0);
 
         vm.expectCall(locator.burner(), abi.encodeWithSelector(IBurner.requestBurnMyShares.selector, bondShares));
@@ -589,7 +589,7 @@ contract PenalizeTest is BaseTest {
 
     function test_penalize_fullyBurned_noBondDebtCreated() public assertInvariants {
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(0, 2 ether);
+        accounting.lockBond(0, 2 ether);
         Accounting.BondLockData memory lockBefore = accounting.getLockedBondInfo(0);
         assertEq(accounting.getActualLockedBond(0), 2 ether);
 
@@ -1106,7 +1106,7 @@ contract PullFeeRewardsTest is BaseTest {
 
         // Create a lock so claimable stays zero and pending accumulates
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(0, 1 ether);
+        accounting.lockBond(0, 1 ether);
 
         // Accumulate pending while locked
         uint256 first = 5;
@@ -1337,7 +1337,7 @@ contract ScenarioTest is BaseTest {
 
         // 3) Apply a lock of 3 ether
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(0, 3 ether);
+        accounting.lockBond(0, 3 ether);
         (, req) = accounting.getBondSummary(0);
         // required grows by locked amount
         assertEq(req, 35 ether);
@@ -1383,7 +1383,7 @@ contract ScenarioTest is BaseTest {
 
         // 7) Settle lock
         vm.prank(address(stakingModule));
-        accounting.settleLockedBondETH(0);
+        accounting.settleLockedBond(0);
 
         (, req) = accounting.getBondSummary(0);
 

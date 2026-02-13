@@ -320,7 +320,7 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external payable {
+    function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external {
         _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
         GeneralPenalty.compensateGeneralDelayedPenalty(nodeOperatorId);
     }

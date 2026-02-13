@@ -287,23 +287,24 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Amount to lock in ETH (stETH)
-    function lockBondETH(uint256 nodeOperatorId, uint256 amount) external;
+    function lockBond(uint256 nodeOperatorId, uint256 amount) external;
 
     /// @notice Release locked bond in ETH for the given Node Operator
     /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Amount to release in ETH (stETH)
-    function releaseLockedBondETH(uint256 nodeOperatorId, uint256 amount) external;
+    function releaseLockedBond(uint256 nodeOperatorId, uint256 amount) external;
 
     /// @notice Settle locked bond ETH for the given Node Operator
     /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator
-    function settleLockedBondETH(uint256 nodeOperatorId) external;
+    function settleLockedBond(uint256 nodeOperatorId) external;
 
     /// @notice Compensate locked bond ETH for the given Node Operator
     /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator
-    function compensateLockedBondETH(uint256 nodeOperatorId) external payable;
+    /// @return compensatedAmount Amount compensated in ETH (stETH)
+    function compensateLockedBond(uint256 nodeOperatorId) external returns (uint256 compensatedAmount);
 
     /// @notice Set the bond curve for the given Node Operator
     /// @dev Updates depositable validators count in staking module to ensure key pointers consistency
