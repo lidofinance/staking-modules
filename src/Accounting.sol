@@ -10,8 +10,8 @@ import { BondCurve } from "./abstract/BondCurve.sol";
 import { BondLock } from "./abstract/BondLock.sol";
 import { FeeSplits } from "./abstract/FeeSplits.sol";
 import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
+import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 
-import { PausableUntil } from "./lib/utils/PausableUntil.sol";
 import { AssetRecovererLib } from "./lib/AssetRecovererLib.sol";
 
 import { IStakingModule } from "./interfaces/IStakingModule.sol";
@@ -29,14 +29,12 @@ contract Accounting is
     BondCurve,
     BondLock,
     FeeSplits,
-    PausableUntil,
+    PausableWithRoles,
     AccessControlEnumerableUpgradeable,
     AssetRecoverer
 {
     uint64 internal constant INITIALIZED_VERSION = 3;
 
-    bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
-    bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
     bytes32 public constant MANAGE_BOND_CURVES_ROLE = keccak256("MANAGE_BOND_CURVES_ROLE");
     bytes32 public constant SET_BOND_CURVE_ROLE = keccak256("SET_BOND_CURVE_ROLE");
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
@@ -106,16 +104,6 @@ contract Accounting is
     ///      To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
     // solhint-disable-next-line no-empty-blocks
     function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {}
-
-    /// @inheritdoc IAccounting
-    function resume() external onlyRole(RESUME_ROLE) {
-        _resume();
-    }
-
-    /// @inheritdoc IAccounting
-    function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE) {
-        _pauseFor(duration);
-    }
 
     /// @inheritdoc IAccounting
     function setChargePenaltyRecipient(address _chargePenaltyRecipient) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -542,6 +530,10 @@ contract Accounting is
 
     function _onlyRecoverer() internal view override {
         _checkRole(RECOVERER_ROLE);
+    }
+
+    function __checkRole(bytes32 role) internal view override {
+        _checkRole(role);
     }
 
     function _onlyExistingNodeOperator(uint256 nodeOperatorId) internal view {

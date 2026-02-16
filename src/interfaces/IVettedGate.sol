@@ -23,10 +23,6 @@ interface IVettedGate is IMerkleGate {
     error ReferralProgramIsActive();
     error InvalidReferralsThreshold();
 
-    function PAUSE_ROLE() external view returns (bytes32);
-
-    function RESUME_ROLE() external view returns (bytes32);
-
     function RECOVERER_ROLE() external view returns (bytes32);
 
     function START_REFERRAL_SEASON_ROLE() external view returns (bytes32);
@@ -46,15 +42,6 @@ interface IVettedGate is IMerkleGate {
     function referralCurveId() external view returns (uint256);
 
     function referralsThreshold() external view returns (uint256);
-
-    /// @notice Pause the contract for a given duration
-    ///         Pausing the contract prevent creating new node operators using VettedGate
-    ///         and claiming beneficial curve for the existing ones
-    /// @param duration Duration of the pause
-    function pauseFor(uint256 duration) external;
-
-    /// @notice Resume the contract
-    function resume() external;
 
     /// @notice Start referral program season
     /// @param _referralCurveId Curve Id for the referral curve

@@ -7,7 +7,7 @@ import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgr
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
-import { PausableUntil } from "./lib/utils/PausableUntil.sol";
+import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMerkleGate } from "./interfaces/IMerkleGate.sol";
@@ -18,10 +18,8 @@ import { IAccounting } from "./interfaces/IAccounting.sol";
 
 // TODO: Create abstract MerkleGate contract and inherit both CuratedGate and VettedGate from it.
 /// @notice Merkle gate for Curated Module
-contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, PausableUntil, AssetRecoverer {
+contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, PausableWithRoles, AssetRecoverer {
     bytes32 public constant SET_TREE_ROLE = keccak256("SET_TREE_ROLE");
-    bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
-    bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
 
     /// @inheritdoc ICuratedGate
@@ -75,16 +73,6 @@ contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, Pausab
         if (_curveId == ACCOUNTING.DEFAULT_BOND_CURVE_ID()) _defaultCurveSet = true;
         _setTreeParams(_treeRoot, _treeCid);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-    }
-
-    /// @inheritdoc ICuratedGate
-    function resume() external onlyRole(RESUME_ROLE) {
-        _resume();
-    }
-
-    /// @inheritdoc ICuratedGate
-    function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE) {
-        _pauseFor(duration);
     }
 
     /// @inheritdoc ICuratedGate
@@ -167,5 +155,9 @@ contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, Pausab
 
     function _onlyRecoverer() internal view override {
         _checkRole(RECOVERER_ROLE);
+    }
+
+    function __checkRole(bytes32 role) internal view override {
+        _checkRole(role);
     }
 }

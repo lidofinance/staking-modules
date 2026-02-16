@@ -7,8 +7,7 @@ import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgr
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
-
-import { PausableUntil } from "./lib/utils/PausableUntil.sol";
+import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 
 import { IAccounting } from "./interfaces/IAccounting.sol";
 import { IBaseModule, NodeOperatorManagementProperties } from "./interfaces/IBaseModule.sol";
@@ -17,9 +16,7 @@ import { IVettedGate } from "./interfaces/IVettedGate.sol";
 
 // TODO: Create abstract MerkleGate contract and inherit both CuratedGate and VettedGate from it.
 // TODO: Check that after moving to the abstract contract storage layout is not broken and there are no collisions.
-contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, PausableUntil, AssetRecoverer {
-    bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
-    bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
+contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, PausableWithRoles, AssetRecoverer {
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
     bytes32 public constant SET_TREE_ROLE = keccak256("SET_TREE_ROLE");
     bytes32 public constant START_REFERRAL_SEASON_ROLE = keccak256("START_REFERRAL_SEASON_ROLE");
@@ -91,16 +88,6 @@ contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, Pausable
 
         _setTreeParams(_treeRoot, _treeCid);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-    }
-
-    /// @inheritdoc IVettedGate
-    function resume() external onlyRole(RESUME_ROLE) {
-        _resume();
-    }
-
-    /// @inheritdoc IVettedGate
-    function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE) {
-        _pauseFor(duration);
     }
 
     /// @inheritdoc IVettedGate
@@ -331,6 +318,10 @@ contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, Pausable
 
     function _onlyRecoverer() internal view override {
         _checkRole(RECOVERER_ROLE);
+    }
+
+    function __checkRole(bytes32 role) internal view override {
+        _checkRole(role);
     }
 
     function _seasonedAddress(address referrer, uint256 season) internal pure returns (bytes32) {

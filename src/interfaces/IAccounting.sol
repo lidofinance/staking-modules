@@ -36,10 +36,6 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     error InvalidBondCurvesLength();
     error SameAddress();
 
-    function PAUSE_ROLE() external view returns (bytes32);
-
-    function RESUME_ROLE() external view returns (bytes32);
-
     function MANAGE_BOND_CURVES_ROLE() external view returns (bytes32);
 
     function SET_BOND_CURVE_ROLE() external view returns (bytes32);
@@ -54,15 +50,6 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
 
     /// @notice Get the initialized version of the contract
     function getInitializedVersion() external view returns (uint64);
-
-    /// @notice Resume reward claims and deposits
-    function resume() external;
-
-    /// @notice Pause reward claims and deposits for `duration` seconds
-    /// @dev Must be called together with `CSModule.pauseFor`
-    /// @dev Passing MAX_UINT_256 as `duration` pauses indefinitely
-    /// @param duration Duration of the pause in seconds
-    function pauseFor(uint256 duration) external;
 
     /// @notice Set charge recipient address
     /// @param _chargePenaltyRecipient Charge recipient address

@@ -6,7 +6,7 @@ pragma solidity 0.8.33;
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
 import { BeaconBlockHeader, Slot, Validator, Withdrawal, PendingConsolidation } from "./lib/Types.sol";
-import { PausableUntil } from "./lib/utils/PausableUntil.sol";
+import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 import { GIndex } from "./lib/GIndex.sol";
 import { SSZ } from "./lib/SSZ.sol";
 
@@ -25,16 +25,13 @@ function gweiToWei(uint64 amount) pure returns (uint256) {
     return uint256(amount) * 1 gwei;
 }
 
-contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
+contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     using { amountWei } for Withdrawal;
 
     using SSZ for PendingConsolidation;
     using SSZ for BeaconBlockHeader;
     using SSZ for Withdrawal;
     using SSZ for Validator;
-
-    bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
-    bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
 
     // See `BEACON_ROOTS_ADDRESS` constant in the EIP-4788.
     address public constant BEACON_ROOTS = 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02;
@@ -145,16 +142,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
         CAPELLA_SLOT = capellaSlot;
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-    }
-
-    /// @inheritdoc IVerifier
-    function resume() external onlyRole(RESUME_ROLE) {
-        _resume();
-    }
-
-    /// @inheritdoc IVerifier
-    function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE) {
-        _pauseFor(duration);
     }
 
     /// @inheritdoc IVerifier
@@ -493,5 +480,9 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableUntil {
     function _computeEpochAtSlot(Slot slot) internal view returns (uint256) {
         // See: github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_epoch_at_slot
         return slot.unwrap() / SLOTS_PER_EPOCH;
+    }
+
+    function __checkRole(bytes32 role) internal view override {
+        _checkRole(role);
     }
 }

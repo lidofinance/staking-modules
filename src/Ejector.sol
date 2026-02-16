@@ -7,8 +7,8 @@ import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensio
 
 import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
 import { ExitTypes } from "./abstract/ExitTypes.sol";
+import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 
-import { PausableUntil } from "./lib/utils/PausableUntil.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "./lib/TransientUintUintMapLib.sol";
 
@@ -16,9 +16,7 @@ import { IEjector } from "./interfaces/IEjector.sol";
 import { IBaseModule } from "./interfaces/IBaseModule.sol";
 import { ITriggerableWithdrawalsGateway, ValidatorData } from "./interfaces/ITriggerableWithdrawalsGateway.sol";
 
-contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil, AssetRecoverer {
-    bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
-    bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
+contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableWithRoles, AssetRecoverer {
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
 
     uint256 public immutable STAKING_MODULE_ID;
@@ -34,24 +32,12 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
         if (module == address(0)) revert ZeroModuleAddress();
         if (strikes == address(0)) revert ZeroStrikesAddress();
         if (admin == address(0)) revert ZeroAdminAddress();
-        // TODO: validate stakingModuleId via StakingRouter. Get address by ID and check if it's the same as module address.
 
         STRIKES = strikes;
         MODULE = IBaseModule(module);
         STAKING_MODULE_ID = stakingModuleId;
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-    }
-
-    // TODO: Create abstract contract PausableWithRoles and move pause/resume logic there.
-    /// @inheritdoc IEjector
-    function resume() external onlyRole(RESUME_ROLE) {
-        _resume();
-    }
-
-    /// @inheritdoc IEjector
-    function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE) {
-        _pauseFor(duration);
     }
 
     // TODO: Remove this method in favour of voluntaryEjectByArray.
@@ -228,5 +214,9 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
 
     function _onlyRecoverer() internal view override {
         _checkRole(RECOVERER_ROLE);
+    }
+
+    function __checkRole(bytes32 role) internal view override {
+        _checkRole(role);
     }
 }

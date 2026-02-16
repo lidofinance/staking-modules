@@ -25,16 +25,15 @@ import { KeyPointerLib } from "../lib/KeyPointerLib.sol";
 
 import { AssetRecoverer } from "./AssetRecoverer.sol";
 import { ModuleLinearStorage } from "./ModuleLinearStorage.sol";
+import { PausableWithRoles } from "./PausableWithRoles.sol";
 
 abstract contract BaseModule is
     IBaseModule,
     ModuleLinearStorage,
     AccessControlEnumerableUpgradeable,
-    PausableUntil,
+    PausableWithRoles,
     AssetRecoverer
 {
-    bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
-    bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
     bytes32 public constant STAKING_ROUTER_ROLE = keccak256("STAKING_ROUTER_ROLE");
     bytes32 public constant REPORT_GENERAL_DELAYED_PENALTY_ROLE = keccak256("REPORT_GENERAL_DELAYED_PENALTY_ROLE");
     bytes32 public constant SETTLE_GENERAL_DELAYED_PENALTY_ROLE = keccak256("SETTLE_GENERAL_DELAYED_PENALTY_ROLE");
@@ -76,18 +75,6 @@ abstract contract BaseModule is
         FEE_DISTRIBUTOR = address(ACCOUNTING.FEE_DISTRIBUTOR());
 
         _disableInitializers();
-    }
-
-    /// @inheritdoc IBaseModule
-    function resume() external {
-        _checkRole(RESUME_ROLE);
-        _resume();
-    }
-
-    /// @inheritdoc IBaseModule
-    function pauseFor(uint256 duration) external {
-        _checkRole(PAUSE_ROLE);
-        _pauseFor(duration);
     }
 
     /// @inheritdoc IBaseModule
@@ -826,5 +813,9 @@ abstract contract BaseModule is
 
     function _onlyRecoverer() internal view override {
         _checkRole(RECOVERER_ROLE);
+    }
+
+    function __checkRole(bytes32 role) internal view override {
+        _checkRole(role);
     }
 }

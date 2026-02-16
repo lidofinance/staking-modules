@@ -124,10 +124,6 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     error ZeroPenaltyType();
     error NothingCompensated();
 
-    function PAUSE_ROLE() external view returns (bytes32);
-
-    function RESUME_ROLE() external view returns (bytes32);
-
     function STAKING_ROUTER_ROLE() external view returns (bytes32);
 
     function REPORT_GENERAL_DELAYED_PENALTY_ROLE() external view returns (bytes32);
@@ -155,15 +151,6 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     function EXIT_PENALTIES() external view returns (IExitPenalties);
 
     function FEE_DISTRIBUTOR() external view returns (address);
-
-    /// @notice Pause creation of the Node Operators and keys upload for `duration` seconds.
-    ///         Existing NO management and reward claims are still available.
-    ///         To pause reward claims use pause method on Accounting
-    /// @param duration Duration of the pause in seconds
-    function pauseFor(uint256 duration) external;
-
-    /// @notice Resume creation of the Node Operators and keys upload
-    function resume() external;
 
     /// @notice Returns the initialized version of the contract
     function getInitializedVersion() external view returns (uint64);

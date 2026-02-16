@@ -24,10 +24,6 @@ interface IEjector is IExitTypes {
 
     event BadPerformerEjectionRequested(uint256 indexed nodeOperatorId, bytes pubkey, address refundRecipient);
 
-    function PAUSE_ROLE() external view returns (bytes32);
-
-    function RESUME_ROLE() external view returns (bytes32);
-
     function RECOVERER_ROLE() external view returns (bytes32);
 
     function STAKING_MODULE_ID() external view returns (uint256);
@@ -35,13 +31,6 @@ interface IEjector is IExitTypes {
     function MODULE() external view returns (IBaseModule);
 
     function STRIKES() external view returns (address);
-
-    /// @notice Pause ejection methods calls
-    /// @param duration Duration of the pause in seconds
-    function pauseFor(uint256 duration) external;
-
-    /// @notice Resume ejection methods calls
-    function resume() external;
 
     /// @notice Withdraw the validator key from the Node Operator
     /// @notice Called by the node operator

@@ -40,10 +40,6 @@ interface IFeeOracle is IAssetRecovererLib {
 
     function SUBMIT_DATA_ROLE() external view returns (bytes32);
 
-    function PAUSE_ROLE() external view returns (bytes32);
-
-    function RESUME_ROLE() external view returns (bytes32);
-
     function RECOVERER_ROLE() external view returns (bytes32);
 
     function FEE_DISTRIBUTOR() external view returns (IFeeDistributor);
@@ -54,11 +50,4 @@ interface IFeeOracle is IAssetRecovererLib {
     /// @param data Data for a committee report
     /// @param contractVersion Version of the oracle consensus rules
     function submitReportData(ReportData calldata data, uint256 contractVersion) external;
-
-    /// @notice Resume accepting oracle reports
-    function resume() external;
-
-    /// @notice Pause accepting oracle reports for a `duration` seconds
-    /// @param duration Duration of the pause in seconds
-    function pauseFor(uint256 duration) external;
 }

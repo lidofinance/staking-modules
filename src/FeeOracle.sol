@@ -5,26 +5,20 @@ pragma solidity 0.8.33;
 
 import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
 
-import { PausableUntil } from "./lib/utils/PausableUntil.sol";
+import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 import { BaseOracle } from "./lib/base-oracle/BaseOracle.sol";
 
 import { IFeeDistributor } from "./interfaces/IFeeDistributor.sol";
 import { IValidatorStrikes } from "./interfaces/IValidatorStrikes.sol";
 import { IFeeOracle } from "./interfaces/IFeeOracle.sol";
 
-contract FeeOracle is IFeeOracle, BaseOracle, PausableUntil, AssetRecoverer {
+contract FeeOracle is IFeeOracle, BaseOracle, PausableWithRoles, AssetRecoverer {
     uint256 internal constant INITIALIZED_VERSION = 3;
 
     /// @notice No assets are stored in the contract
 
     /// @notice An ACL role granting the permission to submit the data for a committee report.
     bytes32 public constant SUBMIT_DATA_ROLE = keccak256("SUBMIT_DATA_ROLE");
-
-    /// @notice An ACL role granting the permission to pause accepting oracle reports
-    bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
-
-    /// @notice An ACL role granting the permission to resume accepting oracle reports
-    bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
 
     /// @notice An ACL role granting the permission to recover assets
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
@@ -75,16 +69,6 @@ contract FeeOracle is IFeeOracle, BaseOracle, PausableUntil, AssetRecoverer {
     }
 
     /// @inheritdoc IFeeOracle
-    function resume() external onlyRole(RESUME_ROLE) {
-        _resume();
-    }
-
-    /// @inheritdoc IFeeOracle
-    function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE) {
-        _pauseFor(duration);
-    }
-
-    /// @inheritdoc IFeeOracle
     function submitReportData(ReportData calldata data, uint256 contractVersion) external whenResumed {
         _checkMsgSenderIsAllowedToSubmitData();
         _checkContractVersion(contractVersion);
@@ -127,5 +111,9 @@ contract FeeOracle is IFeeOracle, BaseOracle, PausableUntil, AssetRecoverer {
 
     function _onlyRecoverer() internal view override {
         _checkRole(RECOVERER_ROLE);
+    }
+
+    function __checkRole(bytes32 role) internal view override {
+        _checkRole(role);
     }
 }
