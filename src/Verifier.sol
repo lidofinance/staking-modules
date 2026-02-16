@@ -258,18 +258,30 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         if (data.consolidationBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.consolidationBlock.header.slot);
         }
-        if (data.validator.object.slashed) revert ValidatorIsSlashed();
+
+        // Consolidation couldn't have been included in both of these cases.
+        if (data.sourceValidatorAfterConsolidation.object.slashed) revert ValidatorIsSlashed();
+        if (
+            _computeEpochAtSlot(data.recentBlock.header.slot) <
+            data.sourceValidatorAfterConsolidation.object.withdrawableEpoch
+        ) {
+            revert ValidatorIsNotWithdrawable();
+        }
+
+        if (data.sourceValidatorBeforeConsolidation.index != data.sourceValidatorAfterConsolidation.index) {
+            revert SourceValidatorIndexMismatch();
+        }
+        if (data.sourceValidatorBeforeConsolidation.index != data.consolidation.object.sourceIndex) {
+            revert InvalidConsolidationSource();
+        }
 
         {
             bytes memory pubkey = MODULE.getSigningKeys(data.moduleKeyId.nodeOperatorId, data.moduleKeyId.keyIndex, 1);
 
-            if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
+            if (keccak256(pubkey) != keccak256(data.sourceValidatorAfterConsolidation.object.pubkey)) {
+                revert InvalidPublicKey();
+            }
         }
-
-        if (_computeEpochAtSlot(data.recentBlock.header.slot) < data.validator.object.withdrawableEpoch) {
-            revert ValidatorIsNotWithdrawable();
-        }
-        if (data.consolidation.object.sourceIndex != data.validator.index) revert InvalidConsolidationSource();
 
         // Verify recent block's header.
         {
@@ -294,24 +306,32 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             gI: _getPendingConsolidationGI(data.consolidation.offset, data.consolidationBlock.header.slot)
         });
 
-        // Verify Validator object against the recent block.
+        // Verify source validator after (presumed) consolidation.
         SSZ.verifyProof({
-            proof: data.validator.proof,
+            proof: data.sourceValidatorAfterConsolidation.proof,
             root: data.recentBlock.header.stateRoot,
-            leaf: data.validator.object.hashTreeRoot(),
-            gI: _getValidatorGI(data.validator.index, data.recentBlock.header.slot)
+            leaf: data.sourceValidatorAfterConsolidation.object.hashTreeRoot(),
+            gI: _getValidatorGI(data.sourceValidatorAfterConsolidation.index, data.recentBlock.header.slot)
         });
 
-        // Verify validator's balance against the consolidation block.
+        // Verify source validator before consolidation.
+        SSZ.verifyProof({
+            proof: data.sourceValidatorBeforeConsolidation.proof,
+            root: data.consolidationBlock.header.stateRoot,
+            leaf: data.sourceValidatorBeforeConsolidation.object.hashTreeRoot(),
+            gI: _getValidatorGI(data.sourceValidatorBeforeConsolidation.index, data.consolidationBlock.header.slot)
+        });
+
+        // Verify source validator's balance against the consolidation block.
         uint64 balanceGwei = _verifyValidatorBalance({
-            validatorIndex: data.validator.index,
+            validatorIndex: data.sourceValidatorBeforeConsolidation.index,
             balanceNode: data.balance.node,
             stateRoot: data.consolidationBlock.header.stateRoot,
             stateSlot: data.consolidationBlock.header.slot,
             proof: data.balance.proof
         });
 
-        uint64 effectiveBalanceGwei = data.validator.object.effectiveBalance;
+        uint64 effectiveBalanceGwei = data.sourceValidatorBeforeConsolidation.object.effectiveBalance;
         uint64 consolidatedBalanceGwei = balanceGwei < effectiveBalanceGwei ? balanceGwei : effectiveBalanceGwei;
 
         _reportSingleValidator(

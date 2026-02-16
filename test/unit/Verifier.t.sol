@@ -870,27 +870,49 @@ contract VerifierModuleSourceConsolidationTest is VerifierTestBase {
     }
 
     function test_processModuleSourceConsolidation_RevertWhen_Slashed() public {
-        fixture.data.validator.object.slashed = true;
+        fixture.data.sourceValidatorAfterConsolidation.object.slashed = true;
 
         vm.expectRevert(IVerifier.ValidatorIsSlashed.selector);
         verifier.processModuleSourceConsolidation(fixture.data);
     }
 
     function test_processModuleSourceConsolidation_RevertWhen_InvalidPublicKey() public {
-        fixture.data.validator.object.pubkey = hex"deadbeef";
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getSigningKeys.selector,
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex
+            ),
+            abi.encode(hex"deadbeef")
+        );
 
         vm.expectRevert(IVerifier.InvalidPublicKey.selector);
         verifier.processModuleSourceConsolidation(fixture.data);
     }
 
     function test_processModuleSourceConsolidation_RevertWhen_ValidatorIsNotWithdrawable() public {
-        fixture.data.validator.object.withdrawableEpoch = fixture.data.recentBlock.header.slot.unwrap() / 32 + 1;
+        fixture.data.sourceValidatorAfterConsolidation.object.withdrawableEpoch =
+            fixture.data.recentBlock.header.slot.unwrap() /
+            32 +
+            1;
+
         vm.expectRevert(IVerifier.ValidatorIsNotWithdrawable.selector);
         verifier.processModuleSourceConsolidation(fixture.data);
     }
 
+    function test_processModuleSourceConsolidation_RevertWhen_SourceValidatorIndexMismatch() public {
+        fixture.data.sourceValidatorBeforeConsolidation.index =
+            fixture.data.sourceValidatorAfterConsolidation.index +
+            1;
+
+        vm.expectRevert(IVerifier.SourceValidatorIndexMismatch.selector);
+        verifier.processModuleSourceConsolidation(fixture.data);
+    }
+
     function test_processModuleSourceConsolidation_RevertWhen_InvalidConsolidationSource() public {
-        fixture.data.consolidation.object.sourceIndex = fixture.data.validator.index + 1;
+        fixture.data.consolidation.object.sourceIndex = fixture.data.sourceValidatorBeforeConsolidation.index + 1;
+
         vm.expectRevert(IVerifier.InvalidConsolidationSource.selector);
         verifier.processModuleSourceConsolidation(fixture.data);
     }
@@ -920,7 +942,7 @@ contract VerifierModuleSourceConsolidationTest is VerifierTestBase {
                 fixture.data.moduleKeyId.nodeOperatorId,
                 fixture.data.moduleKeyId.keyIndex
             ),
-            abi.encode(fixture.data.validator.object.pubkey)
+            abi.encode(fixture.data.sourceValidatorAfterConsolidation.object.pubkey)
         );
 
         vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");
@@ -934,7 +956,7 @@ contract VerifierModuleSourceConsolidationTest is VerifierTestBase {
         string[] memory cmd = new string[](5);
         cmd[0] = "node";
         cmd[1] = "--no-warnings";
-        cmd[2] = "test/fixtures/Verifier/consolidations.mjs";
+        cmd[2] = "test/fixtures/Verifier/outgoing_consolidation.mjs";
         cmd[3] = balance.toString();
         cmd[4] = effectiveBalance.toString();
         bytes memory res = vm.ffi(cmd);

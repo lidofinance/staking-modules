@@ -65,9 +65,14 @@ interface IVerifier {
 
     struct ProcessModuleSourceConsolidationInput {
         PendingConsolidationWitness consolidation;
-        ValidatorWitness validator;
+        // Source validator state before the consolidation is processed by the CL.
+        // Proved against the consolidation block.
+        ValidatorWitness sourceValidatorBeforeConsolidation;
+        // Source validator state after the consolidation is processed by the CL.
+        // Proved against the recent block.
+        ValidatorWitness sourceValidatorAfterConsolidation;
         ModuleKeyId moduleKeyId;
-        // Represents the validator's balance before the CL processes the pending consolidation. Used as a proxy for the
+        // Source validator's balance before the CL processes the pending consolidation. Used as a proxy for the
         // "withdrawal balance" in accounting/penalties, since consolidation is not an EL withdrawal.
         BalanceWitness balance;
         RecentHeaderWitness recentBlock;
@@ -105,6 +110,7 @@ interface IVerifier {
     error InvalidWithdrawalAddress();
     error InvalidPublicKey();
     error InvalidConsolidationSource();
+    error SourceValidatorIndexMismatch();
     error InvalidValidatorIndex();
     error UnsupportedSlot(Slot slot);
     error ZeroModuleAddress();
@@ -165,10 +171,14 @@ interface IVerifier {
     /// @param data @see ProcessHistoricalWithdrawalInput
     function processHistoricalWithdrawalProof(ProcessHistoricalWithdrawalInput calldata data) external;
 
-    /// @notice Processes a validator's consolidation from a module's validator. The balance before consolidation is
-    /// assumed to be the withdrawal balance.
-    /// @dev The caveat is that a pending consolidation is processed later, making it impossible to account for losses
-    /// or rewards during the waiting period, as there's no indication of consolidation processing in the state.
+    /// @notice Processes a validator's consolidation from a module's validator. The source validator's balance and
+    /// effective balance before consolidation are used as a proxy for the "withdrawal balance" in accounting/penalties.
+    /// @dev The source validator is proved at two points in time: when pending consolidation exists (consolidation
+    /// block state) to get balances of the validator at this point, and after consolidation (recent block state) for
+    /// validator status checks. The caveat is that a pending consolidation is processed at unknown point in time
+    /// between these two points, as there's no indication of consolidation processing in the state. By using the
+    /// pre-consolidation balance as a withdrawal one, we do not account for losses or rewards accrued while the
+    /// consolidation was in the pending state.
     /// @param data @see ProcessModuleSourceConsolidationInput
     function processModuleSourceConsolidation(ProcessModuleSourceConsolidationInput calldata data) external;
 

@@ -115,6 +115,12 @@ function main(opts) {
     gindex: state.type.getPathInfo(["balances", opts.validatorIndex]).gindex,
   });
 
+  // Source validator proof against the consolidation block state (for effectiveBalance).
+  const sourceValidatorBeforeProof = createProof(state.node, {
+    type: ProofType.single,
+    gindex: state.type.getPathInfo(["validators", opts.validatorIndex]).gindex,
+  });
+
   // --- Final state here, for the "recent" block.
 
   state.slot =
@@ -157,7 +163,8 @@ function main(opts) {
     }
   }
 
-  const validatorProof = createProof(state.node, {
+  // Source validator proof against the recent block state (for slashed and withdrawableEpoch).
+  const sourceValidatorAfterProof = createProof(state.node, {
     type: ProofType.single,
     gindex: state.type.getPathInfo(["validators", opts.validatorIndex]).gindex,
   });
@@ -193,7 +200,7 @@ function main(opts) {
         offset: opts.consolidationOffset,
         proof: consolidationProof.witnesses,
       },
-      validator: {
+      sourceValidatorBeforeConsolidation: {
         index: opts.validatorIndex,
         object: {
           pubkey: validator.pubkey,
@@ -205,7 +212,21 @@ function main(opts) {
           exitEpoch: validator.exitEpoch,
           withdrawableEpoch: validator.withdrawableEpoch,
         },
-        proof: validatorProof.witnesses,
+        proof: sourceValidatorBeforeProof.witnesses,
+      },
+      sourceValidatorAfterConsolidation: {
+        index: opts.validatorIndex,
+        object: {
+          pubkey: validator.pubkey,
+          withdrawalCredentials: validator.withdrawalCredentials,
+          effectiveBalance: validator.effectiveBalance,
+          slashed: false,
+          activationEligibilityEpoch: validator.activationEligibilityEpoch,
+          activationEpoch: validator.activationEpoch,
+          exitEpoch: validator.exitEpoch,
+          withdrawableEpoch: validator.withdrawableEpoch,
+        },
+        proof: sourceValidatorAfterProof.witnesses,
       },
       moduleKeyId: {
         nodeOperatorId: 0,
