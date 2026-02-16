@@ -42,9 +42,8 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
 
 contract AccountingDeploymentTest is DeploymentBaseTest {
     function test_roles_onlyFull() public view {
-        bytes32 role = accounting.SET_BOND_CURVE_ROLE();
-        assertEq(accounting.getRoleMemberCount(role), 1);
-        assertTrue(accounting.hasRole(role, deployParams.setResetBondCurveAddress));
+        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 1);
+        assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), deployParams.setResetBondCurveAddress));
     }
 }
 
