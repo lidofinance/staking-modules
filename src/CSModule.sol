@@ -65,10 +65,10 @@ contract CSModule is ICSModule, BaseModule {
     ///      If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
     ///      To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
     function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {
-        // Clean `__freeSlot1` and `__freeSlot2` since the storage slots are no longer needed in version 3.
+        // Clean `__freeSlot1` and the storage slot reused by `_isConsolidationReported`.
         assembly ("memory-safe") {
             sstore(__freeSlot1.slot, 0x00)
-            sstore(__freeSlot2.slot, 0x00)
+            sstore(_isConsolidationReported.slot, 0x00)
         }
         // NOTE: Don't call `_initTopUpQueue` because it is disabled by default and existing CSM deployment can only support 0x01 validators mode.
 

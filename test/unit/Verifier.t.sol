@@ -42,6 +42,9 @@ function add(Slot self, uint64 v) pure returns (Slot slot) {
 using { dec, inc, add } for Slot;
 
 GIndex constant NULL_GINDEX = GIndex.wrap(0);
+// @see https://github.com/ethereum/EIPs/blob/master/EIPS/eip-4788.md
+// The code is obtained via `cast code 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02`
+bytes constant BEACON_ROOTS_CODE = hex"3373fffffffffffffffffffffffffffffffffffffffe14604d57602036146024575f5ffd5b5f35801560495762001fff810690815414603c575f5ffd5b62001fff01545f5260205ff35b5f5ffd5b62001fff42064281555f359062001fff015500";
 
 contract VerifierTestBase is Test, Utilities {
     using stdJson for string;
@@ -692,17 +695,6 @@ contract VerifierSlashingTest is VerifierTestBase {
         verifier.processSlashedProof(fixture.data);
     }
 
-    // function test_processSlashed_RevertWhen_ValidatorIsNotWithdrawable()
-    //     public
-    // {
-    //     fixture.data.validator.object.withdrawableEpoch =
-    //         fixture.data.recentBlock.header.slot.unwrap() *
-    //         32 +
-    //         1;
-    //     vm.expectRevert(IVerifier.ValidatorIsNotWithdrawable.selector);
-    //     verifier.processSlashedProof(fixture.data);
-    // }
-
     function test_processSlashed_RevertWhen_InvalidBlockHeader() public {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
@@ -851,26 +843,39 @@ contract VerifierModuleSourceConsolidationTest is VerifierTestBase {
         verifier.processModuleSourceConsolidation(fixture.data);
     }
 
-    function test_processModuleSourceConsolidation_RevertWhen_RecentBlockSlotUnsupported() public {
-        fixture.data.recentBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
+    function test_processModuleSourceConsolidation_RevertWhen_ConsolidationAppliedBlockSlotUnsupported() public {
+        fixture.data.consolidationAppliedBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
         vm.expectRevert(
-            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.recentBlock.header.slot)
+            abi.encodeWithSelector(
+                IVerifier.UnsupportedSlot.selector,
+                fixture.data.consolidationAppliedBlock.header.slot
+            )
         );
         verifier.processModuleSourceConsolidation(fixture.data);
     }
 
-    function test_processModuleSourceConsolidation_RevertWhen_ConsolidationBlockSlotUnsupported() public {
-        fixture.data.consolidationBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
+    function test_processModuleSourceConsolidation_RevertWhen_ConsolidationPendingBlockSlotUnsupported() public {
+        fixture.data.consolidationPendingBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
         vm.expectRevert(
-            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.consolidationBlock.header.slot)
+            abi.encodeWithSelector(
+                IVerifier.UnsupportedSlot.selector,
+                fixture.data.consolidationPendingBlock.header.slot
+            )
         );
+        verifier.processModuleSourceConsolidation(fixture.data);
+    }
+
+    function test_processModuleSourceConsolidation_RevertWhen_ConsolidationBlockOrderMismatch() public {
+        fixture.data.consolidationAppliedBlock.header.slot = fixture.data.consolidationPendingBlock.header.slot;
+
+        vm.expectRevert(IVerifier.ConsolidationBlockOrderMismatch.selector);
         verifier.processModuleSourceConsolidation(fixture.data);
     }
 
     function test_processModuleSourceConsolidation_RevertWhen_Slashed() public {
-        fixture.data.sourceValidatorAfterConsolidation.object.slashed = true;
+        fixture.data.sourceAtAppliedBlock.object.slashed = true;
 
         vm.expectRevert(IVerifier.ValidatorIsSlashed.selector);
         verifier.processModuleSourceConsolidation(fixture.data);
@@ -892,8 +897,8 @@ contract VerifierModuleSourceConsolidationTest is VerifierTestBase {
     }
 
     function test_processModuleSourceConsolidation_RevertWhen_ValidatorIsNotWithdrawable() public {
-        fixture.data.sourceValidatorAfterConsolidation.object.withdrawableEpoch =
-            fixture.data.recentBlock.header.slot.unwrap() /
+        fixture.data.sourceAtAppliedBlock.object.withdrawableEpoch =
+            fixture.data.consolidationAppliedBlock.header.slot.unwrap() /
             32 +
             1;
 
@@ -901,26 +906,31 @@ contract VerifierModuleSourceConsolidationTest is VerifierTestBase {
         verifier.processModuleSourceConsolidation(fixture.data);
     }
 
-    function test_processModuleSourceConsolidation_RevertWhen_SourceValidatorIndexMismatch() public {
-        fixture.data.sourceValidatorBeforeConsolidation.index =
-            fixture.data.sourceValidatorAfterConsolidation.index +
-            1;
+    function test_processModuleSourceConsolidation_RevertWhen_AfterConsolidationIndexMismatch() public {
+        fixture.data.sourceAtAppliedBlock.index = fixture.data.consolidation.object.sourceIndex + 1;
 
-        vm.expectRevert(IVerifier.SourceValidatorIndexMismatch.selector);
+        vm.expectRevert(IVerifier.ConsolidationSourceMismatch.selector);
         verifier.processModuleSourceConsolidation(fixture.data);
     }
 
-    function test_processModuleSourceConsolidation_RevertWhen_InvalidConsolidationSource() public {
-        fixture.data.consolidation.object.sourceIndex = fixture.data.sourceValidatorBeforeConsolidation.index + 1;
+    function test_processModuleSourceConsolidation_RevertWhen_BeforeConsolidationIndexMismatch() public {
+        fixture.data.sourceAtPendingBlock.index = fixture.data.consolidation.object.sourceIndex + 1;
 
-        vm.expectRevert(IVerifier.InvalidConsolidationSource.selector);
+        vm.expectRevert(IVerifier.ConsolidationSourceMismatch.selector);
+        verifier.processModuleSourceConsolidation(fixture.data);
+    }
+
+    function test_processModuleSourceConsolidation_RevertWhen_ConsolidationSourceMismatch() public {
+        fixture.data.consolidation.object.sourceIndex = fixture.data.sourceAtPendingBlock.index + 1;
+
+        vm.expectRevert(IVerifier.ConsolidationSourceMismatch.selector);
         verifier.processModuleSourceConsolidation(fixture.data);
     }
 
     function test_processModuleSourceConsolidation_RevertWhen_InvalidBlockHeader() public {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
-            abi.encode(fixture.data.recentBlock.rootsTimestamp),
+            abi.encode(fixture.data.consolidationAppliedBlock.rootsTimestamp),
             abi.encode(hex"deadbeef")
         );
 
@@ -928,10 +938,18 @@ contract VerifierModuleSourceConsolidationTest is VerifierTestBase {
         verifier.processModuleSourceConsolidation(fixture.data);
     }
 
+    function test_processModuleSourceConsolidation_RevertWhen_RootNotFound() public {
+        fixture.data.consolidationAppliedBlock.rootsTimestamp += 1;
+        vm.etch(verifier.BEACON_ROOTS(), BEACON_ROOTS_CODE);
+
+        vm.expectRevert(IVerifier.RootNotFound.selector);
+        verifier.processModuleSourceConsolidation(fixture.data);
+    }
+
     function _setMocks() internal {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
-            abi.encode(fixture.data.recentBlock.rootsTimestamp),
+            abi.encode(fixture.data.consolidationAppliedBlock.rootsTimestamp),
             abi.encode(fixture.blockRoot)
         );
 
@@ -942,7 +960,7 @@ contract VerifierModuleSourceConsolidationTest is VerifierTestBase {
                 fixture.data.moduleKeyId.nodeOperatorId,
                 fixture.data.moduleKeyId.keyIndex
             ),
-            abi.encode(fixture.data.sourceValidatorAfterConsolidation.object.pubkey)
+            abi.encode(fixture.data.sourceAtAppliedBlock.object.pubkey)
         );
 
         vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");
@@ -957,6 +975,253 @@ contract VerifierModuleSourceConsolidationTest is VerifierTestBase {
         cmd[0] = "node";
         cmd[1] = "--no-warnings";
         cmd[2] = "test/fixtures/Verifier/outgoing_consolidation.mjs";
+        cmd[3] = balance.toString();
+        cmd[4] = effectiveBalance.toString();
+        bytes memory res = vm.ffi(cmd);
+        fixture = abi.decode(res, (Fixture));
+    }
+
+    function ffi_interface(Fixture memory) external {}
+}
+
+contract VerifierModuleTargetConsolidationTest is VerifierTestBase {
+    using Strings for uint256;
+
+    struct Fixture {
+        bytes32 blockRoot;
+        uint256 balanceWei;
+        IVerifier.ProcessModuleTargetConsolidationInput data;
+    }
+
+    Fixture internal fixture;
+
+    function setUp() public {
+        module = new Stub();
+        admin = nextAddress("ADMIN");
+
+        verifier = new Verifier({
+            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            module: address(module),
+            slotsPerEpoch: 32,
+            slotsPerHistoricalRoot: 8192,
+            gindices: IVerifier.GIndices({
+                gIFirstWithdrawalPrev: NULL_GINDEX,
+                gIFirstWithdrawalCurr: NULL_GINDEX,
+                gIFirstValidatorPrev: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIFirstHistoricalSummaryPrev: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
+                gIFirstHistoricalSummaryCurr: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
+                gIFirstBlockRootInSummaryPrev: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
+                gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
+                gIFirstBalanceNodePrev: GIndices.FIRST_BALANCE_NODE_ELECTRA,
+                gIFirstBalanceNodeCurr: GIndices.FIRST_BALANCE_NODE_ELECTRA,
+                gIFirstPendingConsolidationPrev: GIndices.FIRST_PENDING_CONSOLIDATION_ELECTRA,
+                gIFirstPendingConsolidationCurr: GIndices.FIRST_PENDING_CONSOLIDATION_ELECTRA
+            }),
+            firstSupportedSlot: Slot.wrap(8192),
+            pivotSlot: Slot.wrap(8192),
+            capellaSlot: Slot.wrap(0),
+            admin: admin
+        });
+
+        pauseRole = verifier.PAUSE_ROLE();
+        resumeRole = verifier.RESUME_ROLE();
+
+        vm.startPrank(admin);
+        verifier.grantRole(pauseRole, admin);
+        verifier.grantRole(resumeRole, admin);
+        vm.stopPrank();
+
+        _loadFixture();
+        _setMocks();
+
+        assertGt(verifier.FIRST_SUPPORTED_SLOT().unwrap(), 0, "Non-zero slot needed for tests");
+    }
+
+    function test_processModuleTargetConsolidation_EffectiveBalanceAboveActual() public {
+        _loadFixtureWithBalances({ balance: weiToGwei(31.8 ether), effectiveBalance: weiToGwei(32 ether) });
+        _setMocks();
+
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.reportIncomingConsolidation.selector,
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex,
+                fixture.data.sourceAtPendingBlock.index,
+                31.8 ether
+            )
+        );
+
+        verifier.processModuleTargetConsolidation(fixture.data);
+    }
+
+    function test_processModuleTargetConsolidation_ActualBalanceAboveEffective() public {
+        _loadFixtureWithBalances({ balance: weiToGwei(32.7 ether), effectiveBalance: weiToGwei(32 ether) });
+        _setMocks();
+
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.reportIncomingConsolidation.selector,
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex,
+                fixture.data.sourceAtPendingBlock.index,
+                32 ether
+            )
+        );
+
+        verifier.processModuleTargetConsolidation(fixture.data);
+    }
+
+    function test_processModuleTargetConsolidation_RevertWhenPaused() public {
+        vm.prank(admin);
+        verifier.pauseFor(100_500);
+        assertTrue(verifier.isPaused());
+
+        vm.expectRevert(PausableUntil.ResumedExpected.selector);
+        verifier.processModuleTargetConsolidation(fixture.data);
+    }
+
+    function test_processModuleTargetConsolidation_RevertWhen_ConsolidationAppliedBlockSlotUnsupported() public {
+        fixture.data.consolidationAppliedBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVerifier.UnsupportedSlot.selector,
+                fixture.data.consolidationAppliedBlock.header.slot
+            )
+        );
+        verifier.processModuleTargetConsolidation(fixture.data);
+    }
+
+    function test_processModuleTargetConsolidation_RevertWhen_ConsolidationPendingBlockSlotUnsupported() public {
+        fixture.data.consolidationPendingBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVerifier.UnsupportedSlot.selector,
+                fixture.data.consolidationPendingBlock.header.slot
+            )
+        );
+        verifier.processModuleTargetConsolidation(fixture.data);
+    }
+
+    function test_processModuleTargetConsolidation_RevertWhen_ConsolidationBlockOrderMismatch() public {
+        fixture.data.consolidationAppliedBlock.header.slot = fixture.data.consolidationPendingBlock.header.slot;
+
+        vm.expectRevert(IVerifier.ConsolidationBlockOrderMismatch.selector);
+        verifier.processModuleTargetConsolidation(fixture.data);
+    }
+
+    function test_processModuleTargetConsolidation_RevertWhen_Slashed() public {
+        fixture.data.sourceAtAppliedBlock.object.slashed = true;
+
+        vm.expectRevert(IVerifier.ValidatorIsSlashed.selector);
+        verifier.processModuleTargetConsolidation(fixture.data);
+    }
+
+    function test_processModuleTargetConsolidation_RevertWhen_ValidatorIsNotWithdrawable() public {
+        fixture.data.sourceAtAppliedBlock.object.withdrawableEpoch =
+            fixture.data.consolidationAppliedBlock.header.slot.unwrap() /
+            32 +
+            1;
+
+        vm.expectRevert(IVerifier.ValidatorIsNotWithdrawable.selector);
+        verifier.processModuleTargetConsolidation(fixture.data);
+    }
+
+    function test_processModuleTargetConsolidation_RevertWhen_AfterConsolidationIndexMismatch() public {
+        fixture.data.sourceAtAppliedBlock.index = fixture.data.consolidation.object.sourceIndex + 1;
+
+        vm.expectRevert(IVerifier.ConsolidationSourceMismatch.selector);
+        verifier.processModuleTargetConsolidation(fixture.data);
+    }
+
+    function test_processModuleTargetConsolidation_RevertWhen_BeforeConsolidationIndexMismatch() public {
+        fixture.data.sourceAtPendingBlock.index = fixture.data.consolidation.object.sourceIndex + 1;
+
+        vm.expectRevert(IVerifier.ConsolidationSourceMismatch.selector);
+        verifier.processModuleTargetConsolidation(fixture.data);
+    }
+
+    function test_processModuleTargetConsolidation_RevertWhen_ConsolidationSourceMismatch() public {
+        fixture.data.consolidation.object.sourceIndex = fixture.data.sourceAtPendingBlock.index + 1;
+
+        vm.expectRevert(IVerifier.ConsolidationSourceMismatch.selector);
+        verifier.processModuleTargetConsolidation(fixture.data);
+    }
+
+    function test_processModuleTargetConsolidation_RevertWhen_ConsolidationTargetMismatch() public {
+        fixture.data.targetAtAppliedBlock.index = fixture.data.consolidation.object.targetIndex + 1;
+
+        vm.expectRevert(IVerifier.ConsolidationTargetMismatch.selector);
+        verifier.processModuleTargetConsolidation(fixture.data);
+    }
+
+    function test_processModuleTargetConsolidation_RevertWhen_InvalidPublicKey() public {
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getSigningKeys.selector,
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex
+            ),
+            abi.encode(hex"deadbeef")
+        );
+
+        vm.expectRevert(IVerifier.InvalidPublicKey.selector);
+        verifier.processModuleTargetConsolidation(fixture.data);
+    }
+
+    function test_processModuleTargetConsolidation_RevertWhen_InvalidBlockHeader() public {
+        vm.mockCall(
+            verifier.BEACON_ROOTS(),
+            abi.encode(fixture.data.consolidationAppliedBlock.rootsTimestamp),
+            abi.encode(hex"deadbeef")
+        );
+
+        vm.expectRevert(IVerifier.InvalidBlockHeader.selector);
+        verifier.processModuleTargetConsolidation(fixture.data);
+    }
+
+    function test_processModuleTargetConsolidation_RevertWhen_RootNotFound() public {
+        fixture.data.consolidationAppliedBlock.rootsTimestamp += 1;
+        vm.etch(verifier.BEACON_ROOTS(), BEACON_ROOTS_CODE);
+
+        vm.expectRevert(IVerifier.RootNotFound.selector);
+        verifier.processModuleTargetConsolidation(fixture.data);
+    }
+
+    function _setMocks() internal {
+        vm.mockCall(
+            verifier.BEACON_ROOTS(),
+            abi.encode(fixture.data.consolidationAppliedBlock.rootsTimestamp),
+            abi.encode(fixture.blockRoot)
+        );
+
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getSigningKeys.selector,
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex
+            ),
+            abi.encode(fixture.data.targetAtAppliedBlock.object.pubkey)
+        );
+
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportIncomingConsolidation.selector), "");
+    }
+
+    function _loadFixture() internal {
+        _loadFixtureWithBalances(weiToGwei(32 ether), weiToGwei(32 ether));
+    }
+
+    function _loadFixtureWithBalances(uint256 balance, uint256 effectiveBalance) internal {
+        string[] memory cmd = new string[](5);
+        cmd[0] = "node";
+        cmd[1] = "--no-warnings";
+        cmd[2] = "test/fixtures/Verifier/incoming_consolidation.mjs";
         cmd[3] = balance.toString();
         cmd[4] = effectiveBalance.toString();
         bytes memory res = vm.ffi(cmd);
@@ -1819,11 +2084,6 @@ contract VerifierParentBlockRootTest is Test, Utilities {
     VerifierTestable public verifier;
     address public admin;
     Stub public module;
-
-    // @see https://github.com/ethereum/EIPs/blob/master/EIPS/eip-4788.md
-    // The code is obtained via `cast code 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02`
-    bytes internal BEACON_ROOTS_CODE =
-        hex"3373fffffffffffffffffffffffffffffffffffffffe14604d57602036146024575f5ffd5b5f35801560495762001fff810690815414603c575f5ffd5b62001fff01545f5260205ff35b5f5ffd5b62001fff42064281555f359062001fff015500";
     address internal SYSTEM_ADDRESS = 0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE;
 
     function setUp() public virtual {

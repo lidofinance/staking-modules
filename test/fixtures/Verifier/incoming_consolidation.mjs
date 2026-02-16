@@ -1,4 +1,4 @@
-// Usage: node outgoing_consolidation.mjs [balance] [effectiveBalance]
+// Usage: node incoming_consolidation.mjs [balance] [effectiveBalance]
 
 "use strict";
 
@@ -9,7 +9,7 @@ import { ssz } from "@lodestar/types";
 import { concatGindices, createProof, ProofType } from "@chainsafe/persistent-merkle-tree";
 import { encodeParameters } from "web3-eth-abi";
 
-import VerifierModuleSourceConsolidationTest from "../../../out/Verifier.t.sol/VerifierModuleSourceConsolidationTest.json" with { type: "json" };
+import VerifierModuleTargetConsolidationTest from "../../../out/Verifier.t.sol/VerifierModuleTargetConsolidationTest.json" with { type: "json" };
 
 const MIN_VALIDATOR_WITHDRAWABILITY_DELAY = 256;
 const SLOTS_PER_HISTORICAL_ROOT = 8192;
@@ -20,7 +20,8 @@ const Fork = ssz.electra;
 
 /**
  * @param {Object} opts
- * @param {number} opts.validatorIndex - Index of a validator in the `validators` list.
+ * @param {number} opts.sourceValidatorIndex - Index of the source validator in the `validators` list.
+ * @param {number} opts.targetValidatorIndex - Index of the target (module's) validator in the `validators` list.
  * @param {number} opts.consolidationOffset - Index of a consolidation in the `pending_consolidations` list.
  * @param {number} opts.balance - Source validator's balance before consolidation.
  * @param {number} opts.effectiveBalance - Source validator's effective balance.
@@ -30,7 +31,9 @@ const Fork = ssz.electra;
  */
 function main(opts) {
   assert(opts);
-  assert(opts.validatorIndex < MAX_VALIDATORS);
+  assert(opts.sourceValidatorIndex < MAX_VALIDATORS);
+  assert(opts.targetValidatorIndex < MAX_VALIDATORS);
+  assert(opts.sourceValidatorIndex !== opts.targetValidatorIndex);
   assert(opts.withdrawableEpoch > MIN_VALIDATOR_WITHDRAWABILITY_DELAY);
   assert(opts.capellaSlot % SLOTS_PER_HISTORICAL_ROOT === 0);
 
@@ -42,18 +45,31 @@ function main(opts) {
   /** @type {import('@chainsafe/ssz').ContainerType}  */
   const PendingConsolidation = Fork.BeaconState.getPathInfo(["pending_consolidations", 0]).type;
 
+  // Source validator.
   /** @type {import('@lodestar/types/lib/phase0').Validator} */
-  const validator = Validator.defaultView();
-
-  validator.slashed = false;
-  validator.pubkey = new Uint8Array(48).fill(18);
-  validator.withdrawableEpoch = opts.withdrawableEpoch;
-  validator.withdrawalCredentials = new Uint8Array([
+  const sourceValidator = Validator.defaultView();
+  sourceValidator.slashed = false;
+  sourceValidator.pubkey = new Uint8Array(48).fill(18);
+  sourceValidator.withdrawableEpoch = opts.withdrawableEpoch;
+  sourceValidator.withdrawalCredentials = new Uint8Array([
     ...new Uint8Array([0x01]),
     ...new Uint8Array(11), // gap
     ...hexStrToBytesArr(opts.address),
   ]);
-  validator.effectiveBalance = opts.effectiveBalance;
+  sourceValidator.effectiveBalance = opts.effectiveBalance;
+
+  // Target validator (module's validator) — different pubkey.
+  /** @type {import('@lodestar/types/lib/phase0').Validator} */
+  const targetValidator = Validator.defaultView();
+  targetValidator.slashed = false;
+  targetValidator.pubkey = new Uint8Array(48).fill(42);
+  targetValidator.withdrawableEpoch = 0;
+  targetValidator.withdrawalCredentials = new Uint8Array([
+    ...new Uint8Array([0x02]),
+    ...new Uint8Array(11), // gap
+    ...hexStrToBytesArr(opts.address),
+  ]);
+  targetValidator.effectiveBalance = 32e9;
 
   const state = Fork.BeaconState.defaultView();
 
@@ -65,15 +81,16 @@ function main(opts) {
   // --- Pending block's state, the earliest state in the script.
 
   const consolidation = PendingConsolidation.defaultView();
-  consolidation.sourceIndex = opts.validatorIndex;
-  consolidation.targetIndex = opts.validatorIndex + 1;
+  consolidation.sourceIndex = opts.sourceValidatorIndex;
+  consolidation.targetIndex = opts.targetValidatorIndex;
 
   while (state.pendingConsolidations.length < opts.consolidationOffset) {
     state.pendingConsolidations.push(PendingConsolidation.defaultView());
   }
 
-  state.balances.set(opts.validatorIndex, opts.balance);
-  state.validators.set(opts.validatorIndex, validator);
+  state.balances.set(opts.sourceValidatorIndex, opts.balance);
+  state.validators.set(opts.sourceValidatorIndex, sourceValidator);
+  state.validators.set(opts.targetValidatorIndex, targetValidator);
   state.pendingConsolidations.push(consolidation);
 
   // We imagine that consolidation request was processed and the withdrawableEpoch was set without any delays.
@@ -98,13 +115,13 @@ function main(opts) {
   });
   const balanceProof = createProof(state.node, {
     type: ProofType.single,
-    gindex: state.type.getPathInfo(["balances", opts.validatorIndex]).gindex,
+    gindex: state.type.getPathInfo(["balances", opts.sourceValidatorIndex]).gindex,
   });
 
   // Source validator proof against the pending block state (for effectiveBalance).
   const sourceAtPendingProof = createProof(state.node, {
     type: ProofType.single,
-    gindex: state.type.getPathInfo(["validators", opts.validatorIndex]).gindex,
+    gindex: state.type.getPathInfo(["validators", opts.sourceValidatorIndex]).gindex,
   });
 
   // --- Applied block's state here, the latest state in the script.
@@ -143,7 +160,13 @@ function main(opts) {
   // Source validator proof against the applied block state (for slashed and withdrawableEpoch).
   const sourceAtAppliedProof = createProof(state.node, {
     type: ProofType.single,
-    gindex: state.type.getPathInfo(["validators", opts.validatorIndex]).gindex,
+    gindex: state.type.getPathInfo(["validators", opts.sourceValidatorIndex]).gindex,
+  });
+
+  // Target validator proof against the applied block state (for pubkey and index checks).
+  const targetValidatorProof = createProof(state.node, {
+    type: ProofType.single,
+    gindex: state.type.getPathInfo(["validators", opts.targetValidatorIndex]).gindex,
   });
 
   const pendingBlockProof = createProof(state.node, {
@@ -176,32 +199,46 @@ function main(opts) {
         proof: consolidationProof.witnesses,
       },
       sourceAtPendingBlock: {
-        index: opts.validatorIndex,
+        index: opts.sourceValidatorIndex,
         object: {
-          pubkey: validator.pubkey,
-          withdrawalCredentials: validator.withdrawalCredentials,
-          effectiveBalance: validator.effectiveBalance,
+          pubkey: sourceValidator.pubkey,
+          withdrawalCredentials: sourceValidator.withdrawalCredentials,
+          effectiveBalance: sourceValidator.effectiveBalance,
           slashed: false,
-          activationEligibilityEpoch: validator.activationEligibilityEpoch,
-          activationEpoch: validator.activationEpoch,
-          exitEpoch: validator.exitEpoch,
-          withdrawableEpoch: validator.withdrawableEpoch,
+          activationEligibilityEpoch: sourceValidator.activationEligibilityEpoch,
+          activationEpoch: sourceValidator.activationEpoch,
+          exitEpoch: sourceValidator.exitEpoch,
+          withdrawableEpoch: sourceValidator.withdrawableEpoch,
         },
         proof: sourceAtPendingProof.witnesses,
       },
       sourceAtAppliedBlock: {
-        index: opts.validatorIndex,
+        index: opts.sourceValidatorIndex,
         object: {
-          pubkey: validator.pubkey,
-          withdrawalCredentials: validator.withdrawalCredentials,
-          effectiveBalance: validator.effectiveBalance,
+          pubkey: sourceValidator.pubkey,
+          withdrawalCredentials: sourceValidator.withdrawalCredentials,
+          effectiveBalance: sourceValidator.effectiveBalance,
           slashed: false,
-          activationEligibilityEpoch: validator.activationEligibilityEpoch,
-          activationEpoch: validator.activationEpoch,
-          exitEpoch: validator.exitEpoch,
-          withdrawableEpoch: validator.withdrawableEpoch,
+          activationEligibilityEpoch: sourceValidator.activationEligibilityEpoch,
+          activationEpoch: sourceValidator.activationEpoch,
+          exitEpoch: sourceValidator.exitEpoch,
+          withdrawableEpoch: sourceValidator.withdrawableEpoch,
         },
         proof: sourceAtAppliedProof.witnesses,
+      },
+      targetAtAppliedBlock: {
+        index: opts.targetValidatorIndex,
+        object: {
+          pubkey: targetValidator.pubkey,
+          withdrawalCredentials: targetValidator.withdrawalCredentials,
+          effectiveBalance: targetValidator.effectiveBalance,
+          slashed: false,
+          activationEligibilityEpoch: targetValidator.activationEligibilityEpoch,
+          activationEpoch: targetValidator.activationEpoch,
+          exitEpoch: targetValidator.exitEpoch,
+          withdrawableEpoch: targetValidator.withdrawableEpoch,
+        },
+        proof: targetValidatorProof.witnesses,
       },
       moduleKeyId: {
         nodeOperatorId: 0,
@@ -234,7 +271,7 @@ function main(opts) {
     },
   };
 
-  const ffi_interface = VerifierModuleSourceConsolidationTest.abi.find(
+  const ffi_interface = VerifierModuleTargetConsolidationTest.abi.find(
     (e) => e.name == "ffi_interface",
   );
   assert(ffi_interface);
@@ -270,7 +307,8 @@ class Faker {
 }
 
 main({
-  validatorIndex: 17,
+  sourceValidatorIndex: 17,
+  targetValidatorIndex: 18,
   consolidationOffset: 1,
   balance: parseFloat(process.argv[2]),
   effectiveBalance: parseFloat(process.argv[3]),

@@ -83,6 +83,12 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     );
     event ValidatorSlashingReported(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
     event KeyAddedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
+    event IncomingConsolidationReported(
+        uint256 indexed nodeOperatorId,
+        uint256 indexed keyIndex,
+        uint256 sourceValidatorIndex,
+        uint256 amount
+    );
     event KeyRemovalChargeApplied(uint256 indexed nodeOperatorId);
 
     event GeneralDelayedPenaltyReported(
@@ -103,6 +109,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     error ZeroExitBalance();
     error SlashingPenaltyIsNotApplicable();
     error ValidatorSlashingAlreadyReported();
+    error ConsolidationAlreadyReported();
     error InvalidWithdrawnValidatorInfo();
 
     error PubkeyMismatch();
@@ -345,12 +352,18 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     function onValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external;
 
-    /// @notice Increase tracked added balance for a particular key
-    /// @dev The method is not expected to be called on 0x01 validator mode module
+    /// @notice Report an incoming consolidation where the module's validator is the target. Increases the target key's
+    /// added balance by the consolidated amount. Reverts if the same source validator was already reported for this key.
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param keyIndex Index of the key in the Node Operator's keys storage
-    /// @param amount Amount to add to the tracked added balance (wei)
-    function increaseKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 amount) external;
+    /// @param keyIndex Index of the target key in the Node Operator's keys storage
+    /// @param sourceValidatorIndex Index of the source validator on the beacon chain
+    /// @param amount Consolidated amount in wei
+    function reportIncomingConsolidation(
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 sourceValidatorIndex,
+        uint256 amount
+    ) external;
 
     /// @notice Get tracked added balance for a particular key
     /// @param nodeOperatorId ID of the Node Operator

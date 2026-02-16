@@ -1122,14 +1122,18 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 }
 
 abstract contract ModuleKeyAddedBalance is ModuleFixtures {
-    function test_increaseKeyAddedBalance_emitsAndChargesOnWithdraw() public assertInvariants {
+    function test_reportIncomingConsolidation_chargesOnWithdraw() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        vm.expectEmit(address(module));
-        emit IBaseModule.KeyAddedBalanceChanged(noId, 0, 10 ether);
-        module.increaseKeyAddedBalance(noId, 0, 10 ether);
+        module.reportIncomingConsolidation({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            sourceValidatorIndex: 42,
+            amount: 10 ether
+        });
 
+        // Increase the node operator bond to see the difference on charge.
         vm.deal(address(this), 100 ether);
         accounting.depositETH{ value: 100 ether }(noId);
         uint256 bondBefore = accounting.getBond(noId);
@@ -1147,49 +1151,18 @@ abstract contract ModuleKeyAddedBalance is ModuleFixtures {
         assertEq(accounting.getBond(noId), bondBefore - 10 ether);
     }
 
-    function test_increaseKeyAddedBalance_revertWhen_NoRole() public {
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        bytes32 role = module.VERIFIER_ROLE();
-        vm.prank(stranger);
-        expectRoleRevert(stranger, role);
-        module.increaseKeyAddedBalance(noId, 0, 1 ether);
-    }
-
-    function test_increaseKeyAddedBalance_revertWhen_InvalidKeyIndex() public {
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
-        module.increaseKeyAddedBalance(noId, 1, 1 ether);
-    }
-
-    function test_increaseKeyAddedBalance_revertWhen_Withdrawn() public {
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 0,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-        module.reportRegularWithdrawnValidators(validatorInfos);
-
-        vm.expectRevert(IBaseModule.InvalidWithdrawnValidatorInfo.selector);
-        module.increaseKeyAddedBalance(noId, 0, 1 ether);
-    }
-
-    function test_increaseKeyAddedBalance_doesNotChargeWhenSlashed() public assertInvariants {
+    function test_reportIncomingConsolidation_doesNotChargeWhenSlashed() public assertInvariants {
         uint256 noId = createNodeOperator();
 
         module.obtainDepositData(1, "");
         module.onValidatorSlashed(noId, 0);
 
-        module.increaseKeyAddedBalance(noId, 0, 10 ether);
+        module.reportIncomingConsolidation({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            sourceValidatorIndex: 42,
+            amount: 10 ether
+        });
 
         vm.deal(address(this), 100 ether);
         accounting.depositETH{ value: 100 ether }(noId);
@@ -1208,36 +1181,24 @@ abstract contract ModuleKeyAddedBalance is ModuleFixtures {
         assertEq(accounting.getBond(noId), bondBefore);
     }
 
-    function test_increaseKeyAddedBalance_noEmitWhenAtCap() public assertInvariants {
+    function test_reportIncomingConsolidation_capsAndEmits() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
-
-        module.increaseKeyAddedBalance(
-            noId,
-            0,
-            WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE
-        );
-
-        vm.recordLogs();
-        module.increaseKeyAddedBalance(noId, 0, 1 ether);
-
-        Vm.Log[] memory entries = vm.getRecordedLogs();
-        bytes32 signature = keccak256("KeyAddedBalanceChanged(uint256,uint256,uint256)");
-        for (uint256 i; i < entries.length; ++i) {
-            assertNotEq(entries[i].topics[0], signature);
-        }
-    }
-
-    function test_increaseKeyAddedBalance_capsAndEmits() public assertInvariants {
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
+        uint256 keyIndex = 0;
 
         uint256 cap = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
 
         vm.expectEmit(address(module));
-        emit IBaseModule.KeyAddedBalanceChanged(noId, 0, cap);
+        emit IBaseModule.KeyAddedBalanceChanged(noId, keyIndex, cap);
 
-        module.increaseKeyAddedBalance(noId, 0, cap + 1 ether);
+        module.reportIncomingConsolidation({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            sourceValidatorIndex: 42,
+            amount: cap + 1 ether
+        });
+
+        assertEq(module.getKeyAddedBalance(noId, keyIndex), cap);
     }
 
     function test_getKeyAddedBalance_defaultZero() public {
@@ -1245,13 +1206,5 @@ abstract contract ModuleKeyAddedBalance is ModuleFixtures {
         module.obtainDepositData(1, "");
 
         assertEq(module.getKeyAddedBalance(noId, 0), 0);
-    }
-
-    function test_getKeyAddedBalance_afterIncrease() public {
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        module.increaseKeyAddedBalance(noId, 0, 3 ether);
-        assertEq(module.getKeyAddedBalance(noId, 0), 3 ether);
     }
 }

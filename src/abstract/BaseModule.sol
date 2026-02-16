@@ -314,18 +314,26 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function increaseKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 amount) external {
+    function reportIncomingConsolidation(
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 sourceValidatorIndex,
+        uint256 amount
+    ) external {
         _checkVerifierRole();
 
-        NodeOperatorOps.increaseKeyAddedBalance({
+        NodeOperatorOps.reportIncomingConsolidation({
             nodeOperators: _nodeOperators,
             nodeOperatorsCount: _nodeOperatorsCount,
-            isValidatorWithdrawn: _isValidatorWithdrawn,
+            isConsolidationReported: _isConsolidationReported,
             keyAddedBalances: _keyAddedBalances,
             nodeOperatorId: nodeOperatorId,
             keyIndex: keyIndex,
+            sourceValidatorIndex: sourceValidatorIndex,
             incrementWei: amount
         });
+
+        _incrementModuleNonce();
     }
 
     function reportSlashedWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external {

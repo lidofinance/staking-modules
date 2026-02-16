@@ -148,23 +148,25 @@ library NodeOperatorOps {
         }
     }
 
-    function increaseKeyAddedBalance(
+    function reportIncomingConsolidation(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorsCount,
-        mapping(uint256 => bool) storage isValidatorWithdrawn,
+        mapping(uint256 => bool) storage isConsolidationReported,
         mapping(uint256 => uint256) storage keyAddedBalances,
         uint256 nodeOperatorId,
         uint256 keyIndex,
+        uint256 sourceValidatorIndex,
         uint256 incrementWei
     ) external {
         _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
         NodeOperator storage no = nodeOperators[nodeOperatorId];
         if (keyIndex >= no.totalDepositedKeys) revert IBaseModule.SigningKeysInvalidOffset();
 
-        uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        if (isValidatorWithdrawn[pointer]) revert IBaseModule.InvalidWithdrawnValidatorInfo();
+        if (isConsolidationReported[sourceValidatorIndex]) revert IBaseModule.ConsolidationAlreadyReported();
+        isConsolidationReported[sourceValidatorIndex] = true;
 
         _increaseKeyAddedBalance(keyAddedBalances, nodeOperatorId, keyIndex, incrementWei);
+        emit IBaseModule.IncomingConsolidationReported(nodeOperatorId, keyIndex, sourceValidatorIndex, incrementWei);
     }
 
     function increaseKeyAddedBalancesByAllocations(

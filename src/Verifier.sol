@@ -252,87 +252,90 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     function processModuleSourceConsolidation(
         ProcessModuleSourceConsolidationInput calldata data
     ) external whenResumed {
-        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(data.recentBlock.header.slot);
+        if (data.consolidationPendingBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.consolidationPendingBlock.header.slot);
         }
-        if (data.consolidationBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(data.consolidationBlock.header.slot);
+        if (data.consolidationAppliedBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.consolidationAppliedBlock.header.slot);
+        }
+        if (data.consolidationAppliedBlock.header.slot <= data.consolidationPendingBlock.header.slot) {
+            revert ConsolidationBlockOrderMismatch();
         }
 
-        // Consolidation couldn't have been included in both of these cases.
-        if (data.sourceValidatorAfterConsolidation.object.slashed) revert ValidatorIsSlashed();
+        // Consolidation couldn't have been applied in both of these cases.
+        if (data.sourceAtAppliedBlock.object.slashed) revert ValidatorIsSlashed();
         if (
-            _computeEpochAtSlot(data.recentBlock.header.slot) <
-            data.sourceValidatorAfterConsolidation.object.withdrawableEpoch
+            _computeEpochAtSlot(data.consolidationAppliedBlock.header.slot) <
+            data.sourceAtAppliedBlock.object.withdrawableEpoch
         ) {
             revert ValidatorIsNotWithdrawable();
         }
 
-        if (data.sourceValidatorBeforeConsolidation.index != data.sourceValidatorAfterConsolidation.index) {
-            revert SourceValidatorIndexMismatch();
-        }
-        if (data.sourceValidatorBeforeConsolidation.index != data.consolidation.object.sourceIndex) {
-            revert InvalidConsolidationSource();
-        }
+        uint256 sourceIndex = data.consolidation.object.sourceIndex;
+
+        if (data.sourceAtPendingBlock.index != sourceIndex) revert ConsolidationSourceMismatch();
+        if (data.sourceAtAppliedBlock.index != sourceIndex) revert ConsolidationSourceMismatch();
 
         {
             bytes memory pubkey = MODULE.getSigningKeys(data.moduleKeyId.nodeOperatorId, data.moduleKeyId.keyIndex, 1);
-
-            if (keccak256(pubkey) != keccak256(data.sourceValidatorAfterConsolidation.object.pubkey)) {
-                revert InvalidPublicKey();
-            }
+            if (keccak256(pubkey) != keccak256(data.sourceAtAppliedBlock.object.pubkey)) revert InvalidPublicKey();
         }
 
-        // Verify recent block's header.
+        // Verify consolidation-applied block's header.
         {
-            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.recentBlock.rootsTimestamp);
-            bytes32 headerRoot = data.recentBlock.header.hashTreeRoot();
+            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.consolidationAppliedBlock.rootsTimestamp);
+            bytes32 headerRoot = data.consolidationAppliedBlock.header.hashTreeRoot();
             if (trustedHeaderRoot != headerRoot) revert InvalidBlockHeader();
         }
 
-        // Verify consolidation block header.
+        // Verify consolidation-pending block header.
         SSZ.verifyProof({
-            proof: data.consolidationBlock.proof,
-            root: data.recentBlock.header.stateRoot,
-            leaf: data.consolidationBlock.header.hashTreeRoot(),
-            gI: _getHistoricalBlockRootGI(data.recentBlock.header.slot, data.consolidationBlock.header.slot)
+            proof: data.consolidationPendingBlock.proof,
+            root: data.consolidationAppliedBlock.header.stateRoot,
+            leaf: data.consolidationPendingBlock.header.hashTreeRoot(),
+            gI: _getHistoricalBlockRootGI(
+                data.consolidationAppliedBlock.header.slot,
+                data.consolidationPendingBlock.header.slot
+            )
         });
 
-        // Verify PendingConsolidation object against the consolidation block.
+        // Verify PendingConsolidation object against the consolidation-pending block.
         SSZ.verifyProof({
             proof: data.consolidation.proof,
-            root: data.consolidationBlock.header.stateRoot,
+            root: data.consolidationPendingBlock.header.stateRoot,
             leaf: data.consolidation.object.hashTreeRoot(),
-            gI: _getPendingConsolidationGI(data.consolidation.offset, data.consolidationBlock.header.slot)
+            gI: _getPendingConsolidationGI(data.consolidation.offset, data.consolidationPendingBlock.header.slot)
         });
 
-        // Verify source validator after (presumed) consolidation.
+        // Verify source at the consolidation-pending block.
         SSZ.verifyProof({
-            proof: data.sourceValidatorAfterConsolidation.proof,
-            root: data.recentBlock.header.stateRoot,
-            leaf: data.sourceValidatorAfterConsolidation.object.hashTreeRoot(),
-            gI: _getValidatorGI(data.sourceValidatorAfterConsolidation.index, data.recentBlock.header.slot)
+            proof: data.sourceAtPendingBlock.proof,
+            root: data.consolidationPendingBlock.header.stateRoot,
+            leaf: data.sourceAtPendingBlock.object.hashTreeRoot(),
+            gI: _getValidatorGI(sourceIndex, data.consolidationPendingBlock.header.slot)
         });
 
-        // Verify source validator before consolidation.
+        // Verify source at the consolidation-applied block.
         SSZ.verifyProof({
-            proof: data.sourceValidatorBeforeConsolidation.proof,
-            root: data.consolidationBlock.header.stateRoot,
-            leaf: data.sourceValidatorBeforeConsolidation.object.hashTreeRoot(),
-            gI: _getValidatorGI(data.sourceValidatorBeforeConsolidation.index, data.consolidationBlock.header.slot)
+            proof: data.sourceAtAppliedBlock.proof,
+            root: data.consolidationAppliedBlock.header.stateRoot,
+            leaf: data.sourceAtAppliedBlock.object.hashTreeRoot(),
+            gI: _getValidatorGI(sourceIndex, data.consolidationAppliedBlock.header.slot)
         });
 
-        // Verify source validator's balance against the consolidation block.
-        uint64 balanceGwei = _verifyValidatorBalance({
-            validatorIndex: data.sourceValidatorBeforeConsolidation.index,
+        // Verify source balance against the consolidation-pending block.
+        uint64 pendingBalanceGwei = _verifyValidatorBalance({
+            validatorIndex: sourceIndex,
             balanceNode: data.balance.node,
-            stateRoot: data.consolidationBlock.header.stateRoot,
-            stateSlot: data.consolidationBlock.header.slot,
+            stateRoot: data.consolidationPendingBlock.header.stateRoot,
+            stateSlot: data.consolidationPendingBlock.header.slot,
             proof: data.balance.proof
         });
 
-        uint64 effectiveBalanceGwei = data.sourceValidatorBeforeConsolidation.object.effectiveBalance;
-        uint64 consolidatedBalanceGwei = balanceGwei < effectiveBalanceGwei ? balanceGwei : effectiveBalanceGwei;
+        uint64 effectiveBalanceGwei = data.sourceAtPendingBlock.object.effectiveBalance;
+        uint64 consolidatedBalanceGwei = pendingBalanceGwei < effectiveBalanceGwei
+            ? pendingBalanceGwei
+            : effectiveBalanceGwei;
 
         _reportSingleValidator(
             WithdrawnValidatorInfo({
@@ -346,14 +349,123 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     }
 
     /// @inheritdoc IVerifier
-    function processIncomingConsolidation(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        uint256 addedBalanceWei
+    function processModuleTargetConsolidation(
+        ProcessModuleTargetConsolidationInput calldata data
     ) external whenResumed {
-        MODULE.increaseKeyAddedBalance(nodeOperatorId, keyIndex, addedBalanceWei);
-        // TODO implement
-        revert NotImplemented();
+        if (data.consolidationPendingBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.consolidationPendingBlock.header.slot);
+        }
+        if (data.consolidationAppliedBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.consolidationAppliedBlock.header.slot);
+        }
+        if (data.consolidationAppliedBlock.header.slot <= data.consolidationPendingBlock.header.slot) {
+            revert ConsolidationBlockOrderMismatch();
+        }
+
+        // Consolidation couldn't have been applied in both of these cases.
+        if (data.sourceAtAppliedBlock.object.slashed) revert ValidatorIsSlashed();
+        if (
+            _computeEpochAtSlot(data.consolidationAppliedBlock.header.slot) <
+            data.sourceAtAppliedBlock.object.withdrawableEpoch
+        ) {
+            revert ValidatorIsNotWithdrawable();
+        }
+
+        uint256 sourceIndex = data.consolidation.object.sourceIndex;
+
+        if (data.sourceAtPendingBlock.index != sourceIndex) {
+            revert ConsolidationSourceMismatch();
+        }
+        if (data.sourceAtAppliedBlock.index != sourceIndex) {
+            revert ConsolidationSourceMismatch();
+        }
+        if (data.targetAtAppliedBlock.index != data.consolidation.object.targetIndex) {
+            revert ConsolidationTargetMismatch();
+        }
+
+        // Verify the target's pubkey matches the module's key.
+        {
+            bytes memory pubkey = MODULE.getSigningKeys(data.moduleKeyId.nodeOperatorId, data.moduleKeyId.keyIndex, 1);
+
+            if (keccak256(pubkey) != keccak256(data.targetAtAppliedBlock.object.pubkey)) {
+                revert InvalidPublicKey();
+            }
+        }
+
+        // NOTE: 0x02 withdrawal credential check on the target is not enforced on-chain — enforced by the CL.
+        // NOTE: source != target is not enforced on-chain — enforced by the CL.
+        // See process_consolidation_request in the beacon spec.
+
+        // Verify consolidation-applied block's header.
+        {
+            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.consolidationAppliedBlock.rootsTimestamp);
+            bytes32 headerRoot = data.consolidationAppliedBlock.header.hashTreeRoot();
+            if (trustedHeaderRoot != headerRoot) revert InvalidBlockHeader();
+        }
+
+        // Verify consolidation-pending block header.
+        SSZ.verifyProof({
+            proof: data.consolidationPendingBlock.proof,
+            root: data.consolidationAppliedBlock.header.stateRoot,
+            leaf: data.consolidationPendingBlock.header.hashTreeRoot(),
+            gI: _getHistoricalBlockRootGI(
+                data.consolidationAppliedBlock.header.slot,
+                data.consolidationPendingBlock.header.slot
+            )
+        });
+
+        // Verify PendingConsolidation object against the consolidation-pending block.
+        SSZ.verifyProof({
+            proof: data.consolidation.proof,
+            root: data.consolidationPendingBlock.header.stateRoot,
+            leaf: data.consolidation.object.hashTreeRoot(),
+            gI: _getPendingConsolidationGI(data.consolidation.offset, data.consolidationPendingBlock.header.slot)
+        });
+
+        // Verify source at the consolidation-pending block.
+        SSZ.verifyProof({
+            proof: data.sourceAtPendingBlock.proof,
+            root: data.consolidationPendingBlock.header.stateRoot,
+            leaf: data.sourceAtPendingBlock.object.hashTreeRoot(),
+            gI: _getValidatorGI(sourceIndex, data.consolidationPendingBlock.header.slot)
+        });
+
+        // Verify source at the consolidation-applied block.
+        SSZ.verifyProof({
+            proof: data.sourceAtAppliedBlock.proof,
+            root: data.consolidationAppliedBlock.header.stateRoot,
+            leaf: data.sourceAtAppliedBlock.object.hashTreeRoot(),
+            gI: _getValidatorGI(sourceIndex, data.consolidationAppliedBlock.header.slot)
+        });
+
+        // Verify target at the consolidation-applied block.
+        SSZ.verifyProof({
+            proof: data.targetAtAppliedBlock.proof,
+            root: data.consolidationAppliedBlock.header.stateRoot,
+            leaf: data.targetAtAppliedBlock.object.hashTreeRoot(),
+            gI: _getValidatorGI(data.targetAtAppliedBlock.index, data.consolidationAppliedBlock.header.slot)
+        });
+
+        // Verify source balance against the consolidation-pending block.
+        uint64 pendingBalanceGwei = _verifyValidatorBalance({
+            validatorIndex: sourceIndex,
+            balanceNode: data.balance.node,
+            stateRoot: data.consolidationPendingBlock.header.stateRoot,
+            stateSlot: data.consolidationPendingBlock.header.slot,
+            proof: data.balance.proof
+        });
+
+        uint64 effectiveBalanceGwei = data.sourceAtPendingBlock.object.effectiveBalance;
+        uint64 consolidatedBalanceGwei = pendingBalanceGwei < effectiveBalanceGwei
+            ? pendingBalanceGwei
+            : effectiveBalanceGwei;
+
+        MODULE.reportIncomingConsolidation({
+            nodeOperatorId: data.moduleKeyId.nodeOperatorId,
+            keyIndex: data.moduleKeyId.keyIndex,
+            sourceValidatorIndex: sourceIndex,
+            amount: gweiToWei(consolidatedBalanceGwei)
+        });
     }
 
     function _reportSingleValidator(WithdrawnValidatorInfo memory info) internal {
@@ -397,7 +509,10 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         // - deposit 15 ETH for non-slashed validator
         // - wait for a sweep of this deposit
         // - provide proof of the last withdrawal
-        // As a result, the Node Operator's bond will be penalized for 32 ETH - additional deposit value
+        // As a result, the Node Operator's bond will be penalized for
+        // max_effective_balance - additional deposit value:
+        // up to 17 ETH for 0x01 validators (max effective 32 ETH) or
+        // up to 2033 ETH for 0x02 validators (max effective 2048 ETH).
         // However, all ETH involved,
         // including 15 ETH deposited by the attacker will remain in the Lido on Ethereum protocol
         // Hence, the only consequence of the attack is an inconsistency in the bond accounting that can be resolved

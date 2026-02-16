@@ -12,7 +12,9 @@ abstract contract ModuleLinearStorage {
     mapping(uint256 priority => DepositQueueLib.Queue queue) internal _depositQueueByPriority;
 
     bytes32 internal __freeSlot1;
-    bytes32 internal __freeSlot2;
+
+    /// @dev Tracks which source validator indices have already been reported as consolidated.
+    mapping(uint256 sourceValidatorIndex => bool) internal _isConsolidationReported;
     /// @dev Total number of withdrawn validators reported for the module.
     uint256 internal _totalWithdrawnValidators;
     mapping(uint256 noKeyIndexPacked => uint256) internal _keyAddedBalances;
