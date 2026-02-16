@@ -36,7 +36,7 @@ library DepositQueueOps {
         // NOTE: The highest priority to start iterations with. Priorities are ordered like 0, 1, 2, ...
         uint256 priority = 0;
 
-        while (true) {
+        while (priority <= queueLowestPriority) {
             queue = depositQueues[priority];
 
             (
@@ -73,67 +73,6 @@ library DepositQueueOps {
             unchecked {
                 ++priority;
             }
-            if (priority > queueLowestPriority) break;
-        }
-    }
-
-    function _clean(
-        DepositQueueLib.Queue storage queue,
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        uint256 maxItems,
-        TransientUintUintMap queueLookup
-    ) private returns (uint256 removed, uint256 lastRemovedAtDepth, uint256 visited, bool reachedOutOfQueue) {
-        removed = 0;
-        lastRemovedAtDepth = 0;
-        visited = 0;
-        reachedOutOfQueue = false;
-
-        if (maxItems == 0) revert IDepositQueueLib.DepositQueueLookupNoLimit();
-
-        Batch prevItem;
-        uint128 indexOfPrev;
-
-        uint128 head = queue.head;
-        uint128 curr = head;
-
-        while (visited < maxItems) {
-            Batch item = queue.queue[curr];
-            if (item.isNil()) {
-                reachedOutOfQueue = true;
-                break;
-            }
-
-            visited++;
-
-            NodeOperator storage no = nodeOperators[item.noId()];
-            if (queueLookup.get(item.noId()) >= no.depositableValidatorsCount) {
-                // NOTE: Since we reached that point there's no way for a Node Operator to have a depositable batch
-                // later in the queue, and hence we don't update _queueLookup for the Node Operator.
-                if (curr == head) {
-                    queue.dequeue();
-                    head = queue.head;
-                } else {
-                    // There's no `prev` item while we call `dequeue`, and removing an item will keep the `prev` intact
-                    // other than changing its `next` field.
-                    prevItem = prevItem.setNext(item.next());
-                    queue.queue[indexOfPrev] = prevItem;
-                }
-
-                // We assume that the invariant `enqueuedCount` >= `keys` is kept.
-                // NOTE: No need to safe cast due to internal logic.
-                no.enqueuedCount -= uint32(item.keys());
-
-                unchecked {
-                    lastRemovedAtDepth = visited;
-                    ++removed;
-                }
-            } else {
-                queueLookup.add(item.noId(), item.keys());
-                indexOfPrev = curr;
-                prevItem = item;
-            }
-
-            curr = item.next();
         }
     }
 
@@ -186,6 +125,67 @@ library DepositQueueOps {
                 queuePriority: queueLowestPriority,
                 count: toEnqueue
             });
+        }
+    }
+
+    function _clean(
+        DepositQueueLib.Queue storage queue,
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint256 maxItems,
+        TransientUintUintMap queueLookup
+    ) private returns (uint256 removed, uint256 lastRemovedAtDepth, uint256 visited, bool reachedOutOfQueue) {
+        removed = 0;
+        lastRemovedAtDepth = 0;
+        visited = 0;
+        reachedOutOfQueue = false;
+
+        // TODO: Looks unreachable
+        if (maxItems == 0) revert IDepositQueueLib.DepositQueueLookupNoLimit();
+
+        Batch prevItem;
+        uint128 indexOfPrev;
+
+        uint128 head = queue.head;
+        uint128 curr = head;
+
+        while (visited < maxItems) {
+            Batch item = queue.queue[curr];
+            if (item.isNil()) {
+                reachedOutOfQueue = true;
+                break;
+            }
+
+            visited++;
+
+            NodeOperator storage no = nodeOperators[item.noId()];
+            if (queueLookup.get(item.noId()) >= no.depositableValidatorsCount) {
+                // NOTE: Since we reached that point there's no way for a Node Operator to have a depositable batch
+                // later in the queue, and hence we don't update _queueLookup for the Node Operator.
+                if (curr == head) {
+                    queue.dequeue();
+                    head = queue.head;
+                } else {
+                    // There's no `prev` item while we call `dequeue`, and removing an item will keep the `prev` intact
+                    // other than changing its `next` field.
+                    prevItem = prevItem.setNext(item.next());
+                    queue.queue[indexOfPrev] = prevItem;
+                }
+
+                // We assume that the invariant `enqueuedCount` >= `keys` is kept.
+                // NOTE: No need to safe cast due to internal logic.
+                no.enqueuedCount -= uint32(item.keys());
+
+                unchecked {
+                    lastRemovedAtDepth = visited;
+                    ++removed;
+                }
+            } else {
+                queueLookup.add(item.noId(), item.keys());
+                indexOfPrev = curr;
+                prevItem = item;
+            }
+
+            curr = item.next();
         }
     }
 

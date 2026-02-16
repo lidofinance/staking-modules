@@ -3,37 +3,12 @@
 
 pragma solidity 0.8.33;
 
-import { console } from "forge-std/console.sol";
-import { Test, Vm } from "forge-std/Test.sol";
+import { Vm } from "forge-std/Test.sol";
 
-import { Batch } from "src/lib/DepositQueueLib.sol";
-import { BaseModule } from "src/abstract/BaseModule.sol";
-import { BondLock } from "src/abstract/BondLock.sol";
-import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
-import { IAccounting } from "src/interfaces/IAccounting.sol";
-import { IExitPenalties, ExitPenaltyInfo, MarkedUint248 } from "src/interfaces/IExitPenalties.sol";
-import { IBaseModule, NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
-import { ICSModule } from "src/interfaces/ICSModule.sol";
-import { IGeneralPenalty } from "src/lib/GeneralPenaltyLib.sol";
-import { ILidoLocator } from "src/interfaces/ILidoLocator.sol";
-import { INOAddresses } from "src/lib/NOAddresses.sol";
-import { IStakingModule } from "src/interfaces/IStakingModule.sol";
-import { IWithdrawalQueue } from "src/interfaces/IWithdrawalQueue.sol";
-import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
-import { SigningKeys } from "src/lib/SigningKeys.sol";
+import { ExitPenaltyInfo, MarkedUint248 } from "src/interfaces/IExitPenalties.sol";
+import { IBaseModule, NodeOperator, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 
-import { AccountingMock } from "../../helpers/mocks/AccountingMock.sol";
-import { ParametersRegistryMock } from "../../helpers/mocks/ParametersRegistryMock.sol";
-import { ERC20Testable } from "../../helpers/ERCTestable.sol";
-import { ExitPenaltiesMock } from "../../helpers/mocks/ExitPenaltiesMock.sol";
-import { Fixtures } from "../../helpers/Fixtures.sol";
-import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
-import { LidoLocatorMock } from "../../helpers/mocks/LidoLocatorMock.sol";
-import { LidoMock } from "../../helpers/mocks/LidoMock.sol";
-import { Stub } from "../../helpers/mocks/Stub.sol";
-import { Utilities } from "../../helpers/Utilities.sol";
-import { WstETHMock } from "../../helpers/mocks/WstETHMock.sol";
 import { ModuleFixtures } from "./_Base.t.sol";
 
 abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
@@ -408,6 +383,24 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             address(accounting),
             abi.encodeWithSelector(accounting.penalize.selector, noId, penalty * multiplier)
         );
+        module.reportRegularWithdrawnValidators(validatorInfos);
+    }
+
+    function test_reportRegularWithdrawnValidators_revertWhen_SlashingPenaltyPresent() public assertInvariants {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 154,
+            isSlashed: false
+        });
+
+        vm.expectRevert(IBaseModule.InvalidWithdrawnValidatorInfo.selector, address(module));
         module.reportRegularWithdrawnValidators(validatorInfos);
     }
 

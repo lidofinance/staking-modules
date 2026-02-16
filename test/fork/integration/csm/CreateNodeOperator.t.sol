@@ -3,10 +3,9 @@
 
 pragma solidity 0.8.33;
 
-import { NodeOperator, NodeOperatorManagementProperties } from "../../../../src/interfaces/IBaseModule.sol";
+import { NodeOperatorManagementProperties } from "../../../../src/interfaces/IBaseModule.sol";
 import { IAccounting } from "../../../../src/interfaces/IAccounting.sol";
 import { IBondCurve } from "../../../../src/interfaces/IBondCurve.sol";
-import { ILido } from "../../../../src/interfaces/ILido.sol";
 import { IMerkleGate } from "../../../../src/interfaces/IMerkleGate.sol";
 import { IVettedGate } from "../../../../src/interfaces/IVettedGate.sol";
 import { PermitHelper } from "../../../helpers/Permit.sol";
@@ -185,15 +184,15 @@ contract PermissionlessCreateNodeOperator10KeysTest is PermissionlessCreateNodeO
 }
 
 contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
-    uint256 internal immutable keysCount;
+    uint256 internal immutable KEYS_COUNT;
 
     constructor() {
-        keysCount = 1;
+        KEYS_COUNT = 1;
     }
 
     function test_createNodeOperatorETH() public assertInvariants {
-        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
-        uint256 amount = accounting.getBondAmountByKeysCount(keysCount, vettedGate.curveId());
+        (bytes memory keys, bytes memory signatures) = keysSignatures(KEYS_COUNT);
+        uint256 amount = accounting.getBondAmountByKeysCount(KEYS_COUNT, vettedGate.curveId());
         vm.deal(nodeOperator, amount);
 
         uint256 preTotalShares = accounting.totalBondShares();
@@ -203,7 +202,7 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
         vm.startPrank(nodeOperator);
         vm.startSnapshotGas("VettedGate.addNodeOperatorETH");
         uint256 noId = vettedGate.addNodeOperatorETH{ value: amount }({
-            keysCount: keysCount,
+            keysCount: KEYS_COUNT,
             publicKeys: keys,
             signatures: signatures,
             managementProperties: NodeOperatorManagementProperties({
@@ -224,8 +223,8 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
     }
 
     function test_createNodeOperatorETH_revertWhen_InvalidProof() public assertInvariants {
-        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
-        uint256 amount = accounting.getBondAmountByKeysCount(keysCount, vettedGate.curveId());
+        (bytes memory keys, bytes memory signatures) = keysSignatures(KEYS_COUNT);
+        uint256 amount = accounting.getBondAmountByKeysCount(KEYS_COUNT, vettedGate.curveId());
         vm.deal(nodeOperator, amount);
 
         uint256 preTotalShares = accounting.totalBondShares();
@@ -235,7 +234,7 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
         vm.expectRevert(IMerkleGate.InvalidProof.selector);
         vm.prank(nodeOperator);
         vettedGate.addNodeOperatorETH{ value: amount }({
-            keysCount: keysCount,
+            keysCount: KEYS_COUNT,
             publicKeys: keys,
             signatures: signatures,
             managementProperties: NodeOperatorManagementProperties({
@@ -260,14 +259,14 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
 
         lido.approve(address(accounting), type(uint256).max);
 
-        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
+        (bytes memory keys, bytes memory signatures) = keysSignatures(KEYS_COUNT);
 
         uint256 shares = lido.getSharesByPooledEth(
-            accounting.getBondAmountByKeysCount(keysCount, vettedGate.curveId())
+            accounting.getBondAmountByKeysCount(KEYS_COUNT, vettedGate.curveId())
         );
         vm.startSnapshotGas("VettedGate.addNodeOperatorStETH");
         uint256 noId = vettedGate.addNodeOperatorStETH({
-            keysCount: keysCount,
+            keysCount: KEYS_COUNT,
             publicKeys: keys,
             signatures: signatures,
             managementProperties: NodeOperatorManagementProperties({
@@ -297,13 +296,13 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
 
         lido.approve(address(accounting), type(uint256).max);
 
-        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
+        (bytes memory keys, bytes memory signatures) = keysSignatures(KEYS_COUNT);
 
         bytes32[] memory proof = merkleTree.getProof(1);
 
         vm.expectRevert(IMerkleGate.InvalidProof.selector);
         vettedGate.addNodeOperatorStETH({
-            keysCount: keysCount,
+            keysCount: KEYS_COUNT,
             publicKeys: keys,
             signatures: signatures,
             managementProperties: NodeOperatorManagementProperties({
@@ -329,14 +328,14 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
         uint256 preTotalShares = accounting.totalBondShares();
         wstETH.approve(address(accounting), type(uint256).max);
 
-        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
-        uint256 wstETHAmount = wstETH.wrap(accounting.getBondAmountByKeysCount(keysCount, vettedGate.curveId()));
+        (bytes memory keys, bytes memory signatures) = keysSignatures(KEYS_COUNT);
+        uint256 wstETHAmount = wstETH.wrap(accounting.getBondAmountByKeysCount(KEYS_COUNT, vettedGate.curveId()));
 
         uint256 shares = lido.getSharesByPooledEth(wstETH.getStETHByWstETH(wstETHAmount));
 
         vm.startSnapshotGas("VettedGate.addNodeOperatorWstETH");
         uint256 noId = vettedGate.addNodeOperatorWstETH({
-            keysCount: keysCount,
+            keysCount: KEYS_COUNT,
             publicKeys: keys,
             signatures: signatures,
             managementProperties: NodeOperatorManagementProperties({
@@ -365,13 +364,13 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
         uint256 preTotalShares = accounting.totalBondShares();
         wstETH.approve(address(accounting), type(uint256).max);
 
-        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount);
+        (bytes memory keys, bytes memory signatures) = keysSignatures(KEYS_COUNT);
 
         bytes32[] memory proof = merkleTree.getProof(1);
 
         vm.expectRevert(IMerkleGate.InvalidProof.selector);
         vettedGate.addNodeOperatorWstETH({
-            keysCount: keysCount,
+            keysCount: KEYS_COUNT,
             publicKeys: keys,
             signatures: signatures,
             managementProperties: NodeOperatorManagementProperties({
@@ -392,7 +391,7 @@ contract VettedGateCreateNodeOperatorTest is IntegrationTestBase {
 
 contract VettedGateCreateNodeOperator10KeysTest is VettedGateCreateNodeOperatorTest {
     constructor() {
-        keysCount = 10;
+        KEYS_COUNT = 10;
     }
 }
 

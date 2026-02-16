@@ -98,7 +98,7 @@ abstract contract BondCurve is IBondCurve, Initializable {
         unchecked {
             if (curveId > $.bondCurves.length - 1) revert InvalidBondCurveId();
         }
-        // TODO: revert if the curve the same
+        if ($.operatorBondCurveId[nodeOperatorId] == curveId) revert SameBondCurveId();
         $.operatorBondCurveId[nodeOperatorId] = curveId;
         emit BondCurveSet(nodeOperatorId, curveId);
     }

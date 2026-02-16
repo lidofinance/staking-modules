@@ -19,7 +19,6 @@ import { IVerifier } from "../../src/interfaces/IVerifier.sol";
 
 import { JsonObj, Json } from "../utils/Json.sol";
 import { Slot } from "../../src/lib/Types.sol";
-import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 
 abstract contract DeployCSMImplementationsBase is DeployBase {
     address public gateSealV3;

@@ -8,11 +8,11 @@ import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgr
 import { BondCore } from "./abstract/BondCore.sol";
 import { BondCurve } from "./abstract/BondCurve.sol";
 import { BondLock } from "./abstract/BondLock.sol";
+import { FeeSplits } from "./abstract/FeeSplits.sol";
 import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
 
 import { PausableUntil } from "./lib/utils/PausableUntil.sol";
 import { AssetRecovererLib } from "./lib/AssetRecovererLib.sol";
-import { FeeSplits } from "./lib/FeeSplits.sol";
 
 import { IStakingModule } from "./interfaces/IStakingModule.sol";
 import { IBaseModule, NodeOperatorManagementProperties } from "./interfaces/IBaseModule.sol";
@@ -28,6 +28,7 @@ contract Accounting is
     BondCore,
     BondCurve,
     BondLock,
+    FeeSplits,
     PausableUntil,
     AccessControlEnumerableUpgradeable,
     AssetRecoverer
@@ -45,9 +46,6 @@ contract Accounting is
 
     mapping(uint256 nodeOperatorId => address rewardsClaimer) internal _rewardsClaimers;
     address public chargePenaltyRecipient;
-
-    mapping(uint256 nodeOperatorId => FeeSplit[]) internal _feeSplits;
-    mapping(uint256 nodeOperatorId => uint256 pendingSharesToSplit) internal _pendingSharesToSplit;
 
     modifier onlyModule() {
         _onlyModule();
@@ -100,8 +98,7 @@ contract Accounting is
 
         LIDO.approve(address(WSTETH), type(uint256).max);
         LIDO.approve(address(WITHDRAWAL_QUEUE), type(uint256).max);
-        // TODO put burner into an immutable as it's upgradeable now
-        LIDO.approve(LIDO_LOCATOR.burner(), type(uint256).max);
+        LIDO.approve(address(BURNER), type(uint256).max);
     }
 
     /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing version 2 deployment.
@@ -131,22 +128,20 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function setFeeSplits(
+    function updateFeeSplits(
         uint256 nodeOperatorId,
         FeeSplit[] calldata feeSplits,
         uint256 cumulativeFeeShares,
         bytes32[] calldata rewardsProof
     ) external {
         _onlyNodeOperatorOwner(nodeOperatorId);
-        FeeSplits.setFeeSplits({
-            feeSplitsStorage: _feeSplits,
-            pendingSharesToSplitStorage: _pendingSharesToSplit,
-            feeDistributor: FEE_DISTRIBUTOR,
-            nodeOperatorId: nodeOperatorId,
-            cumulativeFeeShares: cumulativeFeeShares,
-            rewardsProof: rewardsProof,
-            feeSplits: feeSplits
-        });
+        if (
+            FeeSplits.hasSplits(nodeOperatorId) &&
+            FEE_DISTRIBUTOR.getFeesToDistribute(nodeOperatorId, cumulativeFeeShares, rewardsProof) != 0
+        ) {
+            revert FeeSplitsChangeWithUndistributedRewards();
+        }
+        FeeSplits._updateFeeSplits(nodeOperatorId, feeSplits);
     }
 
     /// @inheritdoc IAccounting
@@ -354,29 +349,13 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    // TODO can be removed due to the fact that burner is upgradeable now
-    function renewBurnerAllowance() external {
-        LIDO.approve(LIDO_LOCATOR.burner(), type(uint256).max);
-    }
-
-    /// @inheritdoc IAccounting
     function getInitializedVersion() external view returns (uint64) {
         return _getInitializedVersion();
     }
 
     /// @inheritdoc IAccounting
-    function getFeeSplits(uint256 nodeOperatorId) external view returns (FeeSplit[] memory) {
-        return _feeSplits[nodeOperatorId];
-    }
-
-    /// @inheritdoc IAccounting
     function getCustomRewardsClaimer(uint256 nodeOperatorId) external view returns (address) {
         return _rewardsClaimers[nodeOperatorId];
-    }
-
-    /// @inheritdoc IAccounting
-    function getPendingSharesToSplit(uint256 nodeOperatorId) external view returns (uint256) {
-        return _pendingSharesToSplit[nodeOperatorId];
     }
 
     /// @inheritdoc IAccounting
@@ -452,32 +431,42 @@ contract Accounting is
         uint256 cumulativeFeeShares,
         bytes32[] calldata rewardsProof
     ) internal returns (uint256 claimableShares) {
-        bool hasSplits = FeeSplits.hasSplits(_feeSplits, nodeOperatorId);
+        bool hasSplits = FeeSplits.hasSplits(nodeOperatorId);
         if (rewardsProof.length != 0) {
             uint256 distributed = FEE_DISTRIBUTOR.distributeFees(nodeOperatorId, cumulativeFeeShares, rewardsProof);
             if (distributed != 0) {
                 BondCore._creditBondShares(nodeOperatorId, distributed);
-                if (hasSplits) _pendingSharesToSplit[nodeOperatorId] += distributed;
+                // NOTE: All rewards are subject to a split set as of the rewards allocation date.
+                //       Any penalties in favour of the protocol should not reduce the amount of the rewards to be split.
+                //       Any rewards used to cover protocol penalties should be split later from the new rewards
+                //       or the Node Operator bond during claim operations.
+                if (hasSplits) FeeSplits._increasePendingSharesToSplit(nodeOperatorId, distributed);
             }
         }
         claimableShares = _getClaimableBondShares(nodeOperatorId);
-        if (hasSplits && !isPaused()) {
-            uint256 transferredShares = FeeSplits.splitAndTransferFees({
-                feeSplitsStorage: _feeSplits,
-                pendingSharesToSplitStorage: _pendingSharesToSplit,
-                lido: LIDO,
-                nodeOperatorId: nodeOperatorId,
-                maxSharesToSplit: claimableShares
-            });
-            if (transferredShares != 0) {
-                BondCore._unsafeReduceBond(nodeOperatorId, transferredShares);
-                // @dev It is safe to use unchecked here since `transferredShares` is always <= `claimableShares`
-                unchecked {
-                    claimableShares -= transferredShares;
+        if (hasSplits && claimableShares != 0 && !isPaused()) {
+            (SplitTransfer[] memory transfers, uint256 sharesToSplit) = FeeSplits.getFeeSplitTransfers(
+                nodeOperatorId,
+                claimableShares
+            );
+            uint256 transferredShares;
+            for (uint256 i; i < transfers.length; ++i) {
+                uint256 shares = transfers[i].shares;
+                if (shares != 0) {
+                    LIDO.transferShares(transfers[i].recipient, shares);
+                    transferredShares += shares;
                 }
             }
+            // NOTE: `sharesToSplit` is the whole split operation base. It includes
+            //       the Node Operator's retained shares (split remainder), so we
+            //       must decrease pending by the base, not by transferred shares sum.
+            FeeSplits._decreasePendingSharesToSplit(nodeOperatorId, sharesToSplit);
+            BondCore._unsafeReduceBond(nodeOperatorId, transferredShares);
+            // NOTE: It is safe to use unchecked here since `transferredShares` is always <= `claimableShares`
+            unchecked {
+                claimableShares -= transferredShares;
+            }
         }
-        // TODO emit events for _pendingSharesToSplit changes or not
     }
 
     function _unwrapPermitIfRequired(address token, address from, PermitInput calldata permit) internal {

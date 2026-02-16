@@ -14,7 +14,6 @@ import { IExitPenalties } from "../interfaces/IExitPenalties.sol";
 import { NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "../interfaces/IBaseModule.sol";
 import { IBaseModule } from "../interfaces/IBaseModule.sol";
 
-import { DepositQueueLib } from "../lib/DepositQueueLib.sol";
 import { SigningKeys } from "../lib/SigningKeys.sol";
 import { GeneralPenalty } from "../lib/GeneralPenaltyLib.sol";
 import { PausableUntil } from "../lib/utils/PausableUntil.sol";
@@ -24,28 +23,7 @@ import { NodeOperatorOps } from "../lib/NodeOperatorOps.sol";
 import { OperatorTracker } from "../lib/OperatorTracker.sol";
 
 import { AssetRecoverer } from "./AssetRecoverer.sol";
-
-abstract contract ModuleLinearStorage {
-    /// @dev Having this mapping here to preserve the current layout of the storage of the CSModule.
-    mapping(uint256 priority => DepositQueueLib.Queue queue) internal _depositQueueByPriority;
-
-    bytes32 internal __freeSlot1;
-    bytes32 internal __freeSlot2;
-    /// @dev Total number of withdrawn validators reported for the module.
-    uint256 internal _totalWithdrawnValidators;
-    mapping(uint256 noKeyIndexPacked => uint256) internal _keyAddedBalances;
-
-    uint256 internal _nonce;
-    mapping(uint256 nodeOperatorId => NodeOperator) internal _nodeOperators;
-    /// @dev see _keyPointer function for details of noKeyIndexPacked structure
-    mapping(uint256 noKeyIndexPacked => bool) internal _isValidatorWithdrawn;
-    mapping(uint256 noKeyIndexPacked => bool) internal _isValidatorSlashed;
-
-    uint64 internal _totalDepositedValidators;
-    uint64 internal _totalExitedValidators;
-    uint64 internal _depositableValidatorsCount;
-    uint64 internal _nodeOperatorsCount;
-}
+import { ModuleLinearStorage } from "./ModuleLinearStorage.sol";
 
 abstract contract BaseModule is
     IBaseModule,
@@ -109,27 +87,6 @@ abstract contract BaseModule is
     function pauseFor(uint256 duration) external {
         _checkRole(PAUSE_ROLE);
         _pauseFor(duration);
-    }
-
-    /// @inheritdoc IStakingModule
-    function getStakingModuleSummary()
-        external
-        view
-        virtual
-        returns (uint256 totalExitedValidators, uint256 totalDepositedValidators, uint256 depositableValidatorsCount)
-    {
-        totalExitedValidators = _totalExitedValidators;
-        totalDepositedValidators = _totalDepositedValidators;
-        depositableValidatorsCount = _depositableValidatorsCount;
-    }
-
-    /// @inheritdoc IStakingModule
-    /// @dev Changing the WC means that the current deposit data in the queue is not valid anymore and can't be deposited.
-    ///      If there are depositable validators in the queue, the method should revert to prevent deposits with invalid
-    ///      withdrawal credentials.
-    function onWithdrawalCredentialsChanged() external {
-        _checkStakingRouterRole();
-        if (_depositableValidatorsCount > 0) revert DepositableKeysWithUnsupportedWithdrawalCredentials();
     }
 
     /// @inheritdoc IBaseModule
@@ -277,21 +234,6 @@ abstract contract BaseModule is
         _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: false });
         _incrementModuleNonce();
     }
-
-    /// @inheritdoc IStakingModule
-    /// @dev This method is not used in the module, hence it does nothing
-    /// @dev NOTE: No role checks because of empty body to save bytecode.
-    function onExitedAndStuckValidatorsCountsUpdated() external {
-        // solhint-disable-previous-line no-empty-blocks
-        // Nothing to do, rewards are distributed by a performance oracle.
-    }
-
-    /// @dev DEPRECATED: Should be removed in the future versions.
-    /// @inheritdoc IStakingModule
-    function unsafeUpdateValidatorsCount(
-        uint256 /* nodeOperatorId */,
-        uint256 /* exitedValidatorsKeysCount */
-    ) external {}
 
     /// @inheritdoc IStakingModule
     function decreaseVettedSigningKeysCount(
@@ -449,6 +391,38 @@ abstract contract BaseModule is
         _exitPenalties().processTriggeredExit(nodeOperatorId, publicKey, elWithdrawalRequestFeePaid, exitType);
     }
 
+    /// @inheritdoc IStakingModule
+    /// @dev This method is not used in the module since rewards are distributed by a performance oracle,
+    ///      hence it does nothing
+    // solhint-disable-next-line no-empty-blocks
+    function onExitedAndStuckValidatorsCountsUpdated() external view {}
+
+    /// @dev DEPRECATED: Should be removed in the future versions.
+    /// @inheritdoc IStakingModule
+    // solhint-disable-next-line no-empty-blocks
+    function unsafeUpdateValidatorsCount(uint256, uint256) external view {}
+
+    /// @inheritdoc IStakingModule
+    function getStakingModuleSummary()
+        external
+        view
+        virtual
+        returns (uint256 totalExitedValidators, uint256 totalDepositedValidators, uint256 depositableValidatorsCount)
+    {
+        totalExitedValidators = _totalExitedValidators;
+        totalDepositedValidators = _totalDepositedValidators;
+        depositableValidatorsCount = _depositableValidatorsCount;
+    }
+
+    /// @inheritdoc IStakingModule
+    /// @dev Changing the WC means that the current deposit data in the queue is not valid anymore and can't be deposited.
+    ///      If there are depositable validators in the queue, the method should revert to prevent deposits with invalid
+    ///      withdrawal credentials.
+    function onWithdrawalCredentialsChanged() external view {
+        _checkStakingRouterRole();
+        if (_depositableValidatorsCount > 0) revert DepositableKeysWithUnsupportedWithdrawalCredentials();
+    }
+
     /// @inheritdoc IBaseModule
     function getInitializedVersion() external view returns (uint64) {
         return _getInitializedVersion();
@@ -599,6 +573,11 @@ abstract contract BaseModule is
         return _parametersRegistry().getAllowedExitDelay(_getBondCurveId(nodeOperatorId));
     }
 
+    /// @inheritdoc IBaseModule
+    function getKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256) {
+        return _keyAddedBalances[_keyPointer(nodeOperatorId, keyIndex)];
+    }
+
     // solhint-disable-next-line func-name-mixedcase
     function __BaseModule_init(address admin) internal {
         if (admin == address(0)) revert ZeroAdminAddress();
@@ -644,11 +623,6 @@ abstract contract BaseModule is
         unchecked {
             emit NonceChanged(++_nonce);
         }
-    }
-
-    /// @inheritdoc IBaseModule
-    function getKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256) {
-        return _keyAddedBalances[_keyPointer(nodeOperatorId, keyIndex)];
     }
 
     /// @dev Prevents reactivation of a Node Operator after an uncovered penalty by

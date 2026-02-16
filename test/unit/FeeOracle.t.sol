@@ -8,7 +8,6 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { UnstructuredStorage } from "src/lib/UnstructuredStorage.sol";
 import { HashConsensus } from "src/lib/base-oracle/HashConsensus.sol";
-import { BaseOracle } from "src/lib/base-oracle/BaseOracle.sol";
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { DistributorMock } from "../helpers/mocks/DistributorMock.sol";
 import { ValidatorStrikesMock } from "../helpers/mocks/ValidatorStrikesMock.sol";
