@@ -290,16 +290,13 @@ contract Accounting is
         (uint256 currentBond, uint256 requiredBond) = getBondSummary(nodeOperatorId);
         // `requiredBond` already includes `lockedAmount`
         uint256 requiredBondWithoutLock = requiredBond - lockedAmount;
-        if (currentBond < requiredBondWithoutLock) return 0;
+        if (currentBond <= requiredBondWithoutLock) return 0;
 
         uint256 maxCompensatableAmount = currentBond - requiredBondWithoutLock;
         compensatedAmount = lockedAmount < maxCompensatableAmount ? lockedAmount : maxCompensatableAmount;
-
-        if (compensatedAmount > 0) {
-            BondCore._burn(nodeOperatorId, compensatedAmount);
-            BondLock._unlock(nodeOperatorId, compensatedAmount);
-            emit BondLockCompensated(nodeOperatorId, compensatedAmount);
-        }
+        BondCore._burn(nodeOperatorId, compensatedAmount);
+        BondLock._unlock(nodeOperatorId, compensatedAmount);
+        emit BondLockCompensated(nodeOperatorId, compensatedAmount);
     }
 
     /// @inheritdoc IAccounting

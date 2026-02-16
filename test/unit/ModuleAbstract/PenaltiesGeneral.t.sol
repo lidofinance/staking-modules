@@ -448,6 +448,23 @@ abstract contract ModuleCompensateGeneralDelayedPenalty is ModuleFixtures {
         assertEq(module.getNonce(), nonce);
     }
 
+    function test_compensateGeneralDelayedPenalty_revertWhen_NothingCompensated() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        uint256 amount = 1 ether;
+        uint256 fine = module.PARAMETERS_REGISTRY().getGeneralDelayedPenaltyAdditionalFine(0);
+        module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), amount, "Test penalty");
+
+        uint256 nonce = module.getNonce();
+
+        vm.expectRevert(IBaseModule.NothingCompensated.selector);
+        vm.prank(nodeOperator);
+        module.compensateGeneralDelayedPenalty(noId);
+
+        BondLock.BondLockData memory lock = accounting.getLockedBondInfo(noId);
+        assertEq(lock.amount, fine + amount);
+        assertEq(module.getNonce(), nonce);
+    }
+
     function test_compensateGeneralDelayedPenalty_depositableValidatorsChanged() public {
         uint256 noId = createNodeOperator(2);
         uint256 amount = 1 ether;

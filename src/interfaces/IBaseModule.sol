@@ -122,6 +122,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     error ZeroParametersRegistryAddress();
     error ZeroModuleType();
     error ZeroPenaltyType();
+    error NothingCompensated();
 
     function PAUSE_ROLE() external view returns (bytes32);
 

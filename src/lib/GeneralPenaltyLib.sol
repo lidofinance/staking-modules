@@ -69,7 +69,7 @@ library GeneralPenalty {
 
         uint256 compensatedAmount = accounting.compensateLockedBond(nodeOperatorId);
 
-        if (compensatedAmount == 0) return;
+        if (compensatedAmount == 0) revert IBaseModule.NothingCompensated();
 
         emit IBaseModule.GeneralDelayedPenaltyCompensated(nodeOperatorId, compensatedAmount);
 
