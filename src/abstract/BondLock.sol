@@ -73,13 +73,15 @@ abstract contract BondLock is IBondLock, Initializable {
 
     /// @dev Lock bond amount for the given Node Operator until the period.
     function _lock(uint256 nodeOperatorId, uint256 amount) internal {
-        BondLockStorage storage $ = _getBondLockStorage();
         if (amount == 0) revert InvalidBondLockAmount();
+
+        BondLockStorage storage $ = _getBondLockStorage();
         BondLockData memory lock = $.bondLock[nodeOperatorId];
-        if (lock.until > block.timestamp) amount += lock.amount;
+        uint256 currentLockUntil = lock.until;
+        if (currentLockUntil > block.timestamp) amount += lock.amount;
         uint256 until = block.timestamp + $.bondLockPeriod;
-        if (lock.until > until) until = lock.until;
-        _changeBondLock({ nodeOperatorId: nodeOperatorId, amount: amount, until: until });
+        if (currentLockUntil > until) until = currentLockUntil;
+        _changeBondLock(nodeOperatorId, amount, until);
     }
 
     /// @dev Unlock the locked bond amount for the given Node Operator without changing the lock period

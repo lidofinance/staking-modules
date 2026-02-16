@@ -316,8 +316,8 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     ///      Method call can result in the remaining bond being lower than the locked bond.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Amount to penalize in ETH (stETH)
-    /// @return fullyBurned True if the bond was fully burned, false otherwise
-    function penalize(uint256 nodeOperatorId, uint256 amount) external returns (bool fullyBurned);
+    /// @return penaltyCovered True if the penalty was fully covered by bond burn, false otherwise
+    function penalize(uint256 nodeOperatorId, uint256 amount) external returns (bool penaltyCovered);
 
     /// @notice Charge fee from bond by transferring stETH shares of the given Node Operator to the charge recipient
     /// @dev Charge confiscation has a priority over the locked bond.
@@ -326,8 +326,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     /// @param amount Amount to charge in ETH (stETH)
     function chargeFee(uint256 nodeOperatorId, uint256 amount) external;
 
-    /// @notice Pull fees (if proof provided) from FeeDistributor to the Node Operator's bond and split pending according to configured fee splits.
-    /// @dev Permissionless method. Can be called before penalty application to ensure that rewards are also penalized and split.
+    /// @notice Pull fees (if proof provided) from FeeDistributor to the Node Operator's bond and split according to configured fee splits.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param cumulativeFeeShares Cumulative fee stETH shares for the Node Operator
     /// @param rewardsProof Merkle proof of the rewards
