@@ -4,7 +4,6 @@
 pragma solidity 0.8.33;
 
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { BondCore } from "./abstract/BondCore.sol";
 import { BondCurve } from "./abstract/BondCurve.sol";
@@ -293,7 +292,8 @@ contract Accounting is
         uint256 requiredBondWithoutLock = requiredBond - lockedAmount;
         if (currentBond < requiredBondWithoutLock) return 0;
 
-        compensatedAmount = Math.min(lockedAmount, currentBond - requiredBondWithoutLock);
+        uint256 maxCompensatableAmount = currentBond - requiredBondWithoutLock;
+        compensatedAmount = lockedAmount < maxCompensatableAmount ? lockedAmount : maxCompensatableAmount;
 
         if (compensatedAmount > 0) {
             BondCore._burn(nodeOperatorId, compensatedAmount);

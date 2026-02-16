@@ -259,7 +259,7 @@ contract ClaimableBondTest is RewardsBaseTest {
     }
 }
 
-contract lockBondTest is BaseTest {
+contract LockBondTest is BaseTest {
     function test_setBondLockPeriod() public {
         vm.prank(admin);
         accounting.setBondLockPeriod(200 days);
