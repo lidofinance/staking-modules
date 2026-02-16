@@ -82,11 +82,7 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
                 parametersRegistry: address(parametersRegistry)
             });
 
-            ExitPenalties exitPenaltiesImpl = new ExitPenalties(
-                address(csm),
-                address(parametersRegistry),
-                address(strikes)
-            );
+            ExitPenalties exitPenaltiesImpl = new ExitPenalties(address(csm), address(strikes));
 
             uint256 stakingModuleId = Ejector(address(ejector)).STAKING_MODULE_ID();
 

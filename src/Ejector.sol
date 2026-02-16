@@ -13,7 +13,7 @@ import { SigningKeys } from "./lib/SigningKeys.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "./lib/TransientUintUintMapLib.sol";
 
 import { IEjector } from "./interfaces/IEjector.sol";
-import { ICSModule } from "./interfaces/ICSModule.sol";
+import { IBaseModule } from "./interfaces/IBaseModule.sol";
 import { ITriggerableWithdrawalsGateway, ValidatorData } from "./interfaces/ITriggerableWithdrawalsGateway.sol";
 
 contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil, AssetRecoverer {
@@ -22,7 +22,7 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
 
     uint256 public immutable STAKING_MODULE_ID;
-    ICSModule public immutable MODULE;
+    IBaseModule public immutable MODULE;
     address public immutable STRIKES;
 
     modifier onlyStrikes() {
@@ -34,14 +34,16 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
         if (module == address(0)) revert ZeroModuleAddress();
         if (strikes == address(0)) revert ZeroStrikesAddress();
         if (admin == address(0)) revert ZeroAdminAddress();
+        // TODO: validate stakingModuleId via StakingRouter. Get address by ID and check if it's the same as module address.
 
         STRIKES = strikes;
-        MODULE = ICSModule(module);
+        MODULE = IBaseModule(module);
         STAKING_MODULE_ID = stakingModuleId;
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
+    // TODO: Create abstract contract PausableWithRoles and move pause/resume logic there.
     /// @inheritdoc IEjector
     function resume() external onlyRole(RESUME_ROLE) {
         _resume();
@@ -52,6 +54,7 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
         _pauseFor(duration);
     }
 
+    // TODO: Remove this method in favour of voluntaryEjectByArray.
     /// @inheritdoc IEjector
     function voluntaryEject(
         uint256 nodeOperatorId,
@@ -112,6 +115,7 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
         );
     }
 
+    // TODO: Rename to voluntaryEject.
     /// @dev Additional method for non-sequential keys to save gas and decrease fee amount compared
     /// to separate transactions.
     /// @inheritdoc IEjector
@@ -131,19 +135,20 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
         ValidatorData[] memory exitsData = new ValidatorData[](keyIndices.length);
         TransientUintUintMap seen = TransientUintUintMapLib.create();
         for (uint256 i = 0; i < keyIndices.length; i++) {
-            // Skip duplicate keys in the input array
-            if (seen.get(keyIndices[i]) != 0) revert DuplicateKeyIndex();
-            seen.set(keyIndices[i], 1);
+            uint256 keyIndex = keyIndices[i];
+            // Revert in case of duplicate keys in the input array
+            if (seen.get(keyIndex) != 0) revert DuplicateKeyIndex();
+            seen.set(keyIndex, 1);
 
             // A key must be deposited to prevent ejecting unvetted keys that can intersect with
             // other modules.
-            if (keyIndices[i] >= totalDepositedKeys) revert SigningKeysInvalidOffset();
+            if (keyIndex >= totalDepositedKeys) revert SigningKeysInvalidOffset();
             // A key must be non-withdrawn to restrict unlimited exit requests consuming sanity
             // checker limits, although a deposited key can be requested to exit multiple times.
             // But, it will eventually be withdrawn, so potentially malicious behaviour stops when
             // there are no active keys available
-            if (MODULE.isValidatorWithdrawn(nodeOperatorId, keyIndices[i])) revert AlreadyWithdrawn();
-            bytes memory pubkey = MODULE.getSigningKeys(nodeOperatorId, keyIndices[i], 1);
+            if (MODULE.isValidatorWithdrawn(nodeOperatorId, keyIndex)) revert AlreadyWithdrawn();
+            bytes memory pubkey = MODULE.getSigningKeys(nodeOperatorId, keyIndex, 1);
             exitsData[i] = ValidatorData({
                 stakingModuleId: STAKING_MODULE_ID,
                 nodeOperatorId: nodeOperatorId,
@@ -170,6 +175,7 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
         uint256 keyIndex,
         address refundRecipient
     ) external payable whenResumed onlyStrikes {
+        if (refundRecipient == address(0)) revert ZeroRefundRecipient();
         // A key must be deposited to prevent ejecting unvetted keys that can intersect with
         // other modules.
         if (keyIndex >= MODULE.getNodeOperator(nodeOperatorId).totalDepositedKeys) revert SigningKeysInvalidOffset();
@@ -178,7 +184,6 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableUntil,
         // eventually be withdrawn, so potentially malicious behaviour stops when there are no
         // active keys available
         if (MODULE.isValidatorWithdrawn(nodeOperatorId, keyIndex)) revert AlreadyWithdrawn();
-        if (refundRecipient == address(0)) revert ZeroRefundRecipient();
 
         ValidatorData[] memory exitsData = new ValidatorData[](1);
         bytes memory pubkey = MODULE.getSigningKeys(nodeOperatorId, keyIndex, 1);

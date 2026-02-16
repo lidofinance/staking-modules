@@ -15,6 +15,8 @@ import { IBaseModule, NodeOperatorManagementProperties } from "./interfaces/IBas
 import { IMerkleGate } from "./interfaces/IMerkleGate.sol";
 import { IVettedGate } from "./interfaces/IVettedGate.sol";
 
+// TODO: Create abstract MerkleGate contract and inherit both CuratedGate and VettedGate from it.
+// TODO: Check that after moving to the abstract contract storage layout is not broken and there are no collisions.
 contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, PausableUntil, AssetRecoverer {
     bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
     bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
@@ -40,6 +42,7 @@ contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, Pausable
 
     mapping(address => bool) internal _consumedAddresses;
 
+    // TODO: Remove referral program code since it was never used.
     /////////////////////////////////
     /// Optional referral program ///
     /////////////////////////////////
