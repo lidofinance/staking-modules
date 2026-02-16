@@ -7,6 +7,7 @@ import { CuratedGate } from "./CuratedGate.sol";
 import { OssifiableProxy } from "./lib/proxy/OssifiableProxy.sol";
 import { ICuratedGateFactory } from "./interfaces/ICuratedGateFactory.sol";
 
+// TODO: Transform to a generic MerkleGateFactory and inherit both CuratedGateFactory and VettedGateFactory from it.
 contract CuratedGateFactory is ICuratedGateFactory {
     address public immutable CURATED_GATE_IMPL;
 

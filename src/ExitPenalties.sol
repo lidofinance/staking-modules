@@ -21,7 +21,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
     IAccounting public immutable ACCOUNTING;
     address public immutable STRIKES;
 
-    mapping(bytes32 keyPointer => ExitPenaltyInfo) private _exitPenaltyInfo;
+    mapping(bytes32 keyPointer => ExitPenaltyInfo info) private _exitPenaltyInfo;
 
     modifier onlyModule() {
         _onlyModule();
@@ -33,13 +33,12 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
         _;
     }
 
-    constructor(address module, address parametersRegistry, address strikes) {
+    constructor(address module, address strikes) {
         if (module == address(0)) revert ZeroModuleAddress();
-        if (parametersRegistry == address(0)) revert ZeroParametersRegistryAddress();
         if (strikes == address(0)) revert ZeroStrikesAddress();
 
         MODULE = IBaseModule(module);
-        PARAMETERS_REGISTRY = IParametersRegistry(parametersRegistry);
+        PARAMETERS_REGISTRY = MODULE.PARAMETERS_REGISTRY();
         ACCOUNTING = MODULE.ACCOUNTING();
         STRIKES = strikes;
     }
@@ -55,8 +54,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
         uint256 allowedExitDelay = PARAMETERS_REGISTRY.getAllowedExitDelay(curveId);
         if (eligibleToExitInSec <= allowedExitDelay) revert ValidatorExitDelayNotApplicable();
 
-        bytes32 keyPointer = _keyPointer(nodeOperatorId, publicKey);
-        ExitPenaltyInfo storage exitPenaltyInfo = _exitPenaltyInfo[keyPointer];
+        ExitPenaltyInfo storage exitPenaltyInfo = _exitPenaltyInfo[_keyPointer(nodeOperatorId, publicKey)];
         if (exitPenaltyInfo.delayFee.isValue) return;
 
         uint256 delayFee = PARAMETERS_REGISTRY.getExitDelayFee(curveId);
@@ -73,8 +71,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
     ) external onlyModule {
         if (exitType == VOLUNTARY_EXIT_TYPE_ID) return;
 
-        bytes32 keyPointer = _keyPointer(nodeOperatorId, publicKey);
-        ExitPenaltyInfo storage exitPenaltyInfo = _exitPenaltyInfo[keyPointer];
+        ExitPenaltyInfo storage exitPenaltyInfo = _exitPenaltyInfo[_keyPointer(nodeOperatorId, publicKey)];
         // don't update the fee if it was already set to prevent hypothetical manipulations
         //    with double reporting to get lower/higher fee.
         if (exitPenaltyInfo.elWithdrawalRequestFee.isValue) return;
@@ -95,8 +92,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
 
     /// @inheritdoc IExitPenalties
     function processStrikesReport(uint256 nodeOperatorId, bytes calldata publicKey) external onlyStrikes {
-        bytes32 keyPointer = _keyPointer(nodeOperatorId, publicKey);
-        ExitPenaltyInfo storage exitPenaltyInfo = _exitPenaltyInfo[keyPointer];
+        ExitPenaltyInfo storage exitPenaltyInfo = _exitPenaltyInfo[_keyPointer(nodeOperatorId, publicKey)];
         if (exitPenaltyInfo.strikesPenalty.isValue) return;
 
         uint256 curveId = ACCOUNTING.getBondCurveId(nodeOperatorId);
@@ -117,8 +113,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
         uint256 curveId = ACCOUNTING.getBondCurveId(nodeOperatorId);
         uint256 allowedExitDelay = PARAMETERS_REGISTRY.getAllowedExitDelay(curveId);
         if (eligibleToExitInSec <= allowedExitDelay) return false;
-        bytes32 keyPointer = _keyPointer(nodeOperatorId, publicKey);
-        bool isPenaltySet = _exitPenaltyInfo[keyPointer].delayFee.isValue;
+        bool isPenaltySet = _exitPenaltyInfo[_keyPointer(nodeOperatorId, publicKey)].delayFee.isValue;
         return !isPenaltySet;
     }
 
@@ -127,8 +122,7 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
         uint256 nodeOperatorId,
         bytes calldata publicKey
     ) external view returns (ExitPenaltyInfo memory) {
-        bytes32 keyPointer = _keyPointer(nodeOperatorId, publicKey);
-        return _exitPenaltyInfo[keyPointer];
+        return _exitPenaltyInfo[_keyPointer(nodeOperatorId, publicKey)];
     }
 
     function _onlyModule() internal view {
@@ -139,7 +133,10 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
         if (msg.sender != STRIKES) revert SenderIsNotStrikes();
     }
 
+    // TODO: Create key pointer lib
     function _keyPointer(uint256 nodeOperatorId, bytes calldata publicKey) internal pure returns (bytes32) {
         return keccak256(abi.encode(nodeOperatorId, publicKey));
     }
 }
+
+// Last review ended here

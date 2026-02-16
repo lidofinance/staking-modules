@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { ICSModule } from "./ICSModule.sol";
+import { IBaseModule } from "./IBaseModule.sol";
 import { IExitTypes } from "./IExitTypes.sol";
 import { ITriggerableWithdrawalsGateway } from "./ITriggerableWithdrawalsGateway.sol";
 
@@ -32,7 +32,7 @@ interface IEjector is IExitTypes {
 
     function STAKING_MODULE_ID() external view returns (uint256);
 
-    function MODULE() external view returns (ICSModule);
+    function MODULE() external view returns (IBaseModule);
 
     function STRIKES() external view returns (address);
 
