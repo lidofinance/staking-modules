@@ -207,11 +207,13 @@ library NOAddresses {
         if (isSameManagerAddress && isSameRewardAddress) revert INOAddresses.SameAddress();
         if (!isSameManagerAddress) {
             no.managerAddress = newManagerAddress;
+            if (no.proposedManagerAddress != address(0)) delete no.proposedManagerAddress;
 
             emit INOAddresses.NodeOperatorManagerAddressChanged(nodeOperatorId, oldManagerAddress, newManagerAddress);
         }
         if (!isSameRewardAddress) {
             no.rewardAddress = newRewardAddress;
+            if (no.proposedRewardAddress != address(0)) delete no.proposedRewardAddress;
 
             emit INOAddresses.NodeOperatorRewardAddressChanged(nodeOperatorId, oldRewardAddress, newRewardAddress);
         }
