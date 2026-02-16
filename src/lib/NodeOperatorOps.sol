@@ -12,6 +12,7 @@ import { IAccounting } from "../interfaces/IAccounting.sol";
 import { CuratedDepositAllocator } from "./allocator/CuratedDepositAllocator.sol";
 import { ValidatorCountsReport } from "./ValidatorCountsReport.sol";
 import { WithdrawnValidatorLib } from "./WithdrawnValidatorLib.sol";
+import { KeyPointerLib } from "./KeyPointerLib.sol";
 
 /// @dev The library is used to reduce BaseModule bytecode size.
 library NodeOperatorOps {
@@ -75,6 +76,7 @@ library NodeOperatorOps {
 
     function updateExitedValidatorsCount(
         mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint256 nodeOperatorsCount,
         uint64 totalExitedValidators,
         bytes calldata nodeOperatorIds,
         bytes calldata exitedValidatorsCounts
@@ -87,7 +89,7 @@ library NodeOperatorOps {
                 exitedValidatorsCounts,
                 i
             );
-
+            _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
             NodeOperator storage no = nodeOperators[nodeOperatorId];
             uint32 totalExitedKeys = no.totalExitedKeys;
             unchecked {
@@ -110,6 +112,7 @@ library NodeOperatorOps {
 
     function decreaseVettedSigningKeysCount(
         mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint256 nodeOperatorsCount,
         bytes calldata nodeOperatorIds,
         bytes calldata vettedSigningKeysCounts
     ) external {
@@ -122,6 +125,7 @@ library NodeOperatorOps {
                 vettedSigningKeysCounts,
                 i
             );
+            _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
 
             NodeOperator storage no = nodeOperators[nodeOperatorId];
 
@@ -144,16 +148,18 @@ library NodeOperatorOps {
 
     function increaseKeyAddedBalance(
         mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint256 nodeOperatorsCount,
         mapping(uint256 => bool) storage isValidatorWithdrawn,
         mapping(uint256 => uint256) storage keyAddedBalances,
         uint256 nodeOperatorId,
         uint256 keyIndex,
         uint256 incrementWei
     ) external {
+        _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
         NodeOperator storage no = nodeOperators[nodeOperatorId];
         if (keyIndex >= no.totalDepositedKeys) revert IBaseModule.SigningKeysInvalidOffset();
 
-        uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
+        uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
         if (isValidatorWithdrawn[pointer]) revert IBaseModule.InvalidWithdrawnValidatorInfo();
 
         _increaseKeyAddedBalance(keyAddedBalances, nodeOperatorId, keyIndex, incrementWei);
@@ -223,7 +229,7 @@ library NodeOperatorOps {
         cappedTopUpLimits = new uint256[](len);
         uint256 cap = _keyAddedBalanceCap();
         for (uint256 i; i < len; ++i) {
-            uint256 keyAddedBalance = keyAddedBalances[_keyPointer(operatorIds[i], keyIndices[i])];
+            uint256 keyAddedBalance = keyAddedBalances[KeyPointerLib.keyPointer(operatorIds[i], keyIndices[i])];
             uint256 remaining = keyAddedBalance >= cap ? 0 : cap - keyAddedBalance;
             cappedTopUpLimits[i] = Math.min(topUpLimits[i], remaining);
         }
@@ -287,7 +293,7 @@ library NodeOperatorOps {
         uint256 keyIndex,
         uint256 incrementWei
     ) internal {
-        uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
+        uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
         uint256 current = keyAddedBalances[pointer];
         uint256 cap = _keyAddedBalanceCap();
         if (current == cap) return;
@@ -296,8 +302,10 @@ library NodeOperatorOps {
         emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, updatedBalance);
     }
 
-    function _keyPointer(uint256 nodeOperatorId, uint256 keyIndex) private pure returns (uint256) {
-        return (nodeOperatorId << 128) | keyIndex;
+    function _onlyExistingNodeOperator(uint256 nodeOperatorId, uint256 nodeOperatorsCount) internal pure {
+        if (nodeOperatorId < nodeOperatorsCount) return;
+
+        revert IBaseModule.NodeOperatorDoesNotExist();
     }
 
     function _keyAddedBalanceCap() private pure returns (uint256) {

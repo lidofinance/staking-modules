@@ -129,6 +129,7 @@ contract AccountingMock {
         compensatedAmount = Math.min(lockedAmount, currentBond - requiredBondWithoutLock);
 
         if (compensatedAmount > 0) {
+            // forge-lint: disable-next-line(unsafe-typecast)
             bondLock[nodeOperatorId].amount -= uint128(compensatedAmount);
             bond[nodeOperatorId] -= compensatedAmount;
         }

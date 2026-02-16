@@ -1900,6 +1900,50 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         vm.revertToState(snapshot);
     }
 
+    function test_changeNodeOperatorAddresses_ResetProposedAddresses() public {
+        uint256 noId = cm.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: address(0),
+                rewardAddress: address(0),
+                extendedManagerPermissions: false
+            }),
+            address(0)
+        );
+
+        address proposedManager = nextAddress();
+        address proposedRewards = nextAddress();
+
+        vm.startPrank(nodeOperator);
+        cm.proposeNodeOperatorManagerAddressChange(noId, proposedManager);
+        cm.proposeNodeOperatorRewardAddressChange(noId, proposedRewards);
+        vm.stopPrank();
+
+        assertEq(cm.getNodeOperator(noId).proposedManagerAddress, proposedManager);
+        assertEq(cm.getNodeOperator(noId).proposedRewardAddress, proposedRewards);
+
+        vm.startPrank(admin);
+        cm.grantRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
+        vm.stopPrank();
+
+        address manager = nextAddress();
+        address rewards = nextAddress();
+
+        vm.expectEmit(address(cm));
+        emit INOAddresses.NodeOperatorManagerAddressChanged(noId, nodeOperator, manager);
+
+        vm.expectEmit(address(cm));
+        emit INOAddresses.NodeOperatorRewardAddressChanged(noId, nodeOperator, rewards);
+
+        cm.changeNodeOperatorAddresses(noId, manager, rewards);
+
+        NodeOperator memory no = cm.getNodeOperator(noId);
+        assertEq(no.managerAddress, manager);
+        assertEq(no.rewardAddress, rewards);
+        assertEq(cm.getNodeOperator(noId).proposedManagerAddress, address(0));
+        assertEq(cm.getNodeOperator(noId).proposedRewardAddress, address(0));
+    }
+
     function test_changeNodeOperatorAddresses_RevertsIfOperatorDoesNotExist() public {
         vm.startPrank(admin);
         cm.grantRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));

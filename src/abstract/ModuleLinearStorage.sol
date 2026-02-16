@@ -19,7 +19,7 @@ abstract contract ModuleLinearStorage {
 
     uint256 internal _nonce;
     mapping(uint256 nodeOperatorId => NodeOperator) internal _nodeOperators;
-    /// @dev see _keyPointer function for details of noKeyIndexPacked structure
+    /// @dev see KeyPointerLib.keyPointer function for details of noKeyIndexPacked structure
     mapping(uint256 noKeyIndexPacked => bool) internal _isValidatorWithdrawn;
     mapping(uint256 noKeyIndexPacked => bool) internal _isValidatorSlashed;
 

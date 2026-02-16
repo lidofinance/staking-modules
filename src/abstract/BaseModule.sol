@@ -21,6 +21,7 @@ import { WithdrawnValidatorLib } from "../lib/WithdrawnValidatorLib.sol";
 import { NOAddresses } from "../lib/NOAddresses.sol";
 import { NodeOperatorOps } from "../lib/NodeOperatorOps.sol";
 import { OperatorTracker } from "../lib/OperatorTracker.sol";
+import { KeyPointerLib } from "../lib/KeyPointerLib.sol";
 
 import { AssetRecoverer } from "./AssetRecoverer.sol";
 import { ModuleLinearStorage } from "./ModuleLinearStorage.sol";
@@ -214,12 +215,13 @@ abstract contract BaseModule is
         bytes calldata exitedValidatorsCounts
     ) external {
         _checkStakingRouterRole();
-        _totalExitedValidators = NodeOperatorOps.updateExitedValidatorsCount(
-            _nodeOperators,
-            _totalExitedValidators,
-            nodeOperatorIds,
-            exitedValidatorsCounts
-        );
+        _totalExitedValidators = NodeOperatorOps.updateExitedValidatorsCount({
+            nodeOperators: _nodeOperators,
+            nodeOperatorsCount: _nodeOperatorsCount,
+            totalExitedValidators: _totalExitedValidators,
+            nodeOperatorIds: nodeOperatorIds,
+            exitedValidatorsCounts: exitedValidatorsCounts
+        });
     }
 
     /// @inheritdoc IStakingModule
@@ -241,7 +243,12 @@ abstract contract BaseModule is
         bytes calldata vettedSigningKeysCounts
     ) external {
         _checkStakingRouterRole();
-        NodeOperatorOps.decreaseVettedSigningKeysCount(_nodeOperators, nodeOperatorIds, vettedSigningKeysCounts);
+        NodeOperatorOps.decreaseVettedSigningKeysCount(
+            _nodeOperators,
+            _nodeOperatorsCount,
+            nodeOperatorIds,
+            vettedSigningKeysCounts
+        );
     }
 
     /// @inheritdoc IBaseModule
@@ -332,7 +339,7 @@ abstract contract BaseModule is
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
         if (keyIndex >= no.totalDepositedKeys) revert SigningKeysInvalidOffset();
 
-        uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
+        uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
         if (_isValidatorSlashed[pointer]) revert ValidatorSlashingAlreadyReported();
         _isValidatorSlashed[pointer] = true;
 
@@ -343,10 +350,10 @@ abstract contract BaseModule is
     /// @inheritdoc IBaseModule
     function increaseKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 amount) external {
         _checkVerifierRole();
-        _onlyExistingNodeOperator(nodeOperatorId);
 
         NodeOperatorOps.increaseKeyAddedBalance({
             nodeOperators: _nodeOperators,
+            nodeOperatorsCount: _nodeOperatorsCount,
             isValidatorWithdrawn: _isValidatorWithdrawn,
             keyAddedBalances: _keyAddedBalances,
             nodeOperatorId: nodeOperatorId,
@@ -430,12 +437,12 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function isValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool) {
-        return _isValidatorSlashed[_keyPointer(nodeOperatorId, keyIndex)];
+        return _isValidatorSlashed[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 
     /// @inheritdoc IBaseModule
     function isValidatorWithdrawn(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool) {
-        return _isValidatorWithdrawn[_keyPointer(nodeOperatorId, keyIndex)];
+        return _isValidatorWithdrawn[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 
     /// @inheritdoc IStakingModule
@@ -575,7 +582,7 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function getKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256) {
-        return _keyAddedBalances[_keyPointer(nodeOperatorId, keyIndex)];
+        return _keyAddedBalances[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -598,7 +605,7 @@ abstract contract BaseModule is
             WithdrawnValidatorInfo calldata info = validatorInfos[i];
             _onlyExistingNodeOperator(info.nodeOperatorId);
 
-            uint256 pointer = _keyPointer(info.nodeOperatorId, info.keyIndex);
+            uint256 pointer = KeyPointerLib.keyPointer(info.nodeOperatorId, info.keyIndex);
             if (_isValidatorWithdrawn[pointer]) continue;
             if (info.isSlashed != slashed) revert InvalidWithdrawnValidatorInfo();
             if (info.isSlashed && !_isValidatorSlashed[pointer]) revert SlashingPenaltyIsNotApplicable();
@@ -819,10 +826,5 @@ abstract contract BaseModule is
 
     function _onlyRecoverer() internal view override {
         _checkRole(RECOVERER_ROLE);
-    }
-
-    /// @dev Both nodeOperatorId and keyIndex are limited to uint64 by the contract
-    function _keyPointer(uint256 nodeOperatorId, uint256 keyIndex) internal pure returns (uint256) {
-        return (nodeOperatorId << 128) | keyIndex;
     }
 }
