@@ -16,12 +16,13 @@ import { NodeOperatorManagementProperties } from "./interfaces/IBaseModule.sol";
 import { IMetaRegistry, OperatorMetadata } from "./interfaces/IMetaRegistry.sol";
 import { IAccounting } from "./interfaces/IAccounting.sol";
 
-/// @notice Merkle gate for Curated Module v2
+// TODO: Create abstract MerkleGate contract and inherit both CuratedGate and VettedGate from it.
+/// @notice Merkle gate for Curated Module
 contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, PausableUntil, AssetRecoverer {
+    bytes32 public constant SET_TREE_ROLE = keccak256("SET_TREE_ROLE");
     bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
     bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
     bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
-    bytes32 public constant SET_TREE_ROLE = keccak256("SET_TREE_ROLE");
 
     /// @inheritdoc ICuratedGate
     ICuratedModule public immutable MODULE;
@@ -67,7 +68,9 @@ contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, Pausab
     ) external initializer {
         if (admin == address(0)) revert ZeroAdminAddress();
 
+        // TODO: Since this method does nothing, let's remove it from hre and from the other contracts.
         __AccessControlEnumerable_init();
+
         curveId = _curveId;
         if (_curveId == ACCOUNTING.DEFAULT_BOND_CURVE_ID()) _defaultCurveSet = true;
         _setTreeParams(_treeRoot, _treeCid);

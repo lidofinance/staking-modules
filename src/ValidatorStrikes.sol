@@ -7,7 +7,7 @@ import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerklePr
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
-import { ICSModule } from "./interfaces/ICSModule.sol";
+import { IBaseModule } from "./interfaces/IBaseModule.sol";
 import { IAccounting } from "./interfaces/IAccounting.sol";
 import { IExitPenalties } from "./interfaces/IExitPenalties.sol";
 import { IParametersRegistry } from "./interfaces/IParametersRegistry.sol";
@@ -17,7 +17,7 @@ import { IValidatorStrikes } from "./interfaces/IValidatorStrikes.sol";
 /// @author vgorkavenko
 contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnumerableUpgradeable {
     address public immutable ORACLE;
-    ICSModule public immutable MODULE;
+    IBaseModule public immutable MODULE;
     IAccounting public immutable ACCOUNTING;
     IExitPenalties public immutable EXIT_PENALTIES;
     IParametersRegistry public immutable PARAMETERS_REGISTRY;
@@ -41,7 +41,7 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
         if (exitPenalties == address(0)) revert ZeroExitPenaltiesAddress();
         if (parametersRegistry == address(0)) revert ZeroParametersRegistryAddress();
 
-        MODULE = ICSModule(module);
+        MODULE = IBaseModule(module);
         ACCOUNTING = MODULE.ACCOUNTING();
         EXIT_PENALTIES = IExitPenalties(exitPenalties);
         ORACLE = oracle;

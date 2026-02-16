@@ -30,14 +30,14 @@ contract ExitPenaltiesTestBase is Test, Utilities, Fixtures {
         stranger = nextAddress("STRANGER");
         admin = nextAddress("ADMIN");
 
-        exitPenalties = new ExitPenalties(address(csm), address(parametersRegistry), address(strikes));
+        exitPenalties = new ExitPenalties(address(csm), address(strikes));
         _enableInitializers(address(exitPenalties));
     }
 }
 
 contract ExitPenaltiesTestMisc is ExitPenaltiesTestBase {
     function test_constructor() public {
-        exitPenalties = new ExitPenalties(address(csm), address(parametersRegistry), address(strikes));
+        exitPenalties = new ExitPenalties(address(csm), address(strikes));
         assertEq(address(exitPenalties.MODULE()), address(csm));
         assertEq(address(exitPenalties.PARAMETERS_REGISTRY()), address(parametersRegistry));
         assertEq(address(exitPenalties.ACCOUNTING()), address(accounting));
@@ -46,17 +46,12 @@ contract ExitPenaltiesTestMisc is ExitPenaltiesTestBase {
 
     function test_constructor_RevertWhen_ZeroModuleAddress() public {
         vm.expectRevert(IExitPenalties.ZeroModuleAddress.selector);
-        new ExitPenalties(address(0), address(parametersRegistry), address(strikes));
-    }
-
-    function test_constructor_RevertWhen_ZeroParametersRegistryAddress() public {
-        vm.expectRevert(IExitPenalties.ZeroParametersRegistryAddress.selector);
-        new ExitPenalties(address(csm), address(0), address(strikes));
+        new ExitPenalties(address(0), address(strikes));
     }
 
     function test_constructor_RevertWhen_ZeroStrikesAddress() public {
         vm.expectRevert(IExitPenalties.ZeroStrikesAddress.selector);
-        new ExitPenalties(address(csm), address(parametersRegistry), address(0));
+        new ExitPenalties(address(csm), address(0));
     }
 }
 
