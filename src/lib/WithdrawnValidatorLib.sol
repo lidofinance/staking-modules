@@ -101,7 +101,6 @@ library WithdrawnValidatorLib {
 
         // Confiscate penalties first to prioritize compensations for the stETH holders.
         if (penaltySum > 0) {
-            // We still call `penalize` even if there's no bond left, for the lock to be created.
             penaltyCovered = accounting.penalize(validatorInfo.nodeOperatorId, penaltySum);
         }
 

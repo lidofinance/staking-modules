@@ -42,19 +42,19 @@ abstract contract FeeSplits is IFeeSplits {
     function getFeeSplitTransfers(
         uint256 nodeOperatorId,
         uint256 claimableShares
-    ) public view returns (SplitTransfer[] memory transfers, uint256 sharesToSplit) {
+    ) public view returns (SplitTransfer[] memory transfers, uint256 splittableShares) {
         FeeSplitsStorage storage $ = _getFeeSplitsStorage();
         uint256 pending = $.pendingSharesToSplit[nodeOperatorId];
-        if (pending == 0) return (new SplitTransfer[](0), 0);
-        sharesToSplit = claimableShares > pending ? pending : claimableShares;
-        if (sharesToSplit == 0) return (new SplitTransfer[](0), 0);
+        if (pending == 0 || claimableShares == 0) return (transfers, splittableShares);
+
+        splittableShares = claimableShares > pending ? pending : claimableShares;
 
         FeeSplit[] storage splits = $.feeSplits[nodeOperatorId];
         transfers = new SplitTransfer[](splits.length);
         for (uint256 i; i < splits.length; ++i) {
             FeeSplit storage feeSplit = splits[i];
-            // NOTE: Due to rounding error, final operator's share might contain some dust.
-            uint256 amount = (sharesToSplit * feeSplit.share) / MAX_BP;
+            // NOTE: Due to rounding error, shares left for the node operator might contain some dust.
+            uint256 amount = (splittableShares * feeSplit.share) / MAX_BP;
             transfers[i] = SplitTransfer({ recipient: feeSplit.recipient, shares: amount });
         }
     }
