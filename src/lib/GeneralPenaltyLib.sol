@@ -7,21 +7,6 @@ import { IAccounting } from "../interfaces/IAccounting.sol";
 
 /// Library for General Penalty logic
 /// @dev the only use of this to be a library is to save CSModule contract size via delegatecalls
-interface IGeneralPenalty {
-    event GeneralDelayedPenaltyReported(
-        uint256 indexed nodeOperatorId,
-        bytes32 indexed penaltyType,
-        uint256 amount,
-        uint256 additionalFine,
-        string details
-    );
-    event GeneralDelayedPenaltyCancelled(uint256 indexed nodeOperatorId, uint256 amount);
-    event GeneralDelayedPenaltyCompensated(uint256 indexed nodeOperatorId, uint256 amount);
-    event GeneralDelayedPenaltySettled(uint256 indexed nodeOperatorId);
-
-    error ZeroPenaltyType();
-}
-
 library GeneralPenalty {
     function reportGeneralDelayedPenalty(
         uint256 nodeOperatorId,
@@ -29,7 +14,7 @@ library GeneralPenalty {
         uint256 amount,
         string calldata details
     ) external {
-        if (penaltyType == bytes32(0)) revert IGeneralPenalty.ZeroPenaltyType();
+        if (penaltyType == bytes32(0)) revert IBaseModule.ZeroPenaltyType();
 
         IBaseModule module = IBaseModule(address(this));
         IAccounting accounting = module.ACCOUNTING();
@@ -41,9 +26,9 @@ library GeneralPenalty {
 
         if (totalAmount == 0) revert IBaseModule.InvalidAmount();
 
-        accounting.lockBondETH(nodeOperatorId, totalAmount);
+        accounting.lockBond(nodeOperatorId, totalAmount);
 
-        emit IGeneralPenalty.GeneralDelayedPenaltyReported({
+        emit IBaseModule.GeneralDelayedPenaltyReported({
             nodeOperatorId: nodeOperatorId,
             penaltyType: penaltyType,
             amount: amount,
@@ -58,9 +43,9 @@ library GeneralPenalty {
         IBaseModule module = IBaseModule(address(this));
         IAccounting accounting = module.ACCOUNTING();
 
-        accounting.releaseLockedBondETH(nodeOperatorId, amount);
+        accounting.releaseLockedBond(nodeOperatorId, amount);
 
-        emit IGeneralPenalty.GeneralDelayedPenaltyCancelled(nodeOperatorId, amount);
+        emit IBaseModule.GeneralDelayedPenaltyCancelled(nodeOperatorId, amount);
 
         module.updateDepositableValidatorsCount(nodeOperatorId);
     }
@@ -72,8 +57,8 @@ library GeneralPenalty {
             return false; // skip this NO if the locked bond is greater than the max amount or there is no locked bond
         }
 
-        accounting.settleLockedBondETH(nodeOperatorId);
-        emit IGeneralPenalty.GeneralDelayedPenaltySettled(nodeOperatorId);
+        accounting.settleLockedBond(nodeOperatorId);
+        emit IBaseModule.GeneralDelayedPenaltySettled(nodeOperatorId);
 
         return true;
     }
@@ -82,9 +67,11 @@ library GeneralPenalty {
         IBaseModule module = IBaseModule(address(this));
         IAccounting accounting = module.ACCOUNTING();
 
-        accounting.compensateLockedBondETH{ value: msg.value }(nodeOperatorId);
+        uint256 compensatedAmount = accounting.compensateLockedBond(nodeOperatorId);
 
-        emit IGeneralPenalty.GeneralDelayedPenaltyCompensated(nodeOperatorId, msg.value);
+        if (compensatedAmount == 0) revert IBaseModule.NothingCompensated();
+
+        emit IBaseModule.GeneralDelayedPenaltyCompensated(nodeOperatorId, compensatedAmount);
 
         module.updateDepositableValidatorsCount(nodeOperatorId);
     }

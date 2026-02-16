@@ -259,7 +259,7 @@ contract ClaimableBondTest is RewardsBaseTest {
     }
 }
 
-contract LockBondETHTest is BaseTest {
+contract LockBondTest is BaseTest {
     function test_setBondLockPeriod() public {
         vm.prank(admin);
         accounting.setBondLockPeriod(200 days);
@@ -272,116 +272,157 @@ contract LockBondETHTest is BaseTest {
         accounting.setBondLockPeriod(200 days);
     }
 
-    function test_lockBondETH() public assertInvariants {
+    function test_lockBond() public assertInvariants {
         mock_getNodeOperatorsCount(1);
 
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(0, 1 ether);
+        accounting.lockBond(0, 1 ether);
         assertEq(accounting.getActualLockedBond(0), 1 ether);
     }
 
-    function test_lockBondETH_RevertWhen_SenderIsNotModule() public {
+    function test_lockBond_RevertWhen_SenderIsNotModule() public {
         mock_getNodeOperatorsCount(1);
 
         vm.expectRevert(IAccounting.SenderIsNotModule.selector);
         vm.prank(stranger);
-        accounting.lockBondETH(0, 1 ether);
+        accounting.lockBond(0, 1 ether);
     }
 
-    function test_lockBondETH_RevertWhen_LockOverflow() public {
+    function test_lockBond_RevertWhen_LockOverflow() public {
         mock_getNodeOperatorsCount(1);
 
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(0, 1 ether);
+        accounting.lockBond(0, 1 ether);
         assertEq(accounting.getActualLockedBond(0), 1 ether);
 
         vm.expectRevert();
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(0, type(uint256).max);
+        accounting.lockBond(0, type(uint256).max);
     }
 
-    function test_releaseLockedBondETH() public assertInvariants {
+    function test_releaseLockedBond() public assertInvariants {
         mock_getNodeOperatorsCount(1);
 
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(0, 1 ether);
+        accounting.lockBond(0, 1 ether);
 
         vm.prank(address(stakingModule));
-        accounting.releaseLockedBondETH(0, 0.4 ether);
+        accounting.releaseLockedBond(0, 0.4 ether);
 
         assertEq(accounting.getActualLockedBond(0), 0.6 ether);
     }
 
-    function test_releaseLockedBondETH_RevertWhen_SenderIsNotModule() public {
+    function test_releaseLockedBond_RevertWhen_SenderIsNotModule() public {
         mock_getNodeOperatorsCount(1);
 
         vm.expectRevert(IAccounting.SenderIsNotModule.selector);
         vm.prank(stranger);
-        accounting.releaseLockedBondETH(0, 1 ether);
+        accounting.releaseLockedBond(0, 1 ether);
     }
 
-    function test_compensateLockedBondETH() public assertInvariants {
+    function test_compensateLockedBond() public assertInvariants {
         mock_getNodeOperatorsCount(1);
+        mock_getNodeOperatorNonWithdrawnKeys(0);
 
+        uint256 amountToLock = 1 ether;
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(0, 1 ether);
+        accounting.lockBond(0, amountToLock);
+
+        assertEq(accounting.getActualLockedBond(0), amountToLock);
+
+        uint256 amountToCompensate = 0.4 ether;
+        addBond(0, amountToCompensate);
 
         vm.expectEmit(address(accounting));
-        emit IAccounting.BondLockCompensated(0, 0.4 ether);
+        emit IAccounting.BondLockCompensated(0, ethToSharesToEth(amountToCompensate));
 
-        vm.deal(address(stakingModule), 0.4 ether);
         vm.prank(address(stakingModule));
-        accounting.compensateLockedBondETH{ value: 0.4 ether }(0);
+        accounting.compensateLockedBond(0);
 
-        assertEq(accounting.getActualLockedBond(0), 0.6 ether);
+        assertEq(accounting.getActualLockedBond(0), amountToLock - ethToSharesToEth(amountToCompensate));
     }
 
-    function test_compensateLockedBondETH_RevertWhen_ReceiveFailed() public assertInvariants {
+    function test_compensateLockedBond_notingLocked() public assertInvariants {
         mock_getNodeOperatorsCount(1);
-        FailedReceiverStub failedReceiver = new FailedReceiverStub();
-        vm.mockCall(
-            address(locator),
-            abi.encodeWithSelector(locator.elRewardsVault.selector),
-            abi.encode(address(failedReceiver))
-        );
+
+        assertEq(accounting.getActualLockedBond(0), 0);
 
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(0, 1 ether);
+        accounting.compensateLockedBond(0);
 
-        vm.deal(address(stakingModule), 0.4 ether);
-        vm.prank(address(stakingModule));
-        vm.expectRevert(IAccounting.ElRewardsVaultReceiveFailed.selector);
-        accounting.compensateLockedBondETH{ value: 0.4 ether }(0);
+        assertEq(accounting.getActualLockedBond(0), 0);
     }
 
-    function test_compensateLockedBondETH_RevertWhen_SenderIsNotModule() public {
+    function test_compensateLockedBond_requiredWithoutLockIsMoreThanCurrent() public assertInvariants {
         mock_getNodeOperatorsCount(1);
-        vm.deal(stranger, 1 ether);
+        mock_getNodeOperatorNonWithdrawnKeys(1);
+
+        uint256 amountToLock = 1 ether;
+        vm.prank(address(stakingModule));
+        accounting.lockBond(0, amountToLock);
+
+        assertEq(accounting.getActualLockedBond(0), amountToLock);
+
+        uint256 amountToCompensate = 1 ether;
+        addBond(0, amountToCompensate);
 
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(0, 1 ether);
+        accounting.compensateLockedBond(0);
+
+        assertEq(accounting.getActualLockedBond(0), amountToLock);
+    }
+
+    function test_compensateLockedBond_FullCompensation() public assertInvariants {
+        mock_getNodeOperatorsCount(1);
+        mock_getNodeOperatorNonWithdrawnKeys(0);
+
+        uint256 amountToLock = 1 ether;
+        vm.prank(address(stakingModule));
+        accounting.lockBond(0, amountToLock);
+
+        uint256 amountToCompensate = 1.4 ether;
+        addBond(0, amountToCompensate);
+
+        vm.expectEmit(address(accounting));
+        emit IAccounting.BondLockCompensated(0, amountToLock);
+
+        vm.prank(address(stakingModule));
+        accounting.compensateLockedBond(0);
+
+        assertEq(accounting.getActualLockedBond(0), 0);
+    }
+
+    function test_compensateLockedBond_RevertWhen_SenderIsNotModule() public {
+        mock_getNodeOperatorsCount(1);
+
+        uint256 amountToLock = 1 ether;
+        vm.prank(address(stakingModule));
+        accounting.lockBond(0, amountToLock);
+
+        uint256 amountToCompensate = 0.4 ether;
+        addBond(0, amountToCompensate);
 
         vm.expectRevert(IAccounting.SenderIsNotModule.selector);
         vm.prank(stranger);
-        accounting.compensateLockedBondETH{ value: 1 ether }(0);
+        accounting.compensateLockedBond(0);
     }
 
-    function test_settleLockedBondETH() public assertInvariants {
+    function test_settleLockedBond() public assertInvariants {
         mock_getNodeOperatorsCount(1);
         uint256 noId = 0;
         uint256 amount = 1 ether;
         addBond(noId, amount);
 
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(noId, amount);
+        accounting.lockBond(noId, amount);
         assertEq(accounting.getActualLockedBond(noId), amount);
 
         vm.prank(address(stakingModule));
-        accounting.settleLockedBondETH(noId);
+        accounting.settleLockedBond(noId);
         assertEq(accounting.getActualLockedBond(noId), 0);
     }
 
-    function test_settleLockedBondETH_noLocked() public assertInvariants {
+    function test_settleLockedBond_noLocked() public assertInvariants {
         mock_getNodeOperatorsCount(1);
         uint256 noId = 0;
         vm.deal(address(stakingModule), 32 ether);
@@ -390,21 +431,21 @@ contract LockBondETHTest is BaseTest {
         uint256 bond = accounting.getBondShares(noId);
 
         vm.prank(address(stakingModule));
-        accounting.settleLockedBondETH(noId);
+        accounting.settleLockedBond(noId);
         assertEq(accounting.getActualLockedBond(noId), 0);
         assertEq(accounting.getBondShares(noId), bond);
     }
 
-    function test_settleLockedBondETH_noBond() public assertInvariants {
+    function test_settleLockedBond_noBond() public assertInvariants {
         mock_getNodeOperatorsCount(1);
         uint256 noId = 0;
         uint256 amount = 1 ether;
 
         vm.startPrank(address(stakingModule));
-        accounting.lockBondETH(noId, amount);
+        accounting.lockBond(noId, amount);
 
         expectNoCall(address(burner), abi.encodeWithSelector(IBurner.requestBurnMyShares.selector));
-        accounting.settleLockedBondETH(noId);
+        accounting.settleLockedBond(noId);
         vm.stopPrank();
 
         Accounting.BondLockData memory bondLockAfter = accounting.getLockedBondInfo(0);
@@ -415,7 +456,7 @@ contract LockBondETHTest is BaseTest {
         assertApproxEqAbs(accounting.getBondDebt(noId), amount, 1);
     }
 
-    function test_settleLockedBondETH_partialBurn_bondDebtCreated() public assertInvariants {
+    function test_settleLockedBond_partialBurn_bondDebtCreated() public assertInvariants {
         mock_getNodeOperatorsCount(1);
         uint256 noId = 0;
 
@@ -424,13 +465,13 @@ contract LockBondETHTest is BaseTest {
         addBond(noId, bond);
 
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(noId, locked);
+        accounting.lockBond(noId, locked);
 
         uint256 bondSharesBefore = accounting.getBondShares(noId);
         vm.expectCall(locator.burner(), abi.encodeWithSelector(IBurner.requestBurnMyShares.selector, bondSharesBefore));
 
         vm.prank(address(stakingModule));
-        accounting.settleLockedBondETH(noId);
+        accounting.settleLockedBond(noId);
 
         Accounting.BondLockData memory lockAfter = accounting.getLockedBondInfo(noId);
         assertEq(lockAfter.amount, 0);
@@ -438,7 +479,7 @@ contract LockBondETHTest is BaseTest {
         assertApproxEqAbs(accounting.getBondDebt(noId), locked - bond, 1);
     }
 
-    function test_settleLockedBondETH_restZero_removesLock() public assertInvariants {
+    function test_settleLockedBond_restZero_removesLock() public assertInvariants {
         mock_getNodeOperatorsCount(1);
         uint256 noId = 0;
 
@@ -446,10 +487,10 @@ contract LockBondETHTest is BaseTest {
         addBond(noId, amount);
 
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(noId, amount);
+        accounting.lockBond(noId, amount);
 
         vm.prank(address(stakingModule));
-        accounting.settleLockedBondETH(noId);
+        accounting.settleLockedBond(noId);
 
         Accounting.BondLockData memory lockAfter = accounting.getLockedBondInfo(noId);
         assertEq(lockAfter.amount, 0);

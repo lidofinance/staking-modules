@@ -85,6 +85,17 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     event KeyAddedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
     event KeyRemovalChargeApplied(uint256 indexed nodeOperatorId);
 
+    event GeneralDelayedPenaltyReported(
+        uint256 indexed nodeOperatorId,
+        bytes32 indexed penaltyType,
+        uint256 amount,
+        uint256 additionalFine,
+        string details
+    );
+    event GeneralDelayedPenaltyCancelled(uint256 indexed nodeOperatorId, uint256 amount);
+    event GeneralDelayedPenaltyCompensated(uint256 indexed nodeOperatorId, uint256 amount);
+    event GeneralDelayedPenaltySettled(uint256 indexed nodeOperatorId);
+
     error CannotAddKeys();
     error NodeOperatorDoesNotExist();
     error SenderIsNotEligible();
@@ -110,6 +121,8 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     error ZeroSenderAddress();
     error ZeroParametersRegistryAddress();
     error ZeroModuleType();
+    error ZeroPenaltyType();
+    error NothingCompensated();
 
     function PAUSE_ROLE() external view returns (bytes32);
 
@@ -235,10 +248,10 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
         string calldata details
     ) external;
 
-    /// @notice Compensate general delayed penalty for the given Node Operator to prevent further validator exits
+    /// @notice Compensate general delayed penalty (locked bond) for the given Node Operator from Node Operator's bond
     /// @dev Can only be called by the Node Operator manager
     /// @param nodeOperatorId ID of the Node Operator
-    function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external payable;
+    function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external;
 
     /// @notice Cancel previously reported and not settled general delayed penalty for the given Node Operator
     /// @notice The funds will be unlocked

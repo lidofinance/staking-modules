@@ -3,6 +3,8 @@
 
 pragma solidity 0.8.33;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import { IAccounting } from "src/interfaces/IAccounting.sol";
 import { IBondLock } from "src/interfaces/IBondLock.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
@@ -85,7 +87,7 @@ contract AccountingMock {
         bond[nodeOperatorId] += wstETH.getStETHByWstETH(wstETHAmount);
     }
 
-    function lockBondETH(uint256 nodeOperatorId, uint256 amount) external {
+    function lockBond(uint256 nodeOperatorId, uint256 amount) external {
         // Production storage keeps bond lock amounts/timestamps in uint128,
         // and the mock only ever touches small ether values, so the cast is safe.
         if (amount > type(uint128).max) revert BondLockAmountTooLarge();
@@ -98,13 +100,13 @@ contract AccountingMock {
         bondLock[nodeOperatorId].until = unlockAt;
     }
 
-    function releaseLockedBondETH(uint256 nodeOperatorId, uint256 amount) external {
+    function releaseLockedBond(uint256 nodeOperatorId, uint256 amount) external {
         // Bond lock amounts mirror production's uint128 slot, so truncation cannot happen.
         // forge-lint: disable-next-line(unsafe-typecast)
         bondLock[nodeOperatorId].amount -= uint128(amount);
     }
 
-    function settleLockedBondETH(uint256 nodeOperatorId) external {
+    function settleLockedBond(uint256 nodeOperatorId) external {
         uint256 lockedBond = getActualLockedBond(nodeOperatorId);
         if (lockedBond > bond[nodeOperatorId]) {
             bond[nodeOperatorId] = 0;
@@ -115,12 +117,21 @@ contract AccountingMock {
         bondLock[nodeOperatorId].until = 0;
     }
 
-    function compensateLockedBondETH(uint256 nodeOperatorId) external payable {
-        // Compensation values are bounded by msg.value (<= uint128 in tests), matching storage type.
-        if (msg.value > type(uint128).max) revert BondLockAmountTooLarge();
-        // forge-lint: disable-next-line(unsafe-typecast)
-        bondLock[nodeOperatorId].amount -= uint128(msg.value);
-        if (bondLock[nodeOperatorId].amount < 0) bondLock[nodeOperatorId].until = 0;
+    function compensateLockedBond(uint256 nodeOperatorId) external returns (uint256 compensatedAmount) {
+        uint256 lockedAmount = getActualLockedBond(nodeOperatorId);
+        if (lockedAmount == 0) return 0;
+
+        (uint256 currentBond, uint256 requiredBond) = getBondSummary(nodeOperatorId);
+        // `requiredBond` already includes `lockedAmount`
+        uint256 requiredBondWithoutLock = requiredBond - lockedAmount;
+        if (currentBond < requiredBondWithoutLock) return 0;
+
+        compensatedAmount = Math.min(lockedAmount, currentBond - requiredBondWithoutLock);
+
+        if (compensatedAmount > 0) {
+            bondLock[nodeOperatorId].amount -= uint128(compensatedAmount);
+            bond[nodeOperatorId] -= compensatedAmount;
+        }
     }
 
     function setBondCurve(uint256 nodeOperatorId, uint256 curveId) external {

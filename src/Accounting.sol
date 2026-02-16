@@ -273,27 +273,34 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function lockBondETH(uint256 nodeOperatorId, uint256 amount) external onlyModule {
+    function lockBond(uint256 nodeOperatorId, uint256 amount) external onlyModule {
         BondLock._lock(nodeOperatorId, amount);
     }
 
     /// @inheritdoc IAccounting
-    function releaseLockedBondETH(uint256 nodeOperatorId, uint256 amount) external onlyModule {
+    function releaseLockedBond(uint256 nodeOperatorId, uint256 amount) external onlyModule {
         BondLock._unlock(nodeOperatorId, amount);
     }
 
     /// @inheritdoc IAccounting
-    // TODO make this method compensating from bond instead of direct transfer
-    function compensateLockedBondETH(uint256 nodeOperatorId) external payable onlyModule {
-        (bool success, ) = LIDO_LOCATOR.elRewardsVault().call{ value: msg.value }("");
-        if (!success) revert ElRewardsVaultReceiveFailed();
+    function compensateLockedBond(uint256 nodeOperatorId) external onlyModule returns (uint256 compensatedAmount) {
+        uint256 lockedAmount = BondLock.getActualLockedBond(nodeOperatorId);
+        if (lockedAmount == 0) return 0;
 
-        BondLock._unlock(nodeOperatorId, msg.value);
-        emit BondLockCompensated(nodeOperatorId, msg.value);
+        (uint256 currentBond, uint256 requiredBond) = getBondSummary(nodeOperatorId);
+        // `requiredBond` already includes `lockedAmount`
+        uint256 requiredBondWithoutLock = requiredBond - lockedAmount;
+        if (currentBond <= requiredBondWithoutLock) return 0;
+
+        uint256 maxCompensatableAmount = currentBond - requiredBondWithoutLock;
+        compensatedAmount = lockedAmount < maxCompensatableAmount ? lockedAmount : maxCompensatableAmount;
+        BondCore._burn(nodeOperatorId, compensatedAmount);
+        BondLock._unlock(nodeOperatorId, compensatedAmount);
+        emit BondLockCompensated(nodeOperatorId, compensatedAmount);
     }
 
     /// @inheritdoc IAccounting
-    function settleLockedBondETH(uint256 nodeOperatorId) external onlyModule {
+    function settleLockedBond(uint256 nodeOperatorId) external onlyModule {
         uint256 lockedAmount = BondLock.getActualLockedBond(nodeOperatorId);
         if (lockedAmount > 0) {
             BondCore._burn(nodeOperatorId, lockedAmount);

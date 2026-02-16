@@ -5,7 +5,6 @@ pragma solidity 0.8.33;
 
 import { BondLock } from "src/abstract/BondLock.sol";
 import { IBaseModule, NodeOperator } from "src/interfaces/IBaseModule.sol";
-import { IGeneralPenalty } from "src/lib/GeneralPenaltyLib.sol";
 
 import { ModuleFixtures } from "./_Base.t.sol";
 
@@ -16,7 +15,7 @@ abstract contract ModuleReportGeneralDelayedPenalty is ModuleFixtures {
         uint256 fine = module.PARAMETERS_REGISTRY().getGeneralDelayedPenaltyAdditionalFine(0);
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.GeneralDelayedPenaltyReported(
+        emit IBaseModule.GeneralDelayedPenaltyReported(
             noId,
             bytes32(abi.encode(1)),
             BOND_SIZE / 2,
@@ -51,7 +50,7 @@ abstract contract ModuleReportGeneralDelayedPenalty is ModuleFixtures {
         module.PARAMETERS_REGISTRY().setGeneralDelayedPenaltyAdditionalFine(0, fine);
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.GeneralDelayedPenaltyReported(noId, bytes32(abi.encode(1)), 0, fine, "Test penalty");
+        emit IBaseModule.GeneralDelayedPenaltyReported(noId, bytes32(abi.encode(1)), 0, fine, "Test penalty");
         module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), 0, "Test penalty");
 
         uint256 lockedBond = accounting.getActualLockedBond(noId);
@@ -60,7 +59,7 @@ abstract contract ModuleReportGeneralDelayedPenalty is ModuleFixtures {
 
     function test_reportGeneralDelayedPenalty_RevertWhen_ZeroPenaltyType() public {
         uint256 noId = createNodeOperator();
-        vm.expectRevert(IGeneralPenalty.ZeroPenaltyType.selector);
+        vm.expectRevert(IBaseModule.ZeroPenaltyType.selector);
         module.reportGeneralDelayedPenalty(noId, bytes32(0), 0 ether, "Test penalty");
     }
 
@@ -111,7 +110,7 @@ abstract contract ModuleCancelGeneralDelayedPenalty is ModuleFixtures {
         uint256 nonce = module.getNonce();
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.GeneralDelayedPenaltyCancelled(
+        emit IBaseModule.GeneralDelayedPenaltyCancelled(
             noId,
             BOND_SIZE / 2 + module.PARAMETERS_REGISTRY().getGeneralDelayedPenaltyAdditionalFine(0)
         );
@@ -133,7 +132,7 @@ abstract contract ModuleCancelGeneralDelayedPenalty is ModuleFixtures {
         uint256 nonce = module.getNonce();
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.GeneralDelayedPenaltyCancelled(noId, BOND_SIZE / 2);
+        emit IBaseModule.GeneralDelayedPenaltyCancelled(noId, BOND_SIZE / 2);
         module.cancelGeneralDelayedPenalty(noId, BOND_SIZE / 2);
 
         uint256 lockedBond = accounting.getActualLockedBond(noId);
@@ -155,7 +154,7 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
         module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), amount, "Test penalty");
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.GeneralDelayedPenaltySettled(noId);
+        emit IBaseModule.GeneralDelayedPenaltySettled(noId);
         module.settleGeneralDelayedPenalty(UintArr(noId), UintArr(type(uint256).max));
 
         BondLock.BondLockData memory lock = accounting.getLockedBondInfo(noId);
@@ -212,9 +211,9 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
         module.reportGeneralDelayedPenalty(secondNoId, bytes32(abi.encode(1)), BOND_SIZE, "Test penalty");
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.GeneralDelayedPenaltySettled(firstNoId);
+        emit IBaseModule.GeneralDelayedPenaltySettled(firstNoId);
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.GeneralDelayedPenaltySettled(secondNoId);
+        emit IBaseModule.GeneralDelayedPenaltySettled(secondNoId);
         module.settleGeneralDelayedPenalty(
             UintArr(firstNoId, secondNoId),
             UintArr(type(uint256).max, type(uint256).max)
@@ -243,7 +242,7 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
         module.reportGeneralDelayedPenalty(secondNoId, bytes32(abi.encode(1)), BOND_SIZE, "Test penalty");
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.GeneralDelayedPenaltySettled(secondNoId);
+        emit IBaseModule.GeneralDelayedPenaltySettled(secondNoId);
         module.settleGeneralDelayedPenalty(idsToSettle, UintArr(amount, type(uint256).max));
 
         BondLock.BondLockData memory lock = accounting.getLockedBondInfo(firstNoId);
@@ -300,7 +299,7 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
         module.reportGeneralDelayedPenalty(secondNoId, bytes32(abi.encode(1)), 1 ether, "Test penalty");
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.GeneralDelayedPenaltySettled(secondNoId);
+        emit IBaseModule.GeneralDelayedPenaltySettled(secondNoId);
         module.settleGeneralDelayedPenalty(
             UintArr(firstNoId, secondNoId),
             UintArr(type(uint256).max, type(uint256).max)
@@ -328,7 +327,7 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
         module.reportGeneralDelayedPenalty(secondNoId, bytes32(abi.encode(1)), lockAmount, "Test penalty");
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.GeneralDelayedPenaltySettled(secondNoId);
+        emit IBaseModule.GeneralDelayedPenaltySettled(secondNoId);
         module.settleGeneralDelayedPenalty(
             idsToSettle,
             UintArr(type(uint256).max, type(uint256).max, type(uint256).max)
@@ -377,7 +376,7 @@ abstract contract ModuleSettleGeneralDelayedPenaltyAdvanced is ModuleFixtures {
         module.reportGeneralDelayedPenalty(secondNoId, bytes32(abi.encode(1)), BOND_SIZE, "Test penalty");
 
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.GeneralDelayedPenaltySettled(secondNoId);
+        emit IBaseModule.GeneralDelayedPenaltySettled(secondNoId);
         module.settleGeneralDelayedPenalty(
             UintArr(firstNoId, secondNoId),
             UintArr(type(uint256).max, type(uint256).max)
@@ -399,7 +398,7 @@ abstract contract ModuleSettleGeneralDelayedPenaltyAdvanced is ModuleFixtures {
 
         module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), amount, "Test penalty");
         vm.expectEmit(address(module));
-        emit IGeneralPenalty.GeneralDelayedPenaltySettled(noId);
+        emit IBaseModule.GeneralDelayedPenaltySettled(noId);
         module.settleGeneralDelayedPenalty(UintArr(noId), UintArr(type(uint256).max));
     }
 }
@@ -413,13 +412,14 @@ abstract contract ModuleCompensateGeneralDelayedPenalty is ModuleFixtures {
 
         uint256 nonce = module.getNonce();
 
-        vm.expectEmit(address(module));
-        emit IGeneralPenalty.GeneralDelayedPenaltyCompensated(noId, amount + fine);
+        addBond(noId, amount + fine);
 
-        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.compensateLockedBondETH.selector, noId));
-        vm.deal(nodeOperator, amount + fine);
+        vm.expectEmit(address(module));
+        emit IBaseModule.GeneralDelayedPenaltyCompensated(noId, amount + fine);
+
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.compensateLockedBond.selector, noId));
         vm.prank(nodeOperator);
-        module.compensateGeneralDelayedPenalty{ value: amount + fine }(noId);
+        module.compensateGeneralDelayedPenalty(noId);
 
         BondLock.BondLockData memory lock = accounting.getLockedBondInfo(noId);
         assertEq(lock.amount, 0);
@@ -434,16 +434,34 @@ abstract contract ModuleCompensateGeneralDelayedPenalty is ModuleFixtures {
 
         uint256 nonce = module.getNonce();
 
-        vm.expectEmit(address(module));
-        emit IGeneralPenalty.GeneralDelayedPenaltyCompensated(noId, amount);
+        addBond(noId, amount);
 
-        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.compensateLockedBondETH.selector, noId));
-        vm.deal(nodeOperator, amount);
+        vm.expectEmit(address(module));
+        emit IBaseModule.GeneralDelayedPenaltyCompensated(noId, amount);
+
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.compensateLockedBond.selector, noId));
         vm.prank(nodeOperator);
-        module.compensateGeneralDelayedPenalty{ value: amount }(noId);
+        module.compensateGeneralDelayedPenalty(noId);
 
         BondLock.BondLockData memory lock = accounting.getLockedBondInfo(noId);
         assertEq(lock.amount, fine);
+        assertEq(module.getNonce(), nonce);
+    }
+
+    function test_compensateGeneralDelayedPenalty_revertWhen_NothingCompensated() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        uint256 amount = 1 ether;
+        uint256 fine = module.PARAMETERS_REGISTRY().getGeneralDelayedPenaltyAdditionalFine(0);
+        module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), amount, "Test penalty");
+
+        uint256 nonce = module.getNonce();
+
+        vm.expectRevert(IBaseModule.NothingCompensated.selector);
+        vm.prank(nodeOperator);
+        module.compensateGeneralDelayedPenalty(noId);
+
+        BondLock.BondLockData memory lock = accounting.getLockedBondInfo(noId);
+        assertEq(lock.amount, fine + amount);
         assertEq(module.getNonce(), nonce);
     }
 
@@ -455,21 +473,22 @@ abstract contract ModuleCompensateGeneralDelayedPenalty is ModuleFixtures {
         module.obtainDepositData(1, "");
         uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
 
-        vm.deal(nodeOperator, amount + fine);
+        addBond(noId, amount + fine);
+
         vm.prank(nodeOperator);
-        module.compensateGeneralDelayedPenalty{ value: amount + fine }(noId);
+        module.compensateGeneralDelayedPenalty(noId);
         uint256 depositableAfter = module.getNodeOperator(noId).depositableValidatorsCount;
         assertEq(depositableAfter, depositableBefore + 1);
     }
 
     function test_compensateGeneralDelayedPenalty_RevertWhen_NoNodeOperator() public {
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
-        module.compensateGeneralDelayedPenalty{ value: 1 ether }(0);
+        module.compensateGeneralDelayedPenalty(0);
     }
 
     function test_compensateGeneralDelayedPenalty_RevertWhen_NotManager() public {
         uint256 noId = createNodeOperator();
         vm.expectRevert(IBaseModule.SenderIsNotEligible.selector);
-        module.compensateGeneralDelayedPenalty{ value: 1 ether }(noId);
+        module.compensateGeneralDelayedPenalty(noId);
     }
 }
