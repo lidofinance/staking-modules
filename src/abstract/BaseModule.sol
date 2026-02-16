@@ -214,12 +214,13 @@ abstract contract BaseModule is
         bytes calldata exitedValidatorsCounts
     ) external {
         _checkStakingRouterRole();
-        _totalExitedValidators = NodeOperatorOps.updateExitedValidatorsCount(
-            _nodeOperators,
-            _totalExitedValidators,
-            nodeOperatorIds,
-            exitedValidatorsCounts
-        );
+        _totalExitedValidators = NodeOperatorOps.updateExitedValidatorsCount({
+            nodeOperators: _nodeOperators,
+            nodeOperatorsCount: _nodeOperatorsCount,
+            totalExitedValidators: _totalExitedValidators,
+            nodeOperatorIds: nodeOperatorIds,
+            exitedValidatorsCounts: exitedValidatorsCounts
+        });
     }
 
     /// @inheritdoc IStakingModule
@@ -241,7 +242,12 @@ abstract contract BaseModule is
         bytes calldata vettedSigningKeysCounts
     ) external {
         _checkStakingRouterRole();
-        NodeOperatorOps.decreaseVettedSigningKeysCount(_nodeOperators, nodeOperatorIds, vettedSigningKeysCounts);
+        NodeOperatorOps.decreaseVettedSigningKeysCount(
+            _nodeOperators,
+            _nodeOperatorsCount,
+            nodeOperatorIds,
+            vettedSigningKeysCounts
+        );
     }
 
     /// @inheritdoc IBaseModule
@@ -343,10 +349,10 @@ abstract contract BaseModule is
     /// @inheritdoc IBaseModule
     function increaseKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 amount) external {
         _checkVerifierRole();
-        _onlyExistingNodeOperator(nodeOperatorId);
 
         NodeOperatorOps.increaseKeyAddedBalance({
             nodeOperators: _nodeOperators,
+            nodeOperatorsCount: _nodeOperatorsCount,
             isValidatorWithdrawn: _isValidatorWithdrawn,
             keyAddedBalances: _keyAddedBalances,
             nodeOperatorId: nodeOperatorId,

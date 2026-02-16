@@ -75,6 +75,7 @@ library NodeOperatorOps {
 
     function updateExitedValidatorsCount(
         mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint256 nodeOperatorsCount,
         uint64 totalExitedValidators,
         bytes calldata nodeOperatorIds,
         bytes calldata exitedValidatorsCounts
@@ -87,7 +88,7 @@ library NodeOperatorOps {
                 exitedValidatorsCounts,
                 i
             );
-
+            _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
             NodeOperator storage no = nodeOperators[nodeOperatorId];
             uint32 totalExitedKeys = no.totalExitedKeys;
             unchecked {
@@ -110,6 +111,7 @@ library NodeOperatorOps {
 
     function decreaseVettedSigningKeysCount(
         mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint256 nodeOperatorsCount,
         bytes calldata nodeOperatorIds,
         bytes calldata vettedSigningKeysCounts
     ) external {
@@ -122,6 +124,7 @@ library NodeOperatorOps {
                 vettedSigningKeysCounts,
                 i
             );
+            _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
 
             NodeOperator storage no = nodeOperators[nodeOperatorId];
 
@@ -144,12 +147,14 @@ library NodeOperatorOps {
 
     function increaseKeyAddedBalance(
         mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint256 nodeOperatorsCount,
         mapping(uint256 => bool) storage isValidatorWithdrawn,
         mapping(uint256 => uint256) storage keyAddedBalances,
         uint256 nodeOperatorId,
         uint256 keyIndex,
         uint256 incrementWei
     ) external {
+        _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
         NodeOperator storage no = nodeOperators[nodeOperatorId];
         if (keyIndex >= no.totalDepositedKeys) revert IBaseModule.SigningKeysInvalidOffset();
 
@@ -294,6 +299,12 @@ library NodeOperatorOps {
         uint256 updatedBalance = Math.min(cap, current + incrementWei);
         keyAddedBalances[pointer] = updatedBalance;
         emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, updatedBalance);
+    }
+
+    function _onlyExistingNodeOperator(uint256 nodeOperatorId, uint256 nodeOperatorsCount) internal pure {
+        if (nodeOperatorId < nodeOperatorsCount) return;
+
+        revert IBaseModule.NodeOperatorDoesNotExist();
     }
 
     function _keyPointer(uint256 nodeOperatorId, uint256 keyIndex) private pure returns (uint256) {

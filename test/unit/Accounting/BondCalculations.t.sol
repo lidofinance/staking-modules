@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { BaseTest, BondStateBaseTest, FailedReceiverStub, GetRequiredBondBaseTest, GetRequiredBondForKeysBaseTest, RewardsBaseTest } from "./_Base.t.sol";
+import { BaseTest, BondStateBaseTest, GetRequiredBondBaseTest, GetRequiredBondForKeysBaseTest, RewardsBaseTest } from "./_Base.t.sol";
 import { Accounting } from "src/Accounting.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { IBaseModule } from "src/interfaces/IBaseModule.sol";
