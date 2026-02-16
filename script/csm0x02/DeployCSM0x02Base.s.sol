@@ -291,11 +291,7 @@ abstract contract DeployCSM0x02Base is Script {
 
             strikes = ValidatorStrikes(_deployProxy(config.proxyAdmin, address(strikesImpl)));
 
-            ExitPenalties exitPenaltiesImpl = new ExitPenalties(
-                address(csm),
-                address(parametersRegistry),
-                address(strikes)
-            );
+            ExitPenalties exitPenaltiesImpl = new ExitPenalties(address(csm), address(strikes));
 
             {
                 OssifiableProxy exitPenaltiesProxy = OssifiableProxy(payable(address(exitPenalties)));
