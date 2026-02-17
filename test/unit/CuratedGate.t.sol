@@ -106,7 +106,7 @@ contract CuratedGateTest_initialize is CuratedGateTestBase {
     function test_initialize_RevertWhen_ZeroAdmin() public {
         CuratedGate g = new CuratedGate(address(module));
         _enableInitializers(address(g));
-        vm.expectRevert(ICuratedGate.ZeroAdminAddress.selector);
+        vm.expectRevert(IMerkleGate.ZeroAdminAddress.selector);
         g.initialize(1, root, cid, address(0));
     }
 

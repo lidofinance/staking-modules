@@ -203,7 +203,7 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
 
     function test_proxy() public view {
         uint256 gatesCount = curatedGates.length;
-        address implementation = curatedGateFactory.CURATED_GATE_IMPL();
+        address implementation = address(curatedGateImpl);
         assertTrue(implementation != address(0), "factory implementation zero");
         for (uint256 i = 0; i < gatesCount; ++i) {
             OssifiableProxy proxy = OssifiableProxy(payable(curatedGates[i]));
@@ -245,6 +245,16 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
         }
 
         assertEq(accounting.getRoleMemberCount(setBondCurveRole), setBondCurveRoleMembers, "set bond curve roles");
+    }
+}
+
+contract CuratedGateFactoryDeploymentTest is DeploymentBaseTest {
+    function test_state() public view {
+        assertTrue(address(curatedGateFactory) != address(0), "curated gate factory missing");
+
+        address implementation = address(curatedGateImpl);
+        assertTrue(implementation != address(0), "curated gate impl missing");
+        assertEq(curatedGateFactory.GATE_IMPL(), implementation, "curated gate factory impl mismatch");
     }
 }
 

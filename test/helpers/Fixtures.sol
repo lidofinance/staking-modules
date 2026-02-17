@@ -18,7 +18,7 @@ import { CSModule } from "src/CSModule.sol";
 import { ParametersRegistry } from "src/ParametersRegistry.sol";
 import { PermissionlessGate } from "src/PermissionlessGate.sol";
 import { VettedGate } from "src/VettedGate.sol";
-import { VettedGateFactory } from "src/VettedGateFactory.sol";
+import { MerkleGateFactory } from "src/MerkleGateFactory.sol";
 import { Accounting } from "src/Accounting.sol";
 import { FeeOracle } from "src/FeeOracle.sol";
 import { FeeDistributor } from "src/FeeDistributor.sol";
@@ -31,7 +31,6 @@ import { MetaRegistry } from "src/MetaRegistry.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
-import { CuratedGateFactory } from "src/CuratedGateFactory.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
 import { DeployCSM0x02Params } from "script/csm0x02/DeployCSM0x02Base.s.sol";
 import { CuratedDeployParams } from "script/curated/DeployBase.s.sol";
@@ -194,6 +193,7 @@ contract DeploymentHelpers is Test {
         address metaRegistry;
         address metaRegistryImpl;
         address curatedGateFactory;
+        address curatedGateImpl;
         address[] curatedGates;
         address gateSeal;
         address lidoLocator;
@@ -223,7 +223,11 @@ contract DeploymentHelpers is Test {
         deploymentConfig.permissionlessGate = vm.parseJsonAddress(config, ".PermissionlessGate");
         vm.label(deploymentConfig.permissionlessGate, "permissionlessGate");
 
-        deploymentConfig.vettedGateFactory = vm.parseJsonAddress(config, ".VettedGateFactory");
+        if (vm.keyExistsJson(config, ".VettedGateFactory")) {
+            deploymentConfig.vettedGateFactory = vm.parseJsonAddress(config, ".VettedGateFactory");
+        } else if (vm.keyExistsJson(config, ".MerkleGateFactory")) {
+            deploymentConfig.vettedGateFactory = vm.parseJsonAddress(config, ".MerkleGateFactory");
+        }
         vm.label(deploymentConfig.vettedGateFactory, "vettedGateFactory");
 
         deploymentConfig.vettedGate = vm.parseJsonAddress(config, ".VettedGate");
@@ -360,8 +364,17 @@ contract DeploymentHelpers is Test {
         deploymentConfig.metaRegistryImpl = vm.parseJsonAddress(config, ".MetaRegistryImpl");
         vm.label(deploymentConfig.metaRegistryImpl, "metaRegistryImpl");
 
-        deploymentConfig.curatedGateFactory = vm.parseJsonAddress(config, ".CuratedGateFactory");
+        if (vm.keyExistsJson(config, ".CuratedGateFactory")) {
+            deploymentConfig.curatedGateFactory = vm.parseJsonAddress(config, ".CuratedGateFactory");
+        } else if (vm.keyExistsJson(config, ".MerkleGateFactory")) {
+            deploymentConfig.curatedGateFactory = vm.parseJsonAddress(config, ".MerkleGateFactory");
+        }
         vm.label(deploymentConfig.curatedGateFactory, "curatedGateFactory");
+
+        if (vm.keyExistsJson(config, ".CuratedGateImpl")) {
+            deploymentConfig.curatedGateImpl = vm.parseJsonAddress(config, ".CuratedGateImpl");
+            vm.label(deploymentConfig.curatedGateImpl, "curatedGateImpl");
+        }
 
         if (vm.keyExistsJson(config, ".CuratedGates")) {
             deploymentConfig.curatedGates = vm.parseJsonAddressArray(config, ".CuratedGates");
@@ -642,7 +655,8 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     ParametersRegistry public parametersRegistry;
     ParametersRegistry public parametersRegistryImpl;
     PermissionlessGate public permissionlessGate;
-    VettedGateFactory public vettedGateFactory;
+    MerkleGateFactory public vettedGateFactory;
+    MerkleGateFactory public curatedGateFactory;
     VettedGate public vettedGate;
     VettedGate public vettedGateImpl;
     address public earlyAdoption;
@@ -668,7 +682,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     CuratedModule public curatedModule;
     CuratedModule public curatedModuleImpl;
     MetaRegistry public metaRegistry;
-    CuratedGateFactory public curatedGateFactory;
+    CuratedGate public curatedGateImpl;
     address[] public curatedGates;
 
     error ModuleNotFound();
@@ -704,7 +718,8 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         parametersRegistry = ParametersRegistry(deploymentConfig.parametersRegistry);
         parametersRegistryImpl = ParametersRegistry(deploymentConfig.parametersRegistryImpl);
         permissionlessGate = PermissionlessGate(deploymentConfig.permissionlessGate);
-        vettedGateFactory = VettedGateFactory(deploymentConfig.vettedGateFactory);
+        vettedGateFactory = MerkleGateFactory(deploymentConfig.vettedGateFactory);
+        curatedGateFactory = MerkleGateFactory(address(0));
         vettedGate = VettedGate(deploymentConfig.vettedGate);
         vettedGateImpl = VettedGate(deploymentConfig.vettedGateImpl);
         earlyAdoption = deploymentConfig.earlyAdoption;
@@ -745,7 +760,8 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         parametersRegistry = ParametersRegistry(deploymentConfig.parametersRegistry);
         parametersRegistryImpl = ParametersRegistry(deploymentConfig.parametersRegistryImpl);
         permissionlessGate = PermissionlessGate(address(0));
-        vettedGateFactory = VettedGateFactory(address(0));
+        vettedGateFactory = MerkleGateFactory(address(0));
+        curatedGateFactory = MerkleGateFactory(deploymentConfig.curatedGateFactory);
         vettedGate = VettedGate(address(0));
         vettedGateImpl = VettedGate(address(0));
         earlyAdoption = address(0);
@@ -770,7 +786,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         burner = IBurner(locator.burner());
 
         metaRegistry = MetaRegistry(deploymentConfig.metaRegistry);
-        curatedGateFactory = CuratedGateFactory(deploymentConfig.curatedGateFactory);
+        curatedGateImpl = CuratedGate(deploymentConfig.curatedGateImpl);
         curatedGates = deploymentConfig.curatedGates;
     }
 

@@ -18,6 +18,9 @@ import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
+    bytes32 internal constant START_REFERRAL_SEASON_ROLE = keccak256("START_REFERRAL_SEASON_ROLE");
+    bytes32 internal constant END_REFERRAL_SEASON_ROLE = keccak256("END_REFERRAL_SEASON_ROLE");
+
     DeployParams internal deployParams;
     uint256 adminsCount;
 
@@ -293,13 +296,6 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
 }
 
 contract VettedGateDeploymentTest is DeploymentBaseTest {
-    function test_state_scratch() public view {
-        assertFalse(vettedGate.isReferralProgramSeasonActive());
-        assertEq(vettedGate.referralProgramSeasonNumber(), 0);
-        assertEq(vettedGate.referralCurveId(), 0);
-        assertEq(vettedGate.referralsThreshold(), 0);
-    }
-
     function test_state() public view {
         assertFalse(vettedGate.isPaused());
         assertEq(vettedGate.treeRoot(), deployParams.identifiedCommunityStakersGateTreeRoot);
@@ -330,24 +326,17 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
         assertTrue(vettedGate.hasRole(vettedGate.SET_TREE_ROLE(), deployParams.easyTrackEVMScriptExecutor));
         assertEq(vettedGate.getRoleMemberCount(vettedGate.SET_TREE_ROLE()), 1);
 
-        assertTrue(vettedGate.hasRole(vettedGate.START_REFERRAL_SEASON_ROLE(), deployParams.aragonAgent));
-        assertEq(vettedGate.getRoleMemberCount(vettedGate.START_REFERRAL_SEASON_ROLE()), 1);
-
-        assertTrue(
-            vettedGate.hasRole(
-                vettedGate.END_REFERRAL_SEASON_ROLE(),
-                deployParams.identifiedCommunityStakersGateManager
-            )
-        );
-        assertEq(vettedGate.getRoleMemberCount(vettedGate.END_REFERRAL_SEASON_ROLE()), 1);
+        // Legacy referral program roles are not used in the new VettedGate.
+        assertEq(vettedGate.getRoleMemberCount(START_REFERRAL_SEASON_ROLE), 0);
+        assertEq(vettedGate.getRoleMemberCount(END_REFERRAL_SEASON_ROLE), 0);
     }
 
     function test_proxy_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         vettedGate.initialize({
-            _curveId: 1,
-            _treeRoot: deployParams.identifiedCommunityStakersGateTreeRoot,
-            _treeCid: deployParams.identifiedCommunityStakersGateTreeCid,
+            curveId: 1,
+            treeRoot: deployParams.identifiedCommunityStakersGateTreeRoot,
+            treeCid: deployParams.identifiedCommunityStakersGateTreeCid,
             admin: deployParams.aragonAgent
         });
 
@@ -360,11 +349,20 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
         VettedGate vettedGateImpl = VettedGate(proxy.proxy__getImplementation());
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         vettedGateImpl.initialize({
-            _curveId: 1,
-            _treeRoot: deployParams.identifiedCommunityStakersGateTreeRoot,
-            _treeCid: deployParams.identifiedCommunityStakersGateTreeCid,
+            curveId: 1,
+            treeRoot: deployParams.identifiedCommunityStakersGateTreeRoot,
+            treeCid: deployParams.identifiedCommunityStakersGateTreeCid,
             admin: deployParams.aragonAgent
         });
+    }
+}
+
+contract VettedGateFactoryDeploymentTest is DeploymentBaseTest {
+    function test_state_onlyFull() public view {
+        assertTrue(address(vettedGateFactory) != address(0), "vetted gate factory missing");
+
+        address vettedGateImplementation = OssifiableProxy(payable(address(vettedGate))).proxy__getImplementation();
+        assertEq(vettedGateFactory.GATE_IMPL(), vettedGateImplementation, "vetted gate factory impl mismatch");
     }
 }
 
