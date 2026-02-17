@@ -7,7 +7,7 @@ import { IWithdrawalQueue } from "src/interfaces/IWithdrawalQueue.sol";
 
 import { PermitHelper } from "../../../helpers/Permit.sol";
 import { MerkleTree } from "../../../helpers/MerkleTree.sol";
-import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
 abstract contract ClaimRewardsTestBase is ModuleTypeBase, PermitHelper {
     address internal user;
@@ -346,5 +346,7 @@ abstract contract ClaimRewardsTestBase is ModuleTypeBase, PermitHelper {
 }
 
 contract ClaimRewardsTestCSM is ClaimRewardsTestBase, CSMIntegrationBase {}
+
+contract ClaimRewardsTestCSM0x02 is ClaimRewardsTestBase, CSM0x02IntegrationBase {}
 
 contract ClaimRewardsTestCurated is ClaimRewardsTestBase, CuratedIntegrationBase {}

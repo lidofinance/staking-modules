@@ -81,32 +81,62 @@ jobs:
       - name: Run unit-tests
         run: just test-unit
 
-      - name: Run tests for current state on fork
-        run: just test-current
+      - name: Run tests for current CSM state on fork
+        run: just test-csm-current
         env:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
-      - name: Run local deployment tests for scratch deploy
-        run: just test-full-deploy
+      - name: Run tests for current Curated state on fork
+        run: just test-curated-current
         env:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
-      - name: Run local integration tests
-        run: just test-local
+      - name: Run tests for current CSM0x02 state on fork
+        run: just test-csm0x02-current
         env:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
-      - name: Run local integration tests for Curated Deployment
+      - name: Run local deployment tests for CSM scratch deploy
+        run: just test-csm-full-deploy
+        env:
+          CHAIN: mainnet
+          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+
+      - name: Run local deployment tests for Curated scratch deploy
+        run: just test-curated-full-deploy
+        env:
+          CHAIN: mainnet
+          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+
+      - name: Run local deployment tests for CSM0x02 scratch deploy
+        run: just test-csm0x02-full-deploy
+        env:
+          CHAIN: mainnet
+          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+
+      - name: Run local integration tests for CSM deployment
+        run: just test-csm-local
+        env:
+          CHAIN: mainnet
+          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+
+      - name: Run local integration tests for Curated deployment
         run: just test-curated-local
         env:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
-      - name: Run post-vote tests after v3 upgrade
-        run: just test-upgrade
+      - name: Run local integration tests for CSM0x02 deployment
+        run: just test-csm0x02-local
+        env:
+          CHAIN: mainnet
+          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+
+      - name: Run post-vote tests after CSM v3 upgrade
+        run: just test-csm-upgrade
         env:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}

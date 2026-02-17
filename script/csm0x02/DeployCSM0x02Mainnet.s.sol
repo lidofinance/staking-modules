@@ -3,11 +3,11 @@
 
 pragma solidity 0.8.33;
 
-import { DeployBase } from "./DeployBase.s.sol";
+import { DeployCSM0x02Base } from "./DeployCSM0x02Base.s.sol";
 import { GIndices } from "../constants/GIndices.sol";
 
-contract DeployMainnet is DeployBase {
-    constructor() DeployBase("mainnet", 1) {
+contract DeployCSM0x02Mainnet is DeployCSM0x02Base {
+    constructor() DeployCSM0x02Base("mainnet", 1) {
         // Lido addresses
         config.lidoLocatorAddress = 0xC1d0b3DE6792Bf6b4b37EccdcC24e45978Cfd2Eb;
         config.aragonAgent = 0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c;
@@ -18,8 +18,8 @@ contract DeployMainnet is DeployBase {
         config.secondsPerSlot = 12; // https://github.com/eth-clients/mainnet/blob/f6b7882618a5ad2c1d2731ae35e5d16a660d5bb7/metadata/config.yaml#L58
         config.slotsPerEpoch = 32; // https://github.com/ethereum/consensus-specs/blob/7df1ce30384b13d01617f8ddf930f4035da0f689/specs/phase0/beacon-chain.md?plain=1#L246
         config.clGenesisTime = 1606824023; // https://github.com/eth-clients/mainnet/blob/f6b7882618a5ad2c1d2731ae35e5d16a660d5bb7/README.md?plain=1#L10
-        config.oracleReportEpochsPerFrame = 225 * 31; // 28 days TODO: Change back to 225 * 28  after phase 2 execution
-        config.fastLaneLengthSlots = 0; // TODO: Change to 600 after phase 2 execution
+        config.oracleReportEpochsPerFrame = 225 * 28; // 28 days
+        config.fastLaneLengthSlots = 1800;
         config.consensusVersion = 4;
         config.oracleMembers = new address[](9);
         config.oracleMembers[0] = 0x73181107c8D9ED4ce0bbeF7A0b4ccf3320C41d12; // Instadapp
@@ -45,12 +45,10 @@ contract DeployMainnet is DeployBase {
         config.capellaSlot = 194048 * config.slotsPerEpoch; // @see https://github.com/eth-clients/mainnet/blob/main/metadata/config.yaml#L50
 
         // Accounting
-        // 2.4 -> 1.3
-        config.defaultBondCurve.push([1, 2.4 ether]);
-        config.defaultBondCurve.push([2, 1.3 ether]);
-        // 1.5 -> 1.3
-        config.legacyEaBondCurve.push([1, 1.5 ether]);
-        config.legacyEaBondCurve.push([2, 1.3 ether]);
+        // TODO: Set proper default bond curve values for CSM0x02.
+        // Temporary placeholder: 32 ETH per key.
+        config.defaultBondCurve.push([1, 32 ether]);
+        config.defaultBondCurve.push([2, 32 ether]);
 
         config.minBondLockPeriod = 4 weeks;
         config.maxBondLockPeriod = 365 days;
@@ -81,36 +79,6 @@ contract DeployMainnet is DeployBase {
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.1 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
-
-        // VettedGate
-        config.identifiedCommunityStakersGateManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
-        config.identifiedCommunityStakersGateCurveId = 2;
-        config
-            .identifiedCommunityStakersGateTreeRoot = 0x91545c42adde0f5d82e4c228f81449eab20349c1d31a8538e0468466f93495c5;
-        config.identifiedCommunityStakersGateTreeCid = "bafkreido7ieacbe6nlhdivxfp2gd5kxovofngf6qdmahih4laihm675e2a";
-        // 1.5 -> 1.3
-        config.identifiedCommunityStakersGateBondCurve.push([1, 1.5 ether]);
-        config.identifiedCommunityStakersGateBondCurve.push([2, 1.3 ether]);
-
-        // Parameters for Identified Community Staker type
-        config.identifiedCommunityStakersGateKeyRemovalCharge = 0.01 ether;
-        config.identifiedCommunityStakersGateGeneralDelayedPenaltyAdditionalFine = 0.05 ether;
-        config.identifiedCommunityStakersGateKeysLimit = type(uint248).max;
-        config.identifiedCommunityStakersGateAvgPerfLeewayData.push([1, 500]);
-        config.identifiedCommunityStakersGateAvgPerfLeewayData.push([151, 300]);
-        config.identifiedCommunityStakersGateRewardShareData.push([1, 10000]);
-        config.identifiedCommunityStakersGateRewardShareData.push([17, 5834]);
-        config.identifiedCommunityStakersGateStrikesLifetimeFrames = 6;
-        config.identifiedCommunityStakersGateStrikesThreshold = 4;
-        config.identifiedCommunityStakersGateQueuePriority = 0;
-        config.identifiedCommunityStakersGateQueueMaxDeposits = 10;
-        config.identifiedCommunityStakersGateBadPerformancePenalty = 0.172 ether;
-        config.identifiedCommunityStakersGateAttestationsWeight = 54;
-        config.identifiedCommunityStakersGateBlocksWeight = 4;
-        config.identifiedCommunityStakersGateSyncWeight = 2;
-        config.identifiedCommunityStakersGateAllowedExitDelay = 5 days;
-        config.identifiedCommunityStakersGateExitDelayFee = 0.05 ether;
-        config.identifiedCommunityStakersGateMaxElWithdrawalRequestFee = 0.1 ether;
 
         // GateSeal
         config.gateSealFactory = 0x6C82877cAC5a7A739f16Ca0A89c0A328B8764A24;

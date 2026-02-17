@@ -78,7 +78,7 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
         assertEq(parametersRegistryImpl.QUEUE_LOWEST_PRIORITY(), deployParams.queueLowestPriority);
     }
 
-    function test_state() public view {
+    function test_state_onlyFull() public view {
         assertEq(parametersRegistry.defaultKeyRemovalCharge(), deployParams.defaultKeyRemovalCharge);
         assertEq(
             parametersRegistry.defaultGeneralDelayedPenaltyAdditionalFine(),
@@ -231,12 +231,12 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
         );
     }
 
-    function test_roles() public view {
+    function test_roles_onlyFull() public view {
         assertTrue(parametersRegistry.hasRole(parametersRegistry.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(parametersRegistry.getRoleMemberCount(parametersRegistry.DEFAULT_ADMIN_ROLE()), adminsCount);
     }
 
-    function test_proxy() public {
+    function test_proxy_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         parametersRegistry.initialize({
             admin: deployParams.aragonAgent,
@@ -314,7 +314,7 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
         assertEq(address(vettedGateImpl.ACCOUNTING()), address(accounting));
     }
 
-    function test_roles() public view {
+    function test_roles_onlyFull() public view {
         assertTrue(vettedGate.hasRole(vettedGate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(oracle.getRoleMemberCount(oracle.DEFAULT_ADMIN_ROLE()), adminsCount);
 
@@ -342,7 +342,7 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
         assertEq(vettedGate.getRoleMemberCount(vettedGate.END_REFERRAL_SEASON_ROLE()), 1);
     }
 
-    function test_proxy() public {
+    function test_proxy_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         vettedGate.initialize({
             _curveId: 1,

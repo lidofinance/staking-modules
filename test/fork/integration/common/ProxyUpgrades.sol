@@ -7,7 +7,7 @@ import { OssifiableProxy } from "../../../../src/lib/proxy/OssifiableProxy.sol";
 import { Accounting } from "../../../../src/Accounting.sol";
 import { FeeDistributor } from "../../../../src/FeeDistributor.sol";
 import { FeeOracle } from "../../../../src/FeeOracle.sol";
-import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
 abstract contract ProxyUpgradesBase is ModuleTypeBase {
     function setUp() public {
@@ -104,5 +104,7 @@ abstract contract ProxyUpgradesBase is ModuleTypeBase {
 }
 
 contract ProxyUpgradesCommonCSM is ProxyUpgradesBase, CSMIntegrationBase {}
+
+contract ProxyUpgradesCommonCSM0x02 is ProxyUpgradesBase, CSM0x02IntegrationBase {}
 
 contract ProxyUpgradesCommonCurated is ProxyUpgradesBase, CuratedIntegrationBase {}

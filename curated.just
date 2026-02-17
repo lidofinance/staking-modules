@@ -1,81 +1,102 @@
-
-curated_deploy_script_name := if chain == "mainnet" {
-    "DeployMainnet"
-} else if chain == "local-devnet" {
-    "DeployLocalDevNet"
-} else if chain == "hoodi" {
-    "DeployHoodi"
-} else {
-    error("Unsupported curated deployment chain " + chain)
-}
-
-curated_deploy_config_path := if chain == "mainnet" {
-    "artifacts/mainnet/curated/deploy-mainnet.json"
-} else if chain == "local-devnet" {
-    "artifacts/local-devnet/curated/deploy-local-devnet.json"
-} else if chain == "hoodi" {
-    "artifacts/hoodi/curated/deploy-hoodi.json"
-} else {
-    error("Unsupported curated deployment chain " + chain)
-}
-
+curated_deploy_script_name := "Deploy" + chain_script_suffix
+curated_deploy_config_path := "artifacts" / chain / "curated" / "deploy-" + chain + ".json"
 curated_deploy_script_path := "script" / "curated" / curated_deploy_script_name + ".s.sol:" + curated_deploy_script_name
 
+curated_artifacts_latest_dir := "./artifacts/latest/curated/"
+curated_artifacts_local_dir := "./artifacts/local/curated/"
+curated_local_transactions_path := curated_artifacts_local_dir + "transactions.json"
+curated_local_deploy_config_path := curated_artifacts_local_dir + "deploy-" + chain + ".json"
+
+# Deployment
+
 deploy-curated *args:
-    FOUNDRY_PROFILE=deploy \
-        forge script {{curated_deploy_script_path}} --sig="run(string)" --rpc-url {{anvil_rpc_url}} --broadcast --slow {{args}} -- `git rev-parse HEAD`
+    mkdir -p {{curated_artifacts_local_dir}}
+    just _deploy-generic {{curated_deploy_script_path}} {{anvil_rpc_url}} {{args}}
 
 deploy-curated-live *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
-    ARTIFACTS_DIR=./artifacts/latest/curated/ just _deploy-curated-live {{args}}
-
-    mkdir -p `dirname {{curated_deploy_config_path}}`
-    cp ./broadcast/{{curated_deploy_script_name}}.s.sol/`cast chain-id --rpc-url=$RPC_URL`/run-latest.json \
-        {{curated_deploy_config_path}}
+    mkdir -p {{curated_artifacts_latest_dir}}
+    ARTIFACTS_DIR={{curated_artifacts_latest_dir}} \
+        just _deploy-live-generic {{curated_deploy_script_path}} {{args}}
+    just _copy-broadcast-json {{curated_deploy_script_name}} $RPC_URL "" "run-latest.json" {{curated_deploy_config_path}}
 
 deploy-curated-live-no-confirm *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
-    ARTIFACTS_DIR=./artifacts/latest/curated/ just _deploy-curated-live-no-confirm --broadcast {{args}}
-
-    mkdir -p `dirname {{curated_deploy_config_path}}`
-    cp ./broadcast/{{curated_deploy_script_name}}.s.sol/`cast chain-id --rpc-url=$RPC_URL`/run-latest.json \
-        {{curated_deploy_config_path}}
-
-[confirm("You are about to broadcast deployment transactions to the network. Are you sure?")]
-_deploy-curated-live *args:
-    just _deploy-curated-live-no-confirm --broadcast --verify {{args}}
+    mkdir -p {{curated_artifacts_latest_dir}}
+    ARTIFACTS_DIR={{curated_artifacts_latest_dir}} \
+        just _deploy-live-generic-no-confirm {{curated_deploy_script_path}} --broadcast {{args}}
+    just _copy-broadcast-json {{curated_deploy_script_name}} $RPC_URL "" "run-latest.json" {{curated_deploy_config_path}}
 
 deploy-curated-live-dry *args:
-    just _deploy-curated-live-no-confirm {{args}}
+    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
+    mkdir -p {{curated_artifacts_local_dir}}
+    ARTIFACTS_DIR={{curated_artifacts_local_dir}} \
+        just _deploy-live-generic-dry {{curated_deploy_script_path}} {{args}}
+    just _copy-broadcast-json {{curated_deploy_script_name}} $RPC_URL "/dry-run" "run-latest.json" {{curated_local_transactions_path}}
 
 verify-curated-live *args:
     just _warn "Pass --chain=your_chain manually when running curated deployments"
-    forge script {{curated_deploy_script_path}} --sig="run(string)" --rpc-url ${RPC_URL} --verify {{args}} --unlocked -- `git rev-parse HEAD`
+    just _verify-live-generic {{curated_deploy_script_path}} {{args}}
 
-_deploy-curated-live-no-confirm *args:
-    forge script {{curated_deploy_script_path}} --sig="run(string)" --force --rpc-url ${RPC_URL} {{args}} -- `git rev-parse HEAD`
+# Governance helpers
 
 vote-add-curated-module:
     just _impersonate-script SimulateVote --sig="addCuratedModule"
 
+# Local fork flows
+
+# Start/reuse local fork and keep it running after deployment.
+deploy-curated-local *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    just _fork-up > /dev/null
+
+    just deploy-curated {{args}}
+    just _warn "anvil is kept running in the background: {{anvil_rpc_url}}"
+
+# Deploy Curated module from scratch, add module to the SR, and run deployment and integration tests.
 test-curated-local *args:
     #!/usr/bin/env bash
-    set -euxo pipefail
+    set -euo pipefail
 
-    just make-fork --silent &
-    while ! echo exit | nc {{anvil_host}} {{anvil_port}} > /dev/null; do sleep 1; done
+    eval "$(just _fork-up-and-down)"
 
-    mkdir -p ./artifacts/local/curated
+    export ARTIFACTS_DIR={{curated_artifacts_local_dir}}
+    local_private_key="$(just _local-private-key)"
+    just deploy-curated --silent --private-key="${local_private_key}" {{disable_code_size_limit}}
 
-    ARTIFACTS_DIR=./artifacts/local/curated/ just deploy-curated --silent --private-key=`cat localhost.json | jq -r ".private_keys[0]"` {{disable_code_size_limit}}
-
-    export DEPLOY_CONFIG=./artifacts/local/curated/deploy-{{chain}}.json
+    export DEPLOY_CONFIG={{curated_local_deploy_config_path}}
     export RPC_URL={{anvil_rpc_url}}
 
     just vote-add-curated-module
-
     just test-deployment-full-afterVote {{args}}
-
     just test-integration {{args}}
 
-    just kill-fork
+# Deploy Curated module from scratch and run deployment tests
+test-curated-full-deploy *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    eval "$(just _fork-up-and-down)"
+
+    export ARTIFACTS_DIR={{curated_artifacts_local_dir}}
+    local_private_key="$(just _local-private-key)"
+    just deploy-curated --private-key="${local_private_key}" {{disable_code_size_limit}} -vvv
+
+    export DEPLOY_CONFIG={{curated_local_deploy_config_path}}
+    export RPC_URL={{anvil_rpc_url}}
+
+    just test-deployment-full-scratch {{args}}
+
+# Run utility tests on fork with current state
+test-curated-current *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    eval "$(just _fork-up-and-down)"
+
+    export RPC_URL={{anvil_rpc_url}}
+    export DEPLOY_CONFIG={{curated_deploy_config_path}}
+
+    just test-utils {{args}}

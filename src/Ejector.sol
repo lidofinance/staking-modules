@@ -9,7 +9,11 @@ import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
 import { ExitTypes } from "./abstract/ExitTypes.sol";
 import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 
+<<<<<<< pausable-with-roles
 import { SigningKeys } from "./lib/SigningKeys.sol";
+=======
+import { PausableUntil } from "./lib/utils/PausableUntil.sol";
+>>>>>>> develop
 import { TransientUintUintMap, TransientUintUintMapLib } from "./lib/TransientUintUintMapLib.sol";
 
 import { IEjector } from "./interfaces/IEjector.sol";
@@ -40,72 +44,23 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableWithRo
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
+<<<<<<< pausable-with-roles
     // TODO: Remove this method in favour of voluntaryEjectByArray.
+=======
+    // TODO: Create abstract contract PausableWithRoles and move pause/resume logic there.
     /// @inheritdoc IEjector
-    function voluntaryEject(
-        uint256 nodeOperatorId,
-        uint256 startFrom,
-        uint256 keysCount,
-        address refundRecipient
-    ) external payable whenResumed {
-        _onlyNodeOperatorOwner(nodeOperatorId);
-
-        if (keysCount == 0) revert NothingToEject();
-
-        // Default to sender if no refund recipient is specified
-        refundRecipient = _msgSenderIfEmpty(refundRecipient);
-
-        {
-            // A key must be deposited to prevent ejecting unvetted keys that can intersect with
-            // other modules.
-            uint256 maxKeyIndex = startFrom + keysCount;
-            if (maxKeyIndex > MODULE.getNodeOperator(nodeOperatorId).totalDepositedKeys) {
-                revert SigningKeysInvalidOffset();
-            }
-            // A key must be non-withdrawn to restrict unlimited exit requests consuming sanity
-            // checker limits, although a deposited key can be requested to exit multiple times.
-            // But, it will eventually be withdrawn, so potentially malicious behaviour stops when
-            // there are no active keys available
-            for (uint256 i = startFrom; i < maxKeyIndex; ++i) {
-                if (MODULE.isValidatorWithdrawn(nodeOperatorId, i)) revert AlreadyWithdrawn();
-            }
-        }
-
-        bytes memory pubkeys = MODULE.getSigningKeys(nodeOperatorId, startFrom, keysCount);
-        ValidatorData[] memory exitsData = new ValidatorData[](keysCount);
-        for (uint256 i; i < keysCount; ++i) {
-            bytes memory pubkey = new bytes(SigningKeys.PUBKEY_LENGTH);
-            assembly {
-                let keyLen := mload(pubkey) // PUBKEY_LENGTH
-                let offset := mul(keyLen, i) // PUBKEY_LENGTH * i
-                let keyPos := add(add(pubkeys, 0x20), offset) // pubkeys[offset]
-                mcopy(add(pubkey, 0x20), keyPos, keyLen) // pubkey = pubkeys[offset:offset+PUBKEY_LENGTH]
-            }
-            exitsData[i] = ValidatorData({
-                stakingModuleId: STAKING_MODULE_ID,
-                nodeOperatorId: nodeOperatorId,
-                pubkey: pubkey
-            });
-            emit VoluntaryEjectionRequested({
-                nodeOperatorId: nodeOperatorId,
-                pubkey: pubkey,
-                refundRecipient: refundRecipient
-            });
-        }
-
-        // @dev This call might revert if the limits are exceeded on the protocol side.
-        triggerableWithdrawalsGateway().triggerFullWithdrawals{ value: msg.value }(
-            exitsData,
-            refundRecipient,
-            VOLUNTARY_EXIT_TYPE_ID
-        );
+    function resume() external onlyRole(RESUME_ROLE) {
+        _resume();
     }
 
-    // TODO: Rename to voluntaryEject.
-    /// @dev Additional method for non-sequential keys to save gas and decrease fee amount compared
-    /// to separate transactions.
     /// @inheritdoc IEjector
-    function voluntaryEjectByArray(
+    function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE) {
+        _pauseFor(duration);
+    }
+
+>>>>>>> develop
+    /// @inheritdoc IEjector
+    function voluntaryEject(
         uint256 nodeOperatorId,
         uint256[] calldata keyIndices,
         address refundRecipient

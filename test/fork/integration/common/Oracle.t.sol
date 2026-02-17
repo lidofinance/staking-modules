@@ -4,7 +4,7 @@
 pragma solidity 0.8.33;
 
 import { MerkleTree } from "../../../helpers/MerkleTree.sol";
-import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
 import { IValidatorStrikes } from "../../../../src/interfaces/IValidatorStrikes.sol";
 import { IFeeOracle } from "../../../../src/interfaces/IFeeOracle.sol";
@@ -203,5 +203,7 @@ abstract contract OracleTestBase is ModuleTypeBase {
 }
 
 contract OracleTestCSM is OracleTestBase, CSMIntegrationBase {}
+
+contract OracleTestCSM0x02 is OracleTestBase, CSM0x02IntegrationBase {}
 
 contract OracleTestCurated is OracleTestBase, CuratedIntegrationBase {}
