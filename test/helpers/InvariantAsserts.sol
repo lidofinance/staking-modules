@@ -202,14 +202,12 @@ contract InvariantAsserts is Test {
 
     function assertFeeOracleUnusedStorageSlots(FeeOracle feeOracle) public {
         if (skipInvariants()) return;
-        bytes32 value;
-        // _feeDistributor
-        value = vm.load(address(feeOracle), bytes32(uint256(0)));
-        assertEq(value, bytes32(0), "assert _feeDistributor is empty");
 
-        // _avgPerfLeewayBP
-        value = vm.load(address(feeOracle), bytes32(uint256(1)));
-        assertEq(value, bytes32(0), "assert _avgPerfLeewayBP is empty");
+        bytes32 slot1 = vm.load(address(feeOracle), bytes32(uint256(0)));
+        bytes32 slot2 = vm.load(address(feeOracle), bytes32(uint256(1)));
+
+        assertEq(slot1, bytes32(0), "assert __freeSlot1 is empty");
+        assertEq(slot2, bytes32(0), "assert __freeSlot2 is empty");
     }
 
     function assertStrikesTree(ValidatorStrikes strikes) public {

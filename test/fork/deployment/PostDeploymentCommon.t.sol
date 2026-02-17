@@ -252,6 +252,13 @@ contract FeeOracleDeploymentTest is DeploymentBaseTest {
         assertEq(oracle.getConsensusVersion(), deployParams.consensusVersion);
     }
 
+    function test_unusedStorageSlots_onlyFull() public view {
+        bytes32 slot0 = vm.load(address(oracle), bytes32(uint256(0)));
+        bytes32 slot1 = vm.load(address(oracle), bytes32(uint256(1)));
+        assertEq(slot0, bytes32(0), "assert __freeSlot1 is empty");
+        assertEq(slot1, bytes32(0), "assert __freeSlot2 is empty");
+    }
+
     function test_immutables() public view {
         assertEq(oracleImpl.SECONDS_PER_SLOT(), deployParams.secondsPerSlot);
         assertEq(oracleImpl.GENESIS_TIME(), deployParams.clGenesisTime);

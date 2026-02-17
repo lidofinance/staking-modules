@@ -8,8 +8,8 @@ import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
 import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 import { BaseOracle } from "./lib/base-oracle/BaseOracle.sol";
 
-import { IFeeDistributor } from "./interfaces/IFeeDistributor.sol";
 import { IValidatorStrikes } from "./interfaces/IValidatorStrikes.sol";
+import { IFeeDistributor } from "./interfaces/IFeeDistributor.sol";
 import { IFeeOracle } from "./interfaces/IFeeOracle.sol";
 
 contract FeeOracle is IFeeOracle, BaseOracle, PausableWithRoles, AssetRecoverer {
@@ -26,12 +26,8 @@ contract FeeOracle is IFeeOracle, BaseOracle, PausableWithRoles, AssetRecoverer 
     IFeeDistributor public immutable FEE_DISTRIBUTOR;
     IValidatorStrikes public immutable STRIKES;
 
-    /// @dev DEPRECATED
-    /// @custom:oz-renamed-from feeDistributor
-    IFeeDistributor internal _feeDistributor;
-    /// @dev DEPRECATED
-    /// @custom:oz-renamed-from avgPerfLeewayBP
-    uint256 internal _avgPerfLeewayBP;
+    bytes32 internal __freeSlot1;
+    bytes32 internal __freeSlot2;
 
     constructor(
         address feeDistributor,
