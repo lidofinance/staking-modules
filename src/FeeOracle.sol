@@ -52,8 +52,9 @@ contract FeeOracle is IFeeOracle, BaseOracle, PausableWithRoles, AssetRecoverer 
 
         BaseOracle._initialize(consensusContract, consensusVersion, 0);
 
-        _updateContractVersion(2);
-        _updateContractVersion(INITIALIZED_VERSION);
+        for (uint256 version = 2; version <= INITIALIZED_VERSION; version++) {
+            _updateContractVersion(version);
+        }
     }
 
     /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing version 2 deployment.
