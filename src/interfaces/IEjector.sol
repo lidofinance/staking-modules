@@ -46,22 +46,9 @@ interface IEjector is IExitTypes {
     /// @notice Withdraw the validator key from the Node Operator
     /// @notice Called by the node operator
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param startFrom Index of the first key to withdraw
-    /// @param keysCount Number of keys to withdraw
-    /// @param refundRecipient Address to send the refund to
-    function voluntaryEject(
-        uint256 nodeOperatorId,
-        uint256 startFrom,
-        uint256 keysCount,
-        address refundRecipient
-    ) external payable;
-
-    /// @notice Withdraw the validator key from the Node Operator
-    /// @notice Called by the node operator
-    /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndices Array of indices of the keys to withdraw
     /// @param refundRecipient Address to send the refund to
-    function voluntaryEjectByArray(
+    function voluntaryEject(
         uint256 nodeOperatorId,
         uint256[] calldata keyIndices,
         address refundRecipient
