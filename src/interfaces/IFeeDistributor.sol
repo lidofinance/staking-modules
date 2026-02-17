@@ -48,6 +48,7 @@ interface IFeeDistributor is IAssetRecovererLib {
     error ZeroAdminAddress();
     error ZeroOracleAddress();
     error ZeroRebateRecipientAddress();
+    error SameRebateRecipientAddress();
     error SenderIsNotAccounting();
     error SenderIsNotOracle();
 
