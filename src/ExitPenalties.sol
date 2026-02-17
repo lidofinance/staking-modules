@@ -135,5 +135,3 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
         if (msg.sender != STRIKES) revert SenderIsNotStrikes();
     }
 }
-
-// Last review ended here
