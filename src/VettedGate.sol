@@ -17,7 +17,6 @@ import { IVettedGate } from "./interfaces/IVettedGate.sol";
 // TODO: Create abstract MerkleGate contract and inherit both CuratedGate and VettedGate from it.
 // TODO: Check that after moving to the abstract contract storage layout is not broken and there are no collisions.
 contract VettedGate is IVettedGate, AccessControlEnumerableUpgradeable, PausableWithRoles, AssetRecoverer {
-    bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
     bytes32 public constant SET_TREE_ROLE = keccak256("SET_TREE_ROLE");
     bytes32 public constant START_REFERRAL_SEASON_ROLE = keccak256("START_REFERRAL_SEASON_ROLE");
     bytes32 public constant END_REFERRAL_SEASON_ROLE = keccak256("END_REFERRAL_SEASON_ROLE");

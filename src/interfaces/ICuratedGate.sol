@@ -17,8 +17,6 @@ interface ICuratedGate is IMerkleGate {
     error ZeroMetaRegistryAddress();
     error ZeroAdminAddress();
 
-    function RECOVERER_ROLE() external view returns (bytes32);
-
     /// @return MODULE Curated module reference
     function MODULE() external view returns (ICuratedModule);
 

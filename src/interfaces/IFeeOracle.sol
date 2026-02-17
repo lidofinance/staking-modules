@@ -40,8 +40,6 @@ interface IFeeOracle is IAssetRecovererLib {
 
     function SUBMIT_DATA_ROLE() external view returns (bytes32);
 
-    function RECOVERER_ROLE() external view returns (bytes32);
-
     function FEE_DISTRIBUTOR() external view returns (IFeeDistributor);
 
     function STRIKES() external view returns (IValidatorStrikes);

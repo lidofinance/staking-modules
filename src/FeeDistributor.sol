@@ -18,8 +18,6 @@ import { IStETH } from "./interfaces/IStETH.sol";
 contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerableUpgradeable, AssetRecoverer {
     uint64 internal constant INITIALIZED_VERSION = 3;
 
-    bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
-
     IStETH public immutable STETH;
     address public immutable ACCOUNTING;
     address public immutable ORACLE;

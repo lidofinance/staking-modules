@@ -42,7 +42,6 @@ abstract contract BaseModule is
         keccak256("REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE");
     bytes32 public constant REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE =
         keccak256("REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE");
-    bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
     bytes32 public constant CREATE_NODE_OPERATOR_ROLE = keccak256("CREATE_NODE_OPERATOR_ROLE");
     ILidoLocator public immutable LIDO_LOCATOR;
     IStETH public immutable STETH;

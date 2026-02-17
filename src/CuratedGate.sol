@@ -20,7 +20,6 @@ import { IAccounting } from "./interfaces/IAccounting.sol";
 /// @notice Merkle gate for Curated Module
 contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, PausableWithRoles, AssetRecoverer {
     bytes32 public constant SET_TREE_ROLE = keccak256("SET_TREE_ROLE");
-    bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
 
     /// @inheritdoc ICuratedGate
     ICuratedModule public immutable MODULE;

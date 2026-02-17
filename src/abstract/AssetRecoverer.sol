@@ -10,6 +10,8 @@ import { AssetRecovererLib } from "../lib/AssetRecovererLib.sol";
 ///      This contract is designed to allow asset recovery by an authorized address by implementing the onlyRecovererRole guardian
 /// @notice Assets can be sent only to the `msg.sender`
 abstract contract AssetRecoverer {
+    bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
+
     /// @dev Allows sender to recover Ether held by the contract
     /// Emits an EtherRecovered event upon success
     function recoverEther() external {

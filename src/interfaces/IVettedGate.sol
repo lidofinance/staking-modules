@@ -23,8 +23,6 @@ interface IVettedGate is IMerkleGate {
     error ReferralProgramIsActive();
     error InvalidReferralsThreshold();
 
-    function RECOVERER_ROLE() external view returns (bytes32);
-
     function START_REFERRAL_SEASON_ROLE() external view returns (bytes32);
 
     function END_REFERRAL_SEASON_ROLE() external view returns (bytes32);

@@ -16,8 +16,6 @@ import { IBaseModule } from "./interfaces/IBaseModule.sol";
 import { ITriggerableWithdrawalsGateway, ValidatorData } from "./interfaces/ITriggerableWithdrawalsGateway.sol";
 
 contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableWithRoles, AssetRecoverer {
-    bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
-
     uint256 public immutable STAKING_MODULE_ID;
     IBaseModule public immutable MODULE;
     address public immutable STRIKES;

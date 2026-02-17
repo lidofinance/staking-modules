@@ -40,8 +40,6 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
 
     function SET_BOND_CURVE_ROLE() external view returns (bytes32);
 
-    function RECOVERER_ROLE() external view returns (bytes32);
-
     function MODULE() external view returns (IBaseModule);
 
     function FEE_DISTRIBUTOR() external view returns (IFeeDistributor);

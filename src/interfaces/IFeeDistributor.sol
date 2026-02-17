@@ -60,8 +60,6 @@ interface IFeeDistributor is IAssetRecovererLib {
     error FeeSharesDecrease();
     error NotEnoughShares();
 
-    function RECOVERER_ROLE() external view returns (bytes32);
-
     function STETH() external view returns (IStETH);
 
     function ACCOUNTING() external view returns (address);

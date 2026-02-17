@@ -37,8 +37,6 @@ contract Accounting is
 
     bytes32 public constant MANAGE_BOND_CURVES_ROLE = keccak256("MANAGE_BOND_CURVES_ROLE");
     bytes32 public constant SET_BOND_CURVE_ROLE = keccak256("SET_BOND_CURVE_ROLE");
-    bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
-
     IBaseModule public immutable MODULE;
     IFeeDistributor public immutable FEE_DISTRIBUTOR;
 

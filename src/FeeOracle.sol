@@ -20,9 +20,6 @@ contract FeeOracle is IFeeOracle, BaseOracle, PausableWithRoles, AssetRecoverer 
     /// @notice An ACL role granting the permission to submit the data for a committee report.
     bytes32 public constant SUBMIT_DATA_ROLE = keccak256("SUBMIT_DATA_ROLE");
 
-    /// @notice An ACL role granting the permission to recover assets
-    bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
-
     IFeeDistributor public immutable FEE_DISTRIBUTOR;
     IValidatorStrikes public immutable STRIKES;
 
