@@ -215,15 +215,13 @@ contract VoteChangesTest is V3UpgradeTestBase {
 
         vm.selectFork(forkIdBeforeUpgrade);
         address implBefore = parametersRegistryProxy.proxy__getImplementation();
-        uint64 versionBefore = parametersRegistry.getInitializedVersion();
 
         vm.selectFork(forkIdAfterUpgrade);
         address implAfter = parametersRegistryProxy.proxy__getImplementation();
-        uint64 versionAfter = parametersRegistry.getInitializedVersion();
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(parametersRegistryImpl));
-        assertEq(versionBefore, versionAfter);
+        assertEq(parametersRegistry.getInitializedVersion(), 3);
     }
 
     function test_parametersRegistryState() public {

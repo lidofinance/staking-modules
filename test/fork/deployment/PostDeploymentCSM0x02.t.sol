@@ -79,7 +79,7 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
         assertEq(parametersRegistry.defaultAllowedExitDelay(), deployParams.defaultAllowedExitDelay);
         assertEq(parametersRegistry.defaultExitDelayFee(), deployParams.defaultExitDelayFee);
         assertEq(parametersRegistry.defaultMaxElWithdrawalRequestFee(), deployParams.defaultMaxElWithdrawalRequestFee);
-        assertEq(parametersRegistry.getInitializedVersion(), 1);
+        assertEq(parametersRegistry.getInitializedVersion(), 3);
     }
 }
 

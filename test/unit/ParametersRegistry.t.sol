@@ -137,7 +137,23 @@ contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
             parametersRegistry.defaultMaxElWithdrawalRequestFee(),
             defaultInitData.defaultMaxElWithdrawalRequestFee
         );
-        assertEq(parametersRegistry.getInitializedVersion(), 1);
+        assertEq(parametersRegistry.getInitializedVersion(), 3);
+    }
+
+    function test_finalizeUpgradeV3() public {
+        _enableInitializers(address(parametersRegistry));
+
+        parametersRegistry.finalizeUpgradeV3();
+
+        assertEq(parametersRegistry.getInitializedVersion(), 3);
+    }
+
+    function test_finalizeUpgradeV3_RevertWhen_calledTwice() public {
+        _enableInitializers(address(parametersRegistry));
+        parametersRegistry.finalizeUpgradeV3();
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        parametersRegistry.finalizeUpgradeV3();
     }
 
     function test_initialize_RevertWhen_ZeroAdminAddress() public {

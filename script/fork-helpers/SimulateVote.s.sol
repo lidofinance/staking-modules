@@ -9,6 +9,7 @@ import { CSModule } from "../../src/CSModule.sol";
 import { Accounting } from "../../src/Accounting.sol";
 import { Ejector } from "../../src/Ejector.sol";
 import { FeeDistributor } from "../../src/FeeDistributor.sol";
+import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
 import { ValidatorStrikes } from "../../src/ValidatorStrikes.sol";
 import { Verifier } from "../../src/Verifier.sol";
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
@@ -160,6 +161,8 @@ contract SimulateVote is Script, ForkHelpersCommon {
             vm.startBroadcast(_prepareProxyAdmin(address(parametersRegistryProxy)));
             // 3. Upgrade ParametersRegistry implementation
             parametersRegistryProxy.proxy__upgradeTo(deploymentConfig.parametersRegistryImpl);
+            // 4. Finalize ParametersRegistry v3 upgrade
+            ParametersRegistry(deploymentConfig.parametersRegistry).finalizeUpgradeV3();
             vm.stopBroadcast();
         }
         {
