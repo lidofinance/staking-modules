@@ -9,11 +9,6 @@ import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
 import { ExitTypes } from "./abstract/ExitTypes.sol";
 import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 
-<<<<<<< pausable-with-roles
-import { SigningKeys } from "./lib/SigningKeys.sol";
-=======
-import { PausableUntil } from "./lib/utils/PausableUntil.sol";
->>>>>>> develop
 import { TransientUintUintMap, TransientUintUintMapLib } from "./lib/TransientUintUintMapLib.sol";
 
 import { IEjector } from "./interfaces/IEjector.sol";
@@ -44,21 +39,6 @@ contract Ejector is IEjector, ExitTypes, AccessControlEnumerable, PausableWithRo
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
-<<<<<<< pausable-with-roles
-    // TODO: Remove this method in favour of voluntaryEjectByArray.
-=======
-    // TODO: Create abstract contract PausableWithRoles and move pause/resume logic there.
-    /// @inheritdoc IEjector
-    function resume() external onlyRole(RESUME_ROLE) {
-        _resume();
-    }
-
-    /// @inheritdoc IEjector
-    function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE) {
-        _pauseFor(duration);
-    }
-
->>>>>>> develop
     /// @inheritdoc IEjector
     function voluntaryEject(
         uint256 nodeOperatorId,
