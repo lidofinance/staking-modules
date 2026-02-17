@@ -7,7 +7,7 @@ import { NodeOperator } from "src/interfaces/IBaseModule.sol";
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
 
 import { ExitPenaltyInfo } from "../../../../src/interfaces/IExitPenalties.sol";
-import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
 abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
     address internal agent;
@@ -229,10 +229,10 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         for (;;) {
             (noId, keysCount) = integrationHelpers.getDepositableNodeOperator(nextAddress());
             lidoDepositWithNoGasMetering(keysCount);
-            NodeOperator memory noCurrent = module.getNodeOperator(noId);
+            NodeOperator memory no = module.getNodeOperator(noId);
             /// we need to be sure there are more than 1 keys for further checks
-            if (noCurrent.totalDepositedKeys > 1) {
-                exited = noCurrent.totalExitedKeys;
+            if (no.totalDepositedKeys > 1) {
+                exited = no.totalExitedKeys;
                 break;
             }
         }
@@ -258,8 +258,8 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         vm.prank(agent);
         stakingRouter.unsafeSetExitedValidatorsCount(moduleId, noId, false, correction);
 
-        NodeOperator memory noFinal = module.getNodeOperator(noId);
-        assertEq(noFinal.totalExitedKeys, unsafeExited);
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(no.totalExitedKeys, unsafeExited);
     }
 
     function test_reportValidatorExitDelay() public assertInvariants {
@@ -284,5 +284,7 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
 }
 
 contract StakingRouterIntegrationTestCSM is StakingRouterIntegrationTestBase, CSMIntegrationBase {}
+
+contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase, CSM0x02IntegrationBase {}
 
 contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase, CuratedIntegrationBase {}

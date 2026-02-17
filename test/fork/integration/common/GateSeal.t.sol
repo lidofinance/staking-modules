@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
 abstract contract GateSealTestBase is ModuleTypeBase {
     function setUp() public {
@@ -80,5 +80,7 @@ abstract contract GateSealTestBase is ModuleTypeBase {
 }
 
 contract GateSealTestCSM is GateSealTestBase, CSMIntegrationBase {}
+
+contract GateSealTestCSM0x02 is GateSealTestBase, CSM0x02IntegrationBase {}
 
 contract GateSealTestCurated is GateSealTestBase, CuratedIntegrationBase {}

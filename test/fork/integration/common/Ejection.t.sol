@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { IStakingModule } from "../../../../src/interfaces/IStakingModule.sol";
 import { IWithdrawalVault } from "../../../../src/interfaces/IWithdrawalVault.sol";
-import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
 abstract contract EjectionTestBase is ModuleTypeBase {
     uint256 internal nodeOperatorId;
@@ -85,9 +85,17 @@ abstract contract EjectionTestBase is ModuleTypeBase {
 
 contract EjectionTestCSM is EjectionTestBase, CSMIntegrationBase {}
 
+contract EjectionTestCSM0x02 is EjectionTestBase, CSM0x02IntegrationBase {}
+
 contract EjectionTestCurated is EjectionTestBase, CuratedIntegrationBase {}
 
 contract EjectionTest10KeysCSM is EjectionTestBase, CSMIntegrationBase {
+    constructor() {
+        KEYS_COUNT = 10;
+    }
+}
+
+contract EjectionTest10KeysCSM0x02 is EjectionTestBase, CSM0x02IntegrationBase {
     constructor() {
         KEYS_COUNT = 10;
     }

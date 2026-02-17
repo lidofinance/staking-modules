@@ -29,7 +29,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
     function addModule() external {
         _setUp();
-        if (moduleType != ModuleType.Community) revert WrongModuleType();
+        if (moduleType != ModuleType.Community && moduleType != ModuleType.Community0x02) {
+            revert WrongModuleType();
+        }
 
         IStakingRouter stakingRouter = IStakingRouter(locator.stakingRouter());
         IBurner burner = IBurner(locator.burner());
@@ -140,7 +142,6 @@ contract SimulateVote is Script, ForkHelpersCommon {
             deployParams = parseDeployParams(env.DEPLOY_CONFIG);
         }
         address admin = _prepareAdmin(deploymentConfig.csm);
-        address parametersRegistryAdmin = _prepareAdmin(address(parametersRegistry));
         IBurner burner = IBurner(locator.burner());
         address burnerAdmin = _prepareAdmin(address(burner));
 
