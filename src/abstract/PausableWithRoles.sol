@@ -28,5 +28,5 @@ abstract contract PausableWithRoles is IPausableWithRoles, PausableUntil {
 
     /// @dev Internal function to check if the caller has the required role.
     /// @param role The role to check against the caller's permissions.
-    function __checkRole(bytes32 role) internal view virtual {}
+    function __checkRole(bytes32 role) internal view virtual {} // solhint-disable-line no-empty-blocks
 }

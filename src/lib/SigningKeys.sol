@@ -190,8 +190,7 @@ library SigningKeys {
 
     /// @dev Verify that the key matches the key stored for a specific operator/index.
     function verifySigningKey(uint256 nodeOperatorId, uint256 keyIndex, bytes calldata key) internal view {
-        if (keccak256(key) == keccak256(loadKeys(nodeOperatorId, keyIndex, 1))) return;
-        revert InvalidSigningKey();
+        if (keccak256(key) != keccak256(loadKeys(nodeOperatorId, keyIndex, 1))) revert InvalidSigningKey();
     }
 
     function initKeysSigsBuf(uint256 count) internal pure returns (bytes memory, bytes memory) {

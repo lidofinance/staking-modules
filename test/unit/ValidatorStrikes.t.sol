@@ -18,7 +18,6 @@ import { IValidatorStrikes } from "src/interfaces/IValidatorStrikes.sol";
 import { InvariantAsserts } from "../helpers/InvariantAsserts.sol";
 import { MerkleTree } from "../helpers/MerkleTree.sol";
 import { Utilities } from "../helpers/Utilities.sol";
-import { ExitPenaltiesMock } from "../helpers/mocks/ExitPenaltiesMock.sol";
 import { CSMMock } from "../helpers/mocks/CSMMock.sol";
 
 contract ValidatorStrikesTestBase is Test, Fixtures, Utilities, InvariantAsserts {

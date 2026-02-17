@@ -258,8 +258,7 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         vm.prank(agent);
         stakingRouter.unsafeSetExitedValidatorsCount(moduleId, noId, false, correction);
 
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalExitedKeys, unsafeExited);
+        assertEq(module.getNodeOperator(noId).totalExitedKeys, unsafeExited);
     }
 
     function test_reportValidatorExitDelay() public assertInvariants {
