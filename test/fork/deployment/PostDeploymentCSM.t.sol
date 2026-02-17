@@ -358,7 +358,7 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
 }
 
 contract VettedGateFactoryDeploymentTest is DeploymentBaseTest {
-    function test_state() public view {
+    function test_state_onlyFull() public view {
         assertTrue(address(vettedGateFactory) != address(0), "vetted gate factory missing");
 
         address vettedGateImplementation = OssifiableProxy(payable(address(vettedGate))).proxy__getImplementation();

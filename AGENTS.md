@@ -44,6 +44,16 @@
 - Run: `just test-unit` for fast cycles; `CHAIN`/`RPC_URL` required for fork tests. Example: `export CHAIN=hoodi && export RPC_URL=<https-url>`.
 - Coverage: `just coverage-lcov` produces LCOV output (commit if relevant).
 - After making changes to the source code make sure you've either ran build command or unit tests.
+- Deployment test name suffixes are part of the test selection contract used by `just` recipes and encode two axes: phase and flow.
+- Phase semantics:
+- `*_scratch*`: checks for post-deploy, pre-vote state only.
+- `*_afterVote*`: checks for post-governance state only; these should validate changes introduced by vote execution (`script/fork-helpers/SimulateVote.s.sol`), e.g. upgrades, finalize steps, role migrations, pause/resume transitions.
+- Flow semantics:
+- `*_onlyFull*`: checks that run only in full deployment flows and are excluded from `test-deployment-csm-v3-only-scratch`.
+- Combined semantics:
+- `*_scratch_onlyFull*`: scratch-phase checks that also require full-flow context.
+- No suffix (`test_*`): use only for invariants expected to hold in every phase/flow where the suite is executed.
+- Naming rule: choose suffixes based on the state transition under test; if a check depends on vote-executed effects, it must include `_afterVote`.
 
 ## Deployment & Upgrade Flow
 

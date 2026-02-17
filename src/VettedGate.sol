@@ -28,7 +28,12 @@ contract VettedGate is IVettedGate, MerkleGate {
     /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
     ///      It is recommended to call this method in the same transaction as the deployment transaction
     ///      and perform extensive deployment verification before using the contract instance.
-    function initialize(uint256 curveId, bytes32 treeRoot, string calldata treeCid, address admin) external initializer {
+    function initialize(
+        uint256 curveId,
+        bytes32 treeRoot,
+        string calldata treeCid,
+        address admin
+    ) external initializer {
         if (curveId == ACCOUNTING.DEFAULT_BOND_CURVE_ID()) revert InvalidCurveId();
         __MerkleGate_init(curveId, treeRoot, treeCid, admin);
     }
