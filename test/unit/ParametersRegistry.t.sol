@@ -49,9 +49,9 @@ contract ParametersRegistryBaseTest is Test, Utilities, Fixtures {
 }
 
 contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
-    function test_constructor_RevertWhen_ZeroQueueLowestPriority() public {
-        vm.expectRevert(IParametersRegistry.ZeroQueueLowestPriority.selector);
-        new ParametersRegistry({ queueLowestPriority: 0 });
+    function test_constructor_ZeroQueueLowestPriority() public {
+        ParametersRegistry pr = new ParametersRegistry({ queueLowestPriority: 0 });
+        assertEq(pr.QUEUE_LOWEST_PRIORITY(), 0);
     }
 
     function test_constructor_RevertWhen_InitOnImpl() public {

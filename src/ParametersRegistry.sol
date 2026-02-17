@@ -82,11 +82,8 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         _;
     }
 
-    // TODO: queueLowestPriority does not make sense for the CuratedModule, so setting to 0 might mean it's not used and
-    // we can revert in other methods.
+    /// @param queueLowestPriority The lowest priority value for the queue. Set to 0 for modules that don't use queue priorities.
     constructor(uint256 queueLowestPriority) {
-        if (queueLowestPriority == 0) revert ZeroQueueLowestPriority();
-
         QUEUE_LOWEST_PRIORITY = queueLowestPriority;
 
         _disableInitializers();

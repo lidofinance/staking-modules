@@ -107,7 +107,6 @@ interface IParametersRegistry {
     error ZeroAdminAddress();
     error QueueCannotBeUsed();
     error InvalidAllowedExitDelay();
-    error ZeroQueueLowestPriority();
 
     /// @notice Role to manage general penalties and charges parameters: key removal charge and general delayed penalty additional fine
     function MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE() external view returns (bytes32);

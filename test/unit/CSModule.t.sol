@@ -50,6 +50,7 @@ contract CSMCommon is ModuleFixtures {
 
         feeDistributor = new Stub();
         parametersRegistry = new ParametersRegistryMock();
+        _configureParametersRegistry();
         exitPenalties = new ExitPenaltiesMock();
 
         IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
@@ -79,10 +80,10 @@ contract CSMCommon is ModuleFixtures {
         vm.stopPrank();
 
         _setupRolesForTests();
+    }
 
-        // Just to make sure we configured defaults properly and check things properly.
-        assertNotEq(PRIORITY_QUEUE, csm.QUEUE_LOWEST_PRIORITY());
-        REGULAR_QUEUE = uint32(csm.QUEUE_LOWEST_PRIORITY());
+    function _configureParametersRegistry() internal virtual {
+        parametersRegistry.setQueueLowestPriority(0);
     }
 
     function _setupRolesForTests() internal virtual {
@@ -1481,6 +1482,12 @@ contract CSMPriorityQueue is CSMCommon {
     uint256 constant LOOKUP_DEPTH = 150;
 
     uint32 constant MAX_DEPOSITS = 10;
+
+    function _configureParametersRegistry() internal override {
+        parametersRegistry.setQueueLowestPriority(5);
+        assertNotEq(PRIORITY_QUEUE, parametersRegistry.QUEUE_LOWEST_PRIORITY());
+        REGULAR_QUEUE = uint32(parametersRegistry.QUEUE_LOWEST_PRIORITY());
+    }
 
     function test_enqueueToPriorityQueue_LessThanMaxDeposits() public {
         uint256 noId = createNodeOperator(0);
