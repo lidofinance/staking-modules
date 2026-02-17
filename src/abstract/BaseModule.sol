@@ -240,27 +240,7 @@ abstract contract BaseModule is
     /// @inheritdoc IBaseModule
     function removeKeys(uint256 nodeOperatorId, uint256 startIndex, uint256 keysCount) external virtual {
         _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-
-        if (startIndex < no.totalDepositedKeys) revert SigningKeysInvalidOffset();
-
-        uint256 newTotalSigningKeys = SigningKeys.removeKeysSigs({
-            nodeOperatorId: nodeOperatorId,
-            startIndex: startIndex,
-            keysCount: keysCount,
-            totalKeysCount: no.totalAddedKeys
-        });
-
-        // Added/vetted signing key counters are uint32 fields; newTotalSigningKeys is strictly
-        // less than no.totalAddedKeys, so it always fits.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        no.totalAddedKeys = uint32(newTotalSigningKeys);
-        emit TotalSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
-
-        // forge-lint: disable-next-line(unsafe-typecast)
-        no.totalVettedKeys = uint32(newTotalSigningKeys);
-        emit VettedSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
-
+        NodeOperatorOps.removeKeysDefault(_nodeOperators, nodeOperatorId, startIndex, keysCount);
         // Nonce is updated below due to keys state change
         _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: false });
         _incrementModuleNonce();
@@ -632,39 +612,13 @@ abstract contract BaseModule is
         // Do not allow of multiple calls of addValidatorKeys* methods for the creator contract.
         OperatorTracker.forgetCreator(nodeOperatorId);
 
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-        uint256 totalAddedKeys = no.totalAddedKeys;
-
-        uint256 keysLimit = _parametersRegistry().getKeysLimit(_getBondCurveId(nodeOperatorId));
-
-        unchecked {
-            if (totalAddedKeys + keysCount - no.totalWithdrawnKeys > keysLimit) revert KeysLimitExceeded();
-
-            uint256 newTotalAddedKeys = SigningKeys.saveKeysSigs({
-                nodeOperatorId: nodeOperatorId,
-                startIndex: totalAddedKeys,
-                keysCount: keysCount,
-                pubkeys: publicKeys,
-                signatures: signatures
-            });
-
-            uint32 totalVettedKeys = no.totalVettedKeys;
-            // Optimistic vetting takes place.
-            if (totalAddedKeys == totalVettedKeys) {
-                // Sum stays <= totalAddedKeys (< 2^32 by design), so the result fits uint32.
-                // forge-lint: disable-next-line(unsafe-typecast)
-                totalVettedKeys = totalVettedKeys + uint32(keysCount);
-                no.totalVettedKeys = totalVettedKeys;
-                emit VettedSigningKeysCountChanged(nodeOperatorId, totalVettedKeys);
-            }
-
-            // Added key counters are uint32 slots; hitting 2^32 keys would require unreachable bond
-            // capital and calldata, so newTotalAddedKeys stays within the slot bounds.
-            // forge-lint: disable-next-line(unsafe-typecast)
-            no.totalAddedKeys = uint32(newTotalAddedKeys);
-
-            emit TotalSigningKeysCountChanged(nodeOperatorId, newTotalAddedKeys);
-        }
+        NodeOperatorOps.addKeys({
+            nodeOperators: _nodeOperators,
+            nodeOperatorId: nodeOperatorId,
+            keysCount: keysCount,
+            publicKeys: publicKeys,
+            signatures: signatures
+        });
 
         // Nonce is updated below since in case of target limit depositable keys might not change
         _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: false });
@@ -675,35 +629,11 @@ abstract contract BaseModule is
         uint256 nodeOperatorId,
         bool incrementNonceIfUpdated
     ) internal returns (bool changed) {
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-
-        uint256 totalDepositedKeys = no.totalDepositedKeys;
-        uint256 newCount = no.totalVettedKeys - totalDepositedKeys;
-        uint256 unbondedKeys = _accounting().getUnbondedKeysCount(nodeOperatorId);
-
-        uint256 nonDeposited = no.totalAddedKeys - totalDepositedKeys;
-        if (unbondedKeys >= nonDeposited) {
-            newCount = 0;
-        } else if (unbondedKeys > no.totalAddedKeys - no.totalVettedKeys) {
-            newCount = nonDeposited - unbondedKeys;
-        }
-
-        if (no.targetLimitMode > 0 && newCount > 0) {
-            unchecked {
-                uint256 nonWithdrawnValidators = totalDepositedKeys - no.totalWithdrawnKeys;
-
-                uint256 targetLimit = no.targetLimit;
-                uint256 leftToLimit = 0;
-
-                if (targetLimit > nonWithdrawnValidators) leftToLimit = targetLimit - nonWithdrawnValidators;
-                if (newCount > leftToLimit) newCount = leftToLimit;
-            }
-        }
         return
             _applyDepositableValidatorsCount({
-                no: no,
+                no: _nodeOperators[nodeOperatorId],
                 nodeOperatorId: nodeOperatorId,
-                newCount: newCount,
+                newCount: NodeOperatorOps.calculateDepositableValidatorsCount(_nodeOperators, nodeOperatorId),
                 incrementNonceIfUpdated: incrementNonceIfUpdated
             });
     }

@@ -255,39 +255,7 @@ contract CSModule is ICSModule, BaseModule {
         uint256 keysCount
     ) external override(BaseModule, IBaseModule) {
         _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-
-        if (startIndex < no.totalDepositedKeys) revert SigningKeysInvalidOffset();
-
-        uint256 newTotalSigningKeys = SigningKeys.removeKeysSigs({
-            nodeOperatorId: nodeOperatorId,
-            startIndex: startIndex,
-            keysCount: keysCount,
-            totalKeysCount: no.totalAddedKeys
-        });
-
-        // The Node Operator is charged for the every removed key. It's motivated by the fact that the DAO should cleanup
-        // the queue from the empty batches related to the Node Operator. It's possible to have multiple batches with only one
-        // key in it, so it means the DAO should be able to cover removal costs for as much batches as keys removed in this case.
-        uint256 amountToCharge = _parametersRegistry().getKeyRemovalCharge(_getBondCurveId(nodeOperatorId)) * keysCount;
-
-        if (amountToCharge != 0) {
-            _accounting().chargeFee(nodeOperatorId, amountToCharge);
-            emit KeyRemovalChargeApplied(nodeOperatorId);
-        }
-
-        // Added/vetted signing key counters are uint32 fields; newTotalSigningKeys is strictly
-        // less than no.totalAddedKeys, so it always fits.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        no.totalAddedKeys = uint32(newTotalSigningKeys);
-        emit TotalSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
-
-        // Reset vetted keys pointer since we can not know if the removed keys were previously unvetted due to being invalid, or not.
-        // If invalid keys are still present after deletion and vetted keys pointer reset, they will be unvetted again.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        no.totalVettedKeys = uint32(newTotalSigningKeys);
-        emit VettedSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
-
+        NodeOperatorOps.removeKeysCSM(_nodeOperators, nodeOperatorId, startIndex, keysCount);
         // Nonce is updated below due to keys state change
         _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: false });
         _incrementModuleNonce();
