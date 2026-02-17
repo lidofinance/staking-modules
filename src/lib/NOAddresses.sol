@@ -204,7 +204,6 @@ library NOAddresses {
         bool isSameManagerAddress = newManagerAddress == oldManagerAddress;
         bool isSameRewardAddress = newRewardAddress == oldRewardAddress;
 
-        if (isSameManagerAddress && isSameRewardAddress) revert INOAddresses.SameAddress();
         if (!isSameManagerAddress) {
             no.managerAddress = newManagerAddress;
             if (no.proposedManagerAddress != address(0)) delete no.proposedManagerAddress;

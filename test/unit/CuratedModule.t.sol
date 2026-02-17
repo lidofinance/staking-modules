@@ -1966,28 +1966,6 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         cm.changeNodeOperatorAddresses(0, manager, rewards);
     }
 
-    function test_changeNodeOperatorAddresses_RevertsIfTheSameAddresses() public {
-        address manager = nextAddress();
-        address rewards = nextAddress();
-
-        uint256 noId = cm.createNodeOperator(
-            nodeOperator,
-            NodeOperatorManagementProperties({
-                managerAddress: manager,
-                rewardAddress: rewards,
-                extendedManagerPermissions: false
-            }),
-            address(0)
-        );
-
-        vm.startPrank(admin);
-        cm.grantRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
-        vm.stopPrank();
-
-        vm.expectRevert(INOAddresses.SameAddress.selector);
-        cm.changeNodeOperatorAddresses(noId, manager, rewards);
-    }
-
     function test_changeNodeOperatorAddresses_RevertsIfZeroAddressProvided() public {
         uint256 noId = cm.createNodeOperator(
             nodeOperator,
