@@ -107,8 +107,8 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
 
         unchecked {
             totalClaimableShares -= sharesToDistribute;
-            distributedShares[nodeOperatorId] += sharesToDistribute;
         }
+        distributedShares[nodeOperatorId] = cumulativeFeeShares;
 
         STETH.transferShares(ACCOUNTING, sharesToDistribute);
         emit OperatorFeeDistributed(nodeOperatorId, sharesToDistribute);
