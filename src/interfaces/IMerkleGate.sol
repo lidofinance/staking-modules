@@ -20,6 +20,7 @@ interface IMerkleGate {
     error AlreadyConsumed();
     error InvalidTreeRoot();
     error InvalidTreeCid();
+    error ZeroAdminAddress();
 
     /// @return SET_TREE_ROLE role required to update tree parameters
     function SET_TREE_ROLE() external view returns (bytes32);
@@ -29,6 +30,9 @@ interface IMerkleGate {
 
     /// @return treeCid Current Merkle tree CID
     function treeCid() external view returns (string memory);
+
+    /// @return curveId Instance-specific bond curve id
+    function curveId() external view returns (uint256);
 
     /// @notice Update Merkle tree params
     /// @param _treeRoot New root

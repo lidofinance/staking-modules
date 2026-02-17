@@ -115,8 +115,6 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         _setDefaultExitDelayFee(data.defaultExitDelayFee);
         _setDefaultMaxElWithdrawalRequestFee(data.defaultMaxElWithdrawalRequestFee);
 
-        __AccessControlEnumerable_init();
-
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 

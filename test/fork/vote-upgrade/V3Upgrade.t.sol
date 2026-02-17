@@ -30,6 +30,8 @@ contract V3UpgradeTestBase is Test, Utilities, DeploymentFixtures, InvariantAsse
         keccak256("REPORT_EL_REWARDS_STEALING_PENALTY_ROLE");
     bytes32 internal constant SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE =
         keccak256("SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE");
+    bytes32 internal constant START_REFERRAL_SEASON_ROLE = keccak256("START_REFERRAL_SEASON_ROLE");
+    bytes32 internal constant END_REFERRAL_SEASON_ROLE = keccak256("END_REFERRAL_SEASON_ROLE");
 
     uint256 internal forkIdBeforeUpgrade;
     uint256 internal forkIdAfterUpgrade;
@@ -538,8 +540,14 @@ contract VoteChangesTest is V3UpgradeTestBase {
         bytes32 treeRootBefore = vettedGate.treeRoot();
         string memory treeCidBefore = vettedGate.treeCid();
         uint64 versionBefore = vettedGate.getInitializedVersion();
+        uint256 startReferralRoleMembersBefore = vettedGate.getRoleMemberCount(START_REFERRAL_SEASON_ROLE);
+        uint256 endReferralRoleMembersBefore = vettedGate.getRoleMemberCount(END_REFERRAL_SEASON_ROLE);
 
         assertTrue(vettedGate.hasRole(vettedGate.PAUSE_ROLE(), deploymentConfig.gateSeal));
+        assertTrue(vettedGate.hasRole(START_REFERRAL_SEASON_ROLE, deployParams.aragonAgent));
+        assertTrue(vettedGate.hasRole(END_REFERRAL_SEASON_ROLE, deployParams.identifiedCommunityStakersGateManager));
+        assertEq(startReferralRoleMembersBefore, 1);
+        assertEq(endReferralRoleMembersBefore, 1);
 
         vm.selectFork(forkIdAfterUpgrade);
         address implAfter = vettedGateProxy.proxy__getImplementation();
@@ -552,6 +560,10 @@ contract VoteChangesTest is V3UpgradeTestBase {
 
         assertFalse(vettedGate.hasRole(vettedGate.PAUSE_ROLE(), deploymentConfig.gateSeal));
         assertTrue(vettedGate.hasRole(vettedGate.PAUSE_ROLE(), deploymentConfig.gateSealV3));
+        assertFalse(vettedGate.hasRole(START_REFERRAL_SEASON_ROLE, deployParams.aragonAgent));
+        assertFalse(vettedGate.hasRole(END_REFERRAL_SEASON_ROLE, deployParams.identifiedCommunityStakersGateManager));
+        assertEq(vettedGate.getRoleMemberCount(START_REFERRAL_SEASON_ROLE), 0);
+        assertEq(vettedGate.getRoleMemberCount(END_REFERRAL_SEASON_ROLE), 0);
     }
 
     function test_exitPenaltiesChanges() public {

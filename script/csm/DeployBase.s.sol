@@ -30,7 +30,7 @@ import { Dummy } from "../utils/Dummy.sol";
 import { CommonScriptUtils } from "../utils/Common.sol";
 import { GIndex } from "../../src/lib/GIndex.sol";
 import { Slot } from "../../src/lib/Types.sol";
-import { VettedGateFactory } from "../../src/VettedGateFactory.sol";
+import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 import { ExitPenalties } from "../../src/ExitPenalties.sol";
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 
@@ -92,6 +92,7 @@ struct DeployParams {
     uint256 defaultExitDelayFee;
     uint256 defaultMaxElWithdrawalRequestFee;
     // VettedGate
+    // TODO: Legacy-only field. Kept only for SimulateVote.upgrade() END_REFERRAL_SEASON_ROLE revoke.
     address identifiedCommunityStakersGateManager;
     uint256 identifiedCommunityStakersGateCurveId;
     bytes32 identifiedCommunityStakersGateTreeRoot;
@@ -144,7 +145,7 @@ abstract contract DeployBase is Script {
     Verifier public verifier;
     address public gateSeal;
     PermissionlessGate public permissionlessGate;
-    VettedGateFactory public vettedGateFactory;
+    MerkleGateFactory public vettedGateFactory;
     VettedGate public vettedGate;
     HashConsensus public hashConsensus;
     ParametersRegistry public parametersRegistry;
@@ -341,14 +342,20 @@ abstract contract DeployBase is Script {
             permissionlessGate = new PermissionlessGate(address(csm), deployer);
 
             address vettedGateImpl = address(new VettedGate(address(csm)));
-            vettedGateFactory = new VettedGateFactory(vettedGateImpl);
+            vettedGateFactory = new MerkleGateFactory(vettedGateImpl);
             vettedGate = VettedGate(
-                vettedGateFactory.create({
-                    curveId: identifiedCommunityStakersGateBondCurveId,
-                    treeRoot: config.identifiedCommunityStakersGateTreeRoot,
-                    treeCid: config.identifiedCommunityStakersGateTreeCid,
-                    admin: deployer
-                })
+                vettedGateFactory.create(
+                    abi.encodeCall(
+                        VettedGate.initialize,
+                        (
+                            identifiedCommunityStakersGateBondCurveId,
+                            config.identifiedCommunityStakersGateTreeRoot,
+                            config.identifiedCommunityStakersGateTreeCid,
+                            deployer
+                        )
+                    ),
+                    deployer
+                )
             );
 
             {
@@ -505,8 +512,6 @@ abstract contract DeployBase is Script {
 
             vettedGate.grantRole(vettedGate.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             vettedGate.grantRole(vettedGate.SET_TREE_ROLE(), config.easyTrackEVMScriptExecutor);
-            vettedGate.grantRole(vettedGate.START_REFERRAL_SEASON_ROLE(), config.aragonAgent);
-            vettedGate.grantRole(vettedGate.END_REFERRAL_SEASON_ROLE(), config.identifiedCommunityStakersGateManager);
             vettedGate.revokeRole(vettedGate.DEFAULT_ADMIN_ROLE(), deployer);
 
             permissionlessGate.grantRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), config.aragonAgent);

@@ -1,55 +1,35 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
 
-import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
-import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-
-import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
-import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
-
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
-import { IMerkleGate } from "./interfaces/IMerkleGate.sol";
 import { ICuratedGate } from "./interfaces/ICuratedGate.sol";
 import { NodeOperatorManagementProperties } from "./interfaces/IBaseModule.sol";
 import { IMetaRegistry, OperatorMetadata } from "./interfaces/IMetaRegistry.sol";
 import { IAccounting } from "./interfaces/IAccounting.sol";
+import { MerkleGate } from "./abstract/MerkleGate.sol";
 
-// TODO: Create abstract MerkleGate contract and inherit both CuratedGate and VettedGate from it.
 /// @notice Merkle gate for Curated Module
-contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, PausableWithRoles, AssetRecoverer {
-    bytes32 public constant SET_TREE_ROLE = keccak256("SET_TREE_ROLE");
-    bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
-
+contract CuratedGate is ICuratedGate, MerkleGate {
     /// @inheritdoc ICuratedGate
     ICuratedModule public immutable MODULE;
 
     /// @inheritdoc ICuratedGate
     IAccounting public immutable ACCOUNTING;
 
+    /// @notice Cached default bond curve id from Accounting.
+    uint256 public immutable DEFAULT_BOND_CURVE_ID;
+
     /// @inheritdoc ICuratedGate
     IMetaRegistry public immutable META_REGISTRY;
-
-    /// @inheritdoc IMerkleGate
-    bytes32 public treeRoot;
-
-    /// @inheritdoc IMerkleGate
-    string public treeCid;
-
-    /// @inheritdoc ICuratedGate
-    uint256 public curveId;
-
-    bool internal _defaultCurveSet;
-
-    /// @dev Tracks whether an address already consumed its eligibility
-    mapping(address => bool) internal _consumedAddresses;
 
     constructor(address module) {
         if (module == address(0)) revert ZeroModuleAddress();
 
         MODULE = ICuratedModule(module);
         ACCOUNTING = MODULE.ACCOUNTING();
+        DEFAULT_BOND_CURVE_ID = ACCOUNTING.DEFAULT_BOND_CURVE_ID();
         META_REGISTRY = MODULE.META_REGISTRY();
 
         _disableInitializers();
@@ -59,20 +39,12 @@ contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, Pausab
     ///      It is recommended to call this method in the same transaction as the deployment transaction
     ///      and perform extensive deployment verification before using the contract instance.
     function initialize(
-        uint256 _curveId,
-        bytes32 _treeRoot,
-        string calldata _treeCid,
+        uint256 curveId,
+        bytes32 treeRoot,
+        string calldata treeCid,
         address admin
     ) external initializer {
-        if (admin == address(0)) revert ZeroAdminAddress();
-
-        // TODO: Since this method does nothing, let's remove it from hre and from the other contracts.
-        __AccessControlEnumerable_init();
-
-        curveId = _curveId;
-        if (_curveId == ACCOUNTING.DEFAULT_BOND_CURVE_ID()) _defaultCurveSet = true;
-        _setTreeParams(_treeRoot, _treeCid);
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        __MerkleGate_init(curveId, treeRoot, treeCid, admin);
     }
 
     /// @inheritdoc ICuratedGate
@@ -99,7 +71,7 @@ contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, Pausab
         });
 
         // Apply instance-specific custom curve
-        if (!_defaultCurveSet) ACCOUNTING.setBondCurve(nodeOperatorId, curveId);
+        if (curveId != DEFAULT_BOND_CURVE_ID) ACCOUNTING.setBondCurve(nodeOperatorId, curveId);
 
         // Persist metadata in separate storage
         OperatorMetadata memory metadata = OperatorMetadata({
@@ -109,55 +81,5 @@ contract CuratedGate is ICuratedGate, AccessControlEnumerableUpgradeable, Pausab
         });
 
         META_REGISTRY.setOperatorMetadataAsAdmin(nodeOperatorId, metadata);
-    }
-
-    /// @inheritdoc IMerkleGate
-    function setTreeParams(bytes32 _treeRoot, string calldata _treeCid) external onlyRole(SET_TREE_ROLE) {
-        _setTreeParams(_treeRoot, _treeCid);
-    }
-
-    /// @inheritdoc IMerkleGate
-    function getInitializedVersion() external view returns (uint64) {
-        return _getInitializedVersion();
-    }
-
-    /// @inheritdoc IMerkleGate
-    function isConsumed(address member) public view returns (bool) {
-        return _consumedAddresses[member];
-    }
-
-    /// @inheritdoc IMerkleGate
-    function verifyProof(address member, bytes32[] calldata proof) public view returns (bool) {
-        return MerkleProof.verifyCalldata(proof, treeRoot, hashLeaf(member));
-    }
-
-    /// @inheritdoc IMerkleGate
-    function hashLeaf(address member) public pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(member))));
-    }
-
-    function _consume(bytes32[] calldata proof) internal {
-        if (isConsumed(msg.sender)) revert AlreadyConsumed();
-        if (!verifyProof(msg.sender, proof)) revert InvalidProof();
-        _consumedAddresses[msg.sender] = true;
-        emit Consumed(msg.sender);
-    }
-
-    function _setTreeParams(bytes32 _treeRoot, string calldata _treeCid) internal {
-        if (_treeRoot == bytes32(0)) revert InvalidTreeRoot();
-        if (_treeRoot == treeRoot) revert InvalidTreeRoot();
-        if (bytes(_treeCid).length == 0) revert InvalidTreeCid();
-        if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid))) revert InvalidTreeCid();
-        treeRoot = _treeRoot;
-        treeCid = _treeCid;
-        emit TreeSet(_treeRoot, _treeCid);
-    }
-
-    function _onlyRecoverer() internal view override {
-        _checkRole(RECOVERER_ROLE);
-    }
-
-    function __checkRole(bytes32 role) internal view override {
-        _checkRole(role);
     }
 }

@@ -5,6 +5,8 @@ pragma solidity 0.8.33;
 
 import { IStakingModule } from "../../../../src/interfaces/IStakingModule.sol";
 import { IWithdrawalVault } from "../../../../src/interfaces/IWithdrawalVault.sol";
+import { IEjector } from "../../../../src/interfaces/IEjector.sol";
+import { ITriggerableWithdrawalsGateway } from "../../../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
 abstract contract EjectionTestBase is ModuleTypeBase {
@@ -60,6 +62,14 @@ abstract contract EjectionTestBase is ModuleTypeBase {
             }
         }
 
+        for (uint256 i = 0; i < KEYS_COUNT; i++) {
+            vm.expectEmit(address(ejector));
+            emit IEjector.VoluntaryEjectionRequested({
+                nodeOperatorId: nodeOperatorId,
+                pubkey: pubkeys[i],
+                refundRecipient: operatorOwner
+            });
+        }
         for (uint256 i = 0; i < KEYS_COUNT; i++) {
             vm.expectEmit(withdrawalVault);
             emit IWithdrawalVault.WithdrawalRequestAdded(_prepareWithdrawalRequestData(pubkeys[i]));

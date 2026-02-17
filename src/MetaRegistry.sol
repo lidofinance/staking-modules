@@ -79,7 +79,6 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     function initialize(address admin) external initializer {
         if (admin == address(0)) revert ZeroAdminAddress();
 
-        __AccessControlEnumerable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
 
         // NOTE: Put a stone to reserve the NO_GROUP_ID.

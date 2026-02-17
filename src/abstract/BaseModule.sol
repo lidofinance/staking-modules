@@ -576,8 +576,6 @@ abstract contract BaseModule is
     function __BaseModule_init(address admin) internal {
         if (admin == address(0)) revert ZeroAdminAddress();
 
-        __AccessControlEnumerable_init();
-
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(STAKING_ROUTER_ROLE, address(LIDO_LOCATOR.stakingRouter()));
 

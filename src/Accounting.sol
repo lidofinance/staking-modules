@@ -84,7 +84,6 @@ contract Accounting is
         uint256 bondLockPeriod,
         address _chargePenaltyRecipient
     ) external reinitializer(INITIALIZED_VERSION) {
-        __AccessControlEnumerable_init();
         __BondCurve_init(bondCurve);
         __BondLock_init(bondLockPeriod);
 

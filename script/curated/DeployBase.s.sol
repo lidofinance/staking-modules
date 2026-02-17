@@ -18,7 +18,7 @@ import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
 import { ExitPenalties } from "../../src/ExitPenalties.sol";
 import { MetaRegistry } from "../../src/MetaRegistry.sol";
 import { CuratedGate } from "../../src/CuratedGate.sol";
-import { CuratedGateFactory } from "../../src/CuratedGateFactory.sol";
+import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 
 import { ILidoLocator } from "../../src/interfaces/ILidoLocator.sol";
 import { IGateSealFactory } from "../../src/interfaces/IGateSealFactory.sol";
@@ -146,7 +146,7 @@ abstract contract DeployBase is Script {
     HashConsensus public hashConsensus;
     ParametersRegistry public parametersRegistry;
     MetaRegistry public metaRegistry;
-    CuratedGateFactory public curatedGateFactory;
+    MerkleGateFactory public curatedGateFactory;
     address[] public curatedGateInstances;
     address internal curatedGateImpl;
     address public gateSeal;
@@ -385,7 +385,7 @@ abstract contract DeployBase is Script {
 
             curatedGateImpl = address(new CuratedGate(address(curatedModule)));
 
-            curatedGateFactory = new CuratedGateFactory(curatedGateImpl);
+            curatedGateFactory = new MerkleGateFactory(curatedGateImpl);
 
             curatedGateInstances = _deployCuratedGates(curatedCurveIds, address(curatedGateFactory));
 
@@ -541,6 +541,7 @@ abstract contract DeployBase is Script {
             deployJson.set("HashConsensus", address(hashConsensus));
             deployJson.set("Verifier", address(verifier));
             deployJson.set("CuratedGateFactory", address(curatedGateFactory));
+            deployJson.set("CuratedGateImpl", curatedGateImpl);
             deployJson.set("CuratedGates", curatedGateInstances);
             deployJson.set("LidoLocator", config.lidoLocatorAddress);
             deployJson.set("GateSeal", address(gateSeal));
@@ -562,18 +563,19 @@ abstract contract DeployBase is Script {
         gates = new address[](gateCount);
 
         if (gateFactoryAddress == address(0)) revert InvalidInput("curated gate factory address is zero");
-        CuratedGateFactory gateFactory = CuratedGateFactory(gateFactoryAddress);
+        MerkleGateFactory gateFactory = MerkleGateFactory(gateFactoryAddress);
 
         for (uint256 i = 0; i < gateCount; i++) {
             uint256 gateCurveId = curveIds[i];
             CuratedGateConfig storage gateConfig = config.curatedGates[i];
             CuratedGate gate = CuratedGate(
-                gateFactory.create({
-                    curveId: gateCurveId,
-                    treeRoot: gateConfig.treeRoot,
-                    treeCid: gateConfig.treeCid,
-                    admin: deployer
-                })
+                gateFactory.create(
+                    abi.encodeCall(
+                        CuratedGate.initialize,
+                        (gateCurveId, gateConfig.treeRoot, gateConfig.treeCid, deployer)
+                    ),
+                    deployer
+                )
             );
 
             {

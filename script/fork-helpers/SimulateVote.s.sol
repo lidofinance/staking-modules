@@ -11,6 +11,7 @@ import { Ejector } from "../../src/Ejector.sol";
 import { FeeDistributor } from "../../src/FeeDistributor.sol";
 import { ValidatorStrikes } from "../../src/ValidatorStrikes.sol";
 import { Verifier } from "../../src/Verifier.sol";
+import { VettedGate } from "../../src/VettedGate.sol";
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 import { ITriggerableWithdrawalsGateway } from "../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { IBurner } from "../../src/interfaces/IBurner.sol";
@@ -24,6 +25,8 @@ contract SimulateVote is Script, ForkHelpersCommon {
         keccak256("REPORT_EL_REWARDS_STEALING_PENALTY_ROLE");
     bytes32 internal constant SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE =
         keccak256("SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE");
+    bytes32 internal constant START_REFERRAL_SEASON_ROLE = keccak256("START_REFERRAL_SEASON_ROLE");
+    bytes32 internal constant END_REFERRAL_SEASON_ROLE = keccak256("END_REFERRAL_SEASON_ROLE");
 
     error WrongModuleType();
 
@@ -141,6 +144,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
             deploymentConfig = parseDeploymentConfig(deploymentConfigContent);
             deployParams = parseDeployParams(env.DEPLOY_CONFIG);
         }
+        VettedGate existingVettedGate = VettedGate(deploymentConfig.vettedGate);
         address admin = _prepareAdmin(deploymentConfig.csm);
         IBurner burner = IBurner(locator.burner());
         address burnerAdmin = _prepareAdmin(address(burner));
@@ -221,7 +225,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
         strikes = ValidatorStrikes(deploymentConfig.strikes);
 
         address oldPermissionlessGate = module.getRoleMember(module.CREATE_NODE_OPERATOR_ROLE(), 0);
-        if (oldPermissionlessGate == address(vettedGate)) {
+        if (oldPermissionlessGate == address(existingVettedGate)) {
             oldPermissionlessGate = module.getRoleMember(module.CREATE_NODE_OPERATOR_ROLE(), 1);
         }
         address oldEjector = address(strikes.ejector());
@@ -265,7 +269,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
             // 26. Revoke PAUSE_ROLE from old gate seal on FeeOracle
             oracle.revokeRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSeal);
             // 27. Revoke PAUSE_ROLE from old gate seal on VettedGate
-            vettedGate.revokeRole(vettedGate.PAUSE_ROLE(), deploymentConfig.gateSeal);
+            existingVettedGate.revokeRole(existingVettedGate.PAUSE_ROLE(), deploymentConfig.gateSeal);
             // 28. Revoke PAUSE_ROLE from old gate seal on old Verifier
             oldVerifier.revokeRole(oldVerifier.PAUSE_ROLE(), deploymentConfig.gateSeal);
             // 29. Revoke PAUSE_ROLE from old gate seal on old Ejector
@@ -279,6 +283,10 @@ contract SimulateVote is Script, ForkHelpersCommon {
             // 33. Revoke RESUME_ROLE from reseal manager on old Ejector
             oldEjectorContract.revokeRole(oldEjectorContract.RESUME_ROLE(), deployParams.resealManager);
 
+            // Revoke legacy referral program roles.
+            existingVettedGate.revokeRole(START_REFERRAL_SEASON_ROLE, deployParams.aragonAgent);
+            existingVettedGate.revokeRole(END_REFERRAL_SEASON_ROLE, deployParams.identifiedCommunityStakersGateManager);
+
             // 34. Grant PAUSE_ROLE to gateSealV3 on CSModule
             module.grantRole(module.PAUSE_ROLE(), deploymentConfig.gateSealV3);
             // 35. Grant PAUSE_ROLE to gateSealV3 on Accounting
@@ -286,7 +294,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
             // 36. Grant PAUSE_ROLE to gateSealV3 on FeeOracle
             oracle.grantRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSealV3);
             // 37. Grant PAUSE_ROLE to gateSealV3 on VettedGate
-            vettedGate.grantRole(vettedGate.PAUSE_ROLE(), deploymentConfig.gateSealV3);
+            existingVettedGate.grantRole(existingVettedGate.PAUSE_ROLE(), deploymentConfig.gateSealV3);
 
             vm.stopBroadcast();
         }

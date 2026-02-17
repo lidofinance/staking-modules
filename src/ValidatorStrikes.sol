@@ -58,7 +58,6 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
 
         _setEjector(_ejector);
 
-        __AccessControlEnumerable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 

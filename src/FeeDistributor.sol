@@ -78,8 +78,6 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
 
         _setRebateRecipient(_rebateRecipient);
 
-        __AccessControlEnumerable_init();
-
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 

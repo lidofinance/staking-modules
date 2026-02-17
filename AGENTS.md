@@ -45,6 +45,14 @@
 - Coverage: `just coverage-lcov` produces LCOV output (commit if relevant).
 - After making changes to the source code make sure you've either ran build command or unit tests.
 
+## Deployment & Upgrade Flow
+
+- Protocol rollout is two-phase: deployment first, vote execution second.
+- Deployment phase: deploy scripts should deploy new implementations/helpers and execute all privileged setup that is possible while deployer temporarily has admin rights.
+- Deployment phase must end in post-handoff state: required admin roles are returned to the protocol agent and deployer admin rights are revoked.
+- Vote phase: simulate-vote scripts should apply governance actions to already deployed protocol contracts only (proxy upgrades, role/state transitions), not deployment-only setup.
+- Vote phase steps should be explicit and deterministic: encode concrete, ordered calls with known addresses; avoid generic loop-based governance steps unless explicitly required.
+
 ## Commit & Pull Request Guidelines
 
 - Commits: Conventional Commits. Examples: `feat: add validator key rotation`, `fix: resolve bond calculation overflow`.

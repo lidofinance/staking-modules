@@ -22,8 +22,11 @@ contract VettedGateFactoryTest is MiscTest {
         bytes32 root = merkleTree.root();
         string memory cid = "someOtherCid";
 
-        vm.startSnapshotGas("VettedGateFactory.create");
-        address instance = vettedGateFactory.create(curveId, root, cid, address(this));
+        vm.startSnapshotGas("VettedGateFactory.createVetted");
+        address instance = vettedGateFactory.create(
+            abi.encodeCall(VettedGate.initialize, (curveId, root, cid, address(this))),
+            address(this)
+        );
         vm.stopSnapshotGas();
 
         VettedGate gate = VettedGate(instance);
