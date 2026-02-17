@@ -6,11 +6,13 @@ pragma solidity 0.8.33;
 import { NodeOperatorManagementProperties, NodeOperator } from "src/interfaces/IBaseModule.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
+import { IExitPenalties } from "src/interfaces/IExitPenalties.sol";
 
 import { Fixtures } from "../Fixtures.sol";
 import { Utilities } from "../Utilities.sol";
 
 import { ParametersRegistryMock } from "./ParametersRegistryMock.sol";
+import { ExitPenaltiesMock } from "./ExitPenaltiesMock.sol";
 import { AccountingMock } from "./AccountingMock.sol";
 import { WstETHMock } from "./WstETHMock.sol";
 import { LidoMock } from "./LidoMock.sol";
@@ -22,11 +24,13 @@ contract CSMMock is Utilities, Fixtures {
     mapping(uint256 => mapping(uint256 => bool)) internal isValidatorWithdrawnByKey;
     IAccounting public immutable ACCOUNTING;
     IParametersRegistry public immutable PARAMETERS_REGISTRY;
+    IExitPenalties public immutable EXIT_PENALTIES;
     LidoLocatorMock public immutable LIDO_LOCATOR;
     NodeOperatorManagementProperties internal managementProperties;
 
     constructor() {
         PARAMETERS_REGISTRY = IParametersRegistry(address(new ParametersRegistryMock()));
+        EXIT_PENALTIES = new ExitPenaltiesMock();
         WstETHMock wstETH;
         LidoMock lido;
         (LIDO_LOCATOR, wstETH, lido, , ) = initLido();

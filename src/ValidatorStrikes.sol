@@ -35,17 +35,15 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
         _;
     }
 
-    constructor(address module, address oracle, address exitPenalties, address parametersRegistry) {
+    constructor(address module, address oracle) {
         if (module == address(0)) revert ZeroModuleAddress();
         if (oracle == address(0)) revert ZeroOracleAddress();
-        if (exitPenalties == address(0)) revert ZeroExitPenaltiesAddress();
-        if (parametersRegistry == address(0)) revert ZeroParametersRegistryAddress();
 
+        ORACLE = oracle;
         MODULE = IBaseModule(module);
         ACCOUNTING = MODULE.ACCOUNTING();
-        EXIT_PENALTIES = IExitPenalties(exitPenalties);
-        ORACLE = oracle;
-        PARAMETERS_REGISTRY = IParametersRegistry(parametersRegistry);
+        EXIT_PENALTIES = MODULE.EXIT_PENALTIES();
+        PARAMETERS_REGISTRY = MODULE.PARAMETERS_REGISTRY();
 
         _disableInitializers();
     }

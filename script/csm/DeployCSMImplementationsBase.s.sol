@@ -75,12 +75,7 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
                 exitPenalties: address(exitPenalties)
             });
 
-            ValidatorStrikes strikesImpl = new ValidatorStrikes({
-                module: address(csm),
-                oracle: address(oracle),
-                exitPenalties: address(exitPenalties),
-                parametersRegistry: address(parametersRegistry)
-            });
+            ValidatorStrikes strikesImpl = new ValidatorStrikes({ module: address(csm), oracle: address(oracle) });
 
             ExitPenalties exitPenaltiesImpl = new ExitPenalties(address(csm), address(strikes));
 

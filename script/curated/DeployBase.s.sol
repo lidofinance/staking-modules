@@ -364,9 +364,7 @@ abstract contract DeployBase is Script {
 
             ValidatorStrikes strikesImpl = new ValidatorStrikes({
                 module: address(curatedModule),
-                oracle: address(oracle),
-                exitPenalties: address(exitPenalties),
-                parametersRegistry: address(parametersRegistry)
+                oracle: address(oracle)
             });
 
             strikes = ValidatorStrikes(_deployProxy(config.proxyAdmin, address(strikesImpl)));

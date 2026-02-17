@@ -27,7 +27,6 @@ contract ValidatorStrikesTestBase is Test, Fixtures, Utilities, InvariantAsserts
     address internal refundRecipient;
     address internal oracle;
     CSMMock internal module;
-    address internal exitPenalties;
     address internal ejector;
     ValidatorStrikes internal strikes;
     MerkleTree internal tree;
@@ -73,42 +72,28 @@ contract ValidatorStrikesConstructorTest is ValidatorStrikesTestBase {
         admin = nextAddress("ADMIN");
         oracle = nextAddress("ORACLE");
         module = new CSMMock();
-        exitPenalties = address(new ExitPenaltiesMock());
         ejector = address(new EjectorMock(address(module)));
     }
 
     function test_constructor_happyPath() public {
-        strikes = new ValidatorStrikes(address(module), oracle, exitPenalties, address(module.PARAMETERS_REGISTRY()));
+        strikes = new ValidatorStrikes(address(module), oracle);
         assertEq(address(strikes.MODULE()), address(module));
         assertEq(strikes.ORACLE(), oracle);
-        assertEq(address(strikes.EXIT_PENALTIES()), exitPenalties);
+        assertEq(address(strikes.EXIT_PENALTIES()), address(module.EXIT_PENALTIES()));
     }
 
     function test_constructor_RevertWhen_ZeroModuleAddress() public {
-        address parametersRegistry = address(module.PARAMETERS_REGISTRY());
         vm.expectRevert(IValidatorStrikes.ZeroModuleAddress.selector);
-        new ValidatorStrikes(address(0), oracle, exitPenalties, parametersRegistry);
-    }
-
-    function test_constructor_RevertWhen_ZeroExitPenaltiesAddress() public {
-        address parametersRegistry = address(module.PARAMETERS_REGISTRY());
-        vm.expectRevert(IValidatorStrikes.ZeroExitPenaltiesAddress.selector);
-        new ValidatorStrikes(address(module), oracle, address(0), parametersRegistry);
-    }
-
-    function test_constructor_RevertWhen_ZeroParametersRegistryAddress() public {
-        vm.expectRevert(IValidatorStrikes.ZeroParametersRegistryAddress.selector);
-        new ValidatorStrikes(exitPenalties, oracle, exitPenalties, address(0));
+        new ValidatorStrikes(address(0), oracle);
     }
 
     function test_constructor_RevertWhen_ZeroOracleAddress() public {
-        address parametersRegistry = address(module.PARAMETERS_REGISTRY());
         vm.expectRevert(IValidatorStrikes.ZeroOracleAddress.selector);
-        new ValidatorStrikes(exitPenalties, address(0), exitPenalties, parametersRegistry);
+        new ValidatorStrikes(address(module), address(0));
     }
 
     function test_initialize_happyPath() public {
-        strikes = new ValidatorStrikes(address(module), oracle, exitPenalties, address(module.PARAMETERS_REGISTRY()));
+        strikes = new ValidatorStrikes(address(module), oracle);
         _enableInitializers(address(strikes));
 
         vm.expectEmit(address(strikes));
@@ -121,7 +106,7 @@ contract ValidatorStrikesConstructorTest is ValidatorStrikesTestBase {
     }
 
     function test_initialize_RevertWhen_ZeroAdminAddress() public {
-        strikes = new ValidatorStrikes(address(module), oracle, exitPenalties, address(module.PARAMETERS_REGISTRY()));
+        strikes = new ValidatorStrikes(address(module), oracle);
         _enableInitializers(address(strikes));
 
         vm.expectRevert(IValidatorStrikes.ZeroAdminAddress.selector);
@@ -129,7 +114,7 @@ contract ValidatorStrikesConstructorTest is ValidatorStrikesTestBase {
     }
 
     function test_initialize_RevertWhen_ZeroEjectorAddress() public {
-        strikes = new ValidatorStrikes(address(module), oracle, exitPenalties, address(module.PARAMETERS_REGISTRY()));
+        strikes = new ValidatorStrikes(address(module), oracle);
         _enableInitializers(address(strikes));
 
         vm.expectRevert(IValidatorStrikes.ZeroEjectorAddress.selector);
@@ -144,10 +129,9 @@ contract ValidatorStrikesTest is ValidatorStrikesTestBase {
         refundRecipient = nextAddress("REFUND_RECIPIENT");
         oracle = nextAddress("ORACLE");
         module = new CSMMock();
-        exitPenalties = address(new ExitPenaltiesMock());
         ejector = address(new EjectorMock(address(module)));
 
-        strikes = new ValidatorStrikes(address(module), oracle, exitPenalties, address(module.PARAMETERS_REGISTRY()));
+        strikes = new ValidatorStrikes(address(module), oracle);
         _enableInitializers(address(strikes));
         strikes.initialize(admin, ejector);
 
@@ -350,10 +334,9 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         refundRecipient = nextAddress("REFUND_RECIPIENT");
         oracle = nextAddress("ORACLE");
         module = new CSMMock();
-        exitPenalties = address(new ExitPenaltiesMock());
         ejector = address(new EjectorMock(address(module)));
 
-        strikes = new ValidatorStrikes(address(module), oracle, exitPenalties, address(module.PARAMETERS_REGISTRY()));
+        strikes = new ValidatorStrikes(address(module), oracle);
         _enableInitializers(address(strikes));
         strikes.initialize(admin, ejector);
 
@@ -561,7 +544,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
                 )
             );
             vm.expectCall(
-                address(exitPenalties),
+                address(strikes.EXIT_PENALTIES()),
                 abi.encodeWithSelector(
                     IExitPenalties.processStrikesReport.selector,
                     leaf.keyStrikes.nodeOperatorId,
@@ -610,7 +593,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
             keyStrikesList[i] = leaf.keyStrikes;
             _mockModule(leaf);
             vm.expectCall(
-                address(exitPenalties),
+                address(strikes.EXIT_PENALTIES()),
                 abi.encodeWithSelector(
                     IExitPenalties.processStrikesReport.selector,
                     leaf.keyStrikes.nodeOperatorId,
@@ -654,7 +637,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
         _mockModule(leaf);
 
         vm.expectCall(
-            address(exitPenalties),
+            address(strikes.EXIT_PENALTIES()),
             abi.encodeWithSelector(
                 IExitPenalties.processStrikesReport.selector,
                 leaf.keyStrikes.nodeOperatorId,
@@ -826,7 +809,7 @@ contract ValidatorStrikesProofTest is ValidatorStrikesTestBase {
                 )
             );
             vm.expectCall(
-                address(exitPenalties),
+                address(strikes.EXIT_PENALTIES()),
                 abi.encodeWithSelector(
                     IExitPenalties.processStrikesReport.selector,
                     leaf.keyStrikes.nodeOperatorId,

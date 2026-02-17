@@ -317,12 +317,7 @@ abstract contract DeployBase is Script {
 
             csm.initialize({ admin: deployer, topUpQueueLimit: config.topUpQueueLimit });
 
-            ValidatorStrikes strikesImpl = new ValidatorStrikes({
-                module: address(csm),
-                oracle: address(oracle),
-                exitPenalties: address(exitPenalties),
-                parametersRegistry: address(parametersRegistry)
-            });
+            ValidatorStrikes strikesImpl = new ValidatorStrikes({ module: address(csm), oracle: address(oracle) });
 
             strikes = ValidatorStrikes(_deployProxy(config.proxyAdmin, address(strikesImpl)));
 
