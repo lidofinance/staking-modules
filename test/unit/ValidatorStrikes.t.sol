@@ -165,6 +165,12 @@ contract ValidatorStrikesTest is ValidatorStrikesTestBase {
         strikes.setEjector(address(0));
     }
 
+    function test_setEjector_RevertWhen_SameEjectorAddress() public {
+        vm.expectRevert(IValidatorStrikes.SameEjectorAddress.selector);
+        vm.prank(admin);
+        strikes.setEjector(ejector);
+    }
+
     function test_processOracleReport() public assertInvariants {
         string memory treeCid = someCIDv0();
         bytes32 treeRoot = someBytes32();

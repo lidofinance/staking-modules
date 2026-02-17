@@ -17,6 +17,7 @@ interface IValidatorStrikes {
     event EjectorSet(address ejector);
 
     error ZeroEjectorAddress();
+    error SameEjectorAddress();
     error ZeroModuleAddress();
     error ZeroOracleAddress();
     error ZeroExitPenaltiesAddress();

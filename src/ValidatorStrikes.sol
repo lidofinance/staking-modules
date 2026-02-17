@@ -148,6 +148,7 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
 
     function _setEjector(address _ejector) internal {
         if (_ejector == address(0)) revert ZeroEjectorAddress();
+        if (_ejector == address(ejector)) revert SameEjectorAddress();
         ejector = IEjector(_ejector);
         emit EjectorSet(_ejector);
     }
