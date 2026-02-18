@@ -10,6 +10,7 @@ import { Accounting } from "../../src/Accounting.sol";
 import { Ejector } from "../../src/Ejector.sol";
 import { FeeDistributor } from "../../src/FeeDistributor.sol";
 import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
+import { FeeOracle } from "../../src/FeeOracle.sol";
 import { ValidatorStrikes } from "../../src/ValidatorStrikes.sol";
 import { Verifier } from "../../src/Verifier.sol";
 import { VettedGate } from "../../src/VettedGate.sol";
@@ -31,6 +32,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
     error WrongModuleType();
 
+    /// @dev Simulation helper only.
+    ///      In a real governance vote, all steps below are expected to be executed atomically
+    ///      in a single transaction via a temporary vote executor contract.
     function addModule() external {
         _setUp();
         if (moduleType != ModuleType.Community && moduleType != ModuleType.Community0x02) {
@@ -85,6 +89,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
         vm.stopBroadcast();
     }
 
+    /// @dev Simulation helper only.
+    ///      In a real governance vote, all steps below are expected to be executed atomically
+    ///      in a single transaction via a temporary vote executor contract.
     function addCuratedModule() external {
         initializeFromDeployment();
         if (moduleType != ModuleType.Curated) revert WrongModuleType();
@@ -133,6 +140,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
         vm.stopBroadcast();
     }
 
+    /// @dev Simulation helper only.
+    ///      In a real governance vote, all steps below are expected to be executed atomically
+    ///      in a single transaction via a temporary vote executor contract.
     function upgrade() external {
         _setUp();
         if (moduleType != ModuleType.Community) revert WrongModuleType();
@@ -153,29 +163,32 @@ contract SimulateVote is Script, ForkHelpersCommon {
         {
             OssifiableProxy moduleProxy = OssifiableProxy(payable(deploymentConfig.csm));
             vm.startBroadcast(_prepareProxyAdmin(address(moduleProxy)));
-            // 1. Upgrade CSModule implementation
-            moduleProxy.proxy__upgradeTo(deploymentConfig.csmImpl);
-            // 2. Finalize CSModule v3 upgrade
-            CSModule(deploymentConfig.csm).finalizeUpgradeV3();
+            // 1-2. Upgrade and finalize CSModule v3 in a single tx
+            moduleProxy.proxy__upgradeToAndCall(
+                deploymentConfig.csmImpl,
+                abi.encodeCall(CSModule.finalizeUpgradeV3, ())
+            );
             vm.stopBroadcast();
         }
 
         {
             OssifiableProxy parametersRegistryProxy = OssifiableProxy(payable(deploymentConfig.parametersRegistry));
             vm.startBroadcast(_prepareProxyAdmin(address(parametersRegistryProxy)));
-            // 3. Upgrade ParametersRegistry implementation
-            parametersRegistryProxy.proxy__upgradeTo(deploymentConfig.parametersRegistryImpl);
-            // 4. Finalize ParametersRegistry v3 upgrade
-            ParametersRegistry(deploymentConfig.parametersRegistry).finalizeUpgradeV3();
+            // 3-4. Upgrade and finalize ParametersRegistry v3 in a single tx
+            parametersRegistryProxy.proxy__upgradeToAndCall(
+                deploymentConfig.parametersRegistryImpl,
+                abi.encodeCall(ParametersRegistry.finalizeUpgradeV3, ())
+            );
             vm.stopBroadcast();
         }
         {
             OssifiableProxy oracleProxy = OssifiableProxy(payable(deploymentConfig.oracle));
             vm.startBroadcast(_prepareProxyAdmin(address(oracleProxy)));
-            // 4. Upgrade FeeOracle implementation
-            oracleProxy.proxy__upgradeTo(deploymentConfig.oracleImpl);
-            // 5. Finalize FeeOracle v3 upgrade
-            oracle.finalizeUpgradeV3(deployParams.consensusVersion);
+            // 4-5. Upgrade and finalize FeeOracle v3 in a single tx
+            oracleProxy.proxy__upgradeToAndCall(
+                deploymentConfig.oracleImpl,
+                abi.encodeCall(FeeOracle.finalizeUpgradeV3, (deployParams.consensusVersion))
+            );
             vm.stopBroadcast();
         }
 
@@ -190,20 +203,22 @@ contract SimulateVote is Script, ForkHelpersCommon {
         {
             OssifiableProxy accountingProxy = OssifiableProxy(payable(deploymentConfig.accounting));
             vm.startBroadcast(_prepareProxyAdmin(address(accountingProxy)));
-            // 7. Upgrade Accounting implementation
-            accountingProxy.proxy__upgradeTo(deploymentConfig.accountingImpl);
-            // 8. Finalize Accounting v3 upgrade
-            Accounting(deploymentConfig.accounting).finalizeUpgradeV3();
+            // 7-8. Upgrade and finalize Accounting v3 in a single tx
+            accountingProxy.proxy__upgradeToAndCall(
+                deploymentConfig.accountingImpl,
+                abi.encodeCall(Accounting.finalizeUpgradeV3, ())
+            );
             vm.stopBroadcast();
         }
 
         {
             OssifiableProxy feeDistributorProxy = OssifiableProxy(payable(deploymentConfig.feeDistributor));
             vm.startBroadcast(_prepareProxyAdmin(address(feeDistributorProxy)));
-            // 9. Upgrade FeeDistributor implementation
-            feeDistributorProxy.proxy__upgradeTo(deploymentConfig.feeDistributorImpl);
-            // 10. Finalize FeeDistributor v3 upgrade
-            FeeDistributor(deploymentConfig.feeDistributor).finalizeUpgradeV3();
+            // 9-10. Upgrade and finalize FeeDistributor v3 in a single tx
+            feeDistributorProxy.proxy__upgradeToAndCall(
+                deploymentConfig.feeDistributorImpl,
+                abi.encodeCall(FeeDistributor.finalizeUpgradeV3, ())
+            );
             vm.stopBroadcast();
         }
 
