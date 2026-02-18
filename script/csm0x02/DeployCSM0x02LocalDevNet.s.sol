@@ -49,7 +49,6 @@ contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
         config.setResetBondCurveAddress = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
         config.chargePenaltyRecipient = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
         // Module
-        config.stakingModuleId = vm.envUint("CSM_STAKING_MODULE_ID");
         config.moduleType = "community-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
         config.generalDelayedPenaltyReporter = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 

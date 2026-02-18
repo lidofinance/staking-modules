@@ -19,12 +19,14 @@ interface IEjector is IExitTypes {
     error NothingToEject();
     error DuplicateKeyIndex();
     error ZeroRefundRecipient();
+    error StakingModuleIdNotFound();
 
     event VoluntaryEjectionRequested(uint256 indexed nodeOperatorId, bytes pubkey, address refundRecipient);
 
     event BadPerformerEjectionRequested(uint256 indexed nodeOperatorId, bytes pubkey, address refundRecipient);
+    event StakingModuleIdCached(uint256 stakingModuleId);
 
-    function STAKING_MODULE_ID() external view returns (uint256);
+    function stakingModuleId() external view returns (uint256);
 
     function MODULE() external view returns (IBaseModule);
 

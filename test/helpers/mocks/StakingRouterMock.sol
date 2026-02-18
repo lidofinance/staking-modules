@@ -57,6 +57,10 @@ contract StakingRouterMock {
         return module;
     }
 
+    function getStakingModuleIds() external view returns (uint256[] memory stakingModuleIds) {
+        return _moduleIds;
+    }
+
     function getStakingModulesCount() public view returns (uint256) {
         return _moduleIds.length;
     }

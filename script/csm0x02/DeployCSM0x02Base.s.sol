@@ -30,7 +30,6 @@ import { CommonScriptUtils } from "../utils/Common.sol";
 import { GIndex } from "../../src/lib/GIndex.sol";
 import { Slot } from "../../src/lib/Types.sol";
 import { ExitPenalties } from "../../src/ExitPenalties.sol";
-import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 
 struct DeployCSM0x02Params {
     // Lido addresses
@@ -66,7 +65,6 @@ struct DeployCSM0x02Params {
     address setResetBondCurveAddress;
     address chargePenaltyRecipient;
     // Module
-    uint256 stakingModuleId;
     bytes32 moduleType;
     address generalDelayedPenaltyReporter;
     uint8 topUpQueueLimit;
@@ -303,7 +301,7 @@ abstract contract DeployCSM0x02Base is Script {
                 exitPenaltiesProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
-            ejector = new Ejector(address(csm), address(strikes), config.stakingModuleId, deployer);
+            ejector = new Ejector(address(csm), address(strikes), deployer);
 
             strikes.initialize(deployer, address(ejector));
 
@@ -492,9 +490,5 @@ abstract contract DeployCSM0x02Base is Script {
         ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         verifier.grantRole(verifier.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         strikes.grantRole(strikes.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
-    }
-
-    function _nextStakingModuleId(address locatorAddress) internal view returns (uint256) {
-        return IStakingRouter(ILidoLocator(locatorAddress).stakingRouter()).getStakingModulesCount() + 1;
     }
 }

@@ -11,6 +11,7 @@ import { NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol
 import { IAccounting } from "src/interfaces/IAccounting.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 import { CSMMock } from "../helpers/mocks/CSMMock.sol";
+import { StakingRouterMock } from "../helpers/mocks/StakingRouterMock.sol";
 import { TWGMock } from "../helpers/mocks/TWGMock.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
 import { ValidatorStrikesMock } from "../helpers/mocks/ValidatorStrikesMock.sol";
@@ -19,6 +20,7 @@ contract EjectorTestBase is Test, Utilities, Fixtures {
     Ejector internal ejector;
     CSMMock internal csm;
     ValidatorStrikesMock internal strikes;
+    StakingRouterMock internal stakingRouter;
     IAccounting internal accounting;
     TWGMock internal twg;
 
@@ -26,26 +28,29 @@ contract EjectorTestBase is Test, Utilities, Fixtures {
     address internal admin;
     address internal refundRecipient;
     uint256 internal constant NO_ID = 0;
-    uint256 internal constant STAKING_MODULE_ID = 0;
+    uint256 internal constant ROUTER_STAKING_MODULE_ID = 1;
 
     function setUp() public {
         csm = new CSMMock();
         accounting = csm.accounting();
         strikes = new ValidatorStrikesMock();
+        stakingRouter = StakingRouterMock(csm.LIDO_LOCATOR().stakingRouter());
         twg = TWGMock(payable(csm.LIDO_LOCATOR().triggerableWithdrawalsGateway()));
         stranger = nextAddress("STRANGER");
         admin = nextAddress("ADMIN");
         refundRecipient = nextAddress("refundRecipient");
 
-        ejector = new Ejector(address(csm), address(strikes), STAKING_MODULE_ID, admin);
+        stakingRouter.addModule(ROUTER_STAKING_MODULE_ID, address(csm));
+
+        ejector = new Ejector(address(csm), address(strikes), admin);
     }
 }
 
 contract EjectorTestMisc is EjectorTestBase {
     function test_constructor() public {
-        ejector = new Ejector(address(csm), address(strikes), STAKING_MODULE_ID, admin);
+        ejector = new Ejector(address(csm), address(strikes), admin);
         assertEq(address(ejector.MODULE()), address(csm));
-        assertEq(ejector.STAKING_MODULE_ID(), STAKING_MODULE_ID);
+        assertEq(ejector.stakingModuleId(), 0);
         assertEq(ejector.STRIKES(), address(strikes));
         assertEq(ejector.getRoleMemberCount(ejector.DEFAULT_ADMIN_ROLE()), 1);
         assertEq(ejector.getRoleMember(ejector.DEFAULT_ADMIN_ROLE(), 0), admin);
@@ -53,17 +58,17 @@ contract EjectorTestMisc is EjectorTestBase {
 
     function test_constructor_RevertWhen_ZeroModuleAddress() public {
         vm.expectRevert(IEjector.ZeroModuleAddress.selector);
-        new Ejector(address(0), address(strikes), STAKING_MODULE_ID, admin);
+        new Ejector(address(0), address(strikes), admin);
     }
 
     function test_constructor_RevertWhen_ZeroStrikesAddress() public {
         vm.expectRevert(IEjector.ZeroStrikesAddress.selector);
-        new Ejector(address(csm), address(0), STAKING_MODULE_ID, admin);
+        new Ejector(address(csm), address(0), admin);
     }
 
     function test_constructor_RevertWhen_ZeroAdminAddress() public {
         vm.expectRevert(IEjector.ZeroAdminAddress.selector);
-        new Ejector(address(csm), address(strikes), STAKING_MODULE_ID, address(0));
+        new Ejector(address(csm), address(strikes), address(0));
     }
 
     function test_pauseFor() public {
@@ -136,6 +141,8 @@ contract EjectorTestMisc is EjectorTestBase {
 
 contract EjectorTestVoluntaryEject is EjectorTestBase {
     function test_voluntaryEjectByArray_SingleKey() public {
+        assertEq(ejector.stakingModuleId(), 0);
+
         uint256 keyIndex = 0;
         bytes memory pubkey = csm.getSigningKeys(0, 0, 1);
 
@@ -146,7 +153,7 @@ contract EjectorTestVoluntaryEject is EjectorTestBase {
         );
 
         ValidatorData[] memory expectedExitsData = new ValidatorData[](1);
-        expectedExitsData[0] = ValidatorData(0, NO_ID, pubkey);
+        expectedExitsData[0] = ValidatorData(ROUTER_STAKING_MODULE_ID, NO_ID, pubkey);
         uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
 
         uint256[] memory indices = new uint256[](1);
@@ -161,12 +168,16 @@ contract EjectorTestVoluntaryEject is EjectorTestBase {
             )
         );
         vm.expectEmit(address(ejector));
+        emit IEjector.StakingModuleIdCached(ROUTER_STAKING_MODULE_ID);
+        vm.expectEmit(address(ejector));
         emit IEjector.VoluntaryEjectionRequested({
             nodeOperatorId: NO_ID,
             pubkey: pubkey,
             refundRecipient: refundRecipient
         });
         ejector.voluntaryEject(NO_ID, indices, refundRecipient);
+
+        assertEq(ejector.stakingModuleId(), ROUTER_STAKING_MODULE_ID);
     }
 
     function test_voluntaryEjectByArray_DefaultRefundRecipient() public {
@@ -180,7 +191,7 @@ contract EjectorTestVoluntaryEject is EjectorTestBase {
         );
 
         ValidatorData[] memory expectedExitsData = new ValidatorData[](1);
-        expectedExitsData[0] = ValidatorData(0, NO_ID, pubkey);
+        expectedExitsData[0] = ValidatorData(ROUTER_STAKING_MODULE_ID, NO_ID, pubkey);
         uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
 
         uint256[] memory indices = new uint256[](1);
@@ -217,7 +228,7 @@ contract EjectorTestVoluntaryEject is EjectorTestBase {
         bytes[] memory emittedPubkeys = new bytes[](keysCount);
         for (uint256 i; i < keysCount; ++i) {
             bytes memory pubkey = slice(pubkeys, 48 * i, 48);
-            expectedExitsData[i] = ValidatorData(0, NO_ID, pubkey);
+            expectedExitsData[i] = ValidatorData(ROUTER_STAKING_MODULE_ID, NO_ID, pubkey);
             emittedPubkeys[i] = pubkey;
         }
         uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
@@ -265,7 +276,7 @@ contract EjectorTestVoluntaryEject is EjectorTestBase {
         bytes[] memory emittedPubkeys = new bytes[](indices.length);
         for (uint256 i; i < indices.length; ++i) {
             bytes memory pubkey = slice(pubkeys, 48 * indices[i], 48);
-            expectedExitsData[i] = ValidatorData(0, NO_ID, pubkey);
+            expectedExitsData[i] = ValidatorData(ROUTER_STAKING_MODULE_ID, NO_ID, pubkey);
             emittedPubkeys[i] = pubkey;
         }
         uint256 exitType = ejector.VOLUNTARY_EXIT_TYPE_ID();
@@ -476,17 +487,36 @@ contract EjectorTestVoluntaryEject is EjectorTestBase {
         vm.expectRevert(IEjector.AlreadyWithdrawn.selector);
         ejector.voluntaryEject(NO_ID, indices, address(0));
     }
+
+    function test_voluntaryEjectByArray_revertWhen_StakingModuleIdNotFound() public {
+        uint256[] memory indices = new uint256[](1);
+        indices[0] = 0;
+
+        csm.mock_setNodeOperatorsCount(1);
+        csm.mock_setNodeOperatorTotalDepositedKeys(1);
+        csm.mock_setNodeOperatorManagementProperties(
+            NodeOperatorManagementProperties(address(this), address(this), false)
+        );
+
+        address[] memory modules = new address[](0);
+        stakingRouter.setModules(modules);
+
+        vm.expectRevert(IEjector.StakingModuleIdNotFound.selector);
+        ejector.voluntaryEject(NO_ID, indices, refundRecipient);
+    }
 }
 
 contract EjectorTestEjectBadPerformer is EjectorTestBase {
     function test_ejectBadPerformer_HappyPath() public {
+        assertEq(ejector.stakingModuleId(), 0);
+
         uint256 keyIndex = 0;
         bytes memory pubkey = csm.getSigningKeys(0, keyIndex, 1);
 
         csm.mock_setNodeOperatorTotalDepositedKeys(1);
 
         ValidatorData[] memory expectedExitsData = new ValidatorData[](1);
-        expectedExitsData[0] = ValidatorData(0, NO_ID, pubkey);
+        expectedExitsData[0] = ValidatorData(ROUTER_STAKING_MODULE_ID, NO_ID, pubkey);
         uint256 exitType = ejector.STRIKES_EXIT_TYPE_ID();
 
         vm.expectCall(
@@ -500,6 +530,8 @@ contract EjectorTestEjectBadPerformer is EjectorTestBase {
         );
 
         vm.expectEmit(address(ejector));
+        emit IEjector.StakingModuleIdCached(ROUTER_STAKING_MODULE_ID);
+        vm.expectEmit(address(ejector));
         emit IEjector.BadPerformerEjectionRequested({
             nodeOperatorId: NO_ID,
             pubkey: pubkey,
@@ -507,6 +539,8 @@ contract EjectorTestEjectBadPerformer is EjectorTestBase {
         });
         vm.prank(address(strikes));
         ejector.ejectBadPerformer(NO_ID, keyIndex, refundRecipient);
+
+        assertEq(ejector.stakingModuleId(), ROUTER_STAKING_MODULE_ID);
     }
 
     function test_ejectBadPerformer_revertWhen_ZeroRefundRecipient() public {
@@ -516,7 +550,7 @@ contract EjectorTestEjectBadPerformer is EjectorTestBase {
         csm.mock_setNodeOperatorTotalDepositedKeys(1);
 
         ValidatorData[] memory expectedExitsData = new ValidatorData[](1);
-        expectedExitsData[0] = ValidatorData(0, NO_ID, pubkey);
+        expectedExitsData[0] = ValidatorData(ROUTER_STAKING_MODULE_ID, NO_ID, pubkey);
         uint256 exitType = ejector.STRIKES_EXIT_TYPE_ID();
 
         vm.expectRevert(IEjector.ZeroRefundRecipient.selector);
@@ -563,6 +597,17 @@ contract EjectorTestEjectBadPerformer is EjectorTestBase {
         vm.prank(address(strikes));
         vm.expectRevert(IEjector.AlreadyWithdrawn.selector);
         ejector.ejectBadPerformer(NO_ID, keyIndex, refundRecipient);
+    }
+
+    function test_ejectBadPerformer_revertWhen_StakingModuleIdNotFound() public {
+        csm.mock_setNodeOperatorTotalDepositedKeys(1);
+
+        address[] memory modules = new address[](0);
+        stakingRouter.setModules(modules);
+
+        vm.prank(address(strikes));
+        vm.expectRevert(IEjector.StakingModuleIdNotFound.selector);
+        ejector.ejectBadPerformer(NO_ID, 0, refundRecipient);
     }
 
     function test_triggerableWithdrawalsGateway() public view {

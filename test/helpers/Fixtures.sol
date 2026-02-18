@@ -113,7 +113,6 @@ contract DeploymentHelpers is Test {
         address secondAdminAddress;
         address chargePenaltyRecipient;
         address setResetBondCurveAddress;
-        uint256 stakingModuleId;
         bytes32 moduleType;
         uint256 queueLowestPriority;
         uint256 defaultDepositAllocationWeight;
@@ -449,7 +448,6 @@ contract DeploymentHelpers is Test {
         dst.chargePenaltyRecipient = src.chargePenaltyRecipient;
 
         // Module
-        dst.stakingModuleId = src.stakingModuleId;
         dst.moduleType = src.moduleType;
         dst.generalDelayedPenaltyReporter = src.generalDelayedPenaltyReporter;
 
@@ -531,7 +529,6 @@ contract DeploymentHelpers is Test {
         params.resealManager = decoded.resealManager;
         params.secondAdminAddress = decoded.secondAdminAddress;
         params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
-        params.stakingModuleId = decoded.stakingModuleId;
         params.moduleType = decoded.moduleType;
         params.queueLowestPriority = decoded.queueLowestPriority;
         params.bondLockPeriod = decoded.bondLockPeriod;
@@ -570,7 +567,6 @@ contract DeploymentHelpers is Test {
         params.secondAdminAddress = decoded.secondAdminAddress;
         params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
         params.setResetBondCurveAddress = decoded.setResetBondCurveAddress;
-        params.stakingModuleId = decoded.stakingModuleId;
         params.moduleType = decoded.moduleType;
         params.queueLowestPriority = decoded.queueLowestPriority;
         params.bondLockPeriod = decoded.bondLockPeriod;
@@ -609,7 +605,6 @@ contract DeploymentHelpers is Test {
         params.secondAdminAddress = decoded.secondAdminAddress;
         params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
         params.setResetBondCurveAddress = decoded.setResetBondCurveAddress;
-        params.stakingModuleId = decoded.stakingModuleId;
         params.moduleType = decoded.moduleType;
         params.queueLowestPriority = decoded.queueLowestPriority;
         params.bondLockPeriod = decoded.bondLockPeriod;
