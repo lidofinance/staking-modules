@@ -26,7 +26,6 @@ import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
 import { IVerifier } from "../../src/interfaces/IVerifier.sol";
 import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.sol";
 import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
-import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 
 import { JsonObj, Json } from "../utils/Json.sol";
 import { Dummy } from "../utils/Dummy.sol";
@@ -92,7 +91,6 @@ struct CuratedDeployParams {
     uint256 bondLockPeriod;
     address chargePenaltyRecipient;
     // Module
-    uint256 stakingModuleId;
     bytes32 moduleType;
     address generalDelayedPenaltyReporter;
     // ParametersRegistry
@@ -388,7 +386,7 @@ abstract contract DeployBase is Script {
                 exitPenaltiesProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
-            ejector = new Ejector(address(curatedModule), address(strikes), config.stakingModuleId, deployer);
+            ejector = new Ejector(address(curatedModule), address(strikes), deployer);
 
             strikes.initialize(deployer, address(ejector));
 
@@ -651,9 +649,5 @@ abstract contract DeployBase is Script {
         ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         verifier.grantRole(verifier.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         strikes.grantRole(strikes.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
-    }
-
-    function _nextStakingModuleId(address locatorAddress) internal view returns (uint256) {
-        return IStakingRouter(ILidoLocator(locatorAddress).stakingRouter()).getStakingModulesCount() + 1;
     }
 }

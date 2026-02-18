@@ -5,6 +5,7 @@ pragma solidity 0.8.33;
 
 import { NodeOperator } from "src/interfaces/IBaseModule.sol";
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
+import { IWithdrawalVault } from "src/interfaces/IWithdrawalVault.sol";
 
 import { ExitPenaltyInfo } from "../../../../src/interfaces/IExitPenalties.sol";
 import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
@@ -60,8 +61,28 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         assertTrue(moduleInfo.stakingModuleAddress == address(module));
     }
 
-    function test_validStakingModuleId() public view {
-        IStakingRouter.StakingModule memory moduleInfo = stakingRouter.getStakingModule(ejector.STAKING_MODULE_ID());
+    function test_stakingModuleIdIsUnsetOrMatchesModule() public {
+        uint256 ejectorModuleId = ejector.stakingModuleId();
+        if (ejectorModuleId == 0) {
+            (uint256 noId, uint256 keyIndex) = integrationHelpers.getDepositedNodeOperatorWithSequentialActiveKeys(
+                nextAddress(),
+                1
+            );
+            address owner = module.getNodeOperatorOwner(noId);
+
+            uint256[] memory keyIndices = new uint256[](1);
+            keyIndices[0] = keyIndex;
+
+            uint256 withdrawalRequestFee = IWithdrawalVault(locator.withdrawalVault()).getWithdrawalRequestFee();
+            vm.deal(owner, withdrawalRequestFee);
+            vm.prank(owner);
+            ejector.voluntaryEject{ value: withdrawalRequestFee }(noId, keyIndices, address(this));
+
+            ejectorModuleId = ejector.stakingModuleId();
+        }
+
+        assertEq(ejectorModuleId, moduleId);
+        IStakingRouter.StakingModule memory moduleInfo = stakingRouter.getStakingModule(ejectorModuleId);
         assertEq(moduleInfo.stakingModuleAddress, address(module));
     }
 

@@ -81,9 +81,7 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
 
             ExitPenalties exitPenaltiesImpl = new ExitPenalties(address(csm), address(strikes));
 
-            uint256 stakingModuleId = Ejector(address(ejector)).STAKING_MODULE_ID();
-
-            ejector = new Ejector(address(csm), address(strikes), stakingModuleId, deployer);
+            ejector = new Ejector(address(csm), address(strikes), deployer);
 
             permissionlessGate = new PermissionlessGate(address(csm), deployer);
 
@@ -143,7 +141,6 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             verifierV3.grantRole(verifierV3.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             verifierV3.revokeRole(verifierV3.DEFAULT_ADMIN_ROLE(), deployer);
 
-            config.stakingModuleId = stakingModuleId;
             config.identifiedCommunityStakersGateCurveId = vettedGate.curveId();
             config.identifiedCommunityStakersGateTreeRoot = vettedGate.treeRoot();
             config.identifiedCommunityStakersGateTreeCid = vettedGate.treeCid();
