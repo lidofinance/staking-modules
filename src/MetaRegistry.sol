@@ -137,6 +137,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
         $.bondCurveWeight[curveId] = weight;
         emit BondCurveWeightSet(curveId, weight);
+        MODULE.requestFullDepositInfoUpdate();
     }
 
     /// @inheritdoc IMetaRegistry

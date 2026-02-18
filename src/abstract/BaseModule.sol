@@ -96,6 +96,11 @@ abstract contract BaseModule is
         unchecked {
             ++_nodeOperatorsCount;
         }
+
+        // If all operators have up-to-date deposit info, then the new operator also has it, so we can just increase the counter.
+        if (nodeOperatorId == _upToDateOperatorDepositInfoCount) {
+            ++_upToDateOperatorDepositInfoCount;
+        }
         _incrementModuleNonce();
     }
 
@@ -364,6 +369,38 @@ abstract contract BaseModule is
         _exitPenalties().processTriggeredExit(nodeOperatorId, publicKey, elWithdrawalRequestFeePaid, exitType);
     }
 
+    /// @inheritdoc IBaseModule
+    function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external {
+        _updateDepositInfo(nodeOperatorId);
+    }
+
+    /// @inheritdoc IBaseModule
+    function requestFullDepositInfoUpdate() external {
+        _canRequestDepositInfoUpdate();
+        _upToDateOperatorDepositInfoCount = 0;
+        _incrementModuleNonce();
+    }
+
+    /// @inheritdoc IBaseModule
+    function batchDepositInfoUpdate(uint256 maxCount) external returns (uint256 operatorsLeft) {
+        if (maxCount == 0) revert InvalidInput();
+
+        uint256 operatorsCount = _nodeOperatorsCount;
+        uint256 noId = _upToDateOperatorDepositInfoCount;
+        if (noId == operatorsCount) return 0;
+
+        uint256 limit = noId + maxCount > operatorsCount ? operatorsCount : noId + maxCount;
+
+        for (; noId < limit; ++noId) {
+            _updateDepositInfo(noId);
+        }
+
+        _upToDateOperatorDepositInfoCount = limit;
+        operatorsLeft = operatorsCount - limit;
+
+        if (operatorsLeft == 0) emit NodeOperatorDepositInfoFullyUpdated();
+    }
+
     /// @inheritdoc IStakingModule
     /// @dev This method is not used in the module since rewards are distributed by a performance oracle,
     ///      hence it does nothing
@@ -551,6 +588,11 @@ abstract contract BaseModule is
         return _keyAddedBalances[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 
+    /// @inheritdoc IBaseModule
+    function getNodeOperatorDepositInfoToUpdateCount() external view returns (uint256 count) {
+        count = _nodeOperatorsCount - _upToDateOperatorDepositInfoCount;
+    }
+
     // solhint-disable-next-line func-name-mixedcase
     function __BaseModule_init(address admin) internal {
         if (admin == address(0)) revert ZeroAdminAddress();
@@ -560,6 +602,10 @@ abstract contract BaseModule is
 
         // Module is on pause initially and should be resumed during the vote
         _pauseFor(PausableUntil.PAUSE_INFINITELY);
+    }
+
+    function _updateDepositInfo(uint256 nodeOperatorId) internal virtual {
+        _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: true });
     }
 
     function _reportWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos, bool slashed) internal {
@@ -736,6 +782,17 @@ abstract contract BaseModule is
     /// @dev This function is used to get the parameters registry contract from immutables to save bytecode.
     function _parametersRegistry() internal view returns (IParametersRegistry) {
         return PARAMETERS_REGISTRY;
+    }
+
+    function _requireDepositInfoUpToDate() internal view {
+        if (_upToDateOperatorDepositInfoCount != _nodeOperatorsCount) revert DepositInfoIsNotUpToDate();
+    }
+
+    /// @dev Default implementation of the guard for requesting deposit info update.
+    function _canRequestDepositInfoUpdate() internal view virtual {
+        if (msg.sender != address(_accounting())) {
+            revert SenderIsNotEligible();
+        }
     }
 
     function _onlyRecoverer() internal view override {

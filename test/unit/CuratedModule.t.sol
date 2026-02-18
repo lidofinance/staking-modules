@@ -469,7 +469,7 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         assertEq(no1.totalDepositedKeys, 2);
     }
 
-    function test_obtainDepositData_RevertWhen_NotEnoughCapacity() public {
+    function test_obtainDepositData_NotEnoughCapacity() public {
         uint256 noId = createNodeOperator(1);
 
         bytes memory expectedKeys = module.getSigningKeys(noId, 0, 1);
@@ -481,7 +481,7 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         assertEq(pubkeys, expectedKeys);
     }
 
-    function test_obtainDepositData_RevertWhen_WeightedCapacityTooLow() public assertInvariants {
+    function test_obtainDepositData_WeightedCapacityTooLow() public assertInvariants {
         uint256 zeroWeightId = createNodeOperator(2);
         uint256 weightedId = createNodeOperator(1);
 
@@ -567,6 +567,16 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
         assertEq(no0.totalDepositedKeys, 2);
         assertEq(no1.totalDepositedKeys, 1);
         assertEq(pubkeys, expectedKeys);
+    }
+
+    function test_obtainDepositData_revertWhen_DepositInfoIsNotUpToDate() public assertInvariants {
+        createNodeOperator(1);
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        vm.expectRevert(IBaseModule.DepositInfoIsNotUpToDate.selector);
+        module.obtainDepositData(1, "");
     }
 }
 
@@ -1010,6 +1020,26 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         }
     }
 
+    function test_topUpObtainDepositData_revertWhen_DepositInfoIsNotUpToDate() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        module.obtainDepositData(2, "");
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        bytes memory key0 = module.getSigningKeys(noId, 0, 1);
+        bytes memory key1 = module.getSigningKeys(noId, 1, 1);
+
+        vm.expectRevert(IBaseModule.DepositInfoIsNotUpToDate.selector);
+        cm.allocateDeposits(
+            10 ether,
+            BytesArr(key0, key1),
+            UintArr(0, 1),
+            UintArr(noId, noId),
+            UintArr(3 ether, 3 ether)
+        );
+    }
+
     function test_getDepositsAllocation_matchesObtainDepositData() public assertInvariants {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
@@ -1039,6 +1069,18 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(ids[1], secondId);
         assertEq(allocs[0], keyAllocations[0]);
         assertEq(allocs[1], keyAllocations[1]);
+    }
+
+    function test_getDepositsAllocation_revertWhen_DepositInfoIsNotUpToDate() public assertInvariants {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        module.obtainDepositData(2, "");
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        vm.expectRevert(IBaseModule.DepositInfoIsNotUpToDate.selector);
+        cm.getDepositsAllocation(2 ether);
     }
 
     function test_getDepositsAllocation_matchesObtainDepositData_twoSteps() public assertInvariants {
@@ -1536,6 +1578,25 @@ contract CuratedGetOperatorsWeights is CuratedCommon {
         uint256[] memory weights = cm.getOperatorWeights(operatorIds);
         assertEq(weights, expectedWeights);
     }
+
+    function test_getOperatorWeights_revertWhen_DepositInfoIsNotUpToDate() public assertInvariants {
+        createNodeOperator(1);
+        createNodeOperator(1);
+
+        uint256[] memory operatorIds = UintArr(0, 1);
+        uint256[] memory expectedWeights = UintArr(42, 7);
+        vm.mockCall(
+            address(metaRegistry),
+            abi.encodeWithSelector(IMetaRegistry.getOperatorWeights.selector, operatorIds),
+            abi.encode(expectedWeights)
+        );
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        vm.expectRevert(IBaseModule.DepositInfoIsNotUpToDate.selector);
+        cm.getOperatorWeights(operatorIds);
+    }
 }
 
 contract CuratedProposeNodeOperatorManagerAddressChange is
@@ -1712,6 +1773,42 @@ contract CuratedMisc is ModuleMisc, CuratedCommon {
 
         uint256 depositableAfter = module.getNodeOperator(noId).depositableValidatorsCount;
         assertEq(depositableAfter, 0);
+    }
+
+    function test_requestFullDepositInfoUpdate_fromAccounting() public {
+        createNodeOperator(1);
+
+        uint256 nonceBefore = module.getNonce();
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        uint256 nonceAfter = module.getNonce();
+
+        assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 1);
+        assertEq(nonceAfter, nonceBefore + 1);
+    }
+
+    function test_requestFullDepositInfoUpdate_fromMetaRegistry() public {
+        createNodeOperator(1);
+
+        uint256 nonceBefore = module.getNonce();
+
+        vm.prank(address(metaRegistry));
+        module.requestFullDepositInfoUpdate();
+
+        uint256 nonceAfter = module.getNonce();
+
+        assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 1);
+        assertEq(nonceAfter, nonceBefore + 1);
+    }
+
+    function test_requestFullDepositInfoUpdate_revertWhen_SenderIsNotEligible() public {
+        createNodeOperator(1);
+
+        vm.expectRevert(IBaseModule.SenderIsNotEligible.selector);
+        vm.prank(nextAddress());
+        module.requestFullDepositInfoUpdate();
     }
 }
 
@@ -2037,3 +2134,5 @@ contract CuratedHooks is CuratedCommon {
         cm.notifyNodeOperatorWeightChange(0, 0);
     }
 }
+
+contract CuratedBatchDepositInfoUpdate is ModuleBatchDepositInfoUpdate, CuratedCommon {}

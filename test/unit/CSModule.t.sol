@@ -551,6 +551,16 @@ contract CSMObtainDepositData is ModuleObtainDepositData, CSMCommon {
         module.obtainDepositData(2, "");
     }
 
+    function test_obtainDepositData_RevertWhen_DepositInfoIsNotUpToDate() public assertInvariants {
+        uint256 noId = createNodeOperator(1);
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        vm.expectRevert(IBaseModule.DepositInfoIsNotUpToDate.selector);
+        module.obtainDepositData(1, "");
+    }
+
     function testFuzz_obtainDepositData_OneOperator_enqueuedCount(
         uint256 batchCount,
         uint256 random
@@ -1990,6 +2000,28 @@ contract CSMMisc is ModuleMisc, CSMCommon {
         uint256 noId = createNodeOperator(3);
         csm.updateOperatorBalances(randomBytes(48), randomBytes(48));
     }
+
+    function test_requestFullDepositInfoUpdate_fromAccounting() public {
+        createNodeOperator(1);
+
+        uint256 nonceBefore = module.getNonce();
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        uint256 nonceAfter = module.getNonce();
+
+        assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 1);
+        assertEq(nonceAfter, nonceBefore + 1);
+    }
+
+    function test_requestFullDepositInfoUpdate_revertWhen_SenderIsNotEligible() public {
+        createNodeOperator(1);
+
+        vm.expectRevert(IBaseModule.SenderIsNotEligible.selector);
+        vm.prank(nextAddress());
+        module.requestFullDepositInfoUpdate();
+    }
 }
 
 contract CSMExitDeadlineThreshold is ModuleExitDeadlineThreshold, CSMCommon {}
@@ -2001,3 +2033,5 @@ contract CSMReportValidatorExitDelay is ModuleReportValidatorExitDelay, CSMCommo
 contract CSMOnValidatorExitTriggered is ModuleOnValidatorExitTriggered, CSMCommon {}
 
 contract CSMCreateNodeOperators is ModuleCreateNodeOperators, CSMCommon {}
+
+contract CSMBatchDepositInfoUpdate is ModuleBatchDepositInfoUpdate, CSMCommon {}

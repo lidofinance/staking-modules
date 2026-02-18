@@ -143,10 +143,8 @@ contract InvariantAsserts is Test {
         if (skipInvariants()) return;
 
         bytes32 slot1 = vm.load(address(module), bytes32(uint256(1)));
-        bytes32 slot2 = vm.load(address(module), bytes32(uint256(2)));
 
         assertEq(slot1, bytes32(0), "assert __freeSlot1 is empty");
-        assertEq(slot2, bytes32(0), "assert __freeSlot2 is empty");
     }
 
     function assertAccountingTotalBondShares(uint256 nodeOperatorsCount, IStETH steth, Accounting accounting) public {

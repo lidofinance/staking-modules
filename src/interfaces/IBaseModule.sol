@@ -95,6 +95,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     event GeneralDelayedPenaltyCancelled(uint256 indexed nodeOperatorId, uint256 amount);
     event GeneralDelayedPenaltyCompensated(uint256 indexed nodeOperatorId, uint256 amount);
     event GeneralDelayedPenaltySettled(uint256 indexed nodeOperatorId);
+    event NodeOperatorDepositInfoFullyUpdated();
 
     error CannotAddKeys();
     error NodeOperatorDoesNotExist();
@@ -123,6 +124,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     error ZeroModuleType();
     error ZeroPenaltyType();
     error NothingCompensated();
+    error DepositInfoIsNotUpToDate();
 
     function STAKING_ROUTER_ROLE() external view returns (bytes32);
 
@@ -292,6 +294,20 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @notice Notify the module about a node operator bond curve change.
     /// @param nodeOperatorId ID of the Node Operator
     function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external;
+
+    /// @notice Request a full update of deposit info for all node operators.
+    ///         Should be called after external changes that can affect deposit info such as bond curve change or parameters update.
+    function requestFullDepositInfoUpdate() external;
+
+    /// @notice Request a batch update of deposit info for node operators.
+    ///         If `requestFullDepositInfoUpdate` was called before, the update will start from the first operator.
+    ///         Otherwise, it will continue from the next operator after the last updated one.
+    /// @param maxCount Maximum number of operators to update in this batch
+    /// @return operatorsLeft Number of operators left to update
+    function batchDepositInfoUpdate(uint256 maxCount) external returns (uint256 operatorsLeft);
+
+    /// @notice Get the number of Node Operators with outdated deposit info that requires update.
+    function getNodeOperatorDepositInfoToUpdateCount() external view returns (uint256 count);
 
     /// @notice Get Node Operator info
     /// @param nodeOperatorId ID of the Node Operator
