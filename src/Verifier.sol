@@ -156,7 +156,11 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         if (!data.validator.object.slashed) revert ValidatorIsNotSlashed();
 
         {
-            bytes memory pubkey = MODULE.getSigningKeys(data.validator.nodeOperatorId, data.validator.keyIndex, 1);
+            bytes memory pubkey = MODULE.getSigningKeys(
+                data.moduleKeyId.nodeOperatorId,
+                data.moduleKeyId.keyIndex,
+                1
+            );
 
             if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
         }
@@ -168,7 +172,10 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             gI: _getValidatorGI(data.validator.index, data.recentBlock.header.slot)
         });
 
-        MODULE.onValidatorSlashed(data.validator.nodeOperatorId, data.validator.keyIndex);
+        MODULE.onValidatorSlashed(
+            data.moduleKeyId.nodeOperatorId,
+            data.moduleKeyId.keyIndex
+        );
     }
 
     /// @inheritdoc IVerifier
@@ -183,7 +190,11 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         }
 
         {
-            bytes memory pubkey = MODULE.getSigningKeys(data.validator.nodeOperatorId, data.validator.keyIndex, 1);
+            bytes memory pubkey = MODULE.getSigningKeys(
+                data.moduleKeyId.nodeOperatorId,
+                data.moduleKeyId.keyIndex,
+                1
+            );
 
             if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
         }
@@ -196,8 +207,8 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
         _reportSingleValidator(
             WithdrawnValidatorInfo({
-                nodeOperatorId: data.validator.nodeOperatorId,
-                keyIndex: data.validator.keyIndex,
+                nodeOperatorId: data.moduleKeyId.nodeOperatorId,
+                keyIndex: data.moduleKeyId.keyIndex,
                 exitBalance: withdrawalAmount,
                 slashingPenalty: 0,
                 isSlashed: false
@@ -219,7 +230,11 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         }
 
         {
-            bytes memory pubkey = MODULE.getSigningKeys(data.validator.nodeOperatorId, data.validator.keyIndex, 1);
+            bytes memory pubkey = MODULE.getSigningKeys(
+                data.moduleKeyId.nodeOperatorId,
+                data.moduleKeyId.keyIndex,
+                1
+            );
 
             if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
         }
@@ -239,8 +254,8 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
         _reportSingleValidator(
             WithdrawnValidatorInfo({
-                nodeOperatorId: data.validator.nodeOperatorId,
-                keyIndex: data.validator.keyIndex,
+                nodeOperatorId: data.moduleKeyId.nodeOperatorId,
+                keyIndex: data.moduleKeyId.keyIndex,
                 exitBalance: withdrawalAmount,
                 slashingPenalty: 0,
                 isSlashed: false
@@ -257,7 +272,11 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         if (data.validator.object.slashed) revert ValidatorIsSlashed();
 
         {
-            bytes memory pubkey = MODULE.getSigningKeys(data.validator.nodeOperatorId, data.validator.keyIndex, 1);
+            bytes memory pubkey = MODULE.getSigningKeys(
+                data.moduleKeyId.nodeOperatorId,
+                data.moduleKeyId.keyIndex,
+                1
+            );
 
             if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
         }
@@ -307,11 +326,16 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             proof: data.balance.proof
         });
 
+        uint64 effectiveBalanceGwei = data.validator.object.effectiveBalance;
+        uint64 consolidatedBalanceGwei = balanceGwei < effectiveBalanceGwei
+            ? balanceGwei
+            : effectiveBalanceGwei;
+
         _reportSingleValidator(
             WithdrawnValidatorInfo({
-                nodeOperatorId: data.validator.nodeOperatorId,
-                keyIndex: data.validator.keyIndex,
-                exitBalance: gweiToWei(balanceGwei),
+                nodeOperatorId: data.moduleKeyId.nodeOperatorId,
+                keyIndex: data.moduleKeyId.keyIndex,
+                exitBalance: gweiToWei(consolidatedBalanceGwei),
                 slashingPenalty: 0,
                 isSlashed: false
             })

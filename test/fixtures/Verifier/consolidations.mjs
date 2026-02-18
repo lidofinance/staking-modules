@@ -1,13 +1,19 @@
+// Usage: node consolidations.mjs [balance] [effectiveBalance]
+
 "use strict";
 
 import assert from "node:assert";
 import { createHash } from "crypto";
 
 import { ssz } from "@lodestar/types";
-import { concatGindices, createProof, ProofType } from "@chainsafe/persistent-merkle-tree";
+import {
+  concatGindices,
+  createProof,
+  ProofType,
+} from "@chainsafe/persistent-merkle-tree";
 import { encodeParameters } from "web3-eth-abi";
 
-import VerifierConsolidationTest from "../../../out/Verifier.t.sol/VerifierConsolidationTest.json" assert { type: "json" };
+import VerifierConsolidationTest from "../../../out/Verifier.t.sol/VerifierConsolidationTest.json" with { type: "json" };
 
 const MIN_VALIDATOR_WITHDRAWABILITY_DELAY = 256;
 const SLOTS_PER_HISTORICAL_ROOT = 8192;
@@ -21,6 +27,7 @@ const Fork = ssz.electra;
  * @param {number} opts.validatorIndex - Index of a validator in the `validators` list.
  * @param {number} opts.consolidationOffset - Index of a consolidation in the `pending_consolidations` list.
  * @param {number} opts.balance - Validator's balance before consolidation.
+ * @param {number} opts.effectiveBalance - Validator's effective balance.
  * @param {string} opts.address - Ethereum address for withdrawal credentials.
  * @param {number} opts.withdrawableEpoch - Epoch to calculate slot for withdrawable block.
  * @param {number} opts.capellaSlot - Slot of Cappela fork.
@@ -37,7 +44,10 @@ function main(opts) {
   const Validator = Fork.BeaconState.getPathInfo(["validators", 0]).type;
 
   /** @type {import('@chainsafe/ssz').ContainerType}  */
-  const PendingConsolidation = Fork.BeaconState.getPathInfo(["pending_consolidations", 0]).type;
+  const PendingConsolidation = Fork.BeaconState.getPathInfo([
+    "pending_consolidations",
+    0,
+  ]).type;
 
   /** @type {import('@lodestar/types/lib/phase0').Validator} */
   const validator = Validator.defaultView();
@@ -50,6 +60,7 @@ function main(opts) {
     ...new Uint8Array(11), // gap
     ...hexStrToBytesArr(opts.address),
   ]);
+  validator.effectiveBalance = opts.effectiveBalance;
 
   const state = Fork.BeaconState.defaultView();
 
@@ -73,14 +84,18 @@ function main(opts) {
   state.pendingConsolidations.push(consolidation);
 
   // We imagine that consolidation request was processed and the withdrawableEpoch was set without any delays.
-  state.slot = (opts.withdrawableEpoch - MIN_VALIDATOR_WITHDRAWABILITY_DELAY) * SLOTS_PER_EPOCH;
+  state.slot =
+    (opts.withdrawableEpoch - MIN_VALIDATOR_WITHDRAWABILITY_DELAY) *
+    SLOTS_PER_EPOCH;
 
   const consolidationBlock = Fork.BeaconBlock.defaultView();
   consolidationBlock.slot = state.slot;
   consolidationBlock.parentRoot = faker.someBytes32();
   consolidationBlock.stateRoot = state.hashTreeRoot();
   {
-    const summaryIndex = Math.floor(consolidationBlock.slot / SLOTS_PER_HISTORICAL_ROOT);
+    const summaryIndex = Math.floor(
+      consolidationBlock.slot / SLOTS_PER_HISTORICAL_ROOT,
+    );
     const rootIndex = consolidationBlock.slot % SLOTS_PER_HISTORICAL_ROOT;
     consolidationBlock.meta = {
       summaryIndex,
@@ -90,7 +105,10 @@ function main(opts) {
 
   const consolidationProof = createProof(state.node, {
     type: ProofType.single,
-    gindex: state.type.getPathInfo(["pending_consolidations", opts.consolidationOffset]).gindex,
+    gindex: state.type.getPathInfo([
+      "pending_consolidations",
+      opts.consolidationOffset,
+    ]).gindex,
   });
   const balanceProof = createProof(state.node, {
     type: ProofType.single,
@@ -99,22 +117,31 @@ function main(opts) {
 
   // --- Final state here, for the "recent" block.
 
-  state.slot = (opts.withdrawableEpoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY) * SLOTS_PER_EPOCH;
+  state.slot =
+    (opts.withdrawableEpoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY) *
+    SLOTS_PER_EPOCH;
 
   // We assume Cappela slot to be zero and fill in historical summaries list.
-  for (let s = opts.capellaSlot; s < state.slot; s += SLOTS_PER_HISTORICAL_ROOT) {
+  for (
+    let s = opts.capellaSlot;
+    s < state.slot;
+    s += SLOTS_PER_HISTORICAL_ROOT
+  ) {
     const summary = ssz.electra.HistoricalSummary.defaultView();
     summary.blockSummaryRoot = faker.someBytes32();
     summary.stateSummaryRoot = faker.someBytes32();
 
     // This branch significantly improves performance.
-    if (state.historicalSummaries.length == consolidationBlock.meta.summaryIndex) {
+    if (
+      state.historicalSummaries.length == consolidationBlock.meta.summaryIndex
+    ) {
       const BlockRoots = state.blockRoots.type;
       const blockRoots = BlockRoots.fromJson(
         new Array(8192).fill(faker.someBytes32().toString("hex")),
       );
 
-      blockRoots[consolidationBlock.meta.rootIndex] = consolidationBlock.hashTreeRoot();
+      blockRoots[consolidationBlock.meta.rootIndex] =
+        consolidationBlock.hashTreeRoot();
 
       const nav = state.type.getPathInfo([
         "historicalSummaries",
@@ -143,7 +170,9 @@ function main(opts) {
         consolidationBlock.meta.summaryIndex,
         "blockSummaryRoot",
       ]).gindex,
-      state.blockRoots.type.getPropertyGindex(consolidationBlock.meta.rootIndex),
+      state.blockRoots.type.getPropertyGindex(
+        consolidationBlock.meta.rootIndex,
+      ),
     ]),
   });
 
@@ -166,12 +195,10 @@ function main(opts) {
       },
       validator: {
         index: opts.validatorIndex,
-        nodeOperatorId: 0,
-        keyIndex: 0,
         object: {
           pubkey: validator.pubkey,
           withdrawalCredentials: validator.withdrawalCredentials,
-          effectiveBalance: opts.balance - (opts.balance % 1e18),
+          effectiveBalance: validator.effectiveBalance,
           slashed: false,
           activationEligibilityEpoch: validator.activationEligibilityEpoch,
           activationEpoch: validator.activationEpoch,
@@ -179,6 +206,10 @@ function main(opts) {
           withdrawableEpoch: validator.withdrawableEpoch,
         },
         proof: validatorProof.witnesses,
+      },
+      moduleKeyId: {
+        nodeOperatorId: 0,
+        keyIndex: 0,
       },
       balance: {
         node: balanceProof.leaf,
@@ -207,7 +238,9 @@ function main(opts) {
     },
   };
 
-  const ffi_interface = VerifierConsolidationTest.abi.find((e) => e.name == "ffi_interface");
+  const ffi_interface = VerifierConsolidationTest.abi.find(
+    (e) => e.name == "ffi_interface",
+  );
   assert(ffi_interface);
 
   const calldata = encodeParameters(ffi_interface.inputs, [fixture]);
@@ -243,7 +276,8 @@ class Faker {
 main({
   validatorIndex: 17,
   consolidationOffset: 1,
-  balance: 31e9,
+  balance: parseFloat(process.argv[2]),
+  effectiveBalance: parseFloat(process.argv[3]),
   address: "b3e29c46ee1745724417c0c51eb2351a1c01cf36",
   withdrawableEpoch: 100_500,
   capellaSlot: 0,

@@ -64,7 +64,11 @@ contract VerifierHistoricalBase is Test, Utilities {
 
         vm.mockCall(
             address(module),
-            abi.encodeWithSelector(IBaseModule.getSigningKeys.selector, 0, 0),
+            abi.encodeWithSelector(
+                IBaseModule.getSigningKeys.selector,
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex
+            ),
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
@@ -179,8 +183,8 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
             address(module),
             abi.encodeWithSelector(
                 IBaseModule.getSigningKeys.selector,
-                fixture.data.validator.nodeOperatorId,
-                fixture.data.validator.keyIndex
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex
             ),
             abi.encode(hex"deadbeef")
         );

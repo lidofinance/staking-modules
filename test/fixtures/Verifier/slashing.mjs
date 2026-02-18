@@ -7,7 +7,7 @@ import { ssz } from "@lodestar/types";
 import { createProof, ProofType } from "@chainsafe/persistent-merkle-tree";
 import { encodeParameters } from "web3-eth-abi";
 
-import VerifierSlashingTest from "../../../out/Verifier.t.sol/VerifierSlashingTest.json" assert { type: "json" };
+import VerifierSlashingTest from "../../../out/Verifier.t.sol/VerifierSlashingTest.json" with { type: "json" };
 
 const SLOTS_PER_EPOCH = 32;
 
@@ -65,8 +65,6 @@ function main(opts) {
     data: {
       validator: {
         index: opts.validatorIndex,
-        nodeOperatorId: 0,
-        keyIndex: 0,
         object: {
           pubkey: validator.pubkey,
           withdrawalCredentials: validator.withdrawalCredentials,
@@ -78,6 +76,10 @@ function main(opts) {
           withdrawableEpoch: validator.withdrawableEpoch,
         },
         proof: validatorProof.witnesses,
+      },
+      moduleKeyId: {
+        nodeOperatorId: 0,
+        keyIndex: 0,
       },
       recentBlock: {
         header: {

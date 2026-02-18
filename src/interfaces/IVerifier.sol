@@ -41,10 +41,13 @@ interface IVerifier {
         bytes32[] proof;
     }
 
+    struct ModuleKeyId {
+        uint32 nodeOperatorId;
+        uint32 keyIndex; // Index of the key in the Node Operator's keys storage.
+    }
+
     struct ValidatorWitness {
         uint64 index; // Index of a validator in a Beacon state.
-        uint32 nodeOperatorId;
-        uint32 keyIndex; // Index of the withdrawn key in the Node Operator's keys storage.
         Validator object;
         bytes32[] proof;
     }
@@ -63,6 +66,7 @@ interface IVerifier {
     struct ProcessConsolidationInput {
         PendingConsolidationWitness consolidation;
         ValidatorWitness validator;
+        ModuleKeyId moduleKeyId;
         // Represents the validator's balance before the CL processes the pending consolidation. Used as a proxy for the
         // "withdrawal balance" in accounting/penalties, since consolidation is not an EL withdrawal.
         BalanceWitness balance;
@@ -72,18 +76,21 @@ interface IVerifier {
 
     struct ProcessSlashedInput {
         ValidatorWitness validator;
+        ModuleKeyId moduleKeyId;
         RecentHeaderWitness recentBlock;
     }
 
     struct ProcessWithdrawalInput {
         WithdrawalWitness withdrawal;
         ValidatorWitness validator;
+        ModuleKeyId moduleKeyId;
         RecentHeaderWitness withdrawalBlock;
     }
 
     struct ProcessHistoricalWithdrawalInput {
         WithdrawalWitness withdrawal;
         ValidatorWitness validator;
+        ModuleKeyId moduleKeyId;
         RecentHeaderWitness recentBlock;
         HistoricalHeaderWitness withdrawalBlock;
     }

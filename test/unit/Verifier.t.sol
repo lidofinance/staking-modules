@@ -434,8 +434,8 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             address(module),
             abi.encodeWithSelector(
                 IBaseModule.getSigningKeys.selector,
-                fixture.data.validator.nodeOperatorId,
-                fixture.data.validator.keyIndex
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex
             ),
             abi.encode(hex"deadbeef")
         );
@@ -568,7 +568,11 @@ contract VerifierWithdrawalTest is VerifierTestBase {
 
         vm.mockCall(
             address(module),
-            abi.encodeWithSelector(IBaseModule.getSigningKeys.selector, 0, 0),
+            abi.encodeWithSelector(
+                IBaseModule.getSigningKeys.selector,
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex
+            ),
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
@@ -649,8 +653,8 @@ contract VerifierSlashingTest is VerifierTestBase {
             address(module),
             abi.encodeWithSelector(
                 IBaseModule.onValidatorSlashed.selector,
-                fixture.data.validator.nodeOperatorId,
-                fixture.data.validator.keyIndex
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex
             )
         );
 
@@ -721,8 +725,8 @@ contract VerifierSlashingTest is VerifierTestBase {
             address(module),
             abi.encodeWithSelector(
                 IBaseModule.getSigningKeys.selector,
-                fixture.data.validator.nodeOperatorId,
-                fixture.data.validator.keyIndex
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex
             ),
             abi.encode(fixture.data.validator.object.pubkey)
         );
@@ -743,6 +747,8 @@ contract VerifierSlashingTest is VerifierTestBase {
 }
 
 contract VerifierConsolidationTest is VerifierTestBase {
+    using Strings for uint256;
+
     struct Fixture {
         bytes32 blockRoot;
         uint256 balanceWei;
@@ -752,8 +758,6 @@ contract VerifierConsolidationTest is VerifierTestBase {
     Fixture internal fixture;
 
     function setUp() public {
-        _loadFixture();
-
         module = new Stub();
         admin = nextAddress("ADMIN");
 
@@ -790,17 +794,42 @@ contract VerifierConsolidationTest is VerifierTestBase {
         verifier.grantRole(resumeRole, admin);
         vm.stopPrank();
 
+        _loadFixture();
         _setMocks();
 
         assertGt(verifier.FIRST_SUPPORTED_SLOT().unwrap(), 0, "Non-zero slot needed for tests");
     }
 
-    function test_processConsolidationProof_HappyPath() public {
+    function test_processConsolidationProof_EffectiveBalanceAboveActual() public {
+        _loadFixtureWithBalances({ balance: weiToGwei(31.8 ether), effectiveBalance: weiToGwei(32 ether) });
+        _setMocks();
+
         WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
         withdrawals[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: fixture.data.validator.nodeOperatorId,
-            keyIndex: fixture.data.validator.keyIndex,
-            exitBalance: fixture.balanceWei,
+            nodeOperatorId: fixture.data.moduleKeyId.nodeOperatorId,
+            keyIndex: fixture.data.moduleKeyId.keyIndex,
+            exitBalance: 31.8 ether,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
+        );
+
+        verifier.processConsolidation(fixture.data);
+    }
+
+    function test_processConsolidationProof_ActualBalanceAboveEffective() public {
+        _loadFixtureWithBalances({ balance: weiToGwei(32.7 ether), effectiveBalance: weiToGwei(32 ether) });
+        _setMocks();
+
+        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
+        withdrawals[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: fixture.data.moduleKeyId.nodeOperatorId,
+            keyIndex: fixture.data.moduleKeyId.keyIndex,
+            exitBalance: 32 ether,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -888,8 +917,8 @@ contract VerifierConsolidationTest is VerifierTestBase {
             address(module),
             abi.encodeWithSelector(
                 IBaseModule.getSigningKeys.selector,
-                fixture.data.validator.nodeOperatorId,
-                fixture.data.validator.keyIndex
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex
             ),
             abi.encode(fixture.data.validator.object.pubkey)
         );
@@ -898,10 +927,16 @@ contract VerifierConsolidationTest is VerifierTestBase {
     }
 
     function _loadFixture() internal {
-        string[] memory cmd = new string[](3);
+        _loadFixtureWithBalances(weiToGwei(32 ether), weiToGwei(32 ether));
+    }
+
+    function _loadFixtureWithBalances(uint256 balance, uint256 effectiveBalance) internal {
+        string[] memory cmd = new string[](5);
         cmd[0] = "node";
         cmd[1] = "--no-warnings";
         cmd[2] = "test/fixtures/Verifier/consolidations.mjs";
+        cmd[3] = balance.toString();
+        cmd[4] = effectiveBalance.toString();
         bytes memory res = vm.ffi(cmd);
         fixture = abi.decode(res, (Fixture));
     }
@@ -1712,7 +1747,7 @@ contract VerifierValidatorBalanceTest is Test, Utilities {
     function test_validatorBalance_NodeInfo_Balance() public {
         uint256 balance;
 
-        for (uint i = 0; i < 4; ++i) {
+        for (uint256 i = 0; i < 4; ++i) {
             (, balance) = verifier.getValidatorBalanceNodeInfo(
                 0x0000000000000000000000000000000000000000000000000000000000000000,
                 0,

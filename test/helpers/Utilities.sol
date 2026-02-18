@@ -151,6 +151,10 @@ contract Utilities is CommonBase {
         );
     }
 
+    function weiToGwei(uint256 amountWei) internal pure returns (uint256) {
+        return amountWei / 1 gwei;
+    }
+
     /// @dev It's super annoying to make a memory array all the time without an array literal, so the function pretends
     /// to provide the familiar syntax. By overloading the function, we can have a different number of arguments.
     function UintArr() public pure returns (uint256[] memory) {
