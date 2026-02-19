@@ -469,7 +469,110 @@ contract VerifierWithdrawalTest is VerifierTestBase {
     }
 
     function test_processWithdrawalProof_RevertWhen_PartialWithdrawal() public {
-        fixture.data.withdrawal.object.amount = 15e9 - 1;
+        // 32 ether in gwei * 9000 / 10000 = 28_800_000_000 gwei = 28.8 ether
+        fixture.data.withdrawal.object.amount = 28_800_000_000 - 1;
+
+        vm.expectRevert(IVerifier.PartialWithdrawal.selector);
+        verifier.processWithdrawalProof(fixture.data);
+    }
+
+    function test_processWithdrawalProof_RevertWhen_PartialWithdrawal_WithAddedBalance() public {
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getKeyAddedBalance.selector,
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex
+            ),
+            abi.encode(100 ether)
+        );
+
+        // (32 + 100) ether in gwei * 9000 / 10000 = 118_800_000_000 gwei = 118.8 ether
+        fixture.data.withdrawal.object.amount = 118_800_000_000 - 1;
+
+        vm.expectRevert(IVerifier.PartialWithdrawal.selector);
+        verifier.processWithdrawalProof(fixture.data);
+    }
+
+    function test_processWithdrawalProof_HappyPath_WithAddedBalance() public {
+        // Use a small added balance so the threshold stays below the fixture's 32 ETH withdrawal.
+        // threshold = (32 + 3) * 9000 / 10000 = 31.5 ETH < 32 ETH
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getKeyAddedBalance.selector,
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex
+            ),
+            abi.encode(3 ether)
+        );
+
+        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
+        withdrawals[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: 0,
+            keyIndex: 0,
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
+        );
+
+        verifier.processWithdrawalProof(fixture.data);
+    }
+
+    function test_processWithdrawalProof_HappyPath_MaxEffectiveBalance() public {
+        // threshold = (32 + 2016) * 9000 / 10000 = 1843.2 ETH = 1_843_200_000_000 gwei
+        // Reload fixture with the minimal expected withdrawal amount.
+        _loadFixtureWithAmount({ offset: 11, amountGwei: 1_843_200_000_000 });
+        _setMocks();
+
+        // Mock keyAddedBalance for a fully consolidated validator (2048 - 32 = 2016 ETH added).
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getKeyAddedBalance.selector,
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex
+            ),
+            abi.encode(2016 ether)
+        );
+
+        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
+        withdrawals[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: 0,
+            keyIndex: 0,
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
+        );
+
+        verifier.processWithdrawalProof(fixture.data);
+    }
+
+    function test_processWithdrawalProof_RevertWhen_PartialWithdrawal_MaxEffectiveBalance() public {
+        // Mock keyAddedBalance for a fully consolidated validator (2048 - 32 = 2016 ETH added).
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getKeyAddedBalance.selector,
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex
+            ),
+            abi.encode(2016 ether)
+        );
+
+        // threshold = (32 + 2016) * 9000 / 10000 = 1843.2 ETH = 1_843_200_000_000 gwei
+        // Reverts before SSZ proof check, so modifying amount is safe.
+        fixture.data.withdrawal.object.amount = 1_843_200_000_000 - 1;
 
         vm.expectRevert(IVerifier.PartialWithdrawal.selector);
         verifier.processWithdrawalProof(fixture.data);
@@ -579,6 +682,16 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getKeyAddedBalance.selector,
+                fixture.data.moduleKeyId.nodeOperatorId,
+                fixture.data.moduleKeyId.keyIndex
+            ),
+            abi.encode(uint256(0))
+        );
+
         vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");
     }
 
@@ -592,6 +705,17 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         cmd[1] = "--no-warnings";
         cmd[2] = "test/fixtures/Verifier/withdrawal.mjs";
         cmd[3] = offset.toString();
+        bytes memory res = vm.ffi(cmd);
+        fixture = abi.decode(res, (Fixture));
+    }
+
+    function _loadFixtureWithAmount(uint8 offset, uint256 amountGwei) internal {
+        string[] memory cmd = new string[](5);
+        cmd[0] = "node";
+        cmd[1] = "--no-warnings";
+        cmd[2] = "test/fixtures/Verifier/withdrawal.mjs";
+        cmd[3] = offset.toString();
+        cmd[4] = Strings.toString(amountGwei);
         bytes memory res = vm.ffi(cmd);
         fixture = abi.decode(res, (Fixture));
     }
