@@ -4,6 +4,12 @@
 pragma solidity 0.8.33;
 
 interface IStakingRouter {
+    enum StakingModuleStatus {
+        Active,
+        DepositsPaused,
+        Stopped
+    }
+
     event ContractVersionSet(uint256 version);
     event ExitedAndStuckValidatorsCountsUpdateFailed(uint256 indexed stakingModuleId, bytes lowLevelRevertData);
     event RewardsMintedReportFailed(uint256 indexed stakingModuleId, bytes lowLevelRevertData);
@@ -170,7 +176,17 @@ interface IStakingRouter {
         bytes memory _vettedSigningKeysCounts
     ) external;
 
-    function deposit(uint256 _depositsCount, uint256 _stakingModuleId, bytes memory _depositCalldata) external payable;
+    function canDeposit(uint256 _stakingModuleId) external view returns (bool);
+
+    function deposit(uint256 _stakingModuleId, bytes memory _depositCalldata) external payable;
+
+    function topUp(
+        uint256 _stakingModuleId,
+        uint256[] memory _keyIndices,
+        uint256[] memory _operatorIds,
+        bytes[] memory _pubkeys,
+        uint256[] memory _topUpLimits
+    ) external;
 
     function finalizeUpgrade_v2(uint256[] memory _priorityExitShareThresholds) external;
 
@@ -182,6 +198,10 @@ interface IStakingRouter {
 
     function getDepositsAllocation(
         uint256 _depositsCount
+    ) external view returns (uint256 allocated, uint256[] memory allocations);
+
+    function getTopUpAllocation(
+        uint256 _depositAmount
     ) external view returns (uint256 allocated, uint256[] memory allocations);
 
     function getLido() external view returns (address);
@@ -300,6 +320,12 @@ interface IStakingRouter {
         uint256 _stakingModuleId,
         bytes memory _nodeOperatorIds,
         bytes memory _exitedValidatorsCounts
+    ) external;
+
+    function reportStakingModuleOperatorBalances(
+        uint256 _stakingModuleId,
+        bytes memory _nodeOperatorIds,
+        bytes memory _totalBalancesGwei
     ) external;
 
     function reportStakingModuleStuckValidatorsCountByNodeOperator(

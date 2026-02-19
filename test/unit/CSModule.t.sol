@@ -990,9 +990,6 @@ contract CSMTopUpQueue is CSMCommon {
         accounting.depositETH{ value: 100 ether }(0);
         uint256 bondBefore = accounting.getBond(0);
 
-        vm.prank(admin);
-        csm.grantRole(csm.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), address(this));
-
         WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
         infos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: 0,
@@ -1847,8 +1844,9 @@ contract CSMRemoveKeysChargeFee is CSMCommon {
     }
 
     function test_removeKeys_withNoFee() public assertInvariants {
+        ParametersRegistryMock registry = parametersRegistry;
         vm.prank(admin);
-        module.PARAMETERS_REGISTRY().setKeyRemovalCharge(0, 0);
+        registry.setKeyRemovalCharge(0, 0);
 
         uint256 noId = createNodeOperator(3);
 

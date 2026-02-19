@@ -49,11 +49,11 @@ abstract contract OracleTestBase is ModuleTypeBase {
         hugeDeposit();
 
         refundRecipient = nextAddress("refundRecipient");
-        uint256 keysCount;
         uint256 moduleId = findModule();
-        (nodeOperatorId, keysCount) = integrationHelpers.getDepositableNodeOperator(nextAddress());
+        (nodeOperatorId, ) = integrationHelpers.getDepositableNodeOperator(nextAddress());
+        _ensureStakingRouterCanDeposit(moduleId);
         vm.prank(locator.depositSecurityModule());
-        lido.deposit(keysCount, moduleId, "");
+        stakingRouter.deposit(moduleId, "");
     }
 
     function reachConsensus(uint256 refSlot, bytes32 hash) public {
@@ -167,7 +167,6 @@ abstract contract OracleTestBase is ModuleTypeBase {
 
         uint256 initialBalance = 1 ether;
         vm.deal(refundRecipient, initialBalance);
-        vm.prank(refundRecipient);
         uint256 expectedWithdrawalFee = IWithdrawalVault(locator.withdrawalVault()).getWithdrawalRequestFee();
 
         IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
