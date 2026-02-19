@@ -37,13 +37,12 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
 contract ModuleDeploymentTest is DeploymentBaseTest {
     function test_state_onlyFull() public view {
         assertEq(module.getInitializedVersion(), 3);
+        assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 0);
     }
 
     function test_unusedStorageSlots_onlyFull() public {
         bytes32 slot1 = vm.load(address(module), bytes32(uint256(1)));
-        bytes32 slot2 = vm.load(address(module), bytes32(uint256(2)));
         assertEq(slot1, bytes32(0), "assert __freeSlot1 is empty");
-        assertEq(slot2, bytes32(0), "assert __freeSlot2 is empty");
     }
 
     function test_roles_onlyFull() public view {

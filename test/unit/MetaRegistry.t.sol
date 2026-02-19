@@ -11,6 +11,7 @@ import { MetaRegistry } from "src/MetaRegistry.sol";
 import { IMetaRegistry, OperatorMetadata } from "src/interfaces/IMetaRegistry.sol";
 import { NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
+import { IBaseModule } from "src/interfaces/IBaseModule.sol";
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
 import { ExternalOperatorLib } from "src/lib/ExternalOperatorLib.sol";
 
@@ -969,6 +970,9 @@ contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
     function test_getBondCurveWeight_ReturnsValue() public {
         assertEq(registry.getBondCurveWeight(0), 0);
 
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector));
+        vm.expectEmit(address(registry));
+        emit IMetaRegistry.BondCurveWeightSet(0, 123);
         vm.prank(bondCurveWeightManager);
         registry.setBondCurveWeight(0, 123);
 

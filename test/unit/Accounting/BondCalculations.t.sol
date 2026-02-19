@@ -37,6 +37,10 @@ contract BondCurveTest is BaseTest {
 
         uint256 toUpdate = 0;
 
+        vm.expectCall(
+            address(accounting.MODULE()),
+            abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector)
+        );
         vm.prank(admin);
         accounting.updateBondCurve(toUpdate, curvePoints);
 

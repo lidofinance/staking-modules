@@ -155,6 +155,8 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(totalDepositedValidatorsBefore, totalDepositedValidatorsAfter);
         assertEq(depositableValidatorsCountBefore, depositableValidatorsCountAfter);
         assertEq(totalNodeOperatorsBefore, totalNodeOperatorsAfter);
+
+        assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 0);
     }
 
     function test_csmQueuePriorityRange() public {

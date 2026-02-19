@@ -142,6 +142,7 @@ contract Accounting is
         BondCurveIntervalInput[] calldata bondCurve
     ) external onlyRole(MANAGE_BOND_CURVES_ROLE) {
         BondCurve._updateBondCurve(curveId, bondCurve);
+        MODULE.requestFullDepositInfoUpdate();
     }
 
     /// @inheritdoc IAccounting

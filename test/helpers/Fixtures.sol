@@ -1088,9 +1088,7 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         if (r.getBondCurveWeight(curveId) == 0) {
             r.setBondCurveWeight(curveId, 1);
             CuratedModule cm = CuratedModule(address(module));
-            for (uint256 i = 0; i < cm.getNodeOperatorsCount(); ++i) {
-                r.refreshOperatorWeight(i);
-            }
+            cm.batchDepositInfoUpdate(cm.getNodeOperatorsCount());
         }
     }
 

@@ -65,10 +65,10 @@ contract CSModule is ICSModule, BaseModule {
     ///      If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
     ///      To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
     function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {
-        // Clean `__freeSlot1` and the storage slot reused by `_isConsolidationReported`.
+        // Clean the storage slots reused by `_isConsolidationReported` and `_upToDateOperatorDepositInfoCount`.
         assembly ("memory-safe") {
-            sstore(__freeSlot1.slot, 0x00)
             sstore(_isConsolidationReported.slot, 0x00)
+            sstore(_upToDateOperatorDepositInfoCount.slot, 0x00)
         }
         // NOTE: Don't call `_initTopUpQueue` because it is disabled by default and existing CSM deployment can only support 0x01 validators mode.
 
@@ -80,6 +80,7 @@ contract CSModule is ICSModule, BaseModule {
             }
         }
         _totalWithdrawnValidators = totalWithdrawnValidators;
+        _upToDateOperatorDepositInfoCount = _nodeOperatorsCount;
     }
 
     /// @inheritdoc IStakingModule
@@ -94,6 +95,7 @@ contract CSModule is ICSModule, BaseModule {
         bytes calldata /* depositCalldata */
     ) external returns (bytes memory publicKeys, bytes memory signatures) {
         _checkStakingRouterRole();
+        _requireDepositInfoUpToDate();
 
         (publicKeys, signatures) = SigningKeys.initKeysSigsBuf(depositsCount);
         if (depositsCount == 0) return (publicKeys, signatures);
@@ -213,6 +215,9 @@ contract CSModule is ICSModule, BaseModule {
         _onlyEnabledTopUpQueue();
         _checkStakingRouterRole();
 
+        // We do not call `_requireDepositInfoUpToDate()` here since top-ups in CSM strictly follow the order of the deposit queue
+        // and the depositable keys count update is not required for the correct top-up queue processing.
+
         // Cap top-ups so we don't over-allocate to keys that lost balance due to CL penalties.
         uint256[] memory cappedTopUpLimits = NodeOperatorOps.capTopUpLimitsByKeyBalance(
             _keyAddedBalances,
@@ -269,11 +274,6 @@ contract CSModule is ICSModule, BaseModule {
         _topUpQueue().rewind(to.toUint32());
         emit TopUpQueueRewound(to);
         _incrementModuleNonce();
-    }
-
-    /// @inheritdoc IBaseModule
-    function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external override(IBaseModule) {
-        _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: true });
     }
 
     /// @inheritdoc ICSModule
