@@ -22,7 +22,7 @@ if [ -z "$SENDER" ] || [ "$SENDER" = "null" ]; then
   exit 1
 fi
 CM_DEPLOY_CONFIG="./artifacts/local/curated/deploy-hoodi.json"
-SM_DISCOVERY="0x43f1c35392418aeeDA48dC136caa7DE43544AbFF"
+SM_DISCOVERY="0x2E04CC1F1dac245f66a5C7c5288Bdd4f7cF0c8b4"
 mkdir -p "$(dirname "$CM_DEPLOY_CONFIG")"
 
 echo "=== Prepare Local Hoodi Fork - Module Deployment ==="
