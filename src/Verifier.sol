@@ -255,9 +255,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         if (data.consolidationPendingBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.consolidationPendingBlock.header.slot);
         }
-        if (data.consolidationAppliedBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(data.consolidationAppliedBlock.header.slot);
-        }
         if (data.consolidationAppliedBlock.header.slot <= data.consolidationPendingBlock.header.slot) {
             revert ConsolidationBlockOrderMismatch();
         }
@@ -354,9 +351,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     ) external whenResumed {
         if (data.consolidationPendingBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.consolidationPendingBlock.header.slot);
-        }
-        if (data.consolidationAppliedBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(data.consolidationAppliedBlock.header.slot);
         }
         if (data.consolidationAppliedBlock.header.slot <= data.consolidationPendingBlock.header.slot) {
             revert ConsolidationBlockOrderMismatch();

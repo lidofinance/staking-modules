@@ -843,18 +843,6 @@ contract VerifierModuleSourceConsolidationTest is VerifierTestBase {
         verifier.processModuleSourceConsolidation(fixture.data);
     }
 
-    function test_processModuleSourceConsolidation_RevertWhen_ConsolidationAppliedBlockSlotUnsupported() public {
-        fixture.data.consolidationAppliedBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IVerifier.UnsupportedSlot.selector,
-                fixture.data.consolidationAppliedBlock.header.slot
-            )
-        );
-        verifier.processModuleSourceConsolidation(fixture.data);
-    }
-
     function test_processModuleSourceConsolidation_RevertWhen_ConsolidationPendingBlockSlotUnsupported() public {
         fixture.data.consolidationPendingBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
@@ -1080,18 +1068,6 @@ contract VerifierModuleTargetConsolidationTest is VerifierTestBase {
         assertTrue(verifier.isPaused());
 
         vm.expectRevert(PausableUntil.ResumedExpected.selector);
-        verifier.processModuleTargetConsolidation(fixture.data);
-    }
-
-    function test_processModuleTargetConsolidation_RevertWhen_ConsolidationAppliedBlockSlotUnsupported() public {
-        fixture.data.consolidationAppliedBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IVerifier.UnsupportedSlot.selector,
-                fixture.data.consolidationAppliedBlock.header.slot
-            )
-        );
         verifier.processModuleTargetConsolidation(fixture.data);
     }
 
