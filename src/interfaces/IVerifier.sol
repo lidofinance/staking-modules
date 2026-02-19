@@ -189,20 +189,18 @@ interface IVerifier {
     /// @dev The source validator is proved at two points in time: when pending consolidation exists
     /// (consolidation-pending block state) to get balances of the validator at this point, and after consolidation
     /// (consolidation-applied block state) for validator status checks. The caveat is that a pending consolidation is
-    /// processed at unknown point in time
-    /// between these two points, as there's no indication of consolidation processing in the state. By using the
-    /// pre-consolidation balance as a withdrawal one, we do not account for losses or rewards accrued while the
-    /// consolidation was in the pending state.
+    /// processed at unknown point in time between these two points, as there's no indication of consolidation
+    /// processing in the state. By using the pre-consolidation balance as a withdrawal one, we do not account for
+    /// losses or rewards accrued while the consolidation was in the pending state.
     /// @param data @see ProcessModuleSourceConsolidationInput
     function processModuleSourceConsolidation(ProcessModuleSourceConsolidationInput calldata data) external;
 
     /// @notice Processes a consolidation where the module's validator is the target. The source validator's balance and
-    /// effective balance before consolidation are used to compute the consolidated amount that is credited to the target
-    /// key via `reportIncomingConsolidation`.
-    /// @dev The source validator is proved at two points in time: before consolidation
-    /// (consolidation-pending block state) for balances, and after consolidation
-    /// (consolidation-applied block state) for status checks. The target validator is proved against the
-    /// consolidation-applied block for pubkey verification and index matching.
+    /// effective balance before consolidation are used to compute the consolidated amount that is credited to the
+    /// target key via `reportIncomingConsolidation`.
+    /// @dev The source validator is proved at two points in time: before consolidation (consolidation-pending block
+    /// state) for balances, and after consolidation (consolidation-applied block state) for status checks. The target
+    /// validator is proved against the consolidation-applied block for pubkey verification and index matching.
     /// @dev 0x02 withdrawal credential check on the target is not enforced on-chain — it is enforced by the CL.
     /// @param data @see ProcessModuleTargetConsolidationInput
     function processModuleTargetConsolidation(ProcessModuleTargetConsolidationInput calldata data) external;
