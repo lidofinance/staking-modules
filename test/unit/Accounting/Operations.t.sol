@@ -12,6 +12,7 @@ import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
 import { IFeeSplits } from "src/interfaces/IFeeSplits.sol";
 
 import { ERC20Testable } from "../../helpers/ERCTestable.sol";
+import { StETHMock } from "../../helpers/mocks/StETHMock.sol";
 
 import { BaseTest } from "./_Base.t.sol";
 
@@ -549,7 +550,7 @@ contract PenalizeTest is BaseTest {
         uint256 amountToBurn = bond + 1 ether; // burn more than bond
 
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(0, 1 ether); // lock some bond
+        accounting.lockBond(0, 1 ether); // lock some bond
         Accounting.BondLockData memory bondLockBefore = accounting.getLockedBondInfo(0);
 
         vm.expectCall(locator.burner(), abi.encodeWithSelector(IBurner.requestBurnMyShares.selector, bondShares));
@@ -589,7 +590,7 @@ contract PenalizeTest is BaseTest {
 
     function test_penalize_fullyBurned_noBondDebtCreated() public assertInvariants {
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(0, 2 ether);
+        accounting.lockBond(0, 2 ether);
         Accounting.BondLockData memory lockBefore = accounting.getLockedBondInfo(0);
         assertEq(accounting.getActualLockedBond(0), 2 ether);
 
@@ -744,6 +745,41 @@ contract PullFeeRewardsTest is BaseTest {
 
         assertEq(stETH.sharesOf(splits[0].recipient), sharesBefore[0], "fee split shares mismatch");
         assertEq(stETH.sharesOf(splits[1].recipient), sharesBefore[1], "fee split shares mismatch");
+    }
+
+    function test_pullFeeRewards_withSplits_lowFeeAmount_oneTransferIsZero() public assertInvariants {
+        uint256 feeShares = 100 wei;
+        IFeeSplits.FeeSplit[] memory splits = new IFeeSplits.FeeSplit[](2);
+        splits[0] = IFeeSplits.FeeSplit({ recipient: nextAddress(), share: 10 });
+        splits[1] = IFeeSplits.FeeSplit({ recipient: nextAddress(), share: 5000 });
+        uint256[] memory sharesBefore = _captureSplitShares(splits);
+        _updateFeeSplits(splits);
+
+        stETH.mintShares(address(feeDistributor), feeShares);
+        mock_getNodeOperatorsCount(1);
+        mock_getNodeOperatorNonWithdrawnKeys(0);
+
+        uint256 bondSharesBefore = accounting.getBondShares(0);
+        uint256 totalBondSharesBefore = accounting.totalBondShares();
+
+        vm.expectCall(
+            address(accounting.MODULE()),
+            abi.encodeWithSelector(IBaseModule.updateDepositableValidatorsCount.selector, 0)
+        );
+        vm.expectCall(
+            address(accounting.LIDO()),
+            abi.encodeWithSelector(StETHMock.transferShares.selector, splits[1].recipient, feeShares / 2)
+        );
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
+
+        uint256 bondSharesAfter = accounting.getBondShares(0);
+        uint256 totalBondSharesAfter = accounting.totalBondShares();
+
+        assertEq(bondSharesAfter, bondSharesBefore + feeShares / 2);
+        assertEq(totalBondSharesAfter, totalBondSharesBefore + feeShares / 2);
+
+        assertEq(stETH.sharesOf(splits[0].recipient), sharesBefore[0], "fee split shares mismatch");
+        assertEq(stETH.sharesOf(splits[1].recipient), sharesBefore[1] + feeShares / 2, "fee split shares mismatch");
     }
 
     function test_pullFeeRewards_withSplits_paused_pendingRecorded() public assertInvariants {
@@ -1106,7 +1142,7 @@ contract PullFeeRewardsTest is BaseTest {
 
         // Create a lock so claimable stays zero and pending accumulates
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(0, 1 ether);
+        accounting.lockBond(0, 1 ether);
 
         // Accumulate pending while locked
         uint256 first = 5;
@@ -1337,7 +1373,7 @@ contract ScenarioTest is BaseTest {
 
         // 3) Apply a lock of 3 ether
         vm.prank(address(stakingModule));
-        accounting.lockBondETH(0, 3 ether);
+        accounting.lockBond(0, 3 ether);
         (, req) = accounting.getBondSummary(0);
         // required grows by locked amount
         assertEq(req, 35 ether);
@@ -1383,7 +1419,7 @@ contract ScenarioTest is BaseTest {
 
         // 7) Settle lock
         vm.prank(address(stakingModule));
-        accounting.settleLockedBondETH(0);
+        accounting.settleLockedBond(0);
 
         (, req) = accounting.getBondSummary(0);
 

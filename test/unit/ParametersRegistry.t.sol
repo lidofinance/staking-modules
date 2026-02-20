@@ -49,9 +49,9 @@ contract ParametersRegistryBaseTest is Test, Utilities, Fixtures {
 }
 
 contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
-    function test_constructor_RevertWhen_ZeroQueueLowestPriority() public {
-        vm.expectRevert(IParametersRegistry.ZeroQueueLowestPriority.selector);
-        new ParametersRegistry({ queueLowestPriority: 0 });
+    function test_constructor_ZeroQueueLowestPriority() public {
+        ParametersRegistry pr = new ParametersRegistry({ queueLowestPriority: 0 });
+        assertEq(pr.QUEUE_LOWEST_PRIORITY(), 0);
     }
 
     function test_constructor_RevertWhen_InitOnImpl() public {
@@ -137,7 +137,23 @@ contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
             parametersRegistry.defaultMaxElWithdrawalRequestFee(),
             defaultInitData.defaultMaxElWithdrawalRequestFee
         );
-        assertEq(parametersRegistry.getInitializedVersion(), 1);
+        assertEq(parametersRegistry.getInitializedVersion(), 3);
+    }
+
+    function test_finalizeUpgradeV3() public {
+        _enableInitializers(address(parametersRegistry));
+
+        parametersRegistry.finalizeUpgradeV3();
+
+        assertEq(parametersRegistry.getInitializedVersion(), 3);
+    }
+
+    function test_finalizeUpgradeV3_RevertWhen_calledTwice() public {
+        _enableInitializers(address(parametersRegistry));
+        parametersRegistry.finalizeUpgradeV3();
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        parametersRegistry.finalizeUpgradeV3();
     }
 
     function test_initialize_RevertWhen_ZeroAdminAddress() public {

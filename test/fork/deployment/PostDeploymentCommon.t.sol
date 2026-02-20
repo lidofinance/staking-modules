@@ -252,6 +252,13 @@ contract FeeOracleDeploymentTest is DeploymentBaseTest {
         assertEq(oracle.getConsensusVersion(), deployParams.consensusVersion);
     }
 
+    function test_unusedStorageSlots_onlyFull() public view {
+        bytes32 slot0 = vm.load(address(oracle), bytes32(uint256(0)));
+        bytes32 slot1 = vm.load(address(oracle), bytes32(uint256(1)));
+        assertEq(slot0, bytes32(0), "assert __freeSlot1 is empty");
+        assertEq(slot1, bytes32(0), "assert __freeSlot2 is empty");
+    }
+
     function test_immutables() public view {
         assertEq(oracleImpl.SECONDS_PER_SLOT(), deployParams.secondsPerSlot);
         assertEq(oracleImpl.GENESIS_TIME(), deployParams.clGenesisTime);
@@ -396,12 +403,12 @@ contract VerifierDeploymentTest is DeploymentBaseTest {
 }
 
 contract ValidatorStrikesDeploymentTest is DeploymentBaseTest {
-    function test_state_scratch() public view {
+    function test_state_scratch_onlyFull() public view {
         assertEq(strikes.treeRoot(), bytes32(0));
         assertEq(keccak256(abi.encodePacked(strikes.treeCid())), keccak256(""));
     }
 
-    function test_state() public view {
+    function test_state_onlyFull() public view {
         assertEq(address(strikes.ejector()), address(ejector));
         assertEq(strikes.getInitializedVersion(), 1);
     }
@@ -419,7 +426,7 @@ contract ValidatorStrikesDeploymentTest is DeploymentBaseTest {
         assertEq(strikes.getRoleMemberCount(strikes.DEFAULT_ADMIN_ROLE()), adminsCount);
     }
 
-    function test_proxy() public {
+    function test_proxy_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         strikes.initialize({ admin: deployParams.aragonAgent, _ejector: address(ejector) });
 
@@ -442,7 +449,7 @@ contract EjectorDeploymentTest is DeploymentBaseTest {
 
     function test_immutables() public view {
         assertEq(address(ejector.MODULE()), address(module));
-        assertEq(ejector.STAKING_MODULE_ID(), deployParams.stakingModuleId);
+        assertEq(ejector.stakingModuleId(), 0);
         assertEq(address(ejector.STRIKES()), address(strikes));
     }
 
@@ -451,10 +458,10 @@ contract EjectorDeploymentTest is DeploymentBaseTest {
         assertEq(ejector.getRoleMemberCount(ejector.DEFAULT_ADMIN_ROLE()), adminsCount);
         assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), address(gateSeal)));
         assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager));
-        assertEq(ejector.getRoleMemberCount(verifier.PAUSE_ROLE()), 2);
+        assertEq(ejector.getRoleMemberCount(ejector.PAUSE_ROLE()), 2);
 
-        assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager));
-        assertEq(ejector.getRoleMemberCount(verifier.RESUME_ROLE()), 1);
+        assertTrue(ejector.hasRole(ejector.RESUME_ROLE(), deployParams.resealManager));
+        assertEq(ejector.getRoleMemberCount(ejector.RESUME_ROLE()), 1);
     }
 }
 
@@ -466,7 +473,7 @@ contract ExitPenaltiesDeploymentTest is DeploymentBaseTest {
         assertEq(address(exitPenaltiesImpl.STRIKES()), address(strikes));
     }
 
-    function test_proxy() public view {
+    function test_proxy_onlyFull() public view {
         OssifiableProxy proxy = OssifiableProxy(payable(address(exitPenalties)));
 
         assertEq(proxy.proxy__getImplementation(), address(exitPenaltiesImpl));

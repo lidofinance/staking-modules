@@ -18,6 +18,9 @@ import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
+    bytes32 internal constant START_REFERRAL_SEASON_ROLE = keccak256("START_REFERRAL_SEASON_ROLE");
+    bytes32 internal constant END_REFERRAL_SEASON_ROLE = keccak256("END_REFERRAL_SEASON_ROLE");
+
     DeployParams internal deployParams;
     uint256 adminsCount;
 
@@ -34,13 +37,12 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
 contract ModuleDeploymentTest is DeploymentBaseTest {
     function test_state_onlyFull() public view {
         assertEq(module.getInitializedVersion(), 3);
+        assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 0);
     }
 
     function test_unusedStorageSlots_onlyFull() public {
         bytes32 slot1 = vm.load(address(module), bytes32(uint256(1)));
-        bytes32 slot2 = vm.load(address(module), bytes32(uint256(2)));
         assertEq(slot1, bytes32(0), "assert __freeSlot1 is empty");
-        assertEq(slot2, bytes32(0), "assert __freeSlot2 is empty");
     }
 
     function test_roles_onlyFull() public view {
@@ -78,7 +80,7 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
         assertEq(parametersRegistryImpl.QUEUE_LOWEST_PRIORITY(), deployParams.queueLowestPriority);
     }
 
-    function test_state() public view {
+    function test_state_onlyFull() public view {
         assertEq(parametersRegistry.defaultKeyRemovalCharge(), deployParams.defaultKeyRemovalCharge);
         assertEq(
             parametersRegistry.defaultGeneralDelayedPenaltyAdditionalFine(),
@@ -105,7 +107,7 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
         assertEq(parametersRegistry.defaultAllowedExitDelay(), deployParams.defaultAllowedExitDelay);
         assertEq(parametersRegistry.defaultExitDelayFee(), deployParams.defaultExitDelayFee);
         assertEq(parametersRegistry.defaultMaxElWithdrawalRequestFee(), deployParams.defaultMaxElWithdrawalRequestFee);
-        assertEq(parametersRegistry.getInitializedVersion(), 1);
+        assertEq(parametersRegistry.getInitializedVersion(), 3);
 
         // Params for Identified Community Staker type
         uint256 identifiedCommunityStakersGateCurveId = vettedGate.curveId();
@@ -231,12 +233,12 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
         );
     }
 
-    function test_roles() public view {
+    function test_roles_onlyFull() public view {
         assertTrue(parametersRegistry.hasRole(parametersRegistry.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(parametersRegistry.getRoleMemberCount(parametersRegistry.DEFAULT_ADMIN_ROLE()), adminsCount);
     }
 
-    function test_proxy() public {
+    function test_proxy_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         parametersRegistry.initialize({
             admin: deployParams.aragonAgent,
@@ -293,13 +295,6 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
 }
 
 contract VettedGateDeploymentTest is DeploymentBaseTest {
-    function test_state_scratch() public view {
-        assertFalse(vettedGate.isReferralProgramSeasonActive());
-        assertEq(vettedGate.referralProgramSeasonNumber(), 0);
-        assertEq(vettedGate.referralCurveId(), 0);
-        assertEq(vettedGate.referralsThreshold(), 0);
-    }
-
     function test_state() public view {
         assertFalse(vettedGate.isPaused());
         assertEq(vettedGate.treeRoot(), deployParams.identifiedCommunityStakersGateTreeRoot);
@@ -314,7 +309,7 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
         assertEq(address(vettedGateImpl.ACCOUNTING()), address(accounting));
     }
 
-    function test_roles() public view {
+    function test_roles_onlyFull() public view {
         assertTrue(vettedGate.hasRole(vettedGate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(oracle.getRoleMemberCount(oracle.DEFAULT_ADMIN_ROLE()), adminsCount);
 
@@ -330,24 +325,17 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
         assertTrue(vettedGate.hasRole(vettedGate.SET_TREE_ROLE(), deployParams.easyTrackEVMScriptExecutor));
         assertEq(vettedGate.getRoleMemberCount(vettedGate.SET_TREE_ROLE()), 1);
 
-        assertTrue(vettedGate.hasRole(vettedGate.START_REFERRAL_SEASON_ROLE(), deployParams.aragonAgent));
-        assertEq(vettedGate.getRoleMemberCount(vettedGate.START_REFERRAL_SEASON_ROLE()), 1);
-
-        assertTrue(
-            vettedGate.hasRole(
-                vettedGate.END_REFERRAL_SEASON_ROLE(),
-                deployParams.identifiedCommunityStakersGateManager
-            )
-        );
-        assertEq(vettedGate.getRoleMemberCount(vettedGate.END_REFERRAL_SEASON_ROLE()), 1);
+        // Legacy referral program roles are not used in the new VettedGate.
+        assertEq(vettedGate.getRoleMemberCount(START_REFERRAL_SEASON_ROLE), 0);
+        assertEq(vettedGate.getRoleMemberCount(END_REFERRAL_SEASON_ROLE), 0);
     }
 
-    function test_proxy() public {
+    function test_proxy_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         vettedGate.initialize({
-            _curveId: 1,
-            _treeRoot: deployParams.identifiedCommunityStakersGateTreeRoot,
-            _treeCid: deployParams.identifiedCommunityStakersGateTreeCid,
+            curveId: 1,
+            treeRoot: deployParams.identifiedCommunityStakersGateTreeRoot,
+            treeCid: deployParams.identifiedCommunityStakersGateTreeCid,
             admin: deployParams.aragonAgent
         });
 
@@ -360,11 +348,20 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
         VettedGate vettedGateImpl = VettedGate(proxy.proxy__getImplementation());
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         vettedGateImpl.initialize({
-            _curveId: 1,
-            _treeRoot: deployParams.identifiedCommunityStakersGateTreeRoot,
-            _treeCid: deployParams.identifiedCommunityStakersGateTreeCid,
+            curveId: 1,
+            treeRoot: deployParams.identifiedCommunityStakersGateTreeRoot,
+            treeCid: deployParams.identifiedCommunityStakersGateTreeCid,
             admin: deployParams.aragonAgent
         });
+    }
+}
+
+contract VettedGateFactoryDeploymentTest is DeploymentBaseTest {
+    function test_state_onlyFull() public view {
+        assertTrue(address(vettedGateFactory) != address(0), "vetted gate factory missing");
+
+        address vettedGateImplementation = OssifiableProxy(payable(address(vettedGate))).proxy__getImplementation();
+        assertEq(vettedGateFactory.GATE_IMPL(), vettedGateImplementation, "vetted gate factory impl mismatch");
     }
 }
 

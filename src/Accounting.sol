@@ -10,8 +10,8 @@ import { BondCurve } from "./abstract/BondCurve.sol";
 import { BondLock } from "./abstract/BondLock.sol";
 import { FeeSplits } from "./abstract/FeeSplits.sol";
 import { AssetRecoverer } from "./abstract/AssetRecoverer.sol";
+import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 
-import { PausableUntil } from "./lib/utils/PausableUntil.sol";
 import { AssetRecovererLib } from "./lib/AssetRecovererLib.sol";
 
 import { IStakingModule } from "./interfaces/IStakingModule.sol";
@@ -29,18 +29,14 @@ contract Accounting is
     BondCurve,
     BondLock,
     FeeSplits,
-    PausableUntil,
+    PausableWithRoles,
     AccessControlEnumerableUpgradeable,
     AssetRecoverer
 {
     uint64 internal constant INITIALIZED_VERSION = 3;
 
-    bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
-    bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
     bytes32 public constant MANAGE_BOND_CURVES_ROLE = keccak256("MANAGE_BOND_CURVES_ROLE");
     bytes32 public constant SET_BOND_CURVE_ROLE = keccak256("SET_BOND_CURVE_ROLE");
-    bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
-
     IBaseModule public immutable MODULE;
     IFeeDistributor public immutable FEE_DISTRIBUTOR;
 
@@ -86,7 +82,6 @@ contract Accounting is
         uint256 bondLockPeriod,
         address _chargePenaltyRecipient
     ) external reinitializer(INITIALIZED_VERSION) {
-        __AccessControlEnumerable_init();
         __BondCurve_init(bondCurve);
         __BondLock_init(bondLockPeriod);
 
@@ -106,16 +101,6 @@ contract Accounting is
     ///      To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
     // solhint-disable-next-line no-empty-blocks
     function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {}
-
-    /// @inheritdoc IAccounting
-    function resume() external onlyRole(RESUME_ROLE) {
-        _resume();
-    }
-
-    /// @inheritdoc IAccounting
-    function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE) {
-        _pauseFor(duration);
-    }
 
     /// @inheritdoc IAccounting
     function setChargePenaltyRecipient(address _chargePenaltyRecipient) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -157,6 +142,7 @@ contract Accounting is
         BondCurveIntervalInput[] calldata bondCurve
     ) external onlyRole(MANAGE_BOND_CURVES_ROLE) {
         BondCurve._updateBondCurve(curveId, bondCurve);
+        MODULE.requestFullDepositInfoUpdate();
     }
 
     /// @inheritdoc IAccounting
@@ -240,8 +226,6 @@ contract Accounting is
         MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
-    // TODO continue review from this line
-
     /// @inheritdoc IAccounting
     function claimRewardsWstETH(
         uint256 nodeOperatorId,
@@ -275,26 +259,34 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function lockBondETH(uint256 nodeOperatorId, uint256 amount) external onlyModule {
+    function lockBond(uint256 nodeOperatorId, uint256 amount) external onlyModule {
         BondLock._lock(nodeOperatorId, amount);
     }
 
     /// @inheritdoc IAccounting
-    function releaseLockedBondETH(uint256 nodeOperatorId, uint256 amount) external onlyModule {
+    function releaseLockedBond(uint256 nodeOperatorId, uint256 amount) external onlyModule {
         BondLock._unlock(nodeOperatorId, amount);
     }
 
     /// @inheritdoc IAccounting
-    function compensateLockedBondETH(uint256 nodeOperatorId) external payable onlyModule {
-        (bool success, ) = LIDO_LOCATOR.elRewardsVault().call{ value: msg.value }("");
-        if (!success) revert ElRewardsVaultReceiveFailed();
+    function compensateLockedBond(uint256 nodeOperatorId) external onlyModule returns (uint256 compensatedAmount) {
+        uint256 lockedAmount = BondLock.getActualLockedBond(nodeOperatorId);
+        if (lockedAmount == 0) return 0;
 
-        BondLock._unlock(nodeOperatorId, msg.value);
-        emit BondLockCompensated(nodeOperatorId, msg.value);
+        (uint256 currentBond, uint256 requiredBond) = getBondSummary(nodeOperatorId);
+        // `requiredBond` already includes `lockedAmount`
+        uint256 requiredBondWithoutLock = requiredBond - lockedAmount;
+        if (currentBond <= requiredBondWithoutLock) return 0;
+
+        uint256 maxCompensatableAmount = currentBond - requiredBondWithoutLock;
+        compensatedAmount = lockedAmount < maxCompensatableAmount ? lockedAmount : maxCompensatableAmount;
+        BondCore._burn(nodeOperatorId, compensatedAmount);
+        BondLock._unlock(nodeOperatorId, compensatedAmount);
+        emit BondLockCompensated(nodeOperatorId, compensatedAmount);
     }
 
     /// @inheritdoc IAccounting
-    function settleLockedBondETH(uint256 nodeOperatorId) external onlyModule {
+    function settleLockedBond(uint256 nodeOperatorId) external onlyModule {
         uint256 lockedAmount = BondLock.getActualLockedBond(nodeOperatorId);
         if (lockedAmount > 0) {
             BondCore._burn(nodeOperatorId, lockedAmount);
@@ -304,9 +296,9 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function penalize(uint256 nodeOperatorId, uint256 amount) external onlyModule returns (bool fullyBurned) {
+    function penalize(uint256 nodeOperatorId, uint256 amount) external onlyModule returns (bool penaltyCovered) {
         uint256 notBurnedAmount = BondCore._burn(nodeOperatorId, amount);
-        fullyBurned = notBurnedAmount == 0;
+        penaltyCovered = notBurnedAmount == 0;
     }
 
     /// @inheritdoc IAccounting
@@ -445,7 +437,7 @@ contract Accounting is
         }
         claimableShares = _getClaimableBondShares(nodeOperatorId);
         if (hasSplits && claimableShares != 0 && !isPaused()) {
-            (SplitTransfer[] memory transfers, uint256 sharesToSplit) = FeeSplits.getFeeSplitTransfers(
+            (SplitTransfer[] memory transfers, uint256 splittableShares) = FeeSplits.getFeeSplitTransfers(
                 nodeOperatorId,
                 claimableShares
             );
@@ -457,10 +449,10 @@ contract Accounting is
                     transferredShares += shares;
                 }
             }
-            // NOTE: `sharesToSplit` is the whole split operation base. It includes
+            // NOTE: `splittableShares` is the whole split operation base. It includes
             //       the Node Operator's retained shares (split remainder), so we
             //       must decrease pending by the base, not by transferred shares sum.
-            FeeSplits._decreasePendingSharesToSplit(nodeOperatorId, sharesToSplit);
+            FeeSplits._decreasePendingSharesToSplit(nodeOperatorId, splittableShares);
             BondCore._unsafeReduceBond(nodeOperatorId, transferredShares);
             // NOTE: It is safe to use unchecked here since `transferredShares` is always <= `claimableShares`
             unchecked {
@@ -536,6 +528,10 @@ contract Accounting is
 
     function _onlyRecoverer() internal view override {
         _checkRole(RECOVERER_ROLE);
+    }
+
+    function __checkRole(bytes32 role) internal view override {
+        _checkRole(role);
     }
 
     function _onlyExistingNodeOperator(uint256 nodeOperatorId) internal view {

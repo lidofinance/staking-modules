@@ -15,6 +15,8 @@ import { IParametersRegistry } from "./interfaces/IParametersRegistry.sol";
 contract ParametersRegistry is IParametersRegistry, Initializable, AccessControlEnumerableUpgradeable {
     using SafeCast for uint256;
 
+    uint64 internal constant INITIALIZED_VERSION = 3;
+
     bytes32 public constant MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE =
         keccak256("MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE");
     bytes32 public constant MANAGE_KEYS_LIMIT_ROLE = keccak256("MANAGE_KEYS_LIMIT_ROLE");
@@ -82,11 +84,8 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         _;
     }
 
-    // TODO: queueLowestPriority does not make sense for the CuratedModule, so setting to 0 might mean it's not used and
-    // we can revert in other methods.
+    /// @param queueLowestPriority The lowest priority value for the queue. Set to 0 for modules that don't use queue priorities.
     constructor(uint256 queueLowestPriority) {
-        if (queueLowestPriority == 0) revert ZeroQueueLowestPriority();
-
         QUEUE_LOWEST_PRIORITY = queueLowestPriority;
 
         _disableInitializers();
@@ -95,7 +94,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
     ///      It is recommended to call this method in the same transaction as the deployment transaction
     ///      and perform extensive deployment verification before using the contract instance.
-    function initialize(address admin, InitializationData calldata data) external initializer {
+    function initialize(address admin, InitializationData calldata data) external reinitializer(INITIALIZED_VERSION) {
         if (admin == address(0)) revert ZeroAdminAddress();
 
         _setDefaultKeyRemovalCharge(data.defaultKeyRemovalCharge);
@@ -115,10 +114,14 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         _setDefaultExitDelayFee(data.defaultExitDelayFee);
         _setDefaultMaxElWithdrawalRequestFee(data.defaultMaxElWithdrawalRequestFee);
 
-        __AccessControlEnumerable_init();
-
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
+
+    /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing
+    ///      version 2 deployment. If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
+    ///      To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
+    // solhint-disable-next-line no-empty-blocks
+    function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {}
 
     ////////////////////////////////////////////////////////////////////////////////
     // Setters for default parameters

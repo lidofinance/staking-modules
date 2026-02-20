@@ -205,12 +205,8 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         assertEq(accounting.getActualLockedBond(noId), 0);
     }
 
-    function compensateGeneralDelayedPenalty(uint256 noId, uint256 amount) external broadcastStranger {
-        uint256 lockedBefore = accounting.getActualLockedBond(noId);
-
-        module.compensateGeneralDelayedPenalty{ value: amount }(noId);
-
-        assertEq(accounting.getActualLockedBond(noId), lockedBefore - amount);
+    function compensateGeneralDelayedPenalty(uint256 noId) external broadcastStranger {
+        module.compensateGeneralDelayedPenalty(noId);
     }
 
     function exitRequest(uint256 noId, uint256 validatorIndex, bytes calldata validatorPubKey) external {

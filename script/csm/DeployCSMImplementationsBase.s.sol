@@ -14,6 +14,7 @@ import { PermissionlessGate } from "../../src/PermissionlessGate.sol";
 import { ValidatorStrikes } from "../../src/ValidatorStrikes.sol";
 import { Verifier } from "../../src/Verifier.sol";
 import { VettedGate } from "../../src/VettedGate.sol";
+import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
 import { IVerifier } from "../../src/interfaces/IVerifier.sol";
 
@@ -53,6 +54,7 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             });
 
             VettedGate vettedGateImpl = new VettedGate(address(csm));
+            vettedGateFactory = new MerkleGateFactory(address(vettedGateImpl));
 
             FeeOracle oracleImpl = new FeeOracle({
                 feeDistributor: address(feeDistributor),
@@ -75,22 +77,11 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
                 exitPenalties: address(exitPenalties)
             });
 
-            ValidatorStrikes strikesImpl = new ValidatorStrikes({
-                module: address(csm),
-                oracle: address(oracle),
-                exitPenalties: address(exitPenalties),
-                parametersRegistry: address(parametersRegistry)
-            });
+            ValidatorStrikes strikesImpl = new ValidatorStrikes({ module: address(csm), oracle: address(oracle) });
 
-            ExitPenalties exitPenaltiesImpl = new ExitPenalties(
-                address(csm),
-                address(parametersRegistry),
-                address(strikes)
-            );
+            ExitPenalties exitPenaltiesImpl = new ExitPenalties(address(csm), address(strikes));
 
-            uint256 stakingModuleId = Ejector(address(ejector)).STAKING_MODULE_ID();
-
-            ejector = new Ejector(address(csm), address(strikes), stakingModuleId, deployer);
+            ejector = new Ejector(address(csm), address(strikes), deployer);
 
             permissionlessGate = new PermissionlessGate(address(csm), deployer);
 
@@ -150,7 +141,6 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             verifierV3.grantRole(verifierV3.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             verifierV3.revokeRole(verifierV3.DEFAULT_ADMIN_ROLE(), deployer);
 
-            config.stakingModuleId = stakingModuleId;
             config.identifiedCommunityStakersGateCurveId = vettedGate.curveId();
             config.identifiedCommunityStakersGateTreeRoot = vettedGate.treeRoot();
             config.identifiedCommunityStakersGateTreeCid = vettedGate.treeCid();

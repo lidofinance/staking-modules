@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
 abstract contract NoManagementBaseTest is ModuleTypeBase {
     address public nodeOperator;
@@ -103,12 +103,18 @@ abstract contract NoAddressesPermissionsTestBase is NoManagementBaseTest {
 
 contract NoAddressesBasicPermissionsTestCSM is NoAddressesBasicPermissionsTestBase, CSMIntegrationBase {}
 
+contract NoAddressesBasicPermissionsTestCSM0x02 is NoAddressesBasicPermissionsTestBase, CSM0x02IntegrationBase {}
+
 contract NoAddressesBasicPermissionsTestCurated is NoAddressesBasicPermissionsTestBase, CuratedIntegrationBase {}
 
 contract NoAddressesExtendedPermissionsTestCSM is NoAddressesExtendedPermissionsTestBase, CSMIntegrationBase {}
 
+contract NoAddressesExtendedPermissionsTestCSM0x02 is NoAddressesExtendedPermissionsTestBase, CSM0x02IntegrationBase {}
+
 contract NoAddressesExtendedPermissionsTestCurated is NoAddressesExtendedPermissionsTestBase, CuratedIntegrationBase {}
 
 contract NoAddressesPermissionsTestCSM is NoAddressesPermissionsTestBase, CSMIntegrationBase {}
+
+contract NoAddressesPermissionsTestCSM0x02 is NoAddressesPermissionsTestBase, CSM0x02IntegrationBase {}
 
 contract NoAddressesPermissionsTestCurated is NoAddressesPermissionsTestBase, CuratedIntegrationBase {}

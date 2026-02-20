@@ -39,10 +39,10 @@ interface IFeeSplits {
     /// @param nodeOperatorId ID of the Node Operator
     /// @param claimableShares Max shares that can be used as split operation base
     /// @return transfers Shares amounts to transfer to each split recipient
-    /// @return sharesToSplit Actual split operation base used for calculations
-    /// @dev The returned `sharesToSplit` includes the retained remainder that stays on the Node Operator bond
+    /// @return splittableShares Actual splittable shares used for calculations
+    /// @dev The returned `splittableShares` includes the retained remainder that stays on the Node Operator bond
     function getFeeSplitTransfers(
         uint256 nodeOperatorId,
         uint256 claimableShares
-    ) external view returns (SplitTransfer[] memory transfers, uint256 sharesToSplit);
+    ) external view returns (SplitTransfer[] memory transfers, uint256 splittableShares);
 }

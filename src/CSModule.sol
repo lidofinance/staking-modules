@@ -65,10 +65,9 @@ contract CSModule is ICSModule, BaseModule {
     ///      If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
     ///      To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
     function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {
-        // Clean `__freeSlot1` and `__freeSlot2` since the storage slots are no longer needed in version 3.
+        // Clean `__freeSlot1` since the storage slot is no longer needed in version 3.
         assembly ("memory-safe") {
             sstore(__freeSlot1.slot, 0x00)
-            sstore(__freeSlot2.slot, 0x00)
         }
         // NOTE: Don't call `_initTopUpQueue` because it is disabled by default and existing CSM deployment can only support 0x01 validators mode.
 
@@ -80,6 +79,7 @@ contract CSModule is ICSModule, BaseModule {
             }
         }
         _totalWithdrawnValidators = totalWithdrawnValidators;
+        _upToDateOperatorDepositInfoCount = _nodeOperatorsCount;
     }
 
     /// @inheritdoc IStakingModule
@@ -94,6 +94,7 @@ contract CSModule is ICSModule, BaseModule {
         bytes calldata /* depositCalldata */
     ) external returns (bytes memory publicKeys, bytes memory signatures) {
         _checkStakingRouterRole();
+        _requireDepositInfoUpToDate();
 
         (publicKeys, signatures) = SigningKeys.initKeysSigsBuf(depositsCount);
         if (depositsCount == 0) return (publicKeys, signatures);
@@ -106,7 +107,7 @@ contract CSModule is ICSModule, BaseModule {
         // NOTE: The highest priority to start iterations with. Priorities are ordered like 0, 1, 2, ...
         uint256 priority = 0;
 
-        while (true) {
+        while (depositsLeft > 0 && priority <= _queueLowestPriority()) {
             depositQueue = _depositQueueByPriority[priority];
             for (Batch item = depositQueue.peek(); !item.isNil(); item = depositQueue.peek()) {
                 // NOTE: see the `enqueuedCount` note below.
@@ -185,7 +186,6 @@ contract CSModule is ICSModule, BaseModule {
             unchecked {
                 ++priority;
             }
-            if (priority > _queueLowestPriority() || depositsLeft == 0) break;
         }
 
         if (loadedKeysCount != depositsCount) revert NotEnoughKeys();
@@ -213,6 +213,9 @@ contract CSModule is ICSModule, BaseModule {
     ) external returns (uint256[] memory allocations) {
         _onlyEnabledTopUpQueue();
         _checkStakingRouterRole();
+
+        // We do not call `_requireDepositInfoUpToDate()` here since top-ups in CSM strictly follow the order of the deposit queue
+        // and the depositable keys count update is not required for the correct top-up queue processing.
 
         // Cap top-ups so we don't over-allocate to keys that lost balance due to CL penalties.
         uint256[] memory cappedTopUpLimits = NodeOperatorOps.capTopUpLimitsByKeyBalance(
@@ -256,39 +259,7 @@ contract CSModule is ICSModule, BaseModule {
         uint256 keysCount
     ) external override(BaseModule, IBaseModule) {
         _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-
-        if (startIndex < no.totalDepositedKeys) revert SigningKeysInvalidOffset();
-
-        uint256 newTotalSigningKeys = SigningKeys.removeKeysSigs({
-            nodeOperatorId: nodeOperatorId,
-            startIndex: startIndex,
-            keysCount: keysCount,
-            totalKeysCount: no.totalAddedKeys
-        });
-
-        // The Node Operator is charged for the every removed key. It's motivated by the fact that the DAO should cleanup
-        // the queue from the empty batches related to the Node Operator. It's possible to have multiple batches with only one
-        // key in it, so it means the DAO should be able to cover removal costs for as much batches as keys removed in this case.
-        uint256 amountToCharge = _parametersRegistry().getKeyRemovalCharge(_getBondCurveId(nodeOperatorId)) * keysCount;
-
-        if (amountToCharge != 0) {
-            _accounting().chargeFee(nodeOperatorId, amountToCharge);
-            emit KeyRemovalChargeApplied(nodeOperatorId);
-        }
-
-        // Added/vetted signing key counters are uint32 fields; newTotalSigningKeys is strictly
-        // less than no.totalAddedKeys, so it always fits.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        no.totalAddedKeys = uint32(newTotalSigningKeys);
-        emit TotalSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
-
-        // Reset vetted keys pointer since we can not know if the removed keys were previously unvetted due to being invalid, or not.
-        // If invalid keys are still present after deletion and vetted keys pointer reset, they will be unvetted again.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        no.totalVettedKeys = uint32(newTotalSigningKeys);
-        emit VettedSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
-
+        NodeOperatorOps.removeKeysCSM(_nodeOperators, nodeOperatorId, startIndex, keysCount);
         // Nonce is updated below due to keys state change
         _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: false });
         _incrementModuleNonce();
@@ -302,11 +273,6 @@ contract CSModule is ICSModule, BaseModule {
         _topUpQueue().rewind(to.toUint32());
         emit TopUpQueueRewound(to);
         _incrementModuleNonce();
-    }
-
-    /// @inheritdoc IBaseModule
-    function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external override(IBaseModule) {
-        _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: true });
     }
 
     /// @inheritdoc ICSModule

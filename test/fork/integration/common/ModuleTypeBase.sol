@@ -33,6 +33,20 @@ abstract contract CSMIntegrationBase is ModuleTypeBase {
     }
 }
 
+abstract contract CSM0x02IntegrationBase is ModuleTypeBase {
+    function _setUpModule() internal override {
+        _forkAndInitialize();
+        if (moduleType != ModuleType.Community0x02) {
+            vm.skip(true);
+        }
+        integrationHelpers = new CSMIntegrationHelpers(module, accounting, stakingRouter, permissionlessGate);
+    }
+
+    function _assertModuleEnqueuedCount() internal override {
+        assertModuleEnqueuedCount(module);
+    }
+}
+
 abstract contract CuratedIntegrationBase is ModuleTypeBase {
     function _setUpModule() internal override {
         _forkAndInitialize();

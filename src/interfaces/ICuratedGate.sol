@@ -14,14 +14,6 @@ interface ICuratedGate is IMerkleGate {
     /// Errors
     error InvalidCurveId();
     error ZeroModuleAddress();
-    error ZeroMetaRegistryAddress();
-    error ZeroAdminAddress();
-
-    function PAUSE_ROLE() external view returns (bytes32);
-
-    function RESUME_ROLE() external view returns (bytes32);
-
-    function RECOVERER_ROLE() external view returns (bytes32);
 
     /// @return MODULE Curated module reference
     function MODULE() external view returns (ICuratedModule);
@@ -31,16 +23,6 @@ interface ICuratedGate is IMerkleGate {
 
     /// @return META_REGISTRY Operators metadata registry reference
     function META_REGISTRY() external view returns (IMetaRegistry);
-
-    /// @return curveId Instance-specific custom curve id
-    function curveId() external view returns (uint256);
-
-    /// @notice Pause the gate for a given duration
-    /// @param duration Duration in seconds
-    function pauseFor(uint256 duration) external;
-
-    /// @notice Resume the gate
-    function resume() external;
 
     /// @notice Create an empty Node Operator for the caller if eligible.
     ///         Stores provided name/description in MetaRegistry. Marks caller as consumed.

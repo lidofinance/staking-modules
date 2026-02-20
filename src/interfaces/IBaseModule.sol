@@ -85,6 +85,18 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     event KeyAddedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
     event KeyRemovalChargeApplied(uint256 indexed nodeOperatorId);
 
+    event GeneralDelayedPenaltyReported(
+        uint256 indexed nodeOperatorId,
+        bytes32 indexed penaltyType,
+        uint256 amount,
+        uint256 additionalFine,
+        string details
+    );
+    event GeneralDelayedPenaltyCancelled(uint256 indexed nodeOperatorId, uint256 amount);
+    event GeneralDelayedPenaltyCompensated(uint256 indexed nodeOperatorId, uint256 amount);
+    event GeneralDelayedPenaltySettled(uint256 indexed nodeOperatorId);
+    event NodeOperatorDepositInfoFullyUpdated();
+
     error CannotAddKeys();
     error NodeOperatorDoesNotExist();
     error SenderIsNotEligible();
@@ -110,10 +122,9 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     error ZeroSenderAddress();
     error ZeroParametersRegistryAddress();
     error ZeroModuleType();
-
-    function PAUSE_ROLE() external view returns (bytes32);
-
-    function RESUME_ROLE() external view returns (bytes32);
+    error ZeroPenaltyType();
+    error NothingCompensated();
+    error DepositInfoIsNotUpToDate();
 
     function STAKING_ROUTER_ROLE() external view returns (bytes32);
 
@@ -126,8 +137,6 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     function REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE() external view returns (bytes32);
 
     function REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE() external view returns (bytes32);
-
-    function RECOVERER_ROLE() external view returns (bytes32);
 
     function CREATE_NODE_OPERATOR_ROLE() external view returns (bytes32);
 
@@ -142,15 +151,6 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     function EXIT_PENALTIES() external view returns (IExitPenalties);
 
     function FEE_DISTRIBUTOR() external view returns (address);
-
-    /// @notice Pause creation of the Node Operators and keys upload for `duration` seconds.
-    ///         Existing NO management and reward claims are still available.
-    ///         To pause reward claims use pause method on Accounting
-    /// @param duration Duration of the pause in seconds
-    function pauseFor(uint256 duration) external;
-
-    /// @notice Resume creation of the Node Operators and keys upload
-    function resume() external;
 
     /// @notice Returns the initialized version of the contract
     function getInitializedVersion() external view returns (uint64);
@@ -235,10 +235,10 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
         string calldata details
     ) external;
 
-    /// @notice Compensate general delayed penalty for the given Node Operator to prevent further validator exits
+    /// @notice Compensate general delayed penalty (locked bond) for the given Node Operator from Node Operator's bond
     /// @dev Can only be called by the Node Operator manager
     /// @param nodeOperatorId ID of the Node Operator
-    function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external payable;
+    function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external;
 
     /// @notice Cancel previously reported and not settled general delayed penalty for the given Node Operator
     /// @notice The funds will be unlocked
@@ -294,6 +294,20 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @notice Notify the module about a node operator bond curve change.
     /// @param nodeOperatorId ID of the Node Operator
     function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external;
+
+    /// @notice Request a full update of deposit info for all node operators.
+    ///         Should be called after external changes that can affect deposit info such as bond curve change or parameters update.
+    function requestFullDepositInfoUpdate() external;
+
+    /// @notice Request a batch update of deposit info for node operators.
+    ///         If `requestFullDepositInfoUpdate` was called before, the update will start from the first operator.
+    ///         Otherwise, it will continue from the next operator after the last updated one.
+    /// @param maxCount Maximum number of operators to update in this batch
+    /// @return operatorsLeft Number of operators left to update
+    function batchDepositInfoUpdate(uint256 maxCount) external returns (uint256 operatorsLeft);
+
+    /// @notice Get the number of Node Operators with outdated deposit info that requires update.
+    function getNodeOperatorDepositInfoToUpdateCount() external view returns (uint256 count);
 
     /// @notice Get Node Operator info
     /// @param nodeOperatorId ID of the Node Operator

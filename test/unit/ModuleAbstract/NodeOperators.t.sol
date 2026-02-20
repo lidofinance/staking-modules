@@ -27,6 +27,26 @@ abstract contract ModuleCreateNodeOperator is ModuleFixtures {
         assertEq(module.getNodeOperatorsCount(), 1);
         assertEq(module.getNonce(), nonce + 1);
         assertEq(nodeOperatorId, 0);
+        assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 0);
+    }
+
+    function test_createNodeOperator_whenDepositInfoUpdateIsRequested() public assertInvariants {
+        createNodeOperator(1);
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+        assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 1);
+
+        module.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: address(0),
+                rewardAddress: address(0),
+                extendedManagerPermissions: false
+            }),
+            address(0)
+        );
+
+        assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 2);
     }
 
     function test_createNodeOperator_withCustomAddresses() public assertInvariants {
@@ -536,6 +556,11 @@ abstract contract ModuleGetNodeOperatorSummary is ModuleFixtures {
 
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
         assertEq(summary.depositableValidatorsCount, 3, "depositableValidatorsCount mismatch");
+    }
+
+    function test_getNodeOperatorSummary_revertWhen_NodeOperatorDoesNotExist() public {
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
+        NodeOperatorSummary memory summary = getNodeOperatorSummary(0);
     }
 }
 

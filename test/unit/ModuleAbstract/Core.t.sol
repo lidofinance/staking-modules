@@ -198,10 +198,6 @@ contract MyModule is BaseModule {
         revert NotImplementedInTest();
     }
 
-    function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external {
-        revert NotImplementedInTest();
-    }
-
     function helper_grantRole(bytes32 role, address who) external {
         _grantRole(role, who);
     }

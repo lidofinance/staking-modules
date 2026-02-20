@@ -22,7 +22,12 @@ contract ParametersRegistryMock {
 
     uint256 public badPerformancePenalty = 0.01 ether;
 
-    uint256 public QUEUE_LOWEST_PRIORITY = 5;
+    uint256 public QUEUE_LOWEST_PRIORITY;
+
+    function setQueueLowestPriority(uint256 value) external {
+        require(value <= type(uint32).max, "value exceeds uint32");
+        QUEUE_LOWEST_PRIORITY = value;
+    }
 
     uint256 public allowedExitDelay = 1 weeks;
     uint256 public exitDelayFee = 0.1 ether;
@@ -90,8 +95,6 @@ contract ParametersRegistryMock {
         MarkedQueueConfig storage config = _queueConfigs[curveId];
 
         if (!config.isValue) {
-            // NOTE: To preserve the old corpus of tests.
-            // The mock caps QUEUE_LOWEST_PRIORITY at 5, so squeezing it into uint32 is safe.
             // forge-lint: disable-next-line(unsafe-typecast)
             return (uint32(QUEUE_LOWEST_PRIORITY), type(uint32).max);
         }

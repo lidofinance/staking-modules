@@ -18,7 +18,7 @@ import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
 import { ExitPenalties } from "../../src/ExitPenalties.sol";
 import { MetaRegistry } from "../../src/MetaRegistry.sol";
 import { CuratedGate } from "../../src/CuratedGate.sol";
-import { CuratedGateFactory } from "../../src/CuratedGateFactory.sol";
+import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 
 import { ILidoLocator } from "../../src/interfaces/ILidoLocator.sol";
 import { IGateSealFactory } from "../../src/interfaces/IGateSealFactory.sol";
@@ -26,7 +26,6 @@ import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
 import { IVerifier } from "../../src/interfaces/IVerifier.sol";
 import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.sol";
 import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
-import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 
 import { JsonObj, Json } from "../utils/Json.sol";
 import { Dummy } from "../utils/Dummy.sol";
@@ -92,7 +91,6 @@ struct CuratedDeployParams {
     uint256 bondLockPeriod;
     address chargePenaltyRecipient;
     // Module
-    uint256 stakingModuleId;
     bytes32 moduleType;
     address generalDelayedPenaltyReporter;
     // ParametersRegistry
@@ -146,7 +144,7 @@ abstract contract DeployBase is Script {
     HashConsensus public hashConsensus;
     ParametersRegistry public parametersRegistry;
     MetaRegistry public metaRegistry;
-    CuratedGateFactory public curatedGateFactory;
+    MerkleGateFactory public curatedGateFactory;
     address[] public curatedGateInstances;
     address internal curatedGateImpl;
     address public gateSeal;
@@ -195,7 +193,32 @@ abstract contract DeployBase is Script {
 
         {
             ParametersRegistry parametersRegistryImpl = new ParametersRegistry(config.queueLowestPriority);
-            parametersRegistry = ParametersRegistry(_deployProxy(config.proxyAdmin, address(parametersRegistryImpl)));
+            IParametersRegistry.InitializationData memory parametersRegistryData = IParametersRegistry
+                .InitializationData({
+                    defaultKeyRemovalCharge: config.defaultKeyRemovalCharge,
+                    defaultGeneralDelayedPenaltyAdditionalFine: config.defaultGeneralDelayedPenaltyAdditionalFine,
+                    defaultKeysLimit: config.defaultKeysLimit,
+                    defaultRewardShare: config.defaultRewardShareBP,
+                    defaultPerformanceLeeway: config.defaultAvgPerfLeewayBP,
+                    defaultStrikesLifetime: config.defaultStrikesLifetimeFrames,
+                    defaultStrikesThreshold: config.defaultStrikesThreshold,
+                    defaultQueuePriority: config.defaultQueuePriority,
+                    defaultQueueMaxDeposits: config.defaultQueueMaxDeposits,
+                    defaultBadPerformancePenalty: config.defaultBadPerformancePenalty,
+                    defaultAttestationsWeight: config.defaultAttestationsWeight,
+                    defaultBlocksWeight: config.defaultBlocksWeight,
+                    defaultSyncWeight: config.defaultSyncWeight,
+                    defaultAllowedExitDelay: config.defaultAllowedExitDelay,
+                    defaultExitDelayFee: config.defaultExitDelayFee,
+                    defaultMaxElWithdrawalRequestFee: config.defaultMaxElWithdrawalRequestFee
+                });
+            parametersRegistry = ParametersRegistry(
+                _deployProxy(
+                    config.proxyAdmin,
+                    address(parametersRegistryImpl),
+                    abi.encodeCall(ParametersRegistry.initialize, (deployer, parametersRegistryData))
+                )
+            );
 
             Dummy dummyImpl = new Dummy();
 
@@ -210,7 +233,13 @@ abstract contract DeployBase is Script {
                 accounting: address(accounting),
                 oracle: address(oracle)
             });
-            feeDistributor = FeeDistributor(_deployProxy(config.proxyAdmin, address(feeDistributorImpl)));
+            feeDistributor = FeeDistributor(
+                _deployProxy(
+                    config.proxyAdmin,
+                    address(feeDistributorImpl),
+                    abi.encodeCall(FeeDistributor.initialize, (deployer, config.aragonAgent))
+                )
+            );
 
             // prettier-ignore
             verifier = new Verifier({
@@ -238,28 +267,6 @@ abstract contract DeployBase is Script {
                 admin: deployer
             });
 
-            parametersRegistry.initialize({
-                admin: deployer,
-                data: IParametersRegistry.InitializationData({
-                    defaultKeyRemovalCharge: config.defaultKeyRemovalCharge,
-                    defaultGeneralDelayedPenaltyAdditionalFine: config.defaultGeneralDelayedPenaltyAdditionalFine,
-                    defaultKeysLimit: config.defaultKeysLimit,
-                    defaultRewardShare: config.defaultRewardShareBP,
-                    defaultPerformanceLeeway: config.defaultAvgPerfLeewayBP,
-                    defaultStrikesLifetime: config.defaultStrikesLifetimeFrames,
-                    defaultStrikesThreshold: config.defaultStrikesThreshold,
-                    defaultQueuePriority: config.defaultQueuePriority,
-                    defaultQueueMaxDeposits: config.defaultQueueMaxDeposits,
-                    defaultBadPerformancePenalty: config.defaultBadPerformancePenalty,
-                    defaultAttestationsWeight: config.defaultAttestationsWeight,
-                    defaultBlocksWeight: config.defaultBlocksWeight,
-                    defaultSyncWeight: config.defaultSyncWeight,
-                    defaultAllowedExitDelay: config.defaultAllowedExitDelay,
-                    defaultExitDelayFee: config.defaultExitDelayFee,
-                    defaultMaxElWithdrawalRequestFee: config.defaultMaxElWithdrawalRequestFee
-                })
-            });
-
             Accounting accountingImpl = new Accounting({
                 lidoLocator: config.lidoLocatorAddress,
                 module: address(curatedModule),
@@ -268,20 +275,19 @@ abstract contract DeployBase is Script {
                 maxBondLockPeriod: config.maxBondLockPeriod
             });
 
-            {
-                OssifiableProxy accountingProxy = OssifiableProxy(payable(address(accounting)));
-                accountingProxy.proxy__upgradeTo(address(accountingImpl));
-                accountingProxy.proxy__changeAdmin(config.proxyAdmin);
-            }
-
             IBondCurve.BondCurveIntervalInput[] memory defaultBondCurve = CommonScriptUtils
                 .arraysToBondCurveIntervalsInputs(config.defaultBondCurve);
-            accounting.initialize({
-                bondCurve: defaultBondCurve,
-                admin: deployer,
-                bondLockPeriod: config.bondLockPeriod,
-                _chargePenaltyRecipient: config.chargePenaltyRecipient
-            });
+            {
+                OssifiableProxy accountingProxy = OssifiableProxy(payable(address(accounting)));
+                accountingProxy.proxy__upgradeToAndCall(
+                    address(accountingImpl),
+                    abi.encodeCall(
+                        Accounting.initialize,
+                        (defaultBondCurve, deployer, config.bondLockPeriod, config.chargePenaltyRecipient)
+                    )
+                );
+                accountingProxy.proxy__changeAdmin(config.proxyAdmin);
+            }
 
             accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
 
@@ -347,35 +353,32 @@ abstract contract DeployBase is Script {
 
             {
                 OssifiableProxy moduleProxy = OssifiableProxy(payable(address(curatedModule)));
-                moduleProxy.proxy__upgradeTo(address(curatedModuleImpl));
+                moduleProxy.proxy__upgradeToAndCall(
+                    address(curatedModuleImpl),
+                    abi.encodeCall(CuratedModule.initialize, (deployer))
+                );
                 moduleProxy.proxy__changeAdmin(config.proxyAdmin);
             }
-
-            curatedModule.initialize({ admin: deployer });
 
             MetaRegistry metaRegistryImpl = new MetaRegistry(address(curatedModule));
 
             {
                 OssifiableProxy metaRegistryProxy = OssifiableProxy(payable(address(metaRegistry)));
-                metaRegistryProxy.proxy__upgradeTo(address(metaRegistryImpl));
+                metaRegistryProxy.proxy__upgradeToAndCall(
+                    address(metaRegistryImpl),
+                    abi.encodeCall(MetaRegistry.initialize, (deployer))
+                );
                 metaRegistryProxy.proxy__changeAdmin(config.proxyAdmin);
             }
-            metaRegistry.initialize({ admin: deployer });
 
             ValidatorStrikes strikesImpl = new ValidatorStrikes({
                 module: address(curatedModule),
-                oracle: address(oracle),
-                exitPenalties: address(exitPenalties),
-                parametersRegistry: address(parametersRegistry)
+                oracle: address(oracle)
             });
 
             strikes = ValidatorStrikes(_deployProxy(config.proxyAdmin, address(strikesImpl)));
 
-            ExitPenalties exitPenaltiesImpl = new ExitPenalties(
-                address(curatedModule),
-                address(parametersRegistry),
-                address(strikes)
-            );
+            ExitPenalties exitPenaltiesImpl = new ExitPenalties(address(curatedModule), address(strikes));
 
             {
                 OssifiableProxy exitPenaltiesProxy = OssifiableProxy(payable(address(exitPenalties)));
@@ -383,17 +386,15 @@ abstract contract DeployBase is Script {
                 exitPenaltiesProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
-            ejector = new Ejector(address(curatedModule), address(strikes), config.stakingModuleId, deployer);
+            ejector = new Ejector(address(curatedModule), address(strikes), deployer);
 
             strikes.initialize(deployer, address(ejector));
 
             curatedGateImpl = address(new CuratedGate(address(curatedModule)));
 
-            curatedGateFactory = new CuratedGateFactory(curatedGateImpl);
+            curatedGateFactory = new MerkleGateFactory(curatedGateImpl);
 
             curatedGateInstances = _deployCuratedGates(curatedCurveIds, address(curatedGateFactory));
-
-            feeDistributor.initialize({ admin: address(deployer), _rebateRecipient: config.aragonAgent });
 
             hashConsensus = new HashConsensus({
                 slotsPerEpoch: config.slotsPerEpoch,
@@ -420,15 +421,12 @@ abstract contract DeployBase is Script {
 
             {
                 OssifiableProxy oracleProxy = OssifiableProxy(payable(address(oracle)));
-                oracleProxy.proxy__upgradeTo(address(oracleImpl));
+                oracleProxy.proxy__upgradeToAndCall(
+                    address(oracleImpl),
+                    abi.encodeCall(FeeOracle.initialize, (deployer, address(hashConsensus), config.consensusVersion))
+                );
                 oracleProxy.proxy__changeAdmin(config.proxyAdmin);
             }
-
-            oracle.initialize({
-                admin: address(deployer),
-                consensusContract: address(hashConsensus),
-                consensusVersion: config.consensusVersion
-            });
 
             if (config.gateSealFactory != address(0)) {
                 uint256 baseSealables = 5;
@@ -545,6 +543,7 @@ abstract contract DeployBase is Script {
             deployJson.set("HashConsensus", address(hashConsensus));
             deployJson.set("Verifier", address(verifier));
             deployJson.set("CuratedGateFactory", address(curatedGateFactory));
+            deployJson.set("CuratedGateImpl", curatedGateImpl);
             deployJson.set("CuratedGates", curatedGateInstances);
             deployJson.set("LidoLocator", config.lidoLocatorAddress);
             deployJson.set("GateSeal", address(gateSeal));
@@ -566,18 +565,19 @@ abstract contract DeployBase is Script {
         gates = new address[](gateCount);
 
         if (gateFactoryAddress == address(0)) revert InvalidInput("curated gate factory address is zero");
-        CuratedGateFactory gateFactory = CuratedGateFactory(gateFactoryAddress);
+        MerkleGateFactory gateFactory = MerkleGateFactory(gateFactoryAddress);
 
         for (uint256 i = 0; i < gateCount; i++) {
             uint256 gateCurveId = curveIds[i];
             CuratedGateConfig storage gateConfig = config.curatedGates[i];
             CuratedGate gate = CuratedGate(
-                gateFactory.create({
-                    curveId: gateCurveId,
-                    treeRoot: gateConfig.treeRoot,
-                    treeCid: gateConfig.treeCid,
-                    admin: deployer
-                })
+                gateFactory.create(
+                    abi.encodeCall(
+                        CuratedGate.initialize,
+                        (gateCurveId, gateConfig.treeRoot, gateConfig.treeCid, deployer)
+                    ),
+                    deployer
+                )
             );
 
             {
@@ -600,9 +600,13 @@ abstract contract DeployBase is Script {
     }
 
     function _deployProxy(address admin, address implementation) internal returns (address) {
+        return _deployProxy(admin, implementation, new bytes(0));
+    }
+
+    function _deployProxy(address admin, address implementation, bytes memory initCalldata) internal returns (address) {
         OssifiableProxy proxy = new OssifiableProxy({
             implementation_: implementation,
-            data_: new bytes(0),
+            data_: initCalldata,
             admin_: admin
         });
 
@@ -645,9 +649,5 @@ abstract contract DeployBase is Script {
         ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         verifier.grantRole(verifier.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         strikes.grantRole(strikes.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
-    }
-
-    function _nextStakingModuleId(address locatorAddress) internal view returns (uint256) {
-        return IStakingRouter(ILidoLocator(locatorAddress).stakingRouter()).getStakingModulesCount() + 1;
     }
 }

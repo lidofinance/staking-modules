@@ -9,8 +9,11 @@ import { CSModule } from "../../src/CSModule.sol";
 import { Accounting } from "../../src/Accounting.sol";
 import { Ejector } from "../../src/Ejector.sol";
 import { FeeDistributor } from "../../src/FeeDistributor.sol";
+import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
+import { FeeOracle } from "../../src/FeeOracle.sol";
 import { ValidatorStrikes } from "../../src/ValidatorStrikes.sol";
 import { Verifier } from "../../src/Verifier.sol";
+import { VettedGate } from "../../src/VettedGate.sol";
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 import { ITriggerableWithdrawalsGateway } from "../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { IBurner } from "../../src/interfaces/IBurner.sol";
@@ -24,12 +27,19 @@ contract SimulateVote is Script, ForkHelpersCommon {
         keccak256("REPORT_EL_REWARDS_STEALING_PENALTY_ROLE");
     bytes32 internal constant SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE =
         keccak256("SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE");
+    bytes32 internal constant START_REFERRAL_SEASON_ROLE = keccak256("START_REFERRAL_SEASON_ROLE");
+    bytes32 internal constant END_REFERRAL_SEASON_ROLE = keccak256("END_REFERRAL_SEASON_ROLE");
 
     error WrongModuleType();
 
+    /// @dev Simulation helper only.
+    ///      In a real governance vote, all steps below are expected to be executed atomically
+    ///      in a single transaction via a temporary vote executor contract.
     function addModule() external {
         _setUp();
-        if (moduleType != ModuleType.Community) revert WrongModuleType();
+        if (moduleType != ModuleType.Community && moduleType != ModuleType.Community0x02) {
+            revert WrongModuleType();
+        }
 
         IStakingRouter stakingRouter = IStakingRouter(locator.stakingRouter());
         IBurner burner = IBurner(locator.burner());
@@ -79,6 +89,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
         vm.stopBroadcast();
     }
 
+    /// @dev Simulation helper only.
+    ///      In a real governance vote, all steps below are expected to be executed atomically
+    ///      in a single transaction via a temporary vote executor contract.
     function addCuratedModule() external {
         initializeFromDeployment();
         if (moduleType != ModuleType.Curated) revert WrongModuleType();
@@ -127,6 +140,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
         vm.stopBroadcast();
     }
 
+    /// @dev Simulation helper only.
+    ///      In a real governance vote, all steps below are expected to be executed atomically
+    ///      in a single transaction via a temporary vote executor contract.
     function upgrade() external {
         _setUp();
         if (moduleType != ModuleType.Community) revert WrongModuleType();
@@ -139,35 +155,40 @@ contract SimulateVote is Script, ForkHelpersCommon {
             deploymentConfig = parseDeploymentConfig(deploymentConfigContent);
             deployParams = parseDeployParams(env.DEPLOY_CONFIG);
         }
+        VettedGate existingVettedGate = VettedGate(deploymentConfig.vettedGate);
         address admin = _prepareAdmin(deploymentConfig.csm);
-        address parametersRegistryAdmin = _prepareAdmin(address(parametersRegistry));
         IBurner burner = IBurner(locator.burner());
         address burnerAdmin = _prepareAdmin(address(burner));
 
         {
             OssifiableProxy moduleProxy = OssifiableProxy(payable(deploymentConfig.csm));
             vm.startBroadcast(_prepareProxyAdmin(address(moduleProxy)));
-            // 1. Upgrade CSModule implementation
-            moduleProxy.proxy__upgradeTo(deploymentConfig.csmImpl);
-            // 2. Finalize CSModule v3 upgrade
-            CSModule(deploymentConfig.csm).finalizeUpgradeV3();
+            // 1-2. Upgrade and finalize CSModule v3 in a single tx
+            moduleProxy.proxy__upgradeToAndCall(
+                deploymentConfig.csmImpl,
+                abi.encodeCall(CSModule.finalizeUpgradeV3, ())
+            );
             vm.stopBroadcast();
         }
 
         {
             OssifiableProxy parametersRegistryProxy = OssifiableProxy(payable(deploymentConfig.parametersRegistry));
             vm.startBroadcast(_prepareProxyAdmin(address(parametersRegistryProxy)));
-            // 3. Upgrade ParametersRegistry implementation
-            parametersRegistryProxy.proxy__upgradeTo(deploymentConfig.parametersRegistryImpl);
+            // 3-4. Upgrade and finalize ParametersRegistry v3 in a single tx
+            parametersRegistryProxy.proxy__upgradeToAndCall(
+                deploymentConfig.parametersRegistryImpl,
+                abi.encodeCall(ParametersRegistry.finalizeUpgradeV3, ())
+            );
             vm.stopBroadcast();
         }
         {
             OssifiableProxy oracleProxy = OssifiableProxy(payable(deploymentConfig.oracle));
             vm.startBroadcast(_prepareProxyAdmin(address(oracleProxy)));
-            // 4. Upgrade FeeOracle implementation
-            oracleProxy.proxy__upgradeTo(deploymentConfig.oracleImpl);
-            // 5. Finalize FeeOracle v3 upgrade
-            oracle.finalizeUpgradeV3(deployParams.consensusVersion);
+            // 4-5. Upgrade and finalize FeeOracle v3 in a single tx
+            oracleProxy.proxy__upgradeToAndCall(
+                deploymentConfig.oracleImpl,
+                abi.encodeCall(FeeOracle.finalizeUpgradeV3, (deployParams.consensusVersion))
+            );
             vm.stopBroadcast();
         }
 
@@ -182,20 +203,22 @@ contract SimulateVote is Script, ForkHelpersCommon {
         {
             OssifiableProxy accountingProxy = OssifiableProxy(payable(deploymentConfig.accounting));
             vm.startBroadcast(_prepareProxyAdmin(address(accountingProxy)));
-            // 7. Upgrade Accounting implementation
-            accountingProxy.proxy__upgradeTo(deploymentConfig.accountingImpl);
-            // 8. Finalize Accounting v3 upgrade
-            Accounting(deploymentConfig.accounting).finalizeUpgradeV3();
+            // 7-8. Upgrade and finalize Accounting v3 in a single tx
+            accountingProxy.proxy__upgradeToAndCall(
+                deploymentConfig.accountingImpl,
+                abi.encodeCall(Accounting.finalizeUpgradeV3, ())
+            );
             vm.stopBroadcast();
         }
 
         {
             OssifiableProxy feeDistributorProxy = OssifiableProxy(payable(deploymentConfig.feeDistributor));
             vm.startBroadcast(_prepareProxyAdmin(address(feeDistributorProxy)));
-            // 9. Upgrade FeeDistributor implementation
-            feeDistributorProxy.proxy__upgradeTo(deploymentConfig.feeDistributorImpl);
-            // 10. Finalize FeeDistributor v3 upgrade
-            FeeDistributor(deploymentConfig.feeDistributor).finalizeUpgradeV3();
+            // 9-10. Upgrade and finalize FeeDistributor v3 in a single tx
+            feeDistributorProxy.proxy__upgradeToAndCall(
+                deploymentConfig.feeDistributorImpl,
+                abi.encodeCall(FeeDistributor.finalizeUpgradeV3, ())
+            );
             vm.stopBroadcast();
         }
 
@@ -220,7 +243,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
         strikes = ValidatorStrikes(deploymentConfig.strikes);
 
         address oldPermissionlessGate = module.getRoleMember(module.CREATE_NODE_OPERATOR_ROLE(), 0);
-        if (oldPermissionlessGate == address(vettedGate)) {
+        if (oldPermissionlessGate == address(existingVettedGate)) {
             oldPermissionlessGate = module.getRoleMember(module.CREATE_NODE_OPERATOR_ROLE(), 1);
         }
         address oldEjector = address(strikes.ejector());
@@ -264,7 +287,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
             // 26. Revoke PAUSE_ROLE from old gate seal on FeeOracle
             oracle.revokeRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSeal);
             // 27. Revoke PAUSE_ROLE from old gate seal on VettedGate
-            vettedGate.revokeRole(vettedGate.PAUSE_ROLE(), deploymentConfig.gateSeal);
+            existingVettedGate.revokeRole(existingVettedGate.PAUSE_ROLE(), deploymentConfig.gateSeal);
             // 28. Revoke PAUSE_ROLE from old gate seal on old Verifier
             oldVerifier.revokeRole(oldVerifier.PAUSE_ROLE(), deploymentConfig.gateSeal);
             // 29. Revoke PAUSE_ROLE from old gate seal on old Ejector
@@ -278,6 +301,10 @@ contract SimulateVote is Script, ForkHelpersCommon {
             // 33. Revoke RESUME_ROLE from reseal manager on old Ejector
             oldEjectorContract.revokeRole(oldEjectorContract.RESUME_ROLE(), deployParams.resealManager);
 
+            // Revoke legacy referral program roles.
+            existingVettedGate.revokeRole(START_REFERRAL_SEASON_ROLE, deployParams.aragonAgent);
+            existingVettedGate.revokeRole(END_REFERRAL_SEASON_ROLE, deployParams.identifiedCommunityStakersGateManager);
+
             // 34. Grant PAUSE_ROLE to gateSealV3 on CSModule
             module.grantRole(module.PAUSE_ROLE(), deploymentConfig.gateSealV3);
             // 35. Grant PAUSE_ROLE to gateSealV3 on Accounting
@@ -285,7 +312,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
             // 36. Grant PAUSE_ROLE to gateSealV3 on FeeOracle
             oracle.grantRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSealV3);
             // 37. Grant PAUSE_ROLE to gateSealV3 on VettedGate
-            vettedGate.grantRole(vettedGate.PAUSE_ROLE(), deploymentConfig.gateSealV3);
+            existingVettedGate.grantRole(existingVettedGate.PAUSE_ROLE(), deploymentConfig.gateSealV3);
 
             vm.stopBroadcast();
         }

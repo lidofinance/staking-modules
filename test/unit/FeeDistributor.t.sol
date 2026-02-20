@@ -728,6 +728,11 @@ contract FeeDistributorTest is FeeDistributorTestBase {
         feeDistributor.setRebateRecipient(address(0));
     }
 
+    function test_setRebateRecipient_revertWhen_SameRebateRecipientAddress() public {
+        vm.expectRevert(IFeeDistributor.SameRebateRecipientAddress.selector);
+        feeDistributor.setRebateRecipient(rebateRecipient);
+    }
+
     function test_setRebateRecipient_revertWhen_NotAdmin() public {
         address recipient = nextAddress();
         expectRoleRevert(stranger, feeDistributor.DEFAULT_ADMIN_ROLE());

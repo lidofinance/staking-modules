@@ -19,4 +19,6 @@ contract CuratedMock is CSMMock {
     }
 
     function notifyNodeOperatorWeightChange(uint256, uint256) external {}
+
+    function requestFullDepositInfoUpdate() external {}
 }

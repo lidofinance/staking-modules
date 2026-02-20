@@ -36,15 +36,9 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     error InvalidBondCurvesLength();
     error SameAddress();
 
-    function PAUSE_ROLE() external view returns (bytes32);
-
-    function RESUME_ROLE() external view returns (bytes32);
-
     function MANAGE_BOND_CURVES_ROLE() external view returns (bytes32);
 
     function SET_BOND_CURVE_ROLE() external view returns (bytes32);
-
-    function RECOVERER_ROLE() external view returns (bytes32);
 
     function MODULE() external view returns (IBaseModule);
 
@@ -54,15 +48,6 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
 
     /// @notice Get the initialized version of the contract
     function getInitializedVersion() external view returns (uint64);
-
-    /// @notice Resume reward claims and deposits
-    function resume() external;
-
-    /// @notice Pause reward claims and deposits for `duration` seconds
-    /// @dev Must be called together with `CSModule.pauseFor`
-    /// @dev Passing MAX_UINT_256 as `duration` pauses indefinitely
-    /// @param duration Duration of the pause in seconds
-    function pauseFor(uint256 duration) external;
 
     /// @notice Set charge recipient address
     /// @param _chargePenaltyRecipient Charge recipient address
@@ -287,23 +272,24 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Amount to lock in ETH (stETH)
-    function lockBondETH(uint256 nodeOperatorId, uint256 amount) external;
+    function lockBond(uint256 nodeOperatorId, uint256 amount) external;
 
     /// @notice Release locked bond in ETH for the given Node Operator
     /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Amount to release in ETH (stETH)
-    function releaseLockedBondETH(uint256 nodeOperatorId, uint256 amount) external;
+    function releaseLockedBond(uint256 nodeOperatorId, uint256 amount) external;
 
     /// @notice Settle locked bond ETH for the given Node Operator
     /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator
-    function settleLockedBondETH(uint256 nodeOperatorId) external;
+    function settleLockedBond(uint256 nodeOperatorId) external;
 
     /// @notice Compensate locked bond ETH for the given Node Operator
     /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator
-    function compensateLockedBondETH(uint256 nodeOperatorId) external payable;
+    /// @return compensatedAmount Amount compensated in ETH (stETH)
+    function compensateLockedBond(uint256 nodeOperatorId) external returns (uint256 compensatedAmount);
 
     /// @notice Set the bond curve for the given Node Operator
     /// @dev Updates depositable validators count in staking module to ensure key pointers consistency
@@ -316,8 +302,8 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     ///      Method call can result in the remaining bond being lower than the locked bond.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Amount to penalize in ETH (stETH)
-    /// @return fullyBurned True if the bond was fully burned, false otherwise
-    function penalize(uint256 nodeOperatorId, uint256 amount) external returns (bool fullyBurned);
+    /// @return penaltyCovered True if the penalty was fully covered by bond burn, false otherwise
+    function penalize(uint256 nodeOperatorId, uint256 amount) external returns (bool penaltyCovered);
 
     /// @notice Charge fee from bond by transferring stETH shares of the given Node Operator to the charge recipient
     /// @dev Charge confiscation has a priority over the locked bond.
@@ -326,8 +312,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     /// @param amount Amount to charge in ETH (stETH)
     function chargeFee(uint256 nodeOperatorId, uint256 amount) external;
 
-    /// @notice Pull fees (if proof provided) from FeeDistributor to the Node Operator's bond and split pending according to configured fee splits.
-    /// @dev Permissionless method. Can be called before penalty application to ensure that rewards are also penalized and split.
+    /// @notice Pull fees (if proof provided) from FeeDistributor to the Node Operator's bond and split according to configured fee splits.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param cumulativeFeeShares Cumulative fee stETH shares for the Node Operator
     /// @param rewardsProof Merkle proof of the rewards

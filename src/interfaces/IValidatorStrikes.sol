@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { ICSModule } from "./ICSModule.sol";
+import { IBaseModule } from "./IBaseModule.sol";
 import { IAccounting } from "./IAccounting.sol";
 import { IParametersRegistry } from "./IParametersRegistry.sol";
 import { IExitPenalties } from "./IExitPenalties.sol";
@@ -17,6 +17,7 @@ interface IValidatorStrikes {
     event EjectorSet(address ejector);
 
     error ZeroEjectorAddress();
+    error SameEjectorAddress();
     error ZeroModuleAddress();
     error ZeroOracleAddress();
     error ZeroExitPenaltiesAddress();
@@ -39,7 +40,7 @@ interface IValidatorStrikes {
 
     function ORACLE() external view returns (address);
 
-    function MODULE() external view returns (ICSModule);
+    function MODULE() external view returns (IBaseModule);
 
     function ACCOUNTING() external view returns (IAccounting);
 

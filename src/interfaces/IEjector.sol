@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { ICSModule } from "./ICSModule.sol";
+import { IBaseModule } from "./IBaseModule.sol";
 import { IExitTypes } from "./IExitTypes.sol";
 import { ITriggerableWithdrawalsGateway } from "./ITriggerableWithdrawalsGateway.sol";
 
@@ -19,49 +19,25 @@ interface IEjector is IExitTypes {
     error NothingToEject();
     error DuplicateKeyIndex();
     error ZeroRefundRecipient();
+    error StakingModuleIdNotFound();
 
     event VoluntaryEjectionRequested(uint256 indexed nodeOperatorId, bytes pubkey, address refundRecipient);
 
     event BadPerformerEjectionRequested(uint256 indexed nodeOperatorId, bytes pubkey, address refundRecipient);
+    event StakingModuleIdCached(uint256 stakingModuleId);
 
-    function PAUSE_ROLE() external view returns (bytes32);
+    function stakingModuleId() external view returns (uint256);
 
-    function RESUME_ROLE() external view returns (bytes32);
-
-    function RECOVERER_ROLE() external view returns (bytes32);
-
-    function STAKING_MODULE_ID() external view returns (uint256);
-
-    function MODULE() external view returns (ICSModule);
+    function MODULE() external view returns (IBaseModule);
 
     function STRIKES() external view returns (address);
-
-    /// @notice Pause ejection methods calls
-    /// @param duration Duration of the pause in seconds
-    function pauseFor(uint256 duration) external;
-
-    /// @notice Resume ejection methods calls
-    function resume() external;
-
-    /// @notice Withdraw the validator key from the Node Operator
-    /// @notice Called by the node operator
-    /// @param nodeOperatorId ID of the Node Operator
-    /// @param startFrom Index of the first key to withdraw
-    /// @param keysCount Number of keys to withdraw
-    /// @param refundRecipient Address to send the refund to
-    function voluntaryEject(
-        uint256 nodeOperatorId,
-        uint256 startFrom,
-        uint256 keysCount,
-        address refundRecipient
-    ) external payable;
 
     /// @notice Withdraw the validator key from the Node Operator
     /// @notice Called by the node operator
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndices Array of indices of the keys to withdraw
     /// @param refundRecipient Address to send the refund to
-    function voluntaryEjectByArray(
+    function voluntaryEject(
         uint256 nodeOperatorId,
         uint256[] calldata keyIndices,
         address refundRecipient

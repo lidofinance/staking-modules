@@ -50,6 +50,7 @@ contract CSMCommon is ModuleFixtures {
 
         feeDistributor = new Stub();
         parametersRegistry = new ParametersRegistryMock();
+        _configureParametersRegistry();
         exitPenalties = new ExitPenaltiesMock();
 
         IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
@@ -79,10 +80,10 @@ contract CSMCommon is ModuleFixtures {
         vm.stopPrank();
 
         _setupRolesForTests();
+    }
 
-        // Just to make sure we configured defaults properly and check things properly.
-        assertNotEq(PRIORITY_QUEUE, csm.QUEUE_LOWEST_PRIORITY());
-        REGULAR_QUEUE = uint32(csm.QUEUE_LOWEST_PRIORITY());
+    function _configureParametersRegistry() internal virtual {
+        parametersRegistry.setQueueLowestPriority(0);
     }
 
     function _setupRolesForTests() internal virtual {
@@ -486,6 +487,36 @@ contract CSMObtainDepositData is ModuleObtainDepositData, CSMCommon {
         assertEq(depositableValidatorsCount, 0);
     }
 
+    function test_obtainDepositData_AcrossDifferentQueues() public assertInvariants {
+        uint256 noId = createNodeOperator(0);
+
+        parametersRegistry.setQueueConfig({ curveId: 0, priority: 0, maxDeposits: 10 });
+        uploadMoreKeys(noId, 20);
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.DepositableSigningKeysCountChanged(noId, 5);
+        module.obtainDepositData(15, "");
+
+        (, uint256 totalDepositedValidators, uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
+        assertEq(totalDepositedValidators, 15);
+        assertEq(depositableValidatorsCount, 5);
+    }
+
+    function test_obtainDepositData_AcrossDifferentQueues_OnlyOneQueueProcessed() public assertInvariants {
+        uint256 noId = createNodeOperator(0);
+
+        parametersRegistry.setQueueConfig({ curveId: 0, priority: 0, maxDeposits: 10 });
+        uploadMoreKeys(noId, 20);
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.DepositableSigningKeysCountChanged(noId, 10);
+        module.obtainDepositData(10, "");
+
+        (, uint256 totalDepositedValidators, uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
+        assertEq(totalDepositedValidators, 10);
+        assertEq(depositableValidatorsCount, 10);
+    }
+
     function test_obtainDepositData_zeroDeposits_enqueuedCount() public assertInvariants {
         uint256 noId = createNodeOperator();
 
@@ -511,6 +542,23 @@ contract CSMObtainDepositData is ModuleObtainDepositData, CSMCommon {
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.enqueuedCount, 0);
+    }
+
+    function test_obtainDepositData_RevertWhen_NotEnoughKeys() public assertInvariants {
+        uint256 noId = createNodeOperator(1);
+
+        vm.expectRevert(IBaseModule.NotEnoughKeys.selector);
+        module.obtainDepositData(2, "");
+    }
+
+    function test_obtainDepositData_RevertWhen_DepositInfoIsNotUpToDate() public assertInvariants {
+        uint256 noId = createNodeOperator(1);
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        vm.expectRevert(IBaseModule.DepositInfoIsNotUpToDate.selector);
+        module.obtainDepositData(1, "");
     }
 
     function testFuzz_obtainDepositData_OneOperator_enqueuedCount(
@@ -1445,6 +1493,12 @@ contract CSMPriorityQueue is CSMCommon {
 
     uint32 constant MAX_DEPOSITS = 10;
 
+    function _configureParametersRegistry() internal override {
+        parametersRegistry.setQueueLowestPriority(5);
+        assertNotEq(PRIORITY_QUEUE, parametersRegistry.QUEUE_LOWEST_PRIORITY());
+        REGULAR_QUEUE = uint32(parametersRegistry.QUEUE_LOWEST_PRIORITY());
+    }
+
     function test_enqueueToPriorityQueue_LessThanMaxDeposits() public {
         uint256 noId = createNodeOperator(0);
 
@@ -1927,6 +1981,47 @@ contract CSMMisc is ModuleMisc, CSMCommon {
     function test_getInitializedVersion() public view override {
         assertEq(module.getInitializedVersion(), 3);
     }
+
+    function test_onNodeOperatorBondCurveChange_updatesDepositable() public assertInvariants {
+        uint256 noId = createNodeOperator(4);
+
+        uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
+        assertEq(depositableBefore, 4);
+
+        accounting.updateBondCurve(0, BOND_SIZE * 2);
+        csm.onNodeOperatorBondCurveChange(0);
+
+        uint256 depositableAfter = module.getNodeOperator(noId).depositableValidatorsCount;
+        assertEq(depositableAfter, 2);
+    }
+
+    function test_updateOperatorBalances() public assertInvariants {
+        // Just a test to check that nothing is happening and invariants hold.
+        uint256 noId = createNodeOperator(3);
+        csm.updateOperatorBalances(randomBytes(48), randomBytes(48));
+    }
+
+    function test_requestFullDepositInfoUpdate_fromAccounting() public {
+        createNodeOperator(1);
+
+        uint256 nonceBefore = module.getNonce();
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        uint256 nonceAfter = module.getNonce();
+
+        assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 1);
+        assertEq(nonceAfter, nonceBefore + 1);
+    }
+
+    function test_requestFullDepositInfoUpdate_revertWhen_SenderIsNotEligible() public {
+        createNodeOperator(1);
+
+        vm.expectRevert(IBaseModule.SenderIsNotEligible.selector);
+        vm.prank(nextAddress());
+        module.requestFullDepositInfoUpdate();
+    }
 }
 
 contract CSMExitDeadlineThreshold is ModuleExitDeadlineThreshold, CSMCommon {}
@@ -1938,3 +2033,5 @@ contract CSMReportValidatorExitDelay is ModuleReportValidatorExitDelay, CSMCommo
 contract CSMOnValidatorExitTriggered is ModuleOnValidatorExitTriggered, CSMCommon {}
 
 contract CSMCreateNodeOperators is ModuleCreateNodeOperators, CSMCommon {}
+
+contract CSMBatchDepositInfoUpdate is ModuleBatchDepositInfoUpdate, CSMCommon {}

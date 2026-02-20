@@ -4,7 +4,7 @@
 pragma solidity 0.8.33;
 
 import { PermitHelper } from "../../../helpers/Permit.sol";
-import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
 abstract contract PenaltyIntegrationTestBase is ModuleTypeBase, PermitHelper {
     address internal user;
@@ -77,5 +77,7 @@ abstract contract PenaltyIntegrationTestBase is ModuleTypeBase, PermitHelper {
 }
 
 contract PenaltyIntegrationTestCSM is PenaltyIntegrationTestBase, CSMIntegrationBase {}
+
+contract PenaltyIntegrationTestCSM0x02 is PenaltyIntegrationTestBase, CSM0x02IntegrationBase {}
 
 contract PenaltyIntegrationTestCurated is PenaltyIntegrationTestBase, CuratedIntegrationBase {}

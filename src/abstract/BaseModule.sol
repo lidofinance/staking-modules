@@ -21,19 +21,19 @@ import { WithdrawnValidatorLib } from "../lib/WithdrawnValidatorLib.sol";
 import { NOAddresses } from "../lib/NOAddresses.sol";
 import { NodeOperatorOps } from "../lib/NodeOperatorOps.sol";
 import { OperatorTracker } from "../lib/OperatorTracker.sol";
+import { KeyPointerLib } from "../lib/KeyPointerLib.sol";
 
 import { AssetRecoverer } from "./AssetRecoverer.sol";
 import { ModuleLinearStorage } from "./ModuleLinearStorage.sol";
+import { PausableWithRoles } from "./PausableWithRoles.sol";
 
 abstract contract BaseModule is
     IBaseModule,
     ModuleLinearStorage,
     AccessControlEnumerableUpgradeable,
-    PausableUntil,
+    PausableWithRoles,
     AssetRecoverer
 {
-    bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
-    bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE");
     bytes32 public constant STAKING_ROUTER_ROLE = keccak256("STAKING_ROUTER_ROLE");
     bytes32 public constant REPORT_GENERAL_DELAYED_PENALTY_ROLE = keccak256("REPORT_GENERAL_DELAYED_PENALTY_ROLE");
     bytes32 public constant SETTLE_GENERAL_DELAYED_PENALTY_ROLE = keccak256("SETTLE_GENERAL_DELAYED_PENALTY_ROLE");
@@ -42,7 +42,6 @@ abstract contract BaseModule is
         keccak256("REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE");
     bytes32 public constant REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE =
         keccak256("REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE");
-    bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
     bytes32 public constant CREATE_NODE_OPERATOR_ROLE = keccak256("CREATE_NODE_OPERATOR_ROLE");
     ILidoLocator public immutable LIDO_LOCATOR;
     IStETH public immutable STETH;
@@ -78,18 +77,6 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function resume() external {
-        _checkRole(RESUME_ROLE);
-        _resume();
-    }
-
-    /// @inheritdoc IBaseModule
-    function pauseFor(uint256 duration) external {
-        _checkRole(PAUSE_ROLE);
-        _pauseFor(duration);
-    }
-
-    /// @inheritdoc IBaseModule
     function createNodeOperator(
         address from,
         NodeOperatorManagementProperties calldata managementProperties,
@@ -108,6 +95,11 @@ abstract contract BaseModule is
 
         unchecked {
             ++_nodeOperatorsCount;
+        }
+
+        // If all operators have up-to-date deposit info, then the new operator also has it, so we can just increase the counter.
+        if (nodeOperatorId == _upToDateOperatorDepositInfoCount) {
+            ++_upToDateOperatorDepositInfoCount;
         }
         _incrementModuleNonce();
     }
@@ -214,12 +206,13 @@ abstract contract BaseModule is
         bytes calldata exitedValidatorsCounts
     ) external {
         _checkStakingRouterRole();
-        _totalExitedValidators = NodeOperatorOps.updateExitedValidatorsCount(
-            _nodeOperators,
-            _totalExitedValidators,
-            nodeOperatorIds,
-            exitedValidatorsCounts
-        );
+        _totalExitedValidators = NodeOperatorOps.updateExitedValidatorsCount({
+            nodeOperators: _nodeOperators,
+            nodeOperatorsCount: _nodeOperatorsCount,
+            totalExitedValidators: _totalExitedValidators,
+            nodeOperatorIds: nodeOperatorIds,
+            exitedValidatorsCounts: exitedValidatorsCounts
+        });
     }
 
     /// @inheritdoc IStakingModule
@@ -241,33 +234,18 @@ abstract contract BaseModule is
         bytes calldata vettedSigningKeysCounts
     ) external {
         _checkStakingRouterRole();
-        NodeOperatorOps.decreaseVettedSigningKeysCount(_nodeOperators, nodeOperatorIds, vettedSigningKeysCounts);
+        NodeOperatorOps.decreaseVettedSigningKeysCount(
+            _nodeOperators,
+            _nodeOperatorsCount,
+            nodeOperatorIds,
+            vettedSigningKeysCounts
+        );
     }
 
     /// @inheritdoc IBaseModule
     function removeKeys(uint256 nodeOperatorId, uint256 startIndex, uint256 keysCount) external virtual {
         _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-
-        if (startIndex < no.totalDepositedKeys) revert SigningKeysInvalidOffset();
-
-        uint256 newTotalSigningKeys = SigningKeys.removeKeysSigs({
-            nodeOperatorId: nodeOperatorId,
-            startIndex: startIndex,
-            keysCount: keysCount,
-            totalKeysCount: no.totalAddedKeys
-        });
-
-        // Added/vetted signing key counters are uint32 fields; newTotalSigningKeys is strictly
-        // less than no.totalAddedKeys, so it always fits.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        no.totalAddedKeys = uint32(newTotalSigningKeys);
-        emit TotalSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
-
-        // forge-lint: disable-next-line(unsafe-typecast)
-        no.totalVettedKeys = uint32(newTotalSigningKeys);
-        emit VettedSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
-
+        NodeOperatorOps.removeKeysDefault(_nodeOperators, nodeOperatorId, startIndex, keysCount);
         // Nonce is updated below due to keys state change
         _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: false });
         _incrementModuleNonce();
@@ -320,7 +298,7 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external payable {
+    function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external {
         _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
         GeneralPenalty.compensateGeneralDelayedPenalty(nodeOperatorId);
     }
@@ -332,7 +310,7 @@ abstract contract BaseModule is
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
         if (keyIndex >= no.totalDepositedKeys) revert SigningKeysInvalidOffset();
 
-        uint256 pointer = _keyPointer(nodeOperatorId, keyIndex);
+        uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
         if (_isValidatorSlashed[pointer]) revert ValidatorSlashingAlreadyReported();
         _isValidatorSlashed[pointer] = true;
 
@@ -343,10 +321,10 @@ abstract contract BaseModule is
     /// @inheritdoc IBaseModule
     function increaseKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 amount) external {
         _checkVerifierRole();
-        _onlyExistingNodeOperator(nodeOperatorId);
 
         NodeOperatorOps.increaseKeyAddedBalance({
             nodeOperators: _nodeOperators,
+            nodeOperatorsCount: _nodeOperatorsCount,
             isValidatorWithdrawn: _isValidatorWithdrawn,
             keyAddedBalances: _keyAddedBalances,
             nodeOperatorId: nodeOperatorId,
@@ -391,6 +369,38 @@ abstract contract BaseModule is
         _exitPenalties().processTriggeredExit(nodeOperatorId, publicKey, elWithdrawalRequestFeePaid, exitType);
     }
 
+    /// @inheritdoc IBaseModule
+    function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external {
+        _updateDepositInfo(nodeOperatorId);
+    }
+
+    /// @inheritdoc IBaseModule
+    function requestFullDepositInfoUpdate() external {
+        _canRequestDepositInfoUpdate();
+        _upToDateOperatorDepositInfoCount = 0;
+        _incrementModuleNonce();
+    }
+
+    /// @inheritdoc IBaseModule
+    function batchDepositInfoUpdate(uint256 maxCount) external returns (uint256 operatorsLeft) {
+        if (maxCount == 0) revert InvalidInput();
+
+        uint256 operatorsCount = _nodeOperatorsCount;
+        uint256 noId = _upToDateOperatorDepositInfoCount;
+        if (noId == operatorsCount) return 0;
+
+        uint256 limit = noId + maxCount > operatorsCount ? operatorsCount : noId + maxCount;
+
+        for (; noId < limit; ++noId) {
+            _updateDepositInfo(noId);
+        }
+
+        _upToDateOperatorDepositInfoCount = limit;
+        operatorsLeft = operatorsCount - limit;
+
+        if (operatorsLeft == 0) emit NodeOperatorDepositInfoFullyUpdated();
+    }
+
     /// @inheritdoc IStakingModule
     /// @dev This method is not used in the module since rewards are distributed by a performance oracle,
     ///      hence it does nothing
@@ -430,12 +440,12 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function isValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool) {
-        return _isValidatorSlashed[_keyPointer(nodeOperatorId, keyIndex)];
+        return _isValidatorSlashed[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 
     /// @inheritdoc IBaseModule
     function isValidatorWithdrawn(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool) {
-        return _isValidatorWithdrawn[_keyPointer(nodeOperatorId, keyIndex)];
+        return _isValidatorWithdrawn[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 
     /// @inheritdoc IStakingModule
@@ -575,20 +585,27 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function getKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256) {
-        return _keyAddedBalances[_keyPointer(nodeOperatorId, keyIndex)];
+        return _keyAddedBalances[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
+    }
+
+    /// @inheritdoc IBaseModule
+    function getNodeOperatorDepositInfoToUpdateCount() external view returns (uint256 count) {
+        count = _nodeOperatorsCount - _upToDateOperatorDepositInfoCount;
     }
 
     // solhint-disable-next-line func-name-mixedcase
     function __BaseModule_init(address admin) internal {
         if (admin == address(0)) revert ZeroAdminAddress();
 
-        __AccessControlEnumerable_init();
-
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(STAKING_ROUTER_ROLE, address(LIDO_LOCATOR.stakingRouter()));
 
         // Module is on pause initially and should be resumed during the vote
         _pauseFor(PausableUntil.PAUSE_INFINITELY);
+    }
+
+    function _updateDepositInfo(uint256 nodeOperatorId) internal virtual {
+        _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: true });
     }
 
     function _reportWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos, bool slashed) internal {
@@ -598,7 +615,7 @@ abstract contract BaseModule is
             WithdrawnValidatorInfo calldata info = validatorInfos[i];
             _onlyExistingNodeOperator(info.nodeOperatorId);
 
-            uint256 pointer = _keyPointer(info.nodeOperatorId, info.keyIndex);
+            uint256 pointer = KeyPointerLib.keyPointer(info.nodeOperatorId, info.keyIndex);
             if (_isValidatorWithdrawn[pointer]) continue;
             if (info.isSlashed != slashed) revert InvalidWithdrawnValidatorInfo();
             if (info.isSlashed && !_isValidatorSlashed[pointer]) revert SlashingPenaltyIsNotApplicable();
@@ -641,39 +658,13 @@ abstract contract BaseModule is
         // Do not allow of multiple calls of addValidatorKeys* methods for the creator contract.
         OperatorTracker.forgetCreator(nodeOperatorId);
 
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-        uint256 totalAddedKeys = no.totalAddedKeys;
-
-        uint256 keysLimit = _parametersRegistry().getKeysLimit(_getBondCurveId(nodeOperatorId));
-
-        unchecked {
-            if (totalAddedKeys + keysCount - no.totalWithdrawnKeys > keysLimit) revert KeysLimitExceeded();
-
-            uint256 newTotalAddedKeys = SigningKeys.saveKeysSigs({
-                nodeOperatorId: nodeOperatorId,
-                startIndex: totalAddedKeys,
-                keysCount: keysCount,
-                pubkeys: publicKeys,
-                signatures: signatures
-            });
-
-            uint32 totalVettedKeys = no.totalVettedKeys;
-            // Optimistic vetting takes place.
-            if (totalAddedKeys == totalVettedKeys) {
-                // Sum stays <= totalAddedKeys (< 2^32 by design), so the result fits uint32.
-                // forge-lint: disable-next-line(unsafe-typecast)
-                totalVettedKeys = totalVettedKeys + uint32(keysCount);
-                no.totalVettedKeys = totalVettedKeys;
-                emit VettedSigningKeysCountChanged(nodeOperatorId, totalVettedKeys);
-            }
-
-            // Added key counters are uint32 slots; hitting 2^32 keys would require unreachable bond
-            // capital and calldata, so newTotalAddedKeys stays within the slot bounds.
-            // forge-lint: disable-next-line(unsafe-typecast)
-            no.totalAddedKeys = uint32(newTotalAddedKeys);
-
-            emit TotalSigningKeysCountChanged(nodeOperatorId, newTotalAddedKeys);
-        }
+        NodeOperatorOps.addKeys({
+            nodeOperators: _nodeOperators,
+            nodeOperatorId: nodeOperatorId,
+            keysCount: keysCount,
+            publicKeys: publicKeys,
+            signatures: signatures
+        });
 
         // Nonce is updated below since in case of target limit depositable keys might not change
         _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: false });
@@ -684,35 +675,11 @@ abstract contract BaseModule is
         uint256 nodeOperatorId,
         bool incrementNonceIfUpdated
     ) internal returns (bool changed) {
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
-
-        uint256 totalDepositedKeys = no.totalDepositedKeys;
-        uint256 newCount = no.totalVettedKeys - totalDepositedKeys;
-        uint256 unbondedKeys = _accounting().getUnbondedKeysCount(nodeOperatorId);
-
-        uint256 nonDeposited = no.totalAddedKeys - totalDepositedKeys;
-        if (unbondedKeys >= nonDeposited) {
-            newCount = 0;
-        } else if (unbondedKeys > no.totalAddedKeys - no.totalVettedKeys) {
-            newCount = nonDeposited - unbondedKeys;
-        }
-
-        if (no.targetLimitMode > 0 && newCount > 0) {
-            unchecked {
-                uint256 nonWithdrawnValidators = totalDepositedKeys - no.totalWithdrawnKeys;
-
-                uint256 targetLimit = no.targetLimit;
-                uint256 leftToLimit = 0;
-
-                if (targetLimit > nonWithdrawnValidators) leftToLimit = targetLimit - nonWithdrawnValidators;
-                if (newCount > leftToLimit) newCount = leftToLimit;
-            }
-        }
         return
             _applyDepositableValidatorsCount({
-                no: no,
+                no: _nodeOperators[nodeOperatorId],
                 nodeOperatorId: nodeOperatorId,
-                newCount: newCount,
+                newCount: NodeOperatorOps.calculateDepositableValidatorsCount(_nodeOperators, nodeOperatorId),
                 incrementNonceIfUpdated: incrementNonceIfUpdated
             });
     }
@@ -817,12 +784,22 @@ abstract contract BaseModule is
         return PARAMETERS_REGISTRY;
     }
 
+    function _requireDepositInfoUpToDate() internal view {
+        if (_upToDateOperatorDepositInfoCount != _nodeOperatorsCount) revert DepositInfoIsNotUpToDate();
+    }
+
+    /// @dev Default implementation of the guard for requesting deposit info update.
+    function _canRequestDepositInfoUpdate() internal view virtual {
+        if (msg.sender != address(_accounting())) {
+            revert SenderIsNotEligible();
+        }
+    }
+
     function _onlyRecoverer() internal view override {
         _checkRole(RECOVERER_ROLE);
     }
 
-    /// @dev Both nodeOperatorId and keyIndex are limited to uint64 by the contract
-    function _keyPointer(uint256 nodeOperatorId, uint256 keyIndex) internal pure returns (uint256) {
-        return (nodeOperatorId << 128) | keyIndex;
+    function __checkRole(bytes32 role) internal view override {
+        _checkRole(role);
     }
 }

@@ -5,9 +5,10 @@ pragma solidity 0.8.33;
 
 import { NodeOperator } from "src/interfaces/IBaseModule.sol";
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
+import { IWithdrawalVault } from "src/interfaces/IWithdrawalVault.sol";
 
 import { ExitPenaltyInfo } from "../../../../src/interfaces/IExitPenalties.sol";
-import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
 abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
     address internal agent;
@@ -60,8 +61,28 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         assertTrue(moduleInfo.stakingModuleAddress == address(module));
     }
 
-    function test_validStakingModuleId() public view {
-        IStakingRouter.StakingModule memory moduleInfo = stakingRouter.getStakingModule(ejector.STAKING_MODULE_ID());
+    function test_stakingModuleIdIsUnsetOrMatchesModule() public {
+        uint256 ejectorModuleId = ejector.stakingModuleId();
+        if (ejectorModuleId == 0) {
+            (uint256 noId, uint256 keyIndex) = integrationHelpers.getDepositedNodeOperatorWithSequentialActiveKeys(
+                nextAddress(),
+                1
+            );
+            address owner = module.getNodeOperatorOwner(noId);
+
+            uint256[] memory keyIndices = new uint256[](1);
+            keyIndices[0] = keyIndex;
+
+            uint256 withdrawalRequestFee = IWithdrawalVault(locator.withdrawalVault()).getWithdrawalRequestFee();
+            vm.deal(owner, withdrawalRequestFee);
+            vm.prank(owner);
+            ejector.voluntaryEject{ value: withdrawalRequestFee }(noId, keyIndices, address(this));
+
+            ejectorModuleId = ejector.stakingModuleId();
+        }
+
+        assertEq(ejectorModuleId, moduleId);
+        IStakingRouter.StakingModule memory moduleInfo = stakingRouter.getStakingModule(ejectorModuleId);
         assertEq(moduleInfo.stakingModuleAddress, address(module));
     }
 
@@ -229,10 +250,10 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         for (;;) {
             (noId, keysCount) = integrationHelpers.getDepositableNodeOperator(nextAddress());
             lidoDepositWithNoGasMetering(keysCount);
-            NodeOperator memory noCurrent = module.getNodeOperator(noId);
+            NodeOperator memory no = module.getNodeOperator(noId);
             /// we need to be sure there are more than 1 keys for further checks
-            if (noCurrent.totalDepositedKeys > 1) {
-                exited = noCurrent.totalExitedKeys;
+            if (no.totalDepositedKeys > 1) {
+                exited = no.totalExitedKeys;
                 break;
             }
         }
@@ -258,8 +279,7 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         vm.prank(agent);
         stakingRouter.unsafeSetExitedValidatorsCount(moduleId, noId, false, correction);
 
-        NodeOperator memory noFinal = module.getNodeOperator(noId);
-        assertEq(noFinal.totalExitedKeys, unsafeExited);
+        assertEq(module.getNodeOperator(noId).totalExitedKeys, unsafeExited);
     }
 
     function test_reportValidatorExitDelay() public assertInvariants {
@@ -284,5 +304,7 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
 }
 
 contract StakingRouterIntegrationTestCSM is StakingRouterIntegrationTestBase, CSMIntegrationBase {}
+
+contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase, CSM0x02IntegrationBase {}
 
 contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase, CuratedIntegrationBase {}

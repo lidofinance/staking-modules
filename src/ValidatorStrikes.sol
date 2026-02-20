@@ -7,7 +7,7 @@ import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerklePr
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
-import { ICSModule } from "./interfaces/ICSModule.sol";
+import { IBaseModule } from "./interfaces/IBaseModule.sol";
 import { IAccounting } from "./interfaces/IAccounting.sol";
 import { IExitPenalties } from "./interfaces/IExitPenalties.sol";
 import { IParametersRegistry } from "./interfaces/IParametersRegistry.sol";
@@ -17,7 +17,7 @@ import { IValidatorStrikes } from "./interfaces/IValidatorStrikes.sol";
 /// @author vgorkavenko
 contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnumerableUpgradeable {
     address public immutable ORACLE;
-    ICSModule public immutable MODULE;
+    IBaseModule public immutable MODULE;
     IAccounting public immutable ACCOUNTING;
     IExitPenalties public immutable EXIT_PENALTIES;
     IParametersRegistry public immutable PARAMETERS_REGISTRY;
@@ -35,17 +35,15 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
         _;
     }
 
-    constructor(address module, address oracle, address exitPenalties, address parametersRegistry) {
+    constructor(address module, address oracle) {
         if (module == address(0)) revert ZeroModuleAddress();
         if (oracle == address(0)) revert ZeroOracleAddress();
-        if (exitPenalties == address(0)) revert ZeroExitPenaltiesAddress();
-        if (parametersRegistry == address(0)) revert ZeroParametersRegistryAddress();
 
-        MODULE = ICSModule(module);
-        ACCOUNTING = MODULE.ACCOUNTING();
-        EXIT_PENALTIES = IExitPenalties(exitPenalties);
         ORACLE = oracle;
-        PARAMETERS_REGISTRY = IParametersRegistry(parametersRegistry);
+        MODULE = IBaseModule(module);
+        ACCOUNTING = MODULE.ACCOUNTING();
+        EXIT_PENALTIES = MODULE.EXIT_PENALTIES();
+        PARAMETERS_REGISTRY = MODULE.PARAMETERS_REGISTRY();
 
         _disableInitializers();
     }
@@ -58,7 +56,6 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
 
         _setEjector(_ejector);
 
-        __AccessControlEnumerable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
@@ -69,7 +66,7 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
 
     /// @inheritdoc IValidatorStrikes
     function processOracleReport(bytes32 _treeRoot, string calldata _treeCid) external onlyOracle {
-        // @dev should be both empty or not empty
+        // NOTE: Should be both empty or not empty.
         bool isNewRootEmpty = _treeRoot == bytes32(0);
         bool isNewCidEmpty = bytes(_treeCid).length == 0;
         if (isNewRootEmpty != isNewCidEmpty) revert InvalidReportData();
@@ -99,14 +96,16 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
         bool[] calldata proofFlags,
         address refundRecipient
     ) external payable {
-        // NOTE: We allow empty proofs to be delivered because there’s no way to use the tree’s
+        // NOTE: We allow empty proofs to be delivered because there’s no way to use the tree
         // internal nodes without brute-forcing the input data.
 
-        if (keyStrikesList.length == 0) revert EmptyKeyStrikesList();
-        if (msg.value == 0) revert ZeroMsgValue();
-        if (msg.value % keyStrikesList.length > 0) revert ValueNotEvenlyDivisible();
+        uint256 keysCount = keyStrikesList.length;
 
-        bytes[] memory pubkeys = new bytes[](keyStrikesList.length);
+        if (keysCount == 0) revert EmptyKeyStrikesList();
+        if (msg.value == 0) revert ZeroMsgValue();
+        if (msg.value % keysCount > 0) revert ValueNotEvenlyDivisible();
+
+        bytes[] memory pubkeys = new bytes[](keysCount);
         for (uint256 i; i < pubkeys.length; ++i) {
             pubkeys[i] = MODULE.getSigningKeys(keyStrikesList[i].nodeOperatorId, keyStrikesList[i].keyIndex, 1);
         }
@@ -115,8 +114,8 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
 
         refundRecipient = refundRecipient == address(0) ? msg.sender : refundRecipient;
 
-        uint256 valuePerKey = msg.value / keyStrikesList.length;
-        for (uint256 i; i < keyStrikesList.length; ++i) {
+        uint256 valuePerKey = msg.value / keysCount;
+        for (uint256 i; i < keysCount; ++i) {
             _ejectByStrikes(keyStrikesList[i], pubkeys[i], valuePerKey, refundRecipient);
         }
     }
@@ -148,6 +147,7 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
 
     function _setEjector(address _ejector) internal {
         if (_ejector == address(0)) revert ZeroEjectorAddress();
+        if (_ejector == address(ejector)) revert SameEjectorAddress();
         ejector = IEjector(_ejector);
         emit EjectorSet(_ejector);
     }
@@ -163,9 +163,9 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
             strikes += keyStrikes.data[i];
         }
 
-        uint256 curveId = ACCOUNTING.getBondCurveId(keyStrikes.nodeOperatorId);
-
-        (, uint256 threshold) = PARAMETERS_REGISTRY.getStrikesParams(curveId);
+        (, uint256 threshold) = PARAMETERS_REGISTRY.getStrikesParams(
+            ACCOUNTING.getBondCurveId(keyStrikes.nodeOperatorId)
+        );
         if (strikes < threshold) revert NotEnoughStrikesToEject();
 
         EXIT_PENALTIES.processStrikesReport(keyStrikes.nodeOperatorId, pubkey);

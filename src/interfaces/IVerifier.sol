@@ -108,10 +108,6 @@ interface IVerifier {
     error HistoricalSummaryDoesNotExist();
     error NotImplemented();
 
-    function PAUSE_ROLE() external view returns (bytes32);
-
-    function RESUME_ROLE() external view returns (bytes32);
-
     function BEACON_ROOTS() external view returns (address);
 
     function SLOTS_PER_EPOCH() external view returns (uint64);
@@ -143,13 +139,6 @@ interface IVerifier {
     function WITHDRAWAL_ADDRESS() external view returns (address);
 
     function MODULE() external view returns (IBaseModule);
-
-    /// @notice Pause write methods calls for `duration` seconds
-    /// @param duration Duration of the pause in seconds
-    function pauseFor(uint256 duration) external;
-
-    /// @notice Resume write methods calls
-    function resume() external;
 
     /// @notice Verify proof of a slashed validator being withdrawable and report it to the module
     /// @param data @see ProcessSlashedInput

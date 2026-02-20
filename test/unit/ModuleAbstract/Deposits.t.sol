@@ -795,3 +795,59 @@ abstract contract ModuleNodeOperatorStateAfterUpdateCurve is ModuleFixtures {
         );
     }
 }
+
+abstract contract ModuleBatchDepositInfoUpdate is ModuleFixtures {
+    function test_batchDepositInfoUpdate() public assertInvariants {
+        createNodeOperator(1);
+        createNodeOperator(1);
+        createNodeOperator(1);
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.NodeOperatorDepositInfoFullyUpdated();
+        uint256 left = module.batchDepositInfoUpdate(3);
+
+        assertEq(left, 0);
+    }
+
+    function test_batchDepositInfoUpdate_revertWhen_InvalidInput() public assertInvariants {
+        createNodeOperator(1);
+        createNodeOperator(1);
+        createNodeOperator(1);
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        vm.expectRevert(IBaseModule.InvalidInput.selector);
+        module.batchDepositInfoUpdate(0);
+    }
+
+    function test_batchDepositInfoUpdate_nothingToUpdate() public assertInvariants {
+        createNodeOperator(1);
+        createNodeOperator(1);
+        createNodeOperator(1);
+
+        uint256 left = module.batchDepositInfoUpdate(3);
+
+        assertEq(left, 0);
+    }
+
+    function test_batchDepositInfoUpdate_partialUpdate() public assertInvariants {
+        createNodeOperator(1);
+        createNodeOperator(1);
+        createNodeOperator(1);
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        vm.recordLogs();
+        uint256 left = module.batchDepositInfoUpdate(2);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        assertEq(logs.length, 0);
+
+        assertEq(left, 1);
+    }
+}

@@ -18,7 +18,7 @@ import { CSModule } from "src/CSModule.sol";
 import { ParametersRegistry } from "src/ParametersRegistry.sol";
 import { PermissionlessGate } from "src/PermissionlessGate.sol";
 import { VettedGate } from "src/VettedGate.sol";
-import { VettedGateFactory } from "src/VettedGateFactory.sol";
+import { MerkleGateFactory } from "src/MerkleGateFactory.sol";
 import { Accounting } from "src/Accounting.sol";
 import { FeeOracle } from "src/FeeOracle.sol";
 import { FeeDistributor } from "src/FeeDistributor.sol";
@@ -31,8 +31,8 @@ import { MetaRegistry } from "src/MetaRegistry.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
-import { CuratedGateFactory } from "src/CuratedGateFactory.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
+import { DeployCSM0x02Params } from "script/csm0x02/DeployCSM0x02Base.s.sol";
 import { CuratedDeployParams } from "script/curated/DeployBase.s.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 import { IACL } from "src/interfaces/IACL.sol";
@@ -48,8 +48,8 @@ import { LidoLocatorMock } from "./mocks/LidoLocatorMock.sol";
 import { BurnerMock } from "./mocks/BurnerMock.sol";
 import { WithdrawalQueueMock } from "./mocks/WithdrawalQueueMock.sol";
 import { StakingRouterMock } from "./mocks/StakingRouterMock.sol";
-import { TWGMock } from "./mocks/TWGMock.sol";
 import { Stub } from "./mocks/Stub.sol";
+import { TWGMock } from "./mocks/TWGMock.sol";
 
 contract Fixtures is StdCheats, Test {
     bytes32 public constant INITIALIZABLE_STORAGE = 0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00;
@@ -97,12 +97,12 @@ contract DeploymentHelpers is Test {
     struct Env {
         string RPC_URL;
         string DEPLOY_CONFIG;
-        /// @dev Optional: utility-contract deployment JSON (e.g. artifacts/<chain>/utils/<name>/deploy-<chain>.json)
+        /// @dev Optional: utility-contract deployment JSON (e.g. artifacts/<chain>/<module>/utils/<name>/deploy-<chain>.json)
         string UTILS_DEPLOY_CONFIG;
         uint256 VOTE_PREV_BLOCK;
     }
 
-    // Shared deployment params used across deployment assertions.
+    // Intersection of DeployParams and CuratedDeployParams
     struct CommonDeployParams {
         address lidoLocatorAddress;
         address aragonAgent;
@@ -112,9 +112,11 @@ contract DeploymentHelpers is Test {
         address resealManager;
         address secondAdminAddress;
         address chargePenaltyRecipient;
-        uint256 stakingModuleId;
+        address setResetBondCurveAddress;
         bytes32 moduleType;
         uint256 queueLowestPriority;
+        uint256 defaultDepositAllocationWeight;
+        uint256 identifiedCommunityStakersGateDepositAllocationWeight;
         uint256 bondLockPeriod;
         uint256 minBondLockPeriod;
         uint256 maxBondLockPeriod;
@@ -190,6 +192,7 @@ contract DeploymentHelpers is Test {
         address metaRegistry;
         address metaRegistryImpl;
         address curatedGateFactory;
+        address curatedGateImpl;
         address[] curatedGates;
         address gateSeal;
         address lidoLocator;
@@ -219,7 +222,11 @@ contract DeploymentHelpers is Test {
         deploymentConfig.permissionlessGate = vm.parseJsonAddress(config, ".PermissionlessGate");
         vm.label(deploymentConfig.permissionlessGate, "permissionlessGate");
 
-        deploymentConfig.vettedGateFactory = vm.parseJsonAddress(config, ".VettedGateFactory");
+        if (vm.keyExistsJson(config, ".VettedGateFactory")) {
+            deploymentConfig.vettedGateFactory = vm.parseJsonAddress(config, ".VettedGateFactory");
+        } else if (vm.keyExistsJson(config, ".MerkleGateFactory")) {
+            deploymentConfig.vettedGateFactory = vm.parseJsonAddress(config, ".MerkleGateFactory");
+        }
         vm.label(deploymentConfig.vettedGateFactory, "vettedGateFactory");
 
         deploymentConfig.vettedGate = vm.parseJsonAddress(config, ".VettedGate");
@@ -356,8 +363,17 @@ contract DeploymentHelpers is Test {
         deploymentConfig.metaRegistryImpl = vm.parseJsonAddress(config, ".MetaRegistryImpl");
         vm.label(deploymentConfig.metaRegistryImpl, "metaRegistryImpl");
 
-        deploymentConfig.curatedGateFactory = vm.parseJsonAddress(config, ".CuratedGateFactory");
+        if (vm.keyExistsJson(config, ".CuratedGateFactory")) {
+            deploymentConfig.curatedGateFactory = vm.parseJsonAddress(config, ".CuratedGateFactory");
+        } else if (vm.keyExistsJson(config, ".MerkleGateFactory")) {
+            deploymentConfig.curatedGateFactory = vm.parseJsonAddress(config, ".MerkleGateFactory");
+        }
         vm.label(deploymentConfig.curatedGateFactory, "curatedGateFactory");
+
+        if (vm.keyExistsJson(config, ".CuratedGateImpl")) {
+            deploymentConfig.curatedGateImpl = vm.parseJsonAddress(config, ".CuratedGateImpl");
+            vm.label(deploymentConfig.curatedGateImpl, "curatedGateImpl");
+        }
 
         if (vm.keyExistsJson(config, ".CuratedGates")) {
             deploymentConfig.curatedGates = vm.parseJsonAddressArray(config, ".CuratedGates");
@@ -366,6 +382,7 @@ contract DeploymentHelpers is Test {
                 vm.label(deploymentConfig.curatedGates[i], "curatedGate");
             }
         }
+
         if (vm.keyExistsJson(config, ".GateSeal")) {
             deploymentConfig.gateSeal = vm.parseJsonAddress(config, ".GateSeal");
             vm.label(deploymentConfig.gateSeal, "curatedGateSeal");
@@ -378,6 +395,11 @@ contract DeploymentHelpers is Test {
     function parseDeployParams(string memory deployConfigPath) internal view returns (DeployParams memory) {
         string memory config = vm.readFile(deployConfigPath);
         return abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (DeployParams));
+    }
+
+    function parseDeployParams0x02(string memory deployConfigPath) internal view returns (DeployCSM0x02Params memory) {
+        string memory config = vm.readFile(deployConfigPath);
+        return abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (DeployCSM0x02Params));
     }
 
     function updateCuratedDeployParams(CuratedDeployParams storage dst, string memory deployConfigPath) internal {
@@ -426,7 +448,6 @@ contract DeploymentHelpers is Test {
         dst.chargePenaltyRecipient = src.chargePenaltyRecipient;
 
         // Module
-        dst.stakingModuleId = src.stakingModuleId;
         dst.moduleType = src.moduleType;
         dst.generalDelayedPenaltyReporter = src.generalDelayedPenaltyReporter;
 
@@ -469,76 +490,145 @@ contract DeploymentHelpers is Test {
 
     function parseCommonDeployParams(string memory config) internal view returns (CommonDeployParams memory params) {
         if (bytes(config).length == 0) return params;
+
         if (vm.keyExistsJson(config, ".CuratedModule")) {
             CuratedDeployParams memory decoded = abi.decode(
                 vm.parseJsonBytes(config, ".CuratedDeployParams"),
                 (CuratedDeployParams)
             );
-            params.lidoLocatorAddress = decoded.lidoLocatorAddress;
-            params.aragonAgent = decoded.aragonAgent;
-            params.proxyAdmin = decoded.proxyAdmin;
-            params.easyTrackEVMScriptExecutor = decoded.easyTrackEVMScriptExecutor;
-            params.generalDelayedPenaltyReporter = decoded.generalDelayedPenaltyReporter;
-            params.resealManager = decoded.resealManager;
-            params.secondAdminAddress = decoded.secondAdminAddress;
-            params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
-            params.stakingModuleId = decoded.stakingModuleId;
-            params.moduleType = decoded.moduleType;
-            params.queueLowestPriority = decoded.queueLowestPriority;
-            params.bondLockPeriod = decoded.bondLockPeriod;
-            params.minBondLockPeriod = decoded.minBondLockPeriod;
-            params.maxBondLockPeriod = decoded.maxBondLockPeriod;
-            params.secondsPerSlot = decoded.secondsPerSlot;
-            params.slotsPerEpoch = decoded.slotsPerEpoch;
-            params.clGenesisTime = decoded.clGenesisTime;
-            params.oracleReportEpochsPerFrame = decoded.oracleReportEpochsPerFrame;
-            params.fastLaneLengthSlots = decoded.fastLaneLengthSlots;
-            params.consensusVersion = decoded.consensusVersion;
-            params.oracleMembers = decoded.oracleMembers;
-            params.hashConsensusQuorum = decoded.hashConsensusQuorum;
-            params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
-            params.gIFirstValidator = decoded.gIFirstValidator;
-            params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
-            params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
-            params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
-            params.gIFirstPendingConsolidation = decoded.gIFirstPendingConsolidation;
-            params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
-            params.capellaSlot = decoded.capellaSlot;
-            params.defaultBondCurve = decoded.defaultBondCurve;
+            return _fillCommonFromCurated(params, decoded);
         } else {
-            DeployParams memory decoded = abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (DeployParams));
-            params.lidoLocatorAddress = decoded.lidoLocatorAddress;
-            params.aragonAgent = decoded.aragonAgent;
-            params.proxyAdmin = decoded.proxyAdmin;
-            params.easyTrackEVMScriptExecutor = decoded.easyTrackEVMScriptExecutor;
-            params.generalDelayedPenaltyReporter = decoded.generalDelayedPenaltyReporter;
-            params.resealManager = decoded.resealManager;
-            params.secondAdminAddress = decoded.secondAdminAddress;
-            params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
-            params.stakingModuleId = decoded.stakingModuleId;
-            params.moduleType = decoded.moduleType;
-            params.queueLowestPriority = decoded.queueLowestPriority;
-            params.bondLockPeriod = decoded.bondLockPeriod;
-            params.minBondLockPeriod = decoded.minBondLockPeriod;
-            params.maxBondLockPeriod = decoded.maxBondLockPeriod;
-            params.secondsPerSlot = decoded.secondsPerSlot;
-            params.slotsPerEpoch = decoded.slotsPerEpoch;
-            params.clGenesisTime = decoded.clGenesisTime;
-            params.oracleReportEpochsPerFrame = decoded.oracleReportEpochsPerFrame;
-            params.fastLaneLengthSlots = decoded.fastLaneLengthSlots;
-            params.consensusVersion = decoded.consensusVersion;
-            params.oracleMembers = decoded.oracleMembers;
-            params.hashConsensusQuorum = decoded.hashConsensusQuorum;
-            params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
-            params.gIFirstValidator = decoded.gIFirstValidator;
-            params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
-            params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
-            params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
-            params.gIFirstPendingConsolidation = decoded.gIFirstPendingConsolidation;
-            params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
-            params.capellaSlot = decoded.capellaSlot;
-            params.defaultBondCurve = decoded.defaultBondCurve;
+            address vettedGateFactory = vm.parseJsonAddress(config, ".VettedGateFactory");
+            address vettedGate = vm.parseJsonAddress(config, ".VettedGate");
+            address vettedGateImpl = vm.parseJsonAddress(config, ".VettedGateImpl");
+            bool isCsm0x02 = vettedGateFactory == address(0) &&
+                vettedGate == address(0) &&
+                vettedGateImpl == address(0);
+            if (isCsm0x02) {
+                DeployCSM0x02Params memory decoded = abi.decode(
+                    vm.parseJsonBytes(config, ".DeployParams"),
+                    (DeployCSM0x02Params)
+                );
+                return _fillCommonFromCommunity0x02(params, decoded);
+            } else {
+                DeployParams memory decoded = abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (DeployParams));
+                return _fillCommonFromCommunity(params, decoded);
+            }
         }
+    }
+
+    function _fillCommonFromCurated(
+        CommonDeployParams memory params,
+        CuratedDeployParams memory decoded
+    ) internal pure returns (CommonDeployParams memory) {
+        params.lidoLocatorAddress = decoded.lidoLocatorAddress;
+        params.aragonAgent = decoded.aragonAgent;
+        params.proxyAdmin = decoded.proxyAdmin;
+        params.easyTrackEVMScriptExecutor = decoded.easyTrackEVMScriptExecutor;
+        params.generalDelayedPenaltyReporter = decoded.generalDelayedPenaltyReporter;
+        params.resealManager = decoded.resealManager;
+        params.secondAdminAddress = decoded.secondAdminAddress;
+        params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
+        params.moduleType = decoded.moduleType;
+        params.queueLowestPriority = decoded.queueLowestPriority;
+        params.bondLockPeriod = decoded.bondLockPeriod;
+        params.minBondLockPeriod = decoded.minBondLockPeriod;
+        params.maxBondLockPeriod = decoded.maxBondLockPeriod;
+        params.secondsPerSlot = decoded.secondsPerSlot;
+        params.slotsPerEpoch = decoded.slotsPerEpoch;
+        params.clGenesisTime = decoded.clGenesisTime;
+        params.oracleReportEpochsPerFrame = decoded.oracleReportEpochsPerFrame;
+        params.fastLaneLengthSlots = decoded.fastLaneLengthSlots;
+        params.consensusVersion = decoded.consensusVersion;
+        params.oracleMembers = decoded.oracleMembers;
+        params.hashConsensusQuorum = decoded.hashConsensusQuorum;
+        params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
+        params.gIFirstValidator = decoded.gIFirstValidator;
+        params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
+        params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
+        params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
+        params.gIFirstPendingConsolidation = decoded.gIFirstPendingConsolidation;
+        params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
+        params.capellaSlot = decoded.capellaSlot;
+        params.defaultBondCurve = decoded.defaultBondCurve;
+        return params;
+    }
+
+    function _fillCommonFromCommunity(
+        CommonDeployParams memory params,
+        DeployParams memory decoded
+    ) internal pure returns (CommonDeployParams memory) {
+        params.lidoLocatorAddress = decoded.lidoLocatorAddress;
+        params.aragonAgent = decoded.aragonAgent;
+        params.proxyAdmin = decoded.proxyAdmin;
+        params.easyTrackEVMScriptExecutor = decoded.easyTrackEVMScriptExecutor;
+        params.generalDelayedPenaltyReporter = decoded.generalDelayedPenaltyReporter;
+        params.resealManager = decoded.resealManager;
+        params.secondAdminAddress = decoded.secondAdminAddress;
+        params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
+        params.setResetBondCurveAddress = decoded.setResetBondCurveAddress;
+        params.moduleType = decoded.moduleType;
+        params.queueLowestPriority = decoded.queueLowestPriority;
+        params.bondLockPeriod = decoded.bondLockPeriod;
+        params.minBondLockPeriod = decoded.minBondLockPeriod;
+        params.maxBondLockPeriod = decoded.maxBondLockPeriod;
+        params.secondsPerSlot = decoded.secondsPerSlot;
+        params.slotsPerEpoch = decoded.slotsPerEpoch;
+        params.clGenesisTime = decoded.clGenesisTime;
+        params.oracleReportEpochsPerFrame = decoded.oracleReportEpochsPerFrame;
+        params.fastLaneLengthSlots = decoded.fastLaneLengthSlots;
+        params.consensusVersion = decoded.consensusVersion;
+        params.oracleMembers = decoded.oracleMembers;
+        params.hashConsensusQuorum = decoded.hashConsensusQuorum;
+        params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
+        params.gIFirstValidator = decoded.gIFirstValidator;
+        params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
+        params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
+        params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
+        params.gIFirstPendingConsolidation = decoded.gIFirstPendingConsolidation;
+        params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
+        params.capellaSlot = decoded.capellaSlot;
+        params.defaultBondCurve = decoded.defaultBondCurve;
+        return params;
+    }
+
+    function _fillCommonFromCommunity0x02(
+        CommonDeployParams memory params,
+        DeployCSM0x02Params memory decoded
+    ) internal pure returns (CommonDeployParams memory) {
+        params.lidoLocatorAddress = decoded.lidoLocatorAddress;
+        params.aragonAgent = decoded.aragonAgent;
+        params.proxyAdmin = decoded.proxyAdmin;
+        params.easyTrackEVMScriptExecutor = decoded.easyTrackEVMScriptExecutor;
+        params.generalDelayedPenaltyReporter = decoded.generalDelayedPenaltyReporter;
+        params.resealManager = decoded.resealManager;
+        params.secondAdminAddress = decoded.secondAdminAddress;
+        params.chargePenaltyRecipient = decoded.chargePenaltyRecipient;
+        params.setResetBondCurveAddress = decoded.setResetBondCurveAddress;
+        params.moduleType = decoded.moduleType;
+        params.queueLowestPriority = decoded.queueLowestPriority;
+        params.bondLockPeriod = decoded.bondLockPeriod;
+        params.minBondLockPeriod = decoded.minBondLockPeriod;
+        params.maxBondLockPeriod = decoded.maxBondLockPeriod;
+        params.secondsPerSlot = decoded.secondsPerSlot;
+        params.slotsPerEpoch = decoded.slotsPerEpoch;
+        params.clGenesisTime = decoded.clGenesisTime;
+        params.oracleReportEpochsPerFrame = decoded.oracleReportEpochsPerFrame;
+        params.fastLaneLengthSlots = decoded.fastLaneLengthSlots;
+        params.consensusVersion = decoded.consensusVersion;
+        params.oracleMembers = decoded.oracleMembers;
+        params.hashConsensusQuorum = decoded.hashConsensusQuorum;
+        params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
+        params.gIFirstValidator = decoded.gIFirstValidator;
+        params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
+        params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
+        params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
+        params.gIFirstPendingConsolidation = decoded.gIFirstPendingConsolidation;
+        params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
+        params.capellaSlot = decoded.capellaSlot;
+        params.defaultBondCurve = decoded.defaultBondCurve;
+        params.defaultDepositAllocationWeight = decoded.defaultDepositAllocationWeight;
+        return params;
     }
 
     function _isEmpty(string memory s) internal pure returns (bool) {
@@ -550,6 +640,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     enum ModuleType {
         Unknown,
         Community,
+        Community0x02,
         Curated
     }
 
@@ -559,7 +650,8 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     ParametersRegistry public parametersRegistry;
     ParametersRegistry public parametersRegistryImpl;
     PermissionlessGate public permissionlessGate;
-    VettedGateFactory public vettedGateFactory;
+    MerkleGateFactory public vettedGateFactory;
+    MerkleGateFactory public curatedGateFactory;
     VettedGate public vettedGate;
     VettedGate public vettedGateImpl;
     address public earlyAdoption;
@@ -585,7 +677,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     CuratedModule public curatedModule;
     CuratedModule public curatedModuleImpl;
     MetaRegistry public metaRegistry;
-    CuratedGateFactory public curatedGateFactory;
+    CuratedGate public curatedGateImpl;
     address[] public curatedGates;
 
     error ModuleNotFound();
@@ -606,14 +698,23 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         DeploymentConfig memory deploymentConfig = parseDeploymentConfig(config);
         assertEq(deploymentConfig.chainId, block.chainid, "ChainId mismatch");
 
-        moduleType = ModuleType.Community;
+        if (
+            deploymentConfig.vettedGateFactory == address(0) &&
+            deploymentConfig.vettedGate == address(0) &&
+            deploymentConfig.vettedGateImpl == address(0)
+        ) {
+            moduleType = ModuleType.Community0x02;
+        } else {
+            moduleType = ModuleType.Community;
+        }
 
         module = CSModule(deploymentConfig.csm);
         moduleImpl = CSModule(deploymentConfig.csmImpl);
         parametersRegistry = ParametersRegistry(deploymentConfig.parametersRegistry);
         parametersRegistryImpl = ParametersRegistry(deploymentConfig.parametersRegistryImpl);
         permissionlessGate = PermissionlessGate(deploymentConfig.permissionlessGate);
-        vettedGateFactory = VettedGateFactory(deploymentConfig.vettedGateFactory);
+        vettedGateFactory = MerkleGateFactory(deploymentConfig.vettedGateFactory);
+        curatedGateFactory = MerkleGateFactory(address(0));
         vettedGate = VettedGate(deploymentConfig.vettedGate);
         vettedGateImpl = VettedGate(deploymentConfig.vettedGateImpl);
         earlyAdoption = deploymentConfig.earlyAdoption;
@@ -654,7 +755,8 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         parametersRegistry = ParametersRegistry(deploymentConfig.parametersRegistry);
         parametersRegistryImpl = ParametersRegistry(deploymentConfig.parametersRegistryImpl);
         permissionlessGate = PermissionlessGate(address(0));
-        vettedGateFactory = VettedGateFactory(address(0));
+        vettedGateFactory = MerkleGateFactory(address(0));
+        curatedGateFactory = MerkleGateFactory(deploymentConfig.curatedGateFactory);
         vettedGate = VettedGate(address(0));
         vettedGateImpl = VettedGate(address(0));
         earlyAdoption = address(0);
@@ -679,7 +781,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         burner = IBurner(locator.burner());
 
         metaRegistry = MetaRegistry(deploymentConfig.metaRegistry);
-        curatedGateFactory = CuratedGateFactory(deploymentConfig.curatedGateFactory);
+        curatedGateImpl = CuratedGate(deploymentConfig.curatedGateImpl);
         curatedGates = deploymentConfig.curatedGates;
     }
 
@@ -986,9 +1088,7 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
         if (r.getBondCurveWeight(curveId) == 0) {
             r.setBondCurveWeight(curveId, 1);
             CuratedModule cm = CuratedModule(address(module));
-            for (uint256 i = 0; i < cm.getNodeOperatorsCount(); ++i) {
-                r.refreshOperatorWeight(i);
-            }
+            cm.batchDepositInfoUpdate(cm.getNodeOperatorsCount());
         }
     }
 

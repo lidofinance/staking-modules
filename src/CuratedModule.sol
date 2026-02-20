@@ -6,7 +6,7 @@ pragma solidity 0.8.33;
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
 import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.sol";
-import { IBaseModule, NodeOperator } from "./interfaces/IBaseModule.sol";
+import { NodeOperator } from "./interfaces/IBaseModule.sol";
 
 import { BaseModule } from "./abstract/BaseModule.sol";
 
@@ -59,6 +59,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         bytes calldata /* depositCalldata */
     ) external returns (bytes memory publicKeys, bytes memory signatures) {
         _checkStakingRouterRole();
+        _requireDepositInfoUpToDate();
 
         (uint256 allocated, uint256[] memory operatorIds, uint256[] memory allocations) = CuratedDepositAllocator
             .allocateInitialDeposits(_nodeOperators, _nodeOperatorsCount, depositsCount);
@@ -122,6 +123,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256[] calldata topUpLimits
     ) external returns (uint256[] memory allocations) {
         _checkStakingRouterRole();
+        _requireDepositInfoUpToDate();
 
         if (maxDepositAmount == 0) return new uint256[](0);
         if (
@@ -172,13 +174,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
         NOAddresses.changeNodeOperatorAddresses(_nodeOperators, nodeOperatorId, newManagerAddress, newRewardAddress);
     }
 
-    /// @inheritdoc IBaseModule
-    /// @dev This one is called in `Accounting.setBondCurve`.
-    function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external override(IBaseModule) {
-        _metaRegistry().refreshOperatorWeight(nodeOperatorId);
-        _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: true });
-    }
-
     /// @inheritdoc ICuratedModule
     function notifyNodeOperatorWeightChange(uint256 nodeOperatorId, uint256 newWeight) external {
         if (msg.sender != address(_metaRegistry())) revert SenderIsNotMetaRegistry();
@@ -199,6 +194,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     function getOperatorWeights(
         uint256[] calldata operatorIds
     ) external view returns (uint256[] memory operatorWeights) {
+        _requireDepositInfoUpToDate();
         return _metaRegistry().getOperatorWeights(operatorIds);
     }
 
@@ -211,6 +207,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     function getDepositsAllocation(
         uint256 maxDepositAmount
     ) external view returns (uint256 allocated, uint256[] memory operatorIds, uint256[] memory allocations) {
+        _requireDepositInfoUpToDate();
         uint256 operatorsCount = _nodeOperatorsCount;
         if (maxDepositAmount == 0 || operatorsCount == 0) return (0, new uint256[](0), new uint256[](0));
 
@@ -226,6 +223,11 @@ contract CuratedModule is ICuratedModule, BaseModule {
             allocationAmount: maxDepositAmount,
             operatorIds: allOperatorIds
         });
+    }
+
+    function _updateDepositInfo(uint256 nodeOperatorId) internal override {
+        _metaRegistry().refreshOperatorWeight(nodeOperatorId);
+        _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: true });
     }
 
     function _applyDepositableValidatorsCount(
@@ -316,6 +318,12 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
     function _metaRegistry() internal view returns (IMetaRegistry) {
         return META_REGISTRY;
+    }
+
+    function _canRequestDepositInfoUpdate() internal view override {
+        if (msg.sender != address(_accounting()) && msg.sender != address(_metaRegistry())) {
+            revert SenderIsNotEligible();
+        }
     }
 
     function _storage() internal pure returns (CuratedModuleStorage storage $) {

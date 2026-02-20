@@ -18,8 +18,6 @@ import { IStETH } from "./interfaces/IStETH.sol";
 contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerableUpgradeable, AssetRecoverer {
     uint64 internal constant INITIALIZED_VERSION = 3;
 
-    bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE");
-
     IStETH public immutable STETH;
     address public immutable ACCOUNTING;
     address public immutable ORACLE;
@@ -78,8 +76,6 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
 
         _setRebateRecipient(_rebateRecipient);
 
-        __AccessControlEnumerable_init();
-
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
@@ -104,11 +100,10 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
 
         if (sharesToDistribute == 0) return 0;
         if (totalClaimableShares < sharesToDistribute) revert NotEnoughShares();
-
         unchecked {
             totalClaimableShares -= sharesToDistribute;
-            distributedShares[nodeOperatorId] += sharesToDistribute;
         }
+        distributedShares[nodeOperatorId] = cumulativeFeeShares;
 
         STETH.transferShares(ACCOUNTING, sharesToDistribute);
         emit OperatorFeeDistributed(nodeOperatorId, sharesToDistribute);
@@ -149,9 +144,9 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
             emit RebateTransferred(rebate);
         }
 
+        if (bytes(_logCid).length == 0) revert InvalidLogCID();
         // NOTE: Make sure off-chain tooling provides a distinct CID of a log even for empty reports, e.g. by mixing
         // in a frame identifier such as reference slot to a file.
-        if (bytes(_logCid).length == 0) revert InvalidLogCID();
         if (keccak256(bytes(_logCid)) == keccak256(bytes(logCid))) revert InvalidLogCID();
 
         logCid = _logCid;
@@ -200,7 +195,7 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
         bytes32[] calldata proof
     ) public view returns (uint256 sharesToDistribute) {
         // NOTE: We reject empty proofs to separate two business logic paths on the level of
-        // Accounting.sol (see _pullFeeRewards function invocations) with and without a proof.
+        // Accounting.sol (see _pullAndSplitFeeRewards function invocations) with and without a proof.
         if (proof.length == 0) revert InvalidProof();
 
         bool isValid = MerkleProof.verifyCalldata(proof, treeRoot, hashLeaf(nodeOperatorId, cumulativeFeeShares));
@@ -225,6 +220,7 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
     function _setRebateRecipient(address _rebateRecipient) internal {
         if (_rebateRecipient == address(0)) revert ZeroRebateRecipientAddress();
 
+        if (_rebateRecipient == rebateRecipient) revert SameRebateRecipientAddress();
         rebateRecipient = _rebateRecipient;
         emit RebateRecipientSet(_rebateRecipient);
     }

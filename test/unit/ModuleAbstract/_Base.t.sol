@@ -228,4 +228,10 @@ abstract contract ModuleFixtures is Test, Fixtures, Utilities, InvariantAsserts 
         accounting.penalize(noId, amount);
         module.updateDepositableValidatorsCount(noId);
     }
+
+    function addBond(uint256 nodeOperatorId, uint256 amount) internal {
+        vm.deal(address(module), amount);
+        vm.prank(address(module));
+        accounting.depositETH{ value: amount }(nodeOperatorId);
+    }
 }

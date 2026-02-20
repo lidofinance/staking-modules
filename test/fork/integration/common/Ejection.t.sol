@@ -4,8 +4,10 @@
 pragma solidity 0.8.33;
 
 import { IStakingModule } from "../../../../src/interfaces/IStakingModule.sol";
+import { IStakingRouter } from "../../../../src/interfaces/IStakingRouter.sol";
 import { IWithdrawalVault } from "../../../../src/interfaces/IWithdrawalVault.sol";
-import { ModuleTypeBase, CSMIntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
+import { IEjector } from "../../../../src/interfaces/IEjector.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
 
 abstract contract EjectionTestBase is ModuleTypeBase {
     uint256 internal nodeOperatorId;
@@ -33,48 +35,6 @@ abstract contract EjectionTestBase is ModuleTypeBase {
     }
 
     function test_voluntaryEject() public {
-        uint256 startFrom;
-        (nodeOperatorId, startFrom) = integrationHelpers.getDepositedNodeOperatorWithSequentialActiveKeys(
-            nextAddress(),
-            KEYS_COUNT
-        );
-
-        uint256 initialBalance = 1 ether;
-        address operatorOwner = module.getNodeOperatorOwner(nodeOperatorId);
-        vm.deal(operatorOwner, initialBalance);
-        uint256 expectedFee = IWithdrawalVault(locator.withdrawalVault()).getWithdrawalRequestFee();
-
-        uint256 VOLUNTARY_EXIT_TYPE_ID = ejector.VOLUNTARY_EXIT_TYPE_ID();
-        address withdrawalVault = locator.withdrawalVault();
-        bytes[] memory pubkeys = new bytes[](KEYS_COUNT);
-
-        for (uint256 i = 0; i < KEYS_COUNT; i++) {
-            pubkeys[i] = module.getSigningKeys(nodeOperatorId, startFrom + i, 1);
-        }
-        for (uint256 i = 0; i < KEYS_COUNT; i++) {
-            vm.expectEmit(withdrawalVault);
-            emit IWithdrawalVault.WithdrawalRequestAdded(_prepareWithdrawalRequestData(pubkeys[i]));
-            vm.expectCall(
-                address(module),
-                abi.encodeWithSelector(
-                    IStakingModule.onValidatorExitTriggered.selector,
-                    nodeOperatorId,
-                    pubkeys[i],
-                    expectedFee,
-                    VOLUNTARY_EXIT_TYPE_ID
-                )
-            );
-        }
-
-        vm.prank(operatorOwner);
-        vm.startSnapshotGas("Ejector.voluntaryEject");
-        ejector.voluntaryEject{ value: initialBalance }(nodeOperatorId, startFrom, KEYS_COUNT, operatorOwner);
-        vm.stopSnapshotGas();
-
-        vm.assertEq(operatorOwner.balance, initialBalance - expectedFee * KEYS_COUNT);
-    }
-
-    function test_voluntaryEjectByArray() public {
         nodeOperatorId = integrationHelpers.getDepositedNodeOperator(nextAddress(), KEYS_COUNT);
 
         uint256 initialBalance = 1 ether;
@@ -103,6 +63,14 @@ abstract contract EjectionTestBase is ModuleTypeBase {
         }
 
         for (uint256 i = 0; i < KEYS_COUNT; i++) {
+            vm.expectEmit(address(ejector));
+            emit IEjector.VoluntaryEjectionRequested({
+                nodeOperatorId: nodeOperatorId,
+                pubkey: pubkeys[i],
+                refundRecipient: operatorOwner
+            });
+        }
+        for (uint256 i = 0; i < KEYS_COUNT; i++) {
             vm.expectEmit(withdrawalVault);
             emit IWithdrawalVault.WithdrawalRequestAdded(_prepareWithdrawalRequestData(pubkeys[i]));
             vm.expectCall(
@@ -117,19 +85,31 @@ abstract contract EjectionTestBase is ModuleTypeBase {
             );
         }
         vm.prank(operatorOwner);
-        vm.startSnapshotGas("Ejector.voluntaryEjectByArray");
-        ejector.voluntaryEjectByArray{ value: initialBalance }(nodeOperatorId, keyIds, operatorOwner);
+        vm.startSnapshotGas("ejector.voluntaryEject");
+        ejector.voluntaryEject{ value: initialBalance }(nodeOperatorId, keyIds, operatorOwner);
         vm.stopSnapshotGas();
 
         vm.assertEq(operatorOwner.balance, initialBalance - expectedFee * KEYS_COUNT);
+        uint256 moduleId = findModule();
+        assertEq(ejector.stakingModuleId(), moduleId);
+        IStakingRouter.StakingModule memory moduleInfo = stakingRouter.getStakingModule(moduleId);
+        assertEq(moduleInfo.stakingModuleAddress, address(module));
     }
 }
 
 contract EjectionTestCSM is EjectionTestBase, CSMIntegrationBase {}
 
+contract EjectionTestCSM0x02 is EjectionTestBase, CSM0x02IntegrationBase {}
+
 contract EjectionTestCurated is EjectionTestBase, CuratedIntegrationBase {}
 
 contract EjectionTest10KeysCSM is EjectionTestBase, CSMIntegrationBase {
+    constructor() {
+        KEYS_COUNT = 10;
+    }
+}
+
+contract EjectionTest10KeysCSM0x02 is EjectionTestBase, CSM0x02IntegrationBase {
     constructor() {
         KEYS_COUNT = 10;
     }

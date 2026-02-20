@@ -48,6 +48,7 @@ interface IFeeDistributor is IAssetRecovererLib {
     error ZeroAdminAddress();
     error ZeroOracleAddress();
     error ZeroRebateRecipientAddress();
+    error SameRebateRecipientAddress();
     error SenderIsNotAccounting();
     error SenderIsNotOracle();
 
@@ -59,8 +60,6 @@ interface IFeeDistributor is IAssetRecovererLib {
     error InvalidProof();
     error FeeSharesDecrease();
     error NotEnoughShares();
-
-    function RECOVERER_ROLE() external view returns (bytes32);
 
     function STETH() external view returns (IStETH);
 

@@ -386,6 +386,24 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         module.reportRegularWithdrawnValidators(validatorInfos);
     }
 
+    function test_reportRegularWithdrawnValidators_revertWhen_SlashingPenaltyPresent() public assertInvariants {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 154,
+            isSlashed: false
+        });
+
+        vm.expectRevert(IBaseModule.InvalidWithdrawnValidatorInfo.selector, address(module));
+        module.reportRegularWithdrawnValidators(validatorInfos);
+    }
+
     function test_reportSlashedWithdrawnValidators_slashingPenaltyApplied() public assertInvariants {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();

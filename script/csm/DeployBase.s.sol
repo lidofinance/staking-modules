@@ -30,9 +30,8 @@ import { Dummy } from "../utils/Dummy.sol";
 import { CommonScriptUtils } from "../utils/Common.sol";
 import { GIndex } from "../../src/lib/GIndex.sol";
 import { Slot } from "../../src/lib/Types.sol";
-import { VettedGateFactory } from "../../src/VettedGateFactory.sol";
+import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 import { ExitPenalties } from "../../src/ExitPenalties.sol";
-import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 
 struct DeployParams {
     // Lido addresses
@@ -69,7 +68,6 @@ struct DeployParams {
     address setResetBondCurveAddress;
     address chargePenaltyRecipient;
     // Module
-    uint256 stakingModuleId;
     bytes32 moduleType;
     address generalDelayedPenaltyReporter;
     uint8 topUpQueueLimit;
@@ -92,6 +90,7 @@ struct DeployParams {
     uint256 defaultExitDelayFee;
     uint256 defaultMaxElWithdrawalRequestFee;
     // VettedGate
+    // TODO: Legacy-only field. Kept only for SimulateVote.upgrade() END_REFERRAL_SEASON_ROLE revoke.
     address identifiedCommunityStakersGateManager;
     uint256 identifiedCommunityStakersGateCurveId;
     bytes32 identifiedCommunityStakersGateTreeRoot;
@@ -144,7 +143,7 @@ abstract contract DeployBase is Script {
     Verifier public verifier;
     address public gateSeal;
     PermissionlessGate public permissionlessGate;
-    VettedGateFactory public vettedGateFactory;
+    MerkleGateFactory public vettedGateFactory;
     VettedGate public vettedGate;
     HashConsensus public hashConsensus;
     ParametersRegistry public parametersRegistry;
@@ -190,7 +189,32 @@ abstract contract DeployBase is Script {
 
         {
             ParametersRegistry parametersRegistryImpl = new ParametersRegistry(config.queueLowestPriority);
-            parametersRegistry = ParametersRegistry(_deployProxy(config.proxyAdmin, address(parametersRegistryImpl)));
+            IParametersRegistry.InitializationData memory parametersRegistryData = IParametersRegistry
+                .InitializationData({
+                    defaultKeyRemovalCharge: config.defaultKeyRemovalCharge,
+                    defaultGeneralDelayedPenaltyAdditionalFine: config.defaultGeneralDelayedPenaltyAdditionalFine,
+                    defaultKeysLimit: config.defaultKeysLimit,
+                    defaultRewardShare: config.defaultRewardShareBP,
+                    defaultPerformanceLeeway: config.defaultAvgPerfLeewayBP,
+                    defaultStrikesLifetime: config.defaultStrikesLifetimeFrames,
+                    defaultStrikesThreshold: config.defaultStrikesThreshold,
+                    defaultQueuePriority: config.defaultQueuePriority,
+                    defaultQueueMaxDeposits: config.defaultQueueMaxDeposits,
+                    defaultBadPerformancePenalty: config.defaultBadPerformancePenalty,
+                    defaultAttestationsWeight: config.defaultAttestationsWeight,
+                    defaultBlocksWeight: config.defaultBlocksWeight,
+                    defaultSyncWeight: config.defaultSyncWeight,
+                    defaultAllowedExitDelay: config.defaultAllowedExitDelay,
+                    defaultExitDelayFee: config.defaultExitDelayFee,
+                    defaultMaxElWithdrawalRequestFee: config.defaultMaxElWithdrawalRequestFee
+                });
+            parametersRegistry = ParametersRegistry(
+                _deployProxy(
+                    config.proxyAdmin,
+                    address(parametersRegistryImpl),
+                    abi.encodeCall(ParametersRegistry.initialize, (deployer, parametersRegistryData))
+                )
+            );
 
             Dummy dummyImpl = new Dummy();
 
@@ -205,7 +229,13 @@ abstract contract DeployBase is Script {
                 accounting: address(accounting),
                 oracle: address(oracle)
             });
-            feeDistributor = FeeDistributor(_deployProxy(config.proxyAdmin, address(feeDistributorImpl)));
+            feeDistributor = FeeDistributor(
+                _deployProxy(
+                    config.proxyAdmin,
+                    address(feeDistributorImpl),
+                    abi.encodeCall(FeeDistributor.initialize, (deployer, config.aragonAgent))
+                )
+            );
 
             // prettier-ignore
             verifier = new Verifier({
@@ -233,28 +263,6 @@ abstract contract DeployBase is Script {
                 admin: deployer
             });
 
-            parametersRegistry.initialize({
-                admin: deployer,
-                data: IParametersRegistry.InitializationData({
-                    defaultKeyRemovalCharge: config.defaultKeyRemovalCharge,
-                    defaultGeneralDelayedPenaltyAdditionalFine: config.defaultGeneralDelayedPenaltyAdditionalFine,
-                    defaultKeysLimit: config.defaultKeysLimit,
-                    defaultRewardShare: config.defaultRewardShareBP,
-                    defaultPerformanceLeeway: config.defaultAvgPerfLeewayBP,
-                    defaultStrikesLifetime: config.defaultStrikesLifetimeFrames,
-                    defaultStrikesThreshold: config.defaultStrikesThreshold,
-                    defaultQueuePriority: config.defaultQueuePriority,
-                    defaultQueueMaxDeposits: config.defaultQueueMaxDeposits,
-                    defaultBadPerformancePenalty: config.defaultBadPerformancePenalty,
-                    defaultAttestationsWeight: config.defaultAttestationsWeight,
-                    defaultBlocksWeight: config.defaultBlocksWeight,
-                    defaultSyncWeight: config.defaultSyncWeight,
-                    defaultAllowedExitDelay: config.defaultAllowedExitDelay,
-                    defaultExitDelayFee: config.defaultExitDelayFee,
-                    defaultMaxElWithdrawalRequestFee: config.defaultMaxElWithdrawalRequestFee
-                })
-            });
-
             Accounting accountingImpl = new Accounting({
                 lidoLocator: config.lidoLocatorAddress,
                 module: address(csm),
@@ -263,39 +271,34 @@ abstract contract DeployBase is Script {
                 maxBondLockPeriod: config.maxBondLockPeriod
             });
 
+            IBondCurve.BondCurveIntervalInput[] memory defaultBondCurve = CommonScriptUtils
+                .arraysToBondCurveIntervalsInputs(config.defaultBondCurve);
             {
                 OssifiableProxy accountingProxy = OssifiableProxy(payable(address(accounting)));
-                accountingProxy.proxy__upgradeTo(address(accountingImpl));
+                accountingProxy.proxy__upgradeToAndCall(
+                    address(accountingImpl),
+                    abi.encodeCall(
+                        Accounting.initialize,
+                        (defaultBondCurve, deployer, config.bondLockPeriod, config.chargePenaltyRecipient)
+                    )
+                );
                 accountingProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
-            IBondCurve.BondCurveIntervalInput[] memory defaultBondCurve = CommonScriptUtils
-                .arraysToBondCurveIntervalsInputs(config.defaultBondCurve);
-            accounting.initialize({
-                bondCurve: defaultBondCurve,
-                admin: deployer,
-                bondLockPeriod: config.bondLockPeriod,
-                _chargePenaltyRecipient: config.chargePenaltyRecipient
-            });
-
             accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
 
-            IBondCurve.BondCurveIntervalInput[] memory legacyEaBondCurve = CommonScriptUtils
-                .arraysToBondCurveIntervalsInputs(config.legacyEaBondCurve);
-            accounting.addBondCurve(legacyEaBondCurve);
+            accounting.addBondCurve(CommonScriptUtils.arraysToBondCurveIntervalsInputs(config.legacyEaBondCurve));
 
             if (config.extraBondCurves.length > 0) {
                 for (uint256 i = 0; i < config.extraBondCurves.length; i++) {
-                    IBondCurve.BondCurveIntervalInput[] memory extraBondCurve = CommonScriptUtils
-                        .arraysToBondCurveIntervalsInputs(config.extraBondCurves[i]);
-                    accounting.addBondCurve(extraBondCurve);
+                    accounting.addBondCurve(
+                        CommonScriptUtils.arraysToBondCurveIntervalsInputs(config.extraBondCurves[i])
+                    );
                 }
             }
 
-            IBondCurve.BondCurveIntervalInput[] memory identifiedCommunityStakersGateBondCurve = CommonScriptUtils
-                .arraysToBondCurveIntervalsInputs(config.identifiedCommunityStakersGateBondCurve);
             uint256 identifiedCommunityStakersGateBondCurveId = accounting.addBondCurve(
-                identifiedCommunityStakersGateBondCurve
+                CommonScriptUtils.arraysToBondCurveIntervalsInputs(config.identifiedCommunityStakersGateBondCurve)
             );
             accounting.revokeRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
 
@@ -311,26 +314,18 @@ abstract contract DeployBase is Script {
 
             {
                 OssifiableProxy csmProxy = OssifiableProxy(payable(address(csm)));
-                csmProxy.proxy__upgradeTo(address(csmImpl));
+                csmProxy.proxy__upgradeToAndCall(
+                    address(csmImpl),
+                    abi.encodeCall(CSModule.initialize, (deployer, config.topUpQueueLimit))
+                );
                 csmProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
-            csm.initialize({ admin: deployer, topUpQueueLimit: config.topUpQueueLimit });
-
-            ValidatorStrikes strikesImpl = new ValidatorStrikes({
-                module: address(csm),
-                oracle: address(oracle),
-                exitPenalties: address(exitPenalties),
-                parametersRegistry: address(parametersRegistry)
-            });
+            ValidatorStrikes strikesImpl = new ValidatorStrikes({ module: address(csm), oracle: address(oracle) });
 
             strikes = ValidatorStrikes(_deployProxy(config.proxyAdmin, address(strikesImpl)));
 
-            ExitPenalties exitPenaltiesImpl = new ExitPenalties(
-                address(csm),
-                address(parametersRegistry),
-                address(strikes)
-            );
+            ExitPenalties exitPenaltiesImpl = new ExitPenalties(address(csm), address(strikes));
 
             {
                 OssifiableProxy exitPenaltiesProxy = OssifiableProxy(payable(address(exitPenalties)));
@@ -338,21 +333,27 @@ abstract contract DeployBase is Script {
                 exitPenaltiesProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
-            ejector = new Ejector(address(csm), address(strikes), config.stakingModuleId, deployer);
+            ejector = new Ejector(address(csm), address(strikes), deployer);
 
             strikes.initialize(deployer, address(ejector));
 
             permissionlessGate = new PermissionlessGate(address(csm), deployer);
 
             address vettedGateImpl = address(new VettedGate(address(csm)));
-            vettedGateFactory = new VettedGateFactory(vettedGateImpl);
+            vettedGateFactory = new MerkleGateFactory(vettedGateImpl);
             vettedGate = VettedGate(
-                vettedGateFactory.create({
-                    curveId: identifiedCommunityStakersGateBondCurveId,
-                    treeRoot: config.identifiedCommunityStakersGateTreeRoot,
-                    treeCid: config.identifiedCommunityStakersGateTreeCid,
-                    admin: deployer
-                })
+                vettedGateFactory.create(
+                    abi.encodeCall(
+                        VettedGate.initialize,
+                        (
+                            identifiedCommunityStakersGateBondCurveId,
+                            config.identifiedCommunityStakersGateTreeRoot,
+                            config.identifiedCommunityStakersGateTreeCid,
+                            deployer
+                        )
+                    ),
+                    deployer
+                )
             );
 
             {
@@ -413,8 +414,6 @@ abstract contract DeployBase is Script {
                 config.identifiedCommunityStakersGateMaxElWithdrawalRequestFee
             );
 
-            feeDistributor.initialize({ admin: address(deployer), _rebateRecipient: config.aragonAgent });
-
             hashConsensus = new HashConsensus({
                 slotsPerEpoch: config.slotsPerEpoch,
                 secondsPerSlot: config.secondsPerSlot,
@@ -440,15 +439,12 @@ abstract contract DeployBase is Script {
 
             {
                 OssifiableProxy oracleProxy = OssifiableProxy(payable(address(oracle)));
-                oracleProxy.proxy__upgradeTo(address(oracleImpl));
+                oracleProxy.proxy__upgradeToAndCall(
+                    address(oracleImpl),
+                    abi.encodeCall(FeeOracle.initialize, (deployer, address(hashConsensus), config.consensusVersion))
+                );
                 oracleProxy.proxy__changeAdmin(config.proxyAdmin);
             }
-
-            oracle.initialize({
-                admin: address(deployer),
-                consensusContract: address(hashConsensus),
-                consensusVersion: config.consensusVersion
-            });
 
             if (config.gateSealFactory != address(0)) {
                 address[] memory sealables = new address[](6);
@@ -509,8 +505,6 @@ abstract contract DeployBase is Script {
 
             vettedGate.grantRole(vettedGate.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             vettedGate.grantRole(vettedGate.SET_TREE_ROLE(), config.easyTrackEVMScriptExecutor);
-            vettedGate.grantRole(vettedGate.START_REFERRAL_SEASON_ROLE(), config.aragonAgent);
-            vettedGate.grantRole(vettedGate.END_REFERRAL_SEASON_ROLE(), config.identifiedCommunityStakersGateManager);
             vettedGate.revokeRole(vettedGate.DEFAULT_ADMIN_ROLE(), deployer);
 
             permissionlessGate.grantRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
@@ -568,9 +562,13 @@ abstract contract DeployBase is Script {
     }
 
     function _deployProxy(address admin, address implementation) internal returns (address) {
+        return _deployProxy(admin, implementation, new bytes(0));
+    }
+
+    function _deployProxy(address admin, address implementation, bytes memory initCalldata) internal returns (address) {
         OssifiableProxy proxy = new OssifiableProxy({
             implementation_: implementation,
-            data_: new bytes(0),
+            data_: initCalldata,
             admin_: admin
         });
 
@@ -610,9 +608,5 @@ abstract contract DeployBase is Script {
         ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         verifier.grantRole(verifier.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         strikes.grantRole(strikes.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
-    }
-
-    function _nextStakingModuleId(address locatorAddress) internal view returns (uint256) {
-        return IStakingRouter(ILidoLocator(locatorAddress).stakingRouter()).getStakingModulesCount() + 1;
     }
 }
