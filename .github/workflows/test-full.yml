@@ -87,14 +87,22 @@ jobs:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
-      - name: Run tests for current Curated state on fork
-        run: just test-curated-current
-        env:
-          CHAIN: mainnet
-          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+      # TODO: Enable later after mainnet deployment
+      # - name: Run tests for current Curated state on fork
+      #   run: just test-curated-current
+      #   env:
+      #     CHAIN: mainnet
+      #     RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
-      - name: Run tests for current CSM0x02 state on fork
-        run: just test-csm0x02-current
+      # TODO: Enable later after mainnet deployment
+      # - name: Run tests for current CSM0x02 state on fork
+      #   run: just test-csm0x02-current
+      #   env:
+      #     CHAIN: mainnet
+      #     RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+
+      - name: Run local deployment tests for CSM v3 deploy
+        run: just test-csm-v3-only-deploy
         env:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}

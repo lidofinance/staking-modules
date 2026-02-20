@@ -76,7 +76,7 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
 }
 
 contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
-    function test_state() public view {
+    function test_state_onlyFull() public view {
         assertEq(parametersRegistry.defaultKeyRemovalCharge(), deployParams.defaultKeyRemovalCharge);
         assertEq(
             parametersRegistry.defaultGeneralDelayedPenaltyAdditionalFine(),
