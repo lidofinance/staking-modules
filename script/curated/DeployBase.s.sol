@@ -21,7 +21,6 @@ import { CuratedGate } from "../../src/CuratedGate.sol";
 import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 
 import { ILidoLocator } from "../../src/interfaces/ILidoLocator.sol";
-import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 import { IGateSealFactory } from "../../src/interfaces/IGateSealFactory.sol";
 import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
 import { IVerifier } from "../../src/interfaces/IVerifier.sol";
@@ -92,7 +91,6 @@ struct CuratedDeployParams {
     uint256 bondLockPeriod;
     address chargePenaltyRecipient;
     // Module
-    uint256 stakingModuleId;
     bytes32 moduleType;
     address generalDelayedPenaltyReporter;
     // ParametersRegistry
@@ -656,9 +654,5 @@ abstract contract DeployBase is Script {
         ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         verifier.grantRole(verifier.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         strikes.grantRole(strikes.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
-    }
-
-    function _nextStakingModuleId(address locatorAddress) internal view returns (uint256) {
-        return IStakingRouter(ILidoLocator(locatorAddress).stakingRouter()).getStakingModulesCount() + 1;
     }
 }
