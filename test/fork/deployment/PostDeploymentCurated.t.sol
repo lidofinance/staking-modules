@@ -47,6 +47,11 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         for (uint256 i = 0; i < gatesCount; ++i) {
             assertTrue(module.hasRole(role, curatedGates[i]), "gate missing module role");
         }
+        assertEq(
+            module.getRoleMemberCount(curatedModule.OPERATOR_ADDRESSES_ADMIN_ROLE()),
+            0,
+            "unexpected operator addresses admin role members"
+        );
     }
 
     function test_proxy_onlyFull() public {
@@ -80,10 +85,31 @@ contract MetaRegistryDeploymentTest is DeploymentBaseTest {
 
         bytes32 setterRole = metaRegistry.SET_OPERATOR_INFO_ROLE();
         uint256 gatesCount = curatedGates.length;
-        assertEq(metaRegistry.getRoleMemberCount(setterRole), gatesCount);
+        assertEq(metaRegistry.getRoleMemberCount(setterRole), gatesCount + 1, "unexpected setter role members count"); // +1 for setOperatorInfoManager
         for (uint256 i = 0; i < gatesCount; ++i) {
             assertTrue(metaRegistry.hasRole(setterRole, curatedGates[i]), "gate missing metaRegistry setter role");
         }
+        assertTrue(
+            metaRegistry.hasRole(setterRole, deployParams.setOperatorInfoManager),
+            "missing setOperatorInfoManager role"
+        );
+
+        assertTrue(
+            metaRegistry.hasRole(metaRegistry.MANAGE_OPERATOR_GROUPS_ROLE(), deployParams.easyTrackEVMScriptExecutor),
+            "missing easyTrackEVMScriptExecutor manage operator groups role"
+        );
+
+        assertEq(
+            metaRegistry.getRoleMemberCount(metaRegistry.MANAGE_OPERATOR_GROUPS_ROLE()),
+            1,
+            "unexpected manage operator groups role members count"
+        );
+
+        assertEq(
+            metaRegistry.getRoleMemberCount(metaRegistry.SET_BOND_CURVE_WEIGHT_ROLE()),
+            0,
+            "unexpected set bond curve weight role members count"
+        );
     }
 }
 
@@ -226,13 +252,17 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
                 assertTrue(gate.hasRole(gate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent), "missing aragon admin");
 
                 // Operational roles
-                assertTrue(gate.hasRole(gate.PAUSE_ROLE(), deployParams.resealManager), "missing pause role");
-                assertTrue(gate.hasRole(gate.RESUME_ROLE(), deployParams.resealManager), "missing resume role");
                 assertTrue(
                     gate.hasRole(gate.SET_TREE_ROLE(), deployParams.easyTrackEVMScriptExecutor),
                     "missing set tree role"
                 );
-                assertTrue(gate.hasRole(gate.PAUSE_ROLE(), address(gateSeal)), "missing gate seal pause role");
+                assertEq(gate.getRoleMemberCount(gate.SET_TREE_ROLE()), 1, "unexpected set tree role members count");
+
+                assertTrue(gate.hasRole(gate.PAUSE_ROLE(), deployParams.curatedGatePauseManager), "missing pause role");
+                assertEq(gate.getRoleMemberCount(gate.PAUSE_ROLE()), 1, "unexpected pause role members count");
+
+                assertEq(gate.getRoleMemberCount(gate.RESUME_ROLE()), 0, "unexpected resume role members count");
+                assertEq(gate.getRoleMemberCount(gate.RECOVERER_ROLE()), 0, "unexpected recoverer role members count");
 
                 bool hasCustomCurve = gate.curveId() != defaultCurveId;
                 assertEq(
@@ -269,16 +299,13 @@ contract GateSealDeploymentTest is DeploymentBaseTest {
 
     function test_sealables() public view {
         address[] memory sealables = gateSeal.get_sealables();
-        uint256 expectedSealables = 5 + curatedGates.length;
+        uint256 expectedSealables = 5;
         assertEq(sealables.length, expectedSealables, "sealables length");
         assertEq(sealables[0], address(module), "module mismatch");
         assertEq(sealables[1], address(accounting), "accounting mismatch");
         assertEq(sealables[2], address(oracle), "oracle mismatch");
         assertEq(sealables[3], address(verifier), "verifier mismatch");
         assertEq(sealables[4], address(ejector), "ejector mismatch");
-        for (uint256 i = 0; i < curatedGates.length; ++i) {
-            assertEq(sealables[5 + i], curatedGates[i], "gate mismatch");
-        }
     }
 
     function test_roles() public view {
@@ -287,9 +314,5 @@ contract GateSealDeploymentTest is DeploymentBaseTest {
         assertTrue(oracle.hasRole(oracle.PAUSE_ROLE(), address(gateSeal)), "oracle pause role");
         assertTrue(verifier.hasRole(verifier.PAUSE_ROLE(), address(gateSeal)), "verifier pause role");
         assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), address(gateSeal)), "ejector pause role");
-        for (uint256 i = 0; i < curatedGates.length; ++i) {
-            CuratedGate gate = CuratedGate(curatedGates[i]);
-            assertTrue(gate.hasRole(gate.PAUSE_ROLE(), address(gateSeal)), "gate pause role");
-        }
     }
 }
