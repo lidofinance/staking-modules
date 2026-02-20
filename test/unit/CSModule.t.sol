@@ -777,15 +777,15 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
         bytes[] memory pubkeys = BytesArr(slice(packedPubkeys, 0 * 48, 48), slice(packedPubkeys, 1 * 48, 48));
         uint256[] memory allocations = csm.allocateDeposits({
-            maxDepositAmount: 5,
+            maxDepositAmount: 5 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(0, 1),
             operatorIds: UintArr(0, 0),
-            topUpLimits: UintArr(3, 3)
+            topUpLimits: UintArr(3 ether, 3 ether)
         });
 
         assertEq(_getTopUpQueueLength(), 2);
-        assertEq(allocations, UintArr(3, 2));
+        assertEq(allocations, UintArr(3 ether, 2 ether));
 
         uint256 noId;
         uint256 keyIndex;
@@ -804,15 +804,15 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
         bytes[] memory pubkeys = BytesArr(slice(packedPubkeys, 0 * 48, 48), slice(packedPubkeys, 1 * 48, 48));
         uint256[] memory allocations = csm.allocateDeposits({
-            maxDepositAmount: 4,
+            maxDepositAmount: 4 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(0, 1),
             operatorIds: UintArr(0, 0),
-            topUpLimits: UintArr(2, 1)
+            topUpLimits: UintArr(2 ether, 1 ether)
         });
 
         assertEq(_getTopUpQueueLength(), 1);
-        assertEq(allocations, UintArr(2, 1));
+        assertEq(allocations, UintArr(2 ether, 1 ether));
 
         uint256 noId;
         uint256 keyIndex;
@@ -832,14 +832,14 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
         bytes[] memory pubkeys = BytesArr(slice(packedPubkeys, 0 * 48, 48), slice(packedPubkeys, 1 * 48, 48));
         uint256[] memory allocations = csm.allocateDeposits({
-            maxDepositAmount: 2,
+            maxDepositAmount: 2 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(0, 1),
             operatorIds: UintArr(0, 0),
-            topUpLimits: UintArr(1, 1)
+            topUpLimits: UintArr(1 ether, 1 ether)
         });
 
-        assertEq(allocations, UintArr(1, 1));
+        assertEq(allocations, UintArr(1 ether, 1 ether));
 
         assertEq(_getTopUpQueueLength(), 1);
 
@@ -860,15 +860,33 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
         bytes[] memory pubkeys = BytesArr(slice(packedPubkeys, 0 * 48, 48), slice(packedPubkeys, 1 * 48, 48));
         uint256[] memory allocations = csm.allocateDeposits({
-            maxDepositAmount: 1,
+            maxDepositAmount: 1 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(0, 1),
             operatorIds: UintArr(0, 0),
-            topUpLimits: UintArr(1, 0)
+            topUpLimits: UintArr(1 ether, 0)
         });
 
-        assertEq(allocations, UintArr(1, 0));
+        assertEq(allocations, UintArr(1 ether, 0));
 
+        assertEq(_getTopUpQueueLength(), 0);
+    }
+
+    function test_topUp_skipsSubEtherTopUpLimits() public {
+        createNodeOperator(2);
+        csm.obtainDepositData(2, "");
+
+        bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
+        bytes[] memory pubkeys = BytesArr(slice(packedPubkeys, 0 * 48, 48), slice(packedPubkeys, 1 * 48, 48));
+        uint256[] memory allocations = csm.allocateDeposits({
+            maxDepositAmount: 1 ether,
+            pubkeys: pubkeys,
+            keyIndices: UintArr(0, 1),
+            operatorIds: UintArr(0, 0),
+            topUpLimits: UintArr(1 ether - 1 gwei, 1 ether)
+        });
+
+        assertEq(allocations, UintArr(0, 1 ether));
         assertEq(_getTopUpQueueLength(), 0);
     }
 
@@ -1014,11 +1032,11 @@ contract CSMTopUpQueue is CSMCommon {
         bytes[] memory pubkeys = BytesArr(key, key);
         vm.expectRevert(ICSModule.UnexpectedExtraKey.selector);
         csm.allocateDeposits({
-            maxDepositAmount: 3,
+            maxDepositAmount: 3 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(0, 0),
             operatorIds: UintArr(0, 0),
-            topUpLimits: UintArr(4, 4)
+            topUpLimits: UintArr(4 ether, 4 ether)
         });
     }
 
@@ -1032,30 +1050,30 @@ contract CSMTopUpQueue is CSMCommon {
         // Operator ID mismatch
         vm.expectRevert(ICSModule.InvalidTopUpOrder.selector);
         csm.allocateDeposits({
-            maxDepositAmount: 3,
+            maxDepositAmount: 3 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(0),
             operatorIds: UintArr(1),
-            topUpLimits: UintArr(4)
+            topUpLimits: UintArr(4 ether)
         });
 
         // Operator key index mismatch
         vm.expectRevert(ICSModule.InvalidTopUpOrder.selector);
         csm.allocateDeposits({
-            maxDepositAmount: 3,
+            maxDepositAmount: 3 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(1),
             operatorIds: UintArr(0),
-            topUpLimits: UintArr(4)
+            topUpLimits: UintArr(4 ether)
         });
 
         vm.expectRevert(SigningKeys.InvalidSigningKey.selector);
         csm.allocateDeposits({
-            maxDepositAmount: 3,
+            maxDepositAmount: 3 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(0),
             operatorIds: UintArr(0),
-            topUpLimits: UintArr(4)
+            topUpLimits: UintArr(4 ether)
         });
     }
 
@@ -1070,11 +1088,11 @@ contract CSMTopUpQueue is CSMCommon {
         pubkeys[2] = slice(packedPubkeys, 2 * 48, 48);
         vm.expectRevert(ICSModule.UnexpectedExtraKey.selector);
         csm.allocateDeposits({
-            maxDepositAmount: 1,
+            maxDepositAmount: 1 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(0, 1, 2),
             operatorIds: UintArr(0, 0, 0),
-            topUpLimits: UintArr(1, 4, 0)
+            topUpLimits: UintArr(1 ether, 4 ether, 0)
         });
     }
 
@@ -1084,11 +1102,11 @@ contract CSMTopUpQueue is CSMCommon {
 
         vm.expectRevert(IBaseModule.InvalidInput.selector);
         csm.allocateDeposits({
-            maxDepositAmount: 1,
+            maxDepositAmount: 1 ether,
             pubkeys: new bytes[](0),
             keyIndices: UintArr(0),
             operatorIds: UintArr(0),
-            topUpLimits: UintArr(1)
+            topUpLimits: UintArr(1 ether)
         });
     }
 
@@ -1099,11 +1117,11 @@ contract CSMTopUpQueue is CSMCommon {
         bytes[] memory pubkeys = BytesArr(new bytes(47));
         vm.expectRevert(SigningKeys.InvalidSigningKey.selector);
         csm.allocateDeposits({
-            maxDepositAmount: 1,
+            maxDepositAmount: 1 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(0),
             operatorIds: UintArr(0),
-            topUpLimits: UintArr(1)
+            topUpLimits: UintArr(1 ether)
         });
     }
 
@@ -1137,11 +1155,11 @@ contract CSMTopUpQueue is CSMCommon {
         assertEq(csm.getKeysForTopUp(7), keys);
 
         csm.allocateDeposits({
-            maxDepositAmount: 3,
+            maxDepositAmount: 3 ether,
             pubkeys: BytesArr(keys[0], keys[1], keys[2]),
             keyIndices: UintArr(0, 1, 0),
             operatorIds: UintArr(0, 0, 1),
-            topUpLimits: UintArr(1, 1, 1)
+            topUpLimits: UintArr(1 ether, 1 ether, 1 ether)
         });
 
         keys = new bytes[](3);
@@ -1224,11 +1242,11 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
         bytes[] memory pubkeys = BytesArr(slice(packedPubkeys, 0 * 48, 48), slice(packedPubkeys, 1 * 48, 48));
         csm.allocateDeposits({
-            maxDepositAmount: 2,
+            maxDepositAmount: 2 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(0, 1),
             operatorIds: UintArr(0, 0),
-            topUpLimits: UintArr(1, 1)
+            topUpLimits: UintArr(1 ether, 1 ether)
         });
 
         assertEq(_getTopUpQueueLength(), 1);

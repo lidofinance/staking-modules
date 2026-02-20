@@ -14,6 +14,10 @@ import { SigningKeys } from "./SigningKeys.sol";
 /// @dev The library is used to reduce CSModule bytecode size.
 library TopUpQueueOps {
     using TopUpQueueLib for TopUpQueueLib.Queue;
+
+    // StakingRouter expects non-zero top-up allocations to be at least 1 ether.
+    uint256 internal constant TOP_UP_STEP = 1 ether;
+
     struct TopUpKeyParams {
         uint256[] keyIndices;
         uint256[] operatorIds;
@@ -62,13 +66,22 @@ library TopUpQueueOps {
 
             SigningKeys.verifySigningKey(item.noId(), item.keyIndex(), pubkeys[i]);
 
+            uint256 limit = _normalizeAmount(data.topUpLimits[i]);
+
             if (maxDepositAmount > 0) {
-                allocations[i] = Math.min(data.topUpLimits[i], maxDepositAmount);
+                allocations[i] = Math.min(limit, maxDepositAmount);
                 maxDepositAmount -= allocations[i];
             }
-            if (allocations[i] == data.topUpLimits[i]) {
+
+            if (allocations[i] == limit) {
                 topUpQueue.dequeue();
             } else if (i < keyCount - 1) revert ICSModule.UnexpectedExtraKey();
+        }
+    }
+
+    function _normalizeAmount(uint256 value) private pure returns (uint256 normalized) {
+        unchecked {
+            normalized = value - (value % TOP_UP_STEP);
         }
     }
 }

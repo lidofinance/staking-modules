@@ -430,6 +430,8 @@ library NodeOperatorOps {
                 uint256 remaining = perOperatorAllocations[operatorId] - perOperatorIncrements[operatorId];
                 if (remaining == 0) continue;
 
+                // Curated allocations are quantized to 1 ether, matching StakingRouter's
+                // expectation that non-zero top-up allocations are >= 1 ether.
                 uint256 limit = CuratedDepositAllocator.quantizeForTopUp(topUpLimits[i]);
                 if (limit == 0) continue;
 
