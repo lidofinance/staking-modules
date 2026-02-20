@@ -40,7 +40,8 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     uint256 internal constant MAX_BP = 10_000;
 
     /// @dev Minimum withdrawal amount as a ratio of total ether deposited to the validator,
-    ///      expressed in basis points (10 000 = 100%).
+    ///      expressed in basis points (10 000 = 100%). At ~3% top APY, losing >10% of balance
+    ///      requires ~3 years offline — implausible for any legitimately run validator.
     uint256 internal constant MIN_WITHDRAWAL_RATIO = 9000;
 
     uint64 public immutable SLOTS_PER_EPOCH;
