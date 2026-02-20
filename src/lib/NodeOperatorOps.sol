@@ -162,6 +162,7 @@ library NodeOperatorOps {
         NodeOperator storage no = nodeOperators[nodeOperatorId];
         if (keyIndex >= no.totalDepositedKeys) revert IBaseModule.SigningKeysInvalidOffset();
 
+        // TODO: return. do not increase nonce above
         if (isConsolidationReported[sourceValidatorIndex]) revert IBaseModule.ConsolidationAlreadyReported();
         isConsolidationReported[sourceValidatorIndex] = true;
 

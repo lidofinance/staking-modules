@@ -263,6 +263,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     }
 
     // TODO: make historical version + check parent_root
+    // TODO: merge with target consolidation
     /// @inheritdoc IVerifier
     function processModuleSourceConsolidation(
         ProcessModuleSourceConsolidationInput calldata data
@@ -396,7 +397,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         // Verify the target's pubkey matches the module's key.
         {
             bytes memory pubkey = MODULE.getSigningKeys(data.moduleKeyId.nodeOperatorId, data.moduleKeyId.keyIndex, 1);
-
             if (keccak256(pubkey) != keccak256(data.targetAtAppliedBlock.object.pubkey)) {
                 revert InvalidPublicKey();
             }
@@ -409,8 +409,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         // Verify consolidation-applied block's header.
         {
             bytes32 trustedHeaderRoot = _getParentBlockRoot(data.consolidationAppliedBlock.rootsTimestamp);
-            bytes32 headerRoot = data.consolidationAppliedBlock.header.hashTreeRoot();
-            if (trustedHeaderRoot != headerRoot) revert InvalidBlockHeader();
+            if (trustedHeaderRoot != data.consolidationAppliedBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
         }
 
         // Verify consolidation-pending block header.

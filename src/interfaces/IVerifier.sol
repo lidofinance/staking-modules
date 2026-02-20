@@ -73,7 +73,7 @@ interface IVerifier {
         ModuleKeyId moduleKeyId;
         // Source validator's balance before the CL processes the pending consolidation. Used as a proxy for the
         // "withdrawal balance" in accounting/penalties, since consolidation is not an EL withdrawal.
-        BalanceWitness balance;
+        BalanceWitness sourceBalance;
         RecentHeaderWitness consolidationAppliedBlock;
         HistoricalHeaderWitness consolidationPendingBlock;
     }
@@ -89,7 +89,7 @@ interface IVerifier {
         // TODO: moduleKeyTargetId
         ModuleKeyId moduleKeyId;
         // Source validator's balance before the CL processes the pending consolidation.
-        BalanceWitness balance;
+        BalanceWitness sourceBalance;
         RecentHeaderWitness consolidationAppliedBlock;
         HistoricalHeaderWitness consolidationPendingBlock;
     }
