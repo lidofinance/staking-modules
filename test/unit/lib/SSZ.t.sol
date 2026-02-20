@@ -203,6 +203,7 @@ contract SSZTest is Utilities, Test {
         SSZ.hashTreeRoot(v);
     }
 
+    // TODO: add testFuzz for hashTreeRoot
     function test_BeaconBlockHeaderRoot() public view {
         // Can be obtained via /eth/v1/beacon/headers/{block_id}.
         BeaconBlockHeader memory h = BeaconBlockHeader({

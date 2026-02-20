@@ -69,6 +69,7 @@ interface IVerifier {
         ValidatorWitness sourceAtPendingBlock;
         // Source validator state proved against the consolidation-applied block.
         ValidatorWitness sourceAtAppliedBlock;
+        // TODO: moduleKeySourceId
         ModuleKeyId moduleKeyId;
         // Source validator's balance before the CL processes the pending consolidation. Used as a proxy for the
         // "withdrawal balance" in accounting/penalties, since consolidation is not an EL withdrawal.
@@ -85,6 +86,7 @@ interface IVerifier {
         ValidatorWitness sourceAtAppliedBlock;
         // Target validator (module's validator) proved against the consolidation-applied block for pubkey and index checks.
         ValidatorWitness targetAtAppliedBlock;
+        // TODO: moduleKeyTargetId
         ModuleKeyId moduleKeyId;
         // Source validator's balance before the CL processes the pending consolidation.
         BalanceWitness balance;
@@ -170,14 +172,14 @@ interface IVerifier {
     /// @param data @see ProcessSlashedInput
     function processSlashedProof(ProcessSlashedInput calldata data) external;
 
-    /// @notice Verify withdrawal proof and report withdrawal to the module for valid proofs
+    /// @notice Verify proof of a withdrawn validator and report it to the module
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
     /// determining the exact penalty amounts and calling the `IBaseModule.reportSlashedWithdrawnValidators` method via
     /// an EasyTrack motion.
     /// @param data @see ProcessWithdrawalInput
     function processWithdrawalProof(ProcessWithdrawalInput calldata data) external;
 
-    /// @notice Verify withdrawal proof against historical summaries data and report withdrawal to the module for valid proofs
+    /// @notice Verify proof of a withdrawn validator against historical summaries data and report it to the module
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
     /// determining the exact penalty amounts and calling the `IBaseModule.reportSlashedWithdrawnValidators` method via
     /// an EasyTrack motion.

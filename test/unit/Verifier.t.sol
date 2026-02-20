@@ -113,8 +113,8 @@ contract VerifierTestConstructor is VerifierTestBase {
         assertEq(GIndex.unwrap(verifier.GI_FIRST_HISTORICAL_SUMMARY_CURR()), GIndex.unwrap(pack(0xffff, 4)));
         assertEq(GIndex.unwrap(verifier.GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV()), GIndex.unwrap(pack(0x4000, 13)));
         assertEq(GIndex.unwrap(verifier.GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR()), GIndex.unwrap(pack(0x4001, 13)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_PREV()), GIndex.unwrap(pack(0x160000000000, 40)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_CURR()), GIndex.unwrap(pack(0x160000000001, 40)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCE_NODE_PREV()), GIndex.unwrap(pack(0x160000000000, 40)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCE_NODE_CURR()), GIndex.unwrap(pack(0x160000000001, 40)));
         assertEq(GIndex.unwrap(verifier.GI_FIRST_PENDING_CONSOLIDATION_PREV()), GIndex.unwrap(pack(0x3200000, 18)));
         assertEq(GIndex.unwrap(verifier.GI_FIRST_PENDING_CONSOLIDATION_CURR()), GIndex.unwrap(pack(0x3200001, 18)));
         assertEq(Slot.unwrap(verifier.FIRST_SUPPORTED_SLOT()), Slot.unwrap(firstSupportedSlot));

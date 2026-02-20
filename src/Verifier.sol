@@ -5,14 +5,15 @@ pragma solidity 0.8.33;
 
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
-import { BeaconBlockHeader, Slot, Validator, Withdrawal, PendingConsolidation } from "./lib/Types.sol";
 import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
+
+import { BeaconBlockHeader, Slot, Validator, Withdrawal, PendingConsolidation } from "./lib/Types.sol";
+import { WithdrawnValidatorLib } from "./lib/WithdrawnValidatorLib.sol";
 import { GIndex } from "./lib/GIndex.sol";
 import { SSZ } from "./lib/SSZ.sol";
 
-import { IVerifier } from "./interfaces/IVerifier.sol";
-import { WithdrawnValidatorLib } from "./lib/WithdrawnValidatorLib.sol";
 import { IBaseModule, WithdrawnValidatorInfo } from "./interfaces/IBaseModule.sol";
+import { IVerifier } from "./interfaces/IVerifier.sol";
 
 /// @notice Convert withdrawal amount to wei
 /// @param withdrawal Withdrawal struct
@@ -42,6 +43,8 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     /// @dev Minimum withdrawal amount as a ratio of total ether deposited to the validator,
     ///      expressed in basis points (10 000 = 100%). At ~3% top APY, losing >10% of balance
     ///      requires ~3 years offline — implausible for any legitimately run validator.
+    ///      We do not accept slashed validators in normal withdrawal processing, so we do not need to account for slashing penalties here.
+    ///      In case of unexpected network conditions, the DAO can always replace the verifier contract with one having a different threshold.
     uint256 internal constant MIN_WITHDRAWAL_RATIO = 9000;
 
     uint64 public immutable SLOTS_PER_EPOCH;
@@ -75,10 +78,10 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     GIndex public immutable GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR;
 
     /// @dev This index is relative to a state like: `BeaconState.balances[0]`.
-    GIndex public immutable GI_FIRST_BALANCES_NODE_PREV;
+    GIndex public immutable GI_FIRST_BALANCE_NODE_PREV;
 
     /// @dev This index is relative to a state like: `BeaconState.balances[0]`.
-    GIndex public immutable GI_FIRST_BALANCES_NODE_CURR;
+    GIndex public immutable GI_FIRST_BALANCE_NODE_CURR;
 
     /// @dev This index is relative to a state like: `BeaconState.pending_consolidations[0]`.
     GIndex public immutable GI_FIRST_PENDING_CONSOLIDATION_PREV;
@@ -139,8 +142,8 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV = gindices.gIFirstBlockRootInSummaryPrev;
         GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR = gindices.gIFirstBlockRootInSummaryCurr;
 
-        GI_FIRST_BALANCES_NODE_PREV = gindices.gIFirstBalanceNodePrev;
-        GI_FIRST_BALANCES_NODE_CURR = gindices.gIFirstBalanceNodeCurr;
+        GI_FIRST_BALANCE_NODE_PREV = gindices.gIFirstBalanceNodePrev;
+        GI_FIRST_BALANCE_NODE_CURR = gindices.gIFirstBalanceNodeCurr;
 
         GI_FIRST_PENDING_CONSOLIDATION_PREV = gindices.gIFirstPendingConsolidationPrev;
         GI_FIRST_PENDING_CONSOLIDATION_CURR = gindices.gIFirstPendingConsolidationCurr;
@@ -154,6 +157,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
     /// @inheritdoc IVerifier
     function processSlashedProof(ProcessSlashedInput calldata data) external whenResumed {
+        // TODO: RecentHeaderWitness memory recentBlock = data.recentBlock;
         if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) revert UnsupportedSlot(data.recentBlock.header.slot);
 
         {
@@ -165,7 +169,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
         {
             bytes memory pubkey = MODULE.getSigningKeys(data.moduleKeyId.nodeOperatorId, data.moduleKeyId.keyIndex, 1);
-
             if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
         }
 
@@ -192,7 +195,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
         {
             bytes memory pubkey = MODULE.getSigningKeys(data.moduleKeyId.nodeOperatorId, data.moduleKeyId.keyIndex, 1);
-
             if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
         }
 
@@ -200,12 +202,14 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             withdrawal: data.withdrawal,
             validator: data.validator,
             header: data.withdrawalBlock.header,
+            // TODO: data.moduleKeyId
             nodeOperatorId: data.moduleKeyId.nodeOperatorId,
             keyIndex: data.moduleKeyId.keyIndex
         });
 
         _reportSingleValidator(
             WithdrawnValidatorInfo({
+                // TODO: data.moduleKeyId
                 nodeOperatorId: data.moduleKeyId.nodeOperatorId,
                 keyIndex: data.moduleKeyId.keyIndex,
                 exitBalance: withdrawalAmount,
@@ -224,13 +228,11 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
         {
             bytes32 trustedHeaderRoot = _getParentBlockRoot(data.recentBlock.rootsTimestamp);
-            bytes32 headerRoot = data.recentBlock.header.hashTreeRoot();
-            if (trustedHeaderRoot != headerRoot) revert InvalidBlockHeader();
+            if (trustedHeaderRoot != data.recentBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
         }
 
         {
             bytes memory pubkey = MODULE.getSigningKeys(data.moduleKeyId.nodeOperatorId, data.moduleKeyId.keyIndex, 1);
-
             if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
         }
 
@@ -260,6 +262,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         );
     }
 
+    // TODO: make historical version + check parent_root
     /// @inheritdoc IVerifier
     function processModuleSourceConsolidation(
         ProcessModuleSourceConsolidationInput calldata data
@@ -274,8 +277,8 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         // Consolidation couldn't have been applied in both of these cases.
         if (data.sourceAtAppliedBlock.object.slashed) revert ValidatorIsSlashed();
         if (
-            _computeEpochAtSlot(data.consolidationAppliedBlock.header.slot) <
-            data.sourceAtAppliedBlock.object.withdrawableEpoch
+            data.sourceAtAppliedBlock.object.withdrawableEpoch >
+            _computeEpochAtSlot(data.consolidationAppliedBlock.header.slot)
         ) {
             revert ValidatorIsNotWithdrawable();
         }
@@ -293,8 +296,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         // Verify consolidation-applied block's header.
         {
             bytes32 trustedHeaderRoot = _getParentBlockRoot(data.consolidationAppliedBlock.rootsTimestamp);
-            bytes32 headerRoot = data.consolidationAppliedBlock.header.hashTreeRoot();
-            if (trustedHeaderRoot != headerRoot) revert InvalidBlockHeader();
+            if (trustedHeaderRoot != data.consolidationAppliedBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
         }
 
         // Verify consolidation-pending block header.
@@ -356,6 +358,8 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             })
         );
     }
+
+    // Continue the next review from here
 
     /// @inheritdoc IVerifier
     function processModuleTargetConsolidation(
@@ -501,17 +505,15 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         }
         if (withdrawal.object.withdrawalAddress != WITHDRAWAL_ADDRESS) revert InvalidWithdrawalAddress();
 
-        // The methods in this contract do not accept proofs of withdrawals from slashed validators. It is proposed that
-        // such withdrawals be processed off-chain and reported directly to the CSModule using EasyTracks.
         if (validator.object.slashed) revert ValidatorIsSlashed();
-        if (_computeEpochAtSlot(header.slot) < validator.object.withdrawableEpoch) revert ValidatorIsNotWithdrawable();
+        if (validator.object.withdrawableEpoch > _computeEpochAtSlot(header.slot)) revert ValidatorIsNotWithdrawable();
         if (withdrawal.object.validatorIndex != validator.index) revert InvalidValidatorIndex();
 
         // The full withdrawal threshold is derived from the total ether deposited to the validator (activation balance
         // + tracked top-ups/consolidations). The ratio (MIN_WITHDRAWAL_RATIO / MAX_BP) accounts for possible CL losses
         // such as inactivity penalties.
-        uint256 keyAddedBalance = MODULE.getKeyAddedBalance(nodeOperatorId, keyIndex);
-        uint256 totalDepositedEther = WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + keyAddedBalance;
+        uint256 totalDepositedEther = WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE +
+            MODULE.getKeyAddedBalance(nodeOperatorId, keyIndex);
         withdrawalAmount = withdrawal.object.amountWei();
         if (withdrawalAmount < (totalDepositedEther * MIN_WITHDRAWAL_RATIO) / MAX_BP) revert PartialWithdrawal();
 
@@ -578,7 +580,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     }
 
     function _getValidatorBalanceGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
-        GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_BALANCES_NODE_PREV : GI_FIRST_BALANCES_NODE_CURR;
+        GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_BALANCE_NODE_PREV : GI_FIRST_BALANCE_NODE_CURR;
         return gI.shr(offset);
     }
 
