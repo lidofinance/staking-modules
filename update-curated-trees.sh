@@ -12,8 +12,7 @@ set -e
 
 # Configuration
 RPC_URL="${RPC_URL:-http://127.0.0.1:8545}"
-CHAIN_ID="560048"  # Hoodi chain ID
-CM_DEPLOY_CONFIG="./artifacts/local/curated/deploy-hoodi.json"
+CM_DEPLOY_CONFIG="${DEPLOY_CONFIG:-./artifacts/local/curated/deploy-hoodi.json}"
 
 # Preload package to avoid prompts during loop
 echo ">>> Preloading csm-test-tree package..."
@@ -30,6 +29,7 @@ fi
 echo "=== Update Curated Gates Merkle Trees ==="
 echo "RPC_URL: $RPC_URL"
 echo "SENDER: $SENDER"
+echo "DEPLOY_CONFIG: $CM_DEPLOY_CONFIG"
 echo ""
 
 # Role hashes
@@ -114,19 +114,19 @@ for i in {1..7}; do
   echo "  Granting SET_TREE_ROLE..."
   cast send "$GATE" "grantRole(bytes32,address)" \
     "$SET_TREE_ROLE" "$SENDER" \
-    --rpc-url="$RPC_URL" --chain-id="$CHAIN_ID" --unlocked --from="$ADMIN" > /dev/null
+    --rpc-url="$RPC_URL" --unlocked --from="$ADMIN" > /dev/null
 
   # Update tree params
   echo "  Updating tree params..."
   cast send "$GATE" "setTreeParams(bytes32,string)" \
     "$ROOT" "$CID" \
-    --rpc-url="$RPC_URL" --chain-id="$CHAIN_ID" --unlocked --from="$SENDER" > /dev/null
+    --rpc-url="$RPC_URL" --unlocked --from="$SENDER" > /dev/null
 
   # Revoke SET_TREE_ROLE from SENDER
   echo "  Revoking SET_TREE_ROLE..."
   cast send "$GATE" "revokeRole(bytes32,address)" \
     "$SET_TREE_ROLE" "$SENDER" \
-    --rpc-url="$RPC_URL" --chain-id="$CHAIN_ID" --unlocked --from="$ADMIN" > /dev/null
+    --rpc-url="$RPC_URL" --unlocked --from="$ADMIN" > /dev/null
 
   RESULTS+=("Gate $i: $ROOT | $CID")
   echo "  Done"
