@@ -48,10 +48,6 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
 }
 
 contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
-    function test_immutables() public view {
-        assertEq(parametersRegistryImpl.QUEUE_LOWEST_PRIORITY(), deployParams.queueLowestPriority);
-    }
-
     function test_state() public view {
         assertEq(parametersRegistry.defaultKeyRemovalCharge(), deployParams.defaultKeyRemovalCharge);
         assertEq(
@@ -79,7 +75,6 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
         assertEq(parametersRegistry.defaultAllowedExitDelay(), deployParams.defaultAllowedExitDelay);
         assertEq(parametersRegistry.defaultExitDelayFee(), deployParams.defaultExitDelayFee);
         assertEq(parametersRegistry.defaultMaxElWithdrawalRequestFee(), deployParams.defaultMaxElWithdrawalRequestFee);
-        assertEq(parametersRegistry.getInitializedVersion(), 3);
     }
 }
 

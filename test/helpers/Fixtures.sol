@@ -115,8 +115,6 @@ contract DeploymentHelpers is Test {
         address setResetBondCurveAddress;
         bytes32 moduleType;
         uint256 queueLowestPriority;
-        uint256 defaultDepositAllocationWeight;
-        uint256 identifiedCommunityStakersGateDepositAllocationWeight;
         uint256 bondLockPeriod;
         uint256 minBondLockPeriod;
         uint256 maxBondLockPeriod;
@@ -137,6 +135,23 @@ contract DeploymentHelpers is Test {
         uint256 verifierFirstSupportedSlot;
         uint256 capellaSlot;
         uint256[2][] defaultBondCurve;
+        uint256 defaultKeyRemovalCharge;
+        uint256 defaultGeneralDelayedPenaltyAdditionalFine;
+        uint256 defaultKeysLimit;
+        uint256 defaultAvgPerfLeewayBP;
+        uint256 defaultRewardShareBP;
+        uint256 defaultStrikesLifetimeFrames;
+        uint256 defaultStrikesThreshold;
+        uint256 defaultQueuePriority;
+        uint256 defaultQueueMaxDeposits;
+        uint256 defaultBadPerformancePenalty;
+        uint256 defaultAttestationsWeight;
+        uint256 defaultBlocksWeight;
+        uint256 defaultSyncWeight;
+        uint256 defaultAllowedExitDelay;
+        uint256 defaultExitDelayFee;
+        uint256 defaultMaxElWithdrawalRequestFee;
+        address penaltiesManager;
     }
 
     struct DeploymentConfig {
@@ -469,11 +484,16 @@ contract DeploymentHelpers is Test {
         dst.defaultAllowedExitDelay = src.defaultAllowedExitDelay;
         dst.defaultExitDelayFee = src.defaultExitDelayFee;
         dst.defaultMaxElWithdrawalRequestFee = src.defaultMaxElWithdrawalRequestFee;
+        dst.penaltiesManager = src.penaltiesManager;
 
         // Curated gates
         for (uint256 i; i < src.curatedGates.length; ++i) {
             dst.curatedGates.push(src.curatedGates[i]);
         }
+        dst.curatedGatePauseManager = src.curatedGatePauseManager;
+
+        // MetaRegistry
+        dst.setOperatorInfoManager = src.setOperatorInfoManager;
 
         // GateSeal
         dst.gateSealFactory = src.gateSealFactory;
@@ -551,6 +571,23 @@ contract DeploymentHelpers is Test {
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.defaultBondCurve = decoded.defaultBondCurve;
+        params.defaultKeyRemovalCharge = decoded.defaultKeyRemovalCharge;
+        params.defaultGeneralDelayedPenaltyAdditionalFine = decoded.defaultGeneralDelayedPenaltyAdditionalFine;
+        params.defaultKeysLimit = decoded.defaultKeysLimit;
+        params.defaultAvgPerfLeewayBP = decoded.defaultAvgPerfLeewayBP;
+        params.defaultRewardShareBP = decoded.defaultRewardShareBP;
+        params.defaultStrikesLifetimeFrames = decoded.defaultStrikesLifetimeFrames;
+        params.defaultStrikesThreshold = decoded.defaultStrikesThreshold;
+        params.defaultQueuePriority = decoded.defaultQueuePriority;
+        params.defaultQueueMaxDeposits = decoded.defaultQueueMaxDeposits;
+        params.defaultBadPerformancePenalty = decoded.defaultBadPerformancePenalty;
+        params.defaultAttestationsWeight = decoded.defaultAttestationsWeight;
+        params.defaultBlocksWeight = decoded.defaultBlocksWeight;
+        params.defaultSyncWeight = decoded.defaultSyncWeight;
+        params.defaultAllowedExitDelay = decoded.defaultAllowedExitDelay;
+        params.defaultExitDelayFee = decoded.defaultExitDelayFee;
+        params.defaultMaxElWithdrawalRequestFee = decoded.defaultMaxElWithdrawalRequestFee;
+        params.penaltiesManager = decoded.penaltiesManager;
         return params;
     }
 
@@ -589,6 +626,23 @@ contract DeploymentHelpers is Test {
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.defaultBondCurve = decoded.defaultBondCurve;
+        params.defaultKeyRemovalCharge = decoded.defaultKeyRemovalCharge;
+        params.defaultGeneralDelayedPenaltyAdditionalFine = decoded.defaultGeneralDelayedPenaltyAdditionalFine;
+        params.defaultKeysLimit = decoded.defaultKeysLimit;
+        params.defaultAvgPerfLeewayBP = decoded.defaultAvgPerfLeewayBP;
+        params.defaultRewardShareBP = decoded.defaultRewardShareBP;
+        params.defaultStrikesLifetimeFrames = decoded.defaultStrikesLifetimeFrames;
+        params.defaultStrikesThreshold = decoded.defaultStrikesThreshold;
+        params.defaultQueuePriority = decoded.defaultQueuePriority;
+        params.defaultQueueMaxDeposits = decoded.defaultQueueMaxDeposits;
+        params.defaultBadPerformancePenalty = decoded.defaultBadPerformancePenalty;
+        params.defaultAttestationsWeight = decoded.defaultAttestationsWeight;
+        params.defaultBlocksWeight = decoded.defaultBlocksWeight;
+        params.defaultSyncWeight = decoded.defaultSyncWeight;
+        params.defaultAllowedExitDelay = decoded.defaultAllowedExitDelay;
+        params.defaultExitDelayFee = decoded.defaultExitDelayFee;
+        params.defaultMaxElWithdrawalRequestFee = decoded.defaultMaxElWithdrawalRequestFee;
+        params.penaltiesManager = decoded.penaltiesManager;
         return params;
     }
 
@@ -627,7 +681,23 @@ contract DeploymentHelpers is Test {
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.defaultBondCurve = decoded.defaultBondCurve;
-        params.defaultDepositAllocationWeight = decoded.defaultDepositAllocationWeight;
+        params.defaultKeyRemovalCharge = decoded.defaultKeyRemovalCharge;
+        params.defaultGeneralDelayedPenaltyAdditionalFine = decoded.defaultGeneralDelayedPenaltyAdditionalFine;
+        params.defaultKeysLimit = decoded.defaultKeysLimit;
+        params.defaultAvgPerfLeewayBP = decoded.defaultAvgPerfLeewayBP;
+        params.defaultRewardShareBP = decoded.defaultRewardShareBP;
+        params.defaultStrikesLifetimeFrames = decoded.defaultStrikesLifetimeFrames;
+        params.defaultStrikesThreshold = decoded.defaultStrikesThreshold;
+        params.defaultQueuePriority = decoded.defaultQueuePriority;
+        params.defaultQueueMaxDeposits = decoded.defaultQueueMaxDeposits;
+        params.defaultBadPerformancePenalty = decoded.defaultBadPerformancePenalty;
+        params.defaultAttestationsWeight = decoded.defaultAttestationsWeight;
+        params.defaultBlocksWeight = decoded.defaultBlocksWeight;
+        params.defaultSyncWeight = decoded.defaultSyncWeight;
+        params.defaultAllowedExitDelay = decoded.defaultAllowedExitDelay;
+        params.defaultExitDelayFee = decoded.defaultExitDelayFee;
+        params.defaultMaxElWithdrawalRequestFee = decoded.defaultMaxElWithdrawalRequestFee;
+        params.penaltiesManager = decoded.penaltiesManager;
         return params;
     }
 
