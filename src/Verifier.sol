@@ -239,14 +239,53 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     }
 
     /// @inheritdoc IVerifier
-    function processIncomingConsolidation(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        uint256 addedBalanceWei
-    ) external whenResumed {
-        MODULE.increaseKeyAddedBalance(nodeOperatorId, keyIndex, addedBalanceWei);
-        // TODO implement
-        revert NotImplemented();
+    function processBalanceProof(ProcessBalanceProofInput calldata data) external whenResumed {
+        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.recentBlock.header.slot);
+        }
+
+        {
+            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.recentBlock.rootsTimestamp);
+            if (trustedHeaderRoot != data.recentBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
+        }
+
+        uint64 balanceGwei = _processBalanceProof(
+            data.validator,
+            data.balance,
+            data.recentBlock.header.stateRoot,
+            data.recentBlock.header.slot
+        );
+
+        MODULE.syncKeyAddedBalance(data.validator.nodeOperatorId, data.validator.keyIndex, gweiToWei(balanceGwei));
+    }
+
+    /// @inheritdoc IVerifier
+    function processHistoricalBalanceProof(ProcessHistoricalBalanceProofInput calldata data) external whenResumed {
+        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) revert UnsupportedSlot(data.recentBlock.header.slot);
+        if (data.historicalBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.historicalBlock.header.slot);
+        }
+
+        {
+            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.recentBlock.rootsTimestamp);
+            if (trustedHeaderRoot != data.recentBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
+        }
+
+        SSZ.verifyProof({
+            proof: data.historicalBlock.proof,
+            root: data.recentBlock.header.stateRoot,
+            leaf: data.historicalBlock.header.hashTreeRoot(),
+            gI: _getHistoricalBlockRootGI(data.recentBlock.header.slot, data.historicalBlock.header.slot)
+        });
+
+        uint64 balanceGwei = _processBalanceProof(
+            data.validator,
+            data.balance,
+            data.historicalBlock.header.stateRoot,
+            data.historicalBlock.header.slot
+        );
+
+        MODULE.syncKeyAddedBalance(data.validator.nodeOperatorId, data.validator.keyIndex, gweiToWei(balanceGwei));
     }
 
     function _reportSingleValidator(WithdrawnValidatorInfo memory info) internal {
@@ -317,6 +356,33 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             root: header.stateRoot,
             leaf: withdrawal.object.hashTreeRoot(),
             gI: _getWithdrawalGI(withdrawal.offset, header.slot)
+        });
+    }
+
+    function _processBalanceProof(
+        ValidatorWitness calldata validator,
+        BalanceWitness calldata balance,
+        bytes32 stateRoot,
+        Slot stateSlot
+    ) internal view returns (uint64 balanceGwei) {
+        {
+            bytes memory pubkey = MODULE.getSigningKeys(validator.nodeOperatorId, validator.keyIndex, 1);
+            if (keccak256(pubkey) != keccak256(validator.object.pubkey)) revert InvalidPublicKey();
+        }
+
+        SSZ.verifyProof({
+            proof: validator.proof,
+            root: stateRoot,
+            leaf: validator.object.hashTreeRoot(),
+            gI: _getValidatorGI(validator.index, stateSlot)
+        });
+
+        balanceGwei = _verifyValidatorBalance({
+            validatorIndex: validator.index,
+            balanceNode: balance.node,
+            stateRoot: stateRoot,
+            stateSlot: stateSlot,
+            proof: balance.proof
         });
     }
 

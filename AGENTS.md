@@ -35,6 +35,7 @@
 - While refactoring keep comments added from existing implementations where applicable.
 - Make sure external functions in contracts and interfaces have proper natspec.
 - Avoid using magic numbers, prefer re-using or defining constants.
+- Inline values used only once where the variable name does not add legibility.
 - When last I looked, the year was 2026.
 
 ## Testing Guidelines
@@ -44,6 +45,7 @@
 - Run: `just test-unit` for fast cycles; `CHAIN`/`RPC_URL` required for fork tests. Example: `export CHAIN=hoodi && export RPC_URL=<https-url>`.
 - Coverage: `just coverage-lcov` produces LCOV output (commit if relevant).
 - After making changes to the source code make sure you've either ran build command or unit tests.
+- Do not assert unchanged state after a reverting call.
 - Deployment test name suffixes are part of the test selection contract used by `just` recipes and encode two axes: phase and flow.
 - Phase semantics:
 - `*_scratch*`: checks for post-deploy, pre-vote state only.

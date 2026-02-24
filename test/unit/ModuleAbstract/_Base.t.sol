@@ -188,6 +188,22 @@ abstract contract ModuleFixtures is Test, Fixtures, Utilities, InvariantAsserts 
         module.reportRegularWithdrawnValidators(withdrawalsInfo);
     }
 
+    function setKeyAddedBalance(uint256 noId, uint256 keyIndex, uint256 amount) internal {
+        // NOTE: so far, this is the only available way to change key added balance value.
+        uint256 current = module.getKeyAddedBalance(noId, keyIndex);
+        if (amount == current) return;
+
+        assertGt(amount, current, "key added balance cannot be decreased");
+
+        module.syncKeyAddedBalance({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            currentBalanceWei: amount + WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE
+        });
+
+        assertEq(module.getKeyAddedBalance(noId, keyIndex), amount, "key added balance must match target");
+    }
+
     function getNodeOperatorSummary(uint256 noId) public view returns (NodeOperatorSummary memory) {
         (
             uint256 targetLimitMode,
