@@ -968,21 +968,18 @@ contract VerifierModuleSourceConsolidationTest is VerifierTestBase {
     }
 
     function test_processModuleSourceConsolidation_RevertWhen_ConsolidationPendingBlockSlotUnsupported() public {
-        fixture.data.consolidationPendingBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
+        fixture.data.consolidationPendingBlock.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IVerifier.UnsupportedSlot.selector,
-                fixture.data.consolidationPendingBlock.header.slot
-            )
+            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.consolidationPendingBlock.slot)
         );
         verifier.processModuleSourceConsolidation(fixture.data);
     }
 
-    function test_processModuleSourceConsolidation_RevertWhen_ConsolidationBlockOrderMismatch() public {
-        fixture.data.consolidationAppliedBlock.header.slot = fixture.data.consolidationPendingBlock.header.slot;
+    function test_processModuleSourceConsolidation_RevertWhen_InvalidPendingBlockHeader() public {
+        fixture.data.consolidationPendingBlock.bodyRoot = bytes32(uint256(0xdead));
 
-        vm.expectRevert(IVerifier.ConsolidationBlockOrderMismatch.selector);
+        vm.expectRevert(IVerifier.InvalidPendingBlockHeader.selector);
         verifier.processModuleSourceConsolidation(fixture.data);
     }
 
@@ -1196,21 +1193,18 @@ contract VerifierModuleTargetConsolidationTest is VerifierTestBase {
     }
 
     function test_processModuleTargetConsolidation_RevertWhen_ConsolidationPendingBlockSlotUnsupported() public {
-        fixture.data.consolidationPendingBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
+        fixture.data.consolidationPendingBlock.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IVerifier.UnsupportedSlot.selector,
-                fixture.data.consolidationPendingBlock.header.slot
-            )
+            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.consolidationPendingBlock.slot)
         );
         verifier.processModuleTargetConsolidation(fixture.data);
     }
 
-    function test_processModuleTargetConsolidation_RevertWhen_ConsolidationBlockOrderMismatch() public {
-        fixture.data.consolidationAppliedBlock.header.slot = fixture.data.consolidationPendingBlock.header.slot;
+    function test_processModuleTargetConsolidation_RevertWhen_InvalidPendingBlockHeader() public {
+        fixture.data.consolidationPendingBlock.bodyRoot = bytes32(uint256(0xdead));
 
-        vm.expectRevert(IVerifier.ConsolidationBlockOrderMismatch.selector);
+        vm.expectRevert(IVerifier.InvalidPendingBlockHeader.selector);
         verifier.processModuleTargetConsolidation(fixture.data);
     }
 

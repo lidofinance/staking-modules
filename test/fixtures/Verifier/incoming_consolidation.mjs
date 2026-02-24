@@ -6,7 +6,7 @@ import assert from "node:assert";
 import { createHash } from "crypto";
 
 import { ssz } from "@lodestar/types";
-import { concatGindices, createProof, ProofType } from "@chainsafe/persistent-merkle-tree";
+import { createProof, ProofType } from "@chainsafe/persistent-merkle-tree";
 import { encodeParameters } from "web3-eth-abi";
 
 import VerifierModuleTargetConsolidationTest from "../../../out/Verifier.t.sol/VerifierModuleTargetConsolidationTest.json" with { type: "json" };
@@ -169,21 +169,9 @@ function main(opts) {
     gindex: state.type.getPathInfo(["validators", opts.targetValidatorIndex]).gindex,
   });
 
-  const pendingBlockProof = createProof(state.node, {
-    type: ProofType.single,
-    gindex: concatGindices([
-      state.type.getPathInfo([
-        "historicalSummaries",
-        pendingBlock.meta.summaryIndex,
-        "blockSummaryRoot",
-      ]).gindex,
-      state.blockRoots.type.getPropertyGindex(pendingBlock.meta.rootIndex),
-    ]),
-  });
-
   const appliedBlock = Fork.BeaconBlock.defaultView();
   appliedBlock.slot = state.slot;
-  appliedBlock.parentRoot = faker.someBytes32();
+  appliedBlock.parentRoot = pendingBlock.hashTreeRoot();
   appliedBlock.stateRoot = state.hashTreeRoot();
 
   const fixture = {
@@ -259,14 +247,11 @@ function main(opts) {
         rootsTimestamp: 42,
       },
       consolidationPendingBlock: {
-        header: {
-          slot: pendingBlock.slot,
-          proposerIndex: pendingBlock.proposerIndex,
-          parentRoot: pendingBlock.parentRoot,
-          stateRoot: pendingBlock.stateRoot,
-          bodyRoot: pendingBlock.body.hashTreeRoot(),
-        },
-        proof: pendingBlockProof.witnesses,
+        slot: pendingBlock.slot,
+        proposerIndex: pendingBlock.proposerIndex,
+        parentRoot: pendingBlock.parentRoot,
+        stateRoot: pendingBlock.stateRoot,
+        bodyRoot: pendingBlock.body.hashTreeRoot(),
       },
     },
   };

@@ -75,7 +75,7 @@ interface IVerifier {
         // "withdrawal balance" in accounting/penalties, since consolidation is not an EL withdrawal.
         BalanceWitness sourceBalance;
         RecentHeaderWitness consolidationAppliedBlock;
-        HistoricalHeaderWitness consolidationPendingBlock;
+        BeaconBlockHeader consolidationPendingBlock;
     }
 
     struct ProcessModuleTargetConsolidationInput {
@@ -91,7 +91,7 @@ interface IVerifier {
         // Source validator's balance before the CL processes the pending consolidation.
         BalanceWitness sourceBalance;
         RecentHeaderWitness consolidationAppliedBlock;
-        HistoricalHeaderWitness consolidationPendingBlock;
+        BeaconBlockHeader consolidationPendingBlock;
     }
 
     struct ProcessSlashedInput {
@@ -124,7 +124,7 @@ interface IVerifier {
     error ValidatorIsNotWithdrawable();
     error InvalidWithdrawalAddress();
     error InvalidPublicKey();
-    error ConsolidationBlockOrderMismatch();
+    error InvalidPendingBlockHeader();
     error ConsolidationSourceMismatch();
     error ConsolidationTargetMismatch();
     error InvalidValidatorIndex();

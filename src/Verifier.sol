@@ -271,14 +271,11 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     function processModuleSourceConsolidation(
         ProcessModuleSourceConsolidationInput calldata data
     ) external whenResumed {
+        BeaconBlockHeader calldata pendingHeader = data.consolidationPendingBlock;
         RecentHeaderWitness memory appliedBlock = data.consolidationAppliedBlock;
-        BeaconBlockHeader memory pendingHeader = data.consolidationPendingBlock.header;
 
         if (pendingHeader.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(pendingHeader.slot);
-        }
-        if (appliedBlock.header.slot <= pendingHeader.slot) {
-            revert ConsolidationBlockOrderMismatch();
         }
 
         // Consolidation couldn't have been applied in both of these cases.
@@ -303,13 +300,8 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             if (trustedHeaderRoot != appliedBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
         }
 
-        // Verify consolidation-pending block header.
-        SSZ.verifyProof({
-            proof: data.consolidationPendingBlock.proof,
-            root: appliedBlock.header.stateRoot,
-            leaf: pendingHeader.hashTreeRoot(),
-            gI: _getHistoricalBlockRootGI(appliedBlock.header.slot, pendingHeader.slot)
-        });
+        // Verify that the pending block is the parent of the applied block.
+        if (appliedBlock.header.parentRoot != pendingHeader.hashTreeRoot()) revert InvalidPendingBlockHeader();
 
         // Verify PendingConsolidation object against the consolidation-pending block.
         SSZ.verifyProof({
@@ -367,13 +359,10 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         ProcessModuleTargetConsolidationInput calldata data
     ) external whenResumed {
         RecentHeaderWitness memory appliedBlock = data.consolidationAppliedBlock;
-        BeaconBlockHeader memory pendingHeader = data.consolidationPendingBlock.header;
+        BeaconBlockHeader calldata pendingHeader = data.consolidationPendingBlock;
 
         if (pendingHeader.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(pendingHeader.slot);
-        }
-        if (appliedBlock.header.slot <= pendingHeader.slot) {
-            revert ConsolidationBlockOrderMismatch();
         }
 
         // Consolidation couldn't have been applied in both of these cases.
@@ -412,13 +401,8 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             if (trustedHeaderRoot != appliedBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
         }
 
-        // Verify consolidation-pending block header.
-        SSZ.verifyProof({
-            proof: data.consolidationPendingBlock.proof,
-            root: appliedBlock.header.stateRoot,
-            leaf: pendingHeader.hashTreeRoot(),
-            gI: _getHistoricalBlockRootGI(appliedBlock.header.slot, pendingHeader.slot)
-        });
+        // Verify that the pending block is the parent of the applied block.
+        if (appliedBlock.header.parentRoot != pendingHeader.hashTreeRoot()) revert InvalidPendingBlockHeader();
 
         // Verify PendingConsolidation object against the consolidation-pending block.
         SSZ.verifyProof({
