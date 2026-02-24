@@ -244,7 +244,7 @@ function main(opts) {
         nodeOperatorId: 0,
         keyIndex: 0,
       },
-      balance: {
+      sourceBalance: {
         node: balanceProof.leaf,
         proof: balanceProof.witnesses,
       },

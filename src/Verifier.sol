@@ -338,10 +338,10 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         // Verify source balance against the consolidation-pending block.
         uint64 pendingBalanceGwei = _verifyValidatorBalance({
             validatorIndex: sourceIndex,
-            balanceNode: data.balance.node,
+            balanceNode: data.sourceBalance.node,
             stateRoot: data.consolidationPendingBlock.header.stateRoot,
             stateSlot: data.consolidationPendingBlock.header.slot,
-            proof: data.balance.proof
+            proof: data.sourceBalance.proof
         });
 
         uint64 effectiveBalanceGwei = data.sourceAtPendingBlock.object.effectiveBalance;
@@ -458,10 +458,10 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         // Verify source balance against the consolidation-pending block.
         uint64 pendingBalanceGwei = _verifyValidatorBalance({
             validatorIndex: sourceIndex,
-            balanceNode: data.balance.node,
+            balanceNode: data.sourceBalance.node,
             stateRoot: data.consolidationPendingBlock.header.stateRoot,
             stateSlot: data.consolidationPendingBlock.header.slot,
-            proof: data.balance.proof
+            proof: data.sourceBalance.proof
         });
 
         uint64 effectiveBalanceGwei = data.sourceAtPendingBlock.object.effectiveBalance;
