@@ -157,12 +157,13 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
     /// @inheritdoc IVerifier
     function processSlashedProof(ProcessSlashedInput calldata data) external whenResumed {
-        // TODO: RecentHeaderWitness memory recentBlock = data.recentBlock;
-        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) revert UnsupportedSlot(data.recentBlock.header.slot);
+        RecentHeaderWitness memory recentBlock = data.recentBlock;
+
+        if (recentBlock.header.slot < FIRST_SUPPORTED_SLOT) revert UnsupportedSlot(recentBlock.header.slot);
 
         {
-            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.recentBlock.rootsTimestamp);
-            if (trustedHeaderRoot != data.recentBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
+            bytes32 trustedHeaderRoot = _getParentBlockRoot(recentBlock.rootsTimestamp);
+            if (trustedHeaderRoot != recentBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
         }
 
         if (!data.validator.object.slashed) revert ValidatorIsNotSlashed();
@@ -174,9 +175,9 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
         SSZ.verifyProof({
             proof: data.validator.proof,
-            root: data.recentBlock.header.stateRoot,
+            root: recentBlock.header.stateRoot,
             leaf: data.validator.object.hashTreeRoot(),
-            gI: _getValidatorGI(data.validator.index, data.recentBlock.header.slot)
+            gI: _getValidatorGI(data.validator.index, recentBlock.header.slot)
         });
 
         MODULE.onValidatorSlashed(data.moduleKeyId.nodeOperatorId, data.moduleKeyId.keyIndex);
@@ -184,13 +185,15 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
     /// @inheritdoc IVerifier
     function processWithdrawalProof(ProcessWithdrawalInput calldata data) external whenResumed {
-        if (data.withdrawalBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(data.withdrawalBlock.header.slot);
+        RecentHeaderWitness memory withdrawalBlock = data.withdrawalBlock;
+
+        if (withdrawalBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(withdrawalBlock.header.slot);
         }
 
         {
-            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.withdrawalBlock.rootsTimestamp);
-            if (trustedHeaderRoot != data.withdrawalBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
+            bytes32 trustedHeaderRoot = _getParentBlockRoot(withdrawalBlock.rootsTimestamp);
+            if (trustedHeaderRoot != withdrawalBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
         }
 
         {
@@ -201,7 +204,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         uint256 withdrawalAmount = _processWithdrawalProof({
             withdrawal: data.withdrawal,
             validator: data.validator,
-            header: data.withdrawalBlock.header,
+            header: withdrawalBlock.header,
             // TODO: data.moduleKeyId
             nodeOperatorId: data.moduleKeyId.nodeOperatorId,
             keyIndex: data.moduleKeyId.keyIndex
@@ -268,19 +271,19 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     function processModuleSourceConsolidation(
         ProcessModuleSourceConsolidationInput calldata data
     ) external whenResumed {
-        if (data.consolidationPendingBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(data.consolidationPendingBlock.header.slot);
+        RecentHeaderWitness memory appliedBlock = data.consolidationAppliedBlock;
+        BeaconBlockHeader memory pendingHeader = data.consolidationPendingBlock.header;
+
+        if (pendingHeader.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(pendingHeader.slot);
         }
-        if (data.consolidationAppliedBlock.header.slot <= data.consolidationPendingBlock.header.slot) {
+        if (appliedBlock.header.slot <= pendingHeader.slot) {
             revert ConsolidationBlockOrderMismatch();
         }
 
         // Consolidation couldn't have been applied in both of these cases.
         if (data.sourceAtAppliedBlock.object.slashed) revert ValidatorIsSlashed();
-        if (
-            data.sourceAtAppliedBlock.object.withdrawableEpoch >
-            _computeEpochAtSlot(data.consolidationAppliedBlock.header.slot)
-        ) {
+        if (data.sourceAtAppliedBlock.object.withdrawableEpoch > _computeEpochAtSlot(appliedBlock.header.slot)) {
             revert ValidatorIsNotWithdrawable();
         }
 
@@ -296,51 +299,48 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
         // Verify consolidation-applied block's header.
         {
-            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.consolidationAppliedBlock.rootsTimestamp);
-            if (trustedHeaderRoot != data.consolidationAppliedBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
+            bytes32 trustedHeaderRoot = _getParentBlockRoot(appliedBlock.rootsTimestamp);
+            if (trustedHeaderRoot != appliedBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
         }
 
         // Verify consolidation-pending block header.
         SSZ.verifyProof({
             proof: data.consolidationPendingBlock.proof,
-            root: data.consolidationAppliedBlock.header.stateRoot,
-            leaf: data.consolidationPendingBlock.header.hashTreeRoot(),
-            gI: _getHistoricalBlockRootGI(
-                data.consolidationAppliedBlock.header.slot,
-                data.consolidationPendingBlock.header.slot
-            )
+            root: appliedBlock.header.stateRoot,
+            leaf: pendingHeader.hashTreeRoot(),
+            gI: _getHistoricalBlockRootGI(appliedBlock.header.slot, pendingHeader.slot)
         });
 
         // Verify PendingConsolidation object against the consolidation-pending block.
         SSZ.verifyProof({
             proof: data.consolidation.proof,
-            root: data.consolidationPendingBlock.header.stateRoot,
+            root: pendingHeader.stateRoot,
             leaf: data.consolidation.object.hashTreeRoot(),
-            gI: _getPendingConsolidationGI(data.consolidation.offset, data.consolidationPendingBlock.header.slot)
+            gI: _getPendingConsolidationGI(data.consolidation.offset, pendingHeader.slot)
         });
 
         // Verify source at the consolidation-pending block.
         SSZ.verifyProof({
             proof: data.sourceAtPendingBlock.proof,
-            root: data.consolidationPendingBlock.header.stateRoot,
+            root: pendingHeader.stateRoot,
             leaf: data.sourceAtPendingBlock.object.hashTreeRoot(),
-            gI: _getValidatorGI(sourceIndex, data.consolidationPendingBlock.header.slot)
+            gI: _getValidatorGI(sourceIndex, pendingHeader.slot)
         });
 
         // Verify source at the consolidation-applied block.
         SSZ.verifyProof({
             proof: data.sourceAtAppliedBlock.proof,
-            root: data.consolidationAppliedBlock.header.stateRoot,
+            root: appliedBlock.header.stateRoot,
             leaf: data.sourceAtAppliedBlock.object.hashTreeRoot(),
-            gI: _getValidatorGI(sourceIndex, data.consolidationAppliedBlock.header.slot)
+            gI: _getValidatorGI(sourceIndex, appliedBlock.header.slot)
         });
 
         // Verify source balance against the consolidation-pending block.
         uint64 pendingBalanceGwei = _verifyValidatorBalance({
             validatorIndex: sourceIndex,
             balanceNode: data.sourceBalance.node,
-            stateRoot: data.consolidationPendingBlock.header.stateRoot,
-            stateSlot: data.consolidationPendingBlock.header.slot,
+            stateRoot: pendingHeader.stateRoot,
+            stateSlot: pendingHeader.slot,
             proof: data.sourceBalance.proof
         });
 
@@ -366,19 +366,19 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     function processModuleTargetConsolidation(
         ProcessModuleTargetConsolidationInput calldata data
     ) external whenResumed {
-        if (data.consolidationPendingBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(data.consolidationPendingBlock.header.slot);
+        RecentHeaderWitness memory appliedBlock = data.consolidationAppliedBlock;
+        BeaconBlockHeader memory pendingHeader = data.consolidationPendingBlock.header;
+
+        if (pendingHeader.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(pendingHeader.slot);
         }
-        if (data.consolidationAppliedBlock.header.slot <= data.consolidationPendingBlock.header.slot) {
+        if (appliedBlock.header.slot <= pendingHeader.slot) {
             revert ConsolidationBlockOrderMismatch();
         }
 
         // Consolidation couldn't have been applied in both of these cases.
         if (data.sourceAtAppliedBlock.object.slashed) revert ValidatorIsSlashed();
-        if (
-            _computeEpochAtSlot(data.consolidationAppliedBlock.header.slot) <
-            data.sourceAtAppliedBlock.object.withdrawableEpoch
-        ) {
+        if (_computeEpochAtSlot(appliedBlock.header.slot) < data.sourceAtAppliedBlock.object.withdrawableEpoch) {
             revert ValidatorIsNotWithdrawable();
         }
 
@@ -408,59 +408,56 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
         // Verify consolidation-applied block's header.
         {
-            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.consolidationAppliedBlock.rootsTimestamp);
-            if (trustedHeaderRoot != data.consolidationAppliedBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
+            bytes32 trustedHeaderRoot = _getParentBlockRoot(appliedBlock.rootsTimestamp);
+            if (trustedHeaderRoot != appliedBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
         }
 
         // Verify consolidation-pending block header.
         SSZ.verifyProof({
             proof: data.consolidationPendingBlock.proof,
-            root: data.consolidationAppliedBlock.header.stateRoot,
-            leaf: data.consolidationPendingBlock.header.hashTreeRoot(),
-            gI: _getHistoricalBlockRootGI(
-                data.consolidationAppliedBlock.header.slot,
-                data.consolidationPendingBlock.header.slot
-            )
+            root: appliedBlock.header.stateRoot,
+            leaf: pendingHeader.hashTreeRoot(),
+            gI: _getHistoricalBlockRootGI(appliedBlock.header.slot, pendingHeader.slot)
         });
 
         // Verify PendingConsolidation object against the consolidation-pending block.
         SSZ.verifyProof({
             proof: data.consolidation.proof,
-            root: data.consolidationPendingBlock.header.stateRoot,
+            root: pendingHeader.stateRoot,
             leaf: data.consolidation.object.hashTreeRoot(),
-            gI: _getPendingConsolidationGI(data.consolidation.offset, data.consolidationPendingBlock.header.slot)
+            gI: _getPendingConsolidationGI(data.consolidation.offset, pendingHeader.slot)
         });
 
         // Verify source at the consolidation-pending block.
         SSZ.verifyProof({
             proof: data.sourceAtPendingBlock.proof,
-            root: data.consolidationPendingBlock.header.stateRoot,
+            root: pendingHeader.stateRoot,
             leaf: data.sourceAtPendingBlock.object.hashTreeRoot(),
-            gI: _getValidatorGI(sourceIndex, data.consolidationPendingBlock.header.slot)
+            gI: _getValidatorGI(sourceIndex, pendingHeader.slot)
         });
 
         // Verify source at the consolidation-applied block.
         SSZ.verifyProof({
             proof: data.sourceAtAppliedBlock.proof,
-            root: data.consolidationAppliedBlock.header.stateRoot,
+            root: appliedBlock.header.stateRoot,
             leaf: data.sourceAtAppliedBlock.object.hashTreeRoot(),
-            gI: _getValidatorGI(sourceIndex, data.consolidationAppliedBlock.header.slot)
+            gI: _getValidatorGI(sourceIndex, appliedBlock.header.slot)
         });
 
         // Verify target at the consolidation-applied block.
         SSZ.verifyProof({
             proof: data.targetAtAppliedBlock.proof,
-            root: data.consolidationAppliedBlock.header.stateRoot,
+            root: appliedBlock.header.stateRoot,
             leaf: data.targetAtAppliedBlock.object.hashTreeRoot(),
-            gI: _getValidatorGI(data.targetAtAppliedBlock.index, data.consolidationAppliedBlock.header.slot)
+            gI: _getValidatorGI(data.targetAtAppliedBlock.index, appliedBlock.header.slot)
         });
 
         // Verify source balance against the consolidation-pending block.
         uint64 pendingBalanceGwei = _verifyValidatorBalance({
             validatorIndex: sourceIndex,
             balanceNode: data.sourceBalance.node,
-            stateRoot: data.consolidationPendingBlock.header.stateRoot,
-            stateSlot: data.consolidationPendingBlock.header.slot,
+            stateRoot: pendingHeader.stateRoot,
+            stateSlot: pendingHeader.slot,
             proof: data.sourceBalance.proof
         });
 
@@ -495,7 +492,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     function _processWithdrawalProof(
         WithdrawalWitness calldata withdrawal,
         ValidatorWitness calldata validator,
-        BeaconBlockHeader calldata header,
+        BeaconBlockHeader memory header,
         uint256 nodeOperatorId,
         uint256 keyIndex
     ) internal view returns (uint256 withdrawalAmount) {
