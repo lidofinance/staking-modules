@@ -48,9 +48,3 @@ struct BeaconBlockHeader {
     bytes32 stateRoot;
     bytes32 bodyRoot;
 }
-
-// As defined in electra/beacon-chain.md:251
-struct PendingConsolidation {
-    uint64 sourceIndex;
-    uint64 targetIndex;
-}
