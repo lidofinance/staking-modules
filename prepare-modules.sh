@@ -26,7 +26,8 @@ echo ""
 # Step 1: CSM v3 Upgrade
 echo ">>> Deploying CSM v3 implementations..."
 SKIP_LEGACY_QUEUE_CHECK=1 \
-  just _deploy-csm-impl --broadcast --private-key="$LOCAL_PK"
+ARTIFACTS_DIR=./artifacts/local/ \
+  just deploy-csm-impl --broadcast --private-key="$LOCAL_PK"
 echo "Done"
 echo ""
 
