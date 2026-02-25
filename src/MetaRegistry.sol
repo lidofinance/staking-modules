@@ -355,7 +355,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         $.effectiveWeightCache.operatorEffectiveWeight[nodeOperatorId] = newWeight;
         emit NodeOperatorEffectiveWeightChanged(nodeOperatorId, oldWeight, newWeight);
 
-        MODULE.notifyNodeOperatorWeightChange(nodeOperatorId, newWeight);
+        MODULE.notifyNodeOperatorWeightChange(nodeOperatorId, oldWeight, newWeight);
     }
 
     function _checkExternalOperatorExistsTypeNOR(ExternalOperator memory op) internal {
