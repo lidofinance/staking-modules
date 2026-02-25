@@ -39,6 +39,10 @@ library TopUpQueueOps {
         ) {
             revert IBaseModule.InvalidInput();
         }
+
+        if (pubkeys.length > topUpQueue.length()) {
+            revert IBaseModule.InvalidInput();
+        }
         // NOTE: Wrapping the function inputs with a struct to save space on the stack.
         TopUpKeyParams memory data = TopUpKeyParams({
             keyIndices: keyIndices,

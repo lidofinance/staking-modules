@@ -1125,6 +1125,27 @@ contract CSMTopUpQueue is CSMCommon {
         });
     }
 
+    function test_topUp_revertWhen_inputKeysExceedQueueLength() public {
+        csm.setTopUpQueueLimit(2);
+        createNodeOperator(3);
+        csm.obtainDepositData(1, "");
+
+        bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 3);
+        bytes[] memory pubkeys = new bytes[](3);
+        pubkeys[0] = slice(packedPubkeys, 0 * 48, 48);
+        pubkeys[1] = slice(packedPubkeys, 1 * 48, 48);
+        pubkeys[2] = slice(packedPubkeys, 2 * 48, 48);
+
+        vm.expectRevert(IBaseModule.InvalidInput.selector);
+        csm.allocateDeposits({
+            maxDepositAmount: 10 ether,
+            pubkeys: pubkeys,
+            keyIndices: UintArr(0, 1, 2),
+            operatorIds: UintArr(0, 0, 0),
+            topUpLimits: UintArr(1 ether, 4 ether, 5 ether)
+        });
+    }
+
     function test_getKeysForTopUp_ReturnsExpectedKeys() public {
         createNodeOperator(2);
         createNodeOperator(2);
