@@ -331,7 +331,8 @@ abstract contract BaseModule is
             currentBalanceWei: currentBalanceWei
         });
 
-        // NOTE: We do not increment nonce here since individual validator balances don't change the distribution.
+        // NOTE: We do not increment nonce here since individual validator balances don't change the distribution
+        // returned by the view functions in both CSModule and CuratedModule.
     }
 
     function reportSlashedWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external {
