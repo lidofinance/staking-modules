@@ -553,7 +553,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     }
 
     function _setDefaultRewardShare(uint256 share) internal {
-        if (share > MAX_BP) revert InvalidRewardShareData();
+        if (share == 0 || share > MAX_BP) revert InvalidRewardShareData();
 
         defaultRewardShare = share;
         emit DefaultRewardShareSet(share);
@@ -644,7 +644,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     function _validateKeyNumberValueIntervals(KeyNumberValueInterval[] calldata intervals) private pure {
         if (intervals.length == 0) revert InvalidKeyNumberValueIntervals();
         if (intervals[0].minKeyNumber != 1) revert InvalidKeyNumberValueIntervals();
-        if (intervals[0].value > MAX_BP) revert InvalidKeyNumberValueIntervals();
+        if (intervals[0].value == 0 || intervals[0].value > MAX_BP) revert InvalidKeyNumberValueIntervals();
 
         for (uint256 i = 1; i < intervals.length; ++i) {
             unchecked {

@@ -8,6 +8,7 @@ import { ICuratedGate } from "./interfaces/ICuratedGate.sol";
 import { NodeOperatorManagementProperties } from "./interfaces/IBaseModule.sol";
 import { IMetaRegistry, OperatorMetadata } from "./interfaces/IMetaRegistry.sol";
 import { IAccounting } from "./interfaces/IAccounting.sol";
+import { IMerkleGate } from "./interfaces/IMerkleGate.sol";
 import { MerkleGate } from "./abstract/MerkleGate.sol";
 
 /// @notice Merkle gate for Curated Module
@@ -35,16 +36,14 @@ contract CuratedGate is ICuratedGate, MerkleGate {
         _disableInitializers();
     }
 
-    /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
-    ///      It is recommended to call this method in the same transaction as the deployment transaction
-    ///      and perform extensive deployment verification before using the contract instance.
+    /// @inheritdoc MerkleGate
     function initialize(
         uint256 curveId,
         bytes32 treeRoot,
         string calldata treeCid,
         address admin
-    ) external initializer {
-        __MerkleGate_init(curveId, treeRoot, treeCid, admin);
+    ) public override(IMerkleGate, MerkleGate) initializer {
+        super.initialize(curveId, treeRoot, treeCid, admin);
     }
 
     /// @inheritdoc ICuratedGate

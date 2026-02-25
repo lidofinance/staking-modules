@@ -173,6 +173,16 @@ contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
         parametersRegistry.initialize(admin, customInitData);
     }
 
+    function test_initialize_RevertWhen_ZeroDefaultRewardShare() public {
+        _enableInitializers(address(parametersRegistry));
+
+        IParametersRegistry.InitializationData memory customInitData = defaultInitData;
+        customInitData.defaultRewardShare = 0;
+
+        vm.expectRevert(IParametersRegistry.InvalidRewardShareData.selector);
+        parametersRegistry.initialize(admin, customInitData);
+    }
+
     function test_initialize_RevertWhen_InvalidDefaultPerformanceLeeway() public {
         _enableInitializers(address(parametersRegistry));
 
@@ -303,6 +313,12 @@ contract ParametersRegistryRewardShareDataTest is ParametersRegistryBaseTestInit
         parametersRegistry.setDefaultRewardShare(rewardShare);
     }
 
+    function test_setDefault_RevertWhen_ZeroRewardShare() public {
+        vm.expectRevert(IParametersRegistry.InvalidRewardShareData.selector);
+        vm.prank(admin);
+        parametersRegistry.setDefaultRewardShare(0);
+    }
+
     function test_setDefault_RevertWhen_noRole() public override {
         uint256 rewardShare = 70001;
 
@@ -382,6 +398,17 @@ contract ParametersRegistryRewardShareDataTest is ParametersRegistryBaseTestInit
         uint256 curveId = 1;
         IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
         data[0] = IParametersRegistry.KeyNumberValueInterval(1, 100000);
+        data[1] = IParametersRegistry.KeyNumberValueInterval(10, 8000);
+
+        vm.expectRevert(IParametersRegistry.InvalidKeyNumberValueIntervals.selector);
+        vm.prank(admin);
+        parametersRegistry.setRewardShareData(curveId, data);
+    }
+
+    function test_set_RevertWhen_zeroFirstIntervalValue() public {
+        uint256 curveId = 1;
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
+        data[0] = IParametersRegistry.KeyNumberValueInterval(1, 0);
         data[1] = IParametersRegistry.KeyNumberValueInterval(10, 8000);
 
         vm.expectRevert(IParametersRegistry.InvalidKeyNumberValueIntervals.selector);

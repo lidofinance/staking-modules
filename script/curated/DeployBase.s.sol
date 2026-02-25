@@ -377,7 +377,7 @@ abstract contract DeployBase is Script {
                 oracle: address(oracle)
             });
 
-            strikes = ValidatorStrikes(_deployProxy(config.proxyAdmin, address(strikesImpl)));
+            strikes = ValidatorStrikes(_deployProxy(deployer, address(new Dummy())));
 
             ExitPenalties exitPenaltiesImpl = new ExitPenalties(address(curatedModule), address(strikes));
 
@@ -389,7 +389,14 @@ abstract contract DeployBase is Script {
 
             ejector = new Ejector(address(curatedModule), address(strikes), deployer);
 
-            strikes.initialize(deployer, address(ejector));
+            {
+                OssifiableProxy strikesProxy = OssifiableProxy(payable(address(strikes)));
+                strikesProxy.proxy__upgradeToAndCall(
+                    address(strikesImpl),
+                    abi.encodeCall(ValidatorStrikes.initialize, (deployer, address(ejector)))
+                );
+                strikesProxy.proxy__changeAdmin(config.proxyAdmin);
+            }
 
             curatedGateImpl = address(new CuratedGate(address(curatedModule)));
 
@@ -572,13 +579,7 @@ abstract contract DeployBase is Script {
             uint256 gateCurveId = curveIds[i];
             CuratedGateConfig storage gateConfig = config.curatedGates[i];
             CuratedGate gate = CuratedGate(
-                gateFactory.create(
-                    abi.encodeCall(
-                        CuratedGate.initialize,
-                        (gateCurveId, gateConfig.treeRoot, gateConfig.treeCid, deployer)
-                    ),
-                    deployer
-                )
+                gateFactory.create(gateCurveId, gateConfig.treeRoot, gateConfig.treeCid, deployer)
             );
 
             {

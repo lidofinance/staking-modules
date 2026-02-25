@@ -38,6 +38,19 @@ abstract contract MerkleGate is IMerkleGate, AccessControlEnumerableUpgradeable,
     }
 
     /// @inheritdoc IMerkleGate
+    function initialize(
+        uint256 curveId_,
+        bytes32 treeRoot_,
+        string calldata treeCid_,
+        address admin
+    ) public virtual onlyInitializing {
+        if (admin == address(0)) revert ZeroAdminAddress();
+        curveId = curveId_;
+        _setTreeParams(treeRoot_, treeCid_);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+    }
+
+    /// @inheritdoc IMerkleGate
     function isConsumed(address member) public view returns (bool) {
         return _consumedAddresses[member];
     }
@@ -50,21 +63,6 @@ abstract contract MerkleGate is IMerkleGate, AccessControlEnumerableUpgradeable,
     /// @inheritdoc IMerkleGate
     function hashLeaf(address member) public pure returns (bytes32) {
         return keccak256(bytes.concat(keccak256(abi.encode(member))));
-    }
-
-    /// @dev Shared initialization for gate implementations.
-    // solhint-disable-next-line func-name-mixedcase
-    function __MerkleGate_init(
-        uint256 curveId_,
-        bytes32 treeRoot_,
-        string calldata treeCid_,
-        address admin
-    ) internal onlyInitializing {
-        if (admin == address(0)) revert ZeroAdminAddress();
-
-        curveId = curveId_;
-        _setTreeParams(treeRoot_, treeCid_);
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
     function _consume(bytes32[] calldata proof) internal {

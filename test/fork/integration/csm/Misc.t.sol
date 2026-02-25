@@ -23,10 +23,7 @@ contract VettedGateFactoryTest is MiscTest {
         string memory cid = "someOtherCid";
 
         vm.startSnapshotGas("VettedGateFactory.createVetted");
-        address instance = vettedGateFactory.create(
-            abi.encodeCall(VettedGate.initialize, (curveId, root, cid, address(this))),
-            address(this)
-        );
+        address instance = vettedGateFactory.create(curveId, root, cid, address(this));
         vm.stopSnapshotGas();
 
         VettedGate gate = VettedGate(instance);
