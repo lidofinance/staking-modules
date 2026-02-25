@@ -277,6 +277,7 @@ contract CSModule is ICSModule, BaseModule {
 
     /// @inheritdoc ICSModule
     function cleanDepositQueue(uint256 maxItems) external returns (uint256 removed, uint256 lastRemovedAtDepth) {
+        _requireDepositInfoUpToDate();
         return
             DepositQueueOps.cleanDepositQueue({
                 depositQueues: _depositQueueByPriority,

@@ -1438,6 +1438,16 @@ contract CSMQueueOps is CSMCommon {
         assertEq(toVisit, 0, "toVisit != 0");
     }
 
+    function test_clean_revertWhen_depositInfoNotUpToDate() public {
+        createNodeOperator({ keysCount: 1 });
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        vm.expectRevert(IBaseModule.DepositInfoIsNotUpToDate.selector);
+        csm.cleanDepositQueue({ maxItems: 10 });
+    }
+
     function test_updateDepositableValidatorsCount_NothingToDo() public assertInvariants {
         // `updateDepositableValidatorsCount` will be called on creating a node operator and uploading a key.
         uint256 noId = createNodeOperator();
