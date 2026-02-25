@@ -384,7 +384,7 @@ contract CSModule is ICSModule, BaseModule {
     }
 
     function _queueLowestPriority() internal view returns (uint256) {
-        return PARAMETERS_REGISTRY.QUEUE_LOWEST_PRIORITY();
+        return _parametersRegistry().QUEUE_LOWEST_PRIORITY();
     }
 
     function _storage() internal pure returns (CSModuleStorage storage $) {
