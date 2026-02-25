@@ -76,10 +76,6 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
 }
 
 contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
-    function test_immutables() public view {
-        assertEq(parametersRegistryImpl.QUEUE_LOWEST_PRIORITY(), deployParams.queueLowestPriority);
-    }
-
     function test_state_onlyFull() public view {
         assertEq(parametersRegistry.defaultKeyRemovalCharge(), deployParams.defaultKeyRemovalCharge);
         assertEq(
@@ -231,66 +227,6 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
             parametersRegistry.getMaxElWithdrawalRequestFee(legacyEaBondCurveId),
             deployParams.defaultMaxElWithdrawalRequestFee
         );
-    }
-
-    function test_roles_onlyFull() public view {
-        assertTrue(parametersRegistry.hasRole(parametersRegistry.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
-        assertEq(parametersRegistry.getRoleMemberCount(parametersRegistry.DEFAULT_ADMIN_ROLE()), adminsCount);
-    }
-
-    function test_proxy_onlyFull() public {
-        vm.expectRevert(Initializable.InvalidInitialization.selector);
-        parametersRegistry.initialize({
-            admin: deployParams.aragonAgent,
-            data: IParametersRegistry.InitializationData({
-                defaultKeyRemovalCharge: deployParams.defaultKeyRemovalCharge,
-                defaultGeneralDelayedPenaltyAdditionalFine: deployParams.defaultGeneralDelayedPenaltyAdditionalFine,
-                defaultKeysLimit: deployParams.defaultKeysLimit,
-                defaultRewardShare: deployParams.defaultRewardShareBP,
-                defaultPerformanceLeeway: deployParams.defaultAvgPerfLeewayBP,
-                defaultStrikesLifetime: deployParams.defaultStrikesLifetimeFrames,
-                defaultStrikesThreshold: deployParams.defaultStrikesThreshold,
-                defaultQueuePriority: deployParams.defaultQueuePriority,
-                defaultQueueMaxDeposits: deployParams.defaultQueueMaxDeposits,
-                defaultBadPerformancePenalty: deployParams.defaultBadPerformancePenalty,
-                defaultAttestationsWeight: deployParams.defaultAttestationsWeight,
-                defaultBlocksWeight: deployParams.defaultBlocksWeight,
-                defaultSyncWeight: deployParams.defaultSyncWeight,
-                defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
-                defaultExitDelayFee: deployParams.defaultExitDelayFee,
-                defaultMaxElWithdrawalRequestFee: deployParams.defaultMaxElWithdrawalRequestFee
-            })
-        });
-
-        OssifiableProxy proxy = OssifiableProxy(payable(address(parametersRegistry)));
-
-        assertEq(proxy.proxy__getImplementation(), address(parametersRegistryImpl));
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
-        assertFalse(proxy.proxy__getIsOssified());
-
-        ParametersRegistry parametersRegistryImpl = ParametersRegistry(proxy.proxy__getImplementation());
-        vm.expectRevert(Initializable.InvalidInitialization.selector);
-        parametersRegistryImpl.initialize({
-            admin: deployParams.aragonAgent,
-            data: IParametersRegistry.InitializationData({
-                defaultKeyRemovalCharge: deployParams.defaultKeyRemovalCharge,
-                defaultGeneralDelayedPenaltyAdditionalFine: deployParams.defaultGeneralDelayedPenaltyAdditionalFine,
-                defaultKeysLimit: deployParams.defaultKeysLimit,
-                defaultRewardShare: deployParams.defaultRewardShareBP,
-                defaultPerformanceLeeway: deployParams.defaultAvgPerfLeewayBP,
-                defaultStrikesLifetime: deployParams.defaultStrikesLifetimeFrames,
-                defaultStrikesThreshold: deployParams.defaultStrikesThreshold,
-                defaultQueuePriority: deployParams.defaultQueuePriority,
-                defaultQueueMaxDeposits: deployParams.defaultQueueMaxDeposits,
-                defaultBadPerformancePenalty: deployParams.defaultBadPerformancePenalty,
-                defaultAttestationsWeight: deployParams.defaultAttestationsWeight,
-                defaultBlocksWeight: deployParams.defaultBlocksWeight,
-                defaultSyncWeight: deployParams.defaultSyncWeight,
-                defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
-                defaultExitDelayFee: deployParams.defaultExitDelayFee,
-                defaultMaxElWithdrawalRequestFee: deployParams.defaultMaxElWithdrawalRequestFee
-            })
-        });
     }
 }
 

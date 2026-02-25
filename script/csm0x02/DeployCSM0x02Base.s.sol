@@ -85,7 +85,7 @@ struct DeployCSM0x02Params {
     uint256 defaultAllowedExitDelay;
     uint256 defaultExitDelayFee;
     uint256 defaultMaxElWithdrawalRequestFee;
-    uint256 defaultDepositAllocationWeight;
+    address penaltiesManager;
     // GateSeal
     address gateSealFactory;
     address sealingCommittee;
@@ -364,6 +364,11 @@ abstract contract DeployCSM0x02Base is Script {
             ejector.grantRole(ejector.RESUME_ROLE(), config.resealManager);
 
             accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), address(config.setResetBondCurveAddress));
+
+            parametersRegistry.grantRole(
+                parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
+                config.penaltiesManager
+            );
 
             csm.grantRole(csm.CREATE_NODE_OPERATOR_ROLE(), address(permissionlessGate));
             csm.grantRole(csm.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), config.generalDelayedPenaltyReporter);

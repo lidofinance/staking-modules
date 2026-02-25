@@ -71,6 +71,7 @@ contract DeployLocalDevNet is DeployBase {
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.1 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
+        config.penaltiesManager = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
         // VettedGate
         config.identifiedCommunityStakersGateManager = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA

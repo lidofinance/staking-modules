@@ -69,6 +69,7 @@ contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.1 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
+        config.penaltiesManager = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
         // GateSeal
         config.gateSealFactory = 0x0000000000000000000000000000000000000000;

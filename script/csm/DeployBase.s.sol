@@ -88,6 +88,7 @@ struct DeployParams {
     uint256 defaultAllowedExitDelay;
     uint256 defaultExitDelayFee;
     uint256 defaultMaxElWithdrawalRequestFee;
+    address penaltiesManager;
     // VettedGate
     // TODO: Legacy-only field. Kept only for SimulateVote.upgrade() END_REFERRAL_SEASON_ROLE revoke.
     address identifiedCommunityStakersGateManager;
@@ -476,6 +477,11 @@ abstract contract DeployBase is Script {
 
             accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), address(config.setResetBondCurveAddress));
             accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), address(vettedGate));
+
+            parametersRegistry.grantRole(
+                parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
+                config.penaltiesManager
+            );
 
             csm.grantRole(csm.CREATE_NODE_OPERATOR_ROLE(), address(permissionlessGate));
             csm.grantRole(csm.CREATE_NODE_OPERATOR_ROLE(), address(vettedGate));

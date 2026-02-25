@@ -77,6 +77,7 @@ contract DeployHoodi is DeployBase {
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.1 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
+        config.penaltiesManager = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
 
         // Curated gates
         config.curatedGates.push();
@@ -104,6 +105,11 @@ contract DeployHoodi is DeployBase {
             primaryGate.params.exitDelayFee = 0.02 ether; // TODO
             primaryGate.params.maxElWithdrawalRequestFee = 0.05 ether; // TODO
         }
+
+        config.curatedGatePauseManager = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
+
+        // MetaRegistry
+        config.setOperatorInfoManager = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team
 
         // GateSeal
         config.gateSealFactory = 0xA402349F560D45310D301E92B1AA4DeCABe147B3;

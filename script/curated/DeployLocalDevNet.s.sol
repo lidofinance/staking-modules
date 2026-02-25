@@ -66,6 +66,7 @@ contract DeployLocalDevNet is DeployBase {
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.1 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
+        config.penaltiesManager = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
         // Curated gates
         config.curatedGates.push();
@@ -98,6 +99,11 @@ contract DeployLocalDevNet is DeployBase {
             primaryGate.params.exitDelayFee = 0.05 ether; // TODO
             primaryGate.params.maxElWithdrawalRequestFee = 0.05 ether; // TODO
         }
+
+        config.curatedGatePauseManager = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
+
+        // MetaRegistry
+        config.setOperatorInfoManager = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
         // GateSeal
         config.gateSealFactory = address(0);

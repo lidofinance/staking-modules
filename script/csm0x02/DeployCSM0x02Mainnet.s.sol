@@ -77,6 +77,7 @@ contract DeployCSM0x02Mainnet is DeployCSM0x02Base {
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.1 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
+        config.penaltiesManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
 
         // GateSeal
         config.gateSealFactory = 0x6C82877cAC5a7A739f16Ca0A89c0A328B8764A24;

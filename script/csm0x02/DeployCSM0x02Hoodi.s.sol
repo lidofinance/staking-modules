@@ -79,6 +79,7 @@ contract DeployCSM0x02Hoodi is DeployCSM0x02Base {
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.1 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
+        config.penaltiesManager = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
 
         // GateSeal
         config.gateSealFactory = 0xA402349F560D45310D301E92B1AA4DeCABe147B3;
