@@ -1419,7 +1419,7 @@ contract ScenarioTest is BaseTest {
 
         // 7) Settle lock
         vm.prank(address(stakingModule));
-        accounting.settleLockedBond(0);
+        accounting.settleLockedBond(0, 3 ether);
 
         (, req) = accounting.getBondSummary(0);
 

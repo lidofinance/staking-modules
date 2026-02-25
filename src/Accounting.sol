@@ -286,12 +286,16 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function settleLockedBond(uint256 nodeOperatorId) external onlyModule {
+    function settleLockedBond(
+        uint256 nodeOperatorId,
+        uint256 maxAmount
+    ) external onlyModule returns (uint256 amountSettled) {
         uint256 lockedAmount = BondLock.getActualLockedBond(nodeOperatorId);
+        amountSettled = lockedAmount < maxAmount ? lockedAmount : maxAmount;
         if (lockedAmount > 0) {
-            BondCore._burn(nodeOperatorId, lockedAmount);
-            // reduce all locked bond even if bond isn't covered lock fully since debt will be created in this case
-            BondLock._unlock(nodeOperatorId, lockedAmount);
+            BondCore._burn(nodeOperatorId, amountSettled);
+            // unlock all amountSettled even if bond isn't covered lock fully since debt will be created in this case
+            BondLock._unlock(nodeOperatorId, amountSettled);
         }
     }
 
