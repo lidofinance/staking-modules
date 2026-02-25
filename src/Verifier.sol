@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
-import { BeaconBlockHeader, Slot, Validator, Withdrawal, PendingConsolidation } from "./lib/Types.sol";
+import { BeaconBlockHeader, Slot, Validator, Withdrawal } from "./lib/Types.sol";
 import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 import { GIndex } from "./lib/GIndex.sol";
 import { SSZ } from "./lib/SSZ.sol";
@@ -28,7 +28,6 @@ function gweiToWei(uint64 amount) pure returns (uint256) {
 contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     using { amountWei } for Withdrawal;
 
-    using SSZ for PendingConsolidation;
     using SSZ for BeaconBlockHeader;
     using SSZ for Withdrawal;
     using SSZ for Validator;
@@ -71,12 +70,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
     /// @dev This index is relative to a state like: `BeaconState.balances[0]`.
     GIndex public immutable GI_FIRST_BALANCES_NODE_CURR;
-
-    /// @dev This index is relative to a state like: `BeaconState.pending_consolidations[0]`.
-    GIndex public immutable GI_FIRST_PENDING_CONSOLIDATION_PREV;
-
-    /// @dev This index is relative to a state like: `BeaconState.pending_consolidations[0]`.
-    GIndex public immutable GI_FIRST_PENDING_CONSOLIDATION_CURR;
 
     /// @dev The very first slot the verifier is supposed to accept proofs for.
     Slot public immutable FIRST_SUPPORTED_SLOT;
@@ -133,9 +126,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
         GI_FIRST_BALANCES_NODE_PREV = gindices.gIFirstBalanceNodePrev;
         GI_FIRST_BALANCES_NODE_CURR = gindices.gIFirstBalanceNodeCurr;
-
-        GI_FIRST_PENDING_CONSOLIDATION_PREV = gindices.gIFirstPendingConsolidationPrev;
-        GI_FIRST_PENDING_CONSOLIDATION_CURR = gindices.gIFirstPendingConsolidationCurr;
 
         FIRST_SUPPORTED_SLOT = firstSupportedSlot;
         PIVOT_SLOT = pivotSlot;
@@ -242,76 +232,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
                 nodeOperatorId: data.validator.nodeOperatorId,
                 keyIndex: data.validator.keyIndex,
                 exitBalance: withdrawalAmount,
-                slashingPenalty: 0,
-                isSlashed: false
-            })
-        );
-    }
-
-    /// @inheritdoc IVerifier
-    function processConsolidation(ProcessConsolidationInput calldata data) external whenResumed {
-        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) revert UnsupportedSlot(data.recentBlock.header.slot);
-        if (data.consolidationBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(data.consolidationBlock.header.slot);
-        }
-        if (data.validator.object.slashed) revert ValidatorIsSlashed();
-
-        {
-            bytes memory pubkey = MODULE.getSigningKeys(data.validator.nodeOperatorId, data.validator.keyIndex, 1);
-
-            if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
-        }
-
-        if (_computeEpochAtSlot(data.recentBlock.header.slot) < data.validator.object.withdrawableEpoch) {
-            revert ValidatorIsNotWithdrawable();
-        }
-        if (data.consolidation.object.sourceIndex != data.validator.index) revert InvalidConsolidationSource();
-
-        // Verify recent block's header.
-        {
-            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.recentBlock.rootsTimestamp);
-            bytes32 headerRoot = data.recentBlock.header.hashTreeRoot();
-            if (trustedHeaderRoot != headerRoot) revert InvalidBlockHeader();
-        }
-
-        // Verify consolidation block header.
-        SSZ.verifyProof({
-            proof: data.consolidationBlock.proof,
-            root: data.recentBlock.header.stateRoot,
-            leaf: data.consolidationBlock.header.hashTreeRoot(),
-            gI: _getHistoricalBlockRootGI(data.recentBlock.header.slot, data.consolidationBlock.header.slot)
-        });
-
-        // Verify PendingConsolidation object against the consolidation block.
-        SSZ.verifyProof({
-            proof: data.consolidation.proof,
-            root: data.consolidationBlock.header.stateRoot,
-            leaf: data.consolidation.object.hashTreeRoot(),
-            gI: _getPendingConsolidationGI(data.consolidation.offset, data.consolidationBlock.header.slot)
-        });
-
-        // Verify Validator object against the recent block.
-        SSZ.verifyProof({
-            proof: data.validator.proof,
-            root: data.recentBlock.header.stateRoot,
-            leaf: data.validator.object.hashTreeRoot(),
-            gI: _getValidatorGI(data.validator.index, data.recentBlock.header.slot)
-        });
-
-        // Verify validator's balance against the consolidation block.
-        uint64 balanceGwei = _verifyValidatorBalance({
-            validatorIndex: data.validator.index,
-            balanceNode: data.balance.node,
-            stateRoot: data.consolidationBlock.header.stateRoot,
-            stateSlot: data.consolidationBlock.header.slot,
-            proof: data.balance.proof
-        });
-
-        _reportSingleValidator(
-            WithdrawnValidatorInfo({
-                nodeOperatorId: data.validator.nodeOperatorId,
-                keyIndex: data.validator.keyIndex,
-                exitBalance: gweiToWei(balanceGwei),
                 slashingPenalty: 0,
                 isSlashed: false
             })
@@ -449,11 +369,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
     function _getValidatorBalanceGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
         GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_BALANCES_NODE_PREV : GI_FIRST_BALANCES_NODE_CURR;
-        return gI.shr(offset);
-    }
-
-    function _getPendingConsolidationGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
-        GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_PENDING_CONSOLIDATION_PREV : GI_FIRST_PENDING_CONSOLIDATION_CURR;
         return gI.shr(offset);
     }
 

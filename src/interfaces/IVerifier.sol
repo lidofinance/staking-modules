@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { BeaconBlockHeader, PendingConsolidation, Slot, Validator, Withdrawal } from "../lib/Types.sol";
+import { BeaconBlockHeader, Slot, Validator, Withdrawal } from "../lib/Types.sol";
 import { GIndex } from "../lib/GIndex.sol";
 
 import { IBaseModule } from "./IBaseModule.sol";
@@ -20,8 +20,6 @@ interface IVerifier {
         GIndex gIFirstBlockRootInSummaryCurr;
         GIndex gIFirstBalanceNodePrev;
         GIndex gIFirstBalanceNodeCurr;
-        GIndex gIFirstPendingConsolidationPrev;
-        GIndex gIFirstPendingConsolidationCurr;
     }
 
     struct RecentHeaderWitness {
@@ -54,22 +52,6 @@ interface IVerifier {
         bytes32[] proof;
     }
 
-    struct PendingConsolidationWitness {
-        PendingConsolidation object;
-        uint64 offset; // in the list of pending consolidations
-        bytes32[] proof;
-    }
-
-    struct ProcessConsolidationInput {
-        PendingConsolidationWitness consolidation;
-        ValidatorWitness validator;
-        // Represents the validator's balance before the CL processes the pending consolidation. Used as a proxy for the
-        // "withdrawal balance" in accounting/penalties, since consolidation is not an EL withdrawal.
-        BalanceWitness balance;
-        RecentHeaderWitness recentBlock;
-        HistoricalHeaderWitness consolidationBlock;
-    }
-
     struct ProcessSlashedInput {
         ValidatorWitness validator;
         RecentHeaderWitness recentBlock;
@@ -97,7 +79,6 @@ interface IVerifier {
     error ValidatorIsNotWithdrawable();
     error InvalidWithdrawalAddress();
     error InvalidPublicKey();
-    error InvalidConsolidationSource();
     error InvalidValidatorIndex();
     error UnsupportedSlot(Slot slot);
     error ZeroModuleAddress();
@@ -157,13 +138,6 @@ interface IVerifier {
     /// an EasyTrack motion.
     /// @param data @see ProcessHistoricalWithdrawalInput
     function processHistoricalWithdrawalProof(ProcessHistoricalWithdrawalInput calldata data) external;
-
-    /// @notice Processes a validator's consolidation from a module's validator. The balance before consolidation is
-    /// assumed to be the withdrawal balance.
-    /// @dev The caveat is that a pending consolidation is processed later, making it impossible to account for losses
-    /// or rewards during the waiting period, as there's no indication of consolidation processing in the state.
-    /// @param data @see ProcessConsolidationInput
-    function processConsolidation(ProcessConsolidationInput calldata data) external;
 
     /// @notice Stub method for incoming consolidation request proofs.
     function processIncomingConsolidation(uint256 nodeOperatorId, uint256 keyIndex, uint256 addedBalanceWei) external;

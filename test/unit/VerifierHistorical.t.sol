@@ -104,9 +104,7 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
                 gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
                 gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX,
-                gIFirstPendingConsolidationPrev: NULL_GINDEX,
-                gIFirstPendingConsolidationCurr: NULL_GINDEX
+                gIFirstBalanceNodeCurr: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot,
             pivotSlot: fixture.data.withdrawalBlock.header.slot,
@@ -252,9 +250,7 @@ contract VerifierCrossForkHistoricalTest is VerifierHistoricalBase {
                 gIFirstBlockRootInSummaryPrev: FIRST_BLOCK_ROOT_IN_SUMMARY_DENEB,
                 gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX,
-                gIFirstPendingConsolidationPrev: NULL_GINDEX,
-                gIFirstPendingConsolidationCurr: NULL_GINDEX
+                gIFirstBalanceNodeCurr: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot,
             pivotSlot: fixture.data.recentBlock.header.slot.dec(),
@@ -303,9 +299,7 @@ contract VerifierCrossForkHistoricalAtPivotSlotTest is VerifierHistoricalBase {
                 gIFirstBlockRootInSummaryPrev: FIRST_BLOCK_ROOT_IN_SUMMARY_DENEB,
                 gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX,
-                gIFirstPendingConsolidationPrev: NULL_GINDEX,
-                gIFirstPendingConsolidationCurr: NULL_GINDEX
+                gIFirstBalanceNodeCurr: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot,
             pivotSlot: fixture.data.recentBlock.header.slot,

@@ -53,7 +53,6 @@ struct DeployCSM0x02Params {
     GIndex gIFirstHistoricalSummary;
     GIndex gIFirstBlockRootInSummary;
     GIndex gIFirstBalanceNode;
-    GIndex gIFirstPendingConsolidation;
     uint256 verifierFirstSupportedSlot;
     uint256 capellaSlot;
     // Accounting
@@ -227,9 +226,7 @@ abstract contract DeployCSM0x02Base is Script {
                     gIFirstBlockRootInSummaryPrev: config.gIFirstBlockRootInSummary,
                     gIFirstBlockRootInSummaryCurr: config.gIFirstBlockRootInSummary,
                     gIFirstBalanceNodePrev: config.gIFirstBalanceNode,
-                    gIFirstBalanceNodeCurr: config.gIFirstBalanceNode,
-                    gIFirstPendingConsolidationPrev: config.gIFirstPendingConsolidation,
-                    gIFirstPendingConsolidationCurr: config.gIFirstPendingConsolidation
+                    gIFirstBalanceNodeCurr: config.gIFirstBalanceNode
                 }),
                 firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 pivotSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
