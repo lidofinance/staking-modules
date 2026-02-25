@@ -133,7 +133,6 @@ contract DeploymentHelpers is Test {
         GIndex gIFirstHistoricalSummary;
         GIndex gIFirstBlockRootInSummary;
         GIndex gIFirstBalanceNode;
-        GIndex gIFirstPendingConsolidation;
         uint256 verifierFirstSupportedSlot;
         uint256 capellaSlot;
         uint256[2][] defaultBondCurve;
@@ -433,7 +432,6 @@ contract DeploymentHelpers is Test {
         dst.gIFirstHistoricalSummary = src.gIFirstHistoricalSummary;
         dst.gIFirstBlockRootInSummary = src.gIFirstBlockRootInSummary;
         dst.gIFirstBalanceNode = src.gIFirstBalanceNode;
-        dst.gIFirstPendingConsolidation = src.gIFirstPendingConsolidation;
         dst.verifierFirstSupportedSlot = src.verifierFirstSupportedSlot;
         dst.capellaSlot = src.capellaSlot;
 
@@ -547,7 +545,6 @@ contract DeploymentHelpers is Test {
         params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
         params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
         params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
-        params.gIFirstPendingConsolidation = decoded.gIFirstPendingConsolidation;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.defaultBondCurve = decoded.defaultBondCurve;
@@ -585,7 +582,6 @@ contract DeploymentHelpers is Test {
         params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
         params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
         params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
-        params.gIFirstPendingConsolidation = decoded.gIFirstPendingConsolidation;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.defaultBondCurve = decoded.defaultBondCurve;
@@ -623,7 +619,6 @@ contract DeploymentHelpers is Test {
         params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
         params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
         params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
-        params.gIFirstPendingConsolidation = decoded.gIFirstPendingConsolidation;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.defaultBondCurve = decoded.defaultBondCurve;

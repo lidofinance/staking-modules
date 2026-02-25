@@ -89,9 +89,7 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIFirstBlockRootInSummaryPrev: pack(0x4000, 13),
                 gIFirstBlockRootInSummaryCurr: pack(0x4001, 13),
                 gIFirstBalanceNodePrev: pack(0x160000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x160000000001, 40),
-                gIFirstPendingConsolidationPrev: pack(0x3200000, 18),
-                gIFirstPendingConsolidationCurr: pack(0x3200001, 18)
+                gIFirstBalanceNodeCurr: pack(0x160000000001, 40)
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: Slot.wrap(100_501),
@@ -112,8 +110,6 @@ contract VerifierTestConstructor is VerifierTestBase {
         assertEq(GIndex.unwrap(verifier.GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR()), GIndex.unwrap(pack(0x4001, 13)));
         assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_PREV()), GIndex.unwrap(pack(0x160000000000, 40)));
         assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_CURR()), GIndex.unwrap(pack(0x160000000001, 40)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_PENDING_CONSOLIDATION_PREV()), GIndex.unwrap(pack(0x3200000, 18)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_PENDING_CONSOLIDATION_CURR()), GIndex.unwrap(pack(0x3200001, 18)));
         assertEq(Slot.unwrap(verifier.FIRST_SUPPORTED_SLOT()), Slot.unwrap(firstSupportedSlot));
         assertEq(Slot.unwrap(verifier.PIVOT_SLOT()), Slot.unwrap(Slot.wrap(100_501)));
         assertEq(Slot.unwrap(verifier.CAPELLA_SLOT()), Slot.unwrap(Slot.wrap(42)));
@@ -136,9 +132,7 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIFirstBlockRootInSummaryPrev: pack(0x4000, 13),
                 gIFirstBlockRootInSummaryCurr: pack(0x4000, 13),
                 gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x260000000000, 40),
-                gIFirstPendingConsolidationPrev: pack(0x3200000, 18),
-                gIFirstPendingConsolidationCurr: pack(0x3200000, 18)
+                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -164,9 +158,7 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIFirstBlockRootInSummaryPrev: pack(0x4000, 13),
                 gIFirstBlockRootInSummaryCurr: pack(0x4000, 13),
                 gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x260000000000, 40),
-                gIFirstPendingConsolidationPrev: pack(0x3200000, 18),
-                gIFirstPendingConsolidationCurr: pack(0x3200000, 18)
+                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -192,9 +184,7 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIFirstBlockRootInSummaryPrev: pack(0x4000, 13),
                 gIFirstBlockRootInSummaryCurr: pack(0x4000, 13),
                 gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x260000000000, 40),
-                gIFirstPendingConsolidationPrev: pack(0x3200000, 18),
-                gIFirstPendingConsolidationCurr: pack(0x3200000, 18)
+                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: firstSupportedSlot.dec(),
@@ -220,9 +210,7 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIFirstBlockRootInSummaryPrev: pack(0x4000, 13),
                 gIFirstBlockRootInSummaryCurr: pack(0x4000, 13),
                 gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x260000000000, 40),
-                gIFirstPendingConsolidationPrev: pack(0x3200000, 18),
-                gIFirstPendingConsolidationCurr: pack(0x3200000, 18)
+                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: firstSupportedSlot,
@@ -248,9 +236,7 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIFirstBlockRootInSummaryPrev: pack(0x4000, 13),
                 gIFirstBlockRootInSummaryCurr: pack(0x4000, 13),
                 gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x260000000000, 40),
-                gIFirstPendingConsolidationPrev: pack(0x3200000, 18),
-                gIFirstPendingConsolidationCurr: pack(0x3200000, 18)
+                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -276,9 +262,7 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIFirstBlockRootInSummaryPrev: pack(0x4000, 13),
                 gIFirstBlockRootInSummaryCurr: pack(0x4000, 13),
                 gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x260000000000, 40),
-                gIFirstPendingConsolidationPrev: pack(0x3200000, 18),
-                gIFirstPendingConsolidationCurr: pack(0x3200000, 18)
+                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -304,9 +288,7 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIFirstBlockRootInSummaryPrev: pack(0x4000, 13),
                 gIFirstBlockRootInSummaryCurr: pack(0x4000, 13),
                 gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x260000000000, 40),
-                gIFirstPendingConsolidationPrev: pack(0x3200000, 18),
-                gIFirstPendingConsolidationCurr: pack(0x3200000, 18)
+                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -347,9 +329,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
                 gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
                 gIFirstBlockRootInSummaryCurr: NULL_GINDEX,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX,
-                gIFirstPendingConsolidationPrev: NULL_GINDEX,
-                gIFirstPendingConsolidationCurr: NULL_GINDEX
+                gIFirstBalanceNodeCurr: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             pivotSlot: fixture.data.withdrawalBlock.header.slot.dec(),
@@ -488,9 +468,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
                 gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
                 gIFirstBlockRootInSummaryCurr: NULL_GINDEX,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX,
-                gIFirstPendingConsolidationPrev: NULL_GINDEX,
-                gIFirstPendingConsolidationCurr: NULL_GINDEX
+                gIFirstBalanceNodeCurr: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             pivotSlot: fixture.data.withdrawalBlock.header.slot.inc(),
@@ -517,9 +495,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
                 gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
                 gIFirstBlockRootInSummaryCurr: NULL_GINDEX,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX,
-                gIFirstPendingConsolidationPrev: NULL_GINDEX,
-                gIFirstPendingConsolidationCurr: NULL_GINDEX
+                gIFirstBalanceNodeCurr: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             pivotSlot: fixture.data.withdrawalBlock.header.slot,
@@ -546,9 +522,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
                 gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
                 gIFirstBlockRootInSummaryCurr: NULL_GINDEX,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX,
-                gIFirstPendingConsolidationPrev: NULL_GINDEX,
-                gIFirstPendingConsolidationCurr: NULL_GINDEX
+                gIFirstBalanceNodeCurr: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             pivotSlot: fixture.data.withdrawalBlock.header.slot.dec(),
@@ -621,9 +595,7 @@ contract VerifierSlashingTest is VerifierTestBase {
                 gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
                 gIFirstBlockRootInSummaryCurr: NULL_GINDEX,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX,
-                gIFirstPendingConsolidationPrev: NULL_GINDEX,
-                gIFirstPendingConsolidationCurr: NULL_GINDEX
+                gIFirstBalanceNodeCurr: NULL_GINDEX
             }),
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192),
@@ -742,173 +714,6 @@ contract VerifierSlashingTest is VerifierTestBase {
     function ffi_interface(Fixture memory) external {}
 }
 
-contract VerifierConsolidationTest is VerifierTestBase {
-    struct Fixture {
-        bytes32 blockRoot;
-        uint256 balanceWei;
-        IVerifier.ProcessConsolidationInput data;
-    }
-
-    Fixture internal fixture;
-
-    function setUp() public {
-        _loadFixture();
-
-        module = new Stub();
-        admin = nextAddress("ADMIN");
-
-        verifier = new Verifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
-            module: address(module),
-            slotsPerEpoch: 32,
-            slotsPerHistoricalRoot: 8192,
-            gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: NULL_GINDEX,
-                gIFirstWithdrawalCurr: NULL_GINDEX,
-                gIFirstValidatorPrev: GIndices.FIRST_VALIDATOR_ELECTRA,
-                gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
-                gIFirstHistoricalSummaryPrev: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
-                gIFirstHistoricalSummaryCurr: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
-                gIFirstBlockRootInSummaryPrev: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
-                gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
-                gIFirstBalanceNodePrev: GIndices.FIRST_BALANCE_NODE_ELECTRA,
-                gIFirstBalanceNodeCurr: GIndices.FIRST_BALANCE_NODE_ELECTRA,
-                gIFirstPendingConsolidationPrev: GIndices.FIRST_PENDING_CONSOLIDATION_ELECTRA,
-                gIFirstPendingConsolidationCurr: GIndices.FIRST_PENDING_CONSOLIDATION_ELECTRA
-            }),
-            firstSupportedSlot: Slot.wrap(8192),
-            pivotSlot: Slot.wrap(8192),
-            capellaSlot: Slot.wrap(0),
-            admin: admin
-        });
-
-        pauseRole = verifier.PAUSE_ROLE();
-        resumeRole = verifier.RESUME_ROLE();
-
-        vm.startPrank(admin);
-        verifier.grantRole(pauseRole, admin);
-        verifier.grantRole(resumeRole, admin);
-        vm.stopPrank();
-
-        _setMocks();
-
-        assertGt(verifier.FIRST_SUPPORTED_SLOT().unwrap(), 0, "Non-zero slot needed for tests");
-    }
-
-    function test_processConsolidationProof_HappyPath() public {
-        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
-        withdrawals[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: fixture.data.validator.nodeOperatorId,
-            keyIndex: fixture.data.validator.keyIndex,
-            exitBalance: fixture.balanceWei,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-
-        vm.expectCall(
-            address(module),
-            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
-        );
-
-        verifier.processConsolidation(fixture.data);
-    }
-
-    function test_processWithdrawalProof_RevertWhenPaused() public {
-        vm.prank(admin);
-        verifier.pauseFor(100_500);
-        assertTrue(verifier.isPaused());
-
-        vm.expectRevert(PausableUntil.ResumedExpected.selector);
-        verifier.processConsolidation(fixture.data);
-    }
-
-    function test_processConsolidation_RevertWhen_RecentBlockSlotUnsupported() public {
-        fixture.data.recentBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
-
-        vm.expectRevert(
-            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.recentBlock.header.slot)
-        );
-        verifier.processConsolidation(fixture.data);
-    }
-
-    function test_processConsolidation_RevertWhen_ConsolidationBlockSlotUnsupported() public {
-        fixture.data.consolidationBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
-
-        vm.expectRevert(
-            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.consolidationBlock.header.slot)
-        );
-        verifier.processConsolidation(fixture.data);
-    }
-
-    function test_processConsolidation_RevertWhen_Slashed() public {
-        fixture.data.validator.object.slashed = true;
-
-        vm.expectRevert(IVerifier.ValidatorIsSlashed.selector);
-        verifier.processConsolidation(fixture.data);
-    }
-
-    function test_processConsolidation_RevertWhen_InvalidPublicKey() public {
-        fixture.data.validator.object.pubkey = hex"deadbeef";
-
-        vm.expectRevert(IVerifier.InvalidPublicKey.selector);
-        verifier.processConsolidation(fixture.data);
-    }
-
-    function test_processConsolidation_RevertWhen_ValidatorIsNotWithdrawable() public {
-        fixture.data.validator.object.withdrawableEpoch = fixture.data.recentBlock.header.slot.unwrap() / 32 + 1;
-        vm.expectRevert(IVerifier.ValidatorIsNotWithdrawable.selector);
-        verifier.processConsolidation(fixture.data);
-    }
-
-    function test_processConsolidation_RevertWhen_InvalidConsolidationSource() public {
-        fixture.data.consolidation.object.sourceIndex = fixture.data.validator.index + 1;
-        vm.expectRevert(IVerifier.InvalidConsolidationSource.selector);
-        verifier.processConsolidation(fixture.data);
-    }
-
-    function test_processConsolidation_RevertWhen_InvalidBlockHeader() public {
-        vm.mockCall(
-            verifier.BEACON_ROOTS(),
-            abi.encode(fixture.data.recentBlock.rootsTimestamp),
-            abi.encode(hex"deadbeef")
-        );
-
-        vm.expectRevert(IVerifier.InvalidBlockHeader.selector);
-        verifier.processConsolidation(fixture.data);
-    }
-
-    function _setMocks() internal {
-        vm.mockCall(
-            verifier.BEACON_ROOTS(),
-            abi.encode(fixture.data.recentBlock.rootsTimestamp),
-            abi.encode(fixture.blockRoot)
-        );
-
-        vm.mockCall(
-            address(module),
-            abi.encodeWithSelector(
-                IBaseModule.getSigningKeys.selector,
-                fixture.data.validator.nodeOperatorId,
-                fixture.data.validator.keyIndex
-            ),
-            abi.encode(fixture.data.validator.object.pubkey)
-        );
-
-        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");
-    }
-
-    function _loadFixture() internal {
-        string[] memory cmd = new string[](3);
-        cmd[0] = "node";
-        cmd[1] = "--no-warnings";
-        cmd[2] = "test/fixtures/Verifier/consolidations.mjs";
-        bytes memory res = vm.ffi(cmd);
-        fixture = abi.decode(res, (Fixture));
-    }
-
-    function ffi_interface(Fixture memory) external {}
-}
-
 contract VerifierPauseTest is VerifierTestBase {
     function setUp() public {
         module = new Stub();
@@ -930,9 +735,7 @@ contract VerifierPauseTest is VerifierTestBase {
                 gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
                 gIFirstBlockRootInSummaryCurr: NULL_GINDEX,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX,
-                gIFirstPendingConsolidationPrev: NULL_GINDEX,
-                gIFirstPendingConsolidationCurr: NULL_GINDEX
+                gIFirstBalanceNodeCurr: NULL_GINDEX
             }),
             firstSupportedSlot: Slot.wrap(100_500), // Any value less than the slots from the fixtures.
             pivotSlot: Slot.wrap(100_500),
@@ -1056,10 +859,6 @@ contract VerifierTestable is Verifier {
         return _getValidatorBalanceGI(offset, stateSlot);
     }
 
-    function getPendingConsolidationGI(uint256 offset, Slot stateSlot) external view returns (GIndex) {
-        return _getPendingConsolidationGI(offset, stateSlot);
-    }
-
     function getHistoricalBlockRootGI(Slot recentSlot, Slot targetSlot) external view returns (GIndex) {
         return _getHistoricalBlockRootGI(recentSlot, targetSlot);
     }
@@ -1111,9 +910,7 @@ contract VerifierGIndexTest is Test, Utilities {
                 gIFirstBlockRootInSummaryPrev: pack(0x4000, 13),
                 gIFirstBlockRootInSummaryCurr: pack(0x6000, 13),
                 gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x360000000000, 40),
-                gIFirstPendingConsolidationPrev: pack(0x3200000, 18),
-                gIFirstPendingConsolidationCurr: pack(0x4200000, 18)
+                gIFirstBalanceNodeCurr: pack(0x360000000000, 40)
             }),
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192 * 13),
@@ -1286,64 +1083,6 @@ contract VerifierGIndexTest is Test, Utilities {
         }
     }
 
-    function test_getPendingConsolidationGI_BeforeForkChange() public view {
-        Slot[] memory slots = new Slot[](3);
-
-        slots[0] = verifier.FIRST_SUPPORTED_SLOT();
-        slots[1] = verifier.FIRST_SUPPORTED_SLOT().inc();
-        slots[2] = verifier.PIVOT_SLOT().dec();
-
-        GIndex gI;
-
-        for (uint256 i = 0; i < slots.length; i++) {
-            Slot slot = slots[i];
-
-            gI = verifier.getPendingConsolidationGI(0, slot);
-            assertEq(gI.unwrap(), pack(0x3200000, 18).unwrap());
-
-            gI = verifier.getPendingConsolidationGI(1, slot);
-            assertEq(gI.unwrap(), pack(0x3200001, 18).unwrap());
-
-            gI = verifier.getPendingConsolidationGI(16, slot);
-            assertEq(gI.unwrap(), pack(0x3200010, 18).unwrap());
-
-            gI = verifier.getPendingConsolidationGI(17, slot);
-            assertEq(gI.unwrap(), pack(0x3200011, 18).unwrap());
-
-            gI = verifier.getPendingConsolidationGI((2 ** 18) - 1, slot);
-            assertEq(gI.unwrap(), pack(0x323ffff, 18).unwrap());
-        }
-    }
-
-    function test_getPendingConsolidationGI_AfterForkChange() public view {
-        Slot[] memory slots = new Slot[](3);
-
-        slots[0] = verifier.PIVOT_SLOT();
-        slots[1] = verifier.PIVOT_SLOT().inc();
-        slots[2] = Slot.wrap(type(uint64).max);
-
-        GIndex gI;
-
-        for (uint256 i = 0; i < slots.length; i++) {
-            Slot slot = slots[i];
-
-            gI = verifier.getPendingConsolidationGI(0, slot);
-            assertEq(gI.unwrap(), pack(0x4200000, 18).unwrap());
-
-            gI = verifier.getPendingConsolidationGI(1, slot);
-            assertEq(gI.unwrap(), pack(0x4200001, 18).unwrap());
-
-            gI = verifier.getPendingConsolidationGI(16, slot);
-            assertEq(gI.unwrap(), pack(0x4200010, 18).unwrap());
-
-            gI = verifier.getPendingConsolidationGI(17, slot);
-            assertEq(gI.unwrap(), pack(0x4200011, 18).unwrap());
-
-            gI = verifier.getPendingConsolidationGI((2 ** 18) - 1, slot);
-            assertEq(gI.unwrap(), pack(0x423ffff, 18).unwrap());
-        }
-    }
-
     function test_getHistoricalBlockRootGI_BeforePivot() public view {
         Slot recentSlot = verifier.PIVOT_SLOT().dec();
         Slot targetSlot;
@@ -1465,9 +1204,7 @@ contract VerifierGIndexCapellaZeroTest is Test, Utilities {
                 gIFirstBlockRootInSummaryPrev: pack(0x4000, 13),
                 gIFirstBlockRootInSummaryCurr: pack(0x6000, 13),
                 gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX,
-                gIFirstPendingConsolidationPrev: NULL_GINDEX,
-                gIFirstPendingConsolidationCurr: NULL_GINDEX
+                gIFirstBalanceNodeCurr: NULL_GINDEX
             }),
             firstSupportedSlot: Slot.wrap(0),
             pivotSlot: Slot.wrap(8192 * 13),
@@ -1593,9 +1330,7 @@ contract VerifierValidatorBalanceTest is Test, Utilities {
                 gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
                 gIFirstBlockRootInSummaryCurr: NULL_GINDEX,
                 gIFirstBalanceNodePrev: pack(0x8, 4),
-                gIFirstBalanceNodeCurr: pack(0x8, 4),
-                gIFirstPendingConsolidationPrev: NULL_GINDEX,
-                gIFirstPendingConsolidationCurr: NULL_GINDEX
+                gIFirstBalanceNodeCurr: pack(0x8, 4)
             }),
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192 * 13),
@@ -1788,9 +1523,7 @@ contract VerifierParentBlockRootTest is Test, Utilities {
                 gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
                 gIFirstBlockRootInSummaryCurr: NULL_GINDEX,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX,
-                gIFirstPendingConsolidationPrev: NULL_GINDEX,
-                gIFirstPendingConsolidationCurr: NULL_GINDEX
+                gIFirstBalanceNodeCurr: NULL_GINDEX
             }),
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192 * 13),
