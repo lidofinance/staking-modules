@@ -3,6 +3,8 @@
 
 pragma solidity 0.8.33;
 
+import { Vm } from "forge-std/Test.sol";
+
 import { BondLock } from "src/abstract/BondLock.sol";
 import { IBaseModule, NodeOperator } from "src/interfaces/IBaseModule.sol";
 
@@ -264,11 +266,45 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
         uint256 noId = createNodeOperator();
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
         uint256 depositableValidatorsCountBefore = summary.depositableValidatorsCount;
+
+        vm.recordLogs();
         module.settleGeneralDelayedPenalty(UintArr(noId), UintArr(type(uint256).max));
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 0);
 
         BondLock.BondLockData memory lock = accounting.getLockedBondInfo(noId);
         assertEq(lock.amount, 0 ether);
         assertEq(lock.until, 0);
+
+        // If there is nothing to settle, the targetLimitMode should be 0
+        summary = getNodeOperatorSummary(noId);
+        assertEq(summary.targetValidatorsCount, 0, "targetValidatorsCount mismatch");
+        assertEq(summary.targetLimitMode, 0, "targetLimitMode mismatch");
+        assertEq(
+            summary.depositableValidatorsCount,
+            depositableValidatorsCountBefore,
+            "depositableValidatorsCount should not change"
+        );
+    }
+
+    function test_settleGeneralDelayedPenalty_MaxAmountIsZero() public assertInvariants {
+        uint256 noId = createNodeOperator();
+
+        uint256 amount = 1 ether;
+        module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), amount, "Test penalty");
+
+        NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
+        uint256 depositableValidatorsCountBefore = summary.depositableValidatorsCount;
+
+        vm.recordLogs();
+        module.settleGeneralDelayedPenalty(UintArr(noId), UintArr(0));
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 0);
+
+        BondLock.BondLockData memory lock = accounting.getLockedBondInfo(noId);
+        assertEq(lock.amount, amount + module.PARAMETERS_REGISTRY().getGeneralDelayedPenaltyAdditionalFine(0));
+        assertEq(lock.until, accounting.getBondLockPeriod() + block.timestamp);
 
         // If there is nothing to settle, the targetLimitMode should be 0
         summary = getNodeOperatorSummary(noId);
