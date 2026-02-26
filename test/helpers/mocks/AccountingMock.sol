@@ -106,15 +106,21 @@ contract AccountingMock {
         bondLock[nodeOperatorId].amount -= uint128(amount);
     }
 
-    function settleLockedBond(uint256 nodeOperatorId) external {
+    function settleLockedBond(uint256 nodeOperatorId, uint256 maxAmount) external returns (uint256 settledAmount) {
         uint256 lockedBond = getActualLockedBond(nodeOperatorId);
-        if (lockedBond > bond[nodeOperatorId]) {
+        settledAmount = Math.min(lockedBond, maxAmount);
+        if (settledAmount > bond[nodeOperatorId]) {
             bond[nodeOperatorId] = 0;
         } else {
-            bond[nodeOperatorId] -= lockedBond;
+            bond[nodeOperatorId] -= settledAmount;
         }
-        bondLock[nodeOperatorId].amount = 0;
-        bondLock[nodeOperatorId].until = 0;
+        if (settledAmount < lockedBond) {
+            // Bond lock amounts mirror production's uint128 slot, so truncation cannot happen.
+            // forge-lint: disable-next-line(unsafe-typecast)
+            bondLock[nodeOperatorId].amount -= uint128(settledAmount);
+        } else {
+            delete bondLock[nodeOperatorId];
+        }
     }
 
     function compensateLockedBond(uint256 nodeOperatorId) external returns (uint256 compensatedAmount) {

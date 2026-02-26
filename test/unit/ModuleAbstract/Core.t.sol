@@ -6,6 +6,7 @@ pragma solidity 0.8.33;
 import { Vm } from "forge-std/Test.sol";
 
 import { BaseModule } from "src/abstract/BaseModule.sol";
+import { IBaseModule } from "src/interfaces/IBaseModule.sol";
 import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
 import { NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
@@ -524,14 +525,13 @@ abstract contract ModuleStakingRouterAccessControl is ModuleFixtures {
         module.grantRole(role, actor);
 
         uint256 nonce = module.getNonce();
-        vm.recordLogs();
 
+        vm.expectEmit(address(module));
+        emit IBaseModule.ExitedSigningKeysCountChanged(noId, 0);
         vm.prank(actor);
         module.unsafeUpdateValidatorsCount(noId, 0);
 
-        Vm.Log[] memory logs = vm.getRecordedLogs();
         assertEq(module.getNonce(), nonce);
-        assertEq(logs.length, 0);
     }
 
     function test_stakingRouterRole_unvetKeys() public {

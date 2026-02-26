@@ -52,13 +52,11 @@ library GeneralPenalty {
 
     function settleGeneralDelayedPenalty(uint256 nodeOperatorId, uint256 maxAmount) external returns (bool) {
         IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
-        uint256 locked = accounting.getActualLockedBond(nodeOperatorId);
-        if (locked == 0 || locked > maxAmount) {
-            return false; // skip this NO if the locked bond is greater than the max amount or there is no locked bond
-        }
 
-        accounting.settleLockedBond(nodeOperatorId);
-        emit IBaseModule.GeneralDelayedPenaltySettled(nodeOperatorId);
+        uint256 settledAmount = accounting.settleLockedBond(nodeOperatorId, maxAmount);
+        if (settledAmount == 0) return false;
+
+        emit IBaseModule.GeneralDelayedPenaltySettled(nodeOperatorId, settledAmount);
 
         return true;
     }

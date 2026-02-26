@@ -215,6 +215,19 @@ abstract contract BaseModule is
         });
     }
 
+    /// @dev DEPRECATED: Should be removed in the future versions.
+    /// @inheritdoc IStakingModule
+    function unsafeUpdateValidatorsCount(uint256 nodeOperatorId, uint256 exitedValidatorsCount) external {
+        _checkStakingRouterRole();
+        _totalExitedValidators = NodeOperatorOps.unsafeUpdateValidatorsCount({
+            nodeOperators: _nodeOperators,
+            nodeOperatorsCount: _nodeOperatorsCount,
+            nodeOperatorId: nodeOperatorId,
+            exitedValidatorsCount: exitedValidatorsCount,
+            totalExitedValidators: _totalExitedValidators
+        });
+    }
+
     /// @inheritdoc IStakingModule
     function updateTargetValidatorsLimits(
         uint256 nodeOperatorId,
@@ -406,11 +419,6 @@ abstract contract BaseModule is
     ///      hence it does nothing
     // solhint-disable-next-line no-empty-blocks
     function onExitedAndStuckValidatorsCountsUpdated() external view {}
-
-    /// @dev DEPRECATED: Should be removed in the future versions.
-    /// @inheritdoc IStakingModule
-    // solhint-disable-next-line no-empty-blocks
-    function unsafeUpdateValidatorsCount(uint256, uint256) external view {}
 
     /// @inheritdoc IStakingModule
     function getStakingModuleSummary()
