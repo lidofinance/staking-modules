@@ -1125,6 +1125,27 @@ contract CSMTopUpQueue is CSMCommon {
         });
     }
 
+    function test_topUp_revertWhen_inputKeysExceedQueueLength() public {
+        csm.setTopUpQueueLimit(2);
+        createNodeOperator(3);
+        csm.obtainDepositData(1, "");
+
+        bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 3);
+        bytes[] memory pubkeys = new bytes[](3);
+        pubkeys[0] = slice(packedPubkeys, 0 * 48, 48);
+        pubkeys[1] = slice(packedPubkeys, 1 * 48, 48);
+        pubkeys[2] = slice(packedPubkeys, 2 * 48, 48);
+
+        vm.expectRevert(IBaseModule.InvalidInput.selector);
+        csm.allocateDeposits({
+            maxDepositAmount: 10 ether,
+            pubkeys: pubkeys,
+            keyIndices: UintArr(0, 1, 2),
+            operatorIds: UintArr(0, 0, 0),
+            topUpLimits: UintArr(1 ether, 4 ether, 5 ether)
+        });
+    }
+
     function test_getKeysForTopUp_ReturnsExpectedKeys() public {
         createNodeOperator(2);
         createNodeOperator(2);
@@ -1436,6 +1457,16 @@ contract CSMQueueOps is CSMCommon {
         (uint256 toRemove, uint256 toVisit) = csm.cleanDepositQueue({ maxItems: 0 });
         assertEq(toRemove, 0, "toRemove != 0");
         assertEq(toVisit, 0, "toVisit != 0");
+    }
+
+    function test_clean_revertWhen_depositInfoNotUpToDate() public {
+        createNodeOperator({ keysCount: 1 });
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        vm.expectRevert(IBaseModule.DepositInfoIsNotUpToDate.selector);
+        csm.cleanDepositQueue({ maxItems: 10 });
     }
 
     function test_updateDepositableValidatorsCount_NothingToDo() public assertInvariants {

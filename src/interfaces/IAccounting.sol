@@ -283,7 +283,9 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     /// @notice Settle locked bond ETH for the given Node Operator
     /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator
-    function settleLockedBond(uint256 nodeOperatorId) external;
+    /// @param maxAmount Maximum amount to settle in ETH (stETH)
+    /// @return amountSettled Amount settled in ETH (stETH)
+    function settleLockedBond(uint256 nodeOperatorId, uint256 maxAmount) external returns (uint256 amountSettled);
 
     /// @notice Compensate locked bond ETH for the given Node Operator
     /// @dev Called by staking module exclusively
