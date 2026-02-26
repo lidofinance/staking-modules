@@ -5,6 +5,7 @@ pragma solidity 0.8.33;
 
 import { IAccounting } from "./interfaces/IAccounting.sol";
 import { IBaseModule, NodeOperatorManagementProperties } from "./interfaces/IBaseModule.sol";
+import { IMerkleGate } from "./interfaces/IMerkleGate.sol";
 import { IVettedGate } from "./interfaces/IVettedGate.sol";
 import { MerkleGate } from "./abstract/MerkleGate.sol";
 
@@ -25,17 +26,15 @@ contract VettedGate is IVettedGate, MerkleGate {
         _disableInitializers();
     }
 
-    /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
-    ///      It is recommended to call this method in the same transaction as the deployment transaction
-    ///      and perform extensive deployment verification before using the contract instance.
+    /// @inheritdoc MerkleGate
     function initialize(
         uint256 curveId,
         bytes32 treeRoot,
         string calldata treeCid,
         address admin
-    ) external initializer {
+    ) public override(IMerkleGate, MerkleGate) initializer {
         if (curveId == ACCOUNTING.DEFAULT_BOND_CURVE_ID()) revert InvalidCurveId();
-        __MerkleGate_init(curveId, treeRoot, treeCid, admin);
+        super.initialize(curveId, treeRoot, treeCid, admin);
     }
 
     /// @inheritdoc IVettedGate

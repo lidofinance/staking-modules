@@ -306,8 +306,8 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function chargeFee(uint256 nodeOperatorId, uint256 amount) external onlyModule {
-        BondCore._charge(nodeOperatorId, amount, chargePenaltyRecipient);
+    function chargeFee(uint256 nodeOperatorId, uint256 amount) external onlyModule returns (bool) {
+        return BondCore._charge(nodeOperatorId, amount, chargePenaltyRecipient);
     }
 
     /// @inheritdoc IAccounting

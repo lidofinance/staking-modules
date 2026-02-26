@@ -1020,7 +1020,7 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
     ) external override returns (uint256 noId, uint256 keysCount) {
         (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
         module.cleanDepositQueue({ maxItems: 2 * depositableValidatorsCount });
-        for (uint256 i = 0; i <= module.QUEUE_LOWEST_PRIORITY(); ++i) {
+        for (uint256 i = 0; i <= module.PARAMETERS_REGISTRY().QUEUE_LOWEST_PRIORITY(); ++i) {
             (uint128 head, ) = module.depositQueuePointers(i);
             Batch batch = module.depositQueueItem(i, head);
             if (!batch.isNil()) return (batch.noId(), batch.keys());

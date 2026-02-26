@@ -139,8 +139,10 @@ library NodeOperatorOps {
 
             NodeOperator storage no = nodeOperators[nodeOperatorId];
 
+            if (vettedSigningKeysCount == no.totalVettedKeys) continue;
+
             if (no.managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
-            if (vettedSigningKeysCount >= no.totalVettedKeys) revert IBaseModule.InvalidVetKeysPointer();
+            if (vettedSigningKeysCount > no.totalVettedKeys) revert IBaseModule.InvalidVetKeysPointer();
             if (vettedSigningKeysCount < no.totalDepositedKeys) revert IBaseModule.InvalidVetKeysPointer();
 
             // NodeOperator.totalVettedKeys and totalDepositedKeys are uint32 slots; the checks above keep
@@ -255,8 +257,7 @@ library NodeOperatorOps {
         uint256 amountToCharge = parametersRegistry.getKeyRemovalCharge(accounting.getBondCurveId(nodeOperatorId)) *
             keysCount;
 
-        if (amountToCharge != 0) {
-            accounting.chargeFee(nodeOperatorId, amountToCharge);
+        if (amountToCharge != 0 && accounting.chargeFee(nodeOperatorId, amountToCharge)) {
             emit IBaseModule.KeyRemovalChargeApplied(nodeOperatorId);
         }
 

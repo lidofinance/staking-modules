@@ -15,14 +15,14 @@ import { SigningKeys } from "./SigningKeys.sol";
 library TopUpQueueOps {
     using TopUpQueueLib for TopUpQueueLib.Queue;
 
-    // StakingRouter expects non-zero top-up allocations to be at least 1 ether.
-    uint256 internal constant TOP_UP_STEP = 1 ether;
-
     struct TopUpKeyParams {
         uint256[] keyIndices;
         uint256[] operatorIds;
         uint256[] topUpLimits;
     }
+
+    // StakingRouter expects non-zero top-up allocations to be at least 1 ether.
+    uint256 internal constant TOP_UP_STEP = 1 ether;
 
     function allocateDeposits(
         TopUpQueueLib.Queue storage topUpQueue,
@@ -70,7 +70,7 @@ library TopUpQueueOps {
 
             SigningKeys.verifySigningKey(item.noId(), item.keyIndex(), pubkeys[i]);
 
-            uint256 limit = _normalizeAmount(data.topUpLimits[i]);
+            uint256 limit = _quantizeAmount(data.topUpLimits[i]);
 
             if (maxDepositAmount > 0) {
                 allocations[i] = Math.min(limit, maxDepositAmount);
@@ -83,9 +83,9 @@ library TopUpQueueOps {
         }
     }
 
-    function _normalizeAmount(uint256 value) private pure returns (uint256 normalized) {
+    function _quantizeAmount(uint256 value) private pure returns (uint256 quantized) {
         unchecked {
-            normalized = value - (value % TOP_UP_STEP);
+            quantized = value - (value % TOP_UP_STEP);
         }
     }
 }

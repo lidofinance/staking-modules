@@ -312,7 +312,8 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     ///      Method call can result in the remaining bond being lower than the locked bond.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Amount to charge in ETH (stETH)
-    function chargeFee(uint256 nodeOperatorId, uint256 amount) external;
+    /// @return Whether any shares were actually transferred
+    function chargeFee(uint256 nodeOperatorId, uint256 amount) external returns (bool);
 
     /// @notice Pull fees (if proof provided) from FeeDistributor to the Node Operator's bond and split according to configured fee splits.
     /// @param nodeOperatorId ID of the Node Operator

@@ -321,7 +321,7 @@ abstract contract DeployBase is Script {
 
             ValidatorStrikes strikesImpl = new ValidatorStrikes({ module: address(csm), oracle: address(oracle) });
 
-            strikes = ValidatorStrikes(_deployProxy(config.proxyAdmin, address(strikesImpl)));
+            strikes = ValidatorStrikes(_deployProxy(deployer, address(new Dummy())));
 
             ExitPenalties exitPenaltiesImpl = new ExitPenalties(address(csm), address(strikes));
 
@@ -333,7 +333,14 @@ abstract contract DeployBase is Script {
 
             ejector = new Ejector(address(csm), address(strikes), deployer);
 
-            strikes.initialize(deployer, address(ejector));
+            {
+                OssifiableProxy strikesProxy = OssifiableProxy(payable(address(strikes)));
+                strikesProxy.proxy__upgradeToAndCall(
+                    address(strikesImpl),
+                    abi.encodeCall(ValidatorStrikes.initialize, (deployer, address(ejector)))
+                );
+                strikesProxy.proxy__changeAdmin(config.proxyAdmin);
+            }
 
             permissionlessGate = new PermissionlessGate(address(csm), deployer);
 
@@ -341,15 +348,9 @@ abstract contract DeployBase is Script {
             vettedGateFactory = new MerkleGateFactory(vettedGateImpl);
             vettedGate = VettedGate(
                 vettedGateFactory.create(
-                    abi.encodeCall(
-                        VettedGate.initialize,
-                        (
-                            identifiedCommunityStakersGateBondCurveId,
-                            config.identifiedCommunityStakersGateTreeRoot,
-                            config.identifiedCommunityStakersGateTreeCid,
-                            deployer
-                        )
-                    ),
+                    identifiedCommunityStakersGateBondCurveId,
+                    config.identifiedCommunityStakersGateTreeRoot,
+                    config.identifiedCommunityStakersGateTreeCid,
                     deployer
                 )
             );

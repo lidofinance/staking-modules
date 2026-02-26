@@ -29,8 +29,6 @@ contract CSModule is ICSModule, BaseModule {
         TopUpQueueLib.Queue topUpQueue;
     }
 
-    uint256 public immutable QUEUE_LOWEST_PRIORITY;
-
     bytes32 public constant MANAGE_TOP_UP_QUEUE_ROLE = keccak256("MANAGE_TOP_UP_QUEUE_ROLE");
     bytes32 public constant REWIND_TOP_UP_QUEUE_ROLE = keccak256("REWIND_TOP_UP_QUEUE_ROLE");
 
@@ -46,9 +44,7 @@ contract CSModule is ICSModule, BaseModule {
         address parametersRegistry,
         address accounting,
         address exitPenalties
-    ) BaseModule(moduleType, lidoLocator, parametersRegistry, accounting, exitPenalties) {
-        QUEUE_LOWEST_PRIORITY = PARAMETERS_REGISTRY.QUEUE_LOWEST_PRIORITY();
-    }
+    ) BaseModule(moduleType, lidoLocator, parametersRegistry, accounting, exitPenalties) {}
 
     /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
     ///      It is recommended to call this method in the same transaction as the deployment transaction
@@ -388,9 +384,8 @@ contract CSModule is ICSModule, BaseModule {
         enabled = _topUpQueue().enabled;
     }
 
-    /// @dev This function is used to get the queue lowest priority from immutables to save bytecode.
     function _queueLowestPriority() internal view returns (uint256) {
-        return QUEUE_LOWEST_PRIORITY;
+        return _parametersRegistry().QUEUE_LOWEST_PRIORITY();
     }
 
     function _storage() internal pure returns (CSModuleStorage storage $) {

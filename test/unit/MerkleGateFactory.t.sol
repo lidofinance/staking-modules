@@ -34,12 +34,11 @@ contract MerkleGateFactoryTest is Test, Utilities {
         CSMMock csm = new CSMMock();
         address impl = address(new VettedGate(address(csm)));
         MerkleGateFactory factory = new MerkleGateFactory(impl);
-        bytes memory initCalldata = abi.encodeCall(VettedGate.initialize, (curveId, root, cid, admin));
 
-        vm.expectEmit(false, true, true, false, address(factory));
-        emit IMerkleGateFactory.MerkleGateCreated(address(0), impl, admin);
+        vm.expectEmit(false, true, true, true, address(factory));
+        emit IMerkleGateFactory.MerkleGateCreated(address(0), admin, curveId);
 
-        address instance = factory.create(initCalldata, admin);
+        address instance = factory.create(curveId, root, cid, admin);
         IVettedGate gate = IVettedGate(instance);
 
         assertEq(gate.curveId(), curveId);
@@ -62,12 +61,11 @@ contract MerkleGateFactoryTest is Test, Utilities {
 
         address impl = address(new CuratedGate(address(module)));
         MerkleGateFactory factory = new MerkleGateFactory(impl);
-        bytes memory initCalldata = abi.encodeCall(CuratedGate.initialize, (curveId, root, cid, admin));
 
-        vm.expectEmit(false, true, true, false, address(factory));
-        emit IMerkleGateFactory.MerkleGateCreated(address(0), impl, admin);
+        vm.expectEmit(false, true, true, true, address(factory));
+        emit IMerkleGateFactory.MerkleGateCreated(address(0), admin, curveId);
 
-        address instance = factory.create(initCalldata, admin);
+        address instance = factory.create(curveId, root, cid, admin);
         ICuratedGate gate = ICuratedGate(instance);
 
         assertEq(gate.curveId(), curveId);
@@ -96,13 +94,12 @@ contract MerkleGateFactoryTest is Test, Utilities {
         assertEq(factory.GATE_IMPL(), impl);
 
         address secondImpl = address(new VettedGate(address(new CSMMock())));
-        bytes memory initCalldata = abi.encodeCall(VettedGate.initialize, (curveId, root, cid, admin));
 
         // The factory should always use its immutable implementation.
-        vm.expectEmit(false, true, true, false, address(factory));
-        emit IMerkleGateFactory.MerkleGateCreated(address(0), impl, admin);
+        vm.expectEmit(false, true, true, true, address(factory));
+        emit IMerkleGateFactory.MerkleGateCreated(address(0), admin, curveId);
 
-        address instance = factory.create(initCalldata, admin);
+        address instance = factory.create(curveId, root, cid, admin);
         OssifiableProxy proxy = OssifiableProxy(payable(instance));
         assertEq(proxy.proxy__getImplementation(), impl);
         assertNotEq(proxy.proxy__getImplementation(), secondImpl);

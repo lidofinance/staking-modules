@@ -154,7 +154,7 @@ contract CSMCommon is ModuleFixtures {
     }
 
     function _assertQueueIsEmpty() internal view {
-        for (uint256 p = 0; p <= csm.QUEUE_LOWEST_PRIORITY(); ++p) {
+        for (uint256 p = 0; p <= parametersRegistry.QUEUE_LOWEST_PRIORITY(); ++p) {
             (uint128 curr, ) = csm.depositQueuePointers(p); // queue.head
             assertTrue(
                 csm.depositQueueItem(p, curr).isNil(),
@@ -164,7 +164,7 @@ contract CSMCommon is ModuleFixtures {
     }
 
     function _printQueue() internal view {
-        for (uint256 p = 0; p <= csm.QUEUE_LOWEST_PRIORITY(); ++p) {
+        for (uint256 p = 0; p <= parametersRegistry.QUEUE_LOWEST_PRIORITY(); ++p) {
             (uint128 curr, ) = csm.depositQueuePointers(p);
 
             for (;;) {
@@ -415,7 +415,7 @@ contract CSMAddValidatorKeys is ModuleAddValidatorKeys, CSMCommon {
         vm.deal(nodeOperator, required);
 
         vm.expectEmit(address(module));
-        emit ICSModule.BatchEnqueued(ICSModule(address(module)).QUEUE_LOWEST_PRIORITY(), noId, 1);
+        emit ICSModule.BatchEnqueued(parametersRegistry.QUEUE_LOWEST_PRIORITY(), noId, 1);
         vm.prank(nodeOperator);
         module.addValidatorKeysETH{ value: required }(nodeOperator, noId, 1, keys, signatures);
     }
@@ -429,7 +429,7 @@ contract CSMAddValidatorKeys is ModuleAddValidatorKeys, CSMCommon {
         stETH.submit{ value: BOND_SIZE + 1 wei }(address(0));
 
         vm.expectEmit(address(module));
-        emit ICSModule.BatchEnqueued(ICSModule(address(module)).QUEUE_LOWEST_PRIORITY(), noId, 1);
+        emit ICSModule.BatchEnqueued(parametersRegistry.QUEUE_LOWEST_PRIORITY(), noId, 1);
         module.addValidatorKeysStETH(
             nodeOperator,
             noId,
@@ -452,7 +452,7 @@ contract CSMAddValidatorKeys is ModuleAddValidatorKeys, CSMCommon {
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
 
         vm.expectEmit(address(module));
-        emit ICSModule.BatchEnqueued(ICSModule(address(module)).QUEUE_LOWEST_PRIORITY(), noId, 1);
+        emit ICSModule.BatchEnqueued(parametersRegistry.QUEUE_LOWEST_PRIORITY(), noId, 1);
         module.addValidatorKeysWstETH(
             nodeOperator,
             noId,
@@ -1399,7 +1399,7 @@ contract CSMQueueOps is CSMCommon {
         BatchInfo[] memory exp = new BatchInfo[](2);
         exp[0] = BatchInfo({ nodeOperatorId: 0, count: 3 });
         exp[1] = BatchInfo({ nodeOperatorId: 1, count: 5 });
-        _assertQueueState(csm.QUEUE_LOWEST_PRIORITY(), exp);
+        _assertQueueState(parametersRegistry.QUEUE_LOWEST_PRIORITY(), exp);
 
         (toRemove, ) = csm.cleanDepositQueue(LOOKUP_DEPTH);
         assertEq(toRemove, 0, "queue should be clean");
@@ -1510,7 +1510,7 @@ contract CSMQueueOps is CSMCommon {
         csm.cleanDepositQueue(1);
 
         vm.expectEmit(address(module));
-        emit ICSModule.BatchEnqueued(csm.QUEUE_LOWEST_PRIORITY(), noId, 7);
+        emit ICSModule.BatchEnqueued(parametersRegistry.QUEUE_LOWEST_PRIORITY(), noId, 7);
 
         module.updateTargetValidatorsLimits({ nodeOperatorId: noId, targetLimitMode: 1, targetLimit: 7 });
     }
@@ -1532,7 +1532,7 @@ contract CSMQueueOps is CSMCommon {
         });
 
         vm.expectEmit(address(module));
-        emit ICSModule.BatchEnqueued(csm.QUEUE_LOWEST_PRIORITY(), noId, 1);
+        emit ICSModule.BatchEnqueued(parametersRegistry.QUEUE_LOWEST_PRIORITY(), noId, 1);
         module.reportRegularWithdrawnValidators(validatorInfos);
     }
 }
@@ -1883,7 +1883,7 @@ contract CSMReportGeneralDelayedPenalty is ModuleReportGeneralDelayedPenalty, CS
         vm.warp(accounting.getBondLockPeriod() + 1);
 
         vm.expectEmit(address(csm));
-        emit ICSModule.BatchEnqueued(ICSModule(address(csm)).QUEUE_LOWEST_PRIORITY(), noId, 1);
+        emit ICSModule.BatchEnqueued(parametersRegistry.QUEUE_LOWEST_PRIORITY(), noId, 1);
         csm.updateDepositableValidatorsCount(noId);
 
         no = csm.getNodeOperator(noId);
