@@ -362,7 +362,6 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     function onValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external;
 
     /// @notice Sync tracked added balance for a key based on proven validator balance.
-    ///         Only increases the tracked balance.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     /// @param currentBalanceWei Proven current validator balance in wei
