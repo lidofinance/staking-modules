@@ -11,7 +11,7 @@ import { IAccounting } from "../interfaces/IAccounting.sol";
 
 import { SigningKeys } from "./SigningKeys.sol";
 
-/// @dev A library to extract a part of the code from the the CSModule contract.
+/// @dev A library to extract a part of the code from the CSModule contract.
 library WithdrawnValidatorLib {
     uint256 public constant MAX_EFFECTIVE_BALANCE = 2048 ether;
     uint256 public constant MIN_ACTIVATION_BALANCE = 32 ether;

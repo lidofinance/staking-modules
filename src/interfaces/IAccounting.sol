@@ -108,7 +108,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     /// @return Required bond amount in ETH
     function getRequiredBondForNextKeys(uint256 nodeOperatorId, uint256 additionalKeys) external view returns (uint256);
 
-    /// @notice Get the bond amount in wstETH required for the `keysCount` keys using the default bond curve
+    /// @notice Get the bond amount in wstETH required for the `keysCount` keys for the given bond curve
     /// @param keysCount Keys count to calculate the required bond amount
     /// @param curveId Id of the curve to perform calculations against
     /// @return wstETH amount required for the `keysCount`
@@ -130,7 +130,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
 
     /// @notice Get the number of the unbonded keys to be ejected using a forcedTargetLimit
     ///         Locked bond is not considered for this calculation to allow Node Operators to
-    ///         compensate the locked bond via `compensateLockedBondETH` method before the ejection happens
+    ///         compensate the locked bond via `compensateLockedBond` method before the ejection happens
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Unbonded keys count
     function getUnbondedKeysCountToEject(uint256 nodeOperatorId) external view returns (uint256);
@@ -255,7 +255,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     ///         `rewardsProof` and `cumulativeFeeShares` might be empty in order to claim only excess bond
     /// @dev Reverts if amount isn't between `MIN_STETH_WITHDRAWAL_AMOUNT` and `MAX_STETH_WITHDRAWAL_AMOUNT`
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param stETHAmount Amount of ETH to request
+    /// @param stETHAmount Amount of stETH to request
     /// @param cumulativeFeeShares Cumulative fee stETH shares for the Node Operator
     /// @param rewardsProof Merkle proof of the rewards
     /// @return requestId Withdrawal NFT ID

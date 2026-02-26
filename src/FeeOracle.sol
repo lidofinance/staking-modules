@@ -15,7 +15,7 @@ import { IFeeOracle } from "./interfaces/IFeeOracle.sol";
 contract FeeOracle is IFeeOracle, BaseOracle, PausableWithRoles, AssetRecoverer {
     uint256 internal constant INITIALIZED_VERSION = 3;
 
-    /// @notice No assets are stored in the contract
+    /// @dev No assets are stored in the contract
 
     /// @notice An ACL role granting the permission to submit the data for a committee report.
     bytes32 public constant SUBMIT_DATA_ROLE = keccak256("SUBMIT_DATA_ROLE");

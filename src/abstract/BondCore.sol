@@ -178,6 +178,7 @@ abstract contract BondCore is IBondCore {
 
     /// @dev Burn Node Operator's bond shares (stETH). Shares will be burned on the next stETH rebase
     /// @dev The contract that uses this implementation should be granted `Burner.REQUEST_BURN_MY_STETH_ROLE` and have stETH allowance for `Burner`
+    /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Bond amount to burn in ETH (stETH)
     /// @return notBurnedAmount Amount in ETH that was not burned due to insufficient bond shares
     function _burn(uint256 nodeOperatorId, uint256 amount) internal returns (uint256 notBurnedAmount) {
@@ -186,6 +187,7 @@ abstract contract BondCore is IBondCore {
     }
 
     /// @dev Transfer Node Operator's bond shares (stETH) to charge recipient
+    /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Bond amount to charge in ETH (stETH)
     /// @param recipient Address to send charged shares
     /// @return charged Whether any shares were actually transferred

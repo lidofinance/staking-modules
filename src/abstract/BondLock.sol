@@ -112,7 +112,7 @@ abstract contract BondLock is IBondLock, Initializable {
         _setBondLockPeriod(period);
     }
 
-    /// @dev Set default bond lock period. That period will be added to the block timestamp of the lock translation to determine the bond lock duration
+    /// @dev Set default bond lock period. That period will be added to the block timestamp of the lock transition to determine the bond lock duration
     function _setBondLockPeriod(uint256 period) internal {
         if (period < MIN_BOND_LOCK_PERIOD || period > MAX_BOND_LOCK_PERIOD) revert InvalidBondLockPeriod();
         uint256 currentPeriod = _getBondLockStorage().bondLockPeriod;

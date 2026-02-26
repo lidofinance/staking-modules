@@ -32,8 +32,8 @@ interface IEjector is IExitTypes {
 
     function STRIKES() external view returns (address);
 
-    /// @notice Withdraw the validator key from the Node Operator
-    /// @notice Called by the node operator
+    /// @notice Request triggerable full withdrawals for Node Operator validator keys
+    /// @dev Called by the node operator
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndices Array of indices of the keys to withdraw
     /// @param refundRecipient Address to send the refund to
@@ -44,7 +44,7 @@ interface IEjector is IExitTypes {
     ) external payable;
 
     /// @notice Eject Node Operator's key as a bad performer
-    /// @notice Called by the `ValidatorStrikes` contract.
+    /// @dev Called by the `ValidatorStrikes` contract.
     ///         See `ValidatorStrikes.processBadPerformanceProof` to use this method permissionless
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndex index of deposited key to eject

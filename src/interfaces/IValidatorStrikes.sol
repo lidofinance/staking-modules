@@ -78,6 +78,7 @@ interface IValidatorStrikes {
 
     /// @notice Check the contract accepts the provided multi-proof
     /// @param keyStrikesList List of KeyStrikes structs
+    /// @param pubkeys Public keys corresponding to each entry in keyStrikesList
     /// @param proof Multi-proof of the strikes
     /// @param proofFlags Flags to process the multi-proof, see OZ `processMultiProof`
     /// @return bool True if proof is accepted
@@ -88,7 +89,7 @@ interface IValidatorStrikes {
         bool[] calldata proofFlags
     ) external view returns (bool);
 
-    /// @notice Get a hash of a leaf a tree of strikes
+    /// @notice Get a hash of a leaf in a tree of strikes
     /// @param keyStrikes KeyStrikes struct
     /// @param pubkey Public key
     /// @return Hash of the leaf

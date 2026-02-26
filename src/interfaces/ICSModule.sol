@@ -42,7 +42,7 @@ interface ICSModule is IBaseModule, IStakingModuleV2, IDepositQueueLib, ITopUpQu
     /// @param limit How many items may sit in the top-up queue at most.
     function setTopUpQueueLimit(uint256 limit) external;
 
-    /// @notice Rewind the top-up queue to able to deposit to mistakenly skipped items.
+    /// @notice Rewind the top-up queue to be able to deposit to mistakenly skipped items.
     /// @param to Pointer to move the queue `head` to.
     function rewindTopUpQueue(uint256 to) external;
 
