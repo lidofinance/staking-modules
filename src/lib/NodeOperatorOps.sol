@@ -176,15 +176,15 @@ library NodeOperatorOps {
             currentBalanceWei = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE;
         }
 
-        uint256 updated;
+        uint256 newKeyAddedBalance;
         unchecked {
-            updated = currentBalanceWei - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
+            newKeyAddedBalance = currentBalanceWei - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
         }
 
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        if (updated <= keyAddedBalances[pointer]) return;
-        keyAddedBalances[pointer] = updated;
-        emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, updated);
+        if (newKeyAddedBalance <= keyAddedBalances[pointer]) return;
+        keyAddedBalances[pointer] = newKeyAddedBalance;
+        emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, newKeyAddedBalance);
     }
 
     function increaseKeyAddedBalancesByAllocations(
