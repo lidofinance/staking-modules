@@ -223,7 +223,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     ) external;
 
     /// @notice Report general delayed penalty for the given Node Operator
-    /// @notice The final locked amount will be equal to the penalty amount plus additional fine
+    /// @notice Increases locked bond by `amount + additionalFine` for this report
     /// @param nodeOperatorId ID of the Node Operator
     /// @param penaltyType Type of the penalty
     /// @param amount Penalty amount in ETH
@@ -246,7 +246,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param amount Amount of penalty to cancel
     function cancelGeneralDelayedPenalty(uint256 nodeOperatorId, uint256 amount) external;
 
-    /// @notice Settles locked bond and sets the target limit to 0 or the given Node Operators
+    /// @notice Settles locked bond for eligible Node Operators and sets target limit to 0 only for settled ones
     /// @dev SETTLE_GENERAL_DELAYED_PENALTY_ROLE role is expected to be assigned to Easy Track
     /// @param nodeOperatorIds IDs of the Node Operators
     /// @param maxAmounts Maximum amounts to settle for each Node Operator
@@ -282,8 +282,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param newAddress Proposed reward address
     function changeNodeOperatorRewardAddress(uint256 nodeOperatorId, address newAddress) external;
 
-    /// @notice Update depositable validators data and enqueue all unqueued keys for the given Node Operator.
-    ///         Unqueued stands for vetted but not enqueued keys.
+    /// @notice Update depositable validators data for the given Node Operator.
     /// @dev The following rules are applied:
     ///         - Unbonded keys can not be depositable
     ///         - Unvetted keys can not be depositable
@@ -384,12 +383,12 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     ///         - if it's a consolidated validator, when the corresponding pending consolidation is processed and the
     ///           balance of the validator has been moved to another validator.
     /// @notice Called by `Verifier` contract.
-    /// @param validatorInfos An array WithdrawnValidatorInfo structs
+    /// @param validatorInfos An array of WithdrawnValidatorInfo structs
     function reportRegularWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external;
 
     /// @notice Report withdrawn validators that have been slashed.
     /// @notice Called by the Easy Track EVM script executor via a motion started by the dedicated committee.
-    /// @param validatorInfos An array WithdrawnValidatorInfo structs
+    /// @param validatorInfos An array of WithdrawnValidatorInfo structs
     function reportSlashedWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external;
 
     /// @notice Checks if a validator was reported as slashed

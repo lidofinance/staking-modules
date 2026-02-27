@@ -43,7 +43,7 @@ abstract contract BondCurve is IBondCurve, Initializable {
 
     uint256 public constant DEFAULT_BOND_CURVE_ID = 0;
 
-    // @inheritdoc IBondCurve
+    /// @inheritdoc IBondCurve
     function getCurvesCount() external view returns (uint256) {
         return _getBondCurveStorage().bondCurves.length;
     }

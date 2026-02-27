@@ -349,6 +349,7 @@ abstract contract BaseModule is
         // expectations of StakingRouter.
     }
 
+    /// @inheritdoc IBaseModule
     function reportSlashedWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external {
         _checkRole(REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE);
         _reportWithdrawnValidators(validatorInfos, true);
