@@ -55,7 +55,7 @@ library SSZ {
                     )
 
                     if iszero(result) {
-                        // Precompiles returns no data on OutOfGas error.
+                        // Precompile returns no data on OutOfGas error.
                         revert(0, 0)
                     }
 
@@ -95,7 +95,7 @@ library SSZ {
             let result := staticcall(gas(), 0x02, 0x00, 0x40, 0x00, 0x20)
 
             if iszero(result) {
-                // Precompiles returns no data on OutOfGas error.
+                // Precompile returns no data on OutOfGas error.
                 revert(0, 0)
             }
 
@@ -143,7 +143,7 @@ library SSZ {
                     )
 
                     if iszero(result) {
-                        // Precompiles returns no data on OutOfGas error.
+                        // Precompile returns no data on OutOfGas error.
                         revert(0, 0)
                     }
 

@@ -55,7 +55,7 @@ interface IReportAsyncProcessor {
     /// Consensus version must change every time consensus rules change, meaning that
     /// an oracle looking at the same reference slot would calculate a different hash.
     ///
-    /// HashConsensus won't accept member reports any consensus version different form the
+    /// HashConsensus won't accept member reports any consensus version different from the
     /// one returned from this function.
     ///
     function getConsensusVersion() external view returns (uint256);
