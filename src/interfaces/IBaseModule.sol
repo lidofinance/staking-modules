@@ -123,7 +123,6 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     error ZeroParametersRegistryAddress();
     error ZeroModuleType();
     error ZeroPenaltyType();
-    error NothingCompensated();
     error DepositInfoIsNotUpToDate();
 
     function STAKING_ROUTER_ROLE() external view returns (bytes32);

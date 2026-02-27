@@ -264,14 +264,16 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function releaseLockedBond(uint256 nodeOperatorId, uint256 amount) external onlyModule returns (bool) {
+    function releaseLockedBond(uint256 nodeOperatorId, uint256 amount) external onlyModule returns (bool released) {
         uint256 lockedAmount = BondLock.getLockedBond(nodeOperatorId);
-        if (BondLock.isLockExpired(nodeOperatorId) && lockedAmount != 0) {
+        if (lockedAmount == 0) return released;
+
+        if (BondLock.isLockExpired(nodeOperatorId)) {
             unlockExpiredLock(nodeOperatorId);
-            return false;
+            return released;
         }
         BondLock._unlock(nodeOperatorId, amount);
-        return true;
+        released = true;
     }
 
     /// @inheritdoc IAccounting
@@ -283,17 +285,17 @@ contract Accounting is
     /// @inheritdoc IAccounting
     function compensateLockedBond(uint256 nodeOperatorId) external onlyModule returns (uint256 compensatedAmount) {
         uint256 lockedAmount = BondLock.getLockedBond(nodeOperatorId);
-        if (BondLock.isLockExpired(nodeOperatorId) && lockedAmount != 0) {
-            unlockExpiredLock(nodeOperatorId);
-            return 0;
-        }
+        if (lockedAmount == 0) return compensatedAmount;
 
-        if (lockedAmount == 0) return 0;
+        if (BondLock.isLockExpired(nodeOperatorId)) {
+            unlockExpiredLock(nodeOperatorId);
+            return compensatedAmount;
+        }
 
         (uint256 currentBond, uint256 requiredBond) = getBondSummary(nodeOperatorId);
         // `requiredBond` already includes `lockedAmount`
         uint256 requiredBondWithoutLock = requiredBond - lockedAmount;
-        if (currentBond <= requiredBondWithoutLock) return 0;
+        if (currentBond <= requiredBondWithoutLock) return compensatedAmount;
 
         uint256 maxCompensatableAmount = currentBond - requiredBondWithoutLock;
         compensatedAmount = lockedAmount < maxCompensatableAmount ? lockedAmount : maxCompensatableAmount;
@@ -308,12 +310,14 @@ contract Accounting is
         uint256 maxAmount
     ) external onlyModule returns (uint256 amountSettled) {
         uint256 lockedAmount = BondLock.getLockedBond(nodeOperatorId);
-        if (BondLock.isLockExpired(nodeOperatorId) && lockedAmount != 0) {
+        if (lockedAmount == 0) return amountSettled;
+
+        if (BondLock.isLockExpired(nodeOperatorId)) {
             unlockExpiredLock(nodeOperatorId);
-            return 0;
+            return amountSettled;
         }
         amountSettled = lockedAmount < maxAmount ? lockedAmount : maxAmount;
-        if (lockedAmount > 0) {
+        if (amountSettled > 0) {
             BondCore._burn(nodeOperatorId, amountSettled);
             // unlock all amountSettled even if bond isn't covered lock fully since debt will be created in this case
             BondLock._unlock(nodeOperatorId, amountSettled);

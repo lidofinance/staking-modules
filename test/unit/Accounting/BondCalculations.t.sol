@@ -318,6 +318,18 @@ contract LockBondTest is BaseTest {
         assertEq(accounting.getLockedBond(0), 0.6 ether);
     }
 
+    function test_releaseLockedBond_NoLock() public assertInvariants {
+        mock_getNodeOperatorsCount(1);
+
+        assertEq(accounting.getLockedBond(0), 0);
+
+        vm.prank(address(stakingModule));
+        bool released = accounting.releaseLockedBond(0, 0.4 ether);
+
+        assertFalse(released, "release should return false when bond is released");
+        assertEq(accounting.getLockedBond(0), 0);
+    }
+
     function test_releaseLockedBond_ExpiredLock() public assertInvariants {
         mock_getNodeOperatorsCount(1);
 
