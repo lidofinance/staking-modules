@@ -10,6 +10,10 @@ import { NodeOperator } from "src/interfaces/IBaseModule.sol";
 contract StakingRouterIntegrationTestCSM is StakingRouterIntegrationTestBase, CSMIntegrationBase {
     function setUp() public override {
         super.setUp();
+        if (!isStakingRouterUpgraded) {
+            // Skip: this suite validates router-v2 deposit behavior unavailable on legacy core/router versions.
+            vm.skip(true, "Suite requires upgraded staking router version for router-v2 deposit behavior");
+        }
 
         _maximizeModuleShare(moduleId);
         _disableDepositsForOtherModules(moduleId);

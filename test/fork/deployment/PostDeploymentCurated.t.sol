@@ -26,7 +26,7 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         Env memory env = envVars();
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
-        if (moduleType != ModuleType.Curated) vm.skip(true);
+        if (moduleType != ModuleType.Curated) vm.skip(true, "Current deployment is not Curated module type");
         string memory config = vm.readFile(env.DEPLOY_CONFIG);
         // mutates storage variable
         updateCuratedDeployParams(deployParams, env.DEPLOY_CONFIG);

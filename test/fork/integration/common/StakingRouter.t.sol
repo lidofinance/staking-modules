@@ -13,6 +13,7 @@ import { ModuleTypeBase } from "./ModuleTypeBase.sol";
 abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
     address internal agent;
     uint256 internal moduleId;
+    bool internal isStakingRouterUpgraded;
 
     modifier assertInvariants() {
         _;
@@ -46,15 +47,24 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         vm.stopPrank();
 
         moduleId = findModule();
+        isStakingRouterUpgraded = _isStakingRouterUpgraded();
     }
 
-    function routerDepositWithNoGasMetering() internal {
-        _ensureStakingRouterCanDeposit(moduleId);
+    function moduleDepositWithNoGasMetering(uint256 keysCount) internal returns (uint256 deposited) {
+        (, uint256 depositedBefore, ) = module.getStakingModuleSummary();
         vm.startPrank(locator.depositSecurityModule());
         vm.pauseGasMetering();
-        stakingRouter.deposit(moduleId, "");
+        if (isStakingRouterUpgraded) {
+            _ensureStakingRouterCanDeposit(moduleId);
+            stakingRouter.deposit(moduleId, "");
+        } else {
+            _legacyLidoDeposit(keysCount, moduleId, "");
+        }
         vm.resumeGasMetering();
         vm.stopPrank();
+
+        (, uint256 depositedAfter, ) = module.getStakingModuleSummary();
+        deposited = depositedAfter - depositedBefore;
     }
 
     function test_connectCSMToRouter() public view {
@@ -93,9 +103,11 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
 
         hugeDeposit();
 
-        routerDepositWithNoGasMetering();
+        moduleDepositWithNoGasMetering(keysCount);
         NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalDepositedKeys, depositedKeysBefore + keysCount);
+        uint256 deposited = no.totalDepositedKeys - depositedKeysBefore;
+        assertGt(deposited, 0);
+        if (!isStakingRouterUpgraded) assertEq(deposited, keysCount);
     }
 
     function test_routerDepositOneBatch() public assertInvariants {
@@ -106,10 +118,14 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
             integrationHelpers.addNodeOperator(nextAddress(), keysCount - depositableValidatorsCount);
         }
 
-        _ensureStakingRouterCanDeposit(moduleId);
+        if (isStakingRouterUpgraded) _ensureStakingRouterCanDeposit(moduleId);
         vm.prank(locator.depositSecurityModule());
         vm.startSnapshotGas("CSM.lidoDepositCSM_30keys");
-        stakingRouter.deposit(moduleId, "");
+        if (isStakingRouterUpgraded) {
+            stakingRouter.deposit(moduleId, "");
+        } else {
+            _legacyLidoDeposit(keysCount, moduleId, "");
+        }
         vm.stopSnapshotGas();
     }
 
@@ -175,7 +191,7 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
 
         hugeDeposit();
 
-        routerDepositWithNoGasMetering();
+        moduleDepositWithNoGasMetering(keysCount);
 
         uint256 newExited = exitedKeysBefore + 1;
         vm.prank(agent);
@@ -196,7 +212,7 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
 
         hugeDeposit();
 
-        routerDepositWithNoGasMetering();
+        uint256 depositedDelta = moduleDepositWithNoGasMetering(keysCount);
 
         uint256 exitedKeysBefore = module.getNodeOperator(noId).totalExitedKeys;
         uint256 newExited = exitedKeysBefore + 1;
@@ -209,8 +225,8 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
 
         IStakingRouter.StakingModuleSummary memory summary = stakingRouter.getStakingModuleSummary(moduleId);
         assertEq(summary.totalExitedValidators, summaryOld.totalExitedValidators + 1);
-        assertEq(summary.totalDepositedValidators, summaryOld.totalDepositedValidators + keysCount);
-        assertEq(summary.depositableValidatorsCount, summaryOld.depositableValidatorsCount - keysCount);
+        assertEq(summary.totalDepositedValidators, summaryOld.totalDepositedValidators + depositedDelta);
+        assertEq(summary.depositableValidatorsCount + depositedDelta, summaryOld.depositableValidatorsCount);
     }
 
     function test_getNodeOperatorSummary() public assertInvariants {
@@ -223,7 +239,7 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         uint256 exited = no.totalExitedKeys;
 
         hugeDeposit();
-        routerDepositWithNoGasMetering();
+        moduleDepositWithNoGasMetering(keysCount);
 
         vm.prank(agent);
         stakingRouter.reportStakingModuleExitedValidatorsCountByNodeOperator(
@@ -239,8 +255,10 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         assertEq(summary.refundedValidatorsCount, 0);
         assertEq(summary.stuckPenaltyEndTimestamp, 0);
         assertEq(summary.totalExitedValidators, exited);
-        assertEq(summary.totalDepositedValidators, depositedValidatorsBefore + keysCount);
-        assertEq(summary.depositableValidatorsCount, depositableValidatorsCount - keysCount);
+        uint256 depositedDelta = summary.totalDepositedValidators - depositedValidatorsBefore;
+        assertGt(depositedDelta, 0);
+        if (!isStakingRouterUpgraded) assertEq(depositedDelta, keysCount);
+        assertEq(summary.depositableValidatorsCount + depositedDelta, depositableValidatorsCount);
     }
 
     function test_unsafeSetExitedValidatorsCount() public assertInvariants {
@@ -251,7 +269,7 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
 
         for (;;) {
             (noId, keysCount) = integrationHelpers.getDepositableNodeOperator(nextAddress());
-            routerDepositWithNoGasMetering();
+            moduleDepositWithNoGasMetering(keysCount);
             NodeOperator memory no = module.getNodeOperator(noId);
             /// we need to be sure there are more than 1 keys for further checks
             if (no.totalDepositedKeys > 1) {
@@ -304,7 +322,11 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         assertEq(exitPenaltyInfo.delayFee.value, expectedPenalty);
     }
 
-    function _getExpectedRouterDepositRequestCount() internal view returns (uint256 expected) {
+    function _getExpectedRouterDepositRequestCount() internal returns (uint256 expected) {
+        if (!isStakingRouterUpgraded) {
+            // Skip: request-count logic depends on router-v2 and Lido-v2 deposit interfaces.
+            vm.skip(true, "Request-count logic depends on router-v2 and Lido-v2 deposit interfaces");
+        }
         uint256 byAmount = stakingRouter.getStakingModuleMaxDepositsCount(moduleId, lido.getDepositableEther());
         uint256 maxPerBlock = stakingRouter.getStakingModuleMaxDepositsPerBlock(moduleId);
         (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();

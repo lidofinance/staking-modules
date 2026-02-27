@@ -220,8 +220,8 @@ contract DeploymentHelpers is Test {
             vm.envOr("UTILS_DEPLOY_CONFIG", string("")),
             vm.envOr("VOTE_PREV_BLOCK", uint256(0))
         );
-        vm.skip(_isEmpty(env.RPC_URL));
-        vm.skip(_isEmpty(env.DEPLOY_CONFIG));
+        vm.skip(_isEmpty(env.RPC_URL), "RPC_URL is not set");
+        vm.skip(_isEmpty(env.DEPLOY_CONFIG), "DEPLOY_CONFIG is not set");
         return env;
     }
 
@@ -742,7 +742,14 @@ interface ILidoBalanceStats {
         returns (uint256 clActiveBalance, uint256 clPendingBalance, uint256 depositedBalance);
 }
 
+interface ILidoLegacyDeposit {
+    function deposit(uint256 _maxDepositsCount, uint256 _stakingModuleId, bytes calldata _depositCalldata) external;
+}
+
 abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
+    uint256 internal constant STAKING_ROUTER_OLD_CONTRACT_VERSION = 3;
+    uint256 internal constant STAKING_ROUTER_NEW_CONTRACT_VERSION = STAKING_ROUTER_OLD_CONTRACT_VERSION + 1;
+
     enum ModuleType {
         Unknown,
         Community,
@@ -788,6 +795,14 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
 
     error ModuleNotFound();
     error CannotEnableStakingRouterDeposits();
+
+    function _isStakingRouterUpgraded() internal view returns (bool) {
+        return stakingRouter.getContractVersion() >= STAKING_ROUTER_NEW_CONTRACT_VERSION;
+    }
+
+    function _legacyLidoDeposit(uint256 depositsCount, uint256 moduleId, bytes memory depositCalldata) internal {
+        ILidoLegacyDeposit(address(lido)).deposit(depositsCount, moduleId, depositCalldata);
+    }
 
     function initializeFromDeployment() public {
         Env memory env = envVars();
@@ -924,6 +939,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     }
 
     function _ensureStakingRouterCanDeposit(uint256 moduleId) internal {
+        if (!_isStakingRouterUpgraded()) return;
         if (stakingRouter.canDeposit(moduleId)) return;
 
         IAccountingOracle accountingOracle = IAccountingOracle(locator.accountingOracle());

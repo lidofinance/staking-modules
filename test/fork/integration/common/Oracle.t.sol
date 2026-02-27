@@ -49,11 +49,24 @@ abstract contract OracleTestBase is ModuleTypeBase {
         hugeDeposit();
 
         refundRecipient = nextAddress("refundRecipient");
+        uint256 keysCount;
         uint256 moduleId = findModule();
-        (nodeOperatorId, ) = integrationHelpers.getDepositableNodeOperator(nextAddress());
-        _ensureStakingRouterCanDeposit(moduleId);
-        vm.prank(locator.depositSecurityModule());
-        stakingRouter.deposit(moduleId, "");
+        (nodeOperatorId, keysCount) = integrationHelpers.getDepositableNodeOperator(nextAddress());
+
+        bool isStakingRouterUpgraded = _isStakingRouterUpgraded();
+        if (isStakingRouterUpgraded) {
+            _ensureStakingRouterCanDeposit(moduleId);
+            vm.prank(locator.depositSecurityModule());
+            stakingRouter.deposit(moduleId, "");
+        } else {
+            vm.prank(locator.depositSecurityModule());
+            _legacyLidoDeposit(keysCount, moduleId, "");
+        }
+
+        if (module.getNodeOperator(nodeOperatorId).totalDepositedKeys == 0) {
+            // Skip: this scenario requires at least one deposited key for the selected node operator.
+            vm.skip(true, "Scenario requires at least one deposited key for selected node operator");
+        }
     }
 
     function reachConsensus(uint256 refSlot, bytes32 hash) public {
