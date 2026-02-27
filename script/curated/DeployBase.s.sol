@@ -304,20 +304,23 @@ abstract contract DeployBase is Script {
 
             {
                 OssifiableProxy moduleProxy = OssifiableProxy(payable(address(curatedModule)));
-                moduleProxy.proxy__upgradeTo(address(curatedModuleImpl));
+                moduleProxy.proxy__upgradeToAndCall(
+                    address(curatedModuleImpl),
+                    abi.encodeCall(CuratedModule.initialize, (deployer))
+                );
                 moduleProxy.proxy__changeAdmin(config.proxyAdmin);
             }
-
-            curatedModule.initialize({ admin: deployer });
 
             MetaRegistry metaRegistryImpl = new MetaRegistry(address(curatedModule));
 
             {
                 OssifiableProxy metaRegistryProxy = OssifiableProxy(payable(address(metaRegistry)));
-                metaRegistryProxy.proxy__upgradeTo(address(metaRegistryImpl));
+                metaRegistryProxy.proxy__upgradeToAndCall(
+                    address(metaRegistryImpl),
+                    abi.encodeCall(MetaRegistry.initialize, (deployer))
+                );
                 metaRegistryProxy.proxy__changeAdmin(config.proxyAdmin);
             }
-            metaRegistry.initialize({ admin: deployer });
 
             accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
             metaRegistry.grantRole(metaRegistry.SET_BOND_CURVE_WEIGHT_ROLE(), deployer);
