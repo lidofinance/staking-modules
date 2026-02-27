@@ -332,7 +332,7 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function syncKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 currentBalanceWei) external {
+    function syncKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 currentBalanceWei) public virtual {
         _checkVerifierRole();
 
         NodeOperatorOps.syncKeyAddedBalance({

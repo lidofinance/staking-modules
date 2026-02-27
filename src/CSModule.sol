@@ -237,6 +237,16 @@ contract CSModule is ICSModule, BaseModule {
         _incrementModuleNonce();
     }
 
+    /// @inheritdoc IBaseModule
+    function syncKeyAddedBalance(
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 currentBalanceWei
+    ) public virtual override(BaseModule, IBaseModule) {
+        _onlyEnabledTopUpQueue();
+        super.syncKeyAddedBalance(nodeOperatorId, keyIndex, currentBalanceWei);
+    }
+
     /// @inheritdoc ICSModule
     function setTopUpQueueLimit(uint256 limit) external {
         _checkRole(MANAGE_TOP_UP_QUEUE_ROLE);
