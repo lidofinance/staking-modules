@@ -12,6 +12,7 @@ import { Verifier } from "src/Verifier.sol";
 import { pack } from "src/lib/GIndex.sol";
 import { Slot } from "src/lib/Types.sol";
 import { GIndex } from "src/lib/GIndex.sol";
+import { SSZ } from "src/lib/SSZ.sol";
 
 import { IVerifier } from "src/interfaces/IVerifier.sol";
 import { IBaseModule, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
@@ -659,17 +660,6 @@ contract VerifierSlashingTest is VerifierTestBase {
         vm.expectRevert(IVerifier.InvalidPublicKey.selector);
         verifier.processSlashedProof(fixture.data);
     }
-
-    // function test_processSlashed_RevertWhen_ValidatorIsNotWithdrawable()
-    //     public
-    // {
-    //     fixture.data.validator.object.withdrawableEpoch =
-    //         fixture.data.recentBlock.header.slot.unwrap() *
-    //         32 +
-    //         1;
-    //     vm.expectRevert(IVerifier.ValidatorIsNotWithdrawable.selector);
-    //     verifier.processSlashedProof(fixture.data);
-    // }
 
     function test_processSlashed_RevertWhen_InvalidBlockHeader() public {
         vm.mockCall(
@@ -1491,6 +1481,142 @@ contract VerifierValidatorBalanceTest is Test, Utilities {
         );
         assertEq(balance, 0x1817161514131211);
     }
+}
+
+contract VerifierBalanceProofTest is VerifierTestBase {
+    struct Fixture {
+        bytes32 blockRoot;
+        IVerifier.ProcessBalanceProofInput data;
+    }
+
+    Fixture internal fixture;
+
+    function setUp() public {
+        _loadFixture();
+
+        module = new Stub();
+        admin = nextAddress("ADMIN");
+
+        verifier = new Verifier({
+            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            module: address(module),
+            slotsPerEpoch: 32,
+            slotsPerHistoricalRoot: 8192,
+            gindices: IVerifier.GIndices({
+                gIFirstWithdrawalPrev: NULL_GINDEX,
+                gIFirstWithdrawalCurr: NULL_GINDEX,
+                gIFirstValidatorPrev: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIFirstHistoricalSummaryPrev: NULL_GINDEX,
+                gIFirstHistoricalSummaryCurr: NULL_GINDEX,
+                gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
+                gIFirstBlockRootInSummaryCurr: NULL_GINDEX,
+                gIFirstBalanceNodePrev: GIndices.FIRST_BALANCE_NODE_ELECTRA,
+                gIFirstBalanceNodeCurr: GIndices.FIRST_BALANCE_NODE_ELECTRA
+            }),
+            firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
+            pivotSlot: fixture.data.recentBlock.header.slot.dec(),
+            capellaSlot: Slot.wrap(0),
+            admin: admin
+        });
+
+        pauseRole = verifier.PAUSE_ROLE();
+        resumeRole = verifier.RESUME_ROLE();
+
+        vm.startPrank(admin);
+        verifier.grantRole(pauseRole, admin);
+        verifier.grantRole(resumeRole, admin);
+        vm.stopPrank();
+
+        _setMocks();
+    }
+
+    function test_processBalanceProof_HappyPath() public {
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector));
+
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function test_processBalanceProof_RevertWhen_SlotUnsupported() public {
+        fixture.data.recentBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.recentBlock.header.slot)
+        );
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function test_processBalanceProof_RevertWhen_InvalidBlockHeader() public {
+        vm.mockCall(
+            verifier.BEACON_ROOTS(),
+            abi.encode(fixture.data.recentBlock.rootsTimestamp),
+            abi.encode(hex"deadbeef")
+        );
+
+        vm.expectRevert(IVerifier.InvalidBlockHeader.selector);
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function test_processBalanceProof_RevertWhen_InvalidBalanceNode() public {
+        fixture.data.balance.node = someBytes32();
+
+        vm.expectRevert(SSZ.InvalidProof.selector);
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function test_processBalanceProof_RevertWhen_InvalidPublicKey() public {
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getSigningKeys.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex
+            ),
+            abi.encode(hex"deadbeef")
+        );
+
+        vm.expectRevert(IVerifier.InvalidPublicKey.selector);
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function test_processBalanceProof_RevertWhen_Paused() public {
+        vm.prank(admin);
+        verifier.pauseFor(1 days);
+
+        vm.expectRevert(PausableUntil.ResumedExpected.selector);
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function _setMocks() internal {
+        vm.mockCall(
+            verifier.BEACON_ROOTS(),
+            abi.encode(fixture.data.recentBlock.rootsTimestamp),
+            abi.encode(fixture.blockRoot)
+        );
+
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getSigningKeys.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex
+            ),
+            abi.encode(fixture.data.validator.object.pubkey)
+        );
+
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector), "");
+    }
+
+    function _loadFixture() internal {
+        string[] memory cmd = new string[](3);
+        cmd[0] = "node";
+        cmd[1] = "--no-warnings";
+        cmd[2] = "test/fixtures/Verifier/balance.mjs";
+        bytes memory res = vm.ffi(cmd);
+        fixture = abi.decode(res, (Fixture));
+    }
+
+    function ffi_interface(Fixture memory) external {}
 }
 
 contract VerifierParentBlockRootTest is Test, Utilities {

@@ -932,7 +932,7 @@ contract CSMTopUpQueue is CSMCommon {
         csm.obtainDepositData(1, "");
 
         uint256 cap = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
-        csm.increaseKeyAddedBalance(0, 0, cap);
+        setKeyAddedBalance(0, 0, cap);
 
         bytes memory key = csm.getSigningKeys(0, 0, 1);
         vm.recordLogs();
@@ -956,7 +956,7 @@ contract CSMTopUpQueue is CSMCommon {
         csm.obtainDepositData(1, "");
 
         uint256 cap = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
-        csm.increaseKeyAddedBalance(0, 0, cap - 1 ether);
+        setKeyAddedBalance(0, 0, cap - 1 ether);
 
         bytes memory key = csm.getSigningKeys(0, 0, 1);
         vm.expectEmit(address(csm));
@@ -1902,6 +1902,8 @@ contract CSMCompensateGeneralDelayedPenalty is ModuleCompensateGeneralDelayedPen
 contract CSMReportWithdrawnValidators is ModuleReportWithdrawnValidators, CSMCommon {}
 
 contract CSMKeyAddedBalance is ModuleKeyAddedBalance, CSMCommon {}
+
+contract CSMSyncKeyAddedBalance is ModuleSyncKeyAddedBalance, CSMCommon {}
 
 contract CSMGetStakingModuleSummary is ModuleGetStakingModuleSummary, CSMCommon {}
 

@@ -2,6 +2,7 @@
   "plugins": ["prettier-plugin-solidity"],
   "singleQuote": false,
   "trailingComma": "all",
+  "printWidth": 100,
   "overrides": [
     {
       "files": "*.sol",

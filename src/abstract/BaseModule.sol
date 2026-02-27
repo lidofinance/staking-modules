@@ -332,18 +332,21 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function increaseKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 amount) external {
+    function syncKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 currentBalanceWei) external {
         _checkVerifierRole();
 
-        NodeOperatorOps.increaseKeyAddedBalance({
+        NodeOperatorOps.syncKeyAddedBalance({
             nodeOperators: _nodeOperators,
             nodeOperatorsCount: _nodeOperatorsCount,
-            isValidatorWithdrawn: _isValidatorWithdrawn,
             keyAddedBalances: _keyAddedBalances,
             nodeOperatorId: nodeOperatorId,
             keyIndex: keyIndex,
-            incrementWei: amount
+            currentBalanceWei: currentBalanceWei
         });
+
+        // NOTE: We do not increment nonce because individual validator balances don't change the distribution
+        // returned by the module. The distribution from `allocateDeposits` might change but still meets
+        // expectations of StakingRouter.
     }
 
     /// @inheritdoc IBaseModule

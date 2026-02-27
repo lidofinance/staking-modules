@@ -1655,6 +1655,8 @@ contract CuratedReportWithdrawnValidators is ModuleReportWithdrawnValidators, Cu
 
 contract CuratedKeyAddedBalance is ModuleKeyAddedBalance, CuratedCommon {}
 
+contract CuratedSyncKeyAddedBalance is ModuleSyncKeyAddedBalance, CuratedCommon {}
+
 contract CuratedTopUpKeyAddedBalance is CuratedCommon {
     function test_topUp_emitsKeyAddedBalanceChanged() public {
         createNodeOperator(1);
@@ -1680,7 +1682,7 @@ contract CuratedTopUpKeyAddedBalance is CuratedCommon {
         cm.obtainDepositData(1, "");
 
         uint256 cap = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
-        cm.increaseKeyAddedBalance(0, 0, cap);
+        setKeyAddedBalance(0, 0, cap);
 
         bytes memory key = cm.getSigningKeys(0, 0, 1);
         bytes[] memory pubkeys = BytesArr(key);

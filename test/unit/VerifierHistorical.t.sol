@@ -43,6 +43,9 @@ GIndex constant FIRST_HISTORICAL_SUMMARY_DENEB = GIndex.wrap(
 GIndex constant FIRST_BLOCK_ROOT_IN_SUMMARY_DENEB = GIndex.wrap(
     0x000000000000000000000000000000000000000000000000000000000040000d
 );
+GIndex constant FIRST_BALANCE_NODE_DENEB = GIndex.wrap(
+    0x0000000000000000000000000000000000000000000000000016000000000028
+);
 
 contract VerifierHistoricalBase is Test, Utilities {
     struct Fixture {
@@ -133,16 +136,6 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
-    function test_processHistoricalWithdrawalProof_RevertWhen_UnsupportedSlot_RecentBlock() public {
-        fixture.data.recentBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
-
-        vm.expectRevert(
-            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.recentBlock.header.slot)
-        );
-
-        verifier.processHistoricalWithdrawalProof(fixture.data);
-    }
-
     function test_processHistoricalWithdrawalProof_RevertWhen_UnsupportedSlot_WithdrawalBlock() public {
         fixture.data.withdrawalBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
@@ -228,6 +221,322 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
         vm.expectRevert(IVerifier.PartialWithdrawal.selector);
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
+}
+
+contract VerifierCrossForkHistoricalBalanceTest is Test, Utilities {
+    struct Fixture {
+        bytes32 blockRoot;
+        IVerifier.ProcessHistoricalBalanceProofInput data;
+    }
+
+    Fixture public fixture;
+
+    Stub public module;
+    Verifier public verifier;
+    address public admin;
+
+    function setUp() public {
+        _loadFixture("deneb");
+
+        module = new Stub();
+        admin = nextAddress("ADMIN");
+
+        verifier = new Verifier({
+            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            module: address(module),
+            slotsPerEpoch: 32,
+            slotsPerHistoricalRoot: 8192,
+            gindices: IVerifier.GIndices({
+                gIFirstWithdrawalPrev: NULL_GINDEX,
+                gIFirstWithdrawalCurr: NULL_GINDEX,
+                gIFirstValidatorPrev: FIRST_VALIDATOR_DENEB,
+                gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIFirstHistoricalSummaryPrev: FIRST_HISTORICAL_SUMMARY_DENEB,
+                gIFirstHistoricalSummaryCurr: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
+                gIFirstBlockRootInSummaryPrev: FIRST_BLOCK_ROOT_IN_SUMMARY_DENEB,
+                gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
+                gIFirstBalanceNodePrev: FIRST_BALANCE_NODE_DENEB,
+                gIFirstBalanceNodeCurr: GIndices.FIRST_BALANCE_NODE_ELECTRA
+            }),
+            firstSupportedSlot: fixture.data.historicalBlock.header.slot,
+            pivotSlot: fixture.data.recentBlock.header.slot.dec(),
+            capellaSlot: Slot.wrap(0),
+            admin: admin
+        });
+
+        vm.startPrank(admin);
+        verifier.grantRole(verifier.PAUSE_ROLE(), admin);
+        verifier.grantRole(verifier.RESUME_ROLE(), admin);
+        vm.stopPrank();
+
+        _setMocks();
+    }
+
+    function test_processHistoricalBalanceProof_HappyPath() public {
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector));
+
+        verifier.processHistoricalBalanceProof(fixture.data);
+    }
+
+    function _setMocks() internal {
+        vm.mockCall(
+            verifier.BEACON_ROOTS(),
+            abi.encode(fixture.data.recentBlock.rootsTimestamp),
+            abi.encode(fixture.blockRoot)
+        );
+
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(IBaseModule.getSigningKeys.selector, 0, 0),
+            abi.encode(fixture.data.validator.object.pubkey)
+        );
+
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector), "");
+    }
+
+    function _loadFixture(string memory fork) internal {
+        string[] memory cmd = new string[](4);
+        cmd[0] = "node";
+        cmd[1] = "--no-warnings";
+        cmd[2] = "test/fixtures/Verifier/historical_balance.mjs";
+        cmd[3] = fork;
+        bytes memory res = vm.ffi(cmd);
+        fixture = abi.decode(res, (Fixture));
+    }
+
+    function ffi_interface(Fixture memory) external {}
+}
+
+contract VerifierCrossForkHistoricalBalanceAtPivotSlotTest is Test, Utilities {
+    struct Fixture {
+        bytes32 blockRoot;
+        IVerifier.ProcessHistoricalBalanceProofInput data;
+    }
+
+    Fixture public fixture;
+
+    Stub public module;
+    Verifier public verifier;
+    address public admin;
+
+    function setUp() public {
+        _loadFixture("deneb");
+
+        module = new Stub();
+        admin = nextAddress("ADMIN");
+
+        verifier = new Verifier({
+            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            module: address(module),
+            slotsPerEpoch: 32,
+            slotsPerHistoricalRoot: 8192,
+            gindices: IVerifier.GIndices({
+                gIFirstWithdrawalPrev: NULL_GINDEX,
+                gIFirstWithdrawalCurr: NULL_GINDEX,
+                gIFirstValidatorPrev: FIRST_VALIDATOR_DENEB,
+                gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIFirstHistoricalSummaryPrev: FIRST_HISTORICAL_SUMMARY_DENEB,
+                gIFirstHistoricalSummaryCurr: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
+                gIFirstBlockRootInSummaryPrev: FIRST_BLOCK_ROOT_IN_SUMMARY_DENEB,
+                gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
+                gIFirstBalanceNodePrev: FIRST_BALANCE_NODE_DENEB,
+                gIFirstBalanceNodeCurr: GIndices.FIRST_BALANCE_NODE_ELECTRA
+            }),
+            firstSupportedSlot: fixture.data.historicalBlock.header.slot,
+            pivotSlot: fixture.data.recentBlock.header.slot,
+            capellaSlot: Slot.wrap(0),
+            admin: admin
+        });
+
+        vm.startPrank(admin);
+        verifier.grantRole(verifier.PAUSE_ROLE(), admin);
+        verifier.grantRole(verifier.RESUME_ROLE(), admin);
+        vm.stopPrank();
+
+        _setMocks();
+    }
+
+    function test_processHistoricalBalanceProof_HappyPath() public {
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector));
+
+        verifier.processHistoricalBalanceProof(fixture.data);
+    }
+
+    function _setMocks() internal {
+        vm.mockCall(
+            verifier.BEACON_ROOTS(),
+            abi.encode(fixture.data.recentBlock.rootsTimestamp),
+            abi.encode(fixture.blockRoot)
+        );
+
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(IBaseModule.getSigningKeys.selector, 0, 0),
+            abi.encode(fixture.data.validator.object.pubkey)
+        );
+
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector), "");
+    }
+
+    function _loadFixture(string memory fork) internal {
+        string[] memory cmd = new string[](4);
+        cmd[0] = "node";
+        cmd[1] = "--no-warnings";
+        cmd[2] = "test/fixtures/Verifier/historical_balance.mjs";
+        cmd[3] = fork;
+        bytes memory res = vm.ffi(cmd);
+        fixture = abi.decode(res, (Fixture));
+    }
+
+    function ffi_interface(Fixture memory) external {}
+}
+
+contract VerifierHistoricalBalanceTest is Test, Utilities {
+    struct Fixture {
+        bytes32 blockRoot;
+        IVerifier.ProcessHistoricalBalanceProofInput data;
+    }
+
+    Fixture public fixture;
+
+    Stub public module;
+    Verifier public verifier;
+    address public admin;
+
+    function setUp() public {
+        _loadFixture();
+
+        module = new Stub();
+        admin = nextAddress("ADMIN");
+
+        verifier = new Verifier({
+            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            module: address(module),
+            slotsPerEpoch: 32,
+            slotsPerHistoricalRoot: 8192,
+            gindices: IVerifier.GIndices({
+                gIFirstWithdrawalPrev: NULL_GINDEX,
+                gIFirstWithdrawalCurr: NULL_GINDEX,
+                gIFirstValidatorPrev: NULL_GINDEX,
+                gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIFirstHistoricalSummaryPrev: NULL_GINDEX,
+                gIFirstHistoricalSummaryCurr: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
+                gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
+                gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
+                gIFirstBalanceNodePrev: NULL_GINDEX,
+                gIFirstBalanceNodeCurr: GIndices.FIRST_BALANCE_NODE_ELECTRA
+            }),
+            firstSupportedSlot: fixture.data.historicalBlock.header.slot,
+            pivotSlot: fixture.data.historicalBlock.header.slot,
+            capellaSlot: Slot.wrap(0),
+            admin: admin
+        });
+
+        vm.startPrank(admin);
+        verifier.grantRole(verifier.PAUSE_ROLE(), admin);
+        verifier.grantRole(verifier.RESUME_ROLE(), admin);
+        vm.stopPrank();
+
+        _setMocks();
+    }
+
+    function test_processHistoricalBalanceProof_HappyPath() public {
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector));
+
+        verifier.processHistoricalBalanceProof(fixture.data);
+    }
+
+    function test_processHistoricalBalanceProof_RevertWhen_UnsupportedSlot_RecentBlock() public {
+        fixture.data.recentBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.recentBlock.header.slot)
+        );
+
+        verifier.processHistoricalBalanceProof(fixture.data);
+    }
+
+    function test_processHistoricalBalanceProof_RevertWhen_UnsupportedSlot_HistoricalBlock() public {
+        fixture.data.historicalBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.historicalBlock.header.slot)
+        );
+
+        verifier.processHistoricalBalanceProof(fixture.data);
+    }
+
+    function test_processHistoricalBalanceProof_RevertWhen_InvalidRecentBlock() public {
+        vm.mockCall(
+            verifier.BEACON_ROOTS(),
+            abi.encode(fixture.data.recentBlock.rootsTimestamp),
+            abi.encode(hex"deadbeef")
+        );
+
+        vm.expectRevert(IVerifier.InvalidBlockHeader.selector);
+        verifier.processHistoricalBalanceProof(fixture.data);
+    }
+
+    function test_processHistoricalBalanceProof_RevertWhen_InvalidHistoricalBlock() public {
+        fixture.data.historicalBlock.header.parentRoot = someBytes32();
+
+        vm.expectRevert(SSZ.InvalidProof.selector);
+        verifier.processHistoricalBalanceProof(fixture.data);
+    }
+
+    function test_processHistoricalBalanceProof_RevertWhen_InvalidBalanceNode() public {
+        fixture.data.balance.node = someBytes32();
+
+        vm.expectRevert(SSZ.InvalidProof.selector);
+        verifier.processHistoricalBalanceProof(fixture.data);
+    }
+
+    function test_processHistoricalBalanceProof_RevertWhen_InvalidPublicKey() public {
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getSigningKeys.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex
+            ),
+            abi.encode(hex"deadbeef")
+        );
+
+        vm.expectRevert(IVerifier.InvalidPublicKey.selector);
+        verifier.processHistoricalBalanceProof(fixture.data);
+    }
+
+    function _setMocks() internal {
+        vm.mockCall(
+            verifier.BEACON_ROOTS(),
+            abi.encode(fixture.data.recentBlock.rootsTimestamp),
+            abi.encode(fixture.blockRoot)
+        );
+
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(IBaseModule.getSigningKeys.selector, 0, 0),
+            abi.encode(fixture.data.validator.object.pubkey)
+        );
+
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector), "");
+    }
+
+    function _loadFixture() internal {
+        _loadFixture("electra");
+    }
+
+    function _loadFixture(string memory fork) internal {
+        string[] memory cmd = new string[](4);
+        cmd[0] = "node";
+        cmd[1] = "--no-warnings";
+        cmd[2] = "test/fixtures/Verifier/historical_balance.mjs";
+        cmd[3] = fork;
+        bytes memory res = vm.ffi(cmd);
+        fixture = abi.decode(res, (Fixture));
+    }
+
+    function ffi_interface(Fixture memory) external {}
 }
 
 contract VerifierCrossForkHistoricalTest is VerifierHistoricalBase {

@@ -360,12 +360,12 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     function onValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external;
 
-    /// @notice Increase tracked added balance for a particular key
-    /// @dev The method is not expected to be called on 0x01 validator mode module
+    /// @notice Sync tracked added balance for a key based on proven validator balance.
+    /// @dev The function only increases the key added value at the moment.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
-    /// @param amount Amount to add to the tracked added balance (wei)
-    function increaseKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 amount) external;
+    /// @param currentBalanceWei Proven current validator balance in wei
+    function syncKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 currentBalanceWei) external;
 
     /// @notice Get tracked added balance for a particular key
     /// @param nodeOperatorId ID of the Node Operator
