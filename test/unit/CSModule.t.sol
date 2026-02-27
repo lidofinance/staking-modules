@@ -1313,6 +1313,23 @@ contract CSMTopUpQueue is CSMCommon {
         vm.expectRevert(ICSModule.TopUpQueueDisabled.selector);
         csm.rewindTopUpQueue(0);
     }
+
+    function test_syncKeyAddedBalance_RevertWhenTopUpQueueDisabled() public {
+        csm = new CSModule({
+            moduleType: "community-staking-module",
+            lidoLocator: address(locator),
+            parametersRegistry: address(parametersRegistry),
+            accounting: address(accounting),
+            exitPenalties: address(exitPenalties)
+        });
+
+        _enableInitializers(address(csm));
+        csm.initialize({ admin: address(this), topUpQueueLimit: 0 });
+
+        csm.grantRole(csm.VERIFIER_ROLE(), address(this));
+        vm.expectRevert(ICSModule.TopUpQueueDisabled.selector);
+        csm.syncKeyAddedBalance(0, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 1 ether);
+    }
 }
 
 contract CSMProposeNodeOperatorManagerAddressChange is ModuleProposeNodeOperatorManagerAddressChange, CSMCommon {}
@@ -1899,11 +1916,29 @@ contract CSMSettleGeneralDelayedPenaltyAdvanced is ModuleSettleGeneralDelayedPen
 
 contract CSMCompensateGeneralDelayedPenalty is ModuleCompensateGeneralDelayedPenalty, CSMCommon {}
 
-contract CSMReportWithdrawnValidators is ModuleReportWithdrawnValidators, CSMCommon {}
+contract CSMReportWithdrawnValidators is ModuleReportWithdrawnValidators, CSMCommon {
+    function setUp() public override {
+        topUpQueueLimit = 32;
 
-contract CSMKeyAddedBalance is ModuleKeyAddedBalance, CSMCommon {}
+        super.setUp();
+    }
+}
 
-contract CSMSyncKeyAddedBalance is ModuleSyncKeyAddedBalance, CSMCommon {}
+contract CSMKeyAddedBalance is ModuleKeyAddedBalance, CSMCommon {
+    function setUp() public override {
+        topUpQueueLimit = 32;
+
+        super.setUp();
+    }
+}
+
+contract CSMSyncKeyAddedBalance is ModuleSyncKeyAddedBalance, CSMCommon {
+    function setUp() public override {
+        topUpQueueLimit = 32;
+
+        super.setUp();
+    }
+}
 
 contract CSMGetStakingModuleSummary is ModuleGetStakingModuleSummary, CSMCommon {}
 
