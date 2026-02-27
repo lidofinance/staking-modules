@@ -19,6 +19,7 @@ contract AccountingMock {
 
     error BondLockAmountTooLarge();
     error BondLockUnlockTimeTooLarge();
+    error BondLockNotExpired();
 
     ILido public immutable LIDO;
 
@@ -106,8 +107,18 @@ contract AccountingMock {
         bondLock[nodeOperatorId].amount -= uint128(amount);
     }
 
+    function unlockExpiredLock(uint256 nodeOperatorId) public {
+        if (bondLock[nodeOperatorId].until > block.timestamp) revert BondLockNotExpired();
+        delete bondLock[nodeOperatorId];
+        MODULE.updateDepositableValidatorsCount(nodeOperatorId);
+    }
+
     function settleLockedBond(uint256 nodeOperatorId, uint256 maxAmount) external returns (uint256 settledAmount) {
-        uint256 lockedBond = getActualLockedBond(nodeOperatorId);
+        if (bondLock[nodeOperatorId].until <= block.timestamp) {
+            unlockExpiredLock(nodeOperatorId);
+            return 0;
+        }
+        uint256 lockedBond = getLockedBond(nodeOperatorId);
         settledAmount = Math.min(lockedBond, maxAmount);
         if (settledAmount > bond[nodeOperatorId]) {
             bond[nodeOperatorId] = 0;
@@ -124,7 +135,11 @@ contract AccountingMock {
     }
 
     function compensateLockedBond(uint256 nodeOperatorId) external returns (uint256 compensatedAmount) {
-        uint256 lockedAmount = getActualLockedBond(nodeOperatorId);
+        if (bondLock[nodeOperatorId].until <= block.timestamp) {
+            unlockExpiredLock(nodeOperatorId);
+            return 0;
+        }
+        uint256 lockedAmount = getLockedBond(nodeOperatorId);
         if (lockedAmount == 0) return 0;
 
         (uint256 currentBond, uint256 requiredBond) = getBondSummary(nodeOperatorId);
@@ -195,7 +210,7 @@ contract AccountingMock {
             getBondAmountByKeysCount(
                 MODULE.getNodeOperatorNonWithdrawnKeys(nodeOperatorId),
                 operatorBondCurveId[nodeOperatorId]
-            ) + getActualLockedBond(nodeOperatorId)
+            ) + getLockedBond(nodeOperatorId)
         );
     }
 
@@ -205,7 +220,7 @@ contract AccountingMock {
             MODULE.getNodeOperatorNonWithdrawnKeys(nodeOperatorId) + additionalKeys,
             operatorBondCurveId[nodeOperatorId]
         );
-        uint256 totalRequired = requiredForNewTotalKeys + getActualLockedBond(nodeOperatorId);
+        uint256 totalRequired = requiredForNewTotalKeys + getLockedBond(nodeOperatorId);
 
         unchecked {
             return totalRequired > current ? totalRequired - current : 0;
@@ -219,8 +234,7 @@ contract AccountingMock {
         return wstETH.getWstETHByStETH(getRequiredBondForNextKeys(nodeOperatorId, additionalKeys));
     }
 
-    function getActualLockedBond(uint256 nodeOperatorId) public view returns (uint256) {
-        if (bondLock[nodeOperatorId].until <= block.timestamp) return 0;
+    function getLockedBond(uint256 nodeOperatorId) public view returns (uint256) {
         return bondLock[nodeOperatorId].amount;
     }
 
@@ -246,7 +260,7 @@ contract AccountingMock {
     function getUnbondedKeysCountToEject(uint256 nodeOperatorId) external view returns (uint256) {
         (uint256 current, uint256 required) = getBondSummary(nodeOperatorId);
         current += 10 wei;
-        required -= getActualLockedBond(nodeOperatorId);
+        required -= getLockedBond(nodeOperatorId);
         if (current >= required) return 0;
         return (required - current) / bondCurves[operatorBondCurveId[nodeOperatorId]] + 1;
     }

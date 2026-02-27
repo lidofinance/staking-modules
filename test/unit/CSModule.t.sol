@@ -1868,7 +1868,7 @@ contract CSMUpdateExitedValidatorsCount is ModuleUpdateExitedValidatorsCount, CS
 contract CSMUnsafeUpdateValidatorsCount is ModuleUnsafeUpdateValidatorsCount, CSMCommon {}
 
 contract CSMReportGeneralDelayedPenalty is ModuleReportGeneralDelayedPenalty, CSMCommon {
-    function test_reportGeneralDelayedPenalty_UpdateDepositableAfterUnlock_EmitsBatchEnqueued()
+    function test_reportGeneralDelayedPenalty_UpdatesDepositableAfterUnlock_EmitsBatchEnqueued()
         public
         assertInvariants
     {
@@ -1884,7 +1884,7 @@ contract CSMReportGeneralDelayedPenalty is ModuleReportGeneralDelayedPenalty, CS
 
         vm.expectEmit(address(csm));
         emit ICSModule.BatchEnqueued(parametersRegistry.QUEUE_LOWEST_PRIORITY(), noId, 1);
-        csm.updateDepositableValidatorsCount(noId);
+        accounting.unlockExpiredLock(noId);
 
         no = csm.getNodeOperator(noId);
         assertEq(no.enqueuedCount, 1);

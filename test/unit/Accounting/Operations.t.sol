@@ -592,7 +592,7 @@ contract PenalizeTest is BaseTest {
         vm.prank(address(stakingModule));
         accounting.lockBond(0, 2 ether);
         Accounting.BondLockData memory lockBefore = accounting.getLockedBondInfo(0);
-        assertEq(accounting.getActualLockedBond(0), 2 ether);
+        assertEq(accounting.getLockedBond(0), 2 ether);
 
         uint256 amountToBurn = accounting.getBond(0) / 2;
 
@@ -1158,7 +1158,8 @@ contract PullFeeRewardsTest is BaseTest {
         // Let the lock expire
         Accounting.BondLockData memory lockInfo = accounting.getLockedBondInfo(0);
         vm.warp(lockInfo.until);
-        assertEq(accounting.getActualLockedBond(0), 0);
+        accounting.unlockExpiredLock(0);
+        assertEq(accounting.getLockedBond(0), 0);
 
         // One more pull should process all accumulated pending
         uint256 third = 8;

@@ -280,6 +280,10 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     /// @param amount Amount to release in ETH (stETH)
     function releaseLockedBond(uint256 nodeOperatorId, uint256 amount) external;
 
+    /// @notice Unlock expired locked bond for the given Node Operator
+    /// @param nodeOperatorId ID of the Node Operator
+    function unlockExpiredLock(uint256 nodeOperatorId) external;
+
     /// @notice Settle locked bond ETH for the given Node Operator
     /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator

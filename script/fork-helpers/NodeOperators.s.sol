@@ -173,11 +173,11 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
     }
 
     function reportGeneralDelayedPenalty(uint256 noId, uint256 amount) external broadcastPenaltyReporter {
-        uint256 lockedBefore = accounting.getActualLockedBond(noId);
+        uint256 lockedBefore = accounting.getLockedBond(noId);
 
         module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), amount, "Test penalty");
 
-        uint256 lockedAfter = accounting.getActualLockedBond(noId);
+        uint256 lockedAfter = accounting.getLockedBond(noId);
         assertEq(
             lockedAfter,
             lockedBefore +
@@ -187,11 +187,11 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
     }
 
     function cancelGeneralDelayedPenalty(uint256 noId, uint256 amount) external broadcastPenaltyReporter {
-        uint256 lockedBefore = accounting.getActualLockedBond(noId);
+        uint256 lockedBefore = accounting.getLockedBond(noId);
 
         module.cancelGeneralDelayedPenalty(noId, amount);
 
-        uint256 lockedAfter = accounting.getActualLockedBond(noId);
+        uint256 lockedAfter = accounting.getLockedBond(noId);
         assertEq(lockedAfter, lockedBefore - amount);
     }
 
@@ -202,7 +202,7 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         maxAmounts[0] = type(uint256).max; // Set to max to settle
         module.settleGeneralDelayedPenalty(noIds, maxAmounts);
 
-        assertEq(accounting.getActualLockedBond(noId), 0);
+        assertEq(accounting.getLockedBond(noId), 0);
     }
 
     function compensateGeneralDelayedPenalty(uint256 noId) external broadcastStranger {

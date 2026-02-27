@@ -20,6 +20,7 @@ interface IBondLock {
 
     error InvalidBondLockPeriod();
     error InvalidBondLockAmount();
+    error BondLockNotExpired();
 
     function MIN_BOND_LOCK_PERIOD() external view returns (uint256);
 
@@ -37,5 +38,10 @@ interface IBondLock {
     /// @notice Get amount of the locked bond in ETH (stETH) by the given Node Operator
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Amount of the actual locked bond
-    function getActualLockedBond(uint256 nodeOperatorId) external view returns (uint256);
+    function getLockedBond(uint256 nodeOperatorId) external view returns (uint256);
+
+    /// @notice Check if the bond lock for the given Node Operator has expired
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @return True if the bond lock has expired or there is no lock, false otherwise
+    function isLockExpired(uint256 nodeOperatorId) external view returns (bool);
 }

@@ -27,6 +27,10 @@ contract BondLockTestable is BondLock(4 weeks, 365 days) {
         _unlock(nodeOperatorId, amount);
     }
 
+    function unlockExpiredLock(uint256 nodeOperatorId) external {
+        _unlockExpiredLock(nodeOperatorId);
+    }
+
     function remove(uint256 nodeOperatorId) external {
         _changeBondLock(nodeOperatorId, 0, 0);
     }
@@ -78,16 +82,16 @@ contract BondLockTest is Test {
         bondLock.setBondLockPeriod(max + 1 seconds);
     }
 
-    function test_getActualLockedBond() public {
+    function test_getLockedBond() public {
         uint256 noId = 0;
         uint256 amount = 1 ether;
         bondLock.lock(noId, amount);
 
-        uint256 value = bondLock.getActualLockedBond(noId);
+        uint256 value = bondLock.getLockedBond(noId);
         assertEq(value, amount);
     }
 
-    function test_getActualLockedBond_WhenOnUntil() public {
+    function test_getLockedBond_WhenOnUntil() public {
         uint256 noId = 0;
         uint256 amount = 1 ether;
         bondLock.lock(noId, amount);
@@ -95,11 +99,11 @@ contract BondLockTest is Test {
         BondLock.BondLockData memory lock = bondLock.getLockedBondInfo(noId);
         vm.warp(lock.until);
 
-        uint256 value = bondLock.getActualLockedBond(noId);
-        assertEq(value, 0);
+        uint256 value = bondLock.getLockedBond(noId);
+        assertEq(value, amount);
     }
 
-    function test_getActualLockedBond_WhenPeriodIsPassed() public {
+    function test_getLockedBond_WhenPeriodIsPassed() public {
         uint256 period = bondLock.getBondLockPeriod();
         uint256 noId = 0;
         uint256 amount = 1 ether;
@@ -107,8 +111,23 @@ contract BondLockTest is Test {
 
         vm.warp(block.timestamp + period + 1 seconds);
 
-        uint256 value = bondLock.getActualLockedBond(noId);
-        assertEq(value, 0);
+        uint256 value = bondLock.getLockedBond(noId);
+        assertEq(value, amount);
+    }
+
+    function test_isLockExpired() public {
+        uint256 period = bondLock.getBondLockPeriod();
+        uint256 noId = 0;
+        uint256 amount = 1 ether;
+        bondLock.lock(noId, amount);
+
+        bool expired = bondLock.isLockExpired(noId);
+        assertFalse(expired);
+
+        vm.warp(block.timestamp + period + 1 seconds);
+
+        expired = bondLock.isLockExpired(noId);
+        assertTrue(expired);
     }
 
     function test_lock() public {
@@ -247,6 +266,41 @@ contract BondLockTest is Test {
 
         vm.expectRevert(IBondLock.InvalidBondLockAmount.selector);
         bondLock.unlock(noId, amount + 1 ether);
+    }
+
+    function test_unlockExpiredLock() public {
+        uint256 period = bondLock.getBondLockPeriod();
+        uint256 noId = 0;
+        uint256 amount = 100 ether;
+
+        bondLock.lock(noId, amount);
+
+        vm.expectEmit(address(bondLock));
+        emit IBondLock.BondLockRemoved(noId);
+
+        vm.warp(block.timestamp + period + 1 seconds);
+
+        bondLock.unlockExpiredLock(noId);
+
+        BondLock.BondLockData memory lock = bondLock.getLockedBondInfo(0);
+        assertEq(lock.amount, 0);
+        assertEq(lock.until, 0);
+    }
+
+    function test_unlockExpiredLock_RevertWhenNotExpired() public {
+        uint256 period = bondLock.getBondLockPeriod();
+        uint256 noId = 0;
+        uint256 amount = 100 ether;
+
+        bondLock.lock(noId, amount);
+
+        vm.expectRevert(IBondLock.BondLockNotExpired.selector);
+        bondLock.unlockExpiredLock(noId);
+
+        vm.warp(block.timestamp + period + 1 seconds);
+
+        // Should work after the lock is expired
+        bondLock.unlockExpiredLock(noId);
     }
 
     function test_remove() public {

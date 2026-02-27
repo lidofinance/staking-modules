@@ -269,8 +269,19 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
+    function unlockExpiredLock(uint256 nodeOperatorId) public {
+        BondLock._unlockExpiredLock(nodeOperatorId);
+        MODULE.updateDepositableValidatorsCount(nodeOperatorId);
+    }
+
+    /// @inheritdoc IAccounting
     function compensateLockedBond(uint256 nodeOperatorId) external onlyModule returns (uint256 compensatedAmount) {
-        uint256 lockedAmount = BondLock.getActualLockedBond(nodeOperatorId);
+        uint256 lockedAmount = BondLock.getLockedBond(nodeOperatorId);
+        if (BondLock.isLockExpired(nodeOperatorId) && lockedAmount != 0) {
+            unlockExpiredLock(nodeOperatorId);
+            return 0;
+        }
+
         if (lockedAmount == 0) return 0;
 
         (uint256 currentBond, uint256 requiredBond) = getBondSummary(nodeOperatorId);
@@ -290,7 +301,11 @@ contract Accounting is
         uint256 nodeOperatorId,
         uint256 maxAmount
     ) external onlyModule returns (uint256 amountSettled) {
-        uint256 lockedAmount = BondLock.getActualLockedBond(nodeOperatorId);
+        uint256 lockedAmount = BondLock.getLockedBond(nodeOperatorId);
+        if (BondLock.isLockExpired(nodeOperatorId) && lockedAmount != 0) {
+            unlockExpiredLock(nodeOperatorId);
+            return 0;
+        }
         amountSettled = lockedAmount < maxAmount ? lockedAmount : maxAmount;
         if (lockedAmount > 0) {
             BondCore._burn(nodeOperatorId, amountSettled);
@@ -491,10 +506,10 @@ contract Accounting is
         uint256 curveId = BondCurve.getBondCurveId(nodeOperatorId);
         uint256 nonWithdrawnKeys = MODULE.getNodeOperatorNonWithdrawnKeys(nodeOperatorId);
         uint256 requiredBondForKeys = BondCurve.getBondAmountByKeysCount(nonWithdrawnKeys + additionalKeys, curveId);
-        uint256 actualLockedBond = BondLock.getActualLockedBond(nodeOperatorId);
+        uint256 lockedBond = BondLock.getLockedBond(nodeOperatorId);
         uint256 bondDebt = BondCore.getBondDebt(nodeOperatorId);
 
-        return requiredBondForKeys + actualLockedBond + bondDebt;
+        return requiredBondForKeys + lockedBond + bondDebt;
     }
 
     function _getRequiredBondShares(uint256 nodeOperatorId, uint256 additionalKeys) internal view returns (uint256) {
@@ -513,7 +528,7 @@ contract Accounting is
 
         // Optionally account for locked bond depending on the flag
         if (includeLockedBond) {
-            uint256 lockedBond = BondLock.getActualLockedBond(nodeOperatorId);
+            uint256 lockedBond = BondLock.getLockedBond(nodeOperatorId);
             // We use strict condition here since in rare case of equality the outcome of the function will not change
             if (lockedBond > currentBond) return nonWithdrawnKeys;
             unchecked {

@@ -66,9 +66,13 @@ abstract contract BondLock is IBondLock, Initializable {
     }
 
     /// @inheritdoc IBondLock
-    function getActualLockedBond(uint256 nodeOperatorId) public view returns (uint256) {
-        BondLockData storage bondLock = _getBondLockStorage().bondLock[nodeOperatorId];
-        return bondLock.until > block.timestamp ? bondLock.amount : 0;
+    function getLockedBond(uint256 nodeOperatorId) public view returns (uint256) {
+        return _getBondLockStorage().bondLock[nodeOperatorId].amount;
+    }
+
+    /// @inheritdoc IBondLock
+    function isLockExpired(uint256 nodeOperatorId) public view returns (bool) {
+        return _getBondLockStorage().bondLock[nodeOperatorId].until <= block.timestamp;
     }
 
     /// @dev Lock bond amount for the given Node Operator until the period.
@@ -87,7 +91,7 @@ abstract contract BondLock is IBondLock, Initializable {
     /// @dev Unlock the locked bond amount for the given Node Operator without changing the lock period
     function _unlock(uint256 nodeOperatorId, uint256 amount) internal {
         if (amount == 0) revert InvalidBondLockAmount();
-        uint256 locked = getActualLockedBond(nodeOperatorId);
+        uint256 locked = getLockedBond(nodeOperatorId);
         if (locked < amount) revert InvalidBondLockAmount();
         unchecked {
             _changeBondLock(nodeOperatorId, locked - amount, _getBondLockStorage().bondLock[nodeOperatorId].until);
@@ -105,6 +109,11 @@ abstract contract BondLock is IBondLock, Initializable {
             until: until.toUint128()
         });
         emit BondLockChanged(nodeOperatorId, amount, until);
+    }
+
+    function _unlockExpiredLock(uint256 nodeOperatorId) internal {
+        if (!isLockExpired(nodeOperatorId)) revert BondLockNotExpired();
+        _changeBondLock(nodeOperatorId, 0, 0);
     }
 
     // solhint-disable-next-line func-name-mixedcase
