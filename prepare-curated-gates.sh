@@ -126,19 +126,15 @@ for i in "${!CURVES[@]}"; do
   fi
 
   # Deploy gate via MerkleGateFactory
-  # MerkleGateFactory.create(bytes initCalldata, address admin)
-  # initCalldata = CuratedGate.initialize(curveId, treeRoot, treeCid, admin)
-  INIT_DATA=$(cast calldata "initialize(uint256,bytes32,string,address)" \
-    "$CURVE_ID" "$TREE_ROOT" "$TREE_CID" "$SENDER")
   cast send "$GATE_FACTORY" \
-    "create(bytes,address)" \
-    "$INIT_DATA" "$SENDER" \
+    "create(uint256,bytes32,string,address)" \
+    "$CURVE_ID" "$TREE_ROOT" "$TREE_CID" "$SENDER" \
     --rpc-url="$RPC_URL" --private-key="$LOCAL_PK" > /dev/null
 
   # Get new gate address from logs
-  # MerkleGateCreated(address indexed gate, address indexed implementation, address indexed admin)
+  # MerkleGateCreated(address indexed gate, address indexed admin, uint256 curveId)
   NEW_GATE=$(cast logs --from-block latest --address "$GATE_FACTORY" \
-    "MerkleGateCreated(address,address,address)" --rpc-url="$RPC_URL" --json | \
+    "MerkleGateCreated(address,address,uint256)" --rpc-url="$RPC_URL" --json | \
     jq -r '.[0].topics[1]' | sed 's/0x000000000000000000000000/0x/')
   NEW_GATES+=("$NEW_GATE")
 
