@@ -15,8 +15,10 @@ import { HashConsensus } from "../../../src/lib/base-oracle/HashConsensus.sol";
 import { FeeDistributor } from "../../../src/FeeDistributor.sol";
 import { FeeOracle } from "../../../src/FeeOracle.sol";
 import { ValidatorStrikes } from "../../../src/ValidatorStrikes.sol";
+import { ParametersRegistry } from "../../../src/ParametersRegistry.sol";
 import { IWithdrawalQueue } from "../../../src/interfaces/IWithdrawalQueue.sol";
 import { IBondCurve } from "../../../src/interfaces/IBondCurve.sol";
+import { IParametersRegistry } from "../../../src/interfaces/IParametersRegistry.sol";
 import { BaseOracle } from "../../../src/lib/base-oracle/BaseOracle.sol";
 import { GIndex } from "../../../src/lib/GIndex.sol";
 import { Slot } from "../../../src/lib/Types.sol";
@@ -148,8 +150,6 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
 
         assertTrue(accounting.hasRole(accounting.RESUME_ROLE(), deployParams.resealManager));
         assertEq(accounting.getRoleMemberCount(accounting.RESUME_ROLE()), 1);
-
-        assertEq(accounting.getRoleMemberCount(keccak256("RESET_BOND_CURVE_ROLE")), 0);
 
         assertEq(accounting.getRoleMemberCount(accounting.MANAGE_BOND_CURVES_ROLE()), 0);
 
@@ -456,12 +456,15 @@ contract EjectorDeploymentTest is DeploymentBaseTest {
     function test_roles() public view {
         assertTrue(ejector.hasRole(ejector.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(ejector.getRoleMemberCount(ejector.DEFAULT_ADMIN_ROLE()), adminsCount);
+
         assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), address(gateSeal)));
         assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager));
         assertEq(ejector.getRoleMemberCount(ejector.PAUSE_ROLE()), 2);
 
         assertTrue(ejector.hasRole(ejector.RESUME_ROLE(), deployParams.resealManager));
         assertEq(ejector.getRoleMemberCount(ejector.RESUME_ROLE()), 1);
+
+        assertEq(ejector.getRoleMemberCount(ejector.RECOVERER_ROLE()), 0);
     }
 }
 
@@ -479,5 +482,90 @@ contract ExitPenaltiesDeploymentTest is DeploymentBaseTest {
         assertEq(proxy.proxy__getImplementation(), address(exitPenaltiesImpl));
         assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
         assertFalse(proxy.proxy__getIsOssified());
+    }
+}
+
+contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
+    function test_immutables() public view {
+        assertEq(parametersRegistryImpl.QUEUE_LOWEST_PRIORITY(), deployParams.queueLowestPriority);
+    }
+
+    function test_state_onlyFull() public view {
+        assertEq(parametersRegistry.getInitializedVersion(), 3);
+    }
+
+    function test_roles_onlyFull() public view {
+        assertTrue(parametersRegistry.hasRole(parametersRegistry.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
+        assertEq(parametersRegistry.getRoleMemberCount(parametersRegistry.DEFAULT_ADMIN_ROLE()), adminsCount);
+        assertTrue(
+            parametersRegistry.hasRole(
+                parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
+                deployParams.penaltiesManager
+            )
+        );
+        assertEq(
+            parametersRegistry.getRoleMemberCount(parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE()),
+            1
+        );
+        assertEq(parametersRegistry.getRoleMemberCount(parametersRegistry.MANAGE_KEYS_LIMIT_ROLE()), 0);
+        assertEq(parametersRegistry.getRoleMemberCount(parametersRegistry.MANAGE_QUEUE_CONFIG_ROLE()), 0);
+        assertEq(parametersRegistry.getRoleMemberCount(parametersRegistry.MANAGE_PERFORMANCE_PARAMETERS_ROLE()), 0);
+        assertEq(parametersRegistry.getRoleMemberCount(parametersRegistry.MANAGE_REWARD_SHARE_ROLE()), 0);
+        assertEq(parametersRegistry.getRoleMemberCount(parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE()), 0);
+    }
+
+    function test_proxy_onlyFull() public {
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        parametersRegistry.initialize({
+            admin: deployParams.aragonAgent,
+            data: IParametersRegistry.InitializationData({
+                defaultKeyRemovalCharge: deployParams.defaultKeyRemovalCharge,
+                defaultGeneralDelayedPenaltyAdditionalFine: deployParams.defaultGeneralDelayedPenaltyAdditionalFine,
+                defaultKeysLimit: deployParams.defaultKeysLimit,
+                defaultRewardShare: deployParams.defaultRewardShareBP,
+                defaultPerformanceLeeway: deployParams.defaultAvgPerfLeewayBP,
+                defaultStrikesLifetime: deployParams.defaultStrikesLifetimeFrames,
+                defaultStrikesThreshold: deployParams.defaultStrikesThreshold,
+                defaultQueuePriority: deployParams.defaultQueuePriority,
+                defaultQueueMaxDeposits: deployParams.defaultQueueMaxDeposits,
+                defaultBadPerformancePenalty: deployParams.defaultBadPerformancePenalty,
+                defaultAttestationsWeight: deployParams.defaultAttestationsWeight,
+                defaultBlocksWeight: deployParams.defaultBlocksWeight,
+                defaultSyncWeight: deployParams.defaultSyncWeight,
+                defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
+                defaultExitDelayFee: deployParams.defaultExitDelayFee,
+                defaultMaxElWithdrawalRequestFee: deployParams.defaultMaxElWithdrawalRequestFee
+            })
+        });
+
+        OssifiableProxy proxy = OssifiableProxy(payable(address(parametersRegistry)));
+
+        assertEq(proxy.proxy__getImplementation(), address(parametersRegistryImpl));
+        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
+        assertFalse(proxy.proxy__getIsOssified());
+
+        ParametersRegistry parametersRegistryImpl = ParametersRegistry(proxy.proxy__getImplementation());
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        parametersRegistryImpl.initialize({
+            admin: deployParams.aragonAgent,
+            data: IParametersRegistry.InitializationData({
+                defaultKeyRemovalCharge: deployParams.defaultKeyRemovalCharge,
+                defaultGeneralDelayedPenaltyAdditionalFine: deployParams.defaultGeneralDelayedPenaltyAdditionalFine,
+                defaultKeysLimit: deployParams.defaultKeysLimit,
+                defaultRewardShare: deployParams.defaultRewardShareBP,
+                defaultPerformanceLeeway: deployParams.defaultAvgPerfLeewayBP,
+                defaultStrikesLifetime: deployParams.defaultStrikesLifetimeFrames,
+                defaultStrikesThreshold: deployParams.defaultStrikesThreshold,
+                defaultQueuePriority: deployParams.defaultQueuePriority,
+                defaultQueueMaxDeposits: deployParams.defaultQueueMaxDeposits,
+                defaultBadPerformancePenalty: deployParams.defaultBadPerformancePenalty,
+                defaultAttestationsWeight: deployParams.defaultAttestationsWeight,
+                defaultBlocksWeight: deployParams.defaultBlocksWeight,
+                defaultSyncWeight: deployParams.defaultSyncWeight,
+                defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
+                defaultExitDelayFee: deployParams.defaultExitDelayFee,
+                defaultMaxElWithdrawalRequestFee: deployParams.defaultMaxElWithdrawalRequestFee
+            })
+        });
     }
 }

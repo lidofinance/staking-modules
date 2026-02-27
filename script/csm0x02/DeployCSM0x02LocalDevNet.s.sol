@@ -33,7 +33,6 @@ contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
         config.gIFirstHistoricalSummary = GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA; // prettier-ignore
         config.gIFirstBlockRootInSummary = GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA; // prettier-ignore
         config.gIFirstBalanceNode = GIndices.FIRST_BALANCE_NODE_ELECTRA;
-        config.gIFirstPendingConsolidation = GIndices.FIRST_PENDING_CONSOLIDATION_ELECTRA;
         config.verifierFirstSupportedSlot = vm.envUint("DEVNET_ELECTRA_EPOCH") * config.slotsPerEpoch;
         config.capellaSlot = vm.envUint("DEVNET_CAPELLA_EPOCH") * config.slotsPerEpoch;
 
@@ -70,6 +69,7 @@ contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.1 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
+        config.penaltiesManager = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
         // GateSeal
         config.gateSealFactory = 0x0000000000000000000000000000000000000000;

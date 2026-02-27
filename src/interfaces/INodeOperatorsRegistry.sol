@@ -23,4 +23,7 @@ interface INodeOperatorsRegistry {
             uint64 totalAddedValidators,
             uint64 totalDepositedValidators
         );
+
+    /// @notice Returns total number of node operators
+    function getNodeOperatorsCount() external view returns (uint256);
 }

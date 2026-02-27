@@ -14,11 +14,15 @@ import { SigningKeys } from "./SigningKeys.sol";
 /// @dev The library is used to reduce CSModule bytecode size.
 library TopUpQueueOps {
     using TopUpQueueLib for TopUpQueueLib.Queue;
+
     struct TopUpKeyParams {
         uint256[] keyIndices;
         uint256[] operatorIds;
         uint256[] topUpLimits;
     }
+
+    // StakingRouter expects non-zero top-up allocations to be at least 1 ether.
+    uint256 internal constant TOP_UP_STEP = 1 ether;
 
     function allocateDeposits(
         TopUpQueueLib.Queue storage topUpQueue,
@@ -33,6 +37,10 @@ library TopUpQueueOps {
             pubkeys.length != operatorIds.length ||
             pubkeys.length != topUpLimits.length
         ) {
+            revert IBaseModule.InvalidInput();
+        }
+
+        if (pubkeys.length > topUpQueue.length()) {
             revert IBaseModule.InvalidInput();
         }
         // NOTE: Wrapping the function inputs with a struct to save space on the stack.
@@ -62,13 +70,22 @@ library TopUpQueueOps {
 
             SigningKeys.verifySigningKey(item.noId(), item.keyIndex(), pubkeys[i]);
 
+            uint256 limit = _quantizeAmount(data.topUpLimits[i]);
+
             if (maxDepositAmount > 0) {
-                allocations[i] = Math.min(data.topUpLimits[i], maxDepositAmount);
+                allocations[i] = Math.min(limit, maxDepositAmount);
                 maxDepositAmount -= allocations[i];
             }
-            if (allocations[i] == data.topUpLimits[i]) {
+
+            if (allocations[i] == limit) {
                 topUpQueue.dequeue();
             } else if (i < keyCount - 1) revert ICSModule.UnexpectedExtraKey();
+        }
+    }
+
+    function _quantizeAmount(uint256 value) private pure returns (uint256 quantized) {
+        unchecked {
+            quantized = value - (value % TOP_UP_STEP);
         }
     }
 }

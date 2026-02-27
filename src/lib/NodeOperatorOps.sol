@@ -82,8 +82,9 @@ library NodeOperatorOps {
         uint64 totalExitedValidators,
         bytes calldata nodeOperatorIds,
         bytes calldata exitedValidatorsCounts
-    ) external returns (uint64) {
+    ) external returns (uint64 newTotalExitedValidators) {
         uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(nodeOperatorIds, exitedValidatorsCounts);
+        newTotalExitedValidators = totalExitedValidators;
 
         for (uint256 i = 0; i < operatorsInReport; ++i) {
             (uint256 nodeOperatorId, uint256 exitedValidatorsCount) = ValidatorCountsReport.next(
@@ -91,25 +92,32 @@ library NodeOperatorOps {
                 exitedValidatorsCounts,
                 i
             );
-            _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
-            NodeOperator storage no = nodeOperators[nodeOperatorId];
-            uint32 totalExitedKeys = no.totalExitedKeys;
-            unchecked {
-                // @dev Invariant sum(no.totalExitedKeys for no in nos) == totalExitedValidators.
-                // `totalExitedValidators` accumulates the same uint32 per-operator counts, so pushing
-                // the new value through uint64 preserves the exact result.
-                // forge-lint: disable-next-item(unsafe-typecast)
-                totalExitedValidators = (totalExitedValidators - totalExitedKeys) + uint64(exitedValidatorsCount);
-            }
-            // Each node operator stores its exited count in a uint32 slot; `exitedValidatorsCount`
-            // is validated against `totalDepositedKeys` (also uint32), so the cast is safe.
-            // forge-lint: disable-next-line(unsafe-typecast)
-            no.totalExitedKeys = uint32(exitedValidatorsCount);
-
-            emit IBaseModule.ExitedSigningKeysCountChanged(nodeOperatorId, exitedValidatorsCount);
+            newTotalExitedValidators = _updateExitedValidatorsCount({
+                nodeOperators: nodeOperators,
+                nodeOperatorsCount: nodeOperatorsCount,
+                totalExitedValidators: newTotalExitedValidators,
+                nodeOperatorId: nodeOperatorId,
+                exitedValidatorsCount: exitedValidatorsCount,
+                safeCheck: true
+            });
         }
+    }
 
-        return totalExitedValidators;
+    function unsafeUpdateValidatorsCount(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint256 nodeOperatorsCount,
+        uint64 totalExitedValidators,
+        uint256 nodeOperatorId,
+        uint256 exitedValidatorsCount
+    ) external returns (uint64 newTotalExitedValidators) {
+        newTotalExitedValidators = _updateExitedValidatorsCount({
+            nodeOperators: nodeOperators,
+            nodeOperatorsCount: nodeOperatorsCount,
+            totalExitedValidators: totalExitedValidators,
+            nodeOperatorId: nodeOperatorId,
+            exitedValidatorsCount: exitedValidatorsCount,
+            safeCheck: false
+        });
     }
 
     function decreaseVettedSigningKeysCount(
@@ -131,8 +139,10 @@ library NodeOperatorOps {
 
             NodeOperator storage no = nodeOperators[nodeOperatorId];
 
+            if (vettedSigningKeysCount == no.totalVettedKeys) continue;
+
             if (no.managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
-            if (vettedSigningKeysCount >= no.totalVettedKeys) revert IBaseModule.InvalidVetKeysPointer();
+            if (vettedSigningKeysCount > no.totalVettedKeys) revert IBaseModule.InvalidVetKeysPointer();
             if (vettedSigningKeysCount < no.totalDepositedKeys) revert IBaseModule.InvalidVetKeysPointer();
 
             // NodeOperator.totalVettedKeys and totalDepositedKeys are uint32 slots; the checks above keep
@@ -237,8 +247,7 @@ library NodeOperatorOps {
         uint256 amountToCharge = parametersRegistry.getKeyRemovalCharge(accounting.getBondCurveId(nodeOperatorId)) *
             keysCount;
 
-        if (amountToCharge != 0) {
-            accounting.chargeFee(nodeOperatorId, amountToCharge);
+        if (amountToCharge != 0 && accounting.chargeFee(nodeOperatorId, amountToCharge)) {
             emit IBaseModule.KeyRemovalChargeApplied(nodeOperatorId);
         }
 
@@ -430,6 +439,8 @@ library NodeOperatorOps {
                 uint256 remaining = perOperatorAllocations[operatorId] - perOperatorIncrements[operatorId];
                 if (remaining == 0) continue;
 
+                // Curated allocations are quantized to 1 ether, matching StakingRouter's
+                // expectation that non-zero top-up allocations are >= 1 ether.
                 uint256 limit = CuratedDepositAllocator.quantizeForTopUp(topUpLimits[i]);
                 if (limit == 0) continue;
 
@@ -453,6 +464,34 @@ library NodeOperatorOps {
         uint256 updatedBalance = Math.min(cap, current + incrementWei);
         keyAddedBalances[pointer] = updatedBalance;
         emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, updatedBalance);
+    }
+
+    function _updateExitedValidatorsCount(
+        mapping(uint256 => NodeOperator) storage nodeOperators,
+        uint256 nodeOperatorsCount,
+        uint64 totalExitedValidators,
+        uint256 nodeOperatorId,
+        uint256 exitedValidatorsCount,
+        bool safeCheck
+    ) internal returns (uint64 newTotalExitedValidators) {
+        _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
+        NodeOperator storage no = nodeOperators[nodeOperatorId];
+        if (exitedValidatorsCount > no.totalDepositedKeys) revert IBaseModule.InvalidInput();
+        if (safeCheck && exitedValidatorsCount < no.totalExitedKeys) revert IBaseModule.InvalidInput();
+
+        unchecked {
+            // @dev Invariant sum(no.totalExitedKeys for no in nos) == totalExitedValidators.
+            // `totalExitedValidators` accumulates the same uint32 per-operator counts, so pushing
+            // the new value through uint64 preserves the exact result.
+            // forge-lint: disable-next-item(unsafe-typecast)
+            newTotalExitedValidators = (totalExitedValidators - no.totalExitedKeys) + uint64(exitedValidatorsCount);
+        }
+        // Each node operator stores its exited count in a uint32 slot; `exitedValidatorsCount`
+        // is validated against `totalDepositedKeys` (also uint32), so the cast is safe.
+        // forge-lint: disable-next-line(unsafe-typecast)
+        no.totalExitedKeys = uint32(exitedValidatorsCount);
+
+        emit IBaseModule.ExitedSigningKeysCountChanged(nodeOperatorId, exitedValidatorsCount);
     }
 
     function _onlyExistingNodeOperator(uint256 nodeOperatorId, uint256 nodeOperatorsCount) internal pure {

@@ -40,7 +40,6 @@ contract DeployMainnet is DeployBase {
         config.gIFirstHistoricalSummary = GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA; // prettier-ignore
         config.gIFirstBlockRootInSummary = GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA; // prettier-ignore
         config.gIFirstBalanceNode = GIndices.FIRST_BALANCE_NODE_ELECTRA;
-        config.gIFirstPendingConsolidation = GIndices.FIRST_PENDING_CONSOLIDATION_ELECTRA; // prettier-ignore
         config.verifierFirstSupportedSlot = 364032 * config.slotsPerEpoch; // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-7600.md#activation
         config.capellaSlot = 194048 * config.slotsPerEpoch; // @see https://github.com/eth-clients/mainnet/blob/main/metadata/config.yaml#L50
 
@@ -57,7 +56,7 @@ contract DeployMainnet is DeployBase {
 
         // Module
         config.moduleType = "curated-onchain-v1"; // TODO reconsider
-        config.generalDelayedPenaltyReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider
+        config.generalDelayedPenaltyReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
 
         // ParametersRegistry TODO reconsider
         config.defaultKeyRemovalCharge = 0;
@@ -77,6 +76,7 @@ contract DeployMainnet is DeployBase {
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.1 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
+        config.penaltiesManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
 
         // Curated gates
         config.curatedGates.push();
@@ -108,9 +108,14 @@ contract DeployMainnet is DeployBase {
             primaryGate.params.maxElWithdrawalRequestFee = 0.1 ether; // TODO
         }
 
+        config.curatedGatePauseManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
+
+        // MetaRegistry
+        config.setOperatorInfoManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
+
         // GateSeal
         config.gateSealFactory = 0x6C82877cAC5a7A739f16Ca0A89c0A328B8764A24;
-        config.sealingCommittee = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
+        config.sealingCommittee = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
         config.sealDuration = 14 days;
         config.sealExpiryTimestamp = block.timestamp + 365 days;
 

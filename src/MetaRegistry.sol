@@ -355,13 +355,13 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         $.effectiveWeightCache.operatorEffectiveWeight[nodeOperatorId] = newWeight;
         emit NodeOperatorEffectiveWeightChanged(nodeOperatorId, oldWeight, newWeight);
 
-        MODULE.notifyNodeOperatorWeightChange(nodeOperatorId, newWeight);
+        MODULE.notifyNodeOperatorWeightChange(nodeOperatorId, oldWeight, newWeight);
     }
 
     function _checkExternalOperatorExistsTypeNOR(ExternalOperator memory op) internal {
         (uint8 moduleId, uint64 noId) = op.unpackEntryTypeNOR();
         address module = _getOrCacheModuleAddress(moduleId);
-        _onlyExistingOperator(module, noId);
+        if (noId >= INodeOperatorsRegistry(module).getNodeOperatorsCount()) revert NodeOperatorDoesNotExist();
     }
 
     /// @dev Returns the module address for `moduleId`, resolving from

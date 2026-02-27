@@ -21,10 +21,7 @@ contract CuratedGateFactoryTest is CuratedIntegrationBase {
         address admin = nextAddress("GateAdmin");
 
         vm.startSnapshotGas("CuratedGateFactory.createCurated");
-        address instance = curatedGateFactory.create(
-            abi.encodeCall(CuratedGate.initialize, (curveId, root, cid, admin)),
-            admin
-        );
+        address instance = curatedGateFactory.create(curveId, root, cid, admin);
         vm.stopSnapshotGas();
 
         CuratedGate gate = CuratedGate(instance);

@@ -104,6 +104,37 @@ abstract contract ModuleDecreaseVettedSigningKeysCount is ModuleFixtures {
         assertEq(actualVettedThird, 15);
     }
 
+    function test_decreaseVettedSigningKeysCount_MultipleOperators_NoopOnEqualStaleValue() public assertInvariants {
+        uint256 staleNoId = createNodeOperator(10);
+        uint256 activeNoId = createNodeOperator(7);
+        uint256 staleReportedVetted = 5;
+        uint256 activeReportedVetted = 3;
+
+        vm.prank(nodeOperator);
+        module.removeKeys(staleNoId, staleReportedVetted, 5);
+        uint256 nonce = module.getNonce();
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.VettedSigningKeysCountChanged(activeNoId, activeReportedVetted);
+        vm.expectEmit(address(module));
+        emit IBaseModule.VettedSigningKeysCountDecreased(activeNoId);
+
+        module.decreaseVettedSigningKeysCount(
+            _encodeNodeOperatorPair(staleNoId, activeNoId),
+            bytes.concat(
+                // Each vetted value mirrors the uint128 field used on-chain, so truncation is safe.
+                // forge-lint: disable-next-line(unsafe-typecast)
+                bytes16(uint128(staleReportedVetted)),
+                // forge-lint: disable-next-line(unsafe-typecast)
+                bytes16(uint128(activeReportedVetted))
+            )
+        );
+
+        assertEq(module.getNonce(), nonce + 1);
+        assertEq(module.getNodeOperator(staleNoId).totalVettedKeys, staleReportedVetted);
+        assertEq(module.getNodeOperator(activeNoId).totalVettedKeys, activeReportedVetted);
+    }
+
     function test_decreaseVettedSigningKeysCount_RevertWhen_MissingVettedData() public {
         uint256 firstNoId = createNodeOperator(10);
         uint256 secondNoId = createNodeOperator(7);
@@ -116,12 +147,16 @@ abstract contract ModuleDecreaseVettedSigningKeysCount is ModuleFixtures {
         );
     }
 
-    function test_decreaseVettedSigningKeysCount_RevertWhen_NewVettedEqOld() public {
+    function test_decreaseVettedSigningKeysCount_NoopWhen_NewVettedEqOld() public {
         uint256 noId = createNodeOperator(10);
         uint256 newVetted = 10;
+        uint256 nonce = module.getNonce();
 
-        vm.expectRevert(IBaseModule.InvalidVetKeysPointer.selector);
         unvetKeys(noId, newVetted);
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(module.getNonce(), nonce);
+        assertEq(no.totalVettedKeys, newVetted);
     }
 
     function test_decreaseVettedSigningKeysCount_RevertWhen_NewVettedGreaterOld() public {

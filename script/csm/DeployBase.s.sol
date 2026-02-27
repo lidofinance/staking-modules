@@ -55,7 +55,6 @@ struct DeployParams {
     GIndex gIFirstHistoricalSummary;
     GIndex gIFirstBlockRootInSummary;
     GIndex gIFirstBalanceNode;
-    GIndex gIFirstPendingConsolidation;
     uint256 verifierFirstSupportedSlot;
     uint256 capellaSlot;
     // Accounting
@@ -89,6 +88,7 @@ struct DeployParams {
     uint256 defaultAllowedExitDelay;
     uint256 defaultExitDelayFee;
     uint256 defaultMaxElWithdrawalRequestFee;
+    address penaltiesManager;
     // VettedGate
     // TODO: Legacy-only field. Kept only for SimulateVote.upgrade() END_REFERRAL_SEASON_ROLE revoke.
     address identifiedCommunityStakersGateManager;
@@ -253,9 +253,7 @@ abstract contract DeployBase is Script {
                     gIFirstBlockRootInSummaryPrev: config.gIFirstBlockRootInSummary,
                     gIFirstBlockRootInSummaryCurr: config.gIFirstBlockRootInSummary,
                     gIFirstBalanceNodePrev: config.gIFirstBalanceNode,
-                    gIFirstBalanceNodeCurr: config.gIFirstBalanceNode,
-                    gIFirstPendingConsolidationPrev: config.gIFirstPendingConsolidation,
-                    gIFirstPendingConsolidationCurr: config.gIFirstPendingConsolidation
+                    gIFirstBalanceNodeCurr: config.gIFirstBalanceNode
                 }),
                 firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 pivotSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
@@ -323,7 +321,7 @@ abstract contract DeployBase is Script {
 
             ValidatorStrikes strikesImpl = new ValidatorStrikes({ module: address(csm), oracle: address(oracle) });
 
-            strikes = ValidatorStrikes(_deployProxy(config.proxyAdmin, address(strikesImpl)));
+            strikes = ValidatorStrikes(_deployProxy(deployer, address(new Dummy())));
 
             ExitPenalties exitPenaltiesImpl = new ExitPenalties(address(csm), address(strikes));
 
@@ -335,7 +333,14 @@ abstract contract DeployBase is Script {
 
             ejector = new Ejector(address(csm), address(strikes), deployer);
 
-            strikes.initialize(deployer, address(ejector));
+            {
+                OssifiableProxy strikesProxy = OssifiableProxy(payable(address(strikes)));
+                strikesProxy.proxy__upgradeToAndCall(
+                    address(strikesImpl),
+                    abi.encodeCall(ValidatorStrikes.initialize, (deployer, address(ejector)))
+                );
+                strikesProxy.proxy__changeAdmin(config.proxyAdmin);
+            }
 
             permissionlessGate = new PermissionlessGate(address(csm), deployer);
 
@@ -343,15 +348,9 @@ abstract contract DeployBase is Script {
             vettedGateFactory = new MerkleGateFactory(vettedGateImpl);
             vettedGate = VettedGate(
                 vettedGateFactory.create(
-                    abi.encodeCall(
-                        VettedGate.initialize,
-                        (
-                            identifiedCommunityStakersGateBondCurveId,
-                            config.identifiedCommunityStakersGateTreeRoot,
-                            config.identifiedCommunityStakersGateTreeCid,
-                            deployer
-                        )
-                    ),
+                    identifiedCommunityStakersGateBondCurveId,
+                    config.identifiedCommunityStakersGateTreeRoot,
+                    config.identifiedCommunityStakersGateTreeCid,
                     deployer
                 )
             );
@@ -479,6 +478,11 @@ abstract contract DeployBase is Script {
 
             accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), address(config.setResetBondCurveAddress));
             accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), address(vettedGate));
+
+            parametersRegistry.grantRole(
+                parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
+                config.penaltiesManager
+            );
 
             csm.grantRole(csm.CREATE_NODE_OPERATOR_ROLE(), address(permissionlessGate));
             csm.grantRole(csm.CREATE_NODE_OPERATOR_ROLE(), address(vettedGate));

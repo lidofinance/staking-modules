@@ -48,6 +48,13 @@ interface IMerkleGate {
     /// @notice Hash leaf encoding for addresses in the Merkle tree
     function hashLeaf(address member) external pure returns (bytes32);
 
+    /// @notice Initialize the gate instance.
+    /// @param curveId Bond curve id to assign to eligible members.
+    /// @param treeRoot Initial Merkle tree root.
+    /// @param treeCid Initial Merkle tree CID.
+    /// @param admin Address to be granted DEFAULT_ADMIN_ROLE.
+    function initialize(uint256 curveId, bytes32 treeRoot, string calldata treeCid, address admin) external;
+
     /// @notice Initialized version for upgradeable tooling
     function getInitializedVersion() external view returns (uint64);
 }

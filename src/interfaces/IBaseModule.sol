@@ -94,7 +94,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     );
     event GeneralDelayedPenaltyCancelled(uint256 indexed nodeOperatorId, uint256 amount);
     event GeneralDelayedPenaltyCompensated(uint256 indexed nodeOperatorId, uint256 amount);
-    event GeneralDelayedPenaltySettled(uint256 indexed nodeOperatorId);
+    event GeneralDelayedPenaltySettled(uint256 indexed nodeOperatorId, uint256 amount);
     event NodeOperatorDepositInfoFullyUpdated();
 
     error CannotAddKeys();

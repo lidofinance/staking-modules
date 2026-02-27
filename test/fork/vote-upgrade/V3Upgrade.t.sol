@@ -161,10 +161,10 @@ contract VoteChangesTest is V3UpgradeTestBase {
 
     function test_csmQueuePriorityRange() public {
         vm.selectFork(forkIdBeforeUpgrade);
-        uint256 queueLowestPriorityBefore = module.QUEUE_LOWEST_PRIORITY();
+        uint256 queueLowestPriorityBefore = parametersRegistry.QUEUE_LOWEST_PRIORITY();
 
         vm.selectFork(forkIdAfterUpgrade);
-        uint256 queueLowestPriorityAfter = module.QUEUE_LOWEST_PRIORITY();
+        uint256 queueLowestPriorityAfter = parametersRegistry.QUEUE_LOWEST_PRIORITY();
 
         assertGe(queueLowestPriorityAfter, queueLowestPriorityBefore, "queue priority range shrunk");
     }

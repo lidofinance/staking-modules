@@ -81,7 +81,6 @@ struct CuratedDeployParams {
     GIndex gIFirstHistoricalSummary;
     GIndex gIFirstBlockRootInSummary;
     GIndex gIFirstBalanceNode;
-    GIndex gIFirstPendingConsolidation;
     uint256 verifierFirstSupportedSlot;
     uint256 capellaSlot;
     // Accounting
@@ -111,8 +110,12 @@ struct CuratedDeployParams {
     uint256 defaultAllowedExitDelay;
     uint256 defaultExitDelayFee;
     uint256 defaultMaxElWithdrawalRequestFee;
+    address penaltiesManager;
     // Curated gates
     CuratedGateConfig[] curatedGates;
+    address curatedGatePauseManager;
+    // MetaRegistry
+    address setOperatorInfoManager;
     // GateSeal
     address gateSealFactory;
     address sealingCommittee;
@@ -257,9 +260,7 @@ abstract contract DeployBase is Script {
                     gIFirstBlockRootInSummaryPrev: config.gIFirstBlockRootInSummary,
                     gIFirstBlockRootInSummaryCurr: config.gIFirstBlockRootInSummary,
                     gIFirstBalanceNodePrev: config.gIFirstBalanceNode,
-                    gIFirstBalanceNodeCurr: config.gIFirstBalanceNode,
-                    gIFirstPendingConsolidationPrev: config.gIFirstPendingConsolidation,
-                    gIFirstPendingConsolidationCurr: config.gIFirstPendingConsolidation
+                    gIFirstBalanceNodeCurr: config.gIFirstBalanceNode
                 }),
                 firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 pivotSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
@@ -376,7 +377,7 @@ abstract contract DeployBase is Script {
                 oracle: address(oracle)
             });
 
-            strikes = ValidatorStrikes(_deployProxy(config.proxyAdmin, address(strikesImpl)));
+            strikes = ValidatorStrikes(_deployProxy(deployer, address(new Dummy())));
 
             ExitPenalties exitPenaltiesImpl = new ExitPenalties(address(curatedModule), address(strikes));
 
@@ -388,7 +389,14 @@ abstract contract DeployBase is Script {
 
             ejector = new Ejector(address(curatedModule), address(strikes), deployer);
 
-            strikes.initialize(deployer, address(ejector));
+            {
+                OssifiableProxy strikesProxy = OssifiableProxy(payable(address(strikes)));
+                strikesProxy.proxy__upgradeToAndCall(
+                    address(strikesImpl),
+                    abi.encodeCall(ValidatorStrikes.initialize, (deployer, address(ejector)))
+                );
+                strikesProxy.proxy__changeAdmin(config.proxyAdmin);
+            }
 
             curatedGateImpl = address(new CuratedGate(address(curatedModule)));
 
@@ -429,17 +437,13 @@ abstract contract DeployBase is Script {
             }
 
             if (config.gateSealFactory != address(0)) {
-                uint256 baseSealables = 5;
-                uint256 sealablesCount = baseSealables + curatedGateInstances.length;
+                uint256 sealablesCount = 5;
                 address[] memory sealables = new address[](sealablesCount);
                 sealables[0] = address(curatedModule);
                 sealables[1] = address(accounting);
                 sealables[2] = address(oracle);
                 sealables[3] = address(verifier);
                 sealables[4] = address(ejector);
-                for (uint256 i = 0; i < curatedGateInstances.length; ++i) {
-                    sealables[baseSealables + i] = curatedGateInstances[i];
-                }
                 gateSeal = _deployGateSeal(sealables);
 
                 curatedModule.grantRole(curatedModule.PAUSE_ROLE(), gateSeal);
@@ -447,10 +451,6 @@ abstract contract DeployBase is Script {
                 oracle.grantRole(oracle.PAUSE_ROLE(), gateSeal);
                 verifier.grantRole(verifier.PAUSE_ROLE(), gateSeal);
                 ejector.grantRole(ejector.PAUSE_ROLE(), gateSeal);
-                for (uint256 i = 0; i < curatedGateInstances.length; ++i) {
-                    CuratedGate gate = CuratedGate(curatedGateInstances[i]);
-                    gate.grantRole(gate.PAUSE_ROLE(), gateSeal);
-                }
             }
 
             curatedModule.grantRole(curatedModule.PAUSE_ROLE(), config.resealManager);
@@ -463,6 +463,14 @@ abstract contract DeployBase is Script {
             verifier.grantRole(verifier.RESUME_ROLE(), config.resealManager);
             ejector.grantRole(ejector.PAUSE_ROLE(), config.resealManager);
             ejector.grantRole(ejector.RESUME_ROLE(), config.resealManager);
+
+            metaRegistry.grantRole(metaRegistry.SET_OPERATOR_INFO_ROLE(), config.setOperatorInfoManager);
+            metaRegistry.grantRole(metaRegistry.MANAGE_OPERATOR_GROUPS_ROLE(), config.easyTrackEVMScriptExecutor);
+
+            parametersRegistry.grantRole(
+                parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
+                config.penaltiesManager
+            );
 
             curatedModule.grantRole(
                 curatedModule.REPORT_GENERAL_DELAYED_PENALTY_ROLE(),
@@ -571,13 +579,7 @@ abstract contract DeployBase is Script {
             uint256 gateCurveId = curveIds[i];
             CuratedGateConfig storage gateConfig = config.curatedGates[i];
             CuratedGate gate = CuratedGate(
-                gateFactory.create(
-                    abi.encodeCall(
-                        CuratedGate.initialize,
-                        (gateCurveId, gateConfig.treeRoot, gateConfig.treeCid, deployer)
-                    ),
-                    deployer
-                )
+                gateFactory.create(gateCurveId, gateConfig.treeRoot, gateConfig.treeCid, deployer)
             );
 
             {
@@ -592,8 +594,7 @@ abstract contract DeployBase is Script {
                 accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), address(gate));
             }
             metaRegistry.grantRole(metaRegistry.SET_OPERATOR_INFO_ROLE(), address(gate));
-            gate.grantRole(gate.PAUSE_ROLE(), config.resealManager);
-            gate.grantRole(gate.RESUME_ROLE(), config.resealManager);
+            gate.grantRole(gate.PAUSE_ROLE(), config.curatedGatePauseManager);
             gate.grantRole(gate.SET_TREE_ROLE(), config.easyTrackEVMScriptExecutor);
         }
         return gates;

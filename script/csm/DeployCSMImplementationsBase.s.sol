@@ -101,9 +101,7 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
                     gIFirstBlockRootInSummaryPrev: config.gIFirstBlockRootInSummary,
                     gIFirstBlockRootInSummaryCurr: config.gIFirstBlockRootInSummary,
                     gIFirstBalanceNodePrev: config.gIFirstBalanceNode,
-                    gIFirstBalanceNodeCurr: config.gIFirstBalanceNode,
-                    gIFirstPendingConsolidationPrev: config.gIFirstPendingConsolidation,
-                    gIFirstPendingConsolidationCurr: config.gIFirstPendingConsolidation
+                    gIFirstBalanceNodeCurr: config.gIFirstBalanceNode
                 }),
                 firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 pivotSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),

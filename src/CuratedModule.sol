@@ -175,7 +175,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     /// @inheritdoc ICuratedModule
-    function notifyNodeOperatorWeightChange(uint256 nodeOperatorId, uint256 newWeight) external {
+    function notifyNodeOperatorWeightChange(uint256 nodeOperatorId, uint256 oldWeight, uint256 newWeight) external {
         if (msg.sender != address(_metaRegistry())) revert SenderIsNotMetaRegistry();
         if (newWeight == 0) {
             _applyDepositableValidatorsCount({
@@ -184,6 +184,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
                 newCount: 0,
                 incrementNonceIfUpdated: false
             });
+        } else if (oldWeight == 0) {
+            _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: false });
         }
 
         // NOTE: We always increment the nonce since weight change might affect the expected deposit allocation.

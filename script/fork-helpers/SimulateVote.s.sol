@@ -313,15 +313,20 @@ contract SimulateVote is Script, ForkHelpersCommon {
             oracle.grantRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSealV3);
             // 37. Grant PAUSE_ROLE to gateSealV3 on VettedGate
             existingVettedGate.grantRole(existingVettedGate.PAUSE_ROLE(), deploymentConfig.gateSealV3);
+            // 38. Grant MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE to penaltiesManager
+            parametersRegistry.grantRole(
+                parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
+                deployParams.penaltiesManager
+            );
 
             vm.stopBroadcast();
         }
 
         {
             vm.startBroadcast(burnerAdmin);
-            // 38. Revoke REQUEST_BURN_SHARES_ROLE from Accounting
+            // 39. Revoke REQUEST_BURN_SHARES_ROLE from Accounting
             burner.revokeRole(burner.REQUEST_BURN_SHARES_ROLE(), address(accounting));
-            // 39. Grant REQUEST_BURN_MY_STETH_ROLE to Accounting
+            // 40. Grant REQUEST_BURN_MY_STETH_ROLE to Accounting
             burner.grantRole(burner.REQUEST_BURN_MY_STETH_ROLE(), address(accounting));
             vm.stopBroadcast();
         }
@@ -333,9 +338,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
             address twgAdmin = _prepareAdmin(address(twg));
 
             vm.startBroadcast(twgAdmin);
-            // 40. Revoke TWG full-withdrawal role from old Ejector
+            // 41. Revoke TWG full-withdrawal role from old Ejector
             twg.revokeRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), oldEjector);
-            // 41. Grant TWG full-withdrawal role to new Ejector
+            // 42. Grant TWG full-withdrawal role to new Ejector
             twg.grantRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), deploymentConfig.ejector);
             vm.stopBroadcast();
         }

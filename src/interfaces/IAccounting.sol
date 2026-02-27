@@ -283,7 +283,9 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     /// @notice Settle locked bond ETH for the given Node Operator
     /// @dev Called by staking module exclusively
     /// @param nodeOperatorId ID of the Node Operator
-    function settleLockedBond(uint256 nodeOperatorId) external;
+    /// @param maxAmount Maximum amount to settle in ETH (stETH)
+    /// @return amountSettled Amount settled in ETH (stETH)
+    function settleLockedBond(uint256 nodeOperatorId, uint256 maxAmount) external returns (uint256 amountSettled);
 
     /// @notice Compensate locked bond ETH for the given Node Operator
     /// @dev Called by staking module exclusively
@@ -310,7 +312,8 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     ///      Method call can result in the remaining bond being lower than the locked bond.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param amount Amount to charge in ETH (stETH)
-    function chargeFee(uint256 nodeOperatorId, uint256 amount) external;
+    /// @return Whether any shares were actually transferred
+    function chargeFee(uint256 nodeOperatorId, uint256 amount) external returns (bool);
 
     /// @notice Pull fees (if proof provided) from FeeDistributor to the Node Operator's bond and split according to configured fee splits.
     /// @param nodeOperatorId ID of the Node Operator

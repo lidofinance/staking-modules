@@ -59,9 +59,6 @@ interface ICSModule is IBaseModule, IStakingModuleV2, IDepositQueueLib, ITopUpQu
     /// @return keyIndex Index of the key in the Node Operator's keys storage
     function getTopUpQueueItem(uint256 index) external view returns (uint256 nodeOperatorId, uint256 keyIndex);
 
-    /// @notice Returns the number reserved for the lowest queue priority.
-    function QUEUE_LOWEST_PRIORITY() external view returns (uint256);
-
     /// @notice Get the pointers to the head and tail of queue with the given priority.
     /// @param queuePriority Priority of the queue to get the pointers.
     /// @return head Pointer to the head of the queue.
