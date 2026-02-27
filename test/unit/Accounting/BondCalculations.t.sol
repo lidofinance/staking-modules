@@ -312,9 +312,29 @@ contract LockBondTest is BaseTest {
         accounting.lockBond(0, 1 ether);
 
         vm.prank(address(stakingModule));
-        accounting.releaseLockedBond(0, 0.4 ether);
+        bool released = accounting.releaseLockedBond(0, 0.4 ether);
 
+        assertTrue(released, "release should return true when bond is released");
         assertEq(accounting.getLockedBond(0), 0.6 ether);
+    }
+
+    function test_releaseLockedBond_ExpiredLock() public assertInvariants {
+        mock_getNodeOperatorsCount(1);
+
+        vm.prank(address(stakingModule));
+        accounting.lockBond(0, 1 ether);
+
+        vm.warp(block.timestamp + accounting.getBondLockPeriod() + 1 seconds);
+
+        vm.expectCall(
+            address(accounting.MODULE()),
+            abi.encodeWithSelector(IBaseModule.updateDepositableValidatorsCount.selector, 0)
+        );
+        vm.prank(address(stakingModule));
+        bool released = accounting.releaseLockedBond(0, 0.4 ether);
+
+        assertFalse(released, "release should return false when lock is expired");
+        assertEq(accounting.getLockedBond(0), 0);
     }
 
     function test_releaseLockedBond_RevertWhen_SenderIsNotModule() public {
@@ -371,6 +391,10 @@ contract LockBondTest is BaseTest {
 
         vm.warp(block.timestamp + accounting.getBondLockPeriod() + 1 seconds);
 
+        vm.expectCall(
+            address(accounting.MODULE()),
+            abi.encodeWithSelector(IBaseModule.updateDepositableValidatorsCount.selector, 0)
+        );
         vm.prank(address(stakingModule));
         accounting.compensateLockedBond(0);
 
@@ -473,8 +497,13 @@ contract LockBondTest is BaseTest {
 
         vm.warp(block.timestamp + accounting.getBondLockPeriod() + 1 seconds);
 
+        vm.expectCall(
+            address(accounting.MODULE()),
+            abi.encodeWithSelector(IBaseModule.updateDepositableValidatorsCount.selector, noId)
+        );
         vm.prank(address(stakingModule));
         uint256 settled = accounting.settleLockedBond(noId, amount);
+
         assertEq(settled, 0);
         assertEq(accounting.getLockedBond(noId), 0);
     }

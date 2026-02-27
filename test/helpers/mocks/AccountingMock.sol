@@ -101,10 +101,15 @@ contract AccountingMock {
         bondLock[nodeOperatorId].until = unlockAt;
     }
 
-    function releaseLockedBond(uint256 nodeOperatorId, uint256 amount) external {
+    function releaseLockedBond(uint256 nodeOperatorId, uint256 amount) external returns (bool) {
+        if (bondLock[nodeOperatorId].until <= block.timestamp) {
+            unlockExpiredLock(nodeOperatorId);
+            return false;
+        }
         // Bond lock amounts mirror production's uint128 slot, so truncation cannot happen.
         // forge-lint: disable-next-line(unsafe-typecast)
         bondLock[nodeOperatorId].amount -= uint128(amount);
+        return true;
     }
 
     function unlockExpiredLock(uint256 nodeOperatorId) public {

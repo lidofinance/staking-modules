@@ -264,8 +264,14 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function releaseLockedBond(uint256 nodeOperatorId, uint256 amount) external onlyModule {
+    function releaseLockedBond(uint256 nodeOperatorId, uint256 amount) external onlyModule returns (bool) {
+        uint256 lockedAmount = BondLock.getLockedBond(nodeOperatorId);
+        if (BondLock.isLockExpired(nodeOperatorId) && lockedAmount != 0) {
+            unlockExpiredLock(nodeOperatorId);
+            return false;
+        }
         BondLock._unlock(nodeOperatorId, amount);
+        return true;
     }
 
     /// @inheritdoc IAccounting

@@ -142,6 +142,27 @@ abstract contract ModuleCancelGeneralDelayedPenalty is ModuleFixtures {
         assertEq(module.getNonce(), nonce);
     }
 
+    function test_cancelGeneralDelayedPenalty_ExpiredLock_depositableValidatorsChanged() public assertInvariants {
+        uint256 noId = createNodeOperator(5);
+
+        module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), BOND_SIZE / 2, "Test penalty");
+
+        uint256 nonce = module.getNonce();
+        uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
+        assertEq(depositableBefore, 4);
+
+        vm.warp(block.timestamp + accounting.getBondLockPeriod() + 1 seconds);
+
+        module.cancelGeneralDelayedPenalty(noId, BOND_SIZE / 2);
+
+        uint256 lockedBond = accounting.getLockedBond(noId);
+        assertEq(lockedBond, 0);
+        assertEq(module.getNonce(), nonce + 1);
+
+        uint256 depositableAfter = module.getNodeOperator(noId).depositableValidatorsCount;
+        assertEq(depositableAfter, 5);
+    }
+
     function test_cancelGeneralDelayedPenalty_RevertWhen_NoNodeOperator() public {
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
         module.cancelGeneralDelayedPenalty(0, 1 ether);
