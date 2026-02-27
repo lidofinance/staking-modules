@@ -1277,7 +1277,7 @@ contract CSMTopUpQueue is CSMCommon {
         assertEq(keyIndex, 0);
 
         uint256 to = 1;
-        vm.expectEmit(true, true, true, true, address(csm));
+        vm.expectEmit(address(csm));
         emit ICSModule.TopUpQueueRewound(to);
         csm.rewindTopUpQueue(to);
         assertEq(_getTopUpQueueHead(), to);
