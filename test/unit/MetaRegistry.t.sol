@@ -281,6 +281,34 @@ contract MetaRegistryTestSetMetadataAsAdmin is MetaRegistryTestBase {
         assertEq(got.ownerEditsRestricted, infoV2.ownerEditsRestricted);
     }
 
+    function test_setOperatorMetadataAsAdmin_revertWhen_NameTooLong() public {
+        uint256 nodeOperatorId = 0;
+
+        OperatorMetadata memory exp = OperatorMetadata({
+            name: string(abi.encodePacked(randomBytes(257))),
+            description: "The first",
+            ownerEditsRestricted: false
+        });
+
+        vm.prank(metadataAdmin);
+        vm.expectRevert(IMetaRegistry.OperatorNameTooLong.selector);
+        registry.setOperatorMetadataAsAdmin(nodeOperatorId, exp);
+    }
+
+    function test_setOperatorMetadataAsAdmin_revertWhen_DescriptionTooLong() public {
+        uint256 nodeOperatorId = 0;
+
+        OperatorMetadata memory exp = OperatorMetadata({
+            name: "Alpha",
+            description: string(abi.encodePacked(randomBytes(1025))),
+            ownerEditsRestricted: false
+        });
+
+        vm.prank(metadataAdmin);
+        vm.expectRevert(IMetaRegistry.OperatorDescriptionTooLong.selector);
+        registry.setOperatorMetadataAsAdmin(nodeOperatorId, exp);
+    }
+
     function test_setOperatorMetadataAsAdmin_RevertWhen_NoRole() public {
         uint256 nodeOperatorId = 0;
 
@@ -347,6 +375,22 @@ contract MetaRegistryTestSetMetadataAsOwner is MetaRegistryTestBase {
         vm.prank(nodeOperatorOwner);
         vm.expectRevert(IMetaRegistry.NodeOperatorDoesNotExist.selector);
         registry.setOperatorMetadataAsOwner(nonExistentNoId, "Name", "Desc");
+    }
+
+    function test_setOperatorMetadataAsOwner_RevertWhen_NameTooLong() public {
+        uint256 nodeOperatorId = 0;
+
+        vm.prank(nodeOperatorOwner);
+        vm.expectRevert(IMetaRegistry.OperatorNameTooLong.selector);
+        registry.setOperatorMetadataAsOwner(nodeOperatorId, string(abi.encodePacked(randomBytes(257))), "Desc");
+    }
+
+    function test_setOperatorMetadataAsOwner_RevertWhen_DescriptionTooLong() public {
+        uint256 nodeOperatorId = 0;
+
+        vm.prank(nodeOperatorOwner);
+        vm.expectRevert(IMetaRegistry.OperatorDescriptionTooLong.selector);
+        registry.setOperatorMetadataAsOwner(nodeOperatorId, "Name", string(abi.encodePacked(randomBytes(1025))));
     }
 }
 
