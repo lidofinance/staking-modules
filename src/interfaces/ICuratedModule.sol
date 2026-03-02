@@ -9,7 +9,6 @@ import { IMetaRegistry } from "./IMetaRegistry.sol";
 
 interface ICuratedModule is IBaseModule, IStakingModuleV2 {
     event NodeOperatorBalanceUpdated(uint256 indexed operatorId, uint256 balanceWei);
-    event NodeOperatorWeightsUpToDate();
 
     error ZeroMetaRegistryAddress();
     error SenderIsNotMetaRegistry();
