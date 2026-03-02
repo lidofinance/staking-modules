@@ -91,9 +91,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         OperatorMetadata calldata metadata
     ) external onlyRole(SET_OPERATOR_INFO_ROLE) {
         _onlyExistingOperator(address(MODULE), nodeOperatorId);
-
-        _storage().operatorMetadata[nodeOperatorId] = metadata;
-        emit OperatorMetadataSet({ nodeOperatorId: nodeOperatorId, metadata: metadata });
+        _storeOperatorMetadata(nodeOperatorId, metadata);
     }
 
     /// @inheritdoc IMetaRegistry
@@ -110,10 +108,10 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         bool ownerEditsRestricted = stored.ownerEditsRestricted;
         if (ownerEditsRestricted) revert OwnerEditsRestricted();
 
-        stored.name = name;
-        stored.description = description;
-
-        emit OperatorMetadataSet({ nodeOperatorId: nodeOperatorId, metadata: stored });
+        _storeOperatorMetadata(
+            nodeOperatorId,
+            OperatorMetadata({ name: name, description: description, ownerEditsRestricted: ownerEditsRestricted })
+        );
     }
 
     /// @inheritdoc IMetaRegistry
@@ -356,6 +354,13 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         emit NodeOperatorEffectiveWeightChanged(nodeOperatorId, oldWeight, newWeight);
 
         MODULE.notifyNodeOperatorWeightChange(nodeOperatorId, oldWeight, newWeight);
+    }
+
+    function _storeOperatorMetadata(uint256 nodeOperatorId, OperatorMetadata memory metadata) internal {
+        if (bytes(metadata.name).length > 256) revert OperatorNameTooLong();
+        if (bytes(metadata.description).length > 1024) revert OperatorDescriptionTooLong();
+        _storage().operatorMetadata[nodeOperatorId] = metadata;
+        emit OperatorMetadataSet({ nodeOperatorId: nodeOperatorId, metadata: metadata });
     }
 
     function _checkExternalOperatorExistsTypeNOR(ExternalOperator memory op) internal {

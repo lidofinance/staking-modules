@@ -15,12 +15,14 @@ interface IBondLock {
 
     event BondLockChanged(uint256 indexed nodeOperatorId, uint256 newAmount, uint256 until);
     event BondLockRemoved(uint256 indexed nodeOperatorId);
+    event ExpiredBondLockRemoved(uint256 indexed nodeOperatorId);
 
     event BondLockPeriodChanged(uint256 period);
 
     error InvalidBondLockPeriod();
     error InvalidBondLockAmount();
     error BondLockNotExpired();
+    error NoBondLocked();
 
     function MIN_BOND_LOCK_PERIOD() external view returns (uint256);
 

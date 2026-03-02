@@ -287,7 +287,7 @@ contract BondLockTest is Test {
         assertEq(lock.until, 0);
     }
 
-    function test_unlockExpiredLock_RevertWhenNotExpired() public {
+    function test_unlockExpiredLock_RevertWhen_NotExpired() public {
         uint256 period = bondLock.getBondLockPeriod();
         uint256 noId = 0;
         uint256 amount = 100 ether;
@@ -300,6 +300,13 @@ contract BondLockTest is Test {
         vm.warp(block.timestamp + period + 1 seconds);
 
         // Should work after the lock is expired
+        bondLock.unlockExpiredLock(noId);
+    }
+
+    function test_unlockExpiredLock_RevertWhen_NoBondLocked() public {
+        uint256 noId = 0;
+
+        vm.expectRevert(IBondLock.NoBondLocked.selector);
         bondLock.unlockExpiredLock(noId);
     }
 
