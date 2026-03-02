@@ -30,6 +30,14 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         assertEq(module.getRoleMemberCount(role), 1);
         assertTrue(module.hasRole(role, address(permissionlessGate)));
     }
+
+    function test_topUpQueueConfig() public view {
+        assertGt(deployParams.topUpQueueLimit, 0, "top-up queue limit in config must be non-zero");
+
+        (bool enabled, uint256 limit, , ) = module.getTopUpQueue();
+        assertTrue(enabled, "top-up queue is disabled");
+        assertEq(limit, deployParams.topUpQueueLimit, "top-up queue limit mismatch");
+    }
 }
 
 contract VettedGateDeploymentTest is DeploymentBaseTest {
