@@ -65,6 +65,7 @@ library WithdrawnValidatorLib {
     ) internal returns (bool penaltyCovered) {
         bool chargeElWithdrawalRequestFee = false;
 
+        // TODO: calculate multiplier by `max(minExpectedBalance, exitBalance)`
         uint256 penaltyMultiplier = _getPenaltyMultiplier(validatorInfo);
         uint256 penaltySum;
         uint256 feeSum;
