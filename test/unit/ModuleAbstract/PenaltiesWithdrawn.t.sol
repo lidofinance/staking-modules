@@ -639,7 +639,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             address(accounting),
             abi.encodeWithSelector(accounting.penalize.selector, noId, strikesPenaltyAmount)
         );
-        vm.expectCall(
+        expectNoCall(
             address(accounting),
             abi.encodeWithSelector(accounting.chargeFee.selector, noId, withdrawalRequestFeeAmount)
         );
@@ -768,7 +768,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             isSlashed: false
         });
 
-        vm.expectCall(
+        expectNoCall(
             address(accounting),
             abi.encodeWithSelector(accounting.chargeFee.selector, noId, exitDelayFeeAmount + withdrawalRequestFeeAmount)
         );
