@@ -48,6 +48,7 @@ library NodeOperatorOps {
             managementProperties.extendedManagerPermissions
         );
 
+        // TODO: remove `referrer` and place to module impl.
         if (referrer != address(0)) emit IBaseModule.ReferrerSet(nodeOperatorId, referrer);
     }
 
@@ -141,6 +142,7 @@ library NodeOperatorOps {
 
             if (vettedSigningKeysCount == no.totalVettedKeys) continue;
 
+            // TODO: place above
             if (no.managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
             if (vettedSigningKeysCount > no.totalVettedKeys) revert IBaseModule.InvalidVetKeysPointer();
             if (vettedSigningKeysCount < no.totalDepositedKeys) revert IBaseModule.InvalidVetKeysPointer();
@@ -171,6 +173,7 @@ library NodeOperatorOps {
             revert IBaseModule.SigningKeysInvalidOffset();
         }
 
+        // TODO: change return to revert
         if (currentBalanceWei < WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE) return;
         if (currentBalanceWei > WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE) {
             currentBalanceWei = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE;
@@ -182,6 +185,7 @@ library NodeOperatorOps {
         }
 
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
+        // TODO: change return to revert
         if (newKeyAddedBalance <= keyAddedBalances[pointer]) return;
         keyAddedBalances[pointer] = newKeyAddedBalance;
         emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, newKeyAddedBalance);
@@ -230,6 +234,7 @@ library NodeOperatorOps {
         emit IBaseModule.VettedSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
     }
 
+    // TODO: can be merged with *Default with arg
     function removeKeysCSM(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,
@@ -487,6 +492,7 @@ library NodeOperatorOps {
         _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
         NodeOperator storage no = nodeOperators[nodeOperatorId];
         if (exitedValidatorsCount > no.totalDepositedKeys) revert IBaseModule.InvalidInput();
+        // TODO: change name to allowDecrease
         if (safeCheck && exitedValidatorsCount < no.totalExitedKeys) revert IBaseModule.InvalidInput();
 
         unchecked {

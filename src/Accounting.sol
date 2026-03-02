@@ -285,20 +285,22 @@ contract Accounting is
     /// @inheritdoc IAccounting
     function compensateLockedBond(uint256 nodeOperatorId) external onlyModule returns (uint256 compensatedAmount) {
         uint256 lockedAmount = BondLock.getLockedBond(nodeOperatorId);
-        if (lockedAmount == 0) return compensatedAmount;
+        if (lockedAmount == 0) return 0;
 
         if (BondLock.isLockExpired(nodeOperatorId)) {
             unlockExpiredLock(nodeOperatorId);
-            return compensatedAmount;
+            return 0;
         }
 
         (uint256 currentBond, uint256 requiredBond) = getBondSummary(nodeOperatorId);
         // `requiredBond` already includes `lockedAmount`
         uint256 requiredBondWithoutLock = requiredBond - lockedAmount;
-        if (currentBond <= requiredBondWithoutLock) return compensatedAmount;
+        if (currentBond <= requiredBondWithoutLock) return 0;
 
-        uint256 maxCompensatableAmount = currentBond - requiredBondWithoutLock;
-        compensatedAmount = lockedAmount < maxCompensatableAmount ? lockedAmount : maxCompensatableAmount;
+        unchecked {
+            uint256 maxCompensatableAmount = currentBond - requiredBondWithoutLock;
+            compensatedAmount = lockedAmount < maxCompensatableAmount ? lockedAmount : maxCompensatableAmount;
+        }
         BondCore._burn(nodeOperatorId, compensatedAmount);
         BondLock._unlock(nodeOperatorId, compensatedAmount);
         emit BondLockCompensated(nodeOperatorId, compensatedAmount);
