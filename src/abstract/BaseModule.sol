@@ -397,6 +397,7 @@ abstract contract BaseModule is
     function requestFullDepositInfoUpdate() external {
         _canRequestDepositInfoUpdate();
         _upToDateOperatorDepositInfoCount = 0;
+        emit FullDepositInfoUpdateRequested();
         _incrementModuleNonce();
     }
 
