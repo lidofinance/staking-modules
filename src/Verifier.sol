@@ -7,6 +7,7 @@ import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensio
 
 import { BeaconBlockHeader, Slot, Validator, Withdrawal } from "./lib/Types.sol";
 import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
+import { WithdrawnValidatorLib } from "./lib/WithdrawnValidatorLib.sol";
 import { GIndex } from "./lib/GIndex.sol";
 import { SSZ } from "./lib/SSZ.sol";
 
@@ -34,6 +35,15 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
     // See `BEACON_ROOTS_ADDRESS` constant in the EIP-4788.
     address public constant BEACON_ROOTS = 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02;
+
+    uint256 internal constant MAX_BP = 10_000;
+
+    /// @dev Minimum withdrawal amount as a ratio of total ether deposited to the validator,
+    ///      expressed in basis points (10 000 = 100%). At ~3% top APY, losing >10% of balance
+    ///      requires ~3 years offline — implausible for any legitimately run validator.
+    ///      We do not accept slashed validators in normal withdrawal processing, so we do not need to account for slashing penalties here.
+    ///      In case of unexpected network conditions, the DAO can always replace the verifier contract with one having a different threshold.
+    uint256 internal constant MIN_WITHDRAWAL_RATIO = 9000;
 
     uint64 public immutable SLOTS_PER_EPOCH;
 
@@ -178,11 +188,13 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             if (keccak256(pubkey) != keccak256(data.validator.object.pubkey)) revert InvalidPublicKey();
         }
 
-        uint256 withdrawalAmount = _processWithdrawalProof(
-            data.withdrawal,
-            data.validator,
-            data.withdrawalBlock.header
-        );
+        uint256 withdrawalAmount = _processWithdrawalProof({
+            withdrawal: data.withdrawal,
+            validator: data.validator,
+            header: data.withdrawalBlock.header,
+            nodeOperatorId: data.validator.nodeOperatorId,
+            keyIndex: data.validator.keyIndex
+        });
 
         _reportSingleValidator(
             WithdrawnValidatorInfo({
@@ -221,11 +233,13 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             gI: _getHistoricalBlockRootGI(data.recentBlock.header.slot, data.withdrawalBlock.header.slot)
         });
 
-        uint256 withdrawalAmount = _processWithdrawalProof(
-            data.withdrawal,
-            data.validator,
-            data.withdrawalBlock.header
-        );
+        uint256 withdrawalAmount = _processWithdrawalProof({
+            withdrawal: data.withdrawal,
+            validator: data.validator,
+            header: data.withdrawalBlock.header,
+            nodeOperatorId: data.validator.nodeOperatorId,
+            keyIndex: data.validator.keyIndex
+        });
 
         _reportSingleValidator(
             WithdrawnValidatorInfo({
@@ -306,43 +320,26 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     function _processWithdrawalProof(
         WithdrawalWitness calldata withdrawal,
         ValidatorWitness calldata validator,
-        BeaconBlockHeader calldata header
+        BeaconBlockHeader calldata header,
+        uint256 nodeOperatorId,
+        uint256 keyIndex
     ) internal view returns (uint256 withdrawalAmount) {
         if (address(uint160(uint256(validator.object.withdrawalCredentials))) != WITHDRAWAL_ADDRESS) {
             revert InvalidWithdrawalAddress();
         }
         if (withdrawal.object.withdrawalAddress != WITHDRAWAL_ADDRESS) revert InvalidWithdrawalAddress();
 
-        // The methods in this contract do not accept proofs of withdrawals from slashed validators. It is proposed that
-        // such withdrawals be processed off-chain and reported directly to the CSModule using EasyTracks.
         if (validator.object.slashed) revert ValidatorIsSlashed();
         if (_computeEpochAtSlot(header.slot) < validator.object.withdrawableEpoch) revert ValidatorIsNotWithdrawable();
         if (withdrawal.object.validatorIndex != validator.index) revert InvalidValidatorIndex();
 
-        // See https://hackmd.io/1wM8vqeNTjqt4pC3XoCUKQ
-        //
-        // ISSUE:
-        // There is a possible way to bypass this check:
-        // - wait for full withdrawal & sweep
-        // - be lucky enough that no one provides proof for this withdrawal for at least 1 sweep cycle
-        //  (~8 days with the network of 1M active validators)
-        // - deposit 15 ETH for non-slashed validator
-        // - wait for a sweep of this deposit
-        // - provide proof of the last withdrawal
-        // As a result, the Node Operator's bond will be penalized for 32 ETH - additional deposit value
-        // However, all ETH involved,
-        // including 15 ETH deposited by the attacker will remain in the Lido on Ethereum protocol
-        // Hence, the only consequence of the attack is an inconsistency in the bond accounting that can be resolved
-        // through the bond deposit approved by the corresponding DAO decision
-        //
-        // Resolution:
-        // Given no losses for the protocol,
-        // significant cost of attack (15 ETH),
-        // and lack of feasible ways to mitigate it in the smart contract's code,
-        // it is proposed to acknowledge possibility of the attack
-        // and be ready to propose a corresponding vote to the DAO if it will ever happen
+        // The full withdrawal threshold is derived from the total ether deposited to the validator (activation balance
+        // + tracked top-ups/consolidations). The ratio (MIN_WITHDRAWAL_RATIO / MAX_BP) accounts for possible CL losses
+        // such as inactivity penalties.
+        uint256 totalDepositedEther = WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE +
+            MODULE.getKeyAddedBalance(nodeOperatorId, keyIndex);
         withdrawalAmount = withdrawal.object.amountWei();
-        if (withdrawalAmount < 15 ether) revert PartialWithdrawal();
+        if (withdrawalAmount < (totalDepositedEther * MIN_WITHDRAWAL_RATIO) / MAX_BP) revert PartialWithdrawal();
 
         SSZ.verifyProof({
             proof: validator.proof,

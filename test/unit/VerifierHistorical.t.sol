@@ -71,6 +71,16 @@ contract VerifierHistoricalBase is Test, Utilities {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getKeyAddedBalance.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex
+            ),
+            abi.encode(uint256(0))
+        );
+
         vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");
     }
 
@@ -216,7 +226,8 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
     }
 
     function test_processHistoricalWithdrawalProof_RevertWhen_PartialWithdrawal() public {
-        fixture.data.withdrawal.object.amount = 15e9 - 1;
+        // 32 ether in gwei * 9000 / 10000 = 28_800_000_000 gwei = 28.8 ether
+        fixture.data.withdrawal.object.amount = 28_800_000_000 - 1;
 
         vm.expectRevert(IVerifier.PartialWithdrawal.selector);
         verifier.processHistoricalWithdrawalProof(fixture.data);
