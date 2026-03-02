@@ -53,6 +53,8 @@ interface IMetaRegistry {
     error UnsupportedExternalOperatorType();
     error SameBondCurveWeight();
     error ModuleAddressNotCached();
+    error OperatorNameTooLong();
+    error OperatorDescriptionTooLong();
 
     /// @notice Role allowed to manage operator groups.
     function MANAGE_OPERATOR_GROUPS_ROLE() external view returns (bytes32);
