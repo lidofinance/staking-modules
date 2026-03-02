@@ -33,7 +33,7 @@ contract DepositInfoRefreshTestCurated is CuratedIntegrationBase {
         metaRegistry.refreshOperatorWeight(noId);
 
         // Deposit info is stale after weight change, run batch update
-        _runFullBatchUpdate();
+        integrationHelpers.runFullBatchDepositInfoUpdate();
 
         // obtainDepositData should now return 0 keys (weight is zero)
         vm.prank(address(stakingRouter));
@@ -45,7 +45,7 @@ contract DepositInfoRefreshTestCurated is CuratedIntegrationBase {
         metaRegistry.refreshOperatorWeight(noId);
 
         // Run batch update to refresh deposit info
-        _runFullBatchUpdate();
+        integrationHelpers.runFullBatchDepositInfoUpdate();
 
         // Now deposits should work again
         (, , uint256 depositableAfter) = module.getStakingModuleSummary();
@@ -72,7 +72,7 @@ contract DepositInfoRefreshTestCurated is CuratedIntegrationBase {
         accounting.updateBondCurve(curveId, newCurve);
 
         // Run batch update to refresh deposit info
-        _runFullBatchUpdate();
+        integrationHelpers.runFullBatchDepositInfoUpdate();
 
         // Depositable count may have decreased due to higher bond requirement
         (, , uint256 depositableAfter) = module.getStakingModuleSummary();
@@ -98,7 +98,7 @@ contract DepositInfoRefreshTestCurated is CuratedIntegrationBase {
         if (g1 != metaRegistry.NO_GROUP_ID()) _clearGroup(g1);
         if (g2 != metaRegistry.NO_GROUP_ID() && g2 != g1) _clearGroup(g2);
 
-        _runFullBatchUpdate();
+        integrationHelpers.runFullBatchDepositInfoUpdate();
 
         // Operators with no group have weight=0 → depositable=0
         assertEq(metaRegistry.getNodeOperatorWeight(noId1), 0, "weight should be 0 outside group");
@@ -116,7 +116,7 @@ contract DepositInfoRefreshTestCurated is CuratedIntegrationBase {
             })
         );
 
-        _runFullBatchUpdate();
+        integrationHelpers.runFullBatchDepositInfoUpdate();
 
         // Weights should now be positive
         assertGt(metaRegistry.getNodeOperatorWeight(noId1), 0, "weight should be positive in group");
@@ -133,12 +133,5 @@ contract DepositInfoRefreshTestCurated is CuratedIntegrationBase {
                 externalOperators: new IMetaRegistry.ExternalOperator[](0)
             })
         );
-    }
-
-    function _runFullBatchUpdate() internal {
-        uint256 operatorsLeft = module.batchDepositInfoUpdate(module.getNodeOperatorsCount());
-        while (operatorsLeft > 0) {
-            operatorsLeft = module.batchDepositInfoUpdate(operatorsLeft);
-        }
     }
 }

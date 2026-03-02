@@ -1089,6 +1089,8 @@ interface IForkIntegrationHelpers {
     function getDepositableTopUpNodeOperator(
         address nodeOperatorAddress
     ) external returns (uint256 noId, uint256 keyIndex, bytes memory pubkey);
+
+    function runFullBatchDepositInfoUpdate() external;
 }
 
 abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpers {
@@ -1100,6 +1102,14 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
         module = module_;
         accounting = accounting_;
         stakingRouter = stakingRouter_;
+    }
+
+    function runFullBatchDepositInfoUpdate() external {
+        uint256 batchSize = 10;
+        uint256 operatorsLeft = module.batchDepositInfoUpdate(batchSize);
+        while (operatorsLeft > 0) {
+            operatorsLeft = module.batchDepositInfoUpdate(batchSize);
+        }
     }
 
     function getDepositedNodeOperator(

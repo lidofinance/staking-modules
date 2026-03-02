@@ -51,9 +51,6 @@ contract DepositInfoRefreshTestCSM is CSMIntegrationBase {
     function test_depositInfoRefreshPipeline() public assertInvariants {
         ICSModule csm = ICSModule(address(module));
         uint256 curveId = accounting.getBondCurveId(defaultNoId);
-        // Keep per-call work bounded for large mainnet operator sets.
-        uint256 batchSize = 64;
-
         // Update bond curve to trigger full deposit info refresh
         IBondCurve.BondCurveData memory curveData = accounting.getBondCurve(defaultNoId);
         IBondCurve.BondCurveIntervalInput[] memory newCurve = new IBondCurve.BondCurveIntervalInput[](
@@ -78,14 +75,7 @@ contract DepositInfoRefreshTestCSM is CSMIntegrationBase {
         vm.expectRevert(IBaseModule.DepositInfoIsNotUpToDate.selector);
         csm.cleanDepositQueue(1);
 
-        // Process in batches
-        uint256 operatorsLeft = toUpdate;
-        while (operatorsLeft > 0) {
-            uint256 prev = operatorsLeft;
-            uint256 count = prev > batchSize ? batchSize : prev;
-            operatorsLeft = module.batchDepositInfoUpdate(count);
-            assertLt(operatorsLeft, prev, "Deposit-info refresh should make progress");
-        }
+        integrationHelpers.runFullBatchDepositInfoUpdate();
 
         assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 0, "All operators should be updated");
 
