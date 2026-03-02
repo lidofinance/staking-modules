@@ -1782,6 +1782,8 @@ contract CuratedMisc is ModuleMisc, CuratedCommon {
 
         uint256 nonceBefore = module.getNonce();
 
+        vm.expectEmit(address(module));
+        emit IBaseModule.FullDepositInfoUpdateRequested();
         vm.prank(address(accounting));
         module.requestFullDepositInfoUpdate();
 
@@ -1796,6 +1798,8 @@ contract CuratedMisc is ModuleMisc, CuratedCommon {
 
         uint256 nonceBefore = module.getNonce();
 
+        vm.expectEmit(address(module));
+        emit IBaseModule.FullDepositInfoUpdateRequested();
         vm.prank(address(metaRegistry));
         module.requestFullDepositInfoUpdate();
 

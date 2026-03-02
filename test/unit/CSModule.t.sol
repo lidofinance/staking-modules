@@ -2092,6 +2092,8 @@ contract CSMMisc is ModuleMisc, CSMCommon {
 
         uint256 nonceBefore = module.getNonce();
 
+        vm.expectEmit(address(module));
+        emit IBaseModule.FullDepositInfoUpdateRequested();
         vm.prank(address(accounting));
         module.requestFullDepositInfoUpdate();
 
