@@ -1,4 +1,4 @@
-// Usage: node withdrawal.mjs [withdrawal_offset=0]
+// Usage: node withdrawal.mjs [withdrawal_offset=0] [amount_gwei=32e9]
 
 "use strict";
 
@@ -184,5 +184,5 @@ main({
   address: "b3e29c46ee1745724417c0c51eb2351a1c01cf36",
   withdrawableEpoch: 100_500,
   withdrawalOffset: parseInt(process.argv[2]) || 0,
-  amount: 32e9,
+  amount: Number(process.argv[3]) || 32e9,
 });
