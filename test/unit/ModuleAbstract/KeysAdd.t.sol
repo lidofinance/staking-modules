@@ -639,7 +639,7 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
         gate.createNodeOperatorWithKeysWithWstETHBond(nodeOperator, keyCount, keys, sigs);
     }
 
-    function test_AddValidatorKeysWstETH_MultipleOperators() public assertInvariants brutalizeMemory withGate {
+    function test_GateAddValidatorKeysWstETH_MultipleOperators() public assertInvariants brutalizeMemory withGate {
         uint256 operatorCount = 3;
         uint256 operatorKeyCount = 1;
         uint256 keyCount = operatorCount * operatorKeyCount;
@@ -648,7 +648,7 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
         gate.batchCreateNodeOperatorWithKeysWithWstETHBond(nodeOperator, operatorCount, operatorKeyCount, keys, sigs);
     }
 
-    function test_AddValidatorKeysETH_RevertWhenCalledFromAnotherGate() public assertInvariants {
+    function test_GateAddValidatorKeysETH_RevertWhenCalledFromAnotherGate() public assertInvariants {
         address gateOne = nextAddress("GATE_ONE");
         address gateTwo = nextAddress("GATE_TWO");
 
@@ -656,15 +656,15 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
         module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), gateTwo);
 
         vm.prank(gateOne);
-        uint256 noId = module.createNodeOperator({
-            from: nodeOperator,
-            managementProperties: NodeOperatorManagementProperties({
+        uint256 noId = module.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
                 managerAddress: nodeOperator,
                 rewardAddress: nodeOperator,
                 extendedManagerPermissions: false
             }),
-            referrer: address(0)
-        });
+            address(0)
+        );
 
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
         uint256 required = accounting.getRequiredBondForNextKeys(noId, 1);
@@ -678,7 +678,7 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
         }
     }
 
-    function test_AddValidatorKeysStETH_RevertWhenCalledFromAnotherGate() public assertInvariants {
+    function test_GateAddValidatorKeysStETH_RevertWhenCalledFromAnotherGate() public assertInvariants {
         address gateOne = nextAddress("GATE_ONE");
         address gateTwo = nextAddress("GATE_TWO");
 
@@ -686,15 +686,15 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
         module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), gateTwo);
 
         vm.prank(gateOne);
-        uint256 noId = module.createNodeOperator({
-            from: nodeOperator,
-            managementProperties: NodeOperatorManagementProperties({
+        uint256 noId = module.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
                 managerAddress: nodeOperator,
                 rewardAddress: nodeOperator,
                 extendedManagerPermissions: false
             }),
-            referrer: address(0)
-        });
+            address(0)
+        );
 
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
         {
@@ -712,7 +712,7 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
         }
     }
 
-    function test_AddValidatorKeysWstETH_RevertWhenCalledFromAnotherGate() public assertInvariants {
+    function test_GateAddValidatorKeysWstETH_RevertWhenCalledFromAnotherGate() public assertInvariants {
         address gateOne = nextAddress("GATE_ONE");
         address gateTwo = nextAddress("GATE_TWO");
 
@@ -720,15 +720,15 @@ abstract contract ModuleAddValidatorKeysViaGate is ModuleFixtures {
         module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), gateTwo);
 
         vm.prank(gateOne);
-        uint256 noId = module.createNodeOperator({
-            from: nodeOperator,
-            managementProperties: NodeOperatorManagementProperties({
+        uint256 noId = module.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
                 managerAddress: nodeOperator,
                 rewardAddress: nodeOperator,
                 extendedManagerPermissions: false
             }),
-            referrer: address(0)
-        });
+            address(0)
+        );
 
         (bytes memory keys, bytes memory signatures) = keysSignatures(1, 1);
         {

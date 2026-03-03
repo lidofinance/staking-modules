@@ -9,7 +9,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { BaseModule } from "./abstract/BaseModule.sol";
 
 import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.sol";
-import { IBaseModule, NodeOperator } from "./interfaces/IBaseModule.sol";
+import { IBaseModule, NodeOperatorManagementProperties, NodeOperator } from "./interfaces/IBaseModule.sol";
 import { ICSModule } from "./interfaces/ICSModule.sol";
 
 import { TopUpQueueLib, TopUpQueueItem, newTopUpQueueItem } from "./lib/TopUpQueueLib.sol";
@@ -18,6 +18,7 @@ import { SigningKeys } from "./lib/SigningKeys.sol";
 import { DepositQueueOps } from "./lib/DepositQueueOps.sol";
 import { TopUpQueueOps } from "./lib/TopUpQueueOps.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
+import { OperatorTracker } from "./lib/OperatorTracker.sol";
 
 contract CSModule is ICSModule, BaseModule {
     using DepositQueueLib for DepositQueueLib.Queue;
@@ -76,6 +77,17 @@ contract CSModule is ICSModule, BaseModule {
         }
         _totalWithdrawnValidators = totalWithdrawnValidators;
         _upToDateOperatorDepositInfoCount = _nodeOperatorsCount;
+    }
+
+    /// @inheritdoc IBaseModule
+    function createNodeOperator(
+        address from,
+        NodeOperatorManagementProperties calldata managementProperties,
+        address referrer
+    ) public override(BaseModule, IBaseModule) returns (uint256 nodeOperatorId) {
+        nodeOperatorId = super.createNodeOperator(from, managementProperties, referrer);
+        OperatorTracker.recordCreator(nodeOperatorId);
+        if (referrer != address(0)) emit ReferrerSet(nodeOperatorId, referrer);
     }
 
     /// @inheritdoc IStakingModule
@@ -256,11 +268,7 @@ contract CSModule is ICSModule, BaseModule {
         uint256 startIndex,
         uint256 keysCount
     ) external override(BaseModule, IBaseModule) {
-        _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
-        NodeOperatorOps.removeKeysCSM(_nodeOperators, nodeOperatorId, startIndex, keysCount);
-        // Nonce is updated below due to keys state change
-        _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: false });
-        _incrementModuleNonce();
+        _removeKeys(nodeOperatorId, startIndex, keysCount, true);
     }
 
     // TODO: Ensure that after deep rewind we will be able to iterate over the queue without allocating anything and SR will not revert in this case. Add integration test for it
@@ -365,6 +373,17 @@ contract CSModule is ICSModule, BaseModule {
         });
     }
 
+    function _addKeysAndUpdateDepositableValidatorsCount(
+        uint256 nodeOperatorId,
+        uint256 keysCount,
+        bytes calldata publicKeys,
+        bytes calldata signatures
+    ) internal override {
+        // Do not allow of multiple calls of addValidatorKeys* methods for the creator contract.
+        OperatorTracker.forgetCreator(nodeOperatorId);
+        super._addKeysAndUpdateDepositableValidatorsCount(nodeOperatorId, keysCount, publicKeys, signatures);
+    }
+
     /// @dev Setting `topUpQueueLimit` to 0 effectively disables the top-up queue permanently.
     function _initTopUpQueue(uint8 topUpQueueLimit) internal {
         if (topUpQueueLimit == 0) return;
@@ -388,6 +407,17 @@ contract CSModule is ICSModule, BaseModule {
 
     function _queueLowestPriority() internal view returns (uint256) {
         return _parametersRegistry().QUEUE_LOWEST_PRIORITY();
+    }
+
+    function _checkCanAddKeys(uint256 nodeOperatorId, address who) internal view override {
+        // Most likely a direct call, so check the sender is a manager first.
+        if (who == msg.sender) {
+            _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
+        } else {
+            // We're trying to add keys via gate, check if we can do it.
+            _checkCreateNodeOperatorRole();
+            if (OperatorTracker.getCreator(nodeOperatorId) != msg.sender) revert IBaseModule.CannotAddKeys();
+        }
     }
 
     function _storage() internal pure returns (CSModuleStorage storage $) {

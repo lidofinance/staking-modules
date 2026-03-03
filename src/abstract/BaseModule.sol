@@ -20,7 +20,6 @@ import { PausableUntil } from "../lib/utils/PausableUntil.sol";
 import { WithdrawnValidatorLib } from "../lib/WithdrawnValidatorLib.sol";
 import { NOAddresses } from "../lib/NOAddresses.sol";
 import { NodeOperatorOps } from "../lib/NodeOperatorOps.sol";
-import { OperatorTracker } from "../lib/OperatorTracker.sol";
 import { KeyPointerLib } from "../lib/KeyPointerLib.sol";
 
 import { AssetRecoverer } from "./AssetRecoverer.sol";
@@ -80,18 +79,16 @@ abstract contract BaseModule is
     function createNodeOperator(
         address from,
         NodeOperatorManagementProperties calldata managementProperties,
-        address referrer
-    ) external whenResumed returns (uint256 nodeOperatorId) {
+        address /* referrer */
+    ) public virtual whenResumed returns (uint256 nodeOperatorId) {
         _checkCreateNodeOperatorRole();
         nodeOperatorId = _nodeOperatorsCount;
-        // TODO: do we really need recordCreator for Curated?
-        OperatorTracker.recordCreator(nodeOperatorId);
+
         NodeOperatorOps.createNodeOperator({
             nodeOperators: _nodeOperators,
             nodeOperatorId: nodeOperatorId,
             from: from,
-            managementProperties: managementProperties,
-            referrer: referrer
+            managementProperties: managementProperties
         });
 
         unchecked {
@@ -257,11 +254,7 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function removeKeys(uint256 nodeOperatorId, uint256 startIndex, uint256 keysCount) external virtual {
-        _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
-        NodeOperatorOps.removeKeysDefault(_nodeOperators, nodeOperatorId, startIndex, keysCount);
-        // Nonce is updated below due to keys state change
-        _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: false });
-        _incrementModuleNonce();
+        _removeKeys(nodeOperatorId, startIndex, keysCount, false);
     }
 
     /// @inheritdoc IBaseModule
@@ -659,10 +652,7 @@ abstract contract BaseModule is
         uint256 keysCount,
         bytes calldata publicKeys,
         bytes calldata signatures
-    ) internal {
-        // Do not allow of multiple calls of addValidatorKeys* methods for the creator contract.
-        OperatorTracker.forgetCreator(nodeOperatorId);
-
+    ) internal virtual {
         NodeOperatorOps.addKeys({
             nodeOperators: _nodeOperators,
             nodeOperatorId: nodeOperatorId,
@@ -687,6 +677,25 @@ abstract contract BaseModule is
                 newCount: NodeOperatorOps.calculateDepositableValidatorsCount(_nodeOperators, nodeOperatorId),
                 incrementNonceIfUpdated: incrementNonceIfUpdated
             });
+    }
+
+    function _removeKeys(
+        uint256 nodeOperatorId,
+        uint256 startIndex,
+        uint256 keysCount,
+        bool useKeyRemovalCharge
+    ) internal virtual {
+        _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
+        NodeOperatorOps.removeKeys({
+            nodeOperators: _nodeOperators,
+            nodeOperatorId: nodeOperatorId,
+            startIndex: startIndex,
+            keysCount: keysCount,
+            useKeyRemovalCharge: useKeyRemovalCharge
+        });
+        // Nonce is updated below due to keys state change
+        _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: false });
+        _incrementModuleNonce();
     }
 
     function _applyDepositableValidatorsCount(
@@ -715,17 +724,11 @@ abstract contract BaseModule is
         return true;
     }
 
-    function _checkCanAddKeys(uint256 nodeOperatorId, address who) internal view {
-        // TODO: could have different implementation for curated one
-
-        // Most likely a direct call, so check the sender is a manager first.
-        if (who == msg.sender) {
-            _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
-        } else {
-            // We're trying to add keys via gate, check if we can do it.
-            _checkCreateNodeOperatorRole();
-            if (OperatorTracker.getCreator(nodeOperatorId) != msg.sender) revert CannotAddKeys();
+    function _checkCanAddKeys(uint256 nodeOperatorId, address who) internal view virtual {
+        if (who != msg.sender) {
+            revert CannotAddKeys();
         }
+        _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
     }
 
     function _onlyNodeOperatorManager(uint256 nodeOperatorId, address from) internal view {
