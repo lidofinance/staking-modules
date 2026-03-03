@@ -99,7 +99,7 @@ library NodeOperatorOps {
                 totalExitedValidators: newTotalExitedValidators,
                 nodeOperatorId: nodeOperatorId,
                 exitedValidatorsCount: exitedValidatorsCount,
-                safeCheck: true
+                allowDecrease: false
             });
         }
     }
@@ -117,7 +117,7 @@ library NodeOperatorOps {
             totalExitedValidators: totalExitedValidators,
             nodeOperatorId: nodeOperatorId,
             exitedValidatorsCount: exitedValidatorsCount,
-            safeCheck: false
+            allowDecrease: true
         });
     }
 
@@ -140,10 +140,10 @@ library NodeOperatorOps {
 
             NodeOperator storage no = nodeOperators[nodeOperatorId];
 
+            if (no.managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
+
             if (vettedSigningKeysCount == no.totalVettedKeys) continue;
 
-            // TODO: place above
-            if (no.managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
             if (vettedSigningKeysCount > no.totalVettedKeys) revert IBaseModule.InvalidVetKeysPointer();
             if (vettedSigningKeysCount < no.totalDepositedKeys) revert IBaseModule.InvalidVetKeysPointer();
 
@@ -160,7 +160,7 @@ library NodeOperatorOps {
         }
     }
 
-    function syncKeyAddedBalance(
+    function reportValidatorBalance(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorsCount,
         mapping(uint256 => uint256) storage keyAddedBalances,
@@ -173,8 +173,7 @@ library NodeOperatorOps {
             revert IBaseModule.SigningKeysInvalidOffset();
         }
 
-        // TODO: change return to revert
-        if (currentBalanceWei < WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE) return;
+        if (currentBalanceWei < WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE) revert IBaseModule.UnreportableBalance();
         if (currentBalanceWei > WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE) {
             currentBalanceWei = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE;
         }
@@ -185,8 +184,7 @@ library NodeOperatorOps {
         }
 
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        // TODO: change return to revert
-        if (newKeyAddedBalance <= keyAddedBalances[pointer]) return;
+        if (newKeyAddedBalance <= keyAddedBalances[pointer]) revert IBaseModule.UnreportableBalance();
         keyAddedBalances[pointer] = newKeyAddedBalance;
         emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, newKeyAddedBalance);
     }
@@ -487,13 +485,12 @@ library NodeOperatorOps {
         uint64 totalExitedValidators,
         uint256 nodeOperatorId,
         uint256 exitedValidatorsCount,
-        bool safeCheck
+        bool allowDecrease
     ) internal returns (uint64 newTotalExitedValidators) {
         _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
         NodeOperator storage no = nodeOperators[nodeOperatorId];
         if (exitedValidatorsCount > no.totalDepositedKeys) revert IBaseModule.InvalidInput();
-        // TODO: change name to allowDecrease
-        if (safeCheck && exitedValidatorsCount < no.totalExitedKeys) revert IBaseModule.InvalidInput();
+        if (!allowDecrease && exitedValidatorsCount < no.totalExitedKeys) revert IBaseModule.InvalidInput();
 
         unchecked {
             // @dev Invariant sum(no.totalExitedKeys for no in nos) == totalExitedValidators.

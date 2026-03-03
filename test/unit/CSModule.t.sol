@@ -1314,7 +1314,7 @@ contract CSMTopUpQueue is CSMCommon {
         csm.rewindTopUpQueue(0);
     }
 
-    function test_syncKeyAddedBalance_RevertWhenTopUpQueueDisabled() public {
+    function test_reportValidatorBalance_RevertWhenTopUpQueueDisabled() public {
         csm = new CSModule({
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
@@ -1328,7 +1328,7 @@ contract CSMTopUpQueue is CSMCommon {
 
         csm.grantRole(csm.VERIFIER_ROLE(), address(this));
         vm.expectRevert(ICSModule.TopUpQueueDisabled.selector);
-        csm.syncKeyAddedBalance(0, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 1 ether);
+        csm.reportValidatorBalance(0, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 1 ether);
     }
 }
 
@@ -1932,7 +1932,7 @@ contract CSMKeyAddedBalance is ModuleKeyAddedBalance, CSMCommon {
     }
 }
 
-contract CSMSyncKeyAddedBalance is ModuleSyncKeyAddedBalance, CSMCommon {
+contract CSMreportValidatorBalance is ModulereportValidatorBalance, CSMCommon {
     function setUp() public override {
         topUpQueueLimit = 32;
 

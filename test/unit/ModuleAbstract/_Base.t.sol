@@ -195,7 +195,7 @@ abstract contract ModuleFixtures is Test, Fixtures, Utilities, InvariantAsserts 
 
         assertGt(amount, current, "key added balance cannot be decreased");
 
-        module.syncKeyAddedBalance({
+        module.reportValidatorBalance({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
             currentBalanceWei: amount + WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE

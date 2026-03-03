@@ -324,7 +324,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         vm.stopPrank();
 
         vm.prank(actor);
-        module.onValidatorSlashed(noId, 0);
+        module.reportValidatorSlashing(noId, 0);
     }
 
     function test_verifierRole_revert() public {
@@ -333,7 +333,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        module.onValidatorSlashed(noId, 0);
+        module.reportValidatorSlashing(noId, 0);
     }
 
     function test_reportRegularWithdrawnValidatorsRole() public {
@@ -386,7 +386,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         module.grantRole(module.STAKING_ROUTER_ROLE(), admin);
         module.grantRole(module.VERIFIER_ROLE(), admin);
         module.obtainDepositData(1, "");
-        module.onValidatorSlashed(noId, 0);
+        module.reportValidatorSlashing(noId, 0);
         vm.stopPrank();
 
         WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
