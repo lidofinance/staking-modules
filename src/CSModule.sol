@@ -92,20 +92,18 @@ contract CSModule is ICSModule, BaseModule {
         _checkStakingRouterRole();
         _requireDepositInfoUpToDate();
 
-        (publicKeys, signatures) = SigningKeys.initKeysSigsBuf(depositsCount);
         if (depositsCount == 0) return (publicKeys, signatures);
+        (publicKeys, signatures) = SigningKeys.initKeysSigsBuf(depositsCount);
 
         uint256 depositsLeft = depositsCount;
         uint256 loadedKeysCount = 0;
 
         bool topUpQueueEnabled = _topUpQueueEnabled();
-        DepositQueueLib.Queue storage depositQueue;
-        // NOTE: The highest priority to start iterations with. Priorities are ordered like 0, 1, 2, ...
-        uint256 priority = 0;
 
-        while (depositsLeft > 0 && priority <= _queueLowestPriority()) {
-            depositQueue = _depositQueueByPriority[priority];
-            for (Batch item = depositQueue.peek(); !item.isNil(); item = depositQueue.peek()) {
+        // NOTE: The highest priority to start iterations with. Priorities are ordered like 0, 1, 2, ...
+        for (uint256 priority; depositsLeft > 0 && priority <= _queueLowestPriority(); ++priority) {
+            DepositQueueLib.Queue storage depositQueue = _depositQueueByPriority[priority];
+            for (Batch item = depositQueue.peek(); !item.isNil() && depositsLeft > 0; item = depositQueue.peek()) {
                 // NOTE: see the `enqueuedCount` note below.
                 unchecked {
                     uint32 noId = uint32(item.noId());
@@ -133,10 +131,8 @@ contract CSModule is ICSModule, BaseModule {
                         // We release the amount of keys consumed only, the rest will be kept.
                         no.enqueuedCount -= keysCount;
                         // NOTE: `keysInBatch` can't be less than `keysCount` at this point.
-                        // We update the batch with the remaining keys.
-                        item = item.setKeys(keysInBatch - keysCount);
-                        // Store the updated batch back to the queue.
-                        depositQueue.queue[depositQueue.head] = item;
+                        // We update the batch with the remaining keys and store the updated batch back to the queue.
+                        depositQueue.queue[depositQueue.head] = item.setKeys(keysInBatch - keysCount);
                     }
 
                     // NOTE: This condition is located here to allow for the correct removal of the batch for the Node Operators with no depositable keys
@@ -176,11 +172,7 @@ contract CSModule is ICSModule, BaseModule {
                     emit DepositableSigningKeysCountChanged(noId, newCount);
 
                     depositsLeft -= keysCount;
-                    if (depositsLeft == 0) break;
                 }
-            }
-            unchecked {
-                ++priority;
             }
         }
 
@@ -242,7 +234,7 @@ contract CSModule is ICSModule, BaseModule {
         uint256 nodeOperatorId,
         uint256 keyIndex,
         uint256 currentBalanceWei
-    ) public virtual override(BaseModule, IBaseModule) {
+    ) public override(BaseModule, IBaseModule) {
         _onlyEnabledTopUpQueue();
         super.reportValidatorBalance(nodeOperatorId, keyIndex, currentBalanceWei);
     }

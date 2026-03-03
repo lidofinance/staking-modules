@@ -59,7 +59,7 @@ library TopUpQueueOps {
         bytes[] calldata pubkeys,
         TopUpKeyParams memory data
     ) private returns (uint256[] memory allocations) {
-        uint256 keyCount = data.keyIndices.length;
+        uint256 keyCount = pubkeys.length;
         allocations = new uint256[](keyCount);
 
         for (uint256 i; i < keyCount; i++) {
