@@ -932,7 +932,7 @@ contract CSMTopUpQueue is CSMCommon {
         csm.obtainDepositData(1, "");
 
         uint256 cap = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
-        csm.increaseKeyAddedBalance(0, 0, cap);
+        setKeyAddedBalance(0, 0, cap);
 
         bytes memory key = csm.getSigningKeys(0, 0, 1);
         vm.recordLogs();
@@ -956,7 +956,7 @@ contract CSMTopUpQueue is CSMCommon {
         csm.obtainDepositData(1, "");
 
         uint256 cap = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
-        csm.increaseKeyAddedBalance(0, 0, cap - 1 ether);
+        setKeyAddedBalance(0, 0, cap - 1 ether);
 
         bytes memory key = csm.getSigningKeys(0, 0, 1);
         vm.expectEmit(address(csm));
@@ -1312,6 +1312,23 @@ contract CSMTopUpQueue is CSMCommon {
         csm.grantRole(csm.REWIND_TOP_UP_QUEUE_ROLE(), address(this));
         vm.expectRevert(ICSModule.TopUpQueueDisabled.selector);
         csm.rewindTopUpQueue(0);
+    }
+
+    function test_syncKeyAddedBalance_RevertWhenTopUpQueueDisabled() public {
+        csm = new CSModule({
+            moduleType: "community-staking-module",
+            lidoLocator: address(locator),
+            parametersRegistry: address(parametersRegistry),
+            accounting: address(accounting),
+            exitPenalties: address(exitPenalties)
+        });
+
+        _enableInitializers(address(csm));
+        csm.initialize({ admin: address(this), topUpQueueLimit: 0 });
+
+        csm.grantRole(csm.VERIFIER_ROLE(), address(this));
+        vm.expectRevert(ICSModule.TopUpQueueDisabled.selector);
+        csm.syncKeyAddedBalance(0, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 1 ether);
     }
 }
 
@@ -1868,7 +1885,7 @@ contract CSMUpdateExitedValidatorsCount is ModuleUpdateExitedValidatorsCount, CS
 contract CSMUnsafeUpdateValidatorsCount is ModuleUnsafeUpdateValidatorsCount, CSMCommon {}
 
 contract CSMReportGeneralDelayedPenalty is ModuleReportGeneralDelayedPenalty, CSMCommon {
-    function test_reportGeneralDelayedPenalty_UpdateDepositableAfterUnlock_EmitsBatchEnqueued()
+    function test_reportGeneralDelayedPenalty_UpdatesDepositableAfterUnlock_EmitsBatchEnqueued()
         public
         assertInvariants
     {
@@ -1884,7 +1901,7 @@ contract CSMReportGeneralDelayedPenalty is ModuleReportGeneralDelayedPenalty, CS
 
         vm.expectEmit(address(csm));
         emit ICSModule.BatchEnqueued(parametersRegistry.QUEUE_LOWEST_PRIORITY(), noId, 1);
-        csm.updateDepositableValidatorsCount(noId);
+        accounting.unlockExpiredLock(noId);
 
         no = csm.getNodeOperator(noId);
         assertEq(no.enqueuedCount, 1);
@@ -1899,9 +1916,29 @@ contract CSMSettleGeneralDelayedPenaltyAdvanced is ModuleSettleGeneralDelayedPen
 
 contract CSMCompensateGeneralDelayedPenalty is ModuleCompensateGeneralDelayedPenalty, CSMCommon {}
 
-contract CSMReportWithdrawnValidators is ModuleReportWithdrawnValidators, CSMCommon {}
+contract CSMReportWithdrawnValidators is ModuleReportWithdrawnValidators, CSMCommon {
+    function setUp() public override {
+        topUpQueueLimit = 32;
 
-contract CSMKeyAddedBalance is ModuleKeyAddedBalance, CSMCommon {}
+        super.setUp();
+    }
+}
+
+contract CSMKeyAddedBalance is ModuleKeyAddedBalance, CSMCommon {
+    function setUp() public override {
+        topUpQueueLimit = 32;
+
+        super.setUp();
+    }
+}
+
+contract CSMSyncKeyAddedBalance is ModuleSyncKeyAddedBalance, CSMCommon {
+    function setUp() public override {
+        topUpQueueLimit = 32;
+
+        super.setUp();
+    }
+}
 
 contract CSMGetStakingModuleSummary is ModuleGetStakingModuleSummary, CSMCommon {}
 
@@ -2055,6 +2092,8 @@ contract CSMMisc is ModuleMisc, CSMCommon {
 
         uint256 nonceBefore = module.getNonce();
 
+        vm.expectEmit(address(module));
+        emit IBaseModule.FullDepositInfoUpdateRequested();
         vm.prank(address(accounting));
         module.requestFullDepositInfoUpdate();
 

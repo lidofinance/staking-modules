@@ -12,6 +12,7 @@ import { Verifier } from "src/Verifier.sol";
 import { pack } from "src/lib/GIndex.sol";
 import { Slot } from "src/lib/Types.sol";
 import { GIndex } from "src/lib/GIndex.sol";
+import { SSZ } from "src/lib/SSZ.sol";
 
 import { IVerifier } from "src/interfaces/IVerifier.sol";
 import { IBaseModule, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
@@ -300,6 +301,7 @@ contract VerifierTestConstructor is VerifierTestBase {
 
 contract VerifierWithdrawalTest is VerifierTestBase {
     using Strings for uint8;
+    using Strings for uint256;
 
     struct Fixture {
         bytes32 blockRoot;
@@ -445,8 +447,111 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         verifier.processWithdrawalProof(fixture.data);
     }
 
+    function test_processWithdrawalProof_HappyPath_WithAddedBalance() public {
+        // Use a small added balance so the threshold stays below the fixture's 32 ETH withdrawal.
+        // threshold = (32 + 3) * 9000 / 10000 = 31.5 ETH < 32 ETH
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getKeyAddedBalance.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex
+            ),
+            abi.encode(3 ether)
+        );
+
+        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
+        withdrawals[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: 0,
+            keyIndex: 0,
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
+        );
+
+        verifier.processWithdrawalProof(fixture.data);
+    }
+
+    function test_processWithdrawalProof_HappyPath_MaxEffectiveBalance() public {
+        // threshold = (32 + 2016) * 9000 / 10000 = 1843.2 ETH = 1_843_200_000_000 gwei
+        // Reload fixture with the minimal expected withdrawal amount.
+        _loadFixtureWithAmount({ offset: 11, amountGwei: 1_843_200_000_000 });
+        _setMocks();
+
+        // Mock keyAddedBalance for a fully consolidated validator (2048 - 32 = 2016 ETH added).
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getKeyAddedBalance.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex
+            ),
+            abi.encode(2016 ether)
+        );
+
+        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
+        withdrawals[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: 0,
+            keyIndex: 0,
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
+        );
+
+        verifier.processWithdrawalProof(fixture.data);
+    }
+
     function test_processWithdrawalProof_RevertWhen_PartialWithdrawal() public {
-        fixture.data.withdrawal.object.amount = 15e9 - 1;
+        // 32 ether in gwei * 9000 / 10000 = 28_800_000_000 gwei = 28.8 ether
+        fixture.data.withdrawal.object.amount = 28_800_000_000 - 1;
+
+        vm.expectRevert(IVerifier.PartialWithdrawal.selector);
+        verifier.processWithdrawalProof(fixture.data);
+    }
+
+    function test_processWithdrawalProof_RevertWhen_PartialWithdrawal_WithAddedBalance() public {
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getKeyAddedBalance.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex
+            ),
+            abi.encode(100 ether)
+        );
+
+        // (32 + 100) ether in gwei * 9000 / 10000 = 118_800_000_000 gwei = 118.8 ether
+        fixture.data.withdrawal.object.amount = 118_800_000_000 - 1;
+
+        vm.expectRevert(IVerifier.PartialWithdrawal.selector);
+        verifier.processWithdrawalProof(fixture.data);
+    }
+
+    function test_processWithdrawalProof_RevertWhen_PartialWithdrawal_MaxEffectiveBalance() public {
+        // Mock keyAddedBalance for a fully consolidated validator (2048 - 32 = 2016 ETH added).
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getKeyAddedBalance.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex
+            ),
+            abi.encode(2016 ether)
+        );
+
+        // threshold = (32 + 2016) * 9000 / 10000 = 1843.2 ETH = 1_843_200_000_000 gwei
+        // Reverts before SSZ proof check, so modifying amount is safe.
+        fixture.data.withdrawal.object.amount = 1_843_200_000_000 - 1;
 
         vm.expectRevert(IVerifier.PartialWithdrawal.selector);
         verifier.processWithdrawalProof(fixture.data);
@@ -546,6 +651,16 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getKeyAddedBalance.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex
+            ),
+            abi.encode(uint256(0))
+        );
+
         vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");
     }
 
@@ -559,6 +674,17 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         cmd[1] = "--no-warnings";
         cmd[2] = "test/fixtures/Verifier/withdrawal.mjs";
         cmd[3] = offset.toString();
+        bytes memory res = vm.ffi(cmd);
+        fixture = abi.decode(res, (Fixture));
+    }
+
+    function _loadFixtureWithAmount(uint8 offset, uint256 amountGwei) internal {
+        string[] memory cmd = new string[](5);
+        cmd[0] = "node";
+        cmd[1] = "--no-warnings";
+        cmd[2] = "test/fixtures/Verifier/withdrawal.mjs";
+        cmd[3] = offset.toString();
+        cmd[4] = Strings.toString(amountGwei);
         bytes memory res = vm.ffi(cmd);
         fixture = abi.decode(res, (Fixture));
     }
@@ -659,17 +785,6 @@ contract VerifierSlashingTest is VerifierTestBase {
         vm.expectRevert(IVerifier.InvalidPublicKey.selector);
         verifier.processSlashedProof(fixture.data);
     }
-
-    // function test_processSlashed_RevertWhen_ValidatorIsNotWithdrawable()
-    //     public
-    // {
-    //     fixture.data.validator.object.withdrawableEpoch =
-    //         fixture.data.recentBlock.header.slot.unwrap() *
-    //         32 +
-    //         1;
-    //     vm.expectRevert(IVerifier.ValidatorIsNotWithdrawable.selector);
-    //     verifier.processSlashedProof(fixture.data);
-    // }
 
     function test_processSlashed_RevertWhen_InvalidBlockHeader() public {
         vm.mockCall(
@@ -1491,6 +1606,142 @@ contract VerifierValidatorBalanceTest is Test, Utilities {
         );
         assertEq(balance, 0x1817161514131211);
     }
+}
+
+contract VerifierBalanceProofTest is VerifierTestBase {
+    struct Fixture {
+        bytes32 blockRoot;
+        IVerifier.ProcessBalanceProofInput data;
+    }
+
+    Fixture internal fixture;
+
+    function setUp() public {
+        _loadFixture();
+
+        module = new Stub();
+        admin = nextAddress("ADMIN");
+
+        verifier = new Verifier({
+            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            module: address(module),
+            slotsPerEpoch: 32,
+            slotsPerHistoricalRoot: 8192,
+            gindices: IVerifier.GIndices({
+                gIFirstWithdrawalPrev: NULL_GINDEX,
+                gIFirstWithdrawalCurr: NULL_GINDEX,
+                gIFirstValidatorPrev: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIFirstHistoricalSummaryPrev: NULL_GINDEX,
+                gIFirstHistoricalSummaryCurr: NULL_GINDEX,
+                gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
+                gIFirstBlockRootInSummaryCurr: NULL_GINDEX,
+                gIFirstBalanceNodePrev: GIndices.FIRST_BALANCE_NODE_ELECTRA,
+                gIFirstBalanceNodeCurr: GIndices.FIRST_BALANCE_NODE_ELECTRA
+            }),
+            firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
+            pivotSlot: fixture.data.recentBlock.header.slot.dec(),
+            capellaSlot: Slot.wrap(0),
+            admin: admin
+        });
+
+        pauseRole = verifier.PAUSE_ROLE();
+        resumeRole = verifier.RESUME_ROLE();
+
+        vm.startPrank(admin);
+        verifier.grantRole(pauseRole, admin);
+        verifier.grantRole(resumeRole, admin);
+        vm.stopPrank();
+
+        _setMocks();
+    }
+
+    function test_processBalanceProof_HappyPath() public {
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector));
+
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function test_processBalanceProof_RevertWhen_SlotUnsupported() public {
+        fixture.data.recentBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.recentBlock.header.slot)
+        );
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function test_processBalanceProof_RevertWhen_InvalidBlockHeader() public {
+        vm.mockCall(
+            verifier.BEACON_ROOTS(),
+            abi.encode(fixture.data.recentBlock.rootsTimestamp),
+            abi.encode(hex"deadbeef")
+        );
+
+        vm.expectRevert(IVerifier.InvalidBlockHeader.selector);
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function test_processBalanceProof_RevertWhen_InvalidBalanceNode() public {
+        fixture.data.balance.node = someBytes32();
+
+        vm.expectRevert(SSZ.InvalidProof.selector);
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function test_processBalanceProof_RevertWhen_InvalidPublicKey() public {
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getSigningKeys.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex
+            ),
+            abi.encode(hex"deadbeef")
+        );
+
+        vm.expectRevert(IVerifier.InvalidPublicKey.selector);
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function test_processBalanceProof_RevertWhen_Paused() public {
+        vm.prank(admin);
+        verifier.pauseFor(1 days);
+
+        vm.expectRevert(PausableUntil.ResumedExpected.selector);
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function _setMocks() internal {
+        vm.mockCall(
+            verifier.BEACON_ROOTS(),
+            abi.encode(fixture.data.recentBlock.rootsTimestamp),
+            abi.encode(fixture.blockRoot)
+        );
+
+        vm.mockCall(
+            address(module),
+            abi.encodeWithSelector(
+                IBaseModule.getSigningKeys.selector,
+                fixture.data.validator.nodeOperatorId,
+                fixture.data.validator.keyIndex
+            ),
+            abi.encode(fixture.data.validator.object.pubkey)
+        );
+
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector), "");
+    }
+
+    function _loadFixture() internal {
+        string[] memory cmd = new string[](3);
+        cmd[0] = "node";
+        cmd[1] = "--no-warnings";
+        cmd[2] = "test/fixtures/Verifier/balance.mjs";
+        bytes memory res = vm.ffi(cmd);
+        fixture = abi.decode(res, (Fixture));
+    }
+
+    function ffi_interface(Fixture memory) external {}
 }
 
 contract VerifierParentBlockRootTest is Test, Utilities {

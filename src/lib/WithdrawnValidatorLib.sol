@@ -11,7 +11,7 @@ import { IAccounting } from "../interfaces/IAccounting.sol";
 
 import { SigningKeys } from "./SigningKeys.sol";
 
-/// @dev A library to extract a part of the code from the the CSModule contract.
+/// @dev A library to extract a part of the code from the CSModule contract.
 library WithdrawnValidatorLib {
     uint256 public constant MAX_EFFECTIVE_BALANCE = 2048 ether;
     uint256 public constant MIN_ACTIVATION_BALANCE = 32 ether;
@@ -65,6 +65,7 @@ library WithdrawnValidatorLib {
     ) internal returns (bool penaltyCovered) {
         bool chargeElWithdrawalRequestFee = false;
 
+        // TODO: calculate multiplier by `max(minExpectedBalance, exitBalance)`
         uint256 penaltyMultiplier = _getPenaltyMultiplier(validatorInfo);
         uint256 penaltySum;
         uint256 feeSum;
@@ -107,7 +108,7 @@ library WithdrawnValidatorLib {
         // Charge fees second to avoid charging fees if the penalty is not covered,
         // as the fees are meant to cover the costs of processing the withdrawal incurred by the protocol maintainers.
         // stETH holders should have first priority to be compensated, so the fees are charged only if the penalty is covered.
-        if (feeSum > 0) accounting.chargeFee(validatorInfo.nodeOperatorId, feeSum);
+        if (feeSum > 0 && penaltyCovered) accounting.chargeFee(validatorInfo.nodeOperatorId, feeSum);
     }
 
     /// @dev Acts as the numerator to calculate the scaled penalty.

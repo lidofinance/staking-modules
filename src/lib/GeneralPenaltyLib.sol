@@ -43,7 +43,7 @@ library GeneralPenalty {
         IBaseModule module = IBaseModule(address(this));
         IAccounting accounting = module.ACCOUNTING();
 
-        accounting.releaseLockedBond(nodeOperatorId, amount);
+        if (!accounting.releaseLockedBond(nodeOperatorId, amount)) return;
 
         emit IBaseModule.GeneralDelayedPenaltyCancelled(nodeOperatorId, amount);
 
@@ -67,7 +67,7 @@ library GeneralPenalty {
 
         uint256 compensatedAmount = accounting.compensateLockedBond(nodeOperatorId);
 
-        if (compensatedAmount == 0) revert IBaseModule.NothingCompensated();
+        if (compensatedAmount == 0) return;
 
         emit IBaseModule.GeneralDelayedPenaltyCompensated(nodeOperatorId, compensatedAmount);
 

@@ -264,22 +264,43 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function releaseLockedBond(uint256 nodeOperatorId, uint256 amount) external onlyModule {
+    function releaseLockedBond(uint256 nodeOperatorId, uint256 amount) external onlyModule returns (bool released) {
+        uint256 lockedAmount = BondLock.getLockedBond(nodeOperatorId);
+        if (lockedAmount == 0) return released;
+
+        if (BondLock.isLockExpired(nodeOperatorId)) {
+            unlockExpiredLock(nodeOperatorId);
+            return released;
+        }
         BondLock._unlock(nodeOperatorId, amount);
+        released = true;
+    }
+
+    /// @inheritdoc IAccounting
+    function unlockExpiredLock(uint256 nodeOperatorId) public {
+        BondLock._unlockExpiredLock(nodeOperatorId);
+        MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
     /// @inheritdoc IAccounting
     function compensateLockedBond(uint256 nodeOperatorId) external onlyModule returns (uint256 compensatedAmount) {
-        uint256 lockedAmount = BondLock.getActualLockedBond(nodeOperatorId);
+        uint256 lockedAmount = BondLock.getLockedBond(nodeOperatorId);
         if (lockedAmount == 0) return 0;
+
+        if (BondLock.isLockExpired(nodeOperatorId)) {
+            unlockExpiredLock(nodeOperatorId);
+            return 0;
+        }
 
         (uint256 currentBond, uint256 requiredBond) = getBondSummary(nodeOperatorId);
         // `requiredBond` already includes `lockedAmount`
         uint256 requiredBondWithoutLock = requiredBond - lockedAmount;
         if (currentBond <= requiredBondWithoutLock) return 0;
 
-        uint256 maxCompensatableAmount = currentBond - requiredBondWithoutLock;
-        compensatedAmount = lockedAmount < maxCompensatableAmount ? lockedAmount : maxCompensatableAmount;
+        unchecked {
+            uint256 maxCompensatableAmount = currentBond - requiredBondWithoutLock;
+            compensatedAmount = lockedAmount < maxCompensatableAmount ? lockedAmount : maxCompensatableAmount;
+        }
         BondCore._burn(nodeOperatorId, compensatedAmount);
         BondLock._unlock(nodeOperatorId, compensatedAmount);
         emit BondLockCompensated(nodeOperatorId, compensatedAmount);
@@ -290,9 +311,15 @@ contract Accounting is
         uint256 nodeOperatorId,
         uint256 maxAmount
     ) external onlyModule returns (uint256 amountSettled) {
-        uint256 lockedAmount = BondLock.getActualLockedBond(nodeOperatorId);
+        uint256 lockedAmount = BondLock.getLockedBond(nodeOperatorId);
+        if (lockedAmount == 0) return amountSettled;
+
+        if (BondLock.isLockExpired(nodeOperatorId)) {
+            unlockExpiredLock(nodeOperatorId);
+            return amountSettled;
+        }
         amountSettled = lockedAmount < maxAmount ? lockedAmount : maxAmount;
-        if (lockedAmount > 0) {
+        if (amountSettled > 0) {
             BondCore._burn(nodeOperatorId, amountSettled);
             // unlock all amountSettled even if bond isn't covered lock fully since debt will be created in this case
             BondLock._unlock(nodeOperatorId, amountSettled);
@@ -491,10 +518,10 @@ contract Accounting is
         uint256 curveId = BondCurve.getBondCurveId(nodeOperatorId);
         uint256 nonWithdrawnKeys = MODULE.getNodeOperatorNonWithdrawnKeys(nodeOperatorId);
         uint256 requiredBondForKeys = BondCurve.getBondAmountByKeysCount(nonWithdrawnKeys + additionalKeys, curveId);
-        uint256 actualLockedBond = BondLock.getActualLockedBond(nodeOperatorId);
+        uint256 lockedBond = BondLock.getLockedBond(nodeOperatorId);
         uint256 bondDebt = BondCore.getBondDebt(nodeOperatorId);
 
-        return requiredBondForKeys + actualLockedBond + bondDebt;
+        return requiredBondForKeys + lockedBond + bondDebt;
     }
 
     function _getRequiredBondShares(uint256 nodeOperatorId, uint256 additionalKeys) internal view returns (uint256) {
@@ -513,7 +540,7 @@ contract Accounting is
 
         // Optionally account for locked bond depending on the flag
         if (includeLockedBond) {
-            uint256 lockedBond = BondLock.getActualLockedBond(nodeOperatorId);
+            uint256 lockedBond = BondLock.getLockedBond(nodeOperatorId);
             // We use strict condition here since in rare case of equality the outcome of the function will not change
             if (lockedBond > currentBond) return nonWithdrawnKeys;
             unchecked {

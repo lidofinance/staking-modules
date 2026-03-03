@@ -26,7 +26,7 @@ abstract contract ModuleReportGeneralDelayedPenalty is ModuleFixtures {
         );
         module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), BOND_SIZE / 2, "Test penalty");
 
-        uint256 lockedBond = accounting.getActualLockedBond(noId);
+        uint256 lockedBond = accounting.getLockedBond(noId);
         assertEq(lockedBond, BOND_SIZE / 2 + module.PARAMETERS_REGISTRY().getGeneralDelayedPenaltyAdditionalFine(0));
         assertEq(module.getNonce(), nonce + 1);
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -55,7 +55,7 @@ abstract contract ModuleReportGeneralDelayedPenalty is ModuleFixtures {
         emit IBaseModule.GeneralDelayedPenaltyReported(noId, bytes32(abi.encode(1)), 0, fine, "Test penalty");
         module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), 0, "Test penalty");
 
-        uint256 lockedBond = accounting.getActualLockedBond(noId);
+        uint256 lockedBond = accounting.getLockedBond(noId);
         assertEq(lockedBond, fine);
     }
 
@@ -79,13 +79,13 @@ abstract contract ModuleReportGeneralDelayedPenalty is ModuleFixtures {
         assertEq(module.getNonce(), nonce);
     }
 
-    function test_reportGeneralDelayedPenalty_UpdateDepositableAfterUnlock() public assertInvariants {
+    function test_reportGeneralDelayedPenalty_UpdatesDepositableAfterUnlock() public assertInvariants {
         uint256 noId = createNodeOperator();
         uint256 nonce = module.getNonce();
 
         module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), BOND_SIZE / 2, "Test penalty");
 
-        uint256 lockedBond = accounting.getActualLockedBond(noId);
+        uint256 lockedBond = accounting.getLockedBond(noId);
         assertEq(lockedBond, BOND_SIZE / 2 + module.PARAMETERS_REGISTRY().getGeneralDelayedPenaltyAdditionalFine(0));
         assertEq(module.getNonce(), nonce + 1);
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -95,8 +95,7 @@ abstract contract ModuleReportGeneralDelayedPenalty is ModuleFixtures {
         module.obtainDepositData(1, "");
 
         vm.warp(accounting.getBondLockPeriod() + 1);
-
-        module.updateDepositableValidatorsCount(noId);
+        accounting.unlockExpiredLock(noId);
 
         no = module.getNodeOperator(noId);
         assertEq(no.depositableValidatorsCount, 1);
@@ -121,7 +120,7 @@ abstract contract ModuleCancelGeneralDelayedPenalty is ModuleFixtures {
             BOND_SIZE / 2 + module.PARAMETERS_REGISTRY().getGeneralDelayedPenaltyAdditionalFine(0)
         );
 
-        uint256 lockedBond = accounting.getActualLockedBond(noId);
+        uint256 lockedBond = accounting.getLockedBond(noId);
         assertEq(lockedBond, 0);
         assertEq(module.getNonce(), nonce + 1);
     }
@@ -137,10 +136,31 @@ abstract contract ModuleCancelGeneralDelayedPenalty is ModuleFixtures {
         emit IBaseModule.GeneralDelayedPenaltyCancelled(noId, BOND_SIZE / 2);
         module.cancelGeneralDelayedPenalty(noId, BOND_SIZE / 2);
 
-        uint256 lockedBond = accounting.getActualLockedBond(noId);
+        uint256 lockedBond = accounting.getLockedBond(noId);
         assertEq(lockedBond, module.PARAMETERS_REGISTRY().getGeneralDelayedPenaltyAdditionalFine(0));
         // nonce should not change due to no changes in the depositable validators
         assertEq(module.getNonce(), nonce);
+    }
+
+    function test_cancelGeneralDelayedPenalty_ExpiredLock_depositableValidatorsChanged() public assertInvariants {
+        uint256 noId = createNodeOperator(5);
+
+        module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), BOND_SIZE / 2, "Test penalty");
+
+        uint256 nonce = module.getNonce();
+        uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
+        assertEq(depositableBefore, 4);
+
+        vm.warp(block.timestamp + accounting.getBondLockPeriod() + 1 seconds);
+
+        module.cancelGeneralDelayedPenalty(noId, BOND_SIZE / 2);
+
+        uint256 lockedBond = accounting.getLockedBond(noId);
+        assertEq(lockedBond, 0);
+        assertEq(module.getNonce(), nonce + 1);
+
+        uint256 depositableAfter = module.getNodeOperator(noId).depositableValidatorsCount;
+        assertEq(depositableAfter, 5);
     }
 
     function test_cancelGeneralDelayedPenalty_RevertWhen_NoNodeOperator() public {
@@ -399,18 +419,25 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
 }
 
 abstract contract ModuleSettleGeneralDelayedPenaltyAdvanced is ModuleFixtures {
-    function test_settleGeneralDelayedPenalty_PeriodIsExpired() public {
-        uint256 noId = createNodeOperator();
+    function test_settleGeneralDelayedPenalty_PeriodIsExpired_depositableValidatorsChanged() public {
+        uint256 noId = createNodeOperator(5);
         uint256 period = accounting.getBondLockPeriod();
         uint256 amount = 1 ether;
 
         module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), amount, "Test penalty");
 
+        uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
+        assertEq(depositableBefore, 4);
+
+        uint256 nonce = module.getNonce();
+
         vm.warp(block.timestamp + period + 1 seconds);
 
         module.settleGeneralDelayedPenalty(UintArr(noId), UintArr(type(uint256).max));
 
-        assertEq(accounting.getActualLockedBond(noId), 0);
+        assertEq(accounting.getLockedBond(noId), 0);
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 5);
+        assertEq(module.getNonce(), nonce + 1);
     }
 
     function test_settleGeneralDelayedPenalty_multipleNOs_oneExpired() public {
@@ -430,7 +457,7 @@ abstract contract ModuleSettleGeneralDelayedPenaltyAdvanced is ModuleFixtures {
             UintArr(type(uint256).max, type(uint256).max)
         );
 
-        assertEq(accounting.getActualLockedBond(firstNoId), 0);
+        assertEq(accounting.getLockedBond(firstNoId), 0);
 
         lock = accounting.getLockedBondInfo(secondNoId);
         assertEq(lock.amount, 0 ether);
@@ -499,21 +526,48 @@ abstract contract ModuleCompensateGeneralDelayedPenalty is ModuleFixtures {
         assertEq(module.getNonce(), nonce);
     }
 
-    function test_compensateGeneralDelayedPenalty_revertWhen_NothingCompensated() public assertInvariants {
+    function test_compensateGeneralDelayedPenalty_NothingCompensatedDueToNoLock() public assertInvariants {
         uint256 noId = createNodeOperator();
+
+        uint256 nonce = module.getNonce();
+
+        vm.recordLogs();
+        vm.prank(nodeOperator);
+        module.compensateGeneralDelayedPenalty(noId);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 0);
+
+        BondLock.BondLockData memory lock = accounting.getLockedBondInfo(noId);
+        assertEq(lock.amount, 0);
+        assertEq(module.getNonce(), nonce);
+    }
+
+    function test_compensateGeneralDelayedPenalty_NothingCompensatedDueToLockExpiry_depositableValidatorsChanged()
+        public
+        assertInvariants
+    {
+        uint256 noId = createNodeOperator(5);
         uint256 amount = 1 ether;
         uint256 fine = module.PARAMETERS_REGISTRY().getGeneralDelayedPenaltyAdditionalFine(0);
         module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), amount, "Test penalty");
 
+        uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
+        assertEq(depositableBefore, 4);
+
         uint256 nonce = module.getNonce();
 
-        vm.expectRevert(IBaseModule.NothingCompensated.selector);
+        vm.warp(block.timestamp + accounting.getBondLockPeriod() + 1);
+
         vm.prank(nodeOperator);
         module.compensateGeneralDelayedPenalty(noId);
 
         BondLock.BondLockData memory lock = accounting.getLockedBondInfo(noId);
-        assertEq(lock.amount, fine + amount);
-        assertEq(module.getNonce(), nonce);
+        assertEq(lock.amount, 0);
+        assertEq(module.getNonce(), nonce + 1);
+
+        uint256 depositableAfter = module.getNodeOperator(noId).depositableValidatorsCount;
+        assertEq(depositableAfter, 5);
     }
 
     function test_compensateGeneralDelayedPenalty_depositableValidatorsChanged() public {

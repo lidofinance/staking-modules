@@ -82,7 +82,7 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
 
     /// @notice An ACL role granting the permission to disable the consensus by calling
     /// the disableConsensus function. Enabling the consensus back requires the possession
-    /// of the MANAGE_QUORUM_ROLE.
+    /// of the MANAGE_MEMBERS_AND_QUORUM_ROLE.
     bytes32 public constant DISABLE_CONSENSUS_ROLE = keccak256("DISABLE_CONSENSUS_ROLE");
 
     /// @notice An ACL role granting the permission to change reporting interval duration

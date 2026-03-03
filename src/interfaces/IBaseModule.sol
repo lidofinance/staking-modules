@@ -96,6 +96,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     event GeneralDelayedPenaltyCompensated(uint256 indexed nodeOperatorId, uint256 amount);
     event GeneralDelayedPenaltySettled(uint256 indexed nodeOperatorId, uint256 amount);
     event NodeOperatorDepositInfoFullyUpdated();
+    event FullDepositInfoUpdateRequested();
 
     error CannotAddKeys();
     error NodeOperatorDoesNotExist();
@@ -123,7 +124,6 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     error ZeroParametersRegistryAddress();
     error ZeroModuleType();
     error ZeroPenaltyType();
-    error NothingCompensated();
     error DepositInfoIsNotUpToDate();
 
     function STAKING_ROUTER_ROLE() external view returns (bytes32);
@@ -223,7 +223,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     ) external;
 
     /// @notice Report general delayed penalty for the given Node Operator
-    /// @notice The final locked amount will be equal to the penalty amount plus additional fine
+    /// @notice Increases locked bond by `amount + additionalFine` for this report
     /// @param nodeOperatorId ID of the Node Operator
     /// @param penaltyType Type of the penalty
     /// @param amount Penalty amount in ETH
@@ -246,7 +246,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param amount Amount of penalty to cancel
     function cancelGeneralDelayedPenalty(uint256 nodeOperatorId, uint256 amount) external;
 
-    /// @notice Settles locked bond and sets the target limit to 0 or the given Node Operators
+    /// @notice Settles locked bond for eligible Node Operators and sets target limit to 0 only for settled ones
     /// @dev SETTLE_GENERAL_DELAYED_PENALTY_ROLE role is expected to be assigned to Easy Track
     /// @param nodeOperatorIds IDs of the Node Operators
     /// @param maxAmounts Maximum amounts to settle for each Node Operator
@@ -282,8 +282,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param newAddress Proposed reward address
     function changeNodeOperatorRewardAddress(uint256 nodeOperatorId, address newAddress) external;
 
-    /// @notice Update depositable validators data and enqueue all unqueued keys for the given Node Operator.
-    ///         Unqueued stands for vetted but not enqueued keys.
+    /// @notice Update depositable validators data for the given Node Operator.
     /// @dev The following rules are applied:
     ///         - Unbonded keys can not be depositable
     ///         - Unvetted keys can not be depositable
@@ -361,12 +360,12 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     function onValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external;
 
-    /// @notice Increase tracked added balance for a particular key
-    /// @dev The method is not expected to be called on 0x01 validator mode module
+    /// @notice Sync tracked added balance for a key based on proven validator balance.
+    /// @dev The function only increases the key added value at the moment.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
-    /// @param amount Amount to add to the tracked added balance (wei)
-    function increaseKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 amount) external;
+    /// @param currentBalanceWei Proven current validator balance in wei
+    function syncKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 currentBalanceWei) external;
 
     /// @notice Get tracked added balance for a particular key
     /// @param nodeOperatorId ID of the Node Operator
@@ -384,12 +383,12 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     ///         - if it's a consolidated validator, when the corresponding pending consolidation is processed and the
     ///           balance of the validator has been moved to another validator.
     /// @notice Called by `Verifier` contract.
-    /// @param validatorInfos An array WithdrawnValidatorInfo structs
+    /// @param validatorInfos An array of WithdrawnValidatorInfo structs
     function reportRegularWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external;
 
     /// @notice Report withdrawn validators that have been slashed.
     /// @notice Called by the Easy Track EVM script executor via a motion started by the dedicated committee.
-    /// @param validatorInfos An array WithdrawnValidatorInfo structs
+    /// @param validatorInfos An array of WithdrawnValidatorInfo structs
     function reportSlashedWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external;
 
     /// @notice Checks if a validator was reported as slashed

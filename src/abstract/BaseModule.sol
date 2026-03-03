@@ -84,6 +84,7 @@ abstract contract BaseModule is
     ) external whenResumed returns (uint256 nodeOperatorId) {
         _checkCreateNodeOperatorRole();
         nodeOperatorId = _nodeOperatorsCount;
+        // TODO: do we really need recordCreator for Curated?
         OperatorTracker.recordCreator(nodeOperatorId);
         NodeOperatorOps.createNodeOperator({
             nodeOperators: _nodeOperators,
@@ -136,7 +137,6 @@ abstract contract BaseModule is
         IAccounting accounting = _accounting();
 
         uint256 amount = _getRequiredBondForNextKeys(accounting, nodeOperatorId, keysCount);
-
         if (amount != 0) accounting.depositStETH(from, nodeOperatorId, amount, permit);
 
         _addKeysAndUpdateDepositableValidatorsCount(nodeOperatorId, keysCount, publicKeys, signatures);
@@ -156,7 +156,6 @@ abstract contract BaseModule is
         IAccounting accounting = _accounting();
 
         uint256 amount = accounting.getRequiredBondForNextKeysWstETH(nodeOperatorId, keysCount);
-
         if (amount != 0) accounting.depositWstETH(from, nodeOperatorId, amount, permit);
 
         _addKeysAndUpdateDepositableValidatorsCount(nodeOperatorId, keysCount, publicKeys, signatures);
@@ -303,6 +302,7 @@ abstract contract BaseModule is
 
             // If general delayed penalty was not compensated using `compensateGeneralDelayedPenalty`,
             // we treat it the same way as when bond is not sufficient to cover the penalty.
+            // TODO: do we need to set target limit yet?
             _onUncompensatedPenalty(nodeOperatorId);
 
             // Nonce should be updated if depositableValidators change
@@ -317,6 +317,7 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
+    // TODO: rename to reportValidatorSlashing
     function onValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external {
         _checkVerifierRole();
         _onlyExistingNodeOperator(nodeOperatorId);
@@ -332,20 +333,25 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function increaseKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 amount) external {
+    // TODO: rename to reportValidatorBalance
+    function syncKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 currentBalanceWei) public virtual {
         _checkVerifierRole();
 
-        NodeOperatorOps.increaseKeyAddedBalance({
+        NodeOperatorOps.syncKeyAddedBalance({
             nodeOperators: _nodeOperators,
             nodeOperatorsCount: _nodeOperatorsCount,
-            isValidatorWithdrawn: _isValidatorWithdrawn,
             keyAddedBalances: _keyAddedBalances,
             nodeOperatorId: nodeOperatorId,
             keyIndex: keyIndex,
-            incrementWei: amount
+            currentBalanceWei: currentBalanceWei
         });
+
+        // NOTE: We do not increment nonce because individual validator balances don't change the distribution
+        // returned by the module. The distribution from `allocateDeposits` might change but still meets
+        // expectations of StakingRouter.
     }
 
+    /// @inheritdoc IBaseModule
     function reportSlashedWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external {
         _checkRole(REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE);
         _reportWithdrawnValidators(validatorInfos, true);
@@ -391,6 +397,7 @@ abstract contract BaseModule is
     function requestFullDepositInfoUpdate() external {
         _canRequestDepositInfoUpdate();
         _upToDateOperatorDepositInfoCount = 0;
+        emit FullDepositInfoUpdateRequested();
         _incrementModuleNonce();
     }
 
@@ -630,6 +637,7 @@ abstract contract BaseModule is
 
             NodeOperator storage no = _nodeOperators[info.nodeOperatorId];
             bool penaltyCovered = WithdrawnValidatorLib.process(no, info, _keyAddedBalances[pointer]);
+            // TODO: do we really need to set target limit?
             if (!penaltyCovered) _onUncompensatedPenalty(info.nodeOperatorId);
 
             _updateDepositableValidatorsCount({ nodeOperatorId: info.nodeOperatorId, incrementNonceIfUpdated: false });
@@ -723,6 +731,8 @@ abstract contract BaseModule is
     }
 
     function _checkCanAddKeys(uint256 nodeOperatorId, address who) internal view {
+        // TODO: could have different implementation for curated one
+
         // Most likely a direct call, so check the sender is a manager first.
         if (who == msg.sender) {
             _onlyNodeOperatorManager(nodeOperatorId, msg.sender);

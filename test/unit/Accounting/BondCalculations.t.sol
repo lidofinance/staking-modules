@@ -6,6 +6,7 @@ pragma solidity 0.8.33;
 import { BaseTest, BondStateBaseTest, GetRequiredBondBaseTest, GetRequiredBondForKeysBaseTest, RewardsBaseTest } from "./_Base.t.sol";
 import { Accounting } from "src/Accounting.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
+import { IBondLock } from "src/interfaces/IBondLock.sol";
 import { IBaseModule } from "src/interfaces/IBaseModule.sol";
 import { IBurner } from "src/interfaces/IBurner.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
@@ -281,7 +282,7 @@ contract LockBondTest is BaseTest {
 
         vm.prank(address(stakingModule));
         accounting.lockBond(0, 1 ether);
-        assertEq(accounting.getActualLockedBond(0), 1 ether);
+        assertEq(accounting.getLockedBond(0), 1 ether);
     }
 
     function test_lockBond_RevertWhen_SenderIsNotModule() public {
@@ -297,7 +298,7 @@ contract LockBondTest is BaseTest {
 
         vm.prank(address(stakingModule));
         accounting.lockBond(0, 1 ether);
-        assertEq(accounting.getActualLockedBond(0), 1 ether);
+        assertEq(accounting.getLockedBond(0), 1 ether);
 
         vm.expectRevert();
         vm.prank(address(stakingModule));
@@ -311,9 +312,41 @@ contract LockBondTest is BaseTest {
         accounting.lockBond(0, 1 ether);
 
         vm.prank(address(stakingModule));
-        accounting.releaseLockedBond(0, 0.4 ether);
+        bool released = accounting.releaseLockedBond(0, 0.4 ether);
 
-        assertEq(accounting.getActualLockedBond(0), 0.6 ether);
+        assertTrue(released, "release should return true when bond is released");
+        assertEq(accounting.getLockedBond(0), 0.6 ether);
+    }
+
+    function test_releaseLockedBond_NoLock() public assertInvariants {
+        mock_getNodeOperatorsCount(1);
+
+        assertEq(accounting.getLockedBond(0), 0);
+
+        vm.prank(address(stakingModule));
+        bool released = accounting.releaseLockedBond(0, 0.4 ether);
+
+        assertFalse(released, "release should return false when bond is released");
+        assertEq(accounting.getLockedBond(0), 0);
+    }
+
+    function test_releaseLockedBond_ExpiredLock() public assertInvariants {
+        mock_getNodeOperatorsCount(1);
+
+        vm.prank(address(stakingModule));
+        accounting.lockBond(0, 1 ether);
+
+        vm.warp(block.timestamp + accounting.getBondLockPeriod() + 1 seconds);
+
+        vm.expectCall(
+            address(accounting.MODULE()),
+            abi.encodeWithSelector(IBaseModule.updateDepositableValidatorsCount.selector, 0)
+        );
+        vm.prank(address(stakingModule));
+        bool released = accounting.releaseLockedBond(0, 0.4 ether);
+
+        assertFalse(released, "release should return false when lock is expired");
+        assertEq(accounting.getLockedBond(0), 0);
     }
 
     function test_releaseLockedBond_RevertWhen_SenderIsNotModule() public {
@@ -332,7 +365,7 @@ contract LockBondTest is BaseTest {
         vm.prank(address(stakingModule));
         accounting.lockBond(0, amountToLock);
 
-        assertEq(accounting.getActualLockedBond(0), amountToLock);
+        assertEq(accounting.getLockedBond(0), amountToLock);
 
         uint256 amountToCompensate = 0.4 ether;
         addBond(0, amountToCompensate);
@@ -343,18 +376,45 @@ contract LockBondTest is BaseTest {
         vm.prank(address(stakingModule));
         accounting.compensateLockedBond(0);
 
-        assertEq(accounting.getActualLockedBond(0), amountToLock - ethToSharesToEth(amountToCompensate));
+        assertEq(accounting.getLockedBond(0), amountToLock - ethToSharesToEth(amountToCompensate));
     }
 
     function test_compensateLockedBond_notingLocked() public assertInvariants {
         mock_getNodeOperatorsCount(1);
 
-        assertEq(accounting.getActualLockedBond(0), 0);
+        assertEq(accounting.getLockedBond(0), 0);
 
         vm.prank(address(stakingModule));
         accounting.compensateLockedBond(0);
 
-        assertEq(accounting.getActualLockedBond(0), 0);
+        assertEq(accounting.getLockedBond(0), 0);
+    }
+
+    function test_compensateLockedBond_unlockExpiredLock() public assertInvariants {
+        mock_getNodeOperatorsCount(1);
+
+        assertEq(accounting.getLockedBond(0), 0);
+
+        uint256 amountToLock = 1 ether;
+        vm.prank(address(stakingModule));
+        accounting.lockBond(0, amountToLock);
+
+        assertEq(accounting.getLockedBond(0), amountToLock);
+
+        vm.warp(block.timestamp + accounting.getBondLockPeriod() + 1 seconds);
+
+        assertTrue(accounting.isLockExpired(0), "lock should be expired");
+
+        vm.expectCall(
+            address(accounting.MODULE()),
+            abi.encodeWithSelector(IBaseModule.updateDepositableValidatorsCount.selector, 0)
+        );
+        vm.expectEmit(address(accounting));
+        emit IBondLock.ExpiredBondLockRemoved(0);
+        vm.prank(address(stakingModule));
+        accounting.compensateLockedBond(0);
+
+        assertEq(accounting.getLockedBond(0), 0);
     }
 
     function test_compensateLockedBond_requiredWithoutLockIsMoreThanCurrent() public assertInvariants {
@@ -365,7 +425,7 @@ contract LockBondTest is BaseTest {
         vm.prank(address(stakingModule));
         accounting.lockBond(0, amountToLock);
 
-        assertEq(accounting.getActualLockedBond(0), amountToLock);
+        assertEq(accounting.getLockedBond(0), amountToLock);
 
         uint256 amountToCompensate = 1 ether;
         addBond(0, amountToCompensate);
@@ -373,7 +433,7 @@ contract LockBondTest is BaseTest {
         vm.prank(address(stakingModule));
         accounting.compensateLockedBond(0);
 
-        assertEq(accounting.getActualLockedBond(0), amountToLock);
+        assertEq(accounting.getLockedBond(0), amountToLock);
     }
 
     function test_compensateLockedBond_FullCompensation() public assertInvariants {
@@ -393,7 +453,7 @@ contract LockBondTest is BaseTest {
         vm.prank(address(stakingModule));
         accounting.compensateLockedBond(0);
 
-        assertEq(accounting.getActualLockedBond(0), 0);
+        assertEq(accounting.getLockedBond(0), 0);
     }
 
     function test_compensateLockedBond_RevertWhen_SenderIsNotModule() public {
@@ -419,12 +479,12 @@ contract LockBondTest is BaseTest {
 
         vm.prank(address(stakingModule));
         accounting.lockBond(noId, amount);
-        assertEq(accounting.getActualLockedBond(noId), amount);
+        assertEq(accounting.getLockedBond(noId), amount);
 
         vm.prank(address(stakingModule));
         uint256 settled = accounting.settleLockedBond(noId, amount);
         assertEq(settled, amount);
-        assertEq(accounting.getActualLockedBond(noId), 0);
+        assertEq(accounting.getLockedBond(noId), 0);
     }
 
     function test_settleLockedBond_noLocked() public assertInvariants {
@@ -437,8 +497,33 @@ contract LockBondTest is BaseTest {
 
         vm.prank(address(stakingModule));
         accounting.settleLockedBond(noId, 1 ether);
-        assertEq(accounting.getActualLockedBond(noId), 0);
+        assertEq(accounting.getLockedBond(noId), 0);
         assertEq(accounting.getBondShares(noId), bond);
+    }
+
+    function test_settleLockedBond_unlockExpiredLock() public assertInvariants {
+        mock_getNodeOperatorsCount(1);
+        uint256 noId = 0;
+        uint256 amount = 1 ether;
+        addBond(noId, amount);
+
+        vm.prank(address(stakingModule));
+        accounting.lockBond(noId, amount);
+        assertEq(accounting.getLockedBond(noId), amount);
+
+        vm.warp(block.timestamp + accounting.getBondLockPeriod() + 1 seconds);
+
+        vm.expectCall(
+            address(accounting.MODULE()),
+            abi.encodeWithSelector(IBaseModule.updateDepositableValidatorsCount.selector, noId)
+        );
+        vm.expectEmit(address(accounting));
+        emit IBondLock.ExpiredBondLockRemoved(noId);
+        vm.prank(address(stakingModule));
+        uint256 settled = accounting.settleLockedBond(noId, amount);
+
+        assertEq(settled, 0);
+        assertEq(accounting.getLockedBond(noId), 0);
     }
 
     function test_settleLockedBond_maxGreaterThanLocked() public assertInvariants {
@@ -449,12 +534,12 @@ contract LockBondTest is BaseTest {
 
         vm.prank(address(stakingModule));
         accounting.lockBond(noId, amount);
-        assertEq(accounting.getActualLockedBond(noId), amount);
+        assertEq(accounting.getLockedBond(noId), amount);
 
         vm.prank(address(stakingModule));
         uint256 settled = accounting.settleLockedBond(noId, amount + 0.4 ether);
         assertEq(settled, amount);
-        assertEq(accounting.getActualLockedBond(noId), 0);
+        assertEq(accounting.getLockedBond(noId), 0);
     }
 
     function test_settleLockedBond_maxLessThanLocked() public assertInvariants {
@@ -465,12 +550,12 @@ contract LockBondTest is BaseTest {
 
         vm.prank(address(stakingModule));
         accounting.lockBond(noId, amount);
-        assertEq(accounting.getActualLockedBond(noId), amount);
+        assertEq(accounting.getLockedBond(noId), amount);
 
         vm.prank(address(stakingModule));
         uint256 settled = accounting.settleLockedBond(noId, amount - 0.4 ether);
         assertEq(settled, amount - 0.4 ether);
-        assertEq(accounting.getActualLockedBond(noId), 0.4 ether);
+        assertEq(accounting.getLockedBond(noId), 0.4 ether);
     }
 
     function test_settleLockedBond_noBond() public assertInvariants {
@@ -532,7 +617,44 @@ contract LockBondTest is BaseTest {
         Accounting.BondLockData memory lockAfter = accounting.getLockedBondInfo(noId);
         assertEq(lockAfter.amount, 0);
         assertEq(lockAfter.until, 0);
-        assertEq(accounting.getActualLockedBond(noId), 0);
+        assertEq(accounting.getLockedBond(noId), 0);
+    }
+
+    function test_unlockExpiredLock() public assertInvariants {
+        mock_getNodeOperatorsCount(1);
+        uint256 noId = 0;
+        uint256 amount = 1 ether;
+
+        vm.prank(address(stakingModule));
+        accounting.lockBond(noId, amount);
+
+        vm.warp(block.timestamp + accounting.getBondLockPeriod() + 1 seconds);
+
+        vm.expectCall(
+            address(accounting.MODULE()),
+            abi.encodeWithSelector(IBaseModule.updateDepositableValidatorsCount.selector, noId)
+        );
+        vm.expectEmit(address(accounting));
+        emit IBondLock.ExpiredBondLockRemoved(noId);
+        vm.prank(address(stakingModule));
+        accounting.unlockExpiredLock(noId);
+
+        Accounting.BondLockData memory lockAfter = accounting.getLockedBondInfo(noId);
+        assertEq(lockAfter.amount, 0);
+        assertEq(lockAfter.until, 0);
+    }
+
+    function test_unlockExpiredLock_lockIsNotExpired() public assertInvariants {
+        mock_getNodeOperatorsCount(1);
+        uint256 noId = 0;
+        uint256 amount = 1 ether;
+
+        vm.prank(address(stakingModule));
+        accounting.lockBond(noId, amount);
+
+        vm.expectRevert(IBondLock.BondLockNotExpired.selector);
+        vm.prank(address(stakingModule));
+        accounting.unlockExpiredLock(noId);
     }
 }
 

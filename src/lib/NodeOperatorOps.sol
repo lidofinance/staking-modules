@@ -48,6 +48,7 @@ library NodeOperatorOps {
             managementProperties.extendedManagerPermissions
         );
 
+        // TODO: remove `referrer` and place to module impl.
         if (referrer != address(0)) emit IBaseModule.ReferrerSet(nodeOperatorId, referrer);
     }
 
@@ -141,6 +142,7 @@ library NodeOperatorOps {
 
             if (vettedSigningKeysCount == no.totalVettedKeys) continue;
 
+            // TODO: place above
             if (no.managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
             if (vettedSigningKeysCount > no.totalVettedKeys) revert IBaseModule.InvalidVetKeysPointer();
             if (vettedSigningKeysCount < no.totalDepositedKeys) revert IBaseModule.InvalidVetKeysPointer();
@@ -158,23 +160,35 @@ library NodeOperatorOps {
         }
     }
 
-    function increaseKeyAddedBalance(
+    function syncKeyAddedBalance(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorsCount,
-        mapping(uint256 => bool) storage isValidatorWithdrawn,
         mapping(uint256 => uint256) storage keyAddedBalances,
         uint256 nodeOperatorId,
         uint256 keyIndex,
-        uint256 incrementWei
+        uint256 currentBalanceWei
     ) external {
         _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
-        NodeOperator storage no = nodeOperators[nodeOperatorId];
-        if (keyIndex >= no.totalDepositedKeys) revert IBaseModule.SigningKeysInvalidOffset();
+        if (keyIndex >= nodeOperators[nodeOperatorId].totalDepositedKeys) {
+            revert IBaseModule.SigningKeysInvalidOffset();
+        }
+
+        // TODO: change return to revert
+        if (currentBalanceWei < WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE) return;
+        if (currentBalanceWei > WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE) {
+            currentBalanceWei = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE;
+        }
+
+        uint256 newKeyAddedBalance;
+        unchecked {
+            newKeyAddedBalance = currentBalanceWei - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
+        }
 
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        if (isValidatorWithdrawn[pointer]) revert IBaseModule.InvalidWithdrawnValidatorInfo();
-
-        _increaseKeyAddedBalance(keyAddedBalances, nodeOperatorId, keyIndex, incrementWei);
+        // TODO: change return to revert
+        if (newKeyAddedBalance <= keyAddedBalances[pointer]) return;
+        keyAddedBalances[pointer] = newKeyAddedBalance;
+        emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, newKeyAddedBalance);
     }
 
     function increaseKeyAddedBalancesByAllocations(
@@ -220,6 +234,7 @@ library NodeOperatorOps {
         emit IBaseModule.VettedSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
     }
 
+    // TODO: can be merged with *Default with arg
     function removeKeysCSM(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,
@@ -477,6 +492,7 @@ library NodeOperatorOps {
         _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
         NodeOperator storage no = nodeOperators[nodeOperatorId];
         if (exitedValidatorsCount > no.totalDepositedKeys) revert IBaseModule.InvalidInput();
+        // TODO: change name to allowDecrease
         if (safeCheck && exitedValidatorsCount < no.totalExitedKeys) revert IBaseModule.InvalidInput();
 
         unchecked {

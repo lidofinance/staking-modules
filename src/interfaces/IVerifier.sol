@@ -70,6 +70,19 @@ interface IVerifier {
         HistoricalHeaderWitness withdrawalBlock;
     }
 
+    struct ProcessBalanceProofInput {
+        RecentHeaderWitness recentBlock;
+        ValidatorWitness validator;
+        BalanceWitness balance;
+    }
+
+    struct ProcessHistoricalBalanceProofInput {
+        RecentHeaderWitness recentBlock;
+        HistoricalHeaderWitness historicalBlock;
+        ValidatorWitness validator;
+        BalanceWitness balance;
+    }
+
     error RootNotFound();
     error InvalidBlockHeader();
     error InvalidChainConfig();
@@ -87,7 +100,6 @@ interface IVerifier {
     error InvalidPivotSlot();
     error InvalidCapellaSlot();
     error HistoricalSummaryDoesNotExist();
-    error NotImplemented();
 
     function BEACON_ROOTS() external view returns (address);
 
@@ -139,6 +151,14 @@ interface IVerifier {
     /// @param data @see ProcessHistoricalWithdrawalInput
     function processHistoricalWithdrawalProof(ProcessHistoricalWithdrawalInput calldata data) external;
 
-    /// @notice Stub method for incoming consolidation request proofs.
-    function processIncomingConsolidation(uint256 nodeOperatorId, uint256 keyIndex, uint256 addedBalanceWei) external;
+    /// @notice Verify a validator's balance proof from a recent beacon block and sync the key added balance.
+    /// @param data The balance proof input containing recent block header, validator witness, and balance witness.
+    function processBalanceProof(ProcessBalanceProofInput calldata data) external;
+
+    /// @notice Verify a validator's balance proof from a historical beacon block and sync the key added balance.
+    ///         A historical proof is needed because the validator's balance may have increased at some point in the past
+    ///         and later decreased (e.g. due to inactivity leak or penalties). A recent proof alone would miss that peak,
+    ///         so a historical proof allows capturing the highest observed balance.
+    /// @param data The balance proof input containing recent + historical block headers, validator witness, and balance witness.
+    function processHistoricalBalanceProof(ProcessHistoricalBalanceProofInput calldata data) external;
 }

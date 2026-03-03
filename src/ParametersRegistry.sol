@@ -51,12 +51,12 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     QueueConfig public defaultQueueConfig;
     mapping(uint256 curveId => QueueConfig) internal _queueConfigs;
 
-    /// @dev Default value for the reward share. Can be only be set as a flat value due to possible sybil attacks
+    /// @dev Default value for the reward share. Can only be set as a flat value due to possible sybil attacks
     ///      Decreased reward share for some validators > N will promote sybils. Increased reward share for validators > N will give large operators an advantage
     uint256 public defaultRewardShare;
     mapping(uint256 curveId => KeyNumberValueInterval[]) internal _rewardShareData;
 
-    /// @dev Default value for the performance leeway. Can be only be set as a flat value due to possible sybil attacks
+    /// @dev Default value for the performance leeway. Can only be set as a flat value due to possible sybil attacks
     ///      Decreased performance leeway for some validators > N will promote sybils. Increased performance leeway for validators > N will give large operators an advantage
     uint256 public defaultPerformanceLeeway;
     mapping(uint256 curveId => KeyNumberValueInterval[]) internal _performanceLeewayData;
@@ -211,7 +211,6 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         _setDefaultMaxElWithdrawalRequestFee(fee);
     }
 
-    /// @inheritdoc IParametersRegistry
     ////////////////////////////////////////////////////////////////////////////////
     // Setters for per-curve parameters
     ////////////////////////////////////////////////////////////////////////////////

@@ -221,7 +221,7 @@ interface IParametersRegistry {
         uint256 syncWeight
     ) external;
 
-    /// @notice set default value for allowed delay before the exit was initiated exit delay in seconds. Default value is used if a specific value is not set for the curveId
+    /// @notice set default value for the allowed exit delay in seconds. Default value is used if a specific value is not set for the curveId
     /// @param delay value to be set as default for the allowed exit delay
     function setDefaultAllowedExitDelay(uint256 delay) external;
 
@@ -269,8 +269,8 @@ interface IParametersRegistry {
     /// @param limit Keys limit
     function setKeysLimit(uint256 curveId, uint256 limit) external;
 
-    /// @notice Unset key removal charge for the curveId
-    /// @param curveId Curve Id to unset custom key removal charge for
+    /// @notice Unset keys limit for the curveId
+    /// @param curveId Curve Id to unset custom keys limit for
     function unsetKeysLimit(uint256 curveId) external;
 
     /// @notice Get keys limit by the curveId. A limit indicates the maximal amount of the non-exited keys Node Operator can upload
@@ -294,9 +294,9 @@ interface IParametersRegistry {
     /// @notice Get the queue config for the given curve. This parameter is not used in Curated Module
     /// @param curveId Curve Id to get the queue config for.
     /// @return priority Queue priority.
-    /// @param maxDeposits Maximum number of the first deposits a Node Operator can get via the priority queue.
-    ///                    Ex. with `maxDeposits = 10` the Node Operator сan get keys added to the priority queue
-    ///                    until the Node Operator has totalDepositedKeys + enqueued >= 10.
+    /// @return maxDeposits Maximum number of the first deposits a Node Operator can get via the priority queue.
+    ///                     Ex. with `maxDeposits = 10` the Node Operator сan get keys added to the priority queue
+    ///                     until the Node Operator has totalDepositedKeys + enqueued >= 10.
     function getQueueConfig(uint256 curveId) external view returns (uint32 priority, uint32 maxDeposits);
 
     /// @notice Set reward share parameters for the curveId
@@ -315,11 +315,10 @@ interface IParametersRegistry {
     /// @dev KeyNumberValueInterval = [[1, 10000], [11, 8000], [51, 5000]] stands for
     ///      100% rewards for the first 10 keys, 80% rewards for the keys 11-50, and 50% rewards for the keys > 50
     /// @param curveId Curve Id to get reward share data for
-    /// @param data Interval values for keys count and reward share percentages in BP (ex. [[1, 10000], [11, 8000], [51, 5000]])
+    /// @return data Interval values for keys count and reward share percentages in BP (ex. [[1, 10000], [11, 8000], [51, 5000]])
     function getRewardShareData(uint256 curveId) external view returns (KeyNumberValueInterval[] memory data);
 
     /// @notice Set performance leeway parameters for the curveId
-    /// @dev Returns [[1, defaultPerformanceLeeway]] if no intervals are set for the given curveId.
     /// @dev KeyNumberValueInterval = [[1, 500], [101, 450], [501, 400]] stands for
     ///      5% performance leeway for the first 100 keys, 4.5% performance leeway for the keys 101-500, and 4% performance leeway for the keys > 500
     /// @param curveId Curve Id to associate performance leeway data with
@@ -335,7 +334,7 @@ interface IParametersRegistry {
     /// @dev KeyNumberValueInterval = [[1, 500], [101, 450], [501, 400]] stands for
     ///      5% performance leeway for the first 100 keys, 4.5% performance leeway for the keys 101-500, and 4% performance leeway for the keys > 500
     /// @param curveId Curve Id to get performance leeway data for
-    /// @param data Interval values for keys count and performance leeway percentages in BP (ex. [[1, 500], [101, 450], [501, 400]])
+    /// @return data Interval values for keys count and performance leeway percentages in BP (ex. [[1, 500], [101, 450], [501, 400]])
     function getPerformanceLeewayData(uint256 curveId) external view returns (KeyNumberValueInterval[] memory data);
 
     /// @notice Set performance strikes lifetime and threshold for the curveId
@@ -401,7 +400,7 @@ interface IParametersRegistry {
     /// @param delay allowed exit delay
     function setAllowedExitDelay(uint256 curveId, uint256 delay) external;
 
-    /// @notice Unset exit timeframe deadline delay for the curveId
+    /// @notice Unset allowed exit delay for the curveId
     /// @param curveId Curve Id to unset allowed exit delay for
     function unsetAllowedExitDelay(uint256 curveId) external;
 
@@ -411,7 +410,6 @@ interface IParametersRegistry {
     function getAllowedExitDelay(uint256 curveId) external view returns (uint256 delay);
 
     /// @notice Set the exit delay penalty for a single 32 ether validator for the given curveId
-    /// @dev cannot be zero
     /// @param curveId Curve Id to associate exit delay penalty with
     /// @param fee Exit delay fee
     function setExitDelayFee(uint256 curveId, uint256 fee) external;

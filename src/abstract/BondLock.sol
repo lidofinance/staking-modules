@@ -66,9 +66,13 @@ abstract contract BondLock is IBondLock, Initializable {
     }
 
     /// @inheritdoc IBondLock
-    function getActualLockedBond(uint256 nodeOperatorId) public view returns (uint256) {
-        BondLockData storage bondLock = _getBondLockStorage().bondLock[nodeOperatorId];
-        return bondLock.until > block.timestamp ? bondLock.amount : 0;
+    function getLockedBond(uint256 nodeOperatorId) public view returns (uint256) {
+        return _getBondLockStorage().bondLock[nodeOperatorId].amount;
+    }
+
+    /// @inheritdoc IBondLock
+    function isLockExpired(uint256 nodeOperatorId) public view returns (bool) {
+        return _getBondLockStorage().bondLock[nodeOperatorId].until <= block.timestamp;
     }
 
     /// @dev Lock bond amount for the given Node Operator until the period.
@@ -87,7 +91,7 @@ abstract contract BondLock is IBondLock, Initializable {
     /// @dev Unlock the locked bond amount for the given Node Operator without changing the lock period
     function _unlock(uint256 nodeOperatorId, uint256 amount) internal {
         if (amount == 0) revert InvalidBondLockAmount();
-        uint256 locked = getActualLockedBond(nodeOperatorId);
+        uint256 locked = getLockedBond(nodeOperatorId);
         if (locked < amount) revert InvalidBondLockAmount();
         unchecked {
             _changeBondLock(nodeOperatorId, locked - amount, _getBondLockStorage().bondLock[nodeOperatorId].until);
@@ -107,12 +111,19 @@ abstract contract BondLock is IBondLock, Initializable {
         emit BondLockChanged(nodeOperatorId, amount, until);
     }
 
+    function _unlockExpiredLock(uint256 nodeOperatorId) internal {
+        if (getLockedBond(nodeOperatorId) == 0) revert NoBondLocked();
+        if (!isLockExpired(nodeOperatorId)) revert BondLockNotExpired();
+        _changeBondLock(nodeOperatorId, 0, 0);
+        emit ExpiredBondLockRemoved(nodeOperatorId);
+    }
+
     // solhint-disable-next-line func-name-mixedcase
     function __BondLock_init(uint256 period) internal onlyInitializing {
         _setBondLockPeriod(period);
     }
 
-    /// @dev Set default bond lock period. That period will be added to the block timestamp of the lock translation to determine the bond lock duration
+    /// @dev Set default bond lock period. That period will be added to the block timestamp of the lock transition to determine the bond lock duration
     function _setBondLockPeriod(uint256 period) internal {
         if (period < MIN_BOND_LOCK_PERIOD || period > MAX_BOND_LOCK_PERIOD) revert InvalidBondLockPeriod();
         uint256 currentPeriod = _getBondLockStorage().bondLockPeriod;

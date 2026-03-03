@@ -60,7 +60,7 @@ interface IExitPenalties is IExitTypes {
     /// @param nodeOperatorId ID of the Node Operator
     /// @param publicKey Public key of the validator
     /// @param elWithdrawalRequestFeePaid The fee paid for the withdrawal request
-    /// @param exitType The type of the exit (0 - direct exit, 1 - forced exit)
+    /// @param exitType The type of the exit; only `VOLUNTARY_EXIT_TYPE_ID` skips recording EL withdrawal request fee
     function processTriggeredExit(
         uint256 nodeOperatorId,
         bytes calldata publicKey,
