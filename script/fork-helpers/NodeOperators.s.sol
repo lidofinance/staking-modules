@@ -41,6 +41,14 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         vm.stopBroadcast();
     }
 
+    modifier broadcastModule() {
+        _setUp();
+        _setBalance(address(module));
+        vm.startBroadcast(address(module));
+        _;
+        vm.stopBroadcast();
+    }
+
     modifier broadcastStakingRouter() {
         _setUp();
         _setBalance(address(stakingRouter));
@@ -207,6 +215,10 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
 
     function compensateGeneralDelayedPenalty(uint256 noId) external broadcastStranger {
         module.compensateGeneralDelayedPenalty(noId);
+    }
+
+    function createBondDebt(uint256 noId, uint256 amount) external broadcastModule {
+        accounting.penalize(noId, amount);
     }
 
     function exitRequest(uint256 noId, uint256 validatorIndex, bytes calldata validatorPubKey) external {

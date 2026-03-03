@@ -89,6 +89,24 @@ settle-stealing noId:
 compensate-stealing noId amount:
     just _impersonate-script NodeOperators --sig="compensateStealing\(uint256,uint256\)" -- {{noId}} {{amount}}
 
+report-penalty noId amountEth:
+    just _impersonate-script NodeOperators --sig="reportGeneralDelayedPenalty\(uint256,uint256\)" -- {{noId}} $(cast to-wei {{amountEth}})
+
+cancel-penalty noId amountEth:
+    just _impersonate-script NodeOperators --sig="cancelGeneralDelayedPenalty\(uint256,uint256\)" -- {{noId}} $(cast to-wei {{amountEth}})
+
+settle-penalty noId:
+    just _impersonate-script NodeOperators --sig="settleGeneralDelayedPenalty\(uint256\)" -- {{noId}}
+
+compensate-penalty noId:
+    just _impersonate-script NodeOperators --sig="compensateGeneralDelayedPenalty\(uint256\)" -- {{noId}}
+
+create-bond-debt noId amountEth:
+    just _impersonate-script NodeOperators --sig="createBondDebt\(uint256,uint256\)" -- {{noId}} $(cast to-wei {{amountEth}})
+
+warp days:
+    cast rpc --rpc-url={{anvil_rpc_url}} evm_increaseTime $(( {{days}} * 86400 )) > /dev/null && cast rpc --rpc-url={{anvil_rpc_url}} evm_mine > /dev/null
+
 exit-request noId validatorIndex validatorPubKey:
     just _impersonate-script NodeOperators --sig="exitRequest\(uint256,uint256,bytes\)" -vvv -- {{noId}} {{validatorIndex}} {{validatorPubKey}}
 
