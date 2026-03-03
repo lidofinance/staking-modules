@@ -126,6 +126,9 @@ interface IParametersRegistry {
     /// @notice Role to manage validator exit related parameters: allowed exit delay, exit delay fee, EL max withdrawal request fee
     function MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE() external view returns (bytes32);
 
+    /// @notice Role to manage per-curve parameters (setters and unsetters only)
+    function MANAGE_CURVE_PARAMETERS_ROLE() external view returns (bytes32);
+
     /// @notice The lowest priority a deposit queue can be assigned with. This constant is not used in Curated Module
     function QUEUE_LOWEST_PRIORITY() external view returns (uint256);
 
