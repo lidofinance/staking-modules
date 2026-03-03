@@ -246,7 +246,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param amount Amount of penalty to cancel
     function cancelGeneralDelayedPenalty(uint256 nodeOperatorId, uint256 amount) external;
 
-    /// @notice Settles locked bond for eligible Node Operators and sets target limit to 0 only for settled ones
+    /// @notice Settles locked bond for eligible Node Operators
     /// @dev SETTLE_GENERAL_DELAYED_PENALTY_ROLE role is expected to be assigned to Easy Track
     /// @param nodeOperatorIds IDs of the Node Operators
     /// @param maxAmounts Maximum amounts to settle for each Node Operator
