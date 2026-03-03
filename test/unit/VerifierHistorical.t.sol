@@ -284,7 +284,7 @@ contract VerifierCrossForkHistoricalBalanceTest is Test, Utilities {
     }
 
     function test_processHistoricalBalanceProof_HappyPath() public {
-        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector));
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector));
 
         verifier.processHistoricalBalanceProof(fixture.data);
     }
@@ -302,7 +302,7 @@ contract VerifierCrossForkHistoricalBalanceTest is Test, Utilities {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
-        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector), "");
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector), "");
     }
 
     function _loadFixture(string memory fork) internal {
@@ -368,7 +368,7 @@ contract VerifierCrossForkHistoricalBalanceAtPivotSlotTest is Test, Utilities {
     }
 
     function test_processHistoricalBalanceProof_HappyPath() public {
-        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector));
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector));
 
         verifier.processHistoricalBalanceProof(fixture.data);
     }
@@ -386,7 +386,7 @@ contract VerifierCrossForkHistoricalBalanceAtPivotSlotTest is Test, Utilities {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
-        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector), "");
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector), "");
     }
 
     function _loadFixture(string memory fork) internal {
@@ -452,7 +452,7 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
     }
 
     function test_processHistoricalBalanceProof_HappyPath() public {
-        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector));
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector));
 
         verifier.processHistoricalBalanceProof(fixture.data);
     }
@@ -530,7 +530,7 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
-        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector), "");
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector), "");
     }
 
     function _loadFixture() internal {

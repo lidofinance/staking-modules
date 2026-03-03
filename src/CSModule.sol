@@ -238,13 +238,13 @@ contract CSModule is ICSModule, BaseModule {
     }
 
     /// @inheritdoc IBaseModule
-    function syncKeyAddedBalance(
+    function reportValidatorBalance(
         uint256 nodeOperatorId,
         uint256 keyIndex,
         uint256 currentBalanceWei
     ) public virtual override(BaseModule, IBaseModule) {
         _onlyEnabledTopUpQueue();
-        super.syncKeyAddedBalance(nodeOperatorId, keyIndex, currentBalanceWei);
+        super.reportValidatorBalance(nodeOperatorId, keyIndex, currentBalanceWei);
     }
 
     /// @inheritdoc ICSModule

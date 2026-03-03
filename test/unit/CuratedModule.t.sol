@@ -1655,7 +1655,7 @@ contract CuratedReportWithdrawnValidators is ModuleReportWithdrawnValidators, Cu
 
 contract CuratedKeyAddedBalance is ModuleKeyAddedBalance, CuratedCommon {}
 
-contract CuratedSyncKeyAddedBalance is ModuleSyncKeyAddedBalance, CuratedCommon {}
+contract CuratedreportValidatorBalance is ModulereportValidatorBalance, CuratedCommon {}
 
 contract CuratedTopUpKeyAddedBalance is CuratedCommon {
     function test_topUp_emitsKeyAddedBalanceChanged() public {

@@ -168,7 +168,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             gI: _getValidatorGI(data.validator.index, data.recentBlock.header.slot)
         });
 
-        MODULE.onValidatorSlashed(data.validator.nodeOperatorId, data.validator.keyIndex);
+        MODULE.reportValidatorSlashing(data.validator.nodeOperatorId, data.validator.keyIndex);
     }
 
     /// @inheritdoc IVerifier
@@ -270,7 +270,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             data.recentBlock.header.slot
         );
 
-        MODULE.syncKeyAddedBalance(data.validator.nodeOperatorId, data.validator.keyIndex, gweiToWei(balanceGwei));
+        MODULE.reportValidatorBalance(data.validator.nodeOperatorId, data.validator.keyIndex, gweiToWei(balanceGwei));
     }
 
     /// @inheritdoc IVerifier
@@ -299,7 +299,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             data.historicalBlock.header.slot
         );
 
-        MODULE.syncKeyAddedBalance(data.validator.nodeOperatorId, data.validator.keyIndex, gweiToWei(balanceGwei));
+        MODULE.reportValidatorBalance(data.validator.nodeOperatorId, data.validator.keyIndex, gweiToWei(balanceGwei));
     }
 
     function _reportSingleValidator(WithdrawnValidatorInfo memory info) internal {

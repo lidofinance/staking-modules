@@ -313,8 +313,7 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    // TODO: rename to reportValidatorSlashing
-    function onValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external {
+    function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex) external {
         _checkVerifierRole();
         _onlyExistingNodeOperator(nodeOperatorId);
         NodeOperator storage no = _nodeOperators[nodeOperatorId];
@@ -329,11 +328,14 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    // TODO: rename to reportValidatorBalance
-    function syncKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 currentBalanceWei) public virtual {
+    function reportValidatorBalance(
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 currentBalanceWei
+    ) public virtual {
         _checkVerifierRole();
 
-        NodeOperatorOps.syncKeyAddedBalance({
+        NodeOperatorOps.reportValidatorBalance({
             nodeOperators: _nodeOperators,
             nodeOperatorsCount: _nodeOperatorsCount,
             keyAddedBalances: _keyAddedBalances,
