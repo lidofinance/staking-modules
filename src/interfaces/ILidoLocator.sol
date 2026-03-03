@@ -35,6 +35,8 @@ interface ILidoLocator {
 
     function treasury() external view returns (address);
 
+    function topUpGateway() external view returns (address);
+
     function validatorsExitBusOracle() external view returns (address);
 
     function withdrawalQueue() external view returns (address);

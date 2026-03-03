@@ -26,7 +26,7 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         Env memory env = envVars();
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
-        if (moduleType != ModuleType.Curated) vm.skip(true);
+        if (moduleType != ModuleType.Curated) vm.skip(true, "Current deployment is not Curated module type");
         string memory config = vm.readFile(env.DEPLOY_CONFIG);
         // mutates storage variable
         updateCuratedDeployParams(deployParams, env.DEPLOY_CONFIG);
@@ -222,8 +222,7 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
             assertEq(parametersRegistry.getExitDelayFee(curveId), params.exitDelayFee);
             assertEq(parametersRegistry.getMaxElWithdrawalRequestFee(curveId), params.maxElWithdrawalRequestFee);
 
-            // FIXME: add MetaRegistry-level assertions here to replace
-            // the removed deposit-allocation-weight checks.
+            assertEq(metaRegistry.getBondCurveWeight(curveId), params.metaRegistryBondCurveWeight);
         }
     }
 

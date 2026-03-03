@@ -1710,7 +1710,7 @@ contract CuratedAccessControl is ModuleAccessControl, CuratedCommonNoRoles {}
 
 contract CuratedStakingRouterAccessControl is ModuleStakingRouterAccessControl, CuratedCommonNoRoles {
     function test_stakingRouterRole_onWithdrawalCredentialsChanged_noDepositable() public override {
-        vm.skip(true);
+        vm.skip(true, "Legacy no-depositable withdrawal-credentials path is not applicable for Curated module");
     }
 
     function test_stakingRouterRole_onWithdrawalCredentialsChanged_withDepositable() public {

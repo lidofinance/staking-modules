@@ -21,6 +21,9 @@
 - Linting: `yarn lint:check` (prettier + solhint), `yarn lint:fix`, `yarn lint:solhint`.
 - Diff: `git diff --no-ext-diff`
 
+- For fast local checks after small edits, prefer targeted compile of changed Solidity files: `forge build <changed-file-1> <changed-file-2> ...`.
+- Keep `forge build` as the full-project compile when touching shared interfaces/libraries or before final handoff.
+
 ## Coding Style & Naming Conventions
 
 - Formatting: Prettier + `prettier-plugin-solidity` (Solidity `printWidth=80`, `tabWidth=4`, spaces only).
@@ -45,6 +48,9 @@
 - Run: `just test-unit` for fast cycles; `CHAIN`/`RPC_URL` required for fork tests. Example: `export CHAIN=hoodi && export RPC_URL=<https-url>`.
 - Coverage: `just coverage-lcov` produces LCOV output (commit if relevant).
 - After making changes to the source code make sure you've either ran build command or unit tests.
+- `vm.prank(addr)` applies to the next external call only. Avoid patterns where the next call is accidentally consumed by a getter inside arguments or call-chaining.
+  Bad: `vm.prank(admin); target.grantRole(target.ROLE(), user)` or `vm.prank(admin); module.PARAMETERS_REGISTRY().setX(...)`.
+  Good: precompute external values before prank (`bytes32 role = target.ROLE();`) or use `vm.startPrank`/`vm.stopPrank` for multi-call sequences.
 - Do not assert unchanged state after a reverting call.
 - Deployment test name suffixes are part of the test selection contract used by `just` recipes and encode two axes: phase and flow.
 - Phase semantics:

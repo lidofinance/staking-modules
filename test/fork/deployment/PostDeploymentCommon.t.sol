@@ -27,6 +27,7 @@ import { Versioned } from "../../../src/lib/utils/Versioned.sol";
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     CommonDeployParams internal deployParams;
     uint256 adminsCount;
+    uint256 expectedModuleScratchNonce;
 
     function setUp() public {
         Env memory env = envVars();
@@ -35,6 +36,12 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         string memory config = vm.readFile(env.DEPLOY_CONFIG);
         deployParams = parseCommonDeployParams(config);
         adminsCount = block.chainid == 1 ? 1 : 2;
+
+        if (moduleType == ModuleType.Curated) {
+            // Curated deployment sets bond-curve weights once per gate. Each set triggers
+            // requestFullDepositInfoUpdate(), which increments module nonce.
+            expectedModuleScratchNonce = vm.parseJsonAddressArray(config, ".CuratedGates").length;
+        }
     }
 }
 
@@ -42,7 +49,7 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
     function test_state_scratch_onlyFull() public view {
         assertTrue(module.isPaused());
         assertEq(module.getNodeOperatorsCount(), 0);
-        assertEq(module.getNonce(), 0);
+        assertEq(module.getNonce(), expectedModuleScratchNonce);
     }
 
     function test_state_afterVote() public view {

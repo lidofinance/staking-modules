@@ -47,6 +47,7 @@ struct GateCurveParams {
     uint256 attestationsWeight;
     uint256 blocksWeight;
     uint256 syncWeight;
+    uint256 metaRegistryBondCurveWeight;
     uint256 allowedExitDelay;
     uint256 exitDelayFee;
     uint256 maxElWithdrawalRequestFee;
@@ -290,7 +291,39 @@ abstract contract DeployBase is Script {
                 accountingProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
+            exitPenalties = ExitPenalties(_deployProxy(deployer, address(dummyImpl)));
+
+            CuratedModule curatedModuleImpl = new CuratedModule({
+                moduleType: config.moduleType,
+                lidoLocator: config.lidoLocatorAddress,
+                parametersRegistry: address(parametersRegistry),
+                accounting: address(accounting),
+                exitPenalties: address(exitPenalties),
+                metaRegistry: address(metaRegistry)
+            });
+
+            {
+                OssifiableProxy moduleProxy = OssifiableProxy(payable(address(curatedModule)));
+                moduleProxy.proxy__upgradeToAndCall(
+                    address(curatedModuleImpl),
+                    abi.encodeCall(CuratedModule.initialize, (deployer))
+                );
+                moduleProxy.proxy__changeAdmin(config.proxyAdmin);
+            }
+
+            MetaRegistry metaRegistryImpl = new MetaRegistry(address(curatedModule));
+
+            {
+                OssifiableProxy metaRegistryProxy = OssifiableProxy(payable(address(metaRegistry)));
+                metaRegistryProxy.proxy__upgradeToAndCall(
+                    address(metaRegistryImpl),
+                    abi.encodeCall(MetaRegistry.initialize, (deployer))
+                );
+                metaRegistryProxy.proxy__changeAdmin(config.proxyAdmin);
+            }
+
             accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
+            metaRegistry.grantRole(metaRegistry.SET_BOND_CURVE_WEIGHT_ROLE(), deployer);
 
             for (uint256 i = 0; i < gatesCount; i++) {
                 CuratedGateConfig storage gateConfig = config.curatedGates[i];
@@ -335,42 +368,13 @@ abstract contract DeployBase is Script {
                     params.blocksWeight,
                     params.syncWeight
                 );
+                metaRegistry.setBondCurveWeight(curveId, params.metaRegistryBondCurveWeight);
                 parametersRegistry.setAllowedExitDelay(curveId, params.allowedExitDelay);
                 parametersRegistry.setExitDelayFee(curveId, params.exitDelayFee);
                 parametersRegistry.setMaxElWithdrawalRequestFee(curveId, params.maxElWithdrawalRequestFee);
             }
             accounting.revokeRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
-
-            exitPenalties = ExitPenalties(_deployProxy(deployer, address(dummyImpl)));
-
-            CuratedModule curatedModuleImpl = new CuratedModule({
-                moduleType: config.moduleType,
-                lidoLocator: config.lidoLocatorAddress,
-                parametersRegistry: address(parametersRegistry),
-                accounting: address(accounting),
-                exitPenalties: address(exitPenalties),
-                metaRegistry: address(metaRegistry)
-            });
-
-            {
-                OssifiableProxy moduleProxy = OssifiableProxy(payable(address(curatedModule)));
-                moduleProxy.proxy__upgradeToAndCall(
-                    address(curatedModuleImpl),
-                    abi.encodeCall(CuratedModule.initialize, (deployer))
-                );
-                moduleProxy.proxy__changeAdmin(config.proxyAdmin);
-            }
-
-            MetaRegistry metaRegistryImpl = new MetaRegistry(address(curatedModule));
-
-            {
-                OssifiableProxy metaRegistryProxy = OssifiableProxy(payable(address(metaRegistry)));
-                metaRegistryProxy.proxy__upgradeToAndCall(
-                    address(metaRegistryImpl),
-                    abi.encodeCall(MetaRegistry.initialize, (deployer))
-                );
-                metaRegistryProxy.proxy__changeAdmin(config.proxyAdmin);
-            }
+            metaRegistry.revokeRole(metaRegistry.SET_BOND_CURVE_WEIGHT_ROLE(), deployer);
 
             ValidatorStrikes strikesImpl = new ValidatorStrikes({
                 module: address(curatedModule),
@@ -558,6 +562,9 @@ abstract contract DeployBase is Script {
             deployJson.set("DeployParams", abi.encode(config));
             deployJson.set("CuratedDeployParams", abi.encode(config));
             deployJson.set("git-ref", gitRef);
+            if (!vm.exists(artifactDir)) {
+                vm.createDir(artifactDir, true);
+            }
             vm.writeJson(deployJson.str, _deployJsonFilename());
         }
 

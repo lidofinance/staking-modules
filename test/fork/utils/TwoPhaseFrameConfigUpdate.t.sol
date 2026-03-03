@@ -108,7 +108,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
 
     function test_deployParams() public {
         Env memory env = envVars();
-        vm.skip(_isEmpty(env.UTILS_DEPLOY_CONFIG));
+        vm.skip(_isEmpty(env.UTILS_DEPLOY_CONFIG), "UTILS_DEPLOY_CONFIG is not set");
 
         string memory utilsConfig = vm.readFile(env.UTILS_DEPLOY_CONFIG);
         bytes memory encodedParams = vm.parseJsonBytes(utilsConfig, ".TwoPhaseFrameConfigUpdateParams");
@@ -181,7 +181,7 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
 
     function _utilsDeployBlockNumber(string memory utilsDeployConfigPath) internal returns (uint256 deployBlockNumber) {
         string memory transactionsPath = string.concat(_dirOf(utilsDeployConfigPath), "transactions.json");
-        vm.skip(!vm.exists(transactionsPath));
+        vm.skip(!vm.exists(transactionsPath), "transactions.json does not exist near UTILS_DEPLOY_CONFIG");
 
         string memory transactionsJson = vm.readFile(transactionsPath);
         string memory deployBlockNumberHex = vm.parseJsonString(transactionsJson, ".receipts[0].blockNumber");
