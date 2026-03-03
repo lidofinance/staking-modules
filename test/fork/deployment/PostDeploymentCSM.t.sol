@@ -11,7 +11,6 @@ import { DeployParams } from "script/csm/DeployBase.s.sol";
 import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
 import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
-import { ParametersRegistry } from "src/ParametersRegistry.sol";
 import { VettedGate } from "src/VettedGate.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";

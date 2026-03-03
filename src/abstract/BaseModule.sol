@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
-import { IStakingModule, FORCED_TARGET_LIMIT_MODE_ID } from "../interfaces/IStakingModule.sol";
+import { IStakingModule } from "../interfaces/IStakingModule.sol";
 import { ILidoLocator } from "../interfaces/ILidoLocator.sol";
 import { IStETH } from "../interfaces/IStETH.sol";
 import { IParametersRegistry } from "../interfaces/IParametersRegistry.sol";
@@ -234,7 +234,8 @@ abstract contract BaseModule is
         uint256 targetLimit
     ) external {
         _checkStakingRouterRole();
-        _setTargetLimit(nodeOperatorId, targetLimitMode, targetLimit);
+
+        NodeOperatorOps.setTargetLimit(_nodeOperators, nodeOperatorId, targetLimitMode, targetLimit);
 
         _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: false });
         _incrementModuleNonce();
@@ -299,11 +300,6 @@ abstract contract BaseModule is
             bool settled = GeneralPenalty.settleGeneralDelayedPenalty(nodeOperatorId, maxAmounts[i]);
 
             if (!settled) continue;
-
-            // If general delayed penalty was not compensated using `compensateGeneralDelayedPenalty`,
-            // we treat it the same way as when bond is not sufficient to cover the penalty.
-            // TODO: do we need to set target limit yet?
-            _onUncompensatedPenalty(nodeOperatorId);
 
             // Nonce should be updated if depositableValidators change
             _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: true });
@@ -636,9 +632,7 @@ abstract contract BaseModule is
             if (info.isSlashed && !_isValidatorSlashed[pointer]) revert SlashingPenaltyIsNotApplicable();
 
             NodeOperator storage no = _nodeOperators[info.nodeOperatorId];
-            bool penaltyCovered = WithdrawnValidatorLib.process(no, info, _keyAddedBalances[pointer]);
-            // TODO: do we really need to set target limit?
-            if (!penaltyCovered) _onUncompensatedPenalty(info.nodeOperatorId);
+            WithdrawnValidatorLib.process(no, info, _keyAddedBalances[pointer]);
 
             _updateDepositableValidatorsCount({ nodeOperatorId: info.nodeOperatorId, incrementNonceIfUpdated: false });
 
@@ -656,13 +650,6 @@ abstract contract BaseModule is
         unchecked {
             emit NonceChanged(++_nonce);
         }
-    }
-
-    /// @dev Prevents reactivation of a Node Operator after an uncovered penalty by
-    ///      forcing its target limit to zero. Uncovered charges are not considered penalties, hence this method
-    ///      is not called in such cases.
-    function _onUncompensatedPenalty(uint256 nodeOperatorId) internal {
-        _setTargetLimit(nodeOperatorId, FORCED_TARGET_LIMIT_MODE_ID, 0);
     }
 
     function _addKeysAndUpdateDepositableValidatorsCount(
@@ -724,10 +711,6 @@ abstract contract BaseModule is
         if (incrementNonceIfUpdated) _incrementModuleNonce();
 
         return true;
-    }
-
-    function _setTargetLimit(uint256 nodeOperatorId, uint256 targetLimitMode, uint256 targetLimit) internal {
-        NodeOperatorOps.setTargetLimit(_nodeOperators, nodeOperatorId, targetLimitMode, targetLimit);
     }
 
     function _checkCanAddKeys(uint256 nodeOperatorId, address who) internal view {
