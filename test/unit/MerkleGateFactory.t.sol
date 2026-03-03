@@ -34,9 +34,10 @@ contract MerkleGateFactoryTest is Test, Utilities {
         CSMMock csm = new CSMMock();
         address impl = address(new VettedGate(address(csm)));
         MerkleGateFactory factory = new MerkleGateFactory(impl);
+        address expectedInstance = vm.computeCreateAddress(address(factory), vm.getNonce(address(factory)));
 
-        vm.expectEmit(false, true, true, true, address(factory));
-        emit IMerkleGateFactory.MerkleGateCreated(address(0), admin, curveId);
+        vm.expectEmit(address(factory));
+        emit IMerkleGateFactory.MerkleGateCreated(expectedInstance, admin, curveId);
 
         address instance = factory.create(curveId, root, cid, admin);
         IVettedGate gate = IVettedGate(instance);
@@ -61,9 +62,10 @@ contract MerkleGateFactoryTest is Test, Utilities {
 
         address impl = address(new CuratedGate(address(module)));
         MerkleGateFactory factory = new MerkleGateFactory(impl);
+        address expectedInstance = vm.computeCreateAddress(address(factory), vm.getNonce(address(factory)));
 
-        vm.expectEmit(false, true, true, true, address(factory));
-        emit IMerkleGateFactory.MerkleGateCreated(address(0), admin, curveId);
+        vm.expectEmit(address(factory));
+        emit IMerkleGateFactory.MerkleGateCreated(expectedInstance, admin, curveId);
 
         address instance = factory.create(curveId, root, cid, admin);
         ICuratedGate gate = ICuratedGate(instance);
@@ -94,10 +96,11 @@ contract MerkleGateFactoryTest is Test, Utilities {
         assertEq(factory.GATE_IMPL(), impl);
 
         address secondImpl = address(new VettedGate(address(new CSMMock())));
+        address expectedInstance = vm.computeCreateAddress(address(factory), vm.getNonce(address(factory)));
 
         // The factory should always use its immutable implementation.
-        vm.expectEmit(false, true, true, true, address(factory));
-        emit IMerkleGateFactory.MerkleGateCreated(address(0), admin, curveId);
+        vm.expectEmit(address(factory));
+        emit IMerkleGateFactory.MerkleGateCreated(expectedInstance, admin, curveId);
 
         address instance = factory.create(curveId, root, cid, admin);
         OssifiableProxy proxy = OssifiableProxy(payable(instance));

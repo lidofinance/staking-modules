@@ -49,14 +49,14 @@ contract V3UpgradeTestBase is Test, Utilities, DeploymentFixtures, InvariantAsse
 
         string memory config = vm.readFile(env.DEPLOY_CONFIG);
         if (vm.keyExistsJson(config, ".CuratedModule")) {
-            vm.skip(true);
+            vm.skip(true, "Curated deployment config detected; this suite targets CSM upgrade flow");
         }
         if (
             vm.parseJsonAddress(config, ".VettedGateFactory") == address(0) &&
             vm.parseJsonAddress(config, ".VettedGate") == address(0) &&
             vm.parseJsonAddress(config, ".VettedGateImpl") == address(0)
         ) {
-            vm.skip(true);
+            vm.skip(true, "CSM0x02 deployment config detected; this suite targets legacy CSM upgrade flow");
         }
         deploymentConfig = parseDeploymentConfig(config);
         deployParams = parseDeployParams(env.DEPLOY_CONFIG);

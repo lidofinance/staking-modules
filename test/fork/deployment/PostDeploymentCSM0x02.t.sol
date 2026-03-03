@@ -18,7 +18,8 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         Env memory env = envVars();
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
-        if (moduleType != ModuleType.Community0x02) vm.skip(true);
+        if (moduleType != ModuleType.Community0x02)
+            vm.skip(true, "Current deployment is not Community0x02 module type");
         deployParams = parseDeployParams0x02(env.DEPLOY_CONFIG);
         adminsCount = block.chainid == 1 ? 1 : 2;
     }

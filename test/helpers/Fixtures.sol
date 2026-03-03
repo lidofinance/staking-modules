@@ -38,6 +38,7 @@ import { GIndex } from "src/lib/GIndex.sol";
 import { IACL } from "src/interfaces/IACL.sol";
 import { IKernel } from "src/interfaces/IKernel.sol";
 import { Batch } from "src/lib/DepositQueueLib.sol";
+import { BaseOracle } from "src/lib/base-oracle/BaseOracle.sol";
 
 import { Utilities } from "./Utilities.sol";
 import { MerkleTree } from "./MerkleTree.sol";
@@ -219,8 +220,8 @@ contract DeploymentHelpers is Test {
             vm.envOr("UTILS_DEPLOY_CONFIG", string("")),
             vm.envOr("VOTE_PREV_BLOCK", uint256(0))
         );
-        vm.skip(_isEmpty(env.RPC_URL));
-        vm.skip(_isEmpty(env.DEPLOY_CONFIG));
+        vm.skip(_isEmpty(env.RPC_URL), "RPC_URL is not set");
+        vm.skip(_isEmpty(env.DEPLOY_CONFIG), "DEPLOY_CONFIG is not set");
         return env;
     }
 
@@ -701,7 +702,54 @@ contract DeploymentHelpers is Test {
     }
 }
 
+interface IAccountingOracle {
+    struct ReportData {
+        uint256 consensusVersion;
+        uint256 refSlot;
+        uint256 clActiveBalanceGwei;
+        uint256 clPendingBalanceGwei;
+        uint256[] stakingModuleIdsWithNewlyExitedValidators;
+        uint256[] numExitedValidatorsByStakingModule;
+        uint256[] stakingModuleIdsWithUpdatedBalance;
+        uint256[] activeBalancesGweiByStakingModule;
+        uint256[] pendingBalancesGweiByStakingModule;
+        uint256 withdrawalVaultBalance;
+        uint256 elRewardsVaultBalance;
+        uint256 sharesRequestedToBurn;
+        uint256[] withdrawalFinalizationBatches;
+        uint256 simulatedShareRate;
+        bool isBunkerMode;
+        bytes32 vaultsDataTreeRoot;
+        string vaultsDataTreeCid;
+        uint256 extraDataFormat;
+        bytes32 extraDataHash;
+        uint256 extraDataItemsCount;
+    }
+
+    function getConsensusVersion() external view returns (uint256);
+
+    function getContractVersion() external view returns (uint256);
+
+    function submitReportData(ReportData calldata data, uint256 contractVersion) external;
+
+    function submitReportExtraDataEmpty() external;
+}
+
+interface ILidoBalanceStats {
+    function getBalanceStats()
+        external
+        view
+        returns (uint256 clActiveBalance, uint256 clPendingBalance, uint256 depositedBalance);
+}
+
+interface ILidoLegacyDeposit {
+    function deposit(uint256 _maxDepositsCount, uint256 _stakingModuleId, bytes calldata _depositCalldata) external;
+}
+
 abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
+    uint256 internal constant STAKING_ROUTER_OLD_CONTRACT_VERSION = 3;
+    uint256 internal constant STAKING_ROUTER_NEW_CONTRACT_VERSION = STAKING_ROUTER_OLD_CONTRACT_VERSION + 1;
+
     enum ModuleType {
         Unknown,
         Community,
@@ -746,6 +794,15 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     address[] public curatedGates;
 
     error ModuleNotFound();
+    error CannotEnableStakingRouterDeposits();
+
+    function _isStakingRouterUpgraded() internal view returns (bool) {
+        return stakingRouter.getContractVersion() >= STAKING_ROUTER_NEW_CONTRACT_VERSION;
+    }
+
+    function _legacyLidoDeposit(uint256 depositsCount, uint256 moduleId, bytes memory depositCalldata) internal {
+        ILidoLegacyDeposit(address(lido)).deposit(depositsCount, moduleId, depositCalldata);
+    }
 
     function initializeFromDeployment() public {
         Env memory env = envVars();
@@ -881,6 +938,122 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         lido.submit{ value: 1e7 ether }(address(0));
     }
 
+    function _ensureStakingRouterCanDeposit(uint256 moduleId) internal {
+        if (!_isStakingRouterUpgraded()) return;
+        if (stakingRouter.canDeposit(moduleId)) return;
+
+        IAccountingOracle accountingOracle = IAccountingOracle(locator.accountingOracle());
+        HashConsensus accountingConsensus = HashConsensus(BaseOracle(address(accountingOracle)).getConsensusContract());
+
+        _waitForNextRefSlot(accountingConsensus);
+
+        (uint256 refSlot, ) = accountingConsensus.getCurrentFrame();
+        uint256 consensusVersion = accountingOracle.getConsensusVersion();
+
+        (uint256 clActiveBalance, uint256 clPendingBalance, uint256 depositedBalance) = ILidoBalanceStats(address(lido))
+            .getBalanceStats();
+
+        IAccountingOracle.ReportData memory report = IAccountingOracle.ReportData({
+            consensusVersion: consensusVersion,
+            refSlot: refSlot,
+            clActiveBalanceGwei: clActiveBalance / 1 gwei,
+            clPendingBalanceGwei: (clPendingBalance + depositedBalance) / 1 gwei,
+            stakingModuleIdsWithNewlyExitedValidators: new uint256[](0),
+            numExitedValidatorsByStakingModule: new uint256[](0),
+            stakingModuleIdsWithUpdatedBalance: new uint256[](0),
+            activeBalancesGweiByStakingModule: new uint256[](0),
+            pendingBalancesGweiByStakingModule: new uint256[](0),
+            withdrawalVaultBalance: 0,
+            elRewardsVaultBalance: 0,
+            sharesRequestedToBurn: 0,
+            withdrawalFinalizationBatches: new uint256[](0),
+            simulatedShareRate: 0,
+            isBunkerMode: false,
+            vaultsDataTreeRoot: bytes32(0),
+            vaultsDataTreeCid: "",
+            extraDataFormat: 0,
+            extraDataHash: bytes32(0),
+            extraDataItemsCount: 0
+        });
+
+        bytes32 reportHash = keccak256(abi.encode(report));
+        (address[] memory members, ) = accountingConsensus.getFastLaneMembers();
+        if (members.length == 0) {
+            (members, ) = accountingConsensus.getMembers();
+        }
+        for (uint256 i = 0; i < members.length; ++i) {
+            vm.prank(members[i]);
+            accountingConsensus.submitReport(refSlot, reportHash, consensusVersion);
+        }
+
+        vm.startPrank(members[0]);
+        accountingOracle.submitReportData(report, accountingOracle.getContractVersion());
+        accountingOracle.submitReportExtraDataEmpty();
+        vm.stopPrank();
+
+        if (!stakingRouter.canDeposit(moduleId)) revert CannotEnableStakingRouterDeposits();
+    }
+
+    function _disableDepositsForOtherModules(uint256 targetModuleId) internal {
+        address manager = _getStakingModuleManager();
+        uint256[] memory moduleIds = stakingRouter.getStakingModuleIds();
+
+        vm.startPrank(manager);
+        for (uint256 i; i < moduleIds.length; ++i) {
+            uint256 id = moduleIds[i];
+            if (id == targetModuleId) continue;
+            if (stakingRouter.getStakingModuleStatus(id) != uint8(IStakingRouter.StakingModuleStatus.Active)) continue;
+            stakingRouter.setStakingModuleStatus(id, uint8(IStakingRouter.StakingModuleStatus.DepositsPaused));
+        }
+        vm.stopPrank();
+    }
+
+    function _maximizeModuleShare(uint256 targetModuleId) internal {
+        IStakingRouter.StakingModule memory m = stakingRouter.getStakingModule(targetModuleId);
+        uint256 fullShare = stakingRouter.TOTAL_BASIS_POINTS();
+        if (m.stakeShareLimit == fullShare && m.priorityExitShareThreshold == fullShare) return;
+
+        address manager = _getStakingModuleManager();
+        vm.prank(manager);
+        stakingRouter.updateStakingModule(
+            targetModuleId,
+            fullShare,
+            fullShare,
+            m.stakingModuleFee,
+            m.treasuryFee,
+            m.maxDepositsPerBlock,
+            m.minDepositBlockDistance
+        );
+    }
+
+    function _getStakingModuleManager() internal returns (address manager) {
+        uint256 managersCount = stakingRouter.getRoleMemberCount(stakingRouter.STAKING_MODULE_MANAGE_ROLE());
+        if (managersCount > 0) {
+            return stakingRouter.getRoleMember(stakingRouter.STAKING_MODULE_MANAGE_ROLE(), 0);
+        }
+
+        manager = stakingRouter.getRoleMember(stakingRouter.DEFAULT_ADMIN_ROLE(), 0);
+        bytes32 role = stakingRouter.STAKING_MODULE_MANAGE_ROLE();
+        vm.prank(manager);
+        stakingRouter.grantRole(role, manager);
+    }
+
+    function _waitForNextRefSlot(HashConsensus consensus) internal {
+        (uint256 slotsPerEpoch, uint256 secondsPerSlot, uint256 genesisTime) = consensus.getChainConfig();
+        (uint256 initialEpoch, , ) = consensus.getFrameConfig();
+        uint256 epoch = (block.timestamp - genesisTime) / secondsPerSlot / slotsPerEpoch;
+        if (epoch < initialEpoch) {
+            uint256 targetTime = genesisTime + 1 + initialEpoch * slotsPerEpoch * secondsPerSlot;
+            if (targetTime > block.timestamp) {
+                vm.warp(targetTime);
+            }
+        }
+        (uint256 refSlot, ) = consensus.getCurrentFrame();
+        (, uint256 epochsPerFrame, ) = consensus.getFrameConfig();
+        uint256 nextFrameTime = genesisTime + (refSlot + slotsPerEpoch * epochsPerFrame + 1) * secondsPerSlot;
+        if (nextFrameTime > block.timestamp) vm.warp(nextFrameTime);
+    }
+
     function findModule() internal view returns (uint256) {
         uint256[] memory ids = stakingRouter.getStakingModuleIds();
         for (uint256 i = ids.length - 1; i > 0; i--) {
@@ -912,6 +1085,12 @@ interface IForkIntegrationHelpers {
         address nodeOperatorAddress,
         uint256 keysCount
     ) external returns (uint256 noId, uint256 startIndex);
+
+    function getDepositableTopUpNodeOperator(
+        address nodeOperatorAddress
+    ) external returns (uint256 noId, uint256 keyIndex, bytes memory pubkey);
+
+    function runFullBatchDepositInfoUpdate() external;
 }
 
 abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpers {
@@ -923,6 +1102,14 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
         module = module_;
         accounting = accounting_;
         stakingRouter = stakingRouter_;
+    }
+
+    function runFullBatchDepositInfoUpdate() external {
+        uint256 batchSize = 10;
+        uint256 operatorsLeft = module.batchDepositInfoUpdate(batchSize);
+        while (operatorsLeft > 0) {
+            operatorsLeft = module.batchDepositInfoUpdate(batchSize);
+        }
     }
 
     function getDepositedNodeOperator(
@@ -976,6 +1163,7 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
 
 contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
     PermissionlessGate internal permissionlessGate;
+    error TopUpQueueIsEmpty();
 
     constructor(
         CSModule module_,
@@ -1027,6 +1215,24 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
         }
         keysCount = 5;
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
+    }
+
+    function getDepositableTopUpNodeOperator(
+        address nodeOperatorAddress
+    ) external override returns (uint256 noId, uint256 keyIndex, bytes memory pubkey) {
+        (, , uint256 length, ) = module.getTopUpQueue();
+        if (length == 0) {
+            _addNodeOperator(nodeOperatorAddress, 1);
+            vm.startPrank(address(stakingRouter));
+            module.obtainDepositData(1, "");
+            vm.stopPrank();
+
+            (, , length, ) = module.getTopUpQueue();
+            if (length == 0) revert TopUpQueueIsEmpty();
+        }
+
+        (noId, keyIndex) = module.getTopUpQueueItem(0);
+        pubkey = module.getSigningKeys(noId, keyIndex, 1);
     }
 
     function _addNodeOperator(address from, uint256 keysCount) internal override returns (uint256 nodeOperatorId) {
@@ -1097,6 +1303,13 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
     ) external override returns (uint256 noId, uint256 keysCount) {
         keysCount = 5;
         noId = _addNodeOperator(nodeOperatorAddress, keysCount);
+    }
+
+    function getDepositableTopUpNodeOperator(
+        address nodeOperatorAddress
+    ) external override returns (uint256 noId, uint256 keyIndex, bytes memory pubkey) {
+        (noId, keyIndex) = this.getDepositedNodeOperatorWithSequentialActiveKeys(nodeOperatorAddress, 1);
+        pubkey = module.getSigningKeys(noId, keyIndex, 1);
     }
 
     function _addNodeOperator(address from, uint256 keysCount) internal override returns (uint256 nodeOperatorId) {
