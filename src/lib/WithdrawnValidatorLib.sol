@@ -24,7 +24,7 @@ library WithdrawnValidatorLib {
         NodeOperator storage no,
         WithdrawnValidatorInfo calldata validatorInfo,
         uint256 keyAddedBalance
-    ) external returns (bool penaltyCovered) {
+    ) external {
         if (validatorInfo.slashingPenalty > 0 && !validatorInfo.isSlashed) {
             revert IBaseModule.InvalidWithdrawnValidatorInfo();
         }
@@ -45,7 +45,7 @@ library WithdrawnValidatorLib {
             pubkey
         );
 
-        penaltyCovered = _fulfillExitObligations(validatorInfo, penaltyInfo, keyAddedBalance);
+        _fulfillExitObligations(validatorInfo, penaltyInfo, keyAddedBalance);
 
         emit IBaseModule.ValidatorWithdrawn({
             nodeOperatorId: validatorInfo.nodeOperatorId,
@@ -62,7 +62,7 @@ library WithdrawnValidatorLib {
         WithdrawnValidatorInfo calldata validatorInfo,
         ExitPenaltyInfo memory penaltyInfo,
         uint256 keyAddedBalance
-    ) internal returns (bool penaltyCovered) {
+    ) internal {
         bool chargeElWithdrawalRequestFee = false;
 
         // TODO: calculate multiplier by `max(minExpectedBalance, exitBalance)`
@@ -98,7 +98,7 @@ library WithdrawnValidatorLib {
 
         IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
 
-        penaltyCovered = true;
+        bool penaltyCovered = true;
 
         // Confiscate penalties first to prioritize compensations for the stETH holders.
         if (penaltySum > 0) {

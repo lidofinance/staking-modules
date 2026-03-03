@@ -171,7 +171,7 @@ abstract contract ModuleCancelGeneralDelayedPenalty is ModuleFixtures {
 
 abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
     function test_settleGeneralDelayedPenalty() public assertInvariants {
-        uint256 noId = createNodeOperator();
+        uint256 noId = createNodeOperator(3);
         uint256 amount = 1 ether;
         module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), amount, "Test penalty");
 
@@ -185,11 +185,10 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
         assertEq(lock.amount, 0 ether);
         assertEq(lock.until, 0);
 
-        // If the penalty is settled the targetValidatorsCount should be 0
         NodeOperatorSummary memory summary = getNodeOperatorSummary(noId);
         assertEq(summary.targetValidatorsCount, 0, "targetValidatorsCount mismatch");
-        assertEq(summary.targetLimitMode, 2, "targetLimitMode mismatch");
-        assertEq(summary.depositableValidatorsCount, 0, "depositableValidatorsCount mismatch");
+        assertEq(summary.targetLimitMode, 0, "targetLimitMode mismatch");
+        assertEq(summary.depositableValidatorsCount, 2, "depositableValidatorsCount mismatch");
     }
 
     function test_settleGeneralDelayedPenalty_revertWhen_InvalidInput() public assertInvariants {
@@ -219,8 +218,8 @@ abstract contract ModuleSettleGeneralDelayedPenaltyBasic is ModuleFixtures {
 
         summary = getNodeOperatorSummary(noId);
         assertEq(summary.targetValidatorsCount, 0, "targetValidatorsCount mismatch");
-        assertEq(summary.targetLimitMode, 2, "targetLimitMode mismatch");
-        assertEq(summary.depositableValidatorsCount, 0, "depositableValidatorsCount mismatch");
+        assertEq(summary.targetLimitMode, 0, "targetLimitMode mismatch");
+        assertEq(summary.depositableValidatorsCount, 2, "depositableValidatorsCount mismatch");
     }
 
     function test_settleGeneralDelayedPenalty_multipleNOs() public assertInvariants {

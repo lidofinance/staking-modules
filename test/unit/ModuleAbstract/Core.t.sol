@@ -3,8 +3,6 @@
 
 pragma solidity 0.8.33;
 
-import { Vm } from "forge-std/Test.sol";
-
 import { BaseModule } from "src/abstract/BaseModule.sol";
 import { IBaseModule } from "src/interfaces/IBaseModule.sol";
 import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";

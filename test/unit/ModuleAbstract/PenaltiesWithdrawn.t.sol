@@ -137,7 +137,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.totalWithdrawnKeys, 1);
         // There should be target limit if the penalty is not covered by the bond.
         assertEq(no.targetLimit, 0);
-        assertEq(no.targetLimitMode, 2);
+        assertEq(no.targetLimitMode, 0);
     }
 
     function test_reportRegularWithdrawnValidators_exitDelayFee() public assertInvariants {
@@ -314,9 +314,8 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
-        // There should be target limit if the penalty is not covered by the bond.
         assertEq(no.targetLimit, 0);
-        assertEq(no.targetLimitMode, 2);
+        assertEq(no.targetLimitMode, 0);
     }
 
     function test_reportRegularWithdrawnValidators_strikesPenaltyWithMultiplier() public assertInvariants {
@@ -647,9 +646,8 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
-        // There should be target limit if the charges are covered by the bond but the penalties are not.
         assertEq(no.targetLimit, 0);
-        assertEq(no.targetLimitMode, 2);
+        assertEq(no.targetLimitMode, 0);
     }
 
     function test_reportRegularWithdrawnValidators_chargeHugeWithdrawalFee_StrikesPenalty() public assertInvariants {
@@ -780,9 +778,8 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
-        // There should be target limit if the charges or penalties are not covered by the bond.
         assertEq(no.targetLimit, 0);
-        assertEq(no.targetLimitMode, 2);
+        assertEq(no.targetLimitMode, 0);
     }
 
     function test_reportRegularWithdrawnValidators_chargeWithdrawalFee_zeroPenaltyValue() public assertInvariants {
