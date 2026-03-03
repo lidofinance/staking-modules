@@ -469,6 +469,12 @@ contract CSMAddValidatorKeysViaGate is ModuleAddValidatorKeysViaGate, CSMCommon 
 contract CSMAddValidatorKeysNegative is ModuleAddValidatorKeysNegative, CSMCommon {}
 
 contract CSMObtainDepositData is ModuleObtainDepositData, CSMCommon {
+    function _configureParametersRegistry() internal override {
+        parametersRegistry.setQueueLowestPriority(5);
+        assertNotEq(PRIORITY_QUEUE, parametersRegistry.QUEUE_LOWEST_PRIORITY());
+        REGULAR_QUEUE = uint32(parametersRegistry.QUEUE_LOWEST_PRIORITY());
+    }
+
     function test_obtainDepositData_MultipleOperators() public assertInvariants {
         uint256 firstId = createNodeOperator(2);
         uint256 secondId = createNodeOperator(3);
@@ -489,16 +495,17 @@ contract CSMObtainDepositData is ModuleObtainDepositData, CSMCommon {
 
     function test_obtainDepositData_AcrossDifferentQueues() public assertInvariants {
         uint256 noId = createNodeOperator(0);
+        uploadMoreKeys(noId, 20);
 
         parametersRegistry.setQueueConfig({ curveId: 0, priority: 0, maxDeposits: 10 });
         uploadMoreKeys(noId, 20);
 
         vm.expectEmit(address(module));
         emit IBaseModule.DepositableSigningKeysCountChanged(noId, 5);
-        module.obtainDepositData(15, "");
+        module.obtainDepositData(35, "");
 
         (, uint256 totalDepositedValidators, uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
-        assertEq(totalDepositedValidators, 15);
+        assertEq(totalDepositedValidators, 35);
         assertEq(depositableValidatorsCount, 5);
     }
 

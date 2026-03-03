@@ -607,7 +607,7 @@ abstract contract BaseModule is
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function __BaseModule_init(address admin) internal {
+    function __BaseModule_init(address admin) internal onlyInitializing {
         if (admin == address(0)) revert ZeroAdminAddress();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
