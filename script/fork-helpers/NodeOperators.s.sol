@@ -145,7 +145,7 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
     }
 
     function slash(uint256 noId, uint256 keyIndex) external broadcastVerifier {
-        module.onValidatorSlashed(noId, keyIndex);
+        module.reportValidatorSlashing(noId, keyIndex);
     }
 
     function withdraw(

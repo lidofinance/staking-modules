@@ -5,7 +5,6 @@ pragma solidity 0.8.33;
 
 import { Test } from "forge-std/Test.sol";
 
-import { WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 
 contract Library {
