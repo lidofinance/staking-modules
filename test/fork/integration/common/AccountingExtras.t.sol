@@ -3,9 +3,6 @@
 
 pragma solidity 0.8.33;
 
-import { IAccounting } from "src/interfaces/IAccounting.sol";
-import { IBondCore } from "src/interfaces/IBondCore.sol";
-
 import { MerkleTree } from "../../../helpers/MerkleTree.sol";
 import { PermitHelper } from "../../../helpers/Permit.sol";
 import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";

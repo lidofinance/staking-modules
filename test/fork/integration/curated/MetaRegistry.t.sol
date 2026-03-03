@@ -62,6 +62,7 @@ contract MetaRegistryIntegrationTestCurated is CuratedIntegrationBase {
         }
 
         IMetaRegistry.SubNodeOperator[] memory subs = new IMetaRegistry.SubNodeOperator[](1);
+        // forge-lint: disable-next-line(unsafe-typecast)
         subs[0] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: uint64(noId), share: 10000 });
 
         IMetaRegistry.OperatorGroup memory group = IMetaRegistry.OperatorGroup({
@@ -88,7 +89,9 @@ contract MetaRegistryIntegrationTestCurated is CuratedIntegrationBase {
 
         // Update shares: 80/20
         IMetaRegistry.SubNodeOperator[] memory subs = new IMetaRegistry.SubNodeOperator[](2);
+        // forge-lint: disable-next-line(unsafe-typecast)
         subs[0] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: uint64(noId1), share: 8000 });
+        // forge-lint: disable-next-line(unsafe-typecast)
         subs[1] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: uint64(noId2), share: 2000 });
 
         metaRegistry.createOrUpdateOperatorGroup(
@@ -195,7 +198,9 @@ contract MetaRegistryIntegrationTestCurated is CuratedIntegrationBase {
         if (g2 != metaRegistry.NO_GROUP_ID() && g2 != g1) _clearGroup(g2);
 
         IMetaRegistry.SubNodeOperator[] memory subs = new IMetaRegistry.SubNodeOperator[](2);
+        // forge-lint: disable-next-line(unsafe-typecast)
         subs[0] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: uint64(noId1), share: share1 });
+        // forge-lint: disable-next-line(unsafe-typecast)
         subs[1] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: uint64(noId2), share: share2 });
 
         uint256 countBefore = metaRegistry.getOperatorGroupsCount();

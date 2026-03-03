@@ -9,7 +9,7 @@ import { IParametersRegistry } from "../interfaces/IParametersRegistry.sol";
 import { NodeOperator } from "../interfaces/IBaseModule.sol";
 
 import { TransientUintUintMap, TransientUintUintMapLib } from "./TransientUintUintMapLib.sol";
-import { Batch, DepositQueueLib, IDepositQueueLib } from "./DepositQueueLib.sol";
+import { Batch, DepositQueueLib } from "./DepositQueueLib.sol";
 
 library DepositQueueOps {
     using DepositQueueLib for DepositQueueLib.Queue;
@@ -138,9 +138,6 @@ library DepositQueueOps {
         lastRemovedAtDepth = 0;
         visited = 0;
         reachedOutOfQueue = false;
-
-        // TODO: Looks unreachable
-        if (maxItems == 0) revert IDepositQueueLib.DepositQueueLookupNoLimit();
 
         Batch prevItem;
         uint128 indexOfPrev;

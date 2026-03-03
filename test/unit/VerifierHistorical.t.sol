@@ -156,6 +156,16 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
+    function test_processHistoricalWithdrawalProof_RevertWhen_UnsupportedSlot_RecentBlock() public {
+        fixture.data.recentBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.recentBlock.header.slot)
+        );
+
+        verifier.processHistoricalWithdrawalProof(fixture.data);
+    }
+
     function test_processHistoricalWithdrawalProof_RevertWhen_InvalidRecentBlock() public {
         vm.mockCall(
             verifier.BEACON_ROOTS(),

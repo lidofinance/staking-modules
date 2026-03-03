@@ -136,8 +136,6 @@ library NodeOperatorOps {
 
             NodeOperator storage no = nodeOperators[nodeOperatorId];
 
-            if (no.managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
-
             if (vettedSigningKeysCount == no.totalVettedKeys) continue;
 
             if (vettedSigningKeysCount > no.totalVettedKeys) revert IBaseModule.InvalidVetKeysPointer();

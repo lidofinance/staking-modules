@@ -1203,9 +1203,14 @@ contract ClaimRewardsWithFeeSplitsTest is BaseTest {
         vm.prank(user);
         accounting.updateFeeSplits(0, splits, 0, new bytes32[](0));
 
+        assertEq(accounting.hasSplits(0), true);
+
         // Setup fee rewards
         uint256 feeShares = 1 ether;
         stETH.mintShares(address(feeDistributor), feeShares);
+
+        uint256 expectedSplit0 = (feeShares * 3000) / 10000;
+        uint256 expectedSplit1 = (feeShares * 2000) / 10000;
 
         uint256[] memory sharesBefore = new uint256[](2);
         sharesBefore[0] = stETH.sharesOf(splits[0].recipient);
@@ -1213,14 +1218,18 @@ contract ClaimRewardsWithFeeSplitsTest is BaseTest {
 
         uint256 userBalanceBefore = stETH.balanceOf(user);
 
+        IFeeSplits.SplitTransfer[] memory expectedTransfers = accounting.getFeeSplitTransfers(0, feeShares);
+        assertEq(expectedTransfers.length, 2);
+        assertEq(expectedTransfers[0].recipient, splits[0].recipient);
+        assertEq(expectedTransfers[0].shares, expectedSplit0);
+        assertEq(expectedTransfers[1].recipient, splits[1].recipient);
+        assertEq(expectedTransfers[1].shares, expectedSplit1);
+
         // Claim rewards with fee splits
         vm.prank(user);
         uint256 claimedShares = accounting.claimRewardsStETH(0, 0.5 ether, feeShares, new bytes32[](1));
 
-        // Verify fee splits were processed
-        uint256 expectedSplit0 = (feeShares * 3000) / 10000;
-        uint256 expectedSplit1 = (feeShares * 2000) / 10000;
-
+        // Verify fee splits were processed correctly
         assertEq(stETH.sharesOf(splits[0].recipient), sharesBefore[0] + expectedSplit0);
         assertEq(stETH.sharesOf(splits[1].recipient), sharesBefore[1] + expectedSplit1);
 
@@ -1239,16 +1248,24 @@ contract ClaimRewardsWithFeeSplitsTest is BaseTest {
         vm.prank(user);
         accounting.updateFeeSplits(0, splits, 0, new bytes32[](0));
 
+        assertEq(accounting.hasSplits(0), true);
+
         uint256 feeShares = 0.8 ether;
         stETH.mintShares(address(feeDistributor), feeShares);
+
+        uint256 expectedSplit = (feeShares * 4000) / 10000;
 
         uint256 sharesBefore = stETH.sharesOf(splits[0].recipient);
         uint256 userWstBalanceBefore = wstETH.balanceOf(user);
 
+        IFeeSplits.SplitTransfer[] memory expectedTransfers = accounting.getFeeSplitTransfers(0, feeShares);
+        assertEq(expectedTransfers.length, 1);
+        assertEq(expectedTransfers[0].recipient, splits[0].recipient);
+        assertEq(expectedTransfers[0].shares, expectedSplit);
+
         vm.prank(user);
         uint256 claimedWstETH = accounting.claimRewardsWstETH(0, 0.3 ether, feeShares, new bytes32[](1));
 
-        uint256 expectedSplit = (feeShares * 4000) / 10000;
         assertEq(stETH.sharesOf(splits[0].recipient), sharesBefore + expectedSplit);
 
         assertGt(wstETH.balanceOf(user), userWstBalanceBefore);
@@ -1265,15 +1282,23 @@ contract ClaimRewardsWithFeeSplitsTest is BaseTest {
         vm.prank(user);
         accounting.updateFeeSplits(0, splits, 0, new bytes32[](0));
 
+        assertEq(accounting.hasSplits(0), true);
+
         uint256 feeShares = 1.2 ether;
         stETH.mintShares(address(feeDistributor), feeShares);
 
+        uint256 expectedSplit = (feeShares * 6000) / 10000;
+
         uint256 sharesBefore = stETH.sharesOf(splits[0].recipient);
+
+        IFeeSplits.SplitTransfer[] memory expectedTransfers = accounting.getFeeSplitTransfers(0, feeShares);
+        assertEq(expectedTransfers.length, 1);
+        assertEq(expectedTransfers[0].recipient, splits[0].recipient);
+        assertEq(expectedTransfers[0].shares, expectedSplit);
 
         vm.prank(user);
         accounting.claimRewardsUnstETH(0, 0.4 ether, feeShares, new bytes32[](1));
 
-        uint256 expectedSplit = (feeShares * 6000) / 10000;
         assertEq(stETH.sharesOf(splits[0].recipient), sharesBefore + expectedSplit);
     }
 

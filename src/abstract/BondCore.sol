@@ -258,8 +258,7 @@ abstract contract BondCore is IBondCore {
         uint256 debt = $.bondDebt[nodeOperatorId];
         if (debt == 0) return;
         uint256 notBurnedDebt = _burnWithoutCreatingDebt(nodeOperatorId, debt);
-        // Redundant check given the current implementation, but can be useful in the future.
-        if (notBurnedDebt == debt) return;
+
         $.bondDebt[nodeOperatorId] = notBurnedDebt;
         emit BondDebtCovered(nodeOperatorId, debt - notBurnedDebt);
     }

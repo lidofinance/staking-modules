@@ -105,7 +105,9 @@ contract DepositInfoRefreshTestCurated is CuratedIntegrationBase {
 
         // Create a new group with both operators
         IMetaRegistry.SubNodeOperator[] memory subs = new IMetaRegistry.SubNodeOperator[](2);
+        // forge-lint: disable-next-line(unsafe-typecast)
         subs[0] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: uint64(noId1), share: 5000 });
+        // forge-lint: disable-next-line(unsafe-typecast)
         subs[1] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: uint64(noId2), share: 5000 });
 
         metaRegistry.createOrUpdateOperatorGroup(

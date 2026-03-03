@@ -82,7 +82,6 @@ using DepositQueueLib for DepositQueueLib.Queue;
 /// @dev Helps expose the errors to the ICSModule interface.
 interface IDepositQueueLib {
     error DepositQueueIsEmpty();
-    error DepositQueueLookupNoLimit();
 }
 
 /// @author madlabman

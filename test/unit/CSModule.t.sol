@@ -2065,17 +2065,6 @@ contract CSMStakingRouterAccessControl is ModuleStakingRouterAccessControl, CSMC
         expectRoleRevert(stranger, role);
         csm.allocateDeposits(0, new bytes[](0), UintArr(), UintArr(), UintArr());
     }
-
-    function test_stakingRouterRole_onWithdrawalCredentialsChanged_withDepositable() public {
-        createNodeOperator();
-        bytes32 role = module.STAKING_ROUTER_ROLE();
-        vm.prank(admin);
-        module.grantRole(role, actor);
-
-        vm.expectRevert(IBaseModule.DepositableKeysWithUnsupportedWithdrawalCredentials.selector);
-        vm.prank(actor);
-        module.onWithdrawalCredentialsChanged();
-    }
 }
 
 contract CSMDepositableValidatorsCount is ModuleDepositableValidatorsCount, CSMCommon {}
