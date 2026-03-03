@@ -315,8 +315,6 @@ contract CuratedCreateNodeOperator is ModuleCreateNodeOperator, CuratedCommon {}
 
 contract CuratedAddValidatorKeys is ModuleAddValidatorKeys, CuratedCommon {}
 
-contract CuratedAddValidatorKeysViaGate is ModuleAddValidatorKeysViaGate, CuratedCommon {}
-
 contract CuratedAddValidatorKeysNegative is ModuleAddValidatorKeysNegative, CuratedCommon {}
 
 contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {

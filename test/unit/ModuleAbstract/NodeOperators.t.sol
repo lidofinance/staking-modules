@@ -93,24 +93,6 @@ abstract contract ModuleCreateNodeOperator is ModuleFixtures {
         assertEq(no.extendedManagerPermissions, true);
     }
 
-    function test_createNodeOperator_withReferrer() public assertInvariants {
-        {
-            vm.expectEmit(address(module));
-            emit IBaseModule.NodeOperatorAdded(0, nodeOperator, nodeOperator, false);
-            vm.expectEmit(address(module));
-            emit IBaseModule.ReferrerSet(0, address(154));
-        }
-        module.createNodeOperator(
-            nodeOperator,
-            NodeOperatorManagementProperties({
-                managerAddress: address(0),
-                rewardAddress: address(0),
-                extendedManagerPermissions: false
-            }),
-            address(154)
-        );
-    }
-
     function test_createNodeOperator_RevertWhen_ZeroSenderAddress() public {
         vm.expectRevert(IBaseModule.ZeroSenderAddress.selector);
         module.createNodeOperator(

@@ -404,7 +404,25 @@ contract CSMPauseTest is ModulePauseTest, CSMCommon {}
 
 contract CSMPauseAffectingTest is ModulePauseAffectingTest, CSMCommon {}
 
-contract CSMCreateNodeOperator is ModuleCreateNodeOperator, CSMCommon {}
+contract CSMCreateNodeOperator is ModuleCreateNodeOperator, CSMCommon {
+    function test_createNodeOperator_withReferrer() public assertInvariants {
+        {
+            vm.expectEmit(address(module));
+            emit IBaseModule.NodeOperatorAdded(0, nodeOperator, nodeOperator, false);
+            vm.expectEmit(address(module));
+            emit IBaseModule.ReferrerSet(0, address(154));
+        }
+        module.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: address(0),
+                rewardAddress: address(0),
+                extendedManagerPermissions: false
+            }),
+            address(154)
+        );
+    }
+}
 
 contract CSMAddValidatorKeys is ModuleAddValidatorKeys, CSMCommon {
     function test_AddValidatorKeysETH_EmitsBatchEnqueued() public assertInvariants brutalizeMemory {

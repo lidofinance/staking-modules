@@ -22,8 +22,7 @@ library NodeOperatorOps {
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,
         address from,
-        NodeOperatorManagementProperties calldata managementProperties,
-        address referrer
+        NodeOperatorManagementProperties calldata managementProperties
     ) external {
         if (from == address(0)) revert IBaseModule.ZeroSenderAddress();
 
@@ -47,9 +46,6 @@ library NodeOperatorOps {
             rewardAddress,
             managementProperties.extendedManagerPermissions
         );
-
-        // TODO: remove `referrer` and place to module impl.
-        if (referrer != address(0)) emit IBaseModule.ReferrerSet(nodeOperatorId, referrer);
     }
 
     function setTargetLimit(
@@ -202,11 +198,12 @@ library NodeOperatorOps {
         }
     }
 
-    function removeKeysDefault(
+    function removeKeys(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,
         uint256 startIndex,
-        uint256 keysCount
+        uint256 keysCount,
+        bool useKeyRemovalCharge
     ) external {
         NodeOperator storage no = nodeOperators[nodeOperatorId];
 
@@ -219,49 +216,20 @@ library NodeOperatorOps {
             totalKeysCount: no.totalAddedKeys
         });
 
-        // Added/vetted signing key counters are uint32 fields; newTotalSigningKeys is strictly
-        // less than no.totalAddedKeys, so it always fits.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        no.totalAddedKeys = uint32(newTotalSigningKeys);
-        emit IBaseModule.TotalSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
+        if (useKeyRemovalCharge) {
+            IBaseModule module = IBaseModule(address(this));
+            IParametersRegistry parametersRegistry = module.PARAMETERS_REGISTRY();
+            IAccounting accounting = module.ACCOUNTING();
 
-        // Reset vetted keys pointer since we can not know if the removed keys were previously unvetted due to being invalid, or not.
-        // If invalid keys are still present after deletion and vetted keys pointer reset, they will be unvetted again.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        no.totalVettedKeys = uint32(newTotalSigningKeys);
-        emit IBaseModule.VettedSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
-    }
+            // The Node Operator is charged for the every removed key. It's motivated by the fact that the DAO should cleanup
+            // the queue from the empty batches related to the Node Operator. It's possible to have multiple batches with only one
+            // key in it, so it means the DAO should be able to cover removal costs for as much batches as keys removed in this case.
+            uint256 amountToCharge = parametersRegistry.getKeyRemovalCharge(accounting.getBondCurveId(nodeOperatorId)) *
+                keysCount;
 
-    // TODO: can be merged with *Default with arg
-    function removeKeysCSM(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        uint256 nodeOperatorId,
-        uint256 startIndex,
-        uint256 keysCount
-    ) external {
-        NodeOperator storage no = nodeOperators[nodeOperatorId];
-
-        if (startIndex < no.totalDepositedKeys) revert IBaseModule.SigningKeysInvalidOffset();
-
-        uint256 newTotalSigningKeys = SigningKeys.removeKeysSigs({
-            nodeOperatorId: nodeOperatorId,
-            startIndex: startIndex,
-            keysCount: keysCount,
-            totalKeysCount: no.totalAddedKeys
-        });
-
-        IBaseModule module = IBaseModule(address(this));
-        IParametersRegistry parametersRegistry = module.PARAMETERS_REGISTRY();
-        IAccounting accounting = module.ACCOUNTING();
-
-        // The Node Operator is charged for the every removed key. It's motivated by the fact that the DAO should cleanup
-        // the queue from the empty batches related to the Node Operator. It's possible to have multiple batches with only one
-        // key in it, so it means the DAO should be able to cover removal costs for as much batches as keys removed in this case.
-        uint256 amountToCharge = parametersRegistry.getKeyRemovalCharge(accounting.getBondCurveId(nodeOperatorId)) *
-            keysCount;
-
-        if (amountToCharge != 0 && accounting.chargeFee(nodeOperatorId, amountToCharge)) {
-            emit IBaseModule.KeyRemovalChargeApplied(nodeOperatorId);
+            if (amountToCharge != 0 && accounting.chargeFee(nodeOperatorId, amountToCharge)) {
+                emit IBaseModule.KeyRemovalChargeApplied(nodeOperatorId);
+            }
         }
 
         // Added/vetted signing key counters are uint32 fields; newTotalSigningKeys is strictly
