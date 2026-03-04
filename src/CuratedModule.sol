@@ -28,7 +28,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
     IMetaRegistry public immutable META_REGISTRY;
 
-    uint64 internal constant INITIALIZED_VERSION = 1;
     // keccak256(abi.encode(uint256(keccak256("CuratedModule")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant CURATED_MODULE_STORAGE_LOCATION =
         0x748416948424a2a643c796b7b8213bcf41155fd3a072f0851ad0a3d6ca632500;
@@ -49,7 +48,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
     ///      It is recommended to call this method in the same transaction as the deployment transaction
     ///      and perform extensive deployment verification before using the contract instance.
-    function initialize(address admin) external override reinitializer(INITIALIZED_VERSION) {
+    function initialize(address admin) external override initializer {
         __BaseModule_init(admin);
     }
 
@@ -61,13 +60,13 @@ contract CuratedModule is ICuratedModule, BaseModule {
         _checkStakingRouterRole();
         _requireDepositInfoUpToDate();
 
+        // TODO: think about changing to list of structs
         (uint256 allocated, uint256[] memory operatorIds, uint256[] memory allocations) = CuratedDepositAllocator
             .allocateInitialDeposits(_nodeOperators, _nodeOperatorsCount, depositsCount);
         if (allocated == 0) return (publicKeys, signatures);
         (publicKeys, signatures) = SigningKeys.initKeysSigsBuf(allocated);
 
         uint256 loadedKeysCount;
-        CuratedModuleStorage storage $ = _storage();
         for (uint256 i; i < allocations.length; ++i) {
             uint256 allocation = allocations[i];
             uint256 operatorId = operatorIds[i];
@@ -97,7 +96,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             emit DepositableSigningKeysCountChanged(operatorId, depositableValidatorsCount);
 
             CuratedOperatorBalancesOps.increaseBalance(
-                $.operatorBalances,
+                _storage().operatorBalances,
                 operatorId,
                 allocation * CuratedDepositAllocator.MIN_ACTIVATION_BALANCE
             );
@@ -113,6 +112,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
         _incrementModuleNonce();
     }
+
+    // Continue review from here
 
     /// @inheritdoc IStakingModuleV2
     function allocateDeposits(
