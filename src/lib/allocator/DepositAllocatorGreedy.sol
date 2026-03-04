@@ -35,31 +35,30 @@ library DepositAllocatorGreedy {
         AllocationState memory state,
         uint256 allocationAmount,
         uint256 step
-    ) internal pure returns (uint256[] memory allocations, uint256 remainder) {
+    ) internal pure returns (uint256 allocated, uint256[] memory allocations) {
         uint256 n = state.sharesX96.length;
-        uint256[] memory imbalances = _computeImbalances(state, allocationAmount, step);
         allocations = new uint256[](n);
 
+        uint256[] memory imbalances = _computeImbalances(state, allocationAmount, step);
         uint256[] memory idx = _sortedIndicesByImbalanceDesc(imbalances);
 
-        uint256 remaining = allocationAmount;
-        for (uint256 i; i < n && remaining > 0; ++i) {
+        uint256 remainder = allocationAmount;
+        for (uint256 i; i < n && remainder > 0; ++i) {
             uint256 opIdx = idx[i];
             uint256 possible = Math.min(imbalances[opIdx], _quantize(state.capacities[opIdx], step));
             if (possible == 0) continue;
 
-            uint256 toGive = Math.min(possible, _quantize(remaining, step));
-            // NOTE: toGive can be 0 if remaining is less than step and possible is greater than remaining.
+            uint256 toGive = Math.min(possible, _quantize(remainder, step));
+            // NOTE: toGive can be 0 if remainder is less than step and possible is greater than remainder.
             //       In this case, there is no point in iterating further.
             if (toGive == 0) break;
 
             allocations[opIdx] = toGive;
             unchecked {
-                remaining -= toGive;
+                remainder -= toGive;
             }
         }
-
-        remainder = remaining;
+        allocated = allocationAmount - remainder;
     }
 
     function _quantize(uint256 value, uint256 step) internal pure returns (uint256) {
@@ -70,6 +69,7 @@ library DepositAllocatorGreedy {
     }
 
     function _sortedIndicesByImbalanceDesc(uint256[] memory imbalances) internal pure returns (uint256[] memory idx) {
+        // TODO: use OpenZeppelin lib
         uint256 n = imbalances.length;
         idx = new uint256[](n);
         unchecked {
