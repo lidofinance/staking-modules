@@ -468,10 +468,9 @@ contract Accounting is
         }
         claimableShares = _getClaimableBondShares(nodeOperatorId);
         if (hasSplits && claimableShares != 0 && !isPaused()) {
-            (SplitTransfer[] memory transfers, uint256 splittableShares) = FeeSplits.getFeeSplitTransfers(
-                nodeOperatorId,
-                claimableShares
-            );
+            uint256 pendingToSplit = FeeSplits.getPendingSharesToSplit(nodeOperatorId);
+            uint256 splittableShares = claimableShares > pendingToSplit ? pendingToSplit : claimableShares;
+            SplitTransfer[] memory transfers = FeeSplits.getFeeSplitTransfers(nodeOperatorId, splittableShares);
             uint256 transferredShares;
             for (uint256 i; i < transfers.length; ++i) {
                 uint256 shares = transfers[i].shares;

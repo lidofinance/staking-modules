@@ -11,8 +11,6 @@ import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 import { ModuleFixtures } from "./_Base.t.sol";
 
 abstract contract ModuleObtainDepositData is ModuleFixtures {
-    // TODO: test with near to real values
-
     function test_obtainDepositData() public assertInvariants {
         uint256 nodeOperatorId = createNodeOperator(1);
         (bytes memory keys, bytes memory signatures) = module.getSigningKeysWithSignatures(nodeOperatorId, 0, 1);

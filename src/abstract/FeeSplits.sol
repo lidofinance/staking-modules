@@ -34,21 +34,17 @@ abstract contract FeeSplits is IFeeSplits {
     }
 
     /// @inheritdoc IFeeSplits
-    function getPendingSharesToSplit(uint256 nodeOperatorId) external view returns (uint256) {
+    function getPendingSharesToSplit(uint256 nodeOperatorId) public view returns (uint256) {
         return _getFeeSplitsStorage().pendingSharesToSplit[nodeOperatorId];
     }
 
     /// @inheritdoc IFeeSplits
     function getFeeSplitTransfers(
         uint256 nodeOperatorId,
-        uint256 claimableShares
-    ) public view returns (SplitTransfer[] memory transfers, uint256 splittableShares) {
+        uint256 splittableShares
+    ) public view returns (SplitTransfer[] memory transfers) {
+        if (splittableShares == 0) return transfers;
         FeeSplitsStorage storage $ = _getFeeSplitsStorage();
-        uint256 pending = $.pendingSharesToSplit[nodeOperatorId];
-        if (pending == 0 || claimableShares == 0) return (transfers, splittableShares);
-
-        splittableShares = claimableShares > pending ? pending : claimableShares;
-
         FeeSplit[] storage splits = $.feeSplits[nodeOperatorId];
         transfers = new SplitTransfer[](splits.length);
         for (uint256 i; i < splits.length; ++i) {

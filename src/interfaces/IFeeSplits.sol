@@ -37,12 +37,11 @@ interface IFeeSplits {
 
     /// @notice Calculate fee split transfers for the given Node Operator
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param claimableShares Max shares that can be used as split operation base
+    /// @param splittableShares Shares amount that can be split according to the current state of the Node Operator rewards and pending shares to split
+    ///                         getPendingSharesToSplit() + FeeDistributor.getFeesToDistribute()
     /// @return transfers Shares amounts to transfer to each split recipient
-    /// @return splittableShares Actual splittable shares used for calculations
-    /// @dev The returned `splittableShares` includes the retained remainder that stays on the Node Operator bond
     function getFeeSplitTransfers(
         uint256 nodeOperatorId,
-        uint256 claimableShares
-    ) external view returns (SplitTransfer[] memory transfers, uint256 splittableShares);
+        uint256 splittableShares
+    ) external view returns (SplitTransfer[] memory transfers);
 }

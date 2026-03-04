@@ -136,8 +136,6 @@ library NodeOperatorOps {
 
             NodeOperator storage no = nodeOperators[nodeOperatorId];
 
-            if (no.managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
-
             if (vettedSigningKeysCount == no.totalVettedKeys) continue;
 
             if (vettedSigningKeysCount > no.totalVettedKeys) revert IBaseModule.InvalidVetKeysPointer();
@@ -439,10 +437,7 @@ library NodeOperatorOps {
         uint256 incrementWei
     ) internal {
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        uint256 current = keyAddedBalances[pointer];
-        uint256 cap = _keyAddedBalanceCap();
-        if (current == cap) return;
-        uint256 updatedBalance = Math.min(cap, current + incrementWei);
+        uint256 updatedBalance = Math.min(_keyAddedBalanceCap(), keyAddedBalances[pointer] + incrementWei);
         keyAddedBalances[pointer] = updatedBalance;
         emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, updatedBalance);
     }

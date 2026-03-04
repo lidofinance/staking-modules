@@ -1362,9 +1362,8 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
                 })
             );
         }
-        // TODO: Think about more realistic weight, so far the units are unclear.
         if (r.getBondCurveWeight(curveId) == 0) {
-            r.setBondCurveWeight(curveId, 1);
+            r.setBondCurveWeight(curveId, 100);
             CuratedModule cm = CuratedModule(address(module));
             cm.batchDepositInfoUpdate(cm.getNodeOperatorsCount());
         }
