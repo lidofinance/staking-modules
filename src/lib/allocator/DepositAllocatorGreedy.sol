@@ -3,6 +3,9 @@
 pragma solidity 0.8.33;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { Arrays } from "@openzeppelin/contracts/utils/Arrays.sol";
+import { Comparators } from "@openzeppelin/contracts/utils/Comparators.sol";
+import { PackedSortKey, PackedSortKeyLib } from "./PackedSortKeyLib.sol";
 
 /// @dev Helper struct for input allocation state.
 struct AllocationState {
@@ -18,6 +21,8 @@ struct AllocationState {
 
 /// @notice Greedy imbalance math with the same entrypoints as DepositPouringMath.
 library DepositAllocatorGreedy {
+    using PackedSortKeyLib for PackedSortKey;
+
     // Fixed-point scale (2^96) for share ratios to represent fractional shares as integers.
     uint256 internal constant S_SCALE = uint256(1) << 96;
 
@@ -39,13 +44,13 @@ library DepositAllocatorGreedy {
         uint256 n = state.sharesX96.length;
         allocations = new uint256[](n);
 
-        uint256[] memory imbalances = _computeImbalances(state, allocationAmount, step);
-        uint256[] memory idx = _sortedIndicesByImbalanceDesc(imbalances);
+        PackedSortKey[] memory keys = _sortedKeysByImbalanceDesc(state, allocationAmount, step);
 
         uint256 remainder = allocationAmount;
         for (uint256 i; i < n && remainder > 0; ++i) {
-            uint256 opIdx = idx[i];
-            uint256 possible = Math.min(imbalances[opIdx], _quantize(state.capacities[opIdx], step));
+            PackedSortKey key = keys[i];
+            uint256 opIdx = key.unpackIndex();
+            uint256 possible = Math.min(key.unpackImbalance(), _quantize(state.capacities[opIdx], step));
             if (possible == 0) continue;
 
             uint256 toGive = Math.min(possible, _quantize(remainder, step));
@@ -68,41 +73,29 @@ library DepositAllocatorGreedy {
         }
     }
 
-    function _sortedIndicesByImbalanceDesc(uint256[] memory imbalances) internal pure returns (uint256[] memory idx) {
-        // TODO: use OpenZeppelin lib
-        uint256 n = imbalances.length;
-        idx = new uint256[](n);
-        unchecked {
-            for (uint256 i = 1; i < n; ++i) {
-                uint256 keyImb = imbalances[i];
-                uint256 j = i;
-                while (j > 0) {
-                    uint256 prev = idx[j - 1];
-                    if (imbalances[prev] >= keyImb) break;
-                    idx[j] = prev;
-                    --j;
-                }
-                idx[j] = i;
-            }
-        }
-    }
-
-    function _computeImbalances(
+    function _sortedKeysByImbalanceDesc(
         AllocationState memory state,
         uint256 allocationAmount,
         uint256 step
-    ) internal pure returns (uint256[] memory imbalances) {
+    ) internal pure returns (PackedSortKey[] memory keys) {
         uint256 n = state.sharesX96.length;
-        imbalances = new uint256[](n);
+        keys = new PackedSortKey[](n);
         uint256 targetTotal = state.totalCurrent + allocationAmount;
-        for (uint256 i; i < n; ++i) {
-            // NOTE: Rounding up to avoid cases when 10 keys aren't allocated over 100 equal operators
-            uint256 target = Math.mulDiv(state.sharesX96[i], targetTotal, S_SCALE, Math.Rounding.Ceil);
-            uint256 current = state.currents[i];
-            if (target <= current) continue;
-            unchecked {
-                imbalances[i] = _quantize(target - current, step);
+
+        unchecked {
+            for (uint256 i; i < n; ++i) {
+                uint256 imbalance;
+                // NOTE: Rounding up to avoid cases when 10 keys aren't allocated over 100 equal operators
+                uint256 target = Math.mulDiv(state.sharesX96[i], targetTotal, S_SCALE, Math.Rounding.Ceil);
+                uint256 current = state.currents[i];
+                if (target > current) {
+                    imbalance = _quantize(target - current, step);
+                }
+                // Sort key: imbalance desc, index asc on ties.
+                keys[i] = PackedSortKeyLib.pack(imbalance, i);
             }
         }
+
+        Arrays.sort(PackedSortKeyLib.asUint256Array(keys), Comparators.gt);
     }
 }
