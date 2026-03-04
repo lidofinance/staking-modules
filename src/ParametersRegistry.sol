@@ -24,6 +24,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     bytes32 public constant MANAGE_PERFORMANCE_PARAMETERS_ROLE = keccak256("MANAGE_PERFORMANCE_PARAMETERS_ROLE");
     bytes32 public constant MANAGE_REWARD_SHARE_ROLE = keccak256("MANAGE_REWARD_SHARE_ROLE");
     bytes32 public constant MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE = keccak256("MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE");
+    bytes32 public constant MANAGE_CURVE_PARAMETERS_ROLE = keccak256("MANAGE_CURVE_PARAMETERS_ROLE");
 
     /// @dev Maximal value for basis points (BP)
     ///      1 BP = 0.01%
@@ -81,6 +82,11 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
 
     modifier onlyRoleMemberOrAdmin(bytes32 role) {
         _onlyRoleMemberOrAdmin(role);
+        _;
+    }
+
+    modifier onlyRoleMemberOrCurveParametersRoleOrAdmin(bytes32 role) {
+        _onlyRoleMemberOrCurveParametersRoleOrAdmin(role);
         _;
     }
 
@@ -219,7 +225,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     function setKeyRemovalCharge(
         uint256 curveId,
         uint256 keyRemovalCharge
-    ) external onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
         _keyRemovalCharges[curveId] = MarkedUint248(keyRemovalCharge.toUint248(), true);
         emit KeyRemovalChargeSet(curveId, keyRemovalCharge);
     }
@@ -228,13 +234,16 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     function setGeneralDelayedPenaltyAdditionalFine(
         uint256 curveId,
         uint256 fine
-    ) external onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
         _generalDelayedPenaltyAdditionalFines[curveId] = MarkedUint248(fine.toUint248(), true);
         emit GeneralDelayedPenaltyAdditionalFineSet(curveId, fine);
     }
 
     /// @inheritdoc IParametersRegistry
-    function setKeysLimit(uint256 curveId, uint256 limit) external onlyRoleMemberOrAdmin(MANAGE_KEYS_LIMIT_ROLE) {
+    function setKeysLimit(
+        uint256 curveId,
+        uint256 limit
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_KEYS_LIMIT_ROLE) {
         _keysLimits[curveId] = MarkedUint248(limit.toUint248(), true);
         emit KeysLimitSet(curveId, limit);
     }
@@ -244,7 +253,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         uint256 curveId,
         uint256 priority,
         uint256 maxDeposits
-    ) external onlyRoleMemberOrAdmin(MANAGE_QUEUE_CONFIG_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_QUEUE_CONFIG_ROLE) {
         _validateQueueConfig(priority, maxDeposits);
         _queueConfigs[curveId] = QueueConfig({ priority: priority.toUint32(), maxDeposits: maxDeposits.toUint32() });
         emit QueueConfigSet(curveId, priority, maxDeposits);
@@ -254,7 +263,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     function setRewardShareData(
         uint256 curveId,
         KeyNumberValueInterval[] calldata data
-    ) external onlyRoleMemberOrAdmin(MANAGE_REWARD_SHARE_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_REWARD_SHARE_ROLE) {
         // NOTE: The shared interval validator enforces `data[0].value > 0`.
         // Zero reward share for the first interval would allow rebate-only oracle reports (`distributed == 0 && rebate > 0`),
         // and those are rejected by FeeDistributor.
@@ -271,7 +280,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     function setPerformanceLeewayData(
         uint256 curveId,
         KeyNumberValueInterval[] calldata data
-    ) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
         _validateKeyNumberValueIntervals(data);
         KeyNumberValueInterval[] storage intervals = _performanceLeewayData[curveId];
         if (intervals.length > 0) delete _performanceLeewayData[curveId];
@@ -286,7 +295,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         uint256 curveId,
         uint256 lifetime,
         uint256 threshold
-    ) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
         _validateStrikesParams(lifetime, threshold);
         _strikesParams[curveId] = StrikesParams(lifetime.toUint32(), threshold.toUint32());
         emit StrikesParamsSet(curveId, lifetime, threshold);
@@ -296,7 +305,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     function setBadPerformancePenalty(
         uint256 curveId,
         uint256 penalty
-    ) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
         _badPerformancePenalties[curveId] = MarkedUint248(penalty.toUint248(), true);
         emit BadPerformancePenaltySet(curveId, penalty);
     }
@@ -307,7 +316,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         uint256 attestationsWeight,
         uint256 blocksWeight,
         uint256 syncWeight
-    ) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
         _validatePerformanceCoefficients(attestationsWeight, blocksWeight, syncWeight);
         _performanceCoefficients[curveId] = PerformanceCoefficients(
             attestationsWeight.toUint32(),
@@ -321,7 +330,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     function setAllowedExitDelay(
         uint256 curveId,
         uint256 delay
-    ) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
         _validateAllowedExitDelay(delay);
         _allowedExitDelay[curveId] = delay;
         emit AllowedExitDelaySet(curveId, delay);
@@ -331,7 +340,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     function setExitDelayFee(
         uint256 curveId,
         uint256 penalty
-    ) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
         _exitDelayFees[curveId] = MarkedUint248(penalty.toUint248(), true);
         emit ExitDelayFeeSet(curveId, penalty);
     }
@@ -340,7 +349,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     function setMaxElWithdrawalRequestFee(
         uint256 curveId,
         uint256 fee
-    ) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
         _maxElWithdrawalRequestFees[curveId] = MarkedUint248(fee.toUint248(), true);
         emit MaxElWithdrawalRequestFeeSet(curveId, fee);
     }
@@ -352,7 +361,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     /// @inheritdoc IParametersRegistry
     function unsetKeyRemovalCharge(
         uint256 curveId
-    ) external onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
         delete _keyRemovalCharges[curveId];
         emit KeyRemovalChargeUnset(curveId);
     }
@@ -360,25 +369,31 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     /// @inheritdoc IParametersRegistry
     function unsetGeneralDelayedPenaltyAdditionalFine(
         uint256 curveId
-    ) external onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
         delete _generalDelayedPenaltyAdditionalFines[curveId];
         emit GeneralDelayedPenaltyAdditionalFineUnset(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
-    function unsetKeysLimit(uint256 curveId) external onlyRoleMemberOrAdmin(MANAGE_KEYS_LIMIT_ROLE) {
+    function unsetKeysLimit(
+        uint256 curveId
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_KEYS_LIMIT_ROLE) {
         delete _keysLimits[curveId];
         emit KeysLimitUnset(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
-    function unsetQueueConfig(uint256 curveId) external onlyRoleMemberOrAdmin(MANAGE_QUEUE_CONFIG_ROLE) {
+    function unsetQueueConfig(
+        uint256 curveId
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_QUEUE_CONFIG_ROLE) {
         delete _queueConfigs[curveId];
         emit QueueConfigUnset(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
-    function unsetRewardShareData(uint256 curveId) external onlyRoleMemberOrAdmin(MANAGE_REWARD_SHARE_ROLE) {
+    function unsetRewardShareData(
+        uint256 curveId
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_REWARD_SHARE_ROLE) {
         delete _rewardShareData[curveId];
         emit RewardShareDataUnset(curveId);
     }
@@ -386,13 +401,15 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     /// @inheritdoc IParametersRegistry
     function unsetPerformanceLeewayData(
         uint256 curveId
-    ) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
         delete _performanceLeewayData[curveId];
         emit PerformanceLeewayDataUnset(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
-    function unsetStrikesParams(uint256 curveId) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
+    function unsetStrikesParams(
+        uint256 curveId
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
         delete _strikesParams[curveId];
         emit StrikesParamsUnset(curveId);
     }
@@ -400,7 +417,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     /// @inheritdoc IParametersRegistry
     function unsetBadPerformancePenalty(
         uint256 curveId
-    ) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
         delete _badPerformancePenalties[curveId];
         emit BadPerformancePenaltyUnset(curveId);
     }
@@ -408,7 +425,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     /// @inheritdoc IParametersRegistry
     function unsetPerformanceCoefficients(
         uint256 curveId
-    ) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE) {
         delete _performanceCoefficients[curveId];
         emit PerformanceCoefficientsUnset(curveId);
     }
@@ -416,13 +433,15 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     /// @inheritdoc IParametersRegistry
     function unsetAllowedExitDelay(
         uint256 curveId
-    ) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
         delete _allowedExitDelay[curveId];
         emit AllowedExitDelayUnset(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
-    function unsetExitDelayFee(uint256 curveId) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
+    function unsetExitDelayFee(
+        uint256 curveId
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
         delete _exitDelayFees[curveId];
         emit ExitDelayFeeUnset(curveId);
     }
@@ -430,7 +449,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     /// @inheritdoc IParametersRegistry
     function unsetMaxElWithdrawalRequestFee(
         uint256 curveId
-    ) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
         delete _maxElWithdrawalRequestFees[curveId];
         emit MaxElWithdrawalRequestFeeUnset(curveId);
     }
@@ -620,6 +639,15 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         if (!(hasRole(role, sender) || hasRole(getRoleAdmin(role), sender))) {
             revert AccessControlUnauthorizedAccount(sender, role);
         }
+    }
+
+    function _onlyRoleMemberOrCurveParametersRoleOrAdmin(bytes32 role) internal view {
+        address sender = msg.sender;
+        if (hasRole(MANAGE_CURVE_PARAMETERS_ROLE, sender)) {
+            return;
+        }
+
+        _onlyRoleMemberOrAdmin(role);
     }
 
     function _validateQueueConfig(uint256 priority, uint256 maxDeposits) internal view {

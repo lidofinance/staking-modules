@@ -8,6 +8,11 @@ import { IBondCurve } from "./IBondCurve.sol";
 import { IParametersRegistry } from "./IParametersRegistry.sol";
 
 /// @title One-shot setup helper for a bond curve plus per-curve parameter overrides.
+/// @notice Intended for one-shot execution with temporary permissions only.
+///         Required roles:
+///         - `ACCOUNTING.MANAGE_BOND_CURVES_ROLE()`
+///         - `REGISTRY.MANAGE_CURVE_PARAMETERS_ROLE()`
+///         After `execute()` succeeds, this contract renounces both roles.
 interface IOneShotCurveSetup {
     struct ScalarOverride {
         bool isSet;
@@ -74,7 +79,25 @@ interface IOneShotCurveSetup {
     /// @notice Curve ID created by the successful `execute()` call.
     function deployedCurveId() external view returns (uint256);
 
+    /// @notice Returns the stored bond curve to be deployed by `execute()`.
+    function getBondCurve() external view returns (IBondCurve.BondCurveIntervalInput[] memory bondCurve);
+
+    /// @notice Returns whether reward share override is configured and the configured interval data.
+    function getRewardShareDataOverride()
+        external
+        view
+        returns (bool isSet, IParametersRegistry.KeyNumberValueInterval[] memory data);
+
+    /// @notice Returns whether performance leeway override is configured and the configured interval data.
+    function getPerformanceLeewayDataOverride()
+        external
+        view
+        returns (bool isSet, IParametersRegistry.KeyNumberValueInterval[] memory data);
+
     /// @notice Executes the stored rollout plan, adding the curve and applying the overrides.
+    /// @dev Requires only:
+    ///      `ACCOUNTING.MANAGE_BOND_CURVES_ROLE()` and `REGISTRY.MANAGE_CURVE_PARAMETERS_ROLE()`.
+    ///      On success, both roles are renounced by this contract.
     /// @return curveId Curve ID allocated to the newly deployed bond curve.
     function execute() external returns (uint256 curveId);
 }

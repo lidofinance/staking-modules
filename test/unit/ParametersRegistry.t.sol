@@ -280,12 +280,18 @@ abstract contract ParametersTest {
 
 contract ParametersRegistryBaseTestInitialized is ParametersRegistryBaseTest {
     address roleMember;
+    address curveRoleMember;
 
     function setUp() public virtual override {
         super.setUp();
         _enableInitializers(address(parametersRegistry));
         parametersRegistry.initialize(admin, defaultInitData);
         roleMember = nextAddress("ROLE_MEMBER");
+        curveRoleMember = nextAddress("CURVE_ROLE_MEMBER");
+
+        vm.startPrank(admin);
+        parametersRegistry.grantRole(parametersRegistry.MANAGE_CURVE_PARAMETERS_ROLE(), curveRoleMember);
+        vm.stopPrank();
     }
 }
 
@@ -334,6 +340,10 @@ contract ParametersRegistryRewardShareDataTest is ParametersRegistryBaseTestInit
 
     function test_set_FromRoleAdmin() public override {
         _test_set(admin);
+    }
+
+    function test_set_FromCurveRoleMember() public {
+        _test_set(curveRoleMember);
     }
 
     function test_set_Overwrite() public {
@@ -442,6 +452,10 @@ contract ParametersRegistryRewardShareDataTest is ParametersRegistryBaseTestInit
 
     function test_unset_FromRoleAdmin() public override {
         _test_unset(admin);
+    }
+
+    function test_unset_FromCurveRoleMember() public {
+        _test_unset(curveRoleMember);
     }
 
     function test_unset_RevertWhen_noRole() public override {
@@ -571,6 +585,10 @@ contract ParametersRegistryPerformanceLeewayDataTest is ParametersRegistryBaseTe
         _test_set(admin);
     }
 
+    function test_set_FromCurveRoleMember() public {
+        _test_set(curveRoleMember);
+    }
+
     function test_set_Overwrite() public {
         uint256 curveId = 1;
         IParametersRegistry.KeyNumberValueInterval[] memory first = new IParametersRegistry.KeyNumberValueInterval[](2);
@@ -655,6 +673,10 @@ contract ParametersRegistryPerformanceLeewayDataTest is ParametersRegistryBaseTe
 
     function test_unset_FromRoleAdmin() public override {
         _test_unset(admin);
+    }
+
+    function test_unset_FromCurveRoleMember() public {
+        _test_unset(curveRoleMember);
     }
 
     function test_unset_RevertWhen_noRole() public override {
@@ -784,6 +806,10 @@ contract ParametersRegistryKeyRemovalChargeTest is ParametersRegistryBaseTestIni
         _test_set(admin);
     }
 
+    function test_set_FromCurveRoleMember() public {
+        _test_set(curveRoleMember);
+    }
+
     function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         uint256 charge = 1 ether;
@@ -800,6 +826,10 @@ contract ParametersRegistryKeyRemovalChargeTest is ParametersRegistryBaseTestIni
 
     function test_unset_FromRoleAdmin() public override {
         _test_unset(admin);
+    }
+
+    function test_unset_FromCurveRoleMember() public {
+        _test_unset(curveRoleMember);
     }
 
     function test_unset_RevertWhen_noRole() public override {
@@ -907,6 +937,10 @@ contract ParametersRegistryGeneralDelayedPenaltyAdditionalFineTest is
         _test_set(admin);
     }
 
+    function test_set_FromCurveRoleMember() public {
+        _test_set(curveRoleMember);
+    }
+
     function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         uint256 fine = 1 ether;
@@ -923,6 +957,10 @@ contract ParametersRegistryGeneralDelayedPenaltyAdditionalFineTest is
 
     function test_unset_FromRoleAdmin() public override {
         _test_unset(admin);
+    }
+
+    function test_unset_FromCurveRoleMember() public {
+        _test_unset(curveRoleMember);
     }
 
     function test_unset_RevertWhen_noRole() public override {
@@ -1027,6 +1065,10 @@ contract ParametersRegistryKeysLimitTest is ParametersRegistryBaseTestInitialize
         _test_set(admin);
     }
 
+    function test_set_FromCurveRoleMember() public {
+        _test_set(curveRoleMember);
+    }
+
     function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         uint256 limit = 1000;
@@ -1043,6 +1085,10 @@ contract ParametersRegistryKeysLimitTest is ParametersRegistryBaseTestInitialize
 
     function test_unset_FromRoleAdmin() public override {
         _test_unset(admin);
+    }
+
+    function test_unset_FromCurveRoleMember() public {
+        _test_unset(curveRoleMember);
     }
 
     function test_unset_RevertWhen_noRole() public override {
@@ -1166,6 +1212,10 @@ contract ParametersRegistryStrikesParamsTest is ParametersRegistryBaseTestInitia
         _test_set(admin);
     }
 
+    function test_set_FromCurveRoleMember() public {
+        _test_set(curveRoleMember);
+    }
+
     function test_set_RevertWhen_zeroLifetime() public {
         uint256 curveId = 1;
         uint256 lifetime = 0;
@@ -1203,6 +1253,10 @@ contract ParametersRegistryStrikesParamsTest is ParametersRegistryBaseTestInitia
 
     function test_unset_FromRoleAdmin() public override {
         _test_unset(admin);
+    }
+
+    function test_unset_FromCurveRoleMember() public {
+        _test_unset(curveRoleMember);
     }
 
     function test_unset_RevertWhen_noRole() public override {
@@ -1318,6 +1372,10 @@ contract ParametersRegistryBadPerformancePenaltyTest is ParametersRegistryBaseTe
         _test_set(admin);
     }
 
+    function test_set_FromCurveRoleMember() public {
+        _test_set(curveRoleMember);
+    }
+
     function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         uint256 penalty = 1 ether;
@@ -1334,6 +1392,10 @@ contract ParametersRegistryBadPerformancePenaltyTest is ParametersRegistryBaseTe
 
     function test_unset_FromRoleAdmin() public override {
         _test_unset(admin);
+    }
+
+    function test_unset_FromCurveRoleMember() public {
+        _test_unset(curveRoleMember);
     }
 
     function test_unset_RevertWhen_noRole() public override {
@@ -1452,6 +1514,10 @@ contract ParametersRegistryPerformanceCoefficientsTest is ParametersRegistryBase
         _test_set(admin);
     }
 
+    function test_set_FromCurveRoleMember() public {
+        _test_set(curveRoleMember);
+    }
+
     function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         uint256 attestations = 100;
@@ -1481,6 +1547,10 @@ contract ParametersRegistryPerformanceCoefficientsTest is ParametersRegistryBase
 
     function test_unset_FromRoleAdmin() public override {
         _test_unset(admin);
+    }
+
+    function test_unset_FromCurveRoleMember() public {
+        _test_unset(curveRoleMember);
     }
 
     function test_unset_RevertWhen_noRole() public override {
@@ -1632,6 +1702,10 @@ contract ParametersRegistryQueueConfigTest is ParametersRegistryBaseTestInitiali
         _test_set(admin);
     }
 
+    function test_set_FromCurveRoleMember() public {
+        _test_set(curveRoleMember);
+    }
+
     function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 11;
         uint32 priority = 3;
@@ -1649,6 +1723,10 @@ contract ParametersRegistryQueueConfigTest is ParametersRegistryBaseTestInitiali
 
     function test_unset_FromRoleAdmin() public override {
         _test_unset(admin);
+    }
+
+    function test_unset_FromCurveRoleMember() public {
+        _test_unset(curveRoleMember);
     }
 
     function test_unset_RevertWhen_noRole() public override {
@@ -1795,6 +1873,10 @@ contract ParametersRegistryAllowedExitDelayTest is ParametersRegistryBaseTestIni
         _test_set(admin);
     }
 
+    function test_set_FromCurveRoleMember() public {
+        _test_set(curveRoleMember);
+    }
+
     function test_set_RevertWhen_InvalidAllowedExitDelay() public {
         uint256 curveId = 1;
         uint256 delay = 0;
@@ -1820,6 +1902,10 @@ contract ParametersRegistryAllowedExitDelayTest is ParametersRegistryBaseTestIni
 
     function test_unset_FromRoleAdmin() public override {
         _test_unset(admin);
+    }
+
+    function test_unset_FromCurveRoleMember() public {
+        _test_unset(curveRoleMember);
     }
 
     function test_unset_RevertWhen_noRole() public override {
@@ -1924,6 +2010,10 @@ contract ParametersRegistryExitDelayFeeTest is ParametersRegistryBaseTestInitial
         _test_set(admin);
     }
 
+    function test_set_FromCurveRoleMember() public {
+        _test_set(curveRoleMember);
+    }
+
     function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         uint256 penalty = 1 ether;
@@ -1940,6 +2030,10 @@ contract ParametersRegistryExitDelayFeeTest is ParametersRegistryBaseTestInitial
 
     function test_unset_FromRoleAdmin() public override {
         _test_unset(admin);
+    }
+
+    function test_unset_FromCurveRoleMember() public {
+        _test_unset(curveRoleMember);
     }
 
     function test_unset_RevertWhen_noRole() public override {
@@ -2044,6 +2138,10 @@ contract ParametersRegistryMaxElWithdrawalRequestFeeTest is ParametersRegistryBa
         _test_set(admin);
     }
 
+    function test_set_FromCurveRoleMember() public {
+        _test_set(curveRoleMember);
+    }
+
     function test_set_RevertWhen_noRole() public override {
         uint256 curveId = 1;
         uint256 fee = 1 ether;
@@ -2060,6 +2158,10 @@ contract ParametersRegistryMaxElWithdrawalRequestFeeTest is ParametersRegistryBa
 
     function test_unset_FromRoleAdmin() public override {
         _test_unset(admin);
+    }
+
+    function test_unset_FromCurveRoleMember() public {
+        _test_unset(curveRoleMember);
     }
 
     function test_unset_RevertWhen_noRole() public override {
