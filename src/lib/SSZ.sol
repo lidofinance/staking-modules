@@ -30,18 +30,23 @@ library SSZ {
             let count := 8
 
             // Loop over levels
-            // prettier-ignore
-            for {} 1 {} {
+            for {
+
+            } iszero(eq(count, 1)) {
+                count := shr(1, count)
+            } {
                 // Loop over nodes at the given depth
+                for {
+                    let target := nodes
+                    let source := nodes
 
-                // Initialize `offset` to the offset of `proof` elements in memory.
-                let target := nodes
-                let source := nodes
-                let end := add(source, shl(5, count))
-
-                // prettier-ignore
-                for {} 1 {} {
-                    // Read next two hashes to hash
+                    let end := add(source, shl(5, count)) // end = source + count * 32
+                } lt(source, end) {
+                    // Advance the pointers
+                    target := add(target, 0x20)
+                    source := add(source, 0x40)
+                } {
+                    // Join next two nodes to hash
                     mcopy(0x00, source, 0x40)
 
                     // Call sha256 precompile. Return code unchecked: sha256 can only fail with OOG,
@@ -50,22 +55,10 @@ library SSZ {
 
                     // Store the resulting hash at the target location
                     mstore(target, mload(0x00))
-
-                    // Advance the pointers
-                    target := add(target, 0x20)
-                    source := add(source, 0x40)
-
-                    if iszero(lt(source, end)) {
-                        break
-                    }
-                }
-
-                count := shr(1, count)
-                if eq(count, 1) {
-                    root := mload(0x00)
-                    break
                 }
             }
+
+            root := mload(0x00)
         }
     }
 
@@ -104,17 +97,20 @@ library SSZ {
 
             // Loop over levels
             // prettier-ignore
-            for {} 1 {} {
+            for {} iszero(eq(count, 1)) { count := shr(1, count) } {
                 // Loop over nodes at the given depth
 
-                // Initialize `offset` to the offset of `proof` elements in memory.
-                let target := nodes
-                let source := nodes
-                let end := add(source, shl(5, count))
+                for {
+                    let target := nodes
+                    let source := nodes
 
-                // prettier-ignore
-                for {} 1 {} {
-                    // Read next two hashes to hash
+                    let end := add(source, shl(5, count)) // end = source + count * 32
+                } lt(source, end) {
+                    // Advance the pointers
+                    target := add(target, 0x20)
+                    source := add(source, 0x40)
+                } {
+                    // Join next two nodes to hash
                     mcopy(0x00, source, 0x40)
 
                     // Call sha256 precompile. Return code unchecked: sha256 can only fail with OOG,
@@ -123,22 +119,10 @@ library SSZ {
 
                     // Store the resulting hash at the target location
                     mstore(target, mload(0x00))
-
-                    // Advance the pointers
-                    target := add(target, 0x20)
-                    source := add(source, 0x40)
-
-                    if iszero(lt(source, end)) {
-                        break
-                    }
-                }
-
-                count := shr(1, count)
-                if eq(count, 1) {
-                    root := mload(0x00)
-                    break
                 }
             }
+
+            root := mload(0x00)
         }
     }
 
