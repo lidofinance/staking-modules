@@ -4,6 +4,7 @@
 pragma solidity 0.8.33;
 
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { BondCore } from "./abstract/BondCore.sol";
 import { BondCurve } from "./abstract/BondCurve.sol";
@@ -424,7 +425,7 @@ contract Accounting is
         (uint256 current, uint256 required) = getBondSummaryShares(nodeOperatorId);
         current = current + feesToDistribute;
 
-        return current > required ? current - required : 0;
+        return Math.saturatingSub(current, required);
     }
 
     /// @inheritdoc IAccounting
@@ -444,9 +445,7 @@ contract Accounting is
         uint256 current = BondCore.getBond(nodeOperatorId);
         uint256 totalRequired = _getRequiredBond(nodeOperatorId, additionalKeys);
 
-        unchecked {
-            return totalRequired > current ? totalRequired - current : 0;
-        }
+        return Math.saturatingSub(totalRequired, current);
     }
 
     function _pullAndSplitFeeRewards(
@@ -507,10 +506,8 @@ contract Accounting is
 
     /// @dev Calculates claimable bond shares accounting for locked bond and withdrawn validators
     function _getClaimableBondShares(uint256 nodeOperatorId) internal view returns (uint256) {
-        unchecked {
-            (uint256 currentShares, uint256 requiredShares) = getBondSummaryShares(nodeOperatorId);
-            return currentShares > requiredShares ? currentShares - requiredShares : 0;
-        }
+        (uint256 currentShares, uint256 requiredShares) = getBondSummaryShares(nodeOperatorId);
+        return Math.saturatingSub(currentShares, requiredShares);
     }
 
     function _getRequiredBond(uint256 nodeOperatorId, uint256 additionalKeys) internal view returns (uint256) {
@@ -553,7 +550,7 @@ contract Accounting is
             currentBond + 10 wei,
             BondCurve.getBondCurveId(nodeOperatorId)
         );
-        return nonWithdrawnKeys > bondedKeys ? nonWithdrawnKeys - bondedKeys : 0;
+        return Math.saturatingSub(nonWithdrawnKeys, bondedKeys);
     }
 
     function _onlyRecoverer() internal view override {
