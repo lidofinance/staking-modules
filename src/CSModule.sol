@@ -286,8 +286,7 @@ contract CSModule is ICSModule, BaseModule {
         _requireDepositInfoUpToDate();
         return
             DepositQueueOps.cleanDepositQueue({
-                depositQueues: _depositQueueByPriority,
-                nodeOperators: _nodeOperators,
+                layout: _layout(),
                 queueLowestPriority: _queueLowestPriority(),
                 maxItems: maxItems
             });
@@ -364,8 +363,7 @@ contract CSModule is ICSModule, BaseModule {
     ) internal override returns (bool changed) {
         changed = super._applyDepositableValidatorsCount(no, nodeOperatorId, newCount, incrementNonceIfUpdated);
         DepositQueueOps.enqueueNodeOperatorKeys({
-            nodeOperators: _nodeOperators,
-            depositQueues: _depositQueueByPriority,
+            layout: _layout(),
             parametersRegistry: _parametersRegistry(),
             accounting: _accounting(),
             queueLowestPriority: _queueLowestPriority(),

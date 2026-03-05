@@ -10,6 +10,7 @@ import { FORCED_TARGET_LIMIT_MODE_ID } from "../interfaces/IStakingModule.sol";
 import { IAccounting } from "../interfaces/IAccounting.sol";
 import { IParametersRegistry } from "../interfaces/IParametersRegistry.sol";
 
+import { ModuleLinearStorage } from "../abstract/ModuleLinearStorage.sol";
 import { CuratedDepositAllocator } from "./allocator/CuratedDepositAllocator.sol";
 import { ValidatorCountsReport } from "./ValidatorCountsReport.sol";
 import { WithdrawnValidatorLib } from "./WithdrawnValidatorLib.sol";
@@ -118,8 +119,7 @@ library NodeOperatorOps {
     }
 
     function decreaseVettedSigningKeysCount(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        uint256 nodeOperatorsCount,
+        ModuleLinearStorage.Layout storage layout,
         bytes calldata nodeOperatorIds,
         bytes calldata vettedSigningKeysCounts
     ) external {
@@ -132,9 +132,9 @@ library NodeOperatorOps {
                 vettedSigningKeysCounts,
                 i
             );
-            _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
+            _onlyExistingNodeOperator(nodeOperatorId, layout.nodeOperatorsCount);
 
-            NodeOperator storage no = nodeOperators[nodeOperatorId];
+            NodeOperator storage no = layout.nodeOperators[nodeOperatorId];
 
             if (vettedSigningKeysCount == no.totalVettedKeys) continue;
 
@@ -155,15 +155,13 @@ library NodeOperatorOps {
     }
 
     function reportValidatorBalance(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        uint256 nodeOperatorsCount,
-        mapping(uint256 => uint256) storage keyAddedBalances,
+        ModuleLinearStorage.Layout storage layout,
         uint256 nodeOperatorId,
         uint256 keyIndex,
         uint256 currentBalanceWei
     ) external {
-        _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
-        if (keyIndex >= nodeOperators[nodeOperatorId].totalDepositedKeys) {
+        _onlyExistingNodeOperator(nodeOperatorId, layout.nodeOperatorsCount);
+        if (keyIndex >= layout.nodeOperators[nodeOperatorId].totalDepositedKeys) {
             revert IBaseModule.SigningKeysInvalidOffset();
         }
 
@@ -178,8 +176,8 @@ library NodeOperatorOps {
         }
 
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        if (newKeyAddedBalance <= keyAddedBalances[pointer]) revert IBaseModule.UnreportableBalance();
-        keyAddedBalances[pointer] = newKeyAddedBalance;
+        if (newKeyAddedBalance <= layout.keyAddedBalances[pointer]) revert IBaseModule.UnreportableBalance();
+        layout.keyAddedBalances[pointer] = newKeyAddedBalance;
         emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, newKeyAddedBalance);
     }
 

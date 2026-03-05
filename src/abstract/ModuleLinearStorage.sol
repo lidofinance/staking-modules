@@ -27,4 +27,29 @@ abstract contract ModuleLinearStorage {
     uint64 internal _totalExitedValidators;
     uint64 internal _depositableValidatorsCount;
     uint64 internal _nodeOperatorsCount;
+
+    /// @dev Mirror of the linear storage layout used to pass module storage as a single struct pointer.
+    ///      Field order and types must stay in sync with the variables above.
+    struct Layout {
+        mapping(uint256 priority => DepositQueueLib.Queue queue) depositQueueByPriority;
+        bytes32 freeSlot1;
+        uint256 upToDateOperatorDepositInfoCount;
+        uint256 totalWithdrawnValidators;
+        mapping(uint256 noKeyIndexPacked => uint256) keyAddedBalances;
+        uint256 nonce;
+        mapping(uint256 nodeOperatorId => NodeOperator) nodeOperators;
+        mapping(uint256 noKeyIndexPacked => bool) isValidatorWithdrawn;
+        mapping(uint256 noKeyIndexPacked => bool) isValidatorSlashed;
+        uint64 totalDepositedValidators;
+        uint64 totalExitedValidators;
+        uint64 depositableValidatorsCount;
+        uint64 nodeOperatorsCount;
+    }
+
+    function _layout() internal pure returns (Layout storage $) {
+        assembly ("memory-safe") {
+            // ModuleLinearStorage starts at slot 0 in the current inheritance layout.
+            $.slot := 0
+        }
+    }
 }

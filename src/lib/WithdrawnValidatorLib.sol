@@ -8,6 +8,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IBaseModule, NodeOperator, WithdrawnValidatorInfo } from "../interfaces/IBaseModule.sol";
 import { ExitPenaltyInfo } from "../interfaces/IExitPenalties.sol";
 import { IAccounting } from "../interfaces/IAccounting.sol";
+import { ModuleLinearStorage } from "../abstract/ModuleLinearStorage.sol";
 
 import { SigningKeys } from "./SigningKeys.sol";
 
@@ -20,11 +21,46 @@ library WithdrawnValidatorLib {
     /// @dev Acts as the denominator to calculate the scaled penalty.
     uint256 public constant PENALTY_SCALE = MIN_ACTIVATION_BALANCE / PENALTY_QUOTIENT;
 
+    function processBatch(
+        WithdrawnValidatorInfo[] calldata validatorInfos,
+        bool slashed,
+        ModuleLinearStorage.Layout storage layout
+    ) external returns (uint256[] memory touchedOperatorIds, uint256 touchedCount) {
+        touchedOperatorIds = new uint256[](validatorInfos.length);
+
+        for (uint256 i; i < validatorInfos.length; ++i) {
+            WithdrawnValidatorInfo calldata info = validatorInfos[i];
+            if (info.nodeOperatorId >= layout.nodeOperatorsCount) revert IBaseModule.NodeOperatorDoesNotExist();
+
+            uint256 pointer = _keyPointer(info.nodeOperatorId, info.keyIndex);
+            if (layout.isValidatorWithdrawn[pointer]) continue;
+            if (info.isSlashed != slashed) revert IBaseModule.InvalidWithdrawnValidatorInfo();
+            if (info.isSlashed && !layout.isValidatorSlashed[pointer])
+                revert IBaseModule.SlashingPenaltyIsNotApplicable();
+
+            _process(layout.nodeOperators[info.nodeOperatorId], info, layout.keyAddedBalances[pointer]);
+
+            layout.isValidatorWithdrawn[pointer] = true;
+            touchedOperatorIds[touchedCount] = info.nodeOperatorId;
+            unchecked {
+                ++touchedCount;
+            }
+        }
+    }
+
     function process(
         NodeOperator storage no,
         WithdrawnValidatorInfo calldata validatorInfo,
         uint256 keyAddedBalance
     ) external {
+        _process(no, validatorInfo, keyAddedBalance);
+    }
+
+    function _process(
+        NodeOperator storage no,
+        WithdrawnValidatorInfo calldata validatorInfo,
+        uint256 keyAddedBalance
+    ) private {
         if (validatorInfo.slashingPenalty > 0 && !validatorInfo.isSlashed) {
             revert IBaseModule.InvalidWithdrawnValidatorInfo();
         }
@@ -119,5 +155,11 @@ library WithdrawnValidatorLib {
 
     function _scalePenaltyByMultiplier(uint256 penalty, uint256 multiplier) internal pure returns (uint256) {
         return (penalty * multiplier) / PENALTY_SCALE;
+    }
+
+    function _keyPointer(uint256 nodeOperatorId, uint256 keyIndex) internal pure returns (uint256 pointer) {
+        assembly ("memory-safe") {
+            pointer := or(shl(128, nodeOperatorId), keyIndex)
+        }
     }
 }

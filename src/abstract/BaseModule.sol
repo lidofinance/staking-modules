@@ -244,12 +244,7 @@ abstract contract BaseModule is
         bytes calldata vettedSigningKeysCounts
     ) external {
         _checkStakingRouterRole();
-        NodeOperatorOps.decreaseVettedSigningKeysCount(
-            _nodeOperators,
-            _nodeOperatorsCount,
-            nodeOperatorIds,
-            vettedSigningKeysCounts
-        );
+        NodeOperatorOps.decreaseVettedSigningKeysCount(_layout(), nodeOperatorIds, vettedSigningKeysCounts);
     }
 
     /// @inheritdoc IBaseModule
@@ -329,9 +324,7 @@ abstract contract BaseModule is
         _checkVerifierRole();
 
         NodeOperatorOps.reportValidatorBalance({
-            nodeOperators: _nodeOperators,
-            nodeOperatorsCount: _nodeOperatorsCount,
-            keyAddedBalances: _keyAddedBalances,
+            layout: _layout(),
             nodeOperatorId: nodeOperatorId,
             keyIndex: keyIndex,
             currentBalanceWei: currentBalanceWei
@@ -615,30 +608,25 @@ abstract contract BaseModule is
     }
 
     function _reportWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos, bool slashed) internal {
-        bool anySubmission;
+        (uint256[] memory touchedOperatorIds, uint256 touchedCount) = WithdrawnValidatorLib.processBatch(
+            validatorInfos,
+            slashed,
+            _layout()
+        );
 
-        for (uint256 i; i < validatorInfos.length; ++i) {
-            WithdrawnValidatorInfo calldata info = validatorInfos[i];
-            _onlyExistingNodeOperator(info.nodeOperatorId);
+        if (touchedCount == 0) return;
 
-            uint256 pointer = KeyPointerLib.keyPointer(info.nodeOperatorId, info.keyIndex);
-            if (_isValidatorWithdrawn[pointer]) continue;
-            if (info.isSlashed != slashed) revert InvalidWithdrawnValidatorInfo();
-            if (info.isSlashed && !_isValidatorSlashed[pointer]) revert SlashingPenaltyIsNotApplicable();
-
-            NodeOperator storage no = _nodeOperators[info.nodeOperatorId];
-            WithdrawnValidatorLib.process(no, info, _keyAddedBalances[pointer]);
-
-            _updateDepositableValidatorsCount({ nodeOperatorId: info.nodeOperatorId, incrementNonceIfUpdated: false });
-
-            _isValidatorWithdrawn[pointer] = true;
-            unchecked {
-                ++_totalWithdrawnValidators;
-            }
-            anySubmission = true;
+        unchecked {
+            _totalWithdrawnValidators += touchedCount;
+        }
+        for (uint256 i; i < touchedCount; ++i) {
+            _updateDepositableValidatorsCount({
+                nodeOperatorId: touchedOperatorIds[i],
+                incrementNonceIfUpdated: false
+            });
         }
 
-        if (anySubmission) _incrementModuleNonce();
+        _incrementModuleNonce();
     }
 
     function _incrementModuleNonce() internal {
