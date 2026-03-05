@@ -82,22 +82,23 @@ abstract contract BaseModule is
         address /* referrer */
     ) public virtual whenResumed returns (uint256 nodeOperatorId) {
         _checkCreateNodeOperatorRole();
-        nodeOperatorId = _nodeOperatorsCount;
+        Layout storage $ = _layout();
+        nodeOperatorId = $.nodeOperatorsCount;
 
         NodeOperatorOps.createNodeOperator({
-            nodeOperators: _nodeOperators,
+            nodeOperators: $.nodeOperators,
             nodeOperatorId: nodeOperatorId,
             from: from,
             managementProperties: managementProperties
         });
 
         unchecked {
-            ++_nodeOperatorsCount;
+            ++$.nodeOperatorsCount;
         }
 
         // If all operators have up-to-date deposit info, then the new operator also has it, so we can just increase the counter.
-        if (nodeOperatorId == _upToDateOperatorDepositInfoCount) {
-            ++_upToDateOperatorDepositInfoCount;
+        if (nodeOperatorId == $.upToDateOperatorDepositInfoCount) {
+            ++$.upToDateOperatorDepositInfoCount;
         }
         _incrementModuleNonce();
     }
@@ -160,32 +161,32 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function proposeNodeOperatorManagerAddressChange(uint256 nodeOperatorId, address proposedAddress) external {
-        NOAddresses.proposeNodeOperatorManagerAddressChange(_nodeOperators, nodeOperatorId, proposedAddress);
+        NOAddresses.proposeNodeOperatorManagerAddressChange(_layout().nodeOperators, nodeOperatorId, proposedAddress);
     }
 
     /// @inheritdoc IBaseModule
     function confirmNodeOperatorManagerAddressChange(uint256 nodeOperatorId) external {
-        NOAddresses.confirmNodeOperatorManagerAddressChange(_nodeOperators, nodeOperatorId);
+        NOAddresses.confirmNodeOperatorManagerAddressChange(_layout().nodeOperators, nodeOperatorId);
     }
 
     /// @inheritdoc IBaseModule
     function proposeNodeOperatorRewardAddressChange(uint256 nodeOperatorId, address proposedAddress) external {
-        NOAddresses.proposeNodeOperatorRewardAddressChange(_nodeOperators, nodeOperatorId, proposedAddress);
+        NOAddresses.proposeNodeOperatorRewardAddressChange(_layout().nodeOperators, nodeOperatorId, proposedAddress);
     }
 
     /// @inheritdoc IBaseModule
     function confirmNodeOperatorRewardAddressChange(uint256 nodeOperatorId) external {
-        NOAddresses.confirmNodeOperatorRewardAddressChange(_nodeOperators, nodeOperatorId);
+        NOAddresses.confirmNodeOperatorRewardAddressChange(_layout().nodeOperators, nodeOperatorId);
     }
 
     /// @inheritdoc IBaseModule
     function resetNodeOperatorManagerAddress(uint256 nodeOperatorId) external {
-        NOAddresses.resetNodeOperatorManagerAddress(_nodeOperators, nodeOperatorId);
+        NOAddresses.resetNodeOperatorManagerAddress(_layout().nodeOperators, nodeOperatorId);
     }
 
     /// @inheritdoc IBaseModule
     function changeNodeOperatorRewardAddress(uint256 nodeOperatorId, address newAddress) external {
-        NOAddresses.changeNodeOperatorRewardAddress(_nodeOperators, nodeOperatorId, newAddress);
+        NOAddresses.changeNodeOperatorRewardAddress(_layout().nodeOperators, nodeOperatorId, newAddress);
     }
 
     /// @inheritdoc IStakingModule
@@ -202,10 +203,11 @@ abstract contract BaseModule is
         bytes calldata exitedValidatorsCounts
     ) external {
         _checkStakingRouterRole();
-        _totalExitedValidators = NodeOperatorOps.updateExitedValidatorsCount({
-            nodeOperators: _nodeOperators,
-            nodeOperatorsCount: _nodeOperatorsCount,
-            totalExitedValidators: _totalExitedValidators,
+        Layout storage $ = _layout();
+        $.totalExitedValidators = NodeOperatorOps.updateExitedValidatorsCount({
+            nodeOperators: $.nodeOperators,
+            nodeOperatorsCount: $.nodeOperatorsCount,
+            totalExitedValidators: $.totalExitedValidators,
             nodeOperatorIds: nodeOperatorIds,
             exitedValidatorsCounts: exitedValidatorsCounts
         });
@@ -215,12 +217,13 @@ abstract contract BaseModule is
     /// @inheritdoc IStakingModule
     function unsafeUpdateValidatorsCount(uint256 nodeOperatorId, uint256 exitedValidatorsCount) external {
         _checkStakingRouterRole();
-        _totalExitedValidators = NodeOperatorOps.unsafeUpdateValidatorsCount({
-            nodeOperators: _nodeOperators,
-            nodeOperatorsCount: _nodeOperatorsCount,
+        Layout storage $ = _layout();
+        $.totalExitedValidators = NodeOperatorOps.unsafeUpdateValidatorsCount({
+            nodeOperators: $.nodeOperators,
+            nodeOperatorsCount: $.nodeOperatorsCount,
             nodeOperatorId: nodeOperatorId,
             exitedValidatorsCount: exitedValidatorsCount,
-            totalExitedValidators: _totalExitedValidators
+            totalExitedValidators: $.totalExitedValidators
         });
     }
 
@@ -232,7 +235,7 @@ abstract contract BaseModule is
     ) external {
         _checkStakingRouterRole();
 
-        NodeOperatorOps.setTargetLimit(_nodeOperators, nodeOperatorId, targetLimitMode, targetLimit);
+        NodeOperatorOps.setTargetLimit(_layout().nodeOperators, nodeOperatorId, targetLimitMode, targetLimit);
 
         _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: false });
         _incrementModuleNonce();
@@ -304,12 +307,13 @@ abstract contract BaseModule is
     function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex) external {
         _checkVerifierRole();
         _onlyExistingNodeOperator(nodeOperatorId);
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
+        Layout storage $ = _layout();
+        NodeOperator storage no = $.nodeOperators[nodeOperatorId];
         if (keyIndex >= no.totalDepositedKeys) revert SigningKeysInvalidOffset();
 
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        if (_isValidatorSlashed[pointer]) revert ValidatorSlashingAlreadyReported();
-        _isValidatorSlashed[pointer] = true;
+        if ($.isValidatorSlashed[pointer]) revert ValidatorSlashingAlreadyReported();
+        $.isValidatorSlashed[pointer] = true;
 
         bytes memory pubkey = SigningKeys.loadKeys(nodeOperatorId, keyIndex, 1);
         emit ValidatorSlashingReported(nodeOperatorId, keyIndex, pubkey);
@@ -380,7 +384,7 @@ abstract contract BaseModule is
     /// @inheritdoc IBaseModule
     function requestFullDepositInfoUpdate() external {
         _canRequestDepositInfoUpdate();
-        _upToDateOperatorDepositInfoCount = 0;
+        _layout().upToDateOperatorDepositInfoCount = 0;
         emit FullDepositInfoUpdateRequested();
         _incrementModuleNonce();
     }
@@ -389,8 +393,9 @@ abstract contract BaseModule is
     function batchDepositInfoUpdate(uint256 maxCount) external returns (uint256 operatorsLeft) {
         if (maxCount == 0) revert InvalidInput();
 
-        uint256 operatorsCount = _nodeOperatorsCount;
-        uint256 noId = _upToDateOperatorDepositInfoCount;
+        Layout storage $ = _layout();
+        uint256 operatorsCount = $.nodeOperatorsCount;
+        uint256 noId = $.upToDateOperatorDepositInfoCount;
         if (noId == operatorsCount) return 0;
 
         uint256 limit = noId + maxCount > operatorsCount ? operatorsCount : noId + maxCount;
@@ -399,7 +404,7 @@ abstract contract BaseModule is
             _updateDepositInfo(noId);
         }
 
-        _upToDateOperatorDepositInfoCount = limit;
+        $.upToDateOperatorDepositInfoCount = limit;
         operatorsLeft = operatorsCount - limit;
 
         if (operatorsLeft == 0) emit NodeOperatorDepositInfoFullyUpdated();
@@ -418,9 +423,10 @@ abstract contract BaseModule is
         virtual
         returns (uint256 totalExitedValidators, uint256 totalDepositedValidators, uint256 depositableValidatorsCount)
     {
-        totalExitedValidators = _totalExitedValidators;
-        totalDepositedValidators = _totalDepositedValidators;
-        depositableValidatorsCount = _depositableValidatorsCount;
+        Layout storage $ = _layout();
+        totalExitedValidators = $.totalExitedValidators;
+        totalDepositedValidators = $.totalDepositedValidators;
+        depositableValidatorsCount = $.depositableValidatorsCount;
     }
 
     /// @inheritdoc IStakingModule
@@ -429,7 +435,7 @@ abstract contract BaseModule is
     ///      withdrawal credentials.
     function onWithdrawalCredentialsChanged() external view {
         _checkStakingRouterRole();
-        if (_depositableValidatorsCount > 0) revert DepositableKeysWithUnsupportedWithdrawalCredentials();
+        if (_layout().depositableValidatorsCount > 0) revert DepositableKeysWithUnsupportedWithdrawalCredentials();
     }
 
     /// @inheritdoc IBaseModule
@@ -439,12 +445,12 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function isValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool) {
-        return _isValidatorSlashed[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
+        return _layout().isValidatorSlashed[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 
     /// @inheritdoc IBaseModule
     function isValidatorWithdrawn(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool) {
-        return _isValidatorWithdrawn[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
+        return _layout().isValidatorWithdrawn[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 
     /// @inheritdoc IStakingModule
@@ -454,26 +460,26 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function getNodeOperator(uint256 nodeOperatorId) external view returns (NodeOperator memory) {
-        return _nodeOperators[nodeOperatorId];
+        return _layout().nodeOperators[nodeOperatorId];
     }
 
     /// @inheritdoc IBaseModule
     function getNodeOperatorManagementProperties(
         uint256 nodeOperatorId
     ) external view returns (NodeOperatorManagementProperties memory) {
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
+        NodeOperator storage no = _layout().nodeOperators[nodeOperatorId];
         return (NodeOperatorManagementProperties(no.managerAddress, no.rewardAddress, no.extendedManagerPermissions));
     }
 
     /// @inheritdoc IBaseModule
     function getNodeOperatorOwner(uint256 nodeOperatorId) external view returns (address) {
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
+        NodeOperator storage no = _layout().nodeOperators[nodeOperatorId];
         return no.extendedManagerPermissions ? no.managerAddress : no.rewardAddress;
     }
 
     /// @inheritdoc IBaseModule
     function getNodeOperatorNonWithdrawnKeys(uint256 nodeOperatorId) external view returns (uint256) {
-        NodeOperator storage no = _nodeOperators[nodeOperatorId];
+        NodeOperator storage no = _layout().nodeOperators[nodeOperatorId];
         unchecked {
             return no.totalAddedKeys - no.totalWithdrawnKeys;
         }
@@ -503,7 +509,7 @@ abstract contract BaseModule is
             uint256 depositableValidatorsCount
         )
     {
-        return NodeOperatorOps.getNodeOperatorSummary(_nodeOperators, nodeOperatorId, _accounting());
+        return NodeOperatorOps.getNodeOperatorSummary(_layout().nodeOperators, nodeOperatorId, _accounting());
     }
 
     /// @inheritdoc IBaseModule
@@ -538,22 +544,22 @@ abstract contract BaseModule is
 
     /// @inheritdoc IStakingModule
     function getNonce() external view returns (uint256) {
-        return _nonce;
+        return _layout().nonce;
     }
 
     /// @inheritdoc IStakingModule
     function getNodeOperatorsCount() external view returns (uint256) {
-        return _nodeOperatorsCount;
+        return _layout().nodeOperatorsCount;
     }
 
     /// @inheritdoc IStakingModule
     function getActiveNodeOperatorsCount() external view returns (uint256) {
-        return _nodeOperatorsCount;
+        return _layout().nodeOperatorsCount;
     }
 
     /// @inheritdoc IStakingModule
     function getNodeOperatorIsActive(uint256 nodeOperatorId) external view returns (bool) {
-        return nodeOperatorId < _nodeOperatorsCount;
+        return nodeOperatorId < _layout().nodeOperatorsCount;
     }
 
     /// @inheritdoc IStakingModule
@@ -561,7 +567,7 @@ abstract contract BaseModule is
         uint256 offset,
         uint256 limit
     ) external view returns (uint256[] memory nodeOperatorIds) {
-        return NodeOperatorOps.getNodeOperatorIds(_nodeOperatorsCount, offset, limit);
+        return NodeOperatorOps.getNodeOperatorIds(_layout().nodeOperatorsCount, offset, limit);
     }
 
     /// @inheritdoc IStakingModule
@@ -584,12 +590,13 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function getKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256) {
-        return _keyAddedBalances[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
+        return _layout().keyAddedBalances[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 
     /// @inheritdoc IBaseModule
     function getNodeOperatorDepositInfoToUpdateCount() external view returns (uint256 count) {
-        count = _nodeOperatorsCount - _upToDateOperatorDepositInfoCount;
+        Layout storage $ = _layout();
+        count = $.nodeOperatorsCount - $.upToDateOperatorDepositInfoCount;
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -617,7 +624,7 @@ abstract contract BaseModule is
         if (touchedCount == 0) return;
 
         unchecked {
-            _totalWithdrawnValidators += touchedCount;
+            _layout().totalWithdrawnValidators += touchedCount;
         }
         for (uint256 i; i < touchedCount; ++i) {
             _updateDepositableValidatorsCount({
@@ -631,7 +638,7 @@ abstract contract BaseModule is
 
     function _incrementModuleNonce() internal {
         unchecked {
-            emit NonceChanged(++_nonce);
+            emit NonceChanged(++_layout().nonce);
         }
     }
 
@@ -642,7 +649,7 @@ abstract contract BaseModule is
         bytes calldata signatures
     ) internal virtual {
         NodeOperatorOps.addKeys({
-            nodeOperators: _nodeOperators,
+            nodeOperators: _layout().nodeOperators,
             nodeOperatorId: nodeOperatorId,
             keysCount: keysCount,
             publicKeys: publicKeys,
@@ -660,9 +667,9 @@ abstract contract BaseModule is
     ) internal returns (bool changed) {
         return
             _applyDepositableValidatorsCount({
-                no: _nodeOperators[nodeOperatorId],
+                no: _layout().nodeOperators[nodeOperatorId],
                 nodeOperatorId: nodeOperatorId,
-                newCount: NodeOperatorOps.calculateDepositableValidatorsCount(_nodeOperators, nodeOperatorId),
+                newCount: NodeOperatorOps.calculateDepositableValidatorsCount(_layout().nodeOperators, nodeOperatorId),
                 incrementNonceIfUpdated: incrementNonceIfUpdated
             });
     }
@@ -675,7 +682,7 @@ abstract contract BaseModule is
     ) internal virtual {
         _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
         NodeOperatorOps.removeKeys({
-            nodeOperators: _nodeOperators,
+            nodeOperators: _layout().nodeOperators,
             nodeOperatorId: nodeOperatorId,
             startIndex: startIndex,
             keysCount: keysCount,
@@ -696,8 +703,8 @@ abstract contract BaseModule is
 
         // Updating the global counter.
         unchecked {
-            _depositableValidatorsCount =
-                _depositableValidatorsCount -
+            _layout().depositableValidatorsCount =
+                _layout().depositableValidatorsCount -
                 no.depositableValidatorsCount +
                 // Each term is bounded by uint32 counts, so fitting into uint64 is safe.
                 // forge-lint: disable-next-line(unsafe-typecast)
@@ -720,19 +727,20 @@ abstract contract BaseModule is
     }
 
     function _onlyNodeOperatorManager(uint256 nodeOperatorId, address from) internal view {
-        address managerAddress = _nodeOperators[nodeOperatorId].managerAddress;
+        address managerAddress = _layout().nodeOperators[nodeOperatorId].managerAddress;
         if (managerAddress == address(0)) revert NodeOperatorDoesNotExist();
         if (managerAddress != from) revert SenderIsNotEligible();
     }
 
     function _onlyExistingNodeOperator(uint256 nodeOperatorId) internal view {
-        if (nodeOperatorId < _nodeOperatorsCount) return;
+        if (nodeOperatorId < _layout().nodeOperatorsCount) return;
 
         revert NodeOperatorDoesNotExist();
     }
 
     function _onlyValidIndexRange(uint256 nodeOperatorId, uint256 startIndex, uint256 keysCount) internal view {
-        if (startIndex + keysCount > _nodeOperators[nodeOperatorId].totalAddedKeys) revert SigningKeysInvalidOffset();
+        if (startIndex + keysCount > _layout().nodeOperators[nodeOperatorId].totalAddedKeys)
+            revert SigningKeysInvalidOffset();
     }
 
     function _getBondCurveId(uint256 nodeOperatorId) internal view returns (uint256) {
@@ -779,7 +787,8 @@ abstract contract BaseModule is
     }
 
     function _requireDepositInfoUpToDate() internal view {
-        if (_upToDateOperatorDepositInfoCount != _nodeOperatorsCount) revert DepositInfoIsNotUpToDate();
+        Layout storage $ = _layout();
+        if ($.upToDateOperatorDepositInfoCount != $.nodeOperatorsCount) revert DepositInfoIsNotUpToDate();
     }
 
     /// @dev Default implementation of the guard for requesting deposit info update.
