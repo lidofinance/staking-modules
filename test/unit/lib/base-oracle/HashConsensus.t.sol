@@ -427,7 +427,7 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
         consensus.updateInitialEpoch(INITIAL_EPOCH);
     }
 
-    function test_updateInitialEpoch_beforeInitialEpochMembersCanBeAddedAndQuorumChanged() public {
+    function test_beforeInitialEpochMembersCanBeAddedAndQuorumChanged() public {
         vm.warp(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT - 1);
 
         vm.startPrank(manager);
