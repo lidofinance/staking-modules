@@ -105,7 +105,8 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
     /// at which a report for the prev. frame can be submitted and its processing started) to the
     /// reference slot of the next frame (equal to the last slot of the previous frame).
     /// frame[i].reportProcessingDeadlineSlot := frame[i + 1].refSlot - DEADLINE_SLOT_OFFSET
-    uint256 internal constant DEADLINE_SLOT_OFFSET = 0;
+    /// @dev Declared as immutable to allow for changes in test scenarios.
+    uint256 internal immutable DEADLINE_SLOT_OFFSET = 0;
 
     /// Chain specification
     uint64 internal immutable SLOTS_PER_EPOCH;
