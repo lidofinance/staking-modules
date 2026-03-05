@@ -52,6 +52,7 @@
   Bad: `vm.prank(admin); target.grantRole(target.ROLE(), user)` or `vm.prank(admin); module.PARAMETERS_REGISTRY().setX(...)`.
   Good: precompute external values before prank (`bytes32 role = target.ROLE();`) or use `vm.startPrank`/`vm.stopPrank` for multi-call sequences.
 - Do not assert unchanged state after a reverting call.
+- Order tests: happy path first, revert cases afterwards.
 - Deployment test name suffixes are part of the test selection contract used by `just` recipes and encode two axes: phase and flow.
 - Phase semantics:
 - `*_scratch*`: checks for post-deploy, pre-vote state only.
