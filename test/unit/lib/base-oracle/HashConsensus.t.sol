@@ -1075,6 +1075,20 @@ contract HashConsensusSubmitReportTest is HashConsensusBase {
         consensus.submitReport(refSlot, keccak256("HASH_2"), CONSENSUS_VERSION);
     }
 
+    function test_submitReport_RevertsIfNonFastLaneMemberCannotReportWithinFastLaneInterval() public {
+        vm.startPrank(manager);
+        consensus.addMember(member2, 2);
+        consensus.addMember(member3, 2);
+        consensus.setFrameConfig(EPOCHS_PER_FRAME, 64);
+        vm.stopPrank();
+
+        (uint256 refSlot, ) = consensus.getCurrentFrame();
+
+        vm.prank(member3);
+        vm.expectRevert(HashConsensus.NonFastLaneMemberCannotReportWithinFastLaneInterval.selector);
+        consensus.submitReport(refSlot, keccak256("HASH_1"), CONSENSUS_VERSION);
+    }
+
     function test_submitReport_RevertsIfDuplicateReport() public {
         (uint256 refSlot, ) = consensus.getCurrentFrame();
         vm.prank(member1);
@@ -1115,5 +1129,61 @@ contract HashConsensusSubmitReportTest is HashConsensusBase {
         vm.expectEmit(address(consensus));
         emit HashConsensus.ConsensusLost(refSlot);
         consensus.submitReport(refSlot, keccak256("HASH_2"), CONSENSUS_VERSION);
+    }
+
+    function test_submitReport_ConsensusOnNewVariant() public {
+        (uint256 refSlot, ) = consensus.getCurrentFrame();
+        vm.startPrank(manager);
+        consensus.addMember(member2, 2);
+        consensus.addMember(member3, 2);
+        vm.stopPrank();
+
+        vm.prank(member1);
+        consensus.submitReport(refSlot, keccak256("HASH_1"), CONSENSUS_VERSION);
+
+        vm.prank(member2);
+        vm.expectEmit(address(consensus));
+        emit HashConsensus.ConsensusReached(refSlot, keccak256("HASH_1"), 2);
+        consensus.submitReport(refSlot, keccak256("HASH_1"), CONSENSUS_VERSION);
+
+        vm.prank(member3);
+        consensus.submitReport(refSlot, keccak256("HASH_2"), CONSENSUS_VERSION);
+
+        vm.prank(member2);
+        vm.expectEmit(address(consensus));
+        emit HashConsensus.ConsensusReached(refSlot, keccak256("HASH_2"), 2);
+        consensus.submitReport(refSlot, keccak256("HASH_2"), CONSENSUS_VERSION);
+    }
+}
+
+contract HashConsensusGetConsensusStateForMember is HashConsensusBase {
+    uint256 internal constant FAST_LANE_LENGTH_SLOTS = (EPOCHS_PER_FRAME / 2) * SLOTS_PER_EPOCH;
+
+    function setUp() public override {
+        super.setUp();
+        vm.startPrank(manager);
+        consensus.addMember(member1, 1);
+        consensus.addMember(member2, 2);
+        consensus.addMember(member3, 2);
+        consensus.setFrameConfig(EPOCHS_PER_FRAME, FAST_LANE_LENGTH_SLOTS);
+        vm.stopPrank();
+    }
+
+    function test_getConsensusStateForMember_FastLaneMemeber() public {
+        HashConsensus.MemberConsensusState memory memberState = consensus.getConsensusStateForMember(member1);
+        assertTrue(memberState.isMember);
+        assertTrue(memberState.canReport);
+    }
+
+    function test_getConsensusStateForMember_NotFastLaneMemeber() public {
+        HashConsensus.MemberConsensusState memory memberState = consensus.getConsensusStateForMember(member3);
+        assertTrue(memberState.isMember);
+        assertFalse(memberState.canReport);
+
+        vm.warp(GENESIS_TIME + ((INITIAL_EPOCH) * SLOTS_PER_EPOCH + FAST_LANE_LENGTH_SLOTS + 1) * SECONDS_PER_SLOT);
+
+        memberState = consensus.getConsensusStateForMember(member3);
+        assertTrue(memberState.isMember);
+        assertTrue(memberState.canReport);
     }
 }

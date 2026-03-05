@@ -5,9 +5,10 @@ pragma solidity 0.8.33;
 
 import { IStakingModuleV2 } from "src/interfaces/IStakingModule.sol";
 import { ICSModule } from "src/interfaces/ICSModule.sol";
-import { NodeOperator } from "src/interfaces/IBaseModule.sol";
+import { IBaseModule, NodeOperator } from "src/interfaces/IBaseModule.sol";
 import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 import { SigningKeys } from "src/lib/SigningKeys.sol";
+import { Vm } from "forge-std/Vm.sol";
 
 import { CSM0x02IntegrationBase } from "../common/ModuleTypeBase.sol";
 import { StakingRouterIntegrationTestBase } from "../common/StakingRouter.t.sol";
@@ -29,6 +30,8 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
 
         reporter = stakingRouter.getRoleMember(stakingRouter.REPORT_EXITED_VALIDATORS_ROLE(), 0);
         topUpGateway = locator.topUpGateway();
+        module.grantRole(module.VERIFIER_ROLE(), address(this));
+        module.grantRole(module.REWIND_TOP_UP_QUEUE_ROLE(), address(this));
 
         _maximizeModuleShare(moduleId);
         _disableDepositsForOtherModules(moduleId);
@@ -248,6 +251,66 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
         stakingRouter.topUp(moduleId, keyIndices, operatorIds, pubkeys, topUpLimits);
     }
 
+    function test_routerTopUp_deepRewind_noAllocationForFullyToppedKey() public assertInvariants {
+        (
+            uint256[] memory noIds,
+            uint256[] memory keyIdxs,
+            bytes[] memory pubs,
+            uint256 checkedAt
+        ) = _topUpAndDeepRewind(type(uint256).max);
+
+        uint256 keyAddedBalanceBefore = module.getKeyAddedBalance(noIds[checkedAt], keyIdxs[checkedAt]);
+        assertEq(_remainingTopUpCapacity(noIds[checkedAt], keyIdxs[checkedAt]), 0);
+
+        (, , uint256 queueLengthBefore, ) = module.getTopUpQueue();
+
+        uint256[] memory topUpLimits = new uint256[](noIds.length);
+        for (uint256 i; i < noIds.length; i++) {
+            topUpLimits[i] = 1 ether;
+        }
+
+        vm.recordLogs();
+        vm.prank(topUpGateway);
+        stakingRouter.topUp(moduleId, keyIdxs, noIds, pubs, topUpLimits);
+
+        assertEq(_countKeyAddedBalanceChangedEvents(), 0);
+        assertEq(module.getKeyAddedBalance(noIds[checkedAt], keyIdxs[checkedAt]), keyAddedBalanceBefore);
+        (, , uint256 queueLengthAfter, ) = module.getTopUpQueue();
+        assertEq(queueLengthAfter + noIds.length, queueLengthBefore);
+    }
+
+    function test_routerTopUp_deepRewind_continuesToppedUpKeyToFullCap() public assertInvariants {
+        (
+            uint256[] memory noIds,
+            uint256[] memory keyIdxs,
+            bytes[] memory pubs,
+            uint256 checkedAt
+        ) = _topUpAndDeepRewind(1 ether);
+
+        uint256 keyAddedBalanceBefore = module.getKeyAddedBalance(noIds[checkedAt], keyIdxs[checkedAt]);
+        uint256 remainingCapacity = _remainingTopUpCapacity(noIds[checkedAt], keyIdxs[checkedAt]);
+        assertGt(remainingCapacity, 0);
+
+        (, , uint256 queueLengthBefore, ) = module.getTopUpQueue();
+
+        uint256[] memory topUpLimits = new uint256[](noIds.length);
+        for (uint256 i; i < noIds.length; i++) {
+            topUpLimits[i] = (i == checkedAt) ? remainingCapacity : 1 ether;
+        }
+
+        vm.recordLogs();
+        vm.prank(topUpGateway);
+        stakingRouter.topUp(moduleId, keyIdxs, noIds, pubs, topUpLimits);
+
+        assertEq(_countKeyAddedBalanceChangedEvents(), 1);
+        assertEq(
+            module.getKeyAddedBalance(noIds[checkedAt], keyIdxs[checkedAt]),
+            keyAddedBalanceBefore + remainingCapacity
+        );
+        (, , uint256 queueLengthAfter, ) = module.getTopUpQueue();
+        assertEq(queueLengthAfter + noIds.length, queueLengthBefore);
+    }
+
     function test_reportStakingModuleOperatorBalances_callsUpdateOperatorBalances() public assertInvariants {
         (uint256 noId, ) = integrationHelpers.getDepositableNodeOperator(nextAddress());
 
@@ -263,6 +326,63 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
 
         // CSM0x02 intentionally treats this hook as a no-op for module state.
         assertEq(module.getNonce(), nonceBefore);
+    }
+
+    uint256 internal constant DEEP_REWIND_CAP = 128;
+
+    /// @dev Tops up one queue item with the given `topUpLimit`, then deep-rewinds up to
+    ///      `DEEP_REWIND_CAP` positions back, covering pre-existing topped-up items in the module.
+    ///      Returns arrays for all items from the rewind target through the topped-up item,
+    ///      and the index of the explicitly topped-up item.
+    function _topUpAndDeepRewind(
+        uint256 topUpLimit
+    ) internal returns (uint256[] memory noIds, uint256[] memory keyIdxs, bytes[] memory pubs, uint256 checkedAt) {
+        (, , , uint256 initialHead) = module.getTopUpQueue();
+
+        _topUpHeadItem(topUpLimit);
+
+        // Deep rewind up to DEEP_REWIND_CAP positions back, capped at position 0
+        uint256 rewindTo = initialHead < DEEP_REWIND_CAP ? 0 : initialHead + 1 - DEEP_REWIND_CAP;
+        module.rewindTopUpQueue(rewindTo);
+
+        // Read all items from rewindTo through the topped-up item
+        uint256 totalCount = initialHead + 1 - rewindTo;
+        checkedAt = totalCount - 1;
+        noIds = new uint256[](totalCount);
+        keyIdxs = new uint256[](totalCount);
+        pubs = new bytes[](totalCount);
+
+        for (uint256 i; i < totalCount; i++) {
+            (noIds[i], keyIdxs[i]) = module.getTopUpQueueItem(i);
+            pubs[i] = module.getSigningKeys(noIds[i], keyIdxs[i], 1);
+        }
+    }
+
+    /// @dev Tops up the current head item of the top-up queue with the given limit.
+    function _topUpHeadItem(uint256 topUpLimit) internal {
+        (uint256 noId, uint256 keyIndex, bytes memory pubkey) = integrationHelpers.getDepositableTopUpNodeOperator(
+            nextAddress()
+        );
+        uint256 remaining = _remainingTopUpCapacity(noId, keyIndex);
+        uint256 limit = topUpLimit < remaining ? topUpLimit : remaining;
+
+        (
+            uint256[] memory keyIndices,
+            uint256[] memory operatorIds,
+            bytes[] memory pubkeys,
+            uint256[] memory topUpLimits
+        ) = _singleTopUpArrays(noId, keyIndex, pubkey, limit);
+
+        vm.prank(topUpGateway);
+        stakingRouter.topUp(moduleId, keyIndices, operatorIds, pubkeys, topUpLimits);
+    }
+
+    function _countKeyAddedBalanceChangedEvents() internal returns (uint256 count) {
+        bytes32 topic = IBaseModule.KeyAddedBalanceChanged.selector;
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; i++) {
+            if (logs[i].topics.length > 0 && logs[i].topics[0] == topic) count++;
+        }
     }
 
     function _remainingTopUpCapacity(uint256 noId, uint256 keyIndex) internal view returns (uint256) {
