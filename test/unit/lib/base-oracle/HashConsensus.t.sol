@@ -427,7 +427,7 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
         consensus.updateInitialEpoch(INITIAL_EPOCH);
     }
 
-    function test_beforeInitialEpochMembersCanBeAddedAndQuorumChanged() public {
+    function test_initialEpoch_beforeInitialEpochMembersCanBeAddedAndQuorumChanged() public {
         vm.warp(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT - 1);
 
         vm.startPrank(manager);
@@ -465,7 +465,7 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
         assertEq(lastReportedRefSlots[1], 0);
     }
 
-    function test_updateInitialEpoch_revertWhen_BeforeInitialEpoch() public {
+    function test_initialEpoch_revertWhen_BeforeInitialEpoch() public {
         vm.warp(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT - 1);
         vm.prank(manager);
         consensus.addMember(member1, 1);
@@ -485,7 +485,7 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
         consensus.submitReport(firstRefSlot, keccak256("HASH_1"), CONSENSUS_VERSION);
     }
 
-    function test_updateInitialEpoch_afterInitialEpoch() public {
+    function test_initialEpoch_afterInitialEpoch() public {
         vm.warp(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
         vm.startPrank(manager);
         consensus.addMember(member1, 1);
