@@ -337,6 +337,28 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(beforeValue, afterValue, "defaultMaxElWithdrawalRequestFee");
     }
 
+    function test_proxyAdminsUnchanged() public {
+        _assertProxyAdminUnchanged(deploymentConfig.csm, "csm");
+        _assertProxyAdminUnchanged(deploymentConfig.accounting, "accounting");
+        _assertProxyAdminUnchanged(deploymentConfig.feeDistributor, "feeDistributor");
+        _assertProxyAdminUnchanged(deploymentConfig.oracle, "feeOracle");
+        _assertProxyAdminUnchanged(deploymentConfig.strikes, "strikes");
+        _assertProxyAdminUnchanged(deploymentConfig.exitPenalties, "exitPenalties");
+        _assertProxyAdminUnchanged(deploymentConfig.parametersRegistry, "parametersRegistry");
+        _assertProxyAdminUnchanged(deploymentConfig.vettedGate, "vettedGate");
+    }
+
+    function _assertProxyAdminUnchanged(address proxyAddress, string memory prefix) internal {
+        OssifiableProxy proxy = OssifiableProxy(payable(proxyAddress));
+
+        vm.selectFork(forkIdBeforeUpgrade);
+        address adminBefore = proxy.proxy__getAdmin();
+
+        vm.selectFork(forkIdAfterUpgrade);
+        assertEq(proxy.proxy__getAdmin(), adminBefore, string.concat(prefix, " proxy admin changed"));
+        assertEq(proxy.proxy__getAdmin(), deployParams.proxyAdmin, string.concat(prefix, " proxy admin mismatch"));
+    }
+
     function test_accountingChanges() public {
         OssifiableProxy accountingProxy = OssifiableProxy(payable(address(accounting)));
 
@@ -500,6 +522,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
 
         assertEq(oracle.getContractVersion(), contractVersionBefore + 1);
         assertEq(oracle.getConsensusVersion(), consensusVersionBefore + 1);
+        assertEq(oracle.getConsensusVersion(), deployParams.consensusVersion);
     }
 
     function test_validatorStrikesChanges() public {

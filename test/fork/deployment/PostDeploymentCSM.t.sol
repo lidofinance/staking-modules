@@ -330,6 +330,11 @@ contract PermissionlessGateDeploymentTest is DeploymentBaseTest {
     function test_roles() public view {
         assertTrue(permissionlessGate.hasRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(permissionlessGate.getRoleMemberCount(permissionlessGate.DEFAULT_ADMIN_ROLE()), adminsCount);
+        if (deployParams.secondAdminAddress != address(0)) {
+            assertTrue(
+                permissionlessGate.hasRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), deployParams.secondAdminAddress)
+            );
+        }
         assertEq(permissionlessGate.getRoleMemberCount(permissionlessGate.RECOVERER_ROLE()), 0);
     }
 }
