@@ -79,7 +79,7 @@ library TopUpQueueOps {
 
             if (allocations[i] == limit) {
                 topUpQueue.dequeue();
-                emit ICSModule.TopUpQueueItemPassed(item.noId(), item.keyIndex());
+                emit ICSModule.TopUpQueueItemProcessed(item.noId(), item.keyIndex());
             } else if (i < keyCount - 1) revert ICSModule.UnexpectedExtraKey();
         }
     }

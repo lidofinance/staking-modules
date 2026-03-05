@@ -7,6 +7,31 @@ import { HashConsensus } from "src/lib/base-oracle/HashConsensus.sol";
 import { ReportProcessorMock } from "../../../helpers/mocks/ReportProcessorMock.sol";
 import { Utilities } from "../../../helpers/Utilities.sol";
 
+contract HashConsensusTestable is HashConsensus {
+    constructor(
+        uint256 slotsPerEpoch,
+        uint256 secondsPerSlot,
+        uint256 genesisTime,
+        uint256 epochsPerFrame,
+        uint256 fastLaneLengthSlots,
+        address admin,
+        address reportProcessor,
+        uint256 deadlineSlotOffset
+    )
+        HashConsensus(
+            slotsPerEpoch,
+            secondsPerSlot,
+            genesisTime,
+            epochsPerFrame,
+            fastLaneLengthSlots,
+            admin,
+            reportProcessor
+        )
+    {
+        DEADLINE_SLOT_OFFSET = deadlineSlotOffset;
+    }
+}
+
 contract HashConsensusBase is Test, Utilities {
     uint256 constant CONSENSUS_VERSION = 1;
     uint256 constant EPOCHS_PER_FRAME = 225;
@@ -17,8 +42,9 @@ contract HashConsensusBase is Test, Utilities {
     uint256 constant SLOTS_PER_EPOCH = 32;
     uint256 constant SECONDS_PER_EPOCH = SECONDS_PER_SLOT * 32;
     // uint256 constant SLOTS_PER_FRAME = EPOCHS_PER_FRAME * 32;
+    uint256 constant DEADLINE_SLOT_OFFSET = 10;
 
-    HashConsensus consensus;
+    HashConsensusTestable consensus;
     ReportProcessorMock reportProcessor;
 
     address admin;
@@ -48,21 +74,22 @@ contract HashConsensusBase is Test, Utilities {
         vm.stopPrank();
     }
 
-    function _deployHashConsensus() internal returns (HashConsensus hashConsensus) {
-        hashConsensus = new HashConsensus({
+    function _deployHashConsensus() internal returns (HashConsensusTestable hashConsensus) {
+        hashConsensus = new HashConsensusTestable({
             slotsPerEpoch: SLOTS_PER_EPOCH,
             secondsPerSlot: SECONDS_PER_SLOT,
             genesisTime: GENESIS_TIME,
             epochsPerFrame: EPOCHS_PER_FRAME,
             fastLaneLengthSlots: INITIAL_FAST_LANE_LENGTH_SLOTS,
             admin: admin,
-            reportProcessor: address(reportProcessor)
+            reportProcessor: address(reportProcessor),
+            deadlineSlotOffset: DEADLINE_SLOT_OFFSET
         });
     }
 }
 
 contract HashConsensusTestAccessControl is HashConsensusBase {
-    function test_updateInitialEpoch_RevertsWithoutAdminRole() public {
+    function test_updateInitialEpoch_revertWhen_NoAdminRole() public {
         bytes32 adminRole = consensus.DEFAULT_ADMIN_ROLE();
         bytes32 role = consensus.MANAGE_FRAME_CONFIG_ROLE();
         vm.prank(manager);
@@ -77,14 +104,14 @@ contract HashConsensusTestAccessControl is HashConsensusBase {
         consensus.updateInitialEpoch(10);
     }
 
-    function test_addMember_RevertsWithoutManageRole() public {
+    function test_addMember_revertWhen_NoManageRole() public {
         bytes32 role = consensus.MANAGE_MEMBERS_AND_QUORUM_ROLE();
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
         consensus.addMember(member1, 2);
     }
 
-    function test_removeMember_RevertsWithoutManageRole() public {
+    function test_removeMember_revertWhen_NoManageRole() public {
         bytes32 role = consensus.MANAGE_MEMBERS_AND_QUORUM_ROLE();
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
@@ -105,14 +132,14 @@ contract HashConsensusTestAccessControl is HashConsensusBase {
         assertEq(consensus.getQuorum(), 1);
     }
 
-    function test_setQuorum_RevertsWithoutManageRole() public {
+    function test_setQuorum_revertWhen_NoManageRole() public {
         bytes32 role = consensus.MANAGE_MEMBERS_AND_QUORUM_ROLE();
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
         consensus.setQuorum(1);
     }
 
-    function test_disableConsensus_RevertsWithoutDisableRole() public {
+    function test_disableConsensus_revertWhen_NoDisableRole() public {
         bytes32 role = consensus.DISABLE_CONSENSUS_ROLE();
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
@@ -130,14 +157,14 @@ contract HashConsensusTestAccessControl is HashConsensusBase {
         assertEq(consensus.getQuorum(), type(uint256).max);
     }
 
-    function test_setFrameConfig_RevertsWithoutManageRole() public {
+    function test_setFrameConfig_revertWhen_NoManageRole() public {
         bytes32 role = consensus.MANAGE_FRAME_CONFIG_ROLE();
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
         consensus.setFrameConfig(5, 0);
     }
 
-    function test_setReportProcessor_RevertsWithoutManageRole() public {
+    function test_setReportProcessor_revertWhen_NoManageRole() public {
         bytes32 role = consensus.MANAGE_REPORT_PROCESSOR_ROLE();
         ReportProcessorMock newReportProcessor = new ReportProcessorMock(CONSENSUS_VERSION);
         vm.prank(stranger);
@@ -145,7 +172,7 @@ contract HashConsensusTestAccessControl is HashConsensusBase {
         consensus.setReportProcessor(address(newReportProcessor));
     }
 
-    function test_setFastLaneLengthSlots_RevertsWithoutManageRole() public {
+    function test_setFastLaneLengthSlots_revertWhen_NoManageRole() public {
         bytes32 role = consensus.MANAGE_FAST_LANE_CONFIG_ROLE();
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
@@ -168,7 +195,7 @@ contract HashConsensusTestDeploy is HashConsensusBase {
         assertEq(fastLaneLengthSlots, INITIAL_FAST_LANE_LENGTH_SLOTS);
     }
 
-    function test_constructor_RevertIfReportProcessorIsZero() public {
+    function test_constructor_revertWhen_ReportProcessorIsZero() public {
         vm.expectRevert(HashConsensus.ReportProcessorCannotBeZero.selector);
         new HashConsensus({
             slotsPerEpoch: SLOTS_PER_EPOCH,
@@ -181,7 +208,7 @@ contract HashConsensusTestDeploy is HashConsensusBase {
         });
     }
 
-    function test_constructor_RevertIfAdminAddressIsZero() public {
+    function test_constructor_revertWhen_AdminAddressIsZero() public {
         vm.expectRevert(HashConsensus.AdminCannotBeZero.selector);
         new HashConsensus({
             slotsPerEpoch: SLOTS_PER_EPOCH,
@@ -194,7 +221,7 @@ contract HashConsensusTestDeploy is HashConsensusBase {
         });
     }
 
-    function test_constructor_RevertIfSlotsPerEpochIsZero() public {
+    function test_constructor_revertWhen_SlotsPerEpochIsZero() public {
         vm.expectRevert(HashConsensus.InvalidChainConfig.selector);
         new HashConsensus({
             slotsPerEpoch: 0,
@@ -207,7 +234,7 @@ contract HashConsensusTestDeploy is HashConsensusBase {
         });
     }
 
-    function test_constructor_RevertIfSecondsPerSlotIsZero() public {
+    function test_constructor_revertWhen_SecondsPerSlotIsZero() public {
         vm.expectRevert(HashConsensus.InvalidChainConfig.selector);
         new HashConsensus({
             slotsPerEpoch: SLOTS_PER_EPOCH,
@@ -236,7 +263,7 @@ contract HashConsensusSetFastLaneLengthSlotsTest is HashConsensusBase {
         assertEq(fastLaneLengthSlots, 64);
     }
 
-    function test_setFastLaneLengthSlots_RevertIfFastLaneLengthSlotsGreaterThanFrame() public {
+    function test_setFastLaneLengthSlots_revertWhen_FastLaneLengthSlotsGreaterThanFrame() public {
         bytes32 role = consensus.MANAGE_FAST_LANE_CONFIG_ROLE();
         vm.prank(admin);
         consensus.grantRole(role, stranger);
@@ -247,7 +274,7 @@ contract HashConsensusSetFastLaneLengthSlotsTest is HashConsensusBase {
         consensus.setFastLaneLengthSlots(fastLaneLengthSlots);
     }
 
-    function test_setFastLaneLengthSlots_NoEmitIfSameValue() public {
+    function test_setFastLaneLengthSlots_noEmitIfSameValue() public {
         bytes32 role = consensus.MANAGE_FAST_LANE_CONFIG_ROLE();
         vm.prank(admin);
         consensus.grantRole(role, stranger);
@@ -347,19 +374,19 @@ contract HashConsensusFrameConfigTest is HashConsensusBase {
         assertEq(entries.length, 0);
     }
 
-    function test_setFrameConfig_RevertIfEpochsPerFrameZero() public {
+    function test_setFrameConfig_revertWhen_EpochsPerFrameIsZero() public {
         vm.prank(manager);
         vm.expectRevert(HashConsensus.EpochsPerFrameCannotBeZero.selector);
         consensus.setFrameConfig(0, 0);
     }
 
-    function test_setFrameConfig_RevertIfFastLaneLengthSlotsLongerThanFrame() public {
+    function test_setFrameConfig_revertWhen_FastLaneLengthSlotsLongerThanFrame() public {
         vm.prank(manager);
         vm.expectRevert(HashConsensus.FastLanePeriodCannotBeLongerThanFrame.selector);
         consensus.setFrameConfig(1, 50);
     }
 
-    function test_setFrameConfig_RevertIfCurrentEpochLessThanInitialEpoch() public {
+    function test_setFrameConfig_revertWhen_CurrentEpochLessThanInitialEpoch() public {
         vm.warp(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT - 1);
         vm.prank(manager);
         vm.expectRevert(HashConsensus.InitialEpochIsYetToArrive.selector);
@@ -391,7 +418,7 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
         assertEq(initialRefSlot, 10 * SLOTS_PER_EPOCH - 1);
     }
 
-    function test_updateInitialEpoch_RevertIfInitialRefSlotLessThanProcessingSlot() public {
+    function test_updateInitialEpoch_revertWhen_InitialRefSlotLessThanProcessingSlot() public {
         vm.warp(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT - 1);
         reportProcessor.setLastProcessingStartedRefSlot(INITIAL_EPOCH * SLOTS_PER_EPOCH);
 
@@ -400,7 +427,7 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
         consensus.updateInitialEpoch(INITIAL_EPOCH);
     }
 
-    function test_beforeInitialEpochMembersCanBeAddedAndQuorumChanged() public {
+    function test_initialEpoch_beforeInitialEpochMembersCanBeAddedAndQuorumChanged() public {
         vm.warp(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT - 1);
 
         vm.startPrank(manager);
@@ -438,7 +465,7 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
         assertEq(lastReportedRefSlots[1], 0);
     }
 
-    function test_RevertsBeforeInitialEpoch() public {
+    function test_initialEpoch_revertWhen_BeforeInitialEpoch() public {
         vm.warp(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT - 1);
         vm.prank(manager);
         consensus.addMember(member1, 1);
@@ -458,7 +485,7 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
         consensus.submitReport(firstRefSlot, keccak256("HASH_1"), CONSENSUS_VERSION);
     }
 
-    function test_afterInitialEpoch() public {
+    function test_initialEpoch_afterInitialEpoch() public {
         vm.warp(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
         vm.startPrank(manager);
         consensus.addMember(member1, 1);
@@ -468,7 +495,10 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
 
         (uint256 refSlot, uint256 deadline) = consensus.getCurrentFrame();
         assertEq(refSlot, INITIAL_EPOCH * SLOTS_PER_EPOCH - 1);
-        assertEq(deadline, INITIAL_EPOCH * SLOTS_PER_EPOCH + EPOCHS_PER_FRAME * SLOTS_PER_EPOCH - 1);
+        assertEq(
+            deadline,
+            INITIAL_EPOCH * SLOTS_PER_EPOCH + EPOCHS_PER_FRAME * SLOTS_PER_EPOCH - 1 - DEADLINE_SLOT_OFFSET
+        );
 
         (, bytes32 consensusReport, ) = consensus.getConsensusState();
         assertEq(consensusReport, bytes32(0));
@@ -484,7 +514,7 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
         consensus.submitReport(refSlot, keccak256("HASH_1"), CONSENSUS_VERSION);
     }
 
-    function test_updateInitialEpoch_RevertIfInitialEpochAlreadyArrived() public {
+    function test_updateInitialEpoch_revertWhen_InitialEpochAlreadyArrived() public {
         vm.warp(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
         vm.prank(admin);
         vm.expectRevert(HashConsensus.InitialEpochAlreadyArrived.selector);
@@ -505,13 +535,13 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
 
         (uint256 refSlot, uint256 deadline) = consensus.getCurrentFrame();
         assertEq(refSlot, 6 * SLOTS_PER_EPOCH - 1);
-        assertEq(deadline, 11 * SLOTS_PER_EPOCH - 1);
+        assertEq(deadline, 11 * SLOTS_PER_EPOCH - 1 - DEADLINE_SLOT_OFFSET);
 
         vm.warp(GENESIS_TIME + 11 * SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
 
         (uint256 newRefSlot, uint256 newDeadline) = consensus.getCurrentFrame();
         assertEq(newRefSlot, 11 * SLOTS_PER_EPOCH - 1);
-        assertEq(newDeadline, 16 * SLOTS_PER_EPOCH - 1);
+        assertEq(newDeadline, 16 * SLOTS_PER_EPOCH - 1 - DEADLINE_SLOT_OFFSET);
     }
 
     function test_increasingFrameSizeAlwaysKeepsTheCurrentStartSlot() public {
@@ -524,13 +554,13 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
 
         (uint256 refSlot, uint256 deadline) = consensus.getCurrentFrame();
         assertEq(refSlot, 6 * SLOTS_PER_EPOCH - 1);
-        assertEq(deadline, 11 * SLOTS_PER_EPOCH - 1);
+        assertEq(deadline, 11 * SLOTS_PER_EPOCH - 1 - DEADLINE_SLOT_OFFSET);
 
         vm.warp(GENESIS_TIME + 11 * SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
 
         (uint256 newRefSlot, uint256 newDeadline) = consensus.getCurrentFrame();
         assertEq(newRefSlot, 11 * SLOTS_PER_EPOCH - 1);
-        assertEq(newDeadline, 16 * SLOTS_PER_EPOCH - 1);
+        assertEq(newDeadline, 16 * SLOTS_PER_EPOCH - 1 - DEADLINE_SLOT_OFFSET);
 
         vm.startPrank(manager);
         consensus.setFrameConfig(7, 0);
@@ -538,7 +568,7 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
 
         (uint256 newRefSlot2, uint256 newDeadline2) = consensus.getCurrentFrame();
         assertEq(newRefSlot2, 11 * SLOTS_PER_EPOCH - 1);
-        assertEq(newDeadline2, 18 * SLOTS_PER_EPOCH - 1);
+        assertEq(newDeadline2, 18 * SLOTS_PER_EPOCH - 1 - DEADLINE_SLOT_OFFSET);
     }
 
     function test_decreasingFrameSizeCannotDecreaseTheCurrentReferenceSlot() public {
@@ -551,7 +581,7 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
 
         (uint256 refSlot, uint256 deadline) = consensus.getCurrentFrame();
         assertEq(refSlot, 6 * SLOTS_PER_EPOCH - 1);
-        assertEq(deadline, 11 * SLOTS_PER_EPOCH - 1);
+        assertEq(deadline, 11 * SLOTS_PER_EPOCH - 1 - DEADLINE_SLOT_OFFSET);
 
         vm.startPrank(manager);
         consensus.setFrameConfig(4, 0);
@@ -559,7 +589,7 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
 
         (uint256 newRefSlot, uint256 newDeadline) = consensus.getCurrentFrame();
         assertEq(newRefSlot, 6 * SLOTS_PER_EPOCH - 1);
-        assertEq(newDeadline, 10 * SLOTS_PER_EPOCH - 1);
+        assertEq(newDeadline, 10 * SLOTS_PER_EPOCH - 1 - DEADLINE_SLOT_OFFSET);
     }
 
     function test_decreasingFrameSizeMayAdvanceTheCurrentReferenceSlotButAtLeastByTheNewFrameSize() public {
@@ -572,7 +602,7 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
 
         (uint256 refSlot, uint256 deadline) = consensus.getCurrentFrame();
         assertEq(refSlot, 6 * SLOTS_PER_EPOCH - 1);
-        assertEq(deadline, 11 * SLOTS_PER_EPOCH - 1);
+        assertEq(deadline, 11 * SLOTS_PER_EPOCH - 1 - DEADLINE_SLOT_OFFSET);
 
         vm.startPrank(manager);
         consensus.setFrameConfig(4, 0);
@@ -580,24 +610,24 @@ contract HashConsensusInitialEpochTest is HashConsensusBase {
 
         (uint256 newRefSlot, uint256 newDeadline) = consensus.getCurrentFrame();
         assertEq(newRefSlot, 10 * SLOTS_PER_EPOCH - 1);
-        assertEq(newDeadline, 14 * SLOTS_PER_EPOCH - 1);
+        assertEq(newDeadline, 14 * SLOTS_PER_EPOCH - 1 - DEADLINE_SLOT_OFFSET);
     }
 }
 
 contract HashConsensusAddMembersTest is HashConsensusBase {
-    function test_addMember_RevertIfMemberAddressZero() public {
+    function test_addMember_revertWhen_MemberAddressZero() public {
         vm.prank(manager);
         vm.expectRevert(HashConsensus.AddressCannotBeZero.selector);
         consensus.addMember(address(0), 1);
     }
 
-    function test_addMember_RevertIfQuorumIsZero() public {
+    function test_addMember_revertWhen_QuorumIsZero() public {
         vm.prank(manager);
         vm.expectRevert(abi.encodeWithSelector(HashConsensus.QuorumTooSmall.selector, 1, 0));
         consensus.addMember(member1, 0);
     }
 
-    function test_addMember_RevertIfMemberAlreadyAdded() public {
+    function test_addMember_revertWhen_MemberAlreadyAdded() public {
         vm.prank(manager);
         consensus.addMember(member1, 2);
 
@@ -606,7 +636,7 @@ contract HashConsensusAddMembersTest is HashConsensusBase {
         consensus.addMember(member1, 2);
     }
 
-    function test_addMember_RevertIfQuorumLessThanHalfOfTotalMembers() public {
+    function test_addMember_revertWhen_QuorumLessThanHalfOfTotalMembers() public {
         vm.prank(manager);
         consensus.addMember(member1, 1);
 
@@ -714,13 +744,13 @@ contract HashConsensusRemoveMemberTest is HashConsensusBase {
         vm.stopPrank();
     }
 
-    function test_removeMember_RevertIfMemberNotAdded() public {
+    function test_removeMember_revertWhen_MemberNotAdded() public {
         vm.prank(manager);
         vm.expectRevert(HashConsensus.NonMember.selector);
         consensus.removeMember(stranger, 4);
     }
 
-    function test_removeMember_RevertIfMemberAlreadyRemoved() public {
+    function test_removeMember_revertWhen_MemberAlreadyRemoved() public {
         vm.prank(manager);
         consensus.removeMember(member1, 4);
 
@@ -897,13 +927,13 @@ contract HashConsensusRemoveMemberTest is HashConsensusBase {
 }
 
 contract HashConsensusReportProcessorTest is HashConsensusBase {
-    function test_setReportProcessor_RevertIfReportProcessorIsZero() public {
+    function test_setReportProcessor_revertWhen_ReportProcessorIsZero() public {
         vm.prank(manager);
         vm.expectRevert(HashConsensus.ReportProcessorCannotBeZero.selector);
         consensus.setReportProcessor(address(0));
     }
 
-    function test_setReportProcessor_RevertIfReportProcessorIsTheSame() public {
+    function test_setReportProcessor_revertWhen_ReportProcessorIsTheSame() public {
         vm.prank(manager);
         vm.expectRevert(HashConsensus.NewProcessorCannotBeTheSame.selector);
         consensus.setReportProcessor(address(reportProcessor));
@@ -1004,18 +1034,34 @@ contract HashConsensusReportProcessorTest is HashConsensusBase {
 }
 
 contract HashConsensusSetQuorumTest is HashConsensusBase {
-    // TODO tested already in the addMember tests, same logic for quorum
-    // backport remaining tests from core
-
     function test_setQuorum() public {
-        bytes32 role = consensus.MANAGE_MEMBERS_AND_QUORUM_ROLE();
-        vm.prank(admin);
-        consensus.grantRole(role, stranger);
+        vm.startPrank(manager);
+        consensus.addMember(member1, 1);
+        consensus.addMember(member2, 2);
+        consensus.addMember(member3, 2);
+        vm.expectEmit(address(consensus));
+        emit HashConsensus.QuorumSet(3, 3, 2);
+        consensus.setQuorum(3);
+        vm.stopPrank();
 
-        vm.prank(stranger);
-        consensus.setQuorum(1);
+        assertEq(consensus.getQuorum(), 3);
+    }
 
-        assertEq(consensus.getQuorum(), 1);
+    function test_setQuorum_afterCurrentDeadline() public {
+        vm.startPrank(manager);
+        consensus.addMember(member1, 1);
+        consensus.addMember(member2, 2);
+        consensus.addMember(member3, 2);
+        vm.stopPrank();
+        (, uint256 deadlineSlot) = consensus.getCurrentFrame();
+        vm.warp(GENESIS_TIME + (deadlineSlot + 1) * SECONDS_PER_SLOT);
+
+        vm.prank(manager);
+        vm.expectEmit(address(consensus));
+        emit HashConsensus.QuorumSet(3, 3, 2);
+        consensus.setQuorum(3);
+
+        assertEq(consensus.getQuorum(), 3);
     }
 }
 
@@ -1027,20 +1073,20 @@ contract HashConsensusSubmitReportTest is HashConsensusBase {
         vm.stopPrank();
     }
 
-    function test_submitReport_RevertsIfSlotGreaterThanMaxAllowed() public {
+    function test_submitReport_revertWhen_SlotGreaterThanMaxAllowed() public {
         vm.prank(member1);
         vm.expectRevert(HashConsensus.NumericOverflow.selector);
         uint256 maxSlot = type(uint64).max;
         consensus.submitReport(maxSlot + 1, keccak256("HASH_1"), CONSENSUS_VERSION);
     }
 
-    function test_submitReport_RevertsIfSlotIsZero() public {
+    function test_submitReport_revertWhen_SlotIsZero() public {
         vm.prank(member1);
         vm.expectRevert(HashConsensus.InvalidSlot.selector);
         consensus.submitReport(0, keccak256("HASH_1"), CONSENSUS_VERSION);
     }
 
-    function test_submitReport_RevertsIfNotRefSlot() public {
+    function test_submitReport_revertWhen_NotRefSlot() public {
         (uint256 refSlot, ) = consensus.getCurrentFrame();
 
         vm.prank(member1);
@@ -1048,21 +1094,21 @@ contract HashConsensusSubmitReportTest is HashConsensusBase {
         consensus.submitReport(refSlot + 1, keccak256("HASH_1"), CONSENSUS_VERSION);
     }
 
-    function test_submitReport_RevertsIfUnexpectedConsensusVersion() public {
+    function test_submitReport_revertWhen_UnexpectedConsensusVersion() public {
         (uint256 refSlot, ) = consensus.getCurrentFrame();
         vm.prank(member1);
         vm.expectRevert(abi.encodeWithSelector(HashConsensus.UnexpectedConsensusVersion.selector, 1, 2));
         consensus.submitReport(refSlot, keccak256("HASH_1"), CONSENSUS_VERSION + 1);
     }
 
-    function test_submitReport_RevertsIfEmptyReport() public {
+    function test_submitReport_revertWhen_EmptyReport() public {
         (uint256 refSlot, ) = consensus.getCurrentFrame();
         vm.prank(member1);
         vm.expectRevert(HashConsensus.EmptyReport.selector);
         consensus.submitReport(refSlot, bytes32(0), CONSENSUS_VERSION);
     }
 
-    function test_submitReport_RevertsIfConsensusReportAlreadyProcessing() public {
+    function test_submitReport_revertWhen_ConsensusReportAlreadyProcessing() public {
         (uint256 refSlot, ) = consensus.getCurrentFrame();
         vm.prank(member1);
         consensus.submitReport(refSlot, keccak256("HASH_1"), CONSENSUS_VERSION);
@@ -1075,7 +1121,7 @@ contract HashConsensusSubmitReportTest is HashConsensusBase {
         consensus.submitReport(refSlot, keccak256("HASH_2"), CONSENSUS_VERSION);
     }
 
-    function test_submitReport_RevertsIfNonFastLaneMemberCannotReportWithinFastLaneInterval() public {
+    function test_submitReport_revertWhen_NonFastLaneMemberCannotReportWithinFastLaneInterval() public {
         vm.startPrank(manager);
         consensus.addMember(member2, 2);
         consensus.addMember(member3, 2);
@@ -1089,7 +1135,7 @@ contract HashConsensusSubmitReportTest is HashConsensusBase {
         consensus.submitReport(refSlot, keccak256("HASH_1"), CONSENSUS_VERSION);
     }
 
-    function test_submitReport_RevertsIfDuplicateReport() public {
+    function test_submitReport_revertWhen_DuplicateReport() public {
         (uint256 refSlot, ) = consensus.getCurrentFrame();
         vm.prank(member1);
         consensus.submitReport(refSlot, keccak256("HASH_1"), CONSENSUS_VERSION);
@@ -1153,6 +1199,26 @@ contract HashConsensusSubmitReportTest is HashConsensusBase {
         vm.expectEmit(address(consensus));
         emit HashConsensus.ConsensusReached(refSlot, keccak256("HASH_2"), 2);
         consensus.submitReport(refSlot, keccak256("HASH_2"), CONSENSUS_VERSION);
+    }
+
+    function test_submitReport_revertWhen_StaleReport() public {
+        (uint256 refSlot, ) = consensus.getCurrentFrame();
+        vm.startPrank(manager);
+        consensus.addMember(member2, 2);
+        vm.stopPrank();
+
+        vm.prank(member1);
+        consensus.submitReport(refSlot, keccak256("HASH_1"), CONSENSUS_VERSION);
+
+        vm.warp(
+            GENESIS_TIME +
+                ((INITIAL_EPOCH + EPOCHS_PER_FRAME) * SLOTS_PER_EPOCH - DEADLINE_SLOT_OFFSET + 1) *
+                SECONDS_PER_SLOT
+        );
+
+        vm.prank(member2);
+        vm.expectRevert(HashConsensus.StaleReport.selector);
+        consensus.submitReport(refSlot, keccak256("HASH_1"), CONSENSUS_VERSION);
     }
 }
 
