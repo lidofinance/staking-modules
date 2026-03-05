@@ -409,6 +409,9 @@ contract VerifierDeploymentTest is DeploymentBaseTest {
     function test_roles() public view {
         assertTrue(verifier.hasRole(verifier.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(verifier.getRoleMemberCount(verifier.DEFAULT_ADMIN_ROLE()), adminsCount);
+        if (deployParams.secondAdminAddress != address(0)) {
+            assertTrue(verifier.hasRole(verifier.DEFAULT_ADMIN_ROLE(), deployParams.secondAdminAddress));
+        }
 
         assertTrue(verifier.hasRole(verifier.PAUSE_ROLE(), address(gateSeal)));
         assertTrue(verifier.hasRole(verifier.PAUSE_ROLE(), deployParams.resealManager));
@@ -473,6 +476,9 @@ contract EjectorDeploymentTest is DeploymentBaseTest {
     function test_roles() public view {
         assertTrue(ejector.hasRole(ejector.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(ejector.getRoleMemberCount(ejector.DEFAULT_ADMIN_ROLE()), adminsCount);
+        if (deployParams.secondAdminAddress != address(0)) {
+            assertTrue(ejector.hasRole(ejector.DEFAULT_ADMIN_ROLE(), deployParams.secondAdminAddress));
+        }
 
         assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), address(gateSeal)));
         assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager));
