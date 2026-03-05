@@ -31,7 +31,7 @@ library SSZ {
 
             // Loop over levels
             // prettier-ignore
-            for { } 1 { } {
+            for {} 1 {} {
                 // Loop over nodes at the given depth
 
                 // Initialize `offset` to the offset of `proof` elements in memory.
@@ -40,24 +40,13 @@ library SSZ {
                 let end := add(source, shl(5, count))
 
                 // prettier-ignore
-                for { } 1 { } {
+                for {} 1 {} {
                     // Read next two hashes to hash
                     mcopy(0x00, source, 0x40)
 
-                    // Call sha256 precompile
-                    let result := staticcall(
-                        gas(),
-                        0x02,
-                        0x00,
-                        0x40,
-                        0x00,
-                        0x20
-                    )
-
-                    if iszero(result) {
-                        // Precompile returns no data on OutOfGas error.
-                        revert(0, 0)
-                    }
+                    // Call sha256 precompile. Return code unchecked: sha256 can only fail with OOG,
+                    // and all gas is forwarded, so OOG here means OOG for the caller.
+                    pop(staticcall(gas(), 0x02, 0x00, 0x40, 0x00, 0x20))
 
                     // Store the resulting hash at the target location
                     mstore(target, mload(0x00))
@@ -91,13 +80,9 @@ library SSZ {
             mcopy(0x00, add(offset, 32), 48)
             // Clear the last 16 bytes.
             mcopy(48, 0x60, 16)
-            // Call sha256 precompile.
-            let result := staticcall(gas(), 0x02, 0x00, 0x40, 0x00, 0x20)
-
-            if iszero(result) {
-                // Precompile returns no data on OutOfGas error.
-                revert(0, 0)
-            }
+            // Call sha256 precompile. Return code unchecked: sha256 can only fail with OOG,
+            // and all gas is forwarded, so OOG here means OOG for the caller.
+            pop(staticcall(gas(), 0x02, 0x00, 0x40, 0x00, 0x20))
 
             pubkeyRoot := mload(0x00)
         }
@@ -119,7 +104,7 @@ library SSZ {
 
             // Loop over levels
             // prettier-ignore
-            for { } 1 { } {
+            for {} 1 {} {
                 // Loop over nodes at the given depth
 
                 // Initialize `offset` to the offset of `proof` elements in memory.
@@ -128,24 +113,13 @@ library SSZ {
                 let end := add(source, shl(5, count))
 
                 // prettier-ignore
-                for { } 1 { } {
+                for {} 1 {} {
                     // Read next two hashes to hash
                     mcopy(0x00, source, 0x40)
 
-                    // Call sha256 precompile
-                    let result := staticcall(
-                        gas(),
-                        0x02,
-                        0x00,
-                        0x40,
-                        0x00,
-                        0x20
-                    )
-
-                    if iszero(result) {
-                        // Precompile returns no data on OutOfGas error.
-                        revert(0, 0)
-                    }
+                    // Call sha256 precompile. Return code unchecked: sha256 can only fail with OOG,
+                    // and all gas is forwarded, so OOG here means OOG for the caller.
+                    pop(staticcall(gas(), 0x02, 0x00, 0x40, 0x00, 0x20))
 
                     // Store the resulting hash at the target location
                     mstore(target, mload(0x00))
@@ -186,7 +160,7 @@ library SSZ {
             let offset := proof.offset
             // Iterate over proof elements to compute root hash.
             // prettier-ignore
-            for { } 1 { } {
+            for {} 1 {} {
                 // Slot of `leaf` in scratch space.
                 // If the condition is true: 0x20, otherwise: 0x00.
                 let scratch := shl(5, and(index, 1))
@@ -201,20 +175,9 @@ library SSZ {
                 // Scratch space is 64 bytes (0x00 - 0x3f) and both elements are 32 bytes.
                 mstore(scratch, leaf)
                 mstore(xor(scratch, 0x20), calldataload(offset))
-                // Call sha256 precompile.
-                let result := staticcall(
-                    gas(),
-                    0x02,
-                    0x00,
-                    0x40,
-                    0x00,
-                    0x20
-                )
-
-                if iszero(result) {
-                    // Precompile returns no data on OutOfGas error.
-                    revert(0, 0)
-                }
+                // Call sha256 precompile. Return code unchecked: sha256 can only fail with OOG,
+                // and all gas is forwarded, so OOG here means OOG for the caller.
+                pop(staticcall(gas(), 0x02, 0x00, 0x40, 0x00, 0x20))
 
                 // Reuse `leaf` to store the hash to reduce stack operations.
                 leaf := mload(0x00)
