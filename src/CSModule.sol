@@ -62,7 +62,7 @@ contract CSModule is ICSModule, BaseModule {
     ///      If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
     ///      To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
     function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {
-        Layout storage $ = _layout();
+        Layout storage $ = _baseStorage();
         // Clean `Layout.freeSlot1` since the storage slot is no longer needed in version 3.
         $.freeSlot1 = 0;
         // NOTE: Don't call `_initTopUpQueue` because it is disabled by default and existing CSM deployment can only support 0x01 validators mode.
@@ -113,12 +113,12 @@ contract CSModule is ICSModule, BaseModule {
 
         // NOTE: The highest priority to start iterations with. Priorities are ordered like 0, 1, 2, ...
         for (uint256 priority; depositsLeft > 0 && priority <= _queueLowestPriority(); ++priority) {
-            DepositQueueLib.Queue storage depositQueue = _layout().depositQueueByPriority[priority];
+            DepositQueueLib.Queue storage depositQueue = _baseStorage().depositQueueByPriority[priority];
             for (Batch item = depositQueue.peek(); !item.isNil() && depositsLeft > 0; item = depositQueue.peek()) {
                 // NOTE: see the `enqueuedCount` note below.
                 unchecked {
                     uint32 noId = uint32(item.noId());
-                    NodeOperator storage no = _layout().nodeOperators[noId];
+                    NodeOperator storage no = _baseStorage().nodeOperators[noId];
 
                     uint256 keysInBatch = item.keys();
 
@@ -192,9 +192,9 @@ contract CSModule is ICSModule, BaseModule {
         unchecked {
             // Deposits counts are capped by queue length (< 2^32) and the storage slots are uint64.
             // forge-lint: disable-next-line(unsafe-typecast)
-            _layout().depositableValidatorsCount -= uint64(depositsCount);
+            _baseStorage().depositableValidatorsCount -= uint64(depositsCount);
             // forge-lint: disable-next-line(unsafe-typecast)
-            _layout().totalDepositedValidators += uint64(depositsCount);
+            _baseStorage().totalDepositedValidators += uint64(depositsCount);
         }
 
         _incrementModuleNonce();
@@ -218,7 +218,7 @@ contract CSModule is ICSModule, BaseModule {
 
         // Cap top-ups so we don't over-allocate to keys that lost balance due to CL penalties.
         uint256[] memory cappedTopUpLimits = NodeOperatorOps.capTopUpLimitsByKeyBalance(
-            _layout().keyAddedBalances,
+            _baseStorage().keyAddedBalances,
             operatorIds,
             keyIndices,
             topUpLimits
@@ -236,7 +236,7 @@ contract CSModule is ICSModule, BaseModule {
         if (allocations.length == 0) return allocations;
 
         NodeOperatorOps.increaseKeyAddedBalancesByAllocations(
-            _layout().keyAddedBalances,
+            _baseStorage().keyAddedBalances,
             operatorIds,
             keyIndices,
             allocations
@@ -289,7 +289,7 @@ contract CSModule is ICSModule, BaseModule {
         _requireDepositInfoUpToDate();
         return
             DepositQueueOps.cleanDepositQueue({
-                layout: _layout(),
+                layout: _baseStorage(),
                 queueLowestPriority: _queueLowestPriority(),
                 maxItems: maxItems
             });
@@ -327,7 +327,7 @@ contract CSModule is ICSModule, BaseModule {
         override(BaseModule, IStakingModule)
         returns (uint256 totalExitedValidators, uint256 totalDepositedValidators, uint256 depositableValidatorsCount)
     {
-        Layout storage $ = _layout();
+        Layout storage $ = _baseStorage();
         totalExitedValidators = $.totalExitedValidators;
         totalDepositedValidators = $.totalDepositedValidators;
         depositableValidatorsCount = $.depositableValidatorsCount;
@@ -338,13 +338,13 @@ contract CSModule is ICSModule, BaseModule {
 
     /// @inheritdoc ICSModule
     function depositQueuePointers(uint256 queuePriority) external view returns (uint128 head, uint128 tail) {
-        DepositQueueLib.Queue storage q = _layout().depositQueueByPriority[queuePriority];
+        DepositQueueLib.Queue storage q = _baseStorage().depositQueueByPriority[queuePriority];
         return (q.head, q.tail);
     }
 
     /// @inheritdoc ICSModule
     function depositQueueItem(uint256 queuePriority, uint128 index) external view returns (Batch) {
-        return _layout().depositQueueByPriority[queuePriority].at(index);
+        return _baseStorage().depositQueueByPriority[queuePriority].at(index);
     }
 
     /// @inheritdoc ICSModule
@@ -367,7 +367,7 @@ contract CSModule is ICSModule, BaseModule {
     ) internal override returns (bool changed) {
         changed = super._applyDepositableValidatorsCount(no, nodeOperatorId, newCount, incrementNonceIfUpdated);
         DepositQueueOps.enqueueNodeOperatorKeys({
-            layout: _layout(),
+            layout: _baseStorage(),
             parametersRegistry: _parametersRegistry(),
             accounting: _accounting(),
             queueLowestPriority: _queueLowestPriority(),
@@ -399,7 +399,7 @@ contract CSModule is ICSModule, BaseModule {
     }
 
     function _topUpQueue() internal view returns (TopUpQueueLib.Queue storage) {
-        CSModuleStorage storage $ = _storage();
+        CSModuleStorage storage $ = _csmStorage();
         return $.topUpQueue;
     }
 
@@ -422,7 +422,7 @@ contract CSModule is ICSModule, BaseModule {
         }
     }
 
-    function _storage() internal pure returns (CSModuleStorage storage $) {
+    function _csmStorage() internal pure returns (CSModuleStorage storage $) {
         assembly ("memory-safe") {
             $.slot := CSMODULE_STORAGE_LOCATION
         }

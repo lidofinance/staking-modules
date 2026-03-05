@@ -9,7 +9,7 @@ import { DepositQueueLib } from "../lib/DepositQueueLib.sol";
 
 abstract contract ModuleLinearStorage {
     /// @dev Linear storage layout of the module. All state lives in a single struct
-    ///      accessed via `_layout()` at slot 0.
+    ///      accessed via `_baseStorage()` at slot 0.
     struct Layout {
         /// @dev Having this mapping here to preserve the current layout of the storage of the CSModule.
         mapping(uint256 priority => DepositQueueLib.Queue queue) depositQueueByPriority;
@@ -29,7 +29,7 @@ abstract contract ModuleLinearStorage {
         uint64 nodeOperatorsCount;
     }
 
-    function _layout() internal pure returns (Layout storage $) {
+    function _baseStorage() internal pure returns (Layout storage $) {
         assembly ("memory-safe") {
             // ModuleLinearStorage starts at slot 0 in the current inheritance layout.
             $.slot := 0
