@@ -48,14 +48,6 @@ library WithdrawnValidatorLib {
         }
     }
 
-    function process(
-        NodeOperator storage no,
-        WithdrawnValidatorInfo calldata validatorInfo,
-        uint256 keyAddedBalance
-    ) external {
-        _process(no, validatorInfo, keyAddedBalance);
-    }
-
     function _process(
         NodeOperator storage no,
         WithdrawnValidatorInfo calldata validatorInfo,
