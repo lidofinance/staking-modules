@@ -952,6 +952,52 @@ contract CSMTopUpQueue is CSMCommon {
         });
     }
 
+    function test_topUp_emitsTopUpQueueItemPassedForEachKey() public {
+        createNodeOperator(2);
+        createNodeOperator(1);
+        csm.obtainDepositData(3, "");
+
+        bytes memory packed = csm.getSigningKeys(0, 0, 2);
+        bytes memory key2 = csm.getSigningKeys(1, 0, 1);
+        bytes[] memory pubkeys = BytesArr(slice(packed, 0, 48), slice(packed, 48, 48), key2);
+
+        vm.expectEmit(address(csm));
+        emit ICSModule.TopUpQueueItemPassed(0, 0);
+        vm.expectEmit(address(csm));
+        emit ICSModule.TopUpQueueItemPassed(0, 1);
+        vm.expectEmit(address(csm));
+        emit ICSModule.TopUpQueueItemPassed(1, 0);
+
+        csm.allocateDeposits({
+            maxDepositAmount: 3 ether,
+            pubkeys: pubkeys,
+            keyIndices: UintArr(0, 1, 0),
+            operatorIds: UintArr(0, 0, 1),
+            topUpLimits: UintArr(1 ether, 1 ether, 1 ether)
+        });
+    }
+
+    function test_topUp_noPassedEventWhenPartialAllocation() public {
+        createNodeOperator(1);
+        csm.obtainDepositData(1, "");
+
+        bytes memory key = csm.getSigningKeys(0, 0, 1);
+
+        vm.recordLogs();
+        csm.allocateDeposits({
+            maxDepositAmount: 1 ether,
+            pubkeys: BytesArr(key),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(3 ether)
+        });
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        for (uint256 i; i < entries.length; ++i) {
+            assertNotEq(entries[i].topics[0], ICSModule.TopUpQueueItemPassed.selector);
+        }
+    }
+
     function test_topUp_noEmitWhenKeyAtCap() public {
         createNodeOperator(1);
         csm.obtainDepositData(1, "");
