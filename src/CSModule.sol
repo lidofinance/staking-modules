@@ -62,7 +62,7 @@ contract CSModule is ICSModule, BaseModule {
     ///      If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
     ///      To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
     function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {
-        Layout storage $ = _baseStorage();
+        BaseModuleStorage storage $ = _baseStorage();
         // Clean `Layout.freeSlot1` since the storage slot is no longer needed in version 3.
         $.freeSlot1 = 0;
         // NOTE: Don't call `_initTopUpQueue` because it is disabled by default and existing CSM deployment can only support 0x01 validators mode.
@@ -289,7 +289,7 @@ contract CSModule is ICSModule, BaseModule {
         _requireDepositInfoUpToDate();
         return
             DepositQueueOps.cleanDepositQueue({
-                layout: _baseStorage(),
+                $: _baseStorage(),
                 queueLowestPriority: _queueLowestPriority(),
                 maxItems: maxItems
             });
@@ -327,7 +327,7 @@ contract CSModule is ICSModule, BaseModule {
         override(BaseModule, IStakingModule)
         returns (uint256 totalExitedValidators, uint256 totalDepositedValidators, uint256 depositableValidatorsCount)
     {
-        Layout storage $ = _baseStorage();
+        BaseModuleStorage storage $ = _baseStorage();
         totalExitedValidators = $.totalExitedValidators;
         totalDepositedValidators = $.totalDepositedValidators;
         depositableValidatorsCount = $.depositableValidatorsCount;
@@ -367,7 +367,7 @@ contract CSModule is ICSModule, BaseModule {
     ) internal override returns (bool changed) {
         changed = super._applyDepositableValidatorsCount(no, nodeOperatorId, newCount, incrementNonceIfUpdated);
         DepositQueueOps.enqueueNodeOperatorKeys({
-            layout: _baseStorage(),
+            $: _baseStorage(),
             parametersRegistry: _parametersRegistry(),
             accounting: _accounting(),
             queueLowestPriority: _queueLowestPriority(),

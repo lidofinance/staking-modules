@@ -61,7 +61,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         _requireDepositInfoUpToDate();
 
         // TODO: think about changing to list of structs
-        Layout storage $ = _baseStorage();
+        BaseModuleStorage storage $ = _baseStorage();
         (uint256 allocated, uint256[] memory operatorIds, uint256[] memory allocations) = CuratedDepositAllocator
             .allocateInitialDeposits($.nodeOperators, $.nodeOperatorsCount, depositsCount);
         if (allocated == 0) return (publicKeys, signatures);
@@ -217,7 +217,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256 maxDepositAmount
     ) external view returns (uint256 allocated, uint256[] memory operatorIds, uint256[] memory allocations) {
         _requireDepositInfoUpToDate();
-        Layout storage $ = _baseStorage();
+        BaseModuleStorage storage $ = _baseStorage();
         uint256 operatorsCount = $.nodeOperatorsCount;
         if (maxDepositAmount == 0 || operatorsCount == 0) return (0, new uint256[](0), new uint256[](0));
 
@@ -265,7 +265,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256[] calldata keyIndices,
         uint256[] memory topUpLimits
     ) internal returns (uint256[] memory allocations) {
-        Layout storage $ = _baseStorage();
+        BaseModuleStorage storage $ = _baseStorage();
         uint256[] memory uniqueOperatorIds = _uniqueOperatorIds(operatorIds);
         (, uint256[] memory allocatedOperatorIds, uint256[] memory operatorAllocations) = CuratedDepositAllocator
             .allocateTopUps({

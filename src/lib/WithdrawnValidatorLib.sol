@@ -24,23 +24,22 @@ library WithdrawnValidatorLib {
     function processBatch(
         WithdrawnValidatorInfo[] calldata validatorInfos,
         bool slashed,
-        ModuleLinearStorage.Layout storage layout
+        ModuleLinearStorage.BaseModuleStorage storage $
     ) external returns (uint256[] memory touchedOperatorIds, uint256 touchedCount) {
         touchedOperatorIds = new uint256[](validatorInfos.length);
 
         for (uint256 i; i < validatorInfos.length; ++i) {
             WithdrawnValidatorInfo calldata info = validatorInfos[i];
-            if (info.nodeOperatorId >= layout.nodeOperatorsCount) revert IBaseModule.NodeOperatorDoesNotExist();
+            if (info.nodeOperatorId >= $.nodeOperatorsCount) revert IBaseModule.NodeOperatorDoesNotExist();
 
             uint256 pointer = _keyPointer(info.nodeOperatorId, info.keyIndex);
-            if (layout.isValidatorWithdrawn[pointer]) continue;
+            if ($.isValidatorWithdrawn[pointer]) continue;
             if (info.isSlashed != slashed) revert IBaseModule.InvalidWithdrawnValidatorInfo();
-            if (info.isSlashed && !layout.isValidatorSlashed[pointer])
-                revert IBaseModule.SlashingPenaltyIsNotApplicable();
+            if (info.isSlashed && !$.isValidatorSlashed[pointer]) revert IBaseModule.SlashingPenaltyIsNotApplicable();
 
-            _process(layout.nodeOperators[info.nodeOperatorId], info, layout.keyAddedBalances[pointer]);
+            _process($.nodeOperators[info.nodeOperatorId], info, $.keyAddedBalances[pointer]);
 
-            layout.isValidatorWithdrawn[pointer] = true;
+            $.isValidatorWithdrawn[pointer] = true;
             touchedOperatorIds[touchedCount] = info.nodeOperatorId;
             unchecked {
                 ++touchedCount;

@@ -17,7 +17,7 @@ library DepositQueueOps {
     using TransientUintUintMapLib for TransientUintUintMap;
 
     function cleanDepositQueue(
-        ModuleLinearStorage.Layout storage layout,
+        ModuleLinearStorage.BaseModuleStorage storage $,
         uint256 queueLowestPriority,
         uint256 maxItems
     ) external returns (uint256 removed, uint256 lastRemovedAtDepth) {
@@ -37,14 +37,14 @@ library DepositQueueOps {
         uint256 priority = 0;
 
         while (priority <= queueLowestPriority) {
-            queue = layout.depositQueueByPriority[priority];
+            queue = $.depositQueueByPriority[priority];
 
             (
                 uint256 removedPerQueue,
                 uint256 lastRemovedAtDepthPerQueue,
                 uint256 visitedPerQueue,
                 bool reachedOutOfQueue
-            ) = _clean(queue, layout.nodeOperators, maxItems, queueLookup);
+            ) = _clean(queue, $.nodeOperators, maxItems, queueLookup);
 
             if (removedPerQueue > 0) {
                 unchecked {
@@ -77,13 +77,13 @@ library DepositQueueOps {
     }
 
     function enqueueNodeOperatorKeys(
-        ModuleLinearStorage.Layout storage layout,
+        ModuleLinearStorage.BaseModuleStorage storage $,
         IParametersRegistry parametersRegistry,
         IAccounting accounting,
         uint256 queueLowestPriority,
         uint256 nodeOperatorId
     ) external {
-        NodeOperator storage no = layout.nodeOperators[nodeOperatorId];
+        NodeOperator storage no = $.nodeOperators[nodeOperatorId];
         uint32 depositable = no.depositableValidatorsCount;
         uint32 enqueued = no.enqueuedCount;
         if (depositable <= enqueued) return;
@@ -106,7 +106,7 @@ library DepositQueueOps {
                     if (count > priorityDepositsLeft) count = priorityDepositsLeft;
 
                     _enqueueNodeOperatorKeys({
-                        queue: layout.depositQueueByPriority[priority],
+                        queue: $.depositQueueByPriority[priority],
                         no: no,
                         nodeOperatorId: nodeOperatorId,
                         queuePriority: priority,
@@ -118,7 +118,7 @@ library DepositQueueOps {
         }
         if (toEnqueue > 0) {
             _enqueueNodeOperatorKeys({
-                queue: layout.depositQueueByPriority[queueLowestPriority],
+                queue: $.depositQueueByPriority[queueLowestPriority],
                 no: no,
                 nodeOperatorId: nodeOperatorId,
                 queuePriority: queueLowestPriority,

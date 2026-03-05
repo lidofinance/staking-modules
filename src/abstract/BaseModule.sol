@@ -82,7 +82,7 @@ abstract contract BaseModule is
         address /* referrer */
     ) public virtual whenResumed returns (uint256 nodeOperatorId) {
         _checkCreateNodeOperatorRole();
-        Layout storage $ = _baseStorage();
+        BaseModuleStorage storage $ = _baseStorage();
         nodeOperatorId = $.nodeOperatorsCount;
 
         NodeOperatorOps.createNodeOperator({
@@ -211,28 +211,14 @@ abstract contract BaseModule is
         bytes calldata exitedValidatorsCounts
     ) external {
         _checkStakingRouterRole();
-        Layout storage $ = _baseStorage();
-        $.totalExitedValidators = NodeOperatorOps.updateExitedValidatorsCount({
-            nodeOperators: $.nodeOperators,
-            nodeOperatorsCount: $.nodeOperatorsCount,
-            totalExitedValidators: $.totalExitedValidators,
-            nodeOperatorIds: nodeOperatorIds,
-            exitedValidatorsCounts: exitedValidatorsCounts
-        });
+        NodeOperatorOps.updateExitedValidatorsCount(_baseStorage(), nodeOperatorIds, exitedValidatorsCounts);
     }
 
     /// @dev DEPRECATED: Should be removed in the future versions.
     /// @inheritdoc IStakingModule
     function unsafeUpdateValidatorsCount(uint256 nodeOperatorId, uint256 exitedValidatorsCount) external {
         _checkStakingRouterRole();
-        Layout storage $ = _baseStorage();
-        $.totalExitedValidators = NodeOperatorOps.unsafeUpdateValidatorsCount({
-            nodeOperators: $.nodeOperators,
-            nodeOperatorsCount: $.nodeOperatorsCount,
-            nodeOperatorId: nodeOperatorId,
-            exitedValidatorsCount: exitedValidatorsCount,
-            totalExitedValidators: $.totalExitedValidators
-        });
+        NodeOperatorOps.unsafeUpdateValidatorsCount(_baseStorage(), nodeOperatorId, exitedValidatorsCount);
     }
 
     /// @inheritdoc IStakingModule
@@ -315,7 +301,7 @@ abstract contract BaseModule is
     function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex) external {
         _checkVerifierRole();
         _onlyExistingNodeOperator(nodeOperatorId);
-        Layout storage $ = _baseStorage();
+        BaseModuleStorage storage $ = _baseStorage();
         NodeOperator storage no = $.nodeOperators[nodeOperatorId];
         if (keyIndex >= no.totalDepositedKeys) revert SigningKeysInvalidOffset();
 
@@ -336,7 +322,7 @@ abstract contract BaseModule is
         _checkVerifierRole();
 
         NodeOperatorOps.reportValidatorBalance({
-            layout: _baseStorage(),
+            $: _baseStorage(),
             nodeOperatorId: nodeOperatorId,
             keyIndex: keyIndex,
             currentBalanceWei: currentBalanceWei
@@ -401,7 +387,7 @@ abstract contract BaseModule is
     function batchDepositInfoUpdate(uint256 maxCount) external returns (uint256 operatorsLeft) {
         if (maxCount == 0) revert InvalidInput();
 
-        Layout storage $ = _baseStorage();
+        BaseModuleStorage storage $ = _baseStorage();
         uint256 operatorsCount = $.nodeOperatorsCount;
         uint256 noId = $.upToDateOperatorDepositInfoCount;
         if (noId == operatorsCount) return 0;
@@ -431,7 +417,7 @@ abstract contract BaseModule is
         virtual
         returns (uint256 totalExitedValidators, uint256 totalDepositedValidators, uint256 depositableValidatorsCount)
     {
-        Layout storage $ = _baseStorage();
+        BaseModuleStorage storage $ = _baseStorage();
         totalExitedValidators = $.totalExitedValidators;
         totalDepositedValidators = $.totalDepositedValidators;
         depositableValidatorsCount = $.depositableValidatorsCount;
@@ -603,7 +589,7 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function getNodeOperatorDepositInfoToUpdateCount() external view returns (uint256 count) {
-        Layout storage $ = _baseStorage();
+        BaseModuleStorage storage $ = _baseStorage();
         count = $.nodeOperatorsCount - $.upToDateOperatorDepositInfoCount;
     }
 
@@ -798,7 +784,7 @@ abstract contract BaseModule is
     }
 
     function _requireDepositInfoUpToDate() internal view {
-        Layout storage $ = _baseStorage();
+        BaseModuleStorage storage $ = _baseStorage();
         if ($.upToDateOperatorDepositInfoCount != $.nodeOperatorsCount) revert DepositInfoIsNotUpToDate();
     }
 

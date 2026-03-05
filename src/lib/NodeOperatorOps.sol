@@ -75,14 +75,11 @@ library NodeOperatorOps {
     }
 
     function updateExitedValidatorsCount(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        uint256 nodeOperatorsCount,
-        uint64 totalExitedValidators,
+        ModuleLinearStorage.BaseModuleStorage storage $,
         bytes calldata nodeOperatorIds,
         bytes calldata exitedValidatorsCounts
-    ) external returns (uint64 newTotalExitedValidators) {
+    ) external {
         uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(nodeOperatorIds, exitedValidatorsCounts);
-        newTotalExitedValidators = totalExitedValidators;
 
         for (uint256 i = 0; i < operatorsInReport; ++i) {
             (uint256 nodeOperatorId, uint256 exitedValidatorsCount) = ValidatorCountsReport.next(
@@ -90,36 +87,20 @@ library NodeOperatorOps {
                 exitedValidatorsCounts,
                 i
             );
-            newTotalExitedValidators = _updateExitedValidatorsCount({
-                nodeOperators: nodeOperators,
-                nodeOperatorsCount: nodeOperatorsCount,
-                totalExitedValidators: newTotalExitedValidators,
-                nodeOperatorId: nodeOperatorId,
-                exitedValidatorsCount: exitedValidatorsCount,
-                allowDecrease: false
-            });
+            _updateExitedValidatorsCount($, nodeOperatorId, exitedValidatorsCount, false);
         }
     }
 
     function unsafeUpdateValidatorsCount(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        uint256 nodeOperatorsCount,
-        uint64 totalExitedValidators,
+        ModuleLinearStorage.BaseModuleStorage storage $,
         uint256 nodeOperatorId,
         uint256 exitedValidatorsCount
-    ) external returns (uint64 newTotalExitedValidators) {
-        newTotalExitedValidators = _updateExitedValidatorsCount({
-            nodeOperators: nodeOperators,
-            nodeOperatorsCount: nodeOperatorsCount,
-            totalExitedValidators: totalExitedValidators,
-            nodeOperatorId: nodeOperatorId,
-            exitedValidatorsCount: exitedValidatorsCount,
-            allowDecrease: true
-        });
+    ) external {
+        _updateExitedValidatorsCount($, nodeOperatorId, exitedValidatorsCount, true);
     }
 
     function decreaseVettedSigningKeysCount(
-        ModuleLinearStorage.Layout storage layout,
+        ModuleLinearStorage.BaseModuleStorage storage $,
         bytes calldata nodeOperatorIds,
         bytes calldata vettedSigningKeysCounts
     ) external {
@@ -132,9 +113,9 @@ library NodeOperatorOps {
                 vettedSigningKeysCounts,
                 i
             );
-            _onlyExistingNodeOperator(nodeOperatorId, layout.nodeOperatorsCount);
+            _onlyExistingNodeOperator(nodeOperatorId, $.nodeOperatorsCount);
 
-            NodeOperator storage no = layout.nodeOperators[nodeOperatorId];
+            NodeOperator storage no = $.nodeOperators[nodeOperatorId];
 
             if (vettedSigningKeysCount == no.totalVettedKeys) continue;
 
@@ -155,13 +136,13 @@ library NodeOperatorOps {
     }
 
     function reportValidatorBalance(
-        ModuleLinearStorage.Layout storage layout,
+        ModuleLinearStorage.BaseModuleStorage storage $,
         uint256 nodeOperatorId,
         uint256 keyIndex,
         uint256 currentBalanceWei
     ) external {
-        _onlyExistingNodeOperator(nodeOperatorId, layout.nodeOperatorsCount);
-        if (keyIndex >= layout.nodeOperators[nodeOperatorId].totalDepositedKeys) {
+        _onlyExistingNodeOperator(nodeOperatorId, $.nodeOperatorsCount);
+        if (keyIndex >= $.nodeOperators[nodeOperatorId].totalDepositedKeys) {
             revert IBaseModule.SigningKeysInvalidOffset();
         }
 
@@ -176,8 +157,8 @@ library NodeOperatorOps {
         }
 
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        if (newKeyAddedBalance <= layout.keyAddedBalances[pointer]) revert IBaseModule.UnreportableBalance();
-        layout.keyAddedBalances[pointer] = newKeyAddedBalance;
+        if (newKeyAddedBalance <= $.keyAddedBalances[pointer]) revert IBaseModule.UnreportableBalance();
+        $.keyAddedBalances[pointer] = newKeyAddedBalance;
         emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, newKeyAddedBalance);
     }
 
@@ -441,15 +422,13 @@ library NodeOperatorOps {
     }
 
     function _updateExitedValidatorsCount(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        uint256 nodeOperatorsCount,
-        uint64 totalExitedValidators,
+        ModuleLinearStorage.BaseModuleStorage storage $,
         uint256 nodeOperatorId,
         uint256 exitedValidatorsCount,
         bool allowDecrease
-    ) internal returns (uint64 newTotalExitedValidators) {
-        _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
-        NodeOperator storage no = nodeOperators[nodeOperatorId];
+    ) internal {
+        _onlyExistingNodeOperator(nodeOperatorId, $.nodeOperatorsCount);
+        NodeOperator storage no = $.nodeOperators[nodeOperatorId];
         if (exitedValidatorsCount > no.totalDepositedKeys) revert IBaseModule.InvalidInput();
         if (!allowDecrease && exitedValidatorsCount < no.totalExitedKeys) revert IBaseModule.InvalidInput();
 
@@ -458,7 +437,7 @@ library NodeOperatorOps {
             // `totalExitedValidators` accumulates the same uint32 per-operator counts, so pushing
             // the new value through uint64 preserves the exact result.
             // forge-lint: disable-next-item(unsafe-typecast)
-            newTotalExitedValidators = (totalExitedValidators - no.totalExitedKeys) + uint64(exitedValidatorsCount);
+            $.totalExitedValidators = ($.totalExitedValidators - no.totalExitedKeys) + uint64(exitedValidatorsCount);
         }
         // Each node operator stores its exited count in a uint32 slot; `exitedValidatorsCount`
         // is validated against `totalDepositedKeys` (also uint32), so the cast is safe.
