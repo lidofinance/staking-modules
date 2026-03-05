@@ -271,7 +271,6 @@ contract CSModule is ICSModule, BaseModule {
         _removeKeys(nodeOperatorId, startIndex, keysCount, true);
     }
 
-    // TODO: Ensure that after deep rewind we will be able to iterate over the queue without allocating anything and SR will not revert in this case. Add integration test for it
     /// @inheritdoc ICSModule
     function rewindTopUpQueue(uint256 to) external {
         _checkRole(REWIND_TOP_UP_QUEUE_ROLE);
