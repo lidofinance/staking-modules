@@ -35,6 +35,7 @@ import { DeployParams } from "script/csm/DeployBase.s.sol";
 import { DeployCSM0x02Params } from "script/csm0x02/DeployCSM0x02Base.s.sol";
 import { CuratedDeployParams } from "script/curated/DeployBase.s.sol";
 import { GIndex } from "src/lib/GIndex.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IACL } from "src/interfaces/IACL.sol";
 import { IKernel } from "src/interfaces/IKernel.sol";
 import { Batch } from "src/lib/DepositQueueLib.sol";
@@ -698,7 +699,7 @@ contract DeploymentHelpers is Test {
     }
 
     function _isEmpty(string memory s) internal pure returns (bool) {
-        return keccak256(abi.encodePacked(s)) == keccak256(abi.encodePacked(""));
+        return Strings.equal(s, "");
     }
 }
 

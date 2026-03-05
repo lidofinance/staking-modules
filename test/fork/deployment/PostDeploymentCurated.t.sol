@@ -130,15 +130,13 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
 
     function _assertCreateRoleOrderMatchesConfig() internal view {
         bytes32 role = module.CREATE_NODE_OPERATOR_ROLE();
-        uint256 gatesCount = deployParams.curatedGates.length;
-        assertEq(module.getRoleMemberCount(role), gatesCount, "unexpected create role members count");
+        address[] memory members = module.getRoleMembers(role);
+        assertEq(members.length, deployParams.curatedGates.length, "unexpected create role members count");
 
-        for (uint256 i = 0; i < gatesCount; ++i) {
-            address roleMember = module.getRoleMember(role, i);
-            address expectedGate = curatedGates[i];
-            assertEq(roleMember, expectedGate, "create role order mismatch");
+        for (uint256 i = 0; i < members.length; ++i) {
+            assertEq(members[i], curatedGates[i], "create role order mismatch");
 
-            CuratedGate gate = CuratedGate(roleMember);
+            CuratedGate gate = CuratedGate(members[i]);
             CuratedGateConfig storage cfg = deployParams.curatedGates[i];
             assertEq(gate.treeRoot(), cfg.treeRoot, "unexpected gate root");
             assertEq(gate.treeCid(), cfg.treeCid, "unexpected gate cid");

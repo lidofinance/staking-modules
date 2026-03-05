@@ -6,6 +6,7 @@ pragma solidity 0.8.33;
 import { Test } from "forge-std/Test.sol";
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { Arrays } from "@openzeppelin/contracts/utils/Arrays.sol";
 
 import { BondCurve } from "src/abstract/BondCurve.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
@@ -637,16 +638,11 @@ contract BondCurveFuzz is Test {
         }
 
         // Assume: minKeysCount[i] < minKeysCount[i + 1]
-        uint256 n = minKeysCount.length;
-        for (uint256 i = 0; i < n; i++) {
-            for (uint256 j = 0; j < n - 1; j++) {
-                if (minKeysCount[j] > minKeysCount[j + 1]) {
-                    (minKeysCount[j], minKeysCount[j + 1]) = (minKeysCount[j + 1], minKeysCount[j]);
-                }
-                if (minKeysCount[j] == minKeysCount[j + 1]) {
-                    // Make it different because we need to have unique values
-                    minKeysCount[j + 1] = minKeysCount[j] + 1;
-                }
+        Arrays.sort(minKeysCount);
+        for (uint256 j = 0; j < minKeysCount.length - 1; j++) {
+            if (minKeysCount[j] >= minKeysCount[j + 1]) {
+                // Make it different because we need to have unique values
+                minKeysCount[j + 1] = minKeysCount[j] + 1;
             }
         }
         // Assume: first interval starts from "1" keys count

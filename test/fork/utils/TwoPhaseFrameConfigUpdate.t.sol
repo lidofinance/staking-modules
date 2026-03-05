@@ -4,6 +4,7 @@
 pragma solidity 0.8.33;
 
 import { Test } from "forge-std/Test.sol";
+import { Bytes } from "@openzeppelin/contracts/utils/Bytes.sol";
 
 import { TwoPhaseFrameConfigUpdate } from "src/utils/TwoPhaseFrameConfigUpdate.sol";
 import { IFeeOracle } from "src/interfaces/IFeeOracle.sol";
@@ -192,15 +193,9 @@ contract TwoPhaseFrameConfigUpdateTest is Test, Utilities, DeploymentFixtures {
         bytes memory b = bytes(path);
         if (b.length == 0) return "";
 
-        uint256 i = b.length;
-        while (i > 0) {
-            if (b[i - 1] == "/") break;
-            unchecked {
-                --i;
-            }
-        }
-        if (i == 0) return "";
-        dir = string(slice(b, 0, i));
+        uint256 i = Bytes.lastIndexOf(b, "/");
+        if (i == type(uint256).max) return "";
+        dir = string(Bytes.slice(b, 0, i + 1));
     }
 
     function test_shiftReportWindow() public {

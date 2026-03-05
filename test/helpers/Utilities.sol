@@ -4,6 +4,7 @@ pragma solidity 0.8.33;
 
 import { CommonBase, Vm } from "forge-std/Base.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import { Bytes } from "@openzeppelin/contracts/utils/Bytes.sol";
 import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 /// @author madlabman
@@ -199,11 +200,8 @@ contract Utilities is CommonBase {
         return arr;
     }
 
-    function slice(bytes memory subject, uint256 offset, uint256 length) public pure returns (bytes memory result) {
-        result = new bytes(length);
-        for (uint256 i; i < length; ++i) {
-            result[i] = subject[offset + i];
-        }
+    function slice(bytes memory subject, uint256 offset, uint256 length) public pure returns (bytes memory) {
+        return Bytes.slice(subject, offset, offset + length);
     }
 
     function shuffle(uint256[] memory arr) public {
