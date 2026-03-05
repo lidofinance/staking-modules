@@ -12,7 +12,7 @@ import { IStakingModuleV2 } from "./IStakingModule.sol";
 /// @title Lido's Community Staking Module interface
 interface ICSModule is IBaseModule, IStakingModuleV2, IDepositQueueLib, ITopUpQueueLib {
     event BatchEnqueued(uint256 indexed queuePriority, uint256 indexed nodeOperatorId, uint256 count);
-    event TopUpQueueItemPassed(uint256 indexed nodeOperatorId, uint256 keyIndex);
+    event TopUpQueueItemProcessed(uint256 indexed nodeOperatorId, uint256 keyIndex);
     event TopUpQueueLimitSet(uint256 limit);
     event TopUpQueueRewound(uint256 to);
 
