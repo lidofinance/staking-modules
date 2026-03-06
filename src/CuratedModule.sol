@@ -114,8 +114,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
         _incrementModuleNonce();
     }
 
-    // Continue review from here
-
     /// @inheritdoc IStakingModuleV2
     function allocateDeposits(
         uint256 maxDepositAmount,

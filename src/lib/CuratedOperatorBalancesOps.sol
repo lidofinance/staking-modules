@@ -50,6 +50,7 @@ library CuratedOperatorBalancesOps {
         uint256 operatorId,
         uint256 balanceWei
     ) private {
+        if (operatorBalances[operatorId] == balanceWei) return;
         operatorBalances[operatorId] = balanceWei;
         emit ICuratedModule.NodeOperatorBalanceUpdated(operatorId, balanceWei);
     }
