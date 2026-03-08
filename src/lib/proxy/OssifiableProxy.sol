@@ -6,6 +6,7 @@ pragma solidity 0.8.33;
 import { StorageSlot } from "@openzeppelin/contracts/utils/StorageSlot.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { ERC1967Utils } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
+import { IERC1967 } from "@openzeppelin/contracts/interfaces/IERC1967.sol";
 
 /// @notice An ossifiable proxy contract. Extends the ERC1967Proxy contract by
 ///     adding admin functionality
@@ -46,7 +47,7 @@ contract OssifiableProxy is ERC1967Proxy {
     function proxy__ossify() external onlyAdmin {
         address prevAdmin = ERC1967Utils.getAdmin();
         StorageSlot.getAddressSlot(ERC1967Utils.ADMIN_SLOT).value = address(0);
-        emit ERC1967Utils.AdminChanged(prevAdmin, address(0));
+        emit IERC1967.AdminChanged(prevAdmin, address(0));
         emit ProxyOssified();
     }
 

@@ -105,7 +105,8 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
     /// at which a report for the prev. frame can be submitted and its processing started) to the
     /// reference slot of the next frame (equal to the last slot of the previous frame).
     /// frame[i].reportProcessingDeadlineSlot := frame[i + 1].refSlot - DEADLINE_SLOT_OFFSET
-    uint256 internal constant DEADLINE_SLOT_OFFSET = 0;
+    /// @dev Declared as immutable to allow for changes in test scenarios.
+    uint256 internal immutable DEADLINE_SLOT_OFFSET = 0;
 
     /// Chain specification
     uint64 internal immutable SLOTS_PER_EPOCH;
@@ -765,6 +766,7 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
         ConsensusFrame memory frame = _getFrameAtTimestamp(timestamp, config);
 
         if (slot != frame.refSlot) revert InvalidSlot();
+        // Unreachable with current constant values, but added for extra safety in case of future changes.
         if (currentSlot > frame.reportProcessingDeadlineSlot) revert StaleReport();
         if (currentSlot <= frame.refSlot + config.fastLaneLengthSlots && !_isFastLaneMember(memberIndex, frame.index)) {
             revert NonFastLaneMemberCannotReportWithinFastLaneInterval();
@@ -882,6 +884,7 @@ contract HashConsensus is IConsensusContract, AccessControlEnumerableUpgradeable
         uint256 timestamp = _getTime();
         ConsensusFrame memory frame = _getFrameAtTimestamp(timestamp, _frameConfig);
 
+        // Unreachable with current constant values, but added for extra safety in case of future changes.
         if (_computeSlotAtTimestamp(timestamp) > frame.reportProcessingDeadlineSlot) {
             // a report for the current ref. slot cannot be processed anymore
             return;

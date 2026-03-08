@@ -10,6 +10,7 @@ import { FORCED_TARGET_LIMIT_MODE_ID } from "../interfaces/IStakingModule.sol";
 import { IAccounting } from "../interfaces/IAccounting.sol";
 import { IParametersRegistry } from "../interfaces/IParametersRegistry.sol";
 
+import { ModuleLinearStorage } from "../abstract/ModuleLinearStorage.sol";
 import { CuratedDepositAllocator } from "./allocator/CuratedDepositAllocator.sol";
 import { ValidatorCountsReport } from "./ValidatorCountsReport.sol";
 import { WithdrawnValidatorLib } from "./WithdrawnValidatorLib.sol";
@@ -22,8 +23,7 @@ library NodeOperatorOps {
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,
         address from,
-        NodeOperatorManagementProperties calldata managementProperties,
-        address referrer
+        NodeOperatorManagementProperties calldata managementProperties
     ) external {
         if (from == address(0)) revert IBaseModule.ZeroSenderAddress();
 
@@ -47,9 +47,6 @@ library NodeOperatorOps {
             rewardAddress,
             managementProperties.extendedManagerPermissions
         );
-
-        // TODO: remove `referrer` and place to module impl.
-        if (referrer != address(0)) emit IBaseModule.ReferrerSet(nodeOperatorId, referrer);
     }
 
     function setTargetLimit(
@@ -78,14 +75,11 @@ library NodeOperatorOps {
     }
 
     function updateExitedValidatorsCount(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        uint256 nodeOperatorsCount,
-        uint64 totalExitedValidators,
+        ModuleLinearStorage.BaseModuleStorage storage $,
         bytes calldata nodeOperatorIds,
         bytes calldata exitedValidatorsCounts
-    ) external returns (uint64 newTotalExitedValidators) {
+    ) external {
         uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(nodeOperatorIds, exitedValidatorsCounts);
-        newTotalExitedValidators = totalExitedValidators;
 
         for (uint256 i = 0; i < operatorsInReport; ++i) {
             (uint256 nodeOperatorId, uint256 exitedValidatorsCount) = ValidatorCountsReport.next(
@@ -93,37 +87,20 @@ library NodeOperatorOps {
                 exitedValidatorsCounts,
                 i
             );
-            newTotalExitedValidators = _updateExitedValidatorsCount({
-                nodeOperators: nodeOperators,
-                nodeOperatorsCount: nodeOperatorsCount,
-                totalExitedValidators: newTotalExitedValidators,
-                nodeOperatorId: nodeOperatorId,
-                exitedValidatorsCount: exitedValidatorsCount,
-                safeCheck: true
-            });
+            _updateExitedValidatorsCount($, nodeOperatorId, exitedValidatorsCount, false);
         }
     }
 
     function unsafeUpdateValidatorsCount(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        uint256 nodeOperatorsCount,
-        uint64 totalExitedValidators,
+        ModuleLinearStorage.BaseModuleStorage storage $,
         uint256 nodeOperatorId,
         uint256 exitedValidatorsCount
-    ) external returns (uint64 newTotalExitedValidators) {
-        newTotalExitedValidators = _updateExitedValidatorsCount({
-            nodeOperators: nodeOperators,
-            nodeOperatorsCount: nodeOperatorsCount,
-            totalExitedValidators: totalExitedValidators,
-            nodeOperatorId: nodeOperatorId,
-            exitedValidatorsCount: exitedValidatorsCount,
-            safeCheck: false
-        });
+    ) external {
+        _updateExitedValidatorsCount($, nodeOperatorId, exitedValidatorsCount, true);
     }
 
     function decreaseVettedSigningKeysCount(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        uint256 nodeOperatorsCount,
+        ModuleLinearStorage.BaseModuleStorage storage $,
         bytes calldata nodeOperatorIds,
         bytes calldata vettedSigningKeysCounts
     ) external {
@@ -136,14 +113,12 @@ library NodeOperatorOps {
                 vettedSigningKeysCounts,
                 i
             );
-            _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
+            _onlyExistingNodeOperator(nodeOperatorId, $.nodeOperatorsCount);
 
-            NodeOperator storage no = nodeOperators[nodeOperatorId];
+            NodeOperator storage no = $.nodeOperators[nodeOperatorId];
 
             if (vettedSigningKeysCount == no.totalVettedKeys) continue;
 
-            // TODO: place above
-            if (no.managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
             if (vettedSigningKeysCount > no.totalVettedKeys) revert IBaseModule.InvalidVetKeysPointer();
             if (vettedSigningKeysCount < no.totalDepositedKeys) revert IBaseModule.InvalidVetKeysPointer();
 
@@ -160,21 +135,18 @@ library NodeOperatorOps {
         }
     }
 
-    function syncKeyAddedBalance(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        uint256 nodeOperatorsCount,
-        mapping(uint256 => uint256) storage keyAddedBalances,
+    function reportValidatorBalance(
+        ModuleLinearStorage.BaseModuleStorage storage $,
         uint256 nodeOperatorId,
         uint256 keyIndex,
         uint256 currentBalanceWei
     ) external {
-        _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
-        if (keyIndex >= nodeOperators[nodeOperatorId].totalDepositedKeys) {
+        _onlyExistingNodeOperator(nodeOperatorId, $.nodeOperatorsCount);
+        if (keyIndex >= $.nodeOperators[nodeOperatorId].totalDepositedKeys) {
             revert IBaseModule.SigningKeysInvalidOffset();
         }
 
-        // TODO: change return to revert
-        if (currentBalanceWei < WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE) return;
+        if (currentBalanceWei < WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE) revert IBaseModule.UnreportableBalance();
         if (currentBalanceWei > WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE) {
             currentBalanceWei = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE;
         }
@@ -185,9 +157,8 @@ library NodeOperatorOps {
         }
 
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        // TODO: change return to revert
-        if (newKeyAddedBalance <= keyAddedBalances[pointer]) return;
-        keyAddedBalances[pointer] = newKeyAddedBalance;
+        if (newKeyAddedBalance <= $.keyAddedBalances[pointer]) revert IBaseModule.UnreportableBalance();
+        $.keyAddedBalances[pointer] = newKeyAddedBalance;
         emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, newKeyAddedBalance);
     }
 
@@ -204,11 +175,12 @@ library NodeOperatorOps {
         }
     }
 
-    function removeKeysDefault(
+    function removeKeys(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,
         uint256 startIndex,
-        uint256 keysCount
+        uint256 keysCount,
+        bool useKeyRemovalCharge
     ) external {
         NodeOperator storage no = nodeOperators[nodeOperatorId];
 
@@ -221,49 +193,20 @@ library NodeOperatorOps {
             totalKeysCount: no.totalAddedKeys
         });
 
-        // Added/vetted signing key counters are uint32 fields; newTotalSigningKeys is strictly
-        // less than no.totalAddedKeys, so it always fits.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        no.totalAddedKeys = uint32(newTotalSigningKeys);
-        emit IBaseModule.TotalSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
+        if (useKeyRemovalCharge) {
+            IBaseModule module = IBaseModule(address(this));
+            IParametersRegistry parametersRegistry = module.PARAMETERS_REGISTRY();
+            IAccounting accounting = module.ACCOUNTING();
 
-        // Reset vetted keys pointer since we can not know if the removed keys were previously unvetted due to being invalid, or not.
-        // If invalid keys are still present after deletion and vetted keys pointer reset, they will be unvetted again.
-        // forge-lint: disable-next-line(unsafe-typecast)
-        no.totalVettedKeys = uint32(newTotalSigningKeys);
-        emit IBaseModule.VettedSigningKeysCountChanged(nodeOperatorId, newTotalSigningKeys);
-    }
+            // The Node Operator is charged for the every removed key. It's motivated by the fact that the DAO should cleanup
+            // the queue from the empty batches related to the Node Operator. It's possible to have multiple batches with only one
+            // key in it, so it means the DAO should be able to cover removal costs for as much batches as keys removed in this case.
+            uint256 amountToCharge = parametersRegistry.getKeyRemovalCharge(accounting.getBondCurveId(nodeOperatorId)) *
+                keysCount;
 
-    // TODO: can be merged with *Default with arg
-    function removeKeysCSM(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        uint256 nodeOperatorId,
-        uint256 startIndex,
-        uint256 keysCount
-    ) external {
-        NodeOperator storage no = nodeOperators[nodeOperatorId];
-
-        if (startIndex < no.totalDepositedKeys) revert IBaseModule.SigningKeysInvalidOffset();
-
-        uint256 newTotalSigningKeys = SigningKeys.removeKeysSigs({
-            nodeOperatorId: nodeOperatorId,
-            startIndex: startIndex,
-            keysCount: keysCount,
-            totalKeysCount: no.totalAddedKeys
-        });
-
-        IBaseModule module = IBaseModule(address(this));
-        IParametersRegistry parametersRegistry = module.PARAMETERS_REGISTRY();
-        IAccounting accounting = module.ACCOUNTING();
-
-        // The Node Operator is charged for the every removed key. It's motivated by the fact that the DAO should cleanup
-        // the queue from the empty batches related to the Node Operator. It's possible to have multiple batches with only one
-        // key in it, so it means the DAO should be able to cover removal costs for as much batches as keys removed in this case.
-        uint256 amountToCharge = parametersRegistry.getKeyRemovalCharge(accounting.getBondCurveId(nodeOperatorId)) *
-            keysCount;
-
-        if (amountToCharge != 0 && accounting.chargeFee(nodeOperatorId, amountToCharge)) {
-            emit IBaseModule.KeyRemovalChargeApplied(nodeOperatorId);
+            if (amountToCharge != 0 && accounting.chargeFee(nodeOperatorId, amountToCharge)) {
+                emit IBaseModule.KeyRemovalChargeApplied(nodeOperatorId);
+            }
         }
 
         // Added/vetted signing key counters are uint32 fields; newTotalSigningKeys is strictly
@@ -473,34 +416,28 @@ library NodeOperatorOps {
         uint256 incrementWei
     ) internal {
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        uint256 current = keyAddedBalances[pointer];
-        uint256 cap = _keyAddedBalanceCap();
-        if (current == cap) return;
-        uint256 updatedBalance = Math.min(cap, current + incrementWei);
+        uint256 updatedBalance = Math.min(_keyAddedBalanceCap(), keyAddedBalances[pointer] + incrementWei);
         keyAddedBalances[pointer] = updatedBalance;
         emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, updatedBalance);
     }
 
     function _updateExitedValidatorsCount(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        uint256 nodeOperatorsCount,
-        uint64 totalExitedValidators,
+        ModuleLinearStorage.BaseModuleStorage storage $,
         uint256 nodeOperatorId,
         uint256 exitedValidatorsCount,
-        bool safeCheck
-    ) internal returns (uint64 newTotalExitedValidators) {
-        _onlyExistingNodeOperator(nodeOperatorId, nodeOperatorsCount);
-        NodeOperator storage no = nodeOperators[nodeOperatorId];
+        bool allowDecrease
+    ) internal {
+        _onlyExistingNodeOperator(nodeOperatorId, $.nodeOperatorsCount);
+        NodeOperator storage no = $.nodeOperators[nodeOperatorId];
         if (exitedValidatorsCount > no.totalDepositedKeys) revert IBaseModule.InvalidInput();
-        // TODO: change name to allowDecrease
-        if (safeCheck && exitedValidatorsCount < no.totalExitedKeys) revert IBaseModule.InvalidInput();
+        if (!allowDecrease && exitedValidatorsCount < no.totalExitedKeys) revert IBaseModule.InvalidInput();
 
         unchecked {
             // @dev Invariant sum(no.totalExitedKeys for no in nos) == totalExitedValidators.
             // `totalExitedValidators` accumulates the same uint32 per-operator counts, so pushing
             // the new value through uint64 preserves the exact result.
             // forge-lint: disable-next-item(unsafe-typecast)
-            newTotalExitedValidators = (totalExitedValidators - no.totalExitedKeys) + uint64(exitedValidatorsCount);
+            $.totalExitedValidators = ($.totalExitedValidators - no.totalExitedKeys) + uint64(exitedValidatorsCount);
         }
         // Each node operator stores its exited count in a uint32 slot; `exitedValidatorsCount`
         // is validated against `totalDepositedKeys` (also uint32), so the cast is safe.

@@ -746,7 +746,7 @@ contract VerifierSlashingTest is VerifierTestBase {
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.onValidatorSlashed.selector,
+                IBaseModule.reportValidatorSlashing.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex
             )
@@ -814,7 +814,7 @@ contract VerifierSlashingTest is VerifierTestBase {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
-        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.onValidatorSlashed.selector), "");
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorSlashing.selector), "");
     }
 
     function _loadFixture() internal {
@@ -1657,7 +1657,7 @@ contract VerifierBalanceProofTest is VerifierTestBase {
     }
 
     function test_processBalanceProof_HappyPath() public {
-        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector));
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector));
 
         verifier.processBalanceProof(fixture.data);
     }
@@ -1729,7 +1729,7 @@ contract VerifierBalanceProofTest is VerifierTestBase {
             abi.encode(fixture.data.validator.object.pubkey)
         );
 
-        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.syncKeyAddedBalance.selector), "");
+        vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector), "");
     }
 
     function _loadFixture() internal {

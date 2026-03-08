@@ -13,7 +13,7 @@ interface ILido is IStETH {
 
     function submit(address _referral) external payable returns (uint256);
 
-    function deposit(uint256 _maxDepositsCount, uint256 _stakingModuleId, bytes calldata _depositCalldata) external;
+    function getDepositableEther() external view returns (uint256);
 
     function removeStakingLimit() external;
 

@@ -4,6 +4,7 @@
 pragma solidity 0.8.33;
 
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
@@ -122,7 +123,7 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
         if (distributed == 0 && rebate > 0) revert InvalidReportData();
         if (distributed > 0) {
             if (bytes(_treeCid).length == 0) revert InvalidTreeCid();
-            if (keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid))) revert InvalidTreeCid();
+            if (Strings.equal(_treeCid, treeCid)) revert InvalidTreeCid();
             if (_treeRoot == bytes32(0)) revert InvalidTreeRoot();
             if (_treeRoot == treeRoot) revert InvalidTreeRoot();
 
@@ -147,7 +148,7 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
         if (bytes(_logCid).length == 0) revert InvalidLogCID();
         // NOTE: Make sure off-chain tooling provides a distinct CID of a log even for empty reports, e.g. by mixing
         // in a frame identifier such as reference slot to a file.
-        if (keccak256(bytes(_logCid)) == keccak256(bytes(logCid))) revert InvalidLogCID();
+        if (Strings.equal(_logCid, logCid)) revert InvalidLogCID();
 
         logCid = _logCid;
         emit DistributionLogUpdated(_logCid);

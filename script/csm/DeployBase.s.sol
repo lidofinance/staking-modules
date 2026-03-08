@@ -559,6 +559,9 @@ abstract contract DeployBase is Script {
             deployJson.set("GateSeal", gateSeal);
             deployJson.set("DeployParams", abi.encode(config));
             deployJson.set("git-ref", gitRef);
+            if (!vm.exists(artifactDir)) {
+                vm.createDir(artifactDir, true);
+            }
             vm.writeJson(deployJson.str, _deployJsonFilename());
         }
 

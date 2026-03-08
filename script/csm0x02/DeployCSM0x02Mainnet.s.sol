@@ -58,6 +58,8 @@ contract DeployCSM0x02Mainnet is DeployCSM0x02Base {
         // Module
         config.moduleType = "community-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
         config.generalDelayedPenaltyReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
+        // TODO: Reconsider the top-up queue limit value for CSM0x02.
+        config.topUpQueueLimit = 32;
 
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0.02 ether;

@@ -125,6 +125,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     error ZeroModuleType();
     error ZeroPenaltyType();
     error DepositInfoIsNotUpToDate();
+    error UnreportableBalance();
 
     function STAKING_ROUTER_ROLE() external view returns (bytes32);
 
@@ -246,7 +247,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param amount Amount of penalty to cancel
     function cancelGeneralDelayedPenalty(uint256 nodeOperatorId, uint256 amount) external;
 
-    /// @notice Settles locked bond for eligible Node Operators and sets target limit to 0 only for settled ones
+    /// @notice Settles locked bond for eligible Node Operators
     /// @dev SETTLE_GENERAL_DELAYED_PENALTY_ROLE role is expected to be assigned to Easy Track
     /// @param nodeOperatorIds IDs of the Node Operators
     /// @param maxAmounts Maximum amounts to settle for each Node Operator
@@ -358,14 +359,14 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @notice Called by `Verifier` contract. See `Verifier.processSlashedProof`.
     /// @param nodeOperatorId The ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
-    function onValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external;
+    function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex) external;
 
     /// @notice Sync tracked added balance for a key based on proven validator balance.
     /// @dev The function only increases the key added value at the moment.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     /// @param currentBalanceWei Proven current validator balance in wei
-    function syncKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 currentBalanceWei) external;
+    function reportValidatorBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 currentBalanceWei) external;
 
     /// @notice Get tracked added balance for a particular key
     /// @param nodeOperatorId ID of the Node Operator

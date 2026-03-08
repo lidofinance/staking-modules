@@ -41,6 +41,8 @@ contract EjectorTestBase is Test, Utilities, Fixtures {
         refundRecipient = nextAddress("refundRecipient");
 
         stakingRouter.addModule(ROUTER_STAKING_MODULE_ID, address(csm));
+        // Add dummy module to test module ID caching in Ejector
+        stakingRouter.addModule(ROUTER_STAKING_MODULE_ID + 1, nextAddress("dummyModule"));
 
         ejector = new Ejector(address(csm), address(strikes), admin);
     }

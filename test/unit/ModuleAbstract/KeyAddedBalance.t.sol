@@ -25,8 +25,8 @@ abstract contract ModuleKeyAddedBalance is ModuleFixtures {
     }
 }
 
-abstract contract ModuleSyncKeyAddedBalance is ModuleFixtures {
-    function test_syncKeyAddedBalance_happyPath() public assertInvariants {
+abstract contract ModulereportValidatorBalance is ModuleFixtures {
+    function test_reportValidatorBalance_happyPath() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
@@ -34,74 +34,74 @@ abstract contract ModuleSyncKeyAddedBalance is ModuleFixtures {
 
         vm.expectEmit(address(module));
         emit IBaseModule.KeyAddedBalanceChanged(noId, 0, 10 ether);
-        module.syncKeyAddedBalance(noId, 0, balanceWei);
+        module.reportValidatorBalance(noId, 0, balanceWei);
 
         assertEq(module.getKeyAddedBalance(noId, 0), 10 ether);
     }
 
-    function test_syncKeyAddedBalance_increasesWhenHigher() public assertInvariants {
+    function test_reportValidatorBalance_increasesWhenHigher() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        module.syncKeyAddedBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 5 ether);
+        module.reportValidatorBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 5 ether);
         assertEq(module.getKeyAddedBalance(noId, 0), 5 ether);
 
         vm.expectEmit(address(module));
         emit IBaseModule.KeyAddedBalanceChanged(noId, 0, 10 ether);
-        module.syncKeyAddedBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 10 ether);
+        module.reportValidatorBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 10 ether);
         assertEq(module.getKeyAddedBalance(noId, 0), 10 ether);
     }
 
-    function test_syncKeyAddedBalance_doesNotDecrease() public assertInvariants {
+    function test_reportValidatorBalance_doesNotDecrease() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        module.syncKeyAddedBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 10 ether);
+        module.reportValidatorBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 10 ether);
         assertEq(module.getKeyAddedBalance(noId, 0), 10 ether);
 
-        // Lower value — should not change
-        module.syncKeyAddedBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 5 ether);
-        assertEq(module.getKeyAddedBalance(noId, 0), 10 ether);
+        // Lower value — should revert
+        vm.expectRevert(IBaseModule.UnreportableBalance.selector);
+        module.reportValidatorBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 5 ether);
 
-        // Equal value — should not change
-        module.syncKeyAddedBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 10 ether);
-        assertEq(module.getKeyAddedBalance(noId, 0), 10 ether);
+        // Equal value — should revert
+        vm.expectRevert(IBaseModule.UnreportableBalance.selector);
+        module.reportValidatorBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 10 ether);
     }
 
-    function test_syncKeyAddedBalance_capsAtMax() public assertInvariants {
+    function test_reportValidatorBalance_capsAtMax() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
         uint256 cap = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
-        module.syncKeyAddedBalance(noId, 0, WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE + 100 ether);
+        module.reportValidatorBalance(noId, 0, WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE + 100 ether);
         assertEq(module.getKeyAddedBalance(noId, 0), cap);
     }
 
-    function test_syncKeyAddedBalance_noUpdateWhenBelowMinActivation() public assertInvariants {
+    function test_reportValidatorBalance_revertWhen_belowMinActivation() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        module.syncKeyAddedBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE);
-        assertEq(module.getKeyAddedBalance(noId, 0), 0);
+        vm.expectRevert(IBaseModule.UnreportableBalance.selector);
+        module.reportValidatorBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE);
 
-        module.syncKeyAddedBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE - 1 ether);
-        assertEq(module.getKeyAddedBalance(noId, 0), 0);
+        vm.expectRevert(IBaseModule.UnreportableBalance.selector);
+        module.reportValidatorBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE - 1 ether);
     }
 
-    function test_syncKeyAddedBalance_revertWhen_NoRole() public {
+    function test_reportValidatorBalance_revertWhen_NoRole() public {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
         vm.prank(stranger);
         vm.expectRevert();
-        module.syncKeyAddedBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 1 ether);
+        module.reportValidatorBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 1 ether);
     }
 
-    function test_syncKeyAddedBalance_revertWhen_InvalidKeyIndex() public {
+    function test_reportValidatorBalance_revertWhen_InvalidKeyIndex() public {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
         vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
-        module.syncKeyAddedBalance(noId, 1, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 1 ether);
+        module.reportValidatorBalance(noId, 1, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 1 ether);
     }
 }

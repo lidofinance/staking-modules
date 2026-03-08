@@ -56,7 +56,7 @@ contract DeployHoodi is DeployBase {
         config.bondLockPeriod = 8 weeks;
         config.chargePenaltyRecipient = 0x0534aA41907c9631fae990960bCC72d75fA7cfeD; // locator.treasury()
         // Module
-        config.moduleType = "curated-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
+        config.moduleType = "curated-onchain-v2"; // Just a unique type name to be used by the off-chain tooling
         config.generalDelayedPenaltyReporter = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
 
         // ParametersRegistry
@@ -101,6 +101,7 @@ contract DeployHoodi is DeployBase {
             primaryGate.params.attestationsWeight = 52; // TODO
             primaryGate.params.blocksWeight = 6; // TODO
             primaryGate.params.syncWeight = 2; // TODO
+            primaryGate.params.metaRegistryBondCurveWeight = 1; // TODO reconsider
             primaryGate.params.allowedExitDelay = 3 days; // TODO
             primaryGate.params.exitDelayFee = 0.02 ether; // TODO
             primaryGate.params.maxElWithdrawalRequestFee = 0.05 ether; // TODO

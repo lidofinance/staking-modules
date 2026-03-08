@@ -172,6 +172,9 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             deployJson.set("GateSealV3", gateSealV3);
             deployJson.set("DeployParams", abi.encode(config));
             deployJson.set("git-ref", gitRef);
+            if (!vm.exists(artifactDir)) {
+                vm.createDir(artifactDir, true);
+            }
             vm.writeJson(deployJson.str, string(abi.encodePacked(artifactDir, "upgrade-", chainName, ".json")));
         }
 

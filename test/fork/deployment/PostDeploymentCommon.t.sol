@@ -27,6 +27,7 @@ import { Versioned } from "../../../src/lib/utils/Versioned.sol";
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     CommonDeployParams internal deployParams;
     uint256 adminsCount;
+    uint256 expectedModuleScratchNonce;
 
     function setUp() public {
         Env memory env = envVars();
@@ -35,6 +36,12 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         string memory config = vm.readFile(env.DEPLOY_CONFIG);
         deployParams = parseCommonDeployParams(config);
         adminsCount = block.chainid == 1 ? 1 : 2;
+
+        if (moduleType == ModuleType.Curated) {
+            // Curated deployment sets bond-curve weights once per gate. Each set triggers
+            // requestFullDepositInfoUpdate(), which increments module nonce.
+            expectedModuleScratchNonce = vm.parseJsonAddressArray(config, ".CuratedGates").length;
+        }
     }
 }
 
@@ -42,7 +49,7 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
     function test_state_scratch_onlyFull() public view {
         assertTrue(module.isPaused());
         assertEq(module.getNodeOperatorsCount(), 0);
-        assertEq(module.getNonce(), 0);
+        assertEq(module.getNonce(), expectedModuleScratchNonce);
     }
 
     function test_state_afterVote() public view {
@@ -384,6 +391,16 @@ contract VerifierDeploymentTest is DeploymentBaseTest {
         assertEq(GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_CURR()), GIndex.unwrap(deployParams.gIFirstWithdrawal));
         assertEq(GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_PREV()), GIndex.unwrap(deployParams.gIFirstValidator));
         assertEq(GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_CURR()), GIndex.unwrap(deployParams.gIFirstValidator));
+        assertEq(
+            GIndex.unwrap(verifier.GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV()),
+            GIndex.unwrap(deployParams.gIFirstBlockRootInSummary)
+        );
+        assertEq(
+            GIndex.unwrap(verifier.GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR()),
+            GIndex.unwrap(deployParams.gIFirstBlockRootInSummary)
+        );
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_PREV()), GIndex.unwrap(deployParams.gIFirstBalanceNode));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_CURR()), GIndex.unwrap(deployParams.gIFirstBalanceNode));
         assertEq(Slot.unwrap(verifier.FIRST_SUPPORTED_SLOT()), deployParams.verifierFirstSupportedSlot);
         assertEq(Slot.unwrap(verifier.PIVOT_SLOT()), deployParams.verifierFirstSupportedSlot);
         assertEq(Slot.unwrap(verifier.CAPELLA_SLOT()), deployParams.capellaSlot);
@@ -392,6 +409,9 @@ contract VerifierDeploymentTest is DeploymentBaseTest {
     function test_roles() public view {
         assertTrue(verifier.hasRole(verifier.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(verifier.getRoleMemberCount(verifier.DEFAULT_ADMIN_ROLE()), adminsCount);
+        if (deployParams.secondAdminAddress != address(0)) {
+            assertTrue(verifier.hasRole(verifier.DEFAULT_ADMIN_ROLE(), deployParams.secondAdminAddress));
+        }
 
         assertTrue(verifier.hasRole(verifier.PAUSE_ROLE(), address(gateSeal)));
         assertTrue(verifier.hasRole(verifier.PAUSE_ROLE(), deployParams.resealManager));
@@ -456,6 +476,9 @@ contract EjectorDeploymentTest is DeploymentBaseTest {
     function test_roles() public view {
         assertTrue(ejector.hasRole(ejector.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(ejector.getRoleMemberCount(ejector.DEFAULT_ADMIN_ROLE()), adminsCount);
+        if (deployParams.secondAdminAddress != address(0)) {
+            assertTrue(ejector.hasRole(ejector.DEFAULT_ADMIN_ROLE(), deployParams.secondAdminAddress));
+        }
 
         assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), address(gateSeal)));
         assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager));

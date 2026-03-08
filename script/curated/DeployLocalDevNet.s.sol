@@ -45,14 +45,14 @@ contract DeployLocalDevNet is DeployBase {
         config.bondLockPeriod = 1 days;
         config.chargePenaltyRecipient = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
         // Module
-        config.moduleType = "curated-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
+        config.moduleType = "curated-onchain-v2"; // Just a unique type name to be used by the off-chain tooling
         config.generalDelayedPenaltyReporter = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0;
         config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
         config.defaultKeysLimit = type(uint256).max;
-        config.defaultAvgPerfLeewayBP = 450;
+        config.defaultAvgPerfLeewayBP = 10000;
         config.defaultRewardShareBP = 10000;
         config.defaultStrikesLifetimeFrames = 6;
         config.defaultStrikesThreshold = 3;
@@ -84,7 +84,7 @@ contract DeployLocalDevNet is DeployBase {
                 uint256(0.05 ether)
             );
             primaryGate.params.keysLimit = vm.envOr("CURATED_GATE_KEYS_LIMIT", uint256(type(uint248).max));
-            primaryGate.params.avgPerfLeewayData.push([1, 500]); // TODO
+            primaryGate.params.avgPerfLeewayData.push([1, 10000]); // TODO
             primaryGate.params.rewardShareData.push([1, 10000]); // TODO
             primaryGate.params.rewardShareData.push([17, 5834]); // TODO
             primaryGate.params.strikesLifetimeFrames = 6; // TODO
@@ -95,6 +95,7 @@ contract DeployLocalDevNet is DeployBase {
             primaryGate.params.attestationsWeight = 60; // TODO
             primaryGate.params.blocksWeight = 4; // TODO
             primaryGate.params.syncWeight = 0; // TODO
+            primaryGate.params.metaRegistryBondCurveWeight = 1; // TODO reconsider
             primaryGate.params.allowedExitDelay = 8 days; // TODO
             primaryGate.params.exitDelayFee = 0.05 ether; // TODO
             primaryGate.params.maxElWithdrawalRequestFee = 0.05 ether; // TODO

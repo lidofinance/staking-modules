@@ -8,6 +8,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IBaseModule, NodeOperator, WithdrawnValidatorInfo } from "../interfaces/IBaseModule.sol";
 import { ExitPenaltyInfo } from "../interfaces/IExitPenalties.sol";
 import { IAccounting } from "../interfaces/IAccounting.sol";
+import { ModuleLinearStorage } from "../abstract/ModuleLinearStorage.sol";
 
 import { SigningKeys } from "./SigningKeys.sol";
 
@@ -20,11 +21,37 @@ library WithdrawnValidatorLib {
     /// @dev Acts as the denominator to calculate the scaled penalty.
     uint256 public constant PENALTY_SCALE = MIN_ACTIVATION_BALANCE / PENALTY_QUOTIENT;
 
-    function process(
+    function processBatch(
+        WithdrawnValidatorInfo[] calldata validatorInfos,
+        bool slashed,
+        ModuleLinearStorage.BaseModuleStorage storage $
+    ) external returns (uint256[] memory touchedOperatorIds, uint256 touchedCount) {
+        touchedOperatorIds = new uint256[](validatorInfos.length);
+
+        for (uint256 i; i < validatorInfos.length; ++i) {
+            WithdrawnValidatorInfo calldata info = validatorInfos[i];
+            if (info.nodeOperatorId >= $.nodeOperatorsCount) revert IBaseModule.NodeOperatorDoesNotExist();
+
+            uint256 pointer = _keyPointer(info.nodeOperatorId, info.keyIndex);
+            if ($.isValidatorWithdrawn[pointer]) continue;
+            if (info.isSlashed != slashed) revert IBaseModule.InvalidWithdrawnValidatorInfo();
+            if (info.isSlashed && !$.isValidatorSlashed[pointer]) revert IBaseModule.SlashingPenaltyIsNotApplicable();
+
+            _process($.nodeOperators[info.nodeOperatorId], info, $.keyAddedBalances[pointer]);
+
+            $.isValidatorWithdrawn[pointer] = true;
+            touchedOperatorIds[touchedCount] = info.nodeOperatorId;
+            unchecked {
+                ++touchedCount;
+            }
+        }
+    }
+
+    function _process(
         NodeOperator storage no,
         WithdrawnValidatorInfo calldata validatorInfo,
         uint256 keyAddedBalance
-    ) external returns (bool penaltyCovered) {
+    ) private {
         if (validatorInfo.slashingPenalty > 0 && !validatorInfo.isSlashed) {
             revert IBaseModule.InvalidWithdrawnValidatorInfo();
         }
@@ -45,7 +72,7 @@ library WithdrawnValidatorLib {
             pubkey
         );
 
-        penaltyCovered = _fulfillExitObligations(validatorInfo, penaltyInfo, keyAddedBalance);
+        _fulfillExitObligations(validatorInfo, penaltyInfo, keyAddedBalance);
 
         emit IBaseModule.ValidatorWithdrawn({
             nodeOperatorId: validatorInfo.nodeOperatorId,
@@ -62,11 +89,11 @@ library WithdrawnValidatorLib {
         WithdrawnValidatorInfo calldata validatorInfo,
         ExitPenaltyInfo memory penaltyInfo,
         uint256 keyAddedBalance
-    ) internal returns (bool penaltyCovered) {
+    ) internal {
         bool chargeElWithdrawalRequestFee = false;
 
-        // TODO: calculate multiplier by `max(minExpectedBalance, exitBalance)`
-        uint256 penaltyMultiplier = _getPenaltyMultiplier(validatorInfo);
+        uint256 minExpectedBalance = MIN_ACTIVATION_BALANCE + keyAddedBalance;
+        uint256 penaltyMultiplier = _getPenaltyMultiplier(Math.max(minExpectedBalance, validatorInfo.exitBalance));
         uint256 penaltySum;
         uint256 feeSum;
 
@@ -88,7 +115,6 @@ library WithdrawnValidatorLib {
             feeSum += penaltyInfo.elWithdrawalRequestFee.value;
         }
 
-        uint256 minExpectedBalance = MIN_ACTIVATION_BALANCE + keyAddedBalance;
         if (validatorInfo.isSlashed) {
             // Slashing penalty doesn't scale because all the losses are already accounted.
             penaltySum += validatorInfo.slashingPenalty;
@@ -98,7 +124,7 @@ library WithdrawnValidatorLib {
 
         IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
 
-        penaltyCovered = true;
+        bool penaltyCovered = true;
 
         // Confiscate penalties first to prioritize compensations for the stETH holders.
         if (penaltySum > 0) {
@@ -112,16 +138,19 @@ library WithdrawnValidatorLib {
     }
 
     /// @dev Acts as the numerator to calculate the scaled penalty.
-    function _getPenaltyMultiplier(
-        WithdrawnValidatorInfo memory validatorInfo
-    ) internal pure returns (uint256 penaltyMultiplier) {
-        uint256 exitBalance = validatorInfo.exitBalance;
-        exitBalance = Math.max(MIN_ACTIVATION_BALANCE, exitBalance);
-        exitBalance = Math.min(MAX_EFFECTIVE_BALANCE, exitBalance);
-        penaltyMultiplier = exitBalance / PENALTY_QUOTIENT;
+    function _getPenaltyMultiplier(uint256 balance) internal pure returns (uint256 penaltyMultiplier) {
+        balance = Math.max(MIN_ACTIVATION_BALANCE, balance);
+        balance = Math.min(MAX_EFFECTIVE_BALANCE, balance);
+        penaltyMultiplier = balance / PENALTY_QUOTIENT;
     }
 
     function _scalePenaltyByMultiplier(uint256 penalty, uint256 multiplier) internal pure returns (uint256) {
         return (penalty * multiplier) / PENALTY_SCALE;
+    }
+
+    function _keyPointer(uint256 nodeOperatorId, uint256 keyIndex) internal pure returns (uint256 pointer) {
+        assembly ("memory-safe") {
+            pointer := or(shl(128, nodeOperatorId), keyIndex)
+        }
     }
 }

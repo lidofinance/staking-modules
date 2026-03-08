@@ -5,6 +5,7 @@ pragma solidity 0.8.33;
 
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { AssetRecoverer } from "./AssetRecoverer.sol";
 import { PausableWithRoles } from "./PausableWithRoles.sol";
@@ -77,7 +78,7 @@ abstract contract MerkleGate is IMerkleGate, AccessControlEnumerableUpgradeable,
         if (treeRoot_ == bytes32(0)) revert InvalidTreeRoot();
         if (treeRoot_ == treeRoot) revert InvalidTreeRoot();
         if (bytes(treeCid_).length == 0) revert InvalidTreeCid();
-        if (keccak256(bytes(treeCid_)) == keccak256(bytes(treeCid))) revert InvalidTreeCid();
+        if (Strings.equal(treeCid_, treeCid)) revert InvalidTreeCid();
 
         treeRoot = treeRoot_;
         treeCid = treeCid_;

@@ -9,17 +9,43 @@ import { OneShotCurveSetup } from "src/utils/OneShotCurveSetup.sol";
 import { IOneShotCurveSetup } from "src/interfaces/IOneShotCurveSetup.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
-import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
-import { ParametersRegistryMock } from "../helpers/mocks/ParametersRegistryMock.sol";
+import { Accounting } from "src/Accounting.sol";
+import { ParametersRegistry } from "src/ParametersRegistry.sol";
 import { Utilities } from "../helpers/Utilities.sol";
+import { Fixtures } from "../helpers/Fixtures.sol";
+import { DistributorMock } from "../helpers/mocks/DistributorMock.sol";
+import { Stub } from "../helpers/mocks/Stub.sol";
+import { LidoMock } from "../helpers/mocks/LidoMock.sol";
+import { LidoLocatorMock } from "../helpers/mocks/LidoLocatorMock.sol";
 
-contract OneShotCurveSetupTest is Test, Utilities {
-    AccountingMock internal accounting;
-    ParametersRegistryMock internal registry;
+contract OneShotCurveSetupTest is Test, Utilities, Fixtures {
+    Accounting internal accounting;
+    ParametersRegistry internal registry;
+    DistributorMock internal feeDistributor;
+    Stub internal module;
+    LidoMock internal stETH;
+    address internal admin;
 
     function setUp() public {
-        accounting = new AccountingMock(1 ether, address(0), address(0), address(0));
-        registry = new ParametersRegistryMock();
+        admin = nextAddress("ADMIN");
+
+        LidoLocatorMock locator;
+        (locator, , stETH, , ) = initLido();
+
+        module = new Stub();
+        feeDistributor = new DistributorMock(address(stETH));
+
+        accounting = new Accounting(address(locator), address(module), address(feeDistributor), 4 weeks, 365 days);
+        feeDistributor.setAccounting(address(accounting));
+        _enableInitializers(address(accounting));
+
+        IBondCurve.BondCurveIntervalInput[] memory defaultCurve = new IBondCurve.BondCurveIntervalInput[](1);
+        defaultCurve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 2 ether });
+        accounting.initialize(defaultCurve, admin, 8 weeks, nextAddress("CHARGE_PENALTY_RECIPIENT"));
+
+        registry = new ParametersRegistry(5);
+        _enableInitializers(address(registry));
+        registry.initialize(admin, _registryDefaults());
     }
 
     function test_constructor_revertWhen_ZeroAccountingAddress() external {
@@ -47,6 +73,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
     function test_execute() external {
         IOneShotCurveSetup.ConstructorParams memory params = _paramsWithAllOverrides();
         OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+        _grantExecuteRoles(deployer);
 
         _expectBondCurveAddition(params.bondCurve);
 
@@ -60,6 +87,8 @@ contract OneShotCurveSetupTest is Test, Utilities {
         assertEq(curveId, expectedCurveId);
         assertEq(deployer.deployedCurveId(), expectedCurveId);
         assertTrue(deployer.executed());
+        assertFalse(accounting.hasRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer)));
+        assertFalse(registry.hasRole(registry.MANAGE_CURVE_PARAMETERS_ROLE(), address(deployer)));
     }
 
     function test_execute_partialOverrides() external {
@@ -75,49 +104,41 @@ contract OneShotCurveSetupTest is Test, Utilities {
         params.maxElWithdrawalRequestFee.isSet = false;
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+        _grantExecuteRoles(deployer);
 
         _expectBondCurveAddition(params.bondCurve);
-        expectNoCall(address(registry), abi.encodeWithSelector(ParametersRegistryMock.setKeyRemovalCharge.selector));
+        expectNoCall(address(registry), abi.encodeWithSelector(ParametersRegistry.setKeyRemovalCharge.selector));
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setGeneralDelayedPenaltyAdditionalFine.selector,
+                ParametersRegistry.setGeneralDelayedPenaltyAdditionalFine.selector,
                 1,
                 params.generalDelayedPenaltyFine.value
             )
         );
         vm.expectCall(
             address(registry),
-            abi.encodeWithSelector(ParametersRegistryMock.setKeysLimit.selector, 1, params.keysLimit.value)
+            abi.encodeWithSelector(ParametersRegistry.setKeysLimit.selector, 1, params.keysLimit.value)
         );
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setQueueConfig.selector,
+                ParametersRegistry.setQueueConfig.selector,
                 1,
                 params.queueConfig.priority,
                 params.queueConfig.maxDeposits
             )
         );
-        expectNoCall(address(registry), abi.encodeWithSelector(ParametersRegistryMock.setRewardShareData.selector));
+        expectNoCall(address(registry), abi.encodeWithSelector(ParametersRegistry.setRewardShareData.selector));
+        expectNoCall(address(registry), abi.encodeWithSelector(ParametersRegistry.setPerformanceLeewayData.selector));
+        expectNoCall(address(registry), abi.encodeWithSelector(ParametersRegistry.setStrikesParams.selector));
+        expectNoCall(address(registry), abi.encodeWithSelector(ParametersRegistry.setBadPerformancePenalty.selector));
+        expectNoCall(address(registry), abi.encodeWithSelector(ParametersRegistry.setPerformanceCoefficients.selector));
+        expectNoCall(address(registry), abi.encodeWithSelector(ParametersRegistry.setAllowedExitDelay.selector));
+        expectNoCall(address(registry), abi.encodeWithSelector(ParametersRegistry.setExitDelayFee.selector));
         expectNoCall(
             address(registry),
-            abi.encodeWithSelector(ParametersRegistryMock.setPerformanceLeewayData.selector)
-        );
-        expectNoCall(address(registry), abi.encodeWithSelector(ParametersRegistryMock.setStrikesParams.selector));
-        expectNoCall(
-            address(registry),
-            abi.encodeWithSelector(ParametersRegistryMock.setBadPerformancePenalty.selector)
-        );
-        expectNoCall(
-            address(registry),
-            abi.encodeWithSelector(ParametersRegistryMock.setPerformanceCoefficients.selector)
-        );
-        expectNoCall(address(registry), abi.encodeWithSelector(ParametersRegistryMock.setAllowedExitDelay.selector));
-        expectNoCall(address(registry), abi.encodeWithSelector(ParametersRegistryMock.setExitDelayFee.selector));
-        expectNoCall(
-            address(registry),
-            abi.encodeWithSelector(ParametersRegistryMock.setMaxElWithdrawalRequestFee.selector)
+            abi.encodeWithSelector(ParametersRegistry.setMaxElWithdrawalRequestFee.selector)
         );
 
         deployer.execute();
@@ -128,15 +149,12 @@ contract OneShotCurveSetupTest is Test, Utilities {
         params.keyRemovalCharge = _scalarOverride(11);
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+        _grantExecuteRoles(deployer);
 
         _expectBondCurveAddition(params.bondCurve);
         vm.expectCall(
             address(registry),
-            abi.encodeWithSelector(
-                ParametersRegistryMock.setKeyRemovalCharge.selector,
-                1,
-                params.keyRemovalCharge.value
-            )
+            abi.encodeWithSelector(ParametersRegistry.setKeyRemovalCharge.selector, 1, params.keyRemovalCharge.value)
         );
 
         deployer.execute();
@@ -147,12 +165,13 @@ contract OneShotCurveSetupTest is Test, Utilities {
         params.generalDelayedPenaltyFine = _scalarOverride(12);
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+        _grantExecuteRoles(deployer);
 
         _expectBondCurveAddition(params.bondCurve);
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setGeneralDelayedPenaltyAdditionalFine.selector,
+                ParametersRegistry.setGeneralDelayedPenaltyAdditionalFine.selector,
                 1,
                 params.generalDelayedPenaltyFine.value
             )
@@ -166,11 +185,12 @@ contract OneShotCurveSetupTest is Test, Utilities {
         params.keysLimit = _scalarOverride(99);
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+        _grantExecuteRoles(deployer);
 
         _expectBondCurveAddition(params.bondCurve);
         vm.expectCall(
             address(registry),
-            abi.encodeWithSelector(ParametersRegistryMock.setKeysLimit.selector, 1, params.keysLimit.value)
+            abi.encodeWithSelector(ParametersRegistry.setKeysLimit.selector, 1, params.keysLimit.value)
         );
 
         deployer.execute();
@@ -178,15 +198,16 @@ contract OneShotCurveSetupTest is Test, Utilities {
 
     function test_execute_setsQueueConfig() external {
         IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
-        params.queueConfig = _queueOverride(7, 13);
+        params.queueConfig = _queueOverride(5, 13);
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+        _grantExecuteRoles(deployer);
 
         _expectBondCurveAddition(params.bondCurve);
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setQueueConfig.selector,
+                ParametersRegistry.setQueueConfig.selector,
                 1,
                 params.queueConfig.priority,
                 params.queueConfig.maxDeposits
@@ -201,11 +222,12 @@ contract OneShotCurveSetupTest is Test, Utilities {
         params.rewardShareData = _intervalOverride(7777);
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+        _grantExecuteRoles(deployer);
 
         _expectBondCurveAddition(params.bondCurve);
         vm.expectCall(
             address(registry),
-            abi.encodeWithSelector(ParametersRegistryMock.setRewardShareData.selector, 1, params.rewardShareData.data)
+            abi.encodeWithSelector(ParametersRegistry.setRewardShareData.selector, 1, params.rewardShareData.data)
         );
 
         deployer.execute();
@@ -216,12 +238,13 @@ contract OneShotCurveSetupTest is Test, Utilities {
         params.performanceLeewayData = _intervalOverride(5555);
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+        _grantExecuteRoles(deployer);
 
         _expectBondCurveAddition(params.bondCurve);
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setPerformanceLeewayData.selector,
+                ParametersRegistry.setPerformanceLeewayData.selector,
                 1,
                 params.performanceLeewayData.data
             )
@@ -235,12 +258,13 @@ contract OneShotCurveSetupTest is Test, Utilities {
         params.strikesParams = _strikesOverride(9, 3);
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+        _grantExecuteRoles(deployer);
 
         _expectBondCurveAddition(params.bondCurve);
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setStrikesParams.selector,
+                ParametersRegistry.setStrikesParams.selector,
                 1,
                 params.strikesParams.lifetime,
                 params.strikesParams.threshold
@@ -255,12 +279,13 @@ contract OneShotCurveSetupTest is Test, Utilities {
         params.badPerformancePenalty = _scalarOverride(21);
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+        _grantExecuteRoles(deployer);
 
         _expectBondCurveAddition(params.bondCurve);
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setBadPerformancePenalty.selector,
+                ParametersRegistry.setBadPerformancePenalty.selector,
                 1,
                 params.badPerformancePenalty.value
             )
@@ -274,12 +299,13 @@ contract OneShotCurveSetupTest is Test, Utilities {
         params.performanceCoefficients = _performanceCoefficientsOverride(1, 2, 3);
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+        _grantExecuteRoles(deployer);
 
         _expectBondCurveAddition(params.bondCurve);
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setPerformanceCoefficients.selector,
+                ParametersRegistry.setPerformanceCoefficients.selector,
                 1,
                 params.performanceCoefficients.attestationsWeight,
                 params.performanceCoefficients.blocksWeight,
@@ -295,15 +321,12 @@ contract OneShotCurveSetupTest is Test, Utilities {
         params.allowedExitDelay = _scalarOverride(100);
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+        _grantExecuteRoles(deployer);
 
         _expectBondCurveAddition(params.bondCurve);
         vm.expectCall(
             address(registry),
-            abi.encodeWithSelector(
-                ParametersRegistryMock.setAllowedExitDelay.selector,
-                1,
-                params.allowedExitDelay.value
-            )
+            abi.encodeWithSelector(ParametersRegistry.setAllowedExitDelay.selector, 1, params.allowedExitDelay.value)
         );
 
         deployer.execute();
@@ -314,11 +337,12 @@ contract OneShotCurveSetupTest is Test, Utilities {
         params.exitDelayFee = _scalarOverride(101);
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+        _grantExecuteRoles(deployer);
 
         _expectBondCurveAddition(params.bondCurve);
         vm.expectCall(
             address(registry),
-            abi.encodeWithSelector(ParametersRegistryMock.setExitDelayFee.selector, 1, params.exitDelayFee.value)
+            abi.encodeWithSelector(ParametersRegistry.setExitDelayFee.selector, 1, params.exitDelayFee.value)
         );
 
         deployer.execute();
@@ -329,12 +353,13 @@ contract OneShotCurveSetupTest is Test, Utilities {
         params.maxElWithdrawalRequestFee = _scalarOverride(202);
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+        _grantExecuteRoles(deployer);
 
         _expectBondCurveAddition(params.bondCurve);
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setMaxElWithdrawalRequestFee.selector,
+                ParametersRegistry.setMaxElWithdrawalRequestFee.selector,
                 1,
                 params.maxElWithdrawalRequestFee.value
             )
@@ -343,12 +368,81 @@ contract OneShotCurveSetupTest is Test, Utilities {
         deployer.execute();
     }
 
+    function test_execute_revertWhen_InvalidQueueConfig() external {
+        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
+        params.queueConfig = _queueOverride(6, 13);
+
+        OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+        _grantExecuteRoles(deployer);
+
+        vm.expectRevert(IParametersRegistry.QueueCannotBeUsed.selector);
+        deployer.execute();
+
+        assertFalse(deployer.executed());
+        assertEq(accounting.getCurvesCount(), 1);
+    }
+
+    function test_execute_revertWhen_MissingRegistryRole() external {
+        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
+        params.keysLimit = _scalarOverride(55);
+
+        OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+
+        vm.startPrank(admin);
+        accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
+        vm.stopPrank();
+
+        vm.expectRevert();
+        deployer.execute();
+
+        assertFalse(deployer.executed());
+        assertEq(accounting.getCurvesCount(), 1);
+    }
+
+    function test_getIntervalOverrides() external {
+        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
+        params.rewardShareData = _intervalOverride(9000);
+        params.performanceLeewayData = _intervalOverride(400);
+
+        OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+
+        (bool rewardShareIsSet, IParametersRegistry.KeyNumberValueInterval[] memory rewardShareData) = deployer
+            .getRewardShareDataOverride();
+        (
+            bool performanceLeewayIsSet,
+            IParametersRegistry.KeyNumberValueInterval[] memory performanceLeewayData
+        ) = deployer.getPerformanceLeewayDataOverride();
+
+        assertTrue(rewardShareIsSet);
+        assertEq(rewardShareData.length, 1);
+        assertEq(rewardShareData[0].minKeyNumber, 1);
+        assertEq(rewardShareData[0].value, 9000);
+
+        assertTrue(performanceLeewayIsSet);
+        assertEq(performanceLeewayData.length, 1);
+        assertEq(performanceLeewayData[0].minKeyNumber, 1);
+        assertEq(performanceLeewayData[0].value, 400);
+    }
+
+    function test_getBondCurve() external {
+        IOneShotCurveSetup.ConstructorParams memory params = _baseParams();
+        OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+
+        IBondCurve.BondCurveIntervalInput[] memory bondCurve = deployer.getBondCurve();
+        assertEq(bondCurve.length, 2);
+        assertEq(bondCurve[0].minKeysCount, 1);
+        assertEq(bondCurve[0].trend, 1 ether);
+        assertEq(bondCurve[1].minKeysCount, 11);
+        assertEq(bondCurve[1].trend, 1.5 ether);
+    }
+
     function test_execute_revertWhen_AlreadyExecuted() external {
         OneShotCurveSetup deployer = new OneShotCurveSetup(
             address(accounting),
             address(registry),
             _paramsWithAllOverrides()
         );
+        _grantExecuteRoles(deployer);
 
         deployer.execute();
 
@@ -360,6 +454,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         IOneShotCurveSetup.ConstructorParams memory params = _paramsWithAllOverrides();
 
         OneShotCurveSetup deployer = new OneShotCurveSetup(address(accounting), address(registry), params);
+        _grantExecuteRoles(deployer);
 
         assertEq(address(deployer.ACCOUNTING()), address(accounting));
         assertEq(address(deployer.REGISTRY()), address(registry));
@@ -372,7 +467,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setKeyRemovalCharge.selector,
+                ParametersRegistry.setKeyRemovalCharge.selector,
                 expectedCurveId,
                 params.keyRemovalCharge.value
             )
@@ -380,23 +475,19 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setGeneralDelayedPenaltyAdditionalFine.selector,
+                ParametersRegistry.setGeneralDelayedPenaltyAdditionalFine.selector,
                 expectedCurveId,
                 params.generalDelayedPenaltyFine.value
             )
         );
         vm.expectCall(
             address(registry),
-            abi.encodeWithSelector(
-                ParametersRegistryMock.setKeysLimit.selector,
-                expectedCurveId,
-                params.keysLimit.value
-            )
+            abi.encodeWithSelector(ParametersRegistry.setKeysLimit.selector, expectedCurveId, params.keysLimit.value)
         );
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setQueueConfig.selector,
+                ParametersRegistry.setQueueConfig.selector,
                 expectedCurveId,
                 params.queueConfig.priority,
                 params.queueConfig.maxDeposits
@@ -405,7 +496,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setRewardShareData.selector,
+                ParametersRegistry.setRewardShareData.selector,
                 expectedCurveId,
                 params.rewardShareData.data
             )
@@ -413,7 +504,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setPerformanceLeewayData.selector,
+                ParametersRegistry.setPerformanceLeewayData.selector,
                 expectedCurveId,
                 params.performanceLeewayData.data
             )
@@ -421,7 +512,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setStrikesParams.selector,
+                ParametersRegistry.setStrikesParams.selector,
                 expectedCurveId,
                 params.strikesParams.lifetime,
                 params.strikesParams.threshold
@@ -430,7 +521,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setBadPerformancePenalty.selector,
+                ParametersRegistry.setBadPerformancePenalty.selector,
                 expectedCurveId,
                 params.badPerformancePenalty.value
             )
@@ -438,7 +529,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setPerformanceCoefficients.selector,
+                ParametersRegistry.setPerformanceCoefficients.selector,
                 expectedCurveId,
                 params.performanceCoefficients.attestationsWeight,
                 params.performanceCoefficients.blocksWeight,
@@ -448,7 +539,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setAllowedExitDelay.selector,
+                ParametersRegistry.setAllowedExitDelay.selector,
                 expectedCurveId,
                 params.allowedExitDelay.value
             )
@@ -456,7 +547,7 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setExitDelayFee.selector,
+                ParametersRegistry.setExitDelayFee.selector,
                 expectedCurveId,
                 params.exitDelayFee.value
             )
@@ -464,11 +555,38 @@ contract OneShotCurveSetupTest is Test, Utilities {
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(
-                ParametersRegistryMock.setMaxElWithdrawalRequestFee.selector,
+                ParametersRegistry.setMaxElWithdrawalRequestFee.selector,
                 expectedCurveId,
                 params.maxElWithdrawalRequestFee.value
             )
         );
+    }
+
+    function _grantExecuteRoles(OneShotCurveSetup deployer) internal {
+        vm.startPrank(admin);
+        accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
+
+        registry.grantRole(registry.MANAGE_CURVE_PARAMETERS_ROLE(), address(deployer));
+        vm.stopPrank();
+    }
+
+    function _registryDefaults() internal pure returns (IParametersRegistry.InitializationData memory data) {
+        data.defaultKeyRemovalCharge = 0.05 ether;
+        data.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
+        data.defaultKeysLimit = 100_000;
+        data.defaultRewardShare = 8000;
+        data.defaultPerformanceLeeway = 500;
+        data.defaultStrikesLifetime = 6;
+        data.defaultStrikesThreshold = 3;
+        data.defaultQueuePriority = 0;
+        data.defaultQueueMaxDeposits = 10;
+        data.defaultBadPerformancePenalty = 0.1 ether;
+        data.defaultAttestationsWeight = 54;
+        data.defaultBlocksWeight = 8;
+        data.defaultSyncWeight = 2;
+        data.defaultAllowedExitDelay = 1 days;
+        data.defaultExitDelayFee = 0.05 ether;
+        data.defaultMaxElWithdrawalRequestFee = 0.1 ether;
     }
 
     function _paramsWithAllOverrides() internal pure returns (IOneShotCurveSetup.ConstructorParams memory params) {

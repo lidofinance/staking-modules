@@ -26,7 +26,7 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         Env memory env = envVars();
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
-        if (moduleType != ModuleType.Curated) vm.skip(true);
+        if (moduleType != ModuleType.Curated) vm.skip(true, "Current deployment is not Curated module type");
         string memory config = vm.readFile(env.DEPLOY_CONFIG);
         // mutates storage variable
         updateCuratedDeployParams(deployParams, env.DEPLOY_CONFIG);
@@ -114,6 +114,36 @@ contract MetaRegistryDeploymentTest is DeploymentBaseTest {
 }
 
 contract CuratedGatesDeploymentTest is DeploymentBaseTest {
+    function _expectedCurveId(uint256 gateIndex) internal view returns (uint256 curveId) {
+        uint256 nextCustomCurveId = 1;
+        uint256 gatesCount = deployParams.curatedGates.length;
+
+        for (uint256 i = 0; i < gatesCount; ++i) {
+            bool hasCustomCurve = deployParams.curatedGates[i].bondCurve.length != 0;
+            uint256 currentCurveId = hasCustomCurve ? nextCustomCurveId : accounting.DEFAULT_BOND_CURVE_ID();
+            if (i == gateIndex) return currentCurveId;
+            if (hasCustomCurve) ++nextCustomCurveId;
+        }
+
+        revert("invalid gate index");
+    }
+
+    function _assertCreateRoleOrderMatchesConfig() internal view {
+        bytes32 role = module.CREATE_NODE_OPERATOR_ROLE();
+        address[] memory members = module.getRoleMembers(role);
+        assertEq(members.length, deployParams.curatedGates.length, "unexpected create role members count");
+
+        for (uint256 i = 0; i < members.length; ++i) {
+            assertEq(members[i], curatedGates[i], "create role order mismatch");
+
+            CuratedGate gate = CuratedGate(members[i]);
+            CuratedGateConfig storage cfg = deployParams.curatedGates[i];
+            assertEq(gate.treeRoot(), cfg.treeRoot, "unexpected gate root");
+            assertEq(gate.treeCid(), cfg.treeCid, "unexpected gate cid");
+            assertEq(gate.curveId(), _expectedCurveId(i), "unexpected gate curve");
+        }
+    }
+
     function test_immutables() public view {
         uint256 gatesCount = curatedGates.length;
         assertGt(gatesCount, 0, "no curated gates deployed");
@@ -136,8 +166,7 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
 
             assertEq(gate.treeRoot(), deployParams.curatedGates[i].treeRoot);
             assertEq(gate.treeCid(), deployParams.curatedGates[i].treeCid);
-            // TODO bad assert. needs to be fixed when decided on curves
-            assertEq(gate.curveId(), i + 1);
+            assertEq(gate.curveId(), _expectedCurveId(i));
         }
     }
 
@@ -222,8 +251,7 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
             assertEq(parametersRegistry.getExitDelayFee(curveId), params.exitDelayFee);
             assertEq(parametersRegistry.getMaxElWithdrawalRequestFee(curveId), params.maxElWithdrawalRequestFee);
 
-            // FIXME: add MetaRegistry-level assertions here to replace
-            // the removed deposit-allocation-weight checks.
+            assertEq(metaRegistry.getBondCurveWeight(curveId), params.metaRegistryBondCurveWeight);
         }
     }
 
@@ -275,6 +303,40 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
         }
 
         assertEq(accounting.getRoleMemberCount(setBondCurveRole), setBondCurveRoleMembers, "set bond curve roles");
+    }
+
+    function test_roleWiringMatchesConfiguredGates_onlyFull() public view {
+        _assertCreateRoleOrderMatchesConfig();
+        uint256 gatesCount = curatedGates.length;
+
+        bytes32 metaSetterRole = metaRegistry.SET_OPERATOR_INFO_ROLE();
+        uint256 metaMembersCount = metaRegistry.getRoleMemberCount(metaSetterRole);
+        assertEq(metaMembersCount, gatesCount + 1, "unexpected meta setter role members count");
+
+        uint256 defaultCurveId = accounting.DEFAULT_BOND_CURVE_ID();
+        bytes32 setBondCurveRole = accounting.SET_BOND_CURVE_ROLE();
+        uint256 expectedSetBondCurveMembers;
+        for (uint256 i = 0; i < gatesCount; ++i) {
+            address gateAddress = curatedGates[i];
+            CuratedGate gate = CuratedGate(gateAddress);
+
+            assertTrue(module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), gateAddress), "missing create role");
+            assertTrue(metaRegistry.hasRole(metaSetterRole, gateAddress), "missing meta setter role");
+
+            bool hasCustomCurve = gate.curveId() != defaultCurveId;
+            assertEq(
+                accounting.hasRole(setBondCurveRole, gateAddress),
+                hasCustomCurve,
+                "unexpected set bond curve role"
+            );
+            if (hasCustomCurve) ++expectedSetBondCurveMembers;
+        }
+
+        assertTrue(
+            metaRegistry.hasRole(metaSetterRole, deployParams.setOperatorInfoManager),
+            "missing setOperatorInfoManager role"
+        );
+        assertEq(accounting.getRoleMemberCount(setBondCurveRole), expectedSetBondCurveMembers, "set bond curve roles");
     }
 }
 

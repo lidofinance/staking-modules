@@ -404,7 +404,25 @@ contract CSMPauseTest is ModulePauseTest, CSMCommon {}
 
 contract CSMPauseAffectingTest is ModulePauseAffectingTest, CSMCommon {}
 
-contract CSMCreateNodeOperator is ModuleCreateNodeOperator, CSMCommon {}
+contract CSMCreateNodeOperator is ModuleCreateNodeOperator, CSMCommon {
+    function test_createNodeOperator_withReferrer() public assertInvariants {
+        {
+            vm.expectEmit(address(module));
+            emit IBaseModule.NodeOperatorAdded(0, nodeOperator, nodeOperator, false);
+            vm.expectEmit(address(module));
+            emit IBaseModule.ReferrerSet(0, address(154));
+        }
+        module.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: address(0),
+                rewardAddress: address(0),
+                extendedManagerPermissions: false
+            }),
+            address(154)
+        );
+    }
+}
 
 contract CSMAddValidatorKeys is ModuleAddValidatorKeys, CSMCommon {
     function test_AddValidatorKeysETH_EmitsBatchEnqueued() public assertInvariants brutalizeMemory {
@@ -469,6 +487,12 @@ contract CSMAddValidatorKeysViaGate is ModuleAddValidatorKeysViaGate, CSMCommon 
 contract CSMAddValidatorKeysNegative is ModuleAddValidatorKeysNegative, CSMCommon {}
 
 contract CSMObtainDepositData is ModuleObtainDepositData, CSMCommon {
+    function _configureParametersRegistry() internal override {
+        parametersRegistry.setQueueLowestPriority(5);
+        assertNotEq(PRIORITY_QUEUE, parametersRegistry.QUEUE_LOWEST_PRIORITY());
+        REGULAR_QUEUE = uint32(parametersRegistry.QUEUE_LOWEST_PRIORITY());
+    }
+
     function test_obtainDepositData_MultipleOperators() public assertInvariants {
         uint256 firstId = createNodeOperator(2);
         uint256 secondId = createNodeOperator(3);
@@ -489,16 +513,17 @@ contract CSMObtainDepositData is ModuleObtainDepositData, CSMCommon {
 
     function test_obtainDepositData_AcrossDifferentQueues() public assertInvariants {
         uint256 noId = createNodeOperator(0);
+        uploadMoreKeys(noId, 20);
 
         parametersRegistry.setQueueConfig({ curveId: 0, priority: 0, maxDeposits: 10 });
         uploadMoreKeys(noId, 20);
 
         vm.expectEmit(address(module));
         emit IBaseModule.DepositableSigningKeysCountChanged(noId, 5);
-        module.obtainDepositData(15, "");
+        module.obtainDepositData(35, "");
 
         (, uint256 totalDepositedValidators, uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
-        assertEq(totalDepositedValidators, 15);
+        assertEq(totalDepositedValidators, 35);
         assertEq(depositableValidatorsCount, 5);
     }
 
@@ -927,6 +952,52 @@ contract CSMTopUpQueue is CSMCommon {
         });
     }
 
+    function test_topUp_emitsTopUpQueueItemProcessedForEachKey() public {
+        createNodeOperator(2);
+        createNodeOperator(1);
+        csm.obtainDepositData(3, "");
+
+        bytes memory packed = csm.getSigningKeys(0, 0, 2);
+        bytes memory key2 = csm.getSigningKeys(1, 0, 1);
+        bytes[] memory pubkeys = BytesArr(slice(packed, 0, 48), slice(packed, 48, 48), key2);
+
+        vm.expectEmit(address(csm));
+        emit ICSModule.TopUpQueueItemProcessed(0, 0);
+        vm.expectEmit(address(csm));
+        emit ICSModule.TopUpQueueItemProcessed(0, 1);
+        vm.expectEmit(address(csm));
+        emit ICSModule.TopUpQueueItemProcessed(1, 0);
+
+        csm.allocateDeposits({
+            maxDepositAmount: 3 ether,
+            pubkeys: pubkeys,
+            keyIndices: UintArr(0, 1, 0),
+            operatorIds: UintArr(0, 0, 1),
+            topUpLimits: UintArr(1 ether, 1 ether, 1 ether)
+        });
+    }
+
+    function test_topUp_noProcessedEventWhenPartialAllocation() public {
+        createNodeOperator(1);
+        csm.obtainDepositData(1, "");
+
+        bytes memory key = csm.getSigningKeys(0, 0, 1);
+
+        vm.recordLogs();
+        csm.allocateDeposits({
+            maxDepositAmount: 1 ether,
+            pubkeys: BytesArr(key),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(3 ether)
+        });
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        for (uint256 i; i < entries.length; ++i) {
+            assertNotEq(entries[i].topics[0], ICSModule.TopUpQueueItemProcessed.selector);
+        }
+    }
+
     function test_topUp_noEmitWhenKeyAtCap() public {
         createNodeOperator(1);
         csm.obtainDepositData(1, "");
@@ -989,9 +1060,6 @@ contract CSMTopUpQueue is CSMCommon {
         vm.deal(address(this), 100 ether);
         accounting.depositETH{ value: 100 ether }(0);
         uint256 bondBefore = accounting.getBond(0);
-
-        vm.prank(admin);
-        csm.grantRole(csm.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), address(this));
 
         WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
         infos[0] = WithdrawnValidatorInfo({
@@ -1280,7 +1348,7 @@ contract CSMTopUpQueue is CSMCommon {
         assertEq(keyIndex, 0);
 
         uint256 to = 1;
-        vm.expectEmit(true, true, true, true, address(csm));
+        vm.expectEmit(address(csm));
         emit ICSModule.TopUpQueueRewound(to);
         csm.rewindTopUpQueue(to);
         assertEq(_getTopUpQueueHead(), to);
@@ -1314,7 +1382,7 @@ contract CSMTopUpQueue is CSMCommon {
         csm.rewindTopUpQueue(0);
     }
 
-    function test_syncKeyAddedBalance_RevertWhenTopUpQueueDisabled() public {
+    function test_reportValidatorBalance_RevertWhenTopUpQueueDisabled() public {
         csm = new CSModule({
             moduleType: "community-staking-module",
             lidoLocator: address(locator),
@@ -1328,7 +1396,7 @@ contract CSMTopUpQueue is CSMCommon {
 
         csm.grantRole(csm.VERIFIER_ROLE(), address(this));
         vm.expectRevert(ICSModule.TopUpQueueDisabled.selector);
-        csm.syncKeyAddedBalance(0, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 1 ether);
+        csm.reportValidatorBalance(0, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 1 ether);
     }
 }
 
@@ -1847,8 +1915,9 @@ contract CSMRemoveKeysChargeFee is CSMCommon {
     }
 
     function test_removeKeys_withNoFee() public assertInvariants {
+        ParametersRegistryMock registry = parametersRegistry;
         vm.prank(admin);
-        module.PARAMETERS_REGISTRY().setKeyRemovalCharge(0, 0);
+        registry.setKeyRemovalCharge(0, 0);
 
         uint256 noId = createNodeOperator(3);
 
@@ -1932,7 +2001,7 @@ contract CSMKeyAddedBalance is ModuleKeyAddedBalance, CSMCommon {
     }
 }
 
-contract CSMSyncKeyAddedBalance is ModuleSyncKeyAddedBalance, CSMCommon {
+contract CSMreportValidatorBalance is ModulereportValidatorBalance, CSMCommon {
     function setUp() public override {
         topUpQueueLimit = 32;
 
@@ -2041,17 +2110,6 @@ contract CSMStakingRouterAccessControl is ModuleStakingRouterAccessControl, CSMC
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
         csm.allocateDeposits(0, new bytes[](0), UintArr(), UintArr(), UintArr());
-    }
-
-    function test_stakingRouterRole_onWithdrawalCredentialsChanged_withDepositable() public {
-        createNodeOperator();
-        bytes32 role = module.STAKING_ROUTER_ROLE();
-        vm.prank(admin);
-        module.grantRole(role, actor);
-
-        vm.expectRevert(IBaseModule.DepositableKeysWithUnsupportedWithdrawalCredentials.selector);
-        vm.prank(actor);
-        module.onWithdrawalCredentialsChanged();
     }
 }
 

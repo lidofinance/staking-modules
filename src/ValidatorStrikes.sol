@@ -4,6 +4,7 @@
 pragma solidity 0.8.33;
 
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
@@ -80,7 +81,7 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
         }
 
         bool isSameRoot = _treeRoot == treeRoot;
-        bool isSameCid = keccak256(bytes(_treeCid)) == keccak256(bytes(treeCid));
+        bool isSameCid = Strings.equal(_treeCid, treeCid);
         if (isSameRoot != isSameCid) revert InvalidReportData();
         if (!isSameRoot) {
             treeRoot = _treeRoot;

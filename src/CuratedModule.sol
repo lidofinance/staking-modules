@@ -28,7 +28,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
     IMetaRegistry public immutable META_REGISTRY;
 
-    uint64 internal constant INITIALIZED_VERSION = 1;
     // keccak256(abi.encode(uint256(keccak256("CuratedModule")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant CURATED_MODULE_STORAGE_LOCATION =
         0x748416948424a2a643c796b7b8213bcf41155fd3a072f0851ad0a3d6ca632500;
@@ -49,7 +48,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
     /// @dev Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
     ///      It is recommended to call this method in the same transaction as the deployment transaction
     ///      and perform extensive deployment verification before using the contract instance.
-    function initialize(address admin) external override reinitializer(INITIALIZED_VERSION) {
+    function initialize(address admin) external override initializer {
         __BaseModule_init(admin);
     }
 
@@ -61,17 +60,18 @@ contract CuratedModule is ICuratedModule, BaseModule {
         _checkStakingRouterRole();
         _requireDepositInfoUpToDate();
 
+        // TODO: think about changing to list of structs
+        BaseModuleStorage storage $ = _baseStorage();
         (uint256 allocated, uint256[] memory operatorIds, uint256[] memory allocations) = CuratedDepositAllocator
-            .allocateInitialDeposits(_nodeOperators, _nodeOperatorsCount, depositsCount);
+            .allocateInitialDeposits($.nodeOperators, $.nodeOperatorsCount, depositsCount);
         if (allocated == 0) return (publicKeys, signatures);
         (publicKeys, signatures) = SigningKeys.initKeysSigsBuf(allocated);
 
         uint256 loadedKeysCount;
-        CuratedModuleStorage storage $ = _storage();
         for (uint256 i; i < allocations.length; ++i) {
             uint256 allocation = allocations[i];
             uint256 operatorId = operatorIds[i];
-            NodeOperator storage no = _nodeOperators[operatorId];
+            NodeOperator storage no = $.nodeOperators[operatorId];
 
             SigningKeys.loadKeysSigs({
                 nodeOperatorId: operatorId,
@@ -97,7 +97,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             emit DepositableSigningKeysCountChanged(operatorId, depositableValidatorsCount);
 
             CuratedOperatorBalancesOps.increaseBalance(
-                $.operatorBalances,
+                _curatedStorage().operatorBalances,
                 operatorId,
                 allocation * CuratedDepositAllocator.MIN_ACTIVATION_BALANCE
             );
@@ -105,14 +105,16 @@ contract CuratedModule is ICuratedModule, BaseModule {
         unchecked {
             // `allocated` is capped by _depositableValidatorsCount which is uint64.
             // forge-lint: disable-next-line(unsafe-typecast)
-            _depositableValidatorsCount -= uint64(allocated);
+            $.depositableValidatorsCount -= uint64(allocated);
             // `allocated` is capped by _depositableValidatorsCount which is uint64.
             // forge-lint: disable-next-line(unsafe-typecast)
-            _totalDepositedValidators += uint64(allocated);
+            $.totalDepositedValidators += uint64(allocated);
         }
 
         _incrementModuleNonce();
     }
+
+    // Continue review from here
 
     /// @inheritdoc IStakingModuleV2
     function allocateDeposits(
@@ -141,7 +143,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
         // Cap top-ups so we don't over-allocate to keys that lost balance due to CL penalties.
         uint256[] memory cappedTopUpLimits = NodeOperatorOps.capTopUpLimitsByKeyBalance(
-            _keyAddedBalances,
+            _baseStorage().keyAddedBalances,
             operatorIds,
             keyIndices,
             topUpLimits
@@ -156,8 +158,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
     function updateOperatorBalances(bytes calldata operatorIds, bytes calldata totalBalancesGwei) external {
         _checkStakingRouterRole();
         CuratedOperatorBalancesOps.applyReportedBalances(
-            _storage().operatorBalances,
-            _nodeOperatorsCount,
+            _curatedStorage().operatorBalances,
+            _baseStorage().nodeOperatorsCount,
             operatorIds,
             totalBalancesGwei
         );
@@ -171,7 +173,12 @@ contract CuratedModule is ICuratedModule, BaseModule {
         address newRewardAddress
     ) external {
         _checkRole(OPERATOR_ADDRESSES_ADMIN_ROLE);
-        NOAddresses.changeNodeOperatorAddresses(_nodeOperators, nodeOperatorId, newManagerAddress, newRewardAddress);
+        NOAddresses.changeNodeOperatorAddresses(
+            _baseStorage().nodeOperators,
+            nodeOperatorId,
+            newManagerAddress,
+            newRewardAddress
+        );
     }
 
     /// @inheritdoc ICuratedModule
@@ -179,7 +186,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         if (msg.sender != address(_metaRegistry())) revert SenderIsNotMetaRegistry();
         if (newWeight == 0) {
             _applyDepositableValidatorsCount({
-                no: _nodeOperators[nodeOperatorId],
+                no: _baseStorage().nodeOperators[nodeOperatorId],
                 nodeOperatorId: nodeOperatorId,
                 newCount: 0,
                 incrementNonceIfUpdated: false
@@ -202,7 +209,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
     /// @inheritdoc ICuratedModule
     function getNodeOperatorBalance(uint256 operatorId) external view returns (uint256) {
-        return _storage().operatorBalances[operatorId];
+        return _curatedStorage().operatorBalances[operatorId];
     }
 
     /// @inheritdoc ICuratedModule
@@ -210,7 +217,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256 maxDepositAmount
     ) external view returns (uint256 allocated, uint256[] memory operatorIds, uint256[] memory allocations) {
         _requireDepositInfoUpToDate();
-        uint256 operatorsCount = _nodeOperatorsCount;
+        BaseModuleStorage storage $ = _baseStorage();
+        uint256 operatorsCount = $.nodeOperatorsCount;
         if (maxDepositAmount == 0 || operatorsCount == 0) return (0, new uint256[](0), new uint256[](0));
 
         uint256[] memory allOperatorIds = new uint256[](operatorsCount);
@@ -219,8 +227,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
         }
 
         (allocated, operatorIds, allocations) = CuratedDepositAllocator.allocateTopUps({
-            nodeOperators: _nodeOperators,
-            nodeOperatorBalances: _storage().operatorBalances,
+            nodeOperators: $.nodeOperators,
+            nodeOperatorBalances: _curatedStorage().operatorBalances,
             operatorsCount: operatorsCount,
             allocationAmount: maxDepositAmount,
             operatorIds: allOperatorIds
@@ -257,12 +265,13 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256[] calldata keyIndices,
         uint256[] memory topUpLimits
     ) internal returns (uint256[] memory allocations) {
+        BaseModuleStorage storage $ = _baseStorage();
         uint256[] memory uniqueOperatorIds = _uniqueOperatorIds(operatorIds);
         (, uint256[] memory allocatedOperatorIds, uint256[] memory operatorAllocations) = CuratedDepositAllocator
             .allocateTopUps({
-                nodeOperators: _nodeOperators,
-                nodeOperatorBalances: _storage().operatorBalances,
-                operatorsCount: _nodeOperatorsCount,
+                nodeOperators: $.nodeOperators,
+                nodeOperatorBalances: _curatedStorage().operatorBalances,
+                operatorsCount: $.nodeOperatorsCount,
                 allocationAmount: maxDepositAmount,
                 operatorIds: uniqueOperatorIds
             });
@@ -273,12 +282,12 @@ contract CuratedModule is ICuratedModule, BaseModule {
             topUpLimits: topUpLimits,
             allocatedOperatorIds: allocatedOperatorIds,
             operatorAllocations: operatorAllocations,
-            operatorsCount: _nodeOperatorsCount
+            operatorsCount: $.nodeOperatorsCount
         });
 
-        NodeOperatorOps.increaseKeyAddedBalancesByAllocations(_keyAddedBalances, operatorIds, keyIndices, allocations);
+        NodeOperatorOps.increaseKeyAddedBalancesByAllocations($.keyAddedBalances, operatorIds, keyIndices, allocations);
         CuratedOperatorBalancesOps.increaseByAllocations(
-            _storage().operatorBalances,
+            _curatedStorage().operatorBalances,
             uniqueOperatorIds,
             perOperatorIncrements
         );
@@ -313,7 +322,8 @@ contract CuratedModule is ICuratedModule, BaseModule {
         for (uint256 i; i < pubkeys.length; ++i) {
             uint256 operatorId = operatorIds[i];
             uint256 keyIndex = keyIndices[i];
-            if (keyIndex >= _nodeOperators[operatorId].totalDepositedKeys) revert SigningKeysInvalidOffset();
+            if (keyIndex >= _baseStorage().nodeOperators[operatorId].totalDepositedKeys)
+                revert SigningKeysInvalidOffset();
             SigningKeys.verifySigningKey(operatorId, keyIndex, pubkeys[i]);
         }
     }
@@ -328,7 +338,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         }
     }
 
-    function _storage() internal pure returns (CuratedModuleStorage storage $) {
+    function _curatedStorage() internal pure returns (CuratedModuleStorage storage $) {
         assembly ("memory-safe") {
             $.slot := CURATED_MODULE_STORAGE_LOCATION
         }

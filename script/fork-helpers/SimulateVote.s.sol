@@ -121,7 +121,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
         vm.startBroadcast(agent);
 
         stakingRouter.addStakingModule(
-            "curated-onchain-v1",
+            "curated-onchain-v2",
             address(curatedModule),
             IStakingRouter.StakingModuleConfig({
                 stakeShareLimit: 2000, // 20%

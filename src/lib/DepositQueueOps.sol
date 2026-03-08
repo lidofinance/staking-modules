@@ -7,17 +7,17 @@ import { IAccounting } from "../interfaces/IAccounting.sol";
 import { ICSModule } from "../interfaces/ICSModule.sol";
 import { IParametersRegistry } from "../interfaces/IParametersRegistry.sol";
 import { NodeOperator } from "../interfaces/IBaseModule.sol";
+import { ModuleLinearStorage } from "../abstract/ModuleLinearStorage.sol";
 
 import { TransientUintUintMap, TransientUintUintMapLib } from "./TransientUintUintMapLib.sol";
-import { Batch, DepositQueueLib, IDepositQueueLib } from "./DepositQueueLib.sol";
+import { Batch, DepositQueueLib } from "./DepositQueueLib.sol";
 
 library DepositQueueOps {
     using DepositQueueLib for DepositQueueLib.Queue;
     using TransientUintUintMapLib for TransientUintUintMap;
 
     function cleanDepositQueue(
-        mapping(uint256 => DepositQueueLib.Queue) storage depositQueues,
-        mapping(uint256 => NodeOperator) storage nodeOperators,
+        ModuleLinearStorage.BaseModuleStorage storage $,
         uint256 queueLowestPriority,
         uint256 maxItems
     ) external returns (uint256 removed, uint256 lastRemovedAtDepth) {
@@ -37,14 +37,14 @@ library DepositQueueOps {
         uint256 priority = 0;
 
         while (priority <= queueLowestPriority) {
-            queue = depositQueues[priority];
+            queue = $.depositQueueByPriority[priority];
 
             (
                 uint256 removedPerQueue,
                 uint256 lastRemovedAtDepthPerQueue,
                 uint256 visitedPerQueue,
                 bool reachedOutOfQueue
-            ) = _clean(queue, nodeOperators, maxItems, queueLookup);
+            ) = _clean(queue, $.nodeOperators, maxItems, queueLookup);
 
             if (removedPerQueue > 0) {
                 unchecked {
@@ -77,14 +77,13 @@ library DepositQueueOps {
     }
 
     function enqueueNodeOperatorKeys(
-        mapping(uint256 => NodeOperator) storage nodeOperators,
-        mapping(uint256 => DepositQueueLib.Queue) storage depositQueues,
+        ModuleLinearStorage.BaseModuleStorage storage $,
         IParametersRegistry parametersRegistry,
         IAccounting accounting,
         uint256 queueLowestPriority,
         uint256 nodeOperatorId
     ) external {
-        NodeOperator storage no = nodeOperators[nodeOperatorId];
+        NodeOperator storage no = $.nodeOperators[nodeOperatorId];
         uint32 depositable = no.depositableValidatorsCount;
         uint32 enqueued = no.enqueuedCount;
         if (depositable <= enqueued) return;
@@ -107,7 +106,7 @@ library DepositQueueOps {
                     if (count > priorityDepositsLeft) count = priorityDepositsLeft;
 
                     _enqueueNodeOperatorKeys({
-                        queue: depositQueues[priority],
+                        queue: $.depositQueueByPriority[priority],
                         no: no,
                         nodeOperatorId: nodeOperatorId,
                         queuePriority: priority,
@@ -119,7 +118,7 @@ library DepositQueueOps {
         }
         if (toEnqueue > 0) {
             _enqueueNodeOperatorKeys({
-                queue: depositQueues[queueLowestPriority],
+                queue: $.depositQueueByPriority[queueLowestPriority],
                 no: no,
                 nodeOperatorId: nodeOperatorId,
                 queuePriority: queueLowestPriority,
@@ -138,9 +137,6 @@ library DepositQueueOps {
         lastRemovedAtDepth = 0;
         visited = 0;
         reachedOutOfQueue = false;
-
-        // TODO: Looks unreachable
-        if (maxItems == 0) revert IDepositQueueLib.DepositQueueLookupNoLimit();
 
         Batch prevItem;
         uint128 indexOfPrev;

@@ -315,8 +315,6 @@ contract CuratedCreateNodeOperator is ModuleCreateNodeOperator, CuratedCommon {}
 
 contract CuratedAddValidatorKeys is ModuleAddValidatorKeys, CuratedCommon {}
 
-contract CuratedAddValidatorKeysViaGate is ModuleAddValidatorKeysViaGate, CuratedCommon {}
-
 contract CuratedAddValidatorKeysNegative is ModuleAddValidatorKeysNegative, CuratedCommon {}
 
 contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
@@ -983,7 +981,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
             baseDeposited[i] = module.getNodeOperator(operatorIds[i]).totalDepositedKeys;
         }
 
-        uint256 snapshot = vm.snapshot();
+        uint256 snapshot = vm.snapshotState();
 
         module.obtainDepositData(weightSum, "");
 
@@ -992,7 +990,7 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
             predepositAllocations[i] = module.getNodeOperator(operatorIds[i]).totalDepositedKeys - baseDeposited[i];
         }
 
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         bytes[] memory pubkeys = new bytes[](operatorsCount);
         uint256[] memory keyIndices = new uint256[](operatorsCount);
@@ -1655,7 +1653,7 @@ contract CuratedReportWithdrawnValidators is ModuleReportWithdrawnValidators, Cu
 
 contract CuratedKeyAddedBalance is ModuleKeyAddedBalance, CuratedCommon {}
 
-contract CuratedSyncKeyAddedBalance is ModuleSyncKeyAddedBalance, CuratedCommon {}
+contract CuratedreportValidatorBalance is ModulereportValidatorBalance, CuratedCommon {}
 
 contract CuratedTopUpKeyAddedBalance is CuratedCommon {
     function test_topUp_emitsKeyAddedBalanceChanged() public {
@@ -1708,23 +1706,7 @@ contract CuratedGetStakingModuleSummary is ModuleGetStakingModuleSummary, Curate
 
 contract CuratedAccessControl is ModuleAccessControl, CuratedCommonNoRoles {}
 
-contract CuratedStakingRouterAccessControl is ModuleStakingRouterAccessControl, CuratedCommonNoRoles {
-    function test_stakingRouterRole_onWithdrawalCredentialsChanged_noDepositable() public override {
-        vm.skip(true);
-    }
-
-    function test_stakingRouterRole_onWithdrawalCredentialsChanged_withDepositable() public {
-        createNodeOperator();
-        bytes32 role = module.STAKING_ROUTER_ROLE();
-        vm.prank(admin);
-        module.grantRole(role, actor);
-
-        // TODO: need proper revert message from onWithdrawalCredentialsChanged
-        vm.expectRevert();
-        vm.prank(actor);
-        module.onWithdrawalCredentialsChanged();
-    }
-}
+contract CuratedStakingRouterAccessControl is ModuleStakingRouterAccessControl, CuratedCommonNoRoles {}
 
 contract CuratedDepositableValidatorsCount is ModuleDepositableValidatorsCount, CuratedCommon {
     function test_updateDepositableValidatorsCount_zeroWeightNullifiesDepositable() public assertInvariants {

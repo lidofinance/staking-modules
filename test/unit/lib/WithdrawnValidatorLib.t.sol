@@ -5,7 +5,6 @@ pragma solidity 0.8.33;
 
 import { Test } from "forge-std/Test.sol";
 
-import { WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 
 contract Library {
@@ -13,10 +12,8 @@ contract Library {
         return WithdrawnValidatorLib._scalePenaltyByMultiplier(penalty, multiplier);
     }
 
-    function getPenaltyMultiplier(
-        WithdrawnValidatorInfo memory validatorInfo
-    ) external pure returns (uint256 penaltyMultiplier) {
-        return WithdrawnValidatorLib._getPenaltyMultiplier(validatorInfo);
+    function getPenaltyMultiplier(uint256 balance) external pure returns (uint256 penaltyMultiplier) {
+        return WithdrawnValidatorLib._getPenaltyMultiplier(balance);
     }
 }
 
@@ -53,55 +50,55 @@ contract TestWithdrawnValidatorLib is Test {
     }
 
     function test_getPenaltyMultiplier_Step() public {
-        WithdrawnValidatorInfo memory info;
         uint256 m;
+        uint256 balance;
 
-        info.exitBalance = 0;
-        m = lib.getPenaltyMultiplier(info);
+        balance = 0;
+        m = lib.getPenaltyMultiplier(balance);
         assertEq(m, 32);
 
-        info.exitBalance = 1 ether;
-        m = lib.getPenaltyMultiplier(info);
+        balance = 1 ether;
+        m = lib.getPenaltyMultiplier(balance);
         assertEq(m, 32);
 
-        info.exitBalance = 32 ether - 1 wei;
-        m = lib.getPenaltyMultiplier(info);
+        balance = 32 ether - 1 wei;
+        m = lib.getPenaltyMultiplier(balance);
         assertEq(m, 32);
 
-        info.exitBalance = 32 ether;
-        m = lib.getPenaltyMultiplier(info);
+        balance = 32 ether;
+        m = lib.getPenaltyMultiplier(balance);
         assertEq(m, 32);
 
-        info.exitBalance = 32 ether + 1 wei;
-        m = lib.getPenaltyMultiplier(info);
+        balance = 32 ether + 1 wei;
+        m = lib.getPenaltyMultiplier(balance);
         assertEq(m, 32);
 
-        info.exitBalance = 33 ether - 1 wei;
-        m = lib.getPenaltyMultiplier(info);
+        balance = 33 ether - 1 wei;
+        m = lib.getPenaltyMultiplier(balance);
         assertEq(m, 32);
 
-        info.exitBalance = 33 ether;
-        m = lib.getPenaltyMultiplier(info);
+        balance = 33 ether;
+        m = lib.getPenaltyMultiplier(balance);
         assertEq(m, 33);
 
-        info.exitBalance = 33 ether + 1 wei;
-        m = lib.getPenaltyMultiplier(info);
+        balance = 33 ether + 1 wei;
+        m = lib.getPenaltyMultiplier(balance);
         assertEq(m, 33);
 
-        info.exitBalance = 2048 ether - 1;
-        m = lib.getPenaltyMultiplier(info);
+        balance = 2048 ether - 1;
+        m = lib.getPenaltyMultiplier(balance);
         assertEq(m, 2047);
 
-        info.exitBalance = 2048 ether;
-        m = lib.getPenaltyMultiplier(info);
+        balance = 2048 ether;
+        m = lib.getPenaltyMultiplier(balance);
         assertEq(m, 2048);
 
-        info.exitBalance = 2048 ether + 1 wei;
-        m = lib.getPenaltyMultiplier(info);
+        balance = 2048 ether + 1 wei;
+        m = lib.getPenaltyMultiplier(balance);
         assertEq(m, 2048);
 
-        info.exitBalance = 2049 ether;
-        m = lib.getPenaltyMultiplier(info);
+        balance = 2049 ether;
+        m = lib.getPenaltyMultiplier(balance);
         assertEq(m, 2048);
     }
 }

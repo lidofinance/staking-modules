@@ -18,7 +18,8 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         Env memory env = envVars();
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
-        if (moduleType != ModuleType.Community0x02) vm.skip(true);
+        if (moduleType != ModuleType.Community0x02)
+            vm.skip(true, "Current deployment is not Community0x02 module type");
         deployParams = parseDeployParams0x02(env.DEPLOY_CONFIG);
         adminsCount = block.chainid == 1 ? 1 : 2;
     }
@@ -29,6 +30,14 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         bytes32 role = module.CREATE_NODE_OPERATOR_ROLE();
         assertEq(module.getRoleMemberCount(role), 1);
         assertTrue(module.hasRole(role, address(permissionlessGate)));
+    }
+
+    function test_topUpQueueConfig() public view {
+        assertGt(deployParams.topUpQueueLimit, 0, "top-up queue limit in config must be non-zero");
+
+        (bool enabled, uint256 limit, , ) = module.getTopUpQueue();
+        assertTrue(enabled, "top-up queue is disabled");
+        assertEq(limit, deployParams.topUpQueueLimit, "top-up queue limit mismatch");
     }
 }
 
@@ -109,6 +118,11 @@ contract PermissionlessGateDeploymentTest is DeploymentBaseTest {
     function test_roles() public view {
         assertTrue(permissionlessGate.hasRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(permissionlessGate.getRoleMemberCount(permissionlessGate.DEFAULT_ADMIN_ROLE()), adminsCount);
+        if (deployParams.secondAdminAddress != address(0)) {
+            assertTrue(
+                permissionlessGate.hasRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), deployParams.secondAdminAddress)
+            );
+        }
         assertEq(permissionlessGate.getRoleMemberCount(permissionlessGate.RECOVERER_ROLE()), 0);
     }
 }

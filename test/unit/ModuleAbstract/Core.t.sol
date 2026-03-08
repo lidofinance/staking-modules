@@ -3,8 +3,6 @@
 
 pragma solidity 0.8.33;
 
-import { Vm } from "forge-std/Test.sol";
-
 import { BaseModule } from "src/abstract/BaseModule.sol";
 import { IBaseModule } from "src/interfaces/IBaseModule.sol";
 import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
@@ -324,7 +322,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         vm.stopPrank();
 
         vm.prank(actor);
-        module.onValidatorSlashed(noId, 0);
+        module.reportValidatorSlashing(noId, 0);
     }
 
     function test_verifierRole_revert() public {
@@ -333,7 +331,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        module.onValidatorSlashed(noId, 0);
+        module.reportValidatorSlashing(noId, 0);
     }
 
     function test_reportRegularWithdrawnValidatorsRole() public {
@@ -386,7 +384,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         module.grantRole(module.STAKING_ROUTER_ROLE(), admin);
         module.grantRole(module.VERIFIER_ROLE(), admin);
         module.obtainDepositData(1, "");
-        module.onValidatorSlashed(noId, 0);
+        module.reportValidatorSlashing(noId, 0);
         vm.stopPrank();
 
         WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
@@ -506,6 +504,17 @@ abstract contract ModuleStakingRouterAccessControl is ModuleFixtures {
         vm.prank(admin);
         module.grantRole(role, actor);
 
+        vm.prank(actor);
+        module.onWithdrawalCredentialsChanged();
+    }
+
+    function test_stakingRouterRole_onWithdrawalCredentialsChanged_withDepositable() public virtual {
+        createNodeOperator();
+        bytes32 role = module.STAKING_ROUTER_ROLE();
+        vm.prank(admin);
+        module.grantRole(role, actor);
+
+        vm.expectRevert(IBaseModule.DepositableKeysWithUnsupportedWithdrawalCredentials.selector);
         vm.prank(actor);
         module.onWithdrawalCredentialsChanged();
     }

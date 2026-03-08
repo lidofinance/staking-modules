@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.33;
 
+import { Hashes } from "@openzeppelin/contracts/utils/cryptography/Hashes.sol";
+
 /// @dev There's no leaves sorting for simplicity.
 contract MerkleTree {
     bytes32[] internal tree;
@@ -116,6 +118,6 @@ contract MerkleTree {
     }
 
     function _hashPair(bytes32 a, bytes32 b) private pure returns (bytes32) {
-        return a < b ? keccak256(bytes.concat(a, b)) : keccak256(bytes.concat(b, a));
+        return Hashes.commutativeKeccak256(a, b);
     }
 }

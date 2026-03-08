@@ -11,7 +11,6 @@ import { DeployParams } from "script/csm/DeployBase.s.sol";
 import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
 import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
-import { ParametersRegistry } from "src/ParametersRegistry.sol";
 import { VettedGate } from "src/VettedGate.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
@@ -28,7 +27,7 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         Env memory env = envVars();
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
-        if (moduleType != ModuleType.Community) vm.skip(true);
+        if (moduleType != ModuleType.Community) vm.skip(true, "Current deployment is not Community module type");
         deployParams = parseDeployParams(env.DEPLOY_CONFIG);
         adminsCount = block.chainid == 1 ? 1 : 2;
     }
@@ -331,6 +330,11 @@ contract PermissionlessGateDeploymentTest is DeploymentBaseTest {
     function test_roles() public view {
         assertTrue(permissionlessGate.hasRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(permissionlessGate.getRoleMemberCount(permissionlessGate.DEFAULT_ADMIN_ROLE()), adminsCount);
+        if (deployParams.secondAdminAddress != address(0)) {
+            assertTrue(
+                permissionlessGate.hasRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), deployParams.secondAdminAddress)
+            );
+        }
         assertEq(permissionlessGate.getRoleMemberCount(permissionlessGate.RECOVERER_ROLE()), 0);
     }
 }

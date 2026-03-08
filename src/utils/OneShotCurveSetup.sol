@@ -7,10 +7,14 @@ import { IBondCurve } from "../interfaces/IBondCurve.sol";
 import { IAccounting } from "../interfaces/IAccounting.sol";
 import { IParametersRegistry } from "../interfaces/IParametersRegistry.sol";
 import { IOneShotCurveSetup } from "../interfaces/IOneShotCurveSetup.sol";
+import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 /// @notice Helper that atomically deploys a new bond curve together with its parameter overrides.
 /// @dev The contract is intentionally single-use: once `execute` finishes successfully it
 ///      stores the emitted `curveId` for reference.
+///      Permission model: grant only two temporary roles to this contract:
+///      `ACCOUNTING.MANAGE_BOND_CURVES_ROLE()` and `REGISTRY.MANAGE_CURVE_PARAMETERS_ROLE()`.
+///      After successful execution, the contract renounces both roles.
 contract OneShotCurveSetup is IOneShotCurveSetup {
     IAccounting public immutable ACCOUNTING;
     IParametersRegistry public immutable REGISTRY;
@@ -66,7 +70,35 @@ contract OneShotCurveSetup is IOneShotCurveSetup {
         deployedCurveId = curveId;
 
         _applyParameterOverrides(curveId);
+
+        IAccessControl(address(ACCOUNTING)).renounceRole(ACCOUNTING.MANAGE_BOND_CURVES_ROLE(), address(this));
+        IAccessControl(address(REGISTRY)).renounceRole(REGISTRY.MANAGE_CURVE_PARAMETERS_ROLE(), address(this));
+
         emit BondCurveDeployed(curveId);
+    }
+
+    function getBondCurve() external view override returns (IBondCurve.BondCurveIntervalInput[] memory bondCurve_) {
+        bondCurve_ = bondCurve;
+    }
+
+    function getRewardShareDataOverride()
+        external
+        view
+        override
+        returns (bool isSet, IParametersRegistry.KeyNumberValueInterval[] memory data)
+    {
+        isSet = rewardShareDataOverride.isSet;
+        data = rewardShareDataOverride.data;
+    }
+
+    function getPerformanceLeewayDataOverride()
+        external
+        view
+        override
+        returns (bool isSet, IParametersRegistry.KeyNumberValueInterval[] memory data)
+    {
+        isSet = performanceLeewayDataOverride.isSet;
+        data = performanceLeewayDataOverride.data;
     }
 
     function _applyParameterOverrides(uint256 curveId) internal {

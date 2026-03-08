@@ -55,7 +55,7 @@ contract DeployMainnet is DeployBase {
         config.chargePenaltyRecipient = 0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c; // locator.treasury()
 
         // Module
-        config.moduleType = "curated-onchain-v1"; // TODO reconsider
+        config.moduleType = "curated-onchain-v2"; // TODO reconsider
         config.generalDelayedPenaltyReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
 
         // ParametersRegistry TODO reconsider
@@ -103,6 +103,7 @@ contract DeployMainnet is DeployBase {
             primaryGate.params.attestationsWeight = 54; // TODO
             primaryGate.params.blocksWeight = 4; // TODO
             primaryGate.params.syncWeight = 2; // TODO
+            primaryGate.params.metaRegistryBondCurveWeight = 1; // TODO reconsider
             primaryGate.params.allowedExitDelay = 5 days; // TODO
             primaryGate.params.exitDelayFee = 0.05 ether; // TODO
             primaryGate.params.maxElWithdrawalRequestFee = 0.1 ether; // TODO

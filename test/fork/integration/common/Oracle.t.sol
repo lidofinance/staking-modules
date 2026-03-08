@@ -52,8 +52,21 @@ abstract contract OracleTestBase is ModuleTypeBase {
         uint256 keysCount;
         uint256 moduleId = findModule();
         (nodeOperatorId, keysCount) = integrationHelpers.getDepositableNodeOperator(nextAddress());
-        vm.prank(locator.depositSecurityModule());
-        lido.deposit(keysCount, moduleId, "");
+
+        bool isStakingRouterUpgraded = _isStakingRouterUpgraded();
+        if (isStakingRouterUpgraded) {
+            _ensureStakingRouterCanDeposit(moduleId);
+            vm.prank(locator.depositSecurityModule());
+            stakingRouter.deposit(moduleId, "");
+        } else {
+            vm.prank(locator.depositSecurityModule());
+            _legacyLidoDeposit(keysCount, moduleId, "");
+        }
+
+        if (module.getNodeOperator(nodeOperatorId).totalDepositedKeys == 0) {
+            // Skip: this scenario requires at least one deposited key for the selected node operator.
+            vm.skip(true, "Scenario requires at least one deposited key for selected node operator");
+        }
     }
 
     function reachConsensus(uint256 refSlot, bytes32 hash) public {
@@ -167,7 +180,6 @@ abstract contract OracleTestBase is ModuleTypeBase {
 
         uint256 initialBalance = 1 ether;
         vm.deal(refundRecipient, initialBalance);
-        vm.prank(refundRecipient);
         uint256 expectedWithdrawalFee = IWithdrawalVault(locator.withdrawalVault()).getWithdrawalRequestFee();
 
         IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
