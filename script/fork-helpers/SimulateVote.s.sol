@@ -63,16 +63,19 @@ contract SimulateVote is Script, ForkHelpersCommon {
         vm.startBroadcast(agent);
 
         // 1. Add CommunityStaking module
-        stakingRouter.addStakingModule({
-            _name: "community-staking-v1",
-            _stakingModuleAddress: address(module),
-            _stakeShareLimit: 2000, // 20%
-            _priorityExitShareThreshold: 2500, // 25%
-            _stakingModuleFee: 800, // 8%
-            _treasuryFee: 200, // 2%
-            _maxDepositsPerBlock: 30,
-            _minDepositBlockDistance: 25
-        });
+        stakingRouter.addStakingModule(
+            "community-staking-0x02-v1",
+            address(module),
+            IStakingRouter.StakingModuleConfig({
+                stakeShareLimit: 2000, // 20%
+                priorityExitShareThreshold: 2500, // 25%
+                stakingModuleFee: 800, // 8%
+                treasuryFee: 200, // 2%
+                maxDepositsPerBlock: 30,
+                minDepositBlockDistance: 25,
+                withdrawalCredentialsType: 2 // 0x02
+            })
+        );
         // 2. burner role
         burner.grantRole(burner.REQUEST_BURN_MY_STETH_ROLE(), address(accounting));
         // 3. twg role
@@ -117,16 +120,19 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
         vm.startBroadcast(agent);
 
-        stakingRouter.addStakingModule({
-            _name: "curated-onchain-v1",
-            _stakingModuleAddress: address(curatedModule),
-            _stakeShareLimit: 2000, // 20%
-            _priorityExitShareThreshold: 2500, // 25%
-            _stakingModuleFee: 800, // 8%
-            _treasuryFee: 200, // 2%
-            _maxDepositsPerBlock: 30,
-            _minDepositBlockDistance: 25
-        });
+        stakingRouter.addStakingModule(
+            "curated-onchain-v1",
+            address(curatedModule),
+            IStakingRouter.StakingModuleConfig({
+                stakeShareLimit: 2000, // 20%
+                priorityExitShareThreshold: 2500, // 25%
+                stakingModuleFee: 800, // 8%
+                treasuryFee: 200, // 2%
+                maxDepositsPerBlock: 30,
+                minDepositBlockDistance: 25,
+                withdrawalCredentialsType: 2 // 0x02
+            })
+        );
 
         burner.grantRole(burner.REQUEST_BURN_MY_STETH_ROLE(), address(accounting));
 

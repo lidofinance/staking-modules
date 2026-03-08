@@ -107,6 +107,7 @@ interface IStakingRouter {
         uint16 priorityExitShareThreshold;
         uint64 maxDepositsPerBlock;
         uint64 minDepositBlockDistance;
+        uint8 withdrawalCredentialsType;
     }
 
     struct StakingModuleSummary {
@@ -127,6 +128,16 @@ interface IStakingRouter {
         uint256 currentNodeOperatorExitedValidatorsCount;
         uint256 newModuleExitedValidatorsCount;
         uint256 newNodeOperatorExitedValidatorsCount;
+    }
+
+    struct StakingModuleConfig {
+        uint256 stakeShareLimit;
+        uint256 priorityExitShareThreshold;
+        uint256 stakingModuleFee;
+        uint256 treasuryFee;
+        uint256 maxDepositsPerBlock;
+        uint256 minDepositBlockDistance;
+        uint256 withdrawalCredentialsType;
     }
 
     function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
@@ -156,12 +167,7 @@ interface IStakingRouter {
     function addStakingModule(
         string memory _name,
         address _stakingModuleAddress,
-        uint256 _stakeShareLimit,
-        uint256 _priorityExitShareThreshold,
-        uint256 _stakingModuleFee,
-        uint256 _treasuryFee,
-        uint256 _maxDepositsPerBlock,
-        uint256 _minDepositBlockDistance
+        StakingModuleConfig memory _stakingModuleConfig
     ) external;
 
     function decreaseStakingModuleVettedKeysCountByNodeOperator(
