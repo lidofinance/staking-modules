@@ -78,27 +78,26 @@ contract DeployLocalDevNet is DeployBase {
             primaryGate.treeRoot = vm.envOr("CURATED_GATE_TREE_ROOT", bytes32(uint256(0xdeadbeef))); // TODO: replace with generated root
             primaryGate.treeCid = vm.envOr("CURATED_GATE_TREE_CID", string("TODO: dev-tree-cid"));
 
-            primaryGate.params.keyRemovalCharge = vm.envOr("CURATED_GATE_KEY_REMOVAL_CHARGE", uint256(0.01 ether));
-            primaryGate.params.generalDelayedPenaltyAdditionalFine = vm.envOr(
-                "CURATED_GATE_GENERAL_DELAYED_PENALTY_FINE",
-                uint256(0.05 ether)
+            primaryGate.params.keyRemovalCharge = _m(vm.envOr("CURATED_GATE_KEY_REMOVAL_CHARGE", uint256(0.01 ether)));
+            primaryGate.params.generalDelayedPenaltyAdditionalFine = _m(
+                vm.envOr("CURATED_GATE_GENERAL_DELAYED_PENALTY_FINE", uint256(0.05 ether))
             );
-            primaryGate.params.keysLimit = vm.envOr("CURATED_GATE_KEYS_LIMIT", uint256(type(uint248).max));
+            primaryGate.params.keysLimit = _m(vm.envOr("CURATED_GATE_KEYS_LIMIT", uint256(type(uint248).max)));
             primaryGate.params.avgPerfLeewayData.push([1, 10000]); // TODO
             primaryGate.params.rewardShareData.push([1, 10000]); // TODO
             primaryGate.params.rewardShareData.push([17, 5834]); // TODO
-            primaryGate.params.strikesLifetimeFrames = 6; // TODO
-            primaryGate.params.strikesThreshold = 3; // TODO
-            primaryGate.params.queuePriority = 1; // TODO
-            primaryGate.params.queueMaxDeposits = 12; // TODO
-            primaryGate.params.badPerformancePenalty = 0.05 ether; // TODO
-            primaryGate.params.attestationsWeight = 60; // TODO
-            primaryGate.params.blocksWeight = 4; // TODO
-            primaryGate.params.syncWeight = 0; // TODO
-            primaryGate.params.metaRegistryBondCurveWeight = 1; // TODO reconsider
-            primaryGate.params.allowedExitDelay = 8 days; // TODO
-            primaryGate.params.exitDelayFee = 0.05 ether; // TODO
-            primaryGate.params.maxElWithdrawalRequestFee = 0.05 ether; // TODO
+            primaryGate.params.strikesLifetimeFrames = _m(6); // TODO
+            primaryGate.params.strikesThreshold = _m(3); // TODO
+            primaryGate.params.queuePriority = _m(1); // TODO
+            primaryGate.params.queueMaxDeposits = _m(12); // TODO
+            primaryGate.params.badPerformancePenalty = _m(0.05 ether); // TODO
+            primaryGate.params.attestationsWeight = _m(60); // TODO
+            primaryGate.params.blocksWeight = _m(4); // TODO
+            primaryGate.params.syncWeight = _m(0); // TODO
+            primaryGate.params.metaRegistryBondCurveWeight = _m(1); // TODO reconsider
+            primaryGate.params.allowedExitDelay = _m(8 days); // TODO
+            primaryGate.params.exitDelayFee = _m(0.05 ether); // TODO
+            primaryGate.params.maxElWithdrawalRequestFee = _m(0.05 ether); // TODO
         }
 
         config.curatedGatePauseManager = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA

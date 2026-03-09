@@ -88,25 +88,25 @@ contract DeployMainnet is DeployBase {
             primaryGate.treeRoot = bytes32(uint256(0xfeedcafe)); // TODO: replace with audited root
             primaryGate.treeCid = "TODO: replace with finalized IPFS CID";
 
-            primaryGate.params.keyRemovalCharge = 0.01 ether; // TODO: confirm
-            primaryGate.params.generalDelayedPenaltyAdditionalFine = 0.05 ether; // TODO
-            primaryGate.params.keysLimit = type(uint248).max; // TODO
+            primaryGate.params.keyRemovalCharge = _m(0.01 ether); // TODO: confirm
+            primaryGate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether); // TODO
+            primaryGate.params.keysLimit = _m(type(uint248).max); // TODO
             primaryGate.params.avgPerfLeewayData.push([1, 500]); // TODO
             primaryGate.params.avgPerfLeewayData.push([151, 300]); // TODO
             primaryGate.params.rewardShareData.push([1, 10000]); // TODO
             primaryGate.params.rewardShareData.push([17, 5834]); // TODO
-            primaryGate.params.strikesLifetimeFrames = 6; // TODO
-            primaryGate.params.strikesThreshold = 4; // TODO
-            primaryGate.params.queuePriority = 0; // TODO
-            primaryGate.params.queueMaxDeposits = 10; // TODO
-            primaryGate.params.badPerformancePenalty = 0.172 ether; // TODO
-            primaryGate.params.attestationsWeight = 54; // TODO
-            primaryGate.params.blocksWeight = 4; // TODO
-            primaryGate.params.syncWeight = 2; // TODO
-            primaryGate.params.metaRegistryBondCurveWeight = 1; // TODO reconsider
-            primaryGate.params.allowedExitDelay = 5 days; // TODO
-            primaryGate.params.exitDelayFee = 0.05 ether; // TODO
-            primaryGate.params.maxElWithdrawalRequestFee = 0.1 ether; // TODO
+            primaryGate.params.strikesLifetimeFrames = _m(6); // TODO
+            primaryGate.params.strikesThreshold = _m(4); // TODO
+            primaryGate.params.queuePriority = _m(0); // TODO
+            primaryGate.params.queueMaxDeposits = _m(10); // TODO
+            primaryGate.params.badPerformancePenalty = _m(0.172 ether); // TODO
+            primaryGate.params.attestationsWeight = _m(54); // TODO
+            primaryGate.params.blocksWeight = _m(4); // TODO
+            primaryGate.params.syncWeight = _m(2); // TODO
+            primaryGate.params.metaRegistryBondCurveWeight = _m(1); // TODO reconsider
+            primaryGate.params.allowedExitDelay = _m(5 days); // TODO
+            primaryGate.params.exitDelayFee = _m(0.05 ether); // TODO
+            primaryGate.params.maxElWithdrawalRequestFee = _m(0.1 ether); // TODO
         }
 
         config.curatedGatePauseManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
