@@ -173,17 +173,13 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
     function test_curveParameters() public view {
         uint256 gatesCount = curatedGates.length;
         assertGt(gatesCount, 0, "no curated gates deployed");
+        assertEq(accounting.getCurvesCount(), gatesCount, "unexpected total curves count"); // +1 for the default curve
         for (uint256 i = 0; i < gatesCount; ++i) {
             CuratedGate gate = CuratedGate(curatedGates[i]);
             uint256 curveId = gate.curveId();
 
             GateCurveParams memory params = deployParams.curatedGates[i].params;
-
-            if (params.keyRemovalCharge.isValue) {
-                assertEq(parametersRegistry.getKeyRemovalCharge(curveId), params.keyRemovalCharge.value);
-            } else {
-                assertEq(parametersRegistry.getKeyRemovalCharge(curveId), deployParams.defaultKeyRemovalCharge);
-            }
+            assertEq(parametersRegistry.getKeyRemovalCharge(curveId), deployParams.defaultKeyRemovalCharge);
 
             if (params.generalDelayedPenaltyAdditionalFine.isValue) {
                 assertEq(
@@ -242,13 +238,8 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
             }
 
             (uint256 queuePriority, uint256 queueMaxDeposits) = parametersRegistry.getQueueConfig(curveId);
-            if (params.queuePriority.isValue || params.queueMaxDeposits.isValue) {
-                assertEq(queuePriority, params.queuePriority.value);
-                assertEq(queueMaxDeposits, params.queueMaxDeposits.value);
-            } else {
-                assertEq(queuePriority, deployParams.defaultQueuePriority);
-                assertEq(queueMaxDeposits, deployParams.defaultQueueMaxDeposits);
-            }
+            assertEq(queuePriority, deployParams.defaultQueuePriority);
+            assertEq(queueMaxDeposits, deployParams.defaultQueueMaxDeposits);
 
             if (params.badPerformancePenalty.isValue) {
                 assertEq(parametersRegistry.getBadPerformancePenalty(curveId), params.badPerformancePenalty.value);

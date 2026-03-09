@@ -122,8 +122,8 @@ contract SimulateVote is Script, ForkHelpersCommon {
             _stakingModuleAddress: address(curatedModule),
             _stakeShareLimit: 2000, // 20%
             _priorityExitShareThreshold: 2500, // 25%
-            _stakingModuleFee: 800, // 8%
-            _treasuryFee: 200, // 2%
+            _stakingModuleFee: 400, // 4%
+            _treasuryFee: 600, // 6%
             _maxDepositsPerBlock: 30,
             _minDepositBlockDistance: 25
         });

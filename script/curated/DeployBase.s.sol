@@ -34,15 +34,12 @@ import { GIndex } from "../../src/lib/GIndex.sol";
 import { Slot } from "../../src/lib/Types.sol";
 
 struct GateCurveParams {
-    IParametersRegistry.MarkedUint248 keyRemovalCharge;
     IParametersRegistry.MarkedUint248 generalDelayedPenaltyAdditionalFine;
     IParametersRegistry.MarkedUint248 keysLimit;
     uint256[2][] avgPerfLeewayData;
     uint256[2][] rewardShareData;
     IParametersRegistry.MarkedUint248 strikesLifetimeFrames;
     IParametersRegistry.MarkedUint248 strikesThreshold;
-    IParametersRegistry.MarkedUint248 queuePriority;
-    IParametersRegistry.MarkedUint248 queueMaxDeposits;
     IParametersRegistry.MarkedUint248 badPerformancePenalty;
     IParametersRegistry.MarkedUint248 attestationsWeight;
     IParametersRegistry.MarkedUint248 blocksWeight;
@@ -341,9 +338,6 @@ abstract contract DeployBase is Script {
                 curatedCurveIds[i] = curveId;
 
                 GateCurveParams storage params = gateConfig.params;
-                if (params.keyRemovalCharge.isValue) {
-                    parametersRegistry.setKeyRemovalCharge(curveId, params.keyRemovalCharge.value);
-                }
                 if (params.generalDelayedPenaltyAdditionalFine.isValue) {
                     parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(
                         curveId,
@@ -370,13 +364,6 @@ abstract contract DeployBase is Script {
                         curveId,
                         params.strikesLifetimeFrames.value,
                         params.strikesThreshold.value
-                    );
-                }
-                if (params.queuePriority.isValue || params.queueMaxDeposits.isValue) {
-                    parametersRegistry.setQueueConfig(
-                        curveId,
-                        uint32(params.queuePriority.value),
-                        uint32(params.queueMaxDeposits.value)
                     );
                 }
                 if (params.badPerformancePenalty.isValue) {
