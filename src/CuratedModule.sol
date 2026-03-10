@@ -60,7 +60,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
         _checkStakingRouterRole();
         _requireDepositInfoUpToDate();
 
-        // TODO: think about changing to list of structs
         BaseModuleStorage storage $ = _baseStorage();
         (uint256 allocated, uint256[] memory operatorIds, uint256[] memory allocations) = CuratedDepositAllocator
             .allocateInitialDeposits($.nodeOperators, $.nodeOperatorsCount, depositsCount);
