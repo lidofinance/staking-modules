@@ -19,7 +19,8 @@ contract NodeOperatorBondInfoTest is BaseTest {
     function test_allZeros() public view {
         IAccounting.NodeOperatorBondInfo memory info = accounting.getNodeOperatorBondInfo(0);
 
-        assertEq(info.current, 0, "current should be 0");
+        assertEq(info.currentBond, 0, "currentBond should be 0");
+        assertEq(info.requiredBond, 0, "requiredBond should be 0");
         assertEq(info.lockedBond, 0, "lockedBond should be 0");
         assertEq(info.bondDebt, 0, "bondDebt should be 0");
         assertEq(info.pendingSharesToSplit, 0, "pendingSharesToSplit should be 0");
@@ -33,7 +34,8 @@ contract NodeOperatorBondInfoTest is BaseTest {
 
         IAccounting.NodeOperatorBondInfo memory info = accounting.getNodeOperatorBondInfo(0);
 
-        assertApproxEqAbs(info.current, bond, 1 wei, "current should be approximately bond");
+        assertApproxEqAbs(info.currentBond, bond, 1 wei, "currentBond should be approximately bond");
+        assertEq(info.requiredBond, 0, "requiredBond should be 0");
         assertEq(info.lockedBond, 0, "lockedBond should be 0");
         assertEq(info.bondDebt, 0, "bondDebt should be 0");
         assertEq(info.pendingSharesToSplit, 0, "pendingSharesToSplit should be 0");
@@ -48,7 +50,8 @@ contract NodeOperatorBondInfoTest is BaseTest {
 
         IAccounting.NodeOperatorBondInfo memory info = accounting.getNodeOperatorBondInfo(0);
 
-        assertEq(info.current, 0, "current should be 0");
+        assertEq(info.currentBond, 0, "currentBond should be 0");
+        assertEq(info.requiredBond, locked, "requiredBond should equal locked bond");
         assertEq(info.lockedBond, locked, "lockedBond should match locked");
         assertEq(info.bondDebt, 0, "bondDebt should be 0");
         assertEq(info.pendingSharesToSplit, 0, "pendingSharesToSplit should be 0");
@@ -63,7 +66,8 @@ contract NodeOperatorBondInfoTest is BaseTest {
 
         IAccounting.NodeOperatorBondInfo memory info = accounting.getNodeOperatorBondInfo(0);
 
-        assertEq(info.current, 0, "current should be 0");
+        assertEq(info.currentBond, 0, "currentBond should be 0");
+        assertEq(info.requiredBond, debt, "requiredBond should be equal to debt when currentBond is 0");
         assertEq(info.lockedBond, 0, "lockedBond should be 0");
         assertEq(info.bondDebt, debt, "bondDebt should match debt");
         assertEq(info.pendingSharesToSplit, 0, "pendingSharesToSplit should be 0");
@@ -89,10 +93,11 @@ contract NodeOperatorBondInfoTest is BaseTest {
         IAccounting.NodeOperatorBondInfo memory info = accounting.getNodeOperatorBondInfo(0);
 
         assertEq(
-            info.current,
+            info.currentBond,
             stETH.getPooledEthByShares(feeShares),
-            "current should be stETH.getPooledEthByShares(feeShares)"
+            "currentBond should be stETH.getPooledEthByShares(feeShares)"
         );
+        assertEq(info.requiredBond, 2 ether, "requiredBond should match required bond");
         assertEq(info.lockedBond, 0, "lockedBond should be 0");
         assertEq(info.bondDebt, 0, "bondDebt should be 0");
         assertEq(info.pendingSharesToSplit, feeShares, "pendingSharesToSplit should match feeShares");
@@ -133,7 +138,13 @@ contract NodeOperatorBondInfoTest is BaseTest {
 
         IAccounting.NodeOperatorBondInfo memory info = accounting.getNodeOperatorBondInfo(0);
 
-        assertEq(info.current, 0, "current should be 0");
+        assertEq(info.currentBond, 0, "currentBond should be 0");
+        assertApproxEqAbs(
+            info.requiredBond,
+            20 ether + locked + debt,
+            1 wei,
+            "requiredBond should be approximately 20 ether + locked + debt"
+        );
         assertEq(info.lockedBond, locked, "lockedBond should match locked");
         assertApproxEqAbs(info.bondDebt, debt, 2 wei, "bondDebt should be approximately debt");
         assertEq(info.pendingSharesToSplit, feeShares, "pendingSharesToSplit should match feeShares");
@@ -143,8 +154,10 @@ contract NodeOperatorBondInfoTest is BaseTest {
 
     function _assertConsistency(uint256 noId) internal view {
         IAccounting.NodeOperatorBondInfo memory info = accounting.getNodeOperatorBondInfo(noId);
+        (uint256 currentBond, uint256 requiredBond) = accounting.getBondSummary(noId);
 
-        assertEq(info.current, accounting.getBond(noId));
+        assertEq(info.currentBond, currentBond);
+        assertEq(info.requiredBond, requiredBond);
         assertEq(info.lockedBond, accounting.getLockedBond(noId));
         assertEq(info.bondDebt, accounting.getBondDebt(noId));
         assertEq(info.pendingSharesToSplit, accounting.getPendingSharesToSplit(noId));

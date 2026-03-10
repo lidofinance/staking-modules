@@ -430,7 +430,8 @@ contract Accounting is
 
     /// @inheritdoc IAccounting
     function getNodeOperatorBondInfo(uint256 nodeOperatorId) external view returns (NodeOperatorBondInfo memory info) {
-        info.current = BondCore.getBond(nodeOperatorId);
+        info.currentBond = BondCore.getBond(nodeOperatorId);
+        info.requiredBond = _getRequiredBond(nodeOperatorId, 0);
         info.lockedBond = BondLock.getLockedBond(nodeOperatorId);
         info.bondDebt = BondCore.getBondDebt(nodeOperatorId);
         info.pendingSharesToSplit = FeeSplits.getPendingSharesToSplit(nodeOperatorId);

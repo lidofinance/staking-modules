@@ -22,7 +22,8 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     }
 
     struct NodeOperatorBondInfo {
-        uint256 current;
+        uint256 currentBond;
+        uint256 requiredBond;
         uint256 lockedBond;
         uint256 bondDebt;
         uint256 pendingSharesToSplit;
@@ -144,8 +145,8 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
 
     /// @notice Get all bond-related info for the given Node Operator in one call
     /// @param nodeOperatorId ID of the Node Operator
-    /// @return info Bond info containing current bond, locked bond, bond debt,
-    ///         and pending shares to split
+    /// @return info Bond info containing current bond, required bond, locked bond,
+    ///         bond debt, and pending shares to split
     function getNodeOperatorBondInfo(uint256 nodeOperatorId) external view returns (NodeOperatorBondInfo memory info);
 
     /// @notice Get current and required bond amounts in ETH (stETH) for the given Node Operator
