@@ -173,18 +173,31 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
     function test_curveParameters() public view {
         uint256 gatesCount = curatedGates.length;
         assertGt(gatesCount, 0, "no curated gates deployed");
+        assertEq(accounting.getCurvesCount(), gatesCount, "unexpected total curves count"); // +1 for the default curve
         for (uint256 i = 0; i < gatesCount; ++i) {
             CuratedGate gate = CuratedGate(curatedGates[i]);
             uint256 curveId = gate.curveId();
 
             GateCurveParams memory params = deployParams.curatedGates[i].params;
+            assertEq(parametersRegistry.getKeyRemovalCharge(curveId), deployParams.defaultKeyRemovalCharge);
 
-            assertEq(parametersRegistry.getKeyRemovalCharge(curveId), params.keyRemovalCharge);
-            assertEq(
-                parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(curveId),
-                params.generalDelayedPenaltyAdditionalFine
-            );
-            assertEq(parametersRegistry.getKeysLimit(curveId), params.keysLimit);
+            if (params.generalDelayedPenaltyAdditionalFine.isValue) {
+                assertEq(
+                    parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(curveId),
+                    params.generalDelayedPenaltyAdditionalFine.value
+                );
+            } else {
+                assertEq(
+                    parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(curveId),
+                    deployParams.defaultGeneralDelayedPenaltyAdditionalFine
+                );
+            }
+
+            if (params.keysLimit.isValue) {
+                assertEq(parametersRegistry.getKeysLimit(curveId), params.keysLimit.value);
+            } else {
+                assertEq(parametersRegistry.getKeysLimit(curveId), deployParams.defaultKeysLimit);
+            }
 
             IParametersRegistry.KeyNumberValueInterval[] memory avgPerfLeewayData = parametersRegistry
                 .getPerformanceLeewayData(curveId);
@@ -216,42 +229,66 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
             }
 
             (uint256 strikesLifetime, uint256 strikesThreshold) = parametersRegistry.getStrikesParams(curveId);
-            if (params.strikesThreshold == 0) {
+            if (params.strikesLifetimeFrames.isValue || params.strikesThreshold.isValue) {
+                assertEq(strikesLifetime, params.strikesLifetimeFrames.value);
+                assertEq(strikesThreshold, params.strikesThreshold.value);
+            } else {
                 assertEq(strikesLifetime, deployParams.defaultStrikesLifetimeFrames);
                 assertEq(strikesThreshold, deployParams.defaultStrikesThreshold);
-            } else {
-                assertEq(strikesLifetime, params.strikesLifetimeFrames);
-                assertEq(strikesThreshold, params.strikesThreshold);
             }
 
             (uint256 queuePriority, uint256 queueMaxDeposits) = parametersRegistry.getQueueConfig(curveId);
-            if (params.queueMaxDeposits == 0) {
-                assertEq(queuePriority, deployParams.defaultQueuePriority);
-                assertEq(queueMaxDeposits, deployParams.defaultQueueMaxDeposits);
-            } else {
-                assertEq(queuePriority, params.queuePriority);
-                assertEq(queueMaxDeposits, params.queueMaxDeposits);
-            }
+            assertEq(queuePriority, deployParams.defaultQueuePriority);
+            assertEq(queueMaxDeposits, deployParams.defaultQueueMaxDeposits);
 
-            assertEq(parametersRegistry.getBadPerformancePenalty(curveId), params.badPerformancePenalty);
+            if (params.badPerformancePenalty.isValue) {
+                assertEq(parametersRegistry.getBadPerformancePenalty(curveId), params.badPerformancePenalty.value);
+            } else {
+                assertEq(
+                    parametersRegistry.getBadPerformancePenalty(curveId),
+                    deployParams.defaultBadPerformancePenalty
+                );
+            }
 
             (uint256 attestationsWeight, uint256 blocksWeight, uint256 syncWeight) = parametersRegistry
                 .getPerformanceCoefficients(curveId);
-            if (params.attestationsWeight == 0 && params.blocksWeight == 0 && params.syncWeight == 0) {
+            if (params.attestationsWeight.isValue || params.blocksWeight.isValue || params.syncWeight.isValue) {
+                assertEq(attestationsWeight, params.attestationsWeight.value);
+                assertEq(blocksWeight, params.blocksWeight.value);
+                assertEq(syncWeight, params.syncWeight.value);
+            } else {
                 assertEq(attestationsWeight, deployParams.defaultAttestationsWeight);
                 assertEq(blocksWeight, deployParams.defaultBlocksWeight);
                 assertEq(syncWeight, deployParams.defaultSyncWeight);
-            } else {
-                assertEq(attestationsWeight, params.attestationsWeight);
-                assertEq(blocksWeight, params.blocksWeight);
-                assertEq(syncWeight, params.syncWeight);
             }
 
-            assertEq(parametersRegistry.getAllowedExitDelay(curveId), params.allowedExitDelay);
-            assertEq(parametersRegistry.getExitDelayFee(curveId), params.exitDelayFee);
-            assertEq(parametersRegistry.getMaxElWithdrawalRequestFee(curveId), params.maxElWithdrawalRequestFee);
+            if (params.allowedExitDelay.isValue) {
+                assertEq(parametersRegistry.getAllowedExitDelay(curveId), params.allowedExitDelay.value);
+            } else {
+                assertEq(parametersRegistry.getAllowedExitDelay(curveId), deployParams.defaultAllowedExitDelay);
+            }
 
-            assertEq(metaRegistry.getBondCurveWeight(curveId), params.metaRegistryBondCurveWeight);
+            if (params.exitDelayFee.isValue) {
+                assertEq(parametersRegistry.getExitDelayFee(curveId), params.exitDelayFee.value);
+            } else {
+                assertEq(parametersRegistry.getExitDelayFee(curveId), deployParams.defaultExitDelayFee);
+            }
+
+            if (params.maxElWithdrawalRequestFee.isValue) {
+                assertEq(
+                    parametersRegistry.getMaxElWithdrawalRequestFee(curveId),
+                    params.maxElWithdrawalRequestFee.value
+                );
+            } else {
+                assertEq(
+                    parametersRegistry.getMaxElWithdrawalRequestFee(curveId),
+                    deployParams.defaultMaxElWithdrawalRequestFee
+                );
+            }
+
+            if (params.metaRegistryBondCurveWeight.isValue) {
+                assertEq(metaRegistry.getBondCurveWeight(curveId), params.metaRegistryBondCurveWeight.value);
+            }
         }
     }
 

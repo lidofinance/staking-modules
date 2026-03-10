@@ -26,6 +26,7 @@ contract DeployLocalDevNet is DeployBase {
         config.oracleMembers[1] = vm.envAddress("CSM_ORACLE_2_ADDRESS");
         config.oracleMembers[2] = vm.envAddress("CSM_ORACLE_3_ADDRESS");
         config.hashConsensusQuorum = 2;
+
         // Verifier
         config.slotsPerHistoricalRoot = vm.envOr("DEVNET_SLOTS_PER_HISTORICAL_ROOT", uint256(8192));
         config.gIFirstWithdrawal = GIndices.FIRST_WITHDRAWAL_ELECTRA;
@@ -36,14 +37,15 @@ contract DeployLocalDevNet is DeployBase {
         config.capellaSlot = vm.envUint("DEVNET_CAPELLA_EPOCH") * config.slotsPerEpoch;
 
         // Accounting
-        // 2.4 -> 1.3
-        config.defaultBondCurve.push([1, 2.4 ether]);
-        config.defaultBondCurve.push([2, 1.3 ether]);
+        // 11 -> 1
+        config.defaultBondCurve.push([1, 11 ether]);
+        config.defaultBondCurve.push([2, 1 ether]);
 
         config.minBondLockPeriod = 1 days;
         config.maxBondLockPeriod = 7 days;
         config.bondLockPeriod = 1 days;
         config.chargePenaltyRecipient = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
+
         // Module
         config.moduleType = "curated-onchain-v2"; // Just a unique type name to be used by the off-chain tooling
         config.generalDelayedPenaltyReporter = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
@@ -51,54 +53,100 @@ contract DeployLocalDevNet is DeployBase {
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0;
         config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
-        config.defaultKeysLimit = type(uint256).max;
+        config.defaultKeysLimit = 100;
         config.defaultAvgPerfLeewayBP = 10000;
-        config.defaultRewardShareBP = 10000;
+        config.defaultRewardShareBP = 6250; // 62.5% of 4% = 2.5% of the total
         config.defaultStrikesLifetimeFrames = 6;
         config.defaultStrikesThreshold = 3;
-        config.queueLowestPriority = 5;
-        config.defaultQueuePriority = 5;
+        config.queueLowestPriority = 0;
+        config.defaultQueuePriority = 0;
         config.defaultQueueMaxDeposits = type(uint32).max;
-        config.defaultBadPerformancePenalty = 0.1 ether; // TODO: to be reviewed
+        config.defaultBadPerformancePenalty = 0 ether;
         config.defaultAttestationsWeight = 54; // https://eth2book.info/capella/part2/incentives/rewards/
         config.defaultBlocksWeight = 8; // https://eth2book.info/capella/part2/incentives/rewards/
         config.defaultSyncWeight = 2; // https://eth2book.info/capella/part2/incentives/rewards/
         config.defaultAllowedExitDelay = 4 days;
-        config.defaultExitDelayFee = 0.1 ether;
+        config.defaultExitDelayFee = 0.01 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
         config.penaltiesManager = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
         // Curated gates
-        config.curatedGates.push();
-
+        // Professional Operator Gate
         {
-            CuratedGateConfig storage primaryGate = config.curatedGates[0];
-            primaryGate.bondCurve.push([1, 1 ether]); // TODO: adjust curve
-            primaryGate.bondCurve.push([2, 1 ether]); // TODO: adjust curve
-            primaryGate.treeRoot = vm.envOr("CURATED_GATE_TREE_ROOT", bytes32(uint256(0xdeadbeef))); // TODO: replace with generated root
-            primaryGate.treeCid = vm.envOr("CURATED_GATE_TREE_CID", string("TODO: dev-tree-cid"));
+            CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
+            gate.treeCid = "TODO: ipfs-cid-cohort-a";
+            gate.params.metaRegistryBondCurveWeight = _m(7000);
+        }
 
-            primaryGate.params.keyRemovalCharge = vm.envOr("CURATED_GATE_KEY_REMOVAL_CHARGE", uint256(0.01 ether));
-            primaryGate.params.generalDelayedPenaltyAdditionalFine = vm.envOr(
-                "CURATED_GATE_GENERAL_DELAYED_PENALTY_FINE",
-                uint256(0.05 ether)
-            );
-            primaryGate.params.keysLimit = vm.envOr("CURATED_GATE_KEYS_LIMIT", uint256(type(uint248).max));
-            primaryGate.params.avgPerfLeewayData.push([1, 10000]); // TODO
-            primaryGate.params.rewardShareData.push([1, 10000]); // TODO
-            primaryGate.params.rewardShareData.push([17, 5834]); // TODO
-            primaryGate.params.strikesLifetimeFrames = 6; // TODO
-            primaryGate.params.strikesThreshold = 3; // TODO
-            primaryGate.params.queuePriority = 1; // TODO
-            primaryGate.params.queueMaxDeposits = 12; // TODO
-            primaryGate.params.badPerformancePenalty = 0.05 ether; // TODO
-            primaryGate.params.attestationsWeight = 60; // TODO
-            primaryGate.params.blocksWeight = 4; // TODO
-            primaryGate.params.syncWeight = 0; // TODO
-            primaryGate.params.metaRegistryBondCurveWeight = 1; // TODO reconsider
-            primaryGate.params.allowedExitDelay = 8 days; // TODO
-            primaryGate.params.exitDelayFee = 0.05 ether; // TODO
-            primaryGate.params.maxElWithdrawalRequestFee = 0.05 ether; // TODO
+        // Professional Trusted Operator Gate
+        {
+            CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.bondCurve.push([1, 11 ether]);
+            gate.bondCurve.push([2, 0.6 ether]);
+            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
+            gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
+            gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
+            gate.params.keysLimit = _m(500);
+            gate.params.rewardShareData.push([1, 8750]); // 87.5% of 4% = 3.5% of the total
+            gate.params.metaRegistryBondCurveWeight = _m(10000);
+            gate.params.exitDelayFee = _m(0.005 ether);
+        }
+
+        // Public Good Operator Gate
+        {
+            CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.bondCurve.push([1, 11 ether]);
+            gate.bondCurve.push([2, 0.6 ether]);
+            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
+            gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
+            gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
+            gate.params.keysLimit = _m(500);
+            gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
+            gate.params.metaRegistryBondCurveWeight = _m(10000);
+            gate.params.exitDelayFee = _m(0.005 ether);
+        }
+
+        // Decentralization Operator Gate
+        {
+            CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.bondCurve.push([1, 11 ether]);
+            gate.bondCurve.push([2, 0.6 ether]);
+            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
+            gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
+            gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
+            gate.params.keysLimit = _m(500);
+            gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
+            gate.params.metaRegistryBondCurveWeight = _m(10000);
+            gate.params.exitDelayFee = _m(0.005 ether);
+        }
+
+        // Extra Effort Operator Gate
+        {
+            CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.bondCurve.push([1, 11 ether]);
+            gate.bondCurve.push([2, 0.6 ether]);
+            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
+            gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
+            gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
+            gate.params.keysLimit = _m(500);
+            gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
+            gate.params.metaRegistryBondCurveWeight = _m(10000);
+            gate.params.exitDelayFee = _m(0.005 ether);
+        }
+
+        // Intra-Operator DVT Cluster Gate
+        {
+            CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.bondCurve.push([1, 11 ether]);
+            gate.bondCurve.push([2, 0.6 ether]);
+            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
+            gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
+            gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
+            gate.params.keysLimit = _m(500);
+            gate.params.rewardShareData.push([1, 8750]); // 87.5% of 4% = 3.5% of the total
+            gate.params.metaRegistryBondCurveWeight = _m(10000);
+            gate.params.exitDelayFee = _m(0.005 ether);
         }
 
         config.curatedGatePauseManager = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
