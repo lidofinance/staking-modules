@@ -2231,3 +2231,148 @@ contract ParametersRegistryMaxElWithdrawalRequestFeeTest is ParametersRegistryBa
         assertEq(feeOut, defaultInitData.defaultMaxElWithdrawalRequestFee);
     }
 }
+
+contract ParametersRegistryCurveParametersTest is ParametersRegistryBaseTestInitialized {
+    uint256 constant CURVE_ID = 1;
+
+    function test_getCurveParameters_defaultData() public view {
+        IParametersRegistry.CurveParameters memory p = parametersRegistry.getCurveParameters(CURVE_ID);
+
+        assertEq(p.keyRemovalCharge, defaultInitData.defaultKeyRemovalCharge);
+        assertEq(p.generalDelayedPenaltyAdditionalFine, defaultInitData.defaultGeneralDelayedPenaltyAdditionalFine);
+        assertEq(p.keysLimit, defaultInitData.defaultKeysLimit);
+        assertEq(p.queuePriority, defaultInitData.defaultQueuePriority);
+        assertEq(p.queueMaxDeposits, defaultInitData.defaultQueueMaxDeposits);
+
+        assertEq(p.rewardShareData.length, 1);
+        assertEq(p.rewardShareData[0].minKeyNumber, 1);
+        assertEq(p.rewardShareData[0].value, defaultInitData.defaultRewardShare);
+
+        assertEq(p.performanceLeewayData.length, 1);
+        assertEq(p.performanceLeewayData[0].minKeyNumber, 1);
+        assertEq(p.performanceLeewayData[0].value, defaultInitData.defaultPerformanceLeeway);
+
+        assertEq(p.strikesLifetime, defaultInitData.defaultStrikesLifetime);
+        assertEq(p.strikesThreshold, defaultInitData.defaultStrikesThreshold);
+        assertEq(p.badPerformancePenalty, defaultInitData.defaultBadPerformancePenalty);
+        assertEq(p.attestationsWeight, defaultInitData.defaultAttestationsWeight);
+        assertEq(p.blocksWeight, defaultInitData.defaultBlocksWeight);
+        assertEq(p.syncWeight, defaultInitData.defaultSyncWeight);
+        assertEq(p.allowedExitDelay, defaultInitData.defaultAllowedExitDelay);
+        assertEq(p.exitDelayFee, defaultInitData.defaultExitDelayFee);
+        assertEq(p.maxElWithdrawalRequestFee, defaultInitData.defaultMaxElWithdrawalRequestFee);
+
+        _assertConsistency(CURVE_ID);
+    }
+
+    function test_getCurveParameters_customData() public {
+        _setAllCurveParameters();
+
+        IParametersRegistry.CurveParameters memory p = parametersRegistry.getCurveParameters(CURVE_ID);
+
+        assertEq(p.keyRemovalCharge, 1 ether);
+        assertEq(p.generalDelayedPenaltyAdditionalFine, 2 ether);
+        assertEq(p.keysLimit, 500);
+        assertEq(p.queuePriority, 3);
+        assertEq(p.queueMaxDeposits, 42);
+
+        assertEq(p.rewardShareData.length, 2);
+        assertEq(p.rewardShareData[0].minKeyNumber, 1);
+        assertEq(p.rewardShareData[0].value, 10000);
+        assertEq(p.rewardShareData[1].minKeyNumber, 10);
+        assertEq(p.rewardShareData[1].value, 8000);
+
+        assertEq(p.performanceLeewayData.length, 2);
+        assertEq(p.performanceLeewayData[0].minKeyNumber, 1);
+        assertEq(p.performanceLeewayData[0].value, 500);
+        assertEq(p.performanceLeewayData[1].minKeyNumber, 100);
+        assertEq(p.performanceLeewayData[1].value, 400);
+
+        assertEq(p.strikesLifetime, 12);
+        assertEq(p.strikesThreshold, 6);
+        assertEq(p.badPerformancePenalty, 0.5 ether);
+        assertEq(p.attestationsWeight, 100);
+        assertEq(p.blocksWeight, 20);
+        assertEq(p.syncWeight, 5);
+        assertEq(p.allowedExitDelay, 3 days);
+        assertEq(p.exitDelayFee, 0.2 ether);
+        assertEq(p.maxElWithdrawalRequestFee, 0.3 ether);
+
+        _assertConsistency(CURVE_ID);
+    }
+
+    function _setAllCurveParameters() internal {
+        IParametersRegistry.KeyNumberValueInterval[] memory rsData = new IParametersRegistry.KeyNumberValueInterval[](
+            2
+        );
+        rsData[0] = IParametersRegistry.KeyNumberValueInterval(1, 10000);
+        rsData[1] = IParametersRegistry.KeyNumberValueInterval(10, 8000);
+
+        IParametersRegistry.KeyNumberValueInterval[] memory plData = new IParametersRegistry.KeyNumberValueInterval[](
+            2
+        );
+        plData[0] = IParametersRegistry.KeyNumberValueInterval(1, 500);
+        plData[1] = IParametersRegistry.KeyNumberValueInterval(100, 400);
+
+        vm.startPrank(admin);
+        parametersRegistry.setKeyRemovalCharge(CURVE_ID, 1 ether);
+        parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(CURVE_ID, 2 ether);
+        parametersRegistry.setKeysLimit(CURVE_ID, 500);
+        parametersRegistry.setQueueConfig(CURVE_ID, 3, 42);
+        parametersRegistry.setRewardShareData(CURVE_ID, rsData);
+        parametersRegistry.setPerformanceLeewayData(CURVE_ID, plData);
+        parametersRegistry.setStrikesParams(CURVE_ID, 12, 6);
+        parametersRegistry.setBadPerformancePenalty(CURVE_ID, 0.5 ether);
+        parametersRegistry.setPerformanceCoefficients(CURVE_ID, 100, 20, 5);
+        parametersRegistry.setAllowedExitDelay(CURVE_ID, 3 days);
+        parametersRegistry.setExitDelayFee(CURVE_ID, 0.2 ether);
+        parametersRegistry.setMaxElWithdrawalRequestFee(CURVE_ID, 0.3 ether);
+        vm.stopPrank();
+    }
+
+    function _assertConsistency(uint256 curveId) internal view {
+        IParametersRegistry.CurveParameters memory p = parametersRegistry.getCurveParameters(curveId);
+
+        assertEq(p.keyRemovalCharge, parametersRegistry.getKeyRemovalCharge(curveId));
+        assertEq(
+            p.generalDelayedPenaltyAdditionalFine,
+            parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(curveId)
+        );
+        assertEq(p.keysLimit, parametersRegistry.getKeysLimit(curveId));
+
+        (uint32 qp, uint32 md) = parametersRegistry.getQueueConfig(curveId);
+        assertEq(p.queuePriority, qp);
+        assertEq(p.queueMaxDeposits, md);
+
+        IParametersRegistry.KeyNumberValueInterval[] memory rsOut = parametersRegistry.getRewardShareData(curveId);
+        assertEq(p.rewardShareData.length, rsOut.length);
+        for (uint256 i = 0; i < rsOut.length; ++i) {
+            assertEq(p.rewardShareData[i].minKeyNumber, rsOut[i].minKeyNumber);
+            assertEq(p.rewardShareData[i].value, rsOut[i].value);
+        }
+
+        IParametersRegistry.KeyNumberValueInterval[] memory plOut = parametersRegistry.getPerformanceLeewayData(
+            curveId
+        );
+        assertEq(p.performanceLeewayData.length, plOut.length);
+        for (uint256 i = 0; i < plOut.length; ++i) {
+            assertEq(p.performanceLeewayData[i].minKeyNumber, plOut[i].minKeyNumber);
+            assertEq(p.performanceLeewayData[i].value, plOut[i].value);
+        }
+
+        (uint256 lt, uint256 th) = parametersRegistry.getStrikesParams(curveId);
+        assertEq(p.strikesLifetime, lt);
+        assertEq(p.strikesThreshold, th);
+
+        assertEq(p.badPerformancePenalty, parametersRegistry.getBadPerformancePenalty(curveId));
+
+        (uint256 aw, uint256 bw, uint256 sw) = parametersRegistry.getPerformanceCoefficients(curveId);
+        assertEq(p.attestationsWeight, aw);
+        assertEq(p.blocksWeight, bw);
+        assertEq(p.syncWeight, sw);
+
+        assertEq(p.allowedExitDelay, parametersRegistry.getAllowedExitDelay(curveId));
+        assertEq(p.exitDelayFee, parametersRegistry.getExitDelayFee(curveId));
+        assertEq(p.maxElWithdrawalRequestFee, parametersRegistry.getMaxElWithdrawalRequestFee(curveId));
+    }
+}
