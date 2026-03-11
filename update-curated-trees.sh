@@ -2,7 +2,7 @@
 #
 # Update Curated Gates Merkle Trees on Local Hoodi Fork
 #
-# Generates merkle trees from addresses1..7 files using csm-test-tree
+# Generates merkle trees from addresses1..6 files using csm-test-tree
 # and updates each corresponding CuratedGate contract.
 #
 # Prerequisite: Run prepare-modules.sh and prepare-curated-gates.sh first
@@ -47,7 +47,7 @@ get_admin() {
 # Track results for summary
 declare -a RESULTS
 
-for i in {1..7}; do
+for i in {1..6}; do
   GATE=$(jq -r ".CuratedGates[$((i-1))]" "$CM_DEPLOY_CONFIG")
   ADDR_FILE="addresses$i"
 
