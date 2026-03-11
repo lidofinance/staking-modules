@@ -126,8 +126,8 @@ contract SimulateVote is Script, ForkHelpersCommon {
             IStakingRouter.StakingModuleConfig({
                 stakeShareLimit: 2000, // 20%
                 priorityExitShareThreshold: 2500, // 25%
-                stakingModuleFee: 800, // 8%
-                treasuryFee: 200, // 2%
+                stakingModuleFee: 400, // 4%
+                treasuryFee: 600, // 6%
                 maxDepositsPerBlock: 30,
                 minDepositBlockDistance: 25,
                 withdrawalCredentialsType: 2 // 0x02

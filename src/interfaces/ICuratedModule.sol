@@ -47,6 +47,32 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
         uint256[] calldata operatorIds
     ) external view returns (uint256[] memory operatorWeights);
 
+    /// @notice Returns current deposit allocation targets for all operators.
+    /// @dev Target = totalCurrent * operatorWeight / totalWeight (in validator count).
+    ///      Includes operators regardless of depositable capacity for informational purposes.
+    ///      Actual allocation recalculates shares only across operators with available capacity,
+    ///      so real per-operator amounts may differ from the targets shown here.
+    ///      Arrays are indexed by operator id; zero-weight operators have zero values.
+    /// @return currentValidators Current active validator count per operator.
+    /// @return targetValidators Target validator count per operator.
+    function getDepositAllocationTargets()
+        external
+        view
+        returns (uint256[] memory currentValidators, uint256[] memory targetValidators);
+
+    /// @notice Returns current top-up allocation targets for all operators.
+    /// @dev Target = totalCurrent * operatorWeight / totalWeight (in wei).
+    ///      Includes operators regardless of top-up capacity for informational purposes.
+    ///      Actual allocation recalculates shares only across operators with available capacity,
+    ///      so real per-operator amounts may differ from the targets shown here.
+    ///      Arrays are indexed by operator id; zero-weight operators have zero values.
+    /// @return currentAllocations Current operator stake in wei.
+    /// @return targetAllocations Target operator stake in wei.
+    function getTopUpAllocationTargets()
+        external
+        view
+        returns (uint256[] memory currentAllocations, uint256[] memory targetAllocations);
+
     /// @notice  Method to get list of operators and amount of Eth that can be topped up to operator from depositAmount
     /// @param depositAmount Amount of Eth that can be deposited to module
     function getDepositsAllocation(

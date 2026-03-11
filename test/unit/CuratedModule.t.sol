@@ -1597,6 +1597,290 @@ contract CuratedGetOperatorsWeights is CuratedCommon {
     }
 }
 
+contract CuratedGetDepositAllocationTargets is CuratedCommon {
+    function test_getDepositAllocationTargets() public assertInvariants {
+        uint256 firstId = createNodeOperator(2);
+        uint256 secondId = createNodeOperator(3);
+        _mockOperatorWeight(firstId, 1);
+        _mockOperatorWeight(secondId, 3);
+
+        (uint256[] memory currents, uint256[] memory targets) = cm.getDepositAllocationTargets();
+
+        assertEq(currents.length, 2);
+        // No deposits yet, currents and targets are zero.
+        assertEq(currents[firstId], 0);
+        assertEq(currents[secondId], 0);
+        assertEq(targets[firstId], 0);
+        assertEq(targets[secondId], 0);
+    }
+
+    function test_getDepositAllocationTargets_withDepositedKeys() public assertInvariants {
+        uint256 firstId = createNodeOperator(2);
+        uint256 secondId = createNodeOperator(2);
+        module.obtainDepositData(2, "");
+
+        (uint256[] memory currents, uint256[] memory targets) = cm.getDepositAllocationTargets();
+
+        // Each operator has 1 deposited key and 1 remaining capacity.
+        assertEq(currents[firstId], 1);
+        assertEq(currents[secondId], 1);
+        // Equal weights → equal targets: totalCurrent=2, each gets 1.
+        assertEq(targets[firstId], 1);
+        assertEq(targets[secondId], 1);
+    }
+
+    function test_getDepositAllocationTargets_unequalWeights() public assertInvariants {
+        uint256 firstId = createNodeOperator(4);
+        uint256 secondId = createNodeOperator(4);
+        _mockOperatorWeight(firstId, 1);
+        _mockOperatorWeight(secondId, 3);
+        // Allocation distributes 1:3 per weights → firstId gets 1, secondId gets 3.
+        module.obtainDepositData(4, "");
+
+        (uint256[] memory currents, uint256[] memory targets) = cm.getDepositAllocationTargets();
+
+        assertEq(currents[firstId], 1);
+        assertEq(currents[secondId], 3);
+        // totalCurrent=4, weights 1:3 → targets 1:3.
+        assertEq(targets[firstId], 1);
+        assertEq(targets[secondId], 3);
+    }
+
+    function test_getDepositAllocationTargets_noOperatorsReturnsEmpty() public assertInvariants {
+        (uint256[] memory currents, uint256[] memory targets) = cm.getDepositAllocationTargets();
+
+        assertEq(currents.length, 0);
+        assertEq(targets.length, 0);
+    }
+
+    function test_getDepositAllocationTargets_zeroWeightsReturnZeros() public assertInvariants {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        _mockAllOperatorWeights(0);
+
+        (uint256[] memory currents, uint256[] memory targets) = cm.getDepositAllocationTargets();
+
+        assertEq(currents.length, 2);
+        assertEq(currents[firstId], 0);
+        assertEq(currents[secondId], 0);
+        assertEq(targets[firstId], 0);
+        assertEq(targets[secondId], 0);
+    }
+
+    function test_getDepositAllocationTargets_zeroCapacityIncluded() public assertInvariants {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        // Consume all capacity.
+        module.obtainDepositData(2, "");
+
+        (uint256[] memory currents, uint256[] memory targets) = cm.getDepositAllocationTargets();
+
+        // Both operators still included despite 0 depositable keys.
+        assertEq(currents[firstId], 1);
+        assertEq(currents[secondId], 1);
+        // Equal weights → equal targets.
+        assertEq(targets[firstId], 1);
+        assertEq(targets[secondId], 1);
+    }
+
+    function test_getDepositAllocationTargets_revertWhen_DepositInfoIsNotUpToDate() public assertInvariants {
+        createNodeOperator(1);
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        vm.expectRevert(IBaseModule.DepositInfoIsNotUpToDate.selector);
+        cm.getDepositAllocationTargets();
+    }
+
+    function test_getDepositAllocationTargets_matchesAllocationWhenAllHaveCapacity() public assertInvariants {
+        uint256 firstId = createNodeOperator(4);
+        uint256 secondId = createNodeOperator(4);
+        _mockOperatorWeight(firstId, 1);
+        _mockOperatorWeight(secondId, 3);
+        // Deposit 4 → allocated 1:3 by weights. Both still have capacity.
+        module.obtainDepositData(4, "");
+
+        (uint256[] memory currents, uint256[] memory targets) = cm.getDepositAllocationTargets();
+
+        // All operators have capacity → targets reflect the same weight set as real allocation.
+        // totalCurrent=4, weights 1:3 → targets [1, 3]. Matches the 1:3 allocation above.
+        assertEq(currents[firstId], targets[firstId]);
+        assertEq(currents[secondId], targets[secondId]);
+    }
+
+    function test_getDepositAllocationTargets_differsFromAllocationWhenNoCapacity() public assertInvariants {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(2);
+        // Deposit 2 → 1 each. firstId has 0 remaining keys, secondId has 1.
+        module.obtainDepositData(2, "");
+
+        (, uint256[] memory targets) = cm.getDepositAllocationTargets();
+
+        // View includes both (equal weights) → targets [1, 1].
+        assertEq(targets[firstId], 1);
+        assertEq(targets[secondId], 1);
+
+        // Real allocation: only secondId is eligible (firstId has no capacity).
+        // Allocator recalculates shares across eligible operators only → secondId gets everything.
+        uint256 snapshot = vm.snapshotState();
+        module.obtainDepositData(1, "");
+        assertEq(module.getNodeOperator(firstId).totalDepositedKeys, 1); // unchanged
+        assertEq(module.getNodeOperator(secondId).totalDepositedKeys, 2); // got the deposit
+        vm.revertToState(snapshot);
+    }
+
+    function test_getDepositAllocationTargets_externalStakeIncludedInCurrent() public assertInvariants {
+        uint256 firstId = createNodeOperator(2);
+        uint256 secondId = createNodeOperator(2);
+
+        _mockOperatorWeightAndExternalStake(firstId, 1, 2048 ether);
+        _mockOperatorWeightAndExternalStake(secondId, 1, 0);
+
+        (uint256[] memory currents, ) = cm.getDepositAllocationTargets();
+
+        // firstId: 0 deposited keys + 2048 ether / 2048 ether = 1 external validator.
+        assertEq(currents[firstId], 1);
+        assertEq(currents[secondId], 0);
+    }
+}
+
+contract CuratedGetTopUpAllocationTargets is CuratedCommon {
+    function test_getTopUpAllocationTargets() public assertInvariants {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        module.obtainDepositData(2, "");
+
+        _mockOperatorWeight(firstId, 1);
+        _mockOperatorWeight(secondId, 3);
+
+        (uint256[] memory currents, uint256[] memory targets) = cm.getTopUpAllocationTargets();
+
+        assertEq(currents.length, 2);
+        // Balance is 32 ether per operator from initial deposit.
+        assertEq(currents[firstId], 32 ether);
+        assertEq(currents[secondId], 32 ether);
+        // totalCurrent=64 ether, weights 1:3 → targets 16:48 ether.
+        assertEq(targets[firstId], 16 ether);
+        assertEq(targets[secondId], 48 ether);
+    }
+
+    function test_getTopUpAllocationTargets_noOperatorsReturnsEmpty() public assertInvariants {
+        (uint256[] memory currents, uint256[] memory targets) = cm.getTopUpAllocationTargets();
+
+        assertEq(currents.length, 0);
+        assertEq(targets.length, 0);
+    }
+
+    function test_getTopUpAllocationTargets_zeroWeightsReturnZeros() public assertInvariants {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        module.obtainDepositData(2, "");
+        _mockAllOperatorWeights(0);
+
+        (uint256[] memory currents, uint256[] memory targets) = cm.getTopUpAllocationTargets();
+
+        assertEq(currents.length, 2);
+        assertEq(currents[firstId], 0);
+        assertEq(currents[secondId], 0);
+        assertEq(targets[firstId], 0);
+        assertEq(targets[secondId], 0);
+    }
+
+    function test_getTopUpAllocationTargets_zeroCapacityIncluded() public assertInvariants {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        module.obtainDepositData(2, "");
+
+        // Max out balance for firstId so capacity = 0.
+        cm.updateOperatorBalances(
+            _encodeNodeOperatorIds(UintArr(firstId)),
+            _encodeUint128Values(UintArr(2048 ether / 1 gwei))
+        );
+
+        (uint256[] memory currents, uint256[] memory targets) = cm.getTopUpAllocationTargets();
+
+        // Both operators included despite firstId having zero top-up capacity.
+        // firstId: 2048 ether, secondId: 32 ether. Total = 2080 ether. Equal weights → equal targets.
+        assertEq(currents[firstId], 2048 ether);
+        assertEq(currents[secondId], 32 ether);
+        assertEq(targets[firstId], 1040 ether);
+        assertEq(targets[secondId], 1040 ether);
+    }
+
+    function test_getTopUpAllocationTargets_matchesAllocationWhenAllHaveCapacity() public assertInvariants {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        module.obtainDepositData(2, "");
+
+        // Equal weights, both at 32 ether → both below 2048 ether capacity.
+        (, uint256[] memory targets) = cm.getTopUpAllocationTargets();
+
+        // totalCurrent=64 ether, equal weights → targets [32, 32] ether.
+        assertEq(targets[firstId], 32 ether);
+        assertEq(targets[secondId], 32 ether);
+
+        // Both have capacity → real allocation uses the same weight set.
+        (, uint256[] memory allocIds, uint256[] memory allocs) = cm.getDepositsAllocation(4 ether);
+
+        // Real allocation distributes equally → [2, 2] ether.
+        assertEq(allocIds.length, 2);
+        assertEq(allocs[0], 2 ether);
+        assertEq(allocs[1], 2 ether);
+        // Allocation ratio matches target ratio.
+        assertEq(allocs[0] * targets[secondId], allocs[1] * targets[firstId]);
+    }
+
+    function test_getTopUpAllocationTargets_differsFromAllocationWhenNoCapacity() public assertInvariants {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        module.obtainDepositData(2, "");
+
+        // Max out balance for firstId so capacity = 0.
+        cm.updateOperatorBalances(
+            _encodeNodeOperatorIds(UintArr(firstId)),
+            _encodeUint128Values(UintArr(2048 ether / 1 gwei))
+        );
+
+        (, uint256[] memory targets) = cm.getTopUpAllocationTargets();
+
+        // View includes both (equal weights) → equal targets.
+        assertEq(targets[firstId], targets[secondId]);
+
+        // Real allocation: only secondId is eligible (firstId at max balance).
+        // Allocator recalculates shares → secondId gets everything.
+        (, uint256[] memory allocIds, uint256[] memory allocs) = cm.getDepositsAllocation(10 ether);
+        assertEq(allocIds.length, 1);
+        assertEq(allocIds[0], secondId);
+        assertEq(allocs[0], 10 ether);
+    }
+
+    function test_getTopUpAllocationTargets_revertWhen_DepositInfoIsNotUpToDate() public assertInvariants {
+        createNodeOperator(1);
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        vm.expectRevert(IBaseModule.DepositInfoIsNotUpToDate.selector);
+        cm.getTopUpAllocationTargets();
+    }
+
+    function test_getTopUpAllocationTargets_externalStakeIncludedInCurrent() public assertInvariants {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        module.obtainDepositData(2, "");
+
+        _mockOperatorWeightAndExternalStake(firstId, 1, 100 ether);
+        _mockOperatorWeightAndExternalStake(secondId, 1, 0);
+
+        (uint256[] memory currents, ) = cm.getTopUpAllocationTargets();
+
+        // firstId: 32 ether balance + 100 ether external.
+        assertEq(currents[firstId], 32 ether + 100 ether);
+        assertEq(currents[secondId], 32 ether);
+    }
+}
+
 contract CuratedProposeNodeOperatorManagerAddressChange is
     ModuleProposeNodeOperatorManagerAddressChange,
     CuratedCommon

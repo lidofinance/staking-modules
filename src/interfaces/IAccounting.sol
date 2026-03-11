@@ -21,6 +21,14 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
         bytes32 s;
     }
 
+    struct NodeOperatorBondInfo {
+        uint256 currentBond;
+        uint256 requiredBond;
+        uint256 lockedBond;
+        uint256 bondDebt;
+        uint256 pendingSharesToSplit;
+    }
+
     event BondLockCompensated(uint256 indexed nodeOperatorId, uint256 amount);
     event ChargePenaltyRecipientSet(address chargePenaltyRecipient);
     event CustomRewardsClaimerSet(uint256 indexed nodeOperatorId, address rewardsClaimer);
@@ -134,6 +142,12 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Unbonded keys count
     function getUnbondedKeysCountToEject(uint256 nodeOperatorId) external view returns (uint256);
+
+    /// @notice Get all bond-related info for the given Node Operator in one call
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @return info Bond info containing current bond, required bond, locked bond,
+    ///         bond debt, and pending shares to split
+    function getNodeOperatorBondInfo(uint256 nodeOperatorId) external view returns (NodeOperatorBondInfo memory info);
 
     /// @notice Get current and required bond amounts in ETH (stETH) for the given Node Operator
     /// @dev To calculate excess bond amount subtract `required` from `current` value.

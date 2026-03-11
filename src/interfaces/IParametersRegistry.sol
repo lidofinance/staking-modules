@@ -54,6 +54,25 @@ interface IParametersRegistry {
         uint256 defaultMaxElWithdrawalRequestFee;
     }
 
+    struct CurveParameters {
+        uint256 keyRemovalCharge;
+        uint256 generalDelayedPenaltyAdditionalFine;
+        uint256 keysLimit;
+        uint32 queuePriority;
+        uint32 queueMaxDeposits;
+        KeyNumberValueInterval[] rewardShareData;
+        KeyNumberValueInterval[] performanceLeewayData;
+        uint256 strikesLifetime;
+        uint256 strikesThreshold;
+        uint256 badPerformancePenalty;
+        uint256 attestationsWeight;
+        uint256 blocksWeight;
+        uint256 syncWeight;
+        uint256 allowedExitDelay;
+        uint256 exitDelayFee;
+        uint256 maxElWithdrawalRequestFee;
+    }
+
     event DefaultKeyRemovalChargeSet(uint256 value);
     event DefaultGeneralDelayedPenaltyAdditionalFineSet(uint256 value);
     event DefaultKeysLimitSet(uint256 value);
@@ -439,6 +458,12 @@ interface IParametersRegistry {
     /// @dev `defaultMaxElWithdrawalRequestFee` is returned if the value is not set for the given curveId.
     /// @param curveId Curve Id to get max EL withdrawal request fee for
     function getMaxElWithdrawalRequestFee(uint256 curveId) external view returns (uint256 fee);
+
+    /// @notice Get all parameters resolved for the given curveId in one call
+    /// @dev Per-curve values are returned where set, otherwise defaults are used
+    /// @param curveId Curve Id to get all parameters for
+    /// @return params All resolved parameters for the given curveId
+    function getCurveParameters(uint256 curveId) external view returns (CurveParameters memory params);
 
     /// @notice Returns the initialized version of the contract
     function getInitializedVersion() external view returns (uint64);

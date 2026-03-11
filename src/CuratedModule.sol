@@ -60,7 +60,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
         _checkStakingRouterRole();
         _requireDepositInfoUpToDate();
 
-        // TODO: think about changing to list of structs
         BaseModuleStorage storage $ = _baseStorage();
         (uint256 allocated, uint256[] memory operatorIds, uint256[] memory allocations) = CuratedDepositAllocator
             .allocateInitialDeposits($.nodeOperators, $.nodeOperatorsCount, depositsCount);
@@ -113,8 +112,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
         _incrementModuleNonce();
     }
-
-    // Continue review from here
 
     /// @inheritdoc IStakingModuleV2
     function allocateDeposits(
@@ -210,6 +207,31 @@ contract CuratedModule is ICuratedModule, BaseModule {
     /// @inheritdoc ICuratedModule
     function getNodeOperatorBalance(uint256 operatorId) external view returns (uint256) {
         return _curatedStorage().operatorBalances[operatorId];
+    }
+
+    /// @inheritdoc ICuratedModule
+    function getDepositAllocationTargets()
+        external
+        view
+        returns (uint256[] memory currentValidators, uint256[] memory targetValidators)
+    {
+        _requireDepositInfoUpToDate();
+        BaseModuleStorage storage $ = _baseStorage();
+        return CuratedDepositAllocator.getDepositAllocationTargets($.nodeOperators, $.nodeOperatorsCount);
+    }
+
+    /// @inheritdoc ICuratedModule
+    function getTopUpAllocationTargets()
+        external
+        view
+        returns (uint256[] memory currentAllocations, uint256[] memory targetAllocations)
+    {
+        _requireDepositInfoUpToDate();
+        return
+            CuratedDepositAllocator.getTopUpAllocationTargets(
+                _curatedStorage().operatorBalances,
+                _baseStorage().nodeOperatorsCount
+            );
     }
 
     /// @inheritdoc ICuratedModule

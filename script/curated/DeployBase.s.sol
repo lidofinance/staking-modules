@@ -34,23 +34,20 @@ import { GIndex } from "../../src/lib/GIndex.sol";
 import { Slot } from "../../src/lib/Types.sol";
 
 struct GateCurveParams {
-    uint256 keyRemovalCharge;
-    uint256 generalDelayedPenaltyAdditionalFine;
-    uint256 keysLimit;
+    IParametersRegistry.MarkedUint248 generalDelayedPenaltyAdditionalFine;
+    IParametersRegistry.MarkedUint248 keysLimit;
     uint256[2][] avgPerfLeewayData;
     uint256[2][] rewardShareData;
-    uint256 strikesLifetimeFrames;
-    uint256 strikesThreshold;
-    uint256 queuePriority;
-    uint256 queueMaxDeposits;
-    uint256 badPerformancePenalty;
-    uint256 attestationsWeight;
-    uint256 blocksWeight;
-    uint256 syncWeight;
-    uint256 metaRegistryBondCurveWeight;
-    uint256 allowedExitDelay;
-    uint256 exitDelayFee;
-    uint256 maxElWithdrawalRequestFee;
+    IParametersRegistry.MarkedUint248 strikesLifetimeFrames;
+    IParametersRegistry.MarkedUint248 strikesThreshold;
+    IParametersRegistry.MarkedUint248 badPerformancePenalty;
+    IParametersRegistry.MarkedUint248 attestationsWeight;
+    IParametersRegistry.MarkedUint248 blocksWeight;
+    IParametersRegistry.MarkedUint248 syncWeight;
+    IParametersRegistry.MarkedUint248 metaRegistryBondCurveWeight;
+    IParametersRegistry.MarkedUint248 allowedExitDelay;
+    IParametersRegistry.MarkedUint248 exitDelayFee;
+    IParametersRegistry.MarkedUint248 maxElWithdrawalRequestFee;
 }
 
 struct CuratedGateConfig {
@@ -158,6 +155,10 @@ abstract contract DeployBase is Script {
     error CannotBeUsedInMainnet();
     error InvalidSecondAdmin();
     error InvalidInput(string reason);
+
+    function _m(uint256 v) internal pure returns (IParametersRegistry.MarkedUint248 memory) {
+        return IParametersRegistry.MarkedUint248({ value: uint248(v), isValue: true });
+    }
 
     constructor(string memory _chainName, uint256 _chainId) {
         chainName = _chainName;
@@ -337,12 +338,15 @@ abstract contract DeployBase is Script {
                 curatedCurveIds[i] = curveId;
 
                 GateCurveParams storage params = gateConfig.params;
-                parametersRegistry.setKeyRemovalCharge(curveId, params.keyRemovalCharge);
-                parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(
-                    curveId,
-                    params.generalDelayedPenaltyAdditionalFine
-                );
-                parametersRegistry.setKeysLimit(curveId, params.keysLimit);
+                if (params.generalDelayedPenaltyAdditionalFine.isValue) {
+                    parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(
+                        curveId,
+                        params.generalDelayedPenaltyAdditionalFine.value
+                    );
+                }
+                if (params.keysLimit.isValue) {
+                    parametersRegistry.setKeysLimit(curveId, params.keysLimit.value);
+                }
                 if (params.avgPerfLeewayData.length > 0) {
                     parametersRegistry.setPerformanceLeewayData(
                         curveId,
@@ -355,23 +359,36 @@ abstract contract DeployBase is Script {
                         CommonScriptUtils.arraysToKeyIndexValueIntervals(params.rewardShareData)
                     );
                 }
-                parametersRegistry.setStrikesParams(curveId, params.strikesLifetimeFrames, params.strikesThreshold);
-                parametersRegistry.setQueueConfig(
-                    curveId,
-                    uint32(params.queuePriority),
-                    uint32(params.queueMaxDeposits)
-                );
-                parametersRegistry.setBadPerformancePenalty(curveId, params.badPerformancePenalty);
-                parametersRegistry.setPerformanceCoefficients(
-                    curveId,
-                    params.attestationsWeight,
-                    params.blocksWeight,
-                    params.syncWeight
-                );
-                metaRegistry.setBondCurveWeight(curveId, params.metaRegistryBondCurveWeight);
-                parametersRegistry.setAllowedExitDelay(curveId, params.allowedExitDelay);
-                parametersRegistry.setExitDelayFee(curveId, params.exitDelayFee);
-                parametersRegistry.setMaxElWithdrawalRequestFee(curveId, params.maxElWithdrawalRequestFee);
+                if (params.strikesLifetimeFrames.isValue || params.strikesThreshold.isValue) {
+                    parametersRegistry.setStrikesParams(
+                        curveId,
+                        params.strikesLifetimeFrames.value,
+                        params.strikesThreshold.value
+                    );
+                }
+                if (params.badPerformancePenalty.isValue) {
+                    parametersRegistry.setBadPerformancePenalty(curveId, params.badPerformancePenalty.value);
+                }
+                if (params.attestationsWeight.isValue || params.blocksWeight.isValue || params.syncWeight.isValue) {
+                    parametersRegistry.setPerformanceCoefficients(
+                        curveId,
+                        params.attestationsWeight.value,
+                        params.blocksWeight.value,
+                        params.syncWeight.value
+                    );
+                }
+                if (params.metaRegistryBondCurveWeight.isValue) {
+                    metaRegistry.setBondCurveWeight(curveId, params.metaRegistryBondCurveWeight.value);
+                }
+                if (params.allowedExitDelay.isValue) {
+                    parametersRegistry.setAllowedExitDelay(curveId, params.allowedExitDelay.value);
+                }
+                if (params.exitDelayFee.isValue) {
+                    parametersRegistry.setExitDelayFee(curveId, params.exitDelayFee.value);
+                }
+                if (params.maxElWithdrawalRequestFee.isValue) {
+                    parametersRegistry.setMaxElWithdrawalRequestFee(curveId, params.maxElWithdrawalRequestFee.value);
+                }
             }
             accounting.revokeRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
             metaRegistry.revokeRole(metaRegistry.SET_BOND_CURVE_WEIGHT_ROLE(), deployer);

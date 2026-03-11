@@ -460,93 +460,80 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
 
     /// @inheritdoc IParametersRegistry
     function getKeyRemovalCharge(uint256 curveId) external view returns (uint256 keyRemovalCharge) {
-        MarkedUint248 storage data = _keyRemovalCharges[curveId];
-        return data.isValue ? data.value : defaultKeyRemovalCharge;
+        return _getKeyRemovalCharge(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
     function getGeneralDelayedPenaltyAdditionalFine(uint256 curveId) external view returns (uint256 fine) {
-        MarkedUint248 storage data = _generalDelayedPenaltyAdditionalFines[curveId];
-        return data.isValue ? data.value : defaultGeneralDelayedPenaltyAdditionalFine;
+        return _getGeneralDelayedPenaltyAdditionalFine(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
     function getKeysLimit(uint256 curveId) external view returns (uint256 limit) {
-        MarkedUint248 storage data = _keysLimits[curveId];
-        return data.isValue ? data.value : defaultKeysLimit;
+        return _getKeysLimit(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
     function getQueueConfig(uint256 curveId) external view returns (uint32 queuePriority, uint32 maxDeposits) {
-        QueueConfig storage config = _queueConfigs[curveId];
-
-        if (config.maxDeposits == 0) return (defaultQueueConfig.priority, defaultQueueConfig.maxDeposits);
-
-        return (config.priority, config.maxDeposits);
+        return _getQueueConfig(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
     function getRewardShareData(uint256 curveId) external view returns (KeyNumberValueInterval[] memory data) {
-        data = _rewardShareData[curveId];
-        if (data.length == 0) {
-            data = new KeyNumberValueInterval[](1);
-            data[0] = KeyNumberValueInterval(1, defaultRewardShare);
-        }
+        return _getRewardShareData(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
     function getPerformanceLeewayData(uint256 curveId) external view returns (KeyNumberValueInterval[] memory data) {
-        data = _performanceLeewayData[curveId];
-        if (data.length == 0) {
-            data = new KeyNumberValueInterval[](1);
-            data[0] = KeyNumberValueInterval(1, defaultPerformanceLeeway);
-        }
+        return _getPerformanceLeewayData(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
     function getStrikesParams(uint256 curveId) external view returns (uint256 lifetime, uint256 threshold) {
-        StrikesParams storage params = _strikesParams[curveId];
-        if (params.threshold == 0) return (defaultStrikesParams.lifetime, defaultStrikesParams.threshold);
-        return (params.lifetime, params.threshold);
+        return _getStrikesParams(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
     function getBadPerformancePenalty(uint256 curveId) external view returns (uint256 penalty) {
-        MarkedUint248 storage data = _badPerformancePenalties[curveId];
-        return data.isValue ? data.value : defaultBadPerformancePenalty;
+        return _getBadPerformancePenalty(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
     function getPerformanceCoefficients(
         uint256 curveId
     ) external view returns (uint256 attestationsWeight, uint256 blocksWeight, uint256 syncWeight) {
-        PerformanceCoefficients storage coefficients = _performanceCoefficients[curveId];
-        if (coefficients.attestationsWeight == 0 && coefficients.blocksWeight == 0 && coefficients.syncWeight == 0) {
-            return (
-                defaultPerformanceCoefficients.attestationsWeight,
-                defaultPerformanceCoefficients.blocksWeight,
-                defaultPerformanceCoefficients.syncWeight
-            );
-        }
-        return (coefficients.attestationsWeight, coefficients.blocksWeight, coefficients.syncWeight);
+        return _getPerformanceCoefficients(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
     function getAllowedExitDelay(uint256 curveId) external view returns (uint256 delay) {
-        delay = _allowedExitDelay[curveId];
-        if (delay == 0) return defaultAllowedExitDelay;
+        return _getAllowedExitDelay(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
     function getExitDelayFee(uint256 curveId) external view returns (uint256 penalty) {
-        MarkedUint248 memory data = _exitDelayFees[curveId];
-        return data.isValue ? data.value : defaultExitDelayFee;
+        return _getExitDelayFee(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
     function getMaxElWithdrawalRequestFee(uint256 curveId) external view returns (uint256 fee) {
-        MarkedUint248 memory data = _maxElWithdrawalRequestFees[curveId];
-        return data.isValue ? data.value : defaultMaxElWithdrawalRequestFee;
+        return _getMaxElWithdrawalRequestFee(curveId);
+    }
+
+    /// @inheritdoc IParametersRegistry
+    function getCurveParameters(uint256 curveId) external view returns (CurveParameters memory params) {
+        params.keyRemovalCharge = _getKeyRemovalCharge(curveId);
+        params.generalDelayedPenaltyAdditionalFine = _getGeneralDelayedPenaltyAdditionalFine(curveId);
+        params.keysLimit = _getKeysLimit(curveId);
+        (params.queuePriority, params.queueMaxDeposits) = _getQueueConfig(curveId);
+        params.rewardShareData = _getRewardShareData(curveId);
+        params.performanceLeewayData = _getPerformanceLeewayData(curveId);
+        (params.strikesLifetime, params.strikesThreshold) = _getStrikesParams(curveId);
+        params.badPerformancePenalty = _getBadPerformancePenalty(curveId);
+        (params.attestationsWeight, params.blocksWeight, params.syncWeight) = _getPerformanceCoefficients(curveId);
+        params.allowedExitDelay = _getAllowedExitDelay(curveId);
+        params.exitDelayFee = _getExitDelayFee(curveId);
+        params.maxElWithdrawalRequestFee = _getMaxElWithdrawalRequestFee(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
@@ -632,6 +619,81 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     function _setDefaultMaxElWithdrawalRequestFee(uint256 fee) internal {
         defaultMaxElWithdrawalRequestFee = fee;
         emit DefaultMaxElWithdrawalRequestFeeSet(fee);
+    }
+
+    function _getKeyRemovalCharge(uint256 curveId) internal view returns (uint256) {
+        MarkedUint248 storage data = _keyRemovalCharges[curveId];
+        return data.isValue ? data.value : defaultKeyRemovalCharge;
+    }
+
+    function _getGeneralDelayedPenaltyAdditionalFine(uint256 curveId) internal view returns (uint256) {
+        MarkedUint248 storage data = _generalDelayedPenaltyAdditionalFines[curveId];
+        return data.isValue ? data.value : defaultGeneralDelayedPenaltyAdditionalFine;
+    }
+
+    function _getKeysLimit(uint256 curveId) internal view returns (uint256) {
+        MarkedUint248 storage data = _keysLimits[curveId];
+        return data.isValue ? data.value : defaultKeysLimit;
+    }
+
+    function _getQueueConfig(uint256 curveId) internal view returns (uint32, uint32) {
+        QueueConfig storage config = _queueConfigs[curveId];
+        if (config.maxDeposits == 0) return (defaultQueueConfig.priority, defaultQueueConfig.maxDeposits);
+        return (config.priority, config.maxDeposits);
+    }
+
+    function _getRewardShareData(uint256 curveId) internal view returns (KeyNumberValueInterval[] memory data) {
+        data = _rewardShareData[curveId];
+        if (data.length == 0) {
+            data = new KeyNumberValueInterval[](1);
+            data[0] = KeyNumberValueInterval(1, defaultRewardShare);
+        }
+    }
+
+    function _getPerformanceLeewayData(uint256 curveId) internal view returns (KeyNumberValueInterval[] memory data) {
+        data = _performanceLeewayData[curveId];
+        if (data.length == 0) {
+            data = new KeyNumberValueInterval[](1);
+            data[0] = KeyNumberValueInterval(1, defaultPerformanceLeeway);
+        }
+    }
+
+    function _getStrikesParams(uint256 curveId) internal view returns (uint256, uint256) {
+        StrikesParams storage params = _strikesParams[curveId];
+        if (params.threshold == 0) return (defaultStrikesParams.lifetime, defaultStrikesParams.threshold);
+        return (params.lifetime, params.threshold);
+    }
+
+    function _getBadPerformancePenalty(uint256 curveId) internal view returns (uint256) {
+        MarkedUint248 storage data = _badPerformancePenalties[curveId];
+        return data.isValue ? data.value : defaultBadPerformancePenalty;
+    }
+
+    function _getPerformanceCoefficients(uint256 curveId) internal view returns (uint256, uint256, uint256) {
+        PerformanceCoefficients storage coefficients = _performanceCoefficients[curveId];
+        if (coefficients.attestationsWeight == 0 && coefficients.blocksWeight == 0 && coefficients.syncWeight == 0) {
+            return (
+                defaultPerformanceCoefficients.attestationsWeight,
+                defaultPerformanceCoefficients.blocksWeight,
+                defaultPerformanceCoefficients.syncWeight
+            );
+        }
+        return (coefficients.attestationsWeight, coefficients.blocksWeight, coefficients.syncWeight);
+    }
+
+    function _getAllowedExitDelay(uint256 curveId) internal view returns (uint256 delay) {
+        delay = _allowedExitDelay[curveId];
+        if (delay == 0) return defaultAllowedExitDelay;
+    }
+
+    function _getExitDelayFee(uint256 curveId) internal view returns (uint256) {
+        MarkedUint248 memory data = _exitDelayFees[curveId];
+        return data.isValue ? data.value : defaultExitDelayFee;
+    }
+
+    function _getMaxElWithdrawalRequestFee(uint256 curveId) internal view returns (uint256) {
+        MarkedUint248 memory data = _maxElWithdrawalRequestFees[curveId];
+        return data.isValue ? data.value : defaultMaxElWithdrawalRequestFee;
     }
 
     function _onlyRoleMemberOrAdmin(bytes32 role) internal view {
