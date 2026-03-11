@@ -429,6 +429,15 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
+    function getNodeOperatorBondInfo(uint256 nodeOperatorId) external view returns (NodeOperatorBondInfo memory info) {
+        info.currentBond = BondCore.getBond(nodeOperatorId);
+        info.requiredBond = _getRequiredBond(nodeOperatorId, 0);
+        info.lockedBond = BondLock.getLockedBond(nodeOperatorId);
+        info.bondDebt = BondCore.getBondDebt(nodeOperatorId);
+        info.pendingSharesToSplit = FeeSplits.getPendingSharesToSplit(nodeOperatorId);
+    }
+
+    /// @inheritdoc IAccounting
     function getBondSummary(uint256 nodeOperatorId) public view returns (uint256 current, uint256 required) {
         current = BondCore.getBond(nodeOperatorId);
         required = _getRequiredBond(nodeOperatorId, 0);
