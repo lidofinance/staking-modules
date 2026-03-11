@@ -1,5 +1,5 @@
 # IBondCurve
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IBondCurve.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IBondCurve.sol)
 
 
 ## Functions
@@ -92,7 +92,7 @@ function getBondCurveId(uint256 nodeOperatorId) external view returns (uint256);
 
 ### getBondAmountByKeysCount
 
-Get required bond in ETH for the given number of keys for default bond curve
+Get required bond in ETH for the given number of keys for the given bond curve
 
 To calculate the amount for the new keys 2 calls are required:
 getBondAmountByKeysCount(newTotal) - getBondAmountByKeysCount(currentTotal)
@@ -117,7 +117,7 @@ function getBondAmountByKeysCount(uint256 keys, uint256 curveId) external view r
 
 ### getKeysCountByBondAmount
 
-Get keys count for the given bond amount with default bond curve
+Get keys count for the given bond amount with the given bond curve
 
 
 ```solidity
@@ -127,7 +127,7 @@ function getKeysCountByBondAmount(uint256 amount, uint256 curveId) external view
 
 |Name|Type|Description|
 |----|----|-----------|
-|`amount`|`uint256`|Bond amount in ETH (stETH)to get keys count for|
+|`amount`|`uint256`|Bond amount in ETH (stETH) to get keys count for|
 |`curveId`|`uint256`|Id of the curve to perform calculations against|
 
 **Returns**
@@ -179,6 +179,12 @@ error InvalidBondCurveId();
 
 ```solidity
 error InvalidInitializationCurveId();
+```
+
+### SameBondCurveId
+
+```solidity
+error SameBondCurveId();
 ```
 
 ## Structs

@@ -1,15 +1,8 @@
 # IPermissionlessGate
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IPermissionlessGate.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IPermissionlessGate.sol)
 
 
 ## Functions
-### RECOVERER_ROLE
-
-
-```solidity
-function RECOVERER_ROLE() external view returns (bytes32);
-```
-
 ### CURVE_ID
 
 
@@ -21,7 +14,7 @@ function CURVE_ID() external view returns (uint256);
 
 
 ```solidity
-function MODULE() external view returns (ICSModule);
+function MODULE() external view returns (IBaseModule);
 ```
 
 ### addNodeOperatorETH

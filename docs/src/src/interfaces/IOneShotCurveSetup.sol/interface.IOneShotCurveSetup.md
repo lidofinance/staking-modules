@@ -1,5 +1,14 @@
 # IOneShotCurveSetup
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IOneShotCurveSetup.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IOneShotCurveSetup.sol)
+
+**Title:**
+One-shot setup helper for a bond curve plus per-curve parameter overrides.
+
+Intended for one-shot execution with temporary permissions only.
+Required roles:
+- `ACCOUNTING.MANAGE_BOND_CURVES_ROLE()`
+- `REGISTRY.MANAGE_CURVE_PARAMETERS_ROLE()`
+After `execute()` succeeds, this contract renounces both roles.
 
 
 ## Functions
@@ -39,9 +48,46 @@ Curve ID created by the successful `execute()` call.
 function deployedCurveId() external view returns (uint256);
 ```
 
+### getBondCurve
+
+Returns the stored bond curve to be deployed by `execute()`.
+
+
+```solidity
+function getBondCurve() external view returns (IBondCurve.BondCurveIntervalInput[] memory bondCurve);
+```
+
+### getRewardShareDataOverride
+
+Returns whether reward share override is configured and the configured interval data.
+
+
+```solidity
+function getRewardShareDataOverride()
+    external
+    view
+    returns (bool isSet, IParametersRegistry.KeyNumberValueInterval[] memory data);
+```
+
+### getPerformanceLeewayDataOverride
+
+Returns whether performance leeway override is configured and the configured interval data.
+
+
+```solidity
+function getPerformanceLeewayDataOverride()
+    external
+    view
+    returns (bool isSet, IParametersRegistry.KeyNumberValueInterval[] memory data);
+```
+
 ### execute
 
 Executes the stored rollout plan, adding the curve and applying the overrides.
+
+Requires only:
+`ACCOUNTING.MANAGE_BOND_CURVES_ROLE()` and `REGISTRY.MANAGE_CURVE_PARAMETERS_ROLE()`.
+On success, both roles are renounced by this contract.
 
 
 ```solidity
@@ -154,7 +200,7 @@ struct ConstructorParams {
     PerformanceCoefficientsOverride performanceCoefficients;
     ScalarOverride allowedExitDelay;
     ScalarOverride exitDelayFee;
-    ScalarOverride maxWithdrawalRequestFee;
+    ScalarOverride maxElWithdrawalRequestFee;
 }
 ```
 

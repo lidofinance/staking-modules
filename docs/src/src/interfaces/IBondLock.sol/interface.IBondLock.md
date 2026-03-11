@@ -1,5 +1,5 @@
 # IBondLock
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IBondLock.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IBondLock.sol)
 
 
 ## Functions
@@ -53,13 +53,13 @@ function getLockedBondInfo(uint256 nodeOperatorId) external view returns (BondLo
 |`<none>`|`BondLockData`|Locked bond info|
 
 
-### getActualLockedBond
+### getLockedBond
 
 Get amount of the locked bond in ETH (stETH) by the given Node Operator
 
 
 ```solidity
-function getActualLockedBond(uint256 nodeOperatorId) external view returns (uint256);
+function getLockedBond(uint256 nodeOperatorId) external view returns (uint256);
 ```
 **Parameters**
 
@@ -74,6 +74,27 @@ function getActualLockedBond(uint256 nodeOperatorId) external view returns (uint
 |`<none>`|`uint256`|Amount of the actual locked bond|
 
 
+### isLockExpired
+
+Check if the bond lock for the given Node Operator has expired
+
+
+```solidity
+function isLockExpired(uint256 nodeOperatorId) external view returns (bool);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|True if the bond lock has expired or there is no lock, false otherwise|
+
+
 ## Events
 ### BondLockChanged
 
@@ -85,6 +106,12 @@ event BondLockChanged(uint256 indexed nodeOperatorId, uint256 newAmount, uint256
 
 ```solidity
 event BondLockRemoved(uint256 indexed nodeOperatorId);
+```
+
+### ExpiredBondLockRemoved
+
+```solidity
+event ExpiredBondLockRemoved(uint256 indexed nodeOperatorId);
 ```
 
 ### BondLockPeriodChanged
@@ -104,6 +131,18 @@ error InvalidBondLockPeriod();
 
 ```solidity
 error InvalidBondLockAmount();
+```
+
+### BondLockNotExpired
+
+```solidity
+error BondLockNotExpired();
+```
+
+### NoBondLocked
+
+```solidity
+error NoBondLocked();
 ```
 
 ## Structs

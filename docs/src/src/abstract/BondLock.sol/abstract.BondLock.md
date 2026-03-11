@@ -1,8 +1,8 @@
 # BondLock
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/abstract/BondLock.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/abstract/BondLock.sol)
 
 **Inherits:**
-[IBondLock](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IBondLock.sol/interface.IBondLock.md), Initializable
+[IBondLock](/src/interfaces/IBondLock.sol/interface.IBondLock.md), Initializable
 
 **Author:**
 vgorkavenko
@@ -24,13 +24,6 @@ Internal non-view methods should be used in the Module contract with additional 
 
 
 ## State Variables
-### INFINITE_BOND_LOCK_UNTIL
-
-```solidity
-uint128 public constant INFINITE_BOND_LOCK_UNTIL = type(uint128).max
-```
-
-
 ### BOND_LOCK_STORAGE_LOCATION
 
 ```solidity
@@ -97,13 +90,13 @@ function getLockedBondInfo(uint256 nodeOperatorId) external view returns (BondLo
 |`<none>`|`BondLockData`|Locked bond info|
 
 
-### getActualLockedBond
+### getLockedBond
 
 Get amount of the locked bond in ETH (stETH) by the given Node Operator
 
 
 ```solidity
-function getActualLockedBond(uint256 nodeOperatorId) public view returns (uint256);
+function getLockedBond(uint256 nodeOperatorId) public view returns (uint256);
 ```
 **Parameters**
 
@@ -116,6 +109,27 @@ function getActualLockedBond(uint256 nodeOperatorId) public view returns (uint25
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|Amount of the actual locked bond|
+
+
+### isLockExpired
+
+Check if the bond lock for the given Node Operator has expired
+
+
+```solidity
+function isLockExpired(uint256 nodeOperatorId) public view returns (bool);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|True if the bond lock has expired or there is no lock, false otherwise|
 
 
 ### _lock
@@ -143,6 +157,13 @@ function _unlock(uint256 nodeOperatorId, uint256 amount) internal;
 function _changeBondLock(uint256 nodeOperatorId, uint256 amount, uint256 until) internal;
 ```
 
+### _unlockExpiredLock
+
+
+```solidity
+function _unlockExpiredLock(uint256 nodeOperatorId) internal;
+```
+
 ### __BondLock_init
 
 
@@ -152,7 +173,7 @@ function __BondLock_init(uint256 period) internal onlyInitializing;
 
 ### _setBondLockPeriod
 
-Set default bond lock period. That period will be added to the block timestamp of the lock translation to determine the bond lock duration
+Set default bond lock period. That period will be added to the block timestamp of the lock transition to determine the bond lock duration
 
 
 ```solidity
@@ -169,7 +190,7 @@ function _getBondLockStorage() private pure returns (BondLockStorage storage $);
 ## Structs
 ### BondLockStorage
 **Note:**
-storage-location: erc7201:BondLock
+storage-location: erc7201:CSBondLock
 
 
 ```solidity

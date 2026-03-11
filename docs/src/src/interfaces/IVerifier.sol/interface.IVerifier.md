@@ -1,22 +1,8 @@
 # IVerifier
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IVerifier.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IVerifier.sol)
 
 
 ## Functions
-### PAUSE_ROLE
-
-
-```solidity
-function PAUSE_ROLE() external view returns (bytes32);
-```
-
-### RESUME_ROLE
-
-
-```solidity
-function RESUME_ROLE() external view returns (bytes32);
-```
-
 ### BEACON_ROOTS
 
 
@@ -126,31 +112,7 @@ function WITHDRAWAL_ADDRESS() external view returns (address);
 
 
 ```solidity
-function MODULE() external view returns (ICSModule);
-```
-
-### pauseFor
-
-Pause write methods calls for `duration` seconds
-
-
-```solidity
-function pauseFor(uint256 duration) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`duration`|`uint256`|Duration of the pause in seconds|
-
-
-### resume
-
-Resume write methods calls
-
-
-```solidity
-function resume() external;
+function MODULE() external view returns (IBaseModule);
 ```
 
 ### processSlashedProof
@@ -173,8 +135,8 @@ function processSlashedProof(ProcessSlashedInput calldata data) external;
 Verify withdrawal proof and report withdrawal to the module for valid proofs
 
 The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
-determining the exact penalty amounts and calling the `ICSModule.reportWithdrawnValidators` method via an EasyTrack
-motion.
+determining the exact penalty amounts and calling the `IBaseModule.reportSlashedWithdrawnValidators` method via
+an EasyTrack motion.
 
 
 ```solidity
@@ -192,8 +154,8 @@ function processWithdrawalProof(ProcessWithdrawalInput calldata data) external;
 Verify withdrawal proof against historical summaries data and report withdrawal to the module for valid proofs
 
 The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
-determining the exact penalty amounts and calling the `ICSModule.reportWithdrawnValidators` method via an EasyTrack
-motion.
+determining the exact penalty amounts and calling the `IBaseModule.reportSlashedWithdrawnValidators` method via
+an EasyTrack motion.
 
 
 ```solidity
@@ -206,23 +168,37 @@ function processHistoricalWithdrawalProof(ProcessHistoricalWithdrawalInput calld
 |`data`|`ProcessHistoricalWithdrawalInput`|@see ProcessHistoricalWithdrawalInput|
 
 
-### processConsolidation
+### processBalanceProof
 
-Processes a validator's consolidation from a module's validator. The balance before consolidation is
-assumed to be the withdrawal balance.
-
-The caveat is that a pending consolidation is processed later, making it impossible to account for losses
-or rewards during the waiting period, as there's no indication of consolidation processing in the state.
+Verify a validator's balance proof from a recent beacon block and sync the key added balance.
 
 
 ```solidity
-function processConsolidation(ProcessConsolidationInput calldata data) external;
+function processBalanceProof(ProcessBalanceProofInput calldata data) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`data`|`ProcessConsolidationInput`|@see ProcessConsolidationInput|
+|`data`|`ProcessBalanceProofInput`|The balance proof input containing recent block header, validator witness, and balance witness.|
+
+
+### processHistoricalBalanceProof
+
+Verify a validator's balance proof from a historical beacon block and sync the key added balance.
+A historical proof is needed because the validator's balance may have increased at some point in the past
+and later decreased (e.g. due to inactivity leak or penalties). A recent proof alone would miss that peak,
+so a historical proof allows capturing the highest observed balance.
+
+
+```solidity
+function processHistoricalBalanceProof(ProcessHistoricalBalanceProofInput calldata data) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`data`|`ProcessHistoricalBalanceProofInput`|The balance proof input containing recent + historical block headers, validator witness, and balance witness.|
 
 
 ## Errors
@@ -278,12 +254,6 @@ error InvalidWithdrawalAddress();
 
 ```solidity
 error InvalidPublicKey();
-```
-
-### InvalidConsolidationSource
-
-```solidity
-error InvalidConsolidationSource();
 ```
 
 ### InvalidValidatorIndex
@@ -349,8 +319,6 @@ struct GIndices {
     GIndex gIFirstBlockRootInSummaryCurr;
     GIndex gIFirstBalanceNodePrev;
     GIndex gIFirstBalanceNodeCurr;
-    GIndex gIFirstPendingConsolidationPrev;
-    GIndex gIFirstPendingConsolidationCurr;
 }
 ```
 
@@ -403,30 +371,6 @@ struct BalanceWitness {
 }
 ```
 
-### PendingConsolidationWitness
-
-```solidity
-struct PendingConsolidationWitness {
-    PendingConsolidation object;
-    uint64 offset; // in the list of pending consolidations
-    bytes32[] proof;
-}
-```
-
-### ProcessConsolidationInput
-
-```solidity
-struct ProcessConsolidationInput {
-    PendingConsolidationWitness consolidation;
-    ValidatorWitness validator;
-    // Represents the validator's balance before the CL processes the pending consolidation. Used as a proxy for the
-    // "withdrawal balance" in accounting/penalties, since consolidation is not an EL withdrawal.
-    BalanceWitness balance;
-    RecentHeaderWitness recentBlock;
-    HistoricalHeaderWitness consolidationBlock;
-}
-```
-
 ### ProcessSlashedInput
 
 ```solidity
@@ -454,6 +398,27 @@ struct ProcessHistoricalWithdrawalInput {
     ValidatorWitness validator;
     RecentHeaderWitness recentBlock;
     HistoricalHeaderWitness withdrawalBlock;
+}
+```
+
+### ProcessBalanceProofInput
+
+```solidity
+struct ProcessBalanceProofInput {
+    RecentHeaderWitness recentBlock;
+    ValidatorWitness validator;
+    BalanceWitness balance;
+}
+```
+
+### ProcessHistoricalBalanceProofInput
+
+```solidity
+struct ProcessHistoricalBalanceProofInput {
+    RecentHeaderWitness recentBlock;
+    HistoricalHeaderWitness historicalBlock;
+    ValidatorWitness validator;
+    BalanceWitness balance;
 }
 ```
 

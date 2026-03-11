@@ -1,8 +1,8 @@
 # HashConsensus
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/lib/base-oracle/HashConsensus.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/lib/base-oracle/HashConsensus.sol)
 
 **Inherits:**
-[IConsensusContract](/Users/dgusakov/projects/community-staking-module/docs/src/src/lib/base-oracle/interfaces/IConsensusContract.sol/interface.IConsensusContract.md), AccessControlEnumerableUpgradeable
+[IConsensusContract](/src/lib/base-oracle/interfaces/IConsensusContract.sol/interface.IConsensusContract.md), AccessControlEnumerableUpgradeable
 
 A contract managing oracle members committee and allowing the members to reach
 consensus on a hash for each reporting frame.
@@ -33,7 +33,7 @@ bytes32 public constant MANAGE_MEMBERS_AND_QUORUM_ROLE = keccak256("MANAGE_MEMBE
 ### DISABLE_CONSENSUS_ROLE
 An ACL role granting the permission to disable the consensus by calling
 the disableConsensus function. Enabling the consensus back requires the possession
-of the MANAGE_QUORUM_ROLE.
+of the MANAGE_MEMBERS_AND_QUORUM_ROLE.
 
 
 ```solidity
@@ -93,9 +93,11 @@ at which a report for the prev. frame can be submitted and its processing starte
 reference slot of the next frame (equal to the last slot of the previous frame).
 frame[i].reportProcessingDeadlineSlot := frame[i + 1].refSlot - DEADLINE_SLOT_OFFSET
 
+Declared as immutable to allow for changes in test scenarios.
+
 
 ```solidity
-uint256 internal constant DEADLINE_SLOT_OFFSET = 0
+uint256 internal immutable DEADLINE_SLOT_OFFSET = 0
 ```
 
 

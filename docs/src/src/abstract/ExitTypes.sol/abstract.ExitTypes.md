@@ -1,8 +1,8 @@
 # ExitTypes
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/abstract/ExitTypes.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/abstract/ExitTypes.sol)
 
 **Inherits:**
-[IExitTypes](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IExitTypes.sol/interface.IExitTypes.md)
+[IExitTypes](/src/interfaces/IExitTypes.sol/interface.IExitTypes.md)
 
 
 ## State Variables

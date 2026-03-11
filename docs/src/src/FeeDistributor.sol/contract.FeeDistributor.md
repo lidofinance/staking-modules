@@ -1,18 +1,18 @@
 # FeeDistributor
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/FeeDistributor.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/FeeDistributor.sol)
 
 **Inherits:**
-[IFeeDistributor](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IFeeDistributor.sol/interface.IFeeDistributor.md), Initializable, AccessControlEnumerableUpgradeable, [AssetRecoverer](/Users/dgusakov/projects/community-staking-module/docs/src/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
+[IFeeDistributor](/src/interfaces/IFeeDistributor.sol/interface.IFeeDistributor.md), Initializable, AccessControlEnumerableUpgradeable, [AssetRecoverer](/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
 
 **Author:**
 madlabman
 
 
 ## State Variables
-### RECOVERER_ROLE
+### INITIALIZED_VERSION
 
 ```solidity
-bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE")
+uint64 internal constant INITIALIZED_VERSION = 3
 ```
 
 
@@ -133,19 +133,24 @@ constructor(address stETH, address accounting, address oracle) ;
 
 ### initialize
 
+Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
+It is recommended to call this method in the same transaction as the deployment transaction
+and perform extensive deployment verification before using the contract instance.
+
 
 ```solidity
-function initialize(address admin, address _rebateRecipient) external reinitializer(2);
+function initialize(address admin, address _rebateRecipient) external reinitializer(INITIALIZED_VERSION);
 ```
 
-### finalizeUpgradeV2
+### finalizeUpgradeV3
 
-This method is expected to be called only when the contract is upgraded from version 1 to version 2 for the existing version 1 deployment.
-If the version 2 contract is deployed from scratch, the `initialize` method should be used instead.
+This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing
+version 2 deployment. If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
+To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
 
 
 ```solidity
-function finalizeUpgradeV2(address _rebateRecipient) external reinitializer(2);
+function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION);
 ```
 
 ### setRebateRecipient
@@ -229,7 +234,7 @@ function recoverERC20(address token, uint256 amount) external override;
 |Name|Type|Description|
 |----|----|-----------|
 |`token`|`address`|The address of the ERC20 token to recover|
-|`amount`|`uint256`|The amount of the ERC20 token to recover Emits an ERC20Recovered event upon success Optionally, the inheriting contract can override this function to add additional restrictions|
+|`amount`|`uint256`|The amount of the ERC20 token to recover|
 
 
 ### getInitializedVersion

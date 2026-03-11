@@ -1,5 +1,8 @@
 # IMerkleGate
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IMerkleGate.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IMerkleGate.sol)
+
+**Title:**
+Merkle Gate Interface
 
 Common surface for gates that guard node operator creation via Merkle proofs.
 
@@ -44,6 +47,19 @@ function treeCid() external view returns (string memory);
 |`<none>`|`string`|treeCid Current Merkle tree CID|
 
 
+### curveId
+
+
+```solidity
+function curveId() external view returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|curveId Instance-specific bond curve id|
+
+
 ### setTreeParams
 
 Update Merkle tree params
@@ -86,6 +102,24 @@ Hash leaf encoding for addresses in the Merkle tree
 ```solidity
 function hashLeaf(address member) external pure returns (bytes32);
 ```
+
+### initialize
+
+Initialize the gate instance.
+
+
+```solidity
+function initialize(uint256 curveId, bytes32 treeRoot, string calldata treeCid, address admin) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`curveId`|`uint256`|Bond curve id to assign to eligible members.|
+|`treeRoot`|`bytes32`|Initial Merkle tree root.|
+|`treeCid`|`string`|Initial Merkle tree CID.|
+|`admin`|`address`|Address to be granted DEFAULT_ADMIN_ROLE.|
+
 
 ### getInitializedVersion
 
@@ -151,5 +185,11 @@ error InvalidTreeRoot();
 
 ```solidity
 error InvalidTreeCid();
+```
+
+### ZeroAdminAddress
+
+```solidity
+error ZeroAdminAddress();
 ```
 

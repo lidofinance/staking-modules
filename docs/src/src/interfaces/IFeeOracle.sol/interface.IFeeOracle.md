@@ -1,8 +1,8 @@
 # IFeeOracle
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IFeeOracle.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IFeeOracle.sol)
 
 **Inherits:**
-[IAssetRecovererLib](/Users/dgusakov/projects/community-staking-module/docs/src/src/lib/AssetRecovererLib.sol/interface.IAssetRecovererLib.md)
+[IAssetRecovererLib](/src/lib/AssetRecovererLib.sol/interface.IAssetRecovererLib.md)
 
 
 ## Functions
@@ -11,27 +11,6 @@
 
 ```solidity
 function SUBMIT_DATA_ROLE() external view returns (bytes32);
-```
-
-### PAUSE_ROLE
-
-
-```solidity
-function PAUSE_ROLE() external view returns (bytes32);
-```
-
-### RESUME_ROLE
-
-
-```solidity
-function RESUME_ROLE() external view returns (bytes32);
-```
-
-### RECOVERER_ROLE
-
-
-```solidity
-function RECOVERER_ROLE() external view returns (bytes32);
 ```
 
 ### FEE_DISTRIBUTOR
@@ -61,31 +40,7 @@ function submitReportData(ReportData calldata data, uint256 contractVersion) ext
 |Name|Type|Description|
 |----|----|-----------|
 |`data`|`ReportData`|Data for a committee report|
-|`contractVersion`|`uint256`|Version of the oracle consensus rules|
-
-
-### resume
-
-Resume accepting oracle reports
-
-
-```solidity
-function resume() external;
-```
-
-### pauseFor
-
-Pause accepting oracle reports for a `duration` seconds
-
-
-```solidity
-function pauseFor(uint256 duration) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`duration`|`uint256`|Duration of the pause in seconds|
+|`contractVersion`|`uint256`|Expected storage contract version of the FeeOracle implementation|
 
 
 ## Errors

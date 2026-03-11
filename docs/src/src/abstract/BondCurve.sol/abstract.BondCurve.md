@@ -1,8 +1,8 @@
 # BondCurve
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/abstract/BondCurve.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/abstract/BondCurve.sol)
 
 **Inherits:**
-[IBondCurve](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IBondCurve.sol/interface.IBondCurve.md), Initializable
+[IBondCurve](/src/interfaces/IBondCurve.sol/interface.IBondCurve.md), Initializable
 
 **Author:**
 vgorkavenko
@@ -41,10 +41,18 @@ uint256 public constant DEFAULT_BOND_CURVE_ID = 0
 ## Functions
 ### getCurvesCount
 
+Get the number of available curves
+
 
 ```solidity
 function getCurvesCount() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Number of available curves|
+
 
 ### getCurveInfo
 
@@ -113,7 +121,7 @@ function getBondCurveId(uint256 nodeOperatorId) public view returns (uint256);
 
 ### getBondAmountByKeysCount
 
-Get required bond in ETH for the given number of keys for default bond curve
+Get required bond in ETH for the given number of keys for the given bond curve
 
 To calculate the amount for the new keys 2 calls are required:
 getBondAmountByKeysCount(newTotal) - getBondAmountByKeysCount(currentTotal)
@@ -138,7 +146,7 @@ function getBondAmountByKeysCount(uint256 keys, uint256 curveId) public view ret
 
 ### getKeysCountByBondAmount
 
-Get keys count for the given bond amount with default bond curve
+Get keys count for the given bond amount with the given bond curve
 
 
 ```solidity
@@ -148,7 +156,7 @@ function getKeysCountByBondAmount(uint256 amount, uint256 curveId) public view r
 
 |Name|Type|Description|
 |----|----|-----------|
-|`amount`|`uint256`|Bond amount in ETH (stETH)to get keys count for|
+|`amount`|`uint256`|Bond amount in ETH (stETH) to get keys count for|
 |`curveId`|`uint256`|Id of the curve to perform calculations against|
 
 **Returns**
@@ -210,7 +218,7 @@ function _getBondCurveStorage() private pure returns (BondCurveStorage storage $
 ## Structs
 ### BondCurveStorage
 **Note:**
-storage-location: erc7201:BondCurve
+storage-location: erc7201:CSBondCurve
 
 
 ```solidity

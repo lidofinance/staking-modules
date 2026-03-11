@@ -1,7 +1,7 @@
 # WithdrawnValidatorLib
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/lib/WithdrawnValidatorLib.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/lib/WithdrawnValidatorLib.sol)
 
-A library to extract a part of the code from the the CSModule contract.
+A library to extract a part of the code from the CSModule contract.
 
 
 ## State Variables
@@ -36,20 +36,34 @@ uint256 public constant PENALTY_SCALE = MIN_ACTIVATION_BALANCE / PENALTY_QUOTIEN
 
 
 ## Functions
-### process
+### processBatch
 
 
 ```solidity
-function process(WithdrawnValidatorInfo calldata validatorInfo) external returns (bool bondCoversPenalties);
+function processBatch(
+    WithdrawnValidatorInfo[] calldata validatorInfos,
+    bool slashed,
+    ModuleLinearStorage.BaseModuleStorage storage $
+) external returns (uint256[] memory touchedOperatorIds, uint256 touchedCount);
 ```
 
-### _fulfilExitObligations
+### _process
 
 
 ```solidity
-function _fulfilExitObligations(WithdrawnValidatorInfo calldata validatorInfo, ExitPenaltyInfo memory penaltyInfo)
-    internal
-    returns (bool bondCoversPenalties);
+function _process(NodeOperator storage no, WithdrawnValidatorInfo calldata validatorInfo, uint256 keyAddedBalance)
+    private;
+```
+
+### _fulfillExitObligations
+
+
+```solidity
+function _fulfillExitObligations(
+    WithdrawnValidatorInfo calldata validatorInfo,
+    ExitPenaltyInfo memory penaltyInfo,
+    uint256 keyAddedBalance
+) internal;
 ```
 
 ### _getPenaltyMultiplier
@@ -58,10 +72,7 @@ Acts as the numerator to calculate the scaled penalty.
 
 
 ```solidity
-function _getPenaltyMultiplier(WithdrawnValidatorInfo memory validatorInfo)
-    internal
-    pure
-    returns (uint256 penaltyMultiplier);
+function _getPenaltyMultiplier(uint256 balance) internal pure returns (uint256 penaltyMultiplier);
 ```
 
 ### _scalePenaltyByMultiplier
@@ -69,5 +80,12 @@ function _getPenaltyMultiplier(WithdrawnValidatorInfo memory validatorInfo)
 
 ```solidity
 function _scalePenaltyByMultiplier(uint256 penalty, uint256 multiplier) internal pure returns (uint256);
+```
+
+### _keyPointer
+
+
+```solidity
+function _keyPointer(uint256 nodeOperatorId, uint256 keyIndex) internal pure returns (uint256 pointer);
 ```
 

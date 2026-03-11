@@ -122,8 +122,6 @@ Integration tests should pass either before a vote, or after at any state of con
 just test-integration
 ```
 
-Utility-contract tests can be run either by exporting `UTILS_DEPLOY_CONFIG` or by using `just test-utils-with-config <path>`.
-
 There also fork helper scripts to prepare a fork state for e.g. UI testing purposes,
 see [fork.just](./fork.just) to get all available commands
 

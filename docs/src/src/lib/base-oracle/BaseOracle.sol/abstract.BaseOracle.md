@@ -1,8 +1,8 @@
 # BaseOracle
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/lib/base-oracle/BaseOracle.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/lib/base-oracle/BaseOracle.sol)
 
 **Inherits:**
-[IReportAsyncProcessor](/Users/dgusakov/projects/community-staking-module/docs/src/src/lib/base-oracle/interfaces/IReportAsyncProcessor.sol/interface.IReportAsyncProcessor.md), AccessControlEnumerableUpgradeable, [Versioned](/Users/dgusakov/projects/community-staking-module/docs/src/src/lib/utils/Versioned.sol/contract.Versioned.md)
+[IReportAsyncProcessor](/src/lib/base-oracle/interfaces/IReportAsyncProcessor.sol/interface.IReportAsyncProcessor.md), AccessControlEnumerableUpgradeable, [Versioned](/src/lib/utils/Versioned.sol/contract.Versioned.md)
 
 
 ## State Variables

@@ -1,5 +1,8 @@
 # IStakingModule
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IStakingModule.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IStakingModule.sol)
+
+**Title:**
+Lido's Staking Module interface
 
 
 ## Functions
@@ -337,8 +340,6 @@ function unsafeUpdateValidatorsCount(uint256 _nodeOperatorId, uint256 _exitedVal
 
 Obtains deposit data to be used by StakingRouter to deposit to the Ethereum Deposit
 contract
-
-The method MUST revert when the staking module has not enough deposit data items
 
 
 ```solidity

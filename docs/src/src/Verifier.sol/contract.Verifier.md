@@ -1,29 +1,35 @@
 # Verifier
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/Verifier.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/Verifier.sol)
 
 **Inherits:**
-[IVerifier](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IVerifier.sol/interface.IVerifier.md), AccessControlEnumerable, [PausableUntil](/Users/dgusakov/projects/community-staking-module/docs/src/src/lib/utils/PausableUntil.sol/contract.PausableUntil.md)
+[IVerifier](/src/interfaces/IVerifier.sol/interface.IVerifier.md), AccessControlEnumerable, [PausableWithRoles](/src/abstract/PausableWithRoles.sol/abstract.PausableWithRoles.md)
 
 
 ## State Variables
-### PAUSE_ROLE
-
-```solidity
-bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE")
-```
-
-
-### RESUME_ROLE
-
-```solidity
-bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE")
-```
-
-
 ### BEACON_ROOTS
 
 ```solidity
 address public constant BEACON_ROOTS = 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02
+```
+
+
+### MAX_BP
+
+```solidity
+uint256 internal constant MAX_BP = 10_000
+```
+
+
+### MIN_WITHDRAWAL_RATIO
+Minimum withdrawal amount as a ratio of total ether deposited to the validator,
+expressed in basis points (10 000 = 100%). At ~3% top APY, losing >10% of balance
+requires ~3 years offline — implausible for any legitimately run validator.
+We do not accept slashed validators in normal withdrawal processing, so we do not need to account for slashing penalties here.
+In case of unexpected network conditions, the DAO can always replace the verifier contract with one having a different threshold.
+
+
+```solidity
+uint256 internal constant MIN_WITHDRAWAL_RATIO = 9000
 ```
 
 
@@ -135,24 +141,6 @@ GIndex public immutable GI_FIRST_BALANCES_NODE_CURR
 ```
 
 
-### GI_FIRST_PENDING_CONSOLIDATION_PREV
-This index is relative to a state like: `BeaconState.pending_consolidations[0]`.
-
-
-```solidity
-GIndex public immutable GI_FIRST_PENDING_CONSOLIDATION_PREV
-```
-
-
-### GI_FIRST_PENDING_CONSOLIDATION_CURR
-This index is relative to a state like: `BeaconState.pending_consolidations[0]`.
-
-
-```solidity
-GIndex public immutable GI_FIRST_PENDING_CONSOLIDATION_CURR
-```
-
-
 ### FIRST_SUPPORTED_SLOT
 The very first slot the verifier is supposed to accept proofs for.
 
@@ -194,7 +182,7 @@ Staking module contract.
 
 
 ```solidity
-ICSModule public immutable MODULE
+IBaseModule public immutable MODULE
 ```
 
 
@@ -217,30 +205,6 @@ constructor(
     address admin
 ) ;
 ```
-
-### resume
-
-Resume write methods calls
-
-
-```solidity
-function resume() external onlyRole(RESUME_ROLE);
-```
-
-### pauseFor
-
-Pause write methods calls for `duration` seconds
-
-
-```solidity
-function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`duration`|`uint256`|Duration of the pause in seconds|
-
 
 ### processSlashedProof
 
@@ -287,23 +251,37 @@ function processHistoricalWithdrawalProof(ProcessHistoricalWithdrawalInput calld
 |`data`|`ProcessHistoricalWithdrawalInput`|@see ProcessHistoricalWithdrawalInput|
 
 
-### processConsolidation
+### processBalanceProof
 
-Processes a validator's consolidation from a module's validator. The balance before consolidation is
-assumed to be the withdrawal balance.
-
-The caveat is that a pending consolidation is processed later, making it impossible to account for losses
-or rewards during the waiting period, as there's no indication of consolidation processing in the state.
+Verify a validator's balance proof from a recent beacon block and sync the key added balance.
 
 
 ```solidity
-function processConsolidation(ProcessConsolidationInput calldata data) external whenResumed;
+function processBalanceProof(ProcessBalanceProofInput calldata data) external whenResumed;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`data`|`ProcessConsolidationInput`|@see ProcessConsolidationInput|
+|`data`|`ProcessBalanceProofInput`|The balance proof input containing recent block header, validator witness, and balance witness.|
+
+
+### processHistoricalBalanceProof
+
+Verify a validator's balance proof from a historical beacon block and sync the key added balance.
+A historical proof is needed because the validator's balance may have increased at some point in the past
+and later decreased (e.g. due to inactivity leak or penalties). A recent proof alone would miss that peak,
+so a historical proof allows capturing the highest observed balance.
+
+
+```solidity
+function processHistoricalBalanceProof(ProcessHistoricalBalanceProofInput calldata data) external whenResumed;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`data`|`ProcessHistoricalBalanceProofInput`|The balance proof input containing recent + historical block headers, validator witness, and balance witness.|
 
 
 ### _reportSingleValidator
@@ -329,8 +307,22 @@ function _getParentBlockRoot(uint64 blockTimestamp) internal view returns (bytes
 function _processWithdrawalProof(
     WithdrawalWitness calldata withdrawal,
     ValidatorWitness calldata validator,
-    BeaconBlockHeader calldata header
+    BeaconBlockHeader calldata header,
+    uint256 nodeOperatorId,
+    uint256 keyIndex
 ) internal view returns (uint256 withdrawalAmount);
+```
+
+### _processBalanceProof
+
+
+```solidity
+function _processBalanceProof(
+    ValidatorWitness calldata validator,
+    BalanceWitness calldata balance,
+    bytes32 stateRoot,
+    Slot stateSlot
+) internal view returns (uint64 balanceGwei);
 ```
 
 ### _verifyValidatorBalance
@@ -390,13 +382,6 @@ function _getWithdrawalGI(uint256 offset, Slot stateSlot) internal view returns 
 function _getValidatorBalanceGI(uint256 offset, Slot stateSlot) internal view returns (GIndex);
 ```
 
-### _getPendingConsolidationGI
-
-
-```solidity
-function _getPendingConsolidationGI(uint256 offset, Slot stateSlot) internal view returns (GIndex);
-```
-
 ### _getHistoricalBlockRootGI
 
 
@@ -409,5 +394,12 @@ function _getHistoricalBlockRootGI(Slot recentSlot, Slot targetSlot) internal vi
 
 ```solidity
 function _computeEpochAtSlot(Slot slot) internal view returns (uint256);
+```
+
+### __checkRole
+
+
+```solidity
+function __checkRole(bytes32 role) internal view override;
 ```
 

@@ -1,15 +1,15 @@
 # ExitPenalties
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/ExitPenalties.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/ExitPenalties.sol)
 
 **Inherits:**
-[IExitPenalties](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IExitPenalties.sol/interface.IExitPenalties.md), [ExitTypes](/Users/dgusakov/projects/community-staking-module/docs/src/src/abstract/ExitTypes.sol/abstract.ExitTypes.md)
+[IExitPenalties](/src/interfaces/IExitPenalties.sol/interface.IExitPenalties.md), [ExitTypes](/src/abstract/ExitTypes.sol/abstract.ExitTypes.md)
 
 
 ## State Variables
 ### MODULE
 
 ```solidity
-ICSModule public immutable MODULE
+IBaseModule public immutable MODULE
 ```
 
 
@@ -37,7 +37,7 @@ address public immutable STRIKES
 ### _exitPenaltyInfo
 
 ```solidity
-mapping(bytes32 keyPointer => ExitPenaltyInfo) private _exitPenaltyInfo
+mapping(bytes32 keyPointer => ExitPenaltyInfo info) private _exitPenaltyInfo
 ```
 
 
@@ -60,7 +60,7 @@ modifier onlyStrikes() ;
 
 
 ```solidity
-constructor(address module, address parametersRegistry, address strikes) ;
+constructor(address module, address strikes) ;
 ```
 
 ### processExitDelayReport
@@ -93,7 +93,7 @@ Process the triggered exit report
 function processTriggeredExit(
     uint256 nodeOperatorId,
     bytes calldata publicKey,
-    uint256 withdrawalRequestPaidFee,
+    uint256 elWithdrawalRequestFeePaid,
     uint256 exitType
 ) external onlyModule;
 ```
@@ -103,8 +103,8 @@ function processTriggeredExit(
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
 |`publicKey`|`bytes`|Public key of the validator|
-|`withdrawalRequestPaidFee`|`uint256`|The fee paid for the withdrawal request|
-|`exitType`|`uint256`|The type of the exit (0 - direct exit, 1 - forced exit)|
+|`elWithdrawalRequestFeePaid`|`uint256`|The fee paid for the withdrawal request|
+|`exitType`|`uint256`|The type of the exit; only `VOLUNTARY_EXIT_TYPE_ID` skips recording EL withdrawal request fee|
 
 
 ### processStrikesReport
@@ -191,12 +191,5 @@ function _onlyModule() internal view;
 
 ```solidity
 function _onlyStrikes() internal view;
-```
-
-### _keyPointer
-
-
-```solidity
-function _keyPointer(uint256 nodeOperatorId, bytes calldata publicKey) internal pure returns (bytes32);
 ```
 

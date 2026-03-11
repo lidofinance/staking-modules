@@ -1,5 +1,5 @@
 # INOAddresses
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/lib/NOAddresses.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/lib/NOAddresses.sol)
 
 Library for changing and reset node operator's manager and reward addresses
 

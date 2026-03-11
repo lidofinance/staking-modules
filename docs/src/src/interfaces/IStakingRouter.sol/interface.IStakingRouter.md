@@ -1,5 +1,5 @@
 # IStakingRouter
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IStakingRouter.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IStakingRouter.sol)
 
 
 ## Functions
@@ -114,11 +114,31 @@ function decreaseStakingModuleVettedKeysCountByNodeOperator(
 ) external;
 ```
 
+### canDeposit
+
+
+```solidity
+function canDeposit(uint256 _stakingModuleId) external view returns (bool);
+```
+
 ### deposit
 
 
 ```solidity
-function deposit(uint256 _depositsCount, uint256 _stakingModuleId, bytes memory _depositCalldata) external payable;
+function deposit(uint256 _stakingModuleId, bytes memory _depositCalldata) external payable;
+```
+
+### topUp
+
+
+```solidity
+function topUp(
+    uint256 _stakingModuleId,
+    uint256[] memory _keyIndices,
+    uint256[] memory _operatorIds,
+    bytes[] memory _pubkeys,
+    uint256[] memory _topUpLimits
+) external;
 ```
 
 ### finalizeUpgrade_v2
@@ -154,6 +174,16 @@ function getContractVersion() external view returns (uint256);
 
 ```solidity
 function getDepositsAllocation(uint256 _depositsCount)
+    external
+    view
+    returns (uint256 allocated, uint256[] memory allocations);
+```
+
+### getTopUpAllocation
+
+
+```solidity
+function getTopUpAllocation(uint256 _depositAmount)
     external
     view
     returns (uint256 allocated, uint256[] memory allocations);
@@ -461,6 +491,17 @@ function reportStakingModuleExitedValidatorsCountByNodeOperator(
     uint256 _stakingModuleId,
     bytes memory _nodeOperatorIds,
     bytes memory _exitedValidatorsCounts
+) external;
+```
+
+### reportStakingModuleOperatorBalances
+
+
+```solidity
+function reportStakingModuleOperatorBalances(
+    uint256 _stakingModuleId,
+    bytes memory _nodeOperatorIds,
+    bytes memory _totalBalancesGwei
 ) external;
 ```
 
@@ -915,6 +956,17 @@ struct ValidatorsCountsCorrection {
     uint256 currentNodeOperatorExitedValidatorsCount;
     uint256 newModuleExitedValidatorsCount;
     uint256 newNodeOperatorExitedValidatorsCount;
+}
+```
+
+## Enums
+### StakingModuleStatus
+
+```solidity
+enum StakingModuleStatus {
+    Active,
+    DepositsPaused,
+    Stopped
 }
 ```
 
