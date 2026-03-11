@@ -47,31 +47,25 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
         uint256[] calldata operatorIds
     ) external view returns (uint256[] memory operatorWeights);
 
-    /// @notice Returns current deposit allocation targets for all operators with non-zero weight.
+    /// @notice Returns current deposit allocation targets for all operators.
     /// @dev Target = totalCurrent * operatorWeight / totalWeight (in validator count).
     ///      Includes operators regardless of depositable capacity for informational purposes.
     ///      Actual allocation recalculates shares only across operators with available capacity,
     ///      so real per-operator amounts may differ from the targets shown here.
-    /// @return operatorIds Operator ids with non-zero weight.
+    ///      Arrays are indexed by operator id; zero-weight operators have zero values.
     /// @return currents Current active validator count per operator.
     /// @return targets Target validator count per operator.
-    function getDepositAllocationTargets()
-        external
-        view
-        returns (uint256[] memory operatorIds, uint256[] memory currents, uint256[] memory targets);
+    function getDepositAllocationTargets() external view returns (uint256[] memory currents, uint256[] memory targets);
 
-    /// @notice Returns current top-up allocation targets for all operators with non-zero weight.
+    /// @notice Returns current top-up allocation targets for all operators.
     /// @dev Target = totalCurrent * operatorWeight / totalWeight (in wei).
     ///      Includes operators regardless of top-up capacity for informational purposes.
     ///      Actual allocation recalculates shares only across operators with available capacity,
     ///      so real per-operator amounts may differ from the targets shown here.
-    /// @return operatorIds Operator ids with non-zero weight.
+    ///      Arrays are indexed by operator id; zero-weight operators have zero values.
     /// @return currents Current operator stake in wei.
     /// @return targets Target operator stake in wei.
-    function getTopUpAllocationTargets()
-        external
-        view
-        returns (uint256[] memory operatorIds, uint256[] memory currents, uint256[] memory targets);
+    function getTopUpAllocationTargets() external view returns (uint256[] memory currents, uint256[] memory targets);
 
     /// @notice  Method to get list of operators and amount of Eth that can be topped up to operator from depositAmount
     /// @param depositAmount Amount of Eth that can be deposited to module

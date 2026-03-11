@@ -257,23 +257,22 @@ library CuratedDepositAllocator {
         }
     }
 
-    /// @notice Returns current deposit allocation targets for all operators with non-zero weight.
+    /// @notice Returns current deposit allocation targets for all operators.
     /// @dev Target = totalCurrent * operatorWeight / totalWeight (in validator count).
     ///      Includes operators regardless of depositable capacity for informational purposes.
     ///      Actual allocation recalculates shares only across operators with available capacity,
     ///      so real per-operator amounts may differ from the targets shown here.
+    ///      Arrays are indexed by operator id; zero-weight operators have zero values.
     /// @param nodeOperators Node operator storage mapping from the module.
     /// @param operatorsCount Total operators count in the module.
-    /// @return operatorIds Eligible operator ids.
     /// @return currents Current active validator count per operator.
     /// @return targets Target validator count per operator.
     function getDepositAllocationTargets(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 operatorsCount
-    ) external view returns (uint256[] memory operatorIds, uint256[] memory currents, uint256[] memory targets) {
-        if (operatorsCount == 0) return (operatorIds, currents, targets);
+    ) external view returns (uint256[] memory currents, uint256[] memory targets) {
+        if (operatorsCount == 0) return (currents, targets);
 
-        operatorIds = new uint256[](operatorsCount);
         currents = new uint256[](operatorsCount);
         targets = new uint256[](operatorsCount);
 
@@ -281,7 +280,6 @@ library CuratedDepositAllocator {
 
         uint256 weightSum;
         uint256 totalCurrent;
-        uint256 count;
         for (uint256 i; i < operatorsCount; ++i) {
             NodeOperator storage no = nodeOperators[i];
             (uint256 weight, uint256 externalStake) = metaRegistry.getNodeOperatorWeightAndExternalStake(i);
@@ -291,45 +289,38 @@ library CuratedDepositAllocator {
                 uint256 current = no.totalDepositedKeys - no.totalWithdrawnKeys;
                 if (externalStake > 0) current += externalStake / WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE;
 
-                operatorIds[count] = i;
-                currents[count] = current;
+                currents[i] = current;
                 // Temporarily store raw weight in targets; will be converted below.
-                targets[count] = weight;
+                targets[i] = weight;
                 weightSum += weight;
                 totalCurrent += current;
-                ++count;
             }
         }
 
-        if (count == 0) return (new uint256[](0), new uint256[](0), new uint256[](0));
+        if (weightSum == 0) return (currents, targets);
 
-        for (uint256 i; i < count; ++i) {
+        for (uint256 i; i < operatorsCount; ++i) {
+            if (targets[i] == 0) continue;
             targets[i] = Math.mulDiv(totalCurrent, targets[i], weightSum);
-        }
-        assembly {
-            mstore(operatorIds, count)
-            mstore(currents, count)
-            mstore(targets, count)
         }
     }
 
-    /// @notice Returns current top-up allocation targets for all operators with non-zero weight.
+    /// @notice Returns current top-up allocation targets for all operators.
     /// @dev Target = totalCurrent * operatorWeight / totalWeight (in wei).
     ///      Includes operators regardless of top-up capacity for informational purposes.
     ///      Actual allocation recalculates shares only across operators with available capacity,
     ///      so real per-operator amounts may differ from the targets shown here.
+    ///      Arrays are indexed by operator id; zero-weight operators have zero values.
     /// @param nodeOperatorBalances Per-operator balance (in wei) storage mapping from the module.
     /// @param operatorsCount Total operators count in the module.
-    /// @return operatorIds Eligible operator ids.
     /// @return currents Current operator stake in wei.
     /// @return targets Target operator stake in wei.
     function getTopUpAllocationTargets(
         mapping(uint256 => uint256) storage nodeOperatorBalances,
         uint256 operatorsCount
-    ) external view returns (uint256[] memory operatorIds, uint256[] memory currents, uint256[] memory targets) {
-        if (operatorsCount == 0) return (operatorIds, currents, targets);
+    ) external view returns (uint256[] memory currents, uint256[] memory targets) {
+        if (operatorsCount == 0) return (currents, targets);
 
-        operatorIds = new uint256[](operatorsCount);
         currents = new uint256[](operatorsCount);
         targets = new uint256[](operatorsCount);
 
@@ -337,30 +328,23 @@ library CuratedDepositAllocator {
 
         uint256 weightSum;
         uint256 totalCurrent;
-        uint256 count;
         for (uint256 i; i < operatorsCount; ++i) {
             (uint256 weight, uint256 externalStake) = metaRegistry.getNodeOperatorWeightAndExternalStake(i);
             if (weight == 0) continue;
 
             uint256 currentStake = nodeOperatorBalances[i] + externalStake;
-            operatorIds[count] = i;
-            currents[count] = currentStake;
+            currents[i] = currentStake;
             // Temporarily store raw weight in targets; will be converted below.
-            targets[count] = weight;
+            targets[i] = weight;
             weightSum += weight;
             totalCurrent += currentStake;
-            ++count;
         }
 
-        if (count == 0) return (new uint256[](0), new uint256[](0), new uint256[](0));
+        if (weightSum == 0) return (currents, targets);
 
-        for (uint256 i; i < count; ++i) {
+        for (uint256 i; i < operatorsCount; ++i) {
+            if (targets[i] == 0) continue;
             targets[i] = Math.mulDiv(totalCurrent, targets[i], weightSum);
-        }
-        assembly {
-            mstore(operatorIds, count)
-            mstore(currents, count)
-            mstore(targets, count)
         }
     }
 
