@@ -29,9 +29,7 @@ library CuratedDepositAllocator {
     uint256 public constant MIN_ACTIVATION_BALANCE = 32 ether;
 
     uint256 internal constant DEPOSIT_STEP = 1;
-    // 1 ETH: consensus EFFECTIVE_BALANCE_INCREMENT (and MIN_DEPOSIT_AMOUNT) are 1e9 gwei,
-    // so this is the smallest effective-balance step; EIP‑7251 keeps that increment.
-    uint256 internal constant TOP_UP_STEP = 1 ether;
+    uint256 internal constant TOP_UP_STEP = 2 ether;
 
     /// @notice Allocate new validator deposits across curated operators.
     /// @dev Input preparation and iteration behavior:

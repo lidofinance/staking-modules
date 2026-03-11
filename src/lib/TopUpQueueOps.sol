@@ -22,7 +22,7 @@ library TopUpQueueOps {
     }
 
     // StakingRouter expects non-zero top-up allocations to be at least 1 ether.
-    uint256 internal constant TOP_UP_STEP = 1 ether;
+    uint256 internal constant TOP_UP_STEP = 2 ether;
 
     function allocateDeposits(
         TopUpQueueLib.Queue storage topUpQueue,

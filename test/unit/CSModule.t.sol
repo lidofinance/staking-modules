@@ -802,15 +802,15 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
         bytes[] memory pubkeys = BytesArr(slice(packedPubkeys, 0 * 48, 48), slice(packedPubkeys, 1 * 48, 48));
         uint256[] memory allocations = csm.allocateDeposits({
-            maxDepositAmount: 5 ether,
+            maxDepositAmount: 10 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(0, 1),
             operatorIds: UintArr(0, 0),
-            topUpLimits: UintArr(3 ether, 3 ether)
+            topUpLimits: UintArr(6 ether, 6 ether)
         });
 
         assertEq(_getTopUpQueueLength(), 2);
-        assertEq(allocations, UintArr(3 ether, 2 ether));
+        assertEq(allocations, UintArr(6 ether, 4 ether));
 
         uint256 noId;
         uint256 keyIndex;
@@ -829,15 +829,15 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
         bytes[] memory pubkeys = BytesArr(slice(packedPubkeys, 0 * 48, 48), slice(packedPubkeys, 1 * 48, 48));
         uint256[] memory allocations = csm.allocateDeposits({
-            maxDepositAmount: 4 ether,
+            maxDepositAmount: 6 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(0, 1),
             operatorIds: UintArr(0, 0),
-            topUpLimits: UintArr(2 ether, 1 ether)
+            topUpLimits: UintArr(4 ether, 2 ether)
         });
 
         assertEq(_getTopUpQueueLength(), 1);
-        assertEq(allocations, UintArr(2 ether, 1 ether));
+        assertEq(allocations, UintArr(4 ether, 2 ether));
 
         uint256 noId;
         uint256 keyIndex;
@@ -857,14 +857,14 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
         bytes[] memory pubkeys = BytesArr(slice(packedPubkeys, 0 * 48, 48), slice(packedPubkeys, 1 * 48, 48));
         uint256[] memory allocations = csm.allocateDeposits({
-            maxDepositAmount: 2 ether,
+            maxDepositAmount: 4 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(0, 1),
             operatorIds: UintArr(0, 0),
-            topUpLimits: UintArr(1 ether, 1 ether)
+            topUpLimits: UintArr(2 ether, 2 ether)
         });
 
-        assertEq(allocations, UintArr(1 ether, 1 ether));
+        assertEq(allocations, UintArr(2 ether, 2 ether));
 
         assertEq(_getTopUpQueueLength(), 1);
 
@@ -885,33 +885,33 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
         bytes[] memory pubkeys = BytesArr(slice(packedPubkeys, 0 * 48, 48), slice(packedPubkeys, 1 * 48, 48));
         uint256[] memory allocations = csm.allocateDeposits({
-            maxDepositAmount: 1 ether,
+            maxDepositAmount: 2 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(0, 1),
             operatorIds: UintArr(0, 0),
-            topUpLimits: UintArr(1 ether, 0)
+            topUpLimits: UintArr(2 ether, 0)
         });
 
-        assertEq(allocations, UintArr(1 ether, 0));
+        assertEq(allocations, UintArr(2 ether, 0));
 
         assertEq(_getTopUpQueueLength(), 0);
     }
 
-    function test_topUp_skipsSubEtherTopUpLimits() public {
+    function test_topUp_skipsSubStepTopUpLimits() public {
         createNodeOperator(2);
         csm.obtainDepositData(2, "");
 
         bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
         bytes[] memory pubkeys = BytesArr(slice(packedPubkeys, 0 * 48, 48), slice(packedPubkeys, 1 * 48, 48));
         uint256[] memory allocations = csm.allocateDeposits({
-            maxDepositAmount: 1 ether,
+            maxDepositAmount: 2 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(0, 1),
             operatorIds: UintArr(0, 0),
-            topUpLimits: UintArr(1 ether - 1 gwei, 1 ether)
+            topUpLimits: UintArr(2 ether - 1 gwei, 2 ether)
         });
 
-        assertEq(allocations, UintArr(0, 1 ether));
+        assertEq(allocations, UintArr(0, 2 ether));
         assertEq(_getTopUpQueueLength(), 0);
     }
 
@@ -941,7 +941,7 @@ contract CSMTopUpQueue is CSMCommon {
 
         bytes memory key = csm.getSigningKeys(0, 0, 1);
         vm.expectEmit(address(csm));
-        emit IBaseModule.KeyAddedBalanceChanged(0, 0, 5 ether);
+        emit IBaseModule.KeyAddedBalanceChanged(0, 0, 4 ether);
 
         csm.allocateDeposits({
             maxDepositAmount: 5 ether,
@@ -969,11 +969,11 @@ contract CSMTopUpQueue is CSMCommon {
         emit ICSModule.TopUpQueueItemProcessed(1, 0);
 
         csm.allocateDeposits({
-            maxDepositAmount: 3 ether,
+            maxDepositAmount: 6 ether,
             pubkeys: pubkeys,
             keyIndices: UintArr(0, 1, 0),
             operatorIds: UintArr(0, 0, 1),
-            topUpLimits: UintArr(1 ether, 1 ether, 1 ether)
+            topUpLimits: UintArr(2 ether, 2 ether, 2 ether)
         });
     }
 
@@ -985,11 +985,11 @@ contract CSMTopUpQueue is CSMCommon {
 
         vm.recordLogs();
         csm.allocateDeposits({
-            maxDepositAmount: 1 ether,
+            maxDepositAmount: 2 ether,
             pubkeys: BytesArr(key),
             keyIndices: UintArr(0),
             operatorIds: UintArr(0),
-            topUpLimits: UintArr(3 ether)
+            topUpLimits: UintArr(4 ether)
         });
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
@@ -1027,7 +1027,7 @@ contract CSMTopUpQueue is CSMCommon {
         csm.obtainDepositData(1, "");
 
         uint256 cap = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
-        setKeyAddedBalance(0, 0, cap - 1 ether);
+        setKeyAddedBalance(0, 0, cap - 2 ether);
 
         bytes memory key = csm.getSigningKeys(0, 0, 1);
         vm.expectEmit(address(csm));
@@ -1041,7 +1041,7 @@ contract CSMTopUpQueue is CSMCommon {
             topUpLimits: UintArr(5 ether)
         });
 
-        assertEq(allocations, UintArr(1 ether));
+        assertEq(allocations, UintArr(2 ether));
     }
 
     function test_withdrawalChargesMissedAmount() public {
