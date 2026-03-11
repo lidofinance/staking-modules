@@ -471,6 +471,8 @@ contract Accounting is
                 //       Any penalties in favour of the protocol should not reduce the amount of the rewards to be split.
                 //       Any rewards used to cover protocol penalties should be split later from the new rewards
                 //       or the Node Operator bond during claim operations.
+                // NOTE: Pending shares are not excluded from the bond balance in `_getUnbondedKeysCount`.
+                //       A subsequent rewards distribution will trigger split settlement, so pending shares will be paid out eventually.
                 if (hasSplits) FeeSplits._increasePendingSharesToSplit(nodeOperatorId, distributed);
             }
         }
@@ -513,7 +515,10 @@ contract Accounting is
         }
     }
 
-    /// @dev Calculates claimable bond shares accounting for locked bond and withdrawn validators
+    /// @dev Calculates claimable bond shares accounting for locked bond and withdrawn validators.
+    ///      Does not subtract pending split transfers, so in rare cases (e.g. paused Accounting, locked or debted bond)
+    ///      may overestimate operator-receivable amount.
+    ///      Off-chain integrations should account for `getPendingSharesToSplit`.
     function _getClaimableBondShares(uint256 nodeOperatorId) internal view returns (uint256) {
         (uint256 currentShares, uint256 requiredShares) = getBondSummaryShares(nodeOperatorId);
         return Math.saturatingSub(currentShares, requiredShares);
