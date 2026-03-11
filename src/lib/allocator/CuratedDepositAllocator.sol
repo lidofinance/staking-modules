@@ -265,16 +265,16 @@ library CuratedDepositAllocator {
     ///      Arrays are indexed by operator id; zero-weight operators have zero values.
     /// @param nodeOperators Node operator storage mapping from the module.
     /// @param operatorsCount Total operators count in the module.
-    /// @return currents Current active validator count per operator.
-    /// @return targets Target validator count per operator.
+    /// @return currentValidators Current active validator count per operator.
+    /// @return targetValidators Target validator count per operator.
     function getDepositAllocationTargets(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 operatorsCount
-    ) external view returns (uint256[] memory currents, uint256[] memory targets) {
-        if (operatorsCount == 0) return (currents, targets);
+    ) external view returns (uint256[] memory currentValidators, uint256[] memory targetValidators) {
+        if (operatorsCount == 0) return (currentValidators, targetValidators);
 
-        currents = new uint256[](operatorsCount);
-        targets = new uint256[](operatorsCount);
+        currentValidators = new uint256[](operatorsCount);
+        targetValidators = new uint256[](operatorsCount);
 
         IMetaRegistry metaRegistry = ICuratedModule(address(this)).META_REGISTRY();
 
@@ -289,19 +289,19 @@ library CuratedDepositAllocator {
                 uint256 current = no.totalDepositedKeys - no.totalWithdrawnKeys;
                 if (externalStake > 0) current += externalStake / WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE;
 
-                currents[i] = current;
-                // Temporarily store raw weight in targets; will be converted below.
-                targets[i] = weight;
+                currentValidators[i] = current;
+                // Temporarily store raw weight in targetValidators; will be converted below.
+                targetValidators[i] = weight;
                 weightSum += weight;
                 totalCurrent += current;
             }
         }
 
-        if (weightSum == 0) return (currents, targets);
+        if (weightSum == 0) return (currentValidators, targetValidators);
 
         for (uint256 i; i < operatorsCount; ++i) {
-            if (targets[i] == 0) continue;
-            targets[i] = Math.mulDiv(totalCurrent, targets[i], weightSum);
+            if (targetValidators[i] == 0) continue;
+            targetValidators[i] = Math.mulDiv(totalCurrent, targetValidators[i], weightSum);
         }
     }
 
@@ -313,16 +313,16 @@ library CuratedDepositAllocator {
     ///      Arrays are indexed by operator id; zero-weight operators have zero values.
     /// @param nodeOperatorBalances Per-operator balance (in wei) storage mapping from the module.
     /// @param operatorsCount Total operators count in the module.
-    /// @return currents Current operator stake in wei.
-    /// @return targets Target operator stake in wei.
+    /// @return currentAllocations Current operator stake in wei.
+    /// @return targetAllocations Target operator stake in wei.
     function getTopUpAllocationTargets(
         mapping(uint256 => uint256) storage nodeOperatorBalances,
         uint256 operatorsCount
-    ) external view returns (uint256[] memory currents, uint256[] memory targets) {
-        if (operatorsCount == 0) return (currents, targets);
+    ) external view returns (uint256[] memory currentAllocations, uint256[] memory targetAllocations) {
+        if (operatorsCount == 0) return (currentAllocations, targetAllocations);
 
-        currents = new uint256[](operatorsCount);
-        targets = new uint256[](operatorsCount);
+        currentAllocations = new uint256[](operatorsCount);
+        targetAllocations = new uint256[](operatorsCount);
 
         IMetaRegistry metaRegistry = ICuratedModule(address(this)).META_REGISTRY();
 
@@ -333,18 +333,18 @@ library CuratedDepositAllocator {
             if (weight == 0) continue;
 
             uint256 currentStake = nodeOperatorBalances[i] + externalStake;
-            currents[i] = currentStake;
-            // Temporarily store raw weight in targets; will be converted below.
-            targets[i] = weight;
+            currentAllocations[i] = currentStake;
+            // Temporarily store raw weight in targetAllocations; will be converted below.
+            targetAllocations[i] = weight;
             weightSum += weight;
             totalCurrent += currentStake;
         }
 
-        if (weightSum == 0) return (currents, targets);
+        if (weightSum == 0) return (currentAllocations, targetAllocations);
 
         for (uint256 i; i < operatorsCount; ++i) {
-            if (targets[i] == 0) continue;
-            targets[i] = Math.mulDiv(totalCurrent, targets[i], weightSum);
+            if (targetAllocations[i] == 0) continue;
+            targetAllocations[i] = Math.mulDiv(totalCurrent, targetAllocations[i], weightSum);
         }
     }
 
