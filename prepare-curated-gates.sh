@@ -54,3 +54,7 @@ for i in $(seq 0 $((GATE_COUNT - 1))); do
 done
 
 echo "See: script/curated/DeployMainnet.s.sol for full configuration"
+echo ""
+echo "Next: Run ./update-curated-trees.sh to update allowed addresses"
+echo ""
+echo "=== Done ==="
