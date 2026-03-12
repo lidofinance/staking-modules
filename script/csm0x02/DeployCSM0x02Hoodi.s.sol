@@ -47,10 +47,8 @@ contract DeployCSM0x02Hoodi is DeployCSM0x02Base {
         config.capellaSlot = 0; // @see https://github.com/eth-clients/hoodi/blob/main/metadata/config.yaml#L33
 
         // Accounting
-        // TODO: Set proper default bond curve values for CSM0x02.
-        // Temporary placeholder: 32 ETH per key.
         config.defaultBondCurve.push([1, 32 ether]);
-        config.defaultBondCurve.push([2, 32 ether]);
+        config.defaultBondCurve.push([2, 24 ether]);
 
         config.minBondLockPeriod = 1 days;
         config.maxBondLockPeriod = 365 days;
@@ -68,7 +66,7 @@ contract DeployCSM0x02Hoodi is DeployCSM0x02Base {
         config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
         config.defaultKeysLimit = type(uint256).max;
         config.defaultAvgPerfLeewayBP = 300;
-        config.defaultRewardShareBP = 5834; // 58.34% of 6% = 3.5% of the total
+        config.defaultRewardShareBP = 10000; // 100% of 2% = 2% of the total
         config.defaultStrikesLifetimeFrames = 6;
         config.defaultStrikesThreshold = 3;
         config.queueLowestPriority = 5;
@@ -79,7 +77,7 @@ contract DeployCSM0x02Hoodi is DeployCSM0x02Base {
         config.defaultBlocksWeight = 8; // https://eth2book.info/capella/part2/incentives/rewards/
         config.defaultSyncWeight = 2; // https://eth2book.info/capella/part2/incentives/rewards/
         config.defaultAllowedExitDelay = 4 days;
-        config.defaultExitDelayFee = 0.1 ether;
+        config.defaultExitDelayFee = 0.01 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
         config.penaltiesManager = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
 

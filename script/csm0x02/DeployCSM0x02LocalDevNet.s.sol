@@ -37,10 +37,8 @@ contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
         config.capellaSlot = vm.envUint("DEVNET_CAPELLA_EPOCH") * config.slotsPerEpoch;
 
         // Accounting
-        // TODO: Set proper default bond curve values for CSM0x02.
-        // Temporary placeholder: 32 ETH per key.
         config.defaultBondCurve.push([1, 32 ether]);
-        config.defaultBondCurve.push([2, 32 ether]);
+        config.defaultBondCurve.push([2, 24 ether]);
 
         config.minBondLockPeriod = 1 days;
         config.maxBondLockPeriod = 7 days;

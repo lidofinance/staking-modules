@@ -19,7 +19,7 @@ contract DeployCSM0x02Mainnet is DeployCSM0x02Base {
         config.slotsPerEpoch = 32; // https://github.com/ethereum/consensus-specs/blob/7df1ce30384b13d01617f8ddf930f4035da0f689/specs/phase0/beacon-chain.md?plain=1#L246
         config.clGenesisTime = 1606824023; // https://github.com/eth-clients/mainnet/blob/f6b7882618a5ad2c1d2731ae35e5d16a660d5bb7/README.md?plain=1#L10
         config.oracleReportEpochsPerFrame = 225 * 28; // 28 days
-        config.fastLaneLengthSlots = 1800;
+        config.fastLaneLengthSlots = 300;
         config.consensusVersion = 4;
         config.oracleMembers = new address[](9);
         config.oracleMembers[0] = 0x73181107c8D9ED4ce0bbeF7A0b4ccf3320C41d12; // Instadapp
@@ -45,9 +45,8 @@ contract DeployCSM0x02Mainnet is DeployCSM0x02Base {
 
         // Accounting
         // TODO: Set proper default bond curve values for CSM0x02.
-        // Temporary placeholder: 32 ETH per key.
         config.defaultBondCurve.push([1, 32 ether]);
-        config.defaultBondCurve.push([2, 32 ether]);
+        config.defaultBondCurve.push([2, 24 ether]);
 
         config.minBondLockPeriod = 4 weeks;
         config.maxBondLockPeriod = 365 days;
@@ -66,7 +65,7 @@ contract DeployCSM0x02Mainnet is DeployCSM0x02Base {
         config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
         config.defaultKeysLimit = type(uint256).max;
         config.defaultAvgPerfLeewayBP = 300;
-        config.defaultRewardShareBP = 5834; // 58.34% of 6% = 3.5% of the total
+        config.defaultRewardShareBP = 10000; // 100% of 2% = 2% of the total
         config.defaultStrikesLifetimeFrames = 6;
         config.defaultStrikesThreshold = 3;
         config.queueLowestPriority = 5;
@@ -77,7 +76,7 @@ contract DeployCSM0x02Mainnet is DeployCSM0x02Base {
         config.defaultBlocksWeight = 8; // https://eth2book.info/capella/part2/incentives/rewards/
         config.defaultSyncWeight = 2; // https://eth2book.info/capella/part2/incentives/rewards/
         config.defaultAllowedExitDelay = 4 days;
-        config.defaultExitDelayFee = 0.1 ether;
+        config.defaultExitDelayFee = 0.01 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
         config.penaltiesManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
 
