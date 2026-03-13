@@ -2051,27 +2051,27 @@ contract CuratedMisc is ModuleMisc, CuratedCommon {
         assertEq(module.getInitializedVersion(), 1);
     }
 
-    function test_onNodeOperatorBondCurveChange_updatesDepositable() public assertInvariants {
+    function test_updateDepositInfo_updatesDepositable() public assertInvariants {
         uint256 noId = createNodeOperator(4);
 
         uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
         assertEq(depositableBefore, 4);
 
         accounting.updateBondCurve(0, BOND_SIZE * 2);
-        cm.onNodeOperatorBondCurveChange(noId);
+        cm.updateDepositInfo(noId);
 
         uint256 depositableAfter = module.getNodeOperator(noId).depositableValidatorsCount;
         assertEq(depositableAfter, 2);
     }
 
-    function test_onNodeOperatorBondCurveChange_ZeroDepositableIfWeightIsZero() public assertInvariants {
+    function test_updateDepositInfo_ZeroDepositableIfWeightIsZero() public assertInvariants {
         uint256 noId = createNodeOperator(4);
 
         uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
         assertEq(depositableBefore, 4);
 
         _mockOperatorWeight(noId, 0);
-        cm.onNodeOperatorBondCurveChange(noId);
+        cm.updateDepositInfo(noId);
 
         uint256 depositableAfter = module.getNodeOperator(noId).depositableValidatorsCount;
         assertEq(depositableAfter, 0);

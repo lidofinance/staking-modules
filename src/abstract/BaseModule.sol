@@ -371,7 +371,7 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external {
+    function updateDepositInfo(uint256 nodeOperatorId) external {
         _updateDepositInfo(nodeOperatorId);
     }
 

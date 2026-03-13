@@ -2157,14 +2157,14 @@ contract CSMMisc is ModuleMisc, CSMCommon {
         assertEq(module.getInitializedVersion(), 3);
     }
 
-    function test_onNodeOperatorBondCurveChange_updatesDepositable() public assertInvariants {
+    function test_updateDepositInfo_updatesDepositable() public assertInvariants {
         uint256 noId = createNodeOperator(4);
 
         uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
         assertEq(depositableBefore, 4);
 
         accounting.updateBondCurve(0, BOND_SIZE * 2);
-        csm.onNodeOperatorBondCurveChange(0);
+        csm.updateDepositInfo(0);
 
         uint256 depositableAfter = module.getNodeOperator(noId).depositableValidatorsCount;
         assertEq(depositableAfter, 2);

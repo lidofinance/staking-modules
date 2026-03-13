@@ -293,9 +293,9 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param nodeOperatorId ID of the Node Operator
     function updateDepositableValidatorsCount(uint256 nodeOperatorId) external;
 
-    /// @notice Notify the module about a node operator bond curve change.
+    /// @notice Update deposit info for the given Node Operator.
     /// @param nodeOperatorId ID of the Node Operator
-    function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external;
+    function updateDepositInfo(uint256 nodeOperatorId) external;
 
     /// @notice Request a full update of deposit info for all node operators.
     ///         Should be called after external changes that can affect deposit info such as bond curve change or parameters update.
