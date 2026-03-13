@@ -253,9 +253,10 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param maxAmounts Maximum amounts to settle for each Node Operator
     function settleGeneralDelayedPenalty(uint256[] memory nodeOperatorIds, uint256[] memory maxAmounts) external;
 
-    /// @notice Propose a new manager address for the Node Operator
+    /// @notice Propose a new manager address for the Node Operator.
+    /// @dev Passing address(0) clears the pending proposal without changing the current manager address.
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param proposedAddress Proposed manager address
+    /// @param proposedAddress Proposed manager address, or address(0) to cancel the current proposal
     function proposeNodeOperatorManagerAddressChange(uint256 nodeOperatorId, address proposedAddress) external;
 
     /// @notice Confirm a new manager address for the Node Operator.
@@ -268,9 +269,10 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param nodeOperatorId ID of the Node Operator
     function resetNodeOperatorManagerAddress(uint256 nodeOperatorId) external;
 
-    /// @notice Propose a new reward address for the Node Operator
+    /// @notice Propose a new reward address for the Node Operator.
+    /// @dev Passing address(0) clears the pending proposal without changing the current reward address.
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param proposedAddress Proposed reward address
+    /// @param proposedAddress Proposed reward address, or address(0) to cancel the current proposal
     function proposeNodeOperatorRewardAddressChange(uint256 nodeOperatorId, address proposedAddress) external;
 
     /// @notice Confirm a new reward address for the Node Operator.
