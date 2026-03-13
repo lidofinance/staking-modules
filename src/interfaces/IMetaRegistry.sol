@@ -146,6 +146,9 @@ interface IMetaRegistry {
     /// @return weight Effective allocation weight.
     /// @return externalStake External stake amount in wei.
     /// @dev Returns (0, 0) if the operator is not in a group.
+    /// @dev During partial deposit info refreshes, cached weights may be updated only for a subset
+    ///      of operators, so direct reads can transiently reflect mixed-state group totals.
+    ///      Integrations that require a fully refreshed view should prefer the curated module getter.
     function getNodeOperatorWeightAndExternalStake(
         uint256 nodeOperatorId
     ) external view returns (uint256 weight, uint256 externalStake);

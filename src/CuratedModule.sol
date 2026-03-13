@@ -205,6 +205,14 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     /// @inheritdoc ICuratedModule
+    function getNodeOperatorWeightAndExternalStake(
+        uint256 nodeOperatorId
+    ) external view returns (uint256 weight, uint256 externalStake) {
+        _requireDepositInfoUpToDate();
+        return _metaRegistry().getNodeOperatorWeightAndExternalStake(nodeOperatorId);
+    }
+
+    /// @inheritdoc ICuratedModule
     function getNodeOperatorBalance(uint256 operatorId) external view returns (uint256) {
         return _curatedStorage().operatorBalances[operatorId];
     }

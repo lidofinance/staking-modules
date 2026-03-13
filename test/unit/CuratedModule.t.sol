@@ -1597,6 +1597,40 @@ contract CuratedGetOperatorsWeights is CuratedCommon {
     }
 }
 
+contract CuratedGetNodeOperatorWeightAndExternalStake is CuratedCommon {
+    function test_getNodeOperatorWeightAndExternalStake_ReturnsMetaRegistryValues() public assertInvariants {
+        createNodeOperator(1);
+
+        uint256 nodeOperatorId = 0;
+        vm.mockCall(
+            address(metaRegistry),
+            abi.encodeWithSelector(IMetaRegistry.getNodeOperatorWeightAndExternalStake.selector, nodeOperatorId),
+            abi.encode(42, 7 ether)
+        );
+
+        (uint256 weight, uint256 externalStake) = cm.getNodeOperatorWeightAndExternalStake(nodeOperatorId);
+        assertEq(weight, 42);
+        assertEq(externalStake, 7 ether);
+    }
+
+    function test_getNodeOperatorWeightAndExternalStake_revertWhen_DepositInfoIsNotUpToDate() public assertInvariants {
+        createNodeOperator(1);
+
+        uint256 nodeOperatorId = 0;
+        vm.mockCall(
+            address(metaRegistry),
+            abi.encodeWithSelector(IMetaRegistry.getNodeOperatorWeightAndExternalStake.selector, nodeOperatorId),
+            abi.encode(42, 7 ether)
+        );
+
+        vm.prank(address(accounting));
+        module.requestFullDepositInfoUpdate();
+
+        vm.expectRevert(IBaseModule.DepositInfoIsNotUpToDate.selector);
+        cm.getNodeOperatorWeightAndExternalStake(nodeOperatorId);
+    }
+}
+
 contract CuratedGetDepositAllocationTargets is CuratedCommon {
     function test_getDepositAllocationTargets() public assertInvariants {
         uint256 firstId = createNodeOperator(2);
