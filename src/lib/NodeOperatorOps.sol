@@ -326,6 +326,11 @@ library NodeOperatorOps {
             unchecked {
                 targetValidatorsCount = no.totalAddedKeys - no.totalWithdrawnKeys - totalUnbondedKeys;
             }
+            // NOTE: If a targetLimit is manually set for the Node Operator and the Node Operator has unbonded keys
+            //       we take the lowest value and set the target limit mode to FORCED_TARGET_LIMIT_MODE_ID.
+            //       This can potentially speed up withdrawal requests for this Node Operator if the target limit set manually was set with targetLimitMode = 1
+            //       and the target limit value was higher than the number of validators left after ejecting unbonded keys,
+            //       but it ensures that Node Operators cannot game the limit by obtaining a few unbonded keys and effectively reducing the target limit value.
             if (no.targetLimitMode > 0) targetValidatorsCount = Math.min(targetValidatorsCount, no.targetLimit);
         } else {
             targetLimitMode = no.targetLimitMode;
