@@ -537,6 +537,27 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         module.reportSlashedWithdrawnValidators(validatorInfos);
     }
 
+    function test_reportSlashedWithdrawnValidators_slashingPenaltyIsZero_fallbackPath() public assertInvariants {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        module.reportValidatorSlashing(noId, keyIndex);
+
+        uint256 balanceShortage = 1 ether;
+
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE - balanceShortage,
+            slashingPenalty: 0,
+            isSlashed: true
+        });
+
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, balanceShortage));
+        module.reportSlashedWithdrawnValidators(validatorInfos);
+    }
+
     function test_reportSlashedWithdrawnValidators_slashingPenalty_RevertWhenNotReported() public assertInvariants {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
@@ -1207,13 +1228,17 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(accounting.getBond(noId), bondBefore - 10 ether);
     }
 
-    function test_keyAddedBalance_doesNotChargeWhenSlashed() public assertInvariants {
+    function test_keyAddedBalance_PenalizeWhenSlashed() public assertInvariants {
         uint256 noId = createNodeOperator();
 
         module.obtainDepositData(1, "");
         module.reportValidatorSlashing(noId, 0);
 
-        setKeyAddedBalance(noId, 0, 10 ether);
+        uint256 addedBalance = 10 ether;
+
+        setKeyAddedBalance(noId, 0, addedBalance);
+
+        uint256 balanceShortage = 1 ether;
 
         vm.deal(address(this), 100 ether);
         accounting.depositETH{ value: 100 ether }(noId);
@@ -1223,12 +1248,12 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: 1 ether,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + addedBalance - balanceShortage,
             slashingPenalty: 0,
             isSlashed: true
         });
 
         module.reportSlashedWithdrawnValidators(validatorInfos);
-        assertEq(accounting.getBond(noId), bondBefore);
+        assertApproxEqAbs(accounting.getBond(noId), bondBefore - balanceShortage, 1 wei);
     }
 }
