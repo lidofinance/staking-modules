@@ -59,6 +59,9 @@ library TopUpQueueOps {
         bytes[] calldata pubkeys,
         TopUpKeyParams memory data
     ) private returns (uint256[] memory allocations) {
+        // Keep batch allocations on the same top-up step as per-key limits.
+        maxDepositAmount = _quantizeAmount(maxDepositAmount);
+
         uint256 keyCount = pubkeys.length;
         allocations = new uint256[](keyCount);
 

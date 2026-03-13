@@ -998,6 +998,37 @@ contract CSMTopUpQueue is CSMCommon {
         }
     }
 
+    function test_topUp_quantizesDepositAmountToStep() public {
+        createNodeOperator(1);
+        csm.obtainDepositData(1, "");
+
+        bytes memory key = csm.getSigningKeys(0, 0, 1);
+
+        uint256[] memory firstAllocations = csm.allocateDeposits({
+            maxDepositAmount: 3 ether,
+            pubkeys: BytesArr(key),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(4 ether)
+        });
+
+        assertEq(firstAllocations, UintArr(2 ether));
+        assertEq(_getTopUpQueueLength(), 1);
+        assertEq(csm.getKeyAddedBalance(0, 0), 2 ether);
+
+        uint256[] memory secondAllocations = csm.allocateDeposits({
+            maxDepositAmount: 2 ether,
+            pubkeys: BytesArr(key),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(2 ether)
+        });
+
+        assertEq(secondAllocations, UintArr(2 ether));
+        assertEq(_getTopUpQueueLength(), 0);
+        assertEq(csm.getKeyAddedBalance(0, 0), 4 ether);
+    }
+
     function test_topUp_noEmitWhenKeyAtCap() public {
         createNodeOperator(1);
         csm.obtainDepositData(1, "");
