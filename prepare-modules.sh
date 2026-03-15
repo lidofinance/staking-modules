@@ -7,8 +7,7 @@
 # 0. Upgrades StakingRouter v3 → v4
 # 1. Upgrades CSM to v3 + executes vote
 # 2. Deploys CM (Curated Module) v2 + executes vote
-# 3. Deploys CSM 0x02 + executes vote
-# 4. Updates SMDiscovery caches
+# 3. Updates SMDiscovery caches
 
 set -e
 
@@ -89,8 +88,85 @@ if [ "$CSM_VERSION" -lt 3 ]; then
   echo "Done"
   echo ""
 
-  echo ">>> Executing CSM v3 upgrade vote..."
-  DEPLOY_CONFIG=./artifacts/local/upgrade-hoodi.json just vote-upgrade
+  echo ">>> Executing CSM v3 proxy upgrades..."
+  UPGRADE_CONFIG=./artifacts/local/upgrade-hoodi.json
+
+  # Precompute finalize calldata
+  FINALIZE_V3=$(cast calldata "finalizeUpgradeV3()")
+  # consensusVersion=4 per DeployHoodi.s.sol / DeployMainnet.s.sol
+  FINALIZE_V3_ORACLE=$(cast calldata "finalizeUpgradeV3(uint256)" 4)
+
+  # Enable global auto-impersonation (same as _impersonate-script in fork.just)
+  cast rpc anvil_autoImpersonateAccount true --rpc-url "$RPC_URL" > /dev/null
+
+  upgrade_proxy() {
+    local proxy=$1 impl=$2 calldata=${3:-""}
+    local admin retries=3
+    admin=$(cast call "$proxy" "proxy__getAdmin()(address)" --rpc-url "$RPC_URL")
+    cast rpc anvil_setBalance "$admin" "0x8AC7230489E80000" --rpc-url "$RPC_URL" > /dev/null
+    for ((i=1; i<=retries; i++)); do
+      if [ -n "$calldata" ]; then
+        cast send --unlocked --from "$admin" "$proxy" \
+          "proxy__upgradeToAndCall(address,bytes)" "$impl" "$calldata" \
+          --rpc-url "$RPC_URL" > /dev/null && return 0
+      else
+        cast send --unlocked --from "$admin" "$proxy" \
+          "proxy__upgradeTo(address)" "$impl" \
+          --rpc-url "$RPC_URL" > /dev/null && return 0
+      fi
+      echo "    attempt $i/$retries failed, retrying..."
+      sleep 1
+    done
+    echo "    ERROR: upgrade failed after $retries attempts"
+    return 1
+  }
+
+  echo "  CSModule"
+  upgrade_proxy \
+    "$(jq -r .CSModule "$UPGRADE_CONFIG")" \
+    "$(jq -r .CSModuleImpl "$UPGRADE_CONFIG")" \
+    "$FINALIZE_V3"
+
+  echo "  ParametersRegistry"
+  upgrade_proxy \
+    "$(jq -r .ParametersRegistry "$UPGRADE_CONFIG")" \
+    "$(jq -r .ParametersRegistryImpl "$UPGRADE_CONFIG")" \
+    "$FINALIZE_V3"
+
+  echo "  FeeOracle"
+  upgrade_proxy \
+    "$(jq -r .FeeOracle "$UPGRADE_CONFIG")" \
+    "$(jq -r .FeeOracleImpl "$UPGRADE_CONFIG")" \
+    "$FINALIZE_V3_ORACLE"
+
+  echo "  VettedGate"
+  upgrade_proxy \
+    "$(jq -r .VettedGate "$UPGRADE_CONFIG")" \
+    "$(jq -r .VettedGateImpl "$UPGRADE_CONFIG")"
+
+  echo "  Accounting"
+  upgrade_proxy \
+    "$(jq -r .Accounting "$UPGRADE_CONFIG")" \
+    "$(jq -r .AccountingImpl "$UPGRADE_CONFIG")" \
+    "$FINALIZE_V3"
+
+  echo "  FeeDistributor"
+  upgrade_proxy \
+    "$(jq -r .FeeDistributor "$UPGRADE_CONFIG")" \
+    "$(jq -r .FeeDistributorImpl "$UPGRADE_CONFIG")" \
+    "$FINALIZE_V3"
+
+  echo "  ExitPenalties"
+  upgrade_proxy \
+    "$(jq -r .ExitPenalties "$UPGRADE_CONFIG")" \
+    "$(jq -r .ExitPenaltiesImpl "$UPGRADE_CONFIG")"
+
+  echo "  ValidatorStrikes"
+  upgrade_proxy \
+    "$(jq -r .ValidatorStrikes "$UPGRADE_CONFIG")" \
+    "$(jq -r .ValidatorStrikesImpl "$UPGRADE_CONFIG")"
+
+  cast rpc anvil_autoImpersonateAccount false --rpc-url "$RPC_URL" > /dev/null
   echo "Done"
 else
   echo ">>> CSM already v3, skipping"
@@ -108,23 +184,10 @@ DEPLOY_CONFIG=./artifacts/local/curated/deploy-hoodi.json just vote-add-curated-
 echo "Done"
 echo ""
 
-# Step 3: CSM 0x02 Deployment
-echo ">>> Deploying CSM 0x02..."
-just deploy-csm0x02 --silent --private-key="$LOCAL_PK"
-echo "Done"
-echo ""
-
-echo ">>> Executing CSM 0x02 add module vote..."
-DEPLOY_CONFIG=./artifacts/local/csm0x02/deploy-hoodi.json just vote-add-csm0x02-module
-echo "Done"
-echo ""
-
-# Step 4: Update SMDiscovery caches
+# Step 3: Update SMDiscovery caches
 SM_DISCOVERY="0x2E04CC1F1dac245f66a5C7c5288Bdd4f7cF0c8b4"
 echo ">>> Updating SMDiscovery caches..."
 cast send "$SM_DISCOVERY" "updateModuleCache(uint256)" 5 \
-  --rpc-url="$RPC_URL" --private-key="$LOCAL_PK"
-cast send "$SM_DISCOVERY" "updateModuleCache(uint256)" 6 \
   --rpc-url="$RPC_URL" --private-key="$LOCAL_PK"
 echo "Done"
 echo ""
@@ -134,7 +197,6 @@ echo "=== Summary ==="
 echo "SR v4: Upgraded"
 echo "CSM v3: Upgraded"
 echo "CM v2: Deployed"
-echo "CSM 0x02: Deployed"
 echo "SMDiscovery caches: Updated"
 echo ""
 echo "Next: Run ./prepare-curated-gates.sh to setup curated gates"
