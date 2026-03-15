@@ -1,44 +1,23 @@
 # IEjector
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IEjector.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IEjector.sol)
 
 **Inherits:**
-[IExitTypes](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IExitTypes.sol/interface.IExitTypes.md)
+[IExitTypes](/src/interfaces/IExitTypes.sol/interface.IExitTypes.md)
 
 
 ## Functions
-### PAUSE_ROLE
+### stakingModuleId
 
 
 ```solidity
-function PAUSE_ROLE() external view returns (bytes32);
-```
-
-### RESUME_ROLE
-
-
-```solidity
-function RESUME_ROLE() external view returns (bytes32);
-```
-
-### RECOVERER_ROLE
-
-
-```solidity
-function RECOVERER_ROLE() external view returns (bytes32);
-```
-
-### STAKING_MODULE_ID
-
-
-```solidity
-function STAKING_MODULE_ID() external view returns (uint256);
+function stakingModuleId() external view returns (uint256);
 ```
 
 ### MODULE
 
 
 ```solidity
-function MODULE() external view returns (ICSModule);
+function MODULE() external view returns (IBaseModule);
 ```
 
 ### STRIKES
@@ -48,61 +27,15 @@ function MODULE() external view returns (ICSModule);
 function STRIKES() external view returns (address);
 ```
 
-### pauseFor
-
-Pause ejection methods calls
-
-
-```solidity
-function pauseFor(uint256 duration) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`duration`|`uint256`|Duration of the pause in seconds|
-
-
-### resume
-
-Resume ejection methods calls
-
-
-```solidity
-function resume() external;
-```
-
 ### voluntaryEject
 
-Withdraw the validator key from the Node Operator
+Request triggerable full withdrawals for Node Operator validator keys
 
 Called by the node operator
 
 
 ```solidity
-function voluntaryEject(uint256 nodeOperatorId, uint256 startFrom, uint256 keysCount, address refundRecipient)
-    external
-    payable;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`startFrom`|`uint256`|Index of the first key to withdraw|
-|`keysCount`|`uint256`|Number of keys to withdraw|
-|`refundRecipient`|`address`|Address to send the refund to|
-
-
-### voluntaryEjectByArray
-
-Withdraw the validator key from the Node Operator
-
-Called by the node operator
-
-
-```solidity
-function voluntaryEjectByArray(uint256 nodeOperatorId, uint256[] calldata keyIndices, address refundRecipient)
+function voluntaryEject(uint256 nodeOperatorId, uint256[] calldata keyIndices, address refundRecipient)
     external
     payable;
 ```
@@ -155,6 +88,12 @@ event VoluntaryEjectionRequested(uint256 indexed nodeOperatorId, bytes pubkey, a
 
 ```solidity
 event BadPerformerEjectionRequested(uint256 indexed nodeOperatorId, bytes pubkey, address refundRecipient);
+```
+
+### StakingModuleIdCached
+
+```solidity
+event StakingModuleIdCached(uint256 stakingModuleId);
 ```
 
 ## Errors
@@ -210,5 +149,23 @@ error SenderIsNotStrikes();
 
 ```solidity
 error NothingToEject();
+```
+
+### DuplicateKeyIndex
+
+```solidity
+error DuplicateKeyIndex();
+```
+
+### ZeroRefundRecipient
+
+```solidity
+error ZeroRefundRecipient();
+```
+
+### StakingModuleIdNotFound
+
+```solidity
+error StakingModuleIdNotFound();
 ```
 

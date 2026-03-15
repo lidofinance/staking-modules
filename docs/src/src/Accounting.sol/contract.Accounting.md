@@ -1,8 +1,8 @@
 # Accounting
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/Accounting.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/Accounting.sol)
 
 **Inherits:**
-[IAccounting](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IAccounting.sol/interface.IAccounting.md), [BondCore](/Users/dgusakov/projects/community-staking-module/docs/src/src/abstract/BondCore.sol/abstract.BondCore.md), [BondCurve](/Users/dgusakov/projects/community-staking-module/docs/src/src/abstract/BondCurve.sol/abstract.BondCurve.md), [BondLock](/Users/dgusakov/projects/community-staking-module/docs/src/src/abstract/BondLock.sol/abstract.BondLock.md), [PausableUntil](/Users/dgusakov/projects/community-staking-module/docs/src/src/lib/utils/PausableUntil.sol/contract.PausableUntil.md), AccessControlEnumerableUpgradeable, [AssetRecoverer](/Users/dgusakov/projects/community-staking-module/docs/src/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
+[IAccounting](/src/interfaces/IAccounting.sol/interface.IAccounting.md), [BondCore](/src/abstract/BondCore.sol/abstract.BondCore.md), [BondCurve](/src/abstract/BondCurve.sol/abstract.BondCurve.md), [BondLock](/src/abstract/BondLock.sol/abstract.BondLock.md), [FeeSplits](/src/abstract/FeeSplits.sol/abstract.FeeSplits.md), [PausableWithRoles](/src/abstract/PausableWithRoles.sol/abstract.PausableWithRoles.md), AccessControlEnumerableUpgradeable, [AssetRecoverer](/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
 
 **Author:**
 vgorkavenko
@@ -12,17 +12,10 @@ so it should be considered in the recovery process
 
 
 ## State Variables
-### PAUSE_ROLE
+### INITIALIZED_VERSION
 
 ```solidity
-bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE")
-```
-
-
-### RESUME_ROLE
-
-```solidity
-bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE")
+uint64 internal constant INITIALIZED_VERSION = 3
 ```
 
 
@@ -40,17 +33,10 @@ bytes32 public constant SET_BOND_CURVE_ROLE = keccak256("SET_BOND_CURVE_ROLE")
 ```
 
 
-### RECOVERER_ROLE
-
-```solidity
-bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE")
-```
-
-
 ### MODULE
 
 ```solidity
-ICSModule public immutable MODULE
+IBaseModule public immutable MODULE
 ```
 
 
@@ -61,15 +47,10 @@ IFeeDistributor public immutable FEE_DISTRIBUTOR
 ```
 
 
-### _feeDistributorOld
-DEPRECATED
-
-**Note:**
-oz-renamed-from: feeDistributor
-
+### _rewardsClaimers
 
 ```solidity
-IFeeDistributor internal _feeDistributorOld
+mapping(uint256 nodeOperatorId => address rewardsClaimer) internal _rewardsClaimers
 ```
 
 
@@ -77,27 +58,6 @@ IFeeDistributor internal _feeDistributorOld
 
 ```solidity
 address public chargePenaltyRecipient
-```
-
-
-### _feeSplits
-
-```solidity
-mapping(uint256 nodeOperatorId => FeeSplit[]) internal _feeSplits
-```
-
-
-### _pendingSharesToSplit
-
-```solidity
-mapping(uint256 nodeOperatorId => uint256 pendingSharesToSplit) internal _pendingSharesToSplit
-```
-
-
-### _rewardsClaimers
-
-```solidity
-mapping(uint256 nodeOperatorId => address rewardsClaimer) internal _rewardsClaimers
 ```
 
 
@@ -125,14 +85,18 @@ constructor(
 
 |Name|Type|Description|
 |----|----|-----------|
-|`lidoLocator`|`address`|Lido locator contract address|
-|`module`|`address`|Community Staking Module contract address|
+|`lidoLocator`|`address`|Lido Locator contract address|
+|`module`|`address`|Staking Module contract address|
 |`feeDistributor`|`address`|Fee Distributor contract address|
 |`minBondLockPeriod`|`uint256`|Min time in seconds for the bondLock period|
 |`maxBondLockPeriod`|`uint256`|Max time in seconds for the bondLock period|
 
 
 ### initialize
+
+Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
+It is recommended to call this method in the same transaction as the deployment transaction
+and perform extensive deployment verification before using the contract instance.
 
 
 ```solidity
@@ -141,7 +105,7 @@ function initialize(
     address admin,
     uint256 bondLockPeriod,
     address _chargePenaltyRecipient
-) external reinitializer(3);
+) external reinitializer(INITIALIZED_VERSION);
 ```
 **Parameters**
 
@@ -157,37 +121,12 @@ function initialize(
 
 This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing version 2 deployment.
 If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
+To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
 
 
 ```solidity
-function finalizeUpgradeV3() external reinitializer(3);
+function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION);
 ```
-
-### resume
-
-Resume reward claims and deposits
-
-
-```solidity
-function resume() external onlyRole(RESUME_ROLE);
-```
-
-### pauseFor
-
-Pause reward claims and deposits for `duration` seconds
-
-Must be called together with `CSModule.pauseFor`
-
-
-```solidity
-function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`duration`|`uint256`|Duration of the pause in seconds|
-
 
 ### setChargePenaltyRecipient
 
@@ -223,13 +162,20 @@ function setBondLockPeriod(uint256 period) external onlyRole(DEFAULT_ADMIN_ROLE)
 
 Set fee splits for the given Node Operator
 
+FeeSplits can be updated either when there are no splits currently or when there are splits now,
+provided all node operator rewards are distributed and split. It is possible to set splits while
+there are undistributed node operator rewards and no splits are currently set.
+This will result in all undistributed node operator rewards being split.
+If a node operator has never received any node operator rewards, they can set initial splits.
+However, further change will be possible only after getting and splitting the first rewards.
+
 
 ```solidity
 function updateFeeSplits(
     uint256 nodeOperatorId,
+    FeeSplit[] calldata feeSplits,
     uint256 cumulativeFeeShares,
-    bytes32[] calldata rewardsProof,
-    FeeSplit[] calldata feeSplits
+    bytes32[] calldata rewardsProof
 ) external;
 ```
 **Parameters**
@@ -237,9 +183,9 @@ function updateFeeSplits(
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`cumulativeFeeShares`|`uint256`|Cumulative fee stETH shares for the Node Operator|
-|`rewardsProof`|`bytes32[]`|Merkle proof of the rewards|
 |`feeSplits`|`FeeSplit[]`|Array of FeeSplit structs defining recipients and their shares in basis points Total shares must be <= 10_000 (100%). Remainder goes to the Node Operator's bond|
+|`cumulativeFeeShares`|`uint256`|Cumulative fee stETH shares for the Node Operator. Optional|
+|`rewardsProof`|`bytes32[]`|Merkle proof of the rewards. Optional|
 
 
 ### addBondCurve
@@ -273,7 +219,7 @@ Update existing bond curve
 If the curve is updated to a curve with higher values for any point,
 Extensive checks and actions should be performed by the method caller to avoid
 inconsistency in the keys accounting. A manual update of the depositable validators count
-in CSM might be required to ensure that the keys pointers are consistent.
+in staking module might be required to ensure that the keys pointers are consistent.
 
 
 ```solidity
@@ -293,7 +239,7 @@ function updateBondCurve(uint256 curveId, BondCurveIntervalInput[] calldata bond
 
 Set the bond curve for the given Node Operator
 
-Updates depositable validators count in CSM to ensure key pointers consistency
+Updates depositable validators count in staking module to ensure key pointers consistency
 
 
 ```solidity
@@ -311,7 +257,7 @@ function setBondCurve(uint256 nodeOperatorId, uint256 curveId) external onlyRole
 
 Stake user's ETH with Lido and deposit stETH to the bond
 
-Called by CSM exclusively. CSM should check node operator existence and update depositable validators count
+Called by staking module exclusively. Staking module should check node operator existence and update depositable validators count
 
 
 ```solidity
@@ -329,7 +275,7 @@ function depositETH(address from, uint256 nodeOperatorId) external payable whenR
 
 Stake user's ETH with Lido and deposit stETH to the bond
 
-Called by CSM exclusively. CSM should check node operator existence and update depositable validators count
+Permissionless. Enqueues Node Operator's keys if needed
 
 
 ```solidity
@@ -346,7 +292,7 @@ function depositETH(uint256 nodeOperatorId) external payable whenResumed;
 
 Deposit user's stETH to the bond for the given Node Operator
 
-Called by CSM exclusively. CSM should check node operator existence and update depositable validators count
+Called by staking module exclusively. Staking module should check node operator existence and update depositable validators count
 
 
 ```solidity
@@ -369,7 +315,7 @@ function depositStETH(address from, uint256 nodeOperatorId, uint256 stETHAmount,
 
 Deposit user's stETH to the bond for the given Node Operator
 
-Called by CSM exclusively. CSM should check node operator existence and update depositable validators count
+Permissionless. Enqueues Node Operator's keys if needed
 
 
 ```solidity
@@ -390,7 +336,7 @@ function depositStETH(uint256 nodeOperatorId, uint256 stETHAmount, PermitInput c
 
 Unwrap the user's wstETH and deposit stETH to the bond for the given Node Operator
 
-Called by CSM exclusively. CSM should check node operator existence and update depositable validators count
+Called by staking module exclusively. Staking module should check node operator existence and update depositable validators count
 
 
 ```solidity
@@ -413,7 +359,7 @@ function depositWstETH(address from, uint256 nodeOperatorId, uint256 wstETHAmoun
 
 Unwrap the user's wstETH and deposit stETH to the bond for the given Node Operator
 
-Called by CSM exclusively. CSM should check node operator existence and update depositable validators count
+Permissionless. Enqueues Node Operator's keys if needed
 
 
 ```solidity
@@ -436,7 +382,7 @@ Claim full reward (fee + bond) in stETH for the given Node Operator with desirab
 `rewardsProof` and `cumulativeFeeShares` might be empty in order to claim only excess bond
 
 It's impossible to use single-leaf proof via this method, so this case should be treated carefully by
-off-chain tooling, e.g. to make sure a tree has at least 2 leafs.
+off-chain tooling, e.g. to make sure a tree has at least 2 leaves.
 
 
 ```solidity
@@ -469,7 +415,7 @@ Claim full reward (fee + bond) in wstETH for the given Node Operator available f
 `rewardsProof` and `cumulativeFeeShares` might be empty in order to claim only excess bond
 
 It's impossible to use single-leaf proof via this method, so this case should be treated carefully by
-off-chain tooling, e.g. to make sure a tree has at least 2 leafs.
+off-chain tooling, e.g. to make sure a tree has at least 2 leaves.
 
 
 ```solidity
@@ -517,7 +463,7 @@ function claimRewardsUnstETH(
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`stETHAmount`|`uint256`|Amount of ETH to request|
+|`stETHAmount`|`uint256`|Amount of stETH to request|
 |`cumulativeFeeShares`|`uint256`|Cumulative fee stETH shares for the Node Operator|
 |`rewardsProof`|`bytes32[]`|Merkle proof of the rewards|
 
@@ -528,15 +474,15 @@ function claimRewardsUnstETH(
 |`requestId`|`uint256`|Withdrawal NFT ID|
 
 
-### lockBondETH
+### lockBond
 
 Lock bond in ETH for the given Node Operator
 
-Called by CSM exclusively
+Called by staking module exclusively
 
 
 ```solidity
-function lockBondETH(uint256 nodeOperatorId, uint256 amount) external onlyModule;
+function lockBond(uint256 nodeOperatorId, uint256 amount) external onlyModule;
 ```
 **Parameters**
 
@@ -546,15 +492,15 @@ function lockBondETH(uint256 nodeOperatorId, uint256 amount) external onlyModule
 |`amount`|`uint256`|Amount to lock in ETH (stETH)|
 
 
-### releaseLockedBondETH
+### releaseLockedBond
 
 Release locked bond in ETH for the given Node Operator
 
-Called by CSM exclusively
+Called by staking module exclusively
 
 
 ```solidity
-function releaseLockedBondETH(uint256 nodeOperatorId, uint256 amount) external onlyModule;
+function releaseLockedBond(uint256 nodeOperatorId, uint256 amount) external onlyModule returns (bool released);
 ```
 **Parameters**
 
@@ -563,16 +509,37 @@ function releaseLockedBondETH(uint256 nodeOperatorId, uint256 amount) external o
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
 |`amount`|`uint256`|Amount to release in ETH (stETH)|
 
+**Returns**
 
-### compensateLockedBondETH
+|Name|Type|Description|
+|----|----|-----------|
+|`released`|`bool`|True if the bond was released, false if the lock was expired and bond was unlocked instead|
+
+
+### unlockExpiredLock
+
+Unlock expired locked bond for the given Node Operator
+
+
+```solidity
+function unlockExpiredLock(uint256 nodeOperatorId) public;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
+
+
+### compensateLockedBond
 
 Compensate locked bond ETH for the given Node Operator
 
-Called by CSM exclusively
+Called by staking module exclusively
 
 
 ```solidity
-function compensateLockedBondETH(uint256 nodeOperatorId) external payable onlyModule;
+function compensateLockedBond(uint256 nodeOperatorId) external onlyModule returns (uint256 compensatedAmount);
 ```
 **Parameters**
 
@@ -580,22 +547,38 @@ function compensateLockedBondETH(uint256 nodeOperatorId) external payable onlyMo
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
 
+**Returns**
 
-### settleLockedBondETH
+|Name|Type|Description|
+|----|----|-----------|
+|`compensatedAmount`|`uint256`|Amount compensated in ETH (stETH)|
+
+
+### settleLockedBond
 
 Settle locked bond ETH for the given Node Operator
 
-Called by CSM exclusively
+Called by staking module exclusively
 
 
 ```solidity
-function settleLockedBondETH(uint256 nodeOperatorId) external onlyModule returns (bool applied);
+function settleLockedBond(uint256 nodeOperatorId, uint256 maxAmount)
+    external
+    onlyModule
+    returns (uint256 amountSettled);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
+|`maxAmount`|`uint256`|Maximum amount to settle in ETH (stETH)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amountSettled`|`uint256`|Amount settled in ETH (stETH)|
 
 
 ### penalize
@@ -607,7 +590,7 @@ Method call can result in the remaining bond being lower than the locked bond.
 
 
 ```solidity
-function penalize(uint256 nodeOperatorId, uint256 amount) external onlyModule returns (bool fullyBurned);
+function penalize(uint256 nodeOperatorId, uint256 amount) external onlyModule returns (bool penaltyCovered);
 ```
 **Parameters**
 
@@ -620,7 +603,7 @@ function penalize(uint256 nodeOperatorId, uint256 amount) external onlyModule re
 
 |Name|Type|Description|
 |----|----|-----------|
-|`fullyBurned`|`bool`|True if the bond was fully burned, false otherwise|
+|`penaltyCovered`|`bool`|True if the penalty was fully covered by bond burn, false otherwise|
 
 
 ### chargeFee
@@ -632,7 +615,7 @@ Method call can result in the remaining bond being lower than the locked bond.
 
 
 ```solidity
-function chargeFee(uint256 nodeOperatorId, uint256 amount) external onlyModule returns (bool fullyCharged);
+function chargeFee(uint256 nodeOperatorId, uint256 amount) external onlyModule returns (bool);
 ```
 **Parameters**
 
@@ -645,14 +628,12 @@ function chargeFee(uint256 nodeOperatorId, uint256 amount) external onlyModule r
 
 |Name|Type|Description|
 |----|----|-----------|
-|`fullyCharged`|`bool`|True if the bond was fully charged, false otherwise|
+|`<none>`|`bool`|Whether any shares were actually transferred|
 
 
 ### pullAndSplitFeeRewards
 
-Pull fees (if proof provided) from FeeDistributor to the Node Operator's bond and split pending according to configured fee splits.
-
-Permissionless method. Can be called before penalty application to ensure that rewards are also penalized and split.
+Pull fees (if proof provided) from FeeDistributor to the Node Operator's bond and split according to configured fee splits.
 
 
 ```solidity
@@ -701,7 +682,7 @@ function recoverERC20(address token, uint256 amount) external override;
 |Name|Type|Description|
 |----|----|-----------|
 |`token`|`address`|The address of the ERC20 token to recover|
-|`amount`|`uint256`|The amount of the ERC20 token to recover Emits an ERC20Recovered event upon success Optionally, the inheriting contract can override this function to add additional restrictions|
+|`amount`|`uint256`|The amount of the ERC20 token to recover|
 
 
 ### recoverStETHShares
@@ -715,15 +696,6 @@ Accounts for the bond funds stored during recovery
 function recoverStETHShares() external;
 ```
 
-### renewBurnerAllowance
-
-Service method to update allowance to Burner in case it has changed
-
-
-```solidity
-function renewBurnerAllowance() external;
-```
-
 ### getInitializedVersion
 
 Get the initialized version of the contract
@@ -732,27 +704,6 @@ Get the initialized version of the contract
 ```solidity
 function getInitializedVersion() external view returns (uint64);
 ```
-
-### getFeeSplits
-
-Set fee splits for the given Node Operator
-
-
-```solidity
-function getFeeSplits(uint256 nodeOperatorId) external view returns (FeeSplit[] memory);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`nodeOperatorId`|`uint256`|ID of the Node Operator|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`FeeSplit[]`|Array of FeeSplit structs defining recipients and their shares in basis points|
-
 
 ### getCustomRewardsClaimer
 
@@ -775,15 +726,6 @@ function getCustomRewardsClaimer(uint256 nodeOperatorId) external view returns (
 |----|----|-----------|
 |`<none>`|`address`|rewardsClaimer Address allowed to claim rewards on behalf of the Node Operator|
 
-
-### getPendingSharesToSplit
-
-Get the number of the pending shares to be split for the given Node Operator
-
-
-```solidity
-function getPendingSharesToSplit(uint256 nodeOperatorId) external view returns (uint256);
-```
 
 ### getUnbondedKeysCount
 
@@ -810,7 +752,7 @@ function getUnbondedKeysCount(uint256 nodeOperatorId) external view returns (uin
 
 Get the number of the unbonded keys to be ejected using a forcedTargetLimit
 Locked bond is not considered for this calculation to allow Node Operators to
-compensate the locked bond via `compensateLockedBondETH` method before the ejection happens
+compensate the locked bond via `compensateLockedBond` method before the ejection happens
 
 
 ```solidity
@@ -831,7 +773,7 @@ function getUnbondedKeysCountToEject(uint256 nodeOperatorId) external view retur
 
 ### getBondAmountByKeysCountWstETH
 
-Get the bond amount in wstETH required for the `keysCount` keys using the default bond curve
+Get the bond amount in wstETH required for the `keysCount` keys for the given bond curve
 
 
 ```solidity
@@ -923,6 +865,27 @@ function getClaimableRewardsAndBondShares(
 |Name|Type|Description|
 |----|----|-----------|
 |`claimableShares`|`uint256`|Current claimable bond in stETH shares|
+
+
+### getNodeOperatorBondInfo
+
+Get all bond-related info for the given Node Operator in one call
+
+
+```solidity
+function getNodeOperatorBondInfo(uint256 nodeOperatorId) external view returns (NodeOperatorBondInfo memory info);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`info`|`NodeOperatorBondInfo`|Bond info containing current bond, required bond, locked bond, bond debt, and pending shares to split|
 
 
 ### getBondSummary
@@ -1017,7 +980,10 @@ function _unwrapPermitIfRequired(address token, address from, PermitInput callda
 
 ### _getClaimableBondShares
 
-Calculates claimable bond shares accounting for locked bond and withdrawn validators
+Calculates claimable bond shares accounting for locked bond and withdrawn validators.
+Does not subtract pending split transfers, so in rare cases (e.g. paused Accounting, locked or debted bond)
+may overestimate operator-receivable amount.
+Off-chain integrations should account for `getPendingSharesToSplit`.
 
 
 ```solidity
@@ -1052,6 +1018,13 @@ function _getUnbondedKeysCount(uint256 nodeOperatorId, bool includeLockedBond) i
 
 ```solidity
 function _onlyRecoverer() internal view override;
+```
+
+### __checkRole
+
+
+```solidity
+function __checkRole(bytes32 role) internal view override;
 ```
 
 ### _onlyExistingNodeOperator

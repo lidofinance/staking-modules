@@ -1,5 +1,8 @@
 # SigningKeys
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/lib/SigningKeys.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/lib/SigningKeys.sol)
+
+**Title:**
+Library for manage operator keys in storage
 
 **Author:**
 KRogLA
@@ -124,6 +127,15 @@ function loadKeys(uint256 nodeOperatorId, uint256 startIndex, uint256 keysCount)
     returns (bytes memory pubkeys);
 ```
 
+### verifySigningKey
+
+Verify that the key matches the key stored for a specific operator/index.
+
+
+```solidity
+function verifySigningKey(uint256 nodeOperatorId, uint256 keyIndex, bytes calldata key) internal view;
+```
+
 ### initKeysSigsBuf
 
 
@@ -136,6 +148,13 @@ function initKeysSigsBuf(uint256 count) internal pure returns (bytes memory, byt
 
 ```solidity
 function getKeyOffset(bytes32 position, uint256 nodeOperatorId, uint256 keyIndex) internal pure returns (uint256);
+```
+
+### _signingKeysPosition
+
+
+```solidity
+function _signingKeysPosition() internal pure returns (bytes32);
 ```
 
 ## Errors
@@ -155,5 +174,11 @@ error InvalidLength();
 
 ```solidity
 error EmptyKey();
+```
+
+### InvalidSigningKey
+
+```solidity
+error InvalidSigningKey();
 ```
 

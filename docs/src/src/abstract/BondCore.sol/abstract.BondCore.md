@@ -1,8 +1,8 @@
 # BondCore
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/abstract/BondCore.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/abstract/BondCore.sol)
 
 **Inherits:**
-[IBondCore](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IBondCore.sol/interface.IBondCore.md)
+[IBondCore](/src/interfaces/IBondCore.sol/interface.IBondCore.md)
 
 **Author:**
 vgorkavenko
@@ -45,6 +45,13 @@ IWithdrawalQueue public immutable WITHDRAWAL_QUEUE
 
 ```solidity
 IWstETH public immutable WSTETH
+```
+
+
+### BURNER
+
+```solidity
+IBurner public immutable BURNER
 ```
 
 
@@ -121,6 +128,29 @@ function getBond(uint256 nodeOperatorId) public view returns (uint256);
 |`<none>`|`uint256`|Bond amount in ETH (stETH)|
 
 
+### getBondDebt
+
+Get bond debt in ETH for the given Node Operator.
+Bond debt can occur when Node Operator's bond is not enough to cover the penalties.
+Any bond debt will be covered as soon as the Node Operator deposits more bond or receives rewards.
+
+
+```solidity
+function getBondDebt(uint256 nodeOperatorId) public view returns (uint256);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Bond debt in ETH|
+
+
 ### _depositETH
 
 Stake user's ETH with Lido and stores stETH shares as Node Operator's bond shares
@@ -148,11 +178,11 @@ Transfer user's wstETH to the contract, unwrap and store stETH shares as Node Op
 function _depositWstETH(address from, uint256 nodeOperatorId, uint256 amount) internal;
 ```
 
-### _increaseBond
+### _creditBondShares
 
 
 ```solidity
-function _increaseBond(uint256 nodeOperatorId, uint256 shares) internal;
+function _creditBondShares(uint256 nodeOperatorId, uint256 shares) internal;
 ```
 
 ### _claimUnstETH
@@ -195,7 +225,7 @@ function _claimWstETH(uint256 nodeOperatorId, uint256 requestedAmountToClaim, ui
 
 Burn Node Operator's bond shares (stETH). Shares will be burned on the next stETH rebase
 
-The contract that uses this implementation should be granted `Burner.REQUEST_BURN_SHARES_ROLE` and have stETH allowance for `Burner`
+The contract that uses this implementation should be granted `Burner.REQUEST_BURN_MY_STETH_ROLE` and have stETH allowance for `Burner`
 
 
 ```solidity
@@ -205,7 +235,7 @@ function _burn(uint256 nodeOperatorId, uint256 amount) internal returns (uint256
 
 |Name|Type|Description|
 |----|----|-----------|
-|`nodeOperatorId`|`uint256`||
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
 |`amount`|`uint256`|Bond amount to burn in ETH (stETH)|
 
 **Returns**
@@ -221,13 +251,13 @@ Transfer Node Operator's bond shares (stETH) to charge recipient
 
 
 ```solidity
-function _charge(uint256 nodeOperatorId, uint256 amount, address recipient) internal returns (bool fullyCharged);
+function _charge(uint256 nodeOperatorId, uint256 amount, address recipient) internal returns (bool charged);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`nodeOperatorId`|`uint256`||
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
 |`amount`|`uint256`|Bond amount to charge in ETH (stETH)|
 |`recipient`|`address`|Address to send charged shares|
 
@@ -235,7 +265,7 @@ function _charge(uint256 nodeOperatorId, uint256 amount, address recipient) inte
 
 |Name|Type|Description|
 |----|----|-----------|
-|`fullyCharged`|`bool`|True if the amount to charge is equal to the amount charged|
+|`charged`|`bool`|Whether any shares were actually transferred|
 
 
 ### _unsafeReduceBond
@@ -274,6 +304,29 @@ Safe reduce bond shares (stETH). The maximum shares to reduce is the current bon
 function _reduceBond(uint256 nodeOperatorId, uint256 shares) private returns (uint256 reducedShares);
 ```
 
+### _burnWithoutCreatingDebt
+
+
+```solidity
+function _burnWithoutCreatingDebt(uint256 nodeOperatorId, uint256 amount)
+    private
+    returns (uint256 notBurnedAmount);
+```
+
+### _coverBondDebt
+
+
+```solidity
+function _coverBondDebt(uint256 nodeOperatorId) private;
+```
+
+### _increaseBondDebt
+
+
+```solidity
+function _increaseBondDebt(uint256 nodeOperatorId, uint256 amount) private;
+```
+
 ### _getBondCoreStorage
 
 
@@ -284,13 +337,14 @@ function _getBondCoreStorage() private pure returns (BondCoreStorage storage $);
 ## Structs
 ### BondCoreStorage
 **Note:**
-storage-location: erc7201:BondCore
+storage-location: erc7201:CSBondCore
 
 
 ```solidity
 struct BondCoreStorage {
     mapping(uint256 nodeOperatorId => uint256 shares) bondShares;
     uint256 totalBondShares;
+    mapping(uint256 nodeOperatorId => uint256 debt) bondDebt;
 }
 ```
 

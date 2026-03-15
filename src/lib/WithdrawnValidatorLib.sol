@@ -115,9 +115,13 @@ library WithdrawnValidatorLib {
             feeSum += penaltyInfo.elWithdrawalRequestFee.value;
         }
 
-        if (validatorInfo.isSlashed) {
+        if (validatorInfo.isSlashed && validatorInfo.slashingPenalty > 0) {
             // Slashing penalty doesn't scale because all the losses are already accounted.
             penaltySum += validatorInfo.slashingPenalty;
+            // If the validator is slashed but slashingPenalty is not set we do a best effort to penalize
+            // the Node Operator by comparing the exit balance with the minimum expected balance as in a regular withdrawal case.
+            // This allows for a permissionless method to report slashed validators via Verifier.sol without upgrading the module.
+            // Such method will deliver a less precise penalty compared to the case when the exact slashing penalty is set, but it is better than not penalizing at all.
         } else if (validatorInfo.exitBalance < minExpectedBalance) {
             penaltySum += minExpectedBalance - validatorInfo.exitBalance;
         }

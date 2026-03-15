@@ -1,5 +1,5 @@
 # PausableUntil
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/lib/utils/PausableUntil.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/lib/utils/PausableUntil.sol)
 
 
 ## State Variables
@@ -43,9 +43,9 @@ modifier whenResumed() ;
 ### getResumeSinceTimestamp
 
 Returns one of:
-- PAUSE_INFINITELY if paused infinitely returns
-- first second when get contract get resumed if paused for specific duration
-- some timestamp in past if not paused
+- PAUSE_INFINITELY if paused infinitely
+- first second when the contract gets resumed if paused for a specific duration
+- some timestamp in the past if not paused
 
 
 ```solidity

@@ -1,8 +1,11 @@
 # IStETH
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IStETH.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IStETH.sol)
 
 **Inherits:**
-[IERC20Permit](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IERC20Permit.sol/interface.IERC20Permit.md)
+[IERC20Permit](/src/interfaces/IERC20Permit.sol/interface.IERC20Permit.md)
+
+**Title:**
+Interface defining ERC20-compatible StETH token
 
 
 ## Functions

@@ -1,18 +1,11 @@
 # IFeeDistributor
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IFeeDistributor.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IFeeDistributor.sol)
 
 **Inherits:**
-[IAssetRecovererLib](/Users/dgusakov/projects/community-staking-module/docs/src/src/lib/AssetRecovererLib.sol/interface.IAssetRecovererLib.md)
+[IAssetRecovererLib](/src/lib/AssetRecovererLib.sol/interface.IAssetRecovererLib.md)
 
 
 ## Functions
-### RECOVERER_ROLE
-
-
-```solidity
-function RECOVERER_ROLE() external view returns (bytes32);
-```
-
 ### STETH
 
 
@@ -323,6 +316,12 @@ error ZeroOracleAddress();
 
 ```solidity
 error ZeroRebateRecipientAddress();
+```
+
+### SameRebateRecipientAddress
+
+```solidity
+error SameRebateRecipientAddress();
 ```
 
 ### SenderIsNotAccounting

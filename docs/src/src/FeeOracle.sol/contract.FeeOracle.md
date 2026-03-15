@@ -1,46 +1,26 @@
 # FeeOracle
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/FeeOracle.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/FeeOracle.sol)
 
 **Inherits:**
-[IFeeOracle](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IFeeOracle.sol/interface.IFeeOracle.md), [BaseOracle](/Users/dgusakov/projects/community-staking-module/docs/src/src/lib/base-oracle/BaseOracle.sol/abstract.BaseOracle.md), [PausableUntil](/Users/dgusakov/projects/community-staking-module/docs/src/src/lib/utils/PausableUntil.sol/contract.PausableUntil.md), [AssetRecoverer](/Users/dgusakov/projects/community-staking-module/docs/src/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
+[IFeeOracle](/src/interfaces/IFeeOracle.sol/interface.IFeeOracle.md), [BaseOracle](/src/lib/base-oracle/BaseOracle.sol/abstract.BaseOracle.md), [PausableWithRoles](/src/abstract/PausableWithRoles.sol/abstract.PausableWithRoles.md), [AssetRecoverer](/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
 
 
 ## State Variables
-### SUBMIT_DATA_ROLE
-No assets are stored in the contract
+### INITIALIZED_VERSION
 
+```solidity
+uint256 internal constant INITIALIZED_VERSION = 3
+```
+
+
+### SUBMIT_DATA_ROLE
 An ACL role granting the permission to submit the data for a committee report.
+
+No assets are stored in the contract
 
 
 ```solidity
 bytes32 public constant SUBMIT_DATA_ROLE = keccak256("SUBMIT_DATA_ROLE")
-```
-
-
-### PAUSE_ROLE
-An ACL role granting the permission to pause accepting oracle reports
-
-
-```solidity
-bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE")
-```
-
-
-### RESUME_ROLE
-An ACL role granting the permission to resume accepting oracle reports
-
-
-```solidity
-bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE")
-```
-
-
-### RECOVERER_ROLE
-An ACL role granting the permission to recover assets
-
-
-```solidity
-bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE")
 ```
 
 
@@ -58,27 +38,17 @@ IValidatorStrikes public immutable STRIKES
 ```
 
 
-### _feeDistributor
-DEPRECATED
-
-**Note:**
-oz-renamed-from: feeDistributor
-
+### __freeSlot1
 
 ```solidity
-IFeeDistributor internal _feeDistributor
+bytes32 internal __freeSlot1
 ```
 
 
-### _avgPerfLeewayBP
-DEPRECATED
-
-**Note:**
-oz-renamed-from: avgPerfLeewayBP
-
+### __freeSlot2
 
 ```solidity
-uint256 internal _avgPerfLeewayBP
+bytes32 internal __freeSlot2
 ```
 
 
@@ -93,46 +63,25 @@ constructor(address feeDistributor, address strikes, uint256 secondsPerSlot, uin
 
 ### initialize
 
-initialize contract from scratch
+Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
+It is recommended to call this method in the same transaction as the deployment transaction
+and perform extensive deployment verification before using the contract instance.
 
 
 ```solidity
 function initialize(address admin, address consensusContract, uint256 consensusVersion) external;
 ```
 
-### finalizeUpgradeV2
+### finalizeUpgradeV3
 
-This method is expected to be called only when the contract is upgraded from version 1 to version 2 for the existing version 1 deployment.
-If the version 2 contract is deployed from scratch, the `initialize` method should be used instead.
-
-
-```solidity
-function finalizeUpgradeV2(uint256 consensusVersion) external;
-```
-
-### resume
-
-Resume accepting oracle reports
+This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing version 2 deployment.
+If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
+To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
 
 
 ```solidity
-function resume() external onlyRole(RESUME_ROLE);
+function finalizeUpgradeV3(uint256 consensusVersion) external;
 ```
-
-### pauseFor
-
-Pause accepting oracle reports for a `duration` seconds
-
-
-```solidity
-function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`duration`|`uint256`|Duration of the pause in seconds|
-
 
 ### submitReportData
 
@@ -147,7 +96,7 @@ function submitReportData(ReportData calldata data, uint256 contractVersion) ext
 |Name|Type|Description|
 |----|----|-----------|
 |`data`|`ReportData`|Data for a committee report|
-|`contractVersion`|`uint256`|Version of the oracle consensus rules|
+|`contractVersion`|`uint256`|Expected storage contract version of the FeeOracle implementation|
 
 
 ### _handleConsensusReport
@@ -186,5 +135,12 @@ function _checkMsgSenderIsAllowedToSubmitData() internal view;
 
 ```solidity
 function _onlyRecoverer() internal view override;
+```
+
+### __checkRole
+
+
+```solidity
+function __checkRole(bytes32 role) internal view override;
 ```
 

@@ -64,7 +64,7 @@ contract DeployLocalDevNet is DeployBase {
         config.queueLowestPriority = 5;
         config.defaultQueuePriority = 5;
         config.defaultQueueMaxDeposits = type(uint32).max;
-        config.defaultBadPerformancePenalty = 0.1 ether; // TODO: to be reviewed
+        config.defaultBadPerformancePenalty = 0.1 ether;
         config.defaultAttestationsWeight = 54; // https://eth2book.info/capella/part2/incentives/rewards/
         config.defaultBlocksWeight = 8; // https://eth2book.info/capella/part2/incentives/rewards/
         config.defaultSyncWeight = 2; // https://eth2book.info/capella/part2/incentives/rewards/
@@ -86,24 +86,24 @@ contract DeployLocalDevNet is DeployBase {
         config.identifiedCommunityStakersGateBondCurve.push([2, 1.3 ether]);
 
         // Parameters for Identified Community Staker type
-        // TODO: Set proper values bellow
         config.identifiedCommunityStakersGateKeyRemovalCharge = 0.01 ether;
         config.identifiedCommunityStakersGateGeneralDelayedPenaltyAdditionalFine = 0.05 ether;
         config.identifiedCommunityStakersGateKeysLimit = type(uint248).max;
         config.identifiedCommunityStakersGateAvgPerfLeewayData.push([1, 500]);
+        config.identifiedCommunityStakersGateAvgPerfLeewayData.push([151, 300]);
         config.identifiedCommunityStakersGateRewardShareData.push([1, 10000]);
         config.identifiedCommunityStakersGateRewardShareData.push([17, 5834]);
-        config.identifiedCommunityStakersGateStrikesLifetimeFrames = 8;
+        config.identifiedCommunityStakersGateStrikesLifetimeFrames = 6;
         config.identifiedCommunityStakersGateStrikesThreshold = 4;
         config.identifiedCommunityStakersGateQueuePriority = 0;
         config.identifiedCommunityStakersGateQueueMaxDeposits = 10;
-        config.identifiedCommunityStakersGateBadPerformancePenalty = 0.05 ether;
-        config.identifiedCommunityStakersGateAttestationsWeight = 60;
+        config.identifiedCommunityStakersGateBadPerformancePenalty = 0.172 ether;
+        config.identifiedCommunityStakersGateAttestationsWeight = 54;
         config.identifiedCommunityStakersGateBlocksWeight = 4;
-        config.identifiedCommunityStakersGateSyncWeight = 0;
-        config.identifiedCommunityStakersGateAllowedExitDelay = 8 days;
+        config.identifiedCommunityStakersGateSyncWeight = 2;
+        config.identifiedCommunityStakersGateAllowedExitDelay = 5 days;
         config.identifiedCommunityStakersGateExitDelayFee = 0.05 ether;
-        config.identifiedCommunityStakersGateMaxElWithdrawalRequestFee = 0.05 ether;
+        config.identifiedCommunityStakersGateMaxElWithdrawalRequestFee = 0.1 ether;
 
         // GateSeal
         config.gateSealFactory = 0x0000000000000000000000000000000000000000;

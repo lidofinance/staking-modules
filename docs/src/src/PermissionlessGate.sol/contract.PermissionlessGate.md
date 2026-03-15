@@ -1,20 +1,16 @@
 # PermissionlessGate
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/PermissionlessGate.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/PermissionlessGate.sol)
 
 **Inherits:**
-[IPermissionlessGate](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IPermissionlessGate.sol/interface.IPermissionlessGate.md), AccessControlEnumerable, [AssetRecoverer](/Users/dgusakov/projects/community-staking-module/docs/src/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
+[IPermissionlessGate](/src/interfaces/IPermissionlessGate.sol/interface.IPermissionlessGate.md), AccessControlEnumerable, [AssetRecoverer](/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
+
+**Title:**
+PermissionlessGate
 
 Contract for adding new Node Operators without any restrictions
 
 
 ## State Variables
-### RECOVERER_ROLE
-
-```solidity
-bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE")
-```
-
-
 ### CURVE_ID
 Curve ID is the default bond curve ID from the accounting contract
 This immutable variable is kept here for consistency with the other gates
@@ -30,7 +26,7 @@ Address of the Staking Module
 
 
 ```solidity
-ICSModule public immutable MODULE
+IBaseModule public immutable MODULE
 ```
 
 

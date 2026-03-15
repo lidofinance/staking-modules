@@ -1,5 +1,5 @@
 # IValidatorStrikes
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IValidatorStrikes.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IValidatorStrikes.sol)
 
 
 ## Functions
@@ -14,7 +14,7 @@ function ORACLE() external view returns (address);
 
 
 ```solidity
-function MODULE() external view returns (ICSModule);
+function MODULE() external view returns (IBaseModule);
 ```
 
 ### ACCOUNTING
@@ -76,7 +76,7 @@ function setEjector(address _ejector) external;
 
 ### processBadPerformanceProof
 
-Report multiple CSM keys as bad performing
+Report multiple keys as bad performing
 
 
 ```solidity
@@ -133,7 +133,7 @@ function verifyProof(
 |Name|Type|Description|
 |----|----|-----------|
 |`keyStrikesList`|`KeyStrikes[]`|List of KeyStrikes structs|
-|`pubkeys`|`bytes[]`||
+|`pubkeys`|`bytes[]`|Public keys corresponding to each entry in keyStrikesList|
 |`proof`|`bytes32[]`|Multi-proof of the strikes|
 |`proofFlags`|`bool[]`|Flags to process the multi-proof, see OZ `processMultiProof`|
 
@@ -146,7 +146,7 @@ function verifyProof(
 
 ### hashLeaf
 
-Get a hash of a leaf a tree of strikes
+Get a hash of a leaf in a tree of strikes
 
 Double hash the leaf to prevent second pre-image attacks
 
@@ -205,6 +205,12 @@ event EjectorSet(address ejector);
 
 ```solidity
 error ZeroEjectorAddress();
+```
+
+### SameEjectorAddress
+
+```solidity
+error SameEjectorAddress();
 ```
 
 ### ZeroModuleAddress

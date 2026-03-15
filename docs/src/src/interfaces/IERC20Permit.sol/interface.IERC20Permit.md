@@ -1,8 +1,11 @@
 # IERC20Permit
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IERC20Permit.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IERC20Permit.sol)
 
 **Inherits:**
-[IERC2612](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IERC2612.sol/interface.IERC2612.md)
+[IERC2612](/src/interfaces/IERC2612.sol/interface.IERC2612.md)
+
+**Title:**
+Interface defining ERC20-compatible token
 
 
 ## Functions

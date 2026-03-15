@@ -1,43 +1,15 @@
 # Ejector
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/Ejector.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/Ejector.sol)
 
 **Inherits:**
-[IEjector](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IEjector.sol/interface.IEjector.md), [ExitTypes](/Users/dgusakov/projects/community-staking-module/docs/src/src/abstract/ExitTypes.sol/abstract.ExitTypes.md), AccessControlEnumerable, [PausableUntil](/Users/dgusakov/projects/community-staking-module/docs/src/src/lib/utils/PausableUntil.sol/contract.PausableUntil.md), [AssetRecoverer](/Users/dgusakov/projects/community-staking-module/docs/src/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
+[IEjector](/src/interfaces/IEjector.sol/interface.IEjector.md), [ExitTypes](/src/abstract/ExitTypes.sol/abstract.ExitTypes.md), AccessControlEnumerable, [PausableWithRoles](/src/abstract/PausableWithRoles.sol/abstract.PausableWithRoles.md), [AssetRecoverer](/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
 
 
 ## State Variables
-### PAUSE_ROLE
-
-```solidity
-bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE")
-```
-
-
-### RESUME_ROLE
-
-```solidity
-bytes32 public constant RESUME_ROLE = keccak256("RESUME_ROLE")
-```
-
-
-### RECOVERER_ROLE
-
-```solidity
-bytes32 public constant RECOVERER_ROLE = keccak256("RECOVERER_ROLE")
-```
-
-
-### STAKING_MODULE_ID
-
-```solidity
-uint256 public immutable STAKING_MODULE_ID
-```
-
-
 ### MODULE
 
 ```solidity
-ICSModule public immutable MODULE
+IBaseModule public immutable MODULE
 ```
 
 
@@ -45,6 +17,13 @@ ICSModule public immutable MODULE
 
 ```solidity
 address public immutable STRIKES
+```
+
+
+### stakingModuleId
+
+```solidity
+uint256 public stakingModuleId
 ```
 
 
@@ -60,64 +39,18 @@ modifier onlyStrikes() ;
 
 
 ```solidity
-constructor(address module, address strikes, uint256 stakingModuleId, address admin) ;
+constructor(address module, address strikes, address admin) ;
 ```
-
-### resume
-
-Resume ejection methods calls
-
-
-```solidity
-function resume() external onlyRole(RESUME_ROLE);
-```
-
-### pauseFor
-
-Pause ejection methods calls
-
-
-```solidity
-function pauseFor(uint256 duration) external onlyRole(PAUSE_ROLE);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`duration`|`uint256`|Duration of the pause in seconds|
-
 
 ### voluntaryEject
 
-Withdraw the validator key from the Node Operator
+Request triggerable full withdrawals for Node Operator validator keys
+
+Called by the node operator
 
 
 ```solidity
-function voluntaryEject(uint256 nodeOperatorId, uint256 startFrom, uint256 keysCount, address refundRecipient)
-    external
-    payable
-    whenResumed;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`startFrom`|`uint256`|Index of the first key to withdraw|
-|`keysCount`|`uint256`|Number of keys to withdraw|
-|`refundRecipient`|`address`|Address to send the refund to|
-
-
-### voluntaryEjectByArray
-
-Withdraw the validator key from the Node Operator
-
-Additional method for non-sequential keys to save gas and decrease fee amount compared
-to separate transactions.
-
-
-```solidity
-function voluntaryEjectByArray(uint256 nodeOperatorId, uint256[] calldata keyIndices, address refundRecipient)
+function voluntaryEject(uint256 nodeOperatorId, uint256[] calldata keyIndices, address refundRecipient)
     external
     payable
     whenResumed;
@@ -134,6 +67,9 @@ function voluntaryEjectByArray(uint256 nodeOperatorId, uint256[] calldata keyInd
 ### ejectBadPerformer
 
 Eject Node Operator's key as a bad performer
+
+Called by the `ValidatorStrikes` contract.
+See `ValidatorStrikes.processBadPerformanceProof` to use this method permissionless
 
 
 ```solidity
@@ -161,6 +97,20 @@ TriggerableWithdrawalsGateway implementation used by the contract.
 function triggerableWithdrawalsGateway() public view returns (ITriggerableWithdrawalsGateway);
 ```
 
+### _getOrCacheStakingModuleId
+
+
+```solidity
+function _getOrCacheStakingModuleId() internal returns (uint256 moduleId);
+```
+
+### _msgSenderIfEmpty
+
+
+```solidity
+function _msgSenderIfEmpty(address input) internal view returns (address);
+```
+
 ### _onlyStrikes
 
 
@@ -182,5 +132,12 @@ function _onlyNodeOperatorOwner(uint256 nodeOperatorId) internal view;
 
 ```solidity
 function _onlyRecoverer() internal view override;
+```
+
+### __checkRole
+
+
+```solidity
+function __checkRole(bytes32 role) internal view override;
 ```
 

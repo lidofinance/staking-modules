@@ -1,13 +1,16 @@
 # OneShotCurveSetup
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/utils/OneShotCurveSetup.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/utils/OneShotCurveSetup.sol)
 
 **Inherits:**
-[IOneShotCurveSetup](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IOneShotCurveSetup.sol/interface.IOneShotCurveSetup.md)
+[IOneShotCurveSetup](/src/interfaces/IOneShotCurveSetup.sol/interface.IOneShotCurveSetup.md)
 
 Helper that atomically deploys a new bond curve together with its parameter overrides.
 
 The contract is intentionally single-use: once `execute` finishes successfully it
 stores the emitted `curveId` for reference.
+Permission model: grant only two temporary roles to this contract:
+`ACCOUNTING.MANAGE_BOND_CURVES_ROLE()` and `REGISTRY.MANAGE_CURVE_PARAMETERS_ROLE()`.
+After successful execution, the contract renounces both roles.
 
 
 ## State Variables
@@ -123,10 +126,10 @@ ScalarOverride public exitDelayFeeOverride
 ```
 
 
-### maxWithdrawalRequestFeeOverride
+### maxElWithdrawalRequestFeeOverride
 
 ```solidity
-ScalarOverride public maxWithdrawalRequestFeeOverride
+ScalarOverride public maxElWithdrawalRequestFeeOverride
 ```
 
 
@@ -143,6 +146,35 @@ constructor(address accounting_, address registry_, ConstructorParams memory par
 
 ```solidity
 function execute() external override returns (uint256 curveId);
+```
+
+### getBondCurve
+
+
+```solidity
+function getBondCurve() external view override returns (IBondCurve.BondCurveIntervalInput[] memory bondCurve_);
+```
+
+### getRewardShareDataOverride
+
+
+```solidity
+function getRewardShareDataOverride()
+    external
+    view
+    override
+    returns (bool isSet, IParametersRegistry.KeyNumberValueInterval[] memory data);
+```
+
+### getPerformanceLeewayDataOverride
+
+
+```solidity
+function getPerformanceLeewayDataOverride()
+    external
+    view
+    override
+    returns (bool isSet, IParametersRegistry.KeyNumberValueInterval[] memory data);
 ```
 
 ### _applyParameterOverrides

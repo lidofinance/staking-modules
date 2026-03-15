@@ -1,8 +1,8 @@
 # ValidatorStrikes
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/ValidatorStrikes.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/ValidatorStrikes.sol)
 
 **Inherits:**
-[IValidatorStrikes](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IValidatorStrikes.sol/interface.IValidatorStrikes.md), Initializable, AccessControlEnumerableUpgradeable
+[IValidatorStrikes](/src/interfaces/IValidatorStrikes.sol/interface.IValidatorStrikes.md), Initializable, AccessControlEnumerableUpgradeable
 
 **Author:**
 vgorkavenko
@@ -19,7 +19,7 @@ address public immutable ORACLE
 ### MODULE
 
 ```solidity
-ICSModule public immutable MODULE
+IBaseModule public immutable MODULE
 ```
 
 
@@ -81,10 +81,14 @@ modifier onlyOracle() ;
 
 
 ```solidity
-constructor(address module, address oracle, address exitPenalties, address parametersRegistry) ;
+constructor(address module, address oracle) ;
 ```
 
 ### initialize
+
+Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
+It is recommended to call this method in the same transaction as the deployment transaction
+and perform extensive deployment verification before using the contract instance.
 
 
 ```solidity
@@ -126,7 +130,7 @@ function processOracleReport(bytes32 _treeRoot, string calldata _treeCid) extern
 
 ### processBadPerformanceProof
 
-Report multiple CSM keys as bad performing
+Report multiple keys as bad performing
 
 
 ```solidity
@@ -174,7 +178,7 @@ function verifyProof(
 |Name|Type|Description|
 |----|----|-----------|
 |`keyStrikesList`|`KeyStrikes[]`|List of KeyStrikes structs|
-|`pubkeys`|`bytes[]`||
+|`pubkeys`|`bytes[]`|Public keys corresponding to each entry in keyStrikesList|
 |`proof`|`bytes32[]`|Multi-proof of the strikes|
 |`proofFlags`|`bool[]`|Flags to process the multi-proof, see OZ `processMultiProof`|
 
@@ -187,7 +191,7 @@ function verifyProof(
 
 ### hashLeaf
 
-Get a hash of a leaf a tree of strikes
+Get a hash of a leaf in a tree of strikes
 
 Double hash the leaf to prevent second pre-image attacks
 

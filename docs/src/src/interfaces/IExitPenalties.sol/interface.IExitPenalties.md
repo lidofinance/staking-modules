@@ -1,8 +1,8 @@
 # IExitPenalties
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IExitPenalties.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IExitPenalties.sol)
 
 **Inherits:**
-[IExitTypes](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IExitTypes.sol/interface.IExitTypes.md)
+[IExitTypes](/src/interfaces/IExitTypes.sol/interface.IExitTypes.md)
 
 
 ## Functions
@@ -10,7 +10,7 @@
 
 
 ```solidity
-function MODULE() external view returns (ICSModule);
+function MODULE() external view returns (IBaseModule);
 ```
 
 ### ACCOUNTING
@@ -63,7 +63,7 @@ Process the triggered exit report
 function processTriggeredExit(
     uint256 nodeOperatorId,
     bytes calldata publicKey,
-    uint256 withdrawalRequestPaidFee,
+    uint256 elWithdrawalRequestFeePaid,
     uint256 exitType
 ) external;
 ```
@@ -73,8 +73,8 @@ function processTriggeredExit(
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
 |`publicKey`|`bytes`|Public key of the validator|
-|`withdrawalRequestPaidFee`|`uint256`|The fee paid for the withdrawal request|
-|`exitType`|`uint256`|The type of the exit (0 - direct exit, 1 - forced exit)|
+|`elWithdrawalRequestFeePaid`|`uint256`|The fee paid for the withdrawal request|
+|`exitType`|`uint256`|The type of the exit; only `VOLUNTARY_EXIT_TYPE_ID` skips recording EL withdrawal request fee|
 
 
 ### processStrikesReport
@@ -97,7 +97,7 @@ function processStrikesReport(uint256 nodeOperatorId, bytes calldata publicKey) 
 
 Determines whether a validator exit status should be updated and will have affect on Node Operator.
 
-called only by CSM
+called only by the module
 
 
 ```solidity

@@ -1,5 +1,5 @@
 # IBondCore
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/interfaces/IBondCore.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IBondCore.sol)
 
 
 ## Functions
@@ -88,6 +88,29 @@ function getBond(uint256 nodeOperatorId) external view returns (uint256);
 |`<none>`|`uint256`|Bond amount in ETH (stETH)|
 
 
+### getBondDebt
+
+Get bond debt in ETH for the given Node Operator.
+Bond debt can occur when Node Operator's bond is not enough to cover the penalties.
+Any bond debt will be covered as soon as the Node Operator deposits more bond or receives rewards.
+
+
+```solidity
+function getBondDebt(uint256 nodeOperatorId) external view returns (uint256);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Bond debt in ETH|
+
+
 ## Events
 ### BondDepositedETH
 
@@ -134,7 +157,19 @@ event BondBurned(uint256 indexed nodeOperatorId, uint256 amountToBurn, uint256 b
 ### BondCharged
 
 ```solidity
-event BondCharged(uint256 indexed nodeOperatorId, uint256 toChargeAmount, uint256 chargedAmount);
+event BondCharged(uint256 indexed nodeOperatorId, uint256 amountToCharge, uint256 chargedAmount);
+```
+
+### BondDebtIncreased
+
+```solidity
+event BondDebtIncreased(uint256 indexed nodeOperatorId, uint256 amount);
+```
+
+### BondDebtCovered
+
+```solidity
+event BondDebtCovered(uint256 indexed nodeOperatorId, uint256 amount);
 ```
 
 ## Errors

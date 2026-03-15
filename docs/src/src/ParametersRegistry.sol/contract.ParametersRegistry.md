@@ -1,14 +1,21 @@
 # ParametersRegistry
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/9963782f1f7ba72c08b80bceeb147febcf501cea/src/ParametersRegistry.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/ParametersRegistry.sol)
 
 **Inherits:**
-[IParametersRegistry](/Users/dgusakov/projects/community-staking-module/docs/src/src/interfaces/IParametersRegistry.sol/interface.IParametersRegistry.md), Initializable, AccessControlEnumerableUpgradeable
+[IParametersRegistry](/src/interfaces/IParametersRegistry.sol/interface.IParametersRegistry.md), Initializable, AccessControlEnumerableUpgradeable
 
 There are no upper limit checks except for the basis points (BP) values
 since with the introduction of Dual Governance any malicious changes to the parameters can be objected by stETH holders.
 
 
 ## State Variables
+### INITIALIZED_VERSION
+
+```solidity
+uint64 internal constant INITIALIZED_VERSION = 3
+```
+
+
 ### MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE
 
 ```solidity
@@ -49,6 +56,13 @@ bytes32 public constant MANAGE_REWARD_SHARE_ROLE = keccak256("MANAGE_REWARD_SHAR
 
 ```solidity
 bytes32 public constant MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE = keccak256("MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE")
+```
+
+
+### MANAGE_CURVE_PARAMETERS_ROLE
+
+```solidity
+bytes32 public constant MANAGE_CURVE_PARAMETERS_ROLE = keccak256("MANAGE_CURVE_PARAMETERS_ROLE")
 ```
 
 
@@ -133,7 +147,7 @@ mapping(uint256 curveId => QueueConfig) internal _queueConfigs
 
 
 ### defaultRewardShare
-Default value for the reward share. Can be only be set as a flat value due to possible sybil attacks
+Default value for the reward share. Can only be set as a flat value due to possible sybil attacks
 Decreased reward share for some validators > N will promote sybils. Increased reward share for validators > N will give large operators an advantage
 
 
@@ -150,7 +164,7 @@ mapping(uint256 curveId => KeyNumberValueInterval[]) internal _rewardShareData
 
 
 ### defaultPerformanceLeeway
-Default value for the performance leeway. Can be only be set as a flat value due to possible sybil attacks
+Default value for the performance leeway. Can only be set as a flat value due to possible sybil attacks
 Decreased performance leeway for some validators > N will promote sybils. Increased performance leeway for validators > N will give large operators an advantage
 
 
@@ -236,17 +250,17 @@ mapping(uint256 => MarkedUint248) internal _exitDelayFees
 ```
 
 
-### defaultMaxWithdrawalRequestFee
+### defaultMaxElWithdrawalRequestFee
 
 ```solidity
-uint256 public defaultMaxWithdrawalRequestFee
+uint256 public defaultMaxElWithdrawalRequestFee
 ```
 
 
-### _maxWithdrawalRequestFees
+### _maxElWithdrawalRequestFees
 
 ```solidity
-mapping(uint256 => MarkedUint248) internal _maxWithdrawalRequestFees
+mapping(uint256 => MarkedUint248) internal _maxElWithdrawalRequestFees
 ```
 
 
@@ -258,20 +272,46 @@ mapping(uint256 => MarkedUint248) internal _maxWithdrawalRequestFees
 modifier onlyRoleMemberOrAdmin(bytes32 role) ;
 ```
 
+### onlyRoleMemberOrCurveParametersRoleOrAdmin
+
+
+```solidity
+modifier onlyRoleMemberOrCurveParametersRoleOrAdmin(bytes32 role) ;
+```
+
 ### constructor
 
 
 ```solidity
 constructor(uint256 queueLowestPriority) ;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`queueLowestPriority`|`uint256`|The lowest priority value for the queue. Set to 0 for modules that don't use queue priorities.|
+
 
 ### initialize
 
-initialize contract
+Initialize contract from scratch. In case of a method call frontrun, the contract instance should be discarded.
+It is recommended to call this method in the same transaction as the deployment transaction
+and perform extensive deployment verification before using the contract instance.
 
 
 ```solidity
-function initialize(address admin, InitializationData calldata data) external initializer;
+function initialize(address admin, InitializationData calldata data) external reinitializer(INITIALIZED_VERSION);
+```
+
+### finalizeUpgradeV3
+
+This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing
+version 2 deployment. If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
+To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
+
+
+```solidity
+function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION);
 ```
 
 ### setDefaultKeyRemovalCharge
@@ -387,7 +427,7 @@ function setDefaultStrikesParams(uint256 lifetime, uint256 threshold)
 
 |Name|Type|Description|
 |----|----|-----------|
-|`lifetime`|`uint256`|The default number of CSM Performance Oracle frames to store strikes values|
+|`lifetime`|`uint256`|The default number of Performance Oracle frames to store strikes values|
 |`threshold`|`uint256`|The default strikes value leading to validator force ejection.|
 
 
@@ -430,7 +470,7 @@ function setDefaultPerformanceCoefficients(uint256 attestationsWeight, uint256 b
 
 ### setDefaultAllowedExitDelay
 
-set default value for allowed delay before the exit was initiated exit delay in seconds. Default value is used if a specific value is not set for the curveId
+set default value for the allowed exit delay in seconds. Default value is used if a specific value is not set for the curveId
 
 
 ```solidity
@@ -463,13 +503,13 @@ function setDefaultExitDelayFee(uint256 penalty)
 |`penalty`|`uint256`||
 
 
-### setDefaultMaxWithdrawalRequestFee
+### setDefaultMaxElWithdrawalRequestFee
 
-set default value for max withdrawal request fee. Default value is used if a specific value is not set for the curveId
+set default value for max EL withdrawal request fee. Default value is used if a specific value is not set for the curveId
 
 
 ```solidity
-function setDefaultMaxWithdrawalRequestFee(uint256 fee)
+function setDefaultMaxElWithdrawalRequestFee(uint256 fee)
     external
     onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE);
 ```
@@ -477,7 +517,7 @@ function setDefaultMaxWithdrawalRequestFee(uint256 fee)
 
 |Name|Type|Description|
 |----|----|-----------|
-|`fee`|`uint256`|value to be set as default for the max withdrawal request fee|
+|`fee`|`uint256`|value to be set as default for the max EL withdrawal request fee|
 
 
 ### setKeyRemovalCharge
@@ -488,7 +528,7 @@ Set key removal charge for the curveId. This parameter is not used in Curated Mo
 ```solidity
 function setKeyRemovalCharge(uint256 curveId, uint256 keyRemovalCharge)
     external
-    onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE);
 ```
 **Parameters**
 
@@ -506,7 +546,7 @@ Set general delayed penalty additional fine for the curveId.
 ```solidity
 function setGeneralDelayedPenaltyAdditionalFine(uint256 curveId, uint256 fine)
     external
-    onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE);
 ```
 **Parameters**
 
@@ -522,7 +562,9 @@ Set keys limit for the curveId.
 
 
 ```solidity
-function setKeysLimit(uint256 curveId, uint256 limit) external onlyRoleMemberOrAdmin(MANAGE_KEYS_LIMIT_ROLE);
+function setKeysLimit(uint256 curveId, uint256 limit)
+    external
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_KEYS_LIMIT_ROLE);
 ```
 **Parameters**
 
@@ -540,7 +582,7 @@ Sets the provided config to the given curve. This parameter is not used in Curat
 ```solidity
 function setQueueConfig(uint256 curveId, uint256 priority, uint256 maxDeposits)
     external
-    onlyRoleMemberOrAdmin(MANAGE_QUEUE_CONFIG_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_QUEUE_CONFIG_ROLE);
 ```
 **Parameters**
 
@@ -562,7 +604,7 @@ KeyNumberValueInterval = [[1, 10000], [11, 8000], [51, 5000]] stands for
 ```solidity
 function setRewardShareData(uint256 curveId, KeyNumberValueInterval[] calldata data)
     external
-    onlyRoleMemberOrAdmin(MANAGE_REWARD_SHARE_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_REWARD_SHARE_ROLE);
 ```
 **Parameters**
 
@@ -576,13 +618,14 @@ function setRewardShareData(uint256 curveId, KeyNumberValueInterval[] calldata d
 
 Set performance leeway parameters for the curveId
 
-Returns [[1, defaultPerformanceLeeway]] if no intervals are set for the given curveId.
+KeyNumberValueInterval = [[1, 500], [101, 450], [501, 400]] stands for
+5% performance leeway for the first 100 keys, 4.5% performance leeway for the keys 101-500, and 4% performance leeway for the keys > 500
 
 
 ```solidity
 function setPerformanceLeewayData(uint256 curveId, KeyNumberValueInterval[] calldata data)
     external
-    onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE);
 ```
 **Parameters**
 
@@ -600,14 +643,14 @@ Set performance strikes lifetime and threshold for the curveId
 ```solidity
 function setStrikesParams(uint256 curveId, uint256 lifetime, uint256 threshold)
     external
-    onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`curveId`|`uint256`|Curve Id to associate performance strikes lifetime and threshold with|
-|`lifetime`|`uint256`|Number of CSM Performance Oracle frames to store strikes values|
+|`lifetime`|`uint256`|Number of Performance Oracle frames to store strikes values|
 |`threshold`|`uint256`|The strikes value leading to validator force ejection|
 
 
@@ -619,7 +662,7 @@ Set the bad performance penalty for the curveId for a single 32 ether validator
 ```solidity
 function setBadPerformancePenalty(uint256 curveId, uint256 penalty)
     external
-    onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE);
 ```
 **Parameters**
 
@@ -640,7 +683,7 @@ function setPerformanceCoefficients(
     uint256 attestationsWeight,
     uint256 blocksWeight,
     uint256 syncWeight
-) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE);
+) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE);
 ```
 **Parameters**
 
@@ -660,7 +703,7 @@ Set allowed exit delay for the curveId in seconds
 ```solidity
 function setAllowedExitDelay(uint256 curveId, uint256 delay)
     external
-    onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE);
 ```
 **Parameters**
 
@@ -674,13 +717,11 @@ function setAllowedExitDelay(uint256 curveId, uint256 delay)
 
 Set the exit delay penalty for a single 32 ether validator for the given curveId
 
-cannot be zero
-
 
 ```solidity
 function setExitDelayFee(uint256 curveId, uint256 penalty)
     external
-    onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE);
 ```
 **Parameters**
 
@@ -690,22 +731,22 @@ function setExitDelayFee(uint256 curveId, uint256 penalty)
 |`penalty`|`uint256`||
 
 
-### setMaxWithdrawalRequestFee
+### setMaxElWithdrawalRequestFee
 
-Set max withdrawal request fee for the curveId
+Set max EL withdrawal request fee for the curveId
 
 
 ```solidity
-function setMaxWithdrawalRequestFee(uint256 curveId, uint256 fee)
+function setMaxElWithdrawalRequestFee(uint256 curveId, uint256 fee)
     external
-    onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`curveId`|`uint256`|Curve Id to associate max withdrawal request fee with|
-|`fee`|`uint256`|max withdrawal request fee|
+|`curveId`|`uint256`|Curve Id to associate max EL withdrawal request fee with|
+|`fee`|`uint256`|Max EL withdrawal request fee|
 
 
 ### unsetKeyRemovalCharge
@@ -716,7 +757,7 @@ Unset key removal charge for the curveId. This parameter is not used in Curated 
 ```solidity
 function unsetKeyRemovalCharge(uint256 curveId)
     external
-    onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE);
 ```
 **Parameters**
 
@@ -733,7 +774,7 @@ Unset general delayed penalty additional fine for the curveId
 ```solidity
 function unsetGeneralDelayedPenaltyAdditionalFine(uint256 curveId)
     external
-    onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE);
 ```
 **Parameters**
 
@@ -744,17 +785,19 @@ function unsetGeneralDelayedPenaltyAdditionalFine(uint256 curveId)
 
 ### unsetKeysLimit
 
-Unset key removal charge for the curveId
+Unset keys limit for the curveId
 
 
 ```solidity
-function unsetKeysLimit(uint256 curveId) external onlyRoleMemberOrAdmin(MANAGE_KEYS_LIMIT_ROLE);
+function unsetKeysLimit(uint256 curveId)
+    external
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_KEYS_LIMIT_ROLE);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`curveId`|`uint256`|Curve Id to unset custom key removal charge for|
+|`curveId`|`uint256`|Curve Id to unset custom keys limit for|
 
 
 ### unsetQueueConfig
@@ -763,7 +806,9 @@ Set the given curve's config to the default one. This parameter is not used in C
 
 
 ```solidity
-function unsetQueueConfig(uint256 curveId) external onlyRoleMemberOrAdmin(MANAGE_QUEUE_CONFIG_ROLE);
+function unsetQueueConfig(uint256 curveId)
+    external
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_QUEUE_CONFIG_ROLE);
 ```
 **Parameters**
 
@@ -778,7 +823,9 @@ Unset reward share parameters for the curveId
 
 
 ```solidity
-function unsetRewardShareData(uint256 curveId) external onlyRoleMemberOrAdmin(MANAGE_REWARD_SHARE_ROLE);
+function unsetRewardShareData(uint256 curveId)
+    external
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_REWARD_SHARE_ROLE);
 ```
 **Parameters**
 
@@ -795,7 +842,7 @@ Unset performance leeway parameters for the curveId
 ```solidity
 function unsetPerformanceLeewayData(uint256 curveId)
     external
-    onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE);
 ```
 **Parameters**
 
@@ -810,7 +857,9 @@ Unset custom performance strikes lifetime and threshold for the curveId
 
 
 ```solidity
-function unsetStrikesParams(uint256 curveId) external onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE);
+function unsetStrikesParams(uint256 curveId)
+    external
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE);
 ```
 **Parameters**
 
@@ -827,7 +876,7 @@ Unset bad performance penalty for the curveId
 ```solidity
 function unsetBadPerformancePenalty(uint256 curveId)
     external
-    onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE);
 ```
 **Parameters**
 
@@ -844,7 +893,7 @@ Unset custom performance coefficients for the curveId
 ```solidity
 function unsetPerformanceCoefficients(uint256 curveId)
     external
-    onlyRoleMemberOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_PERFORMANCE_PARAMETERS_ROLE);
 ```
 **Parameters**
 
@@ -855,13 +904,13 @@ function unsetPerformanceCoefficients(uint256 curveId)
 
 ### unsetAllowedExitDelay
 
-Unset exit timeframe deadline delay for the curveId
+Unset allowed exit delay for the curveId
 
 
 ```solidity
 function unsetAllowedExitDelay(uint256 curveId)
     external
-    onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE);
 ```
 **Parameters**
 
@@ -876,7 +925,9 @@ Unset exit delay penalty for the curveId
 
 
 ```solidity
-function unsetExitDelayFee(uint256 curveId) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE);
+function unsetExitDelayFee(uint256 curveId)
+    external
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE);
 ```
 **Parameters**
 
@@ -885,26 +936,26 @@ function unsetExitDelayFee(uint256 curveId) external onlyRoleMemberOrAdmin(MANAG
 |`curveId`|`uint256`|The curve ID for unsetting the exit delay fee|
 
 
-### unsetMaxWithdrawalRequestFee
+### unsetMaxElWithdrawalRequestFee
 
-Unset max withdrawal request fee for the curveId
+Unset max EL withdrawal request fee for the curveId
 
 
 ```solidity
-function unsetMaxWithdrawalRequestFee(uint256 curveId)
+function unsetMaxElWithdrawalRequestFee(uint256 curveId)
     external
-    onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE);
+    onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`curveId`|`uint256`|Curve Id to unset max withdrawal request fee for|
+|`curveId`|`uint256`|Curve Id to unset max EL withdrawal request fee for|
 
 
 ### getKeyRemovalCharge
 
-Get key removal charge by the curveId. A charge is taken from the bond for each removed key from CSM. This parameter is not used in Curated Module
+Get key removal charge by the curveId. A charge is taken from the bond for each removed key from the module. This parameter is not used in Curated Module
 
 `defaultKeyRemovalCharge` is returned if the value is not set for the given curveId.
 
@@ -990,7 +1041,7 @@ function getQueueConfig(uint256 curveId) external view returns (uint32 queuePrio
 |Name|Type|Description|
 |----|----|-----------|
 |`queuePriority`|`uint32`|priority Queue priority.|
-|`maxDeposits`|`uint32`||
+|`maxDeposits`|`uint32`|Maximum number of the first deposits a Node Operator can get via the priority queue. Ex. with `maxDeposits = 10` the Node Operator сan get keys added to the priority queue until the Node Operator has totalDepositedKeys + enqueued >= 10.|
 
 
 ### getRewardShareData
@@ -1009,6 +1060,12 @@ function getRewardShareData(uint256 curveId) external view returns (KeyNumberVal
 |----|----|-----------|
 |`curveId`|`uint256`|Curve Id to get reward share data for|
 
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`data`|`KeyNumberValueInterval[]`|Interval values for keys count and reward share percentages in BP (ex. [[1, 10000], [11, 8000], [51, 5000]])|
+
 
 ### getPerformanceLeewayData
 
@@ -1025,6 +1082,12 @@ function getPerformanceLeewayData(uint256 curveId) external view returns (KeyNum
 |Name|Type|Description|
 |----|----|-----------|
 |`curveId`|`uint256`|Curve Id to get performance leeway data for|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`data`|`KeyNumberValueInterval[]`|Interval values for keys count and performance leeway percentages in BP (ex. [[1, 500], [101, 450], [501, 400]])|
 
 
 ### getStrikesParams
@@ -1047,7 +1110,7 @@ function getStrikesParams(uint256 curveId) external view returns (uint256 lifeti
 
 |Name|Type|Description|
 |----|----|-----------|
-|`lifetime`|`uint256`|Number of CSM Performance Oracle frames to store strikes values|
+|`lifetime`|`uint256`|Number of Performance Oracle frames to store strikes values|
 |`threshold`|`uint256`|The strikes value leading to validator force ejection|
 
 
@@ -1136,21 +1199,44 @@ function getExitDelayFee(uint256 curveId) external view returns (uint256 penalty
 |`curveId`|`uint256`|Curve ID to get the exit delay fee for|
 
 
-### getMaxWithdrawalRequestFee
+### getMaxElWithdrawalRequestFee
 
-Get max withdrawal request fee by the curveId
+Get max EL withdrawal request fee by the curveId
 
-`defaultMaxWithdrawalRequestFee` is returned if the value is not set for the given curveId.
+`defaultMaxElWithdrawalRequestFee` is returned if the value is not set for the given curveId.
 
 
 ```solidity
-function getMaxWithdrawalRequestFee(uint256 curveId) external view returns (uint256 fee);
+function getMaxElWithdrawalRequestFee(uint256 curveId) external view returns (uint256 fee);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`curveId`|`uint256`|Curve Id to get max withdrawal request fee for|
+|`curveId`|`uint256`|Curve Id to get max EL withdrawal request fee for|
+
+
+### getCurveParameters
+
+Get all parameters resolved for the given curveId in one call
+
+Per-curve values are returned where set, otherwise defaults are used
+
+
+```solidity
+function getCurveParameters(uint256 curveId) external view returns (CurveParameters memory params);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`curveId`|`uint256`|Curve Id to get all parameters for|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`params`|`CurveParameters`|All resolved parameters for the given curveId|
 
 
 ### getInitializedVersion
@@ -1240,11 +1326,95 @@ function _setDefaultAllowedExitDelay(uint256 delay) internal;
 function _setDefaultExitDelayFee(uint256 penalty) internal;
 ```
 
-### _setDefaultMaxWithdrawalRequestFee
+### _setDefaultMaxElWithdrawalRequestFee
 
 
 ```solidity
-function _setDefaultMaxWithdrawalRequestFee(uint256 fee) internal;
+function _setDefaultMaxElWithdrawalRequestFee(uint256 fee) internal;
+```
+
+### _getKeyRemovalCharge
+
+
+```solidity
+function _getKeyRemovalCharge(uint256 curveId) internal view returns (uint256);
+```
+
+### _getGeneralDelayedPenaltyAdditionalFine
+
+
+```solidity
+function _getGeneralDelayedPenaltyAdditionalFine(uint256 curveId) internal view returns (uint256);
+```
+
+### _getKeysLimit
+
+
+```solidity
+function _getKeysLimit(uint256 curveId) internal view returns (uint256);
+```
+
+### _getQueueConfig
+
+
+```solidity
+function _getQueueConfig(uint256 curveId) internal view returns (uint32, uint32);
+```
+
+### _getRewardShareData
+
+
+```solidity
+function _getRewardShareData(uint256 curveId) internal view returns (KeyNumberValueInterval[] memory data);
+```
+
+### _getPerformanceLeewayData
+
+
+```solidity
+function _getPerformanceLeewayData(uint256 curveId) internal view returns (KeyNumberValueInterval[] memory data);
+```
+
+### _getStrikesParams
+
+
+```solidity
+function _getStrikesParams(uint256 curveId) internal view returns (uint256, uint256);
+```
+
+### _getBadPerformancePenalty
+
+
+```solidity
+function _getBadPerformancePenalty(uint256 curveId) internal view returns (uint256);
+```
+
+### _getPerformanceCoefficients
+
+
+```solidity
+function _getPerformanceCoefficients(uint256 curveId) internal view returns (uint256, uint256, uint256);
+```
+
+### _getAllowedExitDelay
+
+
+```solidity
+function _getAllowedExitDelay(uint256 curveId) internal view returns (uint256 delay);
+```
+
+### _getExitDelayFee
+
+
+```solidity
+function _getExitDelayFee(uint256 curveId) internal view returns (uint256);
+```
+
+### _getMaxElWithdrawalRequestFee
+
+
+```solidity
+function _getMaxElWithdrawalRequestFee(uint256 curveId) internal view returns (uint256);
 ```
 
 ### _onlyRoleMemberOrAdmin
@@ -1252,6 +1422,13 @@ function _setDefaultMaxWithdrawalRequestFee(uint256 fee) internal;
 
 ```solidity
 function _onlyRoleMemberOrAdmin(bytes32 role) internal view;
+```
+
+### _onlyRoleMemberOrCurveParametersRoleOrAdmin
+
+
+```solidity
+function _onlyRoleMemberOrCurveParametersRoleOrAdmin(bytes32 role) internal view;
 ```
 
 ### _validateQueueConfig
