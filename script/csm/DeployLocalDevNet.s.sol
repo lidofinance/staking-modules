@@ -35,6 +35,7 @@ contract DeployLocalDevNet is DeployBase {
         config.gIFirstBalanceNode = GIndices.FIRST_BALANCE_NODE_ELECTRA;
         config.verifierFirstSupportedSlot = vm.envUint("DEVNET_ELECTRA_EPOCH") * config.slotsPerEpoch;
         config.capellaSlot = vm.envUint("DEVNET_CAPELLA_EPOCH") * config.slotsPerEpoch;
+        config.minWithdrawalRatio = 9900;
 
         // Accounting
         // 2.4 -> 1.3

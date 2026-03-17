@@ -583,8 +583,13 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function getKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256) {
-        return _baseStorage().keyAddedBalances[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
+    function getKeyAllocatedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256) {
+        return _baseStorage().keyAllocatedBalance[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
+    }
+
+    /// @inheritdoc IBaseModule
+    function getKeyConfirmedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256) {
+        return _baseStorage().keyConfirmedBalance[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 
     /// @inheritdoc IBaseModule

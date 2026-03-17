@@ -35,6 +35,7 @@ contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
         config.gIFirstBalanceNode = GIndices.FIRST_BALANCE_NODE_ELECTRA;
         config.verifierFirstSupportedSlot = vm.envUint("DEVNET_ELECTRA_EPOCH") * config.slotsPerEpoch;
         config.capellaSlot = vm.envUint("DEVNET_CAPELLA_EPOCH") * config.slotsPerEpoch;
+        config.minWithdrawalRatio = 9900;
 
         // Accounting
         config.defaultBondCurve.push([1, 32 ether]);

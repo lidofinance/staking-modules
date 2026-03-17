@@ -37,7 +37,7 @@ library WithdrawnValidatorLib {
             if (info.isSlashed != slashed) revert IBaseModule.InvalidWithdrawnValidatorInfo();
             if (info.isSlashed && !$.isValidatorSlashed[pointer]) revert IBaseModule.SlashingPenaltyIsNotApplicable();
 
-            _process($.nodeOperators[info.nodeOperatorId], info, $.keyAddedBalances[pointer]);
+            _process($.nodeOperators[info.nodeOperatorId], info, $.keyConfirmedBalance[pointer]);
 
             $.isValidatorWithdrawn[pointer] = true;
             touchedOperatorIds[touchedCount] = info.nodeOperatorId;
@@ -89,7 +89,7 @@ library WithdrawnValidatorLib {
         WithdrawnValidatorInfo calldata validatorInfo,
         ExitPenaltyInfo memory penaltyInfo,
         uint256 keyAddedBalance
-    ) internal {
+    ) private {
         bool chargeElWithdrawalRequestFee = false;
 
         uint256 minExpectedBalance = MIN_ACTIVATION_BALANCE + keyAddedBalance;

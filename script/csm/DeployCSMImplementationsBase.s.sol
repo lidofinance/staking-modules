@@ -106,6 +106,7 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
                 firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 pivotSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 capellaSlot: Slot.wrap(uint64(config.capellaSlot)),
+                minWithdrawalRatio: config.minWithdrawalRatio,
                 admin: deployer
             });
 

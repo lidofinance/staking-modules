@@ -151,19 +151,19 @@ library NodeOperatorOps {
             currentBalanceWei = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE;
         }
 
-        uint256 newKeyAddedBalance;
+        uint256 newConfirmed;
         unchecked {
-            newKeyAddedBalance = currentBalanceWei - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
+            newConfirmed = currentBalanceWei - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
         }
 
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        if (newKeyAddedBalance <= $.keyAddedBalances[pointer]) revert IBaseModule.UnreportableBalance();
-        $.keyAddedBalances[pointer] = newKeyAddedBalance;
-        emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, newKeyAddedBalance);
+        if (newConfirmed <= $.keyConfirmedBalance[pointer]) revert IBaseModule.UnreportableBalance();
+        $.keyConfirmedBalance[pointer] = newConfirmed;
+        emit IBaseModule.KeyConfirmedBalanceChanged(nodeOperatorId, keyIndex, newConfirmed);
     }
 
-    function increaseKeyAddedBalancesByAllocations(
-        mapping(uint256 => uint256) storage keyAddedBalances,
+    function increaseKeyAllocatedBalance(
+        mapping(uint256 => uint256) storage keyAllocatedBalance,
         uint256[] calldata operatorIds,
         uint256[] calldata keyIndices,
         uint256[] calldata allocations
@@ -171,7 +171,7 @@ library NodeOperatorOps {
         for (uint256 i; i < allocations.length; ++i) {
             uint256 allocationWei = allocations[i];
             if (allocationWei == 0) continue;
-            _increaseKeyAddedBalance(keyAddedBalances, operatorIds[i], keyIndices[i], allocationWei);
+            _increaseKeyAllocatedBalance(keyAllocatedBalance, operatorIds[i], keyIndices[i], allocationWei);
         }
     }
 
@@ -345,17 +345,18 @@ library NodeOperatorOps {
     }
 
     function capTopUpLimitsByKeyBalance(
-        mapping(uint256 => uint256) storage keyAddedBalances,
+        ModuleLinearStorage.BaseModuleStorage storage $,
         uint256[] calldata operatorIds,
         uint256[] calldata keyIndices,
         uint256[] calldata topUpLimits
     ) external view returns (uint256[] memory cappedTopUpLimits) {
         uint256 len = topUpLimits.length;
         cappedTopUpLimits = new uint256[](len);
-        uint256 cap = _keyAddedBalanceCap();
+        uint256 cap = _keyBalanceCap();
         for (uint256 i; i < len; ++i) {
-            uint256 keyAddedBalance = keyAddedBalances[KeyPointerLib.keyPointer(operatorIds[i], keyIndices[i])];
-            uint256 remaining = keyAddedBalance >= cap ? 0 : cap - keyAddedBalance;
+            uint256 pointer = KeyPointerLib.keyPointer(operatorIds[i], keyIndices[i]);
+            uint256 balance = Math.max($.keyAllocatedBalance[pointer], $.keyConfirmedBalance[pointer]);
+            uint256 remaining = balance > cap ? 0 : cap - balance;
             cappedTopUpLimits[i] = Math.min(topUpLimits[i], remaining);
         }
     }
@@ -414,16 +415,16 @@ library NodeOperatorOps {
         }
     }
 
-    function _increaseKeyAddedBalance(
-        mapping(uint256 => uint256) storage keyAddedBalances,
+    function _increaseKeyAllocatedBalance(
+        mapping(uint256 => uint256) storage keyAllocatedBalance,
         uint256 nodeOperatorId,
         uint256 keyIndex,
         uint256 incrementWei
     ) internal {
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        uint256 updatedBalance = Math.min(_keyAddedBalanceCap(), keyAddedBalances[pointer] + incrementWei);
-        keyAddedBalances[pointer] = updatedBalance;
-        emit IBaseModule.KeyAddedBalanceChanged(nodeOperatorId, keyIndex, updatedBalance);
+        uint256 updated = Math.min(_keyBalanceCap(), keyAllocatedBalance[pointer] + incrementWei);
+        keyAllocatedBalance[pointer] = updated;
+        emit IBaseModule.KeyAllocatedBalanceChanged(nodeOperatorId, keyIndex, updated);
     }
 
     function _updateExitedValidatorsCount(
@@ -458,7 +459,7 @@ library NodeOperatorOps {
         revert IBaseModule.NodeOperatorDoesNotExist();
     }
 
-    function _keyAddedBalanceCap() private pure returns (uint256) {
+    function _keyBalanceCap() private pure returns (uint256) {
         return WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
     }
 }

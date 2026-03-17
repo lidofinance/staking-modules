@@ -18,6 +18,6 @@ import "./PenaltiesGeneral.t.sol";
 // forge-lint: disable-next-line(unaliased-plain-import)
 import "./PenaltiesWithdrawn.t.sol";
 // forge-lint: disable-next-line(unaliased-plain-import)
-import "./KeyAddedBalance.t.sol";
+import "./KeyBalances.t.sol";
 // forge-lint: disable-next-line(unaliased-plain-import)
 import "./ExitDelay.t.sol";

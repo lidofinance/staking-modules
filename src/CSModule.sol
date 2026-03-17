@@ -63,9 +63,12 @@ contract CSModule is ICSModule, BaseModule {
     ///      To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
     function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {
         BaseModuleStorage storage $ = _baseStorage();
-        // Clean `Layout.freeSlot1` since the storage slot is no longer needed in version 3.
-        $.freeSlot1 = 0;
         // NOTE: Don't call `_initTopUpQueue` because it is disabled by default and existing CSM deployment can only support 0x01 validators mode.
+
+        assembly {
+            // clean slot `1` since it has old QueueLib.Queue struct data from _legacyQueue variable
+            sstore(1, 0x00)
+        }
 
         // NOTE: Rebuild the global withdrawn counter for the future.
         uint256 totalWithdrawnValidators;
@@ -218,7 +221,7 @@ contract CSModule is ICSModule, BaseModule {
 
         // Cap top-ups so we don't over-allocate to keys that lost balance due to CL penalties.
         uint256[] memory cappedTopUpLimits = NodeOperatorOps.capTopUpLimitsByKeyBalance(
-            _baseStorage().keyAddedBalances,
+            _baseStorage(),
             operatorIds,
             keyIndices,
             topUpLimits
@@ -235,8 +238,8 @@ contract CSModule is ICSModule, BaseModule {
 
         if (allocations.length == 0) return allocations;
 
-        NodeOperatorOps.increaseKeyAddedBalancesByAllocations(
-            _baseStorage().keyAddedBalances,
+        NodeOperatorOps.increaseKeyAllocatedBalance(
+            _baseStorage().keyAllocatedBalance,
             operatorIds,
             keyIndices,
             allocations
