@@ -90,6 +90,7 @@ interface IVerifier {
     error ValidatorIsSlashed();
     error ValidatorIsNotSlashed();
     error ValidatorIsNotWithdrawable();
+    error ValidatorIsWithdrawable();
     error InvalidWithdrawalAddress();
     error InvalidPublicKey();
     error InvalidValidatorIndex();

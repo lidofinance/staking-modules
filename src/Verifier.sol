@@ -359,6 +359,10 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         bytes32 stateRoot,
         Slot stateSlot
     ) internal view returns (uint64 balanceGwei) {
+        if (_computeEpochAtSlot(stateSlot) >= validator.object.withdrawableEpoch) {
+            revert ValidatorIsWithdrawable();
+        }
+
         {
             bytes memory pubkey = MODULE.getSigningKeys(validator.nodeOperatorId, validator.keyIndex, 1);
             if (keccak256(pubkey) != keccak256(validator.object.pubkey)) revert InvalidPublicKey();

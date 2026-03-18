@@ -1779,6 +1779,13 @@ contract VerifierBalanceProofTest is VerifierTestBase {
         verifier.processBalanceProof(fixture.data);
     }
 
+    function test_processBalanceProof_RevertWhen_ValidatorIsWithdrawable() public {
+        fixture.data.validator.object.withdrawableEpoch = uint64(fixture.data.recentBlock.header.slot.unwrap() / 32);
+
+        vm.expectRevert(IVerifier.ValidatorIsWithdrawable.selector);
+        verifier.processBalanceProof(fixture.data);
+    }
+
     function test_processBalanceProof_RevertWhen_Paused() public {
         vm.prank(admin);
         verifier.pauseFor(1 days);

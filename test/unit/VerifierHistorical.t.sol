@@ -502,6 +502,15 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
         verifier.processHistoricalBalanceProof(fixture.data);
     }
 
+    function test_processHistoricalBalanceProof_RevertWhen_ValidatorIsWithdrawable() public {
+        fixture.data.validator.object.withdrawableEpoch = uint64(
+            fixture.data.historicalBlock.header.slot.unwrap() / 32
+        );
+
+        vm.expectRevert(IVerifier.ValidatorIsWithdrawable.selector);
+        verifier.processHistoricalBalanceProof(fixture.data);
+    }
+
     function test_processHistoricalBalanceProof_RevertWhen_InvalidHistoricalBlock() public {
         fixture.data.historicalBlock.header.parentRoot = someBytes32();
 
