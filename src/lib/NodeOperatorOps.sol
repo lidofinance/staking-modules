@@ -160,6 +160,11 @@ library NodeOperatorOps {
         if (newConfirmed <= $.keyConfirmedBalance[pointer]) revert IBaseModule.UnreportableBalance();
         $.keyConfirmedBalance[pointer] = newConfirmed;
         emit IBaseModule.KeyConfirmedBalanceChanged(nodeOperatorId, keyIndex, newConfirmed);
+
+        if ($.keyAllocatedBalance[pointer] < newConfirmed) {
+            $.keyAllocatedBalance[pointer] = newConfirmed;
+            emit IBaseModule.KeyAllocatedBalanceChanged(nodeOperatorId, keyIndex, newConfirmed);
+        }
     }
 
     function increaseKeyAllocatedBalance(
@@ -354,8 +359,7 @@ library NodeOperatorOps {
         cappedTopUpLimits = new uint256[](len);
         uint256 cap = _keyBalanceCap();
         for (uint256 i; i < len; ++i) {
-            uint256 pointer = KeyPointerLib.keyPointer(operatorIds[i], keyIndices[i]);
-            uint256 balance = Math.max($.keyAllocatedBalance[pointer], $.keyConfirmedBalance[pointer]);
+            uint256 balance = $.keyAllocatedBalance[KeyPointerLib.keyPointer(operatorIds[i], keyIndices[i])];
             uint256 remaining = balance > cap ? 0 : cap - balance;
             cappedTopUpLimits[i] = Math.min(topUpLimits[i], remaining);
         }

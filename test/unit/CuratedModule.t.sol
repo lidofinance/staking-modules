@@ -1971,7 +1971,27 @@ contract CuratedReportWithdrawnValidators is ModuleReportWithdrawnValidators, Cu
 
 contract CuratedKeyAllocatedBalance is ModuleKeyAllocatedBalance, CuratedCommon {}
 
-contract CuratedReportValidatorBalance is ModuleReportValidatorBalance, CuratedCommon {}
+contract CuratedReportValidatorBalance is ModuleReportValidatorBalance, CuratedCommon {
+    function test_reportValidatorBalance_doesNotDecreaseKeyAllocatedBalance() public {
+        uint256 noId = createNodeOperator();
+        cm.obtainDepositData(1, "");
+
+        // Allocate 20 ether via top-up, setting keyAllocatedBalance to 20 ether.
+        bytes memory key = cm.getSigningKeys(noId, 0, 1);
+        cm.allocateDeposits({
+            maxDepositAmount: 20 ether,
+            pubkeys: BytesArr(key),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(noId),
+            topUpLimits: UintArr(20 ether)
+        });
+        assertEq(cm.getKeyAllocatedBalance(noId, 0), 20 ether);
+
+        // Confirmed balance below allocated — keyAllocatedBalance must not decrease.
+        cm.reportValidatorBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 10 ether);
+        assertEq(cm.getKeyAllocatedBalance(noId, 0), 20 ether, "keyAllocatedBalance must not decrease");
+    }
+}
 
 contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
     function test_topUp_emitsKeyAllocatedBalanceChanged() public {

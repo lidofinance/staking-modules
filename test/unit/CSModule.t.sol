@@ -1056,16 +1056,13 @@ contract CSMTopUpQueue is CSMCommon {
         createNodeOperator(1);
         csm.obtainDepositData(1, "");
 
-        setKeyConfirmedBalance(
-            0,
-            0,
-            WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE - 2 ether
-        );
+        uint256 cap = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
+        setKeyConfirmedBalance(0, 0, cap - 2 ether);
 
         bytes memory key = csm.getSigningKeys(0, 0, 1);
         vm.expectEmit(address(csm));
-        // keyAllocatedBalance was 0 (setKeyConfirmedBalance only writes to keyConfirmedBalance), allocation adds 2 ether
-        emit IBaseModule.KeyAllocatedBalanceChanged(0, 0, 2 ether);
+        // keyAllocatedBalance is already at cap - 2 ether (set by reportValidatorBalance), allocation adds 2 ether to reach cap
+        emit IBaseModule.KeyAllocatedBalanceChanged(0, 0, cap);
 
         uint256[] memory allocations = csm.allocateDeposits({
             maxDepositAmount: 5 ether,
@@ -2043,6 +2040,26 @@ contract CSMReportValidatorBalance is ModuleReportValidatorBalance, CSMCommon {
         topUpQueueLimit = 32;
 
         super.setUp();
+    }
+
+    function test_reportValidatorBalance_doesNotDecreaseKeyAllocatedBalance() public {
+        uint256 noId = createNodeOperator(1);
+        csm.obtainDepositData(1, "");
+
+        // Allocate 20 ether via top-up, setting keyAllocatedBalance to 20 ether.
+        bytes memory key = csm.getSigningKeys(noId, 0, 1);
+        csm.allocateDeposits({
+            maxDepositAmount: 20 ether,
+            pubkeys: BytesArr(key),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(noId),
+            topUpLimits: UintArr(20 ether)
+        });
+        assertEq(csm.getKeyAllocatedBalance(noId, 0), 20 ether);
+
+        // Confirmed balance below allocated — keyAllocatedBalance must not decrease.
+        csm.reportValidatorBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 10 ether);
+        assertEq(csm.getKeyAllocatedBalance(noId, 0), 20 ether, "keyAllocatedBalance must not decrease");
     }
 }
 

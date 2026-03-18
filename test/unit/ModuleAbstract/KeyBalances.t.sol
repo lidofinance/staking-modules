@@ -91,12 +91,14 @@ abstract contract ModuleReportValidatorBalance is ModuleFixtures {
         );
     }
 
-    function test_reportValidatorBalance_doesNotUpdateKeyAllocatedBalance() public {
+    function test_reportValidatorBalance_updatesKeyAllocatedBalance() public {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
+        vm.expectEmit(address(module));
+        emit IBaseModule.KeyAllocatedBalanceChanged(noId, 0, 10 ether);
         module.reportValidatorBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 10 ether);
-        assertEq(module.getKeyAllocatedBalance(noId, 0), 0, "keyAllocatedBalance must not change on balance report");
+        assertEq(module.getKeyAllocatedBalance(noId, 0), 10 ether);
     }
 
     function test_reportValidatorBalance_revertWhen_confirmedBalanceIsZero() public assertInvariants {
