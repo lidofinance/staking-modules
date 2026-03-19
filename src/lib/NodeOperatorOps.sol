@@ -11,10 +11,10 @@ import { IAccounting } from "../interfaces/IAccounting.sol";
 import { IParametersRegistry } from "../interfaces/IParametersRegistry.sol";
 
 import { ModuleLinearStorage } from "../abstract/ModuleLinearStorage.sol";
-import { CuratedDepositAllocator } from "./allocator/CuratedDepositAllocator.sol";
 import { ValidatorCountsReport } from "./ValidatorCountsReport.sol";
-import { WithdrawnValidatorLib } from "./WithdrawnValidatorLib.sol";
+import { ValidatorBalanceLimits } from "./ValidatorBalanceLimits.sol";
 import { KeyPointerLib } from "./KeyPointerLib.sol";
+import { StakeTracker } from "./StakeTracker.sol";
 import { SigningKeys } from "./SigningKeys.sol";
 
 /// @dev The library is used to reduce BaseModule bytecode size.
@@ -146,38 +146,17 @@ library NodeOperatorOps {
             revert IBaseModule.SigningKeysInvalidOffset();
         }
 
-        if (currentBalanceWei < WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE) revert IBaseModule.UnreportableBalance();
-        if (currentBalanceWei > WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE) {
-            currentBalanceWei = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE;
+        if (currentBalanceWei < ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE) revert IBaseModule.UnreportableBalance();
+        if (currentBalanceWei > ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE) {
+            currentBalanceWei = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE;
         }
 
         uint256 newConfirmed;
         unchecked {
-            newConfirmed = currentBalanceWei - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
+            newConfirmed = currentBalanceWei - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
         }
 
-        uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        if (newConfirmed <= $.keyConfirmedBalance[pointer]) revert IBaseModule.UnreportableBalance();
-        $.keyConfirmedBalance[pointer] = newConfirmed;
-        emit IBaseModule.KeyConfirmedBalanceChanged(nodeOperatorId, keyIndex, newConfirmed);
-
-        if ($.keyAllocatedBalance[pointer] < newConfirmed) {
-            $.keyAllocatedBalance[pointer] = newConfirmed;
-            emit IBaseModule.KeyAllocatedBalanceChanged(nodeOperatorId, keyIndex, newConfirmed);
-        }
-    }
-
-    function increaseKeyAllocatedBalance(
-        mapping(uint256 => uint256) storage keyAllocatedBalance,
-        uint256[] calldata operatorIds,
-        uint256[] calldata keyIndices,
-        uint256[] calldata allocations
-    ) external {
-        for (uint256 i; i < allocations.length; ++i) {
-            uint256 allocationWei = allocations[i];
-            if (allocationWei == 0) continue;
-            _increaseKeyAllocatedBalance(keyAllocatedBalance, operatorIds[i], keyIndices[i], allocationWei);
-        }
+        StakeTracker.reportValidatorBalance($, nodeOperatorId, keyIndex, newConfirmed);
     }
 
     function removeKeys(
@@ -383,54 +362,6 @@ library NodeOperatorOps {
         }
     }
 
-    /// @dev Distribute per-operator allocations to per-key allocations with per-key limits.
-    function distributeTopUpAllocations(
-        uint256[] calldata operatorIds,
-        uint256[] calldata topUpLimits,
-        uint256[] calldata allocatedOperatorIds,
-        uint256[] calldata operatorAllocations,
-        uint256 operatorsCount
-    ) external pure returns (uint256[] memory allocations, uint256[] memory perOperatorIncrements) {
-        // topUpLimits are per-key and aligned with operatorIds/keyIndices order.
-        allocations = new uint256[](operatorIds.length);
-        // NOTE: Use a full operatorsCount-sized array for O(1) lookups; operator counts are small enough
-        // that a compact map would add overhead and can be worse overall.
-        uint256[] memory perOperatorAllocations = new uint256[](operatorsCount);
-        for (uint256 i; i < allocatedOperatorIds.length; ++i) {
-            perOperatorAllocations[allocatedOperatorIds[i]] = operatorAllocations[i];
-        }
-
-        perOperatorIncrements = new uint256[](operatorsCount);
-        unchecked {
-            for (uint256 i; i < operatorIds.length; ++i) {
-                uint256 operatorId = operatorIds[i];
-                uint256 remaining = perOperatorAllocations[operatorId] - perOperatorIncrements[operatorId];
-                if (remaining == 0) continue;
-
-                // Curated allocations are quantized to 2 ether multiples so they
-                // satisfy StakingRouter's top-up allocation requirements.
-                uint256 limit = CuratedDepositAllocator.quantizeForTopUp(topUpLimits[i]);
-                if (limit == 0) continue;
-
-                uint256 amount = Math.min(remaining, limit);
-                allocations[i] = amount;
-                perOperatorIncrements[operatorId] += amount;
-            }
-        }
-    }
-
-    function _increaseKeyAllocatedBalance(
-        mapping(uint256 => uint256) storage keyAllocatedBalance,
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        uint256 incrementWei
-    ) internal {
-        uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        uint256 updated = Math.min(_keyBalanceCap(), keyAllocatedBalance[pointer] + incrementWei);
-        keyAllocatedBalance[pointer] = updated;
-        emit IBaseModule.KeyAllocatedBalanceChanged(nodeOperatorId, keyIndex, updated);
-    }
-
     function _updateExitedValidatorsCount(
         ModuleLinearStorage.BaseModuleStorage storage $,
         uint256 nodeOperatorId,
@@ -464,6 +395,6 @@ library NodeOperatorOps {
     }
 
     function _keyBalanceCap() private pure returns (uint256) {
-        return WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
+        return ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
     }
 }

@@ -6,6 +6,7 @@ pragma solidity 0.8.33;
 import { ExitPenaltyInfo, MarkedUint248 } from "src/interfaces/IExitPenalties.sol";
 import { IBaseModule, NodeOperator, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
+import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 import { ModuleFixtures } from "./_Base.t.sol";
 
@@ -28,13 +29,13 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
 
         vm.expectEmit(address(module));
-        emit IBaseModule.ValidatorWithdrawn(noId, keyIndex, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE, 0, pubkey);
+        emit IBaseModule.ValidatorWithdrawn(noId, keyIndex, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE, 0, pubkey);
         module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -46,6 +47,8 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertTrue(withdrawn);
 
         assertEq(module.getNonce(), nonce + 1);
+        assertEq(module.getTotalModuleStake(), 0);
+        assertEq(module.getNodeOperatorBalance(noId), 0);
     }
 
     function test_reportRegularWithdrawnValidators_changeNonce() public assertInvariants {
@@ -62,7 +65,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE - balanceShortage,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -71,7 +74,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         emit IBaseModule.ValidatorWithdrawn(
             noId,
             keyIndex,
-            WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE - balanceShortage,
+            ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
             0,
             pubkey
         );
@@ -84,6 +87,8 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
         // depositable decrease should
         assertEq(module.getNonce(), nonce + 1);
+        assertEq(module.getTotalModuleStake(), 0);
+        assertEq(module.getNodeOperatorBalance(noId), 0);
     }
 
     function test_reportRegularWithdrawnValidators_lowExitBalance() public assertInvariants {
@@ -98,7 +103,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE - balanceShortage,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -111,6 +116,8 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         // There should be no target limit if the penalty is covered by the bond.
         assertEq(no.targetLimit, 0);
         assertEq(no.targetLimitMode, 0);
+        assertEq(module.getTotalModuleStake(), 0);
+        assertEq(module.getNodeOperatorBalance(noId), 0);
     }
 
     function test_reportRegularWithdrawnValidators_exitBalanceBelowKeyBalance() public assertInvariants {
@@ -118,7 +125,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        uint256 maxReportedBalance = WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 10 ether;
+        uint256 maxReportedBalance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether;
         uint256 exitBalance = maxReportedBalance - 1 ether;
         uint256 expectedPenalty = maxReportedBalance - exitBalance;
 
@@ -139,6 +146,72 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
+        assertEq(module.getTotalModuleStake(), 0);
+        assertEq(module.getNodeOperatorBalance(noId), 0);
+    }
+
+    function test_reportRegularWithdrawnValidators_removesAllocatedButUnconfirmedExtra() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        bytes memory key = module.getSigningKeys(noId, 0, 1);
+        module.allocateDeposits({
+            maxDepositAmount: 10 ether,
+            pubkeys: BytesArr(key),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(noId),
+            topUpLimits: UintArr(10 ether)
+        });
+
+        assertEq(module.getKeyAllocatedBalance(noId, 0), 10 ether);
+        assertEq(module.getKeyConfirmedBalance(noId, 0), 0);
+        assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether);
+        assertEq(module.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether);
+
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        module.reportRegularWithdrawnValidators(validatorInfos);
+
+        assertEq(module.getTotalModuleStake(), 0);
+        assertEq(module.getNodeOperatorBalance(noId), 0);
+    }
+
+    function test_reportRegularWithdrawnValidators_keepsRemainingTrackedStakeOfOtherKey() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        module.obtainDepositData(2, "");
+
+        bytes memory key = module.getSigningKeys(noId, 0, 1);
+        module.allocateDeposits({
+            maxDepositAmount: 10 ether,
+            pubkeys: BytesArr(key),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(noId),
+            topUpLimits: UintArr(10 ether)
+        });
+
+        assertEq(module.getTotalModuleStake(), 2 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether);
+        assertEq(module.getNodeOperatorBalance(noId), 2 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether);
+
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        module.reportRegularWithdrawnValidators(validatorInfos);
+
+        assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+        assertEq(module.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
     }
 
     function test_reportRegularWithdrawnValidators_exitPenaltyScaledByMaxReportedBalance() public assertInvariants {
@@ -157,7 +230,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             })
         );
 
-        uint256 maxReportedBalance = WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE * multiplier + 1 wei;
+        uint256 maxReportedBalance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier + 1 wei;
         uint256 exitBalance = maxReportedBalance - 1 ether;
         uint256 expectedPenalty = maxReportedBalance - exitBalance;
 
@@ -182,6 +255,8 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalWithdrawnKeys, 1);
+        assertEq(module.getTotalModuleStake(), 0);
+        assertEq(module.getNodeOperatorBalance(noId), 0);
     }
 
     function test_reportRegularWithdrawnValidators_superLowExitBalance() public assertInvariants {
@@ -196,7 +271,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE - balanceShortage,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -229,7 +304,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -267,7 +342,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE * multiplier + 1 ether - 1 wei,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier + 1 ether - 1 wei,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -286,7 +361,8 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         // (1 << (256 - log2(2048))) - 1
         uint248 fee = (1 << 245) - 1;
-        uint256 multiplier = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE / WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
+        uint256 multiplier = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE /
+            ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
@@ -300,7 +376,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE * multiplier + 1000 ether,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier + 1000 ether,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -332,7 +408,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -370,7 +446,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -407,7 +483,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE * multiplier + 1 ether - 1 wei,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier + 1 ether - 1 wei,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -426,7 +502,8 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         // (1 << (256 - log2(2048))) - 1
         uint248 penalty = (1 << 245) - 1;
-        uint256 multiplier = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE / WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
+        uint256 multiplier = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE /
+            ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
@@ -440,7 +517,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE * multiplier + 1000 ether,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier + 1000 ether,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -461,7 +538,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 154,
             isSlashed: false
         });
@@ -482,7 +559,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: slashingPenalty,
             isSlashed: true
         });
@@ -506,7 +583,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE - 11 ether,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - 11 ether,
             slashingPenalty: slashingPenalty,
             isSlashed: true
         });
@@ -528,7 +605,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE * multiplier,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier,
             slashingPenalty: slashingPenalty,
             isSlashed: true
         });
@@ -549,7 +626,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE - balanceShortage,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
             slashingPenalty: 0,
             isSlashed: true
         });
@@ -569,7 +646,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: slashingPenalty,
             isSlashed: true
         });
@@ -589,7 +666,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 1 ether,
             isSlashed: true
         });
@@ -607,7 +684,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -637,7 +714,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -676,7 +753,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -719,7 +796,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -761,7 +838,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -807,7 +884,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -851,7 +928,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -892,7 +969,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -930,7 +1007,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE * multiplier,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -962,7 +1039,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -1004,7 +1081,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE - balanceShortage,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -1097,7 +1174,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -1132,7 +1209,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             validatorInfos[i] = WithdrawnValidatorInfo({
                 nodeOperatorId: noId,
                 keyIndex: i,
-                exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+                exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
                 slashingPenalty: 0,
                 isSlashed: false
             });
@@ -1155,7 +1232,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             validatorInfos[i] = WithdrawnValidatorInfo({
                 nodeOperatorId: noId,
                 keyIndex: i,
-                exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+                exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
                 slashingPenalty: 0,
                 isSlashed: false
             });
@@ -1221,7 +1298,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -1249,7 +1326,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + topUp - balanceShortage,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + topUp - balanceShortage,
             slashingPenalty: 0,
             isSlashed: true
         });

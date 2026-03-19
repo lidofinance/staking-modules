@@ -10,6 +10,7 @@ import { IAccounting } from "src/interfaces/IAccounting.sol";
 import { NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
+import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 import { ERC20Testable } from "../../helpers/ERCTestable.sol";
 import { ModuleFixtures } from "./_Base.t.sol";
@@ -173,6 +174,21 @@ contract MyModule is BaseModule {
         uint256 depositsCount,
         bytes calldata depositCalldata
     ) external virtual returns (bytes memory publicKeys, bytes memory signatures) {
+        revert NotImplementedInTest();
+    }
+
+    function allocateDeposits(
+        uint256 maxDepositAmount,
+        bytes[] calldata pubkeys,
+        uint256[] calldata keyIndices,
+        uint256[] calldata operatorIds,
+        uint256[] calldata topUpLimits
+    ) external returns (uint256[] memory allocations) {
+        maxDepositAmount;
+        pubkeys;
+        keyIndices;
+        operatorIds;
+        topUpLimits;
         revert NotImplementedInTest();
     }
 
@@ -391,7 +407,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: true
         });
@@ -408,7 +424,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: true
         });

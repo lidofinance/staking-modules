@@ -7,6 +7,7 @@ import { Vm } from "forge-std/Test.sol";
 
 import { IBaseModule, NodeOperator, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
+import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 import { ModuleFixtures } from "./_Base.t.sol";
 
@@ -20,6 +21,8 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         (bytes memory obtainedKeys, bytes memory obtainedSignatures) = module.obtainDepositData(1, "");
         assertEq(obtainedKeys, keys);
         assertEq(obtainedSignatures, signatures);
+        assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+        assertEq(module.getNodeOperatorBalance(nodeOperatorId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
     }
 
     function test_obtainDepositData_counters() public assertInvariants {
@@ -37,6 +40,8 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalDepositedKeys, 1);
         assertEq(no.depositableValidatorsCount, 0);
+        assertEq(module.getTotalModuleStake(), keysCount * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+        assertEq(module.getNodeOperatorBalance(noId), keysCount * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
     }
 
     function test_obtainDepositData_zeroDeposits() public assertInvariants {
@@ -52,6 +57,8 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         assertEq(no.totalDepositedKeys, 0);
         assertEq(no.depositableValidatorsCount, 1);
         assertEq(module.getNonce(), nonceBefore);
+        assertEq(module.getTotalModuleStake(), 0);
+        assertEq(module.getNodeOperatorBalance(noId), 0);
     }
 
     function test_obtainDepositData_unvettedKeys() public assertInvariants {
@@ -66,6 +73,7 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         (, uint256 totalDepositedValidators, uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
         assertEq(totalDepositedValidators, 5);
         assertEq(depositableValidatorsCount, 0);
+        assertEq(module.getTotalModuleStake(), 5 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
     }
 
     function test_obtainDepositData_counters_WhenLessThanLastBatch() public assertInvariants {
@@ -78,6 +86,8 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.totalDepositedKeys, 3);
         assertEq(no.depositableValidatorsCount, 4);
+        assertEq(module.getTotalModuleStake(), 3 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+        assertEq(module.getNodeOperatorBalance(noId), 3 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
     }
 
     function test_obtainDepositData_nonceChanged() public assertInvariants {
@@ -534,21 +544,21 @@ abstract contract ModuleDepositableValidatorsCount is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
         validatorInfos[1] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 1,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
         validatorInfos[2] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 2,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE - BOND_SIZE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - BOND_SIZE,
             slashingPenalty: 0,
             isSlashed: false
         }); // Large CL balance drop, that doesn't change the unbonded count.

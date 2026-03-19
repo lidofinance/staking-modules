@@ -1,7 +1,7 @@
 [profile.default]
 evm_version = "osaka"
 optimizer = true
-optimizer_runs = 200
+optimizer_runs = 250
 bytecode_hash = "none" # The metadata hash removed from the bytecode (not the metadata itself).
 # uncomment this to inspect storage layouts in build artifacts
 # extra_output = ["storageLayout"]

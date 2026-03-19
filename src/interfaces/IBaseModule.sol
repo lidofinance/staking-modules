@@ -81,6 +81,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
         uint256 slashingPenalty,
         bytes pubkey
     );
+    event NodeOperatorBalanceUpdated(uint256 indexed operatorId, uint256 balanceWei);
     event ValidatorSlashingReported(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
     event KeyAllocatedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
     event KeyConfirmedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newBalance);
@@ -333,6 +334,10 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Non-withdrawn keys count
     function getNodeOperatorNonWithdrawnKeys(uint256 nodeOperatorId) external view returns (uint256);
+
+    /// @notice Returns stored operator balance (validators + pending).
+    /// @param nodeOperatorId ID of the Node Operator
+    function getNodeOperatorBalance(uint256 nodeOperatorId) external view returns (uint256);
 
     /// @notice Get Node Operator signing keys
     /// @param nodeOperatorId ID of the Node Operator
