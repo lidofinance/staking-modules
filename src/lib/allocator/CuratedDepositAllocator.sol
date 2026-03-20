@@ -11,6 +11,7 @@ import { ModuleLinearStorage } from "../../abstract/ModuleLinearStorage.sol";
 import { AllocationState, DepositAllocatorGreedy } from "./DepositAllocatorGreedy.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "../TransientUintUintMapLib.sol";
 import { ValidatorBalanceLimits } from "../ValidatorBalanceLimits.sol";
+import { StakeTracker } from "../StakeTracker.sol";
 
 /// @notice Curated deposit allocation helpers (external library for bytecode savings).
 /// @dev Invariants assumed by this library:
@@ -262,7 +263,7 @@ library CuratedDepositAllocator {
 
         // Build global share baseline across all eligible operators (non-zero weight + capacity).
         for (uint256 i; i < operatorsCount; ++i) {
-            uint256 balance = $.operatorBalances[i];
+            uint256 balance = StakeTracker.getOperatorBalance($, i);
             uint256 capacity = _topUpCapacity($.nodeOperators[i], balance);
             if (capacity == 0) continue;
             capacitiesByOperatorId[i] = capacity;
@@ -362,7 +363,7 @@ library CuratedDepositAllocator {
             (uint256 weight, uint256 externalStake) = metaRegistry.getNodeOperatorWeightAndExternalStake(i);
             if (weight == 0) continue;
 
-            uint256 currentStake = $.operatorBalances[i] + externalStake;
+            uint256 currentStake = StakeTracker.getOperatorBalance($, i) + externalStake;
             currentAllocations[i] = currentStake;
             // Temporarily store raw weight in targetAllocations; will be converted below.
             targetAllocations[i] = weight;

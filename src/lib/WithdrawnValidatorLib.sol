@@ -43,9 +43,7 @@ library WithdrawnValidatorLib {
 
             $.isValidatorWithdrawn[pointer] = true;
             touchedOperatorIds[touchedCount] = info.nodeOperatorId;
-            trackedBalanceDecreases[touchedCount] =
-                ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE +
-                $.keyAllocatedBalance[pointer];
+            trackedBalanceDecreases[touchedCount] = $.keyAllocatedBalance[pointer];
             unchecked {
                 ++touchedCount;
             }

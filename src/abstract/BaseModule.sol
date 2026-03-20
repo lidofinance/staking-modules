@@ -483,7 +483,7 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function getNodeOperatorBalance(uint256 nodeOperatorId) external view returns (uint256) {
-        return _baseStorage().operatorBalances[nodeOperatorId];
+        return StakeTracker.getOperatorBalance(_baseStorage(), nodeOperatorId);
     }
 
     /// @inheritdoc IStakingModule
@@ -600,7 +600,7 @@ abstract contract BaseModule is
     }
 
     function getTotalModuleStake() public view override returns (uint256) {
-        return _baseStorage().totalModuleStake;
+        return StakeTracker.getTotalModuleStake(_baseStorage());
     }
 
     /// @inheritdoc IBaseModule

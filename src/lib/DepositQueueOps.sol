@@ -16,8 +16,6 @@ import { TransientUintUintMap, TransientUintUintMapLib } from "./TransientUintUi
 import { Batch, DepositQueueLib } from "./DepositQueueLib.sol";
 import { TopUpQueueLib, newTopUpQueueItem } from "./TopUpQueueLib.sol";
 import { SigningKeys } from "./SigningKeys.sol";
-import { ValidatorBalanceLimits } from "./ValidatorBalanceLimits.sol";
-import { StakeTracker } from "./StakeTracker.sol";
 
 library DepositQueueOps {
     using DepositQueueLib for DepositQueueLib.Queue;
@@ -79,7 +77,6 @@ library DepositQueueOps {
                     // NOTE: This condition is located here to allow for the correct removal of the batch for the Node Operators with no depositable keys
                     if (keysCount == 0) continue;
                     ctx.loadedKeysCount = _loadAndAccountDeposits({
-                        $: $,
                         topUpQueue: topUpQueue,
                         no: no,
                         noId: noId,
@@ -292,7 +289,6 @@ library DepositQueueOps {
     }
 
     function _loadAndAccountDeposits(
-        ModuleLinearStorage.BaseModuleStorage storage $,
         TopUpQueueLib.Queue storage topUpQueue,
         NodeOperator storage no,
         uint32 noId,
@@ -323,12 +319,6 @@ library DepositQueueOps {
         uint32 newCount = no.depositableValidatorsCount - keysCount;
         no.depositableValidatorsCount = newCount;
         emit IBaseModule.DepositableSigningKeysCountChanged(noId, newCount);
-        StakeTracker.increaseOperatorBalance(
-            $,
-            noId,
-            uint256(keysCount) * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
-        );
-
         return loadedKeysCount;
     }
 

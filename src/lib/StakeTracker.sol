@@ -5,17 +5,17 @@ pragma solidity 0.8.33;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { IBaseModule } from "../interfaces/IBaseModule.sol";
+import { IBaseModule, NodeOperator } from "../interfaces/IBaseModule.sol";
 import { ModuleLinearStorage } from "../abstract/ModuleLinearStorage.sol";
 import { ValidatorBalanceLimits } from "./ValidatorBalanceLimits.sol";
 import { KeyPointerLib } from "./KeyPointerLib.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "./TransientUintUintMapLib.sol";
 
-/// @dev Centralizes tracked stake updates for operator balances, total module stake, and key balance transitions.
+/// @dev Centralizes tracked stake updates for operator extra balances, total extra stake, and key balance transitions.
 library StakeTracker {
     using TransientUintUintMapLib for TransientUintUintMap;
 
-    /// @dev Increases tracked operator balance and total module stake by the given delta.
+    /// @dev Increases tracked operator extra balance and total extra stake by the given delta.
     function increaseOperatorBalance(
         ModuleLinearStorage.BaseModuleStorage storage $,
         uint256 operatorId,
@@ -24,10 +24,10 @@ library StakeTracker {
         if (incrementWei == 0) return;
 
         _setOperatorBalance($, operatorId, $.operatorBalances[operatorId] + incrementWei);
-        $.totalModuleStake += incrementWei;
+        $.totalExtraStake += incrementWei;
     }
 
-    /// @dev Decreases tracked operator balance and total module stake by the given delta.
+    /// @dev Decreases tracked operator extra balance and total extra stake by the given delta.
     function decreaseOperatorBalance(
         ModuleLinearStorage.BaseModuleStorage storage $,
         uint256 operatorId,
@@ -36,7 +36,7 @@ library StakeTracker {
         if (decrementWei == 0) return;
 
         _setOperatorBalance($, operatorId, $.operatorBalances[operatorId] - decrementWei);
-        $.totalModuleStake -= decrementWei;
+        $.totalExtraStake -= decrementWei;
     }
 
     /// @dev Applies per-key top-up allocations, updates key allocated balances, and aggregates stake deltas per operator.
@@ -77,6 +77,27 @@ library StakeTracker {
         }
     }
 
+    /// @dev Returns the total tracked stake for the given operator: base 32 ETH per active validator plus stored extra.
+    function getOperatorBalance(
+        ModuleLinearStorage.BaseModuleStorage storage $,
+        uint256 operatorId
+    ) internal view returns (uint256) {
+        return
+            _activeValidatorsCount($.nodeOperators[operatorId]) *
+            ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE +
+            $.operatorBalances[operatorId];
+    }
+
+    /// @dev Returns the total tracked module stake: base 32 ETH per active validator plus stored extra.
+    function getTotalModuleStake(ModuleLinearStorage.BaseModuleStorage storage $) internal view returns (uint256) {
+        unchecked {
+            return
+                (uint256($.totalDepositedValidators) - $.totalWithdrawnValidators) *
+                ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE +
+                $.totalExtraStake;
+        }
+    }
+
     /// @dev Raises confirmed key balance and also raises allocated balance when the confirmed value overtakes it.
     ///      Returns the implied operator/module stake delta via the internal helper path.
     function reportValidatorBalance(
@@ -107,7 +128,7 @@ library StakeTracker {
     ) private {
         if ($.operatorBalances[operatorId] == balanceWei) return;
         $.operatorBalances[operatorId] = balanceWei;
-        emit IBaseModule.NodeOperatorBalanceUpdated(operatorId, balanceWei);
+        emit IBaseModule.NodeOperatorBalanceUpdated(operatorId, getOperatorBalance($, operatorId));
     }
 
     function _increaseKeyConfirmedBalance(
@@ -145,5 +166,11 @@ library StakeTracker {
         );
         keyAllocatedBalance[pointer] = updated;
         emit IBaseModule.KeyAllocatedBalanceChanged(nodeOperatorId, keyIndex, updated);
+    }
+
+    function _activeValidatorsCount(NodeOperator storage no) private view returns (uint256) {
+        unchecked {
+            return no.totalDepositedKeys - no.totalWithdrawnKeys;
+        }
     }
 }

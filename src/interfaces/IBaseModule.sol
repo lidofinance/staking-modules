@@ -335,7 +335,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @return Non-withdrawn keys count
     function getNodeOperatorNonWithdrawnKeys(uint256 nodeOperatorId) external view returns (uint256);
 
-    /// @notice Returns stored operator balance (validators + pending).
+    /// @notice Returns tracked operator balance (active validator base stake plus tracked extra).
     /// @param nodeOperatorId ID of the Node Operator
     function getNodeOperatorBalance(uint256 nodeOperatorId) external view returns (uint256);
 

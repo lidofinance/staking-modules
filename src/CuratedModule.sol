@@ -14,7 +14,6 @@ import { NOAddresses } from "./lib/NOAddresses.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
 import { CuratedDepositAllocator } from "./lib/allocator/CuratedDepositAllocator.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
-import { ValidatorBalanceLimits } from "./lib/ValidatorBalanceLimits.sol";
 import { StakeTracker } from "./lib/StakeTracker.sol";
 
 contract CuratedModule is ICuratedModule, BaseModule {
@@ -84,12 +83,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
             uint32 depositableValidatorsCount = no.depositableValidatorsCount - uint32(allocation);
             no.depositableValidatorsCount = depositableValidatorsCount;
             emit DepositableSigningKeysCountChanged(operatorId, depositableValidatorsCount);
-
-            StakeTracker.increaseOperatorBalance(
-                _baseStorage(),
-                operatorId,
-                allocation * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
-            );
         }
         unchecked {
             // `allocated` is capped by _depositableValidatorsCount which is uint64.
