@@ -86,6 +86,8 @@ library StakeTracker {
         uint256 newConfirmed
     ) internal {
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
+        if ($.isValidatorWithdrawn[pointer]) revert IBaseModule.UnreportableBalance();
+
         uint256 oldConfirmed = $.keyConfirmedBalance[pointer];
         if (newConfirmed <= oldConfirmed) revert IBaseModule.UnreportableBalance();
 

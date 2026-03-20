@@ -132,6 +132,15 @@ abstract contract ModuleReportValidatorBalance is ModuleFixtures {
         module.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - 1 ether);
     }
 
+    function test_reportValidatorBalance_revertWhen_validatorWithdrawn() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        withdrawKey(noId, 0);
+
+        vm.expectRevert(IBaseModule.UnreportableBalance.selector);
+        module.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether);
+    }
+
     function test_reportValidatorBalance_revertWhen_NoRole() public {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
