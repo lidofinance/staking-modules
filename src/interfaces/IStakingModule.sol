@@ -218,6 +218,8 @@ interface IStakingModule {
 
 interface IStakingModuleV2 {
     /// @notice Returns the total tracked stake of the module in wei.
+    /// @dev This is the sum of the activation base for active validators and tracked extra stake.
+    ///      The tracked extra is intentionally reduced on withdrawal reporting rather than on intermediate validator balance decreases.
     function getTotalModuleStake() external view returns (uint256 totalModuleStakeWei);
 
     /// @notice Validates that provided keys belong to the corresponding operators in the module and calculates deposit allocations for top-up

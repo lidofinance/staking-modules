@@ -70,6 +70,8 @@ library CuratedDepositAllocator {
     ///        so a subset cannot bias its share by omitting other eligible operators.
     ///      - Per-operator capacity is computed as:
     ///        `(active_validators * 2048 ETH) - current_operator_balance`, floored at zero.
+    ///      - `current_operator_balance` here is the module's tracked stake view, not a live decrementing oracle value:
+    ///        active balance decreases are intentionally reflected later via withdrawal reporting.
     /// @param $ Base module storage pointer.
     /// @param allocationAmount Total top-up amount in wei to allocate.
     /// @param operatorIds Unique operator ids to include in allocation.
@@ -93,6 +95,8 @@ library CuratedDepositAllocator {
     ///        so a subset cannot bias its share by omitting other eligible operators.
     ///      - Per-operator capacity is computed as:
     ///        `(active_validators * 2048 ETH) - current_operator_balance`, floored at zero.
+    ///      - `current_operator_balance` is intentionally based on tracked stake that preserves prior observed highs
+    ///        until withdrawal settlement, so active slashing/leakage is accounted when penalties are finalized.
     ///      - Per-key top-up limits are not used as caps for operator-level allocation; they are
     ///        applied during key-level distribution and may leave unallocated remainder.
     function allocateAndDistributeTopUps(

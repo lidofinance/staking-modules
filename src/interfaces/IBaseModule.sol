@@ -336,6 +336,8 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     function getNodeOperatorNonWithdrawnKeys(uint256 nodeOperatorId) external view returns (uint256);
 
     /// @notice Returns tracked operator balance (active validator base stake plus tracked extra).
+    /// @dev The tracked extra is intentionally monotonic for active validators and is reduced on withdrawal reporting,
+    ///      not on intermediate balance decreases, so the value serves both top-up allocation and withdrawal penalty accounting.
     /// @param nodeOperatorId ID of the Node Operator
     function getNodeOperatorBalance(uint256 nodeOperatorId) external view returns (uint256);
 

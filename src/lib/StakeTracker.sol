@@ -100,6 +100,8 @@ library StakeTracker {
 
     /// @dev Raises confirmed key balance and also raises allocated balance when the confirmed value overtakes it.
     ///      Returns the implied operator/module stake delta via the internal helper path.
+    ///      Decreases for active validators are intentionally not applied here: the tracked extra stays at the
+    ///      highest observed level until withdrawal reporting settles any loss for penalty accounting.
     function reportValidatorBalance(
         ModuleLinearStorage.BaseModuleStorage storage $,
         uint256 nodeOperatorId,
