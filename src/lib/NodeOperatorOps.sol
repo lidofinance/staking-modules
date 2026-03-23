@@ -15,10 +15,13 @@ import { ValidatorCountsReport } from "./ValidatorCountsReport.sol";
 import { ValidatorBalanceLimits } from "./ValidatorBalanceLimits.sol";
 import { KeyPointerLib } from "./KeyPointerLib.sol";
 import { StakeTracker } from "./StakeTracker.sol";
+import { TransientUintUintMap, TransientUintUintMapLib } from "./TransientUintUintMapLib.sol";
 import { SigningKeys } from "./SigningKeys.sol";
 
 /// @dev The library is used to reduce BaseModule bytecode size.
 library NodeOperatorOps {
+    using TransientUintUintMapLib for TransientUintUintMap;
+
     function createNodeOperator(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,
@@ -333,14 +336,24 @@ library NodeOperatorOps {
         uint256[] calldata operatorIds,
         uint256[] calldata keyIndices,
         uint256[] calldata topUpLimits
-    ) external view returns (uint256[] memory cappedTopUpLimits) {
+    ) external returns (uint256[] memory cappedTopUpLimits) {
         uint256 len = topUpLimits.length;
         cappedTopUpLimits = new uint256[](len);
         uint256 cap = _keyBalanceCap();
+        TransientUintUintMap reservedByKey = TransientUintUintMapLib.create();
         for (uint256 i; i < len; ++i) {
-            uint256 balance = $.keyAllocatedBalance[KeyPointerLib.keyPointer(operatorIds[i], keyIndices[i])];
+            uint256 pointer = KeyPointerLib.keyPointer(operatorIds[i], keyIndices[i]);
+            // Withdrawn keys must not receive new top-ups, but returning zero keeps CSM queue cleanup
+            // working for stale or rewound head items.
+            if ($.isValidatorWithdrawn[pointer]) continue;
+
+            // Share the remaining headroom across duplicate keys in the same batch so later entries
+            // cannot reserve the same per-key capacity twice.
+            uint256 balance = $.keyAllocatedBalance[pointer] + reservedByKey.get(pointer);
             uint256 remaining = balance > cap ? 0 : cap - balance;
-            cappedTopUpLimits[i] = Math.min(topUpLimits[i], remaining);
+            uint256 capped = Math.min(topUpLimits[i], remaining);
+            cappedTopUpLimits[i] = capped;
+            reservedByKey.add(pointer, capped);
         }
     }
 
