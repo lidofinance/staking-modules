@@ -107,15 +107,19 @@ library CuratedDepositAllocator {
     ) external returns (uint256[] memory allocations) {
         uint256[] memory allocatedOperatorIds;
         uint256[] memory uniqueOperatorIds = _uniqueOperatorIds(operatorIds);
-        uint256[] memory remainingAllocations;
-        (, allocatedOperatorIds, remainingAllocations) = _allocateTopUps($, allocationAmount, uniqueOperatorIds);
+        uint256[] memory remainingOperatorAllocations;
+        (, allocatedOperatorIds, remainingOperatorAllocations) = _allocateTopUps(
+            $,
+            allocationAmount,
+            uniqueOperatorIds
+        );
         if (allocatedOperatorIds.length == 0) return new uint256[](operatorIds.length);
         return
-            _distributeTopUpAmounts({
+            _distributeAllocationsWithinLimits({
                 operatorIds: operatorIds,
                 topUpLimits: topUpLimits,
                 allocatedOperatorIds: allocatedOperatorIds,
-                remainingAllocations: remainingAllocations
+                remainingOperatorAllocations: remainingOperatorAllocations
             });
     }
 
@@ -388,11 +392,11 @@ library CuratedDepositAllocator {
         return DepositAllocatorGreedy._quantize(value, TOP_UP_STEP);
     }
 
-    function _distributeTopUpAmounts(
+    function _distributeAllocationsWithinLimits(
         uint256[] calldata operatorIds,
         uint256[] calldata topUpLimits,
         uint256[] memory allocatedOperatorIds,
-        uint256[] memory remainingAllocations
+        uint256[] memory remainingOperatorAllocations
     ) private returns (uint256[] memory allocations) {
         allocations = new uint256[](operatorIds.length);
         TransientUintUintMap operatorIndexes = TransientUintUintMapLib.create();
@@ -403,11 +407,11 @@ library CuratedDepositAllocator {
 
         unchecked {
             for (uint256 i; i < operatorIds.length; ++i) {
-                uint256 operatorIndex = operatorIndexes.get(operatorIds[i]);
-                if (operatorIndex == 0) continue;
-                --operatorIndex;
+                uint256 allocationIndex = operatorIndexes.get(operatorIds[i]);
+                if (allocationIndex == 0) continue;
+                --allocationIndex;
 
-                uint256 remaining = remainingAllocations[operatorIndex];
+                uint256 remaining = remainingOperatorAllocations[allocationIndex];
                 if (remaining == 0) continue;
 
                 uint256 limit = quantizeForTopUp(topUpLimits[i]);
@@ -415,7 +419,7 @@ library CuratedDepositAllocator {
 
                 uint256 amount = Math.min(remaining, limit);
                 allocations[i] = amount;
-                remainingAllocations[operatorIndex] = remaining - amount;
+                remainingOperatorAllocations[allocationIndex] = remaining - amount;
             }
         }
     }

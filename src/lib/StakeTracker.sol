@@ -49,7 +49,7 @@ library StakeTracker {
         uint256[] memory allocatedOperatorIds = new uint256[](operatorIds.length);
         uint256[] memory increments = new uint256[](operatorIds.length);
         TransientUintUintMap operatorIndexes = TransientUintUintMapLib.create();
-        uint256 count;
+        uint256 touchedOperatorsCount;
 
         for (uint256 i; i < allocations.length; ++i) {
             uint256 allocationWei = allocations[i];
@@ -58,21 +58,22 @@ library StakeTracker {
 
             uint256 operatorIndex = operatorIndexes.get(operatorIds[i]);
             if (operatorIndex == 0) {
-                allocatedOperatorIds[count] = operatorIds[i];
-                increments[count] = allocationWei;
-                operatorIndexes.set(operatorIds[i], count + 1);
+                operatorIndex = touchedOperatorsCount;
+                allocatedOperatorIds[operatorIndex] = operatorIds[i];
+                increments[operatorIndex] = allocationWei;
                 unchecked {
-                    ++count;
+                    ++touchedOperatorsCount;
                 }
-                continue;
-            }
-
-            unchecked {
-                increments[operatorIndex - 1] += allocationWei;
+                // Store index + 1 so zero can remain the "not seen yet" sentinel in the transient map.
+                operatorIndexes.set(operatorIds[i], touchedOperatorsCount);
+            } else {
+                unchecked {
+                    increments[operatorIndex - 1] += allocationWei;
+                }
             }
         }
 
-        for (uint256 i; i < count; ++i) {
+        for (uint256 i; i < touchedOperatorsCount; ++i) {
             increaseOperatorBalance($, allocatedOperatorIds[i], increments[i]);
         }
     }
@@ -91,10 +92,7 @@ library StakeTracker {
     /// @dev Returns the total tracked module stake: base 32 ETH per active validator plus stored extra.
     function getTotalModuleStake(ModuleLinearStorage.BaseModuleStorage storage $) internal view returns (uint256) {
         unchecked {
-            return
-                (uint256($.totalDepositedValidators) - $.totalWithdrawnValidators) *
-                ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE +
-                $.totalExtraStake;
+            return _activeModuleValidatorsCount($) * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + $.totalExtraStake;
         }
     }
 
@@ -114,12 +112,17 @@ library StakeTracker {
         uint256 oldConfirmed = $.keyConfirmedBalance[pointer];
         if (newConfirmed <= oldConfirmed) revert IBaseModule.UnreportableBalance();
 
-        uint256 allocatedIncrementWei = _increaseKeyConfirmedBalance({
-            $: $,
-            nodeOperatorId: nodeOperatorId,
-            keyIndex: keyIndex,
-            incrementWei: newConfirmed - oldConfirmed
-        });
+        uint256 allocatedIncrementWei;
+        uint256 oldAllocated = $.keyAllocatedBalance[pointer];
+        if (oldAllocated < newConfirmed) {
+            allocatedIncrementWei = newConfirmed - oldAllocated;
+            $.keyAllocatedBalance[pointer] = newConfirmed;
+            emit IBaseModule.KeyAllocatedBalanceChanged(nodeOperatorId, keyIndex, newConfirmed);
+        }
+
+        $.keyConfirmedBalance[pointer] = newConfirmed;
+        emit IBaseModule.KeyConfirmedBalanceChanged(nodeOperatorId, keyIndex, newConfirmed);
+
         increaseOperatorBalance($, nodeOperatorId, allocatedIncrementWei);
     }
 
@@ -131,28 +134,6 @@ library StakeTracker {
         if ($.operatorBalances[operatorId] == balanceWei) return;
         $.operatorBalances[operatorId] = balanceWei;
         emit IBaseModule.NodeOperatorBalanceUpdated(operatorId, getOperatorBalance($, operatorId));
-    }
-
-    function _increaseKeyConfirmedBalance(
-        ModuleLinearStorage.BaseModuleStorage storage $,
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        uint256 incrementWei
-    ) private returns (uint256 allocatedIncrementWei) {
-        uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        uint256 updated = $.keyConfirmedBalance[pointer] + incrementWei;
-        uint256 oldAllocated = $.keyAllocatedBalance[pointer];
-        if (oldAllocated < updated) {
-            allocatedIncrementWei = updated - oldAllocated;
-        }
-
-        $.keyConfirmedBalance[pointer] = updated;
-        emit IBaseModule.KeyConfirmedBalanceChanged(nodeOperatorId, keyIndex, updated);
-
-        if (allocatedIncrementWei != 0) {
-            $.keyAllocatedBalance[pointer] = updated;
-            emit IBaseModule.KeyAllocatedBalanceChanged(nodeOperatorId, keyIndex, updated);
-        }
     }
 
     function _increaseKeyAllocatedBalance(
@@ -173,6 +154,14 @@ library StakeTracker {
     function _activeValidatorsCount(NodeOperator storage no) private view returns (uint256) {
         unchecked {
             return no.totalDepositedKeys - no.totalWithdrawnKeys;
+        }
+    }
+
+    function _activeModuleValidatorsCount(
+        ModuleLinearStorage.BaseModuleStorage storage $
+    ) private view returns (uint256) {
+        unchecked {
+            return uint256($.totalDepositedValidators) - $.totalWithdrawnValidators;
         }
     }
 }

@@ -34,6 +34,7 @@ library DepositQueueOps {
         uint256 depositsCount,
         uint256 queueLowestPriority
     ) external returns (bytes memory publicKeys, bytes memory signatures) {
+        // Caller guarantees depositsCount > 0.
         ObtainDepositDataContext memory ctx;
         (ctx.publicKeys, ctx.signatures) = SigningKeys.initKeysSigsBuf(depositsCount);
 
@@ -76,7 +77,7 @@ library DepositQueueOps {
 
                     // NOTE: This condition is located here to allow for the correct removal of the batch for the Node Operators with no depositable keys
                     if (keysCount == 0) continue;
-                    ctx.loadedKeysCount = _loadAndAccountDeposits({
+                    _loadAndAccountDeposits({
                         topUpQueue: topUpQueue,
                         no: no,
                         noId: noId,
@@ -294,7 +295,7 @@ library DepositQueueOps {
         uint32 noId,
         uint32 keysCount,
         ObtainDepositDataContext memory ctx
-    ) private returns (uint256) {
+    ) private {
         if (topUpQueue.enabled) {
             _enqueueTopUpKeys(topUpQueue, noId, no.totalDepositedKeys, keysCount);
         }
@@ -309,7 +310,7 @@ library DepositQueueOps {
         });
 
         // It's impossible in practice to reach the limit of these variables.
-        uint256 loadedKeysCount = ctx.loadedKeysCount + keysCount;
+        ctx.loadedKeysCount += keysCount;
         uint32 totalDepositedKeys = no.totalDepositedKeys + keysCount;
         no.totalDepositedKeys = totalDepositedKeys;
 
@@ -319,7 +320,6 @@ library DepositQueueOps {
         uint32 newCount = no.depositableValidatorsCount - keysCount;
         no.depositableValidatorsCount = newCount;
         emit IBaseModule.DepositableSigningKeysCountChanged(noId, newCount);
-        return loadedKeysCount;
     }
 
     // NOTE: If `count` is 0 an empty batch will be created.
