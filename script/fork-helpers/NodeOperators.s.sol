@@ -11,6 +11,8 @@ import { NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo 
 
 import { DeploymentFixtures } from "test/helpers/Fixtures.sol";
 import { Utilities } from "test/helpers/Utilities.sol";
+import { MerkleTree } from "test/helpers/MerkleTree.sol";
+import { CuratedGate } from "src/CuratedGate.sol";
 
 import { ForkHelpersCommon } from "./Common.sol";
 
@@ -275,7 +277,7 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         NodeOperator memory no = module.getNodeOperator(noId);
         uint256 activated;
         for (uint256 i; i < no.totalDepositedKeys && activated < count; ++i) {
-            if (module.getKeyAddedBalance(noId, i) == 0 && !module.isValidatorWithdrawn(noId, i)) {
+            if (module.getKeyConfirmedBalance(noId, i) == 0 && !module.isValidatorWithdrawn(noId, i)) {
                 module.reportValidatorBalance(noId, i, 32 ether + 1 gwei);
                 ++activated;
             }
@@ -283,16 +285,104 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         assertEq(activated, count, "not enough deposited keys to activate");
     }
 
-    function reportBalance(uint256 noId, uint256 count, uint256 balanceWei) external broadcastVerifier {
+    function reportBalance(uint256 noId, uint256 activeKeyIndex, uint256 balanceWei) external broadcastVerifier {
         NodeOperator memory no = module.getNodeOperator(noId);
-        uint256 reported;
-        for (uint256 i; i < no.totalDepositedKeys && reported < count; ++i) {
-            if (!module.isValidatorWithdrawn(noId, i)) {
-                module.reportValidatorBalance(noId, i, balanceWei);
-                ++reported;
-            }
+        uint256 keyIndex = no.totalWithdrawnKeys + activeKeyIndex - 1;
+        require(keyIndex < no.totalDepositedKeys, "key index out of bounds");
+        require(!module.isValidatorWithdrawn(noId, keyIndex), "key is withdrawn");
+        module.reportValidatorBalance(noId, keyIndex, balanceWei);
+    }
+
+    function increaseAllocatedBalance(
+        uint256 noId,
+        uint256 activeKeyIndex,
+        uint256 amountWei
+    ) external broadcastStakingRouter {
+        NodeOperator memory no = module.getNodeOperator(noId);
+        uint256 keyIndex = no.totalWithdrawnKeys + activeKeyIndex - 1;
+        require(keyIndex < no.totalDepositedKeys, "key index out of bounds");
+        require(!module.isValidatorWithdrawn(noId, keyIndex), "key is withdrawn");
+
+        bytes[] memory pubkeys = new bytes[](1);
+        pubkeys[0] = module.getSigningKeys(noId, keyIndex, 1);
+
+        uint256[] memory keyIndices = new uint256[](1);
+        keyIndices[0] = keyIndex;
+
+        uint256[] memory operatorIds = new uint256[](1);
+        operatorIds[0] = noId;
+
+        uint256[] memory topUpLimits = new uint256[](1);
+        topUpLimits[0] = amountWei;
+
+        module.allocateDeposits(amountWei, pubkeys, keyIndices, operatorIds, topUpLimits);
+    }
+
+    function createCuratedOperator(uint256 gateIndex, uint256 keysCount) external {
+        _setUp();
+
+        CuratedGate gate = CuratedGate(curatedGates[gateIndex]);
+        bytes32 origRoot = gate.treeRoot();
+        string memory origCid = gate.treeCid();
+        address admin = gate.getRoleMember(gate.DEFAULT_ADMIN_ROLE(), 0);
+        _setBalance(admin);
+
+        address operator = nextAddress("curated-operator");
+        _setBalance(operator);
+
+        bytes32[] memory proof = _setTempTree(gate, admin, operator);
+
+        uint256 noId = _createViaGate(gate, operator, proof);
+
+        if (keysCount > 0) {
+            _addKeysForOperator(operator, noId, keysCount);
         }
-        assertEq(reported, count, "not enough active keys to report balance");
+
+        // Restore original tree params
+        vm.startBroadcast(admin);
+        gate.setTreeParams(origRoot, origCid);
+        vm.stopBroadcast();
+    }
+
+    function _setTempTree(CuratedGate gate, address admin, address operator) internal returns (bytes32[] memory proof) {
+        MerkleTree tree = new MerkleTree();
+        tree.pushLeaf(abi.encode(operator));
+        address extra = nextAddress("curated-proof-extra");
+        tree.pushLeaf(abi.encode(extra));
+        proof = tree.getProof(0);
+        string memory tmpCid = string.concat("tmp-cid-", vm.toString(uint256(uint160(extra))));
+
+        vm.startBroadcast(admin);
+        gate.grantRole(gate.SET_TREE_ROLE(), admin);
+        gate.grantRole(gate.RESUME_ROLE(), admin);
+        if (gate.isPaused()) gate.resume();
+        gate.setTreeParams(tree.root(), tmpCid);
+        vm.stopBroadcast();
+    }
+
+    function _createViaGate(
+        CuratedGate gate,
+        address operator,
+        bytes32[] memory proof
+    ) internal returns (uint256 noId) {
+        vm.startBroadcast(operator);
+        noId = gate.createNodeOperator("fork-operator", "fork-test", address(0), address(0), proof);
+        vm.stopBroadcast();
+    }
+
+    function _addKeysForOperator(address operator, uint256 noId, uint256 keysCount) internal {
+        uint256 amount = accounting.getRequiredBondForNextKeys(noId, keysCount);
+        _setBalance(operator, amount + 1 ether);
+
+        vm.startBroadcast(operator);
+        module.addValidatorKeysETH{ value: amount }(
+            operator,
+            noId,
+            keysCount,
+            randomBytes(48 * keysCount),
+            randomBytes(96 * keysCount)
+        );
+        vm.stopBroadcast();
     }
 
     error NodeOperatorsModuleNotFound();

@@ -110,8 +110,11 @@ warp days:
 activate-keys noId count:
     just _impersonate-script NodeOperators --sig="activateKeys\(uint256,uint256\)" -- {{noId}} {{count}}
 
-report-balance noId count balanceEth:
-    just _impersonate-script NodeOperators --sig="reportBalance\(uint256,uint256,uint256\)" -- {{noId}} {{count}} $(cast to-wei {{balanceEth}})
+report-balance noId activeKeyIndex balanceEth:
+    just _impersonate-script NodeOperators --sig="reportBalance\(uint256,uint256,uint256\)" -- {{noId}} {{activeKeyIndex}} $(cast to-wei {{balanceEth}})
+
+key-increase-balance noId activeKeyIndex amountEth:
+    just _impersonate-script NodeOperators --sig="increaseAllocatedBalance\(uint256,uint256,uint256\)" -- {{noId}} {{activeKeyIndex}} $(cast to-wei {{amountEth}})
 
 exit-request noId validatorIndex validatorPubKey:
     just _impersonate-script NodeOperators --sig="exitRequest\(uint256,uint256,bytes\)" -vvv -- {{noId}} {{validatorIndex}} {{validatorPubKey}}
@@ -131,6 +134,9 @@ create-operator-group *args:
     curl -sS {{anvil_rpc_url}} --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"anvil_autoImpersonateAccount","params":[true],"id":1}' > /dev/null
     forge script --rpc-url={{anvil_rpc_url}} --timeout 300 -vvv --broadcast --unlocked MetaRegistryHelpers --sig='createOperatorGroup(uint256[])' -- "[$pairs]"
     curl -sS {{anvil_rpc_url}} --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"anvil_autoImpersonateAccount","params":[false],"id":1}' > /dev/null
+
+create-curated-operator gateIndex="0" keysCount="0":
+    just _impersonate-script NodeOperators --sig="createCuratedOperator\(uint256,uint256\)" -- {{gateIndex}} {{keysCount}}
 
 reset-operator-group noId:
     just _impersonate-script MetaRegistryHelpers --sig="resetOperatorGroup\(uint256\)" -- {{noId}}
