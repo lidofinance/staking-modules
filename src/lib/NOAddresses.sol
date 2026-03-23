@@ -41,9 +41,10 @@ interface INOAddresses {
 }
 
 library NOAddresses {
-    /// @notice Propose a new manager address for the Node Operator
+    /// @notice Propose a new manager address for the Node Operator.
+    /// @dev Passing address(0) clears the pending proposal without changing the current manager address.
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param proposedAddress Proposed manager address
+    /// @param proposedAddress Proposed manager address, or address(0) to cancel the current proposal
     function proposeNodeOperatorManagerAddressChange(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,
@@ -84,9 +85,10 @@ library NOAddresses {
         emit INOAddresses.NodeOperatorManagerAddressChanged(nodeOperatorId, oldManagerAddress, msg.sender);
     }
 
-    /// @notice Propose a new reward address for the Node Operator
+    /// @notice Propose a new reward address for the Node Operator.
+    /// @dev Passing address(0) clears the pending proposal without changing the current reward address.
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param proposedAddress Proposed reward address
+    /// @param proposedAddress Proposed reward address, or address(0) to cancel the current proposal
     function proposeNodeOperatorRewardAddressChange(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,

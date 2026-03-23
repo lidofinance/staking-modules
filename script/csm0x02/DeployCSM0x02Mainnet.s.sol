@@ -42,6 +42,7 @@ contract DeployCSM0x02Mainnet is DeployCSM0x02Base {
         config.gIFirstBalanceNode = GIndices.FIRST_BALANCE_NODE_ELECTRA;
         config.verifierFirstSupportedSlot = 364032 * config.slotsPerEpoch; // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-7600.md#activation
         config.capellaSlot = 194048 * config.slotsPerEpoch; // @see https://github.com/eth-clients/mainnet/blob/main/metadata/config.yaml#L50
+        config.minWithdrawalRatio = 9900;
 
         // Accounting
         // TODO: Set proper default bond curve values for CSM0x02.

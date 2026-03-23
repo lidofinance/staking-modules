@@ -90,7 +90,7 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         ) = _singleTopUpArrays(noId, keyIndex, pubkey, 1 ether);
 
         (uint256 expectedMaxDepositAmount, ) = stakingRouter.getTopUpAllocation(TOP_UP_ALLOCATION_PROBE_AMOUNT);
-        uint256 keyAddedBalanceBefore = module.getKeyAddedBalance(noId, keyIndex);
+        uint256 keyAllocatedBalanceBefore = module.getKeyAllocatedBalance(noId, keyIndex);
         ICuratedModule curatedModule = ICuratedModule(address(module));
         uint256 operatorBalanceBefore = curatedModule.getNodeOperatorBalance(noId);
 
@@ -109,9 +109,9 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         vm.prank(topUpGateway);
         stakingRouter.topUp(moduleId, keyIndices, operatorIds, pubkeys, topUpLimits);
 
-        uint256 keyAddedBalanceAfter = module.getKeyAddedBalance(noId, keyIndex);
+        uint256 keyAllocatedBalanceAfter = module.getKeyAllocatedBalance(noId, keyIndex);
         uint256 operatorBalanceAfter = curatedModule.getNodeOperatorBalance(noId);
-        uint256 keyDelta = keyAddedBalanceAfter - keyAddedBalanceBefore;
+        uint256 keyDelta = keyAllocatedBalanceAfter - keyAllocatedBalanceBefore;
         uint256 operatorDelta = operatorBalanceAfter - operatorBalanceBefore;
 
         assertEq(operatorDelta, keyDelta);
@@ -133,13 +133,13 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         ) = _singleTopUpArrays(noId, keyIndex, pubkey, 0.5 ether);
 
         ICuratedModule curatedModule = ICuratedModule(address(module));
-        uint256 keyAddedBalanceBefore = module.getKeyAddedBalance(noId, keyIndex);
+        uint256 keyAllocatedBalanceBefore = module.getKeyAllocatedBalance(noId, keyIndex);
         uint256 operatorBalanceBefore = curatedModule.getNodeOperatorBalance(noId);
 
         vm.prank(topUpGateway);
         stakingRouter.topUp(moduleId, keyIndices, operatorIds, pubkeys, topUpLimits);
 
-        assertEq(module.getKeyAddedBalance(noId, keyIndex), keyAddedBalanceBefore);
+        assertEq(module.getKeyAllocatedBalance(noId, keyIndex), keyAllocatedBalanceBefore);
         assertEq(curatedModule.getNodeOperatorBalance(noId), operatorBalanceBefore);
     }
 

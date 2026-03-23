@@ -95,6 +95,7 @@ contract VerifierTestConstructor is VerifierTestBase {
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: Slot.wrap(100_501),
             capellaSlot: Slot.wrap(42),
+            minWithdrawalRatio: 9000,
             admin: admin
         });
 
@@ -114,6 +115,7 @@ contract VerifierTestConstructor is VerifierTestBase {
         assertEq(Slot.unwrap(verifier.FIRST_SUPPORTED_SLOT()), Slot.unwrap(firstSupportedSlot));
         assertEq(Slot.unwrap(verifier.PIVOT_SLOT()), Slot.unwrap(Slot.wrap(100_501)));
         assertEq(Slot.unwrap(verifier.CAPELLA_SLOT()), Slot.unwrap(Slot.wrap(42)));
+        assertEq(verifier.MIN_WITHDRAWAL_RATIO(), 9000);
     }
 
     function test_constructor_RevertWhen_InvalidChainConfig_SlotsPerEpoch() public {
@@ -138,6 +140,7 @@ contract VerifierTestConstructor is VerifierTestBase {
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
             capellaSlot: firstSupportedSlot,
+            minWithdrawalRatio: 9000,
             admin: admin
         });
     }
@@ -164,6 +167,7 @@ contract VerifierTestConstructor is VerifierTestBase {
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
             capellaSlot: firstSupportedSlot,
+            minWithdrawalRatio: 9000,
             admin: admin
         });
     }
@@ -190,6 +194,7 @@ contract VerifierTestConstructor is VerifierTestBase {
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: firstSupportedSlot.dec(),
             capellaSlot: firstSupportedSlot,
+            minWithdrawalRatio: 9000,
             admin: admin
         });
     }
@@ -216,6 +221,7 @@ contract VerifierTestConstructor is VerifierTestBase {
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: firstSupportedSlot,
             capellaSlot: firstSupportedSlot.inc(),
+            minWithdrawalRatio: 9000,
             admin: admin
         });
     }
@@ -242,6 +248,7 @@ contract VerifierTestConstructor is VerifierTestBase {
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
             capellaSlot: firstSupportedSlot,
+            minWithdrawalRatio: 9000,
             admin: admin
         });
     }
@@ -268,6 +275,7 @@ contract VerifierTestConstructor is VerifierTestBase {
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
             capellaSlot: firstSupportedSlot,
+            minWithdrawalRatio: 9000,
             admin: admin
         });
     }
@@ -294,7 +302,62 @@ contract VerifierTestConstructor is VerifierTestBase {
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
             capellaSlot: firstSupportedSlot,
+            minWithdrawalRatio: 9000,
             admin: address(0)
+        });
+    }
+
+    function test_constructor_RevertWhen_InvalidMinWithdrawalRatio_Zero() public {
+        vm.expectRevert(IVerifier.InvalidMinWithdrawalRatio.selector);
+        verifier = new Verifier({
+            withdrawalAddress: nextAddress(),
+            module: address(module),
+            slotsPerEpoch: 32,
+            slotsPerHistoricalRoot: 8192,
+            gindices: IVerifier.GIndices({
+                gIFirstWithdrawalPrev: pack(0xe1c0, 4),
+                gIFirstWithdrawalCurr: pack(0xe1c0, 4),
+                gIFirstValidatorPrev: pack(0x560000000000, 40),
+                gIFirstValidatorCurr: pack(0x560000000000, 40),
+                gIFirstHistoricalSummaryPrev: pack(0x3b, 0),
+                gIFirstHistoricalSummaryCurr: pack(0x3b, 0),
+                gIFirstBlockRootInSummaryPrev: pack(0x4000, 13),
+                gIFirstBlockRootInSummaryCurr: pack(0x4000, 13),
+                gIFirstBalanceNodePrev: pack(0x260000000000, 40),
+                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
+            }),
+            firstSupportedSlot: firstSupportedSlot,
+            pivotSlot: firstSupportedSlot,
+            capellaSlot: firstSupportedSlot,
+            minWithdrawalRatio: 0,
+            admin: admin
+        });
+    }
+
+    function test_constructor_RevertWhen_InvalidMinWithdrawalRatio_AboveMax() public {
+        vm.expectRevert(IVerifier.InvalidMinWithdrawalRatio.selector);
+        verifier = new Verifier({
+            withdrawalAddress: nextAddress(),
+            module: address(module),
+            slotsPerEpoch: 32,
+            slotsPerHistoricalRoot: 8192,
+            gindices: IVerifier.GIndices({
+                gIFirstWithdrawalPrev: pack(0xe1c0, 4),
+                gIFirstWithdrawalCurr: pack(0xe1c0, 4),
+                gIFirstValidatorPrev: pack(0x560000000000, 40),
+                gIFirstValidatorCurr: pack(0x560000000000, 40),
+                gIFirstHistoricalSummaryPrev: pack(0x3b, 0),
+                gIFirstHistoricalSummaryCurr: pack(0x3b, 0),
+                gIFirstBlockRootInSummaryPrev: pack(0x4000, 13),
+                gIFirstBlockRootInSummaryCurr: pack(0x4000, 13),
+                gIFirstBalanceNodePrev: pack(0x260000000000, 40),
+                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
+            }),
+            firstSupportedSlot: firstSupportedSlot,
+            pivotSlot: firstSupportedSlot,
+            capellaSlot: firstSupportedSlot,
+            minWithdrawalRatio: 10_001,
+            admin: admin
         });
     }
 }
@@ -336,6 +399,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             pivotSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
             admin: admin
         });
 
@@ -448,12 +512,12 @@ contract VerifierWithdrawalTest is VerifierTestBase {
     }
 
     function test_processWithdrawalProof_HappyPath_WithAddedBalance() public {
-        // Use a small added balance so the threshold stays below the fixture's 32 ETH withdrawal.
-        // threshold = (32 + 3) * 9000 / 10000 = 31.5 ETH < 32 ETH
+        // Use a small verified added balance so the threshold stays below the fixture's 32 ETH withdrawal.
+        // absolute = 3 ether + 32 ether = 35 ether; threshold = 35 * 9000 / 10000 = 31.5 ETH < 32 ETH
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyAddedBalance.selector,
+                IBaseModule.getKeyConfirmedBalance.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex
             ),
@@ -478,16 +542,16 @@ contract VerifierWithdrawalTest is VerifierTestBase {
     }
 
     function test_processWithdrawalProof_HappyPath_MaxEffectiveBalance() public {
-        // threshold = (32 + 2016) * 9000 / 10000 = 1843.2 ETH = 1_843_200_000_000 gwei
+        // threshold = 2048 * 9000 / 10000 = 1843.2 ETH = 1_843_200_000_000 gwei
         // Reload fixture with the minimal expected withdrawal amount.
         _loadFixtureWithAmount({ offset: 11, amountGwei: 1_843_200_000_000 });
         _setMocks();
 
-        // Mock keyAddedBalance for a fully consolidated validator (2048 - 32 = 2016 ETH added).
+        // Mock keyConfirmedBalance for a fully consolidated validator (2048 - 32 = 2016 ETH added).
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyAddedBalance.selector,
+                IBaseModule.getKeyConfirmedBalance.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex
             ),
@@ -523,14 +587,14 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyAddedBalance.selector,
+                IBaseModule.getKeyConfirmedBalance.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex
             ),
             abi.encode(100 ether)
         );
 
-        // (32 + 100) ether in gwei * 9000 / 10000 = 118_800_000_000 gwei = 118.8 ether
+        // absolute = 100 + 32 = 132 ether; 132 ether in gwei * 9000 / 10000 = 118_800_000_000 gwei = 118.8 ether
         fixture.data.withdrawal.object.amount = 118_800_000_000 - 1;
 
         vm.expectRevert(IVerifier.PartialWithdrawal.selector);
@@ -538,18 +602,18 @@ contract VerifierWithdrawalTest is VerifierTestBase {
     }
 
     function test_processWithdrawalProof_RevertWhen_PartialWithdrawal_MaxEffectiveBalance() public {
-        // Mock keyAddedBalance for a fully consolidated validator (2048 - 32 = 2016 ETH added).
+        // Mock keyConfirmedBalance for a fully consolidated validator (2048 - 32 = 2016 ETH added).
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyAddedBalance.selector,
+                IBaseModule.getKeyConfirmedBalance.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex
             ),
             abi.encode(2016 ether)
         );
 
-        // threshold = (32 + 2016) * 9000 / 10000 = 1843.2 ETH = 1_843_200_000_000 gwei
+        // threshold = 2048 * 9000 / 10000 = 1843.2 ETH = 1_843_200_000_000 gwei
         // Reverts before SSZ proof check, so modifying amount is safe.
         fixture.data.withdrawal.object.amount = 1_843_200_000_000 - 1;
 
@@ -578,6 +642,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             pivotSlot: fixture.data.withdrawalBlock.header.slot.inc(),
             capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
             admin: admin
         });
 
@@ -605,6 +670,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             pivotSlot: fixture.data.withdrawalBlock.header.slot,
             capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
             admin: admin
         });
 
@@ -632,6 +698,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             pivotSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
             admin: admin
         });
 
@@ -654,11 +721,11 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyAddedBalance.selector,
+                IBaseModule.getKeyConfirmedBalance.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex
             ),
-            abi.encode(uint256(0))
+            abi.encode(0)
         );
 
         vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");
@@ -726,6 +793,7 @@ contract VerifierSlashingTest is VerifierTestBase {
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192),
             capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
             admin: admin
         });
 
@@ -855,6 +923,7 @@ contract VerifierPauseTest is VerifierTestBase {
             firstSupportedSlot: Slot.wrap(100_500), // Any value less than the slots from the fixtures.
             pivotSlot: Slot.wrap(100_500),
             capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
             admin: admin
         });
 
@@ -947,6 +1016,7 @@ contract VerifierTestable is Verifier {
         Slot firstSupportedSlot,
         Slot pivotSlot,
         Slot capellaSlot,
+        uint256 minWithdrawalRatio,
         address admin
     )
         Verifier(
@@ -958,6 +1028,7 @@ contract VerifierTestable is Verifier {
             firstSupportedSlot,
             pivotSlot,
             capellaSlot,
+            minWithdrawalRatio,
             admin
         )
     {}
@@ -1030,6 +1101,7 @@ contract VerifierGIndexTest is Test, Utilities {
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192 * 13),
             capellaSlot: Slot.wrap(8192),
+            minWithdrawalRatio: 9000,
             admin: admin
         });
 
@@ -1324,6 +1396,7 @@ contract VerifierGIndexCapellaZeroTest is Test, Utilities {
             firstSupportedSlot: Slot.wrap(0),
             pivotSlot: Slot.wrap(8192 * 13),
             capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
             admin: admin
         });
     }
@@ -1450,6 +1523,7 @@ contract VerifierValidatorBalanceTest is Test, Utilities {
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192 * 13),
             capellaSlot: Slot.wrap(8192),
+            minWithdrawalRatio: 9000,
             admin: admin
         });
     }
@@ -1642,6 +1716,7 @@ contract VerifierBalanceProofTest is VerifierTestBase {
             firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
             pivotSlot: fixture.data.recentBlock.header.slot.dec(),
             capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
             admin: admin
         });
 
@@ -1701,6 +1776,13 @@ contract VerifierBalanceProofTest is VerifierTestBase {
         );
 
         vm.expectRevert(IVerifier.InvalidPublicKey.selector);
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function test_processBalanceProof_RevertWhen_ValidatorIsWithdrawable() public {
+        fixture.data.validator.object.withdrawableEpoch = uint64(fixture.data.recentBlock.header.slot.unwrap() / 32);
+
+        vm.expectRevert(IVerifier.ValidatorIsWithdrawable.selector);
         verifier.processBalanceProof(fixture.data);
     }
 
@@ -1779,6 +1861,7 @@ contract VerifierParentBlockRootTest is Test, Utilities {
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192 * 13),
             capellaSlot: Slot.wrap(8192),
+            minWithdrawalRatio: 9000,
             admin: admin
         });
     }

@@ -7,12 +7,12 @@ import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensio
 
 import { BeaconBlockHeader, Slot, Validator, Withdrawal } from "./lib/Types.sol";
 import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
-import { WithdrawnValidatorLib } from "./lib/WithdrawnValidatorLib.sol";
 import { GIndex } from "./lib/GIndex.sol";
 import { SSZ } from "./lib/SSZ.sol";
 
 import { IVerifier } from "./interfaces/IVerifier.sol";
 import { IBaseModule, WithdrawnValidatorInfo } from "./interfaces/IBaseModule.sol";
+import { WithdrawnValidatorLib } from "./lib/WithdrawnValidatorLib.sol";
 
 /// @notice Convert withdrawal amount to wei
 /// @param withdrawal Withdrawal struct
@@ -38,12 +38,9 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
     uint256 internal constant MAX_BP = 10_000;
 
-    /// @dev Minimum withdrawal amount as a ratio of total ether deposited to the validator,
-    ///      expressed in basis points (10 000 = 100%). At ~3% top APY, losing >10% of balance
-    ///      requires ~3 years offline — implausible for any legitimately run validator.
-    ///      We do not accept slashed validators in normal withdrawal processing, so we do not need to account for slashing penalties here.
-    ///      In case of unexpected network conditions, the DAO can always replace the verifier contract with one having a different threshold.
-    uint256 internal constant MIN_WITHDRAWAL_RATIO = 9000;
+    /// @dev Minimum withdrawal amount as a ratio of the expected validator balance,
+    ///      expressed in basis points (10 000 = 100%).
+    uint256 public immutable MIN_WITHDRAWAL_RATIO;
 
     uint64 public immutable SLOTS_PER_EPOCH;
 
@@ -106,6 +103,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         Slot firstSupportedSlot,
         Slot pivotSlot,
         Slot capellaSlot,
+        uint256 minWithdrawalRatio,
         address admin
     ) {
         if (withdrawalAddress == address(0)) revert ZeroWithdrawalAddress();
@@ -115,9 +113,11 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         if (slotsPerHistoricalRoot == 0) revert InvalidChainConfig();
         if (firstSupportedSlot > pivotSlot) revert InvalidPivotSlot();
         if (capellaSlot > firstSupportedSlot) revert InvalidCapellaSlot();
+        if (minWithdrawalRatio == 0 || minWithdrawalRatio > MAX_BP) revert InvalidMinWithdrawalRatio();
 
         WITHDRAWAL_ADDRESS = withdrawalAddress;
         MODULE = IBaseModule(module);
+        MIN_WITHDRAWAL_RATIO = minWithdrawalRatio;
 
         SLOTS_PER_EPOCH = slotsPerEpoch;
         SLOTS_PER_HISTORICAL_ROOT = slotsPerHistoricalRoot;
@@ -333,13 +333,10 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         if (_computeEpochAtSlot(header.slot) < validator.object.withdrawableEpoch) revert ValidatorIsNotWithdrawable();
         if (withdrawal.object.validatorIndex != validator.index) revert InvalidValidatorIndex();
 
-        // The full withdrawal threshold is derived from the total ether deposited to the validator (activation balance
-        // + tracked top-ups/consolidations). The ratio (MIN_WITHDRAWAL_RATIO / MAX_BP) accounts for possible CL losses
-        // such as inactivity penalties.
-        uint256 totalDepositedEther = WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE +
-            MODULE.getKeyAddedBalance(nodeOperatorId, keyIndex);
+        uint256 expectedBalance = MODULE.getKeyConfirmedBalance(nodeOperatorId, keyIndex) +
+            WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
         withdrawalAmount = withdrawal.object.amountWei();
-        if (withdrawalAmount < (totalDepositedEther * MIN_WITHDRAWAL_RATIO) / MAX_BP) revert PartialWithdrawal();
+        if (withdrawalAmount < (expectedBalance * MIN_WITHDRAWAL_RATIO) / MAX_BP) revert PartialWithdrawal();
 
         SSZ.verifyProof({
             proof: validator.proof,
@@ -362,6 +359,10 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         bytes32 stateRoot,
         Slot stateSlot
     ) internal view returns (uint64 balanceGwei) {
+        if (_computeEpochAtSlot(stateSlot) >= validator.object.withdrawableEpoch) {
+            revert ValidatorIsWithdrawable();
+        }
+
         {
             bytes memory pubkey = MODULE.getSigningKeys(validator.nodeOperatorId, validator.keyIndex, 1);
             if (keccak256(pubkey) != keccak256(validator.object.pubkey)) revert InvalidPublicKey();

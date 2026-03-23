@@ -90,6 +90,7 @@ interface IVerifier {
     error ValidatorIsSlashed();
     error ValidatorIsNotSlashed();
     error ValidatorIsNotWithdrawable();
+    error ValidatorIsWithdrawable();
     error InvalidWithdrawalAddress();
     error InvalidPublicKey();
     error InvalidValidatorIndex();
@@ -99,6 +100,7 @@ interface IVerifier {
     error ZeroAdminAddress();
     error InvalidPivotSlot();
     error InvalidCapellaSlot();
+    error InvalidMinWithdrawalRatio();
     error HistoricalSummaryDoesNotExist();
 
     function BEACON_ROOTS() external view returns (address);
@@ -130,6 +132,8 @@ interface IVerifier {
     function CAPELLA_SLOT() external view returns (Slot);
 
     function WITHDRAWAL_ADDRESS() external view returns (address);
+
+    function MIN_WITHDRAWAL_RATIO() external view returns (uint256);
 
     function MODULE() external view returns (IBaseModule);
 

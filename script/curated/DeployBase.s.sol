@@ -81,6 +81,7 @@ struct CuratedDeployParams {
     GIndex gIFirstBalanceNode;
     uint256 verifierFirstSupportedSlot;
     uint256 capellaSlot;
+    uint256 minWithdrawalRatio;
     // Accounting
     uint256[2][] defaultBondCurve;
     uint256 minBondLockPeriod;
@@ -267,6 +268,7 @@ abstract contract DeployBase is Script {
                 firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 pivotSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 capellaSlot: Slot.wrap(uint64(config.capellaSlot)),
+                minWithdrawalRatio: config.minWithdrawalRatio,
                 admin: deployer
             });
 

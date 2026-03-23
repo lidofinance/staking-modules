@@ -12,21 +12,21 @@ abstract contract ModuleLinearStorage {
     ///      accessed via `_baseStorage()` at slot 0.
     struct BaseModuleStorage {
         /// @dev Having this mapping here to preserve the current layout of the storage of the CSModule.
-        mapping(uint256 priority => DepositQueueLib.Queue queue) depositQueueByPriority;
-        bytes32 freeSlot1;
-        uint256 upToDateOperatorDepositInfoCount;
+        /* 0 */ mapping(uint256 priority => DepositQueueLib.Queue queue) depositQueueByPriority;
+        /* 1 */ mapping(uint256 noKeyIndexPacked => uint256) keyAllocatedBalance;
+        /* 2 */ mapping(uint256 noKeyIndexPacked => uint256) keyConfirmedBalance;
         /// @dev Total number of withdrawn validators reported for the module.
-        uint256 totalWithdrawnValidators;
-        mapping(uint256 noKeyIndexPacked => uint256) keyAddedBalances;
-        uint256 nonce;
-        mapping(uint256 nodeOperatorId => NodeOperator) nodeOperators;
+        /* 3 */ uint256 totalWithdrawnValidators;
+        /* 4 */ uint256 upToDateOperatorDepositInfoCount;
+        /* 5 */ uint256 nonce;
+        /* 6 */ mapping(uint256 nodeOperatorId => NodeOperator) nodeOperators;
         /// @dev see KeyPointerLib.keyPointer function for details of noKeyIndexPacked structure
-        mapping(uint256 noKeyIndexPacked => bool) isValidatorWithdrawn;
-        mapping(uint256 noKeyIndexPacked => bool) isValidatorSlashed;
-        uint64 totalDepositedValidators;
-        uint64 totalExitedValidators;
-        uint64 depositableValidatorsCount;
-        uint64 nodeOperatorsCount;
+        /* 7 */ mapping(uint256 noKeyIndexPacked => bool) isValidatorWithdrawn;
+        /* 8 */ mapping(uint256 noKeyIndexPacked => bool) isValidatorSlashed;
+        /* 9 */ uint64 totalDepositedValidators;
+        /* 9 */ uint64 totalExitedValidators;
+        /* 9 */ uint64 depositableValidatorsCount;
+        /* 9 */ uint64 nodeOperatorsCount;
     }
 
     function _baseStorage() internal pure returns (BaseModuleStorage storage $) {

@@ -32,6 +32,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     }
 
     struct EffectiveWeightCache {
+        // Invariant: operators outside any group must have zero cached effective weight.
         mapping(uint256 nodeOperatorId => uint256 weight) operatorEffectiveWeight;
         mapping(uint256 groupId => uint256 weight) groupEffectiveWeightSum;
     }
@@ -191,11 +192,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
     /// @inheritdoc IMetaRegistry
     function getNodeOperatorWeight(uint256 noId) external view returns (uint256 weight) {
-        MetaRegistryStorage storage $ = _storage();
-        uint256 groupId = $.groupIndex.groupIdByOperatorId[noId];
-        // If Node Operator is not in any group, it has no weight.
-        if (groupId == NO_GROUP_ID) return 0;
-        weight = $.effectiveWeightCache.operatorEffectiveWeight[noId];
+        weight = _storage().effectiveWeightCache.operatorEffectiveWeight[noId];
     }
 
     /// @inheritdoc IMetaRegistry
@@ -271,6 +268,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             uint256 noId = group.subNodeOperatorIds[i];
             delete $.groupIndex.groupIdByOperatorId[noId];
             delete $.groupIndex.shareByOperatorId[noId];
+            // Keep removed operators consistent with direct cache-backed weight reads.
             _setEffectiveWeight(noId, 0);
         }
 

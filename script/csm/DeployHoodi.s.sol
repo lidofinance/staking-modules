@@ -45,6 +45,7 @@ contract DeployHoodi is DeployBase {
         config.gIFirstBalanceNode = GIndices.FIRST_BALANCE_NODE_ELECTRA;
         config.verifierFirstSupportedSlot = 2048 * config.slotsPerEpoch; // @see https://github.com/eth-clients/hoodi/blob/main/metadata/config.yaml#L41
         config.capellaSlot = 0; // @see https://github.com/eth-clients/hoodi/blob/main/metadata/config.yaml#L33
+        config.minWithdrawalRatio = 9900;
 
         // Accounting
         // 2.4 -> 1.3

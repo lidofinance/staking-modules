@@ -18,8 +18,8 @@ contract DeployMainnet is DeployBase {
         config.secondsPerSlot = 12; // https://github.com/eth-clients/mainnet/blob/f6b7882618a5ad2c1d2731ae35e5d16a660d5bb7/metadata/config.yaml#L58
         config.slotsPerEpoch = 32; // https://github.com/ethereum/consensus-specs/blob/7df1ce30384b13d01617f8ddf930f4035da0f689/specs/phase0/beacon-chain.md?plain=1#L246
         config.clGenesisTime = 1606824023; // https://github.com/eth-clients/mainnet/blob/f6b7882618a5ad2c1d2731ae35e5d16a660d5bb7/README.md?plain=1#L10
-        config.oracleReportEpochsPerFrame = 225 * 31; // 28 days TODO: Change back to 225 * 28  after phase 2 execution
-        config.fastLaneLengthSlots = 0; // TODO: Change to 300 after phase 2 execution
+        config.oracleReportEpochsPerFrame = 225 * 28;
+        config.fastLaneLengthSlots = 300;
         config.consensusVersion = 4;
         config.oracleMembers = new address[](9);
         config.oracleMembers[0] = 0x73181107c8D9ED4ce0bbeF7A0b4ccf3320C41d12; // Instadapp
@@ -42,6 +42,7 @@ contract DeployMainnet is DeployBase {
         config.gIFirstBalanceNode = GIndices.FIRST_BALANCE_NODE_ELECTRA;
         config.verifierFirstSupportedSlot = 364032 * config.slotsPerEpoch; // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-7600.md#activation
         config.capellaSlot = 194048 * config.slotsPerEpoch; // @see https://github.com/eth-clients/mainnet/blob/main/metadata/config.yaml#L50
+        config.minWithdrawalRatio = 9900;
 
         // Accounting
         // 2.4 -> 1.3
