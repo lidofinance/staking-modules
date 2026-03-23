@@ -658,6 +658,26 @@ contract ParametersRegistryPerformanceLeewayDataTest is ParametersRegistryBaseTe
         parametersRegistry.setPerformanceLeewayData(curveId, data);
     }
 
+    function test_set_zeroFirstIntervalValue() public {
+        uint256 curveId = 1;
+        IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
+        data[0] = IParametersRegistry.KeyNumberValueInterval(1, 0);
+        data[1] = IParametersRegistry.KeyNumberValueInterval(10, 8000);
+
+        vm.prank(admin);
+        parametersRegistry.setPerformanceLeewayData(curveId, data);
+
+        IParametersRegistry.KeyNumberValueInterval[] memory dataOut = parametersRegistry.getPerformanceLeewayData(
+            curveId
+        );
+
+        assertEq(dataOut.length, data.length);
+        for (uint256 i = 0; i < dataOut.length; ++i) {
+            assertEq(dataOut[i].minKeyNumber, data[i].minKeyNumber);
+            assertEq(dataOut[i].value, data[i].value);
+        }
+    }
+
     function test_set_RevertWhen_emptyIntervals() public {
         uint256 curveId = 1;
         IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](0);

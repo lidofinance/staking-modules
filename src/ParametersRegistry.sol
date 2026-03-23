@@ -264,10 +264,10 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         uint256 curveId,
         KeyNumberValueInterval[] calldata data
     ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_REWARD_SHARE_ROLE) {
-        // NOTE: The shared interval validator enforces `data[0].value > 0`.
+        _validateKeyNumberValueIntervals(data);
         // Zero reward share for the first interval would allow rebate-only oracle reports (`distributed == 0 && rebate > 0`),
         // and those are rejected by FeeDistributor.
-        _validateKeyNumberValueIntervals(data);
+        if (data[0].value == 0) revert InvalidKeyNumberValueIntervals();
         KeyNumberValueInterval[] storage intervals = _rewardShareData[curveId];
         if (intervals.length > 0) delete _rewardShareData[curveId];
         for (uint256 i = 0; i < data.length; ++i) {
@@ -736,7 +736,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     function _validateKeyNumberValueIntervals(KeyNumberValueInterval[] calldata intervals) private pure {
         if (intervals.length == 0) revert InvalidKeyNumberValueIntervals();
         if (intervals[0].minKeyNumber != 1) revert InvalidKeyNumberValueIntervals();
-        if (intervals[0].value == 0 || intervals[0].value > MAX_BP) revert InvalidKeyNumberValueIntervals();
+        if (intervals[0].value > MAX_BP) revert InvalidKeyNumberValueIntervals();
 
         for (uint256 i = 1; i < intervals.length; ++i) {
             unchecked {
