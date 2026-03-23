@@ -1839,6 +1839,57 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
             assertNotEq(entries[i].topics[0], IBaseModule.KeyAllocatedBalanceChanged.selector);
         }
     }
+
+    function test_topUp_withdrawnKeyGetsZeroAllocation() public {
+        uint256 noId = createNodeOperator(1);
+        cm.obtainDepositData(1, "");
+
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+        cm.reportRegularWithdrawnValidators(validatorInfos);
+
+        bytes memory key = cm.getSigningKeys(noId, 0, 1);
+        uint256[] memory allocations = cm.allocateDeposits({
+            maxDepositAmount: 5 ether,
+            pubkeys: BytesArr(key),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(noId),
+            topUpLimits: UintArr(5 ether)
+        });
+
+        assertEq(allocations, UintArr(0));
+        assertEq(cm.getKeyAllocatedBalance(noId, 0), 0);
+        assertEq(module.getTotalModuleStake(), 0);
+        assertEq(cm.getNodeOperatorBalance(noId), 0);
+    }
+
+    function test_topUp_duplicateKeySharesRemainingHeadroom() public {
+        createNodeOperator(1);
+        cm.obtainDepositData(1, "");
+
+        uint256 cap = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
+        setKeyConfirmedBalance(0, 0, cap - 10 ether);
+
+        bytes memory key = cm.getSigningKeys(0, 0, 1);
+        uint256[] memory allocations = cm.allocateDeposits({
+            maxDepositAmount: 20 ether,
+            pubkeys: BytesArr(key, key),
+            keyIndices: UintArr(0, 0),
+            operatorIds: UintArr(0, 0),
+            topUpLimits: UintArr(20 ether, 20 ether)
+        });
+
+        assertEq(allocations, UintArr(10 ether, 0));
+        assertEq(cm.getKeyAllocatedBalance(0, 0), cap);
+        assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE);
+        assertEq(cm.getNodeOperatorBalance(0), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE);
+    }
 }
 
 contract CuratedTotalModuleStake is CuratedCommon {
