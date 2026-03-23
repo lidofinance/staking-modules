@@ -107,8 +107,36 @@ create-bond-debt noId amountEth:
 warp days:
     cast rpc --rpc-url={{anvil_rpc_url}} evm_increaseTime $(( {{days}} * 86400 )) > /dev/null && cast rpc --rpc-url={{anvil_rpc_url}} evm_mine > /dev/null
 
+activate-keys noId count:
+    just _impersonate-script NodeOperators --sig="activateKeys\(uint256,uint256\)" -- {{noId}} {{count}}
+
+report-balance noId count balanceEth:
+    just _impersonate-script NodeOperators --sig="reportBalance\(uint256,uint256,uint256\)" -- {{noId}} {{count}} $(cast to-wei {{balanceEth}})
+
 exit-request noId validatorIndex validatorPubKey:
     just _impersonate-script NodeOperators --sig="exitRequest\(uint256,uint256,bytes\)" -vvv -- {{noId}} {{validatorIndex}} {{validatorPubKey}}
+
+# Usage: just create-operator-group 1 90 2 10
+# Converts percent to basis points, builds forge array arg
+create-operator-group *args:
+    #!/usr/bin/env bash
+    pairs=""
+    set -- {{args}}
+    while [ $# -ge 2 ]; do
+      bp=$(( $2 * 100 ))
+      [ -n "$pairs" ] && pairs="$pairs,"
+      pairs="$pairs$1,$bp"
+      shift 2
+    done
+    curl -sS {{anvil_rpc_url}} --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"anvil_autoImpersonateAccount","params":[true],"id":1}' > /dev/null
+    forge script --rpc-url={{anvil_rpc_url}} --timeout 300 -vvv --broadcast --unlocked MetaRegistryHelpers --sig='createOperatorGroup(uint256[])' -- "[$pairs]"
+    curl -sS {{anvil_rpc_url}} --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"anvil_autoImpersonateAccount","params":[false],"id":1}' > /dev/null
+
+reset-operator-group noId:
+    just _impersonate-script MetaRegistryHelpers --sig="resetOperatorGroup\(uint256\)" -- {{noId}}
+
+set-bond-curve-weight curveId weight:
+    just _impersonate-script MetaRegistryHelpers --sig="setBondCurveWeight\(uint256,uint256\)" -- {{curveId}} {{weight}}
 
 _impersonate-script *args:
     curl -sS {{anvil_rpc_url}} --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"anvil_autoImpersonateAccount","params":[true],"id":1}' > /dev/null

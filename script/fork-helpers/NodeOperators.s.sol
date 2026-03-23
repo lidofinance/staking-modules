@@ -7,7 +7,7 @@ import { Script } from "forge-std/Script.sol";
 
 import { IVEBO } from "src/interfaces/IVEBO.sol";
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
-import { NodeOperator, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
+import { NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 
 import { DeploymentFixtures } from "test/helpers/Fixtures.sol";
 import { Utilities } from "test/helpers/Utilities.sol";
@@ -122,7 +122,8 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         uint256 amount = accounting.getRequiredBondForNextKeys(noId, keysCount);
         bytes memory keys = randomBytes(48 * keysCount);
         bytes memory signatures = randomBytes(96 * keysCount);
-        module.addValidatorKeysETH{ value: amount }(msg.sender, noId, keysCount, keys, signatures);
+        address manager = module.getNodeOperator(noId).managerAddress;
+        module.addValidatorKeysETH{ value: amount }(manager, noId, keysCount, keys, signatures);
     }
 
     function deposit(uint256 depositCount) external broadcastStakingRouter {
@@ -268,6 +269,30 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         vm.stopBroadcast();
 
         _setBalance(address(veboSubmitter));
+    }
+
+    function activateKeys(uint256 noId, uint256 count) external broadcastVerifier {
+        NodeOperator memory no = module.getNodeOperator(noId);
+        uint256 activated;
+        for (uint256 i; i < no.totalDepositedKeys && activated < count; ++i) {
+            if (module.getKeyAddedBalance(noId, i) == 0 && !module.isValidatorWithdrawn(noId, i)) {
+                module.reportValidatorBalance(noId, i, 32 ether + 1 gwei);
+                ++activated;
+            }
+        }
+        assertEq(activated, count, "not enough deposited keys to activate");
+    }
+
+    function reportBalance(uint256 noId, uint256 count, uint256 balanceWei) external broadcastVerifier {
+        NodeOperator memory no = module.getNodeOperator(noId);
+        uint256 reported;
+        for (uint256 i; i < no.totalDepositedKeys && reported < count; ++i) {
+            if (!module.isValidatorWithdrawn(noId, i)) {
+                module.reportValidatorBalance(noId, i, balanceWei);
+                ++reported;
+            }
+        }
+        assertEq(reported, count, "not enough active keys to report balance");
     }
 
     error NodeOperatorsModuleNotFound();
