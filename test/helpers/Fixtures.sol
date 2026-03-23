@@ -135,6 +135,7 @@ contract DeploymentHelpers is Test {
         GIndex gIFirstBalanceNode;
         uint256 verifierFirstSupportedSlot;
         uint256 capellaSlot;
+        uint256 minWithdrawalRatio;
         uint256[2][] defaultBondCurve;
         uint256 defaultKeyRemovalCharge;
         uint256 defaultGeneralDelayedPenaltyAdditionalFine;
@@ -451,6 +452,7 @@ contract DeploymentHelpers is Test {
         dst.gIFirstBalanceNode = src.gIFirstBalanceNode;
         dst.verifierFirstSupportedSlot = src.verifierFirstSupportedSlot;
         dst.capellaSlot = src.capellaSlot;
+        dst.minWithdrawalRatio = src.minWithdrawalRatio;
 
         // Accounting
         for (uint256 i; i < src.defaultBondCurve.length; ++i) {
@@ -569,6 +571,7 @@ contract DeploymentHelpers is Test {
         params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
+        params.minWithdrawalRatio = decoded.minWithdrawalRatio;
         params.defaultBondCurve = decoded.defaultBondCurve;
         params.defaultKeyRemovalCharge = decoded.defaultKeyRemovalCharge;
         params.defaultGeneralDelayedPenaltyAdditionalFine = decoded.defaultGeneralDelayedPenaltyAdditionalFine;
@@ -623,6 +626,7 @@ contract DeploymentHelpers is Test {
         params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
+        params.minWithdrawalRatio = decoded.minWithdrawalRatio;
         params.defaultBondCurve = decoded.defaultBondCurve;
         params.defaultKeyRemovalCharge = decoded.defaultKeyRemovalCharge;
         params.defaultGeneralDelayedPenaltyAdditionalFine = decoded.defaultGeneralDelayedPenaltyAdditionalFine;
@@ -677,6 +681,7 @@ contract DeploymentHelpers is Test {
         params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
+        params.minWithdrawalRatio = decoded.minWithdrawalRatio;
         params.defaultBondCurve = decoded.defaultBondCurve;
         params.defaultKeyRemovalCharge = decoded.defaultKeyRemovalCharge;
         params.defaultGeneralDelayedPenaltyAdditionalFine = decoded.defaultGeneralDelayedPenaltyAdditionalFine;

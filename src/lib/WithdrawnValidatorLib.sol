@@ -37,7 +37,7 @@ library WithdrawnValidatorLib {
             if (info.isSlashed != slashed) revert IBaseModule.InvalidWithdrawnValidatorInfo();
             if (info.isSlashed && !$.isValidatorSlashed[pointer]) revert IBaseModule.SlashingPenaltyIsNotApplicable();
 
-            _process($.nodeOperators[info.nodeOperatorId], info, $.keyAddedBalances[pointer]);
+            _process($.nodeOperators[info.nodeOperatorId], info, $.keyConfirmedBalance[pointer]);
 
             $.isValidatorWithdrawn[pointer] = true;
             touchedOperatorIds[touchedCount] = info.nodeOperatorId;
@@ -50,7 +50,7 @@ library WithdrawnValidatorLib {
     function _process(
         NodeOperator storage no,
         WithdrawnValidatorInfo calldata validatorInfo,
-        uint256 keyAddedBalance
+        uint256 keyConfirmedBalance
     ) private {
         if (validatorInfo.slashingPenalty > 0 && !validatorInfo.isSlashed) {
             revert IBaseModule.InvalidWithdrawnValidatorInfo();
@@ -72,7 +72,7 @@ library WithdrawnValidatorLib {
             pubkey
         );
 
-        _fulfillExitObligations(validatorInfo, penaltyInfo, keyAddedBalance);
+        _fulfillExitObligations(validatorInfo, penaltyInfo, keyConfirmedBalance);
 
         emit IBaseModule.ValidatorWithdrawn({
             nodeOperatorId: validatorInfo.nodeOperatorId,
@@ -88,11 +88,11 @@ library WithdrawnValidatorLib {
     function _fulfillExitObligations(
         WithdrawnValidatorInfo calldata validatorInfo,
         ExitPenaltyInfo memory penaltyInfo,
-        uint256 keyAddedBalance
-    ) internal {
+        uint256 keyConfirmedBalance
+    ) private {
         bool chargeElWithdrawalRequestFee = false;
 
-        uint256 minExpectedBalance = MIN_ACTIVATION_BALANCE + keyAddedBalance;
+        uint256 minExpectedBalance = MIN_ACTIVATION_BALANCE + keyConfirmedBalance;
         uint256 penaltyMultiplier = _getPenaltyMultiplier(Math.max(minExpectedBalance, validatorInfo.exitBalance));
         uint256 penaltySum;
         uint256 feeSum;

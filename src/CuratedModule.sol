@@ -140,7 +140,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
         // Cap top-ups so we don't over-allocate to keys that lost balance due to CL penalties.
         uint256[] memory cappedTopUpLimits = NodeOperatorOps.capTopUpLimitsByKeyBalance(
-            _baseStorage().keyAddedBalances,
+            _baseStorage(),
             operatorIds,
             keyIndices,
             topUpLimits
@@ -202,6 +202,14 @@ contract CuratedModule is ICuratedModule, BaseModule {
     ) external view returns (uint256[] memory operatorWeights) {
         _requireDepositInfoUpToDate();
         return _metaRegistry().getOperatorWeights(operatorIds);
+    }
+
+    /// @inheritdoc ICuratedModule
+    function getNodeOperatorWeightAndExternalStake(
+        uint256 nodeOperatorId
+    ) external view returns (uint256 weight, uint256 externalStake) {
+        _requireDepositInfoUpToDate();
+        return _metaRegistry().getNodeOperatorWeightAndExternalStake(nodeOperatorId);
     }
 
     /// @inheritdoc ICuratedModule
@@ -307,7 +315,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             operatorsCount: $.nodeOperatorsCount
         });
 
-        NodeOperatorOps.increaseKeyAddedBalancesByAllocations($.keyAddedBalances, operatorIds, keyIndices, allocations);
+        NodeOperatorOps.increaseKeyAllocatedBalance($.keyAllocatedBalance, operatorIds, keyIndices, allocations);
         CuratedOperatorBalancesOps.increaseByAllocations(
             _curatedStorage().operatorBalances,
             uniqueOperatorIds,

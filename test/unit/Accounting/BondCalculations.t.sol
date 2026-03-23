@@ -73,10 +73,7 @@ contract BondCurveTest is BaseTest {
 
         uint256 addedId = accounting.addBondCurve(curvePoints);
 
-        vm.expectCall(
-            address(accounting.MODULE()),
-            abi.encodeWithSelector(IBaseModule.onNodeOperatorBondCurveChange.selector, 0)
-        );
+        vm.expectCall(address(accounting.MODULE()), abi.encodeWithSelector(IBaseModule.updateDepositInfo.selector, 0));
         accounting.setBondCurve({ nodeOperatorId: 0, curveId: addedId });
 
         vm.stopPrank();

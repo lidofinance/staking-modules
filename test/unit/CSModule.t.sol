@@ -351,14 +351,11 @@ contract CsmInitialize is CSMCommon {
         _enableInitializers(address(csm));
 
         bytes32 slot1 = bytes32(uint256(1));
-        bytes32 slot2 = bytes32(uint256(2));
         vm.store(address(csm), slot1, bytes32(uint256(1)));
-        vm.store(address(csm), slot2, bytes32(uint256(2)));
 
         csm.finalizeUpgradeV3();
 
         assertEq(vm.load(address(csm), slot1), bytes32(0));
-        assertEq(vm.load(address(csm), slot2), bytes32(0));
 
         (bool active, uint256 limit, uint256 length, uint256 head) = csm.getTopUpQueue();
         assertFalse(active);
@@ -915,7 +912,7 @@ contract CSMTopUpQueue is CSMCommon {
         assertEq(_getTopUpQueueLength(), 0);
     }
 
-    function test_topUp_capsAllocationByKeyAddedBalance() public {
+    function test_topUp_capsAllocationByKeyAllocatedBalance() public {
         createNodeOperator(1);
         csm.obtainDepositData(1, "");
 
@@ -935,13 +932,13 @@ contract CSMTopUpQueue is CSMCommon {
         assertEq(_getTopUpQueueLength(), 0);
     }
 
-    function test_topUp_emitsKeyAddedBalanceChanged() public {
+    function test_topUp_emitsKeyAllocatedBalanceChanged() public {
         createNodeOperator(1);
         csm.obtainDepositData(1, "");
 
         bytes memory key = csm.getSigningKeys(0, 0, 1);
         vm.expectEmit(address(csm));
-        emit IBaseModule.KeyAddedBalanceChanged(0, 0, 4 ether);
+        emit IBaseModule.KeyAllocatedBalanceChanged(0, 0, 4 ether);
 
         csm.allocateDeposits({
             maxDepositAmount: 5 ether,
@@ -998,12 +995,46 @@ contract CSMTopUpQueue is CSMCommon {
         }
     }
 
+    function test_topUp_quantizesDepositAmountToStep() public {
+        createNodeOperator(1);
+        csm.obtainDepositData(1, "");
+
+        bytes memory key = csm.getSigningKeys(0, 0, 1);
+
+        uint256[] memory firstAllocations = csm.allocateDeposits({
+            maxDepositAmount: 3 ether,
+            pubkeys: BytesArr(key),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(4 ether)
+        });
+
+        assertEq(firstAllocations, UintArr(2 ether));
+        assertEq(_getTopUpQueueLength(), 1);
+        assertEq(csm.getKeyAllocatedBalance(0, 0), 2 ether);
+
+        uint256[] memory secondAllocations = csm.allocateDeposits({
+            maxDepositAmount: 2 ether,
+            pubkeys: BytesArr(key),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(0),
+            topUpLimits: UintArr(2 ether)
+        });
+
+        assertEq(secondAllocations, UintArr(2 ether));
+        assertEq(_getTopUpQueueLength(), 0);
+        assertEq(csm.getKeyAllocatedBalance(0, 0), 4 ether);
+    }
+
     function test_topUp_noEmitWhenKeyAtCap() public {
         createNodeOperator(1);
         csm.obtainDepositData(1, "");
 
-        uint256 cap = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
-        setKeyAddedBalance(0, 0, cap);
+        setKeyConfirmedBalance(
+            0,
+            0,
+            WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE
+        );
 
         bytes memory key = csm.getSigningKeys(0, 0, 1);
         vm.recordLogs();
@@ -1016,9 +1047,8 @@ contract CSMTopUpQueue is CSMCommon {
         });
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
-        bytes32 signature = keccak256("KeyAddedBalanceChanged(uint256,uint256,uint256)");
         for (uint256 i; i < entries.length; ++i) {
-            assertNotEq(entries[i].topics[0], signature);
+            assertNotEq(entries[i].topics[0], IBaseModule.KeyAllocatedBalanceChanged.selector);
         }
     }
 
@@ -1027,11 +1057,12 @@ contract CSMTopUpQueue is CSMCommon {
         csm.obtainDepositData(1, "");
 
         uint256 cap = WithdrawnValidatorLib.MAX_EFFECTIVE_BALANCE - WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
-        setKeyAddedBalance(0, 0, cap - 2 ether);
+        setKeyConfirmedBalance(0, 0, cap - 2 ether);
 
         bytes memory key = csm.getSigningKeys(0, 0, 1);
         vm.expectEmit(address(csm));
-        emit IBaseModule.KeyAddedBalanceChanged(0, 0, cap);
+        // keyAllocatedBalance is already at cap - 2 ether (set by reportValidatorBalance), allocation adds 2 ether to reach cap
+        emit IBaseModule.KeyAllocatedBalanceChanged(0, 0, cap);
 
         uint256[] memory allocations = csm.allocateDeposits({
             maxDepositAmount: 5 ether,
@@ -1056,6 +1087,9 @@ contract CSMTopUpQueue is CSMCommon {
             operatorIds: UintArr(0),
             topUpLimits: UintArr(10 ether)
         });
+
+        // Confirm the top-up on-chain via a balance proof so penalty calculation uses the full balance.
+        setKeyConfirmedBalance(0, 0, 10 ether);
 
         vm.deal(address(this), 100 ether);
         accounting.depositETH{ value: 100 ether }(0);
@@ -1993,7 +2027,7 @@ contract CSMReportWithdrawnValidators is ModuleReportWithdrawnValidators, CSMCom
     }
 }
 
-contract CSMKeyAddedBalance is ModuleKeyAddedBalance, CSMCommon {
+contract CSMKeyAllocatedBalance is ModuleKeyAllocatedBalance, CSMCommon {
     function setUp() public override {
         topUpQueueLimit = 32;
 
@@ -2001,11 +2035,31 @@ contract CSMKeyAddedBalance is ModuleKeyAddedBalance, CSMCommon {
     }
 }
 
-contract CSMreportValidatorBalance is ModulereportValidatorBalance, CSMCommon {
+contract CSMReportValidatorBalance is ModuleReportValidatorBalance, CSMCommon {
     function setUp() public override {
         topUpQueueLimit = 32;
 
         super.setUp();
+    }
+
+    function test_reportValidatorBalance_doesNotDecreaseKeyAllocatedBalance() public {
+        uint256 noId = createNodeOperator(1);
+        csm.obtainDepositData(1, "");
+
+        // Allocate 20 ether via top-up, setting keyAllocatedBalance to 20 ether.
+        bytes memory key = csm.getSigningKeys(noId, 0, 1);
+        csm.allocateDeposits({
+            maxDepositAmount: 20 ether,
+            pubkeys: BytesArr(key),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(noId),
+            topUpLimits: UintArr(20 ether)
+        });
+        assertEq(csm.getKeyAllocatedBalance(noId, 0), 20 ether);
+
+        // Confirmed balance below allocated — keyAllocatedBalance must not decrease.
+        csm.reportValidatorBalance(noId, 0, WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + 10 ether);
+        assertEq(csm.getKeyAllocatedBalance(noId, 0), 20 ether, "keyAllocatedBalance must not decrease");
     }
 }
 
@@ -2126,14 +2180,14 @@ contract CSMMisc is ModuleMisc, CSMCommon {
         assertEq(module.getInitializedVersion(), 3);
     }
 
-    function test_onNodeOperatorBondCurveChange_updatesDepositable() public assertInvariants {
+    function test_updateDepositInfo_updatesDepositable() public assertInvariants {
         uint256 noId = createNodeOperator(4);
 
         uint256 depositableBefore = module.getNodeOperator(noId).depositableValidatorsCount;
         assertEq(depositableBefore, 4);
 
         accounting.updateBondCurve(0, BOND_SIZE * 2);
-        csm.onNodeOperatorBondCurveChange(0);
+        csm.updateDepositInfo(0);
 
         uint256 depositableAfter = module.getNodeOperator(noId).depositableValidatorsCount;
         assertEq(depositableAfter, 2);

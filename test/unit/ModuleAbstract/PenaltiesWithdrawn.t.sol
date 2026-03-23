@@ -113,7 +113,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
-    function test_reportRegularWithdrawnValidators_exitBalanceBelowKeyAddedBalance() public assertInvariants {
+    function test_reportRegularWithdrawnValidators_exitBalanceBelowKeyBalance() public assertInvariants {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
@@ -1205,11 +1205,13 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         module.reportValidatorSlashing(noId, 0);
     }
 
-    function test_keyAddedBalance_chargesOnWithdraw() public assertInvariants {
+    function test_keyConfirmedBalance_chargesOnWithdraw() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        setKeyAddedBalance(noId, 0, 10 ether);
+        uint256 balanceShortage = 10 ether;
+
+        setKeyConfirmedBalance(noId, 0, balanceShortage);
 
         vm.deal(address(this), 100 ether);
         accounting.depositETH{ value: 100 ether }(noId);
@@ -1225,20 +1227,19 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         });
 
         module.reportRegularWithdrawnValidators(validatorInfos);
-        assertEq(accounting.getBond(noId), bondBefore - 10 ether);
+        assertEq(accounting.getBond(noId), bondBefore - balanceShortage);
     }
 
-    function test_keyAddedBalance_PenalizeWhenSlashed() public assertInvariants {
+    function test_keyConfirmedBalance_PenalizeWhenSlashed() public assertInvariants {
         uint256 noId = createNodeOperator();
 
         module.obtainDepositData(1, "");
         module.reportValidatorSlashing(noId, 0);
 
-        uint256 addedBalance = 10 ether;
-
-        setKeyAddedBalance(noId, 0, addedBalance);
-
+        uint256 topUp = 10 ether;
         uint256 balanceShortage = 1 ether;
+
+        setKeyConfirmedBalance(noId, 0, topUp);
 
         vm.deal(address(this), 100 ether);
         accounting.depositETH{ value: 100 ether }(noId);
@@ -1248,12 +1249,12 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + addedBalance - balanceShortage,
+            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE + topUp - balanceShortage,
             slashingPenalty: 0,
             isSlashed: true
         });
 
         module.reportSlashedWithdrawnValidators(validatorInfos);
-        assertApproxEqAbs(accounting.getBond(noId), bondBefore - balanceShortage, 1 wei);
+        assertEq(accounting.getBond(noId), bondBefore - balanceShortage);
     }
 }

@@ -74,11 +74,11 @@ contract VerifierHistoricalBase is Test, Utilities {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyAddedBalance.selector,
+                IBaseModule.getKeyConfirmedBalance.selector,
                 fixture.data.validator.nodeOperatorId,
                 fixture.data.validator.keyIndex
             ),
-            abi.encode(uint256(0))
+            abi.encode(0)
         );
 
         vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");
@@ -122,6 +122,7 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot,
             pivotSlot: fixture.data.withdrawalBlock.header.slot,
             capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
             admin: nextAddress("ADMIN")
         });
 
@@ -282,6 +283,7 @@ contract VerifierCrossForkHistoricalBalanceTest is Test, Utilities {
             firstSupportedSlot: fixture.data.historicalBlock.header.slot,
             pivotSlot: fixture.data.recentBlock.header.slot.dec(),
             capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
             admin: admin
         });
 
@@ -366,6 +368,7 @@ contract VerifierCrossForkHistoricalBalanceAtPivotSlotTest is Test, Utilities {
             firstSupportedSlot: fixture.data.historicalBlock.header.slot,
             pivotSlot: fixture.data.recentBlock.header.slot,
             capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
             admin: admin
         });
 
@@ -450,6 +453,7 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
             firstSupportedSlot: fixture.data.historicalBlock.header.slot,
             pivotSlot: fixture.data.historicalBlock.header.slot,
             capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
             admin: admin
         });
 
@@ -495,6 +499,15 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
         );
 
         vm.expectRevert(IVerifier.InvalidBlockHeader.selector);
+        verifier.processHistoricalBalanceProof(fixture.data);
+    }
+
+    function test_processHistoricalBalanceProof_RevertWhen_ValidatorIsWithdrawable() public {
+        fixture.data.validator.object.withdrawableEpoch = uint64(
+            fixture.data.historicalBlock.header.slot.unwrap() / 32
+        );
+
+        vm.expectRevert(IVerifier.ValidatorIsWithdrawable.selector);
         verifier.processHistoricalBalanceProof(fixture.data);
     }
 
@@ -585,6 +598,7 @@ contract VerifierCrossForkHistoricalTest is VerifierHistoricalBase {
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot,
             pivotSlot: fixture.data.recentBlock.header.slot.dec(),
             capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
             admin: nextAddress("ADMIN")
         });
         _setMocks();
@@ -634,6 +648,7 @@ contract VerifierCrossForkHistoricalAtPivotSlotTest is VerifierHistoricalBase {
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot,
             pivotSlot: fixture.data.recentBlock.header.slot,
             capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
             admin: nextAddress("ADMIN")
         });
         _setMocks();

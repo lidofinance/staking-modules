@@ -53,6 +53,8 @@ function main(opts) {
     ...new Uint8Array(11),
     ...hexStrToBytesArr("b3e29c46ee1745724417c0c51eb2351a1c01cf36"),
   ]);
+  validator.exitEpoch = Number.MAX_SAFE_INTEGER;
+  validator.withdrawableEpoch = Number.MAX_SAFE_INTEGER;
 
   while (historicalState.validators.length < MAX_VALIDATORS) {
     historicalState.validators.push(Validator.defaultView());

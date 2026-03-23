@@ -47,6 +47,15 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
         uint256[] calldata operatorIds
     ) external view returns (uint256[] memory operatorWeights);
 
+    /// @notice Returns effective weight and external stake for a node operator.
+    /// @dev Reverts until the module deposit info cache is fully refreshed.
+    /// @param nodeOperatorId Node operator ID to query.
+    /// @return weight Effective allocation weight.
+    /// @return externalStake External stake amount in wei.
+    function getNodeOperatorWeightAndExternalStake(
+        uint256 nodeOperatorId
+    ) external view returns (uint256 weight, uint256 externalStake);
+
     /// @notice Returns current deposit allocation targets for all operators.
     /// @dev Target = totalCurrent * operatorWeight / totalWeight (in validator count).
     ///      Includes operators regardless of depositable capacity for informational purposes.

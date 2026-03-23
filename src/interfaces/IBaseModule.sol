@@ -82,7 +82,8 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
         bytes pubkey
     );
     event ValidatorSlashingReported(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
-    event KeyAddedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
+    event KeyAllocatedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
+    event KeyConfirmedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newBalance);
     event KeyRemovalChargeApplied(uint256 indexed nodeOperatorId);
 
     event GeneralDelayedPenaltyReported(
@@ -253,9 +254,10 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param maxAmounts Maximum amounts to settle for each Node Operator
     function settleGeneralDelayedPenalty(uint256[] memory nodeOperatorIds, uint256[] memory maxAmounts) external;
 
-    /// @notice Propose a new manager address for the Node Operator
+    /// @notice Propose a new manager address for the Node Operator.
+    /// @dev Passing address(0) clears the pending proposal without changing the current manager address.
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param proposedAddress Proposed manager address
+    /// @param proposedAddress Proposed manager address, or address(0) to cancel the current proposal
     function proposeNodeOperatorManagerAddressChange(uint256 nodeOperatorId, address proposedAddress) external;
 
     /// @notice Confirm a new manager address for the Node Operator.
@@ -268,9 +270,10 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param nodeOperatorId ID of the Node Operator
     function resetNodeOperatorManagerAddress(uint256 nodeOperatorId) external;
 
-    /// @notice Propose a new reward address for the Node Operator
+    /// @notice Propose a new reward address for the Node Operator.
+    /// @dev Passing address(0) clears the pending proposal without changing the current reward address.
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param proposedAddress Proposed reward address
+    /// @param proposedAddress Proposed reward address, or address(0) to cancel the current proposal
     function proposeNodeOperatorRewardAddressChange(uint256 nodeOperatorId, address proposedAddress) external;
 
     /// @notice Confirm a new reward address for the Node Operator.
@@ -291,9 +294,9 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param nodeOperatorId ID of the Node Operator
     function updateDepositableValidatorsCount(uint256 nodeOperatorId) external;
 
-    /// @notice Notify the module about a node operator bond curve change.
+    /// @notice Update deposit info for the given Node Operator.
     /// @param nodeOperatorId ID of the Node Operator
-    function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external;
+    function updateDepositInfo(uint256 nodeOperatorId) external;
 
     /// @notice Request a full update of deposit info for all node operators.
     ///         Should be called after external changes that can affect deposit info such as bond curve change or parameters update.
@@ -361,18 +364,24 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex) external;
 
-    /// @notice Sync tracked added balance for a key based on proven validator balance.
-    /// @dev The function only increases the key added value at the moment.
+    /// @notice Update verified on-chain balance for a key.
+    /// @dev The function stores balance relative to MIN_ACTIVATION_BALANCE.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     /// @param currentBalanceWei Proven current validator balance in wei
     function reportValidatorBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 currentBalanceWei) external;
 
-    /// @notice Get tracked added balance for a particular key
+    /// @notice Get cumulative top-up amount allocated to a particular key (above MIN_ACTIVATION_BALANCE)
     /// @param nodeOperatorId ID of the Node Operator
     /// @param keyIndex Index of the Key in the Node Operator's keys storage
-    /// @return Tracked added balance (wei)
-    function getKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256);
+    /// @return Allocated balance above MIN_ACTIVATION_BALANCE (wei)
+    function getKeyAllocatedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256);
+
+    /// @notice Get verifier-confirmed balance for a particular key (above MIN_ACTIVATION_BALANCE)
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @param keyIndex Index of the Key in the Node Operator's keys storage
+    /// @return Confirmed balance above MIN_ACTIVATION_BALANCE (wei)
+    function getKeyConfirmedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256);
 
     /// @notice Report Node Operator's keys as withdrawn and charge penalties associated with exit if any.
     ///         A validator is considered withdrawn in the following cases:

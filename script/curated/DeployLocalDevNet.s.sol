@@ -35,6 +35,7 @@ contract DeployLocalDevNet is DeployBase {
         config.gIFirstBlockRootInSummary = GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA; // prettier-ignore
         config.verifierFirstSupportedSlot = vm.envUint("DEVNET_ELECTRA_EPOCH") * config.slotsPerEpoch;
         config.capellaSlot = vm.envUint("DEVNET_CAPELLA_EPOCH") * config.slotsPerEpoch;
+        config.minWithdrawalRatio = 9950;
 
         // Accounting
         // 11 -> 1
