@@ -1761,11 +1761,11 @@ contract CuratedReportValidatorBalance is ModuleReportValidatorBalance, CuratedC
             operatorIds: UintArr(noId),
             topUpLimits: UintArr(20 ether)
         });
-        assertEq(cm.getKeyAllocatedBalance(noId, 0), 20 ether);
+        assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(20 ether));
 
         // Confirmed balance below allocated — keyAllocatedBalance must not decrease.
         cm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether);
-        assertEq(cm.getKeyAllocatedBalance(noId, 0), 20 ether, "keyAllocatedBalance must not decrease");
+        assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(20 ether), "keyAllocatedBalance must not decrease");
     }
 
     function test_reportValidatorBalance_afterTopUp_increasesStakeOnlyByDelta() public {
@@ -1786,7 +1786,7 @@ contract CuratedReportValidatorBalance is ModuleReportValidatorBalance, CuratedC
 
         cm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 25 ether);
 
-        assertEq(cm.getKeyAllocatedBalance(noId, 0), 25 ether);
+        assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(25 ether));
         assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 25 ether);
         assertEq(cm.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 25 ether);
     }
@@ -1864,7 +1864,7 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         });
 
         assertEq(allocations, UintArr(0));
-        assertEq(cm.getKeyAllocatedBalance(noId, 0), 0);
+        assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(0));
         assertEq(module.getTotalModuleStake(), 0);
         assertEq(cm.getNodeOperatorBalance(noId), 0);
     }
@@ -1886,7 +1886,7 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         });
 
         assertEq(allocations, UintArr(10 ether, 0));
-        assertEq(cm.getKeyAllocatedBalance(0, 0), cap);
+        assertEq(cm.getKeyAllocatedBalances(0, 0, 1), UintArr(cap));
         assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE);
         assertEq(cm.getNodeOperatorBalance(0), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE);
     }

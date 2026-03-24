@@ -191,7 +191,7 @@ abstract contract ModuleFixtures is Test, Fixtures, Utilities, InvariantAsserts 
 
     /// @dev Sets keyConfirmedBalance via reportValidatorBalance.
     function setKeyConfirmedBalance(uint256 noId, uint256 keyIndex, uint256 confirmedBalance) internal {
-        uint256 current = module.getKeyConfirmedBalance(noId, keyIndex);
+        uint256 current = module.getKeyConfirmedBalances(noId, keyIndex, 1)[0];
         if (confirmedBalance == current) return;
 
         assertGt(confirmedBalance, current, "key confirmed balance cannot be decreased");
@@ -203,7 +203,7 @@ abstract contract ModuleFixtures is Test, Fixtures, Utilities, InvariantAsserts 
         });
 
         assertEq(
-            module.getKeyConfirmedBalance(noId, keyIndex),
+            module.getKeyConfirmedBalances(noId, keyIndex, 1)[0],
             confirmedBalance,
             "key confirmed balance must match target"
         );

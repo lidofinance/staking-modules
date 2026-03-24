@@ -126,13 +126,12 @@ contract InvariantAsserts is Test {
         for (uint256 noId = 0; noId < noCount; ++noId) {
             uint256 operatorTrackedStake;
             uint256 totalDepositedKeys = module.getNodeOperator(noId).totalDepositedKeys;
+            uint256[] memory keyAllocatedBalances = module.getKeyAllocatedBalances(noId, 0, totalDepositedKeys);
 
             for (uint256 keyIndex = 0; keyIndex < totalDepositedKeys; ++keyIndex) {
                 if (module.isValidatorWithdrawn(noId, keyIndex)) continue;
 
-                operatorTrackedStake +=
-                    ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE +
-                    module.getKeyAllocatedBalance(noId, keyIndex);
+                operatorTrackedStake += ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + keyAllocatedBalances[keyIndex];
             }
 
             totalTrackedStake += operatorTrackedStake;

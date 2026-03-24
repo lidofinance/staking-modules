@@ -106,7 +106,7 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
 
         uint256 topUpLimit = 1 ether;
         (uint256 expectedMaxDepositAmount, ) = stakingRouter.getTopUpAllocation(TOP_UP_ALLOCATION_PROBE_AMOUNT);
-        uint256 keyAllocatedBalanceBefore = module.getKeyAllocatedBalance(noId, keyIndex);
+        uint256 keyAllocatedBalanceBefore = module.getKeyAllocatedBalances(noId, keyIndex, 1)[0];
         uint256 remainingCapacity = _remainingTopUpCapacity(noId, keyIndex);
         uint256 cappedLimit = topUpLimit < remainingCapacity ? topUpLimit : remainingCapacity;
         uint256 expectedAllocation = expectedMaxDepositAmount < cappedLimit ? expectedMaxDepositAmount : cappedLimit;
@@ -121,7 +121,7 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
         vm.prank(topUpGateway);
         stakingRouter.topUp(moduleId, keyIndices, operatorIds, pubkeys, topUpLimits);
 
-        uint256 keyAllocatedBalanceAfter = module.getKeyAllocatedBalance(noId, keyIndex);
+        uint256 keyAllocatedBalanceAfter = module.getKeyAllocatedBalances(noId, keyIndex, 1)[0];
         assertEq(keyAllocatedBalanceAfter - keyAllocatedBalanceBefore, expectedAllocation);
     }
 
@@ -258,7 +258,7 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
             uint256 checkedAt
         ) = _topUpAndDeepRewind(type(uint256).max);
 
-        uint256 keyAllocatedBalanceBefore = module.getKeyAllocatedBalance(noIds[checkedAt], keyIdxs[checkedAt]);
+        uint256 keyAllocatedBalanceBefore = module.getKeyAllocatedBalances(noIds[checkedAt], keyIdxs[checkedAt], 1)[0];
         assertEq(_remainingTopUpCapacity(noIds[checkedAt], keyIdxs[checkedAt]), 0);
 
         (, , uint256 queueLengthBefore, ) = module.getTopUpQueue();
@@ -273,7 +273,7 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
         stakingRouter.topUp(moduleId, keyIdxs, noIds, pubs, topUpLimits);
 
         assertEq(_countKeyAllocatedBalanceChangedEvents(), 0);
-        assertEq(module.getKeyAllocatedBalance(noIds[checkedAt], keyIdxs[checkedAt]), keyAllocatedBalanceBefore);
+        assertEq(module.getKeyAllocatedBalances(noIds[checkedAt], keyIdxs[checkedAt], 1)[0], keyAllocatedBalanceBefore);
         (, , uint256 queueLengthAfter, ) = module.getTopUpQueue();
         assertEq(queueLengthAfter + noIds.length, queueLengthBefore);
     }
@@ -286,7 +286,7 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
             uint256 checkedAt
         ) = _topUpAndDeepRewind(1 ether);
 
-        uint256 keyAllocatedBalanceBefore = module.getKeyAllocatedBalance(noIds[checkedAt], keyIdxs[checkedAt]);
+        uint256 keyAllocatedBalanceBefore = module.getKeyAllocatedBalances(noIds[checkedAt], keyIdxs[checkedAt], 1)[0];
         uint256 remainingCapacity = _remainingTopUpCapacity(noIds[checkedAt], keyIdxs[checkedAt]);
         assertGt(remainingCapacity, 0);
 
@@ -303,7 +303,7 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
 
         assertEq(_countKeyAllocatedBalanceChangedEvents(), 1);
         assertEq(
-            module.getKeyAllocatedBalance(noIds[checkedAt], keyIdxs[checkedAt]),
+            module.getKeyAllocatedBalances(noIds[checkedAt], keyIdxs[checkedAt], 1)[0],
             keyAllocatedBalanceBefore + remainingCapacity
         );
         (, , uint256 queueLengthAfter, ) = module.getTopUpQueue();
@@ -368,7 +368,7 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
     }
 
     function _remainingTopUpCapacity(uint256 noId, uint256 keyIndex) internal view returns (uint256) {
-        uint256 keyAllocatedBalance = module.getKeyAllocatedBalance(noId, keyIndex);
+        uint256 keyAllocatedBalance = module.getKeyAllocatedBalances(noId, keyIndex, 1)[0];
         if (keyAllocatedBalance >= KEY_BALANCE_CAP) return 0;
         return KEY_BALANCE_CAP - keyAllocatedBalance;
     }

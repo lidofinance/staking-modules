@@ -333,7 +333,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         if (_computeEpochAtSlot(header.slot) < validator.object.withdrawableEpoch) revert ValidatorIsNotWithdrawable();
         if (withdrawal.object.validatorIndex != validator.index) revert InvalidValidatorIndex();
 
-        uint256 expectedBalance = MODULE.getKeyConfirmedBalance(nodeOperatorId, keyIndex) +
+        uint256 expectedBalance = MODULE.getKeyConfirmedBalances(nodeOperatorId, keyIndex, 1)[0] +
             ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
         withdrawalAmount = withdrawal.object.amountWei();
         if (withdrawalAmount < (expectedBalance * MIN_WITHDRAWAL_RATIO) / MAX_BP) revert PartialWithdrawal();

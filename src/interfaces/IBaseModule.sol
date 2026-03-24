@@ -378,17 +378,27 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param currentBalanceWei Proven current validator balance in wei
     function reportValidatorBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 currentBalanceWei) external;
 
-    /// @notice Get cumulative top-up amount allocated to a particular key (above MIN_ACTIVATION_BALANCE)
+    /// @notice Get cumulative top-up amounts allocated to Node Operator keys (above MIN_ACTIVATION_BALANCE)
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param keyIndex Index of the Key in the Node Operator's keys storage
-    /// @return Allocated balance above MIN_ACTIVATION_BALANCE (wei)
-    function getKeyAllocatedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256);
+    /// @param startIndex Index of the first key
+    /// @param keysCount Count of keys to get
+    /// @return balances Allocated balances above MIN_ACTIVATION_BALANCE (wei)
+    function getKeyAllocatedBalances(
+        uint256 nodeOperatorId,
+        uint256 startIndex,
+        uint256 keysCount
+    ) external view returns (uint256[] memory balances);
 
-    /// @notice Get verifier-confirmed balance for a particular key (above MIN_ACTIVATION_BALANCE)
+    /// @notice Get verifier-confirmed balances for Node Operator keys (above MIN_ACTIVATION_BALANCE)
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param keyIndex Index of the Key in the Node Operator's keys storage
-    /// @return Confirmed balance above MIN_ACTIVATION_BALANCE (wei)
-    function getKeyConfirmedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256);
+    /// @param startIndex Index of the first key
+    /// @param keysCount Count of keys to get
+    /// @return balances Confirmed balances above MIN_ACTIVATION_BALANCE (wei)
+    function getKeyConfirmedBalances(
+        uint256 nodeOperatorId,
+        uint256 startIndex,
+        uint256 keysCount
+    ) external view returns (uint256[] memory balances);
 
     /// @notice Report Node Operator's keys as withdrawn and charge penalties associated with exit if any.
     ///         A validator is considered withdrawn in the following cases:

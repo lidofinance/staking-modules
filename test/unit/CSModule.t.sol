@@ -987,8 +987,7 @@ contract CSMTopUpQueue is CSMCommon {
         });
 
         assertEq(allocations, UintArr(0, 4 ether));
-        assertEq(csm.getKeyAllocatedBalance(0, 0), 2 ether);
-        assertEq(csm.getKeyAllocatedBalance(0, 1), 4 ether);
+        assertEq(csm.getKeyAllocatedBalances(0, 0, 2), UintArr(2 ether, 4 ether));
         assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
         assertEq(module.getNodeOperatorBalance(0), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
         assertEq(_getTopUpQueueLength(), 0);
@@ -1073,7 +1072,7 @@ contract CSMTopUpQueue is CSMCommon {
 
         assertEq(firstAllocations, UintArr(2 ether));
         assertEq(_getTopUpQueueLength(), 1);
-        assertEq(csm.getKeyAllocatedBalance(0, 0), 2 ether);
+        assertEq(csm.getKeyAllocatedBalances(0, 0, 1), UintArr(2 ether));
         assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 2 ether);
         assertEq(module.getNodeOperatorBalance(0), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 2 ether);
 
@@ -1087,7 +1086,7 @@ contract CSMTopUpQueue is CSMCommon {
 
         assertEq(secondAllocations, UintArr(2 ether));
         assertEq(_getTopUpQueueLength(), 0);
-        assertEq(csm.getKeyAllocatedBalance(0, 0), 4 ether);
+        assertEq(csm.getKeyAllocatedBalances(0, 0, 1), UintArr(4 ether));
         assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
         assertEq(module.getNodeOperatorBalance(0), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
     }
@@ -2123,11 +2122,11 @@ contract CSMReportValidatorBalance is ModuleReportValidatorBalance, CSMCommon {
             operatorIds: UintArr(noId),
             topUpLimits: UintArr(20 ether)
         });
-        assertEq(csm.getKeyAllocatedBalance(noId, 0), 20 ether);
+        assertEq(csm.getKeyAllocatedBalances(noId, 0, 1), UintArr(20 ether));
 
         // Confirmed balance below allocated — keyAllocatedBalance must not decrease.
         csm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether);
-        assertEq(csm.getKeyAllocatedBalance(noId, 0), 20 ether, "keyAllocatedBalance must not decrease");
+        assertEq(csm.getKeyAllocatedBalances(noId, 0, 1), UintArr(20 ether), "keyAllocatedBalance must not decrease");
     }
 
     function test_reportValidatorBalance_afterTopUp_increasesStakeOnlyByDelta() public {
@@ -2148,7 +2147,7 @@ contract CSMReportValidatorBalance is ModuleReportValidatorBalance, CSMCommon {
 
         csm.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 25 ether);
 
-        assertEq(csm.getKeyAllocatedBalance(noId, 0), 25 ether);
+        assertEq(csm.getKeyAllocatedBalances(noId, 0, 1), UintArr(25 ether));
         assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 25 ether);
         assertEq(module.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 25 ether);
     }

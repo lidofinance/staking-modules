@@ -74,11 +74,12 @@ contract VerifierHistoricalBase is Test, Utilities {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyConfirmedBalance.selector,
+                IBaseModule.getKeyConfirmedBalances.selector,
                 fixture.data.validator.nodeOperatorId,
-                fixture.data.validator.keyIndex
+                fixture.data.validator.keyIndex,
+                1
             ),
-            abi.encode(0)
+            abi.encode(UintArr(0))
         );
 
         vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");

@@ -517,11 +517,12 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyConfirmedBalance.selector,
+                IBaseModule.getKeyConfirmedBalances.selector,
                 fixture.data.validator.nodeOperatorId,
-                fixture.data.validator.keyIndex
+                fixture.data.validator.keyIndex,
+                1
             ),
-            abi.encode(3 ether)
+            abi.encode(UintArr(3 ether))
         );
 
         WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
@@ -551,11 +552,12 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyConfirmedBalance.selector,
+                IBaseModule.getKeyConfirmedBalances.selector,
                 fixture.data.validator.nodeOperatorId,
-                fixture.data.validator.keyIndex
+                fixture.data.validator.keyIndex,
+                1
             ),
-            abi.encode(2016 ether)
+            abi.encode(UintArr(2016 ether))
         );
 
         WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
@@ -587,11 +589,12 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyConfirmedBalance.selector,
+                IBaseModule.getKeyConfirmedBalances.selector,
                 fixture.data.validator.nodeOperatorId,
-                fixture.data.validator.keyIndex
+                fixture.data.validator.keyIndex,
+                1
             ),
-            abi.encode(100 ether)
+            abi.encode(UintArr(100 ether))
         );
 
         // absolute = 100 + 32 = 132 ether; 132 ether in gwei * 9000 / 10000 = 118_800_000_000 gwei = 118.8 ether
@@ -606,11 +609,12 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyConfirmedBalance.selector,
+                IBaseModule.getKeyConfirmedBalances.selector,
                 fixture.data.validator.nodeOperatorId,
-                fixture.data.validator.keyIndex
+                fixture.data.validator.keyIndex,
+                1
             ),
-            abi.encode(2016 ether)
+            abi.encode(UintArr(2016 ether))
         );
 
         // threshold = 2048 * 9000 / 10000 = 1843.2 ETH = 1_843_200_000_000 gwei
@@ -721,11 +725,12 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyConfirmedBalance.selector,
+                IBaseModule.getKeyConfirmedBalances.selector,
                 fixture.data.validator.nodeOperatorId,
-                fixture.data.validator.keyIndex
+                fixture.data.validator.keyIndex,
+                1
             ),
-            abi.encode(0)
+            abi.encode(UintArr(0))
         );
 
         vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");

@@ -163,8 +163,8 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             topUpLimits: UintArr(10 ether)
         });
 
-        assertEq(module.getKeyAllocatedBalance(noId, 0), 10 ether);
-        assertEq(module.getKeyConfirmedBalance(noId, 0), 0);
+        assertEq(module.getKeyAllocatedBalances(noId, 0, 1), UintArr(10 ether));
+        assertEq(module.getKeyConfirmedBalances(noId, 0, 1), UintArr(0));
         assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether);
         assertEq(module.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether);
 

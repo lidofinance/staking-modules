@@ -590,13 +590,33 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function getKeyAllocatedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256) {
-        return _baseStorage().keyAllocatedBalance[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
+    function getKeyAllocatedBalances(
+        uint256 nodeOperatorId,
+        uint256 startIndex,
+        uint256 keysCount
+    ) external view returns (uint256[] memory balances) {
+        _onlyValidIndexRange(nodeOperatorId, startIndex, keysCount);
+
+        BaseModuleStorage storage $ = _baseStorage();
+        balances = new uint256[](keysCount);
+        for (uint256 i; i < keysCount; ++i) {
+            balances[i] = $.keyAllocatedBalance[KeyPointerLib.keyPointer(nodeOperatorId, startIndex + i)];
+        }
     }
 
     /// @inheritdoc IBaseModule
-    function getKeyConfirmedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256) {
-        return _baseStorage().keyConfirmedBalance[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
+    function getKeyConfirmedBalances(
+        uint256 nodeOperatorId,
+        uint256 startIndex,
+        uint256 keysCount
+    ) external view returns (uint256[] memory balances) {
+        _onlyValidIndexRange(nodeOperatorId, startIndex, keysCount);
+
+        BaseModuleStorage storage $ = _baseStorage();
+        balances = new uint256[](keysCount);
+        for (uint256 i; i < keysCount; ++i) {
+            balances[i] = $.keyConfirmedBalance[KeyPointerLib.keyPointer(nodeOperatorId, startIndex + i)];
+        }
     }
 
     function getTotalModuleStake() public view override returns (uint256) {
