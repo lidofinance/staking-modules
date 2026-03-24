@@ -4,42 +4,6 @@ pragma solidity 0.8.33;
 
 import { NodeOperator, IBaseModule } from "../interfaces/IBaseModule.sol";
 
-/// Library for changing and reset node operator's manager and reward addresses
-/// @dev the only use of this to be a library is to save CSModule contract size via delegatecalls
-interface INOAddresses {
-    event NodeOperatorManagerAddressChangeProposed(
-        uint256 indexed nodeOperatorId,
-        address indexed oldProposedAddress,
-        address indexed newProposedAddress
-    );
-    event NodeOperatorRewardAddressChangeProposed(
-        uint256 indexed nodeOperatorId,
-        address indexed oldProposedAddress,
-        address indexed newProposedAddress
-    );
-    // args order as in https://github.com/OpenZeppelin/openzeppelin-contracts/blob/11dc5e3809ebe07d5405fe524385cbe4f890a08b/contracts/access/Ownable.sol#L33
-    event NodeOperatorManagerAddressChanged(
-        uint256 indexed nodeOperatorId,
-        address indexed oldAddress,
-        address indexed newAddress
-    );
-    // args order as in https://github.com/OpenZeppelin/openzeppelin-contracts/blob/11dc5e3809ebe07d5405fe524385cbe4f890a08b/contracts/access/Ownable.sol#L33
-    event NodeOperatorRewardAddressChanged(
-        uint256 indexed nodeOperatorId,
-        address indexed oldAddress,
-        address indexed newAddress
-    );
-
-    error AlreadyProposed();
-    error SameAddress();
-    error SenderIsNotManagerAddress();
-    error SenderIsNotRewardAddress();
-    error SenderIsNotProposedAddress();
-    error MethodCallIsNotAllowed();
-    error ZeroManagerAddress();
-    error ZeroRewardAddress();
-}
-
 library NOAddresses {
     /// @notice Propose a new manager address for the Node Operator.
     /// @dev Passing address(0) clears the pending proposal without changing the current manager address.
@@ -54,16 +18,16 @@ library NOAddresses {
         address managerAddress = no.managerAddress;
 
         if (managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
-        if (managerAddress != msg.sender) revert INOAddresses.SenderIsNotManagerAddress();
-        if (managerAddress == proposedAddress) revert INOAddresses.SameAddress();
+        if (managerAddress != msg.sender) revert IBaseModule.SenderIsNotManagerAddress();
+        if (managerAddress == proposedAddress) revert IBaseModule.SameAddress();
 
         address oldProposedAddress = no.proposedManagerAddress;
 
-        if (oldProposedAddress == proposedAddress) revert INOAddresses.AlreadyProposed();
+        if (oldProposedAddress == proposedAddress) revert IBaseModule.AlreadyProposed();
 
         no.proposedManagerAddress = proposedAddress;
 
-        emit INOAddresses.NodeOperatorManagerAddressChangeProposed(nodeOperatorId, oldProposedAddress, proposedAddress);
+        emit IBaseModule.NodeOperatorManagerAddressChangeProposed(nodeOperatorId, oldProposedAddress, proposedAddress);
     }
 
     /// @notice Confirm a new manager address for the Node Operator.
@@ -77,12 +41,12 @@ library NOAddresses {
         address oldManagerAddress = no.managerAddress;
 
         if (oldManagerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
-        if (no.proposedManagerAddress != msg.sender) revert INOAddresses.SenderIsNotProposedAddress();
+        if (no.proposedManagerAddress != msg.sender) revert IBaseModule.SenderIsNotProposedAddress();
 
         no.managerAddress = msg.sender;
         delete no.proposedManagerAddress;
 
-        emit INOAddresses.NodeOperatorManagerAddressChanged(nodeOperatorId, oldManagerAddress, msg.sender);
+        emit IBaseModule.NodeOperatorManagerAddressChanged(nodeOperatorId, oldManagerAddress, msg.sender);
     }
 
     /// @notice Propose a new reward address for the Node Operator.
@@ -98,16 +62,16 @@ library NOAddresses {
         address rewardAddress = no.rewardAddress;
 
         if (rewardAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
-        if (rewardAddress != msg.sender) revert INOAddresses.SenderIsNotRewardAddress();
-        if (rewardAddress == proposedAddress) revert INOAddresses.SameAddress();
+        if (rewardAddress != msg.sender) revert IBaseModule.SenderIsNotRewardAddress();
+        if (rewardAddress == proposedAddress) revert IBaseModule.SameAddress();
 
         address oldProposedAddress = no.proposedRewardAddress;
 
-        if (oldProposedAddress == proposedAddress) revert INOAddresses.AlreadyProposed();
+        if (oldProposedAddress == proposedAddress) revert IBaseModule.AlreadyProposed();
 
         no.proposedRewardAddress = proposedAddress;
 
-        emit INOAddresses.NodeOperatorRewardAddressChangeProposed(nodeOperatorId, oldProposedAddress, proposedAddress);
+        emit IBaseModule.NodeOperatorRewardAddressChangeProposed(nodeOperatorId, oldProposedAddress, proposedAddress);
     }
 
     /// @notice Confirm a new reward address for the Node Operator.
@@ -121,12 +85,12 @@ library NOAddresses {
         address oldRewardAddress = no.rewardAddress;
 
         if (oldRewardAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
-        if (no.proposedRewardAddress != msg.sender) revert INOAddresses.SenderIsNotProposedAddress();
+        if (no.proposedRewardAddress != msg.sender) revert IBaseModule.SenderIsNotProposedAddress();
 
         no.rewardAddress = msg.sender;
         delete no.proposedRewardAddress;
 
-        emit INOAddresses.NodeOperatorRewardAddressChanged(nodeOperatorId, oldRewardAddress, msg.sender);
+        emit IBaseModule.NodeOperatorRewardAddressChanged(nodeOperatorId, oldRewardAddress, msg.sender);
     }
 
     /// @notice Reset the manager address to the reward address.
@@ -140,18 +104,18 @@ library NOAddresses {
         address rewardAddress = no.rewardAddress;
 
         if (rewardAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
-        if (no.extendedManagerPermissions) revert INOAddresses.MethodCallIsNotAllowed();
-        if (rewardAddress != msg.sender) revert INOAddresses.SenderIsNotRewardAddress();
+        if (no.extendedManagerPermissions) revert IBaseModule.MethodCallIsNotAllowed();
+        if (rewardAddress != msg.sender) revert IBaseModule.SenderIsNotRewardAddress();
 
         address previousManagerAddress = no.managerAddress;
 
-        if (previousManagerAddress == rewardAddress) revert INOAddresses.SameAddress();
+        if (previousManagerAddress == rewardAddress) revert IBaseModule.SameAddress();
 
         no.managerAddress = rewardAddress;
         // @dev Gas golfing
         if (no.proposedManagerAddress != address(0)) delete no.proposedManagerAddress;
 
-        emit INOAddresses.NodeOperatorManagerAddressChanged(nodeOperatorId, previousManagerAddress, rewardAddress);
+        emit IBaseModule.NodeOperatorManagerAddressChanged(nodeOperatorId, previousManagerAddress, rewardAddress);
     }
 
     /// @notice Change rewardAddress if extendedManagerPermissions is enabled for the Node Operator.
@@ -161,26 +125,28 @@ library NOAddresses {
     function changeNodeOperatorRewardAddress(
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,
-        address newAddress
+        address newAddress,
+        address stETH
     ) external {
-        if (newAddress == address(0)) revert INOAddresses.ZeroRewardAddress();
+        if (newAddress == address(0)) revert IBaseModule.ZeroRewardAddress();
+        if (newAddress == stETH) revert IBaseModule.InvalidRewardAddress();
 
         NodeOperator storage no = nodeOperators[nodeOperatorId];
         address oldRewardAddress = no.rewardAddress;
 
-        if (oldRewardAddress == newAddress) revert INOAddresses.SameAddress();
+        if (oldRewardAddress == newAddress) revert IBaseModule.SameAddress();
 
         address managerAddress = no.managerAddress;
 
         if (managerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
-        if (!no.extendedManagerPermissions) revert INOAddresses.MethodCallIsNotAllowed();
-        if (managerAddress != msg.sender) revert INOAddresses.SenderIsNotManagerAddress();
+        if (!no.extendedManagerPermissions) revert IBaseModule.MethodCallIsNotAllowed();
+        if (managerAddress != msg.sender) revert IBaseModule.SenderIsNotManagerAddress();
 
         no.rewardAddress = newAddress;
         // @dev Gas golfing
         if (no.proposedRewardAddress != address(0)) delete no.proposedRewardAddress;
 
-        emit INOAddresses.NodeOperatorRewardAddressChanged(nodeOperatorId, oldRewardAddress, newAddress);
+        emit IBaseModule.NodeOperatorRewardAddressChanged(nodeOperatorId, oldRewardAddress, newAddress);
     }
 
     /// @notice Change both reward and manager addresses of a node operator.
@@ -192,7 +158,8 @@ library NOAddresses {
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,
         address newManagerAddress,
-        address newRewardAddress
+        address newRewardAddress,
+        address stETH
     ) external {
         NodeOperator storage no = nodeOperators[nodeOperatorId];
 
@@ -200,8 +167,10 @@ library NOAddresses {
         address oldRewardAddress = no.rewardAddress;
 
         if (oldManagerAddress == address(0)) revert IBaseModule.NodeOperatorDoesNotExist();
-        if (newManagerAddress == address(0)) revert INOAddresses.ZeroManagerAddress();
-        if (newRewardAddress == address(0)) revert INOAddresses.ZeroRewardAddress();
+        if (newManagerAddress == address(0)) revert IBaseModule.ZeroManagerAddress();
+        if (newRewardAddress == address(0)) revert IBaseModule.ZeroRewardAddress();
+        if (newManagerAddress == stETH) revert IBaseModule.InvalidManagerAddress();
+        if (newRewardAddress == stETH) revert IBaseModule.InvalidRewardAddress();
 
         bool isSameManagerAddress = newManagerAddress == oldManagerAddress;
         bool isSameRewardAddress = newRewardAddress == oldRewardAddress;
@@ -210,13 +179,13 @@ library NOAddresses {
             no.managerAddress = newManagerAddress;
             if (no.proposedManagerAddress != address(0)) delete no.proposedManagerAddress;
 
-            emit INOAddresses.NodeOperatorManagerAddressChanged(nodeOperatorId, oldManagerAddress, newManagerAddress);
+            emit IBaseModule.NodeOperatorManagerAddressChanged(nodeOperatorId, oldManagerAddress, newManagerAddress);
         }
         if (!isSameRewardAddress) {
             no.rewardAddress = newRewardAddress;
             if (no.proposedRewardAddress != address(0)) delete no.proposedRewardAddress;
 
-            emit INOAddresses.NodeOperatorRewardAddressChanged(nodeOperatorId, oldRewardAddress, newRewardAddress);
+            emit IBaseModule.NodeOperatorRewardAddressChanged(nodeOperatorId, oldRewardAddress, newRewardAddress);
         }
     }
 }

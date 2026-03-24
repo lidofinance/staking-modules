@@ -246,6 +246,17 @@ contract FeeSplitsTest is BaseTest {
         accounting.updateFeeSplits(0, splits, 0, new bytes32[](0));
     }
 
+    function test_updateFeeSplits_revertWhen_InvalidSplitRecipient() public {
+        IFeeSplits.FeeSplit[] memory splits = new IFeeSplits.FeeSplit[](2);
+        splits[0] = IFeeSplits.FeeSplit({ recipient: address(1), share: 3000 });
+        splits[1] = IFeeSplits.FeeSplit({ recipient: address(accounting.LIDO()), share: 5000 });
+        mock_getNodeOperatorOwner(user);
+
+        vm.expectRevert(IFeeSplits.InvalidSplitRecipient.selector);
+        vm.prank(user);
+        accounting.updateFeeSplits(0, splits, 0, new bytes32[](0));
+    }
+
     function test_updateFeeSplits_revertWhen_ZeroSplitShare() public {
         IFeeSplits.FeeSplit[] memory splits = new IFeeSplits.FeeSplit[](2);
         splits[0] = IFeeSplits.FeeSplit({ recipient: address(1), share: 3000 });

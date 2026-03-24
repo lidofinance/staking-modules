@@ -220,6 +220,7 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
 
     function _setRebateRecipient(address _rebateRecipient) internal {
         if (_rebateRecipient == address(0)) revert ZeroRebateRecipientAddress();
+        if (_rebateRecipient == address(STETH)) revert InvalidRebateRecipientAddress();
 
         if (_rebateRecipient == rebateRecipient) revert SameRebateRecipientAddress();
         rebateRecipient = _rebateRecipient;
