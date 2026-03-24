@@ -728,6 +728,12 @@ contract FeeDistributorTest is FeeDistributorTestBase {
         feeDistributor.setRebateRecipient(address(0));
     }
 
+    function test_setRebateRecipient_revertWhen_InvalidRebateRecipientAddress() public {
+        address stETH = address(feeDistributor.STETH());
+        vm.expectRevert(IFeeDistributor.InvalidRebateRecipientAddress.selector);
+        feeDistributor.setRebateRecipient(stETH);
+    }
+
     function test_setRebateRecipient_revertWhen_SameRebateRecipientAddress() public {
         vm.expectRevert(IFeeDistributor.SameRebateRecipientAddress.selector);
         feeDistributor.setRebateRecipient(rebateRecipient);

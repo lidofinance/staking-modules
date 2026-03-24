@@ -141,12 +141,13 @@ contract CuratedModule is ICuratedModule, BaseModule {
         address newRewardAddress
     ) external {
         _checkRole(OPERATOR_ADDRESSES_ADMIN_ROLE);
-        NOAddresses.changeNodeOperatorAddresses(
-            _baseStorage().nodeOperators,
-            nodeOperatorId,
-            newManagerAddress,
-            newRewardAddress
-        );
+        NOAddresses.changeNodeOperatorAddresses({
+            nodeOperators: _baseStorage().nodeOperators,
+            nodeOperatorId: nodeOperatorId,
+            newManagerAddress: newManagerAddress,
+            newRewardAddress: newRewardAddress,
+            stETH: address(STETH)
+        });
     }
 
     /// @inheritdoc ICuratedModule

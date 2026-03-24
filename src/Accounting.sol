@@ -127,7 +127,7 @@ contract Accounting is
         ) {
             revert FeeSplitsChangeWithUndistributedRewards();
         }
-        FeeSplits._updateFeeSplits(nodeOperatorId, feeSplits);
+        FeeSplits._updateFeeSplits(nodeOperatorId, feeSplits, address(LIDO));
     }
 
     /// @inheritdoc IAccounting

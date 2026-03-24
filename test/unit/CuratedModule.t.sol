@@ -9,7 +9,7 @@ import { CuratedDepositAllocator } from "src/lib/allocator/CuratedDepositAllocat
 import { SigningKeys } from "src/lib/SigningKeys.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 import { CuratedModule } from "src/CuratedModule.sol";
-import { IBaseModule, INOAddresses, NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
+import { IBaseModule, NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
@@ -2102,10 +2102,10 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         address rewards = nextAddress();
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorManagerAddressChanged(noId, nodeOperator, manager);
+        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, nodeOperator, manager);
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorRewardAddressChanged(noId, nodeOperator, rewards);
+        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, nodeOperator, rewards);
 
         cm.changeNodeOperatorAddresses(noId, manager, rewards);
 
@@ -2136,10 +2136,10 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         address rewards = nextAddress();
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorManagerAddressChanged(noId, managerToChange, manager);
+        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, managerToChange, manager);
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorRewardAddressChanged(noId, rewardsToChange, rewards);
+        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, rewardsToChange, rewards);
 
         cm.changeNodeOperatorAddresses(noId, manager, rewards);
 
@@ -2167,10 +2167,10 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         address rewards = nextAddress();
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorManagerAddressChanged(noId, nodeOperator, manager);
+        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, nodeOperator, manager);
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorRewardAddressChanged(noId, nodeOperator, rewards);
+        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, nodeOperator, rewards);
 
         cm.changeNodeOperatorAddresses(noId, manager, rewards);
 
@@ -2201,10 +2201,10 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         address rewards = nextAddress();
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorManagerAddressChanged(noId, managerToChange, manager);
+        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, managerToChange, manager);
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorRewardAddressChanged(noId, rewardsToChange, rewards);
+        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, rewardsToChange, rewards);
 
         cm.changeNodeOperatorAddresses(noId, manager, rewards);
 
@@ -2238,7 +2238,7 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
 
         {
             vm.expectEmit(address(cm));
-            emit INOAddresses.NodeOperatorRewardAddressChanged(noId, rewardsToChange, rewards);
+            emit IBaseModule.NodeOperatorRewardAddressChanged(noId, rewardsToChange, rewards);
 
             vm.recordLogs();
             cm.changeNodeOperatorAddresses(noId, managerToChange, rewards);
@@ -2248,7 +2248,7 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
 
         {
             vm.expectEmit(address(cm));
-            emit INOAddresses.NodeOperatorManagerAddressChanged(noId, managerToChange, manager);
+            emit IBaseModule.NodeOperatorManagerAddressChanged(noId, managerToChange, manager);
 
             vm.recordLogs();
             cm.changeNodeOperatorAddresses(noId, manager, rewardsToChange);
@@ -2287,10 +2287,10 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         address rewards = nextAddress();
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorManagerAddressChanged(noId, nodeOperator, manager);
+        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, nodeOperator, manager);
 
         vm.expectEmit(address(cm));
-        emit INOAddresses.NodeOperatorRewardAddressChanged(noId, nodeOperator, rewards);
+        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, nodeOperator, rewards);
 
         cm.changeNodeOperatorAddresses(noId, manager, rewards);
 
@@ -2341,11 +2341,38 @@ contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
         address manager = nextAddress();
         address rewards = nextAddress();
 
-        vm.expectRevert(INOAddresses.ZeroManagerAddress.selector);
+        vm.expectRevert(IBaseModule.ZeroManagerAddress.selector);
         cm.changeNodeOperatorAddresses(noId, address(0), rewards);
 
-        vm.expectRevert(INOAddresses.ZeroRewardAddress.selector);
+        vm.expectRevert(IBaseModule.ZeroRewardAddress.selector);
         cm.changeNodeOperatorAddresses(noId, manager, address(0));
+    }
+
+    function test_changeNodeOperatorAddresses_RevertsIfInvalidAddressProvided() public {
+        uint256 noId = cm.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: nextAddress(),
+                rewardAddress: nextAddress(),
+                extendedManagerPermissions: false
+            }),
+            address(0)
+        );
+
+        vm.startPrank(admin);
+        cm.grantRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
+        vm.stopPrank();
+
+        address stETH = address(cm.STETH());
+
+        address manager = nextAddress();
+        address rewards = nextAddress();
+
+        vm.expectRevert(IBaseModule.InvalidManagerAddress.selector);
+        cm.changeNodeOperatorAddresses(noId, stETH, rewards);
+
+        vm.expectRevert(IBaseModule.InvalidRewardAddress.selector);
+        cm.changeNodeOperatorAddresses(noId, manager, stETH);
     }
 }
 

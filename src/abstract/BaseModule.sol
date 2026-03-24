@@ -91,7 +91,8 @@ abstract contract BaseModule is
             nodeOperators: $.nodeOperators,
             nodeOperatorId: nodeOperatorId,
             from: from,
-            managementProperties: managementProperties
+            managementProperties: managementProperties,
+            stETH: address(STETH)
         });
 
         unchecked {
@@ -196,7 +197,12 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function changeNodeOperatorRewardAddress(uint256 nodeOperatorId, address newAddress) external {
-        NOAddresses.changeNodeOperatorRewardAddress(_baseStorage().nodeOperators, nodeOperatorId, newAddress);
+        NOAddresses.changeNodeOperatorRewardAddress(
+            _baseStorage().nodeOperators,
+            nodeOperatorId,
+            newAddress,
+            address(STETH)
+        );
     }
 
     /// @inheritdoc IStakingModule

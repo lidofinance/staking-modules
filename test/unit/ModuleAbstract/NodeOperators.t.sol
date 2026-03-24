@@ -4,7 +4,6 @@
 pragma solidity 0.8.33;
 
 import { IBaseModule, NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
-import { INOAddresses } from "src/lib/NOAddresses.sol";
 import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
@@ -70,6 +69,39 @@ abstract contract ModuleCreateNodeOperator is ModuleFixtures {
         assertEq(no.managerAddress, manager);
         assertEq(no.rewardAddress, reward);
         assertEq(no.extendedManagerPermissions, false);
+    }
+
+    function test_createNodeOperator_withCustomAddresses_revertWhen_InvalidManagerOrRewardAddress()
+        public
+        assertInvariants
+    {
+        address manager = address(module.STETH());
+        address reward = address(42);
+
+        vm.expectRevert(IBaseModule.InvalidManagerAddress.selector);
+        module.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: manager,
+                rewardAddress: reward,
+                extendedManagerPermissions: false
+            }),
+            address(0)
+        );
+
+        manager = address(154);
+        reward = address(module.STETH());
+
+        vm.expectRevert(IBaseModule.InvalidRewardAddress.selector);
+        module.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: manager,
+                rewardAddress: reward,
+                extendedManagerPermissions: false
+            }),
+            address(0)
+        );
     }
 
     function test_createNodeOperator_withExtendedManagerPermissions() public assertInvariants {
@@ -570,7 +602,7 @@ abstract contract ModuleProposeNodeOperatorManagerAddressChange is ModuleFixture
         assertEq(no.rewardAddress, nodeOperator);
 
         vm.expectEmit(address(module));
-        emit INOAddresses.NodeOperatorManagerAddressChangeProposed(noId, address(0), stranger);
+        emit IBaseModule.NodeOperatorManagerAddressChangeProposed(noId, address(0), stranger);
         vm.prank(nodeOperator);
         module.proposeNodeOperatorManagerAddressChange(noId, stranger);
         assertEq(no.managerAddress, nodeOperator);
@@ -587,7 +619,7 @@ abstract contract ModuleProposeNodeOperatorManagerAddressChange is ModuleFixture
         module.proposeNodeOperatorManagerAddressChange(noId, stranger);
 
         vm.expectEmit(address(module));
-        emit INOAddresses.NodeOperatorManagerAddressChangeProposed(noId, stranger, strangerNumberTwo);
+        emit IBaseModule.NodeOperatorManagerAddressChangeProposed(noId, stranger, strangerNumberTwo);
         vm.prank(nodeOperator);
         module.proposeNodeOperatorManagerAddressChange(noId, strangerNumberTwo);
         assertEq(no.managerAddress, nodeOperator);
@@ -601,7 +633,7 @@ abstract contract ModuleProposeNodeOperatorManagerAddressChange is ModuleFixture
 
     function test_proposeNodeOperatorManagerAddressChange_RevertWhen_NotManager() public {
         uint256 noId = createNodeOperator();
-        vm.expectRevert(INOAddresses.SenderIsNotManagerAddress.selector);
+        vm.expectRevert(IBaseModule.SenderIsNotManagerAddress.selector);
         module.proposeNodeOperatorManagerAddressChange(noId, stranger);
     }
 
@@ -610,14 +642,14 @@ abstract contract ModuleProposeNodeOperatorManagerAddressChange is ModuleFixture
         vm.prank(nodeOperator);
         module.proposeNodeOperatorManagerAddressChange(noId, stranger);
 
-        vm.expectRevert(INOAddresses.AlreadyProposed.selector);
+        vm.expectRevert(IBaseModule.AlreadyProposed.selector);
         vm.prank(nodeOperator);
         module.proposeNodeOperatorManagerAddressChange(noId, stranger);
     }
 
     function test_proposeNodeOperatorManagerAddressChange_RevertWhen_SameAddressProposed() public {
         uint256 noId = createNodeOperator();
-        vm.expectRevert(INOAddresses.SameAddress.selector);
+        vm.expectRevert(IBaseModule.SameAddress.selector);
         vm.prank(nodeOperator);
         module.proposeNodeOperatorManagerAddressChange(noId, nodeOperator);
     }
@@ -634,7 +666,7 @@ abstract contract ModuleConfirmNodeOperatorManagerAddressChange is ModuleFixture
         module.proposeNodeOperatorManagerAddressChange(noId, stranger);
 
         vm.expectEmit(address(module));
-        emit INOAddresses.NodeOperatorManagerAddressChanged(noId, nodeOperator, stranger);
+        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, nodeOperator, stranger);
         vm.prank(stranger);
         module.confirmNodeOperatorManagerAddressChange(noId);
 
@@ -650,7 +682,7 @@ abstract contract ModuleConfirmNodeOperatorManagerAddressChange is ModuleFixture
 
     function test_confirmNodeOperatorManagerAddressChange_RevertWhen_NotProposed() public {
         uint256 noId = createNodeOperator();
-        vm.expectRevert(INOAddresses.SenderIsNotProposedAddress.selector);
+        vm.expectRevert(IBaseModule.SenderIsNotProposedAddress.selector);
         vm.prank(stranger);
         module.confirmNodeOperatorManagerAddressChange(noId);
     }
@@ -660,7 +692,7 @@ abstract contract ModuleConfirmNodeOperatorManagerAddressChange is ModuleFixture
         vm.prank(nodeOperator);
         module.proposeNodeOperatorManagerAddressChange(noId, stranger);
 
-        vm.expectRevert(INOAddresses.SenderIsNotProposedAddress.selector);
+        vm.expectRevert(IBaseModule.SenderIsNotProposedAddress.selector);
         vm.prank(nextAddress());
         module.confirmNodeOperatorManagerAddressChange(noId);
     }
@@ -674,7 +706,7 @@ abstract contract ModuleProposeNodeOperatorRewardAddressChange is ModuleFixtures
         assertEq(no.rewardAddress, nodeOperator);
 
         vm.expectEmit(address(module));
-        emit INOAddresses.NodeOperatorRewardAddressChangeProposed(noId, address(0), stranger);
+        emit IBaseModule.NodeOperatorRewardAddressChangeProposed(noId, address(0), stranger);
         vm.prank(nodeOperator);
         module.proposeNodeOperatorRewardAddressChange(noId, stranger);
         assertEq(no.managerAddress, nodeOperator);
@@ -691,7 +723,7 @@ abstract contract ModuleProposeNodeOperatorRewardAddressChange is ModuleFixtures
         module.proposeNodeOperatorRewardAddressChange(noId, stranger);
 
         vm.expectEmit(address(module));
-        emit INOAddresses.NodeOperatorRewardAddressChangeProposed(noId, stranger, strangerNumberTwo);
+        emit IBaseModule.NodeOperatorRewardAddressChangeProposed(noId, stranger, strangerNumberTwo);
         vm.prank(nodeOperator);
         module.proposeNodeOperatorRewardAddressChange(noId, strangerNumberTwo);
         assertEq(no.managerAddress, nodeOperator);
@@ -705,7 +737,7 @@ abstract contract ModuleProposeNodeOperatorRewardAddressChange is ModuleFixtures
 
     function test_proposeNodeOperatorRewardAddressChange_RevertWhen_NotRewardAddress() public {
         uint256 noId = createNodeOperator();
-        vm.expectRevert(INOAddresses.SenderIsNotRewardAddress.selector);
+        vm.expectRevert(IBaseModule.SenderIsNotRewardAddress.selector);
         module.proposeNodeOperatorRewardAddressChange(noId, stranger);
     }
 
@@ -714,14 +746,14 @@ abstract contract ModuleProposeNodeOperatorRewardAddressChange is ModuleFixtures
         vm.prank(nodeOperator);
         module.proposeNodeOperatorRewardAddressChange(noId, stranger);
 
-        vm.expectRevert(INOAddresses.AlreadyProposed.selector);
+        vm.expectRevert(IBaseModule.AlreadyProposed.selector);
         vm.prank(nodeOperator);
         module.proposeNodeOperatorRewardAddressChange(noId, stranger);
     }
 
     function test_proposeNodeOperatorRewardAddressChange_RevertWhen_SameAddressProposed() public {
         uint256 noId = createNodeOperator();
-        vm.expectRevert(INOAddresses.SameAddress.selector);
+        vm.expectRevert(IBaseModule.SameAddress.selector);
         vm.prank(nodeOperator);
         module.proposeNodeOperatorRewardAddressChange(noId, nodeOperator);
     }
@@ -738,7 +770,7 @@ abstract contract ModuleConfirmNodeOperatorRewardAddressChange is ModuleFixtures
         module.proposeNodeOperatorRewardAddressChange(noId, stranger);
 
         vm.expectEmit(address(module));
-        emit INOAddresses.NodeOperatorRewardAddressChanged(noId, nodeOperator, stranger);
+        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, nodeOperator, stranger);
         vm.prank(stranger);
         module.confirmNodeOperatorRewardAddressChange(noId);
 
@@ -754,7 +786,7 @@ abstract contract ModuleConfirmNodeOperatorRewardAddressChange is ModuleFixtures
 
     function test_confirmNodeOperatorRewardAddressChange_RevertWhen_NotProposed() public {
         uint256 noId = createNodeOperator();
-        vm.expectRevert(INOAddresses.SenderIsNotProposedAddress.selector);
+        vm.expectRevert(IBaseModule.SenderIsNotProposedAddress.selector);
         vm.prank(stranger);
         module.confirmNodeOperatorRewardAddressChange(noId);
     }
@@ -764,7 +796,7 @@ abstract contract ModuleConfirmNodeOperatorRewardAddressChange is ModuleFixtures
         vm.prank(nodeOperator);
         module.proposeNodeOperatorRewardAddressChange(noId, stranger);
 
-        vm.expectRevert(INOAddresses.SenderIsNotProposedAddress.selector);
+        vm.expectRevert(IBaseModule.SenderIsNotProposedAddress.selector);
         vm.prank(nextAddress());
         module.confirmNodeOperatorRewardAddressChange(noId);
     }
@@ -780,7 +812,7 @@ abstract contract ModuleResetNodeOperatorManagerAddress is ModuleFixtures {
         module.confirmNodeOperatorRewardAddressChange(noId);
 
         vm.expectEmit(address(module));
-        emit INOAddresses.NodeOperatorManagerAddressChanged(noId, nodeOperator, stranger);
+        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, nodeOperator, stranger);
         vm.prank(stranger);
         module.resetNodeOperatorManagerAddress(noId);
 
@@ -803,7 +835,7 @@ abstract contract ModuleResetNodeOperatorManagerAddress is ModuleFixtures {
         module.resetNodeOperatorManagerAddress(noId);
         vm.stopPrank();
 
-        vm.expectRevert(INOAddresses.SenderIsNotProposedAddress.selector);
+        vm.expectRevert(IBaseModule.SenderIsNotProposedAddress.selector);
         vm.prank(manager);
         module.confirmNodeOperatorManagerAddressChange(noId);
     }
@@ -815,21 +847,21 @@ abstract contract ModuleResetNodeOperatorManagerAddress is ModuleFixtures {
 
     function test_resetNodeOperatorManagerAddress_RevertWhen_NotRewardAddress() public {
         uint256 noId = createNodeOperator();
-        vm.expectRevert(INOAddresses.SenderIsNotRewardAddress.selector);
+        vm.expectRevert(IBaseModule.SenderIsNotRewardAddress.selector);
         vm.prank(stranger);
         module.resetNodeOperatorManagerAddress(noId);
     }
 
     function test_resetNodeOperatorManagerAddress_RevertWhen_SameAddress() public {
         uint256 noId = createNodeOperator();
-        vm.expectRevert(INOAddresses.SameAddress.selector);
+        vm.expectRevert(IBaseModule.SameAddress.selector);
         vm.prank(nodeOperator);
         module.resetNodeOperatorManagerAddress(noId);
     }
 
     function test_resetNodeOperatorManagerAddress_RevertWhen_ExtendedPermissions() public {
         uint256 noId = createNodeOperator(true);
-        vm.expectRevert(INOAddresses.MethodCallIsNotAllowed.selector);
+        vm.expectRevert(IBaseModule.MethodCallIsNotAllowed.selector);
         vm.prank(nodeOperator);
         module.resetNodeOperatorManagerAddress(noId);
     }
@@ -840,7 +872,7 @@ abstract contract ModuleChangeNodeOperatorRewardAddress is ModuleFixtures {
         uint256 noId = createNodeOperator(true);
 
         vm.expectEmit(address(module));
-        emit INOAddresses.NodeOperatorRewardAddressChanged(noId, nodeOperator, stranger);
+        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, nodeOperator, stranger);
         vm.prank(nodeOperator);
         module.changeNodeOperatorRewardAddress(noId, stranger);
 
@@ -871,21 +903,29 @@ abstract contract ModuleChangeNodeOperatorRewardAddress is ModuleFixtures {
 
     function test_changeNodeOperatorRewardAddress_RevertWhen_SameAddress() public {
         uint256 noId = createNodeOperator(true);
-        vm.expectRevert(INOAddresses.SameAddress.selector);
+        vm.expectRevert(IBaseModule.SameAddress.selector);
         vm.prank(nodeOperator);
         module.changeNodeOperatorRewardAddress(noId, nodeOperator);
     }
 
     function test_changeNodeOperatorRewardAddress_RevertWhen_ZeroRewardAddress() public {
         uint256 noId = createNodeOperator(true);
-        vm.expectRevert(INOAddresses.ZeroRewardAddress.selector);
+        vm.expectRevert(IBaseModule.ZeroRewardAddress.selector);
         vm.prank(nodeOperator);
         module.changeNodeOperatorRewardAddress(noId, address(0));
     }
 
+    function test_changeNodeOperatorRewardAddress_RevertWhen_InvalidRewardAddress() public {
+        uint256 noId = createNodeOperator(true);
+        address stETH = address(module.STETH());
+        vm.expectRevert(IBaseModule.InvalidRewardAddress.selector);
+        vm.prank(nodeOperator);
+        module.changeNodeOperatorRewardAddress(noId, stETH);
+    }
+
     function test_changeNodeOperatorRewardAddress_RevertWhen_NotManagerAddress() public {
         uint256 noId = createNodeOperator(true);
-        vm.expectRevert(INOAddresses.SenderIsNotManagerAddress.selector);
+        vm.expectRevert(IBaseModule.SenderIsNotManagerAddress.selector);
         vm.prank(stranger);
         module.changeNodeOperatorRewardAddress(noId, stranger);
     }
@@ -893,14 +933,14 @@ abstract contract ModuleChangeNodeOperatorRewardAddress is ModuleFixtures {
     function test_changeNodeOperatorRewardAddress_RevertWhen_SenderIsRewardAddress() public {
         uint256 noId = createNodeOperator(nodeOperator, stranger, true);
 
-        vm.expectRevert(INOAddresses.SenderIsNotManagerAddress.selector);
+        vm.expectRevert(IBaseModule.SenderIsNotManagerAddress.selector);
         vm.prank(stranger);
         module.changeNodeOperatorRewardAddress(noId, nodeOperator);
     }
 
     function test_changeNodeOperatorRewardAddress_RevertWhen_NoExtendedPermissions() public {
         uint256 noId = createNodeOperator(false);
-        vm.expectRevert(INOAddresses.MethodCallIsNotAllowed.selector);
+        vm.expectRevert(IBaseModule.MethodCallIsNotAllowed.selector);
         vm.prank(nodeOperator);
         module.changeNodeOperatorRewardAddress(noId, stranger);
     }

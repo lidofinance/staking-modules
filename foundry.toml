@@ -13,7 +13,7 @@ libs = ["lib", "node_modules"]
 cache_path = "cache"
 
 block_gas_limit = 30_000_000
-fuzz = { runs = 256 }
+fuzz = { runs = 256, max_test_rejects = 100_000 }
 ffi = true
 
 gas_reports = [

@@ -26,9 +26,12 @@ library NodeOperatorOps {
         mapping(uint256 => NodeOperator) storage nodeOperators,
         uint256 nodeOperatorId,
         address from,
-        NodeOperatorManagementProperties calldata managementProperties
+        NodeOperatorManagementProperties calldata managementProperties,
+        address stETH
     ) external {
         if (from == address(0)) revert IBaseModule.ZeroSenderAddress();
+        if (managementProperties.managerAddress == stETH) revert IBaseModule.InvalidManagerAddress();
+        if (managementProperties.rewardAddress == stETH) revert IBaseModule.InvalidRewardAddress();
 
         NodeOperator storage no = nodeOperators[nodeOperatorId];
 

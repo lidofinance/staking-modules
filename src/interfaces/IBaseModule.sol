@@ -6,7 +6,6 @@ pragma solidity 0.8.33;
 import { IAccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
 
 import { IAssetRecovererLib } from "../lib/AssetRecovererLib.sol";
-import { INOAddresses } from "../lib/NOAddresses.sol";
 
 import { IAccounting } from "./IAccounting.sol";
 import { IExitPenalties } from "./IExitPenalties.sol";
@@ -55,7 +54,7 @@ struct WithdrawnValidatorInfo {
 }
 
 /// @notice Base module interface for repository modules such as `ICSModule` and `ICuratedModule`.
-interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses, IAssetRecovererLib {
+interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecovererLib {
     event NodeOperatorAdded(
         uint256 indexed nodeOperatorId,
         address indexed managerAddress,
@@ -100,6 +99,29 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     event NodeOperatorDepositInfoFullyUpdated();
     event FullDepositInfoUpdateRequested();
 
+    event NodeOperatorManagerAddressChangeProposed(
+        uint256 indexed nodeOperatorId,
+        address indexed oldProposedAddress,
+        address indexed newProposedAddress
+    );
+    event NodeOperatorRewardAddressChangeProposed(
+        uint256 indexed nodeOperatorId,
+        address indexed oldProposedAddress,
+        address indexed newProposedAddress
+    );
+    // args order as in https://github.com/OpenZeppelin/openzeppelin-contracts/blob/11dc5e3809ebe07d5405fe524385cbe4f890a08b/contracts/access/Ownable.sol#L33
+    event NodeOperatorManagerAddressChanged(
+        uint256 indexed nodeOperatorId,
+        address indexed oldAddress,
+        address indexed newAddress
+    );
+    // args order as in https://github.com/OpenZeppelin/openzeppelin-contracts/blob/11dc5e3809ebe07d5405fe524385cbe4f890a08b/contracts/access/Ownable.sol#L33
+    event NodeOperatorRewardAddressChanged(
+        uint256 indexed nodeOperatorId,
+        address indexed oldAddress,
+        address indexed newAddress
+    );
+
     error CannotAddKeys();
     error NodeOperatorDoesNotExist();
     error SenderIsNotEligible();
@@ -128,6 +150,18 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     error ZeroPenaltyType();
     error DepositInfoIsNotUpToDate();
     error UnreportableBalance();
+
+    error InvalidManagerAddress();
+    error InvalidRewardAddress();
+
+    error AlreadyProposed();
+    error SameAddress();
+    error SenderIsNotManagerAddress();
+    error SenderIsNotRewardAddress();
+    error SenderIsNotProposedAddress();
+    error MethodCallIsNotAllowed();
+    error ZeroManagerAddress();
+    error ZeroRewardAddress();
 
     function STAKING_ROUTER_ROLE() external view returns (bytes32);
 
