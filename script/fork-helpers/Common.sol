@@ -26,7 +26,7 @@ contract ForkHelpersCommon is Script, DeploymentFixtures {
     }
 
     function _setBalance(address account) internal {
-        _setBalance(account, 1 ether);
+        _setBalance(account, 16 ether);
     }
 
     function _setBalance(address account, uint256 expectedBalance) internal {
@@ -35,6 +35,7 @@ contract ForkHelpersCommon is Script, DeploymentFixtures {
                 "anvil_setBalance",
                 string.concat('["', vm.toString(account), '", ', vm.toString(expectedBalance), "]")
             );
+            vm.deal(account, expectedBalance);
         }
     }
 }

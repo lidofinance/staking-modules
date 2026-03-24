@@ -59,26 +59,18 @@ just deposit-keys <count>
 
 Deposits up to `count` depositable keys across all operators via Staking Router. Keys move from the deposit queue to the Deposit Contract.
 
-### Activate keys (report as active on CL)
-
-```bash
-just activate-keys <noId> <count>
-```
-
-Reports `count` deposited keys as active with minimum effective balance (32 ETH + 1 gwei). Skips keys that already have balance or are withdrawn.
-
 ### Increase effective balance
 
 ```bash
-just key-increase-balance <noId> <activeKeyIndex> <amountEth>
+just key-topup <noId> <activeKeyIndex> <amountEth>
 ```
 
 Increases allocated balance for a single active key (1-based index). Use to simulate top-ups, consolidations, or CL rewards.
 
 Examples:
 
-- `just key-increase-balance 0 1 2` — +2 ETH top-up on 1st active key
-- `just key-increase-balance 0 1 32` — +32 ETH (simulates MaxEB consolidation)
+- `just key-topup 0 1 2` — +2 ETH top-up on 1st active key
+- `just key-topup 0 1 32` — +32 ETH (simulates MaxEB consolidation)
 
 ## Full example
 
@@ -92,11 +84,8 @@ just add-keys 0 2
 # 3. Deposit keys (only works after group assignment)
 just deposit-keys 2
 
-# 4. Activate on CL
-just activate-keys 0 2
-
-# 5. Increase effective balance
-just key-increase-balance 0 1 2
+# 4. Increase effective balance
+just key-topup 0 1 2
 ```
 
 ## Other commands

@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { Script } from "forge-std/Script.sol";
+import { Script, console } from "forge-std/Script.sol";
 
 import { IVEBO } from "src/interfaces/IVEBO.sol";
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
@@ -368,6 +368,7 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         vm.startBroadcast(operator);
         noId = gate.createNodeOperator("fork-operator", "fork-test", address(0), address(0), proof);
         vm.stopBroadcast();
+        console.log("noId", noId);
     }
 
     function _addKeysForOperator(address operator, uint256 noId, uint256 keysCount) internal {

@@ -113,7 +113,7 @@ activate-keys noId count:
 report-balance noId activeKeyIndex balanceEth:
     just _impersonate-script NodeOperators --sig="reportBalance\(uint256,uint256,uint256\)" -- {{noId}} {{activeKeyIndex}} $(cast to-wei {{balanceEth}})
 
-key-increase-balance noId activeKeyIndex amountEth:
+key-topup noId activeKeyIndex amountEth:
     just _impersonate-script NodeOperators --sig="increaseAllocatedBalance\(uint256,uint256,uint256\)" -- {{noId}} {{activeKeyIndex}} $(cast to-wei {{amountEth}})
 
 exit-request noId validatorIndex validatorPubKey:
@@ -143,6 +143,21 @@ reset-operator-group noId:
 
 set-bond-curve-weight curveId weight:
     just _impersonate-script MetaRegistryHelpers --sig="setBondCurveWeight\(uint256,uint256\)" -- {{curveId}} {{weight}}
+
+# Seed scenario: 3 operators in 1 group, mixed key states
+# - operator 0: 1 active key with 2000 ETH allocated
+# - operator 1: 1 depositable key
+# - operator 2: no keys
+seed-operators:
+    just create-curated-operator 0
+    just create-curated-operator 1
+    just create-curated-operator 2
+    just create-operator-group 0 34 1 33 2 33
+    just add-keys 0 1
+    just deposit-keys 1
+    just add-keys 1 1
+    just activate-keys 0 1
+    just key-topup 0 1 1968
 
 _impersonate-script *args:
     curl -sS {{anvil_rpc_url}} --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"anvil_autoImpersonateAccount","params":[true],"id":1}' > /dev/null
