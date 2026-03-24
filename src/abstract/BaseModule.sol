@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
-import { IStakingModule } from "../interfaces/IStakingModule.sol";
+import { IStakingModule, IStakingModuleV2 } from "../interfaces/IStakingModule.sol";
 import { ILidoLocator } from "../interfaces/ILidoLocator.sol";
 import { IStETH } from "../interfaces/IStETH.sol";
 import { IParametersRegistry } from "../interfaces/IParametersRegistry.sol";
@@ -21,6 +21,7 @@ import { WithdrawnValidatorLib } from "../lib/WithdrawnValidatorLib.sol";
 import { NOAddresses } from "../lib/NOAddresses.sol";
 import { NodeOperatorOps } from "../lib/NodeOperatorOps.sol";
 import { KeyPointerLib } from "../lib/KeyPointerLib.sol";
+import { StakeTracker } from "../lib/StakeTracker.sol";
 
 import { AssetRecoverer } from "./AssetRecoverer.sol";
 import { ModuleLinearStorage } from "./ModuleLinearStorage.sol";
@@ -28,6 +29,7 @@ import { PausableWithRoles } from "./PausableWithRoles.sol";
 
 abstract contract BaseModule is
     IBaseModule,
+    IStakingModuleV2,
     ModuleLinearStorage,
     AccessControlEnumerableUpgradeable,
     PausableWithRoles,
@@ -485,6 +487,11 @@ abstract contract BaseModule is
         }
     }
 
+    /// @inheritdoc IBaseModule
+    function getNodeOperatorBalance(uint256 nodeOperatorId) external view returns (uint256) {
+        return StakeTracker.getOperatorBalance(_baseStorage(), nodeOperatorId);
+    }
+
     /// @inheritdoc IStakingModule
     /// @notice depositableValidatorsCount depends on:
     ///      - totalVettedKeys
@@ -598,6 +605,10 @@ abstract contract BaseModule is
         return _baseStorage().keyConfirmedBalance[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 
+    function getTotalModuleStake() public view override returns (uint256) {
+        return StakeTracker.getTotalModuleStake(_baseStorage());
+    }
+
     /// @inheritdoc IBaseModule
     function getNodeOperatorDepositInfoToUpdateCount() external view returns (uint256 count) {
         BaseModuleStorage storage $ = _baseStorage();
@@ -620,11 +631,11 @@ abstract contract BaseModule is
     }
 
     function _reportWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos, bool slashed) internal {
-        (uint256[] memory touchedOperatorIds, uint256 touchedCount) = WithdrawnValidatorLib.processBatch(
-            validatorInfos,
-            slashed,
-            _baseStorage()
-        );
+        (
+            uint256[] memory touchedOperatorIds,
+            uint256[] memory trackedBalanceDecreases,
+            uint256 touchedCount
+        ) = WithdrawnValidatorLib.processBatch(validatorInfos, slashed, _baseStorage());
 
         if (touchedCount == 0) return;
 
@@ -632,6 +643,7 @@ abstract contract BaseModule is
             _baseStorage().totalWithdrawnValidators += touchedCount;
         }
         for (uint256 i; i < touchedCount; ++i) {
+            StakeTracker.decreaseOperatorBalance(_baseStorage(), touchedOperatorIds[i], trackedBalanceDecreases[i]);
             _updateDepositableValidatorsCount({
                 nodeOperatorId: touchedOperatorIds[i],
                 incrementNonceIfUpdated: false

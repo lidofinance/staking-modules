@@ -80,6 +80,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
         uint256 slashingPenalty,
         bytes pubkey
     );
+    event NodeOperatorBalanceUpdated(uint256 indexed operatorId, uint256 balanceWei);
     event ValidatorSlashingReported(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
     event KeyAllocatedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
     event KeyConfirmedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newBalance);
@@ -367,6 +368,12 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Non-withdrawn keys count
     function getNodeOperatorNonWithdrawnKeys(uint256 nodeOperatorId) external view returns (uint256);
+
+    /// @notice Returns tracked operator balance (active validator base stake plus tracked extra).
+    /// @dev The tracked extra is intentionally monotonic for active validators and is reduced on withdrawal reporting,
+    ///      not on intermediate balance decreases, so the value serves both top-up allocation and withdrawal penalty accounting.
+    /// @param nodeOperatorId ID of the Node Operator
+    function getNodeOperatorBalance(uint256 nodeOperatorId) external view returns (uint256);
 
     /// @notice Get Node Operator signing keys
     /// @param nodeOperatorId ID of the Node Operator

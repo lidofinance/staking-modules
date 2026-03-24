@@ -5,6 +5,7 @@ pragma solidity 0.8.33;
 
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { CuratedDepositAllocator } from "src/lib/allocator/CuratedDepositAllocator.sol";
+import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 import { CuratedIntegrationBase } from "../common/ModuleTypeBase.sol";
 
@@ -57,6 +58,6 @@ contract ObtainDepositDataTestCurated is CuratedIntegrationBase {
         assertEq(depositableAfter, depositableBefore - allocated);
 
         uint256 balanceAfter = curatedModule.getNodeOperatorBalance(noId);
-        assertEq(balanceAfter, balanceBefore + allocated * CuratedDepositAllocator.MIN_ACTIVATION_BALANCE);
+        assertEq(balanceAfter, balanceBefore + allocated * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
     }
 }

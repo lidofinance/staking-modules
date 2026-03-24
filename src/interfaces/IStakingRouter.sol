@@ -322,12 +322,6 @@ interface IStakingRouter {
         bytes memory _exitedValidatorsCounts
     ) external;
 
-    function reportStakingModuleOperatorBalances(
-        uint256 _stakingModuleId,
-        bytes memory _nodeOperatorIds,
-        bytes memory _totalBalancesGwei
-    ) external;
-
     function reportStakingModuleStuckValidatorsCountByNodeOperator(
         uint256 _stakingModuleId,
         bytes memory _nodeOperatorIds,

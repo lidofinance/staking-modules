@@ -3,8 +3,8 @@
 
 pragma solidity 0.8.33;
 
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { BaseModule } from "./abstract/BaseModule.sol";
 
@@ -12,12 +12,13 @@ import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.so
 import { IBaseModule, NodeOperatorManagementProperties, NodeOperator } from "./interfaces/IBaseModule.sol";
 import { ICSModule } from "./interfaces/ICSModule.sol";
 
-import { TopUpQueueLib, TopUpQueueItem, newTopUpQueueItem } from "./lib/TopUpQueueLib.sol";
+import { TopUpQueueLib, TopUpQueueItem } from "./lib/TopUpQueueLib.sol";
 import { DepositQueueLib, Batch } from "./lib/DepositQueueLib.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
 import { DepositQueueOps } from "./lib/DepositQueueOps.sol";
 import { TopUpQueueOps } from "./lib/TopUpQueueOps.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
+import { StakeTracker } from "./lib/StakeTracker.sol";
 import { OperatorTracker } from "./lib/OperatorTracker.sol";
 
 contract CSModule is ICSModule, BaseModule {
@@ -107,98 +108,12 @@ contract CSModule is ICSModule, BaseModule {
         _requireDepositInfoUpToDate();
 
         if (depositsCount == 0) return (publicKeys, signatures);
-        (publicKeys, signatures) = SigningKeys.initKeysSigsBuf(depositsCount);
-
-        uint256 depositsLeft = depositsCount;
-        uint256 loadedKeysCount = 0;
-
-        bool topUpQueueEnabled = _topUpQueueEnabled();
-
-        // NOTE: The highest priority to start iterations with. Priorities are ordered like 0, 1, 2, ...
-        for (uint256 priority; depositsLeft > 0 && priority <= _queueLowestPriority(); ++priority) {
-            DepositQueueLib.Queue storage depositQueue = _baseStorage().depositQueueByPriority[priority];
-            for (Batch item = depositQueue.peek(); !item.isNil() && depositsLeft > 0; item = depositQueue.peek()) {
-                // NOTE: see the `enqueuedCount` note below.
-                unchecked {
-                    uint32 noId = uint32(item.noId());
-                    NodeOperator storage no = _baseStorage().nodeOperators[noId];
-
-                    uint256 keysInBatch = item.keys();
-
-                    // Keys are bounded by keys in batch and depositable counts (they are uint32 values), so this fits the storage types.
-                    // forge-lint: disable-next-line(unsafe-typecast)
-                    uint32 keysCount = uint32(
-                        Math.min(Math.min(no.depositableValidatorsCount, keysInBatch), depositsLeft)
-                    );
-                    // `depositsLeft` is non-zero at this point all the time, so the check `depositsLeft > keysCount`
-                    // covers the case when no depositable keys on the Node Operator have been left.
-                    if (depositsLeft > keysCount || keysCount == keysInBatch) {
-                        // NOTE: `enqueuedCount` >= keysInBatch invariant should be checked.
-                        // Enqueued counters are uint32 values; `keysInBatch` is sourced
-                        // from the same field and thus cannot exceed the range.
-                        // forge-lint: disable-next-line(unsafe-typecast)
-                        no.enqueuedCount -= uint32(keysInBatch);
-                        // We've consumed all the keys in the batch, so we dequeue it.
-                        depositQueue.dequeue();
-                    } else {
-                        // This branch covers the case when we stop in the middle of the batch.
-                        // We release the amount of keys consumed only, the rest will be kept.
-                        no.enqueuedCount -= keysCount;
-                        // NOTE: `keysInBatch` can't be less than `keysCount` at this point.
-                        // We update the batch with the remaining keys and store the updated batch back to the queue.
-                        depositQueue.queue[depositQueue.head] = item.setKeys(keysInBatch - keysCount);
-                    }
-
-                    // NOTE: This condition is located here to allow for the correct removal of the batch for the Node Operators with no depositable keys
-                    if (keysCount == 0) continue;
-                    if (topUpQueueEnabled) {
-                        uint32 keyIndexBase = no.totalDepositedKeys;
-                        for (uint32 i; i < keysCount; i++) {
-                            _topUpQueue().enqueue(
-                                newTopUpQueueItem(
-                                    // The ids are assigned sequentially, so noId can't exceed uint32 in practice.
-                                    noId,
-                                    keyIndexBase + i
-                                )
-                            );
-                        }
-                    }
-
-                    SigningKeys.loadKeysSigs({
-                        nodeOperatorId: noId,
-                        startIndex: no.totalDepositedKeys,
-                        keysCount: keysCount,
-                        pubkeys: publicKeys,
-                        signatures: signatures,
-                        bufOffset: loadedKeysCount
-                    });
-
-                    // It's impossible in practice to reach the limit of these variables.
-                    loadedKeysCount += keysCount;
-                    uint32 totalDepositedKeys = no.totalDepositedKeys + keysCount;
-                    no.totalDepositedKeys = totalDepositedKeys;
-
-                    emit DepositedSigningKeysCountChanged(noId, totalDepositedKeys);
-
-                    // No need for `_updateDepositableValidatorsCount` call since we update the number directly.
-                    uint32 newCount = no.depositableValidatorsCount - keysCount;
-                    no.depositableValidatorsCount = newCount;
-                    emit DepositableSigningKeysCountChanged(noId, newCount);
-
-                    depositsLeft -= keysCount;
-                }
-            }
-        }
-
-        if (loadedKeysCount != depositsCount) revert NotEnoughKeys();
-
-        unchecked {
-            // Deposits counts are capped by queue length (< 2^32) and the storage slots are uint64.
-            // forge-lint: disable-next-line(unsafe-typecast)
-            _baseStorage().depositableValidatorsCount -= uint64(depositsCount);
-            // forge-lint: disable-next-line(unsafe-typecast)
-            _baseStorage().totalDepositedValidators += uint64(depositsCount);
-        }
+        (publicKeys, signatures) = DepositQueueOps.obtainDepositData(
+            _baseStorage(),
+            _topUpQueue(),
+            depositsCount,
+            _queueLowestPriority()
+        );
 
         _incrementModuleNonce();
     }
@@ -238,12 +153,7 @@ contract CSModule is ICSModule, BaseModule {
 
         if (allocations.length == 0) return allocations;
 
-        NodeOperatorOps.increaseKeyAllocatedBalance(
-            _baseStorage().keyAllocatedBalance,
-            operatorIds,
-            keyIndices,
-            allocations
-        );
+        StakeTracker.increaseKeyBalances(_baseStorage(), operatorIds, keyIndices, allocations);
 
         _incrementModuleNonce();
     }
@@ -312,15 +222,6 @@ contract CSModule is ICSModule, BaseModule {
         TopUpQueueItem item = _topUpQueue().at(index);
         nodeOperatorId = item.noId();
         keyIndex = item.keyIndex();
-    }
-
-    /// @inheritdoc IStakingModuleV2
-    /// @dev The function does nothing in CSM, since the information about the operator balances is not used in the
-    ///      module. If it becomes needed in the future, the method should be implemented and the oracle should deliver
-    ///      the actual balances.
-    // solhint-disable-next-line no-empty-blocks
-    function updateOperatorBalances(bytes calldata, bytes calldata) external view {
-        // NOTE: The function does nothing in CSM, see the docstring.
     }
 
     /// @inheritdoc IStakingModule

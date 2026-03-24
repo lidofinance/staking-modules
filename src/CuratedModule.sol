@@ -12,25 +12,14 @@ import { BaseModule } from "./abstract/BaseModule.sol";
 
 import { NOAddresses } from "./lib/NOAddresses.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
-import { TransientUintUintMap, TransientUintUintMapLib } from "./lib/TransientUintUintMapLib.sol";
 import { CuratedDepositAllocator } from "./lib/allocator/CuratedDepositAllocator.sol";
-import { CuratedOperatorBalancesOps } from "./lib/CuratedOperatorBalancesOps.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
+import { StakeTracker } from "./lib/StakeTracker.sol";
 
 contract CuratedModule is ICuratedModule, BaseModule {
-    /// @custom:storage-location erc7201:CuratedModule
-    struct CuratedModuleStorage {
-        // Tracks per-operator balances (in wei) reported by the Accounting oracle.
-        mapping(uint256 nodeOperatorId => uint256 balance) operatorBalances;
-    }
-
     bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE = keccak256("OPERATOR_ADDRESSES_ADMIN_ROLE");
 
     IMetaRegistry public immutable META_REGISTRY;
-
-    // keccak256(abi.encode(uint256(keccak256("CuratedModule")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant CURATED_MODULE_STORAGE_LOCATION =
-        0x748416948424a2a643c796b7b8213bcf41155fd3a072f0851ad0a3d6ca632500;
 
     constructor(
         bytes32 moduleType,
@@ -94,12 +83,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
             uint32 depositableValidatorsCount = no.depositableValidatorsCount - uint32(allocation);
             no.depositableValidatorsCount = depositableValidatorsCount;
             emit DepositableSigningKeysCountChanged(operatorId, depositableValidatorsCount);
-
-            CuratedOperatorBalancesOps.increaseBalance(
-                _curatedStorage().operatorBalances,
-                operatorId,
-                allocation * CuratedDepositAllocator.MIN_ACTIVATION_BALANCE
-            );
         }
         unchecked {
             // `allocated` is capped by _depositableValidatorsCount which is uint64.
@@ -148,18 +131,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
         allocations = _allocateTopUps(maxDepositAmount, operatorIds, keyIndices, cappedTopUpLimits);
 
-        _incrementModuleNonce();
-    }
-
-    /// @inheritdoc IStakingModuleV2
-    function updateOperatorBalances(bytes calldata operatorIds, bytes calldata totalBalancesGwei) external {
-        _checkStakingRouterRole();
-        CuratedOperatorBalancesOps.applyReportedBalances(
-            _curatedStorage().operatorBalances,
-            _baseStorage().nodeOperatorsCount,
-            operatorIds,
-            totalBalancesGwei
-        );
         _incrementModuleNonce();
     }
 
@@ -214,11 +185,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
     }
 
     /// @inheritdoc ICuratedModule
-    function getNodeOperatorBalance(uint256 operatorId) external view returns (uint256) {
-        return _curatedStorage().operatorBalances[operatorId];
-    }
-
-    /// @inheritdoc ICuratedModule
     function getDepositAllocationTargets()
         external
         view
@@ -236,11 +202,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         returns (uint256[] memory currentAllocations, uint256[] memory targetAllocations)
     {
         _requireDepositInfoUpToDate();
-        return
-            CuratedDepositAllocator.getTopUpAllocationTargets(
-                _curatedStorage().operatorBalances,
-                _baseStorage().nodeOperatorsCount
-            );
+        return CuratedDepositAllocator.getTopUpAllocationTargets(_baseStorage());
     }
 
     /// @inheritdoc ICuratedModule
@@ -258,9 +220,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         }
 
         (allocated, operatorIds, allocations) = CuratedDepositAllocator.allocateTopUps({
-            nodeOperators: $.nodeOperators,
-            nodeOperatorBalances: _curatedStorage().operatorBalances,
-            operatorsCount: operatorsCount,
+            $: $,
             allocationAmount: maxDepositAmount,
             operatorIds: allOperatorIds
         });
@@ -297,52 +257,14 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256[] memory topUpLimits
     ) internal returns (uint256[] memory allocations) {
         BaseModuleStorage storage $ = _baseStorage();
-        uint256[] memory uniqueOperatorIds = _uniqueOperatorIds(operatorIds);
-        (, uint256[] memory allocatedOperatorIds, uint256[] memory operatorAllocations) = CuratedDepositAllocator
-            .allocateTopUps({
-                nodeOperators: $.nodeOperators,
-                nodeOperatorBalances: _curatedStorage().operatorBalances,
-                operatorsCount: $.nodeOperatorsCount,
-                allocationAmount: maxDepositAmount,
-                operatorIds: uniqueOperatorIds
-            });
-
-        uint256[] memory perOperatorIncrements;
-        (allocations, perOperatorIncrements) = NodeOperatorOps.distributeTopUpAllocations({
+        allocations = CuratedDepositAllocator.allocateAndDistributeTopUps({
+            $: $,
+            allocationAmount: maxDepositAmount,
             operatorIds: operatorIds,
-            topUpLimits: topUpLimits,
-            allocatedOperatorIds: allocatedOperatorIds,
-            operatorAllocations: operatorAllocations,
-            operatorsCount: $.nodeOperatorsCount
+            topUpLimits: topUpLimits
         });
 
-        NodeOperatorOps.increaseKeyAllocatedBalance($.keyAllocatedBalance, operatorIds, keyIndices, allocations);
-        CuratedOperatorBalancesOps.increaseByAllocations(
-            _curatedStorage().operatorBalances,
-            uniqueOperatorIds,
-            perOperatorIncrements
-        );
-    }
-
-    /// @dev Deduplicate operator ids for allocation to avoid overweighting by repeated keys.
-    function _uniqueOperatorIds(uint256[] calldata operatorIds) internal returns (uint256[] memory uniqueOperatorIds) {
-        uniqueOperatorIds = new uint256[](operatorIds.length);
-        TransientUintUintMap seen = TransientUintUintMapLib.create();
-        uint256 count;
-        for (uint256 i; i < operatorIds.length; ++i) {
-            uint256 operatorId = operatorIds[i];
-            if (seen.get(operatorId) != 0) continue;
-            seen.set(operatorId, 1);
-            uniqueOperatorIds[count] = operatorId;
-            ++count;
-        }
-
-        if (count != operatorIds.length) {
-            // Trim the uniqueOperatorIds array to the actual count of unique ids.
-            assembly {
-                mstore(uniqueOperatorIds, count)
-            }
-        }
+        StakeTracker.increaseKeyBalances($, operatorIds, keyIndices, allocations);
     }
 
     function _validateTopUpPublicKeys(
@@ -366,12 +288,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
     function _canRequestDepositInfoUpdate() internal view override {
         if (msg.sender != address(_accounting()) && msg.sender != address(_metaRegistry())) {
             revert SenderIsNotEligible();
-        }
-    }
-
-    function _curatedStorage() internal pure returns (CuratedModuleStorage storage $) {
-        assembly ("memory-safe") {
-            $.slot := CURATED_MODULE_STORAGE_LOCATION
         }
     }
 }

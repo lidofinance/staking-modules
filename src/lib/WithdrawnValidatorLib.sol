@@ -11,22 +11,24 @@ import { IAccounting } from "../interfaces/IAccounting.sol";
 import { ModuleLinearStorage } from "../abstract/ModuleLinearStorage.sol";
 
 import { SigningKeys } from "./SigningKeys.sol";
+import { ValidatorBalanceLimits } from "./ValidatorBalanceLimits.sol";
 
 /// @dev A library to extract a part of the code from the CSModule contract.
 library WithdrawnValidatorLib {
-    uint256 public constant MAX_EFFECTIVE_BALANCE = 2048 ether;
-    uint256 public constant MIN_ACTIVATION_BALANCE = 32 ether;
-
     uint256 public constant PENALTY_QUOTIENT = 1 ether;
     /// @dev Acts as the denominator to calculate the scaled penalty.
-    uint256 public constant PENALTY_SCALE = MIN_ACTIVATION_BALANCE / PENALTY_QUOTIENT;
+    uint256 public constant PENALTY_SCALE = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE / PENALTY_QUOTIENT;
 
     function processBatch(
         WithdrawnValidatorInfo[] calldata validatorInfos,
         bool slashed,
         ModuleLinearStorage.BaseModuleStorage storage $
-    ) external returns (uint256[] memory touchedOperatorIds, uint256 touchedCount) {
+    )
+        external
+        returns (uint256[] memory touchedOperatorIds, uint256[] memory trackedBalanceDecreases, uint256 touchedCount)
+    {
         touchedOperatorIds = new uint256[](validatorInfos.length);
+        trackedBalanceDecreases = new uint256[](validatorInfos.length);
 
         for (uint256 i; i < validatorInfos.length; ++i) {
             WithdrawnValidatorInfo calldata info = validatorInfos[i];
@@ -41,6 +43,7 @@ library WithdrawnValidatorLib {
 
             $.isValidatorWithdrawn[pointer] = true;
             touchedOperatorIds[touchedCount] = info.nodeOperatorId;
+            trackedBalanceDecreases[touchedCount] = $.keyAllocatedBalance[pointer];
             unchecked {
                 ++touchedCount;
             }
@@ -92,7 +95,7 @@ library WithdrawnValidatorLib {
     ) private {
         bool chargeElWithdrawalRequestFee = false;
 
-        uint256 minExpectedBalance = MIN_ACTIVATION_BALANCE + keyConfirmedBalance;
+        uint256 minExpectedBalance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + keyConfirmedBalance;
         uint256 penaltyMultiplier = _getPenaltyMultiplier(Math.max(minExpectedBalance, validatorInfo.exitBalance));
         uint256 penaltySum;
         uint256 feeSum;
@@ -143,8 +146,8 @@ library WithdrawnValidatorLib {
 
     /// @dev Acts as the numerator to calculate the scaled penalty.
     function _getPenaltyMultiplier(uint256 balance) internal pure returns (uint256 penaltyMultiplier) {
-        balance = Math.max(MIN_ACTIVATION_BALANCE, balance);
-        balance = Math.min(MAX_EFFECTIVE_BALANCE, balance);
+        balance = Math.max(ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE, balance);
+        balance = Math.min(ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE, balance);
         penaltyMultiplier = balance / PENALTY_QUOTIENT;
     }
 

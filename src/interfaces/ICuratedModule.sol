@@ -8,8 +8,6 @@ import { IStakingModuleV2 } from "./IStakingModule.sol";
 import { IMetaRegistry } from "./IMetaRegistry.sol";
 
 interface ICuratedModule is IBaseModule, IStakingModuleV2 {
-    event NodeOperatorBalanceUpdated(uint256 indexed operatorId, uint256 balanceWei);
-
     error ZeroMetaRegistryAddress();
     error SenderIsNotMetaRegistry();
     error InvalidMaxCount();
@@ -34,10 +32,6 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
     /// @param oldWeight The old weight of the node operator.
     /// @param newWeight The new weight of the node operator.
     function notifyNodeOperatorWeightChange(uint256 nodeOperatorId, uint256 oldWeight, uint256 newWeight) external;
-
-    /// @notice Returns stored operator balance (validators + pending).
-    /// @param operatorId ID of the Node Operator
-    function getNodeOperatorBalance(uint256 operatorId) external view returns (uint256);
 
     /// @notice Returns operator weights used for operator-level allocations in the module.
     /// @dev Provides weights from the on-chain allocation strategy used by the module.

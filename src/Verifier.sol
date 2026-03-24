@@ -12,7 +12,7 @@ import { SSZ } from "./lib/SSZ.sol";
 
 import { IVerifier } from "./interfaces/IVerifier.sol";
 import { IBaseModule, WithdrawnValidatorInfo } from "./interfaces/IBaseModule.sol";
-import { WithdrawnValidatorLib } from "./lib/WithdrawnValidatorLib.sol";
+import { ValidatorBalanceLimits } from "./lib/ValidatorBalanceLimits.sol";
 
 /// @notice Convert withdrawal amount to wei
 /// @param withdrawal Withdrawal struct
@@ -334,7 +334,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         if (withdrawal.object.validatorIndex != validator.index) revert InvalidValidatorIndex();
 
         uint256 expectedBalance = MODULE.getKeyConfirmedBalance(nodeOperatorId, keyIndex) +
-            WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE;
+            ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
         withdrawalAmount = withdrawal.object.amountWei();
         if (withdrawalAmount < (expectedBalance * MIN_WITHDRAWAL_RATIO) / MAX_BP) revert PartialWithdrawal();
 

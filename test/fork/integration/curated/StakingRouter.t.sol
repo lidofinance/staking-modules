@@ -3,7 +3,6 @@
 
 pragma solidity 0.8.33;
 
-import { IBaseModule } from "src/interfaces/IBaseModule.sol";
 import { IStakingModuleV2 } from "src/interfaces/IStakingModule.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { SigningKeys } from "src/lib/SigningKeys.sol";
@@ -15,7 +14,6 @@ import { StakingRouterIntegrationTestBase } from "../common/StakingRouter.t.sol"
 contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase, CuratedIntegrationBase {
     uint256 internal constant TOP_UP_ALLOCATION_PROBE_AMOUNT = 10_000_000 ether;
 
-    address internal reporter;
     address internal topUpGateway;
 
     function setUp() public override {
@@ -25,7 +23,6 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
             vm.skip(true, "Suite requires upgraded staking router version for router/core v2 APIs");
         }
 
-        reporter = stakingRouter.getRoleMember(stakingRouter.REPORT_EXITED_VALIDATORS_ROLE(), 0);
         topUpGateway = locator.topUpGateway();
 
         _maximizeModuleShare(moduleId);
@@ -156,39 +153,6 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         vm.expectRevert(SigningKeys.InvalidSigningKey.selector);
         vm.prank(topUpGateway);
         stakingRouter.topUp(moduleId, keyIndices, operatorIds, pubkeys, topUpLimits);
-    }
-
-    function test_reportStakingModuleOperatorBalances_callsUpdateOperatorBalances() public assertInvariants {
-        (uint256 noId, ) = integrationHelpers.getDepositableNodeOperator(nextAddress());
-
-        bytes memory nodeOperatorIds = _encodeNodeOperatorId(noId);
-        ICuratedModule curatedModule = ICuratedModule(address(module));
-        uint256 balanceBefore = curatedModule.getNodeOperatorBalance(noId);
-        uint256 balanceBeforeGwei = balanceBefore / 1 gwei;
-        uint256 reportedBalanceGwei = balanceBeforeGwei + 1;
-        bytes memory totalBalancesGwei = _encodeUint128Value(reportedBalanceGwei);
-
-        vm.expectCall(address(module), abi.encodeWithSelector(IStakingModuleV2.updateOperatorBalances.selector));
-
-        uint256 nonceBefore = module.getNonce();
-
-        vm.prank(reporter);
-        stakingRouter.reportStakingModuleOperatorBalances(moduleId, nodeOperatorIds, totalBalancesGwei);
-
-        assertEq(module.getNonce(), nonceBefore + 1);
-        uint256 balanceAfter = curatedModule.getNodeOperatorBalance(noId);
-        assertEq(balanceAfter, reportedBalanceGwei * 1 gwei);
-        assertTrue(balanceAfter != balanceBefore);
-    }
-
-    function test_reportStakingModuleOperatorBalances_revertsOnUnknownNodeOperator() public {
-        uint256 unknownNoId = module.getNodeOperatorsCount();
-        bytes memory nodeOperatorIds = _encodeNodeOperatorId(unknownNoId);
-        bytes memory totalBalancesGwei = _encodeUint128Value(1);
-
-        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
-        vm.prank(reporter);
-        stakingRouter.reportStakingModuleOperatorBalances(moduleId, nodeOperatorIds, totalBalancesGwei);
     }
 
     function _singleTopUpArrays(

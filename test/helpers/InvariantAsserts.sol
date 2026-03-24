@@ -9,10 +9,12 @@ import { IStETH } from "src/interfaces/IStETH.sol";
 import { FeeDistributor } from "src/FeeDistributor.sol";
 import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { NodeOperator, IBaseModule } from "src/interfaces/IBaseModule.sol";
+import { IStakingModuleV2 } from "src/interfaces/IStakingModule.sol";
 import { Batch } from "src/lib/DepositQueueLib.sol";
 import { Accounting } from "src/Accounting.sol";
 import { ValidatorStrikes } from "src/ValidatorStrikes.sol";
 import { FeeOracle } from "src/FeeOracle.sol";
+import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 contract InvariantAsserts is Test {
     bool internal _skipped;
@@ -110,6 +112,39 @@ contract InvariantAsserts is Test {
         assertEq(totalExitedValidators, _totalExitedValidators, "assert total exited");
         assertEq(totalDepositedValidators, _totalDepositedValidators, "assert total deposited");
         assertEq(totalDepositableValidators, _depositableValidatorsCount, "assert depositable");
+
+        assertModuleTrackedBalances(csm);
+    }
+
+    function assertModuleTrackedBalances(IBaseModule module) public {
+        if (skipInvariants()) return;
+        if (skipLongForkTest()) return;
+
+        uint256 noCount = module.getNodeOperatorsCount();
+        uint256 totalTrackedStake;
+
+        for (uint256 noId = 0; noId < noCount; ++noId) {
+            uint256 operatorTrackedStake;
+            uint256 totalDepositedKeys = module.getNodeOperator(noId).totalDepositedKeys;
+
+            for (uint256 keyIndex = 0; keyIndex < totalDepositedKeys; ++keyIndex) {
+                if (module.isValidatorWithdrawn(noId, keyIndex)) continue;
+
+                operatorTrackedStake +=
+                    ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE +
+                    module.getKeyAllocatedBalance(noId, keyIndex);
+            }
+
+            totalTrackedStake += operatorTrackedStake;
+
+            assertEq(module.getNodeOperatorBalance(noId), operatorTrackedStake, "assert operator tracked balance");
+        }
+
+        assertEq(
+            IStakingModuleV2(address(module)).getTotalModuleStake(),
+            totalTrackedStake,
+            "assert total tracked stake"
+        );
     }
 
     mapping(uint256 => uint256) batchKeys;
