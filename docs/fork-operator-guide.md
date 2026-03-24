@@ -72,6 +72,16 @@ Examples:
 - `just key-topup 0 1 2` — +2 ETH top-up on 1st active key
 - `just key-topup 0 1 32` — +32 ETH (simulates MaxEB consolidation)
 
+## Quick start
+
+`just seed-operators` bootstraps a ready-to-use scenario with 3 operators in one group:
+
+| Operator | State                            |
+|----------|----------------------------------|
+| 0        | 1 active key, 2000 ETH allocated |
+| 1        | 1 depositable key                |
+| 2        | no keys                          |
+
 ## Full example
 
 ```bash

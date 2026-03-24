@@ -26,14 +26,14 @@ contract ForkHelpersCommon is Script, DeploymentFixtures {
     }
 
     function _setBalance(address account) internal {
-        _setBalance(account, 16 ether);
+        _setBalance(account, 100 ether);
     }
 
     function _setBalance(address account, uint256 expectedBalance) internal {
         if (account.balance < expectedBalance) {
             vm.rpc(
                 "anvil_setBalance",
-                string.concat('["', vm.toString(account), '", ', vm.toString(expectedBalance), "]")
+                string.concat('["', vm.toString(account), '", "', vm.toString(bytes32(expectedBalance)), '"]')
             );
             vm.deal(account, expectedBalance);
         }
