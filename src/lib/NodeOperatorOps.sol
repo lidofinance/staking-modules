@@ -357,6 +357,30 @@ library NodeOperatorOps {
         }
     }
 
+    function getKeyAllocatedBalances(
+        ModuleLinearStorage.BaseModuleStorage storage $,
+        uint256 nodeOperatorId,
+        uint256 startIndex,
+        uint256 keysCount
+    ) external view returns (uint256[] memory balances) {
+        balances = new uint256[](keysCount);
+        for (uint256 i; i < keysCount; ++i) {
+            balances[i] = $.keyAllocatedBalance[KeyPointerLib.keyPointer(nodeOperatorId, startIndex + i)];
+        }
+    }
+
+    function getKeyConfirmedBalances(
+        ModuleLinearStorage.BaseModuleStorage storage $,
+        uint256 nodeOperatorId,
+        uint256 startIndex,
+        uint256 keysCount
+    ) external view returns (uint256[] memory balances) {
+        balances = new uint256[](keysCount);
+        for (uint256 i; i < keysCount; ++i) {
+            balances[i] = $.keyConfirmedBalance[KeyPointerLib.keyPointer(nodeOperatorId, startIndex + i)];
+        }
+    }
+
     function getNodeOperatorIds(
         uint256 nodeOperatorsCount,
         uint256 offset,

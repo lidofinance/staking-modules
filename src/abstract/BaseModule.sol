@@ -596,12 +596,7 @@ abstract contract BaseModule is
         uint256 keysCount
     ) external view returns (uint256[] memory balances) {
         _onlyValidIndexRange(nodeOperatorId, startIndex, keysCount);
-
-        BaseModuleStorage storage $ = _baseStorage();
-        balances = new uint256[](keysCount);
-        for (uint256 i; i < keysCount; ++i) {
-            balances[i] = $.keyAllocatedBalance[KeyPointerLib.keyPointer(nodeOperatorId, startIndex + i)];
-        }
+        return NodeOperatorOps.getKeyAllocatedBalances(_baseStorage(), nodeOperatorId, startIndex, keysCount);
     }
 
     /// @inheritdoc IBaseModule
@@ -611,12 +606,7 @@ abstract contract BaseModule is
         uint256 keysCount
     ) external view returns (uint256[] memory balances) {
         _onlyValidIndexRange(nodeOperatorId, startIndex, keysCount);
-
-        BaseModuleStorage storage $ = _baseStorage();
-        balances = new uint256[](keysCount);
-        for (uint256 i; i < keysCount; ++i) {
-            balances[i] = $.keyConfirmedBalance[KeyPointerLib.keyPointer(nodeOperatorId, startIndex + i)];
-        }
+        return NodeOperatorOps.getKeyConfirmedBalances(_baseStorage(), nodeOperatorId, startIndex, keysCount);
     }
 
     function getTotalModuleStake() public view override returns (uint256) {
