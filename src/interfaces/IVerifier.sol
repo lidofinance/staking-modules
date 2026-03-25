@@ -16,8 +16,6 @@ interface IVerifier {
         GIndex gIFirstValidatorCurr;
         GIndex gIFirstHistoricalSummaryPrev;
         GIndex gIFirstHistoricalSummaryCurr;
-        GIndex gIFirstBlockRootInSummaryPrev;
-        GIndex gIFirstBlockRootInSummaryCurr;
         GIndex gIFirstBalanceNodePrev;
         GIndex gIFirstBalanceNodeCurr;
     }
@@ -121,9 +119,7 @@ interface IVerifier {
 
     function GI_FIRST_HISTORICAL_SUMMARY_CURR() external view returns (GIndex);
 
-    function GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV() external view returns (GIndex);
-
-    function GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR() external view returns (GIndex);
+    function GI_FIRST_BLOCK_ROOT_IN_SUMMARY() external view returns (GIndex);
 
     function FIRST_SUPPORTED_SLOT() external view returns (Slot);
 

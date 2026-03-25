@@ -46,7 +46,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
     /// @dev Count of historical roots per accumulator.
     /// @dev See https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#time-parameters
-    uint64 public immutable SLOTS_PER_HISTORICAL_ROOT;
+    uint64 public constant SLOTS_PER_HISTORICAL_ROOT = 8192;
 
     /// @dev This index is relative to a state like: `BeaconState.latest_execution_payload_header.withdrawals[0]`.
     GIndex public immutable GI_FIRST_WITHDRAWAL_PREV;
@@ -67,10 +67,9 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     GIndex public immutable GI_FIRST_HISTORICAL_SUMMARY_CURR;
 
     /// @dev This index is relative to HistoricalSummary like: HistoricalSummary.blockRoots[0].
-    GIndex public immutable GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV;
-
-    /// @dev This index is relative to HistoricalSummary like: HistoricalSummary.blockRoots[0].
-    GIndex public immutable GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR;
+    ///      Considered constant across forks.
+    GIndex public constant GI_FIRST_BLOCK_ROOT_IN_SUMMARY =
+        GIndex.wrap(0x000000000000000000000000000000000000000000000000000000000040000d);
 
     /// @dev This index is relative to a state like: `BeaconState.balances[0]`.
     GIndex public immutable GI_FIRST_BALANCES_NODE_PREV;
@@ -98,7 +97,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         address withdrawalAddress,
         address module,
         uint64 slotsPerEpoch,
-        uint64 slotsPerHistoricalRoot,
         GIndices memory gindices,
         Slot firstSupportedSlot,
         Slot pivotSlot,
@@ -110,7 +108,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         if (module == address(0)) revert ZeroModuleAddress();
         if (admin == address(0)) revert ZeroAdminAddress();
         if (slotsPerEpoch == 0) revert InvalidChainConfig();
-        if (slotsPerHistoricalRoot == 0) revert InvalidChainConfig();
         if (firstSupportedSlot > pivotSlot) revert InvalidPivotSlot();
         if (capellaSlot > firstSupportedSlot) revert InvalidCapellaSlot();
         if (minWithdrawalRatio == 0 || minWithdrawalRatio > MAX_BP) revert InvalidMinWithdrawalRatio();
@@ -120,7 +117,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         MIN_WITHDRAWAL_RATIO = minWithdrawalRatio;
 
         SLOTS_PER_EPOCH = slotsPerEpoch;
-        SLOTS_PER_HISTORICAL_ROOT = slotsPerHistoricalRoot;
 
         GI_FIRST_WITHDRAWAL_PREV = gindices.gIFirstWithdrawalPrev;
         GI_FIRST_WITHDRAWAL_CURR = gindices.gIFirstWithdrawalCurr;
@@ -130,9 +126,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
         GI_FIRST_HISTORICAL_SUMMARY_PREV = gindices.gIFirstHistoricalSummaryPrev;
         GI_FIRST_HISTORICAL_SUMMARY_CURR = gindices.gIFirstHistoricalSummaryCurr;
-
-        GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV = gindices.gIFirstBlockRootInSummaryPrev;
-        GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR = gindices.gIFirstBlockRootInSummaryCurr;
 
         GI_FIRST_BALANCES_NODE_PREV = gindices.gIFirstBalanceNodePrev;
         GI_FIRST_BALANCES_NODE_CURR = gindices.gIFirstBalanceNodeCurr;
@@ -447,11 +440,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         gI = recentSlot < PIVOT_SLOT ? GI_FIRST_HISTORICAL_SUMMARY_PREV : GI_FIRST_HISTORICAL_SUMMARY_CURR;
 
         gI = gI.shr(summaryIndex); // historicalSummaries[summaryIndex]
-        gI = gI.concat(
-            summaryCreatedAtSlot < PIVOT_SLOT
-                ? GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV
-                : GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR
-        ); // historicalSummaries[summaryIndex].blockRoots[0]
+        gI = gI.concat(GI_FIRST_BLOCK_ROOT_IN_SUMMARY); // historicalSummaries[summaryIndex].blockRoots[0]
         gI = gI.shr(rootIndex); // historicalSummaries[summaryIndex].blockRoots[rootIndex]
     }
 

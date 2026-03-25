@@ -47,11 +47,9 @@ struct DeployCSM0x02Params {
     address[] oracleMembers;
     uint256 hashConsensusQuorum;
     // Verifier
-    uint256 slotsPerHistoricalRoot;
     GIndex gIFirstWithdrawal;
     GIndex gIFirstValidator;
     GIndex gIFirstHistoricalSummary;
-    GIndex gIFirstBlockRootInSummary;
     GIndex gIFirstBalanceNode;
     uint256 verifierFirstSupportedSlot;
     uint256 capellaSlot;
@@ -216,7 +214,6 @@ abstract contract DeployCSM0x02Base is Script {
                 withdrawalAddress: locator.withdrawalVault(),
                 module: address(csm),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
-                slotsPerHistoricalRoot: uint64(config.slotsPerHistoricalRoot),
                 gindices: IVerifier.GIndices({
                     gIFirstWithdrawalPrev: config.gIFirstWithdrawal,
                     gIFirstWithdrawalCurr: config.gIFirstWithdrawal,
@@ -224,8 +221,6 @@ abstract contract DeployCSM0x02Base is Script {
                     gIFirstValidatorCurr: config.gIFirstValidator,
                     gIFirstHistoricalSummaryPrev: config.gIFirstHistoricalSummary,
                     gIFirstHistoricalSummaryCurr: config.gIFirstHistoricalSummary,
-                    gIFirstBlockRootInSummaryPrev: config.gIFirstBlockRootInSummary,
-                    gIFirstBlockRootInSummaryCurr: config.gIFirstBlockRootInSummary,
                     gIFirstBalanceNodePrev: config.gIFirstBalanceNode,
                     gIFirstBalanceNodeCurr: config.gIFirstBalanceNode
                 }),

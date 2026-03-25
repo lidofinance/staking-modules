@@ -131,7 +131,6 @@ contract DeploymentHelpers is Test {
         GIndex gIFirstWithdrawal;
         GIndex gIFirstValidator;
         GIndex gIFirstHistoricalSummary;
-        GIndex gIFirstBlockRootInSummary;
         GIndex gIFirstBalanceNode;
         uint256 verifierFirstSupportedSlot;
         uint256 capellaSlot;
@@ -444,11 +443,9 @@ contract DeploymentHelpers is Test {
         dst.hashConsensusQuorum = src.hashConsensusQuorum;
 
         // Verifier
-        dst.slotsPerHistoricalRoot = src.slotsPerHistoricalRoot;
         dst.gIFirstWithdrawal = src.gIFirstWithdrawal;
         dst.gIFirstValidator = src.gIFirstValidator;
         dst.gIFirstHistoricalSummary = src.gIFirstHistoricalSummary;
-        dst.gIFirstBlockRootInSummary = src.gIFirstBlockRootInSummary;
         dst.gIFirstBalanceNode = src.gIFirstBalanceNode;
         dst.verifierFirstSupportedSlot = src.verifierFirstSupportedSlot;
         dst.capellaSlot = src.capellaSlot;
@@ -567,7 +564,6 @@ contract DeploymentHelpers is Test {
         params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
         params.gIFirstValidator = decoded.gIFirstValidator;
         params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
-        params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
         params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
@@ -622,7 +618,6 @@ contract DeploymentHelpers is Test {
         params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
         params.gIFirstValidator = decoded.gIFirstValidator;
         params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
-        params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
         params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
@@ -677,7 +672,6 @@ contract DeploymentHelpers is Test {
         params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
         params.gIFirstValidator = decoded.gIFirstValidator;
         params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
-        params.gIFirstBlockRootInSummary = decoded.gIFirstBlockRootInSummary;
         params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
