@@ -54,13 +54,21 @@ library StakeTracker {
         for (uint256 i; i < allocations.length; ++i) {
             uint256 allocationWei = allocations[i];
             if (allocationWei == 0) continue;
-            _increaseKeyAllocatedBalance($.keyAllocatedBalance, operatorIds[i], keyIndices[i], allocationWei);
+            // Current allocators cap per-key top-ups before they reach StakeTracker, so a partial
+            // application here is a defensive safeguard for unreachable-by-design inputs.
+            uint256 appliedIncrementWei = _increaseKeyAllocatedBalance(
+                $.keyAllocatedBalance,
+                operatorIds[i],
+                keyIndices[i],
+                allocationWei
+            );
+            if (appliedIncrementWei == 0) continue;
 
             uint256 operatorIndex = operatorIndexes.get(operatorIds[i]);
             if (operatorIndex == 0) {
                 operatorIndex = touchedOperatorsCount;
                 allocatedOperatorIds[operatorIndex] = operatorIds[i];
-                increments[operatorIndex] = allocationWei;
+                increments[operatorIndex] = appliedIncrementWei;
                 unchecked {
                     ++touchedOperatorsCount;
                 }
@@ -68,7 +76,7 @@ library StakeTracker {
                 operatorIndexes.set(operatorIds[i], touchedOperatorsCount);
             } else {
                 unchecked {
-                    increments[operatorIndex - 1] += allocationWei;
+                    increments[operatorIndex - 1] += appliedIncrementWei;
                 }
             }
         }
@@ -141,14 +149,18 @@ library StakeTracker {
         uint256 nodeOperatorId,
         uint256 keyIndex,
         uint256 incrementWei
-    ) private {
+    ) private returns (uint256 appliedIncrementWei) {
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
+        uint256 oldAllocated = keyAllocatedBalance[pointer];
         uint256 updated = Math.min(
             ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            keyAllocatedBalance[pointer] + incrementWei
+            oldAllocated + incrementWei
         );
         keyAllocatedBalance[pointer] = updated;
         emit IBaseModule.KeyAllocatedBalanceChanged(nodeOperatorId, keyIndex, updated);
+        unchecked {
+            appliedIncrementWei = updated - oldAllocated;
+        }
     }
 
     function _activeValidatorsCount(NodeOperator storage no) private view returns (uint256) {
