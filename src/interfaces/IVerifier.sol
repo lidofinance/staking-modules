@@ -133,7 +133,7 @@ interface IVerifier {
 
     function MODULE() external view returns (IBaseModule);
 
-    /// @notice Verify proof of a slashed validator being withdrawable and report it to the module
+    /// @notice Verify proof of a slashed validator and report it to the module
     /// @param data @see ProcessSlashedInput
     function processSlashedProof(ProcessSlashedInput calldata data) external;
 
