@@ -84,7 +84,7 @@ contract DeployMainnet is DeployBase {
             CuratedGateConfig storage gate = config.curatedGates.push();
             gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
             gate.treeCid = "TODO: ipfs-cid-cohort-a";
-            gate.params.metaRegistryBondCurveWeight = _m(70000);
+            gate.params.metaRegistryBondCurveWeight = _m(50000);
         }
 
         // Professional Trusted Operator Gate
