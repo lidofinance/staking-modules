@@ -104,4 +104,22 @@ contract PauseAffectingTest is BaseTest {
         vm.expectRevert(PausableUntil.ResumedExpected.selector);
         accounting.claimRewardsUnstETH(0, 1 ether, 1 ether, new bytes32[](1));
     }
+
+    function test_pullFeeRewards_RevertWhen_Paused() public assertInvariants {
+        uint256 feeShares = 1 ether;
+        stETH.mintShares(address(feeDistributor), feeShares);
+        mock_getNodeOperatorsCount(1);
+        mock_getNodeOperatorNonWithdrawnKeys(0);
+
+        uint256 bondSharesBefore = accounting.getBondShares(0);
+        uint256 totalBondSharesBefore = accounting.totalBondShares();
+        uint256 pendingBefore = accounting.getPendingSharesToSplit(0);
+
+        vm.expectRevert(PausableUntil.ResumedExpected.selector);
+        accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
+
+        assertEq(accounting.getBondShares(0), bondSharesBefore);
+        assertEq(accounting.totalBondShares(), totalBondSharesBefore);
+        assertEq(accounting.getPendingSharesToSplit(0), pendingBefore);
+    }
 }
