@@ -132,6 +132,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     /// @inheritdoc IMetaRegistry
     function setBondCurveWeight(uint256 curveId, uint256 weight) external onlyRole(SET_BOND_CURVE_WEIGHT_ROLE) {
         MetaRegistryStorage storage $ = _storage();
+        if (weight != 0 && weight < MAX_BP) revert InvalidBondCurveWeight();
         if ($.bondCurveWeight[curveId] == weight) revert SameBondCurveWeight();
 
         $.bondCurveWeight[curveId] = weight;
