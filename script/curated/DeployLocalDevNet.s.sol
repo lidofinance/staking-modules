@@ -77,7 +77,7 @@ contract DeployLocalDevNet is DeployBase {
             CuratedGateConfig storage gate = config.curatedGates.push();
             gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
             gate.treeCid = "TODO: ipfs-cid-cohort-a";
-            gate.params.metaRegistryBondCurveWeight = _m(7000);
+            gate.params.metaRegistryBondCurveWeight = _m(70000);
         }
 
         // Professional Trusted Operator Gate
@@ -91,7 +91,7 @@ contract DeployLocalDevNet is DeployBase {
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 8750]); // 87.5% of 4% = 3.5% of the total
-            gate.params.metaRegistryBondCurveWeight = _m(10000);
+            gate.params.metaRegistryBondCurveWeight = _m(100000);
             gate.params.exitDelayFee = _m(0.005 ether);
         }
 
@@ -106,7 +106,7 @@ contract DeployLocalDevNet is DeployBase {
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
-            gate.params.metaRegistryBondCurveWeight = _m(10000);
+            gate.params.metaRegistryBondCurveWeight = _m(100000);
             gate.params.exitDelayFee = _m(0.005 ether);
         }
 
@@ -121,7 +121,7 @@ contract DeployLocalDevNet is DeployBase {
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
-            gate.params.metaRegistryBondCurveWeight = _m(10000);
+            gate.params.metaRegistryBondCurveWeight = _m(100000);
             gate.params.exitDelayFee = _m(0.005 ether);
         }
 
@@ -136,7 +136,7 @@ contract DeployLocalDevNet is DeployBase {
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
-            gate.params.metaRegistryBondCurveWeight = _m(10000);
+            gate.params.metaRegistryBondCurveWeight = _m(100000);
             gate.params.exitDelayFee = _m(0.005 ether);
         }
 
@@ -151,7 +151,7 @@ contract DeployLocalDevNet is DeployBase {
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 8750]); // 87.5% of 4% = 3.5% of the total
-            gate.params.metaRegistryBondCurveWeight = _m(10000);
+            gate.params.metaRegistryBondCurveWeight = _m(100000);
             gate.params.exitDelayFee = _m(0.005 ether);
         }
 

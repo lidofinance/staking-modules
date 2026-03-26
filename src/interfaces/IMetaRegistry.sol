@@ -52,6 +52,7 @@ interface IMetaRegistry {
     error OwnerEditsRestricted();
     error UnsupportedExternalOperatorType();
     error SameBondCurveWeight();
+    error InvalidBondCurveWeight();
     error ModuleAddressNotCached();
     error OperatorNameTooLong();
     error OperatorDescriptionTooLong();
