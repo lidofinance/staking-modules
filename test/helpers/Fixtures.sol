@@ -1369,7 +1369,7 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
             );
         }
         if (r.getBondCurveWeight(curveId) == 0) {
-            r.setBondCurveWeight(curveId, 100);
+            r.setBondCurveWeight(curveId, 10000);
             CuratedModule cm = CuratedModule(address(module));
             cm.batchDepositInfoUpdate(cm.getNodeOperatorsCount());
         }

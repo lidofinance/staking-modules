@@ -131,7 +131,7 @@ contract MetaRegistryIntegrationTestCurated is CuratedIntegrationBase {
         uint256 curveId = accounting.getBondCurveId(noId);
 
         uint256 currentWeight = metaRegistry.getBondCurveWeight(curveId);
-        uint256 newWeight = currentWeight + 1;
+        uint256 newWeight = currentWeight == 0 ? 10000 : currentWeight + 10000;
         uint256 nonceBefore = module.getNonce();
 
         metaRegistry.setBondCurveWeight(curveId, newWeight);
@@ -148,7 +148,7 @@ contract MetaRegistryIntegrationTestCurated is CuratedIntegrationBase {
         uint256 curveId = accounting.getBondCurveId(noId);
 
         uint256 currentWeight = metaRegistry.getBondCurveWeight(curveId);
-        uint256 newWeight = currentWeight * 2 + 1;
+        uint256 newWeight = currentWeight == 0 ? 20000 : currentWeight * 2;
 
         // Change curve weight (does NOT auto-update operator weights)
         metaRegistry.setBondCurveWeight(curveId, newWeight);

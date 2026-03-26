@@ -7,6 +7,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { CuratedDepositAllocator } from "src/lib/allocator/CuratedDepositAllocator.sol";
 import { SigningKeys } from "src/lib/SigningKeys.sol";
+import { StakeTracker } from "src/lib/StakeTracker.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 import { CuratedModule } from "src/CuratedModule.sol";
 import { IBaseModule, NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
@@ -22,8 +23,28 @@ import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
 // forge-lint: disable-next-line(unaliased-plain-import)
 import "./ModuleAbstract/ModuleAbstract.t.sol";
 
+contract CuratedModuleHarness is CuratedModule {
+    constructor(
+        bytes32 moduleType,
+        address lidoLocator,
+        address parametersRegistry,
+        address accounting,
+        address exitPenalties,
+        address metaRegistry
+    ) CuratedModule(moduleType, lidoLocator, parametersRegistry, accounting, exitPenalties, metaRegistry) {}
+
+    function exposedIncreaseKeyBalances(
+        uint256[] calldata operatorIds,
+        uint256[] calldata keyIndices,
+        uint256[] calldata allocations
+    ) external {
+        StakeTracker.increaseKeyBalances(_baseStorage(), operatorIds, keyIndices, allocations);
+    }
+}
+
 contract CuratedCommon is ModuleFixtures {
     ICuratedModule cm;
+    CuratedModuleHarness internal curatedHarness;
     Stub internal metaRegistry;
     uint256 internal constant DEFAULT_OPERATOR_WEIGHT = 1;
     uint256 internal constant MAX_MOCKED_OPERATORS = 256;
@@ -53,7 +74,7 @@ contract CuratedCommon is ModuleFixtures {
 
         metaRegistry = new Stub();
         _mockMetaOperatorDefaults();
-        module = new CuratedModule({
+        curatedHarness = new CuratedModuleHarness({
             moduleType: "curated-module",
             lidoLocator: address(locator),
             parametersRegistry: address(parametersRegistry),
@@ -61,7 +82,8 @@ contract CuratedCommon is ModuleFixtures {
             exitPenalties: address(exitPenalties),
             metaRegistry: address(metaRegistry)
         });
-        cm = CuratedModule(address(module));
+        module = curatedHarness;
+        cm = curatedHarness;
 
         accounting.setModule(module);
 
@@ -1886,6 +1908,22 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         });
 
         assertEq(allocations, UintArr(10 ether, 0));
+        assertEq(cm.getKeyAllocatedBalances(0, 0, 1), UintArr(cap));
+        assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE);
+        assertEq(cm.getNodeOperatorBalance(0), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE);
+    }
+
+    function test_topUp_capsOperatorBalanceIncrementToAppliedHeadroom() public {
+        createNodeOperator(1);
+        cm.obtainDepositData(1, "");
+
+        uint256 cap = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
+        setKeyConfirmedBalance(0, 0, cap - 2 ether);
+
+        // Current allocators cap per-key top-ups before they reach StakeTracker, so an over-cap allocation is
+        // practically unreachable in production right now. Use the harness to exercise the defensive accounting path.
+        curatedHarness.exposedIncreaseKeyBalances(UintArr(0), UintArr(0), UintArr(10 ether));
+
         assertEq(cm.getKeyAllocatedBalances(0, 0, 1), UintArr(cap));
         assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE);
         assertEq(cm.getNodeOperatorBalance(0), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE);

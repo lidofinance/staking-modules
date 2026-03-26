@@ -1011,33 +1011,41 @@ contract MetaRegistryTestWeights is MetaRegistryTestGroupsBase {
 }
 
 contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
+    uint256 internal constant VALID_BOND_CURVE_WEIGHT = CURVE_WEIGHT + 123;
+
     function test_getBondCurveWeight_ReturnsValue() public {
         assertEq(registry.getBondCurveWeight(0), 0);
 
         vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector));
         vm.expectEmit(address(registry));
-        emit IMetaRegistry.BondCurveWeightSet(0, 123);
+        emit IMetaRegistry.BondCurveWeightSet(0, VALID_BOND_CURVE_WEIGHT);
         vm.prank(bondCurveWeightManager);
-        registry.setBondCurveWeight(0, 123);
+        registry.setBondCurveWeight(0, VALID_BOND_CURVE_WEIGHT);
 
-        assertEq(registry.getBondCurveWeight(0), 123);
+        assertEq(registry.getBondCurveWeight(0), VALID_BOND_CURVE_WEIGHT);
     }
 
     function test_setBondCurveWeight_RevertWhen_NoRole() public {
         expectRoleRevert(stranger, registry.SET_BOND_CURVE_WEIGHT_ROLE());
         vm.prank(stranger);
-        registry.setBondCurveWeight(0, 123);
+        registry.setBondCurveWeight(0, VALID_BOND_CURVE_WEIGHT);
+    }
+
+    function test_setBondCurveWeight_RevertWhen_BelowMinNonZeroWeight() public {
+        vm.prank(bondCurveWeightManager);
+        vm.expectRevert(IMetaRegistry.InvalidBondCurveWeight.selector);
+        registry.setBondCurveWeight(0, MAX_BP - 1);
     }
 
     function test_setBondCurveWeight_RevertWhen_SameWeight() public {
         {
             vm.prank(bondCurveWeightManager);
-            registry.setBondCurveWeight(0, 123);
+            registry.setBondCurveWeight(0, VALID_BOND_CURVE_WEIGHT);
         }
 
         vm.prank(bondCurveWeightManager);
         vm.expectRevert(IMetaRegistry.SameBondCurveWeight.selector);
-        registry.setBondCurveWeight(0, 123);
+        registry.setBondCurveWeight(0, VALID_BOND_CURVE_WEIGHT);
     }
 
     function test_refreshOperatorWeight_NoOpWhen_NotInGroup() public {
