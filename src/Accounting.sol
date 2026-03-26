@@ -343,7 +343,7 @@ contract Accounting is
         uint256 nodeOperatorId,
         uint256 cumulativeFeeShares,
         bytes32[] calldata rewardsProof
-    ) external {
+    ) external whenResumed {
         _onlyExistingNodeOperator(nodeOperatorId);
         _pullAndSplitFeeRewards(nodeOperatorId, cumulativeFeeShares, rewardsProof);
         MODULE.updateDepositableValidatorsCount(nodeOperatorId);
@@ -477,7 +477,7 @@ contract Accounting is
             }
         }
         claimableShares = _getClaimableBondShares(nodeOperatorId);
-        if (hasSplits && claimableShares != 0 && !isPaused()) {
+        if (hasSplits && claimableShares != 0) {
             uint256 pendingToSplit = FeeSplits.getPendingSharesToSplit(nodeOperatorId);
             uint256 splittableShares = claimableShares > pendingToSplit ? pendingToSplit : claimableShares;
             SplitTransfer[] memory transfers = FeeSplits.getFeeSplitTransfers(nodeOperatorId, splittableShares);
@@ -516,7 +516,7 @@ contract Accounting is
     }
 
     /// @dev Calculates claimable bond shares accounting for locked bond and withdrawn validators.
-    ///      Does not subtract pending split transfers, so in rare cases (e.g. paused Accounting, locked or debted bond)
+    ///      Does not subtract pending split transfers, so in rare cases (e.g. locked or debted bond)
     ///      may overestimate operator-receivable amount.
     ///      Off-chain integrations should account for `getPendingSharesToSplit`.
     function _getClaimableBondShares(uint256 nodeOperatorId) internal view returns (uint256) {

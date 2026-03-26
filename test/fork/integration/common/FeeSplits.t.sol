@@ -91,6 +91,12 @@ abstract contract FeeSplitsTestBase is ModuleTypeBase {
         accounting.updateFeeSplits(defaultNoId, callSplits, 0, new bytes32[](0));
     }
 
+    function _reportPenaltyToConsumeClaimable(uint256 extraShares, bytes32 key, string memory reason) internal {
+        uint256 claimableShares = accounting.getClaimableBondShares(defaultNoId);
+        uint256 penaltyAmount = lido.getPooledEthByShares(claimableShares + extraShares) + 1 ether;
+        module.reportGeneralDelayedPenalty(defaultNoId, key, penaltyAmount, reason);
+    }
+
     function test_pullAndSplitFeeRewards() public assertInvariants {
         address recipient = nextAddress("SplitRecipient");
         uint256 splitShare = 5000; // 50%
@@ -169,19 +175,14 @@ abstract contract FeeSplitsTestBase is ModuleTypeBase {
         uint256 amount = 1 ether;
         (uint256 shares, bytes32[] memory proof) = _simulateRewards(amount);
 
-        // Pause accounting so pullAndSplitFeeRewards pulls rewards to bond
-        // but skips split transfers, leaving pendingSharesToSplit > 0.
-        vm.startPrank(accounting.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0));
-        accounting.grantRole(accounting.PAUSE_ROLE(), address(this));
-        accounting.grantRole(accounting.RESUME_ROLE(), address(this));
-        vm.stopPrank();
-        accounting.pauseFor(1 days);
-        assertTrue(accounting.isPaused(), "Accounting should be paused");
+        module.grantRole(module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), address(this));
+        _reportPenaltyToConsumeClaimable(shares, bytes32(abi.encode(1)), "block update while pending");
+
         accounting.pullAndSplitFeeRewards(defaultNoId, shares, proof);
         uint256 pending = accounting.getPendingSharesToSplit(defaultNoId);
         assertTrue(pending > 0, "Pending shares should exist");
 
-        // Undistributed rewards are already pulled, so update must be blocked by pending shares.
+        // Rewards are already pulled, so update must be blocked by pending shares.
         address newRecipient = nextAddress("NewRecipient");
         IFeeSplits.FeeSplit[] memory newSplits = new IFeeSplits.FeeSplit[](1);
         newSplits[0] = IFeeSplits.FeeSplit({ recipient: newRecipient, share: 3000 });
@@ -190,10 +191,18 @@ abstract contract FeeSplitsTestBase is ModuleTypeBase {
         vm.expectRevert(IFeeSplits.PendingSharesExist.selector);
         accounting.updateFeeSplits(defaultNoId, newSplits, shares, proof);
 
-        // Resume and split pending rewards.
-        accounting.resume();
-        assertFalse(accounting.isPaused(), "Accounting should be resumed");
-        accounting.pullAndSplitFeeRewards(defaultNoId, shares, proof);
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(defaultNoId);
+        uint256 topUpShares = pending + 1;
+        if (required > current) {
+            topUpShares += required - current;
+        }
+
+        uint256 topUp = lido.getPooledEthByShares(topUpShares) + 1 ether;
+        vm.deal(nodeOperator, topUp);
+        vm.prank(nodeOperator);
+        accounting.depositETH{ value: topUp }(defaultNoId);
+
+        accounting.pullAndSplitFeeRewards(defaultNoId, 0, new bytes32[](0));
         assertEq(accounting.getPendingSharesToSplit(defaultNoId), 0, "Pending shares should be zero after split");
 
         // Now update should succeed
@@ -212,33 +221,33 @@ abstract contract FeeSplitsTestBase is ModuleTypeBase {
         splits[0] = IFeeSplits.FeeSplit({ recipient: recipient, share: 5000 });
         _setFeeSplits(splits);
 
-        vm.startPrank(accounting.getRoleMember(accounting.DEFAULT_ADMIN_ROLE(), 0));
-        accounting.grantRole(accounting.PAUSE_ROLE(), address(this));
-        accounting.grantRole(accounting.RESUME_ROLE(), address(this));
-        vm.stopPrank();
         module.grantRole(module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), address(this));
 
-        accounting.pauseFor(1 days);
-
         (uint256 shares1, bytes32[] memory proof1) = _simulateRewards(5 ether);
+        _reportPenaltyToConsumeClaimable(shares1, bytes32(abi.encode(1)), "consume claimable before allocation");
 
         uint256 recipientBefore = lido.sharesOf(recipient);
         accounting.pullAndSplitFeeRewards(defaultNoId, shares1, proof1);
         uint256 pending1 = accounting.getPendingSharesToSplit(defaultNoId);
         assertTrue(pending1 > 0, "Pending shares should be created at allocation");
-        assertEq(lido.sharesOf(recipient), recipientBefore, "No split transfers while accounting is paused");
+        assertEq(
+            lido.sharesOf(recipient),
+            recipientBefore,
+            "Recipient should not receive shares while claimable is zero"
+        );
 
-        uint256 claimableBeforePenalty = accounting.getClaimableBondShares(defaultNoId);
-        uint256 penaltyAmount = lido.getPooledEthByShares(claimableBeforePenalty) + 1 ether;
-        module.reportGeneralDelayedPenalty(defaultNoId, bytes32(abi.encode(1)), penaltyAmount, "test penalty");
-        assertEq(accounting.getClaimableBondShares(defaultNoId), 0, "Penalty should consume current claimable shares");
+        module.reportGeneralDelayedPenalty(defaultNoId, bytes32(abi.encode(2)), 1 ether, "test penalty");
+        assertEq(
+            accounting.getClaimableBondShares(defaultNoId),
+            0,
+            "Penalty should keep current claimable shares at zero"
+        );
         assertEq(
             accounting.getPendingSharesToSplit(defaultNoId),
             pending1,
             "Penalty must not reduce pending split amount"
         );
 
-        accounting.resume();
         accounting.pullAndSplitFeeRewards(defaultNoId, shares1, proof1);
         assertEq(
             accounting.getPendingSharesToSplit(defaultNoId),
@@ -248,10 +257,16 @@ abstract contract FeeSplitsTestBase is ModuleTypeBase {
         assertEq(
             lido.sharesOf(recipient),
             recipientBefore,
-            "Recipient should not receive shares while claimable is zero"
+            "Recipient should still not receive shares while claimable is zero"
         );
 
-        uint256 topUp = penaltyAmount + lido.getPooledEthByShares(pending1) + 2 ether;
+        (uint256 current, uint256 required) = accounting.getBondSummaryShares(defaultNoId);
+        uint256 topUpShares = pending1 + 1;
+        if (required > current) {
+            topUpShares += required - current;
+        }
+
+        uint256 topUp = lido.getPooledEthByShares(topUpShares) + 1 ether;
         vm.deal(nodeOperator, topUp);
         vm.prank(nodeOperator);
         accounting.depositETH{ value: topUp }(defaultNoId);
