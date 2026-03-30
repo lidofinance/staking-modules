@@ -381,6 +381,7 @@ abstract contract DeployCSM0x02Base is Script {
 
             csm.grantRole(csm.CREATE_NODE_OPERATOR_ROLE(), address(permissionlessGate));
             csm.grantRole(csm.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), config.generalDelayedPenaltyReporter);
+            csm.grantRole(csm.REWIND_TOP_UP_QUEUE_ROLE(), config.setResetBondCurveAddress);
             csm.grantRole(csm.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(), config.easyTrackEVMScriptExecutor);
 
             csm.grantRole(csm.VERIFIER_ROLE(), address(verifier));

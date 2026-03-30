@@ -30,6 +30,10 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         bytes32 role = module.CREATE_NODE_OPERATOR_ROLE();
         assertEq(module.getRoleMemberCount(role), 1);
         assertTrue(module.hasRole(role, address(permissionlessGate)));
+
+        role = module.REWIND_TOP_UP_QUEUE_ROLE();
+        assertEq(module.getRoleMemberCount(role), 1);
+        assertTrue(module.hasRole(role, deployParams.setResetBondCurveAddress));
     }
 
     function test_topUpQueueConfig() public view {
