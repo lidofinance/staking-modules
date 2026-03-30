@@ -277,7 +277,7 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         NodeOperator memory no = module.getNodeOperator(noId);
         uint256 activated;
         for (uint256 i; i < no.totalDepositedKeys && activated < count; ++i) {
-            if (module.getKeyConfirmedBalance(noId, i) == 0 && !module.isValidatorWithdrawn(noId, i)) {
+            if (module.getKeyConfirmedBalances(noId, i, 1)[0] == 0 && !module.isValidatorWithdrawn(noId, i)) {
                 module.reportValidatorBalance(noId, i, 32 ether + 1 gwei);
                 ++activated;
             }
