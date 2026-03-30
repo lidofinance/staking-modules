@@ -16,8 +16,6 @@ interface IVerifier {
         GIndex gIFirstValidatorCurr;
         GIndex gIFirstHistoricalSummaryPrev;
         GIndex gIFirstHistoricalSummaryCurr;
-        GIndex gIFirstBlockRootInSummaryPrev;
-        GIndex gIFirstBlockRootInSummaryCurr;
         GIndex gIFirstBalanceNodePrev;
         GIndex gIFirstBalanceNodeCurr;
     }
@@ -121,9 +119,7 @@ interface IVerifier {
 
     function GI_FIRST_HISTORICAL_SUMMARY_CURR() external view returns (GIndex);
 
-    function GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV() external view returns (GIndex);
-
-    function GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR() external view returns (GIndex);
+    function GI_FIRST_BLOCK_ROOT_IN_SUMMARY() external view returns (GIndex);
 
     function FIRST_SUPPORTED_SLOT() external view returns (Slot);
 
@@ -137,7 +133,7 @@ interface IVerifier {
 
     function MODULE() external view returns (IBaseModule);
 
-    /// @notice Verify proof of a slashed validator being withdrawable and report it to the module
+    /// @notice Verify proof of a slashed validator and report it to the module
     /// @param data @see ProcessSlashedInput
     function processSlashedProof(ProcessSlashedInput calldata data) external;
 

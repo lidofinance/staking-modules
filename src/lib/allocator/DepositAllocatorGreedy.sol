@@ -3,9 +3,8 @@
 pragma solidity 0.8.33;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-import { Arrays } from "@openzeppelin/contracts/utils/Arrays.sol";
-import { Comparators } from "@openzeppelin/contracts/utils/Comparators.sol";
 import { PackedSortKey, PackedSortKeyLib } from "./PackedSortKeyLib.sol";
+import { PackedSortKeyMaxHeapLib } from "./PackedSortKeyMaxHeapLib.sol";
 
 /// @dev Helper struct for input allocation state.
 struct AllocationState {
@@ -22,6 +21,7 @@ struct AllocationState {
 /// @notice Greedy imbalance math with the same entrypoints as DepositPouringMath.
 library DepositAllocatorGreedy {
     using PackedSortKeyLib for PackedSortKey;
+    using PackedSortKeyMaxHeapLib for PackedSortKey[];
 
     // Fixed-point scale (2^96) for share ratios to represent fractional shares as integers.
     uint256 internal constant S_SCALE = uint256(1) << 96;
@@ -44,11 +44,15 @@ library DepositAllocatorGreedy {
         uint256 n = state.sharesX96.length;
         allocations = new uint256[](n);
 
-        PackedSortKey[] memory keys = _sortedKeysByImbalanceDesc(state, allocationAmount, step);
+        PackedSortKey[] memory heap = _maxHeapKeysByImbalanceDesc(state, allocationAmount, step);
+        uint256 heapSize = heap.length;
 
         uint256 remainder = allocationAmount;
-        for (uint256 i; i < n && remainder > 0; ++i) {
-            PackedSortKey key = keys[i];
+        while (heapSize > 0 && remainder > 0) {
+            PackedSortKey key = heap.popMax(heapSize);
+            unchecked {
+                --heapSize;
+            }
             uint256 opIdx = key.unpackIndex();
             uint256 possible = Math.min(key.unpackImbalance(), _quantize(state.capacities[opIdx], step));
             if (possible == 0) continue;
@@ -73,29 +77,27 @@ library DepositAllocatorGreedy {
         }
     }
 
-    function _sortedKeysByImbalanceDesc(
+    function _maxHeapKeysByImbalanceDesc(
         AllocationState memory state,
         uint256 allocationAmount,
         uint256 step
-    ) internal pure returns (PackedSortKey[] memory keys) {
+    ) internal pure returns (PackedSortKey[] memory heap) {
         uint256 n = state.sharesX96.length;
-        keys = new PackedSortKey[](n);
+        heap = new PackedSortKey[](n);
         uint256 targetTotal = state.totalCurrent + allocationAmount;
 
         unchecked {
             for (uint256 i; i < n; ++i) {
                 uint256 imbalance;
-                // NOTE: Rounding up to avoid cases when 10 keys aren't allocated over 100 equal operators
                 uint256 target = Math.mulDiv(state.sharesX96[i], targetTotal, S_SCALE, Math.Rounding.Ceil);
                 uint256 current = state.currents[i];
                 if (target > current) {
                     imbalance = _quantize(target - current, step);
                 }
-                // Sort key: imbalance desc, index asc on ties.
-                keys[i] = PackedSortKeyLib.pack(imbalance, i);
+                heap[i] = PackedSortKeyLib.pack(imbalance, i);
             }
         }
 
-        Arrays.sort(PackedSortKeyLib.asUint256Array(keys), Comparators.gt);
+        heap.heapify();
     }
 }

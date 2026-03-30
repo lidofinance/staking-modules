@@ -73,11 +73,9 @@ struct CuratedDeployParams {
     address[] oracleMembers;
     uint256 hashConsensusQuorum;
     // Verifier
-    uint256 slotsPerHistoricalRoot;
     GIndex gIFirstWithdrawal;
     GIndex gIFirstValidator;
     GIndex gIFirstHistoricalSummary;
-    GIndex gIFirstBlockRootInSummary;
     GIndex gIFirstBalanceNode;
     uint256 verifierFirstSupportedSlot;
     uint256 capellaSlot;
@@ -252,7 +250,6 @@ abstract contract DeployBase is Script {
                 withdrawalAddress: locator.withdrawalVault(),
                 module: address(curatedModule),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
-                slotsPerHistoricalRoot: uint64(config.slotsPerHistoricalRoot),
                 gindices: IVerifier.GIndices({
                     gIFirstWithdrawalPrev: config.gIFirstWithdrawal,
                     gIFirstWithdrawalCurr: config.gIFirstWithdrawal,
@@ -260,8 +257,6 @@ abstract contract DeployBase is Script {
                     gIFirstValidatorCurr: config.gIFirstValidator,
                     gIFirstHistoricalSummaryPrev: config.gIFirstHistoricalSummary,
                     gIFirstHistoricalSummaryCurr: config.gIFirstHistoricalSummary,
-                    gIFirstBlockRootInSummaryPrev: config.gIFirstBlockRootInSummary,
-                    gIFirstBlockRootInSummaryCurr: config.gIFirstBlockRootInSummary,
                     gIFirstBalanceNodePrev: config.gIFirstBalanceNode,
                     gIFirstBalanceNodeCurr: config.gIFirstBalanceNode
                 }),
