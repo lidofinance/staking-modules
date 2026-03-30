@@ -22,6 +22,7 @@ interface IFeeSplits {
     error TooManySplits();
     error TooManySplitShares();
     error ZeroSplitRecipient();
+    error InvalidSplitRecipient();
     error ZeroSplitShare();
 
     /// @notice Get fee splits for the given Node Operator

@@ -27,11 +27,9 @@ contract DeployLocalDevNet is DeployBase {
         config.oracleMembers[2] = vm.envAddress("CSM_ORACLE_3_ADDRESS");
         config.hashConsensusQuorum = 2;
         // Verifier
-        config.slotsPerHistoricalRoot = vm.envOr("DEVNET_SLOTS_PER_HISTORICAL_ROOT", uint256(8192));
         config.gIFirstWithdrawal = GIndices.FIRST_WITHDRAWAL_ELECTRA;
         config.gIFirstValidator = GIndices.FIRST_VALIDATOR_ELECTRA;
         config.gIFirstHistoricalSummary = GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA; // prettier-ignore
-        config.gIFirstBlockRootInSummary = GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA; // prettier-ignore
         config.gIFirstBalanceNode = GIndices.FIRST_BALANCE_NODE_ELECTRA;
         config.verifierFirstSupportedSlot = vm.envUint("DEVNET_ELECTRA_EPOCH") * config.slotsPerEpoch;
         config.capellaSlot = vm.envUint("DEVNET_CAPELLA_EPOCH") * config.slotsPerEpoch;

@@ -7,6 +7,8 @@ pragma solidity 0.8.33;
 ///      - high 224 bits: imbalance
 ///      - low 32 bits: reversed index (`INDEX_MASK - idx`) so lower original index wins ties.
 ///      Assumes `idx <= type(uint32).max`.
+///      The packed representation can be compared directly as `uint256`, which makes it reusable across
+///      full sorts, insertion sorts and max-heaps without custom comparator logic.
 type PackedSortKey is uint256;
 
 /// @notice Helper functions to pack and unpack `PackedSortKey`.

@@ -335,6 +335,10 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     function chargeFee(uint256 nodeOperatorId, uint256 amount) external returns (bool);
 
     /// @notice Pull fees (if proof provided) from FeeDistributor to the Node Operator's bond and split according to configured fee splits.
+    /// @dev Reverts while Accounting is paused.
+    ///      Previously reward pulling during pause was useful for emergency penalty handling.
+    ///      Now penalties can create bond debt while paused, and later rewards can repay it after resume.
+    ///      So this method is paused together with the rest of the reward-handling flows.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param cumulativeFeeShares Cumulative fee stETH shares for the Node Operator
     /// @param rewardsProof Merkle proof of the rewards

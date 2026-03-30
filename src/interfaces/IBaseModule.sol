@@ -6,7 +6,6 @@ pragma solidity 0.8.33;
 import { IAccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
 
 import { IAssetRecovererLib } from "../lib/AssetRecovererLib.sol";
-import { INOAddresses } from "../lib/NOAddresses.sol";
 
 import { IAccounting } from "./IAccounting.sol";
 import { IExitPenalties } from "./IExitPenalties.sol";
@@ -55,7 +54,7 @@ struct WithdrawnValidatorInfo {
 }
 
 /// @notice Base module interface for repository modules such as `ICSModule` and `ICuratedModule`.
-interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses, IAssetRecovererLib {
+interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecovererLib {
     event NodeOperatorAdded(
         uint256 indexed nodeOperatorId,
         address indexed managerAddress,
@@ -81,6 +80,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
         uint256 slashingPenalty,
         bytes pubkey
     );
+    event NodeOperatorBalanceUpdated(uint256 indexed operatorId, uint256 balanceWei);
     event ValidatorSlashingReported(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
     event KeyAllocatedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
     event KeyConfirmedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newBalance);
@@ -98,6 +98,29 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     event GeneralDelayedPenaltySettled(uint256 indexed nodeOperatorId, uint256 amount);
     event NodeOperatorDepositInfoFullyUpdated();
     event FullDepositInfoUpdateRequested();
+
+    event NodeOperatorManagerAddressChangeProposed(
+        uint256 indexed nodeOperatorId,
+        address indexed oldProposedAddress,
+        address indexed newProposedAddress
+    );
+    event NodeOperatorRewardAddressChangeProposed(
+        uint256 indexed nodeOperatorId,
+        address indexed oldProposedAddress,
+        address indexed newProposedAddress
+    );
+    // args order as in https://github.com/OpenZeppelin/openzeppelin-contracts/blob/11dc5e3809ebe07d5405fe524385cbe4f890a08b/contracts/access/Ownable.sol#L33
+    event NodeOperatorManagerAddressChanged(
+        uint256 indexed nodeOperatorId,
+        address indexed oldAddress,
+        address indexed newAddress
+    );
+    // args order as in https://github.com/OpenZeppelin/openzeppelin-contracts/blob/11dc5e3809ebe07d5405fe524385cbe4f890a08b/contracts/access/Ownable.sol#L33
+    event NodeOperatorRewardAddressChanged(
+        uint256 indexed nodeOperatorId,
+        address indexed oldAddress,
+        address indexed newAddress
+    );
 
     error CannotAddKeys();
     error NodeOperatorDoesNotExist();
@@ -127,6 +150,18 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     error ZeroPenaltyType();
     error DepositInfoIsNotUpToDate();
     error UnreportableBalance();
+
+    error InvalidManagerAddress();
+    error InvalidRewardAddress();
+
+    error AlreadyProposed();
+    error SameAddress();
+    error SenderIsNotManagerAddress();
+    error SenderIsNotRewardAddress();
+    error SenderIsNotProposedAddress();
+    error MethodCallIsNotAllowed();
+    error ZeroManagerAddress();
+    error ZeroRewardAddress();
 
     function STAKING_ROUTER_ROLE() external view returns (bytes32);
 
@@ -334,6 +369,12 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @return Non-withdrawn keys count
     function getNodeOperatorNonWithdrawnKeys(uint256 nodeOperatorId) external view returns (uint256);
 
+    /// @notice Returns tracked operator balance (active validator base stake plus tracked extra).
+    /// @dev The tracked extra is intentionally monotonic for active validators and is reduced on withdrawal reporting,
+    ///      not on intermediate balance decreases, so the value serves both top-up allocation and withdrawal penalty accounting.
+    /// @param nodeOperatorId ID of the Node Operator
+    function getNodeOperatorBalance(uint256 nodeOperatorId) external view returns (uint256);
+
     /// @notice Get Node Operator signing keys
     /// @param nodeOperatorId ID of the Node Operator
     /// @param startIndex Index of the first key
@@ -371,17 +412,27 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, INOAddresses,
     /// @param currentBalanceWei Proven current validator balance in wei
     function reportValidatorBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 currentBalanceWei) external;
 
-    /// @notice Get cumulative top-up amount allocated to a particular key (above MIN_ACTIVATION_BALANCE)
+    /// @notice Get cumulative top-up amounts allocated to Node Operator keys (above MIN_ACTIVATION_BALANCE)
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param keyIndex Index of the Key in the Node Operator's keys storage
-    /// @return Allocated balance above MIN_ACTIVATION_BALANCE (wei)
-    function getKeyAllocatedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256);
+    /// @param startIndex Index of the first key
+    /// @param keysCount Count of keys to get
+    /// @return balances Allocated balances above MIN_ACTIVATION_BALANCE (wei)
+    function getKeyAllocatedBalances(
+        uint256 nodeOperatorId,
+        uint256 startIndex,
+        uint256 keysCount
+    ) external view returns (uint256[] memory balances);
 
-    /// @notice Get verifier-confirmed balance for a particular key (above MIN_ACTIVATION_BALANCE)
+    /// @notice Get verifier-confirmed balances for Node Operator keys (above MIN_ACTIVATION_BALANCE)
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param keyIndex Index of the Key in the Node Operator's keys storage
-    /// @return Confirmed balance above MIN_ACTIVATION_BALANCE (wei)
-    function getKeyConfirmedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256);
+    /// @param startIndex Index of the first key
+    /// @param keysCount Count of keys to get
+    /// @return balances Confirmed balances above MIN_ACTIVATION_BALANCE (wei)
+    function getKeyConfirmedBalances(
+        uint256 nodeOperatorId,
+        uint256 startIndex,
+        uint256 keysCount
+    ) external view returns (uint256[] memory balances);
 
     /// @notice Report Node Operator's keys as withdrawn and charge penalties associated with exit if any.
     ///         A validator is considered withdrawn in the following cases:

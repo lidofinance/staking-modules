@@ -34,11 +34,9 @@ contract DeployMainnet is DeployBase {
         config.hashConsensusQuorum = 5;
 
         // Verifier
-        config.slotsPerHistoricalRoot = 8192; // @see https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#time-parameters
         config.gIFirstWithdrawal = GIndices.FIRST_WITHDRAWAL_ELECTRA;
         config.gIFirstValidator = GIndices.FIRST_VALIDATOR_ELECTRA;
         config.gIFirstHistoricalSummary = GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA; // prettier-ignore
-        config.gIFirstBlockRootInSummary = GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA; // prettier-ignore
         config.gIFirstBalanceNode = GIndices.FIRST_BALANCE_NODE_ELECTRA;
         config.verifierFirstSupportedSlot = 364032 * config.slotsPerEpoch; // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-7600.md#activation
         config.capellaSlot = 194048 * config.slotsPerEpoch; // @see https://github.com/eth-clients/mainnet/blob/main/metadata/config.yaml#L50
@@ -84,7 +82,7 @@ contract DeployMainnet is DeployBase {
             CuratedGateConfig storage gate = config.curatedGates.push();
             gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
             gate.treeCid = "TODO: ipfs-cid-cohort-a";
-            gate.params.metaRegistryBondCurveWeight = _m(7000);
+            gate.params.metaRegistryBondCurveWeight = _m(50000);
         }
 
         // Professional Trusted Operator Gate
@@ -98,7 +96,7 @@ contract DeployMainnet is DeployBase {
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 8750]); // 87.5% of 4% = 3.5% of the total
-            gate.params.metaRegistryBondCurveWeight = _m(10000);
+            gate.params.metaRegistryBondCurveWeight = _m(100000);
             gate.params.exitDelayFee = _m(0.005 ether);
         }
 
@@ -113,7 +111,7 @@ contract DeployMainnet is DeployBase {
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
-            gate.params.metaRegistryBondCurveWeight = _m(10000);
+            gate.params.metaRegistryBondCurveWeight = _m(100000);
             gate.params.exitDelayFee = _m(0.005 ether);
         }
 
@@ -128,7 +126,7 @@ contract DeployMainnet is DeployBase {
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
-            gate.params.metaRegistryBondCurveWeight = _m(10000);
+            gate.params.metaRegistryBondCurveWeight = _m(100000);
             gate.params.exitDelayFee = _m(0.005 ether);
         }
 
@@ -143,7 +141,7 @@ contract DeployMainnet is DeployBase {
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
-            gate.params.metaRegistryBondCurveWeight = _m(10000);
+            gate.params.metaRegistryBondCurveWeight = _m(100000);
             gate.params.exitDelayFee = _m(0.005 ether);
         }
 
@@ -158,7 +156,7 @@ contract DeployMainnet is DeployBase {
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 8750]); // 87.5% of 4% = 3.5% of the total
-            gate.params.metaRegistryBondCurveWeight = _m(10000);
+            gate.params.metaRegistryBondCurveWeight = _m(100000);
             gate.params.exitDelayFee = _m(0.005 ether);
         }
 

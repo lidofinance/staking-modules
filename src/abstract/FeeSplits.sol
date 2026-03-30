@@ -60,11 +60,11 @@ abstract contract FeeSplits is IFeeSplits {
         return _getFeeSplitsStorage().feeSplits[nodeOperatorId].length != 0;
     }
 
-    function _updateFeeSplits(uint256 nodeOperatorId, FeeSplit[] calldata feeSplits) internal {
+    function _updateFeeSplits(uint256 nodeOperatorId, FeeSplit[] calldata feeSplits, address stETH) internal {
         FeeSplitsStorage storage $ = _getFeeSplitsStorage();
         if ($.pendingSharesToSplit[nodeOperatorId] > 0) revert PendingSharesExist();
 
-        uint256 len = _validateFeeSplits(feeSplits);
+        uint256 len = _validateFeeSplits(feeSplits, stETH);
 
         FeeSplit[] storage dst = $.feeSplits[nodeOperatorId];
         delete $.feeSplits[nodeOperatorId];
@@ -99,7 +99,7 @@ abstract contract FeeSplits is IFeeSplits {
         }
     }
 
-    function _validateFeeSplits(FeeSplit[] calldata feeSplits) private pure returns (uint256 len) {
+    function _validateFeeSplits(FeeSplit[] calldata feeSplits, address stETH) private pure returns (uint256 len) {
         len = feeSplits.length;
         if (len > MAX_FEE_SPLITS) revert TooManySplits();
 
@@ -107,6 +107,7 @@ abstract contract FeeSplits is IFeeSplits {
         for (uint256 i; i < len; ++i) {
             FeeSplit calldata fs = feeSplits[i];
             if (fs.recipient == address(0)) revert ZeroSplitRecipient();
+            if (fs.recipient == stETH) revert InvalidSplitRecipient();
             if (fs.share == 0) revert ZeroSplitShare();
             totalShare += fs.share;
         }

@@ -40,9 +40,6 @@ GIndex constant FIRST_VALIDATOR_DENEB = GIndex.wrap(0x00000000000000000000000000
 GIndex constant FIRST_HISTORICAL_SUMMARY_DENEB = GIndex.wrap(
     0x0000000000000000000000000000000000000000000000000000007600000018
 );
-GIndex constant FIRST_BLOCK_ROOT_IN_SUMMARY_DENEB = GIndex.wrap(
-    0x000000000000000000000000000000000000000000000000000000000040000d
-);
 GIndex constant FIRST_BALANCE_NODE_DENEB = GIndex.wrap(
     0x0000000000000000000000000000000000000000000000000016000000000028
 );
@@ -74,11 +71,12 @@ contract VerifierHistoricalBase is Test, Utilities {
         vm.mockCall(
             address(module),
             abi.encodeWithSelector(
-                IBaseModule.getKeyConfirmedBalance.selector,
+                IBaseModule.getKeyConfirmedBalances.selector,
                 fixture.data.validator.nodeOperatorId,
-                fixture.data.validator.keyIndex
+                fixture.data.validator.keyIndex,
+                1
             ),
-            abi.encode(0)
+            abi.encode(UintArr(0))
         );
 
         vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector), "");
@@ -106,7 +104,6 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
             withdrawalAddress: fixture.data.withdrawal.object.withdrawalAddress,
             module: address(module),
             slotsPerEpoch: 32,
-            slotsPerHistoricalRoot: 8192,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: NULL_GINDEX,
                 gIFirstWithdrawalCurr: GIndices.FIRST_WITHDRAWAL_ELECTRA,
@@ -114,8 +111,6 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
                 gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
                 gIFirstHistoricalSummaryPrev: NULL_GINDEX,
                 gIFirstHistoricalSummaryCurr: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
-                gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
-                gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
                 gIFirstBalanceNodeCurr: NULL_GINDEX
             }),
@@ -267,7 +262,6 @@ contract VerifierCrossForkHistoricalBalanceTest is Test, Utilities {
             withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
             module: address(module),
             slotsPerEpoch: 32,
-            slotsPerHistoricalRoot: 8192,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: NULL_GINDEX,
                 gIFirstWithdrawalCurr: NULL_GINDEX,
@@ -275,8 +269,6 @@ contract VerifierCrossForkHistoricalBalanceTest is Test, Utilities {
                 gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
                 gIFirstHistoricalSummaryPrev: FIRST_HISTORICAL_SUMMARY_DENEB,
                 gIFirstHistoricalSummaryCurr: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
-                gIFirstBlockRootInSummaryPrev: FIRST_BLOCK_ROOT_IN_SUMMARY_DENEB,
-                gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
                 gIFirstBalanceNodePrev: FIRST_BALANCE_NODE_DENEB,
                 gIFirstBalanceNodeCurr: GIndices.FIRST_BALANCE_NODE_ELECTRA
             }),
@@ -352,7 +344,6 @@ contract VerifierCrossForkHistoricalBalanceAtPivotSlotTest is Test, Utilities {
             withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
             module: address(module),
             slotsPerEpoch: 32,
-            slotsPerHistoricalRoot: 8192,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: NULL_GINDEX,
                 gIFirstWithdrawalCurr: NULL_GINDEX,
@@ -360,8 +351,6 @@ contract VerifierCrossForkHistoricalBalanceAtPivotSlotTest is Test, Utilities {
                 gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
                 gIFirstHistoricalSummaryPrev: FIRST_HISTORICAL_SUMMARY_DENEB,
                 gIFirstHistoricalSummaryCurr: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
-                gIFirstBlockRootInSummaryPrev: FIRST_BLOCK_ROOT_IN_SUMMARY_DENEB,
-                gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
                 gIFirstBalanceNodePrev: FIRST_BALANCE_NODE_DENEB,
                 gIFirstBalanceNodeCurr: GIndices.FIRST_BALANCE_NODE_ELECTRA
             }),
@@ -437,7 +426,6 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
             withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
             module: address(module),
             slotsPerEpoch: 32,
-            slotsPerHistoricalRoot: 8192,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: NULL_GINDEX,
                 gIFirstWithdrawalCurr: NULL_GINDEX,
@@ -445,8 +433,6 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
                 gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
                 gIFirstHistoricalSummaryPrev: NULL_GINDEX,
                 gIFirstHistoricalSummaryCurr: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
-                gIFirstBlockRootInSummaryPrev: NULL_GINDEX,
-                gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
                 gIFirstBalanceNodeCurr: GIndices.FIRST_BALANCE_NODE_ELECTRA
             }),
@@ -582,7 +568,6 @@ contract VerifierCrossForkHistoricalTest is VerifierHistoricalBase {
             withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
             module: address(module),
             slotsPerEpoch: 32,
-            slotsPerHistoricalRoot: 8192,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: FIRST_WITHDRAWAL_DENEB,
                 gIFirstWithdrawalCurr: GIndices.FIRST_WITHDRAWAL_ELECTRA,
@@ -590,8 +575,6 @@ contract VerifierCrossForkHistoricalTest is VerifierHistoricalBase {
                 gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
                 gIFirstHistoricalSummaryPrev: FIRST_HISTORICAL_SUMMARY_DENEB,
                 gIFirstHistoricalSummaryCurr: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
-                gIFirstBlockRootInSummaryPrev: FIRST_BLOCK_ROOT_IN_SUMMARY_DENEB,
-                gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
                 gIFirstBalanceNodeCurr: NULL_GINDEX
             }),
@@ -632,7 +615,6 @@ contract VerifierCrossForkHistoricalAtPivotSlotTest is VerifierHistoricalBase {
             withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
             module: address(module),
             slotsPerEpoch: 32,
-            slotsPerHistoricalRoot: 8192,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: FIRST_WITHDRAWAL_DENEB,
                 gIFirstWithdrawalCurr: GIndices.FIRST_WITHDRAWAL_ELECTRA,
@@ -640,8 +622,6 @@ contract VerifierCrossForkHistoricalAtPivotSlotTest is VerifierHistoricalBase {
                 gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
                 gIFirstHistoricalSummaryPrev: FIRST_HISTORICAL_SUMMARY_DENEB,
                 gIFirstHistoricalSummaryCurr: GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA,
-                gIFirstBlockRootInSummaryPrev: FIRST_BLOCK_ROOT_IN_SUMMARY_DENEB,
-                gIFirstBlockRootInSummaryCurr: GIndices.FIRST_BLOCK_ROOT_IN_SUMMARY_ELECTRA,
                 gIFirstBalanceNodePrev: NULL_GINDEX,
                 gIFirstBalanceNodeCurr: NULL_GINDEX
             }),

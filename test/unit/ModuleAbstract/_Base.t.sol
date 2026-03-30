@@ -8,6 +8,7 @@ import { Test } from "forge-std/Test.sol";
 import { BaseModule } from "src/abstract/BaseModule.sol";
 import { NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
+import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 import { AccountingMock } from "../../helpers/mocks/AccountingMock.sol";
 import { ParametersRegistryMock } from "../../helpers/mocks/ParametersRegistryMock.sol";
@@ -181,7 +182,7 @@ abstract contract ModuleFixtures is Test, Fixtures, Utilities, InvariantAsserts 
         withdrawalsInfo[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
@@ -190,7 +191,7 @@ abstract contract ModuleFixtures is Test, Fixtures, Utilities, InvariantAsserts 
 
     /// @dev Sets keyConfirmedBalance via reportValidatorBalance.
     function setKeyConfirmedBalance(uint256 noId, uint256 keyIndex, uint256 confirmedBalance) internal {
-        uint256 current = module.getKeyConfirmedBalance(noId, keyIndex);
+        uint256 current = module.getKeyConfirmedBalances(noId, keyIndex, 1)[0];
         if (confirmedBalance == current) return;
 
         assertGt(confirmedBalance, current, "key confirmed balance cannot be decreased");
@@ -198,11 +199,11 @@ abstract contract ModuleFixtures is Test, Fixtures, Utilities, InvariantAsserts 
         module.reportValidatorBalance({
             nodeOperatorId: noId,
             keyIndex: keyIndex,
-            currentBalanceWei: confirmedBalance + WithdrawnValidatorLib.MIN_ACTIVATION_BALANCE
+            currentBalanceWei: confirmedBalance + ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
         });
 
         assertEq(
-            module.getKeyConfirmedBalance(noId, keyIndex),
+            module.getKeyConfirmedBalances(noId, keyIndex, 1)[0],
             confirmedBalance,
             "key confirmed balance must match target"
         );

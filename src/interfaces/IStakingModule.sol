@@ -217,6 +217,11 @@ interface IStakingModule {
 }
 
 interface IStakingModuleV2 {
+    /// @notice Returns the total tracked stake of the module in wei.
+    /// @dev This is the sum of the activation base for active validators and tracked extra stake.
+    ///      The tracked extra is intentionally reduced on withdrawal reporting rather than on intermediate validator balance decreases.
+    function getTotalModuleStake() external view returns (uint256 totalModuleStakeWei);
+
     /// @notice Validates that provided keys belong to the corresponding operators in the module and calculates deposit allocations for top-up
     /// @dev Reverts if any key doesn't belong to the module or data is invalid
     /// @param maxDepositAmount Total ether amount available for top-up (must be multiple of 1 gwei)
@@ -235,12 +240,4 @@ interface IStakingModuleV2 {
         uint256[] calldata operatorIds,
         uint256[] calldata topUpLimits
     ) external returns (uint256[] memory allocations);
-
-    /// @notice Called by StakingRouter to update node operator total balances.
-    /// @dev Total balances are denominated in gwei.
-    /// @dev Input format matches validator counts updates from StakingRouter:
-    ///      `operatorIds` packs ids as bytes8 entries and `totalBalancesGwei` packs values as bytes16 entries.
-    /// @param operatorIds Bytes packed array of node operator IDs.
-    /// @param totalBalancesGwei Bytes packed array of total balances (validators + pending), in gwei.
-    function updateOperatorBalances(bytes calldata operatorIds, bytes calldata totalBalancesGwei) external;
 }

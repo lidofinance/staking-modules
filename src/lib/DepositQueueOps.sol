@@ -3,7 +3,10 @@
 
 pragma solidity 0.8.33;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import { IAccounting } from "../interfaces/IAccounting.sol";
+import { IBaseModule } from "../interfaces/IBaseModule.sol";
 import { ICSModule } from "../interfaces/ICSModule.sol";
 import { IParametersRegistry } from "../interfaces/IParametersRegistry.sol";
 import { NodeOperator } from "../interfaces/IBaseModule.sol";
@@ -11,10 +14,94 @@ import { ModuleLinearStorage } from "../abstract/ModuleLinearStorage.sol";
 
 import { TransientUintUintMap, TransientUintUintMapLib } from "./TransientUintUintMapLib.sol";
 import { Batch, DepositQueueLib } from "./DepositQueueLib.sol";
+import { TopUpQueueLib, newTopUpQueueItem } from "./TopUpQueueLib.sol";
+import { SigningKeys } from "./SigningKeys.sol";
 
 library DepositQueueOps {
     using DepositQueueLib for DepositQueueLib.Queue;
+    using TopUpQueueLib for TopUpQueueLib.Queue;
     using TransientUintUintMapLib for TransientUintUintMap;
+
+    struct ObtainDepositDataContext {
+        uint256 loadedKeysCount;
+        bytes publicKeys;
+        bytes signatures;
+    }
+
+    function obtainDepositData(
+        ModuleLinearStorage.BaseModuleStorage storage $,
+        TopUpQueueLib.Queue storage topUpQueue,
+        uint256 depositsCount,
+        uint256 queueLowestPriority
+    ) external returns (bytes memory publicKeys, bytes memory signatures) {
+        // Caller guarantees depositsCount > 0.
+        ObtainDepositDataContext memory ctx;
+        (ctx.publicKeys, ctx.signatures) = SigningKeys.initKeysSigsBuf(depositsCount);
+
+        uint256 depositsLeft = depositsCount;
+
+        // NOTE: The highest priority to start iterations with. Priorities are ordered like 0, 1, 2, ...
+        for (uint256 priority; depositsLeft > 0 && priority <= queueLowestPriority; ++priority) {
+            DepositQueueLib.Queue storage depositQueue = $.depositQueueByPriority[priority];
+            for (Batch item = depositQueue.peek(); !item.isNil() && depositsLeft > 0; item = depositQueue.peek()) {
+                // NOTE: see the `enqueuedCount` note below.
+                unchecked {
+                    uint32 noId = uint32(item.noId());
+                    NodeOperator storage no = $.nodeOperators[noId];
+
+                    uint256 keysInBatch = item.keys();
+
+                    // Keys are bounded by keys in batch and depositable counts (they are uint32 values), so this fits the storage types.
+                    // forge-lint: disable-next-line(unsafe-typecast)
+                    uint32 keysCount = uint32(
+                        Math.min(Math.min(no.depositableValidatorsCount, keysInBatch), depositsLeft)
+                    );
+                    // `depositsLeft` is non-zero at this point all the time, so the check `depositsLeft > keysCount`
+                    // covers the case when no depositable keys on the Node Operator have been left.
+                    if (depositsLeft > keysCount || keysCount == keysInBatch) {
+                        // NOTE: `enqueuedCount` >= keysInBatch invariant should be checked.
+                        // Enqueued counters are uint32 values; `keysInBatch` is sourced
+                        // from the same field and thus cannot exceed the range.
+                        // forge-lint: disable-next-line(unsafe-typecast)
+                        no.enqueuedCount -= uint32(keysInBatch);
+                        // We've consumed all the keys in the batch, so we dequeue it.
+                        depositQueue.dequeue();
+                    } else {
+                        // This branch covers the case when we stop in the middle of the batch.
+                        // We release the amount of keys consumed only, the rest will be kept.
+                        no.enqueuedCount -= keysCount;
+                        // NOTE: `keysInBatch` can't be less than `keysCount` at this point.
+                        // We update the batch with the remaining keys and store the updated batch back to the queue.
+                        depositQueue.queue[depositQueue.head] = item.setKeys(keysInBatch - keysCount);
+                    }
+
+                    // NOTE: This condition is located here to allow for the correct removal of the batch for the Node Operators with no depositable keys
+                    if (keysCount == 0) continue;
+                    _loadAndAccountDeposits({
+                        topUpQueue: topUpQueue,
+                        no: no,
+                        noId: noId,
+                        keysCount: keysCount,
+                        ctx: ctx
+                    });
+                    depositsLeft -= keysCount;
+                }
+            }
+        }
+
+        if (ctx.loadedKeysCount != depositsCount) revert IBaseModule.NotEnoughKeys();
+
+        unchecked {
+            // Deposits counts are capped by queue length (< 2^32) and the storage slots are uint64.
+            // forge-lint: disable-next-line(unsafe-typecast)
+            $.depositableValidatorsCount -= uint64(depositsCount);
+            // forge-lint: disable-next-line(unsafe-typecast)
+            $.totalDepositedValidators += uint64(depositsCount);
+        }
+
+        publicKeys = ctx.publicKeys;
+        signatures = ctx.signatures;
+    }
 
     function cleanDepositQueue(
         ModuleLinearStorage.BaseModuleStorage storage $,
@@ -183,6 +270,56 @@ library DepositQueueOps {
 
             curr = item.next();
         }
+    }
+
+    function _enqueueTopUpKeys(
+        TopUpQueueLib.Queue storage topUpQueue,
+        uint32 noId,
+        uint32 keyIndexBase,
+        uint32 keysCount
+    ) private {
+        for (uint32 i; i < keysCount; i++) {
+            topUpQueue.enqueue(
+                newTopUpQueueItem(
+                    // The ids are assigned sequentially, so noId can't exceed uint32 in practice.
+                    noId,
+                    keyIndexBase + i
+                )
+            );
+        }
+    }
+
+    function _loadAndAccountDeposits(
+        TopUpQueueLib.Queue storage topUpQueue,
+        NodeOperator storage no,
+        uint32 noId,
+        uint32 keysCount,
+        ObtainDepositDataContext memory ctx
+    ) private {
+        if (topUpQueue.enabled) {
+            _enqueueTopUpKeys(topUpQueue, noId, no.totalDepositedKeys, keysCount);
+        }
+
+        SigningKeys.loadKeysSigs({
+            nodeOperatorId: noId,
+            startIndex: no.totalDepositedKeys,
+            keysCount: keysCount,
+            pubkeys: ctx.publicKeys,
+            signatures: ctx.signatures,
+            bufOffset: ctx.loadedKeysCount
+        });
+
+        // It's impossible in practice to reach the limit of these variables.
+        ctx.loadedKeysCount += keysCount;
+        uint32 totalDepositedKeys = no.totalDepositedKeys + keysCount;
+        no.totalDepositedKeys = totalDepositedKeys;
+
+        emit IBaseModule.DepositedSigningKeysCountChanged(noId, totalDepositedKeys);
+
+        // No need for `_updateDepositableValidatorsCount` call since we update the number directly.
+        uint32 newCount = no.depositableValidatorsCount - keysCount;
+        no.depositableValidatorsCount = newCount;
+        emit IBaseModule.DepositableSigningKeysCountChanged(noId, newCount);
     }
 
     // NOTE: If `count` is 0 an empty batch will be created.

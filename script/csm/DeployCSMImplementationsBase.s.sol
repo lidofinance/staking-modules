@@ -90,7 +90,6 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
                 withdrawalAddress: locator.withdrawalVault(),
                 module: address(csm),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
-                slotsPerHistoricalRoot: uint64(config.slotsPerHistoricalRoot),
                 gindices: IVerifier.GIndices({
                     gIFirstWithdrawalPrev: config.gIFirstWithdrawal,
                     gIFirstWithdrawalCurr: config.gIFirstWithdrawal,
@@ -98,8 +97,6 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
                     gIFirstValidatorCurr: config.gIFirstValidator,
                     gIFirstHistoricalSummaryPrev: config.gIFirstHistoricalSummary,
                     gIFirstHistoricalSummaryCurr: config.gIFirstHistoricalSummary,
-                    gIFirstBlockRootInSummaryPrev: config.gIFirstBlockRootInSummary,
-                    gIFirstBlockRootInSummaryCurr: config.gIFirstBlockRootInSummary,
                     gIFirstBalanceNodePrev: config.gIFirstBalanceNode,
                     gIFirstBalanceNodeCurr: config.gIFirstBalanceNode
                 }),

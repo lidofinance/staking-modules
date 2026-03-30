@@ -41,7 +41,7 @@ contract DepositInfoRefreshTestCurated is CuratedIntegrationBase {
         assertEq(pubkeys.length, 0, "should not deposit with zero weight");
 
         // Restore weight
-        metaRegistry.setBondCurveWeight(curveId, 1);
+        metaRegistry.setBondCurveWeight(curveId, 10000);
         metaRegistry.refreshOperatorWeight(noId);
 
         // Run batch update to refresh deposit info

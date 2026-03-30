@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 
-import { IStakingModule } from "../interfaces/IStakingModule.sol";
+import { IStakingModule, IStakingModuleV2 } from "../interfaces/IStakingModule.sol";
 import { ILidoLocator } from "../interfaces/ILidoLocator.sol";
 import { IStETH } from "../interfaces/IStETH.sol";
 import { IParametersRegistry } from "../interfaces/IParametersRegistry.sol";
@@ -21,6 +21,7 @@ import { WithdrawnValidatorLib } from "../lib/WithdrawnValidatorLib.sol";
 import { NOAddresses } from "../lib/NOAddresses.sol";
 import { NodeOperatorOps } from "../lib/NodeOperatorOps.sol";
 import { KeyPointerLib } from "../lib/KeyPointerLib.sol";
+import { StakeTracker } from "../lib/StakeTracker.sol";
 
 import { AssetRecoverer } from "./AssetRecoverer.sol";
 import { ModuleLinearStorage } from "./ModuleLinearStorage.sol";
@@ -28,6 +29,7 @@ import { PausableWithRoles } from "./PausableWithRoles.sol";
 
 abstract contract BaseModule is
     IBaseModule,
+    IStakingModuleV2,
     ModuleLinearStorage,
     AccessControlEnumerableUpgradeable,
     PausableWithRoles,
@@ -89,7 +91,8 @@ abstract contract BaseModule is
             nodeOperators: $.nodeOperators,
             nodeOperatorId: nodeOperatorId,
             from: from,
-            managementProperties: managementProperties
+            managementProperties: managementProperties,
+            stETH: address(STETH)
         });
 
         unchecked {
@@ -194,7 +197,12 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function changeNodeOperatorRewardAddress(uint256 nodeOperatorId, address newAddress) external {
-        NOAddresses.changeNodeOperatorRewardAddress(_baseStorage().nodeOperators, nodeOperatorId, newAddress);
+        NOAddresses.changeNodeOperatorRewardAddress(
+            _baseStorage().nodeOperators,
+            nodeOperatorId,
+            newAddress,
+            address(STETH)
+        );
     }
 
     /// @inheritdoc IStakingModule
@@ -479,6 +487,11 @@ abstract contract BaseModule is
         }
     }
 
+    /// @inheritdoc IBaseModule
+    function getNodeOperatorBalance(uint256 nodeOperatorId) external view returns (uint256) {
+        return StakeTracker.getOperatorBalance(_baseStorage(), nodeOperatorId);
+    }
+
     /// @inheritdoc IStakingModule
     /// @notice depositableValidatorsCount depends on:
     ///      - totalVettedKeys
@@ -583,13 +596,27 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function getKeyAllocatedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256) {
-        return _baseStorage().keyAllocatedBalance[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
+    function getKeyAllocatedBalances(
+        uint256 nodeOperatorId,
+        uint256 startIndex,
+        uint256 keysCount
+    ) external view returns (uint256[] memory balances) {
+        _onlyValidIndexRange(nodeOperatorId, startIndex, keysCount);
+        return NodeOperatorOps.getKeyAllocatedBalances(_baseStorage(), nodeOperatorId, startIndex, keysCount);
     }
 
     /// @inheritdoc IBaseModule
-    function getKeyConfirmedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256) {
-        return _baseStorage().keyConfirmedBalance[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
+    function getKeyConfirmedBalances(
+        uint256 nodeOperatorId,
+        uint256 startIndex,
+        uint256 keysCount
+    ) external view returns (uint256[] memory balances) {
+        _onlyValidIndexRange(nodeOperatorId, startIndex, keysCount);
+        return NodeOperatorOps.getKeyConfirmedBalances(_baseStorage(), nodeOperatorId, startIndex, keysCount);
+    }
+
+    function getTotalModuleStake() public view override returns (uint256) {
+        return StakeTracker.getTotalModuleStake(_baseStorage());
     }
 
     /// @inheritdoc IBaseModule
@@ -614,11 +641,11 @@ abstract contract BaseModule is
     }
 
     function _reportWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos, bool slashed) internal {
-        (uint256[] memory touchedOperatorIds, uint256 touchedCount) = WithdrawnValidatorLib.processBatch(
-            validatorInfos,
-            slashed,
-            _baseStorage()
-        );
+        (
+            uint256[] memory touchedOperatorIds,
+            uint256[] memory trackedBalanceDecreases,
+            uint256 touchedCount
+        ) = WithdrawnValidatorLib.processBatch(validatorInfos, slashed, _baseStorage());
 
         if (touchedCount == 0) return;
 
@@ -626,6 +653,7 @@ abstract contract BaseModule is
             _baseStorage().totalWithdrawnValidators += touchedCount;
         }
         for (uint256 i; i < touchedCount; ++i) {
+            StakeTracker.decreaseOperatorBalance(_baseStorage(), touchedOperatorIds[i], trackedBalanceDecreases[i]);
             _updateDepositableValidatorsCount({
                 nodeOperatorId: touchedOperatorIds[i],
                 incrementNonceIfUpdated: false
