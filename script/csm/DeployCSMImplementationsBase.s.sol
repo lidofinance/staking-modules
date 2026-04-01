@@ -34,8 +34,7 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
     function _deploy() internal {
         if (chainId != block.chainid) revert ChainIdMismatch({ actual: block.chainid, expected: chainId });
 
-        bool skipLegacyQueueCheck = vm.envOr("SKIP_LEGACY_QUEUE_CHECK", false);
-        if (!skipLegacyQueueCheck) _ensureLegacyQueueDrained();
+        _ensureLegacyQueueDrained();
         artifactDir = vm.envOr("ARTIFACTS_DIR", string("./artifacts/local/"));
 
         vm.startBroadcast();
