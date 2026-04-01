@@ -62,15 +62,15 @@ Deposits up to `count` depositable keys across all operators via Staking Router.
 ### Increase effective balance
 
 ```bash
-just key-topup <noId> <activeKeyIndex> <amountEth>
+just key-topup <noId> <keyIndex> <amountEth>
 ```
 
-Increases allocated balance for a single active key (1-based index). Use to simulate top-ups, consolidations, or CL rewards.
+Increases allocated balance for a single key by index. Use to simulate top-ups, consolidations, or CL rewards.
 
 Examples:
 
-- `just key-topup 0 1 2` — +2 ETH top-up on 1st active key
-- `just key-topup 0 1 32` — +32 ETH (simulates MaxEB consolidation)
+- `just key-topup 0 0 2` — +2 ETH top-up on key 0
+- `just key-topup 0 0 32` — +32 ETH (simulates MaxEB consolidation)
 
 ## Quick start
 

@@ -43,11 +43,40 @@ confirm-reward noId:
 confirm-manager noId:
     just _impersonate-script NodeOperators --sig="confirmManagerAddress\(uint256\)" -- {{noId}}
 
+operator-keys noId:
+    just _read-script NodeOperators --sig="operatorKeys\(uint256\)" -- {{noId}}
+
+get-pubkey noId keyIndex:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    pk=$(just _read-script NodeOperators --sig="operatorKey\(uint256,uint256\)" -- {{noId}} {{keyIndex}} 2>/dev/null | grep -o '0x.\{96\}') || true
+    if [[ -z "$pk" ]]; then
+      echo "error: no key found for operator {{noId}} at index {{keyIndex}}" >&2
+      exit 1
+    fi
+    echo "$pk"
+
+operators-count:
+    just _read-script NodeOperators --sig="operatorsCount"
+
+get-last-operator:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    count=$(just operators-count 2>&1 | grep -A1 '== Logs ==' | tail -1 | tr -d '[:space:]')
+    if [[ -z "$count" || "$count" == "0" ]]; then
+      echo "error: no operators" >&2
+      exit 1
+    fi
+    echo $(( count - 1 ))
+
+operator-info noId:
+    just _read-script NodeOperators --sig="operatorInfo\(uint256\)" -- {{noId}}
+
 add-keys noId keysCount:
     just _impersonate-script NodeOperators --sig="addKeys\(uint256,uint256\)" -- {{noId}} {{keysCount}}
 
-unvet-keys noId vettedKeysCount:
-    just _impersonate-script NodeOperators --sig="unvet\(uint256,uint256\)" -- {{noId}} {{vettedKeysCount}}
+unvet-key noId keyIndex:
+    just _impersonate-script NodeOperators --sig="unvet\(uint256,uint256\)" -- {{noId}} {{keyIndex}}
 
 exit-keys noId exitedKeysCount:
     just _impersonate-script NodeOperators --sig="exit\(uint256,uint256\)" -- {{noId}} {{exitedKeysCount}}
@@ -101,6 +130,9 @@ settle-penalty noId:
 compensate-penalty noId:
     just _impersonate-script NodeOperators --sig="compensateGeneralDelayedPenalty\(uint256\)" -- {{noId}}
 
+add-bond noId amountEth:
+    just _impersonate-script NodeOperators --sig="addBond\(uint256,uint256\)" -- {{noId}} $(cast to-wei {{amountEth}})
+
 create-bond-debt noId amountEth:
     just _impersonate-script NodeOperators --sig="createBondDebt\(uint256,uint256\)" -- {{noId}} $(cast to-wei {{amountEth}})
 
@@ -110,14 +142,14 @@ warp days:
 activate-keys noId count:
     just _impersonate-script NodeOperators --sig="activateKeys\(uint256,uint256\)" -- {{noId}} {{count}}
 
-report-balance noId activeKeyIndex balanceEth:
-    just _impersonate-script NodeOperators --sig="reportBalance\(uint256,uint256,uint256\)" -- {{noId}} {{activeKeyIndex}} $(cast to-wei {{balanceEth}})
+report-balance noId keyIndex balanceEth:
+    just _impersonate-script NodeOperators --sig="reportBalance\(uint256,uint256,uint256\)" -- {{noId}} {{keyIndex}} $(cast to-wei {{balanceEth}})
 
-key-topup noId activeKeyIndex amountEth:
-    just _impersonate-script NodeOperators --sig="increaseAllocatedBalance\(uint256,uint256,uint256\)" -- {{noId}} {{activeKeyIndex}} $(cast to-wei {{amountEth}})
+key-topup noId keyIndex amountEth:
+    just _impersonate-script NodeOperators --sig="increaseAllocatedBalance\(uint256,uint256,uint256\)" -- {{noId}} {{keyIndex}} $(cast to-wei {{amountEth}})
 
-exit-request noId validatorIndex validatorPubKey:
-    just _impersonate-script NodeOperators --sig="exitRequest\(uint256,uint256,bytes\)" -vvv -- {{noId}} {{validatorIndex}} {{validatorPubKey}}
+exit-request noId keyIndex validatorIndex="900000":
+    just _impersonate-script NodeOperators --sig="exitRequest\(uint256,uint256,uint256\)" -vvv -- {{noId}} {{keyIndex}} {{validatorIndex}}
 
 # Usage: just create-operator-group 1 90 2 10
 # Converts percent to basis points, builds forge array arg
@@ -163,3 +195,6 @@ _impersonate-script *args:
     curl -sS {{anvil_rpc_url}} --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"anvil_autoImpersonateAccount","params":[true],"id":1}' > /dev/null
     forge script --rpc-url={{anvil_rpc_url}} --timeout 300 -vvv --broadcast --unlocked {{args}}
     curl -sS {{anvil_rpc_url}} --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"anvil_autoImpersonateAccount","params":[false],"id":1}' > /dev/null
+
+_read-script *args:
+    forge script --rpc-url={{anvil_rpc_url}} --timeout 300 -vvv {{args}}

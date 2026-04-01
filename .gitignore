@@ -17,6 +17,8 @@ coverage/
 cache/
 out/
 localhost.json
+cl-state.json
+state.json
 lcov.info
 ics-assessment/engagement/.cache/
 
@@ -31,3 +33,6 @@ ics-assessment/engagement/.cache/
 .local.just
 .wake/
 tags
+
+# Claude
+.claude/settings.local.json

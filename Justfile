@@ -126,6 +126,7 @@ _fork-up-and-down:
 # Recipe modules
 import? ".local.just"
 import "fork.just"
+import "cl-mock.just"
 import "csm.just"
 import "csm0x02.just"
 import "curated.just"

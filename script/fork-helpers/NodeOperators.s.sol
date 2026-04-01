@@ -122,6 +122,7 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
 
     function addKeys(uint256 noId, uint256 keysCount) external broadcastManager(noId) {
         uint256 amount = accounting.getRequiredBondForNextKeys(noId, keysCount);
+        seed = keccak256(abi.encodePacked(block.prevrandao, block.timestamp, noId));
         bytes memory keys = randomBytes(48 * keysCount);
         bytes memory signatures = randomBytes(96 * keysCount);
         address manager = module.getNodeOperator(noId).managerAddress;
@@ -143,10 +144,10 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         module.removeKeys(noId, keyIndex, 1);
     }
 
-    function unvet(uint256 noId, uint256 vettedKeysCount) external broadcastStakingRouter {
-        module.decreaseVettedSigningKeysCount(_encodeNodeOperatorId(noId), _encodeUint128Value(vettedKeysCount));
+    function unvet(uint256 noId, uint256 newVettedKeysCount) external broadcastStakingRouter {
+        module.decreaseVettedSigningKeysCount(_encodeNodeOperatorId(noId), _encodeUint128Value(newVettedKeysCount));
 
-        assertEq(module.getNodeOperator(noId).totalVettedKeys, vettedKeysCount);
+        assertEq(module.getNodeOperator(noId).totalVettedKeys, newVettedKeysCount);
     }
 
     function exit(uint256 noId, uint256 exitedKeysCount) external broadcastStakingRouter {
@@ -220,14 +221,22 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         module.compensateGeneralDelayedPenalty(noId);
     }
 
+    function addBond(uint256 noId, uint256 amount) external broadcastManager(noId) {
+        accounting.depositETH{ value: amount }(noId);
+    }
+
     function createBondDebt(uint256 noId, uint256 amount) external broadcastModule {
         accounting.penalize(noId, amount);
     }
 
-    function exitRequest(uint256 noId, uint256 validatorIndex, bytes calldata validatorPubKey) external {
+    function exitRequest(uint256 noId, uint256 keyIndex, uint256 validatorIndex) public {
         _setUp();
+        bytes memory pubkey = module.getSigningKeys(noId, keyIndex, 1);
+        _exitRequest(noId, validatorIndex, pubkey);
+    }
+
+    function _exitRequest(uint256 noId, uint256 validatorIndex, bytes memory validatorPubKey) internal {
         IVEBO vebo = IVEBO(locator.validatorsExitBusOracle());
-        bytes memory data;
 
         bytes3 moduleId = bytes3(uint24(_getModuleId()));
         // Node operator ids stay below 2^40 (queue limit), mirroring production encoding.
@@ -240,7 +249,7 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         (, uint256 refSlot, , ) = vebo.getConsensusReport();
         uint256 reportRefSlot = refSlot + 1;
 
-        data = abi.encodePacked(moduleId, nodeOpId, _validatorIndex, validatorPubKey);
+        bytes memory data = abi.encodePacked(moduleId, nodeOpId, _validatorIndex, validatorPubKey);
         IVEBO.ReportData memory report = IVEBO.ReportData({
             consensusVersion: vebo.getConsensusVersion(),
             refSlot: reportRefSlot,
@@ -285,22 +294,18 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         assertEq(activated, count, "not enough deposited keys to activate");
     }
 
-    function reportBalance(uint256 noId, uint256 activeKeyIndex, uint256 balanceWei) external broadcastVerifier {
-        NodeOperator memory no = module.getNodeOperator(noId);
-        uint256 keyIndex = no.totalWithdrawnKeys + activeKeyIndex - 1;
-        require(keyIndex < no.totalDepositedKeys, "key index out of bounds");
+    function reportBalance(uint256 noId, uint256 keyIndex, uint256 balanceWei) external broadcastVerifier {
+        require(keyIndex < module.getNodeOperator(noId).totalDepositedKeys, "key index out of bounds");
         require(!module.isValidatorWithdrawn(noId, keyIndex), "key is withdrawn");
         module.reportValidatorBalance(noId, keyIndex, balanceWei);
     }
 
     function increaseAllocatedBalance(
         uint256 noId,
-        uint256 activeKeyIndex,
+        uint256 keyIndex,
         uint256 amountWei
     ) external broadcastStakingRouter {
-        NodeOperator memory no = module.getNodeOperator(noId);
-        uint256 keyIndex = no.totalWithdrawnKeys + activeKeyIndex - 1;
-        require(keyIndex < no.totalDepositedKeys, "key index out of bounds");
+        require(keyIndex < module.getNodeOperator(noId).totalDepositedKeys, "key index out of bounds");
         require(!module.isValidatorWithdrawn(noId, keyIndex), "key is withdrawn");
 
         bytes[] memory pubkeys = new bytes[](1);
@@ -386,7 +391,76 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         vm.stopBroadcast();
     }
 
+    function operatorsCount() external {
+        _setUp();
+        console.log(vm.toString(module.getNodeOperatorsCount()));
+    }
+
+    function operatorKey(uint256 noId, uint256 keyIndex) external {
+        _setUp();
+        bytes memory key = module.getSigningKeys(noId, keyIndex, 1);
+        console.log(vm.toString(key));
+    }
+
+    function operatorKeys(uint256 noId) external {
+        _setUp();
+        NodeOperator memory no = module.getNodeOperator(noId);
+        if (no.totalAddedKeys == 0) return;
+        console.log(string.concat(_pad("id", 4), " ", "pubkey"));
+        bytes memory keys = module.getSigningKeys(noId, 0, no.totalAddedKeys);
+        for (uint256 i; i < no.totalAddedKeys; ++i) {
+            bytes memory key = new bytes(48);
+            for (uint256 j; j < 48; ++j) key[j] = keys[i * 48 + j];
+            console.log(string.concat(_pad(vm.toString(i), 4), " ", vm.toString(key)));
+        }
+    }
+
+    function operatorInfo(uint256 noId) external {
+        _setUp();
+        NodeOperator memory no = module.getNodeOperator(noId);
+        console.log(
+            string.concat(
+                _col("totalAddedKeys", no.totalAddedKeys),
+                _col("depositableValidators", no.depositableValidatorsCount)
+            )
+        );
+        console.log(
+            string.concat(_col("totalVettedKeys", no.totalVettedKeys), _col("enqueuedCount", no.enqueuedCount))
+        );
+        console.log(
+            string.concat(
+                _col("totalDepositedKeys", no.totalDepositedKeys),
+                _col("stuckValidatorsCount", no.stuckValidatorsCount)
+            )
+        );
+        console.log(
+            string.concat(
+                _col("totalWithdrawnKeys", no.totalWithdrawnKeys),
+                _col("targetLimitMode", no.targetLimitMode)
+            )
+        );
+        console.log(string.concat(_col("totalExitedKeys", no.totalExitedKeys), _col("targetLimit", no.targetLimit)));
+        console.log(string.concat(_pad("extendedManagerPerms", 24), no.extendedManagerPermissions ? "true" : "false"));
+        console.log(string.concat(_pad("managerAddress", 24), vm.toString(no.managerAddress)));
+        console.log(string.concat(_pad("proposedManagerAddress", 24), vm.toString(no.proposedManagerAddress)));
+        console.log(string.concat(_pad("rewardAddress", 24), vm.toString(no.rewardAddress)));
+        console.log(string.concat(_pad("proposedRewardAddress", 24), vm.toString(no.proposedRewardAddress)));
+    }
+
     error NodeOperatorsModuleNotFound();
+
+    function _col(string memory label, uint256 val) internal pure returns (string memory) {
+        return string.concat(_pad(label, 24), _pad(vm.toString(val), 6));
+    }
+
+    function _pad(string memory s, uint256 w) internal pure returns (string memory) {
+        bytes memory b = bytes(s);
+        if (b.length >= w) return s;
+        bytes memory r = new bytes(w);
+        for (uint256 i; i < b.length; ++i) r[i] = b[i];
+        for (uint256 i = b.length; i < w; ++i) r[i] = " ";
+        return string(r);
+    }
 
     function _getModuleId() internal view returns (uint256) {
         uint256[] memory ids = stakingRouter.getStakingModuleIds();
