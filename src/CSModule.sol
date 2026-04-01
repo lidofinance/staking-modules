@@ -73,6 +73,7 @@ contract CSModule is ICSModule, BaseModule {
                 totalWithdrawnValidators += $.nodeOperators[i].totalWithdrawnKeys;
             }
         }
+        // The next statement writes to slot `1` replacing old QueueLib.Queue struct pointers.
         $.totalWithdrawnValidators = totalWithdrawnValidators;
         $.upToDateOperatorDepositInfoCount = $.nodeOperatorsCount;
     }
