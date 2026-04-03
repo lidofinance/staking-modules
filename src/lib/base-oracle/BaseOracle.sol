@@ -88,7 +88,8 @@ abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerableUp
     }
 
     /// @notice Sets the address of the HashConsensus contract.
-    ///
+    /// @dev The value of the consensus version should also be changed to prevent processing a report for which the
+    /// consensus was reached on the old contract.
     function setConsensusContract(address addr) external onlyRole(MANAGE_CONSENSUS_CONTRACT_ROLE) {
         _setConsensusContract(addr, LAST_PROCESSING_REF_SLOT_POSITION.getStorageUint256());
     }
