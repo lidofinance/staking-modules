@@ -80,8 +80,7 @@ test-csm-upgrade *args:
     export RPC_URL={{anvil_rpc_url}}
     local_private_key="$(just _local-private-key)"
 
-    SKIP_LEGACY_QUEUE_CHECK=1 \
-        just _deploy-csm-impl --broadcast --private-key="${local_private_key}"
+    just _deploy-csm-impl --broadcast --private-key="${local_private_key}"
 
     export DEPLOY_CONFIG={{csm_local_upgrade_config_path}}
     export VOTE_PREV_BLOCK="$(cast block-number -r "$RPC_URL")"
@@ -132,8 +131,7 @@ test-csm-v3-only-deploy *args:
     export RPC_URL={{anvil_rpc_url}}
     local_private_key="$(just _local-private-key)"
 
-    SKIP_LEGACY_QUEUE_CHECK=1 \
-        just _deploy-csm-impl --broadcast --private-key="${local_private_key}" {{disable_code_size_limit}}
+    just _deploy-csm-impl --broadcast --private-key="${local_private_key}" {{disable_code_size_limit}}
 
     export DEPLOY_CONFIG={{csm_local_upgrade_config_path}}
 

@@ -28,10 +28,6 @@ contract CSModuleInvariants is InvariantsBase {
         assertModuleEnqueuedCount(module);
     }
 
-    function test_unusedStorageSlots() public noGasMetering {
-        assertModuleUnusedStorageSlots(module);
-    }
-
     function test_roles() public view {
         assertEq(module.getRoleMemberCount(module.DEFAULT_ADMIN_ROLE()), adminsCount, "default admin");
         assertTrue(module.hasRole(module.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent), "default admin address");

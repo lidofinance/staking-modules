@@ -39,9 +39,12 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 0);
     }
 
-    function test_unusedStorageSlots_onlyFull() public {
-        bytes32 slot1 = vm.load(address(module), bytes32(uint256(1)));
-        assertEq(slot1, bytes32(0), "assert __freeSlot1 is empty");
+    function test_slotsReusedForMappingsAreClean_onlyFull() public {
+        bytes32 slot3 = vm.load(address(module), bytes32(uint256(3)));
+        assertEq(slot3, bytes32(0), "assert slot3 is clean");
+
+        bytes32 slot4 = vm.load(address(module), bytes32(uint256(4)));
+        assertEq(slot4, bytes32(0), "assert slot4 is clean");
     }
 
     function test_roles_onlyFull() public view {

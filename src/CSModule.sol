@@ -66,11 +66,6 @@ contract CSModule is ICSModule, BaseModule {
         BaseModuleStorage storage $ = _baseStorage();
         // NOTE: Don't call `_initTopUpQueue` because it is disabled by default and existing CSM deployment can only support 0x01 validators mode.
 
-        assembly {
-            // clean slot `1` since it has old QueueLib.Queue struct data from _legacyQueue variable
-            sstore(1, 0x00)
-        }
-
         // NOTE: Rebuild the global withdrawn counter for the future.
         uint256 totalWithdrawnValidators;
         unchecked {
@@ -78,6 +73,7 @@ contract CSModule is ICSModule, BaseModule {
                 totalWithdrawnValidators += $.nodeOperators[i].totalWithdrawnKeys;
             }
         }
+        // The next statement writes to slot `1` replacing old QueueLib.Queue struct pointers.
         $.totalWithdrawnValidators = totalWithdrawnValidators;
         $.upToDateOperatorDepositInfoCount = $.nodeOperatorsCount;
     }

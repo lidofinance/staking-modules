@@ -13,11 +13,11 @@ abstract contract ModuleLinearStorage {
     struct BaseModuleStorage {
         /// @dev Having this mapping here to preserve the current layout of the storage of the CSModule.
         /* 0 */ mapping(uint256 priority => DepositQueueLib.Queue queue) depositQueueByPriority;
-        /* 1 */ mapping(uint256 noKeyIndexPacked => uint256) keyAllocatedBalance;
-        /* 2 */ mapping(uint256 noKeyIndexPacked => uint256) keyConfirmedBalance;
         /// @dev Total number of withdrawn validators reported for the module.
-        /* 3 */ uint256 totalWithdrawnValidators;
-        /* 4 */ uint256 upToDateOperatorDepositInfoCount;
+        /* 1 */ uint256 totalWithdrawnValidators;
+        /* 2 */ uint256 upToDateOperatorDepositInfoCount; /// XXX: the slot was used as a mapping in CSM v1 and v2.
+        /* 3 */ mapping(uint256 noKeyIndexPacked => uint256) keyAllocatedBalance;
+        /* 4 */ mapping(uint256 noKeyIndexPacked => uint256) keyConfirmedBalance;
         /* 5 */ uint256 nonce;
         /* 6 */ mapping(uint256 nodeOperatorId => NodeOperator) nodeOperators;
         /// @dev see KeyPointerLib.keyPointer function for details of noKeyIndexPacked structure
