@@ -31,6 +31,13 @@ Run everything from inside `ics_assessment/`.
 ```bash
 cd ics_assessment
 
+# export RPC URLs before sync
+export MAINNET_RPC_URL=...
+export HOODI_RPC_URL=...
+export ARBITRUM_RPC_URL=...
+export MAINNET_ARCHIVE_RPC_URL=...
+export HOODI_ARCHIVE_RPC_URL=...
+
 # refresh local artifacts
 python main.py sync all
 
@@ -44,6 +51,8 @@ The assessment reads local synced artifacts plus the remaining live lookups for:
 - Human Passport
 
 If API keys are not set, those values are entered manually.
+
+The configurable EVM RPC values in [config.py](./config.py) are read from environment variables. Export the RPC environment variables before running sync.
 
 ## Commands
 
@@ -85,11 +94,29 @@ export HUMAN_PASSPORT_API_KEY=...
 python main.py batch
 ```
 
+`batch` reads a fixed CSV input path: `ics_assessment/ics-forms.csv`.
+
+The expected CSV shape matches the export format from the ICS application form:
+[csm.lido.fi/type/ics-apply](https://csm.lido.fi/type/ics-apply)
+
+You can start from the template at [ics-forms.template.csv](./ics-forms.template.csv) and place the exported file at `ics_assessment/ics-forms.csv`.
+
 Batch paths are configured in [config.py](./config.py):
 
 - `BATCH_FORMS_PATH`
 - `BATCH_LOGS_DIR`
 - `BATCH_MAIN_ADDRESS_SUMMARY_PATH`
+
+Expected columns used by the batch processor:
+
+- `id`
+- `mainAddress`
+- `additionalAddresses`
+- `status`
+- `twitterLink`
+- `discordLink`
+- `twitterLinkComment`
+- `discordLinkComment`
 
 Example console output:
 
@@ -167,11 +194,13 @@ Environment variables used by sync:
 - archive RPCs for historical node-owner state:
   - `MAINNET_ARCHIVE_RPC_URL`
   - `HOODI_ARCHIVE_RPC_URL`
+  - if unset, they fall back to `MAINNET_RPC_URL` and `HOODI_RPC_URL`
 
 Operational note:
 
 - Infura has worked better for the common RPCs because it is less restrictive on large event/log fetch ranges.
 - Alchemy has worked better for archive RPCs used by historical node-owner state reads.
+- If sync exits before starting a target, export the required RPC env vars above and retry.
 
 ## Data Layout
 
@@ -180,6 +209,10 @@ Prepared artifacts live under:
 - `ics_assessment/engagement/data/`
 - `ics_assessment/experience/data/`
 - `ics_assessment/humanity/data/`
+
+Static imported experience inputs live under:
+
+- `ics_assessment/experience/static/`
 
 ## Data Sources
 
@@ -190,6 +223,7 @@ Static curated snapshots:
   - [StakeCat](https://github.com/Stake-Cat/Solo-Stakers/tree/main)
 - SSV verified operators
 - SDVTM participants
+- Holesky eligible addresses
 
 On-chain synced artifacts:
 

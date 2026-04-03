@@ -53,7 +53,7 @@ def write_lines(path: Path, values: Iterable[str]) -> None:
 def write_csv(path: Path, header: list[str], rows: list[list[str | int]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as file:
-        writer = csv.writer(file)
+        writer = csv.writer(file, lineterminator="\n")
         writer.writerow(header)
         writer.writerows(rows)
 
@@ -188,6 +188,33 @@ JOBS = {
     "circles": humanity_jobs.sync_circles,
 }
 
+def _target_rpc_values(target: str) -> list[tuple[str, str]]:
+    if target == "aragon" or target == "protocol-guild":
+        return [("MAINNET_RPC_URL", engagement_jobs.MAINNET_RPC_URL)]
+    if target == "obol-techne":
+        return [
+            ("ARBITRUM_RPC_URL", experience_jobs.ARBITRUM_RPC_URL),
+            ("MAINNET_RPC_URL", experience_jobs.MAINNET_RPC_URL),
+        ]
+    if target == "node-owners":
+        return [
+            ("MAINNET_ARCHIVE_RPC_URL", experience_jobs.MAINNET_ARCHIVE_RPC_URL),
+            ("HOODI_ARCHIVE_RPC_URL", experience_jobs.HOODI_ARCHIVE_RPC_URL),
+        ]
+    if target == "hoodi-eligible":
+        return [("HOODI_RPC_URL", experience_jobs.HOODI_RPC_URL)]
+    return []
+
+
+def _ensure_required_rpcs(target: str) -> None:
+    rpc_values = _target_rpc_values(target)
+    missing = [env_var for env_var, url in rpc_values if not url]
+    if missing:
+        raise SystemExit(
+            f"Sync target '{target}' requires configured RPC URLs. "
+            f"Export {', '.join(missing)} before running sync."
+        )
+
 
 def _expand_targets(targets: list[str]) -> list[str]:
     expanded: list[str] = []
@@ -215,6 +242,7 @@ def run_sync(targets: list[str], chunk_size: int | None = None) -> int:
     total = len(targets)
     for index, target in enumerate(targets, start=1):
         print(f"[sync] [{index}/{total}] starting {target}")
+        _ensure_required_rpcs(target)
         JOBS[target]()
         print(f"[sync] [{index}/{total}] finished {target}")
     return 0

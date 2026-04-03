@@ -180,6 +180,34 @@ def test_sync_ssv_verified_writes_holders(monkeypatch, tmp_path):
     ]
 
 
+def test_write_csv_uses_lf_line_endings(tmp_path):
+    mod = _load_module()
+    path = tmp_path / "out.csv"
+
+    mod.write_csv(path, ["Address", "VoteCount"], [["0xabc", 1]])
+
+    data = path.read_bytes()
+    assert b"\r\n" not in data
+    assert data == b"Address,VoteCount\n0xabc,1\n"
+
+
+def test_run_sync_requires_configured_rpc_env():
+    mod = _load_module()
+    mod.engagement_jobs.MAINNET_RPC_URL = ""
+    called = {"value": False}
+    mod.JOBS["aragon"] = lambda: called.__setitem__("value", True)
+
+    try:
+        mod.run_sync(["aragon"])
+    except SystemExit as exc:
+        message = str(exc)
+        assert "MAINNET_RPC_URL" in message
+        assert "before running sync" in message
+    else:
+        raise AssertionError("expected sync env validation")
+    assert called["value"] is False
+
+
 def test_request_performance_report_retries_then_succeeds(monkeypatch):
     mod = _load_module()
     calls = {"count": 0}

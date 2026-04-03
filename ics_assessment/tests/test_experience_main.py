@@ -20,6 +20,7 @@ def mod(tmp_path):
     mod.current_dir = Path(tmp_path)
     mod.sources = mod.ExperienceSources(
         data_dir=tmp_path,
+        static_dir=tmp_path,
         circles_group_members_path=tmp_path / "circle_group_members.csv",
         eligible_addresses_holesky_path=tmp_path / "eligible_addresses_holesky.json",
         eligible_node_operators_hoodi_path=tmp_path / "eligible_node_operators_hoodi.json",

@@ -24,27 +24,29 @@ from ics_assessment.experience.sources import (
 class ExperienceEvaluator:
     sources: ExperienceSources
 
-    def find_addresses_in_csv(self, addresses: set[str], csv_file: str) -> list[str]:
-        return csv_matches(addresses, csv_file, self.sources.data_dir)
+    def find_addresses_in_csv(self, addresses: set[str], csv_file: str, base_dir=None) -> list[str]:
+        return csv_matches(addresses, csv_file, base_dir or self.sources.data_dir)
 
-    def is_addresses_in_csv(self, addresses: set[str], csv_file: str) -> bool:
+    def is_addresses_in_csv(self, addresses: set[str], csv_file: str, base_dir=None) -> bool:
         """
         Returns True if any address in `addresses` is found in the first column of the given CSV file.
         The CSV file should contain a single column with addresses or a header with 'Address'.
         """
-        return bool(self.find_addresses_in_csv(addresses, csv_file))
+        return bool(self.find_addresses_in_csv(addresses, csv_file, base_dir=base_dir))
 
-    def _safe_csv_matches(self, addresses: set[str], csv_files: list[str]) -> str | None:
+    def _safe_csv_matches(self, addresses: set[str], csv_files: list[str], base_dir=None) -> str | None:
         matches: list[str] = []
         try:
             for csv_file in csv_files:
-                matches.extend(self.find_addresses_in_csv(addresses, csv_file))
+                matches.extend(self.find_addresses_in_csv(addresses, csv_file, base_dir=base_dir))
         except FileNotFoundError:
             return None
         return truncate(matches) if matches else None
 
-    def _csv_outcome(self, addresses: set[str], csv_files: list[str], score: int) -> CheckOutcome:
-        detail = self._safe_csv_matches(addresses, csv_files)
+    def _csv_outcome(
+        self, addresses: set[str], csv_files: list[str], score: int, base_dir=None
+    ) -> CheckOutcome:
+        detail = self._safe_csv_matches(addresses, csv_files, base_dir=base_dir)
         if detail:
             return CheckOutcome(score=score, detail=detail)
         return CheckOutcome(score=0)
@@ -70,7 +72,12 @@ class ExperienceEvaluator:
         """
         Returns the score for EthStaker solo-staker list if any address is present, otherwise 0.
         """
-        return self._csv_outcome(addresses, ["eth-staker-solo-stakers.csv"], EXPERIENCE_SCORES["eth-staker"])
+        return self._csv_outcome(
+            addresses,
+            ["eth-staker-solo-stakers.csv"],
+            EXPERIENCE_SCORES["eth-staker"],
+            base_dir=self.sources.static_dir,
+        )
 
     def stake_cat_score(self, addresses: set[str]) -> CheckOutcome:
         """
@@ -84,6 +91,7 @@ class ExperienceEvaluator:
                 "stake-cat-rocketpool-solo-stakers.csv",
             ],
             EXPERIENCE_SCORES["stake-cat"],
+            base_dir=self.sources.static_dir,
         )
 
     def obol_techne_score(self, addresses: set[str]) -> CheckOutcome:
@@ -111,10 +119,18 @@ class ExperienceEvaluator:
         """
         Returns the score for SDVTM participation if any address is eligible, otherwise 0.
         """
-        mainnet = self._safe_csv_matches(addresses, ["sdvtm-mainnet.csv"])
+        mainnet = self._safe_csv_matches(
+            addresses,
+            ["sdvtm-mainnet.csv"],
+            base_dir=self.sources.static_dir,
+        )
         if mainnet:
             return CheckOutcome(score=EXPERIENCE_SCORES["sdvtm-mainnet"], detail=mainnet)
-        testnet = self._safe_csv_matches(addresses, ["sdvtm-testnet.csv"])
+        testnet = self._safe_csv_matches(
+            addresses,
+            ["sdvtm-testnet.csv"],
+            base_dir=self.sources.static_dir,
+        )
         if testnet:
             return CheckOutcome(score=EXPERIENCE_SCORES["sdvtm-testnet"], detail=testnet)
         return CheckOutcome(score=0)

@@ -8,6 +8,7 @@ from ics_assessment.data_utils import read_csv_rows
 @dataclass(frozen=True)
 class ExperienceSources:
     data_dir: Path
+    static_dir: Path
     circles_group_members_path: Path
     eligible_addresses_holesky_path: Path
     eligible_node_operators_hoodi_path: Path

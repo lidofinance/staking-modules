@@ -8,6 +8,7 @@ from ics_assessment.config import (
     ELIGIBLE_ADDRESSES_HOLESKY_PATH,
     ELIGIBLE_NODE_OPERATORS_HOODI_PATH,
     ELIGIBLE_NODE_OPERATORS_MAINNET_PATH,
+    EXPERIENCE_STATIC_DIR,
     ENGAGEMENT_SCORES,
     EXPERIENCE_DATA_DIR,
     EXPERIENCE_SCORES,
@@ -37,6 +38,7 @@ ENGAGEMENT_SOURCES = EngagementSources(
 ENGAGEMENT_EVALUATOR = EngagementEvaluator(ENGAGEMENT_SOURCES)
 EXPERIENCE_SOURCES = ExperienceSources(
     data_dir=EXPERIENCE_DATA_DIR,
+    static_dir=EXPERIENCE_STATIC_DIR,
     circles_group_members_path=CIRCLE_GROUP_MEMBERS_PATH,
     eligible_addresses_holesky_path=ELIGIBLE_ADDRESSES_HOLESKY_PATH,
     eligible_node_operators_hoodi_path=ELIGIBLE_NODE_OPERATORS_HOODI_PATH,
@@ -94,7 +96,7 @@ def test_static_protocol_guild_uses_prepared_data():
 
 
 def test_static_eth_staker_uses_prepared_data():
-    address = _first_csv_row(ROOT / "experience/data/eth-staker-solo-stakers.csv")[0].strip().lower()
+    address = _first_csv_row(ROOT / "experience/static/eth-staker-solo-stakers.csv")[0].strip().lower()
 
     outcome = EXPERIENCE_EVALUATOR.eth_staker_score({address})
 
@@ -103,7 +105,7 @@ def test_static_eth_staker_uses_prepared_data():
 
 
 def test_static_stake_cat_uses_prepared_data():
-    address = _first_csv_row(ROOT / "experience/data/stake-cat-solo-B.csv")[0].strip().lower()
+    address = _first_csv_row(ROOT / "experience/static/stake-cat-solo-B.csv")[0].strip().lower()
 
     outcome = EXPERIENCE_EVALUATOR.stake_cat_score({address})
 
@@ -130,7 +132,7 @@ def test_static_ssv_verified_uses_prepared_data():
 
 
 def test_static_sdvtm_uses_prepared_data():
-    address = _first_csv_row(ROOT / "experience/data/sdvtm-mainnet.csv")[0].strip().lower()
+    address = _first_csv_row(ROOT / "experience/static/sdvtm-mainnet.csv")[0].strip().lower()
 
     outcome = EXPERIENCE_EVALUATOR.sdvtm_score({address})
 

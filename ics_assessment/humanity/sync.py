@@ -5,6 +5,7 @@ from ics_assessment.config import (
     CIRCLE_GROUP_MEMBERS_PATH,
     DEFAULT_SAFE_OWNER,
     GNOSIS_RPC_URL,
+    GNOSIS_CUTOFF_BLOCK,
     GROUP_ADDRESS,
     GROUP_CREATION_BLOCK,
 )
@@ -17,10 +18,13 @@ def sync_circles() -> None:
         address=w3.to_checksum_address(GROUP_ADDRESS),
         abi=GROUP_ABI,
     )
-    hub_address = group_contract.functions.HUB().call()
+    hub_address = group_contract.functions.HUB().call(
+        block_identifier=GNOSIS_CUTOFF_BLOCK
+    )
     hub_contract = w3.eth.contract(address=w3.to_checksum_address(hub_address), abi=HUB_ABI)
     events = hub_contract.events.Trust.create_filter(
         from_block=GROUP_CREATION_BLOCK,
+        to_block=GNOSIS_CUTOFF_BLOCK,
         argument_filters={"truster": w3.to_checksum_address(GROUP_ADDRESS)},
     ).get_all_entries()
     trustees = {
@@ -32,7 +36,9 @@ def sync_circles() -> None:
     circle_addresses: set[str] = set()
     for trustee in trustees:
         safe_contract = w3.eth.contract(address=Web3.to_checksum_address(trustee), abi=SAFE_ABI)
-        owners = safe_contract.functions.getOwners().call()
+        owners = safe_contract.functions.getOwners().call(
+            block_identifier=GNOSIS_CUTOFF_BLOCK
+        )
         for owner in owners:
             if owner.lower() != DEFAULT_SAFE_OWNER.lower():
                 circle_addresses.add(owner.lower())
