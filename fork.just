@@ -189,7 +189,7 @@ seed-operators:
     just deposit-keys 1
     just add-keys 1 1
     just activate-keys 0 1
-    just key-topup 0 1 1968
+    just key-topup 0 0 1968
 
 _impersonate-script *args:
     curl -sS {{anvil_rpc_url}} --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"anvil_autoImpersonateAccount","params":[true],"id":1}' > /dev/null
