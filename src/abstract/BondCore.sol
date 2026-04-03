@@ -259,6 +259,11 @@ abstract contract BondCore is IBondCore {
         if (debt == 0) return;
         uint256 notBurnedDebt = _burnWithoutCreatingDebt(nodeOperatorId, debt);
 
+        // Write off sub-share dust that can never be converted to shares and burned
+        if (notBurnedDebt > 0 && _sharesByEth(notBurnedDebt) == 0) {
+            notBurnedDebt = 0;
+        }
+
         $.bondDebt[nodeOperatorId] = notBurnedDebt;
         emit BondDebtCovered(nodeOperatorId, debt - notBurnedDebt);
     }
