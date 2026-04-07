@@ -15,6 +15,7 @@ The methodology, scoring, and source rationale are described in the correspondin
 - Python 3.10+
 - `requests`
 - `web3`
+- `python-dotenv`
 
 Install:
 
@@ -26,11 +27,32 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-Run everything from inside `ics_assessment/`.
+> Run everything from inside `ics_assessment/`.
+
+### 1. Update Config
+
+When the assessment window changes, update [config.py](./config.py) first.
+
+Commonly edited constants:
+
+- cutoff blocks:
+  - `MAINNET_CUTOFF_BLOCK`
+  - `HOODI_CUTOFF_BLOCK`
+  - `ARBITRUM_CUTOFF_BLOCK`
+  - `GNOSIS_CUTOFF_BLOCK`
+- Snapshot cutoff:
+  - `SNAPSHOT_VOTE_TIMESTAMP`
+- High Signal window:
+  - `HIGH_SIGNAL_START_DATE`
+  - `HIGH_SIGNAL_END_DATE`
+- mainnet performance inputs:
+  - `MAINNET_PERFORMANCE_REPORT_CIDS`
+
+### 2. Sync Artifacts
+
+All env variables can be set in a `.env` file at the root of `ics_assessment/` or exported in the shell before running sync.
 
 ```bash
-cd ics_assessment
-
 # export RPC URLs before sync
 export MAINNET_RPC_URL=...
 export HOODI_RPC_URL=...
@@ -40,15 +62,31 @@ export HOODI_ARCHIVE_RPC_URL=...
 
 # refresh local artifacts
 python main.py sync all
+```
 
-# run assessment
+One may wish to commit updated artifacts before committing the final assessment results.
+
+### 3. Run Assessments
+
+```bash
 python main.py assess 0xabc... 0xdef...
+```
+
+or legacy version
+
+```bash
+python main.py 0xabc... 0xdef...
 ```
 
 The assessment reads local synced artifacts plus the remaining live lookups for:
 
 - High Signal
 - Human Passport
+
+```bash
+export HIGH_SIGNAL_API_KEY=...
+export HUMAN_PASSPORT_API_KEY=...
+```
 
 If API keys are not set, those values are entered manually.
 
@@ -62,11 +100,24 @@ The configurable EVM RPC values in [config.py](./config.py) are read from enviro
 python main.py assess 0xabc... 0xdef...
 ```
 
-### Sync
+or legacy version
 
 ```bash
+python main.py 0xabc... 0xdef...
+```
+
+### Sync
+
+Examples:
+
+```bash
+# Sync all sources
 python main.py sync all
+
+# Sync selective sources
 python main.py sync snapshot galxe gitpoap
+
+# Sync with a custom chunk size
 python main.py sync --chunk-size 50000 aragon
 ```
 
@@ -85,45 +136,6 @@ Supported sync targets:
 - `hoodi-eligible`
 - `circles`
 
-### Batch
-
-```bash
-cd ics_assessment
-export HIGH_SIGNAL_API_KEY=...
-export HUMAN_PASSPORT_API_KEY=...
-python main.py batch
-```
-
-`batch` reads a fixed CSV input path: `ics_assessment/ics-forms.csv`.
-
-The expected CSV shape matches the export format from the ICS application form:
-[csm.lido.fi/type/ics-apply](https://csm.lido.fi/type/ics-apply)
-
-You can start from the template at [ics-forms.template.csv](./ics-forms.template.csv) and place the exported file at `ics_assessment/ics-forms.csv`.
-
-Batch paths are configured in [config.py](./config.py):
-
-- `BATCH_FORMS_PATH`
-- `BATCH_LOGS_DIR`
-- `BATCH_MAIN_ADDRESS_SUMMARY_PATH`
-
-Expected columns used by the batch processor:
-
-- `id`
-- `mainAddress`
-- `additionalAddresses`
-- `status`
-- `twitterLink`
-- `discordLink`
-- `twitterLinkComment`
-- `discordLinkComment`
-
-Example console output:
-
-```text
-[#62] APPROVED | main 0x23fb…aa76 | addrs 1 | EXP 6, HUM 8, ENG 7 | total 21 | eligible YES | log logs/62.log
-```
-
 ## Updating Assessment Data
 
 When the assessment window changes, update [config.py](./config.py) first, then resync artifacts.
@@ -141,7 +153,7 @@ Commonly edited constants:
   - `HIGH_SIGNAL_END_DATE`
 - mainnet performance inputs:
   - `MAINNET_PERFORMANCE_REPORT_CIDS`
-  - `REQUIRED_PERFORMANCE_WINDOW`
+  - `REQUIRED_PERFORMANCE_WINDOW_HOODI`
 
 Typical refresh flow:
 
@@ -183,6 +195,47 @@ Important sync outputs:
 
 The assessment now reads compact eligible-node artifacts for both mainnet and Hoodi CSM checks. Raw mainnet performance report JSON files are not needed at runtime.
 
+### Batch assessment
+
+Make sure that the assessment data is up to date by syncing the relevant sources, then run:
+
+```bash
+cd ics_assessment
+export HIGH_SIGNAL_API_KEY=...
+export HUMAN_PASSPORT_API_KEY=...
+python main.py batch
+```
+
+`batch` reads a fixed CSV input path: `ics_assessment/ics-forms.csv`.
+
+The expected CSV shape matches the export format from the ICS application form:
+[csm.lido.fi/type/ics-apply](https://csm.lido.fi/type/ics-apply)
+
+You can start from the template at [ics-forms.template.csv](./ics-forms.template.csv) and place the exported file at `ics_assessment/ics-forms.csv`.
+
+Batch paths are configured in [config.py](./config.py):
+
+- `BATCH_FORMS_PATH`
+- `BATCH_LOGS_DIR`
+- `BATCH_MAIN_ADDRESS_SUMMARY_PATH`
+
+Expected columns used by the batch processor:
+
+- `id`
+- `mainAddress`
+- `additionalAddresses`
+- `status`
+- `twitterLink`
+- `discordLink`
+- `twitterLinkComment`
+- `discordLinkComment`
+
+Example console output:
+
+```text
+[#62] APPROVED | main 0x23fb…aa76 | addrs 1 | EXP 6, HUM 8, ENG 7 | total 21 | eligible YES | log logs/62.log
+```
+
 ## RPC Guidance
 
 Environment variables used by sync:
@@ -219,8 +272,8 @@ Static imported experience inputs live under:
 Static curated snapshots:
 
 - Experience community lists:
-  - [EthStaker](https://github.com/ethstaker/solo-stakers)
-  - [StakeCat](https://github.com/Stake-Cat/Solo-Stakers/tree/main)
+  - [EthStaker](https://github.com/ethstaker/solo-stakers/blob/main/solos_list/solo_stakers_v2.csv)
+  - [StakeCat](https://github.com/Stake-Cat/Solo-Stakers/tree/main) ([Solo-Stakers-B.csv](https://github.com/Stake-Cat/Solo-Stakers/blob/main/Solo-Stakers/Solo-Stakers-B.csv), [Rocketpool-Solo-Stakers.csv](https://github.com/Stake-Cat/Solo-Stakers/blob/main/Solo-Stakers/Rocketpool-Solo-Stakers.csv), [Gnosischain-Solo-Stakers.csv](https://github.com/Stake-Cat/Solo-Stakers/blob/main/Gnosischain/Gnosischain-Solo-Stakers.csv))
 - SSV verified operators
 - SDVTM participants
 - Holesky eligible addresses
@@ -234,8 +287,7 @@ On-chain synced artifacts:
 - Protocol Guild holders
 - Obol Techne holders
 - Circles members
-- node-operator owners
-- derived CSM eligible operator lists
+- CSM good performing operator lists
 
 Live at runtime:
 
