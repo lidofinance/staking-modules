@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 import time
+import math
 
 import requests
 
@@ -37,7 +38,7 @@ def fetch_human_passport_max(addresses: set[str], api_key: str | None) -> tuple[
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         payload = response.json() if getattr(response, "content", None) else response.json()
-        score = float(payload.get("score", 0) or 0)
+        score = math.floor(float(payload.get("score", 0) or 0))
         if score > best_score:
             best_score = score
             best_address = address

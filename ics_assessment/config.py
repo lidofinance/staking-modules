@@ -1,7 +1,9 @@
 import os
 from datetime import datetime
 from pathlib import Path
+from dotenv import load_dotenv
 
+load_dotenv()
 
 # Campaign cutoffs and windows.
 MAINNET_CUTOFF_BLOCK = 24293769
@@ -14,7 +16,7 @@ SNAPSHOT_VOTE_TIMESTAMP = 1769122800
 HIGH_SIGNAL_START_DATE = datetime(2025, 9, 1)
 HIGH_SIGNAL_END_DATE = datetime(2026, 1, 23)
 
-REQUIRED_PERFORMANCE_WINDOW = 53
+REQUIRED_PERFORMANCE_WINDOW_HOODI = 53
 MAINNET_PERFORMANCE_REPORT_CIDS = [
     "QmdjvGW2yT8dgvK88sDaA9KFpmxTBxayLP6R1wm5mmzCnP",
     "QmaaokMVEPoEPcoMzVN5EtMuauTLfLnGZAkwma7nkpRCK4",

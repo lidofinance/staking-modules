@@ -15,7 +15,7 @@ from ics_assessment.config import (
     HOODI_FEE_DISTRIBUTOR_ADDRESS,
     HOODI_FEE_DISTRIBUTOR_FROM_BLOCK,
     HOODI_RPC_URL,
-    REQUIRED_PERFORMANCE_WINDOW,
+    REQUIRED_PERFORMANCE_WINDOW_HOODI,
 )
 from ics_assessment.sync import get_raw_logs
 RPC_URL: str = HOODI_RPC_URL
@@ -131,7 +131,7 @@ def extract_frame_epochs(report: dict) -> Tuple[Optional[int], Optional[int]]:
 
 def evaluate_eligibility_window(
     reports: List[Tuple[ReportMeta, dict]],
-    min_days: int = REQUIRED_PERFORMANCE_WINDOW,
+    min_days: int = REQUIRED_PERFORMANCE_WINDOW_HOODI,
 ) -> Set[str]:
     """
     Determine operators that accumulate at least min_days of GOOD performance
@@ -223,7 +223,7 @@ def main() -> int:
     # Sort by epoch start
     reports_with_meta.sort(key=lambda x: x[0].start_epoch)
 
-    eligible = evaluate_eligibility_window(reports_with_meta, min_days=REQUIRED_PERFORMANCE_WINDOW)
+    eligible = evaluate_eligibility_window(reports_with_meta, min_days=REQUIRED_PERFORMANCE_WINDOW_HOODI)
     write_eligible_file(sorted(eligible), OUTPUT_PATH)
     print(f"Wrote {len(eligible)} eligible operators to {OUTPUT_PATH}")
     return 0
