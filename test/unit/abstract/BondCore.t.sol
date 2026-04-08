@@ -611,6 +611,27 @@ contract BondCoreBurnTest is BondCoreTestBase {
         assertEq(bondCore.getBondDebt(0), 1 ether, "debt should be 1 ether");
     }
 
+    function test_burn_dust_NoDebtCreated() public {
+        uint256 dustAmount = stETH.totalPooledEther() / stETH.totalShares();
+        assertEq(stETH.getSharesByPooledEth(dustAmount), 0);
+        assertGt(dustAmount, 0);
+
+        bondCore.burn(0, dustAmount);
+        assertEq(bondCore.getBondDebt(0), 0, "debt should zero");
+    }
+
+    function test_burn_MoreThanDepositByDust_NoDebtCreated() public {
+        uint256 deposit = 32 ether;
+        _deposit(deposit);
+
+        uint256 dustAmount = stETH.totalPooledEther() / stETH.totalShares();
+        assertEq(stETH.getSharesByPooledEth(dustAmount), 0);
+        assertGt(dustAmount, 0);
+
+        bondCore.burn(0, deposit + dustAmount);
+        assertEq(bondCore.getBondDebt(0), 0, "debt should zero");
+    }
+
     function test_burn_EqualToDeposit() public {
         _deposit(32 ether);
 
@@ -801,21 +822,5 @@ contract BondCoreDebtTest is BondCoreTestBase {
         // Verify no events were emitted
         assertEq(logs.length, 0, "no events should be emitted when no bond to cover debt");
         assertEq(bondCore.getBondDebt(0), debt);
-    }
-
-    function test_coverBondDebt_allowsToCoverDust() public {
-        uint256 dustAmount = stETH.totalPooledEther() / stETH.totalShares();
-        assertEq(stETH.getSharesByPooledEth(dustAmount), 0);
-        assertGt(dustAmount, 0);
-
-        bondCore.burn(0, dustAmount);
-        assertEq(bondCore.getBondDebt(0), dustAmount, "debt should equal dustAmount");
-
-        uint256 sharesToIncrease = _prepareForIncreaseBond(0, 10 ether);
-        vm.expectEmit(address(bondCore));
-        emit IBondCore.BondDebtCovered(0, dustAmount);
-        bondCore.creditBondShares(0, sharesToIncrease);
-
-        assertEq(bondCore.getBondDebt(0), 0, "dust debt should be covered");
     }
 }
