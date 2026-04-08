@@ -113,7 +113,7 @@ abstract contract BondCoreTestBase is Test, Fixtures, Utilities {
         bondCore.depositETH{ value: bond }(user, 0);
     }
 
-    function _prepareForIncreaseBond(uint256 nodeOperatorId, uint256 amount) internal returns (uint256 mintedShares) {
+    function _prepareForIncreaseBond(uint256 amount) internal returns (uint256 mintedShares) {
         vm.deal(address(this), amount);
         mintedShares = stETH.submit{ value: amount }(address(0));
         stETH.transferShares(address(bondCore), mintedShares);
@@ -761,7 +761,7 @@ contract BondCoreDebtTest is BondCoreTestBase {
         bondCore.burn(0, debt);
         assertEq(bondCore.getBondDebt(0), debt);
 
-        uint256 sharesToIncrease = _prepareForIncreaseBond(0, 10 ether);
+        uint256 sharesToIncrease = _prepareForIncreaseBond(10 ether);
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondDebtCovered(0, debt);
         bondCore.creditBondShares(0, sharesToIncrease);
@@ -775,7 +775,7 @@ contract BondCoreDebtTest is BondCoreTestBase {
         assertEq(bondCore.getBondDebt(0), debt);
 
         uint256 bondAmount = 5 ether;
-        uint256 sharesToIncrease = _prepareForIncreaseBond(0, bondAmount);
+        uint256 sharesToIncrease = _prepareForIncreaseBond(bondAmount);
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondDebtCovered(0, bondAmount);
         bondCore.creditBondShares(0, sharesToIncrease);
@@ -787,7 +787,7 @@ contract BondCoreDebtTest is BondCoreTestBase {
         assertEq(bondCore.getBondDebt(0), 0);
 
         uint256 bondAmount = 10 ether;
-        uint256 sharesToIncrease = _prepareForIncreaseBond(0, bondAmount);
+        uint256 sharesToIncrease = _prepareForIncreaseBond(bondAmount);
 
         // Should not emit any events when there is no debt
         vm.recordLogs();
