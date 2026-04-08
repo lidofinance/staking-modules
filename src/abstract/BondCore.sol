@@ -259,7 +259,7 @@ abstract contract BondCore is IBondCore {
             notBurnedAmount = 0;
         }
 
-        emit BondBurned(nodeOperatorId, amountToBurn, amountBurned);
+        emit BondBurned(nodeOperatorId, amountBurned);
     }
 
     function _coverBondDebt(uint256 nodeOperatorId) private {
