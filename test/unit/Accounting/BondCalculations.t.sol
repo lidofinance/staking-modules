@@ -572,7 +572,7 @@ contract LockBondTest is BaseTest {
         assertEq(bondLockAfter.amount, 0);
         assertEq(bondLockAfter.until, 0);
         assertEq(accounting.getBondShares(noId), 0);
-        assertApproxEqAbs(accounting.getBondDebt(noId), amount, 1);
+        assertEq(accounting.getBondDebt(noId), amount);
     }
 
     function test_settleLockedBond_partialBurn_bondDebtCreated() public assertInvariants {

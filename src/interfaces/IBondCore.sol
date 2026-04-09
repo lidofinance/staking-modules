@@ -15,7 +15,7 @@ interface IBondCore {
     event BondClaimedUnstETH(uint256 indexed nodeOperatorId, address to, uint256 amount, uint256 requestId);
     event BondClaimedStETH(uint256 indexed nodeOperatorId, address to, uint256 amount);
     event BondClaimedWstETH(uint256 indexed nodeOperatorId, address to, uint256 amount);
-    event BondBurned(uint256 indexed nodeOperatorId, uint256 amountToBurn, uint256 burnedAmount);
+    event BondBurned(uint256 indexed nodeOperatorId, uint256 burnedAmount);
     event BondCharged(uint256 indexed nodeOperatorId, uint256 amountToCharge, uint256 chargedAmount);
     event BondDebtIncreased(uint256 indexed nodeOperatorId, uint256 amount);
     event BondDebtCovered(uint256 indexed nodeOperatorId, uint256 amount);

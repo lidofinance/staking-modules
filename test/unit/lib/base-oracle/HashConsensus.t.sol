@@ -1047,6 +1047,65 @@ contract HashConsensusSetQuorumTest is HashConsensusBase {
         assertEq(consensus.getQuorum(), 3);
     }
 
+    function test_setQuorum_sameValue() public {
+        vm.startPrank(manager);
+        consensus.addMember(member1, 1);
+        consensus.addMember(member2, 2);
+        consensus.addMember(member3, 2);
+        vm.expectEmit(address(consensus));
+        emit HashConsensus.QuorumSet(3, 3, 2);
+        consensus.setQuorum(3);
+        vm.stopPrank();
+
+        vm.recordLogs();
+        vm.prank(manager);
+        consensus.setQuorum(3);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 0);
+
+        assertEq(consensus.getQuorum(), 3);
+    }
+
+    function test_setQuorum_sameValueAsStranger() public {
+        vm.startPrank(manager);
+        consensus.addMember(member1, 1);
+        consensus.addMember(member2, 2);
+        consensus.addMember(member3, 2);
+        vm.stopPrank();
+
+        // Reach consensus so _checkConsensus has a non-trivial state
+        (uint256 refSlot, ) = consensus.getCurrentFrame();
+        vm.prank(member1);
+        consensus.submitReport(refSlot, keccak256("HASH_1"), CONSENSUS_VERSION);
+        vm.prank(member2);
+        consensus.submitReport(refSlot, keccak256("HASH_1"), CONSENSUS_VERSION);
+
+        (, bytes32 consensusReport, ) = consensus.getConsensusState();
+        assertEq(consensusReport, keccak256("HASH_1"), "precondition: consensus should be reached");
+        assertEq(consensus.getQuorum(), 2);
+
+        vm.recordLogs();
+        vm.prank(stranger);
+        consensus.setQuorum(2);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 0);
+        assertEq(consensus.getQuorum(), 2);
+
+        // Raise quorum to lose consensus (only 2 of 3 reported, now need 3)
+        vm.expectEmit(address(consensus));
+        emit HashConsensus.ConsensusLost(refSlot);
+        vm.prank(manager);
+        consensus.setQuorum(3);
+        assertEq(consensus.getQuorum(), 3);
+
+        vm.recordLogs();
+        vm.prank(stranger);
+        consensus.setQuorum(3);
+        logs = vm.getRecordedLogs();
+        assertEq(logs.length, 0);
+        assertEq(consensus.getQuorum(), 3);
+    }
+
     function test_setQuorum_afterCurrentDeadline() public {
         vm.startPrank(manager);
         consensus.addMember(member1, 1);
