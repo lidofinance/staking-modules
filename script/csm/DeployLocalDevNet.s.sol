@@ -105,8 +105,8 @@ contract DeployLocalDevNet is DeployBase {
         config.identifiedCommunityStakersGateMaxElWithdrawalRequestFee = 0.1 ether;
 
         // CircuitBreaker
-        config.circuitBreaker = address(0x63697263756974627265616b6572); // TODO: Set real CircuitBreaker address
-        config.circuitBreakerPauser = address(0x63697263756974627265616b6572); // TODO: Set real pauser address
+        config.circuitBreaker = address(0);
+        config.circuitBreakerPauser = address(0);
 
         // DG
         config.resealManager = vm.envAddress("CSM_RESEAL_MANAGER_ADDRESS");
