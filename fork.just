@@ -72,6 +72,9 @@ get-last-operator:
 operator-info noId:
     just _read-script NodeOperators --sig="operatorInfo\(uint256\)" -- {{noId}}
 
+bond-info noId:
+    just _read-script NodeOperators --sig="bondInfo\(uint256\)" -- {{noId}}
+
 add-keys noId keysCount:
     just _impersonate-script NodeOperators --sig="addKeys\(uint256,uint256\)" -- {{noId}} {{keysCount}}
 
@@ -139,6 +142,31 @@ create-bond-debt noId amountEth:
 warp days:
     cast rpc --rpc-url={{anvil_rpc_url}} evm_increaseTime $(( {{days}} * 86400 )) > /dev/null && cast rpc --rpc-url={{anvil_rpc_url}} evm_mine > /dev/null
 
+# Take an anvil snapshot; prints its id
+snapshot:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    id=$(cast rpc --rpc-url={{anvil_rpc_url}} evm_snapshot | tr -d '"')
+    echo "snapshot: $id"
+
+# Revert to the latest snapshot (or an explicit id) and take a fresh one
+revert id="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    rpc="{{anvil_rpc_url}}"
+    id="{{id}}"
+    if [[ -z "$id" ]]; then
+      probe=$(cast rpc --rpc-url="$rpc" evm_snapshot | tr -d '"')
+      id=$(printf '0x%x' $(( probe - 1 )))
+    fi
+    ok=$(cast rpc --rpc-url="$rpc" evm_revert "$id" | tr -d '"')
+    if [[ "$ok" != "true" ]]; then
+      echo "error: evm_revert failed for id $id (no prior snapshot?)" >&2
+      exit 1
+    fi
+    new_id=$(cast rpc --rpc-url="$rpc" evm_snapshot | tr -d '"')
+    echo "reverted to $id; new snapshot: $new_id"
+
 activate-keys noId count:
     just _impersonate-script NodeOperators --sig="activateKeys\(uint256,uint256\)" -- {{noId}} {{count}}
 
@@ -176,20 +204,29 @@ reset-operator-group noId:
 set-bond-curve-weight curveId weight:
     just _impersonate-script MetaRegistryHelpers --sig="setBondCurveWeight\(uint256,uint256\)" -- {{curveId}} {{weight}}
 
-# Seed scenario: 3 operators in 1 group, mixed key states
-# - operator 0: 1 active key with 2000 ETH allocated
-# - operator 1: 1 depositable key
-# - operator 2: no keys
-seed-operators:
+seed-cm:
     just create-curated-operator 0
     just create-curated-operator 1
     just create-curated-operator 2
     just create-operator-group 0 34 1 33 2 33
-    just add-keys 0 1
-    just deposit-keys 1
+    just add-keys 0 5
+    just deposit-keys 5
     just add-keys 1 1
     just activate-keys 0 1
-    just key-topup 0 0 1968
+    just key-topup 0 0 2016
+    just key-topup 0 1 2016
+    just key-topup 0 2 2016
+    just key-topup 0 3 1968
+
+report-rewards:
+    just make-rewards
+    just submit-rewards
+
+make-rewards:
+    ANVIL_RPC_URL={{anvil_rpc_url}} node script/mock-rewards.mjs
+
+submit-rewards:
+    just _impersonate-script OracleReport --sig="submitRewards" --skip-simulation
 
 _impersonate-script *args:
     curl -sS {{anvil_rpc_url}} --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"anvil_autoImpersonateAccount","params":[true],"id":1}' > /dev/null

@@ -38,4 +38,10 @@ contract ForkHelpersCommon is Script, DeploymentFixtures {
             vm.deal(account, expectedBalance);
         }
     }
+
+    function _warp(uint256 ts) internal {
+        vm.rpc("evm_setNextBlockTimestamp", string.concat("[", vm.toString(ts), "]"));
+        vm.rpc("evm_mine", "[]");
+        vm.warp(ts);
+    }
 }

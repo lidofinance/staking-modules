@@ -10,9 +10,13 @@
 
 set -e
 
+# Load .env (replicates direnv's dotenv_if_exists)
+set -a; [ -f "$(dirname "$0")/.env" ] && . "$(dirname "$0")/.env"; set +a
+
 # Configuration
-RPC_URL="${RPC_URL:-http://127.0.0.1:8545}"
-CM_DEPLOY_CONFIG="${DEPLOY_CONFIG:-./artifacts/local/curated/deploy-hoodi.json}"
+RPC_URL="${ANVIL_RPC_URL:-http://127.0.0.1:8545}"
+ARTIFACTS_DIR="${ARTIFACTS_DIR:-./artifacts/local/}"
+CM_DEPLOY_CONFIG="${DEPLOY_CONFIG:-$ARTIFACTS_DIR/curated/deploy-hoodi.json}"
 
 # Preload package to avoid prompts during loop
 echo ">>> Preloading csm-test-tree package..."

@@ -11,9 +11,14 @@
 
 set -e
 
+# Load .env (replicates direnv's dotenv_if_exists)
+set -a; [ -f "$(dirname "$0")/.env" ] && . "$(dirname "$0")/.env"; set +a
+
 # Configuration
-RPC_URL="${RPC_URL:-http://127.0.0.1:8545}"
+RPC_URL="${ANVIL_RPC_URL:-http://127.0.0.1:8545}"
 export RPC_URL
+ARTIFACTS_DIR="${ARTIFACTS_DIR:-./artifacts/local/}"
+export ARTIFACTS_DIR
 
 LOCAL_PK=$(just _local-private-key)
 SENDER=$(cast wallet address "$LOCAL_PK")
@@ -83,13 +88,13 @@ CSM_VERSION=$(cast call "$CSM_PROXY" "getInitializedVersion()(uint64)" --rpc-url
 if [ "$CSM_VERSION" -lt 3 ]; then
   echo ">>> Deploying CSM v3 implementations..."
   SKIP_LEGACY_QUEUE_CHECK=1 \
-  ARTIFACTS_DIR=./artifacts/local/ \
+  ARTIFACTS_DIR="$ARTIFACTS_DIR" \
     just deploy-csm-impl --broadcast --private-key="$LOCAL_PK"
   echo "Done"
   echo ""
 
   echo ">>> Executing CSM v3 proxy upgrades..."
-  UPGRADE_CONFIG=./artifacts/local/upgrade-hoodi.json
+  UPGRADE_CONFIG="$ARTIFACTS_DIR/upgrade-hoodi.json"
 
   # Precompute finalize calldata
   FINALIZE_V3=$(cast calldata "finalizeUpgradeV3()")
@@ -175,12 +180,12 @@ echo ""
 
 # Step 2: CM v2 Deployment
 echo ">>> Deploying CM v2..."
-ARTIFACTS_DIR=./artifacts/local/curated/ just deploy-curated --silent --private-key="$LOCAL_PK"
+ARTIFACTS_DIR="$ARTIFACTS_DIR/curated/" just deploy-curated --silent --private-key="$LOCAL_PK"
 echo "Done"
 echo ""
 
 echo ">>> Executing CM add module vote..."
-DEPLOY_CONFIG=./artifacts/local/curated/deploy-hoodi.json just vote-add-curated-module
+DEPLOY_CONFIG="$ARTIFACTS_DIR/curated/deploy-hoodi.json" just vote-add-curated-module
 echo "Done"
 echo ""
 

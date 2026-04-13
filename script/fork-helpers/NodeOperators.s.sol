@@ -5,6 +5,7 @@ pragma solidity 0.8.33;
 
 import { Script, console } from "forge-std/Script.sol";
 
+import { IAccounting } from "src/interfaces/IAccounting.sol";
 import { IVEBO } from "src/interfaces/IVEBO.sol";
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
 import { NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
@@ -445,6 +446,16 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         console.log(string.concat(_pad("proposedManagerAddress", 24), vm.toString(no.proposedManagerAddress)));
         console.log(string.concat(_pad("rewardAddress", 24), vm.toString(no.rewardAddress)));
         console.log(string.concat(_pad("proposedRewardAddress", 24), vm.toString(no.proposedRewardAddress)));
+    }
+
+    function bondInfo(uint256 noId) external {
+        _setUp();
+        IAccounting.NodeOperatorBondInfo memory info = accounting.getNodeOperatorBondInfo(noId);
+        console.log(string.concat(_pad("currentBond", 24), vm.toString(info.currentBond)));
+        console.log(string.concat(_pad("requiredBond", 24), vm.toString(info.requiredBond)));
+        console.log(string.concat(_pad("lockedBond", 24), vm.toString(info.lockedBond)));
+        console.log(string.concat(_pad("bondDebt", 24), vm.toString(info.bondDebt)));
+        console.log(string.concat(_pad("pendingSharesToSplit", 24), vm.toString(info.pendingSharesToSplit)));
     }
 
     error NodeOperatorsModuleNotFound();

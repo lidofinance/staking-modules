@@ -12,7 +12,12 @@ chain_script_suffix := if chain == "mainnet" {
 }
 anvil_host := env_var_or_default("ANVIL_IP_ADDR", "127.0.0.1")
 anvil_port := env_var_or_default("ANVIL_PORT", "8545")
-anvil_rpc_url := "http://" + anvil_host + ":" + anvil_port
+anvil_rpc_url := env_var_or_default("ANVIL_RPC_URL", "http://" + anvil_host + ":" + anvil_port)
+
+env name:
+    ln -sf .env.{{name}} .env
+    @just _info "Switched to .env.{{name}}"
+
 disable_code_size_limit := if env("DISABLE_CODE_SIZE_LIMIT", "") != "" { "--disable-code-size-limit" } else { "" }
 
 # Shared deployment helpers
