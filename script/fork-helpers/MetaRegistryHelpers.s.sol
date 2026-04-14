@@ -35,6 +35,15 @@ contract MetaRegistryHelpers is Script, DeploymentFixtures, ForkHelpersCommon {
     function createOperatorGroup(uint256[] calldata pairs) external broadcastGroupManager {
         require(pairs.length >= 2 && pairs.length % 2 == 0, "pairs: even length >= 2");
 
+        uint256 noGroupId = metaRegistry.NO_GROUP_ID();
+        IMetaRegistry.OperatorGroup memory empty;
+        for (uint256 i; i < pairs.length; i += 2) {
+            uint256 groupId = metaRegistry.getNodeOperatorGroupId(pairs[i]);
+            if (groupId != noGroupId) {
+                metaRegistry.createOrUpdateOperatorGroup(groupId, empty);
+            }
+        }
+
         uint256 count = pairs.length / 2;
         IMetaRegistry.SubNodeOperator[] memory subs = new IMetaRegistry.SubNodeOperator[](count);
         for (uint256 i; i < count; ++i) {

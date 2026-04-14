@@ -225,14 +225,33 @@ seed-cm:
     just create-curated-operator 1
     just create-curated-operator 2
     just create-operator-group 0 34 1 33 2 33
-    just add-keys 0 5
-    just deposit-keys 5
-    just add-keys 1 1
-    just activate-keys 0 1
+
+    just add-keys 0 4
+    just deposit-keys 100
     just key-topup 0 0 2016
     just key-topup 0 1 2016
     just key-topup 0 2 2016
-    just key-topup 0 3 1968
+    just key-topup 0 3 2016
+
+    just add-keys 1 5
+    just deposit-keys 100
+    just key-topup 1 0 2016
+    just key-topup 1 1 2016
+    just key-topup 1 2 2016
+    just key-topup 1 3 2016
+    just key-topup 1 4 2016
+
+    just add-keys 0 6
+    just deposit-keys 100
+    just key-topup 0 4 2016
+    just key-topup 0 5 2016
+    just key-topup 0 6 2016
+    just key-topup 0 7 2016
+    just key-topup 0 8 2016
+    just key-topup 0 9 2016
+
+    just add-keys 0 1
+    just add-keys 1 1
 
 report-rewards:
     just make-rewards

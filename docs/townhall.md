@@ -55,8 +55,7 @@ just report-rewards
 ## Suboperators
 
 ```bash
-just reset-operator-group {id}
-just create-operator-groupjust create-operator-group {id} 50 {id2} 50
+just create-operator-group {id} 50 {id2} 50
 ```
 
 increase potential capacity

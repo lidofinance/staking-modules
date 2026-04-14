@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 
 const RPC_URL = process.env.ANVIL_RPC_URL ?? "http://127.0.0.1:8545";
@@ -53,6 +53,15 @@ function randReward() {
   return REWARD_MIN_WEI + delta;
 }
 
+function jsonParse(text) {
+  // Wrap bare integers that exceed Number.MAX_SAFE_INTEGER as strings before parsing,
+  // then revive them back to BigInt.
+  const safe = text.replace(/(?<=[:,\[]\s*)-?\d{16,}/g, '"__BI__$&"');
+  return JSON.parse(safe, (_, v) =>
+    typeof v === "string" && v.startsWith("__BI__") ? BigInt(v.slice(6)) : v,
+  );
+}
+
 function jsonStringify(obj, space) {
   const S = "__BI__";
   const raw = JSON.stringify(
@@ -69,6 +78,12 @@ const config = JSON.parse(readFileSync(DEPLOY_CONFIG, "utf8"));
 const module = config.CSModule ?? config.CuratedModule;
 if (!module) {
   console.error(`CSModule or CuratedModule address not found in ${DEPLOY_CONFIG}`);
+  process.exit(1);
+}
+
+const feeDistributor = config.FeeDistributor;
+if (!feeDistributor) {
+  console.error(`FeeDistributor address not found in ${DEPLOY_CONFIG}`);
   process.exit(1);
 }
 
@@ -151,15 +166,93 @@ for (const { noId, activeKeys } of operators) {
 
 const rebate = 0n;
 
-// --- build merkle tree ---
+// --- load previous merkle tree ---
 
 const PAD_NO_ID = (1n << 64n) - 1n; // type(uint64).max, matches test suite convention
 const ZERO_ROOT = "0x" + "00".repeat(32);
 
-const leaves = Object.entries(reportOperators).map(([noId, op]) => [
-  BigInt(noId),
-  op.distributed_rewards,
-]);
+const prevTreePath = `${ARTIFACTS_DIR}merkle-tree.json`;
+const prevCumulatives = new Map();
+
+const onChainRoot = castCall(feeDistributor, "treeRoot()(bytes32)");
+console.log(`On-chain tree root: ${onChainRoot}`);
+
+if (onChainRoot === ZERO_ROOT) {
+  console.log("No on-chain reports yet, starting fresh");
+} else {
+  let loaded = false;
+
+  // Try local file first
+  if (existsSync(prevTreePath)) {
+    const prevDump = jsonParse(readFileSync(prevTreePath, "utf8"));
+    if (prevDump.values) {
+      const prevTree = StandardMerkleTree.load(prevDump);
+      if (prevTree.root.toLowerCase() === onChainRoot.toLowerCase()) {
+        for (const [, [noId, shares]] of prevTree.entries()) {
+          prevCumulatives.set(BigInt(noId), BigInt(shares));
+        }
+        loaded = true;
+        console.log(`Local tree matches on-chain root (${prevCumulatives.size} leaves)`);
+      } else {
+        console.log("Local tree root mismatch, fetching from IPFS...");
+      }
+    }
+  }
+
+  // Fetch from IPFS using on-chain treeCid
+  if (!loaded) {
+    const treeCid = castCall(feeDistributor, "treeCid()(string)");
+    console.log(`On-chain tree CID: ${treeCid}`);
+    const ipfsUrls = [
+      `https://ipfs.io/ipfs/${treeCid}`,
+      `https://gateway.pinata.cloud/ipfs/${treeCid}`,
+    ];
+
+    let fetched = false;
+    for (const url of ipfsUrls) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const dump = jsonParse(await res.text());
+        const tree = StandardMerkleTree.load(dump);
+        if (tree.root.toLowerCase() !== onChainRoot.toLowerCase()) {
+          console.warn(`IPFS tree root mismatch at ${url}, trying next...`);
+          continue;
+        }
+        for (const [, [noId, shares]] of tree.entries()) {
+          prevCumulatives.set(BigInt(noId), BigInt(shares));
+        }
+        fetched = true;
+        console.log(`Fetched tree from IPFS (${prevCumulatives.size} leaves)`);
+        break;
+      } catch (e) {
+        console.warn(`Failed to fetch from ${url}: ${e.message}`);
+      }
+    }
+
+    if (!fetched) {
+      console.error("Failed to fetch previous tree from any IPFS gateway");
+      process.exit(1);
+    }
+  }
+}
+
+// --- build cumulative merkle tree ---
+
+const cumulativeLeaves = new Map();
+
+// Carry forward all previous operators (including removed ones)
+for (const [noId, shares] of prevCumulatives) {
+  if (noId !== PAD_NO_ID) cumulativeLeaves.set(noId, shares);
+}
+
+// Add current frame deltas
+for (const [noId, op] of Object.entries(reportOperators)) {
+  const prev = cumulativeLeaves.get(BigInt(noId)) ?? 0n;
+  cumulativeLeaves.set(BigInt(noId), prev + op.distributed_rewards);
+}
+
+const leaves = [...cumulativeLeaves.entries()].map(([noId, shares]) => [noId, shares]);
 
 // FeeDistributor rejects empty proofs (=> needs >= 2 leaves); pad a lone real operator.
 if (leaves.length === 1) {
