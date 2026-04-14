@@ -4,6 +4,7 @@
 pragma solidity 0.8.33;
 
 import { Script } from "forge-std/Script.sol";
+import { console } from "forge-std/console.sol";
 
 import { CSModule } from "../../src/CSModule.sol";
 import { Accounting } from "../../src/Accounting.sol";
@@ -344,11 +345,12 @@ contract SimulateVote is Script, ForkHelpersCommon {
             existingVettedGate.revokeRole(END_REFERRAL_SEASON_ROLE, deployParams.identifiedCommunityStakersGateManager);
 
             // 33-42. Setup CircuitBreaker: grant PAUSE_ROLE and register pausers
-            module.grantRole(module.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
-            accounting.grantRole(accounting.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
-            oracle.grantRole(oracle.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
-            existingVettedGate.grantRole(existingVettedGate.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
             if (deploymentConfig.circuitBreaker.code.length > 0) {
+                module.grantRole(module.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
+                accounting.grantRole(accounting.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
+                oracle.grantRole(oracle.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
+                existingVettedGate.grantRole(existingVettedGate.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
+
                 ICircuitBreaker cb = ICircuitBreaker(deploymentConfig.circuitBreaker);
                 cb.registerPauser(address(module), deployParams.circuitBreakerPauser);
                 cb.registerPauser(address(accounting), deployParams.circuitBreakerPauser);
@@ -356,6 +358,8 @@ contract SimulateVote is Script, ForkHelpersCommon {
                 cb.registerPauser(address(existingVettedGate), deployParams.circuitBreakerPauser);
                 cb.registerPauser(deploymentConfig.verifierV3, deployParams.circuitBreakerPauser);
                 cb.registerPauser(deploymentConfig.ejector, deployParams.circuitBreakerPauser);
+            } else {
+                console.log("CircuitBreaker is not configured");
             }
             // 43. Grant MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE to penaltiesManager
             parametersRegistry.grantRole(
