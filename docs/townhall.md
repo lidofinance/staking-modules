@@ -9,10 +9,14 @@ just seed-cm
 just snapshot
 ```
 
-## Add 100 eth balance to wallet
+## Add address to curated gates and add 100 eth to wallet balance
 
 ```bash
-just topup 0x97ca715a08bA67E4Efe56Aa43e5A756EE66f8Ae3
+echo {address} >> addresses1
+echo {address} >> addresses2
+./update-curated-trees.sh
+
+just topup {address}
 ```
 
 ## After create operator and upload keys
