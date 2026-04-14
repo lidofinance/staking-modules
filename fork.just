@@ -176,6 +176,19 @@ activate-keys noId count:
 report-balance noId keyIndex balanceEth:
     just _impersonate-script NodeOperators --sig="reportBalance\(uint256,uint256,uint256\)" -- {{noId}} {{keyIndex}} $(cast to-wei {{balanceEth}})
 
+get-key-balance noId keyIndex:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bal=$(just _read-script NodeOperators --sig="keyAllocatedBalance\(uint256,uint256\)" -- {{noId}} {{keyIndex}} 2>&1 | grep -A1 '== Logs ==' | tail -1 | tr -d '[:space:]')
+    if [[ -z "$bal" ]]; then
+      echo "error: no balance for operator {{noId}} key {{keyIndex}}" >&2
+      exit 1
+    fi
+    echo "$bal"
+
+key-balances noId:
+    just _read-script NodeOperators --sig="keyAllocatedBalances\(uint256\)" -- {{noId}}
+
 key-topup noId keyIndex amountEth:
     just _impersonate-script NodeOperators --sig="increaseAllocatedBalance\(uint256,uint256,uint256\)" -- {{noId}} {{keyIndex}} $(cast to-wei {{amountEth}})
 

@@ -54,13 +54,15 @@ cl-status:
 cl-set pubkey status amountEth="":
     @npx csm-cl-mock config set "{{pubkey}}" "{{status}}" {{amountEth}}
 
-# Mark operator's key as active_ongoing on CL mock with given effective balance.
-# Usage: just cl-activate <noId> <keyIndex> <amountEth>
-cl-activate noId keyIndex amountEth="":
+# Mark operator's key as active_ongoing on CL mock with effective balance read from contract.
+# Usage: just cl-activate <noId> <keyIndex>
+cl-activate noId keyIndex:
     #!/usr/bin/env bash
     set -euo pipefail
     pk=$(just get-pubkey {{noId}} {{keyIndex}})
-    just cl-set "$pk" active_ongoing {{amountEth}}
+    allocEth=$(just get-key-balance {{noId}} {{keyIndex}})
+    balanceEth=$(( 32 + allocEth ))
+    just cl-set "$pk" active_ongoing "$balanceEth"
 
 # List valid validator statuses
 cl-statuses:

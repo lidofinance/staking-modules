@@ -39,9 +39,11 @@ just deposit-keys 100
 
 ## Topup key balance
 
+for first operator key (`0`)
+
 ```bash
-just key-topup {id} 0 1000
-just cl-activate {id} 0 1032
+just key-topup {id} 0 2016
+just cl-activate {id} 0
 ```
 
 ## Report rewards

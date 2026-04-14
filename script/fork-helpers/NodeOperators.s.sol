@@ -458,6 +458,23 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         console.log(string.concat(_pad("pendingSharesToSplit", 24), vm.toString(info.pendingSharesToSplit)));
     }
 
+    function keyAllocatedBalance(uint256 noId, uint256 keyIndex) external {
+        _setUp();
+        uint256[] memory balances = module.getKeyAllocatedBalances(noId, keyIndex, 1);
+        console.log(vm.toString(balances[0] / 1 ether));
+    }
+
+    function keyAllocatedBalances(uint256 noId) external {
+        _setUp();
+        NodeOperator memory no = module.getNodeOperator(noId);
+        if (no.totalDepositedKeys == 0) return;
+        uint256[] memory balances = module.getKeyAllocatedBalances(noId, 0, no.totalDepositedKeys);
+        console.log(string.concat(_pad("id", 4), " ", "allocated (ETH)"));
+        for (uint256 i; i < no.totalDepositedKeys; ++i) {
+            console.log(string.concat(_pad(vm.toString(i), 4), " ", vm.toString(balances[i] / 1 ether)));
+        }
+    }
+
     error NodeOperatorsModuleNotFound();
 
     function _col(string memory label, uint256 val) internal pure returns (string memory) {
