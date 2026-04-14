@@ -2,6 +2,7 @@ snapshots/
 node_modules/
 
 .env*
+!.env.remote
 !.env.sample
 !.envrc
 .idea

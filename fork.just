@@ -139,6 +139,9 @@ add-bond noId amountEth:
 create-bond-debt noId amountEth:
     just _impersonate-script NodeOperators --sig="createBondDebt\(uint256,uint256\)" -- {{noId}} $(cast to-wei {{amountEth}})
 
+topup address amountEth="100":
+    cast rpc --rpc-url={{anvil_rpc_url}} anvil_setBalance {{address}} $(cast to-wei {{amountEth}} | cast to-hex --base-in 10)
+
 warp days:
     cast rpc --rpc-url={{anvil_rpc_url}} evm_increaseTime $(( {{days}} * 86400 )) > /dev/null && cast rpc --rpc-url={{anvil_rpc_url}} evm_mine > /dev/null
 
