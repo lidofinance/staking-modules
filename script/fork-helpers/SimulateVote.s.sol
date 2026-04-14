@@ -345,19 +345,23 @@ contract SimulateVote is Script, ForkHelpersCommon {
             existingVettedGate.revokeRole(END_REFERRAL_SEASON_ROLE, deployParams.identifiedCommunityStakersGateManager);
 
             // 33-42. Setup CircuitBreaker: grant PAUSE_ROLE and register pausers
-            if (deploymentConfig.circuitBreaker.code.length > 0) {
+            if (deploymentConfig.circuitBreaker != address(0)) {
                 module.grantRole(module.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
                 accounting.grantRole(accounting.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
                 oracle.grantRole(oracle.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
                 existingVettedGate.grantRole(existingVettedGate.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
 
-                ICircuitBreaker cb = ICircuitBreaker(deploymentConfig.circuitBreaker);
-                cb.registerPauser(address(module), deployParams.circuitBreakerPauser);
-                cb.registerPauser(address(accounting), deployParams.circuitBreakerPauser);
-                cb.registerPauser(address(oracle), deployParams.circuitBreakerPauser);
-                cb.registerPauser(address(existingVettedGate), deployParams.circuitBreakerPauser);
-                cb.registerPauser(deploymentConfig.verifierV3, deployParams.circuitBreakerPauser);
-                cb.registerPauser(deploymentConfig.ejector, deployParams.circuitBreakerPauser);
+                if (deploymentConfig.circuitBreaker.code.length > 0) {
+                    ICircuitBreaker cb = ICircuitBreaker(deploymentConfig.circuitBreaker);
+                    cb.registerPauser(address(module), deployParams.circuitBreakerPauser);
+                    cb.registerPauser(address(accounting), deployParams.circuitBreakerPauser);
+                    cb.registerPauser(address(oracle), deployParams.circuitBreakerPauser);
+                    cb.registerPauser(address(existingVettedGate), deployParams.circuitBreakerPauser);
+                    cb.registerPauser(deploymentConfig.verifierV3, deployParams.circuitBreakerPauser);
+                    cb.registerPauser(deploymentConfig.ejector, deployParams.circuitBreakerPauser);
+                } else {
+                    console.log("CircuitBreaker is EOA, skipping registering pausers");
+                }
             } else {
                 console.log("CircuitBreaker is not configured");
             }
