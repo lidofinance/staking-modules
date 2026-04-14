@@ -11,11 +11,22 @@ just snapshot
 
 ## Add address to curated gates and add 100 eth to wallet balance
 
+Add files to gate whitelist
+
 ```bash
 echo {address} >> addresses1
 echo {address} >> addresses2
-./update-curated-trees.sh
+```
 
+Update gates onchain
+
+```bash
+./update-curated-trees.sh
+```
+
+Topup wallet address
+
+```bash
 just topup {address}
 ```
 
