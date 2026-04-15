@@ -265,9 +265,6 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         KeyNumberValueInterval[] calldata data
     ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_REWARD_SHARE_ROLE) {
         _validateKeyNumberValueIntervals(data);
-        // Zero reward share for the first interval would allow rebate-only oracle reports (`distributed == 0 && rebate > 0`),
-        // and those are rejected by FeeDistributor.
-        if (data[0].value == 0) revert InvalidKeyNumberValueIntervals();
         KeyNumberValueInterval[] storage intervals = _rewardShareData[curveId];
         if (intervals.length > 0) delete _rewardShareData[curveId];
         for (uint256 i = 0; i < data.length; ++i) {

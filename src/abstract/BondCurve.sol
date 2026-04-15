@@ -100,7 +100,7 @@ abstract contract BondCurve is IBondCurve, Initializable {
         }
         if ($.operatorBondCurveId[nodeOperatorId] == curveId) revert SameBondCurveId();
         $.operatorBondCurveId[nodeOperatorId] = curveId;
-        emit BondCurveSet(nodeOperatorId, curveId);
+        emit BondCurveSet(nodeOperatorId, curveId, msg.sender);
     }
 
     function _getCurveInfo(uint256 curveId) private view returns (BondCurveData storage) {
