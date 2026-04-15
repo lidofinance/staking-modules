@@ -326,6 +326,43 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         module.allocateDeposits(amountWei, pubkeys, keyIndices, operatorIds, topUpLimits);
     }
 
+    uint256 internal constant MAX_TOPUP_PER_KEY = 2016 ether;
+
+    function topUpActiveKeys(uint256 noId) external broadcastStakingRouter {
+        NodeOperator memory no = module.getNodeOperator(noId);
+        uint256 total = no.totalDepositedKeys;
+        require(total > 0, "no deposited keys");
+
+        uint256[] memory allocated = module.getKeyAllocatedBalances(noId, 0, total);
+
+        // Process strictly in key-index order; TopUpQueueOps enforces a
+        // global FIFO queue head, so we match it one entry at a time via
+        // single-key calls (same shape as increaseAllocatedBalance).
+        uint256 topped;
+        for (uint256 i; i < total; ++i) {
+            if (allocated[i] != 0) continue;
+            if (module.isValidatorWithdrawn(noId, i)) continue;
+
+            bytes[] memory pubkeys = new bytes[](1);
+            pubkeys[0] = module.getSigningKeys(noId, i, 1);
+
+            uint256[] memory keyIndices = new uint256[](1);
+            keyIndices[0] = i;
+
+            uint256[] memory operatorIds = new uint256[](1);
+            operatorIds[0] = noId;
+
+            uint256[] memory topUpLimits = new uint256[](1);
+            topUpLimits[0] = MAX_TOPUP_PER_KEY;
+
+            module.allocateDeposits(MAX_TOPUP_PER_KEY, pubkeys, keyIndices, operatorIds, topUpLimits);
+            unchecked {
+                ++topped;
+            }
+        }
+        console.log("topped up keys:", topped);
+    }
+
     function createCuratedOperator(uint256 gateIndex, uint256 keysCount) external {
         _setUp();
 

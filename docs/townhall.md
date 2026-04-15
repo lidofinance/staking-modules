@@ -4,10 +4,11 @@
 
 ```bash
 ./prepare-modules.sh
-./update-curated-trees.sh
 just seed-cm
 just snapshot
 ```
+
+after this - update devnet.json in csm-widget
 
 ## Add address to curated gates and add 100 eth to wallet balance
 
@@ -42,7 +43,7 @@ just deposit-keys 100
 for first operator key (`0`)
 
 ```bash
-just key-topup {id} 0 2016
+just topup-active-keys {id}
 just cl-activate {id} 0
 ```
 

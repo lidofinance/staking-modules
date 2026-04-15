@@ -192,6 +192,9 @@ key-balances noId:
 key-topup noId keyIndex amountEth:
     just _impersonate-script NodeOperators --sig="increaseAllocatedBalance\(uint256,uint256,uint256\)" -- {{noId}} {{keyIndex}} $(cast to-wei {{amountEth}})
 
+topup-active-keys noId:
+    just _impersonate-script NodeOperators --sig="topUpActiveKeys\(uint256\)" -- {{noId}}
+
 exit-request noId keyIndex validatorIndex="900000":
     just _impersonate-script NodeOperators --sig="exitRequest\(uint256,uint256,uint256\)" -vvv -- {{noId}} {{keyIndex}} {{validatorIndex}}
 
@@ -228,27 +231,15 @@ seed-cm:
 
     just add-keys 0 4
     just deposit-keys 100
-    just key-topup 0 0 2016
-    just key-topup 0 1 2016
-    just key-topup 0 2 2016
-    just key-topup 0 3 2016
+    just topup-active-keys 0
 
     just add-keys 1 5
     just deposit-keys 100
-    just key-topup 1 0 2016
-    just key-topup 1 1 2016
-    just key-topup 1 2 2016
-    just key-topup 1 3 2016
-    just key-topup 1 4 2016
+    just topup-active-keys 1
 
     just add-keys 0 6
     just deposit-keys 100
-    just key-topup 0 4 2016
-    just key-topup 0 5 2016
-    just key-topup 0 6 2016
-    just key-topup 0 7 2016
-    just key-topup 0 8 2016
-    just key-topup 0 9 2016
+    just topup-active-keys 0
 
     just add-keys 0 1
     just add-keys 1 1
