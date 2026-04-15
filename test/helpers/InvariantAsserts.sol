@@ -66,6 +66,12 @@ contract InvariantAsserts is Test {
     function assertModuleKeys(IBaseModule csm) public {
         if (skipInvariants()) return;
         if (skipLongForkTest()) return;
+
+        bool assertZeroConfirmedBalances;
+        try ICSModule(address(csm)).getTopUpQueue() returns (bool enabled, uint256, uint256, uint256) {
+            assertZeroConfirmedBalances = !enabled;
+        } catch {}
+
         uint256 noCount = csm.getNodeOperatorsCount();
         NodeOperator memory no;
 
@@ -101,6 +107,14 @@ contract InvariantAsserts is Test {
             assertNotEq(no.proposedRewardAddress, no.rewardAddress, "assert proposed != reward");
             assertNotEq(no.managerAddress, address(0), "assert manager != 0");
             assertNotEq(no.rewardAddress, address(0), "assert reward != 0");
+
+            if (assertZeroConfirmedBalances) {
+                uint256[] memory balances = csm.getKeyConfirmedBalances(noId, 0, no.totalDepositedKeys);
+
+                for (uint256 i; i < no.totalDepositedKeys; ++i) {
+                    assertEq(balances[i], 0, "assert key confirmed balance == 0");
+                }
+            }
 
             totalExitedValidators += no.totalExitedKeys;
             totalDepositedValidators += no.totalDepositedKeys;
@@ -169,16 +183,6 @@ contract InvariantAsserts is Test {
             assertEq(no.enqueuedCount, batchKeys[noId], "assert enqueued == batch keys");
             assertGe(no.enqueuedCount, no.depositableValidatorsCount, "assert enqueued >= depositable");
         }
-    }
-
-    function assertModuleUnusedStorageSlots(IBaseModule module) public {
-        // @see ModuleLinearStorage.
-
-        if (skipInvariants()) return;
-
-        bytes32 slot1 = vm.load(address(module), bytes32(uint256(1)));
-
-        assertEq(slot1, bytes32(0), "assert __freeSlot1 is empty");
     }
 
     function assertAccountingTotalBondShares(uint256 nodeOperatorsCount, IStETH steth, Accounting accounting) public {

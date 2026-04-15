@@ -151,7 +151,7 @@ event BondClaimedWstETH(uint256 indexed nodeOperatorId, address to, uint256 amou
 ### BondBurned
 
 ```solidity
-event BondBurned(uint256 indexed nodeOperatorId, uint256 amountToBurn, uint256 burnedAmount);
+event BondBurned(uint256 indexed nodeOperatorId, uint256 burnedAmount);
 ```
 
 ### BondCharged
@@ -184,4 +184,3 @@ error ZeroLocatorAddress();
 ```solidity
 error NothingToClaim();
 ```
-

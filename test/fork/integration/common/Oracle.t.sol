@@ -23,7 +23,6 @@ abstract contract OracleTestBase is ModuleTypeBase {
         uint256 noCount = module.getNodeOperatorsCount();
         assertModuleKeys(module);
         _assertModuleEnqueuedCount();
-        assertModuleUnusedStorageSlots(module);
         assertAccountingTotalBondShares(noCount, lido, accounting);
         assertAccountingBurnerApproval(lido, address(accounting), locator.burner());
         assertAccountingUnusedStorageSlots(accounting);

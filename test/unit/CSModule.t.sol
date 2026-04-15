@@ -110,7 +110,6 @@ contract CSMCommon is ModuleFixtures {
     function _moduleInvariants() internal override {
         assertModuleEnqueuedCount(csm);
         assertModuleKeys(module);
-        assertModuleUnusedStorageSlots(module);
     }
 
     // Checks that the queue is in the expected state starting from its head.
@@ -2266,7 +2265,7 @@ contract CSMTotalModuleStake is CSMCommon {
 }
 
 contract CSMFinalizeUpgradeV3 is CSMCommon {
-    bytes32 internal constant TOTAL_WITHDRAWN_VALIDATORS_SLOT = bytes32(uint256(3));
+    bytes32 internal constant TOTAL_WITHDRAWN_VALIDATORS_SLOT = bytes32(uint256(1));
     uint64 internal expectedTotalWithdrawn;
 
     function setUp() public override {

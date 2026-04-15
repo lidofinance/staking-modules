@@ -113,7 +113,7 @@ abstract contract BondCoreTestBase is Test, Fixtures, Utilities {
         bondCore.depositETH{ value: bond }(user, 0);
     }
 
-    function _prepareForIncreaseBond(uint256 nodeOperatorId, uint256 amount) internal returns (uint256 mintedShares) {
+    function _prepareForIncreaseBond(uint256 amount) internal returns (uint256 mintedShares) {
         vm.deal(address(this), amount);
         mintedShares = stETH.submit{ value: amount }(address(0));
         stETH.transferShares(address(bondCore), mintedShares);
@@ -178,11 +178,10 @@ contract BondCoreETHTest is BondCoreTestBase {
         bondCore.burn(0, debt);
         assertEq(bondCore.getBondDebt(0), debt);
 
-        uint256 toBurn = ethToSharesToEth(debt);
         uint256 burned = ethToSharesToEth(debt);
 
         vm.expectEmit(address(bondCore));
-        emit IBondCore.BondBurned(0, toBurn, burned);
+        emit IBondCore.BondBurned(0, burned);
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondDebtCovered(0, debt);
         vm.expectEmit(address(bondCore));
@@ -199,11 +198,10 @@ contract BondCoreETHTest is BondCoreTestBase {
         bondCore.burn(0, debt);
         assertEq(bondCore.getBondDebt(0), debt);
 
-        uint256 toBurn = ethToSharesToEth(debt);
         uint256 burned = ethToSharesToEth(deposit);
 
         vm.expectEmit(address(bondCore));
-        emit IBondCore.BondBurned(0, toBurn, burned);
+        emit IBondCore.BondBurned(0, burned);
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondDebtCovered(0, deposit);
         vm.expectEmit(address(bondCore));
@@ -308,12 +306,11 @@ contract BondCoreStETHTest is BondCoreTestBase {
         stETH.approve(address(bondCore), deposit);
         vm.stopPrank();
 
-        uint256 toBurn = ethToSharesToEth(debt);
         uint256 burned = ethToSharesToEth(debt);
         uint256 depositedAmount = ethToSharesToEth(deposit);
 
         vm.expectEmit(address(bondCore));
-        emit IBondCore.BondBurned(0, toBurn, burned);
+        emit IBondCore.BondBurned(0, burned);
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondDebtCovered(0, debt);
         vm.expectEmit(address(bondCore));
@@ -336,12 +333,11 @@ contract BondCoreStETHTest is BondCoreTestBase {
         stETH.approve(address(bondCore), deposit);
         vm.stopPrank();
 
-        uint256 toBurn = ethToSharesToEth(debt);
         uint256 burned = ethToSharesToEth(deposit);
         uint256 depositedAmount = ethToSharesToEth(deposit);
 
         vm.expectEmit(address(bondCore));
-        emit IBondCore.BondBurned(0, toBurn, burned);
+        emit IBondCore.BondBurned(0, burned);
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondDebtCovered(0, deposit);
         vm.expectEmit(address(bondCore));
@@ -452,11 +448,10 @@ contract BondCoreWstETHTest is BondCoreTestBase {
         uint256 wstETHAmount = wstETH.wrap(deposit);
         vm.stopPrank();
 
-        uint256 toBurn = ethToSharesToEth(debt);
         uint256 burned = ethToSharesToEth(debt);
 
         vm.expectEmit(address(bondCore));
-        emit IBondCore.BondBurned(0, toBurn, burned);
+        emit IBondCore.BondBurned(0, burned);
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondDebtCovered(0, debt);
         vm.expectEmit(address(bondCore));
@@ -480,12 +475,11 @@ contract BondCoreWstETHTest is BondCoreTestBase {
         uint256 wstETHAmount = wstETH.wrap(deposit);
         vm.stopPrank();
 
-        uint256 toBurn = ethToSharesToEth(debt);
         uint256 burned = ethToSharesToEth(ethToSharesToEth(deposit));
         uint256 covered = ethToSharesToEth(deposit);
 
         vm.expectEmit(address(bondCore));
-        emit IBondCore.BondBurned(0, toBurn, burned);
+        emit IBondCore.BondBurned(0, burned);
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondDebtCovered(0, covered);
         vm.expectEmit(address(bondCore));
@@ -570,7 +564,7 @@ contract BondCoreBurnTest is BondCoreTestBase {
         uint256 shares = stETH.getSharesByPooledEth(1 ether);
         uint256 burned = stETH.getPooledEthByShares(shares);
         vm.expectEmit(address(bondCore));
-        emit IBondCore.BondBurned(0, burned, burned);
+        emit IBondCore.BondBurned(0, burned);
 
         uint256 bondSharesBefore = bondCore.getBondShares(0);
         vm.expectCall(locator.burner(), abi.encodeWithSelector(IBurner.requestBurnMyShares.selector, shares));
@@ -587,14 +581,9 @@ contract BondCoreBurnTest is BondCoreTestBase {
         _deposit(32 ether);
 
         uint256 bondSharesBefore = bondCore.getBondShares(0);
-        uint256 burnShares = stETH.getSharesByPooledEth(33 ether);
         uint256 amountToBurn = 32 ether;
         vm.expectEmit(address(bondCore));
-        emit IBondCore.BondBurned(
-            0,
-            stETH.getPooledEthByShares(burnShares),
-            stETH.getPooledEthByShares(bondSharesBefore)
-        );
+        emit IBondCore.BondBurned(0, stETH.getPooledEthByShares(bondSharesBefore));
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondDebtIncreased(0, 1 ether);
 
@@ -611,13 +600,34 @@ contract BondCoreBurnTest is BondCoreTestBase {
         assertEq(bondCore.getBondDebt(0), 1 ether, "debt should be 1 ether");
     }
 
+    function test_burn_dust_NoDebtCreated() public {
+        uint256 dustAmount = stETH.totalPooledEther() / stETH.totalShares();
+        assertEq(stETH.getSharesByPooledEth(dustAmount), 0);
+        assertGt(dustAmount, 0);
+
+        bondCore.burn(0, dustAmount);
+        assertEq(bondCore.getBondDebt(0), 0, "debt should zero");
+    }
+
+    function test_burn_MoreThanDepositByDust_NoDebtCreated() public {
+        uint256 deposit = 32 ether;
+        _deposit(deposit);
+
+        uint256 dustAmount = stETH.totalPooledEther() / stETH.totalShares();
+        assertEq(stETH.getSharesByPooledEth(dustAmount), 0);
+        assertGt(dustAmount, 0);
+
+        bondCore.burn(0, deposit + dustAmount);
+        assertEq(bondCore.getBondDebt(0), 0, "debt should zero");
+    }
+
     function test_burn_EqualToDeposit() public {
         _deposit(32 ether);
 
         uint256 shares = stETH.getSharesByPooledEth(32 ether);
         uint256 burned = stETH.getPooledEthByShares(shares);
         vm.expectEmit(address(bondCore));
-        emit IBondCore.BondBurned(0, burned, burned);
+        emit IBondCore.BondBurned(0, burned);
 
         vm.expectCall(locator.burner(), abi.encodeWithSelector(IBurner.requestBurnMyShares.selector, shares));
 
@@ -751,7 +761,7 @@ contract BondCoreDebtTest is BondCoreTestBase {
         bondCore.burn(0, debt);
         assertEq(bondCore.getBondDebt(0), debt);
 
-        uint256 sharesToIncrease = _prepareForIncreaseBond(0, 10 ether);
+        uint256 sharesToIncrease = _prepareForIncreaseBond(10 ether);
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondDebtCovered(0, debt);
         bondCore.creditBondShares(0, sharesToIncrease);
@@ -765,7 +775,7 @@ contract BondCoreDebtTest is BondCoreTestBase {
         assertEq(bondCore.getBondDebt(0), debt);
 
         uint256 bondAmount = 5 ether;
-        uint256 sharesToIncrease = _prepareForIncreaseBond(0, bondAmount);
+        uint256 sharesToIncrease = _prepareForIncreaseBond(bondAmount);
         vm.expectEmit(address(bondCore));
         emit IBondCore.BondDebtCovered(0, bondAmount);
         bondCore.creditBondShares(0, sharesToIncrease);
@@ -777,7 +787,7 @@ contract BondCoreDebtTest is BondCoreTestBase {
         assertEq(bondCore.getBondDebt(0), 0);
 
         uint256 bondAmount = 10 ether;
-        uint256 sharesToIncrease = _prepareForIncreaseBond(0, bondAmount);
+        uint256 sharesToIncrease = _prepareForIncreaseBond(bondAmount);
 
         // Should not emit any events when there is no debt
         vm.recordLogs();

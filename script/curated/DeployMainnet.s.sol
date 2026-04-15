@@ -165,11 +165,9 @@ contract DeployMainnet is DeployBase {
         // MetaRegistry
         config.setOperatorInfoManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
 
-        // GateSeal
-        config.gateSealFactory = 0x6C82877cAC5a7A739f16Ca0A89c0A328B8764A24;
-        config.sealingCommittee = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
-        config.sealDuration = 14 days;
-        config.sealExpiryTimestamp = block.timestamp + 365 days;
+        // CircuitBreaker
+        config.circuitBreaker = address(0x63697263756974627265616b6572); // TODO: Set real CircuitBreaker address
+        config.circuitBreakerPauser = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
 
         // DG
         config.resealManager = 0x7914b5a1539b97Bd0bbd155757F25FD79A522d24;

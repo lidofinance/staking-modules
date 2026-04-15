@@ -237,6 +237,9 @@ abstract contract BondCore is IBondCore {
         uint256 amount
     ) private returns (uint256 notBurnedAmount) {
         uint256 sharesToBurn = _sharesByEth(amount);
+        // If shares to burn is zero exit early and return 0 as not burned amount to avoid unnecessary state changes and events
+        if (sharesToBurn == 0) return 0;
+
         uint256 effectiveSharesToBurn = _reduceBond(nodeOperatorId, sharesToBurn);
 
         // If no bond already or the amount to burn is zero
@@ -250,7 +253,13 @@ abstract contract BondCore is IBondCore {
             notBurnedAmount = amountToBurn - amountBurned;
         }
 
-        emit BondBurned(nodeOperatorId, amountToBurn, amountBurned);
+        // Due to rounding error we might end up with notBurnedAmount lower than the value of a single stETH share.
+        // In this case we nullify notBurnedAmount to avoid dust issues with bond shares that can't be burned.
+        if (notBurnedAmount > 0 && _sharesByEth(notBurnedAmount) == 0) {
+            notBurnedAmount = 0;
+        }
+
+        emit BondBurned(nodeOperatorId, amountBurned);
     }
 
     function _coverBondDebt(uint256 nodeOperatorId) private {
