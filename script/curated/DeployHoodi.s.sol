@@ -94,8 +94,8 @@ contract DeployHoodi is DeployBase {
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
-            gate.treeRoot = 0x8b7d573f4e2be3cd9abdcb368c60969494df7ef622763f610f3e83db874807b1;
-            gate.treeCid = "QmcJhViZwdX5TFxCjuUJm42UhKNwX5iZgDa11suqbgf5uY";
+            gate.treeRoot = 0x2135d436079a77c58134f53d371e9292070a173bbc87d9c7d23bad2d8da35e33;
+            gate.treeCid = "QmSZWfHiM896LNoVmHkkQ13XJDCiQbDzMWa8V43pKYrWa7";
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 8750]); // 87.5% of 4% = 3.5% of the total
@@ -154,8 +154,8 @@ contract DeployHoodi is DeployBase {
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
-            gate.treeRoot = 0xfd1d43cb60f24c531d6daeca3cf2b0fd46851e5ea6699ed2df293a9fa7d8b154;
-            gate.treeCid = "QmdwcBSruxPThUoWZEDLuguJZsbjNkiT2bSSMkXmVHWAoX";
+            gate.treeRoot = 0xe0250b81599ea522c64802477d407fd87b1ae17f5426317d355689d86a781088;
+            gate.treeCid = "QmZUZYHTLhBKybzF9szFf7tgxegqR4C1mZs6K5H92o2H2f";
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 8750]); // 87.5% of 4% = 3.5% of the total
