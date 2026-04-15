@@ -20,6 +20,7 @@ import { TopUpQueueOps } from "./lib/TopUpQueueOps.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
 import { StakeTracker } from "./lib/StakeTracker.sol";
 import { OperatorTracker } from "./lib/OperatorTracker.sol";
+import { WithdrawnValidatorLib } from "./lib/WithdrawnValidatorLib.sol";
 
 contract CSModule is ICSModule, BaseModule {
     using DepositQueueLib for DepositQueueLib.Queue;
@@ -66,16 +67,16 @@ contract CSModule is ICSModule, BaseModule {
         BaseModuleStorage storage $ = _baseStorage();
         // NOTE: Don't call `_initTopUpQueue` because it is disabled by default and existing CSM deployment can only support 0x01 validators mode.
 
-        // NOTE: Rebuild the global withdrawn counter for the future.
-        uint256 totalWithdrawnValidators;
-        unchecked {
-            for (uint256 i; i < $.nodeOperatorsCount; ++i) {
-                totalWithdrawnValidators += $.nodeOperators[i].totalWithdrawnKeys;
-            }
-        }
         // The next statement writes to slot `1` replacing old QueueLib.Queue struct pointers.
-        $.totalWithdrawnValidators = totalWithdrawnValidators;
+        $.totalWithdrawnValidators = 0;
         $.upToDateOperatorDepositInfoCount = $.nodeOperatorsCount;
+    }
+
+    /// @inheritdoc ICSModule
+    function rebuildTotalWithdrawnValidators() external {
+        if (_getInitializedVersion() != INITIALIZED_VERSION) revert UpgradeIsNotFinalized();
+
+        WithdrawnValidatorLib.rebuildTotalWithdrawnValidators(_baseStorage());
     }
 
     /// @inheritdoc IBaseModule
