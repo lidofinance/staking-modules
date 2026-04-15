@@ -250,7 +250,8 @@ def main(argv: list[str] | None = None):
     sync_parser.add_argument("--chunk-size", type=int)
     sync_parser.add_argument("targets", nargs="*")
 
-    subparsers.add_parser("batch", help="Run form batch processing")
+    batch_parser = subparsers.add_parser("batch", help="Run form batch processing")
+    batch_parser.add_argument("--full", action="store_true", help="Process all forms, not just the approved ones")
 
     parsed = parser.parse_args(args)
 
@@ -267,7 +268,7 @@ def main(argv: list[str] | None = None):
     if parsed.command == "batch":
         from ics_assessment.batch_process_forms import main as batch_main
 
-        batch_main()
+        batch_main(full=parsed.full)
         return 0
 
     parser.print_help()
