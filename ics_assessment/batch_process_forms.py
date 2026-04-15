@@ -9,7 +9,7 @@ import os
 from ics_assessment.config import (
     BATCH_FORMS_PATH,
     BATCH_LOGS_DIR,
-    BATCH_MAIN_ADDRESS_SUMMARY_PATH,
+    BATCH_APPROVED_ADDRESS_SUMMARY_PATH,
 )
 from ics_assessment.main import evaluate_assessment, resolve_runtime_inputs
 from ics_assessment.render import render_assessment_result
@@ -89,7 +89,7 @@ def main(full: bool = False):
     processed = 0
     approved_ineligible = 0
     not_approved_eligible = 0
-    main_addresses: list[tuple[str, str]] = []
+    approved_addresses: list[tuple[str, str]] = []
     with open(input_csv, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for idx, row in enumerate(reader):
@@ -129,7 +129,8 @@ def main(full: bool = False):
                 f"EXP {exp}, HUM {hum}, ENG {eng} | total {total} | eligible {eligible} | log {log_path.relative_to(input_csv.parent)}"
             )
             processed += 1
-            main_addresses.append((row_id, main_addr.lower()))
+            if status == "APPROVED":
+                approved_addresses.append((row_id, main_addr.lower()))
             if status == "APPROVED" and eligible == "NO":
                 print(f"⚠️ {row_id} Application is approved but not eligible with score")
                 approved_ineligible += 1
@@ -145,7 +146,7 @@ def main(full: bool = False):
         )
         exit(1)
 
-    summary_path = BATCH_MAIN_ADDRESS_SUMMARY_PATH
+    summary_path = BATCH_APPROVED_ADDRESS_SUMMARY_PATH
     def _sort_row_id(item: tuple[str, str]) -> tuple[int, int | str]:
         row_id, _ = item
         try:
@@ -153,14 +154,14 @@ def main(full: bool = False):
         except ValueError:
             return (1, row_id)
 
-    sorted_addresses = [addr for _, addr in sorted(main_addresses, key=_sort_row_id)]
+    sorted_addresses = [addr for _, addr in sorted(approved_addresses, key=_sort_row_id)]
     with open(summary_path, "w", encoding="utf-8") as summary_file:
         json.dump(sorted_addresses, summary_file, indent=2)
     print(
         f"Processed {processed} application(s); found {approved_ineligible} approved submission(s) that remain ineligible, "
         f"and {not_approved_eligible} not approved submission(s) that are actually eligible. \n"
         f"Logs: {logs_dir}. \n"
-        f"Main address summary: {summary_path}",
+        f"Approved address summary: {summary_path}",
         file=sys.stderr,
     )
 

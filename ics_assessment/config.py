@@ -124,7 +124,7 @@ HUMANITY_DATA_DIR = HUMANITY_DIR / "data"
 # Batch processing paths.
 BATCH_FORMS_PATH = ROOT_DIR / "ics-forms.csv"
 BATCH_LOGS_DIR = ROOT_DIR / "logs"
-BATCH_MAIN_ADDRESS_SUMMARY_PATH = ROOT_DIR / "main-address-summary.json"
+BATCH_APPROVED_ADDRESS_SUMMARY_PATH = ROOT_DIR / "approved-address-summary.json"
 
 # Synced artifact locations.
 ARAGON_VOTERS_PATH = ENGAGEMENT_DATA_DIR / "aragon_voters.csv"
