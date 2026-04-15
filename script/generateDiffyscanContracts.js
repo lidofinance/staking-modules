@@ -23,9 +23,7 @@ function main() {
     }
 
     let factoryContractName = null;
-    if (tx.function?.startsWith("create_gate_seal(")) {
-      factoryContractName = "GateSeal";
-    } else if (tx.contractName === "VettedGateFactory" && tx.function?.startsWith("create(")) {
+    if (tx.contractName === "VettedGateFactory" && tx.function?.startsWith("create(")) {
       factoryContractName = "OssifiableProxy";
     }
 

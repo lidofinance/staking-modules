@@ -22,6 +22,7 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
 
     DeployParams internal deployParams;
     uint256 adminsCount;
+    bool internal isUpgradeFlow;
 
     function setUp() public {
         Env memory env = envVars();
@@ -29,6 +30,7 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         initializeFromDeployment();
         if (moduleType != ModuleType.Community) vm.skip(true, "Current deployment is not Community module type");
         deployParams = parseDeployParams(env.DEPLOY_CONFIG);
+        isUpgradeFlow = env.VOTE_PREV_BLOCK != 0;
         adminsCount = block.chainid == 1 ? 1 : 2;
     }
 }
@@ -251,9 +253,12 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
         assertTrue(vettedGate.hasRole(vettedGate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(oracle.getRoleMemberCount(oracle.DEFAULT_ADMIN_ROLE()), adminsCount);
 
-        assertTrue(vettedGate.hasRole(vettedGate.PAUSE_ROLE(), address(gateSeal)));
         assertTrue(vettedGate.hasRole(vettedGate.PAUSE_ROLE(), deployParams.resealManager));
-        assertEq(vettedGate.getRoleMemberCount(vettedGate.PAUSE_ROLE()), 2);
+        _assertCircuitBreakerPauseRoleState(
+            address(vettedGate),
+            address(circuitBreaker),
+            _expectedPauseRoleMembersWithoutCb(isUpgradeFlow)
+        );
 
         assertTrue(vettedGate.hasRole(vettedGate.RESUME_ROLE(), deployParams.resealManager));
         assertEq(vettedGate.getRoleMemberCount(vettedGate.RESUME_ROLE()), 1);
@@ -303,24 +308,23 @@ contract VettedGateFactoryDeploymentTest is DeploymentBaseTest {
     }
 }
 
-contract GateSealDeploymentTest is DeploymentBaseTest {
-    function test_configuration() public view {
-        assertTrue(address(gateSeal) != address(0), "gate seal missing");
-        address committee = gateSeal.get_sealing_committee();
-        assertEq(committee, deployParams.sealingCommittee, "committee");
-        assertEq(gateSeal.get_seal_duration_seconds(), deployParams.sealDuration, "seal duration");
-        assertEq(gateSeal.get_expiry_timestamp(), deployParams.sealExpiryTimestamp, "expiry");
+contract CircuitBreakerDeploymentTest is DeploymentBaseTest {
+    function test_configuration_afterVote() public {
+        vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
+        address pauser = circuitBreaker.getPauser(address(module));
+        assertEq(pauser, deployParams.circuitBreakerPauser, "pauser");
     }
 
-    function test_sealables() public view {
-        address[] memory sealables = gateSeal.get_sealables();
-        assertEq(sealables.length, 6, "sealables length");
-        assertEq(sealables[0], address(module), "module mismatch");
-        assertEq(sealables[1], address(accounting), "accounting mismatch");
-        assertEq(sealables[2], address(oracle), "oracle mismatch");
-        assertEq(sealables[3], address(verifier), "verifier mismatch");
-        assertEq(sealables[4], address(vettedGate), "vetted gate mismatch");
-        assertEq(sealables[5], address(ejector), "ejector mismatch");
+    function test_pausables_afterVote() public {
+        vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
+        address[] memory pausables = circuitBreaker.getPausables();
+        assertEq(pausables.length, 6, "pausables length");
+        assertEq(pausables[0], address(module), "module mismatch");
+        assertEq(pausables[1], address(accounting), "accounting mismatch");
+        assertEq(pausables[2], address(oracle), "oracle mismatch");
+        assertEq(pausables[3], address(verifier), "verifier mismatch");
+        assertEq(pausables[4], address(vettedGate), "vetted gate mismatch");
+        assertEq(pausables[5], address(ejector), "ejector mismatch");
     }
 }
 

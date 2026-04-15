@@ -70,11 +70,9 @@ contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
         config.penaltiesManager = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
-        // GateSeal
-        config.gateSealFactory = 0x0000000000000000000000000000000000000000;
-        config.sealingCommittee = 0x0000000000000000000000000000000000000000;
-        config.sealDuration = 0;
-        config.sealExpiryTimestamp = 0;
+        // CircuitBreaker
+        config.circuitBreaker = address(0);
+        config.circuitBreakerPauser = address(0);
 
         // DG
         config.resealManager = vm.envAddress("CSM_RESEAL_MANAGER_ADDRESS");

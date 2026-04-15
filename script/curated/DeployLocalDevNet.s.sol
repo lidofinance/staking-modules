@@ -158,11 +158,9 @@ contract DeployLocalDevNet is DeployBase {
         // MetaRegistry
         config.setOperatorInfoManager = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
-        // GateSeal
-        config.gateSealFactory = address(0);
-        config.sealingCommittee = address(0);
-        config.sealDuration = 0;
-        config.sealExpiryTimestamp = 0;
+        // CircuitBreaker
+        config.circuitBreaker = address(0);
+        config.circuitBreakerPauser = address(0);
 
         config.secondAdminAddress = vm.envOr("CSM_SECOND_ADMIN_ADDRESS", address(0));
 

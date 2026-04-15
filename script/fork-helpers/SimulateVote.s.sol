@@ -4,6 +4,7 @@
 pragma solidity 0.8.33;
 
 import { Script } from "forge-std/Script.sol";
+import { console } from "forge-std/console.sol";
 
 import { CSModule } from "../../src/CSModule.sol";
 import { Accounting } from "../../src/Accounting.sol";
@@ -19,8 +20,11 @@ import { ITriggerableWithdrawalsGateway } from "../../src/interfaces/ITriggerabl
 import { IBurner } from "../../src/interfaces/IBurner.sol";
 import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 
+import { ICircuitBreaker } from "../../src/interfaces/ICircuitBreaker.sol";
 import { ForkHelpersCommon } from "./Common.sol";
 import { DeployParams } from "../csm/DeployBase.s.sol";
+import { DeployCSM0x02Params } from "../csm0x02/DeployCSM0x02Base.s.sol";
+import { CuratedDeployParams } from "../curated/DeployBase.s.sol";
 
 contract SimulateVote is Script, ForkHelpersCommon {
     bytes32 internal constant REPORT_EL_REWARDS_STEALING_PENALTY_ROLE =
@@ -39,6 +43,14 @@ contract SimulateVote is Script, ForkHelpersCommon {
         _setUp();
         if (moduleType != ModuleType.Community && moduleType != ModuleType.Community0x02) {
             revert WrongModuleType();
+        }
+
+        Env memory env = envVars();
+        address cbPauser;
+        if (moduleType == ModuleType.Community) {
+            cbPauser = parseDeployParams(env.DEPLOY_CONFIG).circuitBreakerPauser;
+        } else {
+            cbPauser = parseDeployParams0x02(env.DEPLOY_CONFIG).circuitBreakerPauser;
         }
 
         IStakingRouter stakingRouter = IStakingRouter(locator.stakingRouter());
@@ -85,6 +97,18 @@ contract SimulateVote is Script, ForkHelpersCommon {
         module.revokeRole(module.RESUME_ROLE(), agent);
         // 7. Update initial epoch
         hashConsensus.updateInitialEpoch(47480);
+        // 8-13. Register pausers in CircuitBreaker
+        if (address(circuitBreaker).code.length > 0) {
+            circuitBreaker.registerPauser(address(module), cbPauser);
+            circuitBreaker.registerPauser(address(accounting), cbPauser);
+            circuitBreaker.registerPauser(address(oracle), cbPauser);
+            circuitBreaker.registerPauser(address(verifier), cbPauser);
+            circuitBreaker.registerPauser(address(ejector), cbPauser);
+            if (moduleType == ModuleType.Community) {
+                // VettedGate pauser (Community0x02 has no VettedGate)
+                circuitBreaker.registerPauser(address(vettedGate), cbPauser);
+            }
+        }
 
         vm.stopBroadcast();
     }
@@ -95,6 +119,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
     function addCuratedModule() external {
         initializeFromDeployment();
         if (moduleType != ModuleType.Curated) revert WrongModuleType();
+
+        Env memory env = envVars();
+        address cbPauser = parseCuratedDeployParams(env.DEPLOY_CONFIG).circuitBreakerPauser;
 
         IStakingRouter stakingRouter = IStakingRouter(locator.stakingRouter());
         IBurner burner = IBurner(locator.burner());
@@ -117,6 +144,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
         vm.startBroadcast(agent);
 
+        // 1. Add Curated module
         stakingRouter.addStakingModule({
             _name: "curated-onchain-v2",
             _stakingModuleAddress: address(curatedModule),
@@ -128,14 +156,28 @@ contract SimulateVote is Script, ForkHelpersCommon {
             _minDepositBlockDistance: 25
         });
 
+        // 2. burner role
         burner.grantRole(burner.REQUEST_BURN_MY_STETH_ROLE(), address(accounting));
 
+        // 3. twg role
         twg.grantRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), address(ejector));
 
+        // 4. Grant resume to agent
         curatedModule.grantRole(curatedModule.RESUME_ROLE(), agent);
+        // 5. Resume Curated module
         curatedModule.resume();
+        // 6. Revoke resume
         curatedModule.revokeRole(curatedModule.RESUME_ROLE(), agent);
+        // 7. Update initial epoch
         hashConsensus.updateInitialEpoch(47480);
+        // 8-12. Register pausers in CircuitBreaker
+        if (address(circuitBreaker).code.length > 0) {
+            circuitBreaker.registerPauser(address(curatedModule), cbPauser);
+            circuitBreaker.registerPauser(address(accounting), cbPauser);
+            circuitBreaker.registerPauser(address(oracle), cbPauser);
+            circuitBreaker.registerPauser(address(verifier), cbPauser);
+            circuitBreaker.registerPauser(address(ejector), cbPauser);
+        }
 
         vm.stopBroadcast();
     }
@@ -150,10 +192,12 @@ contract SimulateVote is Script, ForkHelpersCommon {
         Env memory env = envVars();
         DeploymentConfig memory deploymentConfig;
         DeployParams memory deployParams;
+        address gateSeal;
         {
             string memory deploymentConfigContent = vm.readFile(env.DEPLOY_CONFIG);
             deploymentConfig = parseDeploymentConfig(deploymentConfigContent);
             deployParams = parseDeployParams(env.DEPLOY_CONFIG);
+            gateSeal = vm.parseJsonAddress(deploymentConfigContent, ".GateSeal");
         }
         VettedGate existingVettedGate = VettedGate(deploymentConfig.vettedGate);
         address admin = _prepareAdmin(deploymentConfig.csm);
@@ -184,7 +228,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
         {
             OssifiableProxy oracleProxy = OssifiableProxy(payable(deploymentConfig.oracle));
             vm.startBroadcast(_prepareProxyAdmin(address(oracleProxy)));
-            // 4-5. Upgrade and finalize FeeOracle v3 in a single tx
+            // 5-6. Upgrade and finalize FeeOracle v3 in a single tx
             oracleProxy.proxy__upgradeToAndCall(
                 deploymentConfig.oracleImpl,
                 abi.encodeCall(FeeOracle.finalizeUpgradeV3, (deployParams.consensusVersion))
@@ -253,67 +297,75 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
             vm.startBroadcast(admin);
 
-            // 13. Point ValidatorStrikes to the new Ejector
+            // 14. Point ValidatorStrikes to the new Ejector
             strikes.setEjector(deploymentConfig.ejector);
 
-            // 14. Grant REPORT_GENERAL_DELAYED_PENALTY_ROLE
+            // 15. Grant REPORT_GENERAL_DELAYED_PENALTY_ROLE
             module.grantRole(module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), deployParams.generalDelayedPenaltyReporter);
-            // 15. Grant SETTLE_GENERAL_DELAYED_PENALTY_ROLE
+            // 16. Grant SETTLE_GENERAL_DELAYED_PENALTY_ROLE
             module.grantRole(module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(), deployParams.easyTrackEVMScriptExecutor);
-            // 16. Revoke REPORT_EL_REWARDS_STEALING_PENALTY_ROLE
+            // 17. Revoke REPORT_EL_REWARDS_STEALING_PENALTY_ROLE
             module.revokeRole(REPORT_EL_REWARDS_STEALING_PENALTY_ROLE, deployParams.generalDelayedPenaltyReporter);
-            // 17. Revoke SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE
+            // 18. Revoke SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE
             module.revokeRole(SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE, deployParams.easyTrackEVMScriptExecutor);
-            // 18. Revoke VERIFIER_ROLE from previous verifier
+            // 19. Revoke VERIFIER_ROLE from previous verifier
             module.revokeRole(module.VERIFIER_ROLE(), deploymentConfig.verifier);
-            // 19. Grant VERIFIER_ROLE to VerifierV3
+            // 20. Grant VERIFIER_ROLE to VerifierV3
             module.grantRole(module.VERIFIER_ROLE(), deploymentConfig.verifierV3);
-            // 20. Grant REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE to VerifierV3
+            // 21. Grant REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE to VerifierV3
             module.grantRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), deploymentConfig.verifierV3);
-            // 21. Grant REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE to Easy Track
+            // 22. Grant REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE to Easy Track
             module.grantRole(
                 module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(),
                 deployParams.easyTrackEVMScriptExecutor
             );
-            // 22. Revoke CREATE_NODE_OPERATOR_ROLE from old PermissionlessGate
+            // 23. Revoke CREATE_NODE_OPERATOR_ROLE from old PermissionlessGate
             module.revokeRole(module.CREATE_NODE_OPERATOR_ROLE(), oldPermissionlessGate);
-            // 23. Grant CREATE_NODE_OPERATOR_ROLE to new PermissionlessGate
+            // 24. Grant CREATE_NODE_OPERATOR_ROLE to new PermissionlessGate
             module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), deploymentConfig.permissionlessGate);
 
-            // 24. Revoke PAUSE_ROLE from old gate seal on CSModule
-            module.revokeRole(module.PAUSE_ROLE(), deploymentConfig.gateSeal);
-            // 25. Revoke PAUSE_ROLE from old gate seal on Accounting
-            accounting.revokeRole(accounting.PAUSE_ROLE(), deploymentConfig.gateSeal);
-            // 26. Revoke PAUSE_ROLE from old gate seal on FeeOracle
-            oracle.revokeRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSeal);
-            // 27. Revoke PAUSE_ROLE from old gate seal on VettedGate
-            existingVettedGate.revokeRole(existingVettedGate.PAUSE_ROLE(), deploymentConfig.gateSeal);
-            // 28. Revoke PAUSE_ROLE from old gate seal on old Verifier
-            oldVerifier.revokeRole(oldVerifier.PAUSE_ROLE(), deploymentConfig.gateSeal);
-            // 29. Revoke PAUSE_ROLE from old gate seal on old Ejector
-            oldEjectorContract.revokeRole(oldEjectorContract.PAUSE_ROLE(), deploymentConfig.gateSeal);
-            // 30. Revoke PAUSE_ROLE from reseal manager on old Verifier
+            // NOTE: Revoking old gate seal PAUSE_ROLE on CSModule, Accounting, FeeOracle, VettedGate
+            // is handled in a separate intermediate vote.
+            // Here we only revoke roles on replaced contracts (old Verifier and old Ejector).
+            // 25. Revoke PAUSE_ROLE from old gate seal on old Verifier
+            oldVerifier.revokeRole(oldVerifier.PAUSE_ROLE(), gateSeal);
+            // 26. Revoke PAUSE_ROLE from old gate seal on old Ejector
+            oldEjectorContract.revokeRole(oldEjectorContract.PAUSE_ROLE(), gateSeal);
+            // 27. Revoke PAUSE_ROLE from reseal manager on old Verifier
             oldVerifier.revokeRole(oldVerifier.PAUSE_ROLE(), deployParams.resealManager);
-            // 31. Revoke RESUME_ROLE from reseal manager on old Verifier
+            // 28. Revoke RESUME_ROLE from reseal manager on old Verifier
             oldVerifier.revokeRole(oldVerifier.RESUME_ROLE(), deployParams.resealManager);
-            // 32. Revoke PAUSE_ROLE from reseal manager on old Ejector
+            // 29. Revoke PAUSE_ROLE from reseal manager on old Ejector
             oldEjectorContract.revokeRole(oldEjectorContract.PAUSE_ROLE(), deployParams.resealManager);
-            // 33. Revoke RESUME_ROLE from reseal manager on old Ejector
+            // 30. Revoke RESUME_ROLE from reseal manager on old Ejector
             oldEjectorContract.revokeRole(oldEjectorContract.RESUME_ROLE(), deployParams.resealManager);
 
-            // Revoke legacy referral program roles.
+            // 31-32. Revoke legacy referral program roles
             existingVettedGate.revokeRole(START_REFERRAL_SEASON_ROLE, deployParams.aragonAgent);
             existingVettedGate.revokeRole(END_REFERRAL_SEASON_ROLE, deployParams.identifiedCommunityStakersGateManager);
 
-            // 34. Grant PAUSE_ROLE to gateSealV3 on CSModule
-            module.grantRole(module.PAUSE_ROLE(), deploymentConfig.gateSealV3);
-            // 35. Grant PAUSE_ROLE to gateSealV3 on Accounting
-            accounting.grantRole(accounting.PAUSE_ROLE(), deploymentConfig.gateSealV3);
-            // 36. Grant PAUSE_ROLE to gateSealV3 on FeeOracle
-            oracle.grantRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSealV3);
-            // 37. Grant PAUSE_ROLE to gateSealV3 on VettedGate
-            existingVettedGate.grantRole(existingVettedGate.PAUSE_ROLE(), deploymentConfig.gateSealV3);
-            // 38. Grant MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE to penaltiesManager
+            // 33-42. Setup CircuitBreaker: grant PAUSE_ROLE and register pausers
+            if (deploymentConfig.circuitBreaker != address(0)) {
+                module.grantRole(module.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
+                accounting.grantRole(accounting.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
+                oracle.grantRole(oracle.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
+                existingVettedGate.grantRole(existingVettedGate.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
+
+                if (deploymentConfig.circuitBreaker.code.length > 0) {
+                    ICircuitBreaker cb = ICircuitBreaker(deploymentConfig.circuitBreaker);
+                    cb.registerPauser(address(module), deployParams.circuitBreakerPauser);
+                    cb.registerPauser(address(accounting), deployParams.circuitBreakerPauser);
+                    cb.registerPauser(address(oracle), deployParams.circuitBreakerPauser);
+                    cb.registerPauser(address(existingVettedGate), deployParams.circuitBreakerPauser);
+                    cb.registerPauser(deploymentConfig.verifierV3, deployParams.circuitBreakerPauser);
+                    cb.registerPauser(deploymentConfig.ejector, deployParams.circuitBreakerPauser);
+                } else {
+                    console.log("CircuitBreaker is EOA, skipping registering pausers");
+                }
+            } else {
+                console.log("CircuitBreaker is not configured");
+            }
+            // 43. Grant MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE to penaltiesManager
             parametersRegistry.grantRole(
                 parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
                 deployParams.penaltiesManager
@@ -324,9 +376,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
         {
             vm.startBroadcast(burnerAdmin);
-            // 39. Revoke REQUEST_BURN_SHARES_ROLE from Accounting
+            // 44. Revoke REQUEST_BURN_SHARES_ROLE from Accounting
             burner.revokeRole(burner.REQUEST_BURN_SHARES_ROLE(), address(accounting));
-            // 40. Grant REQUEST_BURN_MY_STETH_ROLE to Accounting
+            // 45. Grant REQUEST_BURN_MY_STETH_ROLE to Accounting
             burner.grantRole(burner.REQUEST_BURN_MY_STETH_ROLE(), address(accounting));
             vm.stopBroadcast();
         }
@@ -338,9 +390,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
             address twgAdmin = _prepareAdmin(address(twg));
 
             vm.startBroadcast(twgAdmin);
-            // 41. Revoke TWG full-withdrawal role from old Ejector
+            // 46. Revoke TWG full-withdrawal role from old Ejector
             twg.revokeRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), oldEjector);
-            // 42. Grant TWG full-withdrawal role to new Ejector
+            // 47. Grant TWG full-withdrawal role to new Ejector
             twg.grantRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), deploymentConfig.ejector);
             vm.stopBroadcast();
         }

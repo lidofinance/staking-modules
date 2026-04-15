@@ -1919,9 +1919,31 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         uint256 cap = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
         setKeyConfirmedBalance(0, 0, cap - 2 ether);
 
+        vm.expectEmit(address(cm));
+        emit IBaseModule.KeyAllocatedBalanceChanged(0, 0, cap);
         // Current allocators cap per-key top-ups before they reach StakeTracker, so an over-cap allocation is
         // practically unreachable in production right now. Use the harness to exercise the defensive accounting path.
         curatedHarness.exposedIncreaseKeyBalances(UintArr(0), UintArr(0), UintArr(10 ether));
+
+        assertEq(cm.getKeyAllocatedBalances(0, 0, 1), UintArr(cap));
+        assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE);
+        assertEq(cm.getNodeOperatorBalance(0), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE);
+    }
+
+    function test_topUp_capsOperatorBalanceIncrementToAppliedHeadroom_NoUpdate() public {
+        createNodeOperator(1);
+        cm.obtainDepositData(1, "");
+
+        uint256 cap = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
+        setKeyConfirmedBalance(0, 0, cap);
+
+        vm.recordLogs();
+        // Current allocators cap per-key top-ups before they reach StakeTracker, so an over-cap allocation is
+        // practically unreachable in production right now. Use the harness to exercise the defensive accounting path.
+        curatedHarness.exposedIncreaseKeyBalances(UintArr(0), UintArr(0), UintArr(10 ether));
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 0);
 
         assertEq(cm.getKeyAllocatedBalances(0, 0, 1), UintArr(cap));
         assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE);

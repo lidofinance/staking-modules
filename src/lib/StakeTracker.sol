@@ -156,10 +156,12 @@ library StakeTracker {
             ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             oldAllocated + incrementWei
         );
-        keyAllocatedBalance[pointer] = updated;
-        emit IBaseModule.KeyAllocatedBalanceChanged(nodeOperatorId, keyIndex, updated);
         unchecked {
             appliedIncrementWei = updated - oldAllocated;
+        }
+        if (appliedIncrementWei > 0) {
+            keyAllocatedBalance[pointer] = updated;
+            emit IBaseModule.KeyAllocatedBalanceChanged(nodeOperatorId, keyIndex, updated);
         }
     }
 

@@ -22,9 +22,9 @@ import { JsonObj, Json } from "../utils/Json.sol";
 import { Slot } from "../../src/lib/Types.sol";
 
 abstract contract DeployCSMImplementationsBase is DeployBase {
-    address public gateSealV3;
     Verifier public verifierV3;
     address public earlyAdoption;
+    address public legacyGateSeal;
 
     bytes32 internal constant LEGACY_QUEUE_SLOT = bytes32(uint256(1));
 
@@ -106,15 +106,6 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
                 admin: deployer
             });
 
-            address[] memory sealables = new address[](6);
-            sealables[0] = address(csm);
-            sealables[1] = address(accounting);
-            sealables[2] = address(oracle);
-            sealables[3] = address(verifierV3);
-            sealables[4] = address(vettedGate);
-            sealables[5] = address(ejector);
-            gateSealV3 = _deployGateSeal(sealables);
-
             if (config.secondAdminAddress != address(0)) {
                 if (config.secondAdminAddress == deployer) revert InvalidSecondAdmin();
                 _grantSecondAdminsForNewContracts();
@@ -125,14 +116,18 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             ejector.grantRole(ejector.PAUSE_ROLE(), config.resealManager);
             ejector.grantRole(ejector.RESUME_ROLE(), config.resealManager);
 
-            ejector.grantRole(ejector.PAUSE_ROLE(), gateSealV3);
+            if (circuitBreaker != address(0)) {
+                ejector.grantRole(ejector.PAUSE_ROLE(), circuitBreaker);
+            }
             ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             ejector.revokeRole(ejector.DEFAULT_ADMIN_ROLE(), deployer);
 
             permissionlessGate.grantRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             permissionlessGate.revokeRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), deployer);
 
-            verifierV3.grantRole(verifierV3.PAUSE_ROLE(), gateSealV3);
+            if (circuitBreaker != address(0)) {
+                verifierV3.grantRole(verifierV3.PAUSE_ROLE(), circuitBreaker);
+            }
             verifierV3.grantRole(verifierV3.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             verifierV3.revokeRole(verifierV3.DEFAULT_ADMIN_ROLE(), deployer);
 
@@ -165,8 +160,8 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             deployJson.set("VettedGate", address(vettedGate));
             deployJson.set("VettedGateImpl", address(vettedGateImpl));
             deployJson.set("LidoLocator", config.lidoLocatorAddress);
-            deployJson.set("GateSeal", gateSeal);
-            deployJson.set("GateSealV3", gateSealV3);
+            deployJson.set("GateSeal", legacyGateSeal);
+            deployJson.set("CircuitBreaker", circuitBreaker);
             deployJson.set("DeployParams", abi.encode(config));
             deployJson.set("git-ref", gitRef);
             if (!vm.exists(artifactDir)) {

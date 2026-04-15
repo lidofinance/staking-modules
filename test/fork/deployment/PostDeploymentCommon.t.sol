@@ -28,6 +28,7 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     CommonDeployParams internal deployParams;
     uint256 adminsCount;
     uint256 expectedModuleScratchNonce;
+    bool internal isUpgradeFlow;
 
     function setUp() public {
         Env memory env = envVars();
@@ -35,6 +36,7 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         initializeFromDeployment();
         string memory config = vm.readFile(env.DEPLOY_CONFIG);
         deployParams = parseCommonDeployParams(config);
+        isUpgradeFlow = env.VOTE_PREV_BLOCK != 0;
         adminsCount = block.chainid == 1 ? 1 : 2;
 
         if (moduleType == ModuleType.Curated) {
@@ -73,9 +75,12 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         assertTrue(module.hasRole(module.STAKING_ROUTER_ROLE(), locator.stakingRouter()));
         assertEq(module.getRoleMemberCount(module.STAKING_ROUTER_ROLE()), 1);
 
-        assertTrue(module.hasRole(module.PAUSE_ROLE(), address(gateSeal)));
         assertTrue(module.hasRole(module.PAUSE_ROLE(), deployParams.resealManager));
-        assertEq(module.getRoleMemberCount(module.PAUSE_ROLE()), 2);
+        _assertCircuitBreakerPauseRoleState(
+            address(module),
+            address(circuitBreaker),
+            _expectedPauseRoleMembersWithoutCb(isUpgradeFlow)
+        );
 
         assertTrue(module.hasRole(module.RESUME_ROLE(), deployParams.resealManager));
         assertEq(module.getRoleMemberCount(module.RESUME_ROLE()), 1);
@@ -151,9 +156,12 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
         assertTrue(accounting.hasRole(accounting.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(accounting.getRoleMemberCount(accounting.DEFAULT_ADMIN_ROLE()), adminsCount);
 
-        assertTrue(accounting.hasRole(accounting.PAUSE_ROLE(), address(gateSeal)));
         assertTrue(accounting.hasRole(accounting.PAUSE_ROLE(), deployParams.resealManager));
-        assertEq(accounting.getRoleMemberCount(accounting.PAUSE_ROLE()), 2);
+        _assertCircuitBreakerPauseRoleState(
+            address(accounting),
+            address(circuitBreaker),
+            _expectedPauseRoleMembersWithoutCb(isUpgradeFlow)
+        );
 
         assertTrue(accounting.hasRole(accounting.RESUME_ROLE(), deployParams.resealManager));
         assertEq(accounting.getRoleMemberCount(accounting.RESUME_ROLE()), 1);
@@ -277,9 +285,12 @@ contract FeeOracleDeploymentTest is DeploymentBaseTest {
         assertTrue(oracle.hasRole(oracle.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(oracle.getRoleMemberCount(oracle.DEFAULT_ADMIN_ROLE()), adminsCount);
 
-        assertTrue(oracle.hasRole(oracle.PAUSE_ROLE(), address(gateSeal)));
         assertTrue(oracle.hasRole(oracle.PAUSE_ROLE(), deployParams.resealManager));
-        assertEq(oracle.getRoleMemberCount(oracle.PAUSE_ROLE()), 2);
+        _assertCircuitBreakerPauseRoleState(
+            address(oracle),
+            address(circuitBreaker),
+            _expectedPauseRoleMembersWithoutCb(isUpgradeFlow)
+        );
 
         assertTrue(oracle.hasRole(oracle.RESUME_ROLE(), deployParams.resealManager));
         assertEq(oracle.getRoleMemberCount(oracle.RESUME_ROLE()), 1);
@@ -405,9 +416,8 @@ contract VerifierDeploymentTest is DeploymentBaseTest {
             assertTrue(verifier.hasRole(verifier.DEFAULT_ADMIN_ROLE(), deployParams.secondAdminAddress));
         }
 
-        assertTrue(verifier.hasRole(verifier.PAUSE_ROLE(), address(gateSeal)));
         assertTrue(verifier.hasRole(verifier.PAUSE_ROLE(), deployParams.resealManager));
-        assertEq(verifier.getRoleMemberCount(verifier.PAUSE_ROLE()), 2);
+        _assertCircuitBreakerPauseRoleState(address(verifier), address(circuitBreaker), 1);
 
         assertTrue(verifier.hasRole(verifier.RESUME_ROLE(), deployParams.resealManager));
         assertEq(verifier.getRoleMemberCount(verifier.RESUME_ROLE()), 1);
@@ -472,9 +482,8 @@ contract EjectorDeploymentTest is DeploymentBaseTest {
             assertTrue(ejector.hasRole(ejector.DEFAULT_ADMIN_ROLE(), deployParams.secondAdminAddress));
         }
 
-        assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), address(gateSeal)));
         assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager));
-        assertEq(ejector.getRoleMemberCount(ejector.PAUSE_ROLE()), 2);
+        _assertCircuitBreakerPauseRoleState(address(ejector), address(circuitBreaker), 1);
 
         assertTrue(ejector.hasRole(ejector.RESUME_ROLE(), deployParams.resealManager));
         assertEq(ejector.getRoleMemberCount(ejector.RESUME_ROLE()), 1);

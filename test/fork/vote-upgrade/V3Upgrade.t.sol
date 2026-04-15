@@ -14,6 +14,9 @@ import { IBondLock } from "../../../src/interfaces/IBondLock.sol";
 import { IBondCurve } from "../../../src/interfaces/IBondCurve.sol";
 import { ITriggerableWithdrawalsGateway } from "../../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
+import { ICircuitBreaker } from "../../../src/interfaces/ICircuitBreaker.sol";
+import { Verifier } from "../../../src/Verifier.sol";
+import { Ejector } from "../../../src/Ejector.sol";
 
 interface IPrevCSParametersRegistry {
     function defaultElRewardsStealingAdditionalFine() external returns (uint256);
@@ -114,8 +117,12 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(module.getRoleMemberCount(REPORT_EL_REWARDS_STEALING_PENALTY_ROLE), 0);
         assertEq(module.getRoleMemberCount(SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE), 0);
 
-        assertFalse(module.hasRole(module.PAUSE_ROLE(), deploymentConfig.gateSeal));
-        assertTrue(module.hasRole(module.PAUSE_ROLE(), deploymentConfig.gateSealV3));
+        // TODO: Tighten to the final exact count once CircuitBreaker is live and migration is done.
+        _assertCircuitBreakerPauseRoleState(
+            address(module),
+            deploymentConfig.circuitBreaker,
+            _expectedPauseRoleMembersWithoutCb(true)
+        );
     }
 
     function test_burnerRoleChanges() public {
@@ -378,8 +385,12 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertFalse(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(permissionlessGate)));
         assertFalse(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(module)));
 
-        assertFalse(accounting.hasRole(accounting.PAUSE_ROLE(), deploymentConfig.gateSeal));
-        assertTrue(accounting.hasRole(accounting.PAUSE_ROLE(), deploymentConfig.gateSealV3));
+        // TODO: Tighten to the final exact count once CircuitBreaker is live and migration is done.
+        _assertCircuitBreakerPauseRoleState(
+            address(accounting),
+            deploymentConfig.circuitBreaker,
+            _expectedPauseRoleMembersWithoutCb(true)
+        );
     }
 
     function test_accountingState() public {
@@ -516,8 +527,12 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(oracleImpl));
 
-        assertFalse(oracle.hasRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSeal));
-        assertTrue(oracle.hasRole(oracle.PAUSE_ROLE(), deploymentConfig.gateSealV3));
+        // TODO: Tighten to the final exact count once CircuitBreaker is live and migration is done.
+        _assertCircuitBreakerPauseRoleState(
+            address(oracle),
+            deploymentConfig.circuitBreaker,
+            _expectedPauseRoleMembersWithoutCb(true)
+        );
 
         assertEq(oracle.getContractVersion(), contractVersionBefore + 1);
         assertEq(oracle.getConsensusVersion(), consensusVersionBefore + 1);
@@ -565,7 +580,6 @@ contract VoteChangesTest is V3UpgradeTestBase {
         uint256 startReferralRoleMembersBefore = vettedGate.getRoleMemberCount(START_REFERRAL_SEASON_ROLE);
         uint256 endReferralRoleMembersBefore = vettedGate.getRoleMemberCount(END_REFERRAL_SEASON_ROLE);
 
-        assertTrue(vettedGate.hasRole(vettedGate.PAUSE_ROLE(), deploymentConfig.gateSeal));
         assertTrue(vettedGate.hasRole(START_REFERRAL_SEASON_ROLE, deployParams.aragonAgent));
         assertTrue(vettedGate.hasRole(END_REFERRAL_SEASON_ROLE, deployParams.identifiedCommunityStakersGateManager));
         assertEq(startReferralRoleMembersBefore, 1);
@@ -580,12 +594,40 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(vettedGate.treeRoot(), treeRootBefore);
         assertEq(keccak256(bytes(vettedGate.treeCid())), keccak256(bytes(treeCidBefore)));
 
-        assertFalse(vettedGate.hasRole(vettedGate.PAUSE_ROLE(), deploymentConfig.gateSeal));
-        assertTrue(vettedGate.hasRole(vettedGate.PAUSE_ROLE(), deploymentConfig.gateSealV3));
+        // TODO: Tighten to the final exact count once CircuitBreaker is live and migration is done.
+        _assertCircuitBreakerPauseRoleState(
+            address(vettedGate),
+            deploymentConfig.circuitBreaker,
+            _expectedPauseRoleMembersWithoutCb(true)
+        );
         assertFalse(vettedGate.hasRole(START_REFERRAL_SEASON_ROLE, deployParams.aragonAgent));
         assertFalse(vettedGate.hasRole(END_REFERRAL_SEASON_ROLE, deployParams.identifiedCommunityStakersGateManager));
         assertEq(vettedGate.getRoleMemberCount(START_REFERRAL_SEASON_ROLE), 0);
         assertEq(vettedGate.getRoleMemberCount(END_REFERRAL_SEASON_ROLE), 0);
+    }
+
+    function test_circuitBreakerChanges() public {
+        vm.skip(!_isCircuitBreakerDeployed(deploymentConfig.circuitBreaker), "CircuitBreaker is not deployed");
+        vm.selectFork(forkIdAfterUpgrade);
+        ICircuitBreaker cb = ICircuitBreaker(deploymentConfig.circuitBreaker);
+
+        // PAUSE_ROLE granted to CircuitBreaker
+        assertTrue(module.hasRole(module.PAUSE_ROLE(), deploymentConfig.circuitBreaker));
+        assertTrue(accounting.hasRole(accounting.PAUSE_ROLE(), deploymentConfig.circuitBreaker));
+        assertTrue(oracle.hasRole(oracle.PAUSE_ROLE(), deploymentConfig.circuitBreaker));
+        assertTrue(vettedGate.hasRole(vettedGate.PAUSE_ROLE(), deploymentConfig.circuitBreaker));
+        Verifier verifierV3Contract = Verifier(deploymentConfig.verifierV3);
+        assertTrue(verifierV3Contract.hasRole(verifierV3Contract.PAUSE_ROLE(), deploymentConfig.circuitBreaker));
+        Ejector ejectorContract = Ejector(payable(deploymentConfig.ejector));
+        assertTrue(ejectorContract.hasRole(ejectorContract.PAUSE_ROLE(), deploymentConfig.circuitBreaker));
+
+        // Pausers registered in CircuitBreaker
+        assertEq(cb.getPauser(address(module)), deployParams.circuitBreakerPauser);
+        assertEq(cb.getPauser(address(accounting)), deployParams.circuitBreakerPauser);
+        assertEq(cb.getPauser(address(oracle)), deployParams.circuitBreakerPauser);
+        assertEq(cb.getPauser(address(vettedGate)), deployParams.circuitBreakerPauser);
+        assertEq(cb.getPauser(deploymentConfig.verifierV3), deployParams.circuitBreakerPauser);
+        assertEq(cb.getPauser(deploymentConfig.ejector), deployParams.circuitBreakerPauser);
     }
 
     function test_exitPenaltiesChanges() public {
