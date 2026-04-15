@@ -29,6 +29,12 @@ contract BondCurveTestable is BondCurve {
     }
 }
 
+contract BondCurveGateMock {
+    function setBondCurve(BondCurveTestable bondCurve, uint256 nodeOperatorId, uint256 curveId) external {
+        bondCurve.setBondCurve(nodeOperatorId, curveId);
+    }
+}
+
 contract BondCurveInitTest is Test {
     BondCurveTestable public bondCurve;
 
@@ -280,8 +286,23 @@ contract BondCurveTest is Test {
         uint256 addedId = bondCurve.addBondCurve(_bondCurve);
 
         vm.expectEmit(address(bondCurve));
-        emit IBondCurve.BondCurveSet(noId, addedId);
+        emit IBondCurve.BondCurveSet(noId, addedId, address(this));
         bondCurve.setBondCurve(noId, addedId);
+
+        assertEq(bondCurve.getBondCurveId(noId), addedId);
+    }
+
+    function test_setBondCurve_EmitsGateAsSetter() public {
+        uint256 noId = 0;
+        IBondCurve.BondCurveIntervalInput[] memory _bondCurve = new IBondCurve.BondCurveIntervalInput[](1);
+        _bondCurve[0] = IBondCurve.BondCurveIntervalInput(1, 16 ether);
+        uint256 addedId = bondCurve.addBondCurve(_bondCurve);
+
+        BondCurveGateMock gate = new BondCurveGateMock();
+
+        vm.expectEmit(address(bondCurve));
+        emit IBondCurve.BondCurveSet(noId, addedId, address(gate));
+        gate.setBondCurve(bondCurve, noId, addedId);
 
         assertEq(bondCurve.getBondCurveId(noId), addedId);
     }
