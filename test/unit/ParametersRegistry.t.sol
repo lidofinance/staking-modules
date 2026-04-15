@@ -415,15 +415,22 @@ contract ParametersRegistryRewardShareDataTest is ParametersRegistryBaseTestInit
         parametersRegistry.setRewardShareData(curveId, data);
     }
 
-    function test_set_RevertWhen_zeroFirstIntervalValue() public {
+    function test_set_zeroFirstIntervalValue() public {
         uint256 curveId = 1;
         IParametersRegistry.KeyNumberValueInterval[] memory data = new IParametersRegistry.KeyNumberValueInterval[](2);
         data[0] = IParametersRegistry.KeyNumberValueInterval(1, 0);
         data[1] = IParametersRegistry.KeyNumberValueInterval(10, 8000);
 
-        vm.expectRevert(IParametersRegistry.InvalidKeyNumberValueIntervals.selector);
         vm.prank(admin);
         parametersRegistry.setRewardShareData(curveId, data);
+
+        ParametersRegistry.KeyNumberValueInterval[] memory result = parametersRegistry.getRewardShareData(curveId);
+
+        assertEq(result.length, 2);
+        assertEq(result[0].minKeyNumber, 1);
+        assertEq(result[0].value, 0);
+        assertEq(result[1].minKeyNumber, 10);
+        assertEq(result[1].value, 8000);
     }
 
     function test_set_RevertWhen_emptyIntervals() public {
