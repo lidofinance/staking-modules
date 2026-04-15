@@ -633,9 +633,9 @@ contract FeeDistributorTest is FeeDistributorTestBase {
         assertEq(feeDistributor.treeCid(), lastTreeCid);
         assertEq(feeDistributor.logCid(), newLogCid);
         assertEq(feeDistributor.pendingSharesToDistribute(), 0);
-        assertEq(feeDistributor.totalClaimableShares(), 0);
+        assertEq(feeDistributor.totalClaimableShares(), shares);
         assertEq(stETH.sharesOf(rebateRecipient), 0);
-        assertEq(stETH.sharesOf(address(feeDistributor)), 0);
+        assertEq(stETH.sharesOf(address(feeDistributor)), shares);
     }
 
     function test_processOracleReport_RevertWhen_EmptyInitialReportChangesTree() public assertInvariants {
@@ -806,9 +806,13 @@ contract FeeDistributorTest is FeeDistributorTestBase {
 
     function test_processOracleReport_RevertWhen_ZeroLogCid() public {
         uint256 refSlot = 154;
+
+        string memory lastTreeCid = feeDistributor.treeCid();
+        bytes32 lastTreeRoot = feeDistributor.treeRoot();
+
         vm.expectRevert(IFeeDistributor.InvalidLogCID.selector);
         vm.prank(oracle);
-        feeDistributor.processOracleReport(someBytes32(), someCIDv0(), "", 0, 0, refSlot);
+        feeDistributor.processOracleReport(lastTreeRoot, lastTreeCid, "", 0, 0, refSlot);
     }
 
     function test_processOracleReport_RevertWhen_SameLogCid() public {
@@ -816,11 +820,13 @@ contract FeeDistributorTest is FeeDistributorTestBase {
         uint256 refSlot = 154;
         _makeInitialReport(shares);
 
+        string memory lastTreeCid = feeDistributor.treeCid();
+        bytes32 lastTreeRoot = feeDistributor.treeRoot();
         string memory lastLogCid = feeDistributor.logCid();
 
         vm.expectRevert(IFeeDistributor.InvalidLogCID.selector);
         vm.prank(oracle);
-        feeDistributor.processOracleReport(someBytes32(), someCIDv0(), lastLogCid, 0, 0, refSlot);
+        feeDistributor.processOracleReport(lastTreeRoot, lastTreeCid, lastLogCid, 0, 0, refSlot);
     }
 
     function test_processOracleReport_RevertWhen_MoreSharesThanBalance() public assertInvariants {

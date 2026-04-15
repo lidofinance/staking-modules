@@ -117,19 +117,26 @@ abstract contract OracleTestBase is ModuleTypeBase {
         uint256 consensusVersion = oracle.getConsensusVersion();
         waitForNextRefSlot();
         (uint256 refSlot, ) = hashConsensus.getCurrentFrame();
+        string memory resolvedFeesTreeCid = feesTreeCid;
+        string memory resolvedStrikesTreeCid = strikesTreeCid;
+
+        if (bytes(resolvedFeesTreeCid).length == 0 && feesTreeRoot != bytes32(0)) {
+            resolvedFeesTreeCid = someCIDv0();
+        }
+        if (bytes(resolvedStrikesTreeCid).length == 0 && strikesTreeRoot != bytes32(0)) {
+            resolvedStrikesTreeCid = someCIDv0();
+        }
 
         data = IFeeOracle.ReportData({
             consensusVersion: consensusVersion,
             refSlot: refSlot,
             treeRoot: feesTreeRoot,
-            treeCid: bytes(feesTreeCid).length == 0 && feesTreeRoot != bytes32(0) ? someCIDv0() : feesTreeCid,
+            treeCid: resolvedFeesTreeCid,
             logCid: someCIDv0(),
             distributed: distributedShares,
             rebate: rebateShares,
             strikesTreeRoot: strikesTreeRoot,
-            strikesTreeCid: bytes(strikesTreeCid).length == 0 && strikesTreeRoot != bytes32(0)
-                ? someCIDv0()
-                : strikesTreeCid
+            strikesTreeCid: resolvedStrikesTreeCid
         });
         reachConsensus(refSlot, keccak256(abi.encode(data)));
     }
@@ -224,7 +231,14 @@ abstract contract OracleTestBase is ModuleTypeBase {
         address rebateAddr = feeDistributor.rebateRecipient();
         uint256 rebateSharesBefore = lido.sharesOf(rebateAddr);
 
-        IFeeOracle.ReportData memory data = prepareReport(bytes32(0), "", 0, rebate, bytes32(0), "");
+        IFeeOracle.ReportData memory data = prepareReport({
+            feesTreeRoot: bytes32(0),
+            feesTreeCid: "",
+            distributedShares: 0,
+            rebateShares: rebate,
+            strikesTreeRoot: bytes32(0),
+            strikesTreeCid: ""
+        });
         uint256 contractVersion = oracle.getContractVersion();
         (address[] memory addresses, ) = hashConsensus.getMembers();
         vm.prank(addresses[0]);

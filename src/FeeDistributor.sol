@@ -137,7 +137,7 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
 
             emit DistributionDataUpdated(totalClaimableShares, _treeRoot, _treeCid);
         } else {
-            // NOTE: For the empty distribution reports we require the same tree root and CID to make sure
+            // NOTE: For reports with distributed == 0, we require the same tree root and CID to make sure
             // the oracle doesn't mix up the data.
             if (_treeRoot != treeRoot) revert InvalidTreeRoot();
             if (!Strings.equal(_treeCid, treeCid)) revert InvalidTreeCid();
