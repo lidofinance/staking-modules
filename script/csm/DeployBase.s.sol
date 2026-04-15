@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { Script, VmSafe } from "forge-std/Script.sol";
+import { Script } from "forge-std/Script.sol";
 
 import { HashConsensus } from "../../src/lib/base-oracle/HashConsensus.sol";
 import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
@@ -20,7 +20,7 @@ import { VettedGate } from "../../src/VettedGate.sol";
 import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
 
 import { ILidoLocator } from "../../src/interfaces/ILidoLocator.sol";
-import { IGateSealFactory } from "../../src/interfaces/IGateSealFactory.sol";
+import { ICircuitBreaker } from "../../src/interfaces/ICircuitBreaker.sol";
 import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
 import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.sol";
 import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
@@ -112,11 +112,9 @@ struct DeployParams {
     uint256 identifiedCommunityStakersGateAllowedExitDelay;
     uint256 identifiedCommunityStakersGateExitDelayFee;
     uint256 identifiedCommunityStakersGateMaxElWithdrawalRequestFee;
-    // GateSeal
-    address gateSealFactory;
-    address sealingCommittee;
-    uint256 sealDuration;
-    uint256 sealExpiryTimestamp;
+    // CircuitBreaker
+    address circuitBreaker;
+    address circuitBreakerPauser;
     // DG
     address resealManager;
     // Testnet stuff
@@ -140,7 +138,7 @@ abstract contract DeployBase is Script {
     Ejector public ejector;
     ValidatorStrikes public strikes;
     Verifier public verifier;
-    address public gateSeal;
+    address public circuitBreaker;
     PermissionlessGate public permissionlessGate;
     MerkleGateFactory public vettedGateFactory;
     VettedGate public vettedGate;
@@ -162,6 +160,7 @@ abstract contract DeployBase is Script {
         vm.label(config.lidoLocatorAddress, "LIDO_LOCATOR");
         vm.label(config.easyTrackEVMScriptExecutor, "EVM_SCRIPT_EXECUTOR");
         locator = ILidoLocator(config.lidoLocatorAddress);
+        circuitBreaker = config.circuitBreaker;
     }
 
     function run(string memory _gitRef) external virtual {
@@ -442,22 +441,13 @@ abstract contract DeployBase is Script {
                 oracleProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
-            if (config.gateSealFactory != address(0)) {
-                address[] memory sealables = new address[](6);
-                sealables[0] = address(csm);
-                sealables[1] = address(accounting);
-                sealables[2] = address(oracle);
-                sealables[3] = address(verifier);
-                sealables[4] = address(vettedGate);
-                sealables[5] = address(ejector);
-                gateSeal = _deployGateSeal(sealables);
-
-                csm.grantRole(csm.PAUSE_ROLE(), gateSeal);
-                oracle.grantRole(oracle.PAUSE_ROLE(), gateSeal);
-                accounting.grantRole(accounting.PAUSE_ROLE(), gateSeal);
-                verifier.grantRole(verifier.PAUSE_ROLE(), gateSeal);
-                vettedGate.grantRole(vettedGate.PAUSE_ROLE(), gateSeal);
-                ejector.grantRole(ejector.PAUSE_ROLE(), gateSeal);
+            if (circuitBreaker != address(0)) {
+                csm.grantRole(csm.PAUSE_ROLE(), circuitBreaker);
+                accounting.grantRole(accounting.PAUSE_ROLE(), circuitBreaker);
+                oracle.grantRole(oracle.PAUSE_ROLE(), circuitBreaker);
+                verifier.grantRole(verifier.PAUSE_ROLE(), circuitBreaker);
+                vettedGate.grantRole(vettedGate.PAUSE_ROLE(), circuitBreaker);
+                ejector.grantRole(ejector.PAUSE_ROLE(), circuitBreaker);
             }
 
             csm.grantRole(csm.PAUSE_ROLE(), config.resealManager);
@@ -553,7 +543,7 @@ abstract contract DeployBase is Script {
             deployJson.set("VettedGate", address(vettedGate));
             deployJson.set("VettedGateImpl", address(vettedGateImpl));
             deployJson.set("LidoLocator", config.lidoLocatorAddress);
-            deployJson.set("GateSeal", gateSeal);
+            deployJson.set("CircuitBreaker", circuitBreaker);
             deployJson.set("DeployParams", abi.encode(config));
             deployJson.set("git-ref", gitRef);
             if (!vm.exists(artifactDir)) {
@@ -577,22 +567,6 @@ abstract contract DeployBase is Script {
         });
 
         return address(proxy);
-    }
-
-    function _deployGateSeal(address[] memory sealables) internal returns (address) {
-        IGateSealFactory gateSealFactory = IGateSealFactory(config.gateSealFactory);
-
-        address committee = config.sealingCommittee == address(0) ? deployer : config.sealingCommittee;
-
-        vm.recordLogs();
-        gateSealFactory.create_gate_seal({
-            sealingCommittee: committee,
-            sealDurationSeconds: config.sealDuration,
-            sealables: sealables,
-            expiryTimestamp: config.sealExpiryTimestamp
-        });
-        VmSafe.Log[] memory entries = vm.getRecordedLogs();
-        return abi.decode(entries[0].data, (address));
     }
 
     function _deployJsonFilename() internal view returns (string memory) {

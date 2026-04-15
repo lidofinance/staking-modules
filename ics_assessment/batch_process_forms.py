@@ -9,7 +9,7 @@ import os
 from ics_assessment.config import (
     BATCH_FORMS_PATH,
     BATCH_LOGS_DIR,
-    BATCH_MAIN_ADDRESS_SUMMARY_PATH,
+    BATCH_APPROVED_ADDRESS_SUMMARY_PATH,
 )
 from ics_assessment.main import evaluate_assessment, resolve_runtime_inputs
 from ics_assessment.render import render_assessment_result
@@ -68,7 +68,7 @@ def assess_addresses(addresses: list[str], log_path: Path, *,
     return exp, hum, eng, total, eligibility
 
 
-def main():
+def main(full: bool = False):
     # Require API keys for High Signal and Human Passport
     if not os.environ.get("HIGH_SIGNAL_API_KEY"):
         print("Missing required env var: HIGH_SIGNAL_API_KEY", file=sys.stderr)
@@ -88,7 +88,8 @@ def main():
 
     processed = 0
     approved_ineligible = 0
-    main_addresses: list[tuple[str, str]] = []
+    not_approved_eligible = 0
+    approved_addresses: list[tuple[str, str]] = []
     with open(input_csv, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for idx, row in enumerate(reader):
@@ -97,12 +98,16 @@ def main():
             main_addr = (row.get("mainAddress") or "").strip()
             additional = (row.get("additionalAddresses") or "").strip()
             status = (row.get("status") or "").strip()
+            outdated = (row.get("outdated") or "").strip()
             twitter_link = (row.get("twitterLink") or "").strip()
             discord_link = (row.get("discordLink") or "").strip()
             twitter_comment = (row.get("twitterLinkComment") or "").strip()
             discord_comment = (row.get("discordLinkComment") or "").strip()
-            if status in ("REJECTED", "REVIEW"):
+            if not full and status in ("REJECTED", "REVIEW"):
                 print(f"Skipping {row_id} as status is {status}")
+                continue
+            if outdated.lower() == "true":
+                print(f"Skipping {row_id} as outdated")
                 continue
             addresses = _parse_addresses(main_addr, additional)
             # Log file named by submission id only
@@ -124,12 +129,24 @@ def main():
                 f"EXP {exp}, HUM {hum}, ENG {eng} | total {total} | eligible {eligible} | log {log_path.relative_to(input_csv.parent)}"
             )
             processed += 1
-            main_addresses.append((row_id, main_addr.lower()))
+            if status == "APPROVED":
+                approved_addresses.append((row_id, main_addr.lower()))
             if status == "APPROVED" and eligible == "NO":
                 print(f"⚠️ {row_id} Application is approved but not eligible with score")
                 approved_ineligible += 1
+            if status in ("REJECTED", "REVIEW") and eligible == "YES":
+                print(f"⚠️ {row_id} Application is {status} but eligible with score")
+                not_approved_eligible += 1
+    
+    if (approved_ineligible > 0 or not_approved_eligible > 0):
+        print(
+            f"\n🚨 Found {approved_ineligible} approved but ineligible, and {not_approved_eligible} not approved but eligible applications. "
+            f"Resolve discrepancies by reviewing the logs in {logs_dir} and updating the application statuses accordingly.",
+            file=sys.stderr,
+        )
+        exit(1)
 
-    summary_path = BATCH_MAIN_ADDRESS_SUMMARY_PATH
+    summary_path = BATCH_APPROVED_ADDRESS_SUMMARY_PATH
     def _sort_row_id(item: tuple[str, str]) -> tuple[int, int | str]:
         row_id, _ = item
         try:
@@ -137,13 +154,14 @@ def main():
         except ValueError:
             return (1, row_id)
 
-    sorted_addresses = [addr for _, addr in sorted(main_addresses, key=_sort_row_id)]
+    sorted_addresses = [addr for _, addr in sorted(approved_addresses, key=_sort_row_id)]
     with open(summary_path, "w", encoding="utf-8") as summary_file:
         json.dump(sorted_addresses, summary_file, indent=2)
     print(
-        f"Processed {processed} application(s); found {approved_ineligible} approved submission(s) that remain ineligible. \n"
+        f"Processed {processed} application(s); found {approved_ineligible} approved submission(s) that remain ineligible, "
+        f"and {not_approved_eligible} not approved submission(s) that are actually eligible. \n"
         f"Logs: {logs_dir}. \n"
-        f"Main address summary: {summary_path}",
+        f"Approved address summary: {summary_path}",
         file=sys.stderr,
     )
 

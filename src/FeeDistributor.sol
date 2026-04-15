@@ -120,7 +120,7 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
         uint256 refSlot
     ) external onlyOracle {
         if (totalClaimableShares + distributed + rebate > STETH.sharesOf(address(this))) revert InvalidShares();
-        if (distributed == 0 && rebate > 0) revert InvalidReportData();
+
         if (distributed > 0) {
             if (bytes(_treeCid).length == 0) revert InvalidTreeCid();
             if (Strings.equal(_treeCid, treeCid)) revert InvalidTreeCid();
@@ -136,6 +136,11 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
             treeCid = _treeCid;
 
             emit DistributionDataUpdated(totalClaimableShares, _treeRoot, _treeCid);
+        } else {
+            // NOTE: For reports with distributed == 0, we require the same tree root and CID to make sure
+            // the oracle doesn't mix up the data.
+            if (_treeRoot != treeRoot) revert InvalidTreeRoot();
+            if (!Strings.equal(_treeCid, treeCid)) revert InvalidTreeCid();
         }
 
         emit ModuleFeeDistributed(distributed);

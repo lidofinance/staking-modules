@@ -112,11 +112,9 @@ contract DeployHoodi is DeployBase {
         config.identifiedCommunityStakersGateExitDelayFee = 0.05 ether;
         config.identifiedCommunityStakersGateMaxElWithdrawalRequestFee = 0.1 ether;
 
-        // GateSeal
-        config.gateSealFactory = 0xA402349F560D45310D301E92B1AA4DeCABe147B3;
-        config.sealingCommittee = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
-        config.sealDuration = 11 days;
-        config.sealExpiryTimestamp = block.timestamp + 365 days;
+        // CircuitBreaker
+        config.circuitBreaker = address(0x63697263756974627265616b6572); // TODO: Set real CircuitBreaker address
+        config.circuitBreakerPauser = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
 
         // DG
         config.resealManager = 0x05172CbCDb7307228F781436b327679e4DAE166B;

@@ -60,7 +60,7 @@ interface IBondCurve {
 
     event BondCurveAdded(uint256 indexed curveId, BondCurveIntervalInput[] bondCurveIntervals);
     event BondCurveUpdated(uint256 indexed curveId, BondCurveIntervalInput[] bondCurveIntervals);
-    event BondCurveSet(uint256 indexed nodeOperatorId, uint256 curveId);
+    event BondCurveSet(uint256 indexed nodeOperatorId, uint256 curveId, address indexed setter);
 
     error InvalidBondCurveLength();
     error InvalidBondCurveValues();

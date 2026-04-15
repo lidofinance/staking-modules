@@ -387,31 +387,34 @@ contract CuratedGateFactoryDeploymentTest is DeploymentBaseTest {
     }
 }
 
-contract GateSealDeploymentTest is DeploymentBaseTest {
-    function test_configuration() public view {
-        assertTrue(address(gateSeal) != address(0), "gate seal missing");
-        address committee = gateSeal.get_sealing_committee();
-        assertEq(committee, deployParams.sealingCommittee, "committee");
-        assertEq(gateSeal.get_seal_duration_seconds(), deployParams.sealDuration, "seal duration");
-        assertEq(gateSeal.get_expiry_timestamp(), deployParams.sealExpiryTimestamp, "expiry");
+contract CircuitBreakerDeploymentTest is DeploymentBaseTest {
+    function test_configuration_afterVote() public {
+        vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
+        address pauser = circuitBreaker.getPauser(address(module));
+        assertEq(pauser, deployParams.circuitBreakerPauser, "pauser");
     }
 
-    function test_sealables() public view {
-        address[] memory sealables = gateSeal.get_sealables();
-        uint256 expectedSealables = 5;
-        assertEq(sealables.length, expectedSealables, "sealables length");
-        assertEq(sealables[0], address(module), "module mismatch");
-        assertEq(sealables[1], address(accounting), "accounting mismatch");
-        assertEq(sealables[2], address(oracle), "oracle mismatch");
-        assertEq(sealables[3], address(verifier), "verifier mismatch");
-        assertEq(sealables[4], address(ejector), "ejector mismatch");
+    function test_pausables_afterVote() public {
+        vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
+        address[] memory pausables = circuitBreaker.getPausables();
+        uint256 expectedPausables = 5;
+        assertEq(pausables.length, expectedPausables, "pausables length");
+        assertEq(pausables[0], address(module), "module mismatch");
+        assertEq(pausables[1], address(accounting), "accounting mismatch");
+        assertEq(pausables[2], address(oracle), "oracle mismatch");
+        assertEq(pausables[3], address(verifier), "verifier mismatch");
+        assertEq(pausables[4], address(ejector), "ejector mismatch");
     }
 
-    function test_roles() public view {
-        assertTrue(curatedModule.hasRole(curatedModule.PAUSE_ROLE(), address(gateSeal)), "curated module pause role");
-        assertTrue(accounting.hasRole(accounting.PAUSE_ROLE(), address(gateSeal)), "accounting pause role");
-        assertTrue(oracle.hasRole(oracle.PAUSE_ROLE(), address(gateSeal)), "oracle pause role");
-        assertTrue(verifier.hasRole(verifier.PAUSE_ROLE(), address(gateSeal)), "verifier pause role");
-        assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), address(gateSeal)), "ejector pause role");
+    function test_roles() public {
+        vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
+        assertTrue(
+            curatedModule.hasRole(curatedModule.PAUSE_ROLE(), address(circuitBreaker)),
+            "curated module pause role"
+        );
+        assertTrue(accounting.hasRole(accounting.PAUSE_ROLE(), address(circuitBreaker)), "accounting pause role");
+        assertTrue(oracle.hasRole(oracle.PAUSE_ROLE(), address(circuitBreaker)), "oracle pause role");
+        assertTrue(verifier.hasRole(verifier.PAUSE_ROLE(), address(circuitBreaker)), "verifier pause role");
+        assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), address(circuitBreaker)), "ejector pause role");
     }
 }

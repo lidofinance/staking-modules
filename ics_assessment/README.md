@@ -206,6 +206,12 @@ export HUMAN_PASSPORT_API_KEY=...
 python main.py batch
 ```
 
+To run full batch processing on all applications (including REJECTED and REVIEW), add the `--full` flag:
+
+```bash
+python main.py batch --full
+```
+
 `batch` reads a fixed CSV input path: `ics_assessment/ics-forms.csv`.
 
 The expected CSV shape matches the export format from the ICS application form:

@@ -1,2 +1,2 @@
-id,mainAddress,additionalAddresses,status,twitterLink,discordLink,twitterLinkComment,discordLinkComment
-1,0x1111111111111111111111111111111111111111,"0x2222222222222222222222222222222222222222,0x3333333333333333333333333333333333333333",APPROVED,https://x.com/example,https://discord.com/users/example,,
+id,mainAddress,additionalAddresses,status,outdated,twitterLink,discordLink,twitterLinkComment,discordLinkComment
+1,0x1111111111111111111111111111111111111111,"0x2222222222222222222222222222222222222222,0x3333333333333333333333333333333333333333",APPROVED,false,https://x.com/example,https://discord.com/users/example,,

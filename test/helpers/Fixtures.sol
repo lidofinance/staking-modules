@@ -5,15 +5,18 @@ pragma solidity 0.8.33;
 import { Test } from "forge-std/Test.sol";
 import { StdCheats } from "forge-std/StdCheats.sol";
 
+import { IAccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
+
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
 import { ILido } from "src/interfaces/ILido.sol";
 import { IBurner } from "src/interfaces/IBurner.sol";
 import { ILidoLocator } from "src/interfaces/ILidoLocator.sol";
 import { IWstETH } from "src/interfaces/IWstETH.sol";
-import { IGateSeal } from "src/interfaces/IGateSeal.sol";
+import { ICircuitBreaker } from "src/interfaces/ICircuitBreaker.sol";
 import { NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { HashConsensus } from "src/lib/base-oracle/HashConsensus.sol";
 import { IWithdrawalQueue } from "src/interfaces/IWithdrawalQueue.sol";
+import { IPausableWithRoles } from "src/interfaces/IPausableWithRoles.sol";
 import { CSModule } from "src/CSModule.sol";
 import { ParametersRegistry } from "src/ParametersRegistry.sol";
 import { PermissionlessGate } from "src/PermissionlessGate.sol";
@@ -96,6 +99,39 @@ contract Fixtures is StdCheats, Test {
 }
 
 contract DeploymentHelpers is Test {
+    /// @dev Placeholder address used until the real CircuitBreaker is deployed.
+    address internal constant CIRCUIT_BREAKER_STUB = address(0x63697263756974627265616b6572);
+
+    function _isCircuitBreakerConfigured(address cb) internal pure returns (bool) {
+        return cb != address(0);
+    }
+
+    function _isCircuitBreakerDeployed(address cb) internal view returns (bool) {
+        return cb != address(0) && cb != CIRCUIT_BREAKER_STUB && cb.code.length > 0;
+    }
+
+    function _expectedPauseRoleMembersWithoutCb(bool isUpgradeFlow) internal pure returns (uint256) {
+        // TODO: Always return 1 once the legacy GateSeal pause-role migration is done.
+        return isUpgradeFlow ? 2 : 1;
+    }
+
+    function _assertCircuitBreakerPauseRoleState(
+        address target,
+        address cb,
+        uint256 expectedRoleMembersWithoutCb
+    ) internal view {
+        IPausableWithRoles pausable = IPausableWithRoles(target);
+        IAccessControlEnumerable accessControl = IAccessControlEnumerable(target);
+        uint256 expectedRoleMembers = expectedRoleMembersWithoutCb;
+
+        if (_isCircuitBreakerConfigured(cb)) {
+            assertTrue(accessControl.hasRole(pausable.PAUSE_ROLE(), cb));
+            expectedRoleMembers += 1;
+        }
+
+        assertEq(accessControl.getRoleMemberCount(pausable.PAUSE_ROLE()), expectedRoleMembers);
+    }
+
     struct Env {
         string RPC_URL;
         string DEPLOY_CONFIG;
@@ -182,8 +218,7 @@ contract DeploymentHelpers is Test {
         address verifierV3;
         address hashConsensus;
         address lidoLocator;
-        address gateSeal;
-        address gateSealV3;
+        address circuitBreaker;
     }
 
     struct CuratedDeploymentConfig {
@@ -210,7 +245,7 @@ contract DeploymentHelpers is Test {
         address curatedGateFactory;
         address curatedGateImpl;
         address[] curatedGates;
-        address gateSeal;
+        address circuitBreaker;
         address lidoLocator;
     }
 
@@ -306,15 +341,10 @@ contract DeploymentHelpers is Test {
         deploymentConfig.lidoLocator = vm.parseJsonAddress(config, ".LidoLocator");
         vm.label(deploymentConfig.lidoLocator, "LidoLocator");
 
-        deploymentConfig.gateSeal = vm.parseJsonAddress(config, ".GateSeal");
-        if (vm.keyExistsJson(config, ".GateSealV3")) {
-            deploymentConfig.gateSealV3 = vm.parseJsonAddress(config, ".GateSealV3");
-            vm.label(deploymentConfig.gateSealV3, "GateSealV3");
-        } else if (vm.keyExistsJson(config, ".GateSealV2")) {
-            deploymentConfig.gateSealV3 = vm.parseJsonAddress(config, ".GateSealV2");
-            vm.label(deploymentConfig.gateSealV3, "GateSealV3");
+        if (vm.keyExistsJson(config, ".CircuitBreaker")) {
+            deploymentConfig.circuitBreaker = vm.parseJsonAddress(config, ".CircuitBreaker");
+            vm.label(deploymentConfig.circuitBreaker, "CircuitBreaker");
         }
-        vm.label(deploymentConfig.gateSeal, "GateSeal");
     }
 
     function parseCuratedDeploymentConfig(
@@ -399,9 +429,9 @@ contract DeploymentHelpers is Test {
             }
         }
 
-        if (vm.keyExistsJson(config, ".GateSeal")) {
-            deploymentConfig.gateSeal = vm.parseJsonAddress(config, ".GateSeal");
-            vm.label(deploymentConfig.gateSeal, "curatedGateSeal");
+        if (vm.keyExistsJson(config, ".CircuitBreaker")) {
+            deploymentConfig.circuitBreaker = vm.parseJsonAddress(config, ".CircuitBreaker");
+            vm.label(deploymentConfig.circuitBreaker, "curatedCircuitBreaker");
         }
 
         deploymentConfig.lidoLocator = vm.parseJsonAddress(config, ".LidoLocator");
@@ -416,6 +446,13 @@ contract DeploymentHelpers is Test {
     function parseDeployParams0x02(string memory deployConfigPath) internal view returns (DeployCSM0x02Params memory) {
         string memory config = vm.readFile(deployConfigPath);
         return abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (DeployCSM0x02Params));
+    }
+
+    function parseCuratedDeployParams(
+        string memory deployConfigPath
+    ) internal view returns (CuratedDeployParams memory) {
+        string memory config = vm.readFile(deployConfigPath);
+        return abi.decode(vm.parseJsonBytes(config, ".CuratedDeployParams"), (CuratedDeployParams));
     }
 
     function updateCuratedDeployParams(CuratedDeployParams storage dst, string memory deployConfigPath) internal {
@@ -494,11 +531,9 @@ contract DeploymentHelpers is Test {
         // MetaRegistry
         dst.setOperatorInfoManager = src.setOperatorInfoManager;
 
-        // GateSeal
-        dst.gateSealFactory = src.gateSealFactory;
-        dst.sealingCommittee = src.sealingCommittee;
-        dst.sealDuration = src.sealDuration;
-        dst.sealExpiryTimestamp = src.sealExpiryTimestamp;
+        // CircuitBreaker
+        dst.circuitBreaker = src.circuitBreaker;
+        dst.circuitBreakerPauser = src.circuitBreakerPauser;
 
         // DG
         dst.resealManager = src.resealManager;
@@ -785,7 +820,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     IWstETH public wstETH;
     IStakingRouter public stakingRouter;
     ILido public lido;
-    IGateSeal public gateSeal;
+    ICircuitBreaker public circuitBreaker;
     IBurner public burner;
     CuratedModule public curatedModule;
     CuratedModule public curatedModuleImpl;
@@ -859,9 +894,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         lido = ILido(locator.lido());
         stakingRouter = IStakingRouter(locator.stakingRouter());
         wstETH = IWstETH(IWithdrawalQueue(locator.withdrawalQueue()).WSTETH());
-        gateSeal = IGateSeal(
-            deploymentConfig.gateSealV3 == address(0) ? deploymentConfig.gateSeal : deploymentConfig.gateSealV3
-        );
+        circuitBreaker = ICircuitBreaker(deploymentConfig.circuitBreaker);
         burner = IBurner(locator.burner());
     }
 
@@ -899,7 +932,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         lido = ILido(locator.lido());
         stakingRouter = IStakingRouter(locator.stakingRouter());
         wstETH = IWstETH(IWithdrawalQueue(locator.withdrawalQueue()).WSTETH());
-        gateSeal = IGateSeal(deploymentConfig.gateSeal);
+        circuitBreaker = ICircuitBreaker(deploymentConfig.circuitBreaker);
         burner = IBurner(locator.burner());
 
         metaRegistry = MetaRegistry(deploymentConfig.metaRegistry);
