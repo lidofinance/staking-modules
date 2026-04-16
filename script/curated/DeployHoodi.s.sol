@@ -57,7 +57,7 @@ contract DeployHoodi is DeployBase {
 
         // Module
         config.moduleType = "curated-onchain-v2"; // Just a unique type name to be used by the off-chain tooling
-        config.generalDelayedPenaltyReporter = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
+        config.generalDelayedPenaltyReporter = 0x84DffcfB232594975C608DE92544Ff239a24c9E9; // CMC on Hoodi
 
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0;
@@ -77,7 +77,7 @@ contract DeployHoodi is DeployBase {
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.01 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
-        config.penaltiesManager = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
+        config.penaltiesManager = 0x84DffcfB232594975C608DE92544Ff239a24c9E9; // CMC on Hoodi
 
         // Curated gates
         // Professional Operator Gate
@@ -163,14 +163,29 @@ contract DeployHoodi is DeployBase {
             gate.params.exitDelayFee = _m(0.005 ether);
         }
 
-        config.curatedGatePauseManager = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
+        // Intra-Operator DVT Cluster Plus Gate (identical to the one above but with 4% fee)
+        {
+            CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.bondCurve.push([1, 11 ether]);
+            gate.bondCurve.push([2, 0.1 ether]);
+            gate.bondCurve.push([19, 0.7 ether]);
+            gate.treeRoot = 0xe0250b81599ea522c64802477d407fd87b1ae17f5426317d355689d86a781088;
+            gate.treeCid = "QmU4cnyaKWgMVCZVLiuQaqu6yGXahjzi4F1Vcnq2SXBBmT";
+            gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
+            gate.params.keysLimit = _m(500);
+            gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
+            gate.params.metaRegistryBondCurveWeight = _m(100000);
+            gate.params.exitDelayFee = _m(0.005 ether);
+        }
+
+        config.curatedGatePauseManager = 0x84DffcfB232594975C608DE92544Ff239a24c9E9; // CMC on Hoodi
 
         // MetaRegistry
-        config.setOperatorInfoManager = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
+        config.setOperatorInfoManager = 0x84DffcfB232594975C608DE92544Ff239a24c9E9; // CMC on Hoodi
 
         // CircuitBreaker
         config.circuitBreaker = address(0x63697263756974627265616b6572); // TODO: Set real CircuitBreaker address
-        config.circuitBreakerPauser = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
+        config.circuitBreakerPauser = 0x84DffcfB232594975C608DE92544Ff239a24c9E9; // CMC on Hoodi
 
         // DG
         config.resealManager = 0x05172CbCDb7307228F781436b327679e4DAE166B;
