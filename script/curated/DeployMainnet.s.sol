@@ -90,7 +90,7 @@ contract DeployMainnet is DeployBase {
             CuratedGateConfig storage gate = config.curatedGates.push();
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
-            gate.bondCurve.push([18, 0.7 ether]);
+            gate.bondCurve.push([19, 0.7 ether]);
             gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
             gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
@@ -105,7 +105,7 @@ contract DeployMainnet is DeployBase {
             CuratedGateConfig storage gate = config.curatedGates.push();
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
-            gate.bondCurve.push([18, 0.7 ether]);
+            gate.bondCurve.push([19, 0.7 ether]);
             gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
             gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
@@ -120,7 +120,7 @@ contract DeployMainnet is DeployBase {
             CuratedGateConfig storage gate = config.curatedGates.push();
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
-            gate.bondCurve.push([18, 0.7 ether]);
+            gate.bondCurve.push([19, 0.7 ether]);
             gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
             gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
@@ -135,7 +135,7 @@ contract DeployMainnet is DeployBase {
             CuratedGateConfig storage gate = config.curatedGates.push();
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
-            gate.bondCurve.push([18, 0.7 ether]);
+            gate.bondCurve.push([19, 0.7 ether]);
             gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
             gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
@@ -150,7 +150,7 @@ contract DeployMainnet is DeployBase {
             CuratedGateConfig storage gate = config.curatedGates.push();
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
-            gate.bondCurve.push([18, 0.7 ether]);
+            gate.bondCurve.push([19, 0.7 ether]);
             gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
             gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
@@ -165,7 +165,7 @@ contract DeployMainnet is DeployBase {
             CuratedGateConfig storage gate = config.curatedGates.push();
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
-            gate.bondCurve.push([18, 0.7 ether]);
+            gate.bondCurve.push([19, 0.7 ether]);
             gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
             gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
