@@ -163,6 +163,21 @@ contract DeployHoodi is DeployBase {
             gate.params.exitDelayFee = _m(0.005 ether);
         }
 
+        // Intra-Operator DVT Cluster Plus Gate (identical to the one above but with 4% fee)
+        {
+            CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.bondCurve.push([1, 11 ether]);
+            gate.bondCurve.push([2, 0.1 ether]);
+            gate.bondCurve.push([19, 0.7 ether]);
+            gate.treeRoot = 0xe0250b81599ea522c64802477d407fd87b1ae17f5426317d355689d86a781088;
+            gate.treeCid = "QmU4cnyaKWgMVCZVLiuQaqu6yGXahjzi4F1Vcnq2SXBBmT";
+            gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
+            gate.params.keysLimit = _m(500);
+            gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
+            gate.params.metaRegistryBondCurveWeight = _m(100000);
+            gate.params.exitDelayFee = _m(0.005 ether);
+        }
+
         config.curatedGatePauseManager = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
 
         // MetaRegistry

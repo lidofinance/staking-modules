@@ -153,6 +153,21 @@ contract DeployLocalDevNet is DeployBase {
             gate.params.exitDelayFee = _m(0.005 ether);
         }
 
+        // Intra-Operator DVT Cluster Plus Gate (identical to the one above but with 4% fee)
+        {
+            CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.bondCurve.push([1, 11 ether]);
+            gate.bondCurve.push([2, 0.1 ether]);
+            gate.bondCurve.push([18, 0.7 ether]);
+            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
+            gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
+            gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
+            gate.params.keysLimit = _m(500);
+            gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
+            gate.params.metaRegistryBondCurveWeight = _m(100000);
+            gate.params.exitDelayFee = _m(0.005 ether);
+        }
+
         config.curatedGatePauseManager = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
         // MetaRegistry
