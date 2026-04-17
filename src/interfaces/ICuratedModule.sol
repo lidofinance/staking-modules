@@ -10,8 +10,6 @@ import { IMetaRegistry } from "./IMetaRegistry.sol";
 interface ICuratedModule is IBaseModule, IStakingModuleV2 {
     error ZeroMetaRegistryAddress();
     error SenderIsNotMetaRegistry();
-    error InvalidMaxCount();
-    error NodeOperatorWeightsUpdateInProgress();
 
     /// @notice Initializes the contract.
     /// @param admin An address to grant the DEFAULT_ADMIN_ROLE to.

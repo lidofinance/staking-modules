@@ -12,7 +12,6 @@ import { IAccounting } from "./IAccounting.sol";
 /// @notice Allows eligible addresses to create Node Operators and store metadata.
 interface ICuratedGate is IMerkleGate {
     /// Errors
-    error InvalidCurveId();
     error ZeroModuleAddress();
 
     /// @return MODULE Curated module reference

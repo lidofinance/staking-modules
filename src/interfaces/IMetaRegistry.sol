@@ -37,20 +37,15 @@ interface IMetaRegistry {
     event NodeOperatorEffectiveWeightChanged(uint256 indexed nodeOperatorId, uint256 oldWeight, uint256 newWeight);
 
     error ZeroModuleAddress();
-    error ZeroAccountingAddress();
     error ZeroAdminAddress();
-    error ZeroStakingRouterAddress();
     error InvalidOperatorGroup();
     error InvalidSubNodeOperatorShares();
     error InvalidOperatorGroupId();
     error NodeOperatorDoesNotExist();
     error NodeOperatorAlreadyInGroup(uint256 nodeOperatorId);
     error AlreadyUsedAsExternalOperator();
-    error NodeOperatorNotInGroup();
-    error SenderIsNotModule();
     error SenderIsNotEligible();
     error OwnerEditsRestricted();
-    error UnsupportedExternalOperatorType();
     error SameBondCurveWeight();
     error InvalidBondCurveWeight();
     error ModuleAddressNotCached();

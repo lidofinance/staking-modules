@@ -20,8 +20,6 @@ interface IValidatorStrikes {
     error SameEjectorAddress();
     error ZeroModuleAddress();
     error ZeroOracleAddress();
-    error ZeroExitPenaltiesAddress();
-    error ZeroParametersRegistryAddress();
     error ZeroAdminAddress();
     error SenderIsNotOracle();
     error ValueNotEvenlyDivisible();
