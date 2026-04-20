@@ -295,7 +295,7 @@ interface IParametersRegistry {
     /// @param curveId Curve Id to unset custom keys limit for
     function unsetKeysLimit(uint256 curveId) external;
 
-    /// @notice Get keys limit by the curveId. A limit indicates the maximal amount of the non-exited keys Node Operator can upload
+    /// @notice Get keys limit by the curveId. A limit indicates the maximal amount of the non-withdrawn keys Node Operator can upload
     /// @dev `defaultKeysLimit` is returned if the value is not set for the given curveId.
     /// @param curveId Curve Id to get keys limit for
     /// @return limit Keys limit
