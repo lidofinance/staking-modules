@@ -318,8 +318,7 @@ library DepositQueueOps {
 
         // NOTE: No need for `_updateDepositableValidatorsCount` call since we update the number directly.
 
-        // NOTE: The only call site is the `obtainDepositData` function that limits the `keysCount` by the node operator
-        // `depositableValidatorsCount`.
+        // NOTE: The only call site is the `obtainDepositData` function that limits the `keysCount` by the node operator `depositableValidatorsCount`.
         uint32 newCount;
         unchecked {
             newCount = no.depositableValidatorsCount - keysCount;
