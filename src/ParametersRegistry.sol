@@ -684,12 +684,12 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     }
 
     function _getExitDelayFee(uint256 curveId) internal view returns (uint256) {
-        MarkedUint248 memory data = _exitDelayFees[curveId];
+        MarkedUint248 storage data = _exitDelayFees[curveId];
         return data.isValue ? data.value : defaultExitDelayFee;
     }
 
     function _getMaxElWithdrawalRequestFee(uint256 curveId) internal view returns (uint256) {
-        MarkedUint248 memory data = _maxElWithdrawalRequestFees[curveId];
+        MarkedUint248 storage data = _maxElWithdrawalRequestFees[curveId];
         return data.isValue ? data.value : defaultMaxElWithdrawalRequestFee;
     }
 
