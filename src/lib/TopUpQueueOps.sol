@@ -75,7 +75,7 @@ library TopUpQueueOps {
 
             uint256 limit = _quantizeAmount(data.topUpLimits[i]);
 
-            if (maxDepositAmount > 0) {
+            if (maxDepositAmount > 0 && limit > 0) {
                 allocations[i] = Math.min(limit, maxDepositAmount);
                 maxDepositAmount -= allocations[i];
             }
