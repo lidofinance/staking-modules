@@ -110,9 +110,10 @@ contract DeploymentHelpers is Test {
         return cb != address(0) && cb != CIRCUIT_BREAKER_STUB && cb.code.length > 0;
     }
 
-    function _expectedPauseRoleMembersWithoutCb(bool isUpgradeFlow) internal pure returns (uint256) {
+    function _expectedPauseRoleMembersWithoutCb(bool isUpgradeFlow) internal view returns (uint256) {
         // TODO: Always return 1 once the legacy GateSeal pause-role migration is done.
-        return isUpgradeFlow ? 2 : 1;
+        if (block.chainid == 1) return isUpgradeFlow ? 2 : 1;
+        else return 1;
     }
 
     function _assertCircuitBreakerPauseRoleState(
