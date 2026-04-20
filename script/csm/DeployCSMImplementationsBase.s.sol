@@ -24,7 +24,7 @@ import { Slot } from "../../src/lib/Types.sol";
 abstract contract DeployCSMImplementationsBase is DeployBase {
     Verifier public verifierV3;
     address public earlyAdoption;
-    address public legacyGateSeal;
+    address public legacyGateSeal; // FIXME: remove.
 
     bytes32 internal constant LEGACY_QUEUE_SLOT = bytes32(uint256(1));
 
@@ -116,8 +116,8 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             ejector.grantRole(ejector.PAUSE_ROLE(), config.resealManager);
             ejector.grantRole(ejector.RESUME_ROLE(), config.resealManager);
 
-            if (circuitBreaker != address(0)) {
-                ejector.grantRole(ejector.PAUSE_ROLE(), circuitBreaker);
+            if (config.circuitBreaker != address(0)) {
+                ejector.grantRole(ejector.PAUSE_ROLE(), config.circuitBreaker);
             }
             ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             ejector.revokeRole(ejector.DEFAULT_ADMIN_ROLE(), deployer);
@@ -125,8 +125,8 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             permissionlessGate.grantRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             permissionlessGate.revokeRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), deployer);
 
-            if (circuitBreaker != address(0)) {
-                verifierV3.grantRole(verifierV3.PAUSE_ROLE(), circuitBreaker);
+            if (config.circuitBreaker != address(0)) {
+                verifierV3.grantRole(verifierV3.PAUSE_ROLE(), config.circuitBreaker);
             }
             verifierV3.grantRole(verifierV3.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             verifierV3.revokeRole(verifierV3.DEFAULT_ADMIN_ROLE(), deployer);
@@ -156,12 +156,12 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             deployJson.set("Verifier", address(verifier));
             deployJson.set("VerifierV3", address(verifierV3));
             deployJson.set("PermissionlessGate", address(permissionlessGate));
-            deployJson.set("VettedGateFactory", address(vettedGateFactory));
-            deployJson.set("VettedGate", address(vettedGate));
-            deployJson.set("VettedGateImpl", address(vettedGateImpl));
+            deployJson.set("MerkleGateFactory", address(vettedGateFactory));
+            deployJson.set("MerkleGate", address(vettedGate));
+            deployJson.set("MerkleGateImpl", address(vettedGateImpl));
             deployJson.set("LidoLocator", config.lidoLocatorAddress);
             deployJson.set("GateSeal", legacyGateSeal);
-            deployJson.set("CircuitBreaker", circuitBreaker);
+            deployJson.set("CircuitBreaker", config.circuitBreaker);
             deployJson.set("DeployParams", abi.encode(config));
             deployJson.set("git-ref", gitRef);
             if (!vm.exists(artifactDir)) {
