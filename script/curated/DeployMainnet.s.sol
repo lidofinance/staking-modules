@@ -23,14 +23,14 @@ contract DeployMainnet is DeployBase {
         config.consensusVersion = 4;
         config.oracleMembers = new address[](9);
         config.oracleMembers[0] = 0x73181107c8D9ED4ce0bbeF7A0b4ccf3320C41d12; // Instadapp
-        config.oracleMembers[1] = 0x285f8537e1dAeEdaf617e96C742F2Cf36d63CcfB; // Chorus One
+        config.oracleMembers[1] = 0x4118DAD7f348A4063bD15786c299De2f3B1333F3; // Caliber
         config.oracleMembers[2] = 0x404335BcE530400a5814375E7Ec1FB55fAff3eA2; // Staking Facilities
-        config.oracleMembers[3] = 0x946D3b081ed19173dC83Cd974fC69e1e760B7d78; // Stakefish
+        config.oracleMembers[3] = 0x8dB977C13CAA938BC58464bFD622DF0570564b78; // Chorus One
         config.oracleMembers[4] = 0x007DE4a5F7bc37E2F26c0cb2E8A95006EE9B89b5; // P2P
         config.oracleMembers[5] = 0xc79F702202E3A6B0B6310B537E786B9ACAA19BAf; // Chainlayer
         config.oracleMembers[6] = 0x61c91ECd902EB56e314bB2D5c5C07785444Ea1c8; // bloXroute
         config.oracleMembers[7] = 0xe57B3792aDCc5da47EF4fF588883F0ee0c9835C9; // MatrixedLink
-        config.oracleMembers[8] = 0x4118DAD7f348A4063bD15786c299De2f3B1333F3; // Caliber
+        config.oracleMembers[8] = 0x042a9e5acCfa17e28300F1b5967f20891E973922; // Stakefish
         config.hashConsensusQuorum = 5;
 
         // Verifier
