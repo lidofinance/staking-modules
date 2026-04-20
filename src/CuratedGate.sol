@@ -69,7 +69,7 @@ contract CuratedGate is ICuratedGate, MerkleGate {
             referrer: address(0)
         });
 
-        // Apply instance-specific custom curve
+        // Apply a custom curve only when it differs from the default.
         if (curveId != DEFAULT_BOND_CURVE_ID) ACCOUNTING.setBondCurve(nodeOperatorId, curveId);
 
         // Persist metadata in separate storage

@@ -49,7 +49,7 @@ interface IMerkleGate {
     function hashLeaf(address member) external pure returns (bytes32);
 
     /// @notice Initialize the gate instance.
-    /// @param curveId Bond curve id to assign to eligible members.
+    /// @param curveId Bond curve id used by the gate.
     /// @param treeRoot Initial Merkle tree root.
     /// @param treeCid Initial Merkle tree CID.
     /// @param admin Address to be granted DEFAULT_ADMIN_ROLE.
