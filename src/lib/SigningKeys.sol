@@ -35,9 +35,7 @@ library SigningKeys {
         bytes calldata pubkeys,
         bytes calldata signatures
     ) internal returns (uint256) {
-        if (keysCount == 0 || startIndex + keysCount > type(uint32).max) {
-            revert InvalidKeysCount();
-        }
+        if (keysCount == 0 || startIndex + keysCount > type(uint32).max) revert InvalidKeysCount();
         unchecked {
             if (pubkeys.length != keysCount * PUBKEY_LENGTH || signatures.length != keysCount * SIGNATURE_LENGTH) {
                 revert InvalidLength();
