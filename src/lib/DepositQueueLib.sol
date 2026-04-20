@@ -33,8 +33,9 @@ function keys(Batch self) pure returns (uint64 n) {
 }
 
 function next(Batch self) pure returns (uint128 n) {
+    uint256 mask = type(uint128).max;
     assembly ("memory-safe") {
-        n := and(self, 0xffffffffffffffffffffffffffffffff)
+        n := and(self, mask)
     }
 }
 
