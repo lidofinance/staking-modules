@@ -334,4 +334,16 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         if (maxPerBlock < expected) expected = maxPerBlock;
         if (depositableValidatorsCount < expected) expected = depositableValidatorsCount;
     }
+
+    function _getExpectedRouterTopUpAmount() internal view returns (uint256 expected) {
+        (, uint256[] memory allocated, ) = stakingRouter.getDepositAllocations(lido.getDepositableEther(), true);
+        uint256[] memory stakingModuleIds = stakingRouter.getStakingModuleIds();
+
+        for (uint256 i; i < stakingModuleIds.length; ++i) {
+            if (stakingModuleIds[i] == moduleId) {
+                expected = allocated[i];
+                return expected - (expected % 1 gwei);
+            }
+        }
+    }
 }
