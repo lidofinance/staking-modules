@@ -136,7 +136,7 @@ library CuratedDepositAllocator {
         }
 
         if (count != operatorIds.length) {
-            assembly {
+            assembly ("memory-safe") {
                 mstore(uniqueOperatorIds, count)
             }
         }
@@ -454,7 +454,7 @@ library CuratedDepositAllocator {
             ++compactIndex;
         }
         if (compactIndex != count) {
-            assembly {
+            assembly ("memory-safe") {
                 mstore(compactIds, compactIndex)
                 mstore(allocations, compactIndex)
             }
@@ -484,7 +484,7 @@ library CuratedDepositAllocator {
         uint256[] memory currents = data.alloc.currents;
         uint256[] memory capacities = data.alloc.capacities;
         uint256[] memory operatorIds = data.operatorIds;
-        assembly {
+        assembly ("memory-safe") {
             mstore(sharesX96, count)
             mstore(currents, count)
             mstore(capacities, count)
