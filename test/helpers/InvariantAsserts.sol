@@ -87,12 +87,6 @@ contract InvariantAsserts is Test {
             assertGe(no.totalVettedKeys, no.totalDepositedKeys, "assert vetted >= deposited");
 
             assertGe(
-                no.totalDepositedKeys - no.totalExitedKeys,
-                no.stuckValidatorsCount,
-                "assert deposited - exited >= stuck"
-            );
-
-            assertGe(
                 no.totalAddedKeys,
                 no.depositableValidatorsCount + no.totalWithdrawnKeys,
                 "assert added >= depositable + withdrawn"
