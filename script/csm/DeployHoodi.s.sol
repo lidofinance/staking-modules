@@ -18,8 +18,8 @@ contract DeployHoodi is DeployBase {
         config.secondsPerSlot = 12;
         config.slotsPerEpoch = 32;
         config.clGenesisTime = 1742213400;
-        config.oracleReportEpochsPerFrame = 225 * 14; // 14 days
-        config.fastLaneLengthSlots = 32;
+        config.oracleReportEpochsPerFrame = 225 * 7; // 14 days
+        config.fastLaneLengthSlots = 100;
         config.consensusVersion = 4;
         config.oracleMembers = new address[](12);
         config.oracleMembers[0] = 0xf7aE520e99ed3C41180B5E12681d31Aa7302E4e5;
@@ -113,7 +113,7 @@ contract DeployHoodi is DeployBase {
         config.identifiedCommunityStakersGateMaxElWithdrawalRequestFee = 0.1 ether;
 
         // CircuitBreaker
-        config.circuitBreaker = address(0x63697263756974627265616b6572); // TODO: Set real CircuitBreaker address
+        config.circuitBreaker = 0x44a5789dFeDa59cD176Ab5709ec2F4829dE4d555;
         config.circuitBreakerPauser = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
 
         // DG
