@@ -133,7 +133,7 @@ abstract contract BondLock is IBondLock, Initializable {
     }
 
     function _getBondLockStorage() private pure returns (BondLockStorage storage $) {
-        assembly {
+        assembly ("memory-safe") {
             $.slot := BOND_LOCK_STORAGE_LOCATION
         }
     }

@@ -113,7 +113,7 @@ abstract contract BondCurve is IBondCurve, Initializable {
     }
 
     function _getBondCurveStorage() private pure returns (BondCurveStorage storage $) {
-        assembly {
+        assembly ("memory-safe") {
             $.slot := BOND_CURVE_STORAGE_LOCATION
         }
     }
