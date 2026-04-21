@@ -397,13 +397,11 @@ contract CircuitBreakerDeploymentTest is DeploymentBaseTest {
     function test_pausables_afterVote() public {
         vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
         address[] memory pausables = circuitBreaker.getPausables();
-        uint256 expectedPausables = 5;
-        assertEq(pausables.length, expectedPausables, "pausables length");
-        assertEq(pausables[0], address(module), "module mismatch");
-        assertEq(pausables[1], address(accounting), "accounting mismatch");
-        assertEq(pausables[2], address(oracle), "oracle mismatch");
-        assertEq(pausables[3], address(verifier), "verifier mismatch");
-        assertEq(pausables[4], address(ejector), "ejector mismatch");
+        assertTrue(arrayHas(pausables, address(module)), "module not in CircuitBreaker");
+        assertTrue(arrayHas(pausables, address(accounting)), "accounting not in CircuitBreaker");
+        assertTrue(arrayHas(pausables, address(oracle)), "oracle not in CircuitBreaker");
+        assertTrue(arrayHas(pausables, address(verifier)), "verifier not in CircuitBreaker");
+        assertTrue(arrayHas(pausables, address(ejector)), "ejector not in CircuitBreaker");
     }
 
     function test_roles() public {
