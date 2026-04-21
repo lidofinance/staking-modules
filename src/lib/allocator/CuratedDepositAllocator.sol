@@ -136,7 +136,7 @@ library CuratedDepositAllocator {
         }
 
         if (count != operatorIds.length) {
-            assembly {
+            assembly ("memory-safe") {
                 mstore(uniqueOperatorIds, count)
             }
         }
@@ -430,7 +430,7 @@ library CuratedDepositAllocator {
         DepositableOperatorsData memory operatorsData,
         uint256 step,
         uint256 allocationAmount
-    ) internal pure returns (uint256 allocated, uint256[] memory allocations) {
+    ) private pure returns (uint256 allocated, uint256[] memory allocations) {
         // allocationAmount > 0, n > 0, and step > 0 are guaranteed by the callers.
 
         _normalizeWeightsToShares(operatorsData);
@@ -442,7 +442,7 @@ library CuratedDepositAllocator {
         uint256[] memory operatorIds,
         uint256[] memory eligibleAllocations,
         uint256 count
-    ) internal pure returns (uint256[] memory compactIds, uint256[] memory allocations) {
+    ) private pure returns (uint256[] memory compactIds, uint256[] memory allocations) {
         compactIds = new uint256[](count);
         allocations = new uint256[](count);
         uint256 compactIndex;
@@ -454,7 +454,7 @@ library CuratedDepositAllocator {
             ++compactIndex;
         }
         if (compactIndex != count) {
-            assembly {
+            assembly ("memory-safe") {
                 mstore(compactIds, compactIndex)
                 mstore(allocations, compactIndex)
             }
@@ -462,7 +462,7 @@ library CuratedDepositAllocator {
     }
 
     /// @dev Converts raw weights in alloc.sharesX96 to X96-scaled shares in-place.
-    function _normalizeWeightsToShares(DepositableOperatorsData memory data) internal pure {
+    function _normalizeWeightsToShares(DepositableOperatorsData memory data) private pure {
         uint256[] memory sharesX96 = data.alloc.sharesX96;
         for (uint256 i; i < sharesX96.length; ++i) {
             // NOTE: no zero-check here. Collectors filter out zero weights and truncate
@@ -477,14 +477,14 @@ library CuratedDepositAllocator {
     }
 
     /// @dev Shrinks eligible arrays to the collected eligible count.
-    function _truncateDepositable(DepositableOperatorsData memory data) internal pure {
+    function _truncateDepositable(DepositableOperatorsData memory data) private pure {
         uint256 count = data.count;
         if (count == data.alloc.sharesX96.length) return;
         uint256[] memory sharesX96 = data.alloc.sharesX96;
         uint256[] memory currents = data.alloc.currents;
         uint256[] memory capacities = data.alloc.capacities;
         uint256[] memory operatorIds = data.operatorIds;
-        assembly {
+        assembly ("memory-safe") {
             mstore(sharesX96, count)
             mstore(currents, count)
             mstore(capacities, count)

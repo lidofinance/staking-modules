@@ -94,7 +94,7 @@ abstract contract FeeSplits is IFeeSplits {
     }
 
     function _getFeeSplitsStorage() internal pure returns (FeeSplitsStorage storage $) {
-        assembly {
+        assembly ("memory-safe") {
             $.slot := FEE_SPLITS_STORAGE_LOCATION
         }
     }

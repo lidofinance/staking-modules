@@ -40,8 +40,6 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     error ZeroFeeDistributorAddress();
     error ZeroChargePenaltyRecipientAddress();
     error NodeOperatorDoesNotExist();
-    error ElRewardsVaultReceiveFailed();
-    error InvalidBondCurvesLength();
     error SameAddress();
 
     function MANAGE_BOND_CURVES_ROLE() external view returns (bytes32);
