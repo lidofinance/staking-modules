@@ -6,6 +6,7 @@ csm0x02_artifacts_latest_dir := "./artifacts/latest/csm0x02/"
 csm0x02_local_transactions_path := csm0x02_artifacts_local_dir + "transactions.json"
 csm0x02_latest_transactions_path := csm0x02_artifacts_latest_dir + "transactions.json"
 csm0x02_local_deploy_config_path := csm0x02_artifacts_local_dir + "deploy-" + chain + ".json"
+csm0x02_latest_deploy_config_path := csm0x02_artifacts_latest_dir + "deploy-" + chain + ".json"
 csm0x02_deploy_config_path := "artifacts" / chain / "csm0x02" / "deploy-" + chain + ".json"
 
 # Deployment
@@ -14,27 +15,28 @@ deploy-csm0x02 *args:
     mkdir -p {{csm0x02_artifacts_local_dir}}
     ARTIFACTS_DIR={{csm0x02_artifacts_local_dir}} \
         just _deploy-generic {{deploy_csm0x02_script_path}} {{anvil_rpc_url}} {{args}}
+    just _finalize-broadcast-artifacts {{deploy_csm0x02_script_name}} {{anvil_rpc_url}} "" "run-latest.json" {{csm0x02_local_deploy_config_path}}
 
 deploy-csm0x02-live *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
     mkdir -p {{csm0x02_artifacts_latest_dir}}
     ARTIFACTS_DIR={{csm0x02_artifacts_latest_dir}} \
         just _deploy-live-generic {{deploy_csm0x02_script_path}} {{args}}
-    just _copy-broadcast-json {{deploy_csm0x02_script_name}} $RPC_URL "" "run-latest.json" {{csm0x02_latest_transactions_path}}
+    just _finalize-broadcast-artifacts {{deploy_csm0x02_script_name}} $RPC_URL "" "run-latest.json" {{csm0x02_latest_deploy_config_path}}
 
 deploy-csm0x02-live-no-confirm *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
     mkdir -p {{csm0x02_artifacts_latest_dir}}
     ARTIFACTS_DIR={{csm0x02_artifacts_latest_dir}} \
         just _deploy-live-generic-no-confirm {{deploy_csm0x02_script_path}} --broadcast {{args}}
-    just _copy-broadcast-json {{deploy_csm0x02_script_name}} $RPC_URL "" "run-latest.json" {{csm0x02_latest_transactions_path}}
+    just _finalize-broadcast-artifacts {{deploy_csm0x02_script_name}} $RPC_URL "" "run-latest.json" {{csm0x02_latest_deploy_config_path}}
 
 deploy-csm0x02-live-dry *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
     mkdir -p {{csm0x02_artifacts_local_dir}}
     ARTIFACTS_DIR={{csm0x02_artifacts_local_dir}} \
         just _deploy-live-generic-dry {{deploy_csm0x02_script_path}} {{args}}
-    just _copy-broadcast-json {{deploy_csm0x02_script_name}} $RPC_URL "/dry-run" "run-latest.json" {{csm0x02_local_transactions_path}}
+    just _finalize-broadcast-artifacts {{deploy_csm0x02_script_name}} $RPC_URL "/dry-run" "run-latest.json" {{csm0x02_local_deploy_config_path}}
 
 verify-csm0x02-live *args:
     just _warn "Pass --chain=your_chain manually. e.g. --chain=hoodi for testnet deployment"
