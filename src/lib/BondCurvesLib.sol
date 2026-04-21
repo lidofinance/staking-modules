@@ -13,6 +13,7 @@ interface IBondCurves {
 }
 
 /// Library for managing BondCurves
+/// @dev External deployment-linked library used by Accounting.
 library BondCurvesLib {
     uint256 public constant MIN_CURVE_LENGTH = 1;
     uint256 public constant MAX_CURVE_LENGTH = 100;

@@ -23,6 +23,7 @@ interface IAssetRecovererLib {
  * @title AssetRecovererLib
  * @dev Library providing mechanisms for recovering various asset types (ETH, ERC20, ERC721, ERC1155).
  * This library is designed to be used by a contract that implements the AssetRecoverer interface.
+ * External deployment-linked library used by multiple production contracts.
  */
 library AssetRecovererLib {
     using SafeERC20 for IERC20;
