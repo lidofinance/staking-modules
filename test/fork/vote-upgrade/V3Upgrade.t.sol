@@ -461,17 +461,9 @@ contract VoteChangesTest is V3UpgradeTestBase {
 
             assertEq(curveBefore, curveAfter, "bond curve");
             assertEq(bondBefore, bondAfter, "bond amount");
-            assertEq(bondLockBefore.until, bondLockAfter.until, "bond lock until");
+            assertEq(requiredBefore, requiredAfter, "required bond amount");
             assertEq(bondLockBefore.amount, bondLockAfter.amount, "bond lock amount");
-            if (accounting.isLockExpired(noId)) {
-                assertEq(
-                    requiredBefore + bondLockBefore.amount,
-                    requiredAfter,
-                    "required bond amount when lock is expired"
-                );
-            } else {
-                assertEq(requiredBefore, requiredAfter, "required bond amount when lock is not expired");
-            }
+            assertEq(bondLockBefore.until, bondLockAfter.until, "bond lock until");
         }
     }
 
