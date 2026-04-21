@@ -19,7 +19,7 @@ contract DeployHoodi is DeployBase {
         config.slotsPerEpoch = 32;
         config.clGenesisTime = 1742213400;
         config.oracleReportEpochsPerFrame = 225 * 7; // 7 days
-        config.fastLaneLengthSlots = 32;
+        config.fastLaneLengthSlots = 128;
         config.consensusVersion = 4;
         config.oracleMembers = new address[](12);
         config.oracleMembers[0] = 0xf7aE520e99ed3C41180B5E12681d31Aa7302E4e5;
@@ -62,7 +62,7 @@ contract DeployHoodi is DeployBase {
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0;
         config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
-        config.defaultKeysLimit = 100;
+        config.defaultKeysLimit = 80;
         config.defaultAvgPerfLeewayBP = 10000;
         config.defaultRewardShareBP = 6250; // 62.5% of 4% = 2.5% of the total
         config.defaultStrikesLifetimeFrames = 6;
@@ -169,7 +169,7 @@ contract DeployHoodi is DeployBase {
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
-            gate.treeRoot = 0xe0250b81599ea522c64802477d407fd87b1ae17f5426317d355689d86a781088;
+            gate.treeRoot = bytes32(type(uint256).max);
             gate.treeCid = "QmU4cnyaKWgMVCZVLiuQaqu6yGXahjzi4F1Vcnq2SXBBmT";
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
@@ -184,7 +184,7 @@ contract DeployHoodi is DeployBase {
         config.setOperatorInfoManager = 0x84DffcfB232594975C608DE92544Ff239a24c9E9; // CMC on Hoodi
 
         // CircuitBreaker
-        config.circuitBreaker = address(0x63697263756974627265616b6572); // TODO: Set real CircuitBreaker address
+        config.circuitBreaker = 0x44a5789dFeDa59cD176Ab5709ec2F4829dE4d555;
         config.circuitBreakerPauser = 0x84DffcfB232594975C608DE92544Ff239a24c9E9; // CMC on Hoodi
 
         // DG
