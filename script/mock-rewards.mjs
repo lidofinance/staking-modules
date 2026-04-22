@@ -12,7 +12,7 @@ if (!DEPLOY_CONFIG) {
 }
 
 // Mock report parameters
-const REWARD_MIN_WEI = 50_000_000_000_000_000n; // 0.05 ETH
+const REWARD_MIN_WEI = 100_000_000_000_000_000n; // 0.1 ETH
 const REWARD_MAX_WEI = 200_000_000_000_000_000n; // 0.2 ETH
 const REWARD_SPAN = REWARD_MAX_WEI - REWARD_MIN_WEI; // 1e15, fits in Number
 const FULL_SHARE_VALIDATORS = 10; // first N validators per operator get rewards_share = 1

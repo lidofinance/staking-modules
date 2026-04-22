@@ -190,7 +190,7 @@ echo "Done"
 echo ""
 
 # Step 3: Update SMDiscovery caches
-SM_DISCOVERY="0x2E04CC1F1dac245f66a5C7c5288Bdd4f7cF0c8b4"
+SM_DISCOVERY="0xC4288A3070D8DA4c7F5DBEC335a9BB31489fDFf1"
 echo ">>> Updating SMDiscovery caches..."
 cast send "$SM_DISCOVERY" "updateModuleCache(uint256)" 5 \
   --rpc-url="$RPC_URL" --private-key="$LOCAL_PK"

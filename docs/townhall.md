@@ -4,6 +4,7 @@
 
 ```bash
 ./prepare-modules.sh
+just snapshot
 just seed-cm
 just snapshot
 ```
