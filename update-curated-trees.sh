@@ -2,7 +2,7 @@
 #
 # Update Curated Gates Merkle Trees on Local Hoodi Fork
 #
-# Generates merkle trees from addresses1..6 files using csm-test-tree
+# Generates merkle trees from addresses1..7 files using csm-test-tree
 # and updates each corresponding CuratedGate contract.
 #
 # Prerequisite: Run prepare-modules.sh and prepare-curated-gates.sh first
@@ -15,7 +15,7 @@ set -a; [ -f "$(dirname "$0")/.env" ] && . "$(dirname "$0")/.env"; set +a
 
 # Configuration
 RPC_URL="${ANVIL_RPC_URL:-http://127.0.0.1:8545}"
-ARTIFACTS_DIR="${ARTIFACTS_DIR:-./artifacts/local/}"
+ARTIFACTS_DIR="${ARTIFACTS_DIR:-./artifacts/hoodi/}"
 CM_DEPLOY_CONFIG="${DEPLOY_CONFIG:-$ARTIFACTS_DIR/curated/deploy-hoodi.json}"
 
 # Preload package to avoid prompts during loop
@@ -51,7 +51,7 @@ get_admin() {
 # Track results for summary
 declare -a RESULTS
 
-for i in {1..6}; do
+for i in {1..7}; do
   GATE=$(jq -r ".CuratedGates[$((i-1))]" "$CM_DEPLOY_CONFIG")
   ADDR_FILE="addresses$i"
 
