@@ -213,6 +213,15 @@ contract Utilities is CommonBase {
         }
     }
 
+    function arrayHas(address[] memory arr, address what) public pure returns (bool) {
+        for (uint256 i; i < arr.length; ++i) {
+            if (arr[i] == what) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /// See https://github.com/Vectorized/solady - MIT licensed.
     /// @dev Fills the memory with junk, for more robust testing of inline assembly
     /// which reads/write to the memory.

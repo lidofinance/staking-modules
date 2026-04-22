@@ -42,38 +42,12 @@ for (const fork of ["electra"]) {
   }
 
   {
-    const PendingConsolidations = Fork.BeaconState.getPathInfo(["pending_consolidations"]).type;
-
-    const gI = pack(
-      Fork.BeaconState.getPathInfo(["pending_consolidations", 0]).gindex,
-      PendingConsolidations.limit,
-    );
-
-    console.log(`${fork}::gIFirstPendingConsolidation:`, toBytes32String(gI));
-  }
-
-  {
     const HistoricalSummaries = Fork.BeaconState.getPathInfo(["historicalSummaries"]).type;
     const gI = pack(
       Fork.BeaconState.getPathInfo(["historicalSummaries", 0]).gindex,
       HistoricalSummaries.limit,
     );
     console.log(`${fork}::gIFirstHistoricalSummary:`, toBytes32String(gI));
-  }
-
-  {
-    const HistoricalSummary = Fork.BeaconState.getPathInfo(["historicalSummaries", 0]).type;
-    const BlockRoots = Fork.BeaconState.getPathInfo(["blockRoots"]).type;
-
-    const gI = pack(
-      concatGindices([
-        HistoricalSummary.getPathInfo(["blockSummaryRoot"]).gindex,
-        BlockRoots.getPropertyGindex(0),
-      ]),
-      BlockRoots.length,
-    );
-
-    console.log(`${fork}::gIFirstBlockRootInSummary:`, toBytes32String(gI));
   }
 
   console.log();

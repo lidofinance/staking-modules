@@ -18,7 +18,7 @@ function main() {
   ).transactions;
 
   transactions.forEach((tx) => {
-    if (tx.transactionType === "CREATE" && tx.contractAddress && tx.contractName) {
+    if (tx.transactionType.startsWith("CREATE") && tx.contractAddress && tx.contractName) {
       result[tx.contractAddress] = tx.contractName;
     }
 
