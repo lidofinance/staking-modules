@@ -103,20 +103,40 @@ abstract contract OracleTestBase is ModuleTypeBase {
         uint256 distributedShares,
         bytes32 strikesTreeRoot
     ) public returns (IFeeOracle.ReportData memory data) {
+        return prepareReport(feesTreeRoot, "", distributedShares, 0, strikesTreeRoot, "");
+    }
+
+    function prepareReport(
+        bytes32 feesTreeRoot,
+        string memory feesTreeCid,
+        uint256 distributedShares,
+        uint256 rebateShares,
+        bytes32 strikesTreeRoot,
+        string memory strikesTreeCid
+    ) public returns (IFeeOracle.ReportData memory data) {
         uint256 consensusVersion = oracle.getConsensusVersion();
         waitForNextRefSlot();
         (uint256 refSlot, ) = hashConsensus.getCurrentFrame();
+        string memory resolvedFeesTreeCid = feesTreeCid;
+        string memory resolvedStrikesTreeCid = strikesTreeCid;
+
+        if (bytes(resolvedFeesTreeCid).length == 0 && feesTreeRoot != bytes32(0)) {
+            resolvedFeesTreeCid = someCIDv0();
+        }
+        if (bytes(resolvedStrikesTreeCid).length == 0 && strikesTreeRoot != bytes32(0)) {
+            resolvedStrikesTreeCid = someCIDv0();
+        }
 
         data = IFeeOracle.ReportData({
             consensusVersion: consensusVersion,
             refSlot: refSlot,
             treeRoot: feesTreeRoot,
-            treeCid: someCIDv0(),
+            treeCid: resolvedFeesTreeCid,
             logCid: someCIDv0(),
             distributed: distributedShares,
-            rebate: 0,
+            rebate: rebateShares,
             strikesTreeRoot: strikesTreeRoot,
-            strikesTreeCid: someCIDv0()
+            strikesTreeCid: resolvedStrikesTreeCid
         });
         reachConsensus(refSlot, keccak256(abi.encode(data)));
     }
@@ -153,7 +173,8 @@ abstract contract OracleTestBase is ModuleTypeBase {
 
     function test_reportStrikes() public assertInvariants {
         uint256 distributed = 0;
-        feesTree.pushLeaf(abi.encode(type(uint64).max, 0));
+        bytes32 feeTreeRootBefore = feeDistributor.treeRoot();
+        string memory feeTreeCidBefore = feeDistributor.treeCid();
         uint256 keyIndex = module.getNodeOperator(nodeOperatorId).totalDepositedKeys - 1;
         bytes memory key = module.getSigningKeys(nodeOperatorId, keyIndex, 1);
 
@@ -165,7 +186,14 @@ abstract contract OracleTestBase is ModuleTypeBase {
         strikesTree.pushLeaf(abi.encode(nodeOperatorId, key, strikesData));
         strikesTree.pushLeaf(abi.encode(nodeOperatorId + 1, randomBytes(48), strikesData));
 
-        IFeeOracle.ReportData memory data = prepareReport(feesTree.root(), distributed, strikesTree.root());
+        IFeeOracle.ReportData memory data = prepareReport({
+            feesTreeRoot: feeTreeRootBefore,
+            feesTreeCid: feeTreeCidBefore,
+            distributedShares: distributed,
+            rebateShares: 0,
+            strikesTreeRoot: strikesTree.root(),
+            strikesTreeCid: ""
+        });
         uint256 contractVersion = oracle.getContractVersion();
         (address[] memory addresses, ) = hashConsensus.getMembers();
         vm.startPrank(addresses[0]);
@@ -201,6 +229,41 @@ abstract contract OracleTestBase is ModuleTypeBase {
         assertTrue(exitPenaltyInfo.elWithdrawalRequestFee.isValue);
         assertEq(exitPenaltyInfo.elWithdrawalRequestFee.value, expectedWithdrawalFee);
         assertEq(refundRecipient.balance, initialBalance - expectedWithdrawalFee);
+    }
+
+    function test_reportRebateOnlyFees() public assertInvariants {
+        bytes32 feeTreeRootBefore = feeDistributor.treeRoot();
+        string memory feeTreeCidBefore = feeDistributor.treeCid();
+        uint256 pendingSharesBefore = feeDistributor.pendingSharesToDistribute();
+        uint256 totalClaimableSharesBefore = feeDistributor.totalClaimableShares();
+        uint256 feeDistributorSharesBefore = lido.sharesOf(address(feeDistributor));
+
+        vm.deal(address(feeDistributor), 1 ether);
+        vm.prank(address(feeDistributor));
+        uint256 rebate = lido.submit{ value: 1 ether }(address(0));
+
+        address rebateAddr = feeDistributor.rebateRecipient();
+        uint256 rebateSharesBefore = lido.sharesOf(rebateAddr);
+
+        IFeeOracle.ReportData memory data = prepareReport({
+            feesTreeRoot: feeTreeRootBefore,
+            feesTreeCid: feeTreeCidBefore,
+            distributedShares: 0,
+            rebateShares: rebate,
+            strikesTreeRoot: bytes32(0),
+            strikesTreeCid: ""
+        });
+        uint256 contractVersion = oracle.getContractVersion();
+        (address[] memory addresses, ) = hashConsensus.getMembers();
+        vm.prank(addresses[0]);
+        oracle.submitReportData(data, contractVersion);
+
+        assertEq(feeDistributor.treeRoot(), feeTreeRootBefore);
+        assertEq(keccak256(bytes(feeDistributor.treeCid())), keccak256(bytes(feeTreeCidBefore)));
+        assertEq(feeDistributor.pendingSharesToDistribute(), pendingSharesBefore);
+        assertEq(feeDistributor.totalClaimableShares(), totalClaimableSharesBefore);
+        assertEq(lido.sharesOf(rebateAddr) - rebateSharesBefore, rebate);
+        assertEq(lido.sharesOf(address(feeDistributor)), feeDistributorSharesBefore);
     }
 
     function processBadPerformanceProof(

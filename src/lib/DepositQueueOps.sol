@@ -316,8 +316,14 @@ library DepositQueueOps {
 
         emit IBaseModule.DepositedSigningKeysCountChanged(noId, totalDepositedKeys);
 
-        // No need for `_updateDepositableValidatorsCount` call since we update the number directly.
-        uint32 newCount = no.depositableValidatorsCount - keysCount;
+        // NOTE: No need for `_updateDepositableValidatorsCount` call since we update the number directly.
+
+        // NOTE: The only call site is the `obtainDepositData` function that limits the `keysCount` by the node operator `depositableValidatorsCount`.
+        uint32 newCount;
+        unchecked {
+            newCount = no.depositableValidatorsCount - keysCount;
+        }
+
         no.depositableValidatorsCount = newCount;
         emit IBaseModule.DepositableSigningKeysCountChanged(noId, newCount);
     }

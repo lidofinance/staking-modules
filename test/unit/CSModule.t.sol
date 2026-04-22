@@ -343,6 +343,23 @@ contract CsmInitialize is CSMCommon {
         assertEq(csm.getInitializedVersion(), 3);
     }
 
+    function test_rebuildTotalWithdrawnValidators_DoesNothingWhen_InitializedFromScratch() public {
+        CSModule csm = new CSModule({
+            moduleType: "community-staking-module",
+            lidoLocator: address(locator),
+            parametersRegistry: address(parametersRegistry),
+            accounting: address(accounting),
+            exitPenalties: address(exitPenalties)
+        });
+
+        _enableInitializers(address(csm));
+        csm.initialize({ admin: address(this), topUpQueueLimit: 0 });
+
+        vm.recordLogs();
+        csm.rebuildTotalWithdrawnValidators();
+        assertEq(vm.getRecordedLogs().length, 0);
+    }
+
     function test_finalizeUpgradeV3_ClearsFreeSlotsAndDisablesTopUpQueue() public {
         CSModule csm = new CSModule({
             moduleType: "community-staking-module",
@@ -2273,7 +2290,7 @@ contract CSMFinalizeUpgradeV3 is CSMCommon {
 
         vm.pauseGasMetering();
 
-        uint256 operatorsCount = 1000;
+        uint256 operatorsCount = 32;
 
         for (uint256 i; i < operatorsCount; ++i) {
             createNodeOperator(1);
@@ -2304,14 +2321,60 @@ contract CSMFinalizeUpgradeV3 is CSMCommon {
         vm.resumeGasMetering();
     }
 
-    function test_finalizeUpgradeV3_MigratesTotalWithdrawnValidators_1k() public {
-        vm.startSnapshotGas("finalizeUpgradeV3");
+    function test_rebuildTotalWithdrawnValidators_MigratesTotalWithdrawnValidators() public {
         csm.finalizeUpgradeV3();
+
+        vm.startSnapshotGas("rebuildTotalWithdrawnValidators");
+        csm.rebuildTotalWithdrawnValidators();
         uint256 gasUsed = vm.stopSnapshotGas();
-        emit log_named_uint("finalizeUpgradeV3 gas", gasUsed);
+        emit log_named_uint("rebuildTotalWithdrawnValidators gas", gasUsed);
 
         uint256 migrated = uint256(vm.load(address(module), TOTAL_WITHDRAWN_VALIDATORS_SLOT)) & type(uint64).max;
         assertEq(migrated, expectedTotalWithdrawn);
+    }
+
+    function test_rebuildTotalWithdrawnValidators_RevertWhen_UpgradeIsNotFinalized() public {
+        vm.expectRevert(ICSModule.UpgradeIsNotFinalized.selector);
+        csm.rebuildTotalWithdrawnValidators();
+    }
+
+    function test_rebuildTotalWithdrawnValidators_DoesNothingWhen_CalledTwice() public {
+        csm.finalizeUpgradeV3();
+        csm.rebuildTotalWithdrawnValidators();
+
+        vm.recordLogs();
+        csm.rebuildTotalWithdrawnValidators();
+        assertEq(vm.getRecordedLogs().length, 0);
+
+        uint256 migrated = uint256(vm.load(address(module), TOTAL_WITHDRAWN_VALIDATORS_SLOT)) & type(uint64).max;
+        assertEq(migrated, expectedTotalWithdrawn);
+    }
+
+    function test_rebuildTotalWithdrawnValidators_IncludesPostFinalizeWithdrawals() public {
+        csm.finalizeUpgradeV3();
+
+        uint256 noId = createNodeOperator(1);
+        module.obtainDepositData(1, "");
+
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        module.reportRegularWithdrawnValidators(validatorInfos);
+
+        uint256 reportedAfterFinalize = uint256(vm.load(address(module), TOTAL_WITHDRAWN_VALIDATORS_SLOT)) &
+            type(uint64).max;
+        assertEq(reportedAfterFinalize, 1);
+
+        csm.rebuildTotalWithdrawnValidators();
+
+        uint256 migrated = uint256(vm.load(address(module), TOTAL_WITHDRAWN_VALIDATORS_SLOT)) & type(uint64).max;
+        assertEq(migrated, expectedTotalWithdrawn + 1);
     }
 }
 

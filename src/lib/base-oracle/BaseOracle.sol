@@ -342,7 +342,7 @@ abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerableUp
 
     function _storageConsensusReport() internal pure returns (StorageConsensusReport storage r) {
         bytes32 position = CONSENSUS_REPORT_POSITION;
-        assembly {
+        assembly ("memory-safe") {
             r.slot := position
         }
     }

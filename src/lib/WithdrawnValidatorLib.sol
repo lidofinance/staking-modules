@@ -19,6 +19,20 @@ library WithdrawnValidatorLib {
     /// @dev Acts as the denominator to calculate the scaled penalty.
     uint256 public constant PENALTY_SCALE = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE / PENALTY_QUOTIENT;
 
+    function rebuildTotalWithdrawnValidators(ModuleLinearStorage.BaseModuleStorage storage $) external {
+        uint256 totalWithdrawnValidators;
+        unchecked {
+            for (uint256 i; i < $.nodeOperatorsCount; ++i) {
+                totalWithdrawnValidators += $.nodeOperators[i].totalWithdrawnKeys;
+            }
+        }
+
+        if ($.totalWithdrawnValidators == totalWithdrawnValidators) return;
+
+        $.totalWithdrawnValidators = totalWithdrawnValidators;
+        emit IBaseModule.TotalWithdrawnValidatorsRebuilt(totalWithdrawnValidators);
+    }
+
     function processBatch(
         WithdrawnValidatorInfo[] calldata validatorInfos,
         bool slashed,

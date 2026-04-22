@@ -525,12 +525,45 @@ contract FeeDistributorTest is FeeDistributorTestBase {
         uint256 rebate = 0;
         uint256 refSlot = 154;
 
-        string memory treeCid = someCIDv0();
-        string memory logCid = someCIDv0();
-        bytes32 treeRoot = someBytes32();
+        string memory lastTreeCid = feeDistributor.treeCid();
+        bytes32 lastRoot = feeDistributor.treeRoot();
+        string memory newLogCid = someCIDv0();
 
-        string memory treeCidOld = feeDistributor.treeCid();
-        bytes32 treeRootOld = feeDistributor.treeRoot();
+        vm.expectEmit(address(feeDistributor));
+        emit IFeeDistributor.ModuleFeeDistributed(0);
+
+        vm.expectEmit(address(feeDistributor));
+        emit IFeeDistributor.DistributionLogUpdated(newLogCid);
+
+        vm.recordLogs();
+        vm.prank(oracle);
+        feeDistributor.processOracleReport(lastRoot, lastTreeCid, newLogCid, shares, rebate, refSlot);
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        assertEq(entries.length, 2);
+
+        IFeeDistributor.DistributionData memory last = feeDistributor.getHistoricalDistributionData(
+            feeDistributor.distributionDataHistoryCount() - 1
+        );
+        assertEq(last.treeRoot, lastRoot);
+        assertEq(last.treeCid, lastTreeCid);
+        assertEq(last.logCid, newLogCid);
+        assertEq(last.distributed, shares);
+        assertEq(last.rebate, rebate);
+        assertEq(last.refSlot, refSlot);
+
+        assertEq(feeDistributor.treeRoot(), lastRoot);
+        assertEq(feeDistributor.treeCid(), lastTreeCid);
+        assertEq(feeDistributor.logCid(), newLogCid);
+        assertEq(feeDistributor.pendingSharesToDistribute(), 0);
+        assertEq(feeDistributor.totalClaimableShares(), shares);
+        assertEq(stETH.sharesOf(rebateRecipient), rebate);
+        assertEq(stETH.sharesOf(address(feeDistributor)), shares);
+    }
+
+    function test_processOracleReport_EmptyInitialReport() public assertInvariants {
+        uint256 refSlot = 154;
+        string memory logCid = someCIDv0();
 
         vm.expectEmit(address(feeDistributor));
         emit IFeeDistributor.ModuleFeeDistributed(0);
@@ -540,7 +573,7 @@ contract FeeDistributorTest is FeeDistributorTestBase {
 
         vm.recordLogs();
         vm.prank(oracle);
-        feeDistributor.processOracleReport(treeRoot, treeCid, logCid, shares, rebate, refSlot);
+        feeDistributor.processOracleReport(bytes32(0), "", logCid, 0, 0, refSlot);
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
         assertEq(entries.length, 2);
@@ -548,35 +581,23 @@ contract FeeDistributorTest is FeeDistributorTestBase {
         IFeeDistributor.DistributionData memory last = feeDistributor.getHistoricalDistributionData(
             feeDistributor.distributionDataHistoryCount() - 1
         );
-        assertEq(last.treeRoot, treeRootOld);
-        assertEq(last.treeCid, treeCidOld);
+        assertEq(last.treeRoot, bytes32(0));
+        assertEq(last.treeCid, "");
         assertEq(last.logCid, logCid);
-        assertEq(last.distributed, shares);
-        assertEq(last.rebate, rebate);
+        assertEq(last.distributed, 0);
+        assertEq(last.rebate, 0);
         assertEq(last.refSlot, refSlot);
-
-        assertEq(feeDistributor.treeRoot(), treeRootOld);
-        assertEq(feeDistributor.treeCid(), treeCidOld);
-        assertEq(feeDistributor.logCid(), logCid);
-        assertEq(feeDistributor.pendingSharesToDistribute(), 0);
-        assertEq(feeDistributor.totalClaimableShares(), shares);
-        assertEq(stETH.sharesOf(rebateRecipient), rebate);
-        assertEq(stETH.sharesOf(address(feeDistributor)), shares);
-    }
-
-    function test_processOracleReport_EmptyInitialReport() public {
-        string memory logCid = someCIDv0();
-        uint256 refSlot = 154;
-
-        vm.prank(oracle);
-        feeDistributor.processOracleReport(bytes32(0), "", logCid, 0, 0, refSlot);
 
         assertEq(feeDistributor.treeRoot(), bytes32(0));
         assertEq(feeDistributor.treeCid(), "");
         assertEq(feeDistributor.logCid(), logCid);
+        assertEq(feeDistributor.pendingSharesToDistribute(), 0);
+        assertEq(feeDistributor.totalClaimableShares(), 0);
+        assertEq(stETH.sharesOf(rebateRecipient), 0);
+        assertEq(stETH.sharesOf(address(feeDistributor)), 0);
     }
 
-    function test_processOracleReport_EmptySubsequentReport() public {
+    function test_processOracleReport_EmptySubsequentReport() public assertInvariants {
         uint256 shares = 1_000_000;
         uint256 refSlot = 154;
         _makeInitialReport(shares);
@@ -585,26 +606,130 @@ contract FeeDistributorTest is FeeDistributorTestBase {
         bytes32 lastRoot = feeDistributor.treeRoot();
         string memory newLogCid = someCIDv0();
 
+        vm.expectEmit(address(feeDistributor));
+        emit IFeeDistributor.ModuleFeeDistributed(0);
+
+        vm.expectEmit(address(feeDistributor));
+        emit IFeeDistributor.DistributionLogUpdated(newLogCid);
+
+        vm.recordLogs();
         vm.prank(oracle);
         feeDistributor.processOracleReport(lastRoot, lastTreeCid, newLogCid, 0, 0, refSlot);
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        assertEq(entries.length, 2);
+
+        IFeeDistributor.DistributionData memory last = feeDistributor.getHistoricalDistributionData(
+            feeDistributor.distributionDataHistoryCount() - 1
+        );
+        assertEq(last.treeRoot, lastRoot);
+        assertEq(last.treeCid, lastTreeCid);
+        assertEq(last.logCid, newLogCid);
+        assertEq(last.distributed, 0);
+        assertEq(last.rebate, 0);
+        assertEq(last.refSlot, refSlot);
 
         assertEq(feeDistributor.treeRoot(), lastRoot);
         assertEq(feeDistributor.treeCid(), lastTreeCid);
         assertEq(feeDistributor.logCid(), newLogCid);
+        assertEq(feeDistributor.pendingSharesToDistribute(), 0);
         assertEq(feeDistributor.totalClaimableShares(), shares);
+        assertEq(stETH.sharesOf(rebateRecipient), 0);
+        assertEq(stETH.sharesOf(address(feeDistributor)), shares);
     }
 
-    function test_processOracleReport_RevertWhen_ZeroDistributedButNonZeroRebate() public assertInvariants {
-        uint256 shares = 0;
+    function test_processOracleReport_RevertWhen_EmptyInitialReportChangesTree() public assertInvariants {
+        uint256 refSlot = 154;
+
+        vm.expectRevert(IFeeDistributor.InvalidTreeRoot.selector);
+        vm.prank(oracle);
+        feeDistributor.processOracleReport(someBytes32(), "", someCIDv0(), 0, 0, refSlot);
+
+        vm.expectRevert(IFeeDistributor.InvalidTreeCid.selector);
+        vm.prank(oracle);
+        feeDistributor.processOracleReport(bytes32(0), someCIDv0(), someCIDv0(), 0, 0, refSlot);
+    }
+
+    function test_processOracleReport_RevertWhen_EmptySubsequentReportChangesTree() public assertInvariants {
+        uint256 shares = 1_000_000;
+        uint256 refSlot = 154;
+        _makeInitialReport(shares);
+
+        string memory lastTreeCid = feeDistributor.treeCid();
+        bytes32 lastRoot = feeDistributor.treeRoot();
+
+        vm.expectRevert(IFeeDistributor.InvalidTreeRoot.selector);
+        vm.prank(oracle);
+        feeDistributor.processOracleReport(someBytes32(), lastTreeCid, someCIDv0(), 0, 0, refSlot);
+
+        vm.expectRevert(IFeeDistributor.InvalidTreeCid.selector);
+        vm.prank(oracle);
+        feeDistributor.processOracleReport(lastRoot, someCIDv0(), someCIDv0(), 0, 0, refSlot);
+    }
+
+    function test_processOracleReport_ZeroDistributedAndNonZeroRebate() public assertInvariants {
+        uint256 shares = 100;
         uint256 rebate = 10;
         uint256 refSlot = 154;
-        stETH.mintShares(address(feeDistributor), shares + rebate);
+        _makeInitialReport(shares);
+        stETH.mintShares(address(feeDistributor), rebate);
 
-        stETH.mintShares(address(feeDistributor), shares);
+        bytes32 treeRoot = feeDistributor.treeRoot();
+        string memory treeCid = feeDistributor.treeCid();
+        string memory logCid = someCIDv0();
 
-        vm.expectRevert(IFeeDistributor.InvalidReportData.selector);
+        vm.expectEmit(address(feeDistributor));
+        emit IFeeDistributor.ModuleFeeDistributed(0);
+
+        vm.expectEmit(address(feeDistributor));
+        emit IFeeDistributor.RebateTransferred(rebate);
+
+        vm.expectEmit(address(feeDistributor));
+        emit IFeeDistributor.DistributionLogUpdated(logCid);
+
+        vm.recordLogs();
         vm.prank(oracle);
-        feeDistributor.processOracleReport(someBytes32(), someCIDv0(), someCIDv0(), shares, rebate, refSlot);
+        feeDistributor.processOracleReport(treeRoot, treeCid, logCid, 0, rebate, refSlot);
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        assertEq(entries.length, 3);
+
+        IFeeDistributor.DistributionData memory last = feeDistributor.getHistoricalDistributionData(
+            feeDistributor.distributionDataHistoryCount() - 1
+        );
+        assertEq(last.treeRoot, treeRoot);
+        assertEq(last.treeCid, treeCid);
+        assertEq(last.logCid, logCid);
+        assertEq(last.distributed, 0);
+        assertEq(last.rebate, rebate);
+        assertEq(last.refSlot, refSlot);
+
+        assertEq(feeDistributor.treeRoot(), treeRoot);
+        assertEq(feeDistributor.treeCid(), treeCid);
+        assertEq(feeDistributor.logCid(), logCid);
+        assertEq(feeDistributor.pendingSharesToDistribute(), 0);
+        assertEq(feeDistributor.totalClaimableShares(), shares);
+        assertEq(stETH.sharesOf(rebateRecipient), rebate);
+        assertEq(stETH.sharesOf(address(feeDistributor)), shares);
+    }
+
+    function test_processOracleReport_RevertWhen_ZeroDistributedButNonZeroRebateChangesTree() public assertInvariants {
+        uint256 shares = 100;
+        uint256 rebate = 10;
+        uint256 refSlot = 154;
+        _makeInitialReport(shares);
+        stETH.mintShares(address(feeDistributor), rebate);
+
+        string memory treeCid = feeDistributor.treeCid();
+        bytes32 treeRoot = feeDistributor.treeRoot();
+
+        vm.expectRevert(IFeeDistributor.InvalidTreeRoot.selector);
+        vm.prank(oracle);
+        feeDistributor.processOracleReport(someBytes32(), treeCid, someCIDv0(), 0, rebate, refSlot);
+
+        vm.expectRevert(IFeeDistributor.InvalidTreeCid.selector);
+        vm.prank(oracle);
+        feeDistributor.processOracleReport(treeRoot, someCIDv0(), someCIDv0(), 0, rebate, refSlot);
     }
 
     function test_processOracleReport_RevertWhen_InvalidShares_TooMuchDistributed() public assertInvariants {
@@ -681,9 +806,13 @@ contract FeeDistributorTest is FeeDistributorTestBase {
 
     function test_processOracleReport_RevertWhen_ZeroLogCid() public {
         uint256 refSlot = 154;
+
+        string memory lastTreeCid = feeDistributor.treeCid();
+        bytes32 lastTreeRoot = feeDistributor.treeRoot();
+
         vm.expectRevert(IFeeDistributor.InvalidLogCID.selector);
         vm.prank(oracle);
-        feeDistributor.processOracleReport(someBytes32(), someCIDv0(), "", 0, 0, refSlot);
+        feeDistributor.processOracleReport(lastTreeRoot, lastTreeCid, "", 0, 0, refSlot);
     }
 
     function test_processOracleReport_RevertWhen_SameLogCid() public {
@@ -691,11 +820,13 @@ contract FeeDistributorTest is FeeDistributorTestBase {
         uint256 refSlot = 154;
         _makeInitialReport(shares);
 
+        string memory lastTreeCid = feeDistributor.treeCid();
+        bytes32 lastTreeRoot = feeDistributor.treeRoot();
         string memory lastLogCid = feeDistributor.logCid();
 
         vm.expectRevert(IFeeDistributor.InvalidLogCID.selector);
         vm.prank(oracle);
-        feeDistributor.processOracleReport(someBytes32(), someCIDv0(), lastLogCid, 0, 0, refSlot);
+        feeDistributor.processOracleReport(lastTreeRoot, lastTreeCid, lastLogCid, 0, 0, refSlot);
     }
 
     function test_processOracleReport_RevertWhen_MoreSharesThanBalance() public assertInvariants {

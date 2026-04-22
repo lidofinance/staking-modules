@@ -20,28 +20,28 @@ function unwrap(Batch self) pure returns (uint256) {
 }
 
 function noId(Batch self) pure returns (uint64 n) {
-    assembly {
+    assembly ("memory-safe") {
         n := shr(192, self)
     }
 }
 
 function keys(Batch self) pure returns (uint64 n) {
-    assembly {
+    assembly ("memory-safe") {
         n := shl(64, self)
         n := shr(192, n)
     }
 }
 
 function next(Batch self) pure returns (uint128 n) {
-    assembly {
-        n := shl(128, self)
-        n := shr(128, n)
+    uint256 mask = type(uint128).max;
+    assembly ("memory-safe") {
+        n := and(self, mask)
     }
 }
 
 /// @dev keys count cast is unsafe
 function setKeys(Batch self, uint256 keysCount) pure returns (Batch) {
-    assembly {
+    assembly ("memory-safe") {
         self := or(
             and(self, 0xffffffffffffffff0000000000000000ffffffffffffffffffffffffffffffff),
             shl(128, and(keysCount, 0xffffffffffffffff))
@@ -53,7 +53,7 @@ function setKeys(Batch self, uint256 keysCount) pure returns (Batch) {
 
 /// @dev can be unsafe if the From batch is previous to the self
 function setNext(Batch self, uint128 nextIndex) pure returns (Batch) {
-    assembly {
+    assembly ("memory-safe") {
         self := or(and(self, 0xffffffffffffffffffffffffffffffff00000000000000000000000000000000), nextIndex) // self.next = next
     }
     return self;
@@ -70,7 +70,7 @@ function createBatch(uint256 nodeOperatorId, uint256 keysCount) pure returns (Ba
     // forge-lint: disable-next-line(unsafe-typecast)
     keysCount = uint64(keysCount);
 
-    assembly {
+    assembly ("memory-safe") {
         item := shl(128, keysCount) // `keysCount` in [64:127]
         item := or(item, shl(192, nodeOperatorId)) // `nodeOperatorId` in [0:63]
     }
@@ -106,7 +106,7 @@ library DepositQueueLib {
         uint128 tail = self.tail;
         item = createBatch(nodeOperatorId, keysCount);
 
-        assembly {
+        assembly ("memory-safe") {
             item := or(and(item, 0xffffffffffffffffffffffffffffffff00000000000000000000000000000000), add(tail, 1)) // item.next = self.tail + 1;
         }
 

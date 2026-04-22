@@ -26,11 +26,17 @@ interface ICSModule is IBaseModule, IStakingModuleV2, IDepositQueueLib, ITopUpQu
     error InvalidSigningKey();
     error InvalidTopUpOrder();
     error UnexpectedExtraKey();
+    error UpgradeIsNotFinalized();
 
     /// @notice Initializes the contract.
     /// @param admin An address to grant the DEFAULT_ADMIN_ROLE to.
     /// @param topUpQueueLimit The limit of the top-up queue.
     function initialize(address admin, uint8 topUpQueueLimit) external;
+
+    /// @notice Rebuilds the global withdrawn validator counter from per-operator counters.
+    /// @dev One-time migration helper for v2-to-v3 upgrades. The function is permissionless
+    ///      because the resulting value is fully derived from stored Node Operator state.
+    function rebuildTotalWithdrawnValidators() external;
 
     /// @notice Clean the deposit queue from batches with no depositable keys
     /// @dev Use **eth_call** to check how many items will be removed

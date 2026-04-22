@@ -280,7 +280,7 @@ abstract contract BondCore is IBondCore {
     }
 
     function _getBondCoreStorage() private pure returns (BondCoreStorage storage $) {
-        assembly {
+        assembly ("memory-safe") {
             $.slot := BOND_CORE_STORAGE_LOCATION
         }
     }
