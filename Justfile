@@ -1,7 +1,7 @@
 set dotenv-load
 
 # Restrict Foundry parallelism by default; override from the caller when needed.
-export FOUNDRY_THREADS := env("FOUNDRY_THREADS", "2")
+export FOUNDRY_THREADS := env("FOUNDRY_THREADS", "1")
 export FOUNDRY_COMPUTE_UNITS_PER_SECOND := env("FOUNDRY_COMPUTE_UNITS_PER_SECOND", "160")
 export ETH_RPC_TIMEOUT := env("ETH_RPC_TIMEOUT", "120")
 
@@ -197,7 +197,7 @@ test-local *args:
 
 # Run all unit tests
 test-unit *args:
-    forge test --skip script --no-match-path 'test/fork/**' -vvv {{args}}
+    env -u FOUNDRY_THREADS forge test --skip script --no-match-path 'test/fork/**' -vvv {{args}}
 
 # Run all deployment tests that should be executed against full scratch deployment before the module activation vote
 test-deployment-full-scratch *args:
