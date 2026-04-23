@@ -1,7 +1,7 @@
 set dotenv-load
 
 # Restrict Foundry parallelism by default; override from the caller when needed.
-export FOUNDRY_THREADS := env("FOUNDRY_THREADS", "4")
+export FOUNDRY_THREADS := env("FOUNDRY_THREADS", "2")
 export FOUNDRY_COMPUTE_UNITS_PER_SECOND := env("FOUNDRY_COMPUTE_UNITS_PER_SECOND", "160")
 export ETH_RPC_TIMEOUT := env("ETH_RPC_TIMEOUT", "120")
 
