@@ -2,7 +2,13 @@ set dotenv-load
 
 # Restrict Foundry parallelism by default; override from the caller when needed.
 export FOUNDRY_THREADS := env("FOUNDRY_THREADS", "4")
-export FOUNDRY_COMPUTE_UNITS_PER_SECOND := env("FOUNDRY_COMPUTE_UNITS_PER_SECOND", "200")
+export FOUNDRY_COMPUTE_UNITS_PER_SECOND := env("FOUNDRY_COMPUTE_UNITS_PER_SECOND", "160")
+export ETH_RPC_TIMEOUT := env("ETH_RPC_TIMEOUT", "120")
+
+# Make forked Anvil more tolerant to transient upstream RPC failures.
+export ANVIL_FORK_RETRIES := env("ANVIL_FORK_RETRIES", "15")
+export ANVIL_FORK_RETRY_BACKOFF := env("ANVIL_FORK_RETRY_BACKOFF", "1000")
+export ANVIL_FORK_TIMEOUT := env("ANVIL_FORK_TIMEOUT", "90000")
 
 chain := env_var_or_default("CHAIN", "mainnet")
 chain_script_suffix := if chain == "mainnet" {
@@ -69,7 +75,11 @@ _fork-up:
     fi
 
     anvil -f "${rpc_url}" --host {{anvil_host}} --port {{anvil_port}} \
-        --config-out localhost.json {{disable_code_size_limit}} --timeout 90000 \
+        --config-out localhost.json {{disable_code_size_limit}} \
+        --compute-units-per-second "${FOUNDRY_COMPUTE_UNITS_PER_SECOND}" \
+        --retries "${ANVIL_FORK_RETRIES}" \
+        --fork-retry-backoff "${ANVIL_FORK_RETRY_BACKOFF}" \
+        --timeout "${ANVIL_FORK_TIMEOUT}" \
         > /dev/null 2>&1 < /dev/null &
     anvil_pid=$!
     # Guard against hanging forever when anvil fails to accept connections.
