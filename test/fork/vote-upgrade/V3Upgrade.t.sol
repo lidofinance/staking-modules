@@ -65,9 +65,6 @@ contract V3UpgradeTestBase is Test, Utilities, DeploymentFixtures, InvariantAsse
         deployParams = parseDeployParams(env.DEPLOY_CONFIG);
 
         initializeFromDeployment();
-
-        vm.selectFork(forkIdAfterUpgrade);
-        module.rebuildTotalWithdrawnValidators();
     }
 }
 
