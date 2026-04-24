@@ -87,6 +87,11 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     }
 
     /// @inheritdoc IMetaRegistry
+    function getInitializedVersion() external view returns (uint64) {
+        return _getInitializedVersion();
+    }
+
+    /// @inheritdoc IMetaRegistry
     function setOperatorMetadataAsAdmin(
         uint256 nodeOperatorId,
         OperatorMetadata calldata metadata

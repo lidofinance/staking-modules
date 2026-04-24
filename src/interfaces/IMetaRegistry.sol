@@ -74,6 +74,9 @@ interface IMetaRegistry {
     /// @param admin Address to receive DEFAULT_ADMIN_ROLE.
     function initialize(address admin) external;
 
+    /// @notice Returns the initialized version of the contract.
+    function getInitializedVersion() external view returns (uint64);
+
     /// @notice Set or update metadata for a node operator (callable by SET_OPERATOR_INFO_ROLE).
     /// @param nodeOperatorId Node operator ID.
     /// @param metadata Metadata payload to persist.
