@@ -44,8 +44,8 @@ _copy-broadcast-json script_name rpc_url dry_prefix json_name dest_path:
         {{dest_path}}
 
 _finalize-broadcast-artifacts script_name rpc_url dry_prefix json_name deploy_config_path:
-    just _copy-broadcast-json {{script_name}} {{rpc_url}} {{dry_prefix}} {{json_name}} "$(dirname "{{deploy_config_path}}")/transactions.json"
-    just _merge-external-libraries {{deploy_config_path}} "$(dirname "{{deploy_config_path}}")/transactions.json"
+    just _copy-broadcast-json "{{script_name}}" "{{rpc_url}}" "{{dry_prefix}}" "{{json_name}}" "$(dirname "{{deploy_config_path}}")/transactions.json"
+    just _merge-external-libraries "{{deploy_config_path}}" "$(dirname "{{deploy_config_path}}")/transactions.json"
 
 _copy-file src_path dest_path:
     mkdir -p "$(dirname "{{dest_path}}")"
