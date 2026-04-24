@@ -397,4 +397,14 @@ contract SimulateVote is Script, ForkHelpersCommon {
             vm.stopBroadcast();
         }
     }
+
+    /// @dev Simulation helper only. Executes post-vote state preparation that is not part of the vote payload.
+    function postUpgrade() external {
+        _setUp();
+        if (moduleType != ModuleType.Community) revert WrongModuleType();
+
+        vm.startBroadcast(_prepareAdmin(address(module)));
+        module.rebuildTotalWithdrawnValidators();
+        vm.stopBroadcast();
+    }
 }

@@ -5,6 +5,7 @@ pragma solidity 0.8.33;
 
 import { IStakingModuleV2 } from "src/interfaces/IStakingModule.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
+import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { SigningKeys } from "src/lib/SigningKeys.sol";
 import { MetaRegistry } from "src/MetaRegistry.sol";
 
@@ -12,8 +13,6 @@ import { CuratedIntegrationBase } from "../common/ModuleTypeBase.sol";
 import { StakingRouterIntegrationTestBase } from "../common/StakingRouter.t.sol";
 
 contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase, CuratedIntegrationBase {
-    uint256 internal constant TOP_UP_ALLOCATION_PROBE_AMOUNT = 10_000_000 ether;
-
     address internal topUpGateway;
 
     function setUp() public override {
@@ -24,6 +23,11 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         }
 
         topUpGateway = locator.topUpGateway();
+
+        address metaRegistryAdmin = metaRegistry.getRoleMember(metaRegistry.DEFAULT_ADMIN_ROLE(), 0);
+        bytes32 manageOperatorGroupsRole = metaRegistry.MANAGE_OPERATOR_GROUPS_ROLE();
+        vm.prank(metaRegistryAdmin);
+        metaRegistry.grantRole(manageOperatorGroupsRole, address(this));
 
         _maximizeModuleShare(moduleId);
         _disableDepositsForOtherModules(moduleId);
@@ -53,14 +57,23 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
     }
 
     function test_routerDeposit_curatedCanReturnLessThanRequested() public assertInvariants {
-        integrationHelpers.getDepositableNodeOperator(nextAddress());
+        _clearAllOperatorGroups(metaRegistry);
 
-        _setAllCuratedCurveWeightsToZero();
+        address overweightOperatorOwner = nextAddress();
+        uint256 overweightOperatorId = integrationHelpers.addNodeOperator(overweightOperatorOwner, 10);
+
+        vm.startPrank(address(stakingRouter));
+        module.obtainDepositData(10, "");
+        vm.stopPrank();
+
+        _addValidatorKeys(overweightOperatorOwner, overweightOperatorId, 10, 10);
+
+        integrationHelpers.addNodeOperator(nextAddress(), 1);
 
         (, uint256 depositedBefore, ) = module.getStakingModuleSummary();
 
         uint256 requestedDeposits = _getExpectedRouterDepositRequestCount();
-        assertGt(requestedDeposits, 0);
+        assertGt(requestedDeposits, 1);
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(module.obtainDepositData.selector, requestedDeposits, "")
@@ -71,6 +84,7 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         (, uint256 depositedAfter, ) = module.getStakingModuleSummary();
         uint256 actualDeposits = depositedAfter - depositedBefore;
         assertEq(depositedAfter - depositedBefore, actualDeposits);
+        assertEq(actualDeposits, 2);
         assertLt(actualDeposits, requestedDeposits);
     }
 
@@ -86,7 +100,7 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
             uint256[] memory topUpLimits
         ) = _singleTopUpArrays(noId, keyIndex, pubkey, 1 ether);
 
-        (uint256 expectedMaxDepositAmount, ) = stakingRouter.getTopUpAllocation(TOP_UP_ALLOCATION_PROBE_AMOUNT);
+        uint256 expectedMaxDepositAmount = _getExpectedRouterTopUpAmount();
         uint256 keyAllocatedBalanceBefore = module.getKeyAllocatedBalances(noId, keyIndex, 1)[0];
         ICuratedModule curatedModule = ICuratedModule(address(module));
         uint256 operatorBalanceBefore = curatedModule.getNodeOperatorBalance(noId);
@@ -183,23 +197,20 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         topUpLimits[0] = topUpLimit;
     }
 
-    function _setAllCuratedCurveWeightsToZero() internal {
-        MetaRegistry registry = MetaRegistry(address(ICuratedModule(address(module)).META_REGISTRY()));
+    function _addValidatorKeys(address owner, uint256 nodeOperatorId, uint256 keysCount, uint256 startIndex) internal {
+        (bytes memory keys, bytes memory signatures) = keysSignatures(keysCount, startIndex);
+        uint256 amount = accounting.getRequiredBondForNextKeys(nodeOperatorId, keysCount);
 
-        address admin = registry.getRoleMember(registry.DEFAULT_ADMIN_ROLE(), 0);
-        bytes32 role = registry.SET_BOND_CURVE_WEIGHT_ROLE();
-        if (!registry.hasRole(role, address(this))) {
-            vm.prank(admin);
-            registry.grantRole(role, address(this));
-        }
+        vm.deal(owner, amount);
+        vm.prank(owner);
+        module.addValidatorKeysETH{ value: amount }(owner, nodeOperatorId, keysCount, keys, signatures);
+    }
 
-        uint256 operatorsCount = module.getNodeOperatorsCount();
-        for (uint256 i; i < operatorsCount; ++i) {
-            uint256 curveId = accounting.getBondCurveId(i);
-            if (registry.getBondCurveWeight(curveId) != 0) {
-                registry.setBondCurveWeight(curveId, 0);
-            }
-            registry.refreshOperatorWeight(i);
+    function _clearAllOperatorGroups(MetaRegistry registry) internal {
+        IMetaRegistry.OperatorGroup memory emptyGroup;
+        uint256 groupsCount = registry.getOperatorGroupsCount();
+        for (uint256 groupId = 1; groupId < groupsCount; ++groupId) {
+            registry.createOrUpdateOperatorGroup(groupId, emptyGroup);
         }
     }
 }

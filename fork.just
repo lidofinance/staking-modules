@@ -12,6 +12,7 @@ vote-add-module:
 
 vote-upgrade:
     just _impersonate-script SimulateVote --sig="upgrade"
+    just _impersonate-script SimulateVote --sig="postUpgrade"
 
 public-release:
     just _impersonate-script PauseResume --sig="publicRelease"

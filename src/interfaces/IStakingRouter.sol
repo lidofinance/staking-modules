@@ -196,13 +196,10 @@ interface IStakingRouter {
 
     function getContractVersion() external view returns (uint256);
 
-    function getDepositsAllocation(
-        uint256 _depositsCount
-    ) external view returns (uint256 allocated, uint256[] memory allocations);
-
-    function getTopUpAllocation(
-        uint256 _depositAmount
-    ) external view returns (uint256 allocated, uint256[] memory allocations);
+    function getDepositAllocations(
+        uint256 _depositAmount,
+        bool _isTopUp
+    ) external view returns (uint256 totalAllocated, uint256[] memory allocated, uint256[] memory newAllocations);
 
     function getLido() external view returns (address);
 

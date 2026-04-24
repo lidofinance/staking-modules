@@ -4,6 +4,15 @@ set dotenv-load
 export FOUNDRY_THREADS := env("FOUNDRY_THREADS", "4")
 export FOUNDRY_COMPUTE_UNITS_PER_SECOND := env("FOUNDRY_COMPUTE_UNITS_PER_SECOND", "200")
 
+# Make forked Anvil more tolerant to transient upstream RPC failures.
+export ANVIL_FORK_RETRIES := env("ANVIL_FORK_RETRIES", "15")
+export ANVIL_FORK_RETRY_BACKOFF := env("ANVIL_FORK_RETRY_BACKOFF", "1000")
+export ANVIL_FORK_TIMEOUT := env("ANVIL_FORK_TIMEOUT", "90000")
+
+# Make forked Forge tests more tolerant to transient upstream RPC failures.
+export FOUNDRY_FORK_RETRIES := env("FOUNDRY_FORK_RETRIES", "15")
+export FOUNDRY_FORK_RETRY_BACKOFF := env("FOUNDRY_FORK_RETRY_BACKOFF", "1000")
+
 chain := env_var_or_default("CHAIN", "mainnet")
 chain_script_suffix := if chain == "mainnet" {
     "Mainnet"
@@ -76,7 +85,11 @@ _fork-up:
     fi
 
     anvil -f "${rpc_url}" --host {{anvil_host}} --port {{anvil_port}} \
-        --config-out localhost.json {{disable_code_size_limit}} --timeout 90000 \
+        --config-out localhost.json {{disable_code_size_limit}} \
+        --compute-units-per-second "${FOUNDRY_COMPUTE_UNITS_PER_SECOND}" \
+        --retries "${ANVIL_FORK_RETRIES}" \
+        --fork-retry-backoff "${ANVIL_FORK_RETRY_BACKOFF}" \
+        --timeout "${ANVIL_FORK_TIMEOUT}" \
         > /dev/null 2>&1 < /dev/null &
     anvil_pid=$!
     # Guard against hanging forever when anvil fails to accept connections.
@@ -194,27 +207,32 @@ test-local *args:
 
 # Run all unit tests
 test-unit *args:
-    forge test --skip script --no-match-path 'test/fork/**' -vvv {{args}}
+    env -u FOUNDRY_THREADS forge test --skip script --no-match-path 'test/fork/**' -vvv {{args}}
 
 # Run all deployment tests that should be executed against full scratch deployment before the module activation vote
 test-deployment-full-scratch *args:
-    forge test --match-path 'test/fork/deployment/*' --no-match-test '.*_afterVote.*' -vvv --show-progress {{args}}
+    forge test --match-path 'test/fork/deployment/*' --no-match-test '.*_afterVote.*' \
+        -vvv --show-progress {{args}}
 
 # Run all deployment tests that should be executed against full scratch deployment after the module activation vote
 test-deployment-full-afterVote *args:
-    forge test --match-path 'test/fork/deployment/*' --no-match-test '.*_scratch.*' -vvv --show-progress {{args}}
+    forge test --match-path 'test/fork/deployment/*' --no-match-test '.*_scratch.*' \
+        -vvv --show-progress {{args}}
 
 # Run all integration tests
 test-integration *args:
-    forge test --match-path 'test/fork/integration/**' -vvv --show-progress {{args}}
+    forge test --match-path 'test/fork/integration/**' \
+        -vvv --show-progress {{args}}
 
 # Run tests for utility contracts
 test-utils *args:
-    forge test --match-path 'test/fork/utils/*' -vvv --show-progress {{args}}
+    forge test --match-path 'test/fork/utils/*' \
+        -vvv --show-progress {{args}}
 
 # Run tests applicable after the module upgrade vote. Does not include deployment tests
 test-post-upgrade *args:
-    forge test --match-path='test/fork/**' --no-match-path 'test/fork/deployment/**' -vvv --show-progress {{args}}
+    forge test --match-path='test/fork/**' --no-match-path 'test/fork/deployment/**' \
+        -vvv --show-progress {{args}}
 
 gas-report:
     #!/usr/bin/env python
