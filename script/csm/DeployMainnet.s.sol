@@ -87,6 +87,8 @@ contract DeployMainnet is DeployBase {
         config
             .identifiedCommunityStakersGateTreeRoot = 0x91545c42adde0f5d82e4c228f81449eab20349c1d31a8538e0468466f93495c5;
         config.identifiedCommunityStakersGateTreeCid = "bafkreido7ieacbe6nlhdivxfp2gd5kxovofngf6qdmahih4laihm675e2a";
+        config.identifiedDVTClusterGateTreeRoot = bytes32(uint256(0xdeadbeef)); // TODO: Set real IDVTC tree root
+        config.identifiedDVTClusterGateTreeCid = "someCid"; // TODO: Set real IDVTC tree CID
         // 1.5 -> 1.3
         config.identifiedCommunityStakersGateBondCurve.push([1, 1.5 ether]);
         config.identifiedCommunityStakersGateBondCurve.push([2, 1.3 ether]);
@@ -110,6 +112,18 @@ contract DeployMainnet is DeployBase {
         config.identifiedCommunityStakersGateAllowedExitDelay = 5 days;
         config.identifiedCommunityStakersGateExitDelayFee = 0.05 ether;
         config.identifiedCommunityStakersGateMaxElWithdrawalRequestFee = 0.1 ether;
+
+        // Parameters for Identified DVT Cluster type
+        config.identifiedDVTClusterBondCurve.push([1, 1.5 ether]);
+        config.identifiedDVTClusterBondCurve.push([2, 0.5 ether]);
+        config.identifiedDVTClusterRewardShareData.push([1, 5834]); // 58.34% of 6% = 3.5% of the total
+        config.identifiedDVTClusterRewardShareData.push([65, 3334]); // 33.34% of 6% = 2% of the total
+        config.identifiedDVTClusterQueuePriority = 1;
+        config.identifiedDVTClusterQueueMaxDeposits = 40;
+        config.identifiedDVTClusterKeyRemovalCharge = 0.01 ether;
+        config.identifiedDVTClusterGeneralDelayedPenaltyAdditionalFine = 0.05 ether;
+        config.identifiedDVTClusterAllowedExitDelay = 5 days;
+        config.identifiedDVTClusterExitDelayFee = 0.05 ether;
 
         // CircuitBreaker
         config.circuitBreaker = address(0x63697263756974627265616b6572); // TODO: Set real CircuitBreaker address

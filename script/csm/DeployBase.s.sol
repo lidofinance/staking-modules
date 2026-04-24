@@ -88,7 +88,7 @@ struct DeployParams {
     uint256 defaultExitDelayFee;
     uint256 defaultMaxElWithdrawalRequestFee;
     address penaltiesManager;
-    // VettedGate
+    // ICS VettedGate
     // TODO: Legacy-only field. Kept only for SimulateVote.upgrade() END_REFERRAL_SEASON_ROLE revoke.
     address identifiedCommunityStakersGateManager;
     uint256 identifiedCommunityStakersGateCurveId;
@@ -112,6 +112,19 @@ struct DeployParams {
     uint256 identifiedCommunityStakersGateAllowedExitDelay;
     uint256 identifiedCommunityStakersGateExitDelayFee;
     uint256 identifiedCommunityStakersGateMaxElWithdrawalRequestFee;
+    // IDVTC VettedGate
+    bytes32 identifiedDVTClusterGateTreeRoot;
+    string identifiedDVTClusterGateTreeCid;
+    uint256 identifiedDVTClusterBondCurveId;
+    // Parameters for Identified DVT Cluster type
+    uint256[2][] identifiedDVTClusterBondCurve;
+    uint256[2][] identifiedDVTClusterRewardShareData;
+    uint256 identifiedDVTClusterQueuePriority;
+    uint256 identifiedDVTClusterQueueMaxDeposits;
+    uint256 identifiedDVTClusterKeyRemovalCharge;
+    uint256 identifiedDVTClusterGeneralDelayedPenaltyAdditionalFine;
+    uint256 identifiedDVTClusterAllowedExitDelay;
+    uint256 identifiedDVTClusterExitDelayFee;
     // CircuitBreaker
     address circuitBreaker;
     address circuitBreakerPauser;
@@ -142,6 +155,7 @@ abstract contract DeployBase is Script {
     PermissionlessGate public permissionlessGate;
     MerkleGateFactory public vettedGateFactory;
     VettedGate public vettedGate;
+    VettedGate public identifiedDVTClusterGate;
     HashConsensus public hashConsensus;
     ParametersRegistry public parametersRegistry;
 
@@ -294,6 +308,10 @@ abstract contract DeployBase is Script {
             uint256 identifiedCommunityStakersGateBondCurveId = accounting.addBondCurve(
                 CommonScriptUtils.arraysToBondCurveIntervalsInputs(config.identifiedCommunityStakersGateBondCurve)
             );
+            uint256 identifiedDVTClusterBondCurveId = accounting.addBondCurve(
+                CommonScriptUtils.arraysToBondCurveIntervalsInputs(config.identifiedDVTClusterBondCurve)
+            );
+            config.identifiedDVTClusterBondCurveId = identifiedDVTClusterBondCurveId;
             accounting.revokeRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
 
             exitPenalties = ExitPenalties(_deployProxy(deployer, address(dummyImpl)));
@@ -350,12 +368,23 @@ abstract contract DeployBase is Script {
                     deployer
                 )
             );
+            identifiedDVTClusterGate = VettedGate(
+                vettedGateFactory.create(
+                    identifiedDVTClusterBondCurveId,
+                    config.identifiedDVTClusterGateTreeRoot,
+                    config.identifiedDVTClusterGateTreeCid,
+                    deployer
+                )
+            );
 
             {
                 OssifiableProxy vettedGateProxy = OssifiableProxy(payable(address(vettedGate)));
                 vettedGateProxy.proxy__changeAdmin(config.proxyAdmin);
+                vettedGateProxy = OssifiableProxy(payable(address(identifiedDVTClusterGate)));
+                vettedGateProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
+            // ICS Parameters
             parametersRegistry.setKeyRemovalCharge(
                 identifiedCommunityStakersGateBondCurveId,
                 config.identifiedCommunityStakersGateKeyRemovalCharge
@@ -409,6 +438,33 @@ abstract contract DeployBase is Script {
                 config.identifiedCommunityStakersGateMaxElWithdrawalRequestFee
             );
 
+            // IDVTC Parameters
+            parametersRegistry.setRewardShareData(
+                identifiedDVTClusterBondCurveId,
+                CommonScriptUtils.arraysToKeyIndexValueIntervals(config.identifiedDVTClusterRewardShareData)
+            );
+            parametersRegistry.setQueueConfig(
+                identifiedDVTClusterBondCurveId,
+                uint32(config.identifiedDVTClusterQueuePriority),
+                uint32(config.identifiedDVTClusterQueueMaxDeposits)
+            );
+            parametersRegistry.setKeyRemovalCharge(
+                identifiedDVTClusterBondCurveId,
+                config.identifiedDVTClusterKeyRemovalCharge
+            );
+            parametersRegistry.setGeneralDelayedPenaltyAdditionalFine(
+                identifiedDVTClusterBondCurveId,
+                config.identifiedDVTClusterGeneralDelayedPenaltyAdditionalFine
+            );
+            parametersRegistry.setAllowedExitDelay(
+                identifiedDVTClusterBondCurveId,
+                config.identifiedDVTClusterAllowedExitDelay
+            );
+            parametersRegistry.setExitDelayFee(
+                identifiedDVTClusterBondCurveId,
+                config.identifiedDVTClusterExitDelayFee
+            );
+
             hashConsensus = new HashConsensus({
                 slotsPerEpoch: config.slotsPerEpoch,
                 secondsPerSlot: config.secondsPerSlot,
@@ -447,6 +503,7 @@ abstract contract DeployBase is Script {
                 oracle.grantRole(oracle.PAUSE_ROLE(), circuitBreaker);
                 verifier.grantRole(verifier.PAUSE_ROLE(), circuitBreaker);
                 vettedGate.grantRole(vettedGate.PAUSE_ROLE(), circuitBreaker);
+                identifiedDVTClusterGate.grantRole(identifiedDVTClusterGate.PAUSE_ROLE(), circuitBreaker);
                 ejector.grantRole(ejector.PAUSE_ROLE(), circuitBreaker);
             }
 
@@ -460,11 +517,14 @@ abstract contract DeployBase is Script {
             verifier.grantRole(verifier.RESUME_ROLE(), config.resealManager);
             vettedGate.grantRole(vettedGate.PAUSE_ROLE(), config.resealManager);
             vettedGate.grantRole(vettedGate.RESUME_ROLE(), config.resealManager);
+            identifiedDVTClusterGate.grantRole(identifiedDVTClusterGate.PAUSE_ROLE(), config.resealManager);
+            identifiedDVTClusterGate.grantRole(identifiedDVTClusterGate.RESUME_ROLE(), config.resealManager);
             ejector.grantRole(ejector.PAUSE_ROLE(), config.resealManager);
             ejector.grantRole(ejector.RESUME_ROLE(), config.resealManager);
 
             accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), address(config.setResetBondCurveAddress));
             accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), address(vettedGate));
+            accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), address(identifiedDVTClusterGate));
 
             parametersRegistry.grantRole(
                 parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
@@ -473,6 +533,7 @@ abstract contract DeployBase is Script {
 
             csm.grantRole(csm.CREATE_NODE_OPERATOR_ROLE(), address(permissionlessGate));
             csm.grantRole(csm.CREATE_NODE_OPERATOR_ROLE(), address(vettedGate));
+            csm.grantRole(csm.CREATE_NODE_OPERATOR_ROLE(), address(identifiedDVTClusterGate));
             csm.grantRole(csm.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), config.generalDelayedPenaltyReporter);
             csm.grantRole(csm.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(), config.easyTrackEVMScriptExecutor);
 
@@ -497,6 +558,12 @@ abstract contract DeployBase is Script {
             vettedGate.grantRole(vettedGate.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             vettedGate.grantRole(vettedGate.SET_TREE_ROLE(), config.easyTrackEVMScriptExecutor);
             vettedGate.revokeRole(vettedGate.DEFAULT_ADMIN_ROLE(), deployer);
+            identifiedDVTClusterGate.grantRole(identifiedDVTClusterGate.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
+            identifiedDVTClusterGate.grantRole(
+                identifiedDVTClusterGate.SET_TREE_ROLE(),
+                config.easyTrackEVMScriptExecutor
+            );
+            identifiedDVTClusterGate.revokeRole(identifiedDVTClusterGate.DEFAULT_ADMIN_ROLE(), deployer);
 
             permissionlessGate.grantRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             permissionlessGate.revokeRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), deployer);
@@ -541,6 +608,7 @@ abstract contract DeployBase is Script {
             deployJson.set("PermissionlessGate", address(permissionlessGate));
             deployJson.set("VettedGateFactory", address(vettedGateFactory));
             deployJson.set("VettedGate", address(vettedGate));
+            deployJson.set("IdentifiedDVTClusterGate", address(identifiedDVTClusterGate));
             deployJson.set("VettedGateImpl", address(vettedGateImpl));
             deployJson.set("LidoLocator", config.lidoLocatorAddress);
             deployJson.set("CircuitBreaker", circuitBreaker);
@@ -582,6 +650,7 @@ abstract contract DeployBase is Script {
         hashConsensus.grantRole(hashConsensus.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         parametersRegistry.grantRole(parametersRegistry.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         vettedGate.grantRole(vettedGate.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        identifiedDVTClusterGate.grantRole(identifiedDVTClusterGate.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         permissionlessGate.grantRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         verifier.grantRole(verifier.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);

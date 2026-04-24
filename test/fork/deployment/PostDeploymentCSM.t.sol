@@ -9,6 +9,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { DeployParams } from "script/csm/DeployBase.s.sol";
 import { ICSModule } from "src/interfaces/ICSModule.sol";
+import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
 import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
 import { VettedGate } from "src/VettedGate.sol";
@@ -17,9 +18,6 @@ import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
-    bytes32 internal constant START_REFERRAL_SEASON_ROLE = keccak256("START_REFERRAL_SEASON_ROLE");
-    bytes32 internal constant END_REFERRAL_SEASON_ROLE = keccak256("END_REFERRAL_SEASON_ROLE");
-
     DeployParams internal deployParams;
     uint256 adminsCount;
     bool internal isUpgradeFlow;
@@ -50,8 +48,9 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles_onlyFull() public view {
-        assertEq(module.getRoleMemberCount(module.CREATE_NODE_OPERATOR_ROLE()), 2);
+        assertEq(module.getRoleMemberCount(module.CREATE_NODE_OPERATOR_ROLE()), 3);
         assertTrue(module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), address(vettedGate)));
+        assertTrue(module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), address(identifiedDVTClusterGate)));
         assertTrue(module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), address(permissionlessGate)));
     }
 
@@ -75,7 +74,49 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
     function test_roles_onlyFull() public view {
         assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), deployParams.setResetBondCurveAddress));
         assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(vettedGate)));
-        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 2);
+        assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(identifiedDVTClusterGate)));
+        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 3);
+    }
+
+    function test_defaultCurve_scratch_onlyFull() public view {
+        _assertBondCurve(accounting.DEFAULT_BOND_CURVE_ID(), deployParams.defaultBondCurve);
+    }
+
+    function test_legacyEaCurve_scratch_onlyFull() public view {
+        _assertBondCurve(accounting.DEFAULT_BOND_CURVE_ID() + 1, deployParams.legacyEaBondCurve);
+    }
+
+    function test_identifiedCommunityStakersCurve_scratch_onlyFull() public view {
+        uint256 identifiedCommunityStakersCurveId = vettedGate.curveId();
+        assertEq(identifiedCommunityStakersCurveId, deployParams.identifiedCommunityStakersGateCurveId);
+        _assertBondCurve(identifiedCommunityStakersCurveId, deployParams.identifiedCommunityStakersGateBondCurve);
+    }
+
+    function test_identifiedDVTClusterCurve_scratch_onlyFull() public view {
+        uint256 identifiedDVTClusterCurveId = deployParams.identifiedDVTClusterBondCurveId;
+        assertEq(identifiedDVTClusterGate.curveId(), identifiedDVTClusterCurveId);
+        _assertBondCurve(identifiedDVTClusterCurveId, deployParams.identifiedDVTClusterBondCurve);
+    }
+
+    function _assertBondCurve(uint256 curveId, uint256[2][] storage expectedCurve) internal view {
+        IBondCurve.BondCurveData memory curve = accounting.getCurveInfo(curveId);
+        assertEq(curve.intervals.length, expectedCurve.length);
+        uint256 minBond;
+        for (uint256 i; i < curve.intervals.length; ++i) {
+            uint256 minKeysCount = expectedCurve[i][0];
+            uint256 trend = expectedCurve[i][1];
+            if (i == 0) {
+                minBond = trend;
+            } else {
+                uint256 prevMinKeysCount = expectedCurve[i - 1][0];
+                uint256 prevTrend = expectedCurve[i - 1][1];
+                minBond += trend + (minKeysCount - prevMinKeysCount - 1) * prevTrend;
+            }
+            assertEq(curve.intervals[i].minKeysCount, minKeysCount);
+            assertEq(curve.intervals[i].minBond, minBond);
+            assertEq(curve.intervals[i].trend, trend);
+            assertEq(accounting.getBondAmountByKeysCount(minKeysCount, curveId), minBond);
+        }
     }
 }
 
@@ -108,8 +149,57 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
         assertEq(parametersRegistry.defaultExitDelayFee(), deployParams.defaultExitDelayFee);
         assertEq(parametersRegistry.defaultMaxElWithdrawalRequestFee(), deployParams.defaultMaxElWithdrawalRequestFee);
         assertEq(parametersRegistry.getInitializedVersion(), 3);
+    }
 
-        // Params for Identified Community Staker type
+    function test_legacyEaCurve_onlyFull() public view {
+        uint256 legacyEaBondCurveId = accounting.DEFAULT_BOND_CURVE_ID() + 1;
+        assertEq(parametersRegistry.getKeyRemovalCharge(legacyEaBondCurveId), deployParams.defaultKeyRemovalCharge);
+        assertEq(
+            parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(legacyEaBondCurveId),
+            deployParams.defaultGeneralDelayedPenaltyAdditionalFine
+        );
+        assertEq(parametersRegistry.getKeysLimit(legacyEaBondCurveId), deployParams.defaultKeysLimit);
+
+        IParametersRegistry.KeyNumberValueInterval[] memory rewardShareData = parametersRegistry.getRewardShareData(
+            legacyEaBondCurveId
+        );
+        assertEq(rewardShareData.length, 1);
+        assertEq(rewardShareData[0].minKeyNumber, 1);
+        assertEq(rewardShareData[0].value, deployParams.defaultRewardShareBP);
+
+        IParametersRegistry.KeyNumberValueInterval[] memory performanceLeewayData = parametersRegistry
+            .getPerformanceLeewayData(legacyEaBondCurveId);
+        assertEq(performanceLeewayData.length, 1);
+        assertEq(performanceLeewayData[0].minKeyNumber, 1);
+        assertEq(performanceLeewayData[0].value, deployParams.defaultAvgPerfLeewayBP);
+
+        (uint256 lifetime, uint256 threshold) = parametersRegistry.getStrikesParams(legacyEaBondCurveId);
+        assertEq(lifetime, deployParams.defaultStrikesLifetimeFrames);
+        assertEq(threshold, deployParams.defaultStrikesThreshold);
+
+        (uint256 priority, uint256 maxDeposits) = parametersRegistry.getQueueConfig(legacyEaBondCurveId);
+        assertEq(priority, deployParams.defaultQueuePriority);
+        assertEq(maxDeposits, deployParams.defaultQueueMaxDeposits);
+
+        assertEq(
+            parametersRegistry.getBadPerformancePenalty(legacyEaBondCurveId),
+            deployParams.defaultBadPerformancePenalty
+        );
+        (uint256 attestationsWeight, uint256 blocksWeight, uint256 syncWeight) = parametersRegistry
+            .getPerformanceCoefficients(legacyEaBondCurveId);
+        assertEq(attestationsWeight, deployParams.defaultAttestationsWeight);
+        assertEq(blocksWeight, deployParams.defaultBlocksWeight);
+        assertEq(syncWeight, deployParams.defaultSyncWeight);
+
+        assertEq(parametersRegistry.getAllowedExitDelay(legacyEaBondCurveId), deployParams.defaultAllowedExitDelay);
+        assertEq(parametersRegistry.getExitDelayFee(legacyEaBondCurveId), deployParams.defaultExitDelayFee);
+        assertEq(
+            parametersRegistry.getMaxElWithdrawalRequestFee(legacyEaBondCurveId),
+            deployParams.defaultMaxElWithdrawalRequestFee
+        );
+    }
+
+    function test_identifiedCommunityStakersCurve_onlyFull() public view {
         uint256 identifiedCommunityStakersGateCurveId = vettedGate.curveId();
         assertEq(
             parametersRegistry.getKeyRemovalCharge(identifiedCommunityStakersGateCurveId),
@@ -180,110 +270,134 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
             parametersRegistry.getMaxElWithdrawalRequestFee(identifiedCommunityStakersGateCurveId),
             deployParams.identifiedCommunityStakersGateMaxElWithdrawalRequestFee
         );
-        // Params for Legacy EA type
-        uint256 legacyEaBondCurveId = identifiedCommunityStakersGateCurveId - 1;
-        assertEq(parametersRegistry.getKeyRemovalCharge(legacyEaBondCurveId), deployParams.defaultKeyRemovalCharge);
-        assertEq(
-            parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(legacyEaBondCurveId),
-            deployParams.defaultGeneralDelayedPenaltyAdditionalFine
-        );
-        assertEq(parametersRegistry.getKeysLimit(legacyEaBondCurveId), deployParams.defaultKeysLimit);
+    }
 
-        IParametersRegistry.KeyNumberValueInterval[] memory legacyEaRewardShareData = parametersRegistry
-            .getRewardShareData(legacyEaBondCurveId);
-        assertEq(legacyEaRewardShareData.length, 1);
-        assertEq(legacyEaRewardShareData[0].minKeyNumber, 1);
-        assertEq(legacyEaRewardShareData[0].value, deployParams.defaultRewardShareBP);
-        IParametersRegistry.KeyNumberValueInterval[] memory legacyEaPerformanceLeewayData = parametersRegistry
-            .getPerformanceLeewayData(legacyEaBondCurveId);
-        assertEq(legacyEaPerformanceLeewayData.length, 1);
-        assertEq(legacyEaPerformanceLeewayData[0].minKeyNumber, 1);
-        assertEq(legacyEaPerformanceLeewayData[0].value, deployParams.defaultAvgPerfLeewayBP);
+    function test_identifiedDVTClusterCurve_onlyFull() public view {
+        uint256 identifiedDVTClusterCurveId = deployParams.identifiedDVTClusterBondCurveId;
+        assertEq(identifiedDVTClusterGate.curveId(), identifiedDVTClusterCurveId);
 
-        (uint256 legacyEaLifetime, uint256 legacyEaThreshold) = parametersRegistry.getStrikesParams(
-            legacyEaBondCurveId
+        IParametersRegistry.KeyNumberValueInterval[] memory rewardShareData = parametersRegistry.getRewardShareData(
+            identifiedDVTClusterCurveId
         );
-        assertEq(legacyEaLifetime, deployParams.defaultStrikesLifetimeFrames);
-        assertEq(legacyEaThreshold, deployParams.defaultStrikesThreshold);
+        assertEq(rewardShareData.length, deployParams.identifiedDVTClusterRewardShareData.length);
+        for (uint256 i; i < rewardShareData.length; ++i) {
+            assertEq(rewardShareData[i].minKeyNumber, deployParams.identifiedDVTClusterRewardShareData[i][0]);
+            assertEq(rewardShareData[i].value, deployParams.identifiedDVTClusterRewardShareData[i][1]);
+        }
 
-        (uint256 legacyEaPriority, uint256 legacyEaMaxDeposits) = parametersRegistry.getQueueConfig(
-            legacyEaBondCurveId
-        );
-        assertEq(legacyEaPriority, deployParams.defaultQueuePriority);
-        assertEq(legacyEaMaxDeposits, deployParams.defaultQueueMaxDeposits);
+        (uint256 priority, uint256 maxDeposits) = parametersRegistry.getQueueConfig(identifiedDVTClusterCurveId);
+        assertEq(priority, deployParams.identifiedDVTClusterQueuePriority);
+        assertEq(maxDeposits, deployParams.identifiedDVTClusterQueueMaxDeposits);
 
         assertEq(
-            parametersRegistry.getBadPerformancePenalty(legacyEaBondCurveId),
+            parametersRegistry.getKeyRemovalCharge(identifiedDVTClusterCurveId),
+            deployParams.identifiedDVTClusterKeyRemovalCharge
+        );
+        assertEq(
+            parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(identifiedDVTClusterCurveId),
+            deployParams.identifiedDVTClusterGeneralDelayedPenaltyAdditionalFine
+        );
+        assertEq(
+            parametersRegistry.getAllowedExitDelay(identifiedDVTClusterCurveId),
+            deployParams.identifiedDVTClusterAllowedExitDelay
+        );
+        assertEq(
+            parametersRegistry.getExitDelayFee(identifiedDVTClusterCurveId),
+            deployParams.identifiedDVTClusterExitDelayFee
+        );
+
+        (uint256 lifetime, uint256 threshold) = parametersRegistry.getStrikesParams(identifiedDVTClusterCurveId);
+        assertEq(lifetime, deployParams.defaultStrikesLifetimeFrames);
+        assertEq(threshold, deployParams.defaultStrikesThreshold);
+        assertEq(
+            parametersRegistry.getBadPerformancePenalty(identifiedDVTClusterCurveId),
             deployParams.defaultBadPerformancePenalty
         );
-        (
-            uint256 legacyEaAttestationsWeight,
-            uint256 legacyEaBlocksWeight,
-            uint256 legacyEaSyncWeight
-        ) = parametersRegistry.getPerformanceCoefficients(legacyEaBondCurveId);
-        assertEq(legacyEaAttestationsWeight, deployParams.defaultAttestationsWeight);
-        assertEq(legacyEaBlocksWeight, deployParams.defaultBlocksWeight);
-        assertEq(legacyEaSyncWeight, deployParams.defaultSyncWeight);
-
-        assertEq(parametersRegistry.getAllowedExitDelay(legacyEaBondCurveId), deployParams.defaultAllowedExitDelay);
-        assertEq(parametersRegistry.getExitDelayFee(legacyEaBondCurveId), deployParams.defaultExitDelayFee);
+        assertEq(parametersRegistry.getKeysLimit(identifiedDVTClusterCurveId), deployParams.defaultKeysLimit);
         assertEq(
-            parametersRegistry.getMaxElWithdrawalRequestFee(legacyEaBondCurveId),
+            parametersRegistry.getMaxElWithdrawalRequestFee(identifiedDVTClusterCurveId),
             deployParams.defaultMaxElWithdrawalRequestFee
         );
+
+        IParametersRegistry.KeyNumberValueInterval[] memory performanceLeewayData = parametersRegistry
+            .getPerformanceLeewayData(identifiedDVTClusterCurveId);
+        assertEq(performanceLeewayData.length, 1);
+        assertEq(performanceLeewayData[0].minKeyNumber, 1);
+        assertEq(performanceLeewayData[0].value, deployParams.defaultAvgPerfLeewayBP);
+
+        (uint256 attestationsWeight, uint256 blocksWeight, uint256 syncWeight) = parametersRegistry
+            .getPerformanceCoefficients(identifiedDVTClusterCurveId);
+        assertEq(attestationsWeight, deployParams.defaultAttestationsWeight);
+        assertEq(blocksWeight, deployParams.defaultBlocksWeight);
+        assertEq(syncWeight, deployParams.defaultSyncWeight);
     }
 }
 
-contract VettedGateDeploymentTest is DeploymentBaseTest {
-    function test_state() public view {
-        assertFalse(vettedGate.isPaused());
-        assertEq(vettedGate.treeRoot(), deployParams.identifiedCommunityStakersGateTreeRoot);
-        assertEq(vettedGate.treeCid(), deployParams.identifiedCommunityStakersGateTreeCid);
+abstract contract VettedGateDeploymentBaseTest is DeploymentBaseTest {
+    function _gate() internal view virtual returns (VettedGate);
 
-        assertTrue(vettedGate.curveId() == deployParams.identifiedCommunityStakersGateCurveId);
-        assertEq(vettedGate.getInitializedVersion(), 1);
+    function _expectedCurveId() internal view virtual returns (uint256);
+
+    function _expectedTreeRoot() internal view virtual returns (bytes32);
+
+    function _expectedTreeCid() internal view virtual returns (string memory);
+
+    function _expectedPauseRoleMembersWithoutCb() internal view virtual returns (uint256) {
+        return 1;
+    }
+
+    function test_state() public view {
+        VettedGate gate = _gate();
+
+        assertFalse(gate.isPaused());
+        assertEq(gate.treeRoot(), _expectedTreeRoot());
+        assertEq(gate.treeCid(), _expectedTreeCid());
+        assertEq(gate.curveId(), _expectedCurveId());
+        assertEq(gate.getInitializedVersion(), 1);
     }
 
     function test_immutables() public view {
-        assertEq(address(vettedGateImpl.MODULE()), address(module));
-        assertEq(address(vettedGateImpl.ACCOUNTING()), address(accounting));
+        VettedGate gate = _gate();
+
+        assertEq(address(gate.MODULE()), address(module));
+        assertEq(address(gate.ACCOUNTING()), address(accounting));
     }
 
     function test_roles_onlyFull() public view {
-        assertTrue(vettedGate.hasRole(vettedGate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
-        assertEq(oracle.getRoleMemberCount(oracle.DEFAULT_ADMIN_ROLE()), adminsCount);
+        VettedGate gate = _gate();
 
-        assertTrue(vettedGate.hasRole(vettedGate.PAUSE_ROLE(), deployParams.resealManager));
+        assertTrue(gate.hasRole(gate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
+        assertEq(gate.getRoleMemberCount(gate.DEFAULT_ADMIN_ROLE()), adminsCount);
+
+        assertTrue(gate.hasRole(gate.PAUSE_ROLE(), deployParams.resealManager));
+        // TODO: Drop the ICS override once legacy GateSeal PAUSE_ROLE migration is complete.
         _assertCircuitBreakerPauseRoleState(
-            address(vettedGate),
+            address(gate),
             address(circuitBreaker),
-            _expectedPauseRoleMembersWithoutCb(isUpgradeFlow)
+            _expectedPauseRoleMembersWithoutCb()
         );
 
-        assertTrue(vettedGate.hasRole(vettedGate.RESUME_ROLE(), deployParams.resealManager));
-        assertEq(vettedGate.getRoleMemberCount(vettedGate.RESUME_ROLE()), 1);
+        assertTrue(gate.hasRole(gate.RESUME_ROLE(), deployParams.resealManager));
+        assertEq(gate.getRoleMemberCount(gate.RESUME_ROLE()), 1);
 
-        assertEq(vettedGate.getRoleMemberCount(vettedGate.RECOVERER_ROLE()), 0);
+        assertEq(gate.getRoleMemberCount(gate.RECOVERER_ROLE()), 0);
 
-        assertTrue(vettedGate.hasRole(vettedGate.SET_TREE_ROLE(), deployParams.easyTrackEVMScriptExecutor));
-        assertEq(vettedGate.getRoleMemberCount(vettedGate.SET_TREE_ROLE()), 1);
-
-        // Legacy referral program roles are not used in the new VettedGate.
-        assertEq(vettedGate.getRoleMemberCount(START_REFERRAL_SEASON_ROLE), 0);
-        assertEq(vettedGate.getRoleMemberCount(END_REFERRAL_SEASON_ROLE), 0);
+        assertTrue(gate.hasRole(gate.SET_TREE_ROLE(), deployParams.easyTrackEVMScriptExecutor));
+        assertEq(gate.getRoleMemberCount(gate.SET_TREE_ROLE()), 1);
     }
 
     function test_proxy_onlyFull() public {
+        VettedGate gate = _gate();
+
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        vettedGate.initialize({
+        gate.initialize({
             curveId: 1,
-            treeRoot: deployParams.identifiedCommunityStakersGateTreeRoot,
-            treeCid: deployParams.identifiedCommunityStakersGateTreeCid,
+            treeRoot: _expectedTreeRoot(),
+            treeCid: _expectedTreeCid(),
             admin: deployParams.aragonAgent
         });
 
-        OssifiableProxy proxy = OssifiableProxy(payable(address(vettedGate)));
-
+        OssifiableProxy proxy = OssifiableProxy(payable(address(gate)));
         assertEq(proxy.proxy__getImplementation(), address(vettedGateImpl));
         assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
         assertFalse(proxy.proxy__getIsOssified());
@@ -292,10 +406,50 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         vettedGateImpl.initialize({
             curveId: 1,
-            treeRoot: deployParams.identifiedCommunityStakersGateTreeRoot,
-            treeCid: deployParams.identifiedCommunityStakersGateTreeCid,
+            treeRoot: _expectedTreeRoot(),
+            treeCid: _expectedTreeCid(),
             admin: deployParams.aragonAgent
         });
+    }
+}
+
+contract IdentifiedCommunityStakersGateDeploymentTest is VettedGateDeploymentBaseTest {
+    function _gate() internal view override returns (VettedGate) {
+        return vettedGate;
+    }
+
+    function _expectedCurveId() internal view override returns (uint256) {
+        return deployParams.identifiedCommunityStakersGateCurveId;
+    }
+
+    function _expectedTreeRoot() internal view override returns (bytes32) {
+        return deployParams.identifiedCommunityStakersGateTreeRoot;
+    }
+
+    function _expectedTreeCid() internal view override returns (string memory) {
+        return deployParams.identifiedCommunityStakersGateTreeCid;
+    }
+
+    function _expectedPauseRoleMembersWithoutCb() internal view override returns (uint256) {
+        return _expectedPauseRoleMembersWithoutCb(isUpgradeFlow);
+    }
+}
+
+contract IdentifiedDVTClusterGateDeploymentTest is VettedGateDeploymentBaseTest {
+    function _gate() internal view override returns (VettedGate) {
+        return identifiedDVTClusterGate;
+    }
+
+    function _expectedCurveId() internal view override returns (uint256) {
+        return deployParams.identifiedDVTClusterBondCurveId;
+    }
+
+    function _expectedTreeRoot() internal view override returns (bytes32) {
+        return deployParams.identifiedDVTClusterGateTreeRoot;
+    }
+
+    function _expectedTreeCid() internal view override returns (string memory) {
+        return deployParams.identifiedDVTClusterGateTreeCid;
     }
 }
 
@@ -317,14 +471,21 @@ contract CircuitBreakerDeploymentTest is DeploymentBaseTest {
 
     function test_pausables_afterVote() public {
         vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
-        address[] memory pausables = circuitBreaker.getPausables();
-        assertEq(pausables.length, 6, "pausables length");
-        assertEq(pausables[0], address(module), "module mismatch");
-        assertEq(pausables[1], address(accounting), "accounting mismatch");
-        assertEq(pausables[2], address(oracle), "oracle mismatch");
-        assertEq(pausables[3], address(verifier), "verifier mismatch");
-        assertEq(pausables[4], address(vettedGate), "vetted gate mismatch");
-        assertEq(pausables[5], address(ejector), "ejector mismatch");
+        assertEq(circuitBreaker.getPauser(address(module)), deployParams.circuitBreakerPauser, "module pauser");
+        assertEq(circuitBreaker.getPauser(address(accounting)), deployParams.circuitBreakerPauser, "accounting pauser");
+        assertEq(circuitBreaker.getPauser(address(oracle)), deployParams.circuitBreakerPauser, "oracle pauser");
+        assertEq(circuitBreaker.getPauser(address(verifier)), deployParams.circuitBreakerPauser, "verifier pauser");
+        assertEq(
+            circuitBreaker.getPauser(address(vettedGate)),
+            deployParams.circuitBreakerPauser,
+            "vetted gate pauser"
+        );
+        assertEq(
+            circuitBreaker.getPauser(address(identifiedDVTClusterGate)),
+            deployParams.circuitBreakerPauser,
+            "idvtc gate pauser"
+        );
+        assertEq(circuitBreaker.getPauser(address(ejector)), deployParams.circuitBreakerPauser, "ejector pauser");
     }
 }
 

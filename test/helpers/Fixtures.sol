@@ -196,6 +196,8 @@ contract DeploymentHelpers is Test {
         address csm;
         address csmImpl;
         address permissionlessGate;
+        address identifiedDVTClusterCurveSetup;
+        address identifiedDVTClusterGate;
         address vettedGateFactory;
         address vettedGate;
         address vettedGateImpl;
@@ -272,6 +274,17 @@ contract DeploymentHelpers is Test {
 
         deploymentConfig.permissionlessGate = vm.parseJsonAddress(config, ".PermissionlessGate");
         vm.label(deploymentConfig.permissionlessGate, "permissionlessGate");
+
+        if (vm.keyExistsJson(config, ".IdentifiedDVTClusterCurveSetup")) {
+            deploymentConfig.identifiedDVTClusterCurveSetup = vm.parseJsonAddress(
+                config,
+                ".IdentifiedDVTClusterCurveSetup"
+            );
+            vm.label(deploymentConfig.identifiedDVTClusterCurveSetup, "identifiedDVTClusterCurveSetup");
+        }
+
+        deploymentConfig.identifiedDVTClusterGate = vm.parseJsonAddress(config, ".IdentifiedDVTClusterGate");
+        vm.label(deploymentConfig.identifiedDVTClusterGate, "identifiedDVTClusterGate");
 
         if (vm.keyExistsJson(config, ".VettedGateFactory")) {
             deploymentConfig.vettedGateFactory = vm.parseJsonAddress(config, ".VettedGateFactory");
@@ -801,6 +814,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     MerkleGateFactory public vettedGateFactory;
     MerkleGateFactory public curatedGateFactory;
     VettedGate public vettedGate;
+    VettedGate public identifiedDVTClusterGate;
     VettedGate public vettedGateImpl;
     address public earlyAdoption;
     Accounting public accounting;
@@ -873,6 +887,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         vettedGateFactory = MerkleGateFactory(deploymentConfig.vettedGateFactory);
         curatedGateFactory = MerkleGateFactory(address(0));
         vettedGate = VettedGate(deploymentConfig.vettedGate);
+        identifiedDVTClusterGate = VettedGate(deploymentConfig.identifiedDVTClusterGate);
         vettedGateImpl = VettedGate(deploymentConfig.vettedGateImpl);
         earlyAdoption = deploymentConfig.earlyAdoption;
         accounting = Accounting(deploymentConfig.accounting);
@@ -913,6 +928,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         vettedGateFactory = MerkleGateFactory(address(0));
         curatedGateFactory = MerkleGateFactory(deploymentConfig.curatedGateFactory);
         vettedGate = VettedGate(address(0));
+        identifiedDVTClusterGate = VettedGate(address(0));
         vettedGateImpl = VettedGate(address(0));
         earlyAdoption = address(0);
         accounting = Accounting(deploymentConfig.accounting);

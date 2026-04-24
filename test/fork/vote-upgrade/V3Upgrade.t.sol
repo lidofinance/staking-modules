@@ -12,11 +12,14 @@ import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
 import { NodeOperator } from "../../../src/interfaces/IBaseModule.sol";
 import { IBondLock } from "../../../src/interfaces/IBondLock.sol";
 import { IBondCurve } from "../../../src/interfaces/IBondCurve.sol";
+import { IParametersRegistry } from "../../../src/interfaces/IParametersRegistry.sol";
 import { ITriggerableWithdrawalsGateway } from "../../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
 import { ICircuitBreaker } from "../../../src/interfaces/ICircuitBreaker.sol";
 import { Verifier } from "../../../src/Verifier.sol";
 import { Ejector } from "../../../src/Ejector.sol";
+import { VettedGate } from "../../../src/VettedGate.sol";
+import { OneShotCurveSetup } from "../../../src/utils/OneShotCurveSetup.sol";
 
 interface IPrevCSParametersRegistry {
     function defaultElRewardsStealingAdditionalFine() external returns (uint256);
@@ -93,7 +96,8 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertNotEq(oldPermissionlessGate, address(permissionlessGate));
         assertFalse(module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), oldPermissionlessGate));
         assertTrue(module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), address(vettedGate)));
-        assertEq(module.getRoleMemberCount(module.CREATE_NODE_OPERATOR_ROLE()), 2);
+        assertTrue(module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), address(identifiedDVTClusterGate)));
+        assertEq(module.getRoleMemberCount(module.CREATE_NODE_OPERATOR_ROLE()), 3);
 
         assertFalse(module.hasRole(module.VERIFIER_ROLE(), deploymentConfig.verifier));
         assertTrue(module.hasRole(module.VERIFIER_ROLE(), deploymentConfig.verifierV3));
@@ -384,7 +388,8 @@ contract VoteChangesTest is V3UpgradeTestBase {
 
         assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), deployParams.setResetBondCurveAddress));
         assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(vettedGate)));
-        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 2);
+        assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(identifiedDVTClusterGate)));
+        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 3);
         assertFalse(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(permissionlessGate)));
         assertFalse(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(module)));
 
@@ -420,7 +425,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
         vm.selectFork(forkIdAfterUpgrade);
         uint256 curvesCountAfter = accounting.getCurvesCount();
 
-        assertEq(curvesCountBefore, curvesCountAfter, "curvesCount");
+        assertEq(curvesCountAfter, curvesCountBefore + 1, "curvesCount");
         for (uint256 curveId = 0; curveId < curvesCountBefore; curveId++) {
             vm.selectFork(forkIdBeforeUpgrade);
             IBondCurve.BondCurveData memory curveBefore = accounting.getCurveInfo(curveId);
@@ -436,6 +441,172 @@ contract VoteChangesTest is V3UpgradeTestBase {
                 assertEq(beforeInterval.trend, afterInterval.trend, "curve interval trend");
             }
         }
+    }
+
+    function test_identifiedDVTClusterCurveSetup() public {
+        assertNotEq(deploymentConfig.identifiedDVTClusterCurveSetup, address(0), "IdentifiedDVTClusterCurveSetup");
+
+        vm.selectFork(forkIdBeforeUpgrade);
+        uint256 curvesCountBefore = accounting.getCurvesCount();
+
+        vm.selectFork(forkIdAfterUpgrade);
+        OneShotCurveSetup curveSetup = OneShotCurveSetup(deploymentConfig.identifiedDVTClusterCurveSetup);
+        uint256 curveId = curveSetup.deployedCurveId();
+
+        assertTrue(curveSetup.executed(), "curve setup not executed");
+        assertEq(curveId, curvesCountBefore, "curve id");
+        assertEq(curveId, deployParams.identifiedDVTClusterBondCurveId, "configured curve id");
+        assertFalse(
+            accounting.hasRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(curveSetup)),
+            "accounting role not renounced"
+        );
+        assertFalse(
+            parametersRegistry.hasRole(parametersRegistry.MANAGE_CURVE_PARAMETERS_ROLE(), address(curveSetup)),
+            "parameters role not renounced"
+        );
+
+        IBondCurve.BondCurveData memory curve = accounting.getCurveInfo(curveId);
+        assertEq(curve.intervals.length, deployParams.identifiedDVTClusterBondCurve.length, "curve intervals length");
+        uint256 minBond;
+        for (uint256 i; i < curve.intervals.length; ++i) {
+            uint256 minKeysCount = deployParams.identifiedDVTClusterBondCurve[i][0];
+            uint256 trend = deployParams.identifiedDVTClusterBondCurve[i][1];
+            if (i == 0) {
+                minBond = trend;
+            } else {
+                uint256 prevMinKeysCount = deployParams.identifiedDVTClusterBondCurve[i - 1][0];
+                uint256 prevTrend = deployParams.identifiedDVTClusterBondCurve[i - 1][1];
+                minBond += trend + (minKeysCount - prevMinKeysCount - 1) * prevTrend;
+            }
+            assertEq(curve.intervals[i].minKeysCount, minKeysCount, "curve interval min keys");
+            assertEq(curve.intervals[i].minBond, minBond, "curve interval min bond");
+            assertEq(curve.intervals[i].trend, trend, "curve interval trend");
+        }
+        assertEq(
+            accounting.getBondAmountByKeysCount(1, curveId),
+            deployParams.identifiedDVTClusterBondCurve[0][1],
+            "first key bond"
+        );
+        assertEq(
+            accounting.getBondAmountByKeysCount(2, curveId),
+            deployParams.identifiedDVTClusterBondCurve[0][1] + deployParams.identifiedDVTClusterBondCurve[1][1],
+            "second key bond"
+        );
+
+        (uint32 priority, uint32 maxDeposits) = parametersRegistry.getQueueConfig(curveId);
+        assertEq(priority, deployParams.identifiedDVTClusterQueuePriority, "queue priority");
+        assertEq(maxDeposits, deployParams.identifiedDVTClusterQueueMaxDeposits, "queue max deposits");
+
+        IParametersRegistry.KeyNumberValueInterval[] memory rewardShareData = parametersRegistry.getRewardShareData(
+            curveId
+        );
+        assertEq(
+            rewardShareData.length,
+            deployParams.identifiedDVTClusterRewardShareData.length,
+            "reward share length"
+        );
+        for (uint256 i; i < rewardShareData.length; ++i) {
+            assertEq(
+                rewardShareData[i].minKeyNumber,
+                deployParams.identifiedDVTClusterRewardShareData[i][0],
+                "reward share min key"
+            );
+            assertEq(rewardShareData[i].value, deployParams.identifiedDVTClusterRewardShareData[i][1], "reward share");
+        }
+
+        assertEq(
+            parametersRegistry.getKeyRemovalCharge(curveId),
+            deployParams.identifiedDVTClusterKeyRemovalCharge,
+            "key removal charge"
+        );
+        assertEq(
+            parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(curveId),
+            deployParams.identifiedDVTClusterGeneralDelayedPenaltyAdditionalFine,
+            "delayed penalty fine"
+        );
+        assertEq(
+            parametersRegistry.getAllowedExitDelay(curveId),
+            deployParams.identifiedDVTClusterAllowedExitDelay,
+            "allowed exit delay"
+        );
+        assertEq(
+            parametersRegistry.getExitDelayFee(curveId),
+            deployParams.identifiedDVTClusterExitDelayFee,
+            "exit delay fee"
+        );
+
+        (uint256 lifetime, uint256 threshold) = parametersRegistry.getStrikesParams(curveId);
+        assertEq(lifetime, deployParams.defaultStrikesLifetimeFrames, "strikes lifetime");
+        assertEq(threshold, deployParams.defaultStrikesThreshold, "strikes threshold");
+        assertEq(
+            parametersRegistry.getBadPerformancePenalty(curveId),
+            deployParams.defaultBadPerformancePenalty,
+            "bad performance penalty"
+        );
+        assertEq(parametersRegistry.getKeysLimit(curveId), deployParams.defaultKeysLimit, "keys limit");
+        assertEq(
+            parametersRegistry.getMaxElWithdrawalRequestFee(curveId),
+            deployParams.defaultMaxElWithdrawalRequestFee,
+            "max withdrawal request fee"
+        );
+
+        IParametersRegistry.KeyNumberValueInterval[] memory performanceLeewayData = parametersRegistry
+            .getPerformanceLeewayData(curveId);
+        assertEq(performanceLeewayData.length, 1, "performance leeway length");
+        assertEq(performanceLeewayData[0].minKeyNumber, 1, "performance leeway min key");
+        assertEq(performanceLeewayData[0].value, deployParams.defaultAvgPerfLeewayBP, "performance leeway");
+
+        (uint256 attestationsWeight, uint256 blocksWeight, uint256 syncWeight) = parametersRegistry
+            .getPerformanceCoefficients(curveId);
+        assertEq(attestationsWeight, deployParams.defaultAttestationsWeight, "attestations weight");
+        assertEq(blocksWeight, deployParams.defaultBlocksWeight, "blocks weight");
+        assertEq(syncWeight, deployParams.defaultSyncWeight, "sync weight");
+    }
+
+    function test_identifiedDVTClusterGateChanges() public view {
+        uint256 adminsCount = deployParams.secondAdminAddress == address(0) ? 1 : 2;
+        VettedGate gate = identifiedDVTClusterGate;
+
+        OssifiableProxy gateProxy = OssifiableProxy(payable(address(gate)));
+        assertEq(gateProxy.proxy__getImplementation(), address(vettedGateImpl), "gate implementation");
+        assertEq(gateProxy.proxy__getAdmin(), deployParams.proxyAdmin, "gate proxy admin");
+
+        assertFalse(gate.isPaused(), "gate paused");
+        assertEq(gate.getInitializedVersion(), 1, "gate initialized version");
+        assertEq(address(gate.MODULE()), address(module), "gate module");
+        assertEq(address(gate.ACCOUNTING()), address(accounting), "gate accounting");
+        assertEq(gate.curveId(), deployParams.identifiedDVTClusterBondCurveId, "gate curve id");
+        assertEq(gate.treeRoot(), deployParams.identifiedDVTClusterGateTreeRoot, "gate tree root");
+        assertEq(
+            keccak256(bytes(gate.treeCid())),
+            keccak256(bytes(deployParams.identifiedDVTClusterGateTreeCid)),
+            "gate tree cid"
+        );
+
+        assertTrue(gate.hasRole(gate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent), "gate aragon admin");
+        if (deployParams.secondAdminAddress != address(0)) {
+            assertTrue(gate.hasRole(gate.DEFAULT_ADMIN_ROLE(), deployParams.secondAdminAddress), "gate second admin");
+        }
+        assertEq(gate.getRoleMemberCount(gate.DEFAULT_ADMIN_ROLE()), adminsCount, "gate admin count");
+
+        assertTrue(gate.hasRole(gate.SET_TREE_ROLE(), deployParams.easyTrackEVMScriptExecutor), "gate set tree role");
+        assertEq(gate.getRoleMemberCount(gate.SET_TREE_ROLE()), 1, "gate set tree count");
+
+        assertTrue(gate.hasRole(gate.PAUSE_ROLE(), deployParams.resealManager), "gate pause role");
+        if (_isCircuitBreakerConfigured(deploymentConfig.circuitBreaker)) {
+            assertTrue(
+                gate.hasRole(gate.PAUSE_ROLE(), deploymentConfig.circuitBreaker),
+                "gate circuit breaker pause role"
+            );
+            assertEq(gate.getRoleMemberCount(gate.PAUSE_ROLE()), 2, "gate pause count");
+        } else {
+            assertEq(gate.getRoleMemberCount(gate.PAUSE_ROLE()), 1, "gate pause count");
+        }
+
+        assertTrue(gate.hasRole(gate.RESUME_ROLE(), deployParams.resealManager), "gate resume role");
+        assertEq(gate.getRoleMemberCount(gate.RESUME_ROLE()), 1, "gate resume count");
+
+        assertEq(gate.getRoleMemberCount(gate.RECOVERER_ROLE()), 0, "gate recoverer count");
     }
 
     function test_accountingNodeOperatorsState() public {
@@ -619,6 +790,9 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertTrue(accounting.hasRole(accounting.PAUSE_ROLE(), deploymentConfig.circuitBreaker));
         assertTrue(oracle.hasRole(oracle.PAUSE_ROLE(), deploymentConfig.circuitBreaker));
         assertTrue(vettedGate.hasRole(vettedGate.PAUSE_ROLE(), deploymentConfig.circuitBreaker));
+        assertTrue(
+            identifiedDVTClusterGate.hasRole(identifiedDVTClusterGate.PAUSE_ROLE(), deploymentConfig.circuitBreaker)
+        );
         Verifier verifierV3Contract = Verifier(deploymentConfig.verifierV3);
         assertTrue(verifierV3Contract.hasRole(verifierV3Contract.PAUSE_ROLE(), deploymentConfig.circuitBreaker));
         Ejector ejectorContract = Ejector(payable(deploymentConfig.ejector));
@@ -629,6 +803,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(cb.getPauser(address(accounting)), deployParams.circuitBreakerPauser);
         assertEq(cb.getPauser(address(oracle)), deployParams.circuitBreakerPauser);
         assertEq(cb.getPauser(address(vettedGate)), deployParams.circuitBreakerPauser);
+        assertEq(cb.getPauser(address(identifiedDVTClusterGate)), deployParams.circuitBreakerPauser);
         assertEq(cb.getPauser(deploymentConfig.verifierV3), deployParams.circuitBreakerPauser);
         assertEq(cb.getPauser(deploymentConfig.ejector), deployParams.circuitBreakerPauser);
     }
