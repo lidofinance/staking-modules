@@ -200,6 +200,10 @@ contract MetaRegistryTestConstructor is MetaRegistryTestBase {
 }
 
 contract MetaRegistryTestInitialize is MetaRegistryTestBase {
+    function test_getInitializedVersion() public view {
+        assertEq(registry.getInitializedVersion(), 1);
+    }
+
     function test_initialize_SetsAdmin() public {
         MetaRegistry r = new MetaRegistry(address(module));
         _enableInitializers(address(r));
