@@ -73,13 +73,17 @@ contract CSModuleInvariants is InvariantsBase {
         assertEq(module.getRoleMemberCount(module.VERIFIER_ROLE()), 1, "verifier");
         assertEq(module.getRoleMember(module.VERIFIER_ROLE(), 0), address(verifier), "verifier address");
 
-        assertEq(module.getRoleMemberCount(module.CREATE_NODE_OPERATOR_ROLE()), 2, "create node operator");
+        assertEq(module.getRoleMemberCount(module.CREATE_NODE_OPERATOR_ROLE()), 3, "create node operator");
         assertTrue(
             module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), address(permissionlessGate)),
             "create node operator address"
         );
         assertTrue(
             module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), address(vettedGate)),
+            "create node operator address"
+        );
+        assertTrue(
+            module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), address(identifiedDVTClusterGate)),
             "create node operator address"
         );
 
@@ -119,12 +123,16 @@ contract AccountingInvariants is InvariantsBase {
         assertTrue(accounting.hasRole(accounting.RESUME_ROLE(), deployParams.resealManager), "resume address");
 
         assertEq(accounting.getRoleMemberCount(accounting.MANAGE_BOND_CURVES_ROLE()), 0, "manage bond curves");
-        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 2, "set bond curve");
+        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 3, "set bond curve");
         assertTrue(
             accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), deployParams.setResetBondCurveAddress),
             "set bond curve address"
         );
         assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(vettedGate)), "set bond curve address");
+        assertTrue(
+            accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(identifiedDVTClusterGate)),
+            "set bond curve address"
+        );
 
         assertEq(accounting.getRoleMemberCount(accounting.RECOVERER_ROLE()), 0, "recoverer");
     }

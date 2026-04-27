@@ -6,6 +6,7 @@ import { Test } from "forge-std/Test.sol";
 import { StdCheats } from "forge-std/StdCheats.sol";
 
 import { IAccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
 import { ILido } from "src/interfaces/ILido.sol";
@@ -1211,6 +1212,8 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
 }
 
 contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
+    uint256 internal constant DEPOSIT_QUEUE_CLEANUP_LOOKUP_DEPTH = 1_000;
+
     PermissionlessGate internal permissionlessGate;
     error TopUpQueueIsEmpty();
 
@@ -1256,7 +1259,9 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
         address nodeOperatorAddress
     ) external override returns (uint256 noId, uint256 keysCount) {
         (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
-        module.cleanDepositQueue({ maxItems: 2 * depositableValidatorsCount });
+        module.cleanDepositQueue({
+            maxItems: Math.max(DEPOSIT_QUEUE_CLEANUP_LOOKUP_DEPTH, 2 * depositableValidatorsCount)
+        });
         for (uint256 i = 0; i <= module.PARAMETERS_REGISTRY().QUEUE_LOWEST_PRIORITY(); ++i) {
             (uint128 head, ) = module.depositQueuePointers(i);
             Batch batch = module.depositQueueItem(i, head);
