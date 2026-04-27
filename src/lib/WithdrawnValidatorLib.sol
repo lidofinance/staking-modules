@@ -13,7 +13,8 @@ import { ModuleLinearStorage } from "../abstract/ModuleLinearStorage.sol";
 import { SigningKeys } from "./SigningKeys.sol";
 import { ValidatorBalanceLimits } from "./ValidatorBalanceLimits.sol";
 
-/// @dev A library to extract a part of the code from the CSModule contract.
+/// @dev External deployment-linked library used by BaseModule-compatible modules
+///      to extract withdrawn validator processing from module bytecode.
 library WithdrawnValidatorLib {
     uint256 public constant PENALTY_QUOTIENT = 1 ether;
     /// @dev Acts as the denominator to calculate the scaled penalty.

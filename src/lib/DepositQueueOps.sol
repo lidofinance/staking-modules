@@ -17,6 +17,7 @@ import { Batch, DepositQueueLib } from "./DepositQueueLib.sol";
 import { TopUpQueueLib, newTopUpQueueItem } from "./TopUpQueueLib.sol";
 import { SigningKeys } from "./SigningKeys.sol";
 
+/// @dev External deployment-linked library used by CSModule.
 library DepositQueueOps {
     using DepositQueueLib for DepositQueueLib.Queue;
     using TopUpQueueLib for TopUpQueueLib.Queue;

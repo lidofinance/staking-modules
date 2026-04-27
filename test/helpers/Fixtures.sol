@@ -6,6 +6,7 @@ import { Test } from "forge-std/Test.sol";
 import { StdCheats } from "forge-std/StdCheats.sol";
 
 import { IAccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
 import { ILido } from "src/interfaces/ILido.sol";
@@ -197,6 +198,8 @@ contract DeploymentHelpers is Test {
         address csm;
         address csmImpl;
         address permissionlessGate;
+        address identifiedDVTClusterCurveSetup;
+        address identifiedDVTClusterGate;
         address vettedGateFactory;
         address vettedGate;
         address vettedGateImpl;
@@ -273,6 +276,19 @@ contract DeploymentHelpers is Test {
 
         deploymentConfig.permissionlessGate = vm.parseJsonAddress(config, ".PermissionlessGate");
         vm.label(deploymentConfig.permissionlessGate, "permissionlessGate");
+
+        if (vm.keyExistsJson(config, ".IdentifiedDVTClusterCurveSetup")) {
+            deploymentConfig.identifiedDVTClusterCurveSetup = vm.parseJsonAddress(
+                config,
+                ".IdentifiedDVTClusterCurveSetup"
+            );
+            vm.label(deploymentConfig.identifiedDVTClusterCurveSetup, "identifiedDVTClusterCurveSetup");
+        }
+
+        if (vm.keyExistsJson(config, ".IdentifiedDVTClusterGate")) {
+            deploymentConfig.identifiedDVTClusterGate = vm.parseJsonAddress(config, ".IdentifiedDVTClusterGate");
+            vm.label(deploymentConfig.identifiedDVTClusterGate, "identifiedDVTClusterGate");
+        }
 
         if (vm.keyExistsJson(config, ".VettedGateFactory")) {
             deploymentConfig.vettedGateFactory = vm.parseJsonAddress(config, ".VettedGateFactory");
@@ -802,6 +818,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     MerkleGateFactory public vettedGateFactory;
     MerkleGateFactory public curatedGateFactory;
     VettedGate public vettedGate;
+    VettedGate public identifiedDVTClusterGate;
     VettedGate public vettedGateImpl;
     address public earlyAdoption;
     Accounting public accounting;
@@ -874,6 +891,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         vettedGateFactory = MerkleGateFactory(deploymentConfig.vettedGateFactory);
         curatedGateFactory = MerkleGateFactory(address(0));
         vettedGate = VettedGate(deploymentConfig.vettedGate);
+        identifiedDVTClusterGate = VettedGate(deploymentConfig.identifiedDVTClusterGate);
         vettedGateImpl = VettedGate(deploymentConfig.vettedGateImpl);
         earlyAdoption = deploymentConfig.earlyAdoption;
         accounting = Accounting(deploymentConfig.accounting);
@@ -914,6 +932,7 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         vettedGateFactory = MerkleGateFactory(address(0));
         curatedGateFactory = MerkleGateFactory(deploymentConfig.curatedGateFactory);
         vettedGate = VettedGate(address(0));
+        identifiedDVTClusterGate = VettedGate(address(0));
         vettedGateImpl = VettedGate(address(0));
         earlyAdoption = address(0);
         accounting = Accounting(deploymentConfig.accounting);
@@ -1196,6 +1215,8 @@ abstract contract ForkIntegrationHelpersBase is Utilities, IForkIntegrationHelpe
 }
 
 contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
+    uint256 internal constant DEPOSIT_QUEUE_CLEANUP_LOOKUP_DEPTH = 1_000;
+
     PermissionlessGate internal permissionlessGate;
     error TopUpQueueIsEmpty();
 
@@ -1241,7 +1262,9 @@ contract CSMIntegrationHelpers is ForkIntegrationHelpersBase {
         address nodeOperatorAddress
     ) external override returns (uint256 noId, uint256 keysCount) {
         (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
-        module.cleanDepositQueue({ maxItems: 2 * depositableValidatorsCount });
+        module.cleanDepositQueue({
+            maxItems: Math.max(DEPOSIT_QUEUE_CLEANUP_LOOKUP_DEPTH, 2 * depositableValidatorsCount)
+        });
         for (uint256 i = 0; i <= module.PARAMETERS_REGISTRY().QUEUE_LOWEST_PRIORITY(); ++i) {
             (uint128 head, ) = module.depositQueuePointers(i);
             Batch batch = module.depositQueueItem(i, head);

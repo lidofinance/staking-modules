@@ -72,6 +72,7 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
 
 contract MetaRegistryDeploymentTest is DeploymentBaseTest {
     function test_state_onlyFull() public view {
+        assertEq(metaRegistry.getInitializedVersion(), 1);
         assertEq(metaRegistry.getOperatorGroupsCount(), 1);
 
         IMetaRegistry.OperatorGroup memory groupInfo = metaRegistry.getOperatorGroup(metaRegistry.NO_GROUP_ID());
@@ -396,12 +397,11 @@ contract CircuitBreakerDeploymentTest is DeploymentBaseTest {
 
     function test_pausables_afterVote() public {
         vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
-        address[] memory pausables = circuitBreaker.getPausables();
-        assertTrue(arrayHas(pausables, address(module)), "module not in CircuitBreaker");
-        assertTrue(arrayHas(pausables, address(accounting)), "accounting not in CircuitBreaker");
-        assertTrue(arrayHas(pausables, address(oracle)), "oracle not in CircuitBreaker");
-        assertTrue(arrayHas(pausables, address(verifier)), "verifier not in CircuitBreaker");
-        assertTrue(arrayHas(pausables, address(ejector)), "ejector not in CircuitBreaker");
+        assertEq(circuitBreaker.getPauser(address(module)), deployParams.circuitBreakerPauser, "module pauser");
+        assertEq(circuitBreaker.getPauser(address(accounting)), deployParams.circuitBreakerPauser, "accounting pauser");
+        assertEq(circuitBreaker.getPauser(address(oracle)), deployParams.circuitBreakerPauser, "oracle pauser");
+        assertEq(circuitBreaker.getPauser(address(verifier)), deployParams.circuitBreakerPauser, "verifier pauser");
+        assertEq(circuitBreaker.getPauser(address(ejector)), deployParams.circuitBreakerPauser, "ejector pauser");
     }
 
     function test_roles() public {

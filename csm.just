@@ -9,31 +9,34 @@ csm_artifacts_latest_dir := "./artifacts/latest/"
 csm_artifacts_local_dir := "./artifacts/local/"
 csm_latest_transactions_path := csm_artifacts_latest_dir + "transactions.json"
 csm_local_transactions_path := csm_artifacts_local_dir + "transactions.json"
+csm_latest_deploy_config_path := csm_artifacts_latest_dir + "deploy-" + chain + ".json"
 csm_local_deploy_config_path := csm_artifacts_local_dir + "deploy-" + chain + ".json"
+csm_latest_upgrade_config_path := csm_artifacts_latest_dir + "upgrade-" + chain + ".json"
 csm_local_upgrade_config_path := csm_artifacts_local_dir + "upgrade-" + chain + ".json"
 
 # Deployment
 
 deploy-csm *args:
     just _deploy-generic {{deploy_script_path}} {{anvil_rpc_url}} {{args}}
+    just _finalize-broadcast-artifacts {{deploy_script_name}} {{anvil_rpc_url}} "" "run-latest.json" {{csm_local_deploy_config_path}}
 
 deploy-csm-live *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
     ARTIFACTS_DIR={{csm_artifacts_latest_dir}} \
         just _deploy-live-generic {{deploy_script_path}} {{args}}
-    just _copy-broadcast-json {{deploy_script_name}} $RPC_URL "" "run-latest.json" {{csm_latest_transactions_path}}
+    just _finalize-broadcast-artifacts {{deploy_script_name}} $RPC_URL "" "run-latest.json" {{csm_latest_deploy_config_path}}
 
 deploy-csm-live-no-confirm *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
     ARTIFACTS_DIR={{csm_artifacts_latest_dir}} \
         just _deploy-live-generic-no-confirm {{deploy_script_path}} --broadcast {{args}}
-    just _copy-broadcast-json {{deploy_script_name}} $RPC_URL "" "run-latest.json" {{csm_latest_transactions_path}}
+    just _finalize-broadcast-artifacts {{deploy_script_name}} $RPC_URL "" "run-latest.json" {{csm_latest_deploy_config_path}}
 
 deploy-csm-live-dry *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
     ARTIFACTS_DIR={{csm_artifacts_local_dir}} \
         just _deploy-live-generic-dry {{deploy_script_path}} {{args}}
-    just _copy-broadcast-json {{deploy_script_name}} $RPC_URL "/dry-run" "run-latest.json" {{csm_local_transactions_path}}
+    just _finalize-broadcast-artifacts {{deploy_script_name}} $RPC_URL "/dry-run" "run-latest.json" {{csm_local_deploy_config_path}}
 
 verify-csm-live *args:
     just _warn "Pass --chain=your_chain manually. e.g. --chain=hoodi for testnet deployment"
@@ -47,11 +50,11 @@ deploy-csm-impl-live *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
     ARTIFACTS_DIR={{csm_artifacts_latest_dir}} \
         just _deploy-csm-impl --broadcast --verify {{args}}
-    just _copy-broadcast-json {{deploy_csm_implementations_script_name}} $RPC_URL "" "deploy-latest.json" {{csm_latest_transactions_path}}
+    just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "" "deploy-latest.json" {{csm_latest_upgrade_config_path}}
 
 deploy-csm-impl-dry *args:
     just _deploy-csm-impl {{args}}
-    just _copy-broadcast-json {{deploy_csm_implementations_script_name}} $RPC_URL "/dry-run" "deploy-latest.json" {{csm_local_transactions_path}}
+    just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "/dry-run" "deploy-latest.json" {{csm_local_upgrade_config_path}}
 
 # Governance helpers
 upgrade-csm-v3:
@@ -81,6 +84,7 @@ test-csm-upgrade *args:
     local_private_key="$(just _local-private-key)"
 
     just _deploy-csm-impl --broadcast --private-key="${local_private_key}"
+    just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} "$RPC_URL" "" "deploy-latest.json" {{csm_local_upgrade_config_path}}
 
     export DEPLOY_CONFIG={{csm_local_upgrade_config_path}}
     export VOTE_PREV_BLOCK="$(cast block-number -r "$RPC_URL")"
@@ -132,6 +136,7 @@ test-csm-v3-only-deploy *args:
     local_private_key="$(just _local-private-key)"
 
     just _deploy-csm-impl --broadcast --private-key="${local_private_key}" {{disable_code_size_limit}}
+    just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} "$RPC_URL" "" "deploy-latest.json" {{csm_local_upgrade_config_path}}
 
     export DEPLOY_CONFIG={{csm_local_upgrade_config_path}}
 

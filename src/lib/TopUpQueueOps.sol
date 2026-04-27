@@ -11,7 +11,7 @@ import { ICSModule } from "../interfaces/ICSModule.sol";
 import { TopUpQueueLib, TopUpQueueItem } from "./TopUpQueueLib.sol";
 import { SigningKeys } from "./SigningKeys.sol";
 
-/// @dev The library is used to reduce CSModule bytecode size.
+/// @dev External deployment-linked library used by CSModule to reduce bytecode size.
 library TopUpQueueOps {
     using TopUpQueueLib for TopUpQueueLib.Queue;
 

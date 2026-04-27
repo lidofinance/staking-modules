@@ -6,34 +6,37 @@ curated_artifacts_latest_dir := "./artifacts/latest/curated/"
 curated_artifacts_local_dir := "./artifacts/local/curated/"
 curated_latest_transactions_path := curated_artifacts_latest_dir + "transactions.json"
 curated_local_transactions_path := curated_artifacts_local_dir + "transactions.json"
+curated_latest_deploy_config_path := curated_artifacts_latest_dir + "deploy-" + chain + ".json"
 curated_local_deploy_config_path := curated_artifacts_local_dir + "deploy-" + chain + ".json"
 
 # Deployment
 
 deploy-curated *args:
     mkdir -p {{curated_artifacts_local_dir}}
-    just _deploy-generic {{curated_deploy_script_path}} {{anvil_rpc_url}} {{args}}
+    ARTIFACTS_DIR={{curated_artifacts_local_dir}} \
+        just _deploy-generic {{curated_deploy_script_path}} {{anvil_rpc_url}} {{args}}
+    just _finalize-broadcast-artifacts {{curated_deploy_script_name}} {{anvil_rpc_url}} "" "run-latest.json" {{curated_local_deploy_config_path}}
 
 deploy-curated-live *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
     mkdir -p {{curated_artifacts_latest_dir}}
     ARTIFACTS_DIR={{curated_artifacts_latest_dir}} \
         just _deploy-live-generic {{curated_deploy_script_path}} {{args}}
-    just _copy-broadcast-json {{curated_deploy_script_name}} $RPC_URL "" "run-latest.json" {{curated_latest_transactions_path}}
+    just _finalize-broadcast-artifacts {{curated_deploy_script_name}} $RPC_URL "" "run-latest.json" {{curated_latest_deploy_config_path}}
 
 deploy-curated-live-no-confirm *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
     mkdir -p {{curated_artifacts_latest_dir}}
     ARTIFACTS_DIR={{curated_artifacts_latest_dir}} \
         just _deploy-live-generic-no-confirm {{curated_deploy_script_path}} --broadcast {{args}}
-    just _copy-broadcast-json {{curated_deploy_script_name}} $RPC_URL "" "run-latest.json" {{curated_latest_transactions_path}}
+    just _finalize-broadcast-artifacts {{curated_deploy_script_name}} $RPC_URL "" "run-latest.json" {{curated_latest_deploy_config_path}}
 
 deploy-curated-live-dry *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
     mkdir -p {{curated_artifacts_local_dir}}
     ARTIFACTS_DIR={{curated_artifacts_local_dir}} \
         just _deploy-live-generic-dry {{curated_deploy_script_path}} {{args}}
-    just _copy-broadcast-json {{curated_deploy_script_name}} $RPC_URL "/dry-run" "run-latest.json" {{curated_local_transactions_path}}
+    just _finalize-broadcast-artifacts {{curated_deploy_script_name}} $RPC_URL "/dry-run" "run-latest.json" {{curated_local_deploy_config_path}}
 
 verify-curated-live *args:
     just _warn "Pass --chain=your_chain manually when running curated deployments"
