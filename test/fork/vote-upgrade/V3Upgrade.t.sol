@@ -396,6 +396,11 @@ contract VoteChangesTest is V3UpgradeTestBase {
             deploymentConfig.circuitBreaker,
             _expectedPauseRoleMembersWithoutCb(true)
         );
+
+        IBondLock oldAccountingBondLock = IBondLock(address(implBefore));
+        IBondLock newAccountingBondLock = IBondLock(address(implAfter));
+        assertGe(newAccountingBondLock.MIN_BOND_LOCK_PERIOD(), oldAccountingBondLock.MIN_BOND_LOCK_PERIOD());
+        assertLe(newAccountingBondLock.MAX_BOND_LOCK_PERIOD(), oldAccountingBondLock.MAX_BOND_LOCK_PERIOD());
     }
 
     function test_accountingState() public {
