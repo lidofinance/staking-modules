@@ -284,8 +284,10 @@ contract DeploymentHelpers is Test {
             vm.label(deploymentConfig.identifiedDVTClusterCurveSetup, "identifiedDVTClusterCurveSetup");
         }
 
-        deploymentConfig.identifiedDVTClusterGate = vm.parseJsonAddress(config, ".IdentifiedDVTClusterGate");
-        vm.label(deploymentConfig.identifiedDVTClusterGate, "identifiedDVTClusterGate");
+        if (vm.keyExistsJson(config, ".IdentifiedDVTClusterGate")) {
+            deploymentConfig.identifiedDVTClusterGate = vm.parseJsonAddress(config, ".IdentifiedDVTClusterGate");
+            vm.label(deploymentConfig.identifiedDVTClusterGate, "identifiedDVTClusterGate");
+        }
 
         if (vm.keyExistsJson(config, ".VettedGateFactory")) {
             deploymentConfig.vettedGateFactory = vm.parseJsonAddress(config, ".VettedGateFactory");
