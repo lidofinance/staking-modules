@@ -292,8 +292,6 @@ contract DeploymentHelpers is Test {
 
         if (vm.keyExistsJson(config, ".VettedGateFactory")) {
             deploymentConfig.vettedGateFactory = vm.parseJsonAddress(config, ".VettedGateFactory");
-        } else if (vm.keyExistsJson(config, ".MerkleGateFactory")) {
-            deploymentConfig.vettedGateFactory = vm.parseJsonAddress(config, ".MerkleGateFactory");
         }
         vm.label(deploymentConfig.vettedGateFactory, "vettedGateFactory");
 
@@ -428,8 +426,6 @@ contract DeploymentHelpers is Test {
 
         if (vm.keyExistsJson(config, ".CuratedGateFactory")) {
             deploymentConfig.curatedGateFactory = vm.parseJsonAddress(config, ".CuratedGateFactory");
-        } else if (vm.keyExistsJson(config, ".MerkleGateFactory")) {
-            deploymentConfig.curatedGateFactory = vm.parseJsonAddress(config, ".MerkleGateFactory");
         }
         vm.label(deploymentConfig.curatedGateFactory, "curatedGateFactory");
 

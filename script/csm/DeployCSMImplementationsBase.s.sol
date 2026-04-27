@@ -190,9 +190,9 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             deployJson.set("PermissionlessGate", address(permissionlessGate));
             deployJson.set("IdentifiedDVTClusterCurveSetup", address(identifiedDVTClusterCurveSetup));
             deployJson.set("IdentifiedDVTClusterGate", address(identifiedDVTClusterGate));
-            deployJson.set("MerkleGateFactory", address(vettedGateFactory));
-            deployJson.set("MerkleGate", address(vettedGate));
-            deployJson.set("MerkleGateImpl", address(vettedGateImpl));
+            deployJson.set("VettedGateFactory", address(vettedGateFactory));
+            deployJson.set("VettedGate", address(vettedGate));
+            deployJson.set("VettedGateImpl", address(vettedGateImpl));
             deployJson.set("LidoLocator", config.lidoLocatorAddress);
             deployJson.set("GateSeal", legacyGateSeal);
             deployJson.set("CircuitBreaker", config.circuitBreaker);
