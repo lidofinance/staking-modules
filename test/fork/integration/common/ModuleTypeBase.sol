@@ -26,7 +26,6 @@ abstract contract CSMIntegrationBase is ModuleTypeBase {
         _forkAndInitialize();
         if (moduleType != ModuleType.Community) vm.skip(true, "Integration suite requires Community module type");
         integrationHelpers = new CSMIntegrationHelpers(module, accounting, stakingRouter, permissionlessGate);
-        module.rebuildTotalWithdrawnValidators();
     }
 
     function _assertModuleEnqueuedCount() internal override {
