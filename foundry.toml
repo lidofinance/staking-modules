@@ -49,10 +49,12 @@ block_gas_limit = 60_000_000
 
 [profile.ci]
 verbosity = 3
+eth_rpc_timeout = 120
 fuzz = { runs = 10_000, max_test_rejects = 2_000_000 }
 
 [profile.ci_quick]
 verbosity = 3
+eth_rpc_timeout = 120
 fuzz = { runs = 1000, max_test_rejects = 500_000 }
 
 [profile.coverage]

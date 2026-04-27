@@ -12,6 +12,7 @@ import { KeyPointerLib } from "./KeyPointerLib.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "./TransientUintUintMapLib.sol";
 
 /// @dev Centralizes tracked stake updates for operator extra balances, total extra stake, and key balance transitions.
+///      External deployment-linked library used by BaseModule-compatible modules.
 library StakeTracker {
     using TransientUintUintMapLib for TransientUintUintMap;
 

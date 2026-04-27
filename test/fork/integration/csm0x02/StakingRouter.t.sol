@@ -17,7 +17,6 @@ import { StakingRouterIntegrationTestBase } from "../common/StakingRouter.t.sol"
 contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase, CSM0x02IntegrationBase {
     uint256 internal constant KEY_BALANCE_CAP =
         ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
-    uint256 internal constant TOP_UP_ALLOCATION_PROBE_AMOUNT = 100_000 ether;
 
     address internal topUpGateway;
 
@@ -71,7 +70,7 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
             nextAddress()
         );
 
-        (uint256 expectedMaxDepositAmount, ) = stakingRouter.getTopUpAllocation(TOP_UP_ALLOCATION_PROBE_AMOUNT);
+        uint256 expectedMaxDepositAmount = _getExpectedRouterTopUpAmount();
         uint256 nonceBefore = module.getNonce();
 
         (
@@ -105,7 +104,7 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
         );
 
         uint256 topUpLimit = 1 ether;
-        (uint256 expectedMaxDepositAmount, ) = stakingRouter.getTopUpAllocation(TOP_UP_ALLOCATION_PROBE_AMOUNT);
+        uint256 expectedMaxDepositAmount = _getExpectedRouterTopUpAmount();
         uint256 keyAllocatedBalanceBefore = module.getKeyAllocatedBalances(noId, keyIndex, 1)[0];
         uint256 remainingCapacity = _remainingTopUpCapacity(noId, keyIndex);
         uint256 cappedLimit = topUpLimit < remainingCapacity ? topUpLimit : remainingCapacity;
@@ -131,7 +130,7 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
         );
 
         uint256 topUpLimit = 1;
-        (uint256 expectedMaxDepositAmount, ) = stakingRouter.getTopUpAllocation(TOP_UP_ALLOCATION_PROBE_AMOUNT);
+        uint256 expectedMaxDepositAmount = _getExpectedRouterTopUpAmount();
         assertGt(expectedMaxDepositAmount, 0);
 
         (, , uint256 queueLengthBefore, ) = module.getTopUpQueue();

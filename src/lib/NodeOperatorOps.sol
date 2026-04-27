@@ -18,7 +18,8 @@ import { StakeTracker } from "./StakeTracker.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "./TransientUintUintMapLib.sol";
 import { SigningKeys } from "./SigningKeys.sol";
 
-/// @dev The library is used to reduce BaseModule bytecode size.
+/// @dev External deployment-linked library used by BaseModule-compatible modules
+///      to reduce bytecode size.
 library NodeOperatorOps {
     using TransientUintUintMapLib for TransientUintUintMap;
 
