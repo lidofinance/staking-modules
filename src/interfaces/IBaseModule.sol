@@ -217,6 +217,9 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @param publicKeys Public keys to submit
     /// @param signatures Signatures of `(deposit_message_root, domain)` tuples
     ///                   https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#signingdata
+    /// @dev Any excess msg.value will be sent to the bond and can be claimed from there. This behaviour is intentional
+    /// and protects users from key upload transaction front runs rendering the user transaction invalid due to changes
+    /// in the required bond amount.
     function addValidatorKeysETH(
         address from,
         uint256 nodeOperatorId,
