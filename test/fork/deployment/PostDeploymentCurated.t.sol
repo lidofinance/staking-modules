@@ -16,6 +16,7 @@ import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
+import { ProxySlotUtils } from "../../helpers/ProxySlotUtils.sol";
 
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     CuratedDeployParams internal deployParams;
@@ -54,19 +55,29 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         );
     }
 
-    function test_proxy_onlyFull() public {
+    function test_initialization_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         curatedModule.initialize({ admin: deployParams.aragonAgent });
 
-        OssifiableProxy proxy = OssifiableProxy(payable(address(curatedModule)));
-
-        assertEq(proxy.proxy__getImplementation(), address(moduleImpl));
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
-        assertFalse(proxy.proxy__getIsOssified());
-
-        ICuratedModule moduleImpl = ICuratedModule(proxy.proxy__getImplementation());
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        moduleImpl.initialize({ admin: deployParams.aragonAgent });
+        ICuratedModule(address(moduleImpl)).initialize({ admin: deployParams.aragonAgent });
+    }
+
+    function test_proxy_onlyFull() public view {
+        OssifiableProxy proxy = OssifiableProxy(payable(address(curatedModule)));
+        assertEq(proxy.proxy__getImplementation(), address(moduleImpl), "curated module proxy getter impl");
+        assertEq(
+            ProxySlotUtils.getImplementation(address(curatedModule)),
+            address(moduleImpl),
+            "curated module proxy slot impl"
+        );
+        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "curated module proxy getter admin");
+        assertEq(
+            ProxySlotUtils.getAdmin(address(curatedModule)),
+            address(deployParams.proxyAdmin),
+            "curated module proxy slot admin"
+        );
+        assertFalse(proxy.proxy__getIsOssified(), "curated module proxy ossified");
     }
 }
 
@@ -299,8 +310,15 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
         assertTrue(implementation != address(0), "factory implementation zero");
         for (uint256 i = 0; i < gatesCount; ++i) {
             OssifiableProxy proxy = OssifiableProxy(payable(curatedGates[i]));
-            assertEq(proxy.proxy__getImplementation(), implementation, "gate implementation mismatch");
-            assertEq(proxy.proxy__getAdmin(), deployParams.proxyAdmin, "gate proxy admin mismatch");
+            assertEq(proxy.proxy__getImplementation(), implementation, "curated gate proxy getter impl");
+            assertEq(ProxySlotUtils.getImplementation(curatedGates[i]), implementation, "curated gate proxy slot impl");
+            assertEq(proxy.proxy__getAdmin(), deployParams.proxyAdmin, "curated gate proxy getter admin");
+            assertEq(
+                ProxySlotUtils.getAdmin(curatedGates[i]),
+                deployParams.proxyAdmin,
+                "curated gate proxy slot admin"
+            );
+            assertFalse(proxy.proxy__getIsOssified(), "curated gate proxy ossified");
         }
     }
 

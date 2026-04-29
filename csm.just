@@ -156,7 +156,7 @@ test-csm-current *args:
 
 # Run all deployment tests that should be executed against CSM v3 scratch deployment before the module upgrade vote
 test-deployment-csm-v3-only-scratch *args:
-    forge test --match-path 'test/fork/deployment/*' --no-match-test '(.*_afterVote.*)|(.*_onlyFull.*)' -vvv --show-progress {{args}}
+    forge test --match-path 'test/fork/deployment/*' --no-match-test '(.*_afterVote.*)|(.*_onlyFull.*)' -vvv --show-progress --summary --detailed {{args}}
 
 # Internal helpers
 _deploy-csm-impl *args:

@@ -9,13 +9,9 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
+import { ProxySlotUtils } from "../../helpers/ProxySlotUtils.sol";
 import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
-import { Accounting } from "../../../src/Accounting.sol";
 import { HashConsensus } from "../../../src/lib/base-oracle/HashConsensus.sol";
-import { FeeDistributor } from "../../../src/FeeDistributor.sol";
-import { FeeOracle } from "../../../src/FeeOracle.sol";
-import { ValidatorStrikes } from "../../../src/ValidatorStrikes.sol";
-import { ParametersRegistry } from "../../../src/ParametersRegistry.sol";
 import { IWithdrawalQueue } from "../../../src/interfaces/IWithdrawalQueue.sol";
 import { IBondCurve } from "../../../src/interfaces/IBondCurve.sol";
 import { IParametersRegistry } from "../../../src/interfaces/IParametersRegistry.sol";
@@ -171,7 +167,7 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
         assertEq(accounting.getRoleMemberCount(accounting.RECOVERER_ROLE()), 0);
     }
 
-    function test_proxy_onlyFull() public {
+    function test_initialization_onlyFull() public {
         IBondCurve.BondCurveIntervalInput[] memory defaultBondCurve = new IBondCurve.BondCurveIntervalInput[](
             deployParams.defaultBondCurve.length
         );
@@ -190,13 +186,6 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
             _chargePenaltyRecipient: address(0)
         });
 
-        OssifiableProxy proxy = OssifiableProxy(payable(address(accounting)));
-
-        assertEq(proxy.proxy__getImplementation(), address(accountingImpl));
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
-        assertFalse(proxy.proxy__getIsOssified());
-
-        Accounting accountingImpl = Accounting(proxy.proxy__getImplementation());
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         accountingImpl.initialize({
             bondCurve: defaultBondCurve,
@@ -204,6 +193,23 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
             bondLockPeriod: deployParams.bondLockPeriod,
             _chargePenaltyRecipient: address(0)
         });
+    }
+
+    function test_proxy_onlyFull() public view {
+        OssifiableProxy proxy = OssifiableProxy(payable(address(accounting)));
+        assertEq(proxy.proxy__getImplementation(), address(accountingImpl), "accounting proxy getter impl");
+        assertEq(
+            ProxySlotUtils.getImplementation(address(accounting)),
+            address(accountingImpl),
+            "accounting proxy slot impl"
+        );
+        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "accounting proxy getter admin");
+        assertEq(
+            ProxySlotUtils.getAdmin(address(accounting)),
+            address(deployParams.proxyAdmin),
+            "accounting proxy slot admin"
+        );
+        assertFalse(proxy.proxy__getIsOssified(), "accounting proxy ossified");
     }
 }
 
@@ -233,19 +239,29 @@ contract FeeDistributorDeploymentTest is DeploymentBaseTest {
         assertEq(feeDistributor.getRoleMemberCount(feeDistributor.RECOVERER_ROLE()), 0);
     }
 
-    function test_proxy_onlyFull() public {
+    function test_initialization_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         feeDistributor.initialize({ admin: deployParams.aragonAgent, _rebateRecipient: deployParams.aragonAgent });
 
-        OssifiableProxy proxy = OssifiableProxy(payable(address(feeDistributor)));
-
-        assertEq(proxy.proxy__getImplementation(), address(feeDistributorImpl));
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
-        assertFalse(proxy.proxy__getIsOssified());
-
-        FeeDistributor distributorImpl = FeeDistributor(proxy.proxy__getImplementation());
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        distributorImpl.initialize({ admin: deployParams.aragonAgent, _rebateRecipient: deployParams.aragonAgent });
+        feeDistributorImpl.initialize({ admin: deployParams.aragonAgent, _rebateRecipient: deployParams.aragonAgent });
+    }
+
+    function test_proxy_onlyFull() public view {
+        OssifiableProxy proxy = OssifiableProxy(payable(address(feeDistributor)));
+        assertEq(proxy.proxy__getImplementation(), address(feeDistributorImpl), "fee distributor proxy getter impl");
+        assertEq(
+            ProxySlotUtils.getImplementation(address(feeDistributor)),
+            address(feeDistributorImpl),
+            "fee distributor proxy slot impl"
+        );
+        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "fee distributor proxy getter admin");
+        assertEq(
+            ProxySlotUtils.getAdmin(address(feeDistributor)),
+            address(deployParams.proxyAdmin),
+            "fee distributor proxy slot admin"
+        );
+        assertFalse(proxy.proxy__getIsOssified(), "fee distributor proxy ossified");
     }
 }
 
@@ -304,7 +320,7 @@ contract FeeOracleDeploymentTest is DeploymentBaseTest {
         assertEq(oracle.getRoleMemberCount(oracle.MANAGE_CONSENSUS_VERSION_ROLE()), 0);
     }
 
-    function test_proxy_onlyFull() public {
+    function test_initialization_onlyFull() public {
         vm.expectRevert(Versioned.NonZeroContractVersionOnInit.selector);
         oracle.initialize({
             admin: address(deployParams.aragonAgent),
@@ -312,19 +328,21 @@ contract FeeOracleDeploymentTest is DeploymentBaseTest {
             consensusVersion: deployParams.consensusVersion
         });
 
-        OssifiableProxy proxy = OssifiableProxy(payable(address(oracle)));
-
-        assertEq(proxy.proxy__getImplementation(), address(oracleImpl));
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
-        assertFalse(proxy.proxy__getIsOssified());
-
-        FeeOracle oracleImpl = FeeOracle(proxy.proxy__getImplementation());
         vm.expectRevert(Versioned.NonZeroContractVersionOnInit.selector);
         oracleImpl.initialize({
             admin: address(deployParams.aragonAgent),
             consensusContract: address(hashConsensus),
             consensusVersion: deployParams.consensusVersion
         });
+    }
+
+    function test_proxy_onlyFull() public view {
+        OssifiableProxy proxy = OssifiableProxy(payable(address(oracle)));
+        assertEq(proxy.proxy__getImplementation(), address(oracleImpl), "oracle proxy getter impl");
+        assertEq(ProxySlotUtils.getImplementation(address(oracle)), address(oracleImpl), "oracle proxy slot impl");
+        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "oracle proxy getter admin");
+        assertEq(ProxySlotUtils.getAdmin(address(oracle)), address(deployParams.proxyAdmin), "oracle proxy slot admin");
+        assertFalse(proxy.proxy__getIsOssified(), "oracle proxy ossified");
     }
 }
 
@@ -448,19 +466,25 @@ contract ValidatorStrikesDeploymentTest is DeploymentBaseTest {
         assertEq(strikes.getRoleMemberCount(strikes.DEFAULT_ADMIN_ROLE()), adminsCount);
     }
 
-    function test_proxy_onlyFull() public {
+    function test_initialization_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         strikes.initialize({ admin: deployParams.aragonAgent, _ejector: address(ejector) });
 
-        OssifiableProxy proxy = OssifiableProxy(payable(address(strikes)));
-
-        assertEq(proxy.proxy__getImplementation(), address(strikesImpl));
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
-        assertFalse(proxy.proxy__getIsOssified());
-
-        ValidatorStrikes strikesImpl = ValidatorStrikes(proxy.proxy__getImplementation());
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         strikesImpl.initialize({ admin: deployParams.aragonAgent, _ejector: address(ejector) });
+    }
+
+    function test_proxy_onlyFull() public view {
+        OssifiableProxy proxy = OssifiableProxy(payable(address(strikes)));
+        assertEq(proxy.proxy__getImplementation(), address(strikesImpl), "strikes proxy getter impl");
+        assertEq(ProxySlotUtils.getImplementation(address(strikes)), address(strikesImpl), "strikes proxy slot impl");
+        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "strikes proxy getter admin");
+        assertEq(
+            ProxySlotUtils.getAdmin(address(strikes)),
+            address(deployParams.proxyAdmin),
+            "strikes proxy slot admin"
+        );
+        assertFalse(proxy.proxy__getIsOssified(), "strikes proxy ossified");
     }
 }
 
@@ -502,10 +526,19 @@ contract ExitPenaltiesDeploymentTest is DeploymentBaseTest {
 
     function test_proxy_onlyFull() public view {
         OssifiableProxy proxy = OssifiableProxy(payable(address(exitPenalties)));
-
-        assertEq(proxy.proxy__getImplementation(), address(exitPenaltiesImpl));
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
-        assertFalse(proxy.proxy__getIsOssified());
+        assertEq(proxy.proxy__getImplementation(), address(exitPenaltiesImpl), "exit penalties proxy getter impl");
+        assertEq(
+            ProxySlotUtils.getImplementation(address(exitPenalties)),
+            address(exitPenaltiesImpl),
+            "exit penalties proxy slot impl"
+        );
+        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "exit penalties proxy getter admin");
+        assertEq(
+            ProxySlotUtils.getAdmin(address(exitPenalties)),
+            address(deployParams.proxyAdmin),
+            "exit penalties proxy slot admin"
+        );
+        assertFalse(proxy.proxy__getIsOssified(), "exit penalties proxy ossified");
     }
 }
 
@@ -538,41 +571,38 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
         assertEq(parametersRegistry.getRoleMemberCount(parametersRegistry.MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE()), 0);
     }
 
-    function test_proxy_onlyFull() public {
+    function test_initialization_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        parametersRegistry.initialize({
-            admin: deployParams.aragonAgent,
-            data: IParametersRegistry.InitializationData({
-                defaultKeyRemovalCharge: deployParams.defaultKeyRemovalCharge,
-                defaultGeneralDelayedPenaltyAdditionalFine: deployParams.defaultGeneralDelayedPenaltyAdditionalFine,
-                defaultKeysLimit: deployParams.defaultKeysLimit,
-                defaultRewardShare: deployParams.defaultRewardShareBP,
-                defaultPerformanceLeeway: deployParams.defaultAvgPerfLeewayBP,
-                defaultStrikesLifetime: deployParams.defaultStrikesLifetimeFrames,
-                defaultStrikesThreshold: deployParams.defaultStrikesThreshold,
-                defaultQueuePriority: deployParams.defaultQueuePriority,
-                defaultQueueMaxDeposits: deployParams.defaultQueueMaxDeposits,
-                defaultBadPerformancePenalty: deployParams.defaultBadPerformancePenalty,
-                defaultAttestationsWeight: deployParams.defaultAttestationsWeight,
-                defaultBlocksWeight: deployParams.defaultBlocksWeight,
-                defaultSyncWeight: deployParams.defaultSyncWeight,
-                defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
-                defaultExitDelayFee: deployParams.defaultExitDelayFee,
-                defaultMaxElWithdrawalRequestFee: deployParams.defaultMaxElWithdrawalRequestFee
-            })
-        });
+        parametersRegistry.initialize({ admin: deployParams.aragonAgent, data: _initData() });
 
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        parametersRegistryImpl.initialize({ admin: deployParams.aragonAgent, data: _initData() });
+    }
+
+    function test_proxy_onlyFull() public view {
         OssifiableProxy proxy = OssifiableProxy(payable(address(parametersRegistry)));
+        assertEq(
+            proxy.proxy__getImplementation(),
+            address(parametersRegistryImpl),
+            "parameters registry proxy getter impl"
+        );
+        assertEq(
+            ProxySlotUtils.getImplementation(address(parametersRegistry)),
+            address(parametersRegistryImpl),
+            "parameters registry proxy slot impl"
+        );
+        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "parameters registry proxy getter admin");
+        assertEq(
+            ProxySlotUtils.getAdmin(address(parametersRegistry)),
+            address(deployParams.proxyAdmin),
+            "parameters registry proxy slot admin"
+        );
+        assertFalse(proxy.proxy__getIsOssified(), "parameters registry proxy ossified");
+    }
 
-        assertEq(proxy.proxy__getImplementation(), address(parametersRegistryImpl));
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
-        assertFalse(proxy.proxy__getIsOssified());
-
-        ParametersRegistry parametersRegistryImpl = ParametersRegistry(proxy.proxy__getImplementation());
-        vm.expectRevert(Initializable.InvalidInitialization.selector);
-        parametersRegistryImpl.initialize({
-            admin: deployParams.aragonAgent,
-            data: IParametersRegistry.InitializationData({
+    function _initData() internal view returns (IParametersRegistry.InitializationData memory) {
+        return
+            IParametersRegistry.InitializationData({
                 defaultKeyRemovalCharge: deployParams.defaultKeyRemovalCharge,
                 defaultGeneralDelayedPenaltyAdditionalFine: deployParams.defaultGeneralDelayedPenaltyAdditionalFine,
                 defaultKeysLimit: deployParams.defaultKeysLimit,
@@ -589,7 +619,6 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
                 defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
                 defaultExitDelayFee: deployParams.defaultExitDelayFee,
                 defaultMaxElWithdrawalRequestFee: deployParams.defaultMaxElWithdrawalRequestFee
-            })
-        });
+            });
     }
 }

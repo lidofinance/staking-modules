@@ -8,7 +8,6 @@ import { Test } from "forge-std/Test.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import { DeployParams } from "script/csm/DeployBase.s.sol";
-import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
 import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
@@ -16,6 +15,7 @@ import { VettedGate } from "src/VettedGate.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
+import { ProxySlotUtils } from "../../helpers/ProxySlotUtils.sol";
 
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     DeployParams internal deployParams;
@@ -54,19 +54,21 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         assertTrue(module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), address(permissionlessGate)));
     }
 
-    function test_proxy_onlyFull() public {
+    function test_initialization_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         module.initialize({ admin: deployParams.aragonAgent, topUpQueueLimit: 0 });
 
-        OssifiableProxy proxy = OssifiableProxy(payable(address(module)));
-
-        assertEq(proxy.proxy__getImplementation(), address(moduleImpl));
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
-        assertFalse(proxy.proxy__getIsOssified());
-
-        ICSModule moduleImpl = ICSModule(proxy.proxy__getImplementation());
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         moduleImpl.initialize({ admin: deployParams.aragonAgent, topUpQueueLimit: 0 });
+    }
+
+    function test_proxy_onlyFull() public view {
+        OssifiableProxy proxy = OssifiableProxy(payable(address(module)));
+        assertEq(proxy.proxy__getImplementation(), address(moduleImpl), "module proxy getter impl");
+        assertEq(ProxySlotUtils.getImplementation(address(module)), address(moduleImpl), "module proxy slot impl");
+        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "module proxy getter admin");
+        assertEq(ProxySlotUtils.getAdmin(address(module)), address(deployParams.proxyAdmin), "module proxy slot admin");
+        assertFalse(proxy.proxy__getIsOssified(), "module proxy ossified");
     }
 }
 
@@ -386,7 +388,7 @@ abstract contract VettedGateDeploymentBaseTest is DeploymentBaseTest {
         assertEq(gate.getRoleMemberCount(gate.SET_TREE_ROLE()), 1);
     }
 
-    function test_proxy_onlyFull() public {
+    function test_initialization_onlyFull() public {
         VettedGate gate = _gate();
 
         vm.expectRevert(Initializable.InvalidInitialization.selector);
@@ -397,12 +399,6 @@ abstract contract VettedGateDeploymentBaseTest is DeploymentBaseTest {
             admin: deployParams.aragonAgent
         });
 
-        OssifiableProxy proxy = OssifiableProxy(payable(address(gate)));
-        assertEq(proxy.proxy__getImplementation(), address(vettedGateImpl));
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
-        assertFalse(proxy.proxy__getIsOssified());
-
-        VettedGate vettedGateImpl = VettedGate(proxy.proxy__getImplementation());
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         vettedGateImpl.initialize({
             curveId: 1,
@@ -410,6 +406,24 @@ abstract contract VettedGateDeploymentBaseTest is DeploymentBaseTest {
             treeCid: _expectedTreeCid(),
             admin: deployParams.aragonAgent
         });
+    }
+
+    function test_proxy_onlyFull() public view {
+        VettedGate gate = _gate();
+        OssifiableProxy proxy = OssifiableProxy(payable(address(gate)));
+        assertEq(proxy.proxy__getImplementation(), address(vettedGateImpl), "vetted gate proxy getter impl");
+        assertEq(
+            ProxySlotUtils.getImplementation(address(gate)),
+            address(vettedGateImpl),
+            "vetted gate proxy slot impl"
+        );
+        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "vetted gate proxy getter admin");
+        assertEq(
+            ProxySlotUtils.getAdmin(address(gate)),
+            address(deployParams.proxyAdmin),
+            "vetted gate proxy slot admin"
+        );
+        assertFalse(proxy.proxy__getIsOssified(), "vetted gate proxy ossified");
     }
 }
 

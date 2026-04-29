@@ -7,6 +7,7 @@ import { Test } from "forge-std/Test.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
+import { ProxySlotUtils } from "../../helpers/ProxySlotUtils.sol";
 import { DeployParams } from "../../../script/csm/DeployBase.s.sol";
 import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
 import { NodeOperator } from "../../../src/interfaces/IBaseModule.sol";
@@ -38,6 +39,7 @@ contract V3UpgradeTestBase is Test, Utilities, DeploymentFixtures, InvariantAsse
         keccak256("SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE");
     bytes32 internal constant START_REFERRAL_SEASON_ROLE = keccak256("START_REFERRAL_SEASON_ROLE");
     bytes32 internal constant END_REFERRAL_SEASON_ROLE = keccak256("END_REFERRAL_SEASON_ROLE");
+    bytes32 internal constant TOTAL_WITHDRAWN_VALIDATORS_SLOT = bytes32(uint256(1));
 
     uint256 internal forkIdBeforeUpgrade;
     uint256 internal forkIdAfterUpgrade;
@@ -69,20 +71,41 @@ contract V3UpgradeTestBase is Test, Utilities, DeploymentFixtures, InvariantAsse
 
         initializeFromDeployment();
     }
+
+    function _assertProxyImplementation(
+        address proxyAddress,
+        address expectedImplementation,
+        string memory label
+    ) internal view {
+        OssifiableProxy proxy = OssifiableProxy(payable(proxyAddress));
+
+        assertEq(proxy.proxy__getImplementation(), expectedImplementation, string.concat(label, " getter impl"));
+        assertEq(
+            ProxySlotUtils.getImplementation(proxyAddress),
+            expectedImplementation,
+            string.concat(label, " slot impl")
+        );
+    }
+
+    function _assertProxyAdmin(address proxyAddress, address expectedAdmin, string memory label) internal view {
+        OssifiableProxy proxy = OssifiableProxy(payable(proxyAddress));
+
+        assertEq(proxy.proxy__getAdmin(), expectedAdmin, string.concat(label, " getter admin"));
+        assertEq(ProxySlotUtils.getAdmin(proxyAddress), expectedAdmin, string.concat(label, " slot admin"));
+    }
 }
 
 contract VoteChangesTest is V3UpgradeTestBase {
     function test_csmChanges() public {
-        OssifiableProxy csmProxy = OssifiableProxy(payable(address(module)));
-
         vm.selectFork(forkIdBeforeUpgrade);
         address member0 = module.getRoleMember(module.CREATE_NODE_OPERATOR_ROLE(), 0);
         address member1 = module.getRoleMember(module.CREATE_NODE_OPERATOR_ROLE(), 1);
         address oldPermissionlessGate = member0 == address(vettedGate) ? member1 : member0;
-        address implBefore = csmProxy.proxy__getImplementation();
+        address implBefore = OssifiableProxy(payable(address(module))).proxy__getImplementation();
 
         vm.selectFork(forkIdAfterUpgrade);
-        address implAfter = csmProxy.proxy__getImplementation();
+        address implAfter = address(moduleImpl);
+        _assertProxyImplementation(address(module), implAfter, "csm after");
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(moduleImpl));
@@ -170,6 +193,22 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 0);
     }
 
+    function test_csmTotalWithdrawnValidatorsRebuilt() public {
+        vm.selectFork(forkIdAfterUpgrade);
+
+        uint256 totalWithdrawnValidators;
+        uint256 totalNodeOperators = module.getNodeOperatorsCount();
+        for (uint256 noId; noId < totalNodeOperators; ++noId) {
+            totalWithdrawnValidators += module.getNodeOperator(noId).totalWithdrawnKeys;
+        }
+
+        assertEq(
+            uint256(vm.load(address(module), TOTAL_WITHDRAWN_VALIDATORS_SLOT)),
+            totalWithdrawnValidators,
+            "total withdrawn validators not rebuilt"
+        );
+    }
+
     function test_csmQueuePriorityRange() public {
         vm.selectFork(forkIdBeforeUpgrade);
         uint256 queueLowestPriorityBefore = parametersRegistry.QUEUE_LOWEST_PRIORITY();
@@ -225,13 +264,12 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_parametersRegistryChanges() public {
-        OssifiableProxy parametersRegistryProxy = OssifiableProxy(payable(address(parametersRegistry)));
-
         vm.selectFork(forkIdBeforeUpgrade);
-        address implBefore = parametersRegistryProxy.proxy__getImplementation();
+        address implBefore = OssifiableProxy(payable(address(parametersRegistry))).proxy__getImplementation();
 
         vm.selectFork(forkIdAfterUpgrade);
-        address implAfter = parametersRegistryProxy.proxy__getImplementation();
+        address implAfter = address(parametersRegistryImpl);
+        _assertProxyImplementation(address(parametersRegistry), implAfter, "parameters registry after");
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(parametersRegistryImpl));
@@ -359,25 +397,22 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function _assertProxyAdminUnchanged(address proxyAddress, string memory prefix) internal {
-        OssifiableProxy proxy = OssifiableProxy(payable(proxyAddress));
-
         vm.selectFork(forkIdBeforeUpgrade);
-        address adminBefore = proxy.proxy__getAdmin();
+        address adminBefore = OssifiableProxy(payable(proxyAddress)).proxy__getAdmin();
 
         vm.selectFork(forkIdAfterUpgrade);
-        assertEq(proxy.proxy__getAdmin(), adminBefore, string.concat(prefix, " proxy admin changed"));
-        assertEq(proxy.proxy__getAdmin(), deployParams.proxyAdmin, string.concat(prefix, " proxy admin mismatch"));
+        _assertProxyAdmin(proxyAddress, deployParams.proxyAdmin, string.concat(prefix, " after"));
+        assertEq(deployParams.proxyAdmin, adminBefore, string.concat(prefix, " proxy admin changed"));
     }
 
     function test_accountingChanges() public {
-        OssifiableProxy accountingProxy = OssifiableProxy(payable(address(accounting)));
-
         vm.selectFork(forkIdBeforeUpgrade);
-        address implBefore = accountingProxy.proxy__getImplementation();
+        address implBefore = OssifiableProxy(payable(address(accounting))).proxy__getImplementation();
         uint64 versionBefore = accounting.getInitializedVersion();
 
         vm.selectFork(forkIdAfterUpgrade);
-        address implAfter = accountingProxy.proxy__getImplementation();
+        address implAfter = address(accountingImpl);
+        _assertProxyImplementation(address(accounting), implAfter, "accounting after");
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(accountingImpl));
@@ -569,9 +604,8 @@ contract VoteChangesTest is V3UpgradeTestBase {
         uint256 adminsCount = deployParams.secondAdminAddress == address(0) ? 1 : 2;
         VettedGate gate = identifiedDVTClusterGate;
 
-        OssifiableProxy gateProxy = OssifiableProxy(payable(address(gate)));
-        assertEq(gateProxy.proxy__getImplementation(), address(vettedGateImpl), "gate implementation");
-        assertEq(gateProxy.proxy__getAdmin(), deployParams.proxyAdmin, "gate proxy admin");
+        _assertProxyImplementation(address(gate), address(vettedGateImpl), "idvtc gate");
+        _assertProxyAdmin(address(gate), deployParams.proxyAdmin, "idvtc gate");
 
         assertFalse(gate.isPaused(), "gate paused");
         assertEq(gate.getInitializedVersion(), 1, "gate initialized version");
@@ -641,12 +675,12 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_feeDistributorChanges() public {
-        OssifiableProxy feeDistributorProxy = OssifiableProxy(payable(address(feeDistributor)));
         vm.selectFork(forkIdBeforeUpgrade);
-        address implBefore = feeDistributorProxy.proxy__getImplementation();
+        address implBefore = OssifiableProxy(payable(address(feeDistributor))).proxy__getImplementation();
 
         vm.selectFork(forkIdAfterUpgrade);
-        address implAfter = feeDistributorProxy.proxy__getImplementation();
+        address implAfter = address(feeDistributorImpl);
+        _assertProxyImplementation(address(feeDistributor), implAfter, "fee distributor after");
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(feeDistributorImpl));
@@ -690,15 +724,14 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_feeOracleChanges() public {
-        OssifiableProxy oracleProxy = OssifiableProxy(payable(address(oracle)));
-
         vm.selectFork(forkIdBeforeUpgrade);
-        address implBefore = oracleProxy.proxy__getImplementation();
+        address implBefore = OssifiableProxy(payable(address(oracle))).proxy__getImplementation();
         uint256 contractVersionBefore = oracle.getContractVersion();
         uint256 consensusVersionBefore = oracle.getConsensusVersion();
 
         vm.selectFork(forkIdAfterUpgrade);
-        address implAfter = oracleProxy.proxy__getImplementation();
+        address implAfter = address(oracleImpl);
+        _assertProxyImplementation(address(oracle), implAfter, "oracle after");
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(oracleImpl));
@@ -716,16 +749,15 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_validatorStrikesChanges() public {
-        OssifiableProxy strikesProxy = OssifiableProxy(payable(address(strikes)));
-
         vm.selectFork(forkIdBeforeUpgrade);
-        address implBefore = strikesProxy.proxy__getImplementation();
+        address implBefore = OssifiableProxy(payable(address(strikes))).proxy__getImplementation();
         bytes32 treeRootBefore = strikes.treeRoot();
         string memory treeCidBefore = strikes.treeCid();
         address ejectorBefore = address(strikes.ejector());
 
         vm.selectFork(forkIdAfterUpgrade);
-        address implAfter = strikesProxy.proxy__getImplementation();
+        address implAfter = address(strikesImpl);
+        _assertProxyImplementation(address(strikes), implAfter, "strikes after");
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(strikesImpl));
@@ -746,10 +778,8 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_vettedGateChanges() public {
-        OssifiableProxy vettedGateProxy = OssifiableProxy(payable(address(vettedGate)));
-
         vm.selectFork(forkIdBeforeUpgrade);
-        address implBefore = vettedGateProxy.proxy__getImplementation();
+        address implBefore = OssifiableProxy(payable(address(vettedGate))).proxy__getImplementation();
         bytes32 treeRootBefore = vettedGate.treeRoot();
         string memory treeCidBefore = vettedGate.treeCid();
         uint64 versionBefore = vettedGate.getInitializedVersion();
@@ -762,7 +792,8 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(endReferralRoleMembersBefore, 1);
 
         vm.selectFork(forkIdAfterUpgrade);
-        address implAfter = vettedGateProxy.proxy__getImplementation();
+        address implAfter = address(vettedGateImpl);
+        _assertProxyImplementation(address(vettedGate), implAfter, "vetted gate after");
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(vettedGateImpl));
@@ -811,16 +842,15 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_exitPenaltiesChanges() public {
-        OssifiableProxy exitPenaltiesProxy = OssifiableProxy(payable(address(exitPenalties)));
-
         vm.selectFork(forkIdBeforeUpgrade);
-        address implBefore = exitPenaltiesProxy.proxy__getImplementation();
+        address implBefore = OssifiableProxy(payable(address(exitPenalties))).proxy__getImplementation();
         address moduleBefore = address(exitPenalties.MODULE());
         address accountingBefore = address(exitPenalties.ACCOUNTING());
         address strikesBefore = exitPenalties.STRIKES();
 
         vm.selectFork(forkIdAfterUpgrade);
-        address implAfter = exitPenaltiesProxy.proxy__getImplementation();
+        address implAfter = address(exitPenaltiesImpl);
+        _assertProxyImplementation(address(exitPenalties), implAfter, "exit penalties after");
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(exitPenaltiesImpl));
