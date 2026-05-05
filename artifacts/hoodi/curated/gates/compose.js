@@ -3,7 +3,7 @@ const readline = require("node:readline");
 const { StandardMerkleTree } = require("@openzeppelin/merkle-tree");
 
 const csvFiles = [
-  "ics.csv"
+  "sources.csv"
 ];
 
 
@@ -18,8 +18,8 @@ async function readCsvFiles(files) {
     });
 
     for await (const line of rl) {
-      let items = line.split(",");
-      let address = items[0].toLowerCase();
+      let [address] = line.split(","); // Assuming CSV has only one column for addresses
+      address = address.toLowerCase();
       if (addresses[address]) {
         addresses[address].sources.push(file);
       } else {
