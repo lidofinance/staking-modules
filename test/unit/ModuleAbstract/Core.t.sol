@@ -604,6 +604,14 @@ abstract contract ModuleMisc is ModuleFixtures {
         assertTrue(active);
     }
 
+    function test_getNodeOperatorIsActive_FalseForNonExistentOperator() public assertInvariants {
+        createNodeOperator();
+
+        bool active = module.getNodeOperatorIsActive(1);
+
+        assertFalse(active);
+    }
+
     function test_getNodeOperatorIds() public assertInvariants {
         uint256 firstNoId = createNodeOperator();
         uint256 secondNoId = createNodeOperator();

@@ -560,13 +560,15 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IStakingModule
+    /// @dev The module has no inactive Node Operator state, so active operators are all existing operators.
     function getActiveNodeOperatorsCount() external view returns (uint256) {
         return _baseStorage().nodeOperatorsCount;
     }
 
     /// @inheritdoc IStakingModule
+    /// @dev The module has no inactive Node Operator state, so active means existing.
     function getNodeOperatorIsActive(uint256 nodeOperatorId) external view returns (bool) {
-        return nodeOperatorId < _baseStorage().nodeOperatorsCount;
+        return _nodeOperatorExists(nodeOperatorId);
     }
 
     /// @inheritdoc IStakingModule
@@ -762,8 +764,12 @@ abstract contract BaseModule is
         if (managerAddress != from) revert SenderIsNotEligible();
     }
 
+    function _nodeOperatorExists(uint256 nodeOperatorId) internal view returns (bool) {
+        return nodeOperatorId < _baseStorage().nodeOperatorsCount;
+    }
+
     function _onlyExistingNodeOperator(uint256 nodeOperatorId) internal view {
-        if (nodeOperatorId < _baseStorage().nodeOperatorsCount) return;
+        if (_nodeOperatorExists(nodeOperatorId)) return;
 
         revert NodeOperatorDoesNotExist();
     }
