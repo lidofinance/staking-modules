@@ -212,7 +212,9 @@ abstract contract BaseModule is
         STETH.transferShares(FEE_DISTRIBUTOR, totalShares);
     }
 
-    /// @dev DEPRECATED: Should be removed in the future versions.
+    /// @dev exitedValidatorsCount is not used inside the module, but SR still expects this data to be stored and
+    /// returned. The method should be removed once there are no legacy modules in the Lido protocol and SR no longer
+    /// calls this method.
     /// @inheritdoc IStakingModule
     function updateExitedValidatorsCount(
         bytes calldata nodeOperatorIds,
@@ -222,7 +224,9 @@ abstract contract BaseModule is
         NodeOperatorOps.updateExitedValidatorsCount(_baseStorage(), nodeOperatorIds, exitedValidatorsCounts);
     }
 
-    /// @dev DEPRECATED: Should be removed in the future versions.
+    /// @dev exitedValidatorsCount is not used inside the module, but SR still expects this data to be stored and
+    /// returned. The method should be removed once there are no legacy modules in the Lido protocol and SR no longer
+    /// calls this method.
     /// @inheritdoc IStakingModule
     function unsafeUpdateValidatorsCount(uint256 nodeOperatorId, uint256 exitedValidatorsCount) external {
         _checkStakingRouterRole();
