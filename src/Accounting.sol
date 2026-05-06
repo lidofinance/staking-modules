@@ -601,6 +601,7 @@ contract Accounting is
 
     function _setChargePenaltyRecipient(address _chargePenaltyRecipient) private {
         if (_chargePenaltyRecipient == address(0)) revert ZeroChargePenaltyRecipientAddress();
+        if (_chargePenaltyRecipient == address(LIDO)) revert InvalidChargePenaltyRecipientAddress();
         chargePenaltyRecipient = _chargePenaltyRecipient;
         emit ChargePenaltyRecipientSet(_chargePenaltyRecipient);
     }

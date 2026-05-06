@@ -39,6 +39,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     error ZeroAdminAddress();
     error ZeroFeeDistributorAddress();
     error ZeroChargePenaltyRecipientAddress();
+    error InvalidChargePenaltyRecipientAddress();
     error NodeOperatorDoesNotExist();
     error SameAddress();
 

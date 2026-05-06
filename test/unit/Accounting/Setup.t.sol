@@ -112,6 +112,16 @@ contract InitTest is BaseInitTest {
         accounting.initialize(curve, admin, 8 weeks, address(0));
     }
 
+    function test_initialize_RevertWhen_LidoChargePenaltyRecipient() public {
+        IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
+        curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 2 ether });
+
+        _enableInitializers(address(accounting));
+
+        vm.expectRevert(IAccounting.InvalidChargePenaltyRecipientAddress.selector);
+        accounting.initialize(curve, admin, 8 weeks, address(stETH));
+    }
+
     function test_finalizeUpgradeV3() public {
         _enableInitializers(address(accounting));
 

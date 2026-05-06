@@ -436,9 +436,15 @@ contract MiscTest is BaseTest {
     }
 
     function test_setChargePenaltyRecipient_RevertWhen_Zero() public {
-        vm.expectRevert();
+        vm.expectRevert(IAccounting.ZeroChargePenaltyRecipientAddress.selector);
         vm.prank(admin);
         accounting.setChargePenaltyRecipient(address(0));
+    }
+
+    function test_setChargePenaltyRecipient_RevertWhen_Lido() public {
+        vm.expectRevert(IAccounting.InvalidChargePenaltyRecipientAddress.selector);
+        vm.prank(admin);
+        accounting.setChargePenaltyRecipient(address(stETH));
     }
 
     function test_setBondLockPeriod() public assertInvariants {
