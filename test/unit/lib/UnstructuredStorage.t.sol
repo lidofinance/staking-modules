@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 // Backported from lidofinance/core except for removed functions
 // Source: https://github.com/lidofinance/core/blob/0d4231ee8a5289248e49e96747d6b95fa5b0afcc/test/0.8.9/unstructuredStorage.t.sol
