@@ -217,12 +217,12 @@ contract CuratedGateTest_hashLeaf is CuratedGateTestBase {
 
 contract CuratedGateTest_pauseResume is CuratedGateTestBase {
     function test_pause_RevertWhen_NoRole() public {
-        vm.expectRevert();
+        expectRoleRevert(address(this), gate.PAUSE_ROLE());
         gate.pauseFor(1);
     }
 
     function test_resume_RevertWhen_NoRole() public {
-        vm.expectRevert();
+        expectRoleRevert(address(this), gate.RESUME_ROLE());
         gate.resume();
     }
 
