@@ -165,8 +165,8 @@ abstract contract ModuleReportValidatorBalance is ModuleFixtures {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
+        expectRoleRevert(stranger, module.VERIFIER_ROLE());
         vm.prank(stranger);
-        vm.expectRevert();
         module.reportValidatorBalance(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 1 ether);
     }
 

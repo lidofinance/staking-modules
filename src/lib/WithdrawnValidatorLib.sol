@@ -10,10 +10,12 @@ import { ExitPenaltyInfo } from "../interfaces/IExitPenalties.sol";
 import { IAccounting } from "../interfaces/IAccounting.sol";
 import { ModuleLinearStorage } from "../abstract/ModuleLinearStorage.sol";
 
+import { KeyPointerLib } from "./KeyPointerLib.sol";
 import { SigningKeys } from "./SigningKeys.sol";
 import { ValidatorBalanceLimits } from "./ValidatorBalanceLimits.sol";
 
-/// @dev A library to extract a part of the code from the CSModule contract.
+/// @dev External deployment-linked library used by BaseModule-compatible modules
+///      to extract withdrawn validator processing from module bytecode.
 library WithdrawnValidatorLib {
     uint256 public constant PENALTY_QUOTIENT = 1 ether;
     /// @dev Acts as the denominator to calculate the scaled penalty.
@@ -48,7 +50,7 @@ library WithdrawnValidatorLib {
             WithdrawnValidatorInfo calldata info = validatorInfos[i];
             if (info.nodeOperatorId >= $.nodeOperatorsCount) revert IBaseModule.NodeOperatorDoesNotExist();
 
-            uint256 pointer = _keyPointer(info.nodeOperatorId, info.keyIndex);
+            uint256 pointer = KeyPointerLib.keyPointer(info.nodeOperatorId, info.keyIndex);
             if ($.isValidatorWithdrawn[pointer]) continue;
             if (info.isSlashed != slashed) revert IBaseModule.InvalidWithdrawnValidatorInfo();
             if (info.isSlashed && !$.isValidatorSlashed[pointer]) revert IBaseModule.SlashingPenaltyIsNotApplicable();
@@ -167,11 +169,5 @@ library WithdrawnValidatorLib {
 
     function _scalePenaltyByMultiplier(uint256 penalty, uint256 multiplier) internal pure returns (uint256) {
         return (penalty * multiplier) / PENALTY_SCALE;
-    }
-
-    function _keyPointer(uint256 nodeOperatorId, uint256 keyIndex) internal pure returns (uint256 pointer) {
-        assembly ("memory-safe") {
-            pointer := or(shl(128, nodeOperatorId), keyIndex)
-        }
     }
 }

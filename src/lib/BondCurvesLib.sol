@@ -1,18 +1,12 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.33;
 
 import { IBondCurve } from "../interfaces/IBondCurve.sol";
 import { BondCurve } from "../abstract/BondCurve.sol";
 
-interface IBondCurves {
-    error InvalidBondCurveLength();
-    error InvalidBondCurveValues();
-    error InvalidBondCurveId();
-    error InvalidInitializationCurveId();
-}
-
 /// Library for managing BondCurves
+/// @dev External deployment-linked library used by Accounting.
 library BondCurvesLib {
     uint256 public constant MIN_CURVE_LENGTH = 1;
     uint256 public constant MAX_CURVE_LENGTH = 100;
@@ -132,17 +126,17 @@ library BondCurvesLib {
 
     function _check(IBondCurve.BondCurveIntervalInput[] calldata intervals) internal pure {
         if (intervals.length < MIN_CURVE_LENGTH || intervals.length > MAX_CURVE_LENGTH) {
-            revert IBondCurves.InvalidBondCurveLength();
+            revert IBondCurve.InvalidBondCurveLength();
         }
-        if (intervals[0].minKeysCount != 1) revert IBondCurves.InvalidBondCurveValues();
-        if (intervals[0].trend == 0) revert IBondCurves.InvalidBondCurveValues();
+        if (intervals[0].minKeysCount != 1) revert IBondCurve.InvalidBondCurveValues();
+        if (intervals[0].trend == 0) revert IBondCurve.InvalidBondCurveValues();
 
         for (uint256 i = 1; i < intervals.length; ++i) {
             unchecked {
                 if (intervals[i].minKeysCount <= intervals[i - 1].minKeysCount) {
-                    revert IBondCurves.InvalidBondCurveValues();
+                    revert IBondCurve.InvalidBondCurveValues();
                 }
-                if (intervals[i].trend == 0) revert IBondCurves.InvalidBondCurveValues();
+                if (intervals[i].trend == 0) revert IBondCurve.InvalidBondCurveValues();
             }
         }
     }

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
@@ -15,6 +15,7 @@ import { FeeOracle } from "../../src/FeeOracle.sol";
 import { ValidatorStrikes } from "../../src/ValidatorStrikes.sol";
 import { Verifier } from "../../src/Verifier.sol";
 import { VettedGate } from "../../src/VettedGate.sol";
+import { OneShotCurveSetup } from "../../src/utils/OneShotCurveSetup.sol";
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 import { ITriggerableWithdrawalsGateway } from "../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { IBurner } from "../../src/interfaces/IBurner.sol";
@@ -362,6 +363,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
                     cb.registerPauser(address(accounting), deployParams.circuitBreakerPauser);
                     cb.registerPauser(address(oracle), deployParams.circuitBreakerPauser);
                     cb.registerPauser(address(existingVettedGate), deployParams.circuitBreakerPauser);
+                    cb.registerPauser(deploymentConfig.identifiedDVTClusterGate, deployParams.circuitBreakerPauser);
                     cb.registerPauser(deploymentConfig.verifierV3, deployParams.circuitBreakerPauser);
                     cb.registerPauser(deploymentConfig.ejector, deployParams.circuitBreakerPauser);
                 } else {
@@ -370,7 +372,20 @@ contract SimulateVote is Script, ForkHelpersCommon {
             } else {
                 console.log("CircuitBreaker is not configured");
             }
-            // 43. Grant MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE to penaltiesManager
+
+            // 43-44. Grant Identified DVT Cluster gate permissions
+            module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), deploymentConfig.identifiedDVTClusterGate);
+            accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), deploymentConfig.identifiedDVTClusterGate);
+
+            // 45-47. Deploy Identified DVT Cluster bond curve and parameter overrides
+            accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), deploymentConfig.identifiedDVTClusterCurveSetup);
+            parametersRegistry.grantRole(
+                parametersRegistry.MANAGE_CURVE_PARAMETERS_ROLE(),
+                deploymentConfig.identifiedDVTClusterCurveSetup
+            );
+            OneShotCurveSetup(deploymentConfig.identifiedDVTClusterCurveSetup).execute();
+
+            // 48. Grant MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE to penaltiesManager
             parametersRegistry.grantRole(
                 parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
                 deployParams.penaltiesManager
@@ -381,9 +396,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
         {
             vm.startBroadcast(burnerAdmin);
-            // 44. Revoke REQUEST_BURN_SHARES_ROLE from Accounting
+            // 49. Revoke REQUEST_BURN_SHARES_ROLE from Accounting
             burner.revokeRole(burner.REQUEST_BURN_SHARES_ROLE(), address(accounting));
-            // 45. Grant REQUEST_BURN_MY_STETH_ROLE to Accounting
+            // 50. Grant REQUEST_BURN_MY_STETH_ROLE to Accounting
             burner.grantRole(burner.REQUEST_BURN_MY_STETH_ROLE(), address(accounting));
             vm.stopBroadcast();
         }
@@ -395,11 +410,21 @@ contract SimulateVote is Script, ForkHelpersCommon {
             address twgAdmin = _prepareAdmin(address(twg));
 
             vm.startBroadcast(twgAdmin);
-            // 46. Revoke TWG full-withdrawal role from old Ejector
+            // 51. Revoke TWG full-withdrawal role from old Ejector
             twg.revokeRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), oldEjector);
-            // 47. Grant TWG full-withdrawal role to new Ejector
+            // 52. Grant TWG full-withdrawal role to new Ejector
             twg.grantRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), deploymentConfig.ejector);
             vm.stopBroadcast();
         }
+    }
+
+    /// @dev Simulation helper only. Executes post-vote state preparation that is not part of the vote payload.
+    function postUpgrade() external {
+        _setUp();
+        if (moduleType != ModuleType.Community) revert WrongModuleType();
+
+        vm.startBroadcast(_prepareAdmin(address(module)));
+        module.rebuildTotalWithdrawnValidators();
+        vm.stopBroadcast();
     }
 }

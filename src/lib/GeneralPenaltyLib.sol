@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.33;
 
@@ -6,7 +6,8 @@ import { IBaseModule } from "../interfaces/IBaseModule.sol";
 import { IAccounting } from "../interfaces/IAccounting.sol";
 
 /// Library for General Penalty logic
-/// @dev the only use of this to be a library is to save CSModule contract size via delegatecalls
+/// @dev External deployment-linked library used by BaseModule-compatible modules
+///      to save contract size via delegatecalls.
 library GeneralPenalty {
     function reportGeneralDelayedPenalty(
         uint256 nodeOperatorId,

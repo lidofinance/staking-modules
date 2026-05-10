@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
@@ -217,12 +217,12 @@ contract CuratedGateTest_hashLeaf is CuratedGateTestBase {
 
 contract CuratedGateTest_pauseResume is CuratedGateTestBase {
     function test_pause_RevertWhen_NoRole() public {
-        vm.expectRevert();
+        expectRoleRevert(address(this), gate.PAUSE_ROLE());
         gate.pauseFor(1);
     }
 
     function test_resume_RevertWhen_NoRole() public {
-        vm.expectRevert();
+        expectRoleRevert(address(this), gate.RESUME_ROLE());
         gate.resume();
     }
 

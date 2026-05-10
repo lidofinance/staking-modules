@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
@@ -45,7 +45,8 @@ struct WithdrawnValidatorInfo {
     // Index of the withdrawn key in the Node Operator's keys storage.
     uint256 keyIndex;
     // Balance to be used to calculate penalties. For a regular withdrawal of a validator it's the withdrawal amount.
-    // For a slashed validator it's its balance before slashing. The balance will be used to scale incurred penalties.
+    // For a slashed validator it's its balance before slashing if slashing penalty is provided explicitly, otherwise it's the balance after slashing to calculate penalty using a less precise on-chain fallback.
+    // The balance will be used to scale incurred penalties and calculate penalties due to offline or slashing penalties via the shortcut mechanism.
     uint256 exitBalance;
     // Amount of ETH/stETH to penalize Node Operator due to slashing.
     uint256 slashingPenalty;
@@ -216,6 +217,9 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @param publicKeys Public keys to submit
     /// @param signatures Signatures of `(deposit_message_root, domain)` tuples
     ///                   https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#signingdata
+    /// @dev Any excess msg.value will be sent to the bond and can be claimed from there. This behaviour is intentional
+    /// and protects users from key upload transaction front runs rendering the user transaction invalid due to changes
+    /// in the required bond amount.
     function addValidatorKeysETH(
         address from,
         uint256 nodeOperatorId,

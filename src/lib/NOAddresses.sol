@@ -1,9 +1,10 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.33;
 
 import { NodeOperator, IBaseModule } from "../interfaces/IBaseModule.sol";
 
+/// @dev External deployment-linked library used by BaseModule-compatible modules.
 library NOAddresses {
     /// @notice Propose a new manager address for the Node Operator.
     /// @dev Passing address(0) clears the pending proposal without changing the current manager address.

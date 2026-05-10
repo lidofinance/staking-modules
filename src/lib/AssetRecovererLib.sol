@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.33;
 
@@ -23,6 +23,7 @@ interface IAssetRecovererLib {
  * @title AssetRecovererLib
  * @dev Library providing mechanisms for recovering various asset types (ETH, ERC20, ERC721, ERC1155).
  * This library is designed to be used by a contract that implements the AssetRecoverer interface.
+ * External deployment-linked library used by multiple production contracts.
  */
 library AssetRecovererLib {
     using SafeERC20 for IERC20;

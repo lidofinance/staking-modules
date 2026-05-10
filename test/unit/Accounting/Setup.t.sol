@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
@@ -110,6 +110,16 @@ contract InitTest is BaseInitTest {
 
         vm.expectRevert(IAccounting.ZeroChargePenaltyRecipientAddress.selector);
         accounting.initialize(curve, admin, 8 weeks, address(0));
+    }
+
+    function test_initialize_RevertWhen_LidoChargePenaltyRecipient() public {
+        IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
+        curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 2 ether });
+
+        _enableInitializers(address(accounting));
+
+        vm.expectRevert(IAccounting.InvalidChargePenaltyRecipientAddress.selector);
+        accounting.initialize(curve, admin, 8 weeks, address(stETH));
     }
 
     function test_finalizeUpgradeV3() public {

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
@@ -16,6 +16,7 @@ import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
+import { ProxySlotUtils } from "../../helpers/ProxySlotUtils.sol";
 
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     CuratedDeployParams internal deployParams;
@@ -54,24 +55,35 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         );
     }
 
-    function test_proxy_onlyFull() public {
+    function test_initialization_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         curatedModule.initialize({ admin: deployParams.aragonAgent });
 
-        OssifiableProxy proxy = OssifiableProxy(payable(address(curatedModule)));
-
-        assertEq(proxy.proxy__getImplementation(), address(moduleImpl));
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin));
-        assertFalse(proxy.proxy__getIsOssified());
-
-        ICuratedModule moduleImpl = ICuratedModule(proxy.proxy__getImplementation());
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        moduleImpl.initialize({ admin: deployParams.aragonAgent });
+        ICuratedModule(address(moduleImpl)).initialize({ admin: deployParams.aragonAgent });
+    }
+
+    function test_proxy_onlyFull() public view {
+        OssifiableProxy proxy = OssifiableProxy(payable(address(curatedModule)));
+        assertEq(proxy.proxy__getImplementation(), address(moduleImpl), "curated module proxy getter impl");
+        assertEq(
+            ProxySlotUtils.getImplementation(address(curatedModule)),
+            address(moduleImpl),
+            "curated module proxy slot impl"
+        );
+        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "curated module proxy getter admin");
+        assertEq(
+            ProxySlotUtils.getAdmin(address(curatedModule)),
+            address(deployParams.proxyAdmin),
+            "curated module proxy slot admin"
+        );
+        assertFalse(proxy.proxy__getIsOssified(), "curated module proxy ossified");
     }
 }
 
 contract MetaRegistryDeploymentTest is DeploymentBaseTest {
     function test_state_onlyFull() public view {
+        assertEq(metaRegistry.getInitializedVersion(), 1);
         assertEq(metaRegistry.getOperatorGroupsCount(), 1);
 
         IMetaRegistry.OperatorGroup memory groupInfo = metaRegistry.getOperatorGroup(metaRegistry.NO_GROUP_ID());
@@ -298,8 +310,15 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
         assertTrue(implementation != address(0), "factory implementation zero");
         for (uint256 i = 0; i < gatesCount; ++i) {
             OssifiableProxy proxy = OssifiableProxy(payable(curatedGates[i]));
-            assertEq(proxy.proxy__getImplementation(), implementation, "gate implementation mismatch");
-            assertEq(proxy.proxy__getAdmin(), deployParams.proxyAdmin, "gate proxy admin mismatch");
+            assertEq(proxy.proxy__getImplementation(), implementation, "curated gate proxy getter impl");
+            assertEq(ProxySlotUtils.getImplementation(curatedGates[i]), implementation, "curated gate proxy slot impl");
+            assertEq(proxy.proxy__getAdmin(), deployParams.proxyAdmin, "curated gate proxy getter admin");
+            assertEq(
+                ProxySlotUtils.getAdmin(curatedGates[i]),
+                deployParams.proxyAdmin,
+                "curated gate proxy slot admin"
+            );
+            assertFalse(proxy.proxy__getIsOssified(), "curated gate proxy ossified");
         }
     }
 
@@ -396,12 +415,11 @@ contract CircuitBreakerDeploymentTest is DeploymentBaseTest {
 
     function test_pausables_afterVote() public {
         vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
-        address[] memory pausables = circuitBreaker.getPausables();
-        assertTrue(arrayHas(pausables, address(module)), "module not in CircuitBreaker");
-        assertTrue(arrayHas(pausables, address(accounting)), "accounting not in CircuitBreaker");
-        assertTrue(arrayHas(pausables, address(oracle)), "oracle not in CircuitBreaker");
-        assertTrue(arrayHas(pausables, address(verifier)), "verifier not in CircuitBreaker");
-        assertTrue(arrayHas(pausables, address(ejector)), "ejector not in CircuitBreaker");
+        assertEq(circuitBreaker.getPauser(address(module)), deployParams.circuitBreakerPauser, "module pauser");
+        assertEq(circuitBreaker.getPauser(address(accounting)), deployParams.circuitBreakerPauser, "accounting pauser");
+        assertEq(circuitBreaker.getPauser(address(oracle)), deployParams.circuitBreakerPauser, "oracle pauser");
+        assertEq(circuitBreaker.getPauser(address(verifier)), deployParams.circuitBreakerPauser, "verifier pauser");
+        assertEq(circuitBreaker.getPauser(address(ejector)), deployParams.circuitBreakerPauser, "ejector pauser");
     }
 
     function test_roles() public {

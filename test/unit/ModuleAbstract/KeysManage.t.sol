@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
@@ -6,6 +6,7 @@ pragma solidity 0.8.33;
 import { IBaseModule, NodeOperator } from "src/interfaces/IBaseModule.sol";
 import { IStakingModule } from "src/interfaces/IStakingModule.sol";
 import { SigningKeys } from "src/lib/SigningKeys.sol";
+import { ValidatorCountsReport } from "src/lib/ValidatorCountsReport.sol";
 
 import { ModuleFixtures } from "./_Base.t.sol";
 
@@ -140,7 +141,7 @@ abstract contract ModuleDecreaseVettedSigningKeysCount is ModuleFixtures {
         uint256 secondNoId = createNodeOperator(7);
         uint256 newVettedFirst = 5;
 
-        vm.expectRevert();
+        vm.expectRevert(ValidatorCountsReport.InvalidReportData.selector);
         module.decreaseVettedSigningKeysCount(
             _encodeNodeOperatorPair(firstNoId, secondNoId),
             _encodeUint128Value(newVettedFirst)

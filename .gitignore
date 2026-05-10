@@ -9,6 +9,7 @@ node_modules/
 .vscode
 .direnv
 .DS_Store
+tmp/
 
 **/venv
 

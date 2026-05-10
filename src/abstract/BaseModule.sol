@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
@@ -212,7 +212,9 @@ abstract contract BaseModule is
         STETH.transferShares(FEE_DISTRIBUTOR, totalShares);
     }
 
-    /// @dev DEPRECATED: Should be removed in the future versions.
+    /// @dev exitedValidatorsCount is not used inside the module, but SR still expects this data to be stored and
+    /// returned. The method should be removed once there are no legacy modules in the Lido protocol and SR no longer
+    /// calls this method.
     /// @inheritdoc IStakingModule
     function updateExitedValidatorsCount(
         bytes calldata nodeOperatorIds,
@@ -222,7 +224,9 @@ abstract contract BaseModule is
         NodeOperatorOps.updateExitedValidatorsCount(_baseStorage(), nodeOperatorIds, exitedValidatorsCounts);
     }
 
-    /// @dev DEPRECATED: Should be removed in the future versions.
+    /// @dev exitedValidatorsCount is not used inside the module, but SR still expects this data to be stored and
+    /// returned. The method should be removed once there are no legacy modules in the Lido protocol and SR no longer
+    /// calls this method.
     /// @inheritdoc IStakingModule
     function unsafeUpdateValidatorsCount(uint256 nodeOperatorId, uint256 exitedValidatorsCount) external {
         _checkStakingRouterRole();
@@ -560,13 +564,15 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IStakingModule
+    /// @dev The module has no inactive Node Operator state, so active operators are all existing operators.
     function getActiveNodeOperatorsCount() external view returns (uint256) {
         return _baseStorage().nodeOperatorsCount;
     }
 
     /// @inheritdoc IStakingModule
+    /// @dev The module has no inactive Node Operator state, so active means existing.
     function getNodeOperatorIsActive(uint256 nodeOperatorId) external view returns (bool) {
-        return nodeOperatorId < _baseStorage().nodeOperatorsCount;
+        return _nodeOperatorExists(nodeOperatorId);
     }
 
     /// @inheritdoc IStakingModule
@@ -762,8 +768,12 @@ abstract contract BaseModule is
         if (managerAddress != from) revert SenderIsNotEligible();
     }
 
+    function _nodeOperatorExists(uint256 nodeOperatorId) internal view returns (bool) {
+        return nodeOperatorId < _baseStorage().nodeOperatorsCount;
+    }
+
     function _onlyExistingNodeOperator(uint256 nodeOperatorId) internal view {
-        if (nodeOperatorId < _baseStorage().nodeOperatorsCount) return;
+        if (_nodeOperatorExists(nodeOperatorId)) return;
 
         revert NodeOperatorDoesNotExist();
     }

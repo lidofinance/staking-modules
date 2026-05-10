@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
@@ -13,8 +13,9 @@ import { TransientUintUintMap, TransientUintUintMapLib } from "../TransientUintU
 import { ValidatorBalanceLimits } from "../ValidatorBalanceLimits.sol";
 import { StakeTracker } from "../StakeTracker.sol";
 
-/// @notice Curated deposit allocation helpers (external library for bytecode savings).
-/// @dev Invariants assumed by this library:
+/// @notice Curated deposit allocation helpers.
+/// @dev External deployment-linked library used by CuratedModule for bytecode savings.
+///      Invariants assumed by this library:
 ///      - totalWithdrawnKeys <= totalDepositedKeys per operator.
 ///      - each operatorId < operatorsCount.
 library CuratedDepositAllocator {

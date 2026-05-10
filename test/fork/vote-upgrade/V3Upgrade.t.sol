@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
@@ -7,16 +7,20 @@ import { Test } from "forge-std/Test.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
+import { ProxySlotUtils } from "../../helpers/ProxySlotUtils.sol";
 import { DeployParams } from "../../../script/csm/DeployBase.s.sol";
 import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
 import { NodeOperator } from "../../../src/interfaces/IBaseModule.sol";
 import { IBondLock } from "../../../src/interfaces/IBondLock.sol";
 import { IBondCurve } from "../../../src/interfaces/IBondCurve.sol";
+import { IParametersRegistry } from "../../../src/interfaces/IParametersRegistry.sol";
 import { ITriggerableWithdrawalsGateway } from "../../../src/interfaces/ITriggerableWithdrawalsGateway.sol";
 import { InvariantAsserts } from "../../helpers/InvariantAsserts.sol";
 import { ICircuitBreaker } from "../../../src/interfaces/ICircuitBreaker.sol";
 import { Verifier } from "../../../src/Verifier.sol";
 import { Ejector } from "../../../src/Ejector.sol";
+import { VettedGate } from "../../../src/VettedGate.sol";
+import { OneShotCurveSetup } from "../../../src/utils/OneShotCurveSetup.sol";
 
 interface IPrevCSParametersRegistry {
     function defaultElRewardsStealingAdditionalFine() external returns (uint256);
@@ -35,6 +39,7 @@ contract V3UpgradeTestBase is Test, Utilities, DeploymentFixtures, InvariantAsse
         keccak256("SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE");
     bytes32 internal constant START_REFERRAL_SEASON_ROLE = keccak256("START_REFERRAL_SEASON_ROLE");
     bytes32 internal constant END_REFERRAL_SEASON_ROLE = keccak256("END_REFERRAL_SEASON_ROLE");
+    bytes32 internal constant TOTAL_WITHDRAWN_VALIDATORS_SLOT = bytes32(uint256(1));
 
     uint256 internal forkIdBeforeUpgrade;
     uint256 internal forkIdAfterUpgrade;
@@ -65,24 +70,42 @@ contract V3UpgradeTestBase is Test, Utilities, DeploymentFixtures, InvariantAsse
         deployParams = parseDeployParams(env.DEPLOY_CONFIG);
 
         initializeFromDeployment();
+    }
 
-        vm.selectFork(forkIdAfterUpgrade);
-        module.rebuildTotalWithdrawnValidators();
+    function _assertProxyImplementation(
+        address proxyAddress,
+        address expectedImplementation,
+        string memory label
+    ) internal view {
+        OssifiableProxy proxy = OssifiableProxy(payable(proxyAddress));
+
+        assertEq(proxy.proxy__getImplementation(), expectedImplementation, string.concat(label, " getter impl"));
+        assertEq(
+            ProxySlotUtils.getImplementation(proxyAddress),
+            expectedImplementation,
+            string.concat(label, " slot impl")
+        );
+    }
+
+    function _assertProxyAdmin(address proxyAddress, address expectedAdmin, string memory label) internal view {
+        OssifiableProxy proxy = OssifiableProxy(payable(proxyAddress));
+
+        assertEq(proxy.proxy__getAdmin(), expectedAdmin, string.concat(label, " getter admin"));
+        assertEq(ProxySlotUtils.getAdmin(proxyAddress), expectedAdmin, string.concat(label, " slot admin"));
     }
 }
 
 contract VoteChangesTest is V3UpgradeTestBase {
     function test_csmChanges() public {
-        OssifiableProxy csmProxy = OssifiableProxy(payable(address(module)));
-
         vm.selectFork(forkIdBeforeUpgrade);
         address member0 = module.getRoleMember(module.CREATE_NODE_OPERATOR_ROLE(), 0);
         address member1 = module.getRoleMember(module.CREATE_NODE_OPERATOR_ROLE(), 1);
         address oldPermissionlessGate = member0 == address(vettedGate) ? member1 : member0;
-        address implBefore = csmProxy.proxy__getImplementation();
+        address implBefore = OssifiableProxy(payable(address(module))).proxy__getImplementation();
 
         vm.selectFork(forkIdAfterUpgrade);
-        address implAfter = csmProxy.proxy__getImplementation();
+        address implAfter = address(moduleImpl);
+        _assertProxyImplementation(address(module), implAfter, "csm after");
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(moduleImpl));
@@ -93,7 +116,8 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertNotEq(oldPermissionlessGate, address(permissionlessGate));
         assertFalse(module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), oldPermissionlessGate));
         assertTrue(module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), address(vettedGate)));
-        assertEq(module.getRoleMemberCount(module.CREATE_NODE_OPERATOR_ROLE()), 2);
+        assertTrue(module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), address(identifiedDVTClusterGate)));
+        assertEq(module.getRoleMemberCount(module.CREATE_NODE_OPERATOR_ROLE()), 3);
 
         assertFalse(module.hasRole(module.VERIFIER_ROLE(), deploymentConfig.verifier));
         assertTrue(module.hasRole(module.VERIFIER_ROLE(), deploymentConfig.verifierV3));
@@ -169,6 +193,22 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 0);
     }
 
+    function test_csmTotalWithdrawnValidatorsRebuilt() public {
+        vm.selectFork(forkIdAfterUpgrade);
+
+        uint256 totalWithdrawnValidators;
+        uint256 totalNodeOperators = module.getNodeOperatorsCount();
+        for (uint256 noId; noId < totalNodeOperators; ++noId) {
+            totalWithdrawnValidators += module.getNodeOperator(noId).totalWithdrawnKeys;
+        }
+
+        assertEq(
+            uint256(vm.load(address(module), TOTAL_WITHDRAWN_VALIDATORS_SLOT)),
+            totalWithdrawnValidators,
+            "total withdrawn validators not rebuilt"
+        );
+    }
+
     function test_csmQueuePriorityRange() public {
         vm.selectFork(forkIdBeforeUpgrade);
         uint256 queueLowestPriorityBefore = parametersRegistry.QUEUE_LOWEST_PRIORITY();
@@ -224,13 +264,12 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_parametersRegistryChanges() public {
-        OssifiableProxy parametersRegistryProxy = OssifiableProxy(payable(address(parametersRegistry)));
-
         vm.selectFork(forkIdBeforeUpgrade);
-        address implBefore = parametersRegistryProxy.proxy__getImplementation();
+        address implBefore = OssifiableProxy(payable(address(parametersRegistry))).proxy__getImplementation();
 
         vm.selectFork(forkIdAfterUpgrade);
-        address implAfter = parametersRegistryProxy.proxy__getImplementation();
+        address implAfter = address(parametersRegistryImpl);
+        _assertProxyImplementation(address(parametersRegistry), implAfter, "parameters registry after");
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(parametersRegistryImpl));
@@ -358,25 +397,22 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function _assertProxyAdminUnchanged(address proxyAddress, string memory prefix) internal {
-        OssifiableProxy proxy = OssifiableProxy(payable(proxyAddress));
-
         vm.selectFork(forkIdBeforeUpgrade);
-        address adminBefore = proxy.proxy__getAdmin();
+        address adminBefore = OssifiableProxy(payable(proxyAddress)).proxy__getAdmin();
 
         vm.selectFork(forkIdAfterUpgrade);
-        assertEq(proxy.proxy__getAdmin(), adminBefore, string.concat(prefix, " proxy admin changed"));
-        assertEq(proxy.proxy__getAdmin(), deployParams.proxyAdmin, string.concat(prefix, " proxy admin mismatch"));
+        _assertProxyAdmin(proxyAddress, deployParams.proxyAdmin, string.concat(prefix, " after"));
+        assertEq(deployParams.proxyAdmin, adminBefore, string.concat(prefix, " proxy admin changed"));
     }
 
     function test_accountingChanges() public {
-        OssifiableProxy accountingProxy = OssifiableProxy(payable(address(accounting)));
-
         vm.selectFork(forkIdBeforeUpgrade);
-        address implBefore = accountingProxy.proxy__getImplementation();
+        address implBefore = OssifiableProxy(payable(address(accounting))).proxy__getImplementation();
         uint64 versionBefore = accounting.getInitializedVersion();
 
         vm.selectFork(forkIdAfterUpgrade);
-        address implAfter = accountingProxy.proxy__getImplementation();
+        address implAfter = address(accountingImpl);
+        _assertProxyImplementation(address(accounting), implAfter, "accounting after");
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(accountingImpl));
@@ -384,7 +420,8 @@ contract VoteChangesTest is V3UpgradeTestBase {
 
         assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), deployParams.setResetBondCurveAddress));
         assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(vettedGate)));
-        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 2);
+        assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(identifiedDVTClusterGate)));
+        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 3);
         assertFalse(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(permissionlessGate)));
         assertFalse(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(module)));
 
@@ -394,6 +431,11 @@ contract VoteChangesTest is V3UpgradeTestBase {
             deploymentConfig.circuitBreaker,
             _expectedPauseRoleMembersWithoutCb(true)
         );
+
+        IBondLock oldAccountingBondLock = IBondLock(address(implBefore));
+        IBondLock newAccountingBondLock = IBondLock(address(implAfter));
+        assertGe(newAccountingBondLock.MIN_BOND_LOCK_PERIOD(), oldAccountingBondLock.MIN_BOND_LOCK_PERIOD());
+        assertLe(newAccountingBondLock.MAX_BOND_LOCK_PERIOD(), oldAccountingBondLock.MAX_BOND_LOCK_PERIOD());
     }
 
     function test_accountingState() public {
@@ -420,7 +462,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
         vm.selectFork(forkIdAfterUpgrade);
         uint256 curvesCountAfter = accounting.getCurvesCount();
 
-        assertEq(curvesCountBefore, curvesCountAfter, "curvesCount");
+        assertEq(curvesCountAfter, curvesCountBefore + 1, "curvesCount");
         for (uint256 curveId = 0; curveId < curvesCountBefore; curveId++) {
             vm.selectFork(forkIdBeforeUpgrade);
             IBondCurve.BondCurveData memory curveBefore = accounting.getCurveInfo(curveId);
@@ -436,6 +478,171 @@ contract VoteChangesTest is V3UpgradeTestBase {
                 assertEq(beforeInterval.trend, afterInterval.trend, "curve interval trend");
             }
         }
+    }
+
+    function test_identifiedDVTClusterCurveSetup() public {
+        assertNotEq(deploymentConfig.identifiedDVTClusterCurveSetup, address(0), "IdentifiedDVTClusterCurveSetup");
+
+        vm.selectFork(forkIdBeforeUpgrade);
+        uint256 curvesCountBefore = accounting.getCurvesCount();
+
+        vm.selectFork(forkIdAfterUpgrade);
+        OneShotCurveSetup curveSetup = OneShotCurveSetup(deploymentConfig.identifiedDVTClusterCurveSetup);
+        uint256 curveId = curveSetup.deployedCurveId();
+
+        assertTrue(curveSetup.executed(), "curve setup not executed");
+        assertEq(curveId, curvesCountBefore, "curve id");
+        assertEq(curveId, deployParams.identifiedDVTClusterBondCurveId, "configured curve id");
+        assertFalse(
+            accounting.hasRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(curveSetup)),
+            "accounting role not renounced"
+        );
+        assertFalse(
+            parametersRegistry.hasRole(parametersRegistry.MANAGE_CURVE_PARAMETERS_ROLE(), address(curveSetup)),
+            "parameters role not renounced"
+        );
+
+        IBondCurve.BondCurveData memory curve = accounting.getCurveInfo(curveId);
+        assertEq(curve.intervals.length, deployParams.identifiedDVTClusterBondCurve.length, "curve intervals length");
+        uint256 minBond;
+        for (uint256 i; i < curve.intervals.length; ++i) {
+            uint256 minKeysCount = deployParams.identifiedDVTClusterBondCurve[i][0];
+            uint256 trend = deployParams.identifiedDVTClusterBondCurve[i][1];
+            if (i == 0) {
+                minBond = trend;
+            } else {
+                uint256 prevMinKeysCount = deployParams.identifiedDVTClusterBondCurve[i - 1][0];
+                uint256 prevTrend = deployParams.identifiedDVTClusterBondCurve[i - 1][1];
+                minBond += trend + (minKeysCount - prevMinKeysCount - 1) * prevTrend;
+            }
+            assertEq(curve.intervals[i].minKeysCount, minKeysCount, "curve interval min keys");
+            assertEq(curve.intervals[i].minBond, minBond, "curve interval min bond");
+            assertEq(curve.intervals[i].trend, trend, "curve interval trend");
+        }
+        assertEq(
+            accounting.getBondAmountByKeysCount(1, curveId),
+            deployParams.identifiedDVTClusterBondCurve[0][1],
+            "first key bond"
+        );
+        assertEq(
+            accounting.getBondAmountByKeysCount(2, curveId),
+            deployParams.identifiedDVTClusterBondCurve[0][1] + deployParams.identifiedDVTClusterBondCurve[1][1],
+            "second key bond"
+        );
+
+        (uint32 priority, uint32 maxDeposits) = parametersRegistry.getQueueConfig(curveId);
+        assertEq(priority, deployParams.identifiedDVTClusterQueuePriority, "queue priority");
+        assertEq(maxDeposits, deployParams.identifiedDVTClusterQueueMaxDeposits, "queue max deposits");
+
+        IParametersRegistry.KeyNumberValueInterval[] memory rewardShareData = parametersRegistry.getRewardShareData(
+            curveId
+        );
+        assertEq(
+            rewardShareData.length,
+            deployParams.identifiedDVTClusterRewardShareData.length,
+            "reward share length"
+        );
+        for (uint256 i; i < rewardShareData.length; ++i) {
+            assertEq(
+                rewardShareData[i].minKeyNumber,
+                deployParams.identifiedDVTClusterRewardShareData[i][0],
+                "reward share min key"
+            );
+            assertEq(rewardShareData[i].value, deployParams.identifiedDVTClusterRewardShareData[i][1], "reward share");
+        }
+
+        assertEq(
+            parametersRegistry.getKeyRemovalCharge(curveId),
+            deployParams.identifiedDVTClusterKeyRemovalCharge,
+            "key removal charge"
+        );
+        assertEq(
+            parametersRegistry.getGeneralDelayedPenaltyAdditionalFine(curveId),
+            deployParams.identifiedDVTClusterGeneralDelayedPenaltyAdditionalFine,
+            "delayed penalty fine"
+        );
+        assertEq(
+            parametersRegistry.getAllowedExitDelay(curveId),
+            deployParams.identifiedDVTClusterAllowedExitDelay,
+            "allowed exit delay"
+        );
+        assertEq(
+            parametersRegistry.getExitDelayFee(curveId),
+            deployParams.identifiedDVTClusterExitDelayFee,
+            "exit delay fee"
+        );
+
+        (uint256 lifetime, uint256 threshold) = parametersRegistry.getStrikesParams(curveId);
+        assertEq(lifetime, deployParams.defaultStrikesLifetimeFrames, "strikes lifetime");
+        assertEq(threshold, deployParams.defaultStrikesThreshold, "strikes threshold");
+        assertEq(
+            parametersRegistry.getBadPerformancePenalty(curveId),
+            deployParams.defaultBadPerformancePenalty,
+            "bad performance penalty"
+        );
+        assertEq(parametersRegistry.getKeysLimit(curveId), deployParams.defaultKeysLimit, "keys limit");
+        assertEq(
+            parametersRegistry.getMaxElWithdrawalRequestFee(curveId),
+            deployParams.defaultMaxElWithdrawalRequestFee,
+            "max withdrawal request fee"
+        );
+
+        IParametersRegistry.KeyNumberValueInterval[] memory performanceLeewayData = parametersRegistry
+            .getPerformanceLeewayData(curveId);
+        assertEq(performanceLeewayData.length, 1, "performance leeway length");
+        assertEq(performanceLeewayData[0].minKeyNumber, 1, "performance leeway min key");
+        assertEq(performanceLeewayData[0].value, deployParams.defaultAvgPerfLeewayBP, "performance leeway");
+
+        (uint256 attestationsWeight, uint256 blocksWeight, uint256 syncWeight) = parametersRegistry
+            .getPerformanceCoefficients(curveId);
+        assertEq(attestationsWeight, deployParams.defaultAttestationsWeight, "attestations weight");
+        assertEq(blocksWeight, deployParams.defaultBlocksWeight, "blocks weight");
+        assertEq(syncWeight, deployParams.defaultSyncWeight, "sync weight");
+    }
+
+    function test_identifiedDVTClusterGateChanges() public view {
+        uint256 adminsCount = deployParams.secondAdminAddress == address(0) ? 1 : 2;
+        VettedGate gate = identifiedDVTClusterGate;
+
+        _assertProxyImplementation(address(gate), address(vettedGateImpl), "idvtc gate");
+        _assertProxyAdmin(address(gate), deployParams.proxyAdmin, "idvtc gate");
+
+        assertFalse(gate.isPaused(), "gate paused");
+        assertEq(gate.getInitializedVersion(), 1, "gate initialized version");
+        assertEq(address(gate.MODULE()), address(module), "gate module");
+        assertEq(address(gate.ACCOUNTING()), address(accounting), "gate accounting");
+        assertEq(gate.curveId(), deployParams.identifiedDVTClusterBondCurveId, "gate curve id");
+        assertEq(gate.treeRoot(), deployParams.identifiedDVTClusterGateTreeRoot, "gate tree root");
+        assertEq(
+            keccak256(bytes(gate.treeCid())),
+            keccak256(bytes(deployParams.identifiedDVTClusterGateTreeCid)),
+            "gate tree cid"
+        );
+
+        assertTrue(gate.hasRole(gate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent), "gate aragon admin");
+        if (deployParams.secondAdminAddress != address(0)) {
+            assertTrue(gate.hasRole(gate.DEFAULT_ADMIN_ROLE(), deployParams.secondAdminAddress), "gate second admin");
+        }
+        assertEq(gate.getRoleMemberCount(gate.DEFAULT_ADMIN_ROLE()), adminsCount, "gate admin count");
+
+        assertTrue(gate.hasRole(gate.SET_TREE_ROLE(), deployParams.easyTrackEVMScriptExecutor), "gate set tree role");
+        assertEq(gate.getRoleMemberCount(gate.SET_TREE_ROLE()), 1, "gate set tree count");
+
+        assertTrue(gate.hasRole(gate.PAUSE_ROLE(), deployParams.resealManager), "gate pause role");
+        if (_isCircuitBreakerConfigured(deploymentConfig.circuitBreaker)) {
+            assertTrue(
+                gate.hasRole(gate.PAUSE_ROLE(), deploymentConfig.circuitBreaker),
+                "gate circuit breaker pause role"
+            );
+            assertEq(gate.getRoleMemberCount(gate.PAUSE_ROLE()), 2, "gate pause count");
+        } else {
+            assertEq(gate.getRoleMemberCount(gate.PAUSE_ROLE()), 1, "gate pause count");
+        }
+
+        assertTrue(gate.hasRole(gate.RESUME_ROLE(), deployParams.resealManager), "gate resume role");
+        assertEq(gate.getRoleMemberCount(gate.RESUME_ROLE()), 1, "gate resume count");
+
+        assertEq(gate.getRoleMemberCount(gate.RECOVERER_ROLE()), 0, "gate recoverer count");
     }
 
     function test_accountingNodeOperatorsState() public {
@@ -468,12 +675,12 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_feeDistributorChanges() public {
-        OssifiableProxy feeDistributorProxy = OssifiableProxy(payable(address(feeDistributor)));
         vm.selectFork(forkIdBeforeUpgrade);
-        address implBefore = feeDistributorProxy.proxy__getImplementation();
+        address implBefore = OssifiableProxy(payable(address(feeDistributor))).proxy__getImplementation();
 
         vm.selectFork(forkIdAfterUpgrade);
-        address implAfter = feeDistributorProxy.proxy__getImplementation();
+        address implAfter = address(feeDistributorImpl);
+        _assertProxyImplementation(address(feeDistributor), implAfter, "fee distributor after");
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(feeDistributorImpl));
@@ -517,15 +724,14 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_feeOracleChanges() public {
-        OssifiableProxy oracleProxy = OssifiableProxy(payable(address(oracle)));
-
         vm.selectFork(forkIdBeforeUpgrade);
-        address implBefore = oracleProxy.proxy__getImplementation();
+        address implBefore = OssifiableProxy(payable(address(oracle))).proxy__getImplementation();
         uint256 contractVersionBefore = oracle.getContractVersion();
         uint256 consensusVersionBefore = oracle.getConsensusVersion();
 
         vm.selectFork(forkIdAfterUpgrade);
-        address implAfter = oracleProxy.proxy__getImplementation();
+        address implAfter = address(oracleImpl);
+        _assertProxyImplementation(address(oracle), implAfter, "oracle after");
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(oracleImpl));
@@ -543,16 +749,15 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_validatorStrikesChanges() public {
-        OssifiableProxy strikesProxy = OssifiableProxy(payable(address(strikes)));
-
         vm.selectFork(forkIdBeforeUpgrade);
-        address implBefore = strikesProxy.proxy__getImplementation();
+        address implBefore = OssifiableProxy(payable(address(strikes))).proxy__getImplementation();
         bytes32 treeRootBefore = strikes.treeRoot();
         string memory treeCidBefore = strikes.treeCid();
         address ejectorBefore = address(strikes.ejector());
 
         vm.selectFork(forkIdAfterUpgrade);
-        address implAfter = strikesProxy.proxy__getImplementation();
+        address implAfter = address(strikesImpl);
+        _assertProxyImplementation(address(strikes), implAfter, "strikes after");
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(strikesImpl));
@@ -573,10 +778,8 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_vettedGateChanges() public {
-        OssifiableProxy vettedGateProxy = OssifiableProxy(payable(address(vettedGate)));
-
         vm.selectFork(forkIdBeforeUpgrade);
-        address implBefore = vettedGateProxy.proxy__getImplementation();
+        address implBefore = OssifiableProxy(payable(address(vettedGate))).proxy__getImplementation();
         bytes32 treeRootBefore = vettedGate.treeRoot();
         string memory treeCidBefore = vettedGate.treeCid();
         uint64 versionBefore = vettedGate.getInitializedVersion();
@@ -589,7 +792,8 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(endReferralRoleMembersBefore, 1);
 
         vm.selectFork(forkIdAfterUpgrade);
-        address implAfter = vettedGateProxy.proxy__getImplementation();
+        address implAfter = address(vettedGateImpl);
+        _assertProxyImplementation(address(vettedGate), implAfter, "vetted gate after");
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(vettedGateImpl));
@@ -619,6 +823,9 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertTrue(accounting.hasRole(accounting.PAUSE_ROLE(), deploymentConfig.circuitBreaker));
         assertTrue(oracle.hasRole(oracle.PAUSE_ROLE(), deploymentConfig.circuitBreaker));
         assertTrue(vettedGate.hasRole(vettedGate.PAUSE_ROLE(), deploymentConfig.circuitBreaker));
+        assertTrue(
+            identifiedDVTClusterGate.hasRole(identifiedDVTClusterGate.PAUSE_ROLE(), deploymentConfig.circuitBreaker)
+        );
         Verifier verifierV3Contract = Verifier(deploymentConfig.verifierV3);
         assertTrue(verifierV3Contract.hasRole(verifierV3Contract.PAUSE_ROLE(), deploymentConfig.circuitBreaker));
         Ejector ejectorContract = Ejector(payable(deploymentConfig.ejector));
@@ -629,21 +836,21 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(cb.getPauser(address(accounting)), deployParams.circuitBreakerPauser);
         assertEq(cb.getPauser(address(oracle)), deployParams.circuitBreakerPauser);
         assertEq(cb.getPauser(address(vettedGate)), deployParams.circuitBreakerPauser);
+        assertEq(cb.getPauser(address(identifiedDVTClusterGate)), deployParams.circuitBreakerPauser);
         assertEq(cb.getPauser(deploymentConfig.verifierV3), deployParams.circuitBreakerPauser);
         assertEq(cb.getPauser(deploymentConfig.ejector), deployParams.circuitBreakerPauser);
     }
 
     function test_exitPenaltiesChanges() public {
-        OssifiableProxy exitPenaltiesProxy = OssifiableProxy(payable(address(exitPenalties)));
-
         vm.selectFork(forkIdBeforeUpgrade);
-        address implBefore = exitPenaltiesProxy.proxy__getImplementation();
+        address implBefore = OssifiableProxy(payable(address(exitPenalties))).proxy__getImplementation();
         address moduleBefore = address(exitPenalties.MODULE());
         address accountingBefore = address(exitPenalties.ACCOUNTING());
         address strikesBefore = exitPenalties.STRIKES();
 
         vm.selectFork(forkIdAfterUpgrade);
-        address implAfter = exitPenaltiesProxy.proxy__getImplementation();
+        address implAfter = address(exitPenaltiesImpl);
+        _assertProxyImplementation(address(exitPenalties), implAfter, "exit penalties after");
 
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(exitPenaltiesImpl));

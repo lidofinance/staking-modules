@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
@@ -16,15 +16,20 @@ import { Verifier } from "../../src/Verifier.sol";
 import { VettedGate } from "../../src/VettedGate.sol";
 import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
+import { OneShotCurveSetup } from "../../src/utils/OneShotCurveSetup.sol";
+import { IOneShotCurveSetup } from "../../src/interfaces/IOneShotCurveSetup.sol";
 import { IVerifier } from "../../src/interfaces/IVerifier.sol";
+import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 
 import { JsonObj, Json } from "../utils/Json.sol";
+import { CommonScriptUtils } from "../utils/Common.sol";
 import { Slot } from "../../src/lib/Types.sol";
 
 abstract contract DeployCSMImplementationsBase is DeployBase {
     Verifier public verifierV3;
+    OneShotCurveSetup public identifiedDVTClusterCurveSetup;
     address public earlyAdoption;
-    address public legacyGateSeal; // FIXME: remove.
+    address public legacyGateSeal; // TODO: remove after the CB mainnet deployment.
 
     bytes32 internal constant LEGACY_QUEUE_SLOT = bytes32(uint256(1));
 
@@ -54,6 +59,17 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
 
             VettedGate vettedGateImpl = new VettedGate(address(csm));
             vettedGateFactory = new MerkleGateFactory(address(vettedGateImpl));
+            uint256 expectedIdentifiedDVTClusterCurveId = accounting.getCurvesCount();
+            config.identifiedDVTClusterBondCurveId = expectedIdentifiedDVTClusterCurveId;
+            identifiedDVTClusterGate = VettedGate(
+                vettedGateFactory.create(
+                    expectedIdentifiedDVTClusterCurveId,
+                    config.identifiedDVTClusterGateTreeRoot,
+                    config.identifiedDVTClusterGateTreeCid,
+                    deployer
+                )
+            );
+            OssifiableProxy(payable(address(identifiedDVTClusterGate))).proxy__changeAdmin(config.proxyAdmin);
 
             FeeOracle oracleImpl = new FeeOracle({
                 feeDistributor: address(feeDistributor),
@@ -83,6 +99,12 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             ejector = new Ejector(address(csm), address(strikes), deployer);
 
             permissionlessGate = new PermissionlessGate(address(csm), deployer);
+
+            identifiedDVTClusterCurveSetup = new OneShotCurveSetup(
+                address(accounting),
+                address(parametersRegistry),
+                _identifiedDVTClusterCurveSetupParams()
+            );
 
             // prettier-ignore
             verifierV3 = new Verifier({
@@ -115,15 +137,25 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             verifierV3.grantRole(verifierV3.RESUME_ROLE(), config.resealManager);
             ejector.grantRole(ejector.PAUSE_ROLE(), config.resealManager);
             ejector.grantRole(ejector.RESUME_ROLE(), config.resealManager);
+            identifiedDVTClusterGate.grantRole(identifiedDVTClusterGate.PAUSE_ROLE(), config.resealManager);
+            identifiedDVTClusterGate.grantRole(identifiedDVTClusterGate.RESUME_ROLE(), config.resealManager);
 
             if (config.circuitBreaker != address(0)) {
                 ejector.grantRole(ejector.PAUSE_ROLE(), config.circuitBreaker);
+                identifiedDVTClusterGate.grantRole(identifiedDVTClusterGate.PAUSE_ROLE(), circuitBreaker);
             }
             ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             ejector.revokeRole(ejector.DEFAULT_ADMIN_ROLE(), deployer);
 
             permissionlessGate.grantRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             permissionlessGate.revokeRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), deployer);
+
+            identifiedDVTClusterGate.grantRole(identifiedDVTClusterGate.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
+            identifiedDVTClusterGate.grantRole(
+                identifiedDVTClusterGate.SET_TREE_ROLE(),
+                config.easyTrackEVMScriptExecutor
+            );
+            identifiedDVTClusterGate.revokeRole(identifiedDVTClusterGate.DEFAULT_ADMIN_ROLE(), deployer);
 
             if (config.circuitBreaker != address(0)) {
                 verifierV3.grantRole(verifierV3.PAUSE_ROLE(), config.circuitBreaker);
@@ -156,9 +188,11 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             deployJson.set("Verifier", address(verifier));
             deployJson.set("VerifierV3", address(verifierV3));
             deployJson.set("PermissionlessGate", address(permissionlessGate));
-            deployJson.set("MerkleGateFactory", address(vettedGateFactory));
-            deployJson.set("MerkleGate", address(vettedGate));
-            deployJson.set("MerkleGateImpl", address(vettedGateImpl));
+            deployJson.set("IdentifiedDVTClusterCurveSetup", address(identifiedDVTClusterCurveSetup));
+            deployJson.set("IdentifiedDVTClusterGate", address(identifiedDVTClusterGate));
+            deployJson.set("VettedGateFactory", address(vettedGateFactory));
+            deployJson.set("VettedGate", address(vettedGate));
+            deployJson.set("VettedGateImpl", address(vettedGateImpl));
             deployJson.set("LidoLocator", config.lidoLocatorAddress);
             deployJson.set("GateSeal", legacyGateSeal);
             deployJson.set("CircuitBreaker", config.circuitBreaker);
@@ -178,6 +212,7 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
         ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         verifierV3.grantRole(verifierV3.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         permissionlessGate.grantRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        identifiedDVTClusterGate.grantRole(identifiedDVTClusterGate.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
     }
 
     function _ensureLegacyQueueDrained() internal {
@@ -189,5 +224,41 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
         uint128 tail = uint128(uint256(queuePointers) >> 128);
 
         if (head != tail) revert LegacyQueueNotEmpty(head, tail);
+    }
+
+    function _identifiedDVTClusterCurveSetupParams()
+        internal
+        view
+        returns (IOneShotCurveSetup.ConstructorParams memory params)
+    {
+        params.bondCurve = CommonScriptUtils.arraysToBondCurveIntervalsInputs(config.identifiedDVTClusterBondCurve);
+
+        params.queueConfig = IOneShotCurveSetup.QueueConfigOverride({
+            isSet: true,
+            priority: config.identifiedDVTClusterQueuePriority,
+            maxDeposits: config.identifiedDVTClusterQueueMaxDeposits
+        });
+
+        params.rewardShareData.isSet = true;
+        params.rewardShareData.data = CommonScriptUtils.arraysToKeyIndexValueIntervals(
+            config.identifiedDVTClusterRewardShareData
+        );
+
+        params.keyRemovalCharge = IOneShotCurveSetup.ScalarOverride({
+            isSet: true,
+            value: config.identifiedDVTClusterKeyRemovalCharge
+        });
+        params.generalDelayedPenaltyFine = IOneShotCurveSetup.ScalarOverride({
+            isSet: true,
+            value: config.identifiedDVTClusterGeneralDelayedPenaltyAdditionalFine
+        });
+        params.allowedExitDelay = IOneShotCurveSetup.ScalarOverride({
+            isSet: true,
+            value: config.identifiedDVTClusterAllowedExitDelay
+        });
+        params.exitDelayFee = IOneShotCurveSetup.ScalarOverride({
+            isSet: true,
+            value: config.identifiedDVTClusterExitDelayFee
+        });
     }
 }

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
@@ -602,6 +602,14 @@ abstract contract ModuleMisc is ModuleFixtures {
         uint256 noId = createNodeOperator();
         bool active = module.getNodeOperatorIsActive(noId);
         assertTrue(active);
+    }
+
+    function test_getNodeOperatorIsActive_FalseForNonExistentOperator() public assertInvariants {
+        createNodeOperator();
+
+        bool active = module.getNodeOperatorIsActive(1);
+
+        assertFalse(active);
     }
 
     function test_getNodeOperatorIds() public assertInvariants {

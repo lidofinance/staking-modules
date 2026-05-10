@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
@@ -8,6 +8,7 @@ import { BaseOracle } from "src/lib/base-oracle/BaseOracle.sol";
 import { UnstructuredStorage } from "src/lib/UnstructuredStorage.sol";
 import { Utilities, hasLog } from "../../../helpers/Utilities.sol";
 import { MockConsensusContract } from "../../../helpers/mocks/ConsensusContractMock.sol";
+import { Stub } from "../../../helpers/mocks/Stub.sol";
 
 struct ConsensusReport {
     bytes32 hash;
@@ -162,9 +163,11 @@ contract BaseOracleTest is Test, Utilities {
     }
 
     function test_setConsensusContract_RevertsOnInvalidContract() public {
+        Stub invalidConsensus = new Stub();
+
         vm.prank(admin);
-        vm.expectRevert();
-        oracle.setConsensusContract(member);
+        vm.expectRevert(Stub.NotImplemented.selector);
+        oracle.setConsensusContract(address(invalidConsensus));
     }
 
     function test_setConsensusContract_RevertsOnMismatchedConfig() public {

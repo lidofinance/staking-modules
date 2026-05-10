@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
@@ -392,7 +392,7 @@ contract OneShotCurveSetupTest is Test, Utilities, Fixtures {
         accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
         vm.stopPrank();
 
-        vm.expectRevert();
+        expectRoleRevert(address(deployer), registry.MANAGE_KEYS_LIMIT_ROLE());
         deployer.execute();
 
         assertFalse(deployer.executed());

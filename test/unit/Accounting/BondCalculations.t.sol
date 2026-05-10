@@ -1,7 +1,9 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
+
+import { stdError } from "forge-std/Test.sol";
 
 import { BaseTest, BondStateBaseTest, GetRequiredBondBaseTest, GetRequiredBondForKeysBaseTest, RewardsBaseTest } from "./_Base.t.sol";
 import { Accounting } from "src/Accounting.sol";
@@ -297,7 +299,7 @@ contract LockBondTest is BaseTest {
         accounting.lockBond(0, 1 ether);
         assertEq(accounting.getLockedBond(0), 1 ether);
 
-        vm.expectRevert();
+        vm.expectRevert(stdError.arithmeticError);
         vm.prank(address(stakingModule));
         accounting.lockBond(0, type(uint256).max);
     }

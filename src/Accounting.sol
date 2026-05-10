@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.33;
@@ -601,6 +601,7 @@ contract Accounting is
 
     function _setChargePenaltyRecipient(address _chargePenaltyRecipient) private {
         if (_chargePenaltyRecipient == address(0)) revert ZeroChargePenaltyRecipientAddress();
+        if (_chargePenaltyRecipient == address(LIDO)) revert InvalidChargePenaltyRecipientAddress();
         chargePenaltyRecipient = _chargePenaltyRecipient;
         emit ChargePenaltyRecipientSet(_chargePenaltyRecipient);
     }
