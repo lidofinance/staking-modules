@@ -98,7 +98,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
         module.revokeRole(module.RESUME_ROLE(), agent);
         // 7. Update initial epoch
         hashConsensus.updateInitialEpoch(47480);
-        // 8-13. Register pausers in CircuitBreaker
+        // 8-14. Register pausers in CircuitBreaker
         if (address(circuitBreaker).code.length > 0) {
             circuitBreaker.registerPauser(address(module), cbPauser);
             circuitBreaker.registerPauser(address(accounting), cbPauser);
@@ -108,6 +108,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
             if (moduleType == ModuleType.Community) {
                 // VettedGate pauser (Community0x02 has no VettedGate)
                 circuitBreaker.registerPauser(address(vettedGate), cbPauser);
+                circuitBreaker.registerPauser(address(identifiedDVTClusterGate), cbPauser);
             }
         }
 
