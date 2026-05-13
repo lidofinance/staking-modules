@@ -201,7 +201,7 @@ if (onChainRoot === ZERO_ROOT) {
 
   // Fetch from IPFS using on-chain treeCid
   if (!loaded) {
-    const treeCid = castCall(feeDistributor, "treeCid()(string)");
+    const treeCid = castCall(feeDistributor, "treeCid()(string)").replace(/^"|"$/g, "");
     console.log(`On-chain tree CID: ${treeCid}`);
     const ipfsUrls = [
       `https://ipfs.io/ipfs/${treeCid}`,
@@ -212,7 +212,10 @@ if (onChainRoot === ZERO_ROOT) {
     for (const url of ipfsUrls) {
       try {
         const res = await fetch(url);
-        if (!res.ok) continue;
+        if (!res.ok) {
+          console.warn(`IPFS gateway ${url} returned ${res.status}`);
+          continue;
+        }
         const dump = jsonParse(await res.text());
         const tree = StandardMerkleTree.load(dump);
         if (tree.root.toLowerCase() !== onChainRoot.toLowerCase()) {
