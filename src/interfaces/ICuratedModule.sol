@@ -51,7 +51,7 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
     /// @notice Returns current deposit allocation targets for all operators.
     /// @dev Target = totalCurrent * operatorWeight / totalWeight (in validator count).
     ///      Includes operators regardless of depositable capacity for informational purposes.
-    ///      Actual allocation recalculates shares only across operators with available capacity,
+    ///      Actual allocation recalculates shares only across operators with usable capacity,
     ///      so real per-operator amounts may differ from the targets shown here.
     ///      Arrays are indexed by operator id; zero-weight operators have zero values.
     /// @return currentValidators Current active validator count per operator.
@@ -64,7 +64,7 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
     /// @notice Returns current top-up allocation targets for all operators.
     /// @dev Target = totalCurrent * operatorWeight / totalWeight (in wei).
     ///      Includes operators regardless of top-up capacity for informational purposes.
-    ///      Actual allocation recalculates shares only across operators with available capacity,
+    ///      Actual allocation recalculates shares only across operators with usable capacity,
     ///      so real per-operator amounts may differ from the targets shown here.
     ///      Arrays are indexed by operator id; zero-weight operators have zero values.
     /// @return currentAllocations Current operator stake in wei.
