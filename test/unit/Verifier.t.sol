@@ -9,7 +9,7 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { Verifier } from "src/Verifier.sol";
-import { pack } from "src/lib/GIndex.sol";
+import { toGIndex } from "src/lib/GIndex.sol";
 import { Slot } from "src/lib/Types.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 import { SSZ } from "src/lib/SSZ.sol";
@@ -80,14 +80,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: pack(0xe1c0, 4),
-                gIFirstWithdrawalCurr: pack(0xe1c1, 4),
-                gIFirstValidatorPrev: pack(0x560000000000, 40),
-                gIFirstValidatorCurr: pack(0x560000000001, 40),
-                gIFirstHistoricalSummaryPrev: pack(0xfff0, 4),
-                gIFirstHistoricalSummaryCurr: pack(0xffff, 4),
-                gIFirstBalanceNodePrev: pack(0x160000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x160000000001, 40)
+                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
+                gIFirstWithdrawalCurr: toGIndex(0xe1c1),
+                gIFirstValidatorPrev: toGIndex(0x560000000000),
+                gIFirstValidatorCurr: toGIndex(0x560000000001),
+                gIFirstHistoricalSummaryPrev: toGIndex(0xfff0),
+                gIFirstHistoricalSummaryCurr: toGIndex(0xffff),
+                gIFirstBalanceNodePrev: toGIndex(0x160000000000),
+                gIFirstBalanceNodeCurr: toGIndex(0x160000000001)
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: Slot.wrap(100_501),
@@ -100,15 +100,15 @@ contract VerifierTestConstructor is VerifierTestBase {
         assertEq(address(verifier.MODULE()), address(module));
         assertEq(verifier.SLOTS_PER_EPOCH(), 32);
         assertEq(verifier.SLOTS_PER_HISTORICAL_ROOT(), 8192);
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_PREV()), GIndex.unwrap(pack(0xe1c0, 4)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_CURR()), GIndex.unwrap(pack(0xe1c1, 4)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_PREV()), GIndex.unwrap(pack(0x560000000000, 40)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_CURR()), GIndex.unwrap(pack(0x560000000001, 40)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_HISTORICAL_SUMMARY_PREV()), GIndex.unwrap(pack(0xfff0, 4)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_HISTORICAL_SUMMARY_CURR()), GIndex.unwrap(pack(0xffff, 4)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_BLOCK_ROOT_IN_SUMMARY()), GIndex.unwrap(pack(0x4000, 13)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_PREV()), GIndex.unwrap(pack(0x160000000000, 40)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_CURR()), GIndex.unwrap(pack(0x160000000001, 40)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_PREV()), GIndex.unwrap(toGIndex(0xe1c0)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_CURR()), GIndex.unwrap(toGIndex(0xe1c1)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_PREV()), GIndex.unwrap(toGIndex(0x560000000000)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_CURR()), GIndex.unwrap(toGIndex(0x560000000001)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_HISTORICAL_SUMMARY_PREV()), GIndex.unwrap(toGIndex(0xfff0)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_HISTORICAL_SUMMARY_CURR()), GIndex.unwrap(toGIndex(0xffff)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_BLOCK_ROOT_IN_SUMMARY()), GIndex.unwrap(toGIndex(0x4000)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_PREV()), GIndex.unwrap(toGIndex(0x160000000000)));
+        assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_CURR()), GIndex.unwrap(toGIndex(0x160000000001)));
         assertEq(Slot.unwrap(verifier.FIRST_SUPPORTED_SLOT()), Slot.unwrap(firstSupportedSlot));
         assertEq(Slot.unwrap(verifier.PIVOT_SLOT()), Slot.unwrap(Slot.wrap(100_501)));
         assertEq(Slot.unwrap(verifier.CAPELLA_SLOT()), Slot.unwrap(Slot.wrap(42)));
@@ -122,14 +122,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 0,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: pack(0xe1c0, 4),
-                gIFirstWithdrawalCurr: pack(0xe1c0, 4),
-                gIFirstValidatorPrev: pack(0x560000000000, 40),
-                gIFirstValidatorCurr: pack(0x560000000000, 40),
-                gIFirstHistoricalSummaryPrev: pack(0x3b, 0),
-                gIFirstHistoricalSummaryCurr: pack(0x3b, 0),
-                gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
+                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
+                gIFirstWithdrawalCurr: toGIndex(0xe1c0),
+                gIFirstValidatorPrev: toGIndex(0x560000000000),
+                gIFirstValidatorCurr: toGIndex(0x560000000000),
+                gIFirstHistoricalSummaryPrev: toGIndex(0x3b),
+                gIFirstHistoricalSummaryCurr: toGIndex(0x3b),
+                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
+                gIFirstBalanceNodeCurr: toGIndex(0x260000000000)
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -146,14 +146,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: pack(0xe1c0, 4),
-                gIFirstWithdrawalCurr: pack(0xe1c0, 4),
-                gIFirstValidatorPrev: pack(0x560000000000, 40),
-                gIFirstValidatorCurr: pack(0x560000000000, 40),
-                gIFirstHistoricalSummaryPrev: pack(0x3b, 0),
-                gIFirstHistoricalSummaryCurr: pack(0x3b, 0),
-                gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
+                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
+                gIFirstWithdrawalCurr: toGIndex(0xe1c0),
+                gIFirstValidatorPrev: toGIndex(0x560000000000),
+                gIFirstValidatorCurr: toGIndex(0x560000000000),
+                gIFirstHistoricalSummaryPrev: toGIndex(0x3b),
+                gIFirstHistoricalSummaryCurr: toGIndex(0x3b),
+                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
+                gIFirstBalanceNodeCurr: toGIndex(0x260000000000)
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: firstSupportedSlot.dec(),
@@ -170,14 +170,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: pack(0xe1c0, 4),
-                gIFirstWithdrawalCurr: pack(0xe1c0, 4),
-                gIFirstValidatorPrev: pack(0x560000000000, 40),
-                gIFirstValidatorCurr: pack(0x560000000000, 40),
-                gIFirstHistoricalSummaryPrev: pack(0x3b, 0),
-                gIFirstHistoricalSummaryCurr: pack(0x3b, 0),
-                gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
+                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
+                gIFirstWithdrawalCurr: toGIndex(0xe1c0),
+                gIFirstValidatorPrev: toGIndex(0x560000000000),
+                gIFirstValidatorCurr: toGIndex(0x560000000000),
+                gIFirstHistoricalSummaryPrev: toGIndex(0x3b),
+                gIFirstHistoricalSummaryCurr: toGIndex(0x3b),
+                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
+                gIFirstBalanceNodeCurr: toGIndex(0x260000000000)
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: firstSupportedSlot,
@@ -194,14 +194,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(0),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: pack(0xe1c0, 4),
-                gIFirstWithdrawalCurr: pack(0xe1c0, 4),
-                gIFirstValidatorPrev: pack(0x560000000000, 40),
-                gIFirstValidatorCurr: pack(0x560000000000, 40),
-                gIFirstHistoricalSummaryPrev: pack(0x3b, 0),
-                gIFirstHistoricalSummaryCurr: pack(0x3b, 0),
-                gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
+                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
+                gIFirstWithdrawalCurr: toGIndex(0xe1c0),
+                gIFirstValidatorPrev: toGIndex(0x560000000000),
+                gIFirstValidatorCurr: toGIndex(0x560000000000),
+                gIFirstHistoricalSummaryPrev: toGIndex(0x3b),
+                gIFirstHistoricalSummaryCurr: toGIndex(0x3b),
+                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
+                gIFirstBalanceNodeCurr: toGIndex(0x260000000000)
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -218,14 +218,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: pack(0xe1c0, 4),
-                gIFirstWithdrawalCurr: pack(0xe1c0, 4),
-                gIFirstValidatorPrev: pack(0x560000000000, 40),
-                gIFirstValidatorCurr: pack(0x560000000000, 40),
-                gIFirstHistoricalSummaryPrev: pack(0x3b, 0),
-                gIFirstHistoricalSummaryCurr: pack(0x3b, 0),
-                gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
+                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
+                gIFirstWithdrawalCurr: toGIndex(0xe1c0),
+                gIFirstValidatorPrev: toGIndex(0x560000000000),
+                gIFirstValidatorCurr: toGIndex(0x560000000000),
+                gIFirstHistoricalSummaryPrev: toGIndex(0x3b),
+                gIFirstHistoricalSummaryCurr: toGIndex(0x3b),
+                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
+                gIFirstBalanceNodeCurr: toGIndex(0x260000000000)
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -242,14 +242,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: pack(0xe1c0, 4),
-                gIFirstWithdrawalCurr: pack(0xe1c0, 4),
-                gIFirstValidatorPrev: pack(0x560000000000, 40),
-                gIFirstValidatorCurr: pack(0x560000000000, 40),
+                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
+                gIFirstWithdrawalCurr: toGIndex(0xe1c0),
+                gIFirstValidatorPrev: toGIndex(0x560000000000),
+                gIFirstValidatorCurr: toGIndex(0x560000000000),
                 gIFirstHistoricalSummaryPrev: NULL_GINDEX,
                 gIFirstHistoricalSummaryCurr: NULL_GINDEX,
-                gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
+                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
+                gIFirstBalanceNodeCurr: toGIndex(0x260000000000)
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -266,14 +266,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: pack(0xe1c0, 4),
-                gIFirstWithdrawalCurr: pack(0xe1c0, 4),
-                gIFirstValidatorPrev: pack(0x560000000000, 40),
-                gIFirstValidatorCurr: pack(0x560000000000, 40),
-                gIFirstHistoricalSummaryPrev: pack(0x3b, 0),
-                gIFirstHistoricalSummaryCurr: pack(0x3b, 0),
-                gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
+                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
+                gIFirstWithdrawalCurr: toGIndex(0xe1c0),
+                gIFirstValidatorPrev: toGIndex(0x560000000000),
+                gIFirstValidatorCurr: toGIndex(0x560000000000),
+                gIFirstHistoricalSummaryPrev: toGIndex(0x3b),
+                gIFirstHistoricalSummaryCurr: toGIndex(0x3b),
+                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
+                gIFirstBalanceNodeCurr: toGIndex(0x260000000000)
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: firstSupportedSlot,
@@ -290,14 +290,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: pack(0xe1c0, 4),
-                gIFirstWithdrawalCurr: pack(0xe1c0, 4),
-                gIFirstValidatorPrev: pack(0x560000000000, 40),
-                gIFirstValidatorCurr: pack(0x560000000000, 40),
-                gIFirstHistoricalSummaryPrev: pack(0x3b, 0),
-                gIFirstHistoricalSummaryCurr: pack(0x3b, 0),
-                gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
+                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
+                gIFirstWithdrawalCurr: toGIndex(0xe1c0),
+                gIFirstValidatorPrev: toGIndex(0x560000000000),
+                gIFirstValidatorCurr: toGIndex(0x560000000000),
+                gIFirstHistoricalSummaryPrev: toGIndex(0x3b),
+                gIFirstHistoricalSummaryCurr: toGIndex(0x3b),
+                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
+                gIFirstBalanceNodeCurr: toGIndex(0x260000000000)
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: firstSupportedSlot,
@@ -1017,14 +1017,14 @@ contract VerifierGIndexTest is Test, Utilities {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: pack(0xe1c0, 4),
-                gIFirstWithdrawalCurr: pack(0x161c0, 4),
-                gIFirstValidatorPrev: pack(0x560000000000, 40),
-                gIFirstValidatorCurr: pack(0x960000000000, 40),
-                gIFirstHistoricalSummaryPrev: pack(0x76000000, 24),
-                gIFirstHistoricalSummaryCurr: pack(0xb6000000, 24),
-                gIFirstBalanceNodePrev: pack(0x260000000000, 40),
-                gIFirstBalanceNodeCurr: pack(0x360000000000, 40)
+                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
+                gIFirstWithdrawalCurr: toGIndex(0x161c0),
+                gIFirstValidatorPrev: toGIndex(0x560000000000),
+                gIFirstValidatorCurr: toGIndex(0x960000000000),
+                gIFirstHistoricalSummaryPrev: toGIndex(0x76000000),
+                gIFirstHistoricalSummaryCurr: toGIndex(0xb6000000),
+                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
+                gIFirstBalanceNodeCurr: toGIndex(0x360000000000)
             }),
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192 * 13),
@@ -1049,19 +1049,19 @@ contract VerifierGIndexTest is Test, Utilities {
             Slot slot = slots[i];
 
             gI = verifier.getValidatorGI(0, slot);
-            assertEq(gI.unwrap(), pack(0x560000000000, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x560000000000).unwrap());
 
             gI = verifier.getValidatorGI(1, slot);
-            assertEq(gI.unwrap(), pack(0x560000000001, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x560000000001).unwrap());
 
             gI = verifier.getValidatorGI(16, slot);
-            assertEq(gI.unwrap(), pack(0x560000000010, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x560000000010).unwrap());
 
             gI = verifier.getValidatorGI(17, slot);
-            assertEq(gI.unwrap(), pack(0x560000000011, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x560000000011).unwrap());
 
             gI = verifier.getValidatorGI((2 ** 40) - 1, slot);
-            assertEq(gI.unwrap(), pack(0x56ffffffffff, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x56ffffffffff).unwrap());
         }
     }
 
@@ -1078,19 +1078,19 @@ contract VerifierGIndexTest is Test, Utilities {
             Slot slot = slots[i];
 
             gI = verifier.getValidatorGI(0, slot);
-            assertEq(gI.unwrap(), pack(0x960000000000, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x960000000000).unwrap());
 
             gI = verifier.getValidatorGI(1, slot);
-            assertEq(gI.unwrap(), pack(0x960000000001, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x960000000001).unwrap());
 
             gI = verifier.getValidatorGI(16, slot);
-            assertEq(gI.unwrap(), pack(0x960000000010, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x960000000010).unwrap());
 
             gI = verifier.getValidatorGI(17, slot);
-            assertEq(gI.unwrap(), pack(0x960000000011, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x960000000011).unwrap());
 
             gI = verifier.getValidatorGI((2 ** 40) - 1, slot);
-            assertEq(gI.unwrap(), pack(0x96ffffffffff, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x96ffffffffff).unwrap());
         }
     }
 
@@ -1107,13 +1107,13 @@ contract VerifierGIndexTest is Test, Utilities {
             Slot slot = slots[i];
 
             gI = verifier.getWithdrawalGI(0, slot);
-            assertEq(gI.unwrap(), pack(0xe1c0, 4).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0xe1c0).unwrap());
 
             gI = verifier.getWithdrawalGI(1, slot);
-            assertEq(gI.unwrap(), pack(0xe1c1, 4).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0xe1c1).unwrap());
 
             gI = verifier.getWithdrawalGI(15, slot);
-            assertEq(gI.unwrap(), pack(0xe1cf, 4).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0xe1cf).unwrap());
         }
     }
 
@@ -1130,13 +1130,13 @@ contract VerifierGIndexTest is Test, Utilities {
             Slot slot = slots[i];
 
             gI = verifier.getWithdrawalGI(0, slot);
-            assertEq(gI.unwrap(), pack(0x161c0, 4).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x161c0).unwrap());
 
             gI = verifier.getWithdrawalGI(1, slot);
-            assertEq(gI.unwrap(), pack(0x161c1, 4).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x161c1).unwrap());
 
             gI = verifier.getWithdrawalGI(15, slot);
-            assertEq(gI.unwrap(), pack(0x161cf, 4).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x161cf).unwrap());
         }
     }
 
@@ -1153,19 +1153,19 @@ contract VerifierGIndexTest is Test, Utilities {
             Slot slot = slots[i];
 
             gI = verifier.getValidatorBalanceGI(0, slot);
-            assertEq(gI.unwrap(), pack(0x260000000000, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x260000000000).unwrap());
 
             gI = verifier.getValidatorBalanceGI(1, slot);
-            assertEq(gI.unwrap(), pack(0x260000000001, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x260000000001).unwrap());
 
             gI = verifier.getValidatorBalanceGI(16, slot);
-            assertEq(gI.unwrap(), pack(0x260000000010, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x260000000010).unwrap());
 
             gI = verifier.getValidatorBalanceGI(17, slot);
-            assertEq(gI.unwrap(), pack(0x260000000011, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x260000000011).unwrap());
 
             gI = verifier.getValidatorBalanceGI((2 ** 40) - 1, slot);
-            assertEq(gI.unwrap(), pack(0x26ffffffffff, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x26ffffffffff).unwrap());
         }
     }
 
@@ -1182,19 +1182,19 @@ contract VerifierGIndexTest is Test, Utilities {
             Slot slot = slots[i];
 
             gI = verifier.getValidatorBalanceGI(0, slot);
-            assertEq(gI.unwrap(), pack(0x360000000000, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x360000000000).unwrap());
 
             gI = verifier.getValidatorBalanceGI(1, slot);
-            assertEq(gI.unwrap(), pack(0x360000000001, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x360000000001).unwrap());
 
             gI = verifier.getValidatorBalanceGI(16, slot);
-            assertEq(gI.unwrap(), pack(0x360000000010, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x360000000010).unwrap());
 
             gI = verifier.getValidatorBalanceGI(17, slot);
-            assertEq(gI.unwrap(), pack(0x360000000011, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x360000000011).unwrap());
 
             gI = verifier.getValidatorBalanceGI((2 ** 40) - 1, slot);
-            assertEq(gI.unwrap(), pack(0x36ffffffffff, 40).unwrap());
+            assertEq(gI.unwrap(), toGIndex(0x36ffffffffff).unwrap());
         }
     }
 
@@ -1207,17 +1207,17 @@ contract VerifierGIndexTest is Test, Utilities {
         targetSlot = Slot.wrap(8192);
         // historicalSummaries[0].blockRoots[0]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x1d8000000000, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x1d8000000000).unwrap());
 
         targetSlot = Slot.wrap(8193);
         // historicalSummaries[0].blockRoots[1]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x1d8000000001, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x1d8000000001).unwrap());
 
         targetSlot = Slot.wrap(49042);
         // historicalSummaries[4].blockRoots[8082]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x1d8000011f92, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x1d8000011f92).unwrap());
     }
 
     function test_getHistoricalBlockRootGI_RecentSlotAfterPivot() public view {
@@ -1229,24 +1229,24 @@ contract VerifierGIndexTest is Test, Utilities {
         targetSlot = Slot.wrap(8192 + 0);
         // historicalSummaries[0].blockRoots[0]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x2d8000000000, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x2d8000000000).unwrap());
 
         targetSlot = Slot.wrap(8192 + 1);
         // historicalSummaries[0].blockRoots[1]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x2d8000000001, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x2d8000000001).unwrap());
 
         targetSlot = Slot.wrap(8192 + 8192 * 4 + 8082);
         // historicalSummaries[4].blockRoots[8082]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x2d8000011f92, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x2d8000011f92).unwrap());
 
         recentSlot = Slot.wrap(type(uint64).max);
         // The last slot a historical summary might be created for.
         targetSlot = Slot.wrap(8192 + 2 ** 24 * 8192 - 1);
         // historicalSummaries[16777215].blockRoots[8191]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x2dbfffffdfff, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x2dbfffffdfff).unwrap());
     }
 
     function test_getHistoricalBlockRootGI_RevertWhen_SummaryCannotExist() public {
@@ -1289,12 +1289,12 @@ contract VerifierGIndexCapellaZeroTest is Test, Utilities {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: pack(0xe1c0, 4),
-                gIFirstWithdrawalCurr: pack(0x161c0, 4),
-                gIFirstValidatorPrev: pack(0x560000000000, 40),
-                gIFirstValidatorCurr: pack(0x960000000000, 40),
-                gIFirstHistoricalSummaryPrev: pack(0x76000000, 24),
-                gIFirstHistoricalSummaryCurr: pack(0xb6000000, 24),
+                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
+                gIFirstWithdrawalCurr: toGIndex(0x161c0),
+                gIFirstValidatorPrev: toGIndex(0x560000000000),
+                gIFirstValidatorCurr: toGIndex(0x960000000000),
+                gIFirstHistoricalSummaryPrev: toGIndex(0x76000000),
+                gIFirstHistoricalSummaryCurr: toGIndex(0xb6000000),
                 gIFirstBalanceNodePrev: NULL_GINDEX,
                 gIFirstBalanceNodeCurr: NULL_GINDEX
             }),
@@ -1315,22 +1315,22 @@ contract VerifierGIndexCapellaZeroTest is Test, Utilities {
         targetSlot = Slot.wrap(8191);
         // historicalSummaries[0].blockRoots[8191]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x1d8000001fff, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x1d8000001fff).unwrap());
 
         targetSlot = Slot.wrap(8192);
         // historicalSummaries[1].blockRoots[0]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x1d8000004000, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x1d8000004000).unwrap());
 
         targetSlot = Slot.wrap(8193);
         // historicalSummaries[1].blockRoots[1]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x1d8000004001, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x1d8000004001).unwrap());
 
         targetSlot = Slot.wrap(49042);
         // historicalSummaries[5].blockRoots[8082]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x1d8000015f92, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x1d8000015f92).unwrap());
     }
 
     function test_getHistoricalBlockRootGI_AfterPivot() public view {
@@ -1342,32 +1342,32 @@ contract VerifierGIndexCapellaZeroTest is Test, Utilities {
         targetSlot = Slot.wrap(8191);
         // historicalSummaries[0].blockRoots[8191]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x2d8000001fff, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x2d8000001fff).unwrap());
 
         targetSlot = Slot.wrap(8192);
         // historicalSummaries[1].blockRoots[0]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x2d8000004000, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x2d8000004000).unwrap());
 
         targetSlot = Slot.wrap(8193);
         // historicalSummaries[1].blockRoots[1]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x2d8000004001, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x2d8000004001).unwrap());
 
         targetSlot = Slot.wrap(49042);
         // historicalSummaries[5].blockRoots[8082]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x2d8000015f92, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x2d8000015f92).unwrap());
 
         targetSlot = verifier.PIVOT_SLOT().dec();
         // historicalSummaries[12].blockRoots[8191]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x2d8000031fff, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x2d8000031fff).unwrap());
 
         targetSlot = verifier.PIVOT_SLOT().add(2197);
         // historicalSummaries[13].blockRoots[2197]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), pack(0x2d8000034895, 13).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x2d8000034895).unwrap());
     }
 
     function test_getHistoricalBlockRootGI_RevertWhen_SummaryCannotExist() public {
@@ -1418,8 +1418,8 @@ contract VerifierValidatorBalanceTest is Test, Utilities {
                 gIFirstValidatorCurr: NULL_GINDEX,
                 gIFirstHistoricalSummaryPrev: NULL_GINDEX,
                 gIFirstHistoricalSummaryCurr: NULL_GINDEX,
-                gIFirstBalanceNodePrev: pack(0x8, 4),
-                gIFirstBalanceNodeCurr: pack(0x8, 4)
+                gIFirstBalanceNodePrev: toGIndex(0x8),
+                gIFirstBalanceNodeCurr: toGIndex(0x8)
             }),
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192 * 13),

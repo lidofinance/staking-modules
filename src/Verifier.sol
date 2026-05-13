@@ -416,17 +416,20 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
     function _getValidatorGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
         GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_VALIDATOR_PREV : GI_FIRST_VALIDATOR_CURR;
-        return gI.shr(offset);
+        // return gI.shr(offset);
+        return gI;
     }
 
     function _getWithdrawalGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
         GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_WITHDRAWAL_PREV : GI_FIRST_WITHDRAWAL_CURR;
-        return gI.shr(offset);
+        // return gI.shr(offset);
+        return gI;
     }
 
     function _getValidatorBalanceGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
         GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_BALANCES_NODE_PREV : GI_FIRST_BALANCES_NODE_CURR;
-        return gI.shr(offset);
+        // return gI.shr(offset);
+        return gI;
     }
 
     function _getHistoricalBlockRootGI(Slot recentSlot, Slot targetSlot) internal view returns (GIndex gI) {
@@ -439,9 +442,9 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
         gI = recentSlot < PIVOT_SLOT ? GI_FIRST_HISTORICAL_SUMMARY_PREV : GI_FIRST_HISTORICAL_SUMMARY_CURR;
 
-        gI = gI.shr(summaryIndex); // historicalSummaries[summaryIndex]
+        // gI = gI.shr(summaryIndex); // historicalSummaries[summaryIndex]
         gI = gI.concat(GI_FIRST_BLOCK_ROOT_IN_SUMMARY); // historicalSummaries[summaryIndex].blockRoots[0]
-        gI = gI.shr(rootIndex); // historicalSummaries[summaryIndex].blockRoots[rootIndex]
+        // gI = gI.shr(rootIndex); // historicalSummaries[summaryIndex].blockRoots[rootIndex]
     }
 
     // From HashConsensus contract.
