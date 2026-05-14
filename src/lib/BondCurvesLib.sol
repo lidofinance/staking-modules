@@ -28,10 +28,7 @@ library BondCurvesLib {
         uint256 curveId,
         IBondCurve.BondCurveIntervalInput[] calldata intervals
     ) external {
-        unchecked {
-            if (curveId > bondCurveStorage.bondCurves.length - 1) revert IBondCurve.InvalidBondCurveId();
-        }
-
+        _ensureCurveExists(bondCurveStorage, curveId);
         _check(intervals);
         delete bondCurveStorage.bondCurves[curveId];
         _addIntervals(bondCurveStorage.bondCurves[curveId], intervals);
@@ -42,6 +39,7 @@ library BondCurvesLib {
         uint256 keys,
         uint256 curveId
     ) external view returns (uint256) {
+        _ensureCurveExists(bondCurveStorage, curveId);
         IBondCurve.BondCurveInterval[] storage intervals = bondCurveStorage.bondCurves[curveId].intervals;
         if (keys == 0) return 0;
 
@@ -66,6 +64,7 @@ library BondCurvesLib {
         uint256 amount,
         uint256 curveId
     ) external view returns (uint256) {
+        _ensureCurveExists(bondCurveStorage, curveId);
         IBondCurve.BondCurveInterval[] storage intervals = bondCurveStorage.bondCurves[curveId].intervals;
 
         // intervals[0].minBond is essentially the amount of bond required for the very first key
@@ -121,6 +120,12 @@ library BondCurvesLib {
             interval.minKeysCount = currMinKeysCount;
             interval.trend = currTrend;
             interval.minBond = prev.minBond + currTrend + (currMinKeysCount - prev.minKeysCount - 1) * prev.trend;
+        }
+    }
+
+    function _ensureCurveExists(BondCurve.BondCurveStorage storage bondCurveStorage, uint256 curveId) internal view {
+        unchecked {
+            if (curveId > bondCurveStorage.bondCurves.length - 1) revert IBondCurve.InvalidBondCurveId();
         }
     }
 
