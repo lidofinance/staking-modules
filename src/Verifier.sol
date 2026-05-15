@@ -7,7 +7,7 @@ import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensio
 
 import { BeaconBlockHeader, Slot, Validator, Withdrawal } from "./lib/Types.sol";
 import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
-import { GIndex } from "./lib/GIndex.sol";
+import { GIndex, toGIndex, staticListNodeGIndex, progressiveListNodeGIndex } from "./lib/GIndex.sol";
 import { SSZ } from "./lib/SSZ.sol";
 
 import { IVerifier } from "./interfaces/IVerifier.sol";
@@ -413,22 +413,34 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         balanceGwei = uint64(uint256(balanceNode));
     }
 
-    function _getValidatorGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
-        GIndex gI = stateSlot < PIVOT_SLOT ? GI_VALIDATORS_PRE_GLOAS : GI_VALIDATORS;
-        // return gI.shr(offset);
-        return gI;
+    function _getValidatorGI(uint256 offset, Slot stateSlot) internal view returns (GIndex gI) {
+        if (stateSlot < PIVOT_SLOT) {
+            gI = GI_VALIDATORS_PRE_GLOAS;
+            gI = gI.concat(staticListNodeGIndex(offset, 40)); // log2(VALIDATOR_REGISTRY_LIMIT)
+        } else {
+            gI = GI_VALIDATORS;
+            gI = gI.concat(progressiveListNodeGIndex(offset));
+        }
     }
 
-    function _getWithdrawalGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
-        GIndex gI = stateSlot < PIVOT_SLOT ? GI_WITHDRAWALS_PRE_GLOAS : GI_WITHDRAWALS;
-        // return gI.shr(offset);
-        return gI;
+    function _getWithdrawalGI(uint256 offset, Slot stateSlot) internal view returns (GIndex gI) {
+        if (stateSlot < PIVOT_SLOT) {
+            gI = GI_WITHDRAWALS_PRE_GLOAS;
+            gI = gI.concat(staticListNodeGIndex(offset, 4)); // log2(MAX_WITHDRAWALS_PER_PAYLOAD)
+        } else {
+            gI = GI_WITHDRAWALS;
+            gI = gI.concat(progressiveListNodeGIndex(offset));
+        }
     }
 
-    function _getValidatorBalanceGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
-        GIndex gI = stateSlot < PIVOT_SLOT ? GI_BALANCES_PRE_GLOAS : GI_BALANCES;
-        // return gI.shr(offset);
-        return gI;
+    function _getValidatorBalanceGI(uint256 offset, Slot stateSlot) internal view returns (GIndex gI) {
+        if (stateSlot < PIVOT_SLOT) {
+            gI = GI_BALANCES_PRE_GLOAS;
+            gI = gI.concat(staticListNodeGIndex(offset, 38)); // log2(VALIDATOR_REGISTRY_LIMIT / 4), 4 balances per node
+        } else {
+            gI = GI_BALANCES;
+            gI = gI.concat(progressiveListNodeGIndex(offset));
+        }
     }
 
     function _getHistoricalBlockRootGI(Slot recentSlot, Slot targetSlot) internal view returns (GIndex gI) {
@@ -439,11 +451,18 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         Slot summaryCreatedAtSlot = Slot.wrap(targetSlot.unwrap() - rootIndex + SLOTS_PER_HISTORICAL_ROOT);
         if (summaryCreatedAtSlot > recentSlot) revert HistoricalSummaryDoesNotExist();
 
-        gI = recentSlot < PIVOT_SLOT ? GI_HISTORICAL_SUMMARIES_PRE_GLOAS : GI_HISTORICAL_SUMMARIES;
-
-        // gI = gI.shr(summaryIndex); // historicalSummaries[summaryIndex]
-        gI = gI.concat(GI_BLOCK_ROOT_IN_SUMMARY); // historicalSummaries[summaryIndex].blockRoots[0]
-        // gI = gI.shr(rootIndex); // historicalSummaries[summaryIndex].blockRoots[rootIndex]
+        if (recentSlot < PIVOT_SLOT) {
+            gI = GI_HISTORICAL_SUMMARIES_PRE_GLOAS;
+            gI = gI.concat(staticListNodeGIndex(summaryIndex, 24)); // log2(HISTORICAL_ROOTS_LIMIT)
+        } else {
+            gI = GI_HISTORICAL_SUMMARIES;
+            gI = gI.concat(progressiveListNodeGIndex(summaryIndex));
+        }
+        // historical_summaries[summaryIndex].block_summary_root
+        gI = gI.concat(GI_BLOCK_ROOT_IN_SUMMARY);
+        // .block_summary_root is a Vector[Root, SLOTS_PER_HISTORICAL_ROOT]; the gindex
+        // of element rootIndex within a vector of capacity 2^d is (1 << d) | rootIndex.
+        gI = gI.concat(toGIndex(SLOTS_PER_HISTORICAL_ROOT | rootIndex));
     }
 
     // From HashConsensus contract.
