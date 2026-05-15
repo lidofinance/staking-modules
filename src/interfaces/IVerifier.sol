@@ -10,14 +10,14 @@ import { IBaseModule } from "./IBaseModule.sol";
 
 interface IVerifier {
     struct GIndices {
-        GIndex gIFirstWithdrawalPrev;
-        GIndex gIFirstWithdrawalCurr;
-        GIndex gIFirstValidatorPrev;
-        GIndex gIFirstValidatorCurr;
-        GIndex gIFirstHistoricalSummaryPrev;
-        GIndex gIFirstHistoricalSummaryCurr;
-        GIndex gIFirstBalanceNodePrev;
-        GIndex gIFirstBalanceNodeCurr;
+        GIndex gIWithdrawalsPreGloas;
+        GIndex gIWithdrawals;
+        GIndex gIValidatorsPreGloas;
+        GIndex gIValidators;
+        GIndex gIHistoricalSummariesPreGloas;
+        GIndex gIHistoricalSummaries;
+        GIndex gIBalancesPreGloas;
+        GIndex gIBalances;
     }
 
     struct RecentHeaderWitness {
@@ -107,19 +107,19 @@ interface IVerifier {
 
     function SLOTS_PER_HISTORICAL_ROOT() external view returns (uint64);
 
-    function GI_FIRST_WITHDRAWAL_PREV() external view returns (GIndex);
+    function GI_WITHDRAWALS_PRE_GLOAS() external view returns (GIndex);
 
-    function GI_FIRST_WITHDRAWAL_CURR() external view returns (GIndex);
+    function GI_WITHDRAWALS() external view returns (GIndex);
 
-    function GI_FIRST_VALIDATOR_PREV() external view returns (GIndex);
+    function GI_VALIDATORS_PRE_GLOAS() external view returns (GIndex);
 
-    function GI_FIRST_VALIDATOR_CURR() external view returns (GIndex);
+    function GI_VALIDATORS() external view returns (GIndex);
 
-    function GI_FIRST_HISTORICAL_SUMMARY_PREV() external view returns (GIndex);
+    function GI_HISTORICAL_SUMMARIES_PRE_GLOAS() external view returns (GIndex);
 
-    function GI_FIRST_HISTORICAL_SUMMARY_CURR() external view returns (GIndex);
+    function GI_HISTORICAL_SUMMARIES() external view returns (GIndex);
 
-    function GI_FIRST_BLOCK_ROOT_IN_SUMMARY() external view returns (GIndex);
+    function GI_BLOCK_ROOT_IN_SUMMARY() external view returns (GIndex);
 
     function FIRST_SUPPORTED_SLOT() external view returns (Slot);
 

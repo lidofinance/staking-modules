@@ -49,10 +49,10 @@ struct DeployParams {
     address[] oracleMembers;
     uint256 hashConsensusQuorum;
     // Verifier
-    GIndex gIFirstWithdrawal;
-    GIndex gIFirstValidator;
-    GIndex gIFirstHistoricalSummary;
-    GIndex gIFirstBalanceNode;
+    GIndex gIWithdrawals;
+    GIndex gIValidators;
+    GIndex gIHistoricalSummaries;
+    GIndex gIBalances;
     uint256 verifierFirstSupportedSlot;
     uint256 capellaSlot;
     uint256 minWithdrawalRatio;
@@ -257,14 +257,14 @@ abstract contract DeployBase is Script {
                 module: address(csm),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
                 gindices: IVerifier.GIndices({
-                    gIFirstWithdrawalPrev: config.gIFirstWithdrawal,
-                    gIFirstWithdrawalCurr: config.gIFirstWithdrawal,
-                    gIFirstValidatorPrev: config.gIFirstValidator,
-                    gIFirstValidatorCurr: config.gIFirstValidator,
-                    gIFirstHistoricalSummaryPrev: config.gIFirstHistoricalSummary,
-                    gIFirstHistoricalSummaryCurr: config.gIFirstHistoricalSummary,
-                    gIFirstBalanceNodePrev: config.gIFirstBalanceNode,
-                    gIFirstBalanceNodeCurr: config.gIFirstBalanceNode
+                    gIWithdrawalsPreGloas: config.gIWithdrawals,
+                    gIWithdrawals: config.gIWithdrawals,
+                    gIValidatorsPreGloas: config.gIValidators,
+                    gIValidators: config.gIValidators,
+                    gIHistoricalSummariesPreGloas: config.gIHistoricalSummaries,
+                    gIHistoricalSummaries: config.gIHistoricalSummaries,
+                    gIBalancesPreGloas: config.gIBalances,
+                    gIBalances: config.gIBalances
                 }),
                 firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 pivotSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),

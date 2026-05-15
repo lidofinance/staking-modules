@@ -112,14 +112,14 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
                 module: address(csm),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
                 gindices: IVerifier.GIndices({
-                    gIFirstWithdrawalPrev: config.gIFirstWithdrawal,
-                    gIFirstWithdrawalCurr: config.gIFirstWithdrawal,
-                    gIFirstValidatorPrev: config.gIFirstValidator,
-                    gIFirstValidatorCurr: config.gIFirstValidator,
-                    gIFirstHistoricalSummaryPrev: config.gIFirstHistoricalSummary,
-                    gIFirstHistoricalSummaryCurr: config.gIFirstHistoricalSummary,
-                    gIFirstBalanceNodePrev: config.gIFirstBalanceNode,
-                    gIFirstBalanceNodeCurr: config.gIFirstBalanceNode
+                    gIWithdrawalsPreGloas: config.gIWithdrawals,
+                    gIWithdrawals: config.gIWithdrawals,
+                    gIValidatorsPreGloas: config.gIValidators,
+                    gIValidators: config.gIValidators,
+                    gIHistoricalSummariesPreGloas: config.gIHistoricalSummaries,
+                    gIHistoricalSummaries: config.gIHistoricalSummaries,
+                    gIBalancesPreGloas: config.gIBalances,
+                    gIBalances: config.gIBalances
                 }),
                 firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 pivotSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),

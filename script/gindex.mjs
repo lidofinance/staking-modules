@@ -22,7 +22,7 @@ for (const fork of ["electra"]) {
       Withdrawals.limit,
     );
 
-    console.log(`${fork}::gIFirstWithdrawal:`, toBytes32String(gI));
+    console.log(`${fork}::gIWithdrawals:`, toBytes32String(gI));
   }
 
   {
@@ -30,7 +30,7 @@ for (const fork of ["electra"]) {
 
     const gI = pack(Fork.BeaconState.getPathInfo(["validators", 0]).gindex, Validators.limit);
 
-    console.log(`${fork}::gIFirstValidator:`, toBytes32String(gI));
+    console.log(`${fork}::gIValidators:`, toBytes32String(gI));
   }
 
   {
@@ -38,7 +38,7 @@ for (const fork of ["electra"]) {
 
     const gI = pack(Fork.BeaconState.getPathInfo(["balances", 0]).gindex, Balances.limit);
 
-    console.log(`${fork}::gIFirstBalanceNode:`, toBytes32String(gI));
+    console.log(`${fork}::gIBalances:`, toBytes32String(gI));
   }
 
   {
@@ -47,7 +47,7 @@ for (const fork of ["electra"]) {
       Fork.BeaconState.getPathInfo(["historicalSummaries", 0]).gindex,
       HistoricalSummaries.limit,
     );
-    console.log(`${fork}::gIFirstHistoricalSummary:`, toBytes32String(gI));
+    console.log(`${fork}::gIHistoricalSummaries:`, toBytes32String(gI));
   }
 
   console.log();

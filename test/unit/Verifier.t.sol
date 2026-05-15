@@ -80,14 +80,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
-                gIFirstWithdrawalCurr: toGIndex(0xe1c1),
-                gIFirstValidatorPrev: toGIndex(0x560000000000),
-                gIFirstValidatorCurr: toGIndex(0x560000000001),
-                gIFirstHistoricalSummaryPrev: toGIndex(0xfff0),
-                gIFirstHistoricalSummaryCurr: toGIndex(0xffff),
-                gIFirstBalanceNodePrev: toGIndex(0x160000000000),
-                gIFirstBalanceNodeCurr: toGIndex(0x160000000001)
+                gIWithdrawalsPreGloas: toGIndex(0xe1c0),
+                gIWithdrawals: toGIndex(0xe1c1),
+                gIValidatorsPreGloas: toGIndex(0x560000000000),
+                gIValidators: toGIndex(0x560000000001),
+                gIHistoricalSummariesPreGloas: toGIndex(0xfff0),
+                gIHistoricalSummaries: toGIndex(0xffff),
+                gIBalancesPreGloas: toGIndex(0x160000000000),
+                gIBalances: toGIndex(0x160000000001)
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: Slot.wrap(100_501),
@@ -100,15 +100,15 @@ contract VerifierTestConstructor is VerifierTestBase {
         assertEq(address(verifier.MODULE()), address(module));
         assertEq(verifier.SLOTS_PER_EPOCH(), 32);
         assertEq(verifier.SLOTS_PER_HISTORICAL_ROOT(), 8192);
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_PREV()), GIndex.unwrap(toGIndex(0xe1c0)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_CURR()), GIndex.unwrap(toGIndex(0xe1c1)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_PREV()), GIndex.unwrap(toGIndex(0x560000000000)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_CURR()), GIndex.unwrap(toGIndex(0x560000000001)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_HISTORICAL_SUMMARY_PREV()), GIndex.unwrap(toGIndex(0xfff0)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_HISTORICAL_SUMMARY_CURR()), GIndex.unwrap(toGIndex(0xffff)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_BLOCK_ROOT_IN_SUMMARY()), GIndex.unwrap(toGIndex(0x4000)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_PREV()), GIndex.unwrap(toGIndex(0x160000000000)));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_CURR()), GIndex.unwrap(toGIndex(0x160000000001)));
+        assertEq(GIndex.unwrap(verifier.GI_WITHDRAWALS_PRE_GLOAS()), GIndex.unwrap(toGIndex(0xe1c0)));
+        assertEq(GIndex.unwrap(verifier.GI_WITHDRAWALS()), GIndex.unwrap(toGIndex(0xe1c1)));
+        assertEq(GIndex.unwrap(verifier.GI_VALIDATORS_PRE_GLOAS()), GIndex.unwrap(toGIndex(0x560000000000)));
+        assertEq(GIndex.unwrap(verifier.GI_VALIDATORS()), GIndex.unwrap(toGIndex(0x560000000001)));
+        assertEq(GIndex.unwrap(verifier.GI_HISTORICAL_SUMMARIES_PRE_GLOAS()), GIndex.unwrap(toGIndex(0xfff0)));
+        assertEq(GIndex.unwrap(verifier.GI_HISTORICAL_SUMMARIES()), GIndex.unwrap(toGIndex(0xffff)));
+        assertEq(GIndex.unwrap(verifier.GI_BLOCK_ROOT_IN_SUMMARY()), GIndex.unwrap(toGIndex(0x4000)));
+        assertEq(GIndex.unwrap(verifier.GI_BALANCES_PRE_GLOAS()), GIndex.unwrap(toGIndex(0x160000000000)));
+        assertEq(GIndex.unwrap(verifier.GI_BALANCES()), GIndex.unwrap(toGIndex(0x160000000001)));
         assertEq(Slot.unwrap(verifier.FIRST_SUPPORTED_SLOT()), Slot.unwrap(firstSupportedSlot));
         assertEq(Slot.unwrap(verifier.PIVOT_SLOT()), Slot.unwrap(Slot.wrap(100_501)));
         assertEq(Slot.unwrap(verifier.CAPELLA_SLOT()), Slot.unwrap(Slot.wrap(42)));
@@ -122,14 +122,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 0,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
-                gIFirstWithdrawalCurr: toGIndex(0xe1c0),
-                gIFirstValidatorPrev: toGIndex(0x560000000000),
-                gIFirstValidatorCurr: toGIndex(0x560000000000),
-                gIFirstHistoricalSummaryPrev: toGIndex(0x3b),
-                gIFirstHistoricalSummaryCurr: toGIndex(0x3b),
-                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
-                gIFirstBalanceNodeCurr: toGIndex(0x260000000000)
+                gIWithdrawalsPreGloas: toGIndex(0xe1c0),
+                gIWithdrawals: toGIndex(0xe1c0),
+                gIValidatorsPreGloas: toGIndex(0x560000000000),
+                gIValidators: toGIndex(0x560000000000),
+                gIHistoricalSummariesPreGloas: toGIndex(0x3b),
+                gIHistoricalSummaries: toGIndex(0x3b),
+                gIBalancesPreGloas: toGIndex(0x260000000000),
+                gIBalances: toGIndex(0x260000000000)
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -146,14 +146,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
-                gIFirstWithdrawalCurr: toGIndex(0xe1c0),
-                gIFirstValidatorPrev: toGIndex(0x560000000000),
-                gIFirstValidatorCurr: toGIndex(0x560000000000),
-                gIFirstHistoricalSummaryPrev: toGIndex(0x3b),
-                gIFirstHistoricalSummaryCurr: toGIndex(0x3b),
-                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
-                gIFirstBalanceNodeCurr: toGIndex(0x260000000000)
+                gIWithdrawalsPreGloas: toGIndex(0xe1c0),
+                gIWithdrawals: toGIndex(0xe1c0),
+                gIValidatorsPreGloas: toGIndex(0x560000000000),
+                gIValidators: toGIndex(0x560000000000),
+                gIHistoricalSummariesPreGloas: toGIndex(0x3b),
+                gIHistoricalSummaries: toGIndex(0x3b),
+                gIBalancesPreGloas: toGIndex(0x260000000000),
+                gIBalances: toGIndex(0x260000000000)
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: firstSupportedSlot.dec(),
@@ -170,14 +170,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
-                gIFirstWithdrawalCurr: toGIndex(0xe1c0),
-                gIFirstValidatorPrev: toGIndex(0x560000000000),
-                gIFirstValidatorCurr: toGIndex(0x560000000000),
-                gIFirstHistoricalSummaryPrev: toGIndex(0x3b),
-                gIFirstHistoricalSummaryCurr: toGIndex(0x3b),
-                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
-                gIFirstBalanceNodeCurr: toGIndex(0x260000000000)
+                gIWithdrawalsPreGloas: toGIndex(0xe1c0),
+                gIWithdrawals: toGIndex(0xe1c0),
+                gIValidatorsPreGloas: toGIndex(0x560000000000),
+                gIValidators: toGIndex(0x560000000000),
+                gIHistoricalSummariesPreGloas: toGIndex(0x3b),
+                gIHistoricalSummaries: toGIndex(0x3b),
+                gIBalancesPreGloas: toGIndex(0x260000000000),
+                gIBalances: toGIndex(0x260000000000)
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: firstSupportedSlot,
@@ -194,14 +194,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(0),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
-                gIFirstWithdrawalCurr: toGIndex(0xe1c0),
-                gIFirstValidatorPrev: toGIndex(0x560000000000),
-                gIFirstValidatorCurr: toGIndex(0x560000000000),
-                gIFirstHistoricalSummaryPrev: toGIndex(0x3b),
-                gIFirstHistoricalSummaryCurr: toGIndex(0x3b),
-                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
-                gIFirstBalanceNodeCurr: toGIndex(0x260000000000)
+                gIWithdrawalsPreGloas: toGIndex(0xe1c0),
+                gIWithdrawals: toGIndex(0xe1c0),
+                gIValidatorsPreGloas: toGIndex(0x560000000000),
+                gIValidators: toGIndex(0x560000000000),
+                gIHistoricalSummariesPreGloas: toGIndex(0x3b),
+                gIHistoricalSummaries: toGIndex(0x3b),
+                gIBalancesPreGloas: toGIndex(0x260000000000),
+                gIBalances: toGIndex(0x260000000000)
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -218,14 +218,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
-                gIFirstWithdrawalCurr: toGIndex(0xe1c0),
-                gIFirstValidatorPrev: toGIndex(0x560000000000),
-                gIFirstValidatorCurr: toGIndex(0x560000000000),
-                gIFirstHistoricalSummaryPrev: toGIndex(0x3b),
-                gIFirstHistoricalSummaryCurr: toGIndex(0x3b),
-                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
-                gIFirstBalanceNodeCurr: toGIndex(0x260000000000)
+                gIWithdrawalsPreGloas: toGIndex(0xe1c0),
+                gIWithdrawals: toGIndex(0xe1c0),
+                gIValidatorsPreGloas: toGIndex(0x560000000000),
+                gIValidators: toGIndex(0x560000000000),
+                gIHistoricalSummariesPreGloas: toGIndex(0x3b),
+                gIHistoricalSummaries: toGIndex(0x3b),
+                gIBalancesPreGloas: toGIndex(0x260000000000),
+                gIBalances: toGIndex(0x260000000000)
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -242,14 +242,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
-                gIFirstWithdrawalCurr: toGIndex(0xe1c0),
-                gIFirstValidatorPrev: toGIndex(0x560000000000),
-                gIFirstValidatorCurr: toGIndex(0x560000000000),
-                gIFirstHistoricalSummaryPrev: NULL_GINDEX,
-                gIFirstHistoricalSummaryCurr: NULL_GINDEX,
-                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
-                gIFirstBalanceNodeCurr: toGIndex(0x260000000000)
+                gIWithdrawalsPreGloas: toGIndex(0xe1c0),
+                gIWithdrawals: toGIndex(0xe1c0),
+                gIValidatorsPreGloas: toGIndex(0x560000000000),
+                gIValidators: toGIndex(0x560000000000),
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: NULL_GINDEX,
+                gIBalancesPreGloas: toGIndex(0x260000000000),
+                gIBalances: toGIndex(0x260000000000)
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -266,14 +266,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
-                gIFirstWithdrawalCurr: toGIndex(0xe1c0),
-                gIFirstValidatorPrev: toGIndex(0x560000000000),
-                gIFirstValidatorCurr: toGIndex(0x560000000000),
-                gIFirstHistoricalSummaryPrev: toGIndex(0x3b),
-                gIFirstHistoricalSummaryCurr: toGIndex(0x3b),
-                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
-                gIFirstBalanceNodeCurr: toGIndex(0x260000000000)
+                gIWithdrawalsPreGloas: toGIndex(0xe1c0),
+                gIWithdrawals: toGIndex(0xe1c0),
+                gIValidatorsPreGloas: toGIndex(0x560000000000),
+                gIValidators: toGIndex(0x560000000000),
+                gIHistoricalSummariesPreGloas: toGIndex(0x3b),
+                gIHistoricalSummaries: toGIndex(0x3b),
+                gIBalancesPreGloas: toGIndex(0x260000000000),
+                gIBalances: toGIndex(0x260000000000)
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: firstSupportedSlot,
@@ -290,14 +290,14 @@ contract VerifierTestConstructor is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
-                gIFirstWithdrawalCurr: toGIndex(0xe1c0),
-                gIFirstValidatorPrev: toGIndex(0x560000000000),
-                gIFirstValidatorCurr: toGIndex(0x560000000000),
-                gIFirstHistoricalSummaryPrev: toGIndex(0x3b),
-                gIFirstHistoricalSummaryCurr: toGIndex(0x3b),
-                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
-                gIFirstBalanceNodeCurr: toGIndex(0x260000000000)
+                gIWithdrawalsPreGloas: toGIndex(0xe1c0),
+                gIWithdrawals: toGIndex(0xe1c0),
+                gIValidatorsPreGloas: toGIndex(0x560000000000),
+                gIValidators: toGIndex(0x560000000000),
+                gIHistoricalSummariesPreGloas: toGIndex(0x3b),
+                gIHistoricalSummaries: toGIndex(0x3b),
+                gIBalancesPreGloas: toGIndex(0x260000000000),
+                gIBalances: toGIndex(0x260000000000)
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: firstSupportedSlot,
@@ -330,14 +330,14 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: GIndices.FIRST_WITHDRAWAL_ELECTRA,
-                gIFirstWithdrawalCurr: GIndices.FIRST_WITHDRAWAL_ELECTRA,
-                gIFirstValidatorPrev: GIndices.FIRST_VALIDATOR_ELECTRA,
-                gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
-                gIFirstHistoricalSummaryPrev: NULL_GINDEX,
-                gIFirstHistoricalSummaryCurr: NULL_GINDEX,
-                gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX
+                gIWithdrawalsPreGloas: GIndices.FIRST_WITHDRAWAL_ELECTRA,
+                gIWithdrawals: GIndices.FIRST_WITHDRAWAL_ELECTRA,
+                gIValidatorsPreGloas: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIValidators: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: NULL_GINDEX,
+                gIBalancesPreGloas: NULL_GINDEX,
+                gIBalances: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             pivotSlot: fixture.data.withdrawalBlock.header.slot.dec(),
@@ -574,14 +574,14 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: GIndices.FIRST_WITHDRAWAL_ELECTRA,
-                gIFirstWithdrawalCurr: NULL_GINDEX,
-                gIFirstValidatorPrev: GIndices.FIRST_VALIDATOR_ELECTRA,
-                gIFirstValidatorCurr: NULL_GINDEX,
-                gIFirstHistoricalSummaryPrev: NULL_GINDEX,
-                gIFirstHistoricalSummaryCurr: NULL_GINDEX,
-                gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX
+                gIWithdrawalsPreGloas: GIndices.FIRST_WITHDRAWAL_ELECTRA,
+                gIWithdrawals: NULL_GINDEX,
+                gIValidatorsPreGloas: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIValidators: NULL_GINDEX,
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: NULL_GINDEX,
+                gIBalancesPreGloas: NULL_GINDEX,
+                gIBalances: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             pivotSlot: fixture.data.withdrawalBlock.header.slot.inc(),
@@ -599,14 +599,14 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: NULL_GINDEX,
-                gIFirstWithdrawalCurr: GIndices.FIRST_WITHDRAWAL_ELECTRA,
-                gIFirstValidatorPrev: NULL_GINDEX,
-                gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
-                gIFirstHistoricalSummaryPrev: NULL_GINDEX,
-                gIFirstHistoricalSummaryCurr: NULL_GINDEX,
-                gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX
+                gIWithdrawalsPreGloas: NULL_GINDEX,
+                gIWithdrawals: GIndices.FIRST_WITHDRAWAL_ELECTRA,
+                gIValidatorsPreGloas: NULL_GINDEX,
+                gIValidators: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: NULL_GINDEX,
+                gIBalancesPreGloas: NULL_GINDEX,
+                gIBalances: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             pivotSlot: fixture.data.withdrawalBlock.header.slot,
@@ -624,14 +624,14 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: NULL_GINDEX,
-                gIFirstWithdrawalCurr: GIndices.FIRST_WITHDRAWAL_ELECTRA,
-                gIFirstValidatorPrev: NULL_GINDEX,
-                gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
-                gIFirstHistoricalSummaryPrev: NULL_GINDEX,
-                gIFirstHistoricalSummaryCurr: NULL_GINDEX,
-                gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX
+                gIWithdrawalsPreGloas: NULL_GINDEX,
+                gIWithdrawals: GIndices.FIRST_WITHDRAWAL_ELECTRA,
+                gIValidatorsPreGloas: NULL_GINDEX,
+                gIValidators: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: NULL_GINDEX,
+                gIBalancesPreGloas: NULL_GINDEX,
+                gIBalances: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             pivotSlot: fixture.data.withdrawalBlock.header.slot.dec(),
@@ -717,14 +717,14 @@ contract VerifierSlashingTest is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: NULL_GINDEX,
-                gIFirstWithdrawalCurr: NULL_GINDEX,
-                gIFirstValidatorPrev: GIndices.FIRST_VALIDATOR_ELECTRA,
-                gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
-                gIFirstHistoricalSummaryPrev: NULL_GINDEX,
-                gIFirstHistoricalSummaryCurr: NULL_GINDEX,
-                gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX
+                gIWithdrawalsPreGloas: NULL_GINDEX,
+                gIWithdrawals: NULL_GINDEX,
+                gIValidatorsPreGloas: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIValidators: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: NULL_GINDEX,
+                gIBalancesPreGloas: NULL_GINDEX,
+                gIBalances: NULL_GINDEX
             }),
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192),
@@ -844,14 +844,14 @@ contract VerifierPauseTest is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: NULL_GINDEX,
-                gIFirstWithdrawalCurr: NULL_GINDEX,
-                gIFirstValidatorPrev: NULL_GINDEX,
-                gIFirstValidatorCurr: NULL_GINDEX,
-                gIFirstHistoricalSummaryPrev: NULL_GINDEX,
-                gIFirstHistoricalSummaryCurr: NULL_GINDEX,
-                gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX
+                gIWithdrawalsPreGloas: NULL_GINDEX,
+                gIWithdrawals: NULL_GINDEX,
+                gIValidatorsPreGloas: NULL_GINDEX,
+                gIValidators: NULL_GINDEX,
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: NULL_GINDEX,
+                gIBalancesPreGloas: NULL_GINDEX,
+                gIBalances: NULL_GINDEX
             }),
             firstSupportedSlot: Slot.wrap(100_500), // Any value less than the slots from the fixtures.
             pivotSlot: Slot.wrap(100_500),
@@ -1017,14 +1017,14 @@ contract VerifierGIndexTest is Test, Utilities {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
-                gIFirstWithdrawalCurr: toGIndex(0x161c0),
-                gIFirstValidatorPrev: toGIndex(0x560000000000),
-                gIFirstValidatorCurr: toGIndex(0x960000000000),
-                gIFirstHistoricalSummaryPrev: toGIndex(0x76000000),
-                gIFirstHistoricalSummaryCurr: toGIndex(0xb6000000),
-                gIFirstBalanceNodePrev: toGIndex(0x260000000000),
-                gIFirstBalanceNodeCurr: toGIndex(0x360000000000)
+                gIWithdrawalsPreGloas: toGIndex(0xe1c0),
+                gIWithdrawals: toGIndex(0x161c0),
+                gIValidatorsPreGloas: toGIndex(0x560000000000),
+                gIValidators: toGIndex(0x960000000000),
+                gIHistoricalSummariesPreGloas: toGIndex(0x76000000),
+                gIHistoricalSummaries: toGIndex(0xb6000000),
+                gIBalancesPreGloas: toGIndex(0x260000000000),
+                gIBalances: toGIndex(0x360000000000)
             }),
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192 * 13),
@@ -1289,14 +1289,14 @@ contract VerifierGIndexCapellaZeroTest is Test, Utilities {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: toGIndex(0xe1c0),
-                gIFirstWithdrawalCurr: toGIndex(0x161c0),
-                gIFirstValidatorPrev: toGIndex(0x560000000000),
-                gIFirstValidatorCurr: toGIndex(0x960000000000),
-                gIFirstHistoricalSummaryPrev: toGIndex(0x76000000),
-                gIFirstHistoricalSummaryCurr: toGIndex(0xb6000000),
-                gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX
+                gIWithdrawalsPreGloas: toGIndex(0xe1c0),
+                gIWithdrawals: toGIndex(0x161c0),
+                gIValidatorsPreGloas: toGIndex(0x560000000000),
+                gIValidators: toGIndex(0x960000000000),
+                gIHistoricalSummariesPreGloas: toGIndex(0x76000000),
+                gIHistoricalSummaries: toGIndex(0xb6000000),
+                gIBalancesPreGloas: NULL_GINDEX,
+                gIBalances: NULL_GINDEX
             }),
             firstSupportedSlot: Slot.wrap(0),
             pivotSlot: Slot.wrap(8192 * 13),
@@ -1412,14 +1412,14 @@ contract VerifierValidatorBalanceTest is Test, Utilities {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: NULL_GINDEX,
-                gIFirstWithdrawalCurr: NULL_GINDEX,
-                gIFirstValidatorPrev: NULL_GINDEX,
-                gIFirstValidatorCurr: NULL_GINDEX,
-                gIFirstHistoricalSummaryPrev: NULL_GINDEX,
-                gIFirstHistoricalSummaryCurr: NULL_GINDEX,
-                gIFirstBalanceNodePrev: toGIndex(0x8),
-                gIFirstBalanceNodeCurr: toGIndex(0x8)
+                gIWithdrawalsPreGloas: NULL_GINDEX,
+                gIWithdrawals: NULL_GINDEX,
+                gIValidatorsPreGloas: NULL_GINDEX,
+                gIValidators: NULL_GINDEX,
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: NULL_GINDEX,
+                gIBalancesPreGloas: toGIndex(0x8),
+                gIBalances: toGIndex(0x8)
             }),
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192 * 13),
@@ -1602,14 +1602,14 @@ contract VerifierBalanceProofTest is VerifierTestBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: NULL_GINDEX,
-                gIFirstWithdrawalCurr: NULL_GINDEX,
-                gIFirstValidatorPrev: GIndices.FIRST_VALIDATOR_ELECTRA,
-                gIFirstValidatorCurr: GIndices.FIRST_VALIDATOR_ELECTRA,
-                gIFirstHistoricalSummaryPrev: NULL_GINDEX,
-                gIFirstHistoricalSummaryCurr: NULL_GINDEX,
-                gIFirstBalanceNodePrev: GIndices.FIRST_BALANCE_NODE_ELECTRA,
-                gIFirstBalanceNodeCurr: GIndices.FIRST_BALANCE_NODE_ELECTRA
+                gIWithdrawalsPreGloas: NULL_GINDEX,
+                gIWithdrawals: NULL_GINDEX,
+                gIValidatorsPreGloas: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIValidators: GIndices.FIRST_VALIDATOR_ELECTRA,
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: NULL_GINDEX,
+                gIBalancesPreGloas: GIndices.FIRST_BALANCE_NODE_ELECTRA,
+                gIBalances: GIndices.FIRST_BALANCE_NODE_ELECTRA
             }),
             firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
             pivotSlot: fixture.data.recentBlock.header.slot.dec(),
@@ -1744,14 +1744,14 @@ contract VerifierParentBlockRootTest is Test, Utilities {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIFirstWithdrawalPrev: NULL_GINDEX,
-                gIFirstWithdrawalCurr: NULL_GINDEX,
-                gIFirstValidatorPrev: NULL_GINDEX,
-                gIFirstValidatorCurr: NULL_GINDEX,
-                gIFirstHistoricalSummaryPrev: NULL_GINDEX,
-                gIFirstHistoricalSummaryCurr: NULL_GINDEX,
-                gIFirstBalanceNodePrev: NULL_GINDEX,
-                gIFirstBalanceNodeCurr: NULL_GINDEX
+                gIWithdrawalsPreGloas: NULL_GINDEX,
+                gIWithdrawals: NULL_GINDEX,
+                gIValidatorsPreGloas: NULL_GINDEX,
+                gIValidators: NULL_GINDEX,
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: NULL_GINDEX,
+                gIBalancesPreGloas: NULL_GINDEX,
+                gIBalances: NULL_GINDEX
             }),
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192 * 13),

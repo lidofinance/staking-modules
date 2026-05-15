@@ -385,19 +385,16 @@ contract VerifierDeploymentTest is DeploymentBaseTest {
         assertEq(address(verifier.MODULE()), address(module));
         assertEq(verifier.SLOTS_PER_EPOCH(), deployParams.slotsPerEpoch);
         assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_HISTORICAL_SUMMARY_PREV()),
-            GIndex.unwrap(deployParams.gIFirstHistoricalSummary)
+            GIndex.unwrap(verifier.GI_HISTORICAL_SUMMARIES_PRE_GLOAS()),
+            GIndex.unwrap(deployParams.gIHistoricalSummaries)
         );
-        assertEq(
-            GIndex.unwrap(verifier.GI_FIRST_HISTORICAL_SUMMARY_CURR()),
-            GIndex.unwrap(deployParams.gIFirstHistoricalSummary)
-        );
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_PREV()), GIndex.unwrap(deployParams.gIFirstWithdrawal));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_CURR()), GIndex.unwrap(deployParams.gIFirstWithdrawal));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_PREV()), GIndex.unwrap(deployParams.gIFirstValidator));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_VALIDATOR_CURR()), GIndex.unwrap(deployParams.gIFirstValidator));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_PREV()), GIndex.unwrap(deployParams.gIFirstBalanceNode));
-        assertEq(GIndex.unwrap(verifier.GI_FIRST_BALANCES_NODE_CURR()), GIndex.unwrap(deployParams.gIFirstBalanceNode));
+        assertEq(GIndex.unwrap(verifier.GI_HISTORICAL_SUMMARIES()), GIndex.unwrap(deployParams.gIHistoricalSummaries));
+        assertEq(GIndex.unwrap(verifier.GI_WITHDRAWALS_PRE_GLOAS()), GIndex.unwrap(deployParams.gIWithdrawals));
+        assertEq(GIndex.unwrap(verifier.GI_WITHDRAWALS()), GIndex.unwrap(deployParams.gIWithdrawals));
+        assertEq(GIndex.unwrap(verifier.GI_VALIDATORS_PRE_GLOAS()), GIndex.unwrap(deployParams.gIValidators));
+        assertEq(GIndex.unwrap(verifier.GI_VALIDATORS()), GIndex.unwrap(deployParams.gIValidators));
+        assertEq(GIndex.unwrap(verifier.GI_BALANCES_PRE_GLOAS()), GIndex.unwrap(deployParams.gIBalances));
+        assertEq(GIndex.unwrap(verifier.GI_BALANCES()), GIndex.unwrap(deployParams.gIBalances));
         assertEq(Slot.unwrap(verifier.FIRST_SUPPORTED_SLOT()), deployParams.verifierFirstSupportedSlot);
         assertEq(Slot.unwrap(verifier.PIVOT_SLOT()), deployParams.verifierFirstSupportedSlot);
         assertEq(Slot.unwrap(verifier.CAPELLA_SLOT()), deployParams.capellaSlot);

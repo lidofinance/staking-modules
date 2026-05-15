@@ -48,34 +48,33 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     /// @dev See https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#time-parameters
     uint64 public constant SLOTS_PER_HISTORICAL_ROOT = 8192;
 
-    /// @dev This index is relative to a state like: `BeaconState.latest_execution_payload_header.withdrawals[0]`.
-    GIndex public immutable GI_FIRST_WITHDRAWAL_PREV;
+    /// @dev This index is relative to a state like: `BeaconState.latest_execution_payload_header.withdrawals`.
+    GIndex public immutable GI_WITHDRAWALS_PRE_GLOAS;
 
-    /// @dev This index is relative to a state like: `BeaconState.latest_execution_payload_header.withdrawals[0]`.
-    GIndex public immutable GI_FIRST_WITHDRAWAL_CURR;
+    /// @dev This index is relative to a state like: `BeaconState.latest_execution_payload_header.withdrawals`.
+    GIndex public immutable GI_WITHDRAWALS;
 
-    /// @dev This index is relative to a state like: `BeaconState.validators[0]`.
-    GIndex public immutable GI_FIRST_VALIDATOR_PREV;
+    /// @dev This index is relative to a state like: `BeaconState.validators`.
+    GIndex public immutable GI_VALIDATORS_PRE_GLOAS;
 
-    /// @dev This index is relative to a state like: `BeaconState.validators[0]`.
-    GIndex public immutable GI_FIRST_VALIDATOR_CURR;
+    /// @dev This index is relative to a state like: `BeaconState.validators`.
+    GIndex public immutable GI_VALIDATORS;
 
-    /// @dev This index is relative to a state like: `BeaconState.historical_summaries[0]`.
-    GIndex public immutable GI_FIRST_HISTORICAL_SUMMARY_PREV;
+    /// @dev This index is relative to a state like: `BeaconState.historical_summaries`.
+    GIndex public immutable GI_HISTORICAL_SUMMARIES_PRE_GLOAS;
 
-    /// @dev This index is relative to a state like: `BeaconState.historical_summaries[0]`.
-    GIndex public immutable GI_FIRST_HISTORICAL_SUMMARY_CURR;
+    /// @dev This index is relative to a state like: `BeaconState.historical_summaries`.
+    GIndex public immutable GI_HISTORICAL_SUMMARIES;
 
     /// @dev This index is relative to HistoricalSummary like: HistoricalSummary.blockRoots[0].
     ///      Considered constant across forks.
-    GIndex public constant GI_FIRST_BLOCK_ROOT_IN_SUMMARY =
-        GIndex.wrap(0x000000000000000000000000000000000000000000000000000000000040000d);
+    GIndex public constant GI_BLOCK_ROOT_IN_SUMMARY = GIndex.wrap(bytes32(uint256(2)));
 
-    /// @dev This index is relative to a state like: `BeaconState.balances[0]`.
-    GIndex public immutable GI_FIRST_BALANCES_NODE_PREV;
+    /// @dev This index is relative to a state like: `BeaconState.balances`.
+    GIndex public immutable GI_BALANCES_PRE_GLOAS;
 
-    /// @dev This index is relative to a state like: `BeaconState.balances[0]`.
-    GIndex public immutable GI_FIRST_BALANCES_NODE_CURR;
+    /// @dev This index is relative to a state like: `BeaconState.balances`.
+    GIndex public immutable GI_BALANCES;
 
     /// @dev The very first slot the verifier is supposed to accept proofs for.
     Slot public immutable FIRST_SUPPORTED_SLOT;
@@ -118,17 +117,17 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
         SLOTS_PER_EPOCH = slotsPerEpoch;
 
-        GI_FIRST_WITHDRAWAL_PREV = gindices.gIFirstWithdrawalPrev;
-        GI_FIRST_WITHDRAWAL_CURR = gindices.gIFirstWithdrawalCurr;
+        GI_WITHDRAWALS_PRE_GLOAS = gindices.gIWithdrawalsPreGloas;
+        GI_WITHDRAWALS = gindices.gIWithdrawals;
 
-        GI_FIRST_VALIDATOR_PREV = gindices.gIFirstValidatorPrev;
-        GI_FIRST_VALIDATOR_CURR = gindices.gIFirstValidatorCurr;
+        GI_VALIDATORS_PRE_GLOAS = gindices.gIValidatorsPreGloas;
+        GI_VALIDATORS = gindices.gIValidators;
 
-        GI_FIRST_HISTORICAL_SUMMARY_PREV = gindices.gIFirstHistoricalSummaryPrev;
-        GI_FIRST_HISTORICAL_SUMMARY_CURR = gindices.gIFirstHistoricalSummaryCurr;
+        GI_HISTORICAL_SUMMARIES_PRE_GLOAS = gindices.gIHistoricalSummariesPreGloas;
+        GI_HISTORICAL_SUMMARIES = gindices.gIHistoricalSummaries;
 
-        GI_FIRST_BALANCES_NODE_PREV = gindices.gIFirstBalanceNodePrev;
-        GI_FIRST_BALANCES_NODE_CURR = gindices.gIFirstBalanceNodeCurr;
+        GI_BALANCES_PRE_GLOAS = gindices.gIBalancesPreGloas;
+        GI_BALANCES = gindices.gIBalances;
 
         FIRST_SUPPORTED_SLOT = firstSupportedSlot;
         PIVOT_SLOT = pivotSlot;
@@ -415,19 +414,19 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     }
 
     function _getValidatorGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
-        GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_VALIDATOR_PREV : GI_FIRST_VALIDATOR_CURR;
+        GIndex gI = stateSlot < PIVOT_SLOT ? GI_VALIDATORS_PRE_GLOAS : GI_VALIDATORS;
         // return gI.shr(offset);
         return gI;
     }
 
     function _getWithdrawalGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
-        GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_WITHDRAWAL_PREV : GI_FIRST_WITHDRAWAL_CURR;
+        GIndex gI = stateSlot < PIVOT_SLOT ? GI_WITHDRAWALS_PRE_GLOAS : GI_WITHDRAWALS;
         // return gI.shr(offset);
         return gI;
     }
 
     function _getValidatorBalanceGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
-        GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_BALANCES_NODE_PREV : GI_FIRST_BALANCES_NODE_CURR;
+        GIndex gI = stateSlot < PIVOT_SLOT ? GI_BALANCES_PRE_GLOAS : GI_BALANCES;
         // return gI.shr(offset);
         return gI;
     }
@@ -440,10 +439,10 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         Slot summaryCreatedAtSlot = Slot.wrap(targetSlot.unwrap() - rootIndex + SLOTS_PER_HISTORICAL_ROOT);
         if (summaryCreatedAtSlot > recentSlot) revert HistoricalSummaryDoesNotExist();
 
-        gI = recentSlot < PIVOT_SLOT ? GI_FIRST_HISTORICAL_SUMMARY_PREV : GI_FIRST_HISTORICAL_SUMMARY_CURR;
+        gI = recentSlot < PIVOT_SLOT ? GI_HISTORICAL_SUMMARIES_PRE_GLOAS : GI_HISTORICAL_SUMMARIES;
 
         // gI = gI.shr(summaryIndex); // historicalSummaries[summaryIndex]
-        gI = gI.concat(GI_FIRST_BLOCK_ROOT_IN_SUMMARY); // historicalSummaries[summaryIndex].blockRoots[0]
+        gI = gI.concat(GI_BLOCK_ROOT_IN_SUMMARY); // historicalSummaries[summaryIndex].blockRoots[0]
         // gI = gI.shr(rootIndex); // historicalSummaries[summaryIndex].blockRoots[rootIndex]
     }
 

@@ -157,10 +157,10 @@ contract DeploymentHelpers is Test {
         uint256 consensusVersion;
         address[] oracleMembers;
         uint256 hashConsensusQuorum;
-        GIndex gIFirstWithdrawal;
-        GIndex gIFirstValidator;
-        GIndex gIFirstHistoricalSummary;
-        GIndex gIFirstBalanceNode;
+        GIndex gIWithdrawals;
+        GIndex gIValidators;
+        GIndex gIHistoricalSummaries;
+        GIndex gIBalances;
         uint256 verifierFirstSupportedSlot;
         uint256 capellaSlot;
         uint256 minWithdrawalRatio;
@@ -486,10 +486,10 @@ contract DeploymentHelpers is Test {
         dst.hashConsensusQuorum = src.hashConsensusQuorum;
 
         // Verifier
-        dst.gIFirstWithdrawal = src.gIFirstWithdrawal;
-        dst.gIFirstValidator = src.gIFirstValidator;
-        dst.gIFirstHistoricalSummary = src.gIFirstHistoricalSummary;
-        dst.gIFirstBalanceNode = src.gIFirstBalanceNode;
+        dst.gIWithdrawals = src.gIWithdrawals;
+        dst.gIValidators = src.gIValidators;
+        dst.gIHistoricalSummaries = src.gIHistoricalSummaries;
+        dst.gIBalances = src.gIBalances;
         dst.verifierFirstSupportedSlot = src.verifierFirstSupportedSlot;
         dst.capellaSlot = src.capellaSlot;
         dst.minWithdrawalRatio = src.minWithdrawalRatio;
@@ -602,10 +602,10 @@ contract DeploymentHelpers is Test {
         params.consensusVersion = decoded.consensusVersion;
         params.oracleMembers = decoded.oracleMembers;
         params.hashConsensusQuorum = decoded.hashConsensusQuorum;
-        params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
-        params.gIFirstValidator = decoded.gIFirstValidator;
-        params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
-        params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
+        params.gIWithdrawals = decoded.gIWithdrawals;
+        params.gIValidators = decoded.gIValidators;
+        params.gIHistoricalSummaries = decoded.gIHistoricalSummaries;
+        params.gIBalances = decoded.gIBalances;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.minWithdrawalRatio = decoded.minWithdrawalRatio;
@@ -656,10 +656,10 @@ contract DeploymentHelpers is Test {
         params.consensusVersion = decoded.consensusVersion;
         params.oracleMembers = decoded.oracleMembers;
         params.hashConsensusQuorum = decoded.hashConsensusQuorum;
-        params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
-        params.gIFirstValidator = decoded.gIFirstValidator;
-        params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
-        params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
+        params.gIWithdrawals = decoded.gIWithdrawals;
+        params.gIValidators = decoded.gIValidators;
+        params.gIHistoricalSummaries = decoded.gIHistoricalSummaries;
+        params.gIBalances = decoded.gIBalances;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.minWithdrawalRatio = decoded.minWithdrawalRatio;
@@ -710,10 +710,10 @@ contract DeploymentHelpers is Test {
         params.consensusVersion = decoded.consensusVersion;
         params.oracleMembers = decoded.oracleMembers;
         params.hashConsensusQuorum = decoded.hashConsensusQuorum;
-        params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
-        params.gIFirstValidator = decoded.gIFirstValidator;
-        params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
-        params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
+        params.gIWithdrawals = decoded.gIWithdrawals;
+        params.gIValidators = decoded.gIValidators;
+        params.gIHistoricalSummaries = decoded.gIHistoricalSummaries;
+        params.gIBalances = decoded.gIBalances;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.minWithdrawalRatio = decoded.minWithdrawalRatio;
