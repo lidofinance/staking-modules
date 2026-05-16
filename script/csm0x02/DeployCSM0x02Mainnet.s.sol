@@ -34,10 +34,10 @@ contract DeployCSM0x02Mainnet is DeployCSM0x02Base {
         config.hashConsensusQuorum = 5;
 
         // Verifier
-        config.gIWithdrawals = GIndices.FIRST_WITHDRAWAL_ELECTRA;
-        config.gIValidators = GIndices.FIRST_VALIDATOR_ELECTRA;
-        config.gIHistoricalSummaries = GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA; // prettier-ignore
-        config.gIBalances = GIndices.FIRST_BALANCE_NODE_ELECTRA;
+        config.gIWithdrawals = GIndices.WITHDRAWALS_ELECTRA;
+        config.gIValidators = GIndices.VALIDATORS_ELECTRA;
+        config.gIHistoricalSummaries = GIndices.HISTORICAL_SUMMARIES_ELECTRA; // prettier-ignore
+        config.gIBalances = GIndices.BALANCES_ELECTRA;
         config.verifierFirstSupportedSlot = 364032 * config.slotsPerEpoch; // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-7600.md#activation
         config.capellaSlot = 194048 * config.slotsPerEpoch; // @see https://github.com/eth-clients/mainnet/blob/main/metadata/config.yaml#L50
         config.minWithdrawalRatio = 9900;

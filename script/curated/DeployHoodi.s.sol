@@ -37,10 +37,10 @@ contract DeployHoodi is DeployBase {
         config.hashConsensusQuorum = 7;
 
         // Verifier
-        config.gIWithdrawals = GIndices.FIRST_WITHDRAWAL_ELECTRA;
-        config.gIValidators = GIndices.FIRST_VALIDATOR_ELECTRA;
-        config.gIHistoricalSummaries = GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA; // prettier-ignore
-        config.gIBalances = GIndices.FIRST_BALANCE_NODE_ELECTRA;
+        config.gIWithdrawals = GIndices.WITHDRAWALS_ELECTRA;
+        config.gIValidators = GIndices.VALIDATORS_ELECTRA;
+        config.gIHistoricalSummaries = GIndices.HISTORICAL_SUMMARIES_ELECTRA; // prettier-ignore
+        config.gIBalances = GIndices.BALANCES_ELECTRA;
         config.verifierFirstSupportedSlot = 2048 * config.slotsPerEpoch; // @see https://github.com/eth-clients/hoodi/blob/main/metadata/config.yaml#L41
         config.capellaSlot = 0; // @see https://github.com/eth-clients/hoodi/blob/main/metadata/config.yaml#L33
         config.minWithdrawalRatio = 9950;
