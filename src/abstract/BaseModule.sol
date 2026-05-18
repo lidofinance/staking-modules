@@ -451,11 +451,13 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function isValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool) {
+        _onlyExistingNodeOperator(nodeOperatorId);
         return _baseStorage().isValidatorSlashed[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 
     /// @inheritdoc IBaseModule
     function isValidatorWithdrawn(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool) {
+        _onlyExistingNodeOperator(nodeOperatorId);
         return _baseStorage().isValidatorWithdrawn[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 

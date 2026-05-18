@@ -17,6 +17,11 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertFalse(module.isValidatorWithdrawn(noId, 0));
     }
 
+    function test_isValidatorWithdrawn_RevertWhen_OperatorDoesNotExist() public {
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
+        module.isValidatorWithdrawn(0, 0);
+    }
+
     function test_reportRegularWithdrawnValidators_NoPenalties() public assertInvariants {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
@@ -1258,6 +1263,11 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         uint256 noId = createNodeOperator(1);
 
         assertFalse(module.isValidatorSlashed(noId, 0));
+    }
+
+    function test_isValidatorSlashed_RevertWhen_OperatorDoesNotExist() public {
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
+        module.isValidatorSlashed(0, 0);
     }
 
     function test_reportValidatorSlashing_RevertWhen_CalledTwice() public {
