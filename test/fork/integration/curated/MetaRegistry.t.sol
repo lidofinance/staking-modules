@@ -66,6 +66,7 @@ contract MetaRegistryIntegrationTestCurated is CuratedIntegrationBase {
         subs[0] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: uint64(noId), share: 10000 });
 
         IMetaRegistry.OperatorGroup memory group = IMetaRegistry.OperatorGroup({
+            name: "Group",
             subNodeOperators: subs,
             externalOperators: new IMetaRegistry.ExternalOperator[](0)
         });
@@ -97,6 +98,7 @@ contract MetaRegistryIntegrationTestCurated is CuratedIntegrationBase {
         metaRegistry.createOrUpdateOperatorGroup(
             groupId,
             IMetaRegistry.OperatorGroup({
+                name: "Group",
                 subNodeOperators: subs,
                 externalOperators: new IMetaRegistry.ExternalOperator[](0)
             })
@@ -169,6 +171,7 @@ contract MetaRegistryIntegrationTestCurated is CuratedIntegrationBase {
         metaRegistry.createOrUpdateOperatorGroup(
             groupId,
             IMetaRegistry.OperatorGroup({
+                name: "",
                 subNodeOperators: new IMetaRegistry.SubNodeOperator[](0),
                 externalOperators: new IMetaRegistry.ExternalOperator[](0)
             })
@@ -207,6 +210,7 @@ contract MetaRegistryIntegrationTestCurated is CuratedIntegrationBase {
         metaRegistry.createOrUpdateOperatorGroup(
             metaRegistry.NO_GROUP_ID(),
             IMetaRegistry.OperatorGroup({
+                name: "Group",
                 subNodeOperators: subs,
                 externalOperators: new IMetaRegistry.ExternalOperator[](0)
             })

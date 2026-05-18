@@ -21,6 +21,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     using ExternalOperatorLib for ExternalOperator;
 
     struct CachedOperatorGroup {
+        string name;
         uint64[] subNodeOperatorIds;
         ExternalOperator[] externalOperators;
     }
@@ -61,6 +62,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
     uint256 internal constant MAX_BP = 10000;
     uint256 internal constant EXTERNAL_STAKE_PER_VALIDATOR = 32 ether;
+    uint256 internal constant MAX_NAME_LENGTH = 256;
 
     // keccak256(abi.encode(uint256(keccak256("MetaRegistry")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant META_REGISTRY_STORAGE_LOCATION =
@@ -164,6 +166,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         if (groupId >= $.groups.length) revert InvalidOperatorGroupId();
 
         CachedOperatorGroup storage group = $.groups[groupId];
+        groupInfo.name = group.name;
         uint256 subOpCount = group.subNodeOperatorIds.length;
         groupInfo.subNodeOperators = new SubNodeOperator[](subOpCount);
         for (uint256 i; i < subOpCount; ++i) {
@@ -244,6 +247,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         uint256 groupId = $.groups.length;
         $.groups.push();
 
+        _setGroupName(groupId, groupInfo.name);
         _storeSubOperators(groupId, groupInfo.subNodeOperators);
         _storeExternalOperators(groupId, groupInfo.externalOperators);
         emit OperatorGroupCreated(groupId, groupInfo);
@@ -254,10 +258,12 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
         if (groupInfo.subNodeOperators.length == 0) {
             // NOTE: Sanity check for an empty group in `groupInfo`.
-            if (groupInfo.externalOperators.length != 0) revert InvalidOperatorGroup();
+            if (groupInfo.externalOperators.length != 0 || bytes(groupInfo.name).length != 0)
+                revert InvalidOperatorGroup();
 
             emit OperatorGroupCleared(groupId);
         } else {
+            _setGroupName(groupId, groupInfo.name);
             _storeSubOperators(groupId, groupInfo.subNodeOperators);
             _storeExternalOperators(groupId, groupInfo.externalOperators);
             emit OperatorGroupUpdated(groupId, groupInfo);
@@ -284,6 +290,12 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
         delete group.subNodeOperatorIds;
         delete group.externalOperators;
+        delete group.name;
+    }
+
+    function _setGroupName(uint256 groupId, string calldata name) internal {
+        if (bytes(name).length > MAX_NAME_LENGTH) revert InvalidOperatorGroupName();
+        _storage().groups[groupId].name = name;
     }
 
     function _storeSubOperators(uint256 groupId, SubNodeOperator[] calldata subNodeOperators) internal {
@@ -361,7 +373,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     }
 
     function _storeOperatorMetadata(uint256 nodeOperatorId, OperatorMetadata memory metadata) internal {
-        if (bytes(metadata.name).length > 256) revert OperatorNameTooLong();
+        if (bytes(metadata.name).length > MAX_NAME_LENGTH) revert OperatorNameTooLong();
         if (bytes(metadata.description).length > 1024) revert OperatorDescriptionTooLong();
         _storage().operatorMetadata[nodeOperatorId] = metadata;
         emit OperatorMetadataSet({ nodeOperatorId: nodeOperatorId, metadata: metadata });
