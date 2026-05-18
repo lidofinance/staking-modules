@@ -432,7 +432,7 @@ library CuratedDepositAllocator {
         uint256 step,
         uint256 allocationAmount
     ) private pure returns (uint256 allocated, uint256[] memory allocations) {
-        // allocationAmount > 0, n > 0, and step > 0 are guaranteed by the callers.
+        // allocationAmount > 0 and step > 0 are guaranteed by the callers.
 
         _normalizeWeightsToShares(operatorsData);
 

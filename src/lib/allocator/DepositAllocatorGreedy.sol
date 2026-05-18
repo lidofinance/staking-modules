@@ -33,7 +33,6 @@ library DepositAllocatorGreedy {
     ///      - state.capacities[i] > 0
     ///      - state.sharesX96[i] > 0
     ///      - step > 0
-    ///      - state.sharesX96.length > 0
     ///      - all arrays in state have the same length n, and entries correspond to the same operators across arrays.
     ///      for i in [0..n).
     function _allocate(
