@@ -3,6 +3,8 @@
 
 pragma solidity 0.8.33;
 
+import { Vm } from "forge-std/Test.sol";
+
 import { BaseModule } from "src/abstract/BaseModule.sol";
 import { IBaseModule } from "src/interfaces/IBaseModule.sol";
 import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
@@ -582,6 +584,19 @@ abstract contract ModuleStakingRouterAccessControl is ModuleFixtures {
 abstract contract ModuleMisc is ModuleFixtures {
     function test_getInitializedVersion() public view virtual {
         assertEq(module.getInitializedVersion(), 3);
+    }
+
+    function test_updateDepositInfo_NodeOperatorDoesNotRevertOrChangeNonce() public assertInvariants {
+        createNodeOperator();
+        uint256 nonExistingNoId = module.getNodeOperatorsCount();
+        uint256 nonce = module.getNonce();
+
+        vm.recordLogs();
+        module.updateDepositInfo(nonExistingNoId);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 0);
+        assertEq(module.getNonce(), nonce);
     }
 
     function test_getActiveNodeOperatorsCount_OneOperator() public assertInvariants {
