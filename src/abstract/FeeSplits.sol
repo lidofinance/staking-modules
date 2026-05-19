@@ -87,9 +87,7 @@ abstract contract FeeSplits is IFeeSplits {
     function _decreasePendingSharesToSplit(uint256 nodeOperatorId, uint256 shares) internal {
         if (shares == 0) return;
         FeeSplitsStorage storage $ = _getFeeSplitsStorage();
-        uint256 current = $.pendingSharesToSplit[nodeOperatorId];
-        shares = shares > current ? current : shares;
-        uint256 newPendingSharesToSplit = current - (shares);
+        uint256 newPendingSharesToSplit = $.pendingSharesToSplit[nodeOperatorId] - shares;
         $.pendingSharesToSplit[nodeOperatorId] = newPendingSharesToSplit;
         emit PendingSharesToSplitChanged(nodeOperatorId, newPendingSharesToSplit);
     }
