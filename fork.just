@@ -215,8 +215,9 @@ create-operator-group *args:
     forge script --rpc-url={{anvil_rpc_url}} --timeout 300 -vvv --broadcast --unlocked MetaRegistryHelpers --sig='createOperatorGroup(uint256[])' -- "[$pairs]"
     curl -sS {{anvil_rpc_url}} --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"anvil_autoImpersonateAccount","params":[false],"id":1}' > /dev/null
 
-create-curated-operator gateIndex="0" keysCount="0":
-    just _impersonate-script NodeOperators --sig="createCuratedOperator\(uint256,uint256\)" -- {{gateIndex}} {{keysCount}}
+create-curated-operator gateIndex="0" keysCount="0" operator="0":
+    just _impersonate-script NodeOperators --sig="createCuratedOperator\(uint256,uint256,address\)" -- {{gateIndex}} {{keysCount}} {{operator}}
+
 
 reset-operator-group noId:
     just _impersonate-script MetaRegistryHelpers --sig="resetOperatorGroup\(uint256\)" -- {{noId}}
@@ -314,6 +315,11 @@ update-gate-tree selector root cid:
     echo "Sender: $sender"
     echo "Root:   {{root}}"
     echo "CID:    {{cid}}"
+    cur_root=$(cast call "$gate" "treeRoot()(bytes32)" --rpc-url="$rpc" | tr '[:upper:]' '[:lower:]')
+    cur_cid=$(cast call "$gate" "treeCid()(string)" --rpc-url="$rpc" | tr -d '"')
+    if [[ "$cur_root" == "$(echo '{{root}}' | tr '[:upper:]' '[:lower:]')" && "$cur_cid" == "{{cid}}" ]]; then
+      echo "Already up-to-date, skipping."; exit 0
+    fi
     cast rpc --rpc-url="$rpc" anvil_impersonateAccount "$admin" > /dev/null
     cast send "$gate" "grantRole(bytes32,address)" "$role" "$sender" \
         --rpc-url="$rpc" --unlocked --from="$admin" > /dev/null
