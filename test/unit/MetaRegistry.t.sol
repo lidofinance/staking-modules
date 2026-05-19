@@ -118,6 +118,11 @@ contract MetaRegistryTestGroupsBase is MetaRegistryTestBase {
         registry.setBondCurveWeight(curveId, weight);
     }
 
+    /// @dev ID that the next created group will receive.
+    function _nextGroupId() internal view returns (uint256) {
+        return registry.getOperatorGroupsCount() + 1;
+    }
+
     function _createGroup(
         IMetaRegistry.SubNodeOperator[] memory subNodeOperators,
         IMetaRegistry.ExternalOperator[] memory externalOperators
@@ -247,12 +252,13 @@ contract MetaRegistryTestInitialize is MetaRegistryTestBase {
         assertTrue(r.hasRole(r.DEFAULT_ADMIN_ROLE(), admin));
     }
 
-    function test_initialize_CreatesDefaultEmptyGroup() public {
+    function test_initialize_NoGroupsInitially() public {
         MetaRegistry r = new MetaRegistry(address(module));
         _enableInitializers(address(r));
         r.initialize(admin);
 
-        assertEq(r.getOperatorGroupsCount(), 1);
+        assertEq(r.getOperatorGroupsCount(), 0);
+        // NO_GROUP_ID stub is implicitly readable as an empty group.
         IMetaRegistry.OperatorGroup memory groupInfo = r.getOperatorGroup(r.NO_GROUP_ID());
         assertEq(groupInfo.name, "");
         assertEq(groupInfo.subNodeOperators.length, 0);
@@ -456,7 +462,7 @@ contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
         IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(externalData);
 
         vm.expectEmit(address(registry));
-        uint256 newGroupId = registry.getOperatorGroupsCount();
+        uint256 newGroupId = _nextGroupId();
         emit IMetaRegistry.OperatorGroupCreated(
             newGroupId,
             IMetaRegistry.OperatorGroup({
@@ -469,7 +475,7 @@ contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
         vm.prank(groupManager);
         _createGroup(subNodeOperators, externalOperators);
 
-        assertEq(registry.getOperatorGroupsCount(), 2);
+        assertEq(registry.getOperatorGroupsCount(), newGroupId);
         uint256 groupId0 = registry.getNodeOperatorGroupId(op0.nodeOperatorId);
         assertTrue(groupId0 != NO_GROUP_ID);
         assertEq(groupId0, newGroupId);
@@ -489,7 +495,7 @@ contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
     }
 
     function test_createGroup_NoExternalOperators() public {
-        uint256 newGroupId = registry.getOperatorGroupsCount();
+        uint256 newGroupId = _nextGroupId();
 
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
@@ -635,7 +641,7 @@ contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
 
 contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
     function test_updateGroup_OnlySubOperators() public {
-        uint256 newGroupId = registry.getOperatorGroupsCount();
+        uint256 newGroupId = _nextGroupId();
         _createDefaultGroupWithExternal(0, MAX_BP, 0);
 
         IMetaRegistry.SubNodeOperator[] memory subOperators = _subOperatorsArr1(1, MAX_BP);
@@ -664,7 +670,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
 
     function test_updateGroup_OnlyExternalOperators() public {
         externalModule.mock_setNodeOperatorsCount(2);
-        uint256 newGroupId = registry.getOperatorGroupsCount();
+        uint256 newGroupId = _nextGroupId();
 
         bytes memory initialExternal = _createDefaultGroupWithExternal(0, MAX_BP, 0);
 
@@ -687,7 +693,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
     }
 
     function test_updateGroup_ToEmptyGroup() public {
-        uint256 newGroupId = registry.getOperatorGroupsCount();
+        uint256 newGroupId = _nextGroupId();
 
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
@@ -705,7 +711,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
 
     function test_updateGroup_RemovesMemberships() public {
         externalModule.mock_setNodeOperatorsCount(1);
-        uint256 newGroupId = registry.getOperatorGroupsCount();
+        uint256 newGroupId = _nextGroupId();
         bytes memory externalData = _createDefaultGroupWithExternal({
             subNodeOperatorId: 0,
             share: MAX_BP,
@@ -728,7 +734,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         IMetaRegistry.SubNodeOperator memory op0 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: 6000 });
         IMetaRegistry.SubNodeOperator memory op1 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: 4000 });
 
-        uint256 newGroupId = registry.getOperatorGroupsCount();
+        uint256 newGroupId = _nextGroupId();
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr2(op0, op1), _extOperatorsArr0());
 
@@ -751,7 +757,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
     function test_updateGroup_ResetsEffectiveWeightOnEmptyUpdate() public {
         _setBondCurveWeight(0, CURVE_WEIGHT);
 
-        uint256 newGroupId = registry.getOperatorGroupsCount();
+        uint256 newGroupId = _nextGroupId();
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
@@ -769,7 +775,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
     function test_updateGroup_RemovedOperatorCanBeReAddedToNewGroup() public {
         _setBondCurveWeight(0, CURVE_WEIGHT);
 
-        uint256 groupId1 = registry.getOperatorGroupsCount();
+        uint256 groupId1 = _nextGroupId();
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
@@ -778,7 +784,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         _updateGroup(groupId1, _subOperatorsArr1(1, MAX_BP), _extOperatorsArr0());
 
         // Operator 0 should be free to join a new group.
-        uint256 groupId2 = registry.getOperatorGroupsCount();
+        uint256 groupId2 = _nextGroupId();
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
@@ -802,7 +808,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
         IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(_norData(EXTERNAL_MODULE_ID, 0));
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
-        uint256 groupId = registry.getOperatorGroupsCount() - 1;
+        uint256 groupId = registry.getOperatorGroupsCount();
 
         vm.startPrank(groupManager);
         vm.expectRevert(IMetaRegistry.InvalidOperatorGroup.selector);
@@ -811,7 +817,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
     }
 
     function test_updateGroup_RevertWhen_SubOperatorAlreadyInAnotherGroup() public {
-        uint256 groupId0 = registry.getOperatorGroupsCount();
+        uint256 groupId0 = _nextGroupId();
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
@@ -827,7 +833,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
     function test_updateGroup_CallsNotifyNodeOperatorWeightChange() public {
         _setBondCurveWeight(0, CURVE_WEIGHT);
 
-        uint256 newGroupId = registry.getOperatorGroupsCount();
+        uint256 newGroupId = _nextGroupId();
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
@@ -846,7 +852,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
 
     function test_updateGroup_CallsNotifyNodeOperatorWeightChangeOnEmptyUpdate() public {
         _setBondCurveWeight(0, CURVE_WEIGHT);
-        uint256 newGroupId = registry.getOperatorGroupsCount();
+        uint256 newGroupId = _nextGroupId();
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
@@ -866,7 +872,7 @@ contract MetaRegistryTestGroupsGetters is MetaRegistryTestGroupsBase {
         IMetaRegistry.SubNodeOperator[] memory subOperators = _subOperatorsArr2(op0, op1);
         bytes memory externalData = _norData(EXTERNAL_MODULE_ID, 0);
         IMetaRegistry.ExternalOperator[] memory externalOperators = _extOperatorsArr1(externalData);
-        uint256 newGroupId = registry.getOperatorGroupsCount();
+        uint256 newGroupId = _nextGroupId();
 
         vm.prank(groupManager);
         _createGroup(subOperators, externalOperators);
@@ -883,23 +889,23 @@ contract MetaRegistryTestGroupsGetters is MetaRegistryTestGroupsBase {
     }
 
     function test_getOperatorGroup_RevertWhen_InvalidGroupId() public {
-        uint256 invalidGroupId = registry.getOperatorGroupsCount();
+        uint256 invalidGroupId = _nextGroupId();
         vm.expectRevert(IMetaRegistry.InvalidOperatorGroupId.selector);
         registry.getOperatorGroup(invalidGroupId);
     }
 
     function test_getOperatorGroupsCount_ReturnsCount() public {
-        assertEq(registry.getOperatorGroupsCount(), 1);
+        assertEq(registry.getOperatorGroupsCount(), 0);
 
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
-        assertEq(registry.getOperatorGroupsCount(), 2);
+        assertEq(registry.getOperatorGroupsCount(), 1);
 
         vm.prank(groupManager);
         _createGroup(_subOperatorsArr1(1, MAX_BP), _extOperatorsArr0());
 
-        assertEq(registry.getOperatorGroupsCount(), 3);
+        assertEq(registry.getOperatorGroupsCount(), 2);
     }
 
     function test_getNodeOperatorGroupId_ReturnsFalseWhenDoesNotExist() public {
@@ -1239,7 +1245,7 @@ contract MetaRegistryTestModuleAddressCache is MetaRegistryTestGroupsBase {
 
 contract MetaRegistryTestGroupName is MetaRegistryTestGroupsBase {
     function test_createGroup_SetsName() public {
-        uint256 gid = registry.getOperatorGroupsCount();
+        uint256 gid = _nextGroupId();
         vm.prank(groupManager);
         _createGroup("My Group", _subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
         assertEq(registry.getOperatorGroup(gid).name, "My Group");
@@ -1252,7 +1258,7 @@ contract MetaRegistryTestGroupName is MetaRegistryTestGroupsBase {
     }
 
     function test_updateGroup_UpdatesName() public {
-        uint256 gid = registry.getOperatorGroupsCount();
+        uint256 gid = _nextGroupId();
         vm.prank(groupManager);
         _createGroup("First", _subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
@@ -1263,7 +1269,7 @@ contract MetaRegistryTestGroupName is MetaRegistryTestGroupsBase {
     }
 
     function test_updateGroup_UpdatesName_EmitsEvent() public {
-        uint256 gid = registry.getOperatorGroupsCount();
+        uint256 gid = _nextGroupId();
         IMetaRegistry.SubNodeOperator[] memory subs = _subOperatorsArr1(0, MAX_BP);
 
         vm.prank(groupManager);
@@ -1279,7 +1285,7 @@ contract MetaRegistryTestGroupName is MetaRegistryTestGroupsBase {
     }
 
     function test_updateGroup_SameName_Allowed() public {
-        uint256 gid = registry.getOperatorGroupsCount();
+        uint256 gid = _nextGroupId();
         vm.prank(groupManager);
         _createGroup("Same", _subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
@@ -1290,7 +1296,7 @@ contract MetaRegistryTestGroupName is MetaRegistryTestGroupsBase {
     }
 
     function test_updateGroup_RevertWhen_NameTooLong() public {
-        uint256 gid = registry.getOperatorGroupsCount();
+        uint256 gid = _nextGroupId();
         vm.prank(groupManager);
         _createGroup("Valid", _subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
@@ -1305,14 +1311,14 @@ contract MetaRegistryTestGroupName is MetaRegistryTestGroupsBase {
     }
 
     function test_createGroup_EmptyName_Allowed() public {
-        uint256 gid = registry.getOperatorGroupsCount();
+        uint256 gid = _nextGroupId();
         vm.prank(groupManager);
         _createGroup("", _subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
         assertEq(registry.getOperatorGroup(gid).name, "");
     }
 
     function test_createGroup_NameAtMaxLength_Succeeds() public {
-        uint256 gid = registry.getOperatorGroupsCount();
+        uint256 gid = _nextGroupId();
         string memory maxName = string(abi.encodePacked(randomBytes(256)));
         vm.prank(groupManager);
         _createGroup(maxName, _subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
@@ -1320,7 +1326,7 @@ contract MetaRegistryTestGroupName is MetaRegistryTestGroupsBase {
     }
 
     function test_updateGroup_NameToEmpty_Allowed() public {
-        uint256 gid = registry.getOperatorGroupsCount();
+        uint256 gid = _nextGroupId();
         vm.prank(groupManager);
         _createGroup("HasName", _subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
@@ -1331,7 +1337,7 @@ contract MetaRegistryTestGroupName is MetaRegistryTestGroupsBase {
     }
 
     function test_updateGroup_ClearPath_NameIsCleared() public {
-        uint256 gid = registry.getOperatorGroupsCount();
+        uint256 gid = _nextGroupId();
         vm.prank(groupManager);
         _createGroup("Valid", _subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
@@ -1344,7 +1350,7 @@ contract MetaRegistryTestGroupName is MetaRegistryTestGroupsBase {
     }
 
     function test_updateGroup_ReactivateAfterClear() public {
-        uint256 gid = registry.getOperatorGroupsCount();
+        uint256 gid = _nextGroupId();
         vm.prank(groupManager);
         _createGroup("First", _subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
@@ -1360,7 +1366,7 @@ contract MetaRegistryTestGroupName is MetaRegistryTestGroupsBase {
     }
 
     function test_updateGroup_ClearPath_RevertWhen_NameNotEmpty() public {
-        uint256 gid = registry.getOperatorGroupsCount();
+        uint256 gid = _nextGroupId();
         vm.prank(groupManager);
         _createGroup("Valid", _subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
 
