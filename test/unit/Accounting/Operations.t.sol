@@ -1245,9 +1245,39 @@ contract ClaimRewardsWithFeeSplitsTest is BaseTest {
         assertEq(stETH.sharesOf(splits[0].recipient), sharesBefore + expectedSplit);
     }
 
-    function test_claimRewards_withEmptyProofButSplits() public assertInvariants {
+    function test_claimRewards_splitsWithNoPendingSharesNoProof() public assertInvariants {
         IFeeSplits.FeeSplit[] memory splits = new IFeeSplits.FeeSplit[](1);
         splits[0] = IFeeSplits.FeeSplit({ recipient: nextAddress(), share: 5000 });
+
+        mock_getNodeOperatorOwner(user);
+        mock_getNodeOperatorManagementProperties(user, user, false);
+
+        assertEq(accounting.getPendingSharesToSplit(0), 0, "pending fees to split should be zero");
+
+        vm.prank(user);
+        accounting.updateFeeSplits(0, splits, 0, new bytes32[](0));
+
+        uint256 splitSharesBefore = stETH.sharesOf(splits[0].recipient);
+        uint256 userSharesBefore = stETH.sharesOf(user);
+
+        uint256 stETHAmount = 0.5 ether;
+        uint256 expectedClaimed = stETH.getSharesByPooledEth(stETHAmount);
+
+        // Claim with empty proof - should not process fee splits
+        vm.prank(user);
+        uint256 claimedShares = accounting.claimRewardsStETH(0, stETHAmount, 0, new bytes32[](0));
+
+        // No rewards fee splits should have been processed
+        assertEq(stETH.sharesOf(splits[0].recipient), splitSharesBefore);
+
+        // But user should still get their claim
+        assertEq(stETH.sharesOf(user), userSharesBefore + claimedShares);
+        assertEq(claimedShares, expectedClaimed);
+    }
+
+    function test_claimRewards_splitsWithPendingSharesNoProof() public assertInvariants {
+        IFeeSplits.FeeSplit[] memory splits = new IFeeSplits.FeeSplit[](1);
+        splits[0] = IFeeSplits.FeeSplit({ recipient: nextAddress("SPLIT_0"), share: 5000 });
 
         mock_getNodeOperatorOwner(user);
         mock_getNodeOperatorManagementProperties(user, user, false);
@@ -1255,19 +1285,44 @@ contract ClaimRewardsWithFeeSplitsTest is BaseTest {
         vm.prank(user);
         accounting.updateFeeSplits(0, splits, 0, new bytes32[](0));
 
-        uint256 sharesBefore = stETH.sharesOf(splits[0].recipient);
-        uint256 userBalanceBefore = stETH.balanceOf(user);
+        uint256 feeShares = stETH.getSharesByPooledEth(1 ether);
+        uint256 pendingToSplit;
 
-        // Claim with empty proof - should not process fee splits
+        {
+            uint256 lockedAmount = 10_000 ether;
+
+            vm.prank(address(accounting.MODULE()));
+            accounting.lockBond(0, lockedAmount);
+            uint256 claimable = accounting.getClaimableBondShares(0);
+            assertEq(claimable, 0, "initial claimable must be zero");
+
+            stETH.mintShares(address(feeDistributor), feeShares);
+            // Pull rewards (with proof) to accumulate pending while claimable == 0
+            accounting.pullAndSplitFeeRewards(0, feeShares, new bytes32[](1));
+            pendingToSplit = accounting.getPendingSharesToSplit(0);
+            assertEq(pendingToSplit, feeShares, "pending must be equal feeShares after pull");
+
+            vm.prank(address(accounting.MODULE()));
+            accounting.releaseLockedBond(0, lockedAmount);
+        }
+
+        uint256 splitSharesBefore = stETH.sharesOf(splits[0].recipient);
+        uint256 userSharesBefore = stETH.balanceOf(user);
+
+        uint256 stETHAmount = 0.5 ether;
+
         vm.prank(user);
-        uint256 claimedShares = accounting.claimRewardsStETH(0, 0.5 ether, 0, new bytes32[](0));
+        uint256 claimedShares = accounting.claimRewardsStETH(0, stETHAmount, 0, new bytes32[](0));
 
-        // No rewards fee splits should have been processed
-        assertEq(stETH.sharesOf(splits[0].recipient), sharesBefore);
+        uint256 sentToSplit = (pendingToSplit * splits[0].share) / 10_000;
+        assertEq(
+            stETH.sharesOf(splits[0].recipient),
+            splitSharesBefore + sentToSplit,
+            "split recipient shares count mismatch"
+        );
 
-        // But user should still get their claim
-        assertGt(stETH.balanceOf(user), userBalanceBefore);
-        assertGt(claimedShares, 0);
+        assertEq(claimedShares, stETH.getSharesByPooledEth(stETHAmount), "claimedShares value mismatch");
+        assertEq(stETH.sharesOf(user), userSharesBefore + claimedShares, "user shares count mismatch");
     }
 
     function test_splitPendingOnly_withoutPull() public assertInvariants {
