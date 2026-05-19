@@ -274,7 +274,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
         $.effectiveWeightCache.groupEffectiveWeightSum[groupId] = 0;
 
-        for (uint256 i; i < group.subNodeOperatorIds.length; ++i) {
+        uint256 subOperatorsCount = group.subNodeOperatorIds.length;
+        for (uint256 i; i < subOperatorsCount; ++i) {
             uint256 noId = group.subNodeOperatorIds[i];
             delete $.groupIndex.groupIdByOperatorId[noId];
             delete $.groupIndex.shareByOperatorId[noId];
@@ -282,7 +283,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             _setEffectiveWeight(noId, 0);
         }
 
-        for (uint256 i; i < group.externalOperators.length; ++i) {
+        uint256 externalOperatorsCount = group.externalOperators.length;
+        for (uint256 i; i < externalOperatorsCount; ++i) {
             delete $.groupIndex.groupIdByExternalKey[group.externalOperators[i].uniqueKey()];
         }
 
@@ -425,7 +427,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     function _totalExternalStake(
         ExternalOperator[] storage externalOperators
     ) internal view returns (uint256 totalExternalStake) {
-        for (uint256 i; i < externalOperators.length; ++i) {
+        uint256 externalOperatorsCount = externalOperators.length;
+        for (uint256 i; i < externalOperatorsCount; ++i) {
             ExternalOperator memory op = externalOperators[i];
 
             OperatorType opType = op.tryGetExtOpType();

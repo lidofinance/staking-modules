@@ -47,7 +47,8 @@ abstract contract FeeSplits is IFeeSplits {
         FeeSplitsStorage storage $ = _getFeeSplitsStorage();
         FeeSplit[] storage splits = $.feeSplits[nodeOperatorId];
         transfers = new SplitTransfer[](splits.length);
-        for (uint256 i; i < splits.length; ++i) {
+        uint256 splitsCount = splits.length;
+        for (uint256 i; i < splitsCount; ++i) {
             FeeSplit storage feeSplit = splits[i];
             // NOTE: Due to rounding error, shares left for the node operator might contain some dust.
             uint256 amount = (splittableShares * feeSplit.share) / MAX_BP;
