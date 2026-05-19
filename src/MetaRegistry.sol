@@ -239,12 +239,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     function _createGroup(OperatorGroup calldata groupInfo) internal {
         if (groupInfo.subNodeOperators.length == 0) revert InvalidOperatorGroup();
 
-        MetaRegistryStorage storage $ = _storage();
-        uint256 groupId = ++$.groupsCount;
-
-        _setGroupName(groupId, groupInfo.name);
-        _storeSubOperators(groupId, groupInfo.subNodeOperators);
-        _storeExternalOperators(groupId, groupInfo.externalOperators);
+        uint256 groupId = ++_storage().groupsCount;
+        _storeGroupData(groupId, groupInfo);
         emit OperatorGroupCreated(groupId, groupInfo);
     }
 
@@ -258,11 +254,15 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
             emit OperatorGroupCleared(groupId);
         } else {
-            _setGroupName(groupId, groupInfo.name);
-            _storeSubOperators(groupId, groupInfo.subNodeOperators);
-            _storeExternalOperators(groupId, groupInfo.externalOperators);
+            _storeGroupData(groupId, groupInfo);
             emit OperatorGroupUpdated(groupId, groupInfo);
         }
+    }
+
+    function _storeGroupData(uint256 groupId, OperatorGroup calldata groupInfo) internal {
+        _setGroupName(groupId, groupInfo.name);
+        _storeSubOperators(groupId, groupInfo.subNodeOperators);
+        _storeExternalOperators(groupId, groupInfo.externalOperators);
     }
 
     function _resetGroup(uint256 groupId) internal {
