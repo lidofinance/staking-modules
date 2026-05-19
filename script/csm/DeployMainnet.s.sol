@@ -88,7 +88,7 @@ contract DeployMainnet is DeployBase {
         config
             .identifiedCommunityStakersGateTreeRoot = 0x91545c42adde0f5d82e4c228f81449eab20349c1d31a8538e0468466f93495c5;
         config.identifiedCommunityStakersGateTreeCid = "bafkreido7ieacbe6nlhdivxfp2gd5kxovofngf6qdmahih4laihm675e2a";
-        config.identifiedDVTClusterGateName = "Identified DVT Cluster Gate";
+        config.identifiedDVTClusterGateName = "Identified DVT Clusters Gate";
         config.identifiedDVTClusterGateTreeRoot = bytes32(uint256(0xdeadbeef)); // TODO: Set real IDVTC tree root
         config.identifiedDVTClusterGateTreeCid = "someCid"; // TODO: Set real IDVTC tree CID
         // 1.5 -> 1.3
