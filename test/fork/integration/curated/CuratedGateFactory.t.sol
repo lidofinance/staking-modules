@@ -17,11 +17,12 @@ contract CuratedGateFactoryTest is CuratedIntegrationBase {
         tree.pushLeaf(abi.encode(nextAddress()));
         bytes32 root = tree.root();
         string memory cid = "curatedCid";
+        string memory name = "Other Curated Gate";
         uint256 curveId = 1;
         address admin = nextAddress("GateAdmin");
 
         vm.startSnapshotGas("CuratedGateFactory.createCurated");
-        address instance = curatedGateFactory.create(curveId, root, cid, admin);
+        address instance = curatedGateFactory.create(curveId, root, cid, name, admin);
         vm.stopSnapshotGas();
 
         CuratedGate gate = CuratedGate(instance);
@@ -31,6 +32,7 @@ contract CuratedGateFactoryTest is CuratedIntegrationBase {
         assertEq(address(gate.META_REGISTRY()), address(metaRegistry));
         assertEq(gate.treeRoot(), root);
         assertEq(gate.treeCid(), cid);
+        assertEq(gate.name(), name);
         assertEq(gate.getRoleMemberCount(gate.DEFAULT_ADMIN_ROLE()), 1);
         assertTrue(gate.hasRole(gate.DEFAULT_ADMIN_ROLE(), admin));
     }

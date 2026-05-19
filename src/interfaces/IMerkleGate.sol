@@ -15,11 +15,16 @@ interface IMerkleGate {
     /// @param member Address that consumed eligibility
     event Consumed(address indexed member);
 
+    /// @notice Emitted when the gate display name is set
+    /// @param name Human-readable gate name
+    event NameSet(string name);
+
     /// Errors
     error InvalidProof();
     error AlreadyConsumed();
     error InvalidTreeRoot();
     error InvalidTreeCid();
+    error InvalidName();
     error ZeroAdminAddress();
 
     /// @return SET_TREE_ROLE role required to update tree parameters
@@ -31,6 +36,9 @@ interface IMerkleGate {
     /// @return treeCid Current Merkle tree CID
     function treeCid() external view returns (string memory);
 
+    /// @return name Human-readable gate name
+    function name() external view returns (string memory);
+
     /// @return curveId Instance-specific bond curve id
     function curveId() external view returns (uint256);
 
@@ -38,6 +46,10 @@ interface IMerkleGate {
     /// @param _treeRoot New root
     /// @param _treeCid New CID
     function setTreeParams(bytes32 _treeRoot, string calldata _treeCid) external;
+
+    /// @notice Update the human-readable gate name
+    /// @param name New gate name
+    function setName(string calldata name) external;
 
     /// @notice Returns whether a member already consumed eligibility
     function isConsumed(address member) external view returns (bool);
@@ -52,8 +64,15 @@ interface IMerkleGate {
     /// @param curveId Bond curve id used by the gate.
     /// @param treeRoot Initial Merkle tree root.
     /// @param treeCid Initial Merkle tree CID.
+    /// @param name Human-readable gate name.
     /// @param admin Address to be granted DEFAULT_ADMIN_ROLE.
-    function initialize(uint256 curveId, bytes32 treeRoot, string calldata treeCid, address admin) external;
+    function initialize(
+        uint256 curveId,
+        bytes32 treeRoot,
+        string calldata treeCid,
+        string calldata name,
+        address admin
+    ) external;
 
     /// @notice Initialized version for upgradeable tooling
     function getInitializedVersion() external view returns (uint64);

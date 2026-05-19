@@ -51,6 +51,7 @@ struct GateCurveParams {
 }
 
 struct CuratedGateConfig {
+    string name;
     uint256[2][] bondCurve;
     bytes32 treeRoot;
     string treeCid;
@@ -590,7 +591,7 @@ abstract contract DeployBase is Script {
             uint256 gateCurveId = curveIds[i];
             CuratedGateConfig storage gateConfig = config.curatedGates[i];
             CuratedGate gate = CuratedGate(
-                gateFactory.create(gateCurveId, gateConfig.treeRoot, gateConfig.treeCid, deployer)
+                gateFactory.create(gateCurveId, gateConfig.treeRoot, gateConfig.treeCid, gateConfig.name, deployer)
             );
 
             {

@@ -15,12 +15,14 @@ interface IMerkleGateFactory {
     /// @param curveId Bond curve id to assign to eligible members.
     /// @param treeRoot Initial Merkle tree root.
     /// @param treeCid Initial Merkle tree CID.
+    /// @param name Human-readable gate name.
     /// @param admin Address of the proxy admin and DEFAULT_ADMIN_ROLE holder.
     /// @return instance Address of the created proxy instance.
     function create(
         uint256 curveId,
         bytes32 treeRoot,
         string calldata treeCid,
+        string calldata name,
         address admin
     ) external returns (address instance);
 }

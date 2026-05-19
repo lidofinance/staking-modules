@@ -28,6 +28,7 @@ contract VettedGateTestBase is Test, Utilities, Fixtures {
     MerkleTree internal merkleTree;
     bytes32 internal root;
     string internal cid;
+    string internal gateName;
 
     function setUp() public virtual {
         csm = new CSMMock();
@@ -42,11 +43,12 @@ contract VettedGateTestBase is Test, Utilities, Fixtures {
         merkleTree.pushLeaf(abi.encode(anotherNodeOperator));
         root = merkleTree.root();
         cid = "someCid";
+        gateName = "Identified Community Stakers Gate";
 
         curveId = 1;
         vettedGate = new VettedGate(address(csm));
         _enableInitializers(address(vettedGate));
-        vettedGate.initialize(curveId, root, cid, admin);
+        vettedGate.initialize(curveId, root, cid, gateName, admin);
     }
 
     function _addNodeOperator(
@@ -102,11 +104,14 @@ contract VettedGateTest_initialize is VettedGateTestBase {
 
         vm.expectEmit();
         emit IMerkleGate.TreeSet(root, cid);
-        gate.initialize(curveId, root, cid, admin);
+        vm.expectEmit();
+        emit IMerkleGate.NameSet(gateName);
+        gate.initialize(curveId, root, cid, gateName, admin);
 
         assertEq(gate.curveId(), curveId);
         assertEq(gate.treeRoot(), root);
         assertEq(keccak256(bytes(gate.treeCid())), keccak256(bytes(cid)));
+        assertEq(keccak256(bytes(gate.name())), keccak256(bytes(gateName)));
         assertEq(gate.getRoleMemberCount(gate.DEFAULT_ADMIN_ROLE()), 1);
         assertEq(gate.getRoleMember(gate.DEFAULT_ADMIN_ROLE(), 0), admin);
         assertEq(gate.getInitializedVersion(), 1);
@@ -118,7 +123,7 @@ contract VettedGateTest_initialize is VettedGateTestBase {
         uint256 defaultCurveId = csm.accounting().DEFAULT_BOND_CURVE_ID();
 
         vm.expectRevert(IVettedGate.InvalidCurveId.selector);
-        gate.initialize(defaultCurveId, root, cid, admin);
+        gate.initialize(defaultCurveId, root, cid, gateName, admin);
     }
 
     function test_initialize_RevertWhen_InvalidTreeRoot() public {
@@ -126,7 +131,7 @@ contract VettedGateTest_initialize is VettedGateTestBase {
         _enableInitializers(address(gate));
 
         vm.expectRevert(IMerkleGate.InvalidTreeRoot.selector);
-        gate.initialize(curveId, bytes32(0), cid, admin);
+        gate.initialize(curveId, bytes32(0), cid, gateName, admin);
     }
 
     function test_initialize_RevertWhen_InvalidTreeCid() public {
@@ -134,7 +139,15 @@ contract VettedGateTest_initialize is VettedGateTestBase {
         _enableInitializers(address(gate));
 
         vm.expectRevert(IMerkleGate.InvalidTreeCid.selector);
-        gate.initialize(curveId, root, "", admin);
+        gate.initialize(curveId, root, "", gateName, admin);
+    }
+
+    function test_initialize_RevertWhen_InvalidName() public {
+        VettedGate gate = new VettedGate(address(csm));
+        _enableInitializers(address(gate));
+
+        vm.expectRevert(IMerkleGate.InvalidName.selector);
+        gate.initialize(curveId, root, cid, "", admin);
     }
 
     function test_initialize_RevertWhen_ZeroAdminAddress() public {
@@ -142,7 +155,38 @@ contract VettedGateTest_initialize is VettedGateTestBase {
         _enableInitializers(address(gate));
 
         vm.expectRevert(bytes4(keccak256("ZeroAdminAddress()")));
-        gate.initialize(curveId, root, cid, address(0));
+        gate.initialize(curveId, root, cid, gateName, address(0));
+    }
+}
+
+contract VettedGateTest_setName is VettedGateTestBase {
+    function test_setName() public {
+        string memory newName = "Renamed Gate";
+
+        vm.expectEmit(address(vettedGate));
+        emit IMerkleGate.NameSet(newName);
+        vm.prank(admin);
+        vettedGate.setName(newName);
+
+        assertEq(keccak256(bytes(vettedGate.name())), keccak256(bytes(newName)));
+    }
+
+    function test_setName_RevertWhen_NotRoleHolder() public {
+        vm.expectRevert();
+        vm.prank(stranger);
+        vettedGate.setName("Renamed Gate");
+    }
+
+    function test_setName_RevertWhen_InvalidName() public {
+        vm.expectRevert(IMerkleGate.InvalidName.selector);
+        vm.prank(admin);
+        vettedGate.setName("");
+    }
+
+    function test_setName_RevertWhen_SameName() public {
+        vm.expectRevert(IMerkleGate.InvalidName.selector);
+        vm.prank(admin);
+        vettedGate.setName(gateName);
     }
 }
 
