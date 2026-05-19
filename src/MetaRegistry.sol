@@ -8,6 +8,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IAccounting } from "./interfaces/IAccounting.sol";
+import { IBondCurve } from "./interfaces/IBondCurve.sol";
 import { INodeOperatorsRegistry } from "./interfaces/INodeOperatorsRegistry.sol";
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IBaseModule } from "./interfaces/IBaseModule.sol";
@@ -136,6 +137,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     /// @inheritdoc IMetaRegistry
     function setBondCurveWeight(uint256 curveId, uint256 weight) external onlyRole(SET_BOND_CURVE_WEIGHT_ROLE) {
         MetaRegistryStorage storage $ = _storage();
+        if (curveId >= ACCOUNTING.getCurvesCount()) revert IBondCurve.InvalidBondCurveId();
         if (weight != 0 && weight < MAX_BP) revert InvalidBondCurveWeight();
         if ($.bondCurveWeight[curveId] == weight) revert SameBondCurveWeight();
 
