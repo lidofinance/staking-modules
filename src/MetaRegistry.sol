@@ -355,10 +355,14 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         uint256 oldWeight = _setEffectiveWeight(noId, newWeight);
 
         if (oldWeight != newWeight) {
-            $.effectiveWeightCache.groupEffectiveWeightSum[groupId] =
-                $.effectiveWeightCache.groupEffectiveWeightSum[groupId] +
-                newWeight -
-                oldWeight;
+            // It's unlikely in practice that the new weight will be large enough to lead to an overflow
+            // and the old weight subtraction can't underflow since it's part of the weight sum.
+            unchecked {
+                $.effectiveWeightCache.groupEffectiveWeightSum[groupId] =
+                    $.effectiveWeightCache.groupEffectiveWeightSum[groupId] +
+                    newWeight -
+                    oldWeight;
+            }
         }
     }
 
