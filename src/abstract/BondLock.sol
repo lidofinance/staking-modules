@@ -93,6 +93,7 @@ abstract contract BondLock is IBondLock, Initializable {
         if (amount == 0) revert InvalidBondLockAmount();
         uint256 locked = getLockedBond(nodeOperatorId);
         if (locked < amount) revert InvalidBondLockAmount();
+        if (locked == amount) _changeBondLock(nodeOperatorId, 0, 0);
         unchecked {
             _changeBondLock(nodeOperatorId, locked - amount, _getBondLockStorage().bondLock[nodeOperatorId].until);
         }
