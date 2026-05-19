@@ -1246,6 +1246,27 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(module.getNonce(), nonceBefore + 1, "Module nonce should increment only once for batch withdrawals");
     }
 
+    function test_reportRegularWithdrawnValidators_gas16Withdrawals() public {
+        uint256 keysCount = 16;
+        uint256 noId = createNodeOperator(keysCount);
+        module.obtainDepositData(keysCount, "");
+
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](keysCount);
+        for (uint256 i = 0; i < keysCount; ++i) {
+            validatorInfos[i] = WithdrawnValidatorInfo({
+                nodeOperatorId: noId,
+                keyIndex: i,
+                exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+                slashingPenalty: 0,
+                isSlashed: false
+            });
+        }
+
+        vm.startSnapshotGas("reportRegularWithdrawnValidators_16");
+        module.reportRegularWithdrawnValidators(validatorInfos);
+        vm.stopSnapshotGas();
+    }
+
     function test_reportValidatorSlashing_HappyPath() public {
         uint256 noId = createNodeOperator(17);
         module.obtainDepositData(17, "");
