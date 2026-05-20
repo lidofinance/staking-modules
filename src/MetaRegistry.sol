@@ -64,6 +64,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     uint256 internal constant MAX_BP = 10000;
     uint256 internal constant EXTERNAL_STAKE_PER_VALIDATOR = 32 ether;
     uint256 internal constant MAX_NAME_LENGTH = 256;
+    uint256 internal constant MAX_DESCRIPTION_LENGTH = 1024;
 
     // keccak256(abi.encode(uint256(keccak256("MetaRegistry")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant META_REGISTRY_STORAGE_LOCATION =
@@ -371,7 +372,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
     function _storeOperatorMetadata(uint256 nodeOperatorId, OperatorMetadata memory metadata) internal {
         if (bytes(metadata.name).length > MAX_NAME_LENGTH) revert OperatorNameTooLong();
-        if (bytes(metadata.description).length > 1024) revert OperatorDescriptionTooLong();
+        if (bytes(metadata.description).length > MAX_DESCRIPTION_LENGTH) revert OperatorDescriptionTooLong();
         _storage().operatorMetadata[nodeOperatorId] = metadata;
         emit OperatorMetadataSet({ nodeOperatorId: nodeOperatorId, metadata: metadata });
     }

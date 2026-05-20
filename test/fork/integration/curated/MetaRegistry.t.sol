@@ -76,7 +76,7 @@ contract MetaRegistryIntegrationTestCurated is CuratedIntegrationBase {
         uint256 countAfter = metaRegistry.getOperatorGroupsCount();
 
         assertEq(countAfter, countBefore + 1);
-        uint256 newGroupId = countAfter - 1;
+        uint256 newGroupId = countAfter;
         assertEq(metaRegistry.getNodeOperatorGroupId(noId), newGroupId);
         assertGt(metaRegistry.getNodeOperatorWeight(noId), 0);
     }
