@@ -363,16 +363,15 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         console.log("topped up keys:", topped);
     }
 
-    function createCuratedOperator(uint256 gateIndex, uint256 keysCount) external {
+    function createCuratedOperator(uint256 gateIndex, uint256 keysCount, address operator) public {
         _setUp();
+        if (operator == address(0)) operator = nextAddress("curated-operator");
 
         CuratedGate gate = CuratedGate(curatedGates[gateIndex]);
         bytes32 origRoot = gate.treeRoot();
         string memory origCid = gate.treeCid();
         address admin = gate.getRoleMember(gate.DEFAULT_ADMIN_ROLE(), 0);
         _setBalance(admin);
-
-        address operator = nextAddress("curated-operator");
         _setBalance(operator);
 
         bytes32[] memory proof = _setTempTree(gate, admin, operator);
