@@ -130,6 +130,13 @@ contract BondLockTest is Test {
         assertTrue(expired);
     }
 
+    function test_isLockExpired_NoLock() public view {
+        uint256 noId = 0;
+
+        bool expired = bondLock.isLockExpired(noId);
+        assertFalse(expired);
+    }
+
     function test_lock() public {
         uint256 period = bondLock.getBondLockPeriod();
         uint256 noId = 0;
