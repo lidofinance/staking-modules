@@ -84,6 +84,7 @@ abstract contract FeeSplits is IFeeSplits {
         emit PendingSharesToSplitChanged(nodeOperatorId, newPendingSharesToSplit);
     }
 
+    /// @dev Expects `shares` not to exceed the current value of `pendingSharesToSplit`.
     function _decreasePendingSharesToSplit(uint256 nodeOperatorId, uint256 shares) internal {
         if (shares == 0) return;
         FeeSplitsStorage storage $ = _getFeeSplitsStorage();
