@@ -16,17 +16,22 @@ DEPLOY_CONFIG=./artifacts/local/curated/deploy-hoodi.json
 ### Create operator via curated gate
 
 ```bash
-# Create operator through gate 0, no keys
-just create-curated-operator
+# Create operator via PO gate (CuratedGates[0])
+just create-curated-operator po
 
-# Create operator through gate 0 with 3 keys
-just create-curated-operator 0 3
+# Create operator via PTO gate (CuratedGates[1])
+just create-curated-operator pto
 
-# Create operator through gate 1
-just create-curated-operator 1
+# Create operator for a specific address
+just create-curated-operator po 0xAbC0000000000000000000000000000000000123
+
+# Create operator via gate by index
+just create-curated-operator 0
 ```
 
-Temporarily swaps the gate's Merkle tree to include a fresh operator address, creates the operator, optionally adds keys with auto-calculated bond, then restores the original tree root/CID. The gate is auto-resumed if paused.
+Temporarily swaps the gate's Merkle tree to include the operator address (fresh one if omitted), creates the operator, then restores the original tree root/CID. The gate is auto-resumed if paused. Use `just add-keys <noId> <count>` afterwards to fund keys.
+
+Gate selectors are resolved the same way as `update-gate-tree` / `get-gate-tree` — names (`po`, `pto`, `pgo`, `do`, `eeo`, `iodc`, `iodcp`, `ics`, `idvtc`), an integer index into `CuratedGates[]`, or a raw `0x…` address.
 
 ### Operator groups
 

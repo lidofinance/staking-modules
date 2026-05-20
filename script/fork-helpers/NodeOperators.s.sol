@@ -363,11 +363,11 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         console.log("topped up keys:", topped);
     }
 
-    function createCuratedOperator(uint256 gateIndex, uint256 keysCount, address operator) public {
+    function createCuratedOperator(address gateAddr, address operator) public {
         _setUp();
         if (operator == address(0)) operator = nextAddress("curated-operator");
 
-        CuratedGate gate = CuratedGate(curatedGates[gateIndex]);
+        CuratedGate gate = CuratedGate(gateAddr);
         bytes32 origRoot = gate.treeRoot();
         string memory origCid = gate.treeCid();
         address admin = gate.getRoleMember(gate.DEFAULT_ADMIN_ROLE(), 0);
@@ -376,11 +376,7 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
 
         bytes32[] memory proof = _setTempTree(gate, admin, operator);
 
-        uint256 noId = _createViaGate(gate, operator, proof);
-
-        if (keysCount > 0) {
-            _addKeysForOperator(operator, noId, keysCount);
-        }
+        _createViaGate(gate, operator, proof);
 
         // Restore original tree params
         vm.startBroadcast(admin);
@@ -413,21 +409,6 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
         noId = gate.createNodeOperator("fork-operator", "fork-test", address(0), address(0), proof);
         vm.stopBroadcast();
         console.log("noId", noId);
-    }
-
-    function _addKeysForOperator(address operator, uint256 noId, uint256 keysCount) internal {
-        uint256 amount = accounting.getRequiredBondForNextKeys(noId, keysCount);
-        _setBalance(operator, amount + 1 ether);
-
-        vm.startBroadcast(operator);
-        module.addValidatorKeysETH{ value: amount }(
-            operator,
-            noId,
-            keysCount,
-            randomBytes(48 * keysCount),
-            randomBytes(96 * keysCount)
-        );
-        vm.stopBroadcast();
     }
 
     function operatorsCount() external {

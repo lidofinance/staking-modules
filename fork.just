@@ -215,8 +215,11 @@ create-operator-group *args:
     forge script --rpc-url={{anvil_rpc_url}} --timeout 300 -vvv --broadcast --unlocked MetaRegistryHelpers --sig='createOperatorGroup(uint256[])' -- "[$pairs]"
     curl -sS {{anvil_rpc_url}} --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"anvil_autoImpersonateAccount","params":[false],"id":1}' > /dev/null
 
-create-curated-operator gateIndex="0" keysCount="0" operator="0":
-    just _impersonate-script NodeOperators --sig="createCuratedOperator\(uint256,uint256,address\)" -- {{gateIndex}} {{keysCount}} {{operator}}
+create-curated-operator selector operator="0x0000000000000000000000000000000000000000":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    gate=$(just _resolve-gate-addr "{{selector}}")
+    just _impersonate-script NodeOperators --sig="createCuratedOperator\(address,address\)" -- "$gate" "{{operator}}"
 
 
 reset-operator-group noId:

@@ -5,10 +5,10 @@ Walk through key lifecycle states on a local fork.
 ## 1. Create operator
 
 ```bash
-just create-curated-operator
+just create-curated-operator po
 ```
 
-Creates operator without keys. Assume operator id is `0`.
+Creates operator via PO gate. Assume operator id is `0`.
 
 > Note: check operator state anytime with `just operator-info 0`.
 
