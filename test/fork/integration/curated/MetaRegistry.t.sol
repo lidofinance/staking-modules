@@ -215,6 +215,6 @@ contract MetaRegistryIntegrationTestCurated is CuratedIntegrationBase {
                 externalOperators: new IMetaRegistry.ExternalOperator[](0)
             })
         );
-        groupId = countBefore; // new group gets index = old count
+        groupId = countBefore + 1;
     }
 }
