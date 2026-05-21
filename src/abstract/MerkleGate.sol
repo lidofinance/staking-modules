@@ -8,12 +8,19 @@ import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerklePr
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { AssetRecoverer } from "./AssetRecoverer.sol";
+import { NamedUpgradeable } from "./NamedUpgradeable.sol";
 import { PausableWithRoles } from "./PausableWithRoles.sol";
 
 import { IMerkleGate } from "../interfaces/IMerkleGate.sol";
 
 /// @notice Shared Merkle-based gate logic for gated node-operator flows.
-abstract contract MerkleGate is IMerkleGate, AccessControlEnumerableUpgradeable, PausableWithRoles, AssetRecoverer {
+abstract contract MerkleGate is
+    IMerkleGate,
+    NamedUpgradeable,
+    AccessControlEnumerableUpgradeable,
+    PausableWithRoles,
+    AssetRecoverer
+{
     bytes32 public constant SET_TREE_ROLE = keccak256("SET_TREE_ROLE");
 
     /// @notice Id of the bond curve to be assigned for eligible members.
@@ -29,14 +36,10 @@ abstract contract MerkleGate is IMerkleGate, AccessControlEnumerableUpgradeable,
     mapping(address => bool) internal _consumedAddresses;
 
     /// @inheritdoc IMerkleGate
-    string public name;
-
-    /// @inheritdoc IMerkleGate
     function setTreeParams(bytes32 treeRoot_, string calldata treeCid_) external onlyRole(SET_TREE_ROLE) {
         _setTreeParams(treeRoot_, treeCid_);
     }
 
-    /// @inheritdoc IMerkleGate
     function setName(string calldata name_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setName(name_);
     }
@@ -94,15 +97,6 @@ abstract contract MerkleGate is IMerkleGate, AccessControlEnumerableUpgradeable,
         treeCid = treeCid_;
 
         emit TreeSet(treeRoot_, treeCid_);
-    }
-
-    function _setName(string calldata name_) internal {
-        if (bytes(name_).length == 0) revert InvalidName();
-        if (Strings.equal(name_, name)) revert InvalidName();
-
-        name = name_;
-
-        emit NameSet(name_);
     }
 
     function _onlyRecoverer() internal view override {

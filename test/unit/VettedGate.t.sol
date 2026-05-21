@@ -8,6 +8,7 @@ import { VettedGate } from "src/VettedGate.sol";
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { IVettedGate } from "src/interfaces/IVettedGate.sol";
 import { IMerkleGate } from "src/interfaces/IMerkleGate.sol";
+import { INamedUpgradeable } from "src/interfaces/INamedUpgradeable.sol";
 import { IBaseModule, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
 
@@ -83,6 +84,10 @@ contract VettedGateTestBase is Test, Utilities, Fixtures {
             })
         );
     }
+
+    function _tooLongName() internal pure returns (string memory) {
+        return string(new bytes(257));
+    }
 }
 
 contract VettedGateTest_constructor is VettedGateTestBase {
@@ -105,7 +110,7 @@ contract VettedGateTest_initialize is VettedGateTestBase {
         vm.expectEmit();
         emit IMerkleGate.TreeSet(root, cid);
         vm.expectEmit();
-        emit IMerkleGate.NameSet(gateName);
+        emit INamedUpgradeable.NameSet(gateName);
         gate.initialize(curveId, root, cid, gateName, admin);
 
         assertEq(gate.curveId(), curveId);
@@ -146,8 +151,16 @@ contract VettedGateTest_initialize is VettedGateTestBase {
         VettedGate gate = new VettedGate(address(csm));
         _enableInitializers(address(gate));
 
-        vm.expectRevert(IMerkleGate.InvalidName.selector);
+        vm.expectRevert(INamedUpgradeable.InvalidName.selector);
         gate.initialize(curveId, root, cid, "", admin);
+    }
+
+    function test_initialize_RevertWhen_NameTooLong() public {
+        VettedGate gate = new VettedGate(address(csm));
+        _enableInitializers(address(gate));
+
+        vm.expectRevert(INamedUpgradeable.InvalidName.selector);
+        gate.initialize(curveId, root, cid, _tooLongName(), admin);
     }
 
     function test_initialize_RevertWhen_ZeroAdminAddress() public {
@@ -164,7 +177,7 @@ contract VettedGateTest_setName is VettedGateTestBase {
         string memory newName = "Renamed Gate";
 
         vm.expectEmit(address(vettedGate));
-        emit IMerkleGate.NameSet(newName);
+        emit INamedUpgradeable.NameSet(newName);
         vm.prank(admin);
         vettedGate.setName(newName);
 
@@ -178,13 +191,19 @@ contract VettedGateTest_setName is VettedGateTestBase {
     }
 
     function test_setName_RevertWhen_InvalidName() public {
-        vm.expectRevert(IMerkleGate.InvalidName.selector);
+        vm.expectRevert(INamedUpgradeable.InvalidName.selector);
         vm.prank(admin);
         vettedGate.setName("");
     }
 
+    function test_setName_RevertWhen_NameTooLong() public {
+        vm.expectRevert(INamedUpgradeable.InvalidName.selector);
+        vm.prank(admin);
+        vettedGate.setName(_tooLongName());
+    }
+
     function test_setName_RevertWhen_SameName() public {
-        vm.expectRevert(IMerkleGate.InvalidName.selector);
+        vm.expectRevert(INamedUpgradeable.InvalidName.selector);
         vm.prank(admin);
         vettedGate.setName(gateName);
     }

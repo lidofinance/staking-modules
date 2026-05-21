@@ -3,9 +3,11 @@
 
 pragma solidity 0.8.33;
 
+import { INamedUpgradeable } from "./INamedUpgradeable.sol";
+
 /// @title Merkle Gate Interface
 /// @notice Common surface for gates that guard node operator creation via Merkle proofs.
-interface IMerkleGate {
+interface IMerkleGate is INamedUpgradeable {
     /// @notice Emitted when a new Merkle tree is set
     /// @param treeRoot Root of the Merkle tree
     /// @param treeCid CID of the Merkle tree
@@ -15,16 +17,11 @@ interface IMerkleGate {
     /// @param member Address that consumed eligibility
     event Consumed(address indexed member);
 
-    /// @notice Emitted when the gate display name is set
-    /// @param name Human-readable gate name
-    event NameSet(string name);
-
     /// Errors
     error InvalidProof();
     error AlreadyConsumed();
     error InvalidTreeRoot();
     error InvalidTreeCid();
-    error InvalidName();
     error ZeroAdminAddress();
 
     /// @return SET_TREE_ROLE role required to update tree parameters
@@ -36,9 +33,6 @@ interface IMerkleGate {
     /// @return treeCid Current Merkle tree CID
     function treeCid() external view returns (string memory);
 
-    /// @return name Human-readable gate name
-    function name() external view returns (string memory);
-
     /// @return curveId Instance-specific bond curve id
     function curveId() external view returns (uint256);
 
@@ -46,10 +40,6 @@ interface IMerkleGate {
     /// @param _treeRoot New root
     /// @param _treeCid New CID
     function setTreeParams(bytes32 _treeRoot, string calldata _treeCid) external;
-
-    /// @notice Update the human-readable gate name
-    /// @param name New gate name
-    function setName(string calldata name) external;
 
     /// @notice Returns whether a member already consumed eligibility
     function isConsumed(address member) external view returns (bool);

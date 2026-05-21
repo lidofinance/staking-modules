@@ -9,6 +9,7 @@ import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { ICuratedGate } from "src/interfaces/ICuratedGate.sol";
 import { IMerkleGate } from "src/interfaces/IMerkleGate.sol";
+import { INamedUpgradeable } from "src/interfaces/INamedUpgradeable.sol";
 import { IMetaRegistry, OperatorMetadata } from "src/interfaces/IMetaRegistry.sol";
 import { IBaseModule, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
@@ -73,6 +74,10 @@ contract CuratedGateTestBase is Test, Utilities, Fixtures {
     function curveId() internal view virtual returns (uint256) {
         return 1;
     }
+
+    function _tooLongName() internal pure returns (string memory) {
+        return string(new bytes(257));
+    }
 }
 
 contract CuratedGateTestBaseDefaultCurve is CuratedGateTestBase {
@@ -130,8 +135,15 @@ contract CuratedGateTest_initialize is CuratedGateTestBase {
     function test_initialize_RevertWhen_InvalidName() public {
         CuratedGate g = new CuratedGate(address(module));
         _enableInitializers(address(g));
-        vm.expectRevert(IMerkleGate.InvalidName.selector);
+        vm.expectRevert(INamedUpgradeable.InvalidName.selector);
         g.initialize(1, root, cid, "", admin);
+    }
+
+    function test_initialize_RevertWhen_NameTooLong() public {
+        CuratedGate g = new CuratedGate(address(module));
+        _enableInitializers(address(g));
+        vm.expectRevert(INamedUpgradeable.InvalidName.selector);
+        g.initialize(1, root, cid, _tooLongName(), admin);
     }
 
     function test_initialize_AllowsDefaultCurveId() public {
@@ -148,11 +160,17 @@ contract CuratedGateTest_setName is CuratedGateTestBase {
         string memory newName = "Renamed Gate";
 
         vm.expectEmit(address(gate));
-        emit IMerkleGate.NameSet(newName);
+        emit INamedUpgradeable.NameSet(newName);
         vm.prank(admin);
         gate.setName(newName);
 
         assertEq(keccak256(bytes(gate.name())), keccak256(bytes(newName)));
+    }
+
+    function test_setName_RevertWhen_NameTooLong() public {
+        vm.expectRevert(INamedUpgradeable.InvalidName.selector);
+        vm.prank(admin);
+        gate.setName(_tooLongName());
     }
 }
 
