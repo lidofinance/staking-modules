@@ -65,9 +65,9 @@ library CuratedDepositAllocator {
 
     /// @dev Returns operator-level top-up allocations for the provided operators.
     ///      - Duplicated operator ids are not expected (caller guarantees uniqueness).
-    ///      - Only operators with non-zero allocation weight are included.
+    ///      - Only operators with non-zero allocation weight and usable top-up capacity are included.
     ///      - Shares are computed across all eligible operators in the module
-    ///        (non-zero weight, non-zero top-up capacity),
+    ///        (non-zero weight, non-zero quantized top-up capacity),
     ///        so a subset cannot bias its share by omitting other eligible operators.
     ///      - Per-operator capacity is computed as:
     ///        `(active_validators * 2048 ETH) - current_operator_balance`, floored at zero.
@@ -92,7 +92,7 @@ library CuratedDepositAllocator {
     ///      - Raw operator ids may contain duplicates; they are deduplicated before operator-level allocation
     ///        to avoid overweighting operators that appear on multiple requested keys.
     ///      - Shares are computed across all eligible operators in the module
-    ///        (non-zero weight, non-zero top-up capacity),
+    ///        (non-zero weight, non-zero quantized top-up capacity),
     ///        so a subset cannot bias its share by omitting other eligible operators.
     ///      - Per-operator capacity is computed as:
     ///        `(active_validators * 2048 ETH) - current_operator_balance`, floored at zero.
@@ -270,10 +270,10 @@ library CuratedDepositAllocator {
 
         IMetaRegistry metaRegistry = ICuratedModule(address(this)).META_REGISTRY();
 
-        // Build global share baseline across all eligible operators (non-zero weight + capacity).
+        // Build global share baseline across all eligible operators (non-zero weight + usable capacity).
         for (uint256 i; i < operatorsCount; ++i) {
             uint256 balance = StakeTracker.getOperatorBalance($, i);
-            uint256 capacity = _topUpCapacity($.nodeOperators[i], balance);
+            uint256 capacity = quantizeForTopUp(_topUpCapacity($.nodeOperators[i], balance));
             if (capacity == 0) continue;
             capacitiesByOperatorId[i] = capacity;
 
@@ -301,7 +301,7 @@ library CuratedDepositAllocator {
     /// @notice Returns current deposit allocation targets for all operators.
     /// @dev Target = totalCurrent * operatorWeight / totalWeight (in validator count).
     ///      Includes operators regardless of depositable capacity for informational purposes.
-    ///      Actual allocation recalculates shares only across operators with available capacity,
+    ///      Actual allocation recalculates shares only across operators with usable capacity,
     ///      so real per-operator amounts may differ from the targets shown here.
     ///      Arrays are indexed by operator id; zero-weight operators have zero values.
     /// @param nodeOperators Node operator storage mapping from the module.
@@ -349,7 +349,7 @@ library CuratedDepositAllocator {
     /// @notice Returns current top-up allocation targets for all operators.
     /// @dev Target = totalCurrent * operatorWeight / totalWeight (in wei).
     ///      Includes operators regardless of top-up capacity for informational purposes.
-    ///      Actual allocation recalculates shares only across operators with available capacity,
+    ///      Actual allocation recalculates shares only across operators with usable capacity,
     ///      so real per-operator amounts may differ from the targets shown here.
     ///      Arrays are indexed by operator id; zero-weight operators have zero values.
     /// @param $ Base module storage pointer.

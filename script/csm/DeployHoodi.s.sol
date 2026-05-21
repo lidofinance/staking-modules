@@ -85,9 +85,11 @@ contract DeployHoodi is DeployBase {
         // VettedGate
         config.identifiedCommunityStakersGateManager = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
         config.identifiedCommunityStakersGateCurveId = 2;
+        config.identifiedCommunityStakersGateName = "Identified Community Stakers Gate";
         config
             .identifiedCommunityStakersGateTreeRoot = 0x6ddbc639b18ef7eee4e4262baf6e2bec58724b40b9e557df4bc78a0d9c2e0607; // See the first value in artifacts/hoodi/ics/merkle-tree.json
         config.identifiedCommunityStakersGateTreeCid = "bafkreicr363zly5gj3gkpmamu2qzcpevw6tylwc767fxi3vfc2skcxanfi";
+        config.identifiedDVTClusterGateName = "Identified DVT Clusters Gate";
         config.identifiedDVTClusterGateTreeRoot = bytes32(uint256(0xdeadbeef)); // TODO: Set real IDVTC tree root
         config.identifiedDVTClusterGateTreeCid = "someCid"; // TODO: Set real IDVTC tree CID
         // 1.5 -> 1.3

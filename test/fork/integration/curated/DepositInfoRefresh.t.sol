@@ -113,6 +113,7 @@ contract DepositInfoRefreshTestCurated is CuratedIntegrationBase {
         metaRegistry.createOrUpdateOperatorGroup(
             metaRegistry.NO_GROUP_ID(),
             IMetaRegistry.OperatorGroup({
+                name: "Group",
                 subNodeOperators: subs,
                 externalOperators: new IMetaRegistry.ExternalOperator[](0)
             })
@@ -131,6 +132,7 @@ contract DepositInfoRefreshTestCurated is CuratedIntegrationBase {
         metaRegistry.createOrUpdateOperatorGroup(
             groupId,
             IMetaRegistry.OperatorGroup({
+                name: "",
                 subNodeOperators: new IMetaRegistry.SubNodeOperator[](0),
                 externalOperators: new IMetaRegistry.ExternalOperator[](0)
             })

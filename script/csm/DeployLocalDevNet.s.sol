@@ -75,11 +75,13 @@ contract DeployLocalDevNet is DeployBase {
         // VettedGate
         config.identifiedCommunityStakersGateManager = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
         config.identifiedCommunityStakersGateCurveId = 2;
+        config.identifiedCommunityStakersGateName = "Identified Community Stakers Gate";
         config.identifiedCommunityStakersGateTreeRoot = vm.envOr(
             "CSM_VETTED_GATE_TREE_ROOT",
             bytes32(uint256(0xdeadbeef))
         );
         config.identifiedCommunityStakersGateTreeCid = vm.envOr("CSM_VETTED_GATE_TREE_CID", string("someCid"));
+        config.identifiedDVTClusterGateName = "Identified DVT Clusters Gate";
         config.identifiedDVTClusterGateTreeRoot = bytes32(uint256(0xdeadbeef)); // TODO: Set real IDVTC tree root
         config.identifiedDVTClusterGateTreeCid = "someCid"; // TODO: Set real IDVTC tree CID
         // 1.5 -> 1.3

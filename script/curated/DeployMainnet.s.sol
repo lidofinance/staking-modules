@@ -80,6 +80,7 @@ contract DeployMainnet is DeployBase {
         // Professional Operator Gate
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.name = "Professional Operator Gate";
             gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
             gate.treeCid = "TODO: ipfs-cid-cohort-a";
             gate.params.metaRegistryBondCurveWeight = _m(50000);
@@ -88,6 +89,7 @@ contract DeployMainnet is DeployBase {
         // Professional Trusted Operator Gate
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.name = "Professional Trusted Operator Gate";
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
@@ -103,6 +105,7 @@ contract DeployMainnet is DeployBase {
         // Public Good Operator Gate
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.name = "Public Good Operator Gate";
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
@@ -118,6 +121,7 @@ contract DeployMainnet is DeployBase {
         // Decentralization Operator Gate
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.name = "Decentralization Operator Gate";
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
@@ -133,6 +137,7 @@ contract DeployMainnet is DeployBase {
         // Extra Effort Operator Gate
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.name = "Extra Effort Operator Gate";
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
@@ -148,6 +153,7 @@ contract DeployMainnet is DeployBase {
         // Intra-Operator DVT Cluster Gate
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.name = "Intra-Operator DVT Cluster Gate";
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
@@ -163,6 +169,7 @@ contract DeployMainnet is DeployBase {
         // Intra-Operator DVT Cluster Plus Gate (identical to the one above but with 4% fee)
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.name = "Intra-Operator DVT Cluster Plus Gate";
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);

@@ -20,10 +20,17 @@ contract MerkleGateFactory is IMerkleGateFactory {
         uint256 curveId,
         bytes32 treeRoot,
         string calldata treeCid,
+        string calldata name,
         address admin
     ) external returns (address instance) {
         instance = address(new OssifiableProxy({ implementation_: GATE_IMPL, data_: "", admin_: admin }));
-        IMerkleGate(instance).initialize(curveId, treeRoot, treeCid, admin);
+        IMerkleGate(instance).initialize({
+            curveId: curveId,
+            treeRoot: treeRoot,
+            treeCid: treeCid,
+            name: name,
+            admin: admin
+        });
 
         emit MerkleGateCreated(instance, admin, curveId);
     }

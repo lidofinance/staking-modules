@@ -343,6 +343,11 @@ contract BondCurveTest is Test {
         assertEq(bondCurve.getKeysCountByBondAmount(6 ether, 0), 4);
     }
 
+    function test_getKeysCountByBondAmount_RevertWhen_InvalidBondCurveId() public {
+        vm.expectRevert(IBondCurve.InvalidBondCurveId.selector);
+        bondCurve.getKeysCountByBondAmount(2 ether, 1337);
+    }
+
     function test_getKeysCountByBondAmount_noOverflowWithMaxUint() public view {
         IBondCurve.BondCurveData memory curve = bondCurve.getBondCurve(0);
         uint256 len = curve.intervals.length;
@@ -371,6 +376,11 @@ contract BondCurveTest is Test {
         assertEq(bondCurve.getBondAmountByKeysCount(2, 0), 4 ether);
         assertEq(bondCurve.getBondAmountByKeysCount(3, 0), 5 ether);
         assertEq(bondCurve.getBondAmountByKeysCount(4, 0), 6 ether);
+    }
+
+    function test_getBondAmountByKeysCount_RevertWhen_InvalidBondCurveId() public {
+        vm.expectRevert(IBondCurve.InvalidBondCurveId.selector);
+        bondCurve.getBondAmountByKeysCount(1, 1337);
     }
 
     function test_getKeysCountByCurveValue_individual() public {

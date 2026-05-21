@@ -21,9 +21,10 @@ contract VettedGateFactoryTest is MiscTest {
         uint256 curveId = 1;
         bytes32 root = merkleTree.root();
         string memory cid = "someOtherCid";
+        string memory name = "Other Vetted Gate";
 
         vm.startSnapshotGas("VettedGateFactory.createVetted");
-        address instance = vettedGateFactory.create(curveId, root, cid, address(this));
+        address instance = vettedGateFactory.create(curveId, root, cid, name, address(this));
         vm.stopSnapshotGas();
 
         VettedGate gate = VettedGate(instance);
@@ -31,6 +32,7 @@ contract VettedGateFactoryTest is MiscTest {
         assertEq(address(gate.MODULE()), address(module));
         assertEq(gate.treeRoot(), root);
         assertEq(gate.treeCid(), cid);
+        assertEq(gate.name(), name);
         assertEq(gate.getRoleMemberCount(gate.DEFAULT_ADMIN_ROLE()), 1);
         assertTrue(gate.hasRole(gate.DEFAULT_ADMIN_ROLE(), address(this)));
     }

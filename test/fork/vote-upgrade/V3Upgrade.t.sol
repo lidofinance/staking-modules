@@ -618,6 +618,11 @@ contract VoteChangesTest is V3UpgradeTestBase {
             keccak256(bytes(deployParams.identifiedDVTClusterGateTreeCid)),
             "gate tree cid"
         );
+        assertEq(
+            keccak256(bytes(gate.name())),
+            keccak256(bytes(deployParams.identifiedDVTClusterGateName)),
+            "gate name"
+        );
 
         assertTrue(gate.hasRole(gate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent), "gate aragon admin");
         if (deployParams.secondAdminAddress != address(0)) {
@@ -800,6 +805,10 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(vettedGate.getInitializedVersion(), versionBefore);
         assertEq(vettedGate.treeRoot(), treeRootBefore);
         assertEq(keccak256(bytes(vettedGate.treeCid())), keccak256(bytes(treeCidBefore)));
+        assertEq(
+            keccak256(bytes(vettedGate.name())),
+            keccak256(bytes(deployParams.identifiedCommunityStakersGateName))
+        );
 
         // TODO: Tighten to the final exact count once CircuitBreaker is live and migration is done.
         _assertCircuitBreakerPauseRoleState(
