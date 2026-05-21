@@ -344,6 +344,8 @@ abstract contract VettedGateDeploymentBaseTest is DeploymentBaseTest {
 
     function _expectedTreeCid() internal view virtual returns (string memory);
 
+    function _expectedName() internal view virtual returns (string memory);
+
     function _expectedPauseRoleMembersWithoutCb() internal view virtual returns (uint256) {
         return 1;
     }
@@ -396,6 +398,7 @@ abstract contract VettedGateDeploymentBaseTest is DeploymentBaseTest {
             curveId: 1,
             treeRoot: _expectedTreeRoot(),
             treeCid: _expectedTreeCid(),
+            name: _expectedName(),
             admin: deployParams.aragonAgent
         });
 
@@ -404,6 +407,7 @@ abstract contract VettedGateDeploymentBaseTest is DeploymentBaseTest {
             curveId: 1,
             treeRoot: _expectedTreeRoot(),
             treeCid: _expectedTreeCid(),
+            name: _expectedName(),
             admin: deployParams.aragonAgent
         });
     }
@@ -444,6 +448,14 @@ contract IdentifiedCommunityStakersGateDeploymentTest is VettedGateDeploymentBas
         return deployParams.identifiedCommunityStakersGateTreeCid;
     }
 
+    function _expectedName() internal view override returns (string memory) {
+        return deployParams.identifiedCommunityStakersGateName;
+    }
+
+    function test_name_afterVote() public view {
+        assertEq(_gate().name(), _expectedName());
+    }
+
     function _expectedPauseRoleMembersWithoutCb() internal view override returns (uint256) {
         return _expectedPauseRoleMembersWithoutCb(isUpgradeFlow);
     }
@@ -464,6 +476,14 @@ contract IdentifiedDVTClusterGateDeploymentTest is VettedGateDeploymentBaseTest 
 
     function _expectedTreeCid() internal view override returns (string memory) {
         return deployParams.identifiedDVTClusterGateTreeCid;
+    }
+
+    function _expectedName() internal view override returns (string memory) {
+        return deployParams.identifiedDVTClusterGateName;
+    }
+
+    function test_name() public view {
+        assertEq(_gate().name(), _expectedName());
     }
 }
 

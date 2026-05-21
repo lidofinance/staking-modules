@@ -8,12 +8,19 @@ import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerklePr
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { AssetRecoverer } from "./AssetRecoverer.sol";
+import { NamedUpgradeable } from "./NamedUpgradeable.sol";
 import { PausableWithRoles } from "./PausableWithRoles.sol";
 
 import { IMerkleGate } from "../interfaces/IMerkleGate.sol";
 
 /// @notice Shared Merkle-based gate logic for gated node-operator flows.
-abstract contract MerkleGate is IMerkleGate, AccessControlEnumerableUpgradeable, PausableWithRoles, AssetRecoverer {
+abstract contract MerkleGate is
+    IMerkleGate,
+    NamedUpgradeable,
+    AccessControlEnumerableUpgradeable,
+    PausableWithRoles,
+    AssetRecoverer
+{
     bytes32 public constant SET_TREE_ROLE = keccak256("SET_TREE_ROLE");
 
     /// @notice Id of the bond curve to be assigned for eligible members.
@@ -33,6 +40,10 @@ abstract contract MerkleGate is IMerkleGate, AccessControlEnumerableUpgradeable,
         _setTreeParams(treeRoot_, treeCid_);
     }
 
+    function setName(string calldata name_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setName(name_);
+    }
+
     /// @inheritdoc IMerkleGate
     function getInitializedVersion() external view returns (uint64) {
         return _getInitializedVersion();
@@ -43,11 +54,13 @@ abstract contract MerkleGate is IMerkleGate, AccessControlEnumerableUpgradeable,
         uint256 curveId_,
         bytes32 treeRoot_,
         string calldata treeCid_,
+        string calldata name_,
         address admin
     ) public virtual onlyInitializing {
         if (admin == address(0)) revert ZeroAdminAddress();
         curveId = curveId_;
         _setTreeParams(treeRoot_, treeCid_);
+        _setName(name_);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 

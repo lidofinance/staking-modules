@@ -345,8 +345,10 @@ contract SimulateVote is Script, ForkHelpersCommon {
             // 31-32. Revoke legacy referral program roles
             existingVettedGate.revokeRole(START_REFERRAL_SEASON_ROLE, deployParams.aragonAgent);
             existingVettedGate.revokeRole(END_REFERRAL_SEASON_ROLE, deployParams.identifiedCommunityStakersGateManager);
+            // 33. Set human-readable name for migrated Identified Community Stakers gate
+            existingVettedGate.setName(deployParams.identifiedCommunityStakersGateName);
 
-            // 33-42. Setup CircuitBreaker: grant PAUSE_ROLE and register pausers
+            // 34-43. Setup CircuitBreaker: grant PAUSE_ROLE and register pausers
             if (deploymentConfig.circuitBreaker != address(0)) {
                 module.grantRole(module.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
                 accounting.grantRole(accounting.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
@@ -369,11 +371,11 @@ contract SimulateVote is Script, ForkHelpersCommon {
                 console.log("CircuitBreaker is not configured");
             }
 
-            // 43-44. Grant Identified DVT Cluster gate permissions
+            // 44-45. Grant Identified DVT Cluster gate permissions
             module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), deploymentConfig.identifiedDVTClusterGate);
             accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), deploymentConfig.identifiedDVTClusterGate);
 
-            // 45-47. Deploy Identified DVT Cluster bond curve and parameter overrides
+            // 46-48. Deploy Identified DVT Cluster bond curve and parameter overrides
             accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), deploymentConfig.identifiedDVTClusterCurveSetup);
             parametersRegistry.grantRole(
                 parametersRegistry.MANAGE_CURVE_PARAMETERS_ROLE(),
@@ -381,7 +383,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
             );
             OneShotCurveSetup(deploymentConfig.identifiedDVTClusterCurveSetup).execute();
 
-            // 48. Grant MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE to penaltiesManager
+            // 49. Grant MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE to penaltiesManager
             parametersRegistry.grantRole(
                 parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
                 deployParams.penaltiesManager
@@ -392,9 +394,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
         {
             vm.startBroadcast(burnerAdmin);
-            // 49. Revoke REQUEST_BURN_SHARES_ROLE from Accounting
+            // 50. Revoke REQUEST_BURN_SHARES_ROLE from Accounting
             burner.revokeRole(burner.REQUEST_BURN_SHARES_ROLE(), address(accounting));
-            // 50. Grant REQUEST_BURN_MY_STETH_ROLE to Accounting
+            // 51. Grant REQUEST_BURN_MY_STETH_ROLE to Accounting
             burner.grantRole(burner.REQUEST_BURN_MY_STETH_ROLE(), address(accounting));
             vm.stopBroadcast();
         }
@@ -406,9 +408,9 @@ contract SimulateVote is Script, ForkHelpersCommon {
             address twgAdmin = _prepareAdmin(address(twg));
 
             vm.startBroadcast(twgAdmin);
-            // 51. Revoke TWG full-withdrawal role from old Ejector
+            // 52. Revoke TWG full-withdrawal role from old Ejector
             twg.revokeRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), oldEjector);
-            // 52. Grant TWG full-withdrawal role to new Ejector
+            // 53. Grant TWG full-withdrawal role to new Ejector
             twg.grantRole(twg.ADD_FULL_WITHDRAWAL_REQUEST_ROLE(), deploymentConfig.ejector);
             vm.stopBroadcast();
         }

@@ -9,6 +9,7 @@ import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { ICuratedGate } from "src/interfaces/ICuratedGate.sol";
 import { IMerkleGate } from "src/interfaces/IMerkleGate.sol";
+import { INamedUpgradeable } from "src/interfaces/INamedUpgradeable.sol";
 import { IMetaRegistry, OperatorMetadata } from "src/interfaces/IMetaRegistry.sol";
 import { IBaseModule, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
@@ -33,6 +34,7 @@ contract CuratedGateTestBase is Test, Utilities, Fixtures {
     MerkleTree internal tree;
     bytes32 internal root;
     string internal cid;
+    string internal gateName;
 
     function setUp() public virtual {
         admin = nextAddress("ADMIN");
@@ -58,10 +60,11 @@ contract CuratedGateTestBase is Test, Utilities, Fixtures {
         tree.pushLeaf(abi.encode(member2));
         root = tree.root();
         cid = someCIDv0();
+        gateName = "Professional Operator Gate";
 
         gate = new CuratedGate(address(module));
         _enableInitializers(address(gate));
-        gate.initialize(curveId(), root, cid, admin);
+        gate.initialize(curveId(), root, cid, gateName, admin);
 
         vm.startPrank(admin);
         gate.grantRole(gate.SET_TREE_ROLE(), admin);
@@ -70,6 +73,10 @@ contract CuratedGateTestBase is Test, Utilities, Fixtures {
 
     function curveId() internal view virtual returns (uint256) {
         return 1;
+    }
+
+    function _tooLongName() internal pure returns (string memory) {
+        return string(new bytes(257));
     }
 }
 
@@ -96,9 +103,10 @@ contract CuratedGateTest_initialize is CuratedGateTestBase {
     function test_initialize() public {
         CuratedGate g = new CuratedGate(address(module));
         _enableInitializers(address(g));
-        g.initialize(1, root, cid, admin);
+        g.initialize(1, root, cid, gateName, admin);
         assertEq(g.treeRoot(), root);
         assertEq(keccak256(bytes(g.treeCid())), keccak256(bytes(cid)));
+        assertEq(keccak256(bytes(g.name())), keccak256(bytes(gateName)));
         assertTrue(g.hasRole(g.DEFAULT_ADMIN_ROLE(), admin));
         assertEq(g.curveId(), 1);
     }
@@ -107,29 +115,62 @@ contract CuratedGateTest_initialize is CuratedGateTestBase {
         CuratedGate g = new CuratedGate(address(module));
         _enableInitializers(address(g));
         vm.expectRevert(IMerkleGate.ZeroAdminAddress.selector);
-        g.initialize(1, root, cid, address(0));
+        g.initialize(1, root, cid, gateName, address(0));
     }
 
     function test_initialize_RevertWhen_InvalidTreeRoot() public {
         CuratedGate g = new CuratedGate(address(module));
         _enableInitializers(address(g));
         vm.expectRevert(IMerkleGate.InvalidTreeRoot.selector);
-        g.initialize(1, bytes32(0), cid, admin);
+        g.initialize(1, bytes32(0), cid, gateName, admin);
     }
 
     function test_initialize_RevertWhen_InvalidTreeCid() public {
         CuratedGate g = new CuratedGate(address(module));
         _enableInitializers(address(g));
         vm.expectRevert(IMerkleGate.InvalidTreeCid.selector);
-        g.initialize(1, root, "", admin);
+        g.initialize(1, root, "", gateName, admin);
+    }
+
+    function test_initialize_RevertWhen_InvalidName() public {
+        CuratedGate g = new CuratedGate(address(module));
+        _enableInitializers(address(g));
+        vm.expectRevert(INamedUpgradeable.InvalidName.selector);
+        g.initialize(1, root, cid, "", admin);
+    }
+
+    function test_initialize_RevertWhen_NameTooLong() public {
+        CuratedGate g = new CuratedGate(address(module));
+        _enableInitializers(address(g));
+        vm.expectRevert(INamedUpgradeable.InvalidName.selector);
+        g.initialize(1, root, cid, _tooLongName(), admin);
     }
 
     function test_initialize_AllowsDefaultCurveId() public {
         CuratedGate g = new CuratedGate(address(module));
         _enableInitializers(address(g));
         uint256 defaultCurveId = module.ACCOUNTING().DEFAULT_BOND_CURVE_ID();
-        g.initialize(defaultCurveId, root, cid, admin);
+        g.initialize(defaultCurveId, root, cid, gateName, admin);
         assertEq(g.curveId(), defaultCurveId);
+    }
+}
+
+contract CuratedGateTest_setName is CuratedGateTestBase {
+    function test_setName() public {
+        string memory newName = "Renamed Gate";
+
+        vm.expectEmit(address(gate));
+        emit INamedUpgradeable.NameSet(newName);
+        vm.prank(admin);
+        gate.setName(newName);
+
+        assertEq(keccak256(bytes(gate.name())), keccak256(bytes(newName)));
+    }
+
+    function test_setName_RevertWhen_NameTooLong() public {
+        vm.expectRevert(INamedUpgradeable.InvalidName.selector);
+        vm.prank(admin);
+        gate.setName(_tooLongName());
     }
 }
 

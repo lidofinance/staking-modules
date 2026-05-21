@@ -66,6 +66,7 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
                     expectedIdentifiedDVTClusterCurveId,
                     config.identifiedDVTClusterGateTreeRoot,
                     config.identifiedDVTClusterGateTreeCid,
+                    config.identifiedDVTClusterGateName,
                     deployer
                 )
             );

@@ -152,6 +152,7 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
             CuratedGateConfig storage cfg = deployParams.curatedGates[i];
             assertEq(gate.treeRoot(), cfg.treeRoot, "unexpected gate root");
             assertEq(gate.treeCid(), cfg.treeCid, "unexpected gate cid");
+            assertEq(gate.name(), cfg.name, "unexpected gate name");
             assertEq(gate.curveId(), _expectedCurveId(i), "unexpected gate curve");
         }
     }
@@ -178,6 +179,7 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
 
             assertEq(gate.treeRoot(), deployParams.curatedGates[i].treeRoot);
             assertEq(gate.treeCid(), deployParams.curatedGates[i].treeCid);
+            assertEq(gate.name(), deployParams.curatedGates[i].name);
             assertEq(gate.curveId(), _expectedCurveId(i));
         }
     }
