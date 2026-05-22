@@ -494,7 +494,7 @@ contract Accounting is
             // NOTE: `splittableShares` is the whole split operation base. It includes
             //       the Node Operator's retained shares (split remainder), so we
             //       must decrease pending by the base, not by transferred shares sum.
-            FeeSplits._decreasePendingSharesToSplit(nodeOperatorId, splittableShares);
+            FeeSplits._unsafeDecreasePendingSharesToSplit(nodeOperatorId, splittableShares);
             BondCore._unsafeReduceBond(nodeOperatorId, transferredShares);
             // NOTE: It is safe to use unchecked here since `transferredShares` is always <= `claimableShares`
             unchecked {
