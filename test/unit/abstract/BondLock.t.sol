@@ -230,7 +230,12 @@ contract BondLockTest is Test {
         vm.expectEmit(address(bondLock));
         emit IBondLock.BondLockRemoved(noId);
 
+        vm.recordLogs();
         bondLock.unlock(noId, amount);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        assertEq(entries.length, 1);
+        assertEq(entries[0].topics[0], IBondLock.BondLockRemoved.selector);
+        assertEq(entries[0].topics[1], bytes32(noId));
 
         BondLock.BondLockData memory lock = bondLock.getLockedBondInfo(0);
         assertEq(lock.amount, 0);
