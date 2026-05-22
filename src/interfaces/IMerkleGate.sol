@@ -3,9 +3,11 @@
 
 pragma solidity 0.8.33;
 
+import { INamedUpgradeable } from "./INamedUpgradeable.sol";
+
 /// @title Merkle Gate Interface
 /// @notice Common surface for gates that guard node operator creation via Merkle proofs.
-interface IMerkleGate {
+interface IMerkleGate is INamedUpgradeable {
     /// @notice Emitted when a new Merkle tree is set
     /// @param treeRoot Root of the Merkle tree
     /// @param treeCid CID of the Merkle tree
@@ -52,8 +54,15 @@ interface IMerkleGate {
     /// @param curveId Bond curve id used by the gate.
     /// @param treeRoot Initial Merkle tree root.
     /// @param treeCid Initial Merkle tree CID.
+    /// @param name Human-readable gate name.
     /// @param admin Address to be granted DEFAULT_ADMIN_ROLE.
-    function initialize(uint256 curveId, bytes32 treeRoot, string calldata treeCid, address admin) external;
+    function initialize(
+        uint256 curveId,
+        bytes32 treeRoot,
+        string calldata treeCid,
+        string calldata name,
+        address admin
+    ) external;
 
     /// @notice Initialized version for upgradeable tooling
     function getInitializedVersion() external view returns (uint64);

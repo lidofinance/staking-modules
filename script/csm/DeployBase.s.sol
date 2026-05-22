@@ -92,6 +92,7 @@ struct DeployParams {
     // TODO: Legacy-only field. Kept only for SimulateVote.upgrade() END_REFERRAL_SEASON_ROLE revoke.
     address identifiedCommunityStakersGateManager;
     uint256 identifiedCommunityStakersGateCurveId;
+    string identifiedCommunityStakersGateName;
     bytes32 identifiedCommunityStakersGateTreeRoot;
     string identifiedCommunityStakersGateTreeCid;
     uint256[2][] identifiedCommunityStakersGateBondCurve;
@@ -113,6 +114,7 @@ struct DeployParams {
     uint256 identifiedCommunityStakersGateExitDelayFee;
     uint256 identifiedCommunityStakersGateMaxElWithdrawalRequestFee;
     // IDVTC VettedGate
+    string identifiedDVTClusterGateName;
     bytes32 identifiedDVTClusterGateTreeRoot;
     string identifiedDVTClusterGateTreeCid;
     uint256 identifiedDVTClusterBondCurveId;
@@ -365,6 +367,7 @@ abstract contract DeployBase is Script {
                     identifiedCommunityStakersGateBondCurveId,
                     config.identifiedCommunityStakersGateTreeRoot,
                     config.identifiedCommunityStakersGateTreeCid,
+                    config.identifiedCommunityStakersGateName,
                     deployer
                 )
             );
@@ -373,6 +376,7 @@ abstract contract DeployBase is Script {
                     identifiedDVTClusterBondCurveId,
                     config.identifiedDVTClusterGateTreeRoot,
                     config.identifiedDVTClusterGateTreeCid,
+                    config.identifiedDVTClusterGateName,
                     deployer
                 )
             );

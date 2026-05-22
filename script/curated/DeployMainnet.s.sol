@@ -54,7 +54,7 @@ contract DeployMainnet is DeployBase {
 
         // Module
         config.moduleType = "curated-onchain-v2"; // TODO reconsider
-        config.generalDelayedPenaltyReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
+        config.generalDelayedPenaltyReporter = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
 
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0;
@@ -74,12 +74,13 @@ contract DeployMainnet is DeployBase {
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.01 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
-        config.penaltiesManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
+        config.penaltiesManager = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
 
         // Curated gates
         // Professional Operator Gate
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.name = "Professional Operator Gate";
             gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
             gate.treeCid = "TODO: ipfs-cid-cohort-a";
             gate.params.metaRegistryBondCurveWeight = _m(50000);
@@ -88,6 +89,7 @@ contract DeployMainnet is DeployBase {
         // Professional Trusted Operator Gate
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.name = "Professional Trusted Operator Gate";
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
@@ -103,6 +105,7 @@ contract DeployMainnet is DeployBase {
         // Public Good Operator Gate
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.name = "Public Good Operator Gate";
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
@@ -118,6 +121,7 @@ contract DeployMainnet is DeployBase {
         // Decentralization Operator Gate
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.name = "Decentralization Operator Gate";
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
@@ -133,6 +137,7 @@ contract DeployMainnet is DeployBase {
         // Extra Effort Operator Gate
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.name = "Extra Effort Operator Gate";
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
@@ -148,6 +153,7 @@ contract DeployMainnet is DeployBase {
         // Intra-Operator DVT Cluster Gate
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.name = "Intra-Operator DVT Cluster Gate";
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
@@ -163,6 +169,7 @@ contract DeployMainnet is DeployBase {
         // Intra-Operator DVT Cluster Plus Gate (identical to the one above but with 4% fee)
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
+            gate.name = "Intra-Operator DVT Cluster Plus Gate";
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
@@ -175,14 +182,14 @@ contract DeployMainnet is DeployBase {
             gate.params.exitDelayFee = _m(0.005 ether);
         }
 
-        config.curatedGatePauseManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
+        config.curatedGatePauseManager = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
 
         // MetaRegistry
-        config.setOperatorInfoManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
+        config.setOperatorInfoManager = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
 
         // CircuitBreaker
         config.circuitBreaker = address(0x63697263756974627265616b6572); // TODO: Set real CircuitBreaker address
-        config.circuitBreakerPauser = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
+        config.circuitBreakerPauser = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
 
         // DG
         config.resealManager = 0x7914b5a1539b97Bd0bbd155757F25FD79A522d24;
