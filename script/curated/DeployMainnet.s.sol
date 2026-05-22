@@ -54,7 +54,7 @@ contract DeployMainnet is DeployBase {
 
         // Module
         config.moduleType = "curated-onchain-v2"; // TODO reconsider
-        config.generalDelayedPenaltyReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
+        config.generalDelayedPenaltyReporter = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
 
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0;
@@ -74,7 +74,7 @@ contract DeployMainnet is DeployBase {
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.01 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
-        config.penaltiesManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
+        config.penaltiesManager = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
 
         // Curated gates
         // Professional Operator Gate
@@ -182,14 +182,14 @@ contract DeployMainnet is DeployBase {
             gate.params.exitDelayFee = _m(0.005 ether);
         }
 
-        config.curatedGatePauseManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
+        config.curatedGatePauseManager = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
 
         // MetaRegistry
-        config.setOperatorInfoManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
+        config.setOperatorInfoManager = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
 
         // CircuitBreaker
         config.circuitBreaker = address(0x63697263756974627265616b6572); // TODO: Set real CircuitBreaker address
-        config.circuitBreakerPauser = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // TODO reconsider once we have CMC address
+        config.circuitBreakerPauser = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
 
         // DG
         config.resealManager = 0x7914b5a1539b97Bd0bbd155757F25FD79A522d24;
