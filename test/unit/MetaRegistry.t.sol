@@ -1251,7 +1251,7 @@ contract MetaRegistryModuleAddressCacheTest is MetaRegistryGroupsBaseTest {
     }
 }
 
-contract MetaRegistryTestGroupName is MetaRegistryTestGroupsBase {
+contract MetaRegistryTestGroupName is MetaRegistryGroupsBaseTest {
     function test_createGroup_SetsName() public {
         uint256 gid = _nextGroupId();
         vm.prank(groupManager);
