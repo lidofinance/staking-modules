@@ -719,6 +719,31 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocations[0], 4 ether);
     }
 
+    function test_topUpObtainDepositData_subStepCapacityExcludedFromShare() public assertInvariants {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        module.obtainDepositData(2, "");
+
+        uint256 almostFullTopUp = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE -
+            ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE -
+            1 wei;
+        curatedHarness.exposedIncreaseKeyBalances(UintArr(firstId), UintArr(0), UintArr(almostFullTopUp));
+        _mockOperatorWeight(firstId, 1000);
+        _mockOperatorWeight(secondId, 1);
+
+        bytes memory key = module.getSigningKeys(secondId, 0, 1);
+
+        uint256[] memory allocations = cm.allocateDeposits(
+            2 ether,
+            BytesArr(key),
+            UintArr(0),
+            UintArr(secondId),
+            UintArr(10 ether)
+        );
+
+        assertEq(allocations[0], 2 ether);
+    }
+
     function test_topUpObtainDepositData_capacityCapsAllocation() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         module.obtainDepositData(1, "");
@@ -1074,6 +1099,25 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(ids.length, 1);
         assertEq(ids[0], secondId);
         assertEq(allocs[0], 4 ether);
+    }
+
+    function test_getDepositsAllocation_subStepCapacityExcludedFromShare() public assertInvariants {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        module.obtainDepositData(2, "");
+
+        uint256 almostFullTopUp = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE -
+            ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE -
+            1 wei;
+        curatedHarness.exposedIncreaseKeyBalances(UintArr(firstId), UintArr(0), UintArr(almostFullTopUp));
+        _mockOperatorWeight(firstId, 1000);
+        _mockOperatorWeight(secondId, 1);
+
+        (, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(2 ether);
+
+        assertEq(ids.length, 1);
+        assertEq(ids[0], secondId);
+        assertEq(allocs[0], 2 ether);
     }
 
     function test_getDepositsAllocation_capacityCapsAllocation() public assertInvariants {

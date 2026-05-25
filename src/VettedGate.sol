@@ -31,10 +31,11 @@ contract VettedGate is IVettedGate, MerkleGate {
         uint256 curveId,
         bytes32 treeRoot,
         string calldata treeCid,
+        string calldata name,
         address admin
     ) public override(IMerkleGate, MerkleGate) initializer {
         if (curveId == ACCOUNTING.DEFAULT_BOND_CURVE_ID()) revert InvalidCurveId();
-        super.initialize(curveId, treeRoot, treeCid, admin);
+        super.initialize({ curveId_: curveId, treeRoot_: treeRoot, treeCid_: treeCid, name_: name, admin: admin });
     }
 
     /// @inheritdoc IVettedGate

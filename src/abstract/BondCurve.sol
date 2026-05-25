@@ -95,9 +95,7 @@ abstract contract BondCurve is IBondCurve, Initializable {
     ///      It will be used for the Node Operator instead of the previously set curve
     function _setBondCurve(uint256 nodeOperatorId, uint256 curveId) internal {
         BondCurveStorage storage $ = _getBondCurveStorage();
-        unchecked {
-            if (curveId > $.bondCurves.length - 1) revert InvalidBondCurveId();
-        }
+        BondCurvesLib._ensureCurveExists($, curveId);
         if ($.operatorBondCurveId[nodeOperatorId] == curveId) revert SameBondCurveId();
         $.operatorBondCurveId[nodeOperatorId] = curveId;
         emit BondCurveSet(nodeOperatorId, curveId, msg.sender);
@@ -105,10 +103,7 @@ abstract contract BondCurve is IBondCurve, Initializable {
 
     function _getCurveInfo(uint256 curveId) private view returns (BondCurveData storage) {
         BondCurveStorage storage $ = _getBondCurveStorage();
-        unchecked {
-            if (curveId > $.bondCurves.length - 1) revert InvalidBondCurveId();
-        }
-
+        BondCurvesLib._ensureCurveExists($, curveId);
         return $.bondCurves[curveId];
     }
 

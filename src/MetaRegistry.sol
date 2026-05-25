@@ -8,6 +8,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IAccounting } from "./interfaces/IAccounting.sol";
+import { IBondCurve } from "./interfaces/IBondCurve.sol";
 import { INodeOperatorsRegistry } from "./interfaces/INodeOperatorsRegistry.sol";
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IBaseModule } from "./interfaces/IBaseModule.sol";
@@ -21,6 +22,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     using ExternalOperatorLib for ExternalOperator;
 
     struct CachedOperatorGroup {
+        string name;
         uint64[] subNodeOperatorIds;
         ExternalOperator[] externalOperators;
     }
@@ -40,11 +42,12 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     /// @custom:storage-location erc7201:MetaRegistry
     struct MetaRegistryStorage {
         mapping(uint256 curveId => uint256 weight) bondCurveWeight;
-        CachedOperatorGroup[] groups;
+        mapping(uint256 groupId => CachedOperatorGroup) groups;
         GroupIndex groupIndex;
         EffectiveWeightCache effectiveWeightCache;
         mapping(uint256 nodeOperatorId => OperatorMetadata) operatorMetadata;
         mapping(uint256 moduleId => address moduleAddress) moduleAddressCache;
+        uint256 groupsCount;
     }
 
     bytes32 public constant MANAGE_OPERATOR_GROUPS_ROLE = keccak256("MANAGE_OPERATOR_GROUPS_ROLE");
@@ -61,6 +64,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
     uint256 internal constant MAX_BP = 10000;
     uint256 internal constant EXTERNAL_STAKE_PER_VALIDATOR = 32 ether;
+    uint256 internal constant MAX_NAME_LENGTH = 256;
+    uint256 internal constant MAX_DESCRIPTION_LENGTH = 1024;
 
     // keccak256(abi.encode(uint256(keccak256("MetaRegistry")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant META_REGISTRY_STORAGE_LOCATION =
@@ -81,9 +86,6 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         if (admin == address(0)) revert ZeroAdminAddress();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-
-        // NOTE: Put a stone to reserve the NO_GROUP_ID.
-        _storage().groups.push();
     }
 
     /// @inheritdoc IMetaRegistry
@@ -125,8 +127,6 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         uint256 groupId,
         OperatorGroup calldata groupInfo
     ) external onlyRole(MANAGE_OPERATOR_GROUPS_ROLE) {
-        MetaRegistryStorage storage $ = _storage();
-        if (groupId >= $.groups.length) revert InvalidOperatorGroupId();
         if (groupId == NO_GROUP_ID) {
             _createGroup(groupInfo);
         } else {
@@ -137,6 +137,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     /// @inheritdoc IMetaRegistry
     function setBondCurveWeight(uint256 curveId, uint256 weight) external onlyRole(SET_BOND_CURVE_WEIGHT_ROLE) {
         MetaRegistryStorage storage $ = _storage();
+        if (curveId >= ACCOUNTING.getCurvesCount()) revert IBondCurve.InvalidBondCurveId();
         if (weight != 0 && weight < MAX_BP) revert InvalidBondCurveWeight();
         if ($.bondCurveWeight[curveId] == weight) revert SameBondCurveWeight();
 
@@ -161,9 +162,10 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     /// @inheritdoc IMetaRegistry
     function getOperatorGroup(uint256 groupId) external view returns (OperatorGroup memory groupInfo) {
         MetaRegistryStorage storage $ = _storage();
-        if (groupId >= $.groups.length) revert InvalidOperatorGroupId();
+        if (groupId > $.groupsCount) revert InvalidOperatorGroupId();
 
         CachedOperatorGroup storage group = $.groups[groupId];
+        groupInfo.name = group.name;
         uint256 subOpCount = group.subNodeOperatorIds.length;
         groupInfo.subNodeOperators = new SubNodeOperator[](subOpCount);
         for (uint256 i; i < subOpCount; ++i) {
@@ -178,7 +180,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
     /// @inheritdoc IMetaRegistry
     function getOperatorGroupsCount() external view returns (uint256 count) {
-        count = _storage().groups.length;
+        count = _storage().groupsCount;
     }
 
     /// @inheritdoc IMetaRegistry
@@ -240,12 +242,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     function _createGroup(OperatorGroup calldata groupInfo) internal {
         if (groupInfo.subNodeOperators.length == 0) revert InvalidOperatorGroup();
 
-        MetaRegistryStorage storage $ = _storage();
-        uint256 groupId = $.groups.length;
-        $.groups.push();
-
-        _storeSubOperators(groupId, groupInfo.subNodeOperators);
-        _storeExternalOperators(groupId, groupInfo.externalOperators);
+        uint256 groupId = ++_storage().groupsCount;
+        _storeGroupData(groupId, groupInfo);
         emit OperatorGroupCreated(groupId, groupInfo);
     }
 
@@ -254,23 +252,32 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
         if (groupInfo.subNodeOperators.length == 0) {
             // NOTE: Sanity check for an empty group in `groupInfo`.
-            if (groupInfo.externalOperators.length != 0) revert InvalidOperatorGroup();
+            if (groupInfo.externalOperators.length != 0 || bytes(groupInfo.name).length != 0)
+                revert InvalidOperatorGroup();
 
             emit OperatorGroupCleared(groupId);
         } else {
-            _storeSubOperators(groupId, groupInfo.subNodeOperators);
-            _storeExternalOperators(groupId, groupInfo.externalOperators);
+            _storeGroupData(groupId, groupInfo);
             emit OperatorGroupUpdated(groupId, groupInfo);
         }
     }
 
+    function _storeGroupData(uint256 groupId, OperatorGroup calldata groupInfo) internal {
+        _setGroupName(groupId, groupInfo.name);
+        _storeSubOperators(groupId, groupInfo.subNodeOperators);
+        _storeExternalOperators(groupId, groupInfo.externalOperators);
+    }
+
     function _resetGroup(uint256 groupId) internal {
         MetaRegistryStorage storage $ = _storage();
+        if (groupId > $.groupsCount) revert InvalidOperatorGroupId();
+
         CachedOperatorGroup storage group = $.groups[groupId];
 
         $.effectiveWeightCache.groupEffectiveWeightSum[groupId] = 0;
 
-        for (uint256 i; i < group.subNodeOperatorIds.length; ++i) {
+        uint256 subOperatorsCount = group.subNodeOperatorIds.length;
+        for (uint256 i; i < subOperatorsCount; ++i) {
             uint256 noId = group.subNodeOperatorIds[i];
             delete $.groupIndex.groupIdByOperatorId[noId];
             delete $.groupIndex.shareByOperatorId[noId];
@@ -278,12 +285,19 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             _setEffectiveWeight(noId, 0);
         }
 
-        for (uint256 i; i < group.externalOperators.length; ++i) {
+        uint256 externalOperatorsCount = group.externalOperators.length;
+        for (uint256 i; i < externalOperatorsCount; ++i) {
             delete $.groupIndex.groupIdByExternalKey[group.externalOperators[i].uniqueKey()];
         }
 
         delete group.subNodeOperatorIds;
         delete group.externalOperators;
+        delete group.name;
+    }
+
+    function _setGroupName(uint256 groupId, string calldata name) internal {
+        if (bytes(name).length > MAX_NAME_LENGTH) revert InvalidOperatorGroupName();
+        _storage().groups[groupId].name = name;
     }
 
     function _storeSubOperators(uint256 groupId, SubNodeOperator[] calldata subNodeOperators) internal {
@@ -341,10 +355,14 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         uint256 oldWeight = _setEffectiveWeight(noId, newWeight);
 
         if (oldWeight != newWeight) {
-            $.effectiveWeightCache.groupEffectiveWeightSum[groupId] =
-                $.effectiveWeightCache.groupEffectiveWeightSum[groupId] +
-                newWeight -
-                oldWeight;
+            // It's unlikely in practice that the new weight will be large enough to lead to an overflow
+            // and the old weight subtraction can't underflow since it's part of the weight sum.
+            unchecked {
+                $.effectiveWeightCache.groupEffectiveWeightSum[groupId] =
+                    $.effectiveWeightCache.groupEffectiveWeightSum[groupId] +
+                    newWeight -
+                    oldWeight;
+            }
         }
     }
 
@@ -361,8 +379,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     }
 
     function _storeOperatorMetadata(uint256 nodeOperatorId, OperatorMetadata memory metadata) internal {
-        if (bytes(metadata.name).length > 256) revert OperatorNameTooLong();
-        if (bytes(metadata.description).length > 1024) revert OperatorDescriptionTooLong();
+        if (bytes(metadata.name).length > MAX_NAME_LENGTH) revert OperatorNameTooLong();
+        if (bytes(metadata.description).length > MAX_DESCRIPTION_LENGTH) revert OperatorDescriptionTooLong();
         _storage().operatorMetadata[nodeOperatorId] = metadata;
         emit OperatorMetadataSet({ nodeOperatorId: nodeOperatorId, metadata: metadata });
     }
@@ -415,7 +433,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     function _totalExternalStake(
         ExternalOperator[] storage externalOperators
     ) internal view returns (uint256 totalExternalStake) {
-        for (uint256 i; i < externalOperators.length; ++i) {
+        uint256 externalOperatorsCount = externalOperators.length;
+        for (uint256 i; i < externalOperatorsCount; ++i) {
             ExternalOperator memory op = externalOperators[i];
 
             OperatorType opType = op.tryGetExtOpType();

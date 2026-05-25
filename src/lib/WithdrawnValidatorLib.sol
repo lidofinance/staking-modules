@@ -112,7 +112,9 @@ library WithdrawnValidatorLib {
         bool chargeElWithdrawalRequestFee = false;
 
         uint256 minExpectedBalance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + keyConfirmedBalance;
-        uint256 penaltyMultiplier = _getPenaltyMultiplier(Math.max(minExpectedBalance, validatorInfo.exitBalance));
+        uint256 penaltyMultiplier = _getPenaltyMultiplier(
+            _clamp(validatorInfo.exitBalance, minExpectedBalance, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE)
+        );
         uint256 penaltySum;
         uint256 feeSum;
 
@@ -161,13 +163,16 @@ library WithdrawnValidatorLib {
     }
 
     /// @dev Acts as the numerator to calculate the scaled penalty.
+    /// @dev Expects the `balance` value between MIN_ACTIVATION_BALANCE and MAX_EFFECTIVE_BALANCE.
     function _getPenaltyMultiplier(uint256 balance) internal pure returns (uint256 penaltyMultiplier) {
-        balance = Math.max(ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE, balance);
-        balance = Math.min(ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE, balance);
         penaltyMultiplier = balance / PENALTY_QUOTIENT;
     }
 
     function _scalePenaltyByMultiplier(uint256 penalty, uint256 multiplier) internal pure returns (uint256) {
         return (penalty * multiplier) / PENALTY_SCALE;
+    }
+
+    function _clamp(uint256 v, uint256 min, uint256 max) internal pure returns (uint256) {
+        return Math.min(Math.max(v, min), max);
     }
 }

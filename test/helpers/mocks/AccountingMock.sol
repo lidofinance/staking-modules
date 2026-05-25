@@ -185,6 +185,10 @@ contract AccountingMock {
         _nextCurveId = bondCurves.length;
     }
 
+    function getCurvesCount() external view returns (uint256) {
+        return bondCurves.length;
+    }
+
     function penalize(uint256 nodeOperatorId, uint256 amount) external returns (bool fullyBurned) {
         if (bond[nodeOperatorId] < amount) {
             bond[nodeOperatorId] = 0;

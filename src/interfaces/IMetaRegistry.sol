@@ -25,6 +25,7 @@ interface IMetaRegistry {
     }
 
     struct OperatorGroup {
+        string name;
         SubNodeOperator[] subNodeOperators;
         ExternalOperator[] externalOperators;
     }
@@ -41,6 +42,7 @@ interface IMetaRegistry {
     error InvalidOperatorGroup();
     error InvalidSubNodeOperatorShares();
     error InvalidOperatorGroupId();
+    error InvalidOperatorGroupName();
     error NodeOperatorDoesNotExist();
     error NodeOperatorAlreadyInGroup(uint256 nodeOperatorId);
     error AlreadyUsedAsExternalOperator();
@@ -102,6 +104,7 @@ interface IMetaRegistry {
     /// @param groupId Group ID to update, or NO_GROUP_ID to create.
     /// @param groupInfo Group definition.
     /// @dev Creating is allowed only when groupId == NO_GROUP_ID.
+    /// @dev To clear a group pass empty subNodeOperators, empty externalOperators, and empty name.
     function createOrUpdateOperatorGroup(uint256 groupId, OperatorGroup calldata groupInfo) external;
 
     /// @notice Fetch an operator group by ID.

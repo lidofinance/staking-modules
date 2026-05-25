@@ -228,7 +228,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
 
     function _updateDepositInfo(uint256 nodeOperatorId) internal override {
         _metaRegistry().refreshOperatorWeight(nodeOperatorId);
-        _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: true });
+        super._updateDepositInfo(nodeOperatorId);
     }
 
     function _applyDepositableValidatorsCount(

@@ -72,7 +72,8 @@ abstract contract BondLock is IBondLock, Initializable {
 
     /// @inheritdoc IBondLock
     function isLockExpired(uint256 nodeOperatorId) public view returns (bool) {
-        return _getBondLockStorage().bondLock[nodeOperatorId].until <= block.timestamp;
+        uint256 lockUntil = _getBondLockStorage().bondLock[nodeOperatorId].until;
+        return lockUntil == 0 ? false : lockUntil <= block.timestamp;
     }
 
     /// @dev Lock bond amount for the given Node Operator until the period.
@@ -93,6 +94,10 @@ abstract contract BondLock is IBondLock, Initializable {
         if (amount == 0) revert InvalidBondLockAmount();
         uint256 locked = getLockedBond(nodeOperatorId);
         if (locked < amount) revert InvalidBondLockAmount();
+        if (locked == amount) {
+            _changeBondLock(nodeOperatorId, 0, 0);
+            return;
+        }
         unchecked {
             _changeBondLock(nodeOperatorId, locked - amount, _getBondLockStorage().bondLock[nodeOperatorId].until);
         }

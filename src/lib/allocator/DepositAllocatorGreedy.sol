@@ -33,7 +33,6 @@ library DepositAllocatorGreedy {
     ///      - state.capacities[i] > 0
     ///      - state.sharesX96[i] > 0
     ///      - step > 0
-    ///      - state.sharesX96.length > 0
     ///      - all arrays in state have the same length n, and entries correspond to the same operators across arrays.
     ///      for i in [0..n).
     function _allocate(
@@ -47,7 +46,9 @@ library DepositAllocatorGreedy {
         PackedSortKey[] memory heap = _maxHeapKeysByImbalanceDesc(state, allocationAmount, step);
         uint256 heapSize = heap.length;
 
+        allocationAmount = _quantize(allocationAmount, step);
         uint256 remainder = allocationAmount;
+
         while (heapSize > 0 && remainder > 0) {
             PackedSortKey key = heap.popMax(heapSize);
             unchecked {
@@ -57,17 +58,16 @@ library DepositAllocatorGreedy {
             uint256 possible = Math.min(key.unpackImbalance(), _quantize(state.capacities[opIdx], step));
             if (possible == 0) continue;
 
-            uint256 toGive = Math.min(possible, _quantize(remainder, step));
-            // NOTE: toGive can be 0 if remainder is less than step and possible is greater than remainder.
-            //       In this case, there is no point in iterating further.
-            if (toGive == 0) break;
-
+            uint256 toGive = Math.min(possible, remainder);
             allocations[opIdx] = toGive;
             unchecked {
                 remainder -= toGive;
             }
         }
-        allocated = allocationAmount - remainder;
+
+        unchecked {
+            allocated = allocationAmount - remainder;
+        }
     }
 
     function _quantize(uint256 value, uint256 step) internal pure returns (uint256) {

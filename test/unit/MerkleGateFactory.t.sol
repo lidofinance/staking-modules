@@ -20,12 +20,14 @@ import { MetaRegistryMock } from "../helpers/mocks/MetaRegistryMock.sol";
 contract MerkleGateFactoryTest is Test, Utilities {
     bytes32 internal root;
     string internal cid;
+    string internal name;
     uint256 internal curveId;
     address internal admin;
 
     function setUp() public {
         root = bytes32(randomBytes(32));
         cid = "someCid";
+        name = "Identified Community Stakers Gate";
         curveId = 1;
         admin = nextAddress("admin");
     }
@@ -39,13 +41,14 @@ contract MerkleGateFactoryTest is Test, Utilities {
         vm.expectEmit(address(factory));
         emit IMerkleGateFactory.MerkleGateCreated(expectedInstance, admin, curveId);
 
-        address instance = factory.create(curveId, root, cid, admin);
+        address instance = factory.create(curveId, root, cid, name, admin);
         IVettedGate gate = IVettedGate(instance);
 
         assertEq(gate.curveId(), curveId);
         assertEq(address(gate.MODULE()), address(csm));
         assertEq(gate.treeRoot(), root);
         assertEq(gate.treeCid(), cid);
+        assertEq(gate.name(), name);
 
         AccessControlEnumerableUpgradeable access = AccessControlEnumerableUpgradeable(instance);
         assertEq(access.getRoleMemberCount(access.DEFAULT_ADMIN_ROLE()), 1);
@@ -67,7 +70,7 @@ contract MerkleGateFactoryTest is Test, Utilities {
         vm.expectEmit(address(factory));
         emit IMerkleGateFactory.MerkleGateCreated(expectedInstance, admin, curveId);
 
-        address instance = factory.create(curveId, root, cid, admin);
+        address instance = factory.create(curveId, root, cid, name, admin);
         ICuratedGate gate = ICuratedGate(instance);
 
         assertEq(gate.curveId(), curveId);
@@ -75,6 +78,7 @@ contract MerkleGateFactoryTest is Test, Utilities {
         assertEq(address(gate.META_REGISTRY()), address(metaRegistry));
         assertEq(gate.treeRoot(), root);
         assertEq(gate.treeCid(), cid);
+        assertEq(gate.name(), name);
 
         AccessControlEnumerableUpgradeable access = AccessControlEnumerableUpgradeable(instance);
         assertEq(access.getRoleMemberCount(access.DEFAULT_ADMIN_ROLE()), 1);
@@ -102,7 +106,7 @@ contract MerkleGateFactoryTest is Test, Utilities {
         vm.expectEmit(address(factory));
         emit IMerkleGateFactory.MerkleGateCreated(expectedInstance, admin, curveId);
 
-        address instance = factory.create(curveId, root, cid, admin);
+        address instance = factory.create(curveId, root, cid, name, admin);
         OssifiableProxy proxy = OssifiableProxy(payable(instance));
         assertEq(proxy.proxy__getImplementation(), impl);
         assertNotEq(proxy.proxy__getImplementation(), secondImpl);

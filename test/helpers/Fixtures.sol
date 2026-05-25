@@ -1410,6 +1410,7 @@ contract CuratedIntegrationHelpers is ForkIntegrationHelpersBase {
             r.createOrUpdateOperatorGroup(
                 r.NO_GROUP_ID(),
                 IMetaRegistry.OperatorGroup({
+                    name: "Group",
                     subNodeOperators: subs,
                     externalOperators: new IMetaRegistry.ExternalOperator[](0)
                 })
