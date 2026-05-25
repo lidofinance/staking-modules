@@ -451,13 +451,13 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function isValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool) {
-        _onlyExistingNodeOperator(nodeOperatorId);
+        _onlyValidKeyIndex(nodeOperatorId, keyIndex);
         return _baseStorage().isValidatorSlashed[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 
     /// @inheritdoc IBaseModule
     function isValidatorWithdrawn(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool) {
-        _onlyExistingNodeOperator(nodeOperatorId);
+        _onlyValidKeyIndex(nodeOperatorId, keyIndex);
         return _baseStorage().isValidatorWithdrawn[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 
@@ -780,9 +780,16 @@ abstract contract BaseModule is
         revert NodeOperatorDoesNotExist();
     }
 
+    /// NOTE: The function does not revert when `startIndex` is equal to `totalAddedKeys` and `keysCount` is zero. The
+    /// method might be fixed later once we're sure all off-chain tooling will handle the updated behaviour.
     function _onlyValidIndexRange(uint256 nodeOperatorId, uint256 startIndex, uint256 keysCount) internal view {
         if (startIndex + keysCount > _baseStorage().nodeOperators[nodeOperatorId].totalAddedKeys)
             revert SigningKeysInvalidOffset();
+    }
+
+    function _onlyValidKeyIndex(uint256 nodeOperatorId, uint256 keyIndex) internal view {
+        if (keyIndex < _baseStorage().nodeOperators[nodeOperatorId].totalAddedKeys) return;
+        revert SigningKeysInvalidOffset();
     }
 
     function _getBondCurveId(uint256 nodeOperatorId) internal view returns (uint256) {

@@ -17,9 +17,17 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertFalse(module.isValidatorWithdrawn(noId, 0));
     }
 
-    function test_isValidatorWithdrawn_RevertWhen_OperatorDoesNotExist() public {
-        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
+    function test_isValidatorWithdrawn_RevertWhen_InvalidKeyIndex() public {
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
         module.isValidatorWithdrawn(0, 0);
+
+        uint256 emptyNoId = createNodeOperator(0);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.isValidatorWithdrawn(emptyNoId, 0);
+
+        uint256 noId = createNodeOperator(1);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.isValidatorWithdrawn(noId, 1);
     }
 
     function test_reportRegularWithdrawnValidators_NoPenalties() public assertInvariants {
@@ -1286,9 +1294,17 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertFalse(module.isValidatorSlashed(noId, 0));
     }
 
-    function test_isValidatorSlashed_RevertWhen_OperatorDoesNotExist() public {
-        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
+    function test_isValidatorSlashed_RevertWhen_InvalidKeyIndex() public {
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
         module.isValidatorSlashed(0, 0);
+
+        uint256 emptyNoId = createNodeOperator(0);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.isValidatorSlashed(emptyNoId, 0);
+
+        uint256 noId = createNodeOperator(1);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.isValidatorSlashed(noId, 1);
     }
 
     function test_reportValidatorSlashing_RevertWhen_CalledTwice() public {

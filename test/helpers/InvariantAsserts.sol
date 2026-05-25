@@ -103,10 +103,9 @@ contract InvariantAsserts is Test {
             assertNotEq(no.rewardAddress, address(0), "assert reward != 0");
 
             if (assertZeroConfirmedBalances) {
-                uint256[] memory balances = csm.getKeyConfirmedBalances(noId, 0, no.totalDepositedKeys);
-
                 for (uint256 i; i < no.totalDepositedKeys; ++i) {
-                    assertEq(balances[i], 0, "assert key confirmed balance == 0");
+                    uint256[] memory balances = csm.getKeyConfirmedBalances(noId, i, 1);
+                    assertEq(balances[0], 0, "assert key confirmed balance == 0");
                 }
             }
 
@@ -134,12 +133,11 @@ contract InvariantAsserts is Test {
         for (uint256 noId = 0; noId < noCount; ++noId) {
             uint256 operatorTrackedStake;
             uint256 totalDepositedKeys = module.getNodeOperator(noId).totalDepositedKeys;
-            uint256[] memory keyAllocatedBalances = module.getKeyAllocatedBalances(noId, 0, totalDepositedKeys);
 
             for (uint256 keyIndex = 0; keyIndex < totalDepositedKeys; ++keyIndex) {
                 if (module.isValidatorWithdrawn(noId, keyIndex)) continue;
-
-                operatorTrackedStake += ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + keyAllocatedBalances[keyIndex];
+                uint256[] memory keyAllocatedBalance = module.getKeyAllocatedBalances(noId, keyIndex, 1);
+                operatorTrackedStake += ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + keyAllocatedBalance[0];
             }
 
             totalTrackedStake += operatorTrackedStake;
