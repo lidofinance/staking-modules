@@ -1247,24 +1247,24 @@ contract VerifierGIndexTest is Test, Utilities {
         targetSlot = Slot.wrap(8192 + 0);
         // historicalSummaries[0].blockRoots[0]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0xb860000).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x5c30000000000).unwrap());
 
         targetSlot = Slot.wrap(8192 + 1);
         // historicalSummaries[0].blockRoots[1]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0xb860001).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x5c30000000001).unwrap());
 
         targetSlot = Slot.wrap(8192 + 8192 * 4 + 8082);
         // historicalSummaries[4].blockRoots[8082]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x5c32df92).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x5c30000011f92).unwrap());
 
         recentSlot = Slot.wrap(type(uint64).max);
         // The last slot a historical summary might be created for.
         targetSlot = Slot.wrap(8192 + 2 ** 24 * 8192 - 1);
         // historicalSummaries[16777215].blockRoots[8191]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0xb867ffaaaaaa9fff).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x5c33fffffdfff).unwrap());
     }
 
     function test_getHistoricalBlockRootGI_RevertWhen_SummaryCannotExist() public {
@@ -1360,32 +1360,32 @@ contract VerifierGIndexCapellaZeroTest is Test, Utilities {
         targetSlot = Slot.wrap(8191);
         // historicalSummaries[0].blockRoots[8191]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0xb861fff).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x5c30000001fff).unwrap());
 
         targetSlot = Slot.wrap(8192);
         // historicalSummaries[1].blockRoots[0]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x5c320000).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x5c30000004000).unwrap());
 
         targetSlot = Slot.wrap(8193);
         // historicalSummaries[1].blockRoots[1]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x5c320001).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x5c30000004001).unwrap());
 
         targetSlot = Slot.wrap(49042);
         // historicalSummaries[5].blockRoots[8082]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x2e1981f92).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x5c30000015f92).unwrap());
 
         targetSlot = verifier.PIVOT_SLOT().dec();
         // historicalSummaries[12].blockRoots[8191]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x2e199dfff).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x5c30000031fff).unwrap());
 
         targetSlot = verifier.PIVOT_SLOT().add(2197);
         // historicalSummaries[13].blockRoots[2197]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x2e19a0895).unwrap());
+        assertEq(gI.unwrap(), toGIndex(0x5c30000034895).unwrap());
     }
 
     function test_getHistoricalBlockRootGI_RevertWhen_SummaryCannotExist() public {

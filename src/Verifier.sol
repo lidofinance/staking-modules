@@ -453,11 +453,11 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
         if (recentSlot < PIVOT_SLOT) {
             gI = GI_HISTORICAL_SUMMARIES_PRE_GLOAS;
-            gI = gI.concat(staticListNodeGIndex(summaryIndex, 24)); // log2(HISTORICAL_ROOTS_LIMIT)
         } else {
             gI = GI_HISTORICAL_SUMMARIES;
-            gI = gI.concat(progressiveListNodeGIndex(summaryIndex));
         }
+
+        gI = gI.concat(staticListNodeGIndex(summaryIndex, 24)); // log2(HISTORICAL_ROOTS_LIMIT)
         // historical_summaries[summaryIndex].block_summary_root
         gI = gI.concat(GI_BLOCK_ROOT_IN_SUMMARY);
         // .block_summary_root is a Vector[Root, SLOTS_PER_HISTORICAL_ROOT]; the gindex
