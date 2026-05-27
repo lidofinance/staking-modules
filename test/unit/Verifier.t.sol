@@ -100,15 +100,15 @@ contract VerifierTestConstructor is VerifierTestBase {
         assertEq(address(verifier.MODULE()), address(module));
         assertEq(verifier.SLOTS_PER_EPOCH(), 32);
         assertEq(verifier.SLOTS_PER_HISTORICAL_ROOT(), 8192);
-        assertEq(GIndex.unwrap(verifier.GI_WITHDRAWALS_PRE_GLOAS()), GIndex.unwrap(toGIndex(0xe1c0)));
-        assertEq(GIndex.unwrap(verifier.GI_WITHDRAWALS()), GIndex.unwrap(toGIndex(0xe1c1)));
-        assertEq(GIndex.unwrap(verifier.GI_VALIDATORS_PRE_GLOAS()), GIndex.unwrap(toGIndex(0x560000000000)));
-        assertEq(GIndex.unwrap(verifier.GI_VALIDATORS()), GIndex.unwrap(toGIndex(0x560000000001)));
-        assertEq(GIndex.unwrap(verifier.GI_HISTORICAL_SUMMARIES_PRE_GLOAS()), GIndex.unwrap(toGIndex(0xfff0)));
-        assertEq(GIndex.unwrap(verifier.GI_HISTORICAL_SUMMARIES()), GIndex.unwrap(toGIndex(0xffff)));
-        assertEq(GIndex.unwrap(verifier.GI_BLOCK_ROOT_IN_SUMMARY()), GIndex.unwrap(toGIndex(2)));
-        assertEq(GIndex.unwrap(verifier.GI_BALANCES_PRE_GLOAS()), GIndex.unwrap(toGIndex(0x160000000000)));
-        assertEq(GIndex.unwrap(verifier.GI_BALANCES()), GIndex.unwrap(toGIndex(0x160000000001)));
+        assertEq(GIndex.unwrap(verifier.GI_WITHDRAWALS_PRE_GLOAS()), 0xe1c0);
+        assertEq(GIndex.unwrap(verifier.GI_WITHDRAWALS()), 0xe1c1);
+        assertEq(GIndex.unwrap(verifier.GI_VALIDATORS_PRE_GLOAS()), 0x560000000000);
+        assertEq(GIndex.unwrap(verifier.GI_VALIDATORS()), 0x560000000001);
+        assertEq(GIndex.unwrap(verifier.GI_HISTORICAL_SUMMARIES_PRE_GLOAS()), 0xfff0);
+        assertEq(GIndex.unwrap(verifier.GI_HISTORICAL_SUMMARIES()), 0xffff);
+        assertEq(GIndex.unwrap(verifier.GI_BLOCK_ROOT_IN_SUMMARY()), 2);
+        assertEq(GIndex.unwrap(verifier.GI_BALANCES_PRE_GLOAS()), 0x160000000000);
+        assertEq(GIndex.unwrap(verifier.GI_BALANCES()), 0x160000000001);
         assertEq(Slot.unwrap(verifier.FIRST_SUPPORTED_SLOT()), Slot.unwrap(firstSupportedSlot));
         assertEq(Slot.unwrap(verifier.PIVOT_SLOT()), Slot.unwrap(Slot.wrap(100_501)));
         assertEq(Slot.unwrap(verifier.CAPELLA_SLOT()), Slot.unwrap(Slot.wrap(42)));
@@ -1059,19 +1059,19 @@ contract VerifierGIndexTest is Test, Utilities {
             Slot slot = slots[i];
 
             gI = verifier.getValidatorGI(0, slot);
-            assertEq(gI.unwrap(), toGIndex(0x560000000000).unwrap());
+            assertEq(gI.unwrap(), 0x560000000000);
 
             gI = verifier.getValidatorGI(1, slot);
-            assertEq(gI.unwrap(), toGIndex(0x560000000001).unwrap());
+            assertEq(gI.unwrap(), 0x560000000001);
 
             gI = verifier.getValidatorGI(16, slot);
-            assertEq(gI.unwrap(), toGIndex(0x560000000010).unwrap());
+            assertEq(gI.unwrap(), 0x560000000010);
 
             gI = verifier.getValidatorGI(17, slot);
-            assertEq(gI.unwrap(), toGIndex(0x560000000011).unwrap());
+            assertEq(gI.unwrap(), 0x560000000011);
 
             gI = verifier.getValidatorGI((2 ** 40) - 1, slot);
-            assertEq(gI.unwrap(), toGIndex(0x56ffffffffff).unwrap());
+            assertEq(gI.unwrap(), 0x56ffffffffff);
         }
     }
 
@@ -1091,19 +1091,19 @@ contract VerifierGIndexTest is Test, Utilities {
             Slot slot = slots[i];
 
             gI = verifier.getValidatorGI(0, slot);
-            assertEq(gI.unwrap(), toGIndex(0x598).unwrap());
+            assertEq(gI.unwrap(), 0x598);
 
             gI = verifier.getValidatorGI(1, slot);
-            assertEq(gI.unwrap(), toGIndex(0x2cc8).unwrap());
+            assertEq(gI.unwrap(), 0x2cc8);
 
             gI = verifier.getValidatorGI(16, slot);
-            assertEq(gI.unwrap(), toGIndex(0x1666b).unwrap());
+            assertEq(gI.unwrap(), 0x1666b);
 
             gI = verifier.getValidatorGI(17, slot);
-            assertEq(gI.unwrap(), toGIndex(0x1666c).unwrap());
+            assertEq(gI.unwrap(), 0x1666c);
 
             gI = verifier.getValidatorGI((2 ** 40) - 1, slot);
-            assertEq(gI.unwrap(), toGIndex(0x599ffffeaaaaaaaaaa).unwrap());
+            assertEq(gI.unwrap(), 0x599ffffeaaaaaaaaaa);
         }
     }
 
@@ -1120,13 +1120,13 @@ contract VerifierGIndexTest is Test, Utilities {
             Slot slot = slots[i];
 
             gI = verifier.getWithdrawalGI(0, slot);
-            assertEq(gI.unwrap(), toGIndex(0xe1c0).unwrap());
+            assertEq(gI.unwrap(), 0xe1c0);
 
             gI = verifier.getWithdrawalGI(1, slot);
-            assertEq(gI.unwrap(), toGIndex(0xe1c1).unwrap());
+            assertEq(gI.unwrap(), 0xe1c1);
 
             gI = verifier.getWithdrawalGI(15, slot);
-            assertEq(gI.unwrap(), toGIndex(0xe1cf).unwrap());
+            assertEq(gI.unwrap(), 0xe1cf);
         }
     }
 
@@ -1146,13 +1146,13 @@ contract VerifierGIndexTest is Test, Utilities {
             Slot slot = slots[i];
 
             gI = verifier.getWithdrawalGI(0, slot);
-            assertEq(gI.unwrap(), toGIndex(0x2e5c).unwrap());
+            assertEq(gI.unwrap(), 0x2e5c);
 
             gI = verifier.getWithdrawalGI(1, slot);
-            assertEq(gI.unwrap(), toGIndex(0x172e8).unwrap());
+            assertEq(gI.unwrap(), 0x172e8);
 
             gI = verifier.getWithdrawalGI(15, slot);
-            assertEq(gI.unwrap(), toGIndex(0xb976a).unwrap());
+            assertEq(gI.unwrap(), 0xb976a);
         }
     }
 
@@ -1169,21 +1169,21 @@ contract VerifierGIndexTest is Test, Utilities {
             Slot slot = slots[i];
 
             gI = verifier.getValidatorBalanceGI(0, slot);
-            assertEq(gI.unwrap(), toGIndex(0x260000000000).unwrap());
+            assertEq(gI.unwrap(), 0x260000000000);
 
             gI = verifier.getValidatorBalanceGI(1, slot);
-            assertEq(gI.unwrap(), toGIndex(0x260000000001).unwrap());
+            assertEq(gI.unwrap(), 0x260000000001);
 
             gI = verifier.getValidatorBalanceGI(16, slot);
-            assertEq(gI.unwrap(), toGIndex(0x260000000010).unwrap());
+            assertEq(gI.unwrap(), 0x260000000010);
 
             gI = verifier.getValidatorBalanceGI(17, slot);
-            assertEq(gI.unwrap(), toGIndex(0x260000000011).unwrap());
+            assertEq(gI.unwrap(), 0x260000000011);
 
             // Max balance-node index: balances are packed 4 uint64 per node, so the
             // node tree depth is log2(VALIDATOR_REGISTRY_LIMIT / 4) = 38.
             gI = verifier.getValidatorBalanceGI((2 ** 38) - 1, slot);
-            assertEq(gI.unwrap(), toGIndex(0x263fffffffff).unwrap());
+            assertEq(gI.unwrap(), 0x263fffffffff);
         }
     }
 
@@ -1200,19 +1200,19 @@ contract VerifierGIndexTest is Test, Utilities {
             Slot slot = slots[i];
 
             gI = verifier.getValidatorBalanceGI(0, slot);
-            assertEq(gI.unwrap(), toGIndex(0x59c).unwrap());
+            assertEq(gI.unwrap(), 0x59c);
 
             gI = verifier.getValidatorBalanceGI(1, slot);
-            assertEq(gI.unwrap(), toGIndex(0x2ce8).unwrap());
+            assertEq(gI.unwrap(), 0x2ce8);
 
             gI = verifier.getValidatorBalanceGI(16, slot);
-            assertEq(gI.unwrap(), toGIndex(0x1676b).unwrap());
+            assertEq(gI.unwrap(), 0x1676b);
 
             gI = verifier.getValidatorBalanceGI(17, slot);
-            assertEq(gI.unwrap(), toGIndex(0x1676c).unwrap());
+            assertEq(gI.unwrap(), 0x1676c);
 
             gI = verifier.getValidatorBalanceGI((2 ** 38) - 1, slot);
-            assertEq(gI.unwrap(), toGIndex(0xb3bffffaaaaaaaaaa).unwrap());
+            assertEq(gI.unwrap(), 0xb3bffffaaaaaaaaaa);
         }
     }
 
@@ -1225,17 +1225,17 @@ contract VerifierGIndexTest is Test, Utilities {
         targetSlot = Slot.wrap(8192);
         // historicalSummaries[0].blockRoots[0]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x1d8000000000).unwrap());
+        assertEq(gI.unwrap(), 0x1d8000000000);
 
         targetSlot = Slot.wrap(8193);
         // historicalSummaries[0].blockRoots[1]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x1d8000000001).unwrap());
+        assertEq(gI.unwrap(), 0x1d8000000001);
 
         targetSlot = Slot.wrap(49042);
         // historicalSummaries[4].blockRoots[8082]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x1d8000011f92).unwrap());
+        assertEq(gI.unwrap(), 0x1d8000011f92);
     }
 
     function test_getHistoricalBlockRootGI_RecentSlotAfterPivot() public view {
@@ -1247,24 +1247,24 @@ contract VerifierGIndexTest is Test, Utilities {
         targetSlot = Slot.wrap(8192 + 0);
         // historicalSummaries[0].blockRoots[0]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x5c30000000000).unwrap());
+        assertEq(gI.unwrap(), 0x5c30000000000);
 
         targetSlot = Slot.wrap(8192 + 1);
         // historicalSummaries[0].blockRoots[1]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x5c30000000001).unwrap());
+        assertEq(gI.unwrap(), 0x5c30000000001);
 
         targetSlot = Slot.wrap(8192 + 8192 * 4 + 8082);
         // historicalSummaries[4].blockRoots[8082]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x5c30000011f92).unwrap());
+        assertEq(gI.unwrap(), 0x5c30000011f92);
 
         recentSlot = Slot.wrap(type(uint64).max);
         // The last slot a historical summary might be created for.
         targetSlot = Slot.wrap(8192 + 2 ** 24 * 8192 - 1);
         // historicalSummaries[16777215].blockRoots[8191]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x5c33fffffdfff).unwrap());
+        assertEq(gI.unwrap(), 0x5c33fffffdfff);
     }
 
     function test_getHistoricalBlockRootGI_RevertWhen_SummaryCannotExist() public {
@@ -1333,22 +1333,22 @@ contract VerifierGIndexCapellaZeroTest is Test, Utilities {
         targetSlot = Slot.wrap(8191);
         // historicalSummaries[0].blockRoots[8191]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x1d8000001fff).unwrap());
+        assertEq(gI.unwrap(), 0x1d8000001fff);
 
         targetSlot = Slot.wrap(8192);
         // historicalSummaries[1].blockRoots[0]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x1d8000004000).unwrap());
+        assertEq(gI.unwrap(), 0x1d8000004000);
 
         targetSlot = Slot.wrap(8193);
         // historicalSummaries[1].blockRoots[1]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x1d8000004001).unwrap());
+        assertEq(gI.unwrap(), 0x1d8000004001);
 
         targetSlot = Slot.wrap(49042);
         // historicalSummaries[5].blockRoots[8082]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x1d8000015f92).unwrap());
+        assertEq(gI.unwrap(), 0x1d8000015f92);
     }
 
     function test_getHistoricalBlockRootGI_AfterPivot() public view {
@@ -1360,32 +1360,32 @@ contract VerifierGIndexCapellaZeroTest is Test, Utilities {
         targetSlot = Slot.wrap(8191);
         // historicalSummaries[0].blockRoots[8191]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x5c30000001fff).unwrap());
+        assertEq(gI.unwrap(), 0x5c30000001fff);
 
         targetSlot = Slot.wrap(8192);
         // historicalSummaries[1].blockRoots[0]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x5c30000004000).unwrap());
+        assertEq(gI.unwrap(), 0x5c30000004000);
 
         targetSlot = Slot.wrap(8193);
         // historicalSummaries[1].blockRoots[1]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x5c30000004001).unwrap());
+        assertEq(gI.unwrap(), 0x5c30000004001);
 
         targetSlot = Slot.wrap(49042);
         // historicalSummaries[5].blockRoots[8082]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x5c30000015f92).unwrap());
+        assertEq(gI.unwrap(), 0x5c30000015f92);
 
         targetSlot = verifier.PIVOT_SLOT().dec();
         // historicalSummaries[12].blockRoots[8191]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x5c30000031fff).unwrap());
+        assertEq(gI.unwrap(), 0x5c30000031fff);
 
         targetSlot = verifier.PIVOT_SLOT().add(2197);
         // historicalSummaries[13].blockRoots[2197]
         gI = verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
-        assertEq(gI.unwrap(), toGIndex(0x5c30000034895).unwrap());
+        assertEq(gI.unwrap(), 0x5c30000034895);
     }
 
     function test_getHistoricalBlockRootGI_RevertWhen_SummaryCannotExist() public {

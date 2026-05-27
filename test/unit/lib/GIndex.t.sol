@@ -40,10 +40,6 @@ contract GIndexTest is Test {
         lib = new Library();
     }
 
-    function testFuzz_toGIndex_toUint(uint256 i) public view {
-        assertEq(toGIndex(i).toUint(), i);
-    }
-
     function test_isRootTrue() public view {
         assertTrue(ROOT.isRoot(), "ROOT is not root gindex");
     }
@@ -65,10 +61,10 @@ contract GIndexTest is Test {
     }
 
     function test_concat() public view {
-        assertEq(toGIndex(2).concat(toGIndex(3)).unwrap(), toGIndex(5).unwrap());
-        assertEq(toGIndex(31).concat(toGIndex(3)).unwrap(), toGIndex(63).unwrap());
-        assertEq(toGIndex(31).concat(toGIndex(6)).unwrap(), toGIndex(126).unwrap());
-        assertEq(ROOT.concat(toGIndex(2)).concat(toGIndex(5)).concat(toGIndex(9)).unwrap(), toGIndex(73).unwrap());
+        assertEq(toGIndex(2).concat(toGIndex(3)).unwrap(), 5);
+        assertEq(toGIndex(31).concat(toGIndex(3)).unwrap(), 63);
+        assertEq(toGIndex(31).concat(toGIndex(6)).unwrap(), 126);
+        assertEq(ROOT.concat(toGIndex(2)).concat(toGIndex(5)).concat(toGIndex(9)).unwrap(), 73);
 
         assertEq(ROOT.concat(MAX).unwrap(), MAX.unwrap());
     }
@@ -99,7 +95,7 @@ contract GIndexTest is Test {
     }
 
     function testFuzz_concat_WithRoot(GIndex rhs) public view {
-        vm.assume(rhs.toUint() > 0);
+        vm.assume(rhs.unwrap() > 0);
         assertEq(ROOT.concat(rhs).unwrap(), rhs.unwrap(), "`concat` with a root should return right-hand side value");
     }
 
@@ -129,18 +125,9 @@ contract GIndexTest is Test {
     }
 
     function test_staticListNodeGIndex() public {
-        assertEq(
-            staticListNodeGIndex(0, 40).unwrap(),
-            0x0000000000000000000000000000000000000000000000000000020000000000
-        );
-        assertEq(
-            staticListNodeGIndex(12345678, 40).unwrap(),
-            0x0000000000000000000000000000000000000000000000000000020000bc614e
-        );
-        assertEq(
-            staticListNodeGIndex((1 << 40) - 1, 40).unwrap(),
-            0x000000000000000000000000000000000000000000000000000002ffffffffff
-        );
+        assertEq(staticListNodeGIndex(0, 40).unwrap(), 0x020000000000);
+        assertEq(staticListNodeGIndex(12345678, 40).unwrap(), 0x020000bc614e);
+        assertEq(staticListNodeGIndex((1 << 40) - 1, 40).unwrap(), 0x02ffffffffff);
     }
 
     function testFuzz_staticListNodeGIndex(uint256 i) public {
@@ -154,47 +141,23 @@ contract GIndexTest is Test {
         cmd[3] = i.toString();
         cmd[4] = (1 << depth).toString();
         bytes memory res = vm.ffi(cmd);
-        bytes32 expected = abi.decode(res, (bytes32));
+        uint256 expected = abi.decode(res, (uint256));
 
         assertEq(staticListNodeGIndex(i, uint8(depth)).unwrap(), expected);
     }
 
     function test_progressiveListNodeGIndex() public {
         vm.startSnapshotGas("GIndex.progressiveListNodeGIndex");
-        assertEq(
-            progressiveListNodeGIndex(0).unwrap(),
-            0x0000000000000000000000000000000000000000000000000000000000000004
-        );
+        assertEq(progressiveListNodeGIndex(0).unwrap(), 0x4);
         vm.stopSnapshotGas();
 
-        assertEq(
-            progressiveListNodeGIndex(1).unwrap(),
-            0x0000000000000000000000000000000000000000000000000000000000000028
-        );
-        assertEq(
-            progressiveListNodeGIndex(2).unwrap(),
-            0x0000000000000000000000000000000000000000000000000000000000000029
-        );
-        assertEq(
-            progressiveListNodeGIndex(4).unwrap(),
-            0x000000000000000000000000000000000000000000000000000000000000002b
-        );
-        assertEq(
-            progressiveListNodeGIndex(5).unwrap(),
-            0x0000000000000000000000000000000000000000000000000000000000000160
-        );
-        assertEq(
-            progressiveListNodeGIndex(128).unwrap(),
-            0x0000000000000000000000000000000000000000000000000000000000005e2b
-        );
-        assertEq(
-            progressiveListNodeGIndex(12345678).unwrap(),
-            0x0000000000000000000000000000000000000000000000000000005ffe670bf9
-        );
-        assertEq(
-            progressiveListNodeGIndex((1 << 40) - 1).unwrap(),
-            0x0000000000000000000000000000000000000000000000005ffffeaaaaaaaaaa
-        );
+        assertEq(progressiveListNodeGIndex(1).unwrap(), 0x28);
+        assertEq(progressiveListNodeGIndex(2).unwrap(), 0x29);
+        assertEq(progressiveListNodeGIndex(4).unwrap(), 0x2b);
+        assertEq(progressiveListNodeGIndex(5).unwrap(), 0x160);
+        assertEq(progressiveListNodeGIndex(128).unwrap(), 0x5e2b);
+        assertEq(progressiveListNodeGIndex(12345678).unwrap(), 0x5ffe670bf9);
+        assertEq(progressiveListNodeGIndex((1 << 40) - 1).unwrap(), 0x5ffffeaaaaaaaaaa);
         assertEq(
             progressiveListNodeGIndex(((4 ** 84 - 1) * 4) / 3).unwrap(),
             0x5ffffffffffffffffffffeffffffffffffffffffffffffffffffffffffffffff
@@ -210,7 +173,7 @@ contract GIndexTest is Test {
         cmd[2] = "test/fixtures/ssz/progressive_list_gindex.mjs";
         cmd[3] = i.toString();
         bytes memory res = vm.ffi(cmd);
-        bytes32 expected = abi.decode(res, (bytes32));
+        uint256 expected = abi.decode(res, (uint256));
 
         assertEq(progressiveListNodeGIndex(i).unwrap(), expected);
     }

@@ -68,7 +68,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
     /// @dev This index is relative to HistoricalSummary like: HistoricalSummary.blockRoots[0].
     ///      Considered constant across forks.
-    GIndex public constant GI_BLOCK_ROOT_IN_SUMMARY = GIndex.wrap(bytes32(uint256(2)));
+    GIndex public constant GI_BLOCK_ROOT_IN_SUMMARY = GIndex.wrap(2);
 
     /// @dev This index is relative to a state like: `BeaconState.balances`.
     GIndex public immutable GI_BALANCES_PRE_GLOAS;

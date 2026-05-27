@@ -3,34 +3,30 @@
 
 pragma solidity 0.8.33;
 
-type GIndex is bytes32;
+type GIndex is uint256;
 
-using { isRoot, concat, unwrap, toUint } for GIndex global;
+using { isRoot, concat, unwrap } for GIndex global;
 
 error IndexOutOfRange();
 
 uint256 constant GINDEX_BIT_SIZE = 256;
 
-function unwrap(GIndex self) pure returns (bytes32) {
+function unwrap(GIndex self) pure returns (uint256) {
     return GIndex.unwrap(self);
 }
 
 function toGIndex(uint256 gI) pure returns (GIndex) {
-    return GIndex.wrap(bytes32(gI));
-}
-
-function toUint(GIndex self) pure returns (uint256) {
-    return uint256(self.unwrap());
+    return GIndex.wrap(gI);
 }
 
 function isRoot(GIndex self) pure returns (bool) {
-    return self.toUint() == 1;
+    return self.unwrap() == 1;
 }
 
 // See https://github.com/protolambda/remerkleable/blob/91ed092d08ef0ba5ab076f0a34b0b371623db728/remerkleable/tree.py#L46
 function concat(GIndex lhs, GIndex rhs) pure returns (GIndex) {
-    uint256 lindex = lhs.toUint();
-    uint256 rindex = rhs.toUint();
+    uint256 lindex = lhs.unwrap();
+    uint256 rindex = rhs.unwrap();
 
     uint256 lhsMSbIndex = fls(lindex);
     uint256 rhsMSbIndex = fls(rindex);
