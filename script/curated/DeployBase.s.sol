@@ -21,7 +21,6 @@ import { CuratedGate } from "../../src/CuratedGate.sol";
 import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 
 import { ILidoLocator } from "../../src/interfaces/ILidoLocator.sol";
-import { ICircuitBreaker } from "../../src/interfaces/ICircuitBreaker.sol";
 import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
 import { IVerifier } from "../../src/interfaces/IVerifier.sol";
 import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.sol";
@@ -156,6 +155,8 @@ abstract contract DeployBase is Script {
     error InvalidInput(string reason);
 
     function _m(uint256 v) internal pure returns (IParametersRegistry.MarkedUint248 memory) {
+        // Deploy-config inputs fit in uint248 by construction; the narrowing is intentional.
+        // forge-lint: disable-next-line(unsafe-typecast)
         return IParametersRegistry.MarkedUint248({ value: uint248(v), isValue: true });
     }
 

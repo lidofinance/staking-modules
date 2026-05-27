@@ -5,7 +5,6 @@ pragma solidity 0.8.33;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import { CuratedDepositAllocator } from "src/lib/allocator/CuratedDepositAllocator.sol";
 import { SigningKeys } from "src/lib/SigningKeys.sol";
 import { StakeTracker } from "src/lib/StakeTracker.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";

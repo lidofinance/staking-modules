@@ -19,7 +19,6 @@ import { PermissionlessGate } from "../../src/PermissionlessGate.sol";
 import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
 
 import { ILidoLocator } from "../../src/interfaces/ILidoLocator.sol";
-import { ICircuitBreaker } from "../../src/interfaces/ICircuitBreaker.sol";
 import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
 import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.sol";
 import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
