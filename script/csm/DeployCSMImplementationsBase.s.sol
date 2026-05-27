@@ -119,7 +119,9 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
                     gIHistoricalSummariesPreGloas: config.gIHistoricalSummaries,
                     gIHistoricalSummaries: config.gIHistoricalSummaries,
                     gIBalancesPreGloas: config.gIBalances,
-                    gIBalances: config.gIBalances
+                    gIBalances: config.gIBalances,
+                    gIBlockRootsPreGloas: config.gIBlockRoots,
+                    gIBlockRoots: config.gIBlockRoots
                 }),
                 firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 pivotSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),

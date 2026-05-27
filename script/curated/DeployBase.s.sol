@@ -78,6 +78,7 @@ struct CuratedDeployParams {
     GIndex gIValidators;
     GIndex gIHistoricalSummaries;
     GIndex gIBalances;
+    GIndex gIBlockRoots;
     uint256 verifierFirstSupportedSlot;
     uint256 capellaSlot;
     uint256 minWithdrawalRatio;
@@ -258,7 +259,9 @@ abstract contract DeployBase is Script {
                     gIHistoricalSummariesPreGloas: config.gIHistoricalSummaries,
                     gIHistoricalSummaries: config.gIHistoricalSummaries,
                     gIBalancesPreGloas: config.gIBalances,
-                    gIBalances: config.gIBalances
+                    gIBalances: config.gIBalances,
+                    gIBlockRootsPreGloas: config.gIBlockRoots,
+                    gIBlockRoots: config.gIBlockRoots
                 }),
                 firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
                 pivotSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),

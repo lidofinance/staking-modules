@@ -10,7 +10,7 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
 import { Verifier } from "src/Verifier.sol";
 import { toGIndex } from "src/lib/GIndex.sol";
-import { Slot } from "src/lib/Types.sol";
+import { BeaconBlockHeader, Slot } from "src/lib/Types.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 import { SSZ } from "src/lib/SSZ.sol";
 
@@ -87,7 +87,9 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIHistoricalSummariesPreGloas: toGIndex(0xfff0),
                 gIHistoricalSummaries: toGIndex(0xffff),
                 gIBalancesPreGloas: toGIndex(0x160000000000),
-                gIBalances: toGIndex(0x160000000001)
+                gIBalances: toGIndex(0x160000000001),
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: Slot.wrap(100_501),
@@ -129,7 +131,9 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIHistoricalSummariesPreGloas: toGIndex(0x3b),
                 gIHistoricalSummaries: toGIndex(0x3b),
                 gIBalancesPreGloas: toGIndex(0x260000000000),
-                gIBalances: toGIndex(0x260000000000)
+                gIBalances: toGIndex(0x260000000000),
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -153,7 +157,9 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIHistoricalSummariesPreGloas: toGIndex(0x3b),
                 gIHistoricalSummaries: toGIndex(0x3b),
                 gIBalancesPreGloas: toGIndex(0x260000000000),
-                gIBalances: toGIndex(0x260000000000)
+                gIBalances: toGIndex(0x260000000000),
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: firstSupportedSlot.dec(),
@@ -177,7 +183,9 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIHistoricalSummariesPreGloas: toGIndex(0x3b),
                 gIHistoricalSummaries: toGIndex(0x3b),
                 gIBalancesPreGloas: toGIndex(0x260000000000),
-                gIBalances: toGIndex(0x260000000000)
+                gIBalances: toGIndex(0x260000000000),
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: firstSupportedSlot,
@@ -201,7 +209,9 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIHistoricalSummariesPreGloas: toGIndex(0x3b),
                 gIHistoricalSummaries: toGIndex(0x3b),
                 gIBalancesPreGloas: toGIndex(0x260000000000),
-                gIBalances: toGIndex(0x260000000000)
+                gIBalances: toGIndex(0x260000000000),
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -225,7 +235,9 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIHistoricalSummariesPreGloas: toGIndex(0x3b),
                 gIHistoricalSummaries: toGIndex(0x3b),
                 gIBalancesPreGloas: toGIndex(0x260000000000),
-                gIBalances: toGIndex(0x260000000000)
+                gIBalances: toGIndex(0x260000000000),
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -249,7 +261,9 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: NULL_GINDEX,
                 gIBalancesPreGloas: toGIndex(0x260000000000),
-                gIBalances: toGIndex(0x260000000000)
+                gIBalances: toGIndex(0x260000000000),
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: firstSupportedSlot, // Any value less than the slots from the fixtures.
             pivotSlot: firstSupportedSlot,
@@ -273,7 +287,9 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIHistoricalSummariesPreGloas: toGIndex(0x3b),
                 gIHistoricalSummaries: toGIndex(0x3b),
                 gIBalancesPreGloas: toGIndex(0x260000000000),
-                gIBalances: toGIndex(0x260000000000)
+                gIBalances: toGIndex(0x260000000000),
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: firstSupportedSlot,
@@ -297,7 +313,9 @@ contract VerifierTestConstructor is VerifierTestBase {
                 gIHistoricalSummariesPreGloas: toGIndex(0x3b),
                 gIHistoricalSummaries: toGIndex(0x3b),
                 gIBalancesPreGloas: toGIndex(0x260000000000),
-                gIBalances: toGIndex(0x260000000000)
+                gIBalances: toGIndex(0x260000000000),
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: firstSupportedSlot,
             pivotSlot: firstSupportedSlot,
@@ -309,6 +327,8 @@ contract VerifierTestConstructor is VerifierTestBase {
 }
 
 contract VerifierWithdrawalTest is VerifierTestBase {
+    using SSZ for BeaconBlockHeader;
+
     using Strings for uint8;
     using Strings for uint256;
 
@@ -337,7 +357,9 @@ contract VerifierWithdrawalTest is VerifierTestBase {
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: NULL_GINDEX,
                 gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: NULL_GINDEX
+                gIBalances: NULL_GINDEX,
+                gIBlockRootsPreGloas: GIndices.BLOCK_ROOTS_ELECTRA,
+                gIBlockRoots: GIndices.BLOCK_ROOTS_ELECTRA
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             // Route through the pre-Gloas (static-list) branch; the post-Gloas
@@ -387,7 +409,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         test_processWithdrawalProof_HappyPath();
     }
 
-    function test_processWithdrawalProof_RevertWhen_WithdrawalBlockSlotUnsupported() public {
+    function test_processWithdrawalProof_RevertWhen_UnsupportedSlot_WithdrawalBlock() public {
         fixture.data.withdrawalBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
         vm.expectRevert(
@@ -396,14 +418,56 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         verifier.processWithdrawalProof(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhen_InvalidWithdrawalBlock() public {
+    function test_processWithdrawalProof_RevertWhen_InvalidRecentBlock() public {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
-            abi.encode(fixture.data.withdrawalBlock.rootsTimestamp),
+            abi.encode(fixture.data.recentBlock.rootsTimestamp),
             abi.encode(hex"deadbeef")
         );
 
         vm.expectRevert(IVerifier.InvalidBlockHeader.selector);
+        verifier.processWithdrawalProof(fixture.data);
+    }
+
+    function test_processWithdrawalProof_RevertWhen_InvalidWithdrawalBlock() public {
+        // Breaking something in the header so its hashTreeRoot no longer matches the entry in `block_roots`.
+        fixture.data.withdrawalBlock.header.parentRoot = someBytes32();
+
+        vm.expectRevert(SSZ.InvalidProof.selector);
+        verifier.processWithdrawalProof(fixture.data);
+    }
+
+    function test_processWithdrawalProof_RevertWhen_BlockRootNotInRange_TargetNotBeforeRecent() public {
+        // target == recent: the recent block's own root is not yet in its state's ring buffer.
+        fixture.data.withdrawalBlock.header.slot = fixture.data.recentBlock.header.slot;
+        vm.expectRevert(IVerifier.BlockRootNotInRange.selector);
+        verifier.processWithdrawalProof(fixture.data);
+
+        // target > recent: target hasn't been built yet from the recent state's perspective.
+        fixture.data.withdrawalBlock.header.slot = fixture.data.recentBlock.header.slot.inc();
+        vm.expectRevert(IVerifier.BlockRootNotInRange.selector);
+        verifier.processWithdrawalProof(fixture.data);
+    }
+
+    function test_processWithdrawalProof_RevertWhen_BlockRootNotInRange_DistanceExceedsRing() public {
+        // setUp pins FIRST_SUPPORTED_SLOT to `withdrawalBlock.slot - 1`, so there's no room to
+        // shift the withdrawal slot more than SLOTS_PER_HISTORICAL_ROOT slots behind the recent
+        // slot without also tripping the UnsupportedSlot guard. Instead, shift the recent block
+        // far ahead and re-mock EIP-4788 (bumping its `slot` changes its hashTreeRoot, so the
+        // anchor returned by the system contract must follow).
+        BeaconBlockHeader memory recentBlock = fixture.data.recentBlock.header;
+        recentBlock.slot = recentBlock.slot.add(100500);
+        vm.mockCall(
+            verifier.BEACON_ROOTS(),
+            abi.encode(fixture.data.recentBlock.rootsTimestamp),
+            abi.encode(recentBlock.hashTreeRoot())
+        );
+        fixture.data.recentBlock.header = recentBlock;
+
+        // Push the withdrawal slot one slot past the ring buffer edge.
+        fixture.data.withdrawalBlock.header.slot = Slot.wrap(recentBlock.slot.unwrap() - 8192 - 1);
+
+        vm.expectRevert(IVerifier.BlockRootNotInRange.selector);
         verifier.processWithdrawalProof(fixture.data);
     }
 
@@ -584,10 +648,12 @@ contract VerifierWithdrawalTest is VerifierTestBase {
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: NULL_GINDEX,
                 gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: NULL_GINDEX
+                gIBalances: NULL_GINDEX,
+                gIBlockRootsPreGloas: GIndices.BLOCK_ROOTS_ELECTRA,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
-            pivotSlot: fixture.data.withdrawalBlock.header.slot.inc(),
+            pivotSlot: fixture.data.recentBlock.header.slot.inc(),
             capellaSlot: Slot.wrap(0),
             minWithdrawalRatio: 9000,
             admin: admin
@@ -611,7 +677,9 @@ contract VerifierWithdrawalTest is VerifierTestBase {
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: NULL_GINDEX,
                 gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: NULL_GINDEX
+                gIBalances: NULL_GINDEX,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             pivotSlot: fixture.data.withdrawalBlock.header.slot,
@@ -638,7 +706,9 @@ contract VerifierWithdrawalTest is VerifierTestBase {
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: NULL_GINDEX,
                 gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: NULL_GINDEX
+                gIBalances: NULL_GINDEX,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot.dec(),
             pivotSlot: fixture.data.withdrawalBlock.header.slot.dec(),
@@ -653,7 +723,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
     function _setMocks() internal {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
-            abi.encode(fixture.data.withdrawalBlock.rootsTimestamp),
+            abi.encode(fixture.data.recentBlock.rootsTimestamp),
             abi.encode(fixture.blockRoot)
         );
 
@@ -731,7 +801,9 @@ contract VerifierSlashingTest is VerifierTestBase {
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: NULL_GINDEX,
                 gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: NULL_GINDEX
+                gIBalances: NULL_GINDEX,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: Slot.wrap(8192),
             // Route through the pre-Gloas (static-list) branch.
@@ -859,7 +931,9 @@ contract VerifierPauseTest is VerifierTestBase {
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: NULL_GINDEX,
                 gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: NULL_GINDEX
+                gIBalances: NULL_GINDEX,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: Slot.wrap(100_500), // Any value less than the slots from the fixtures.
             pivotSlot: Slot.wrap(100_500),
@@ -988,6 +1062,10 @@ contract VerifierTestable is Verifier {
         return _getHistoricalBlockRootGI(recentSlot, targetSlot);
     }
 
+    function getBlockRootsBlockGI(Slot recentSlot, Slot targetSlot) external view returns (GIndex) {
+        return _getBlockRootsBlockGI(recentSlot, targetSlot);
+    }
+
     function verifyValidatorBalance(
         uint256 validatorIndex,
         bytes32 balanceNode,
@@ -1034,7 +1112,9 @@ contract VerifierGIndexTest is Test, Utilities {
                 gIHistoricalSummariesPreGloas: toGIndex(0x3b),
                 gIHistoricalSummaries: toGIndex(0xb86),
                 gIBalancesPreGloas: toGIndex(0x4c),
-                gIBalances: toGIndex(0x167)
+                gIBalances: toGIndex(0x167),
+                gIBlockRootsPreGloas: toGIndex(0x45),
+                gIBlockRoots: toGIndex(0x160)
             }),
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192 * 13),
@@ -1291,6 +1371,84 @@ contract VerifierGIndexTest is Test, Utilities {
         vm.expectRevert(IVerifier.HistoricalSummaryDoesNotExist.selector);
         verifier.getHistoricalBlockRootGI(recentSlot, targetSlot);
     }
+
+    function test_getBlockRootsBlockGI_RecentSlotBeforePivot() public view {
+        Slot recentSlot = verifier.PIVOT_SLOT().dec(); // 13 * 8192 - 1 = 106495
+        Slot targetSlot;
+
+        GIndex gI;
+
+        // block_roots[8190]
+        targetSlot = recentSlot.dec();
+        gI = verifier.getBlockRootsBlockGI(recentSlot, targetSlot);
+        assertEq(gI.unwrap(), 0x8bffe);
+
+        // block_roots[0]
+        targetSlot = Slot.wrap(8192 * 12);
+        gI = verifier.getBlockRootsBlockGI(recentSlot, targetSlot);
+        assertEq(gI.unwrap(), 0x8a000);
+
+        // block_roots[1]
+        targetSlot = Slot.wrap(8192 * 12 + 1);
+        gI = verifier.getBlockRootsBlockGI(recentSlot, targetSlot);
+        assertEq(gI.unwrap(), 0x8a001);
+
+        // block_roots[8191]
+        targetSlot = Slot.wrap(recentSlot.unwrap() - 8192);
+        gI = verifier.getBlockRootsBlockGI(recentSlot, targetSlot);
+        assertEq(gI.unwrap(), 0x8bfff);
+    }
+
+    function test_getBlockRootsBlockGI_RecentSlotAfterPivot() public view {
+        Slot recentSlot = verifier.PIVOT_SLOT().add(8192);
+        Slot targetSlot;
+
+        GIndex gI;
+
+        // block_roots[8191]
+        targetSlot = recentSlot.dec();
+        gI = verifier.getBlockRootsBlockGI(recentSlot, targetSlot);
+        assertEq(gI.unwrap(), 0x2c1fff);
+
+        // block_roots[0]
+        targetSlot = Slot.wrap(8192 * 13);
+        gI = verifier.getBlockRootsBlockGI(recentSlot, targetSlot);
+        assertEq(gI.unwrap(), 0x2c0000);
+
+        // block_roots[3504]
+        targetSlot = Slot.wrap(8192 * 13 + 3504);
+        gI = verifier.getBlockRootsBlockGI(recentSlot, targetSlot);
+        assertEq(gI.unwrap(), 0x2c0db0);
+
+        // block_roots[8190]
+        recentSlot = Slot.wrap(type(uint64).max);
+        targetSlot = recentSlot.dec();
+        gI = verifier.getBlockRootsBlockGI(recentSlot, targetSlot);
+        assertEq(gI.unwrap(), 0x2c1ffe);
+    }
+
+    function test_getBlockRootsBlockGI_RevertWhen_OutOfRange() public {
+        Slot recentSlot;
+        Slot targetSlot;
+
+        // target == recent: the recent block's own root is not yet in its state's ring buffer.
+        recentSlot = verifier.PIVOT_SLOT().dec();
+        targetSlot = recentSlot;
+        vm.expectRevert(IVerifier.BlockRootNotInRange.selector);
+        verifier.getBlockRootsBlockGI(recentSlot, targetSlot);
+
+        // target > recent.
+        recentSlot = verifier.PIVOT_SLOT();
+        targetSlot = recentSlot.inc();
+        vm.expectRevert(IVerifier.BlockRootNotInRange.selector);
+        verifier.getBlockRootsBlockGI(recentSlot, targetSlot);
+
+        // distance > SLOTS_PER_HISTORICAL_ROOT: target = recent - 8193.
+        recentSlot = Slot.wrap(20000);
+        targetSlot = Slot.wrap(recentSlot.unwrap() - 8193);
+        vm.expectRevert(IVerifier.BlockRootNotInRange.selector);
+        verifier.getBlockRootsBlockGI(recentSlot, targetSlot);
+    }
 }
 
 contract VerifierGIndexCapellaZeroTest is Test, Utilities {
@@ -1314,7 +1472,9 @@ contract VerifierGIndexCapellaZeroTest is Test, Utilities {
                 gIHistoricalSummariesPreGloas: toGIndex(0x3b),
                 gIHistoricalSummaries: toGIndex(0xb86),
                 gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: NULL_GINDEX
+                gIBalances: NULL_GINDEX,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: Slot.wrap(0),
             pivotSlot: Slot.wrap(8192 * 13),
@@ -1437,7 +1597,9 @@ contract VerifierValidatorBalanceTest is Test, Utilities {
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: NULL_GINDEX,
                 gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: toGIndex(2)
+                gIBalances: toGIndex(2),
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192 * 13),
@@ -1636,7 +1798,9 @@ contract VerifierBalanceProofTest is VerifierTestBase {
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: NULL_GINDEX,
                 gIBalancesPreGloas: GIndices.BALANCES_ELECTRA,
-                gIBalances: GIndices.BALANCES_ELECTRA
+                gIBalances: GIndices.BALANCES_ELECTRA,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
             // Route through the pre-Gloas (static-list) branch.
@@ -1780,7 +1944,9 @@ contract VerifierParentBlockRootTest is Test, Utilities {
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: NULL_GINDEX,
                 gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: NULL_GINDEX
+                gIBalances: NULL_GINDEX,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: Slot.wrap(8192),
             pivotSlot: Slot.wrap(8192 * 13),

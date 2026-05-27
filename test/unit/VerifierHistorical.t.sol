@@ -101,7 +101,9 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
                 gIHistoricalSummariesPreGloas: GIndices.HISTORICAL_SUMMARIES_ELECTRA,
                 gIHistoricalSummaries: NULL_GINDEX,
                 gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: NULL_GINDEX
+                gIBalances: NULL_GINDEX,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot,
             // Route through the pre-Gloas branch for both historical and recent blocks.
@@ -262,7 +264,9 @@ contract VerifierCrossForkHistoricalBalanceTest is Test, Utilities {
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: NULL_GINDEX,
                 gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: NULL_GINDEX
+                gIBalances: NULL_GINDEX,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.historicalBlock.header.slot,
             pivotSlot: fixture.data.recentBlock.header.slot.dec(),
@@ -346,7 +350,9 @@ contract VerifierCrossForkHistoricalBalanceAtPivotSlotTest is Test, Utilities {
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: GIndices.HISTORICAL_SUMMARIES_GLOAS,
                 gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: GIndices.BALANCES_GLOAS
+                gIBalances: GIndices.BALANCES_GLOAS,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.historicalBlock.header.slot,
             pivotSlot: fixture.data.recentBlock.header.slot,
@@ -428,7 +434,9 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
                 gIHistoricalSummariesPreGloas: GIndices.HISTORICAL_SUMMARIES_ELECTRA,
                 gIHistoricalSummaries: GIndices.HISTORICAL_SUMMARIES_GLOAS,
                 gIBalancesPreGloas: GIndices.BALANCES_ELECTRA,
-                gIBalances: GIndices.BALANCES_GLOAS
+                gIBalances: GIndices.BALANCES_GLOAS,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.historicalBlock.header.slot,
             // Route through the pre-Gloas (static-list) branch.
@@ -573,7 +581,9 @@ contract VerifierWithdrawalCrossForkHistoricalTest is VerifierHistoricalBase {
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: GIndices.HISTORICAL_SUMMARIES_GLOAS,
                 gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: NULL_GINDEX
+                gIBalances: NULL_GINDEX,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot,
             pivotSlot: fixture.data.recentBlock.header.slot.dec(),
@@ -622,7 +632,9 @@ contract VerifierCrossForkHistoricalAtPivotSlotTest is VerifierHistoricalBase {
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: GIndices.HISTORICAL_SUMMARIES_GLOAS,
                 gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: NULL_GINDEX
+                gIBalances: NULL_GINDEX,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot,
             pivotSlot: fixture.data.recentBlock.header.slot,

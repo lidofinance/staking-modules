@@ -18,6 +18,8 @@ interface IVerifier {
         GIndex gIHistoricalSummaries;
         GIndex gIBalancesPreGloas;
         GIndex gIBalances;
+        GIndex gIBlockRootsPreGloas;
+        GIndex gIBlockRoots;
     }
 
     struct RecentHeaderWitness {
@@ -25,7 +27,7 @@ interface IVerifier {
         uint64 rootsTimestamp; // To be passed to the EIP-4788 block roots contract.
     }
 
-    // A witness for a block header which root is accessible via `historical_summaries` field.
+    // A witness for a block header which root is accessible either via historical_summaries or block_roots.
     struct HistoricalHeaderWitness {
         BeaconBlockHeader header;
         bytes32[] proof;
@@ -58,7 +60,9 @@ interface IVerifier {
     struct ProcessWithdrawalInput {
         WithdrawalWitness withdrawal;
         ValidatorWitness validator;
-        RecentHeaderWitness withdrawalBlock;
+        RecentHeaderWitness recentBlock;
+        // The block that actually contained the withdrawal, proven against `recentBlock` state block roots.
+        HistoricalHeaderWitness withdrawalBlock;
     }
 
     struct ProcessHistoricalWithdrawalInput {
@@ -100,6 +104,7 @@ interface IVerifier {
     error InvalidCapellaSlot();
     error InvalidMinWithdrawalRatio();
     error HistoricalSummaryDoesNotExist();
+    error BlockRootNotInRange();
 
     function BEACON_ROOTS() external view returns (address);
 
@@ -121,6 +126,10 @@ interface IVerifier {
 
     function GI_BLOCK_ROOT_IN_SUMMARY() external view returns (GIndex);
 
+    function GI_BLOCK_ROOTS_PRE_GLOAS() external view returns (GIndex);
+
+    function GI_BLOCK_ROOTS() external view returns (GIndex);
+
     function FIRST_SUPPORTED_SLOT() external view returns (Slot);
 
     function PIVOT_SLOT() external view returns (Slot);
@@ -137,7 +146,7 @@ interface IVerifier {
     /// @param data @see ProcessSlashedInput
     function processSlashedProof(ProcessSlashedInput calldata data) external;
 
-    /// @notice Verify withdrawal proof and report withdrawal to the module for valid proofs
+    /// @notice Verify withdrawal proof and report withdrawal to the module for valid proofs.
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
     /// determining the exact penalty amounts and calling the `IBaseModule.reportSlashedWithdrawnValidators` method via
     /// an EasyTrack motion.

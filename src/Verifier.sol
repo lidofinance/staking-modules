@@ -76,6 +76,12 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     /// @dev This index is relative to a state like: `BeaconState.balances`.
     GIndex public immutable GI_BALANCES;
 
+    /// @dev This index is relative to a state like: `BeaconState.block_roots`.
+    GIndex public immutable GI_BLOCK_ROOTS_PRE_GLOAS;
+
+    /// @dev This index is relative to a state like: `BeaconState.block_roots`.
+    GIndex public immutable GI_BLOCK_ROOTS;
+
     /// @dev The very first slot the verifier is supposed to accept proofs for.
     Slot public immutable FIRST_SUPPORTED_SLOT;
 
@@ -129,6 +135,9 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         GI_BALANCES_PRE_GLOAS = gindices.gIBalancesPreGloas;
         GI_BALANCES = gindices.gIBalances;
 
+        GI_BLOCK_ROOTS_PRE_GLOAS = gindices.gIBlockRootsPreGloas;
+        GI_BLOCK_ROOTS = gindices.gIBlockRoots;
+
         FIRST_SUPPORTED_SLOT = firstSupportedSlot;
         PIVOT_SLOT = pivotSlot;
         CAPELLA_SLOT = capellaSlot;
@@ -170,9 +179,16 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         }
 
         {
-            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.withdrawalBlock.rootsTimestamp);
-            if (trustedHeaderRoot != data.withdrawalBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
+            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.recentBlock.rootsTimestamp);
+            if (trustedHeaderRoot != data.recentBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
         }
+
+        SSZ.verifyProof({
+            proof: data.withdrawalBlock.proof,
+            root: data.recentBlock.header.stateRoot,
+            leaf: data.withdrawalBlock.header.hashTreeRoot(),
+            gI: _getBlockRootsBlockGI(data.recentBlock.header.slot, data.withdrawalBlock.header.slot)
+        });
 
         {
             bytes memory pubkey = MODULE.getSigningKeys(data.validator.nodeOperatorId, data.validator.keyIndex, 1);
@@ -441,6 +457,26 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             gI = GI_BALANCES;
             gI = gI.concat(progressiveListNodeGIndex(offset));
         }
+    }
+
+    /// @dev Generalized index of the `targetSlot` block root in the `recentSlot` state `block_roots`.
+    function _getBlockRootsBlockGI(Slot recentSlot, Slot targetSlot) internal view returns (GIndex gI) {
+        // `state.block_roots` at the post-state of `recentSlot` carries the previous block root
+        // at index `i % 8192` for `i in [recentSlot - SLOTS_PER_HISTORICAL_ROOT, recentSlot - 1]`,
+        // so the target slot must be strictly older than the recent slot and within the ring.
+        if (targetSlot.unwrap() >= recentSlot.unwrap()) revert BlockRootNotInRange();
+        if (recentSlot.unwrap() - targetSlot.unwrap() > SLOTS_PER_HISTORICAL_ROOT) revert BlockRootNotInRange();
+
+        uint64 rootIndex = targetSlot.unwrap() % SLOTS_PER_HISTORICAL_ROOT;
+
+        if (recentSlot < PIVOT_SLOT) {
+            gI = GI_BLOCK_ROOTS_PRE_GLOAS;
+        } else {
+            gI = GI_BLOCK_ROOTS;
+        }
+        // `state.block_roots` is a Vector[Root, SLOTS_PER_HISTORICAL_ROOT]; the gindex
+        // of element rootIndex within a vector of capacity 2^d is (1 << d) | rootIndex.
+        gI = gI.concat(toGIndex(SLOTS_PER_HISTORICAL_ROOT | rootIndex));
     }
 
     function _getHistoricalBlockRootGI(Slot recentSlot, Slot targetSlot) internal view returns (GIndex gI) {

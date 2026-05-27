@@ -41,6 +41,7 @@ contract DeployCSM0x02Hoodi is DeployCSM0x02Base {
         config.gIValidators = GIndices.VALIDATORS_ELECTRA;
         config.gIHistoricalSummaries = GIndices.HISTORICAL_SUMMARIES_ELECTRA; // prettier-ignore
         config.gIBalances = GIndices.BALANCES_ELECTRA;
+        config.gIBlockRoots = GIndices.BLOCK_ROOTS_ELECTRA;
         config.verifierFirstSupportedSlot = 2048 * config.slotsPerEpoch; // @see https://github.com/eth-clients/hoodi/blob/main/metadata/config.yaml#L41
         config.capellaSlot = 0; // @see https://github.com/eth-clients/hoodi/blob/main/metadata/config.yaml#L33
         config.minWithdrawalRatio = 9900;
