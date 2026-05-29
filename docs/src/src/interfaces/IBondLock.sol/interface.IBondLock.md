@@ -108,12 +108,6 @@ event BondLockChanged(uint256 indexed nodeOperatorId, uint256 newAmount, uint256
 event BondLockRemoved(uint256 indexed nodeOperatorId);
 ```
 
-### ExpiredBondLockRemoved
-
-```solidity
-event ExpiredBondLockRemoved(uint256 indexed nodeOperatorId);
-```
-
 ### BondLockPeriodChanged
 
 ```solidity

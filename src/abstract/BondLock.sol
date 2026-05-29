@@ -120,7 +120,6 @@ abstract contract BondLock is IBondLock, Initializable {
         if (getLockedBond(nodeOperatorId) == 0) revert NoBondLocked();
         if (!isLockExpired(nodeOperatorId)) revert BondLockNotExpired();
         _changeBondLock(nodeOperatorId, 0, 0);
-        emit ExpiredBondLockRemoved(nodeOperatorId);
     }
 
     // solhint-disable-next-line func-name-mixedcase

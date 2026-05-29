@@ -15,7 +15,6 @@ interface IBondLock {
 
     event BondLockChanged(uint256 indexed nodeOperatorId, uint256 newAmount, uint256 until);
     event BondLockRemoved(uint256 indexed nodeOperatorId);
-    event ExpiredBondLockRemoved(uint256 indexed nodeOperatorId);
 
     event BondLockPeriodChanged(uint256 period);
 
