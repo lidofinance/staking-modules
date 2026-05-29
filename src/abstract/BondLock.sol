@@ -77,6 +77,7 @@ abstract contract BondLock is IBondLock, Initializable {
     }
 
     /// @dev Lock bond amount for the given Node Operator until the period.
+    /// @dev If there's an existing non-expired lock, its amount is added to the `amount` provided.
     function _lock(uint256 nodeOperatorId, uint256 amount) internal {
         if (amount == 0) revert InvalidBondLockAmount();
 
