@@ -293,7 +293,7 @@ oz-upgrades:
 
     CURR_DIR=$(pwd)
     TMP_DIR=$(mktemp -d)
-    git clone --depth 1 --branch main https://github.com/lidofinance/community-staking-module "$TMP_DIR"
+    git clone --depth 1 --branch main https://github.com/lidofinance/staking-modules "$TMP_DIR"
 
     cd "$TMP_DIR"
     just deps
