@@ -409,7 +409,7 @@ contract LockBondTest is BaseTest {
             abi.encodeWithSelector(IBaseModule.updateDepositableValidatorsCount.selector, 0)
         );
         vm.expectEmit(address(accounting));
-        emit IBondLock.ExpiredBondLockRemoved(0);
+        emit IBondLock.BondLockRemoved(0);
         vm.prank(address(stakingModule));
         accounting.compensateLockedBond(0);
 
@@ -517,7 +517,7 @@ contract LockBondTest is BaseTest {
             abi.encodeWithSelector(IBaseModule.updateDepositableValidatorsCount.selector, noId)
         );
         vm.expectEmit(address(accounting));
-        emit IBondLock.ExpiredBondLockRemoved(noId);
+        emit IBondLock.BondLockRemoved(noId);
         vm.prank(address(stakingModule));
         uint256 settled = accounting.settleLockedBond(noId, amount);
 
@@ -634,7 +634,7 @@ contract LockBondTest is BaseTest {
             abi.encodeWithSelector(IBaseModule.updateDepositableValidatorsCount.selector, noId)
         );
         vm.expectEmit(address(accounting));
-        emit IBondLock.ExpiredBondLockRemoved(noId);
+        emit IBondLock.BondLockRemoved(noId);
         vm.prank(address(stakingModule));
         accounting.unlockExpiredLock(noId);
 

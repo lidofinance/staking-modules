@@ -77,6 +77,7 @@ abstract contract BondLock is IBondLock, Initializable {
     }
 
     /// @dev Lock bond amount for the given Node Operator until the period.
+    /// @dev If there's an existing non-expired lock, its amount is added to the `amount` provided.
     function _lock(uint256 nodeOperatorId, uint256 amount) internal {
         if (amount == 0) revert InvalidBondLockAmount();
 
@@ -120,7 +121,6 @@ abstract contract BondLock is IBondLock, Initializable {
         if (getLockedBond(nodeOperatorId) == 0) revert NoBondLocked();
         if (!isLockExpired(nodeOperatorId)) revert BondLockNotExpired();
         _changeBondLock(nodeOperatorId, 0, 0);
-        emit ExpiredBondLockRemoved(nodeOperatorId);
     }
 
     // solhint-disable-next-line func-name-mixedcase

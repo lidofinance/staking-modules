@@ -90,9 +90,10 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
 
     /// @notice Update existing bond curve
     /// @dev If the curve is updated to a curve with higher values for any point,
-    ///      Extensive checks and actions should be performed by the method caller to avoid
+    ///      extensive checks and actions should be performed by the method caller to avoid
     ///      inconsistency in the keys accounting. A manual update of the depositable validators count
     ///      in staking module might be required to ensure that the keys pointers are consistent.
+    ///      Note that node operators might face unbonded keys due to changes to bond requirements.
     /// @param curveId Bond curve ID to update
     /// @param bondCurve Bond curve definition
     function updateBondCurve(uint256 curveId, BondCurveIntervalInput[] calldata bondCurve) external;

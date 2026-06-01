@@ -347,9 +347,10 @@ library NodeOperatorOps {
         TransientUintUintMap reservedByKey = TransientUintUintMapLib.create();
         for (uint256 i; i < len; ++i) {
             uint256 pointer = KeyPointerLib.keyPointer(operatorIds[i], keyIndices[i]);
-            // Withdrawn keys must not receive new top-ups, but returning zero keeps CSM queue cleanup
+            // Withdrawn and slashed keys must not receive new top-ups, but returning zero keeps CSM queue cleanup
             // working for stale or rewound head items.
             if ($.isValidatorWithdrawn[pointer]) continue;
+            if ($.isValidatorSlashed[pointer]) continue;
 
             // Share the remaining headroom across duplicate keys in the same batch so later entries
             // cannot reserve the same per-key capacity twice.

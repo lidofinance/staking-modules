@@ -1009,6 +1009,35 @@ contract CSMTopUpQueue is CSMCommon {
         assertEq(_getTopUpQueueLength(), 0);
     }
 
+    function test_topUp_slashedHeadKeyIsDequeuedWithoutAllocation() public {
+        createNodeOperator(2);
+        csm.obtainDepositData(2, "");
+
+        bytes memory packedPubkeys = csm.getSigningKeys(0, 0, 2);
+        bytes memory key0 = slice(packedPubkeys, 0, 48);
+        bytes memory key1 = slice(packedPubkeys, 48, 48);
+
+        // Slashed keys must not receive new top-ups even though the top-up queue still references them.
+        csm.reportValidatorSlashing(0, 0);
+        assertTrue(csm.isValidatorSlashed(0, 0));
+        assertEq(_getTopUpQueueLength(), 2);
+
+        uint256[] memory allocations = csm.allocateDeposits({
+            maxDepositAmount: 4 ether,
+            pubkeys: BytesArr(key0, key1),
+            keyIndices: UintArr(0, 1),
+            operatorIds: UintArr(0, 0),
+            topUpLimits: UintArr(5 ether, 5 ether)
+        });
+
+        assertEq(allocations, UintArr(0, 4 ether));
+        assertEq(csm.getKeyAllocatedBalances(0, 0, 2), UintArr(0, 4 ether));
+        assertEq(module.getTotalModuleStake(), 2 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
+        assertEq(module.getNodeOperatorBalance(0), 2 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
+        // Both the slashed head key and the topped-up follower must be cleared from the queue.
+        assertEq(_getTopUpQueueLength(), 0);
+    }
+
     function test_topUp_emitsKeyAllocatedBalanceChanged() public {
         createNodeOperator(1);
         csm.obtainDepositData(1, "");
