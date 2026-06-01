@@ -20,6 +20,7 @@ from ics_assessment.config import (
     NODE_OPERATOR_OWNERS_MAINNET_PATH,
     PROTOCOL_GUILD_PATH,
     SNAPSHOT_VOTERS_PATH,
+    SSV_VERIFIED_OPERATORS_PATH,
 )
 from ics_assessment.engagement.assess import EngagementEvaluator
 from ics_assessment.engagement.sources import EngagementSources, fetch_high_signal_max
@@ -58,6 +59,7 @@ DEFAULT_EXPERIENCE_SOURCES = ExperienceSources(
 
 DEFAULT_HUMANITY_SOURCES = HumanitySources(
     circle_group_members_path=CIRCLE_GROUP_MEMBERS_PATH,
+    ssv_verified_operators_path=SSV_VERIFIED_OPERATORS_PATH,
 )
 
 

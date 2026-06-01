@@ -67,6 +67,7 @@ HUMANITY_SCORES = {
     "human-passport-min": 3,
     "human-passport-max": 8,
     "circles-verified": 4,
+    "ssv-verified": 3,
     "discord-account": 2,
     "x-account": 1,
 }

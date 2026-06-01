@@ -47,7 +47,10 @@ EXPERIENCE_SOURCES = ExperienceSources(
     node_operator_owners_mainnet_path=NODE_OPERATOR_OWNERS_MAINNET_PATH,
 )
 EXPERIENCE_EVALUATOR = ExperienceEvaluator(EXPERIENCE_SOURCES)
-HUMANITY_SOURCES = HumanitySources(circle_group_members_path=CIRCLE_GROUP_MEMBERS_PATH)
+HUMANITY_SOURCES = HumanitySources(
+    circle_group_members_path=CIRCLE_GROUP_MEMBERS_PATH,
+    ssv_verified_operators_path=SSV_VERIFIED_OPERATORS_PATH,
+)
 HUMANITY_EVALUATOR = HumanityEvaluator(HUMANITY_SOURCES)
 
 
@@ -128,6 +131,15 @@ def test_static_ssv_verified_uses_prepared_data():
     outcome = EXPERIENCE_EVALUATOR.ssv_verified_score({address})
 
     assert outcome.score == EXPERIENCE_SCORES["ssv-verified"]
+    assert address in (outcome.detail or "")
+
+
+def test_static_ssv_verified_humanity_uses_prepared_data():
+    address = _first_csv_row(SSV_VERIFIED_OPERATORS_PATH)[0].strip().lower()
+
+    outcome = HUMANITY_EVALUATOR.ssv_verified_score({address})
+
+    assert outcome.score == HUMANITY_SCORES["ssv-verified"]
     assert address in (outcome.detail or "")
 
 

@@ -12,11 +12,20 @@ from ics_assessment.data_utils import read_csv_rows
 @dataclass(frozen=True)
 class HumanitySources:
     circle_group_members_path: Path
+    ssv_verified_operators_path: Path
 
 
 def circles_matches(addresses: set[str], sources: HumanitySources) -> list[str]:
     matches: list[str] = []
     for row in read_csv_rows(sources.circle_group_members_path):
+        if row and row[0].strip().lower() in addresses:
+            matches.append(row[0].strip().lower())
+    return matches
+
+
+def ssv_verified_matches(addresses: set[str], sources: HumanitySources) -> list[str]:
+    matches: list[str] = []
+    for row in read_csv_rows(sources.ssv_verified_operators_path):
         if row and row[0].strip().lower() in addresses:
             matches.append(row[0].strip().lower())
     return matches

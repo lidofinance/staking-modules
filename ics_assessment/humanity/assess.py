@@ -7,7 +7,7 @@ from ics_assessment.config import (
 )
 from ics_assessment.result_models import CategoryResult, CheckOutcome
 from ics_assessment.data_utils import truncate
-from ics_assessment.humanity.sources import HumanitySources, circles_matches
+from ics_assessment.humanity.sources import HumanitySources, circles_matches, ssv_verified_matches
 from ics_assessment.runtime_inputs import HumanityRuntimeInputs
 
 
@@ -41,6 +41,15 @@ class HumanityEvaluator:
             return CheckOutcome(score=HUMANITY_SCORES["circles-verified"], detail=truncate(matches))
         return CheckOutcome(score=0)
 
+    def ssv_verified_score(self, addresses: set[str]) -> CheckOutcome:
+        """
+        Returns the Proof-of-Humanity score for SSV Verified Operators.
+        """
+        matches = ssv_verified_matches(addresses, self.sources)
+        if matches:
+            return CheckOutcome(score=HUMANITY_SCORES["ssv-verified"], detail=truncate(matches))
+        return CheckOutcome(score=0)
+
     def discord_account_score(self, provided: bool) -> int:
         """
         Return Discord score from a resolved boolean.
@@ -56,11 +65,13 @@ class HumanityEvaluator:
     def evaluate(self, addresses: set[str]) -> CategoryResult:
         hp = self.human_passport_score()
         circles = self.circles_verified_score(addresses)
+        ssv_verified = self.ssv_verified_score(addresses)
         discord_score = self.discord_account_score(bool(self.runtime_inputs.discord))
         x_score = self.x_account_score(bool(self.runtime_inputs.x))
         checks = [
             hp.to_result("human-passport"),
             circles.to_result("circles-verified"),
+            ssv_verified.to_result("ssv-verified"),
             CheckOutcome(score=discord_score, detail="provided" if discord_score else None).to_result("discord-account"),
             CheckOutcome(score=x_score, detail="provided" if x_score else None).to_result("x-account"),
         ]
