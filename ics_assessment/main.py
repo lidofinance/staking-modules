@@ -134,7 +134,8 @@ def resolve_runtime_inputs(
     discord: bool | None = None,
     x: bool | None = None,
     human_passport_score_override: float | None = None,
-    high_signal_score: float | None = None,
+    lido_high_signal_score: float | None = None,
+    ssv_high_signal_score: float | None = None,
     allow_prompt: bool = True,
 ) -> AssessmentRuntimeInputs:
     humanity = HumanityRuntimeInputs(
@@ -143,7 +144,20 @@ def resolve_runtime_inputs(
         human_passport_score=human_passport_score_override,
     )
     engagement = EngagementRuntimeInputs(
-        high_signal_score=high_signal_score,
+        high_signal_score=max(
+            score
+            for score in (lido_high_signal_score or 0.0, ssv_high_signal_score or 0.0)
+        )
+        if lido_high_signal_score is not None or ssv_high_signal_score is not None
+        else None,
+        high_signal_project=(
+            "ssv"
+            if ssv_high_signal_score is not None
+            and (lido_high_signal_score is None or ssv_high_signal_score > lido_high_signal_score)
+            else "lido"
+            if lido_high_signal_score is not None
+            else None
+        ),
     )
 
     if humanity.human_passport_score is None:
@@ -186,18 +200,27 @@ def resolve_runtime_inputs(
     if engagement.high_signal_score is None:
         high_signal_api_key = os.getenv("HIGH_SIGNAL_API_KEY")
         if high_signal_api_key:
-            score, address = fetch_high_signal_max(addresses, high_signal_api_key)
+            score, address, username, project = fetch_high_signal_max(addresses, high_signal_api_key)
             engagement = EngagementRuntimeInputs(
                 high_signal_score=score,
                 high_signal_address=address,
+                high_signal_username=username,
+                high_signal_project=project,
             )
         elif allow_prompt:
+            lido_score = _prompt_float(
+                "Lido High-signal score (0-100)",
+                "--lido-high-signal-score",
+                env_var="HIGH_SIGNAL_API_KEY",
+            )
+            ssv_score = _prompt_float(
+                "SSV High-signal score (0-100)",
+                "--ssv-high-signal-score",
+                env_var="HIGH_SIGNAL_API_KEY",
+            )
             engagement = EngagementRuntimeInputs(
-                high_signal_score=_prompt_float(
-                    "High-signal score (0-100)",
-                    "--high-signal-score",
-                    env_var="HIGH_SIGNAL_API_KEY",
-                ),
+                high_signal_score=max(lido_score, ssv_score),
+                high_signal_project="ssv" if ssv_score > lido_score else "lido",
             )
 
     return AssessmentRuntimeInputs(humanity=humanity, engagement=engagement)
@@ -209,7 +232,8 @@ def _run_assess(
     discord: bool | None = None,
     x: bool | None = None,
     human_passport_score_override: float | None = None,
-    high_signal_score: float | None = None,
+    lido_high_signal_score: float | None = None,
+    ssv_high_signal_score: float | None = None,
 ) -> int:
     normalized_addresses = {address.strip().lower() for address in addresses}
     runtime_inputs = resolve_runtime_inputs(
@@ -217,7 +241,8 @@ def _run_assess(
         discord=discord,
         x=x,
         human_passport_score_override=human_passport_score_override,
-        high_signal_score=high_signal_score,
+        lido_high_signal_score=lido_high_signal_score,
+        ssv_high_signal_score=ssv_high_signal_score,
         allow_prompt=True,
     )
     result = evaluate_assessment(
@@ -233,7 +258,8 @@ def _add_runtime_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--discord", choices=["yes", "no"])
     parser.add_argument("--x", choices=["yes", "no"])
     parser.add_argument("--human-passport-score", type=float)
-    parser.add_argument("--high-signal-score", type=float)
+    parser.add_argument("--lido-high-signal-score", type=float)
+    parser.add_argument("--ssv-high-signal-score", type=float)
 
 
 def main(argv: list[str] | None = None):
@@ -263,7 +289,8 @@ def main(argv: list[str] | None = None):
             discord=_parse_optional_bool(parsed.discord),
             x=_parse_optional_bool(parsed.x),
             human_passport_score_override=parsed.human_passport_score,
-            high_signal_score=parsed.high_signal_score,
+            lido_high_signal_score=parsed.lido_high_signal_score,
+            ssv_high_signal_score=parsed.ssv_high_signal_score,
         )
     if parsed.command == "sync":
         return sync_main(parsed.targets, chunk_size=parsed.chunk_size)

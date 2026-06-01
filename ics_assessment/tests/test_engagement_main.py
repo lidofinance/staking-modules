@@ -7,6 +7,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve()
 ENGAGEMENT_DIR = HERE.parent.parent / "engagement"
 MODULE_PATH = ENGAGEMENT_DIR / "assess.py"
+SOURCES_MODULE_PATH = ENGAGEMENT_DIR / "sources.py"
 
 
 def _write(path: Path, content: str) -> None:
@@ -33,6 +34,19 @@ def _load_module(tmp_path: Path):
         protocol_guild_path=tmp_path / "protocol_guild.csv",
     )
     mod.evaluator = mod.EngagementEvaluator(mod.sources)
+    return mod
+
+
+def _load_sources_module(monkeypatch):
+    web3_stub = types.SimpleNamespace(
+        Web3=types.SimpleNamespace(to_checksum_address=lambda x: x.upper())
+    )
+    monkeypatch.setitem(sys.modules, "web3", web3_stub)
+
+    spec = util.spec_from_file_location("engagement_sources", str(SOURCES_MODULE_PATH))
+    mod = util.module_from_spec(spec)
+    assert spec and spec.loader
+    spec.loader.exec_module(mod)
     return mod
 
 
@@ -110,17 +124,89 @@ def test_gitpoap_no_matches_zero(tmp_path):
     assert mod.evaluator.gitpoap({"0xabc"}) == mod.CheckOutcome(score=0)
 
 
-def test_high_signal_api_buckets_and_max(monkeypatch, tmp_path):
+def test_high_signal_api_buckets_and_detail(monkeypatch, tmp_path):
     mod = _load_module(tmp_path)
     outcome = mod.EngagementEvaluator(
         mod.sources,
         mod.EngagementRuntimeInputs(
             high_signal_score=85,
             high_signal_address="0x1231231231231231231312312312312311231232",
+            high_signal_username="alice",
+            high_signal_project="ssv",
         ),
     ).high_signal()
     assert outcome.score == mod.ENGAGEMENT_SCORES["high-signal-80"]
     assert "address=0x1231231231231231231312312312312311231232" in outcome.detail
+    assert "username=alice" in outcome.detail
+    assert "project=ssv" in outcome.detail
+
+
+def test_fetch_high_signal_max_uses_ssv_when_higher(monkeypatch):
+    mod = _load_sources_module(monkeypatch)
+
+    def fake_get(url, params=None, timeout=None):
+        if params["project"] == "lido":
+            assert params["apiKey"] == "secret"
+            assert params["searchType"] == "ethereumAddress"
+            assert params["searchValue"] == "0XABC"
+            return types.SimpleNamespace(
+                status_code=200,
+                raise_for_status=lambda: None,
+                json=lambda: {
+                    "username": "alice",
+                    "totalScores": [{"totalScore": 35}, {"totalScore": 90}],
+                },
+            )
+        assert params["project"] == "ssv"
+        assert "apiKey" not in params
+        assert params["searchType"] == "highSignalUsername"
+        assert params["searchValue"] == "alice"
+        return types.SimpleNamespace(
+            status_code=200,
+            raise_for_status=lambda: None,
+            json=lambda: {
+                "username": "alice",
+                "totalScores": [{"totalScore": 75}, {"totalScore": 95}],
+            },
+        )
+
+    monkeypatch.setattr(mod.requests, "get", fake_get)
+
+    assert mod.fetch_high_signal_max({"0xabc"}, "secret") == (
+        75.0,
+        "0xabc",
+        "alice",
+        "ssv",
+    )
+
+
+def test_fetch_high_signal_max_keeps_lido_when_ssv_missing(monkeypatch):
+    mod = _load_sources_module(monkeypatch)
+
+    def fake_get(url, params=None, timeout=None):
+        if params["project"] == "lido":
+            return types.SimpleNamespace(
+                status_code=200,
+                raise_for_status=lambda: None,
+                json=lambda: {
+                    "username": "alice",
+                    "totalScores": [{"totalScore": 42}, {"totalScore": 90}],
+                },
+            )
+        return types.SimpleNamespace(
+            status_code=404,
+            raise_for_status=lambda: None,
+            json=lambda: {},
+        )
+
+    monkeypatch.setattr(mod.requests, "get", fake_get)
+
+    assert mod.fetch_high_signal_max({"0xabc"}, "secret") == (
+        42.0,
+        "0xabc",
+        "alice",
+        "lido",
+    )
 
 
 def test_high_signal_valid_boundaries(tmp_path):
@@ -138,6 +224,26 @@ def test_high_signal_invalid_and_out_of_range(tmp_path):
     assert mod.evaluator.high_signal() == mod.CheckOutcome(score=0)
     assert mod.EngagementEvaluator(mod.sources, mod.EngagementRuntimeInputs(high_signal_score=150)).high_signal() == mod.CheckOutcome(score=0)
     assert mod.EngagementEvaluator(mod.sources, mod.EngagementRuntimeInputs(high_signal_score=25)).high_signal() == mod.CheckOutcome(score=0)
+
+
+def test_high_signal_uses_one_chosen_score(tmp_path):
+    mod = _load_module(tmp_path)
+    _write(mod.sources.snapshot_voters_path, "Address,VoteCount\n")
+    _write(mod.sources.aragon_voters_path, "Address,VoteCount\n")
+    _write(mod.sources.galxe_loyalty_points_path, "Address,Points\n")
+    _write(mod.sources.gitpoap_holders_path, "Address,EventID,EventName\n")
+    _write(mod.sources.protocol_guild_path, "")
+
+    result = mod.EngagementEvaluator(
+        mod.sources,
+        mod.EngagementRuntimeInputs(
+            high_signal_score=75,
+            high_signal_project="ssv",
+        ),
+    ).evaluate({"0xabc"})
+
+    assert result.raw_score == mod.ENGAGEMENT_SCORES["high-signal-60"]
+    assert result.final_score == result.raw_score
 
 
 def test_main_aggregator_threshold_and_capping(monkeypatch, tmp_path):

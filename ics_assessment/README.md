@@ -80,7 +80,9 @@ python main.py 0xabc... 0xdef...
 
 The assessment reads local synced artifacts plus the remaining live lookups for:
 
-- High Signal
+- High Signal:
+  - Lido High Signal lookup by address
+  - SSV High Signal lookup by the resolved High Signal username
 - Human Passport
 
 ```bash
@@ -280,7 +282,7 @@ Static curated snapshots:
 - Experience community lists:
   - [EthStaker](https://github.com/ethstaker/solo-stakers/blob/main/solos_list/solo_stakers_v2.csv)
   - [StakeCat](https://github.com/Stake-Cat/Solo-Stakers/tree/main) ([Solo-Stakers-B.csv](https://github.com/Stake-Cat/Solo-Stakers/blob/main/Solo-Stakers/Solo-Stakers-B.csv), [Rocketpool-Solo-Stakers.csv](https://github.com/Stake-Cat/Solo-Stakers/blob/main/Solo-Stakers/Rocketpool-Solo-Stakers.csv), [Gnosischain-Solo-Stakers.csv](https://github.com/Stake-Cat/Solo-Stakers/blob/main/Gnosischain/Gnosischain-Solo-Stakers.csv))
-- SSV verified operators
+- SSV verified operators (Experience and Humanity)
 - SDVTM participants
 - Holesky eligible addresses
 
@@ -297,7 +299,9 @@ On-chain synced artifacts:
 
 Live at runtime:
 
-- High Signal, if `HIGH_SIGNAL_API_KEY` is set
+- High Signal, if `HIGH_SIGNAL_API_KEY` is set. Lido High Signal is fetched by
+  address, then SSV High Signal is fetched by the resolved High Signal username.
+  The Engagement score uses the higher of the two scores.
 - Human Passport, if `HUMAN_PASSPORT_API_KEY` is set
 
 ## Environment Variables

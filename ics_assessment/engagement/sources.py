@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import requests
 from web3 import Web3
@@ -71,12 +72,35 @@ def protocol_guild_matches(addresses: set[str], sources: EngagementSources) -> l
     return matched_addresses
 
 
-def fetch_high_signal_max(addresses: set[str], api_key: str | None) -> tuple[float | None, str | None]:
-    if not api_key:
-        return None, None
+def _fetch_high_signal_user(params: dict[str, str]) -> dict[str, Any] | None:
+    response = requests.get(
+        "https://app.highsignal.xyz/api/data/v1/user",
+        params=params,
+        timeout=20,
+    )
+    if response.status_code == 404:
+        return None
+    response.raise_for_status()
+    return response.json()
 
-    high_signal_url = "https://app.highsignal.xyz/api/data/v1/user"
-    params = {
+
+def _latest_total_score(payload: dict[str, Any] | None) -> float:
+    if not payload:
+        return 0.0
+    total_scores = payload.get("totalScores", [])
+    if not total_scores:
+        return 0.0
+    return float(total_scores[0].get("totalScore", 0) or 0)
+
+
+def fetch_high_signal_max(
+    addresses: set[str],
+    api_key: str | None,
+) -> tuple[float | None, str | None, str | None, str | None]:
+    if not api_key:
+        return None, None, None, None
+
+    base_params = {
         "apiKey": api_key,
         "project": "lido",
         "searchType": "ethereumAddress",
@@ -85,18 +109,32 @@ def fetch_high_signal_max(addresses: set[str], api_key: str | None) -> tuple[flo
     }
     best_score = 0.0
     best_address = None
+    best_username = None
+    best_project = None
     for address in addresses:
-        params["searchValue"] = Web3.to_checksum_address(address)
-        response = requests.get(high_signal_url, params=params)
-        if response.status_code == 404:
-            continue
-        response.raise_for_status()
-        payload = response.json()
-        total_scores = payload.get("totalScores", 0)
-        address_score = 0.0
-        if total_scores:
-            address_score = float(total_scores[0]["totalScore"])
-        if address_score >= best_score:
-            best_score = address_score
-            best_address = address
-    return best_score, best_address
+        lido_params = base_params | {"searchValue": Web3.to_checksum_address(address)}
+        lido_payload = _fetch_high_signal_user(lido_params)
+        username = (lido_payload or {}).get("username")
+        for project, score in (
+            ("lido", _latest_total_score(lido_payload)),
+            ("ssv", _fetch_ssv_high_signal_score(username)),
+        ):
+            if score > best_score:
+                best_score = score
+                best_address = address
+                best_username = username
+                best_project = project
+    return best_score, best_address, best_username, best_project
+
+
+def _fetch_ssv_high_signal_score(username: str | None) -> float:
+    if not username:
+        return 0.0
+    params = {
+        "project": "ssv",
+        "searchType": "highSignalUsername",
+        "searchValue": username,
+        "startDate": HIGH_SIGNAL_START_DATE.strftime("%Y-%m-%d"),
+        "endDate": HIGH_SIGNAL_END_DATE.strftime("%Y-%m-%d"),
+    }
+    return _latest_total_score(_fetch_high_signal_user(params))

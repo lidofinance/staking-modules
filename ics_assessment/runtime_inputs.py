@@ -13,6 +13,8 @@ class HumanityRuntimeInputs:
 class EngagementRuntimeInputs:
     high_signal_score: float | None = None
     high_signal_address: str | None = None
+    high_signal_username: str | None = None
+    high_signal_project: str | None = None
 
 
 @dataclass(frozen=True)
