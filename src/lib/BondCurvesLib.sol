@@ -4,6 +4,7 @@ pragma solidity 0.8.33;
 
 import { IBondCurve } from "../interfaces/IBondCurve.sol";
 import { BondCurve } from "../abstract/BondCurve.sol";
+import { MAX_BP } from "../lib/Constants.sol";
 
 /// Library for managing BondCurves
 /// @dev External deployment-linked library used by Accounting.
@@ -37,8 +38,10 @@ library BondCurvesLib {
     function getBondAmountByKeysCount(
         BondCurve.BondCurveStorage storage bondCurveStorage,
         uint256 keys,
-        uint256 curveId
+        uint256 curveId,
+        uint256 multiplier
     ) external view returns (uint256) {
+        if (multiplier < MAX_BP) revert IBondCurve.InvalidMultiplier();
         _ensureCurveExists(bondCurveStorage, curveId);
         IBondCurve.BondCurveInterval[] storage intervals = bondCurveStorage.bondCurves[curveId].intervals;
         if (keys == 0) return 0;
@@ -55,34 +58,35 @@ library BondCurvesLib {
                 }
             }
             IBondCurve.BondCurveInterval storage interval = intervals[low];
-            return interval.minBond + (keys - interval.minKeysCount) * interval.trend;
+            uint256 sMinBond = _scaled(interval.minBond, multiplier);
+            uint256 sTrend = _scaled(interval.trend, multiplier);
+            return sMinBond + (keys - interval.minKeysCount) * sTrend;
         }
     }
 
     function getKeysCountByBondAmount(
         BondCurve.BondCurveStorage storage bondCurveStorage,
         uint256 amount,
-        uint256 curveId
+        uint256 curveId,
+        uint256 multiplier
     ) external view returns (uint256) {
+        if (multiplier < MAX_BP) revert IBondCurve.InvalidMultiplier();
         _ensureCurveExists(bondCurveStorage, curveId);
         IBondCurve.BondCurveInterval[] storage intervals = bondCurveStorage.bondCurves[curveId].intervals;
 
-        // intervals[0].minBond is essentially the amount of bond required for the very first key
-        if (amount < intervals[0].minBond) return 0;
-
         unchecked {
+            if (amount < _scaled(intervals[0].minBond, multiplier)) return 0;
+
             uint256 low = 0;
             uint256 high = intervals.length - 1;
             while (low < high) {
                 uint256 mid = (low + high + 1) / 2;
-                if (amount < intervals[mid].minBond) {
+                if (amount < _scaled(intervals[mid].minBond, multiplier)) {
                     high = mid - 1;
                 } else {
                     low = mid;
                 }
             }
-
-            IBondCurve.BondCurveInterval storage interval;
 
             //
             // Imagine we have:
@@ -93,11 +97,16 @@ library BondCurvesLib {
             // So we need a special check for bond amounts between Interval 0 maxBond and Interval 1 minBond.
             //
             if (low < intervals.length - 1) {
-                interval = intervals[low + 1];
-                if (amount > interval.minBond - interval.trend) return interval.minKeysCount - 1;
+                IBondCurve.BondCurveInterval storage next = intervals[low + 1];
+                uint256 sNextMinBond = _scaled(next.minBond, multiplier);
+                uint256 sNextTrend = _scaled(next.trend, multiplier);
+                if (amount > sNextMinBond - sNextTrend) return next.minKeysCount - 1;
             }
-            interval = intervals[low];
-            return interval.minKeysCount + (amount - interval.minBond) / interval.trend;
+
+            IBondCurve.BondCurveInterval storage interval = intervals[low];
+            uint256 sMinBond = _scaled(interval.minBond, multiplier);
+            uint256 sTrend = _scaled(interval.trend, multiplier);
+            return interval.minKeysCount + (amount - sMinBond) / sTrend;
         }
     }
 
@@ -144,5 +153,10 @@ library BondCurvesLib {
                 if (intervals[i].trend == 0) revert IBondCurve.InvalidBondCurveValues();
             }
         }
+    }
+
+    /// @dev Scales a curve value (minBond/trend) by the multiplier in basis points.
+    function _scaled(uint256 value, uint256 multiplier) private pure returns (uint256) {
+        return (value * multiplier) / MAX_BP;
     }
 }

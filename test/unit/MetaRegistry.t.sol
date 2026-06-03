@@ -17,13 +17,15 @@ import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
 import { ExternalOperatorLib } from "src/lib/ExternalOperatorLib.sol";
 
 import { CuratedMock } from "../helpers/mocks/CuratedMock.sol";
+import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
+import { TiersRegistryMock } from "../helpers/mocks/TiersRegistryMock.sol";
 import { NodeOperatorsRegistryMock } from "../helpers/mocks/NodeOperatorsRegistryMock.sol";
 import { StakingRouterMock } from "../helpers/mocks/StakingRouterMock.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
 
 contract MetaRegistryForTest is MetaRegistry {
-    constructor(address module) MetaRegistry(module) {}
+    constructor(address module, address tiersRegistry) MetaRegistry(module, tiersRegistry) {}
 
     function mock_setModuleAddressInCache(uint256 moduleId, address moduleAddress) external {
         _storage().moduleAddressCache[moduleId] = moduleAddress;
@@ -38,6 +40,7 @@ contract MetaRegistryBaseTest is Test, Utilities, Fixtures {
     CuratedMock public module;
     StakingRouterMock public stakingRouter;
     MetaRegistryForTest public registry;
+    TiersRegistryMock public tiersRegistry;
 
     address public admin;
     address public metadataAdmin;
@@ -76,7 +79,9 @@ contract MetaRegistryBaseTest is Test, Utilities, Fixtures {
         modules[0] = address(module);
         stakingRouter.setModules(modules);
 
-        registry = new MetaRegistryForTest(address(module));
+        tiersRegistry = new TiersRegistryMock();
+
+        registry = new MetaRegistryForTest(address(module), address(tiersRegistry));
         _enableInitializers(address(registry));
         registry.initialize(admin);
 
@@ -229,15 +234,16 @@ contract MetaRegistryGroupsBaseTest is MetaRegistryBaseTest {
 
 contract MetaRegistryConstructorTest is MetaRegistryBaseTest {
     function test_constructor_SetsImmutables() public {
-        MetaRegistry r = new MetaRegistry(address(module));
+        MetaRegistry r = new MetaRegistry(address(module), address(tiersRegistry));
         assertEq(address(r.STAKING_ROUTER()), address(stakingRouter));
         assertEq(address(r.MODULE()), address(module));
         assertEq(address(r.ACCOUNTING()), address(module.ACCOUNTING()));
+        assertEq(address(r.TIERS_REGISTRY()), address(tiersRegistry));
     }
 
     function test_constructor_RevertWhen_ZeroModule() public {
         vm.expectRevert(IMetaRegistry.ZeroModuleAddress.selector);
-        new MetaRegistry(address(0));
+        new MetaRegistry(address(0), address(tiersRegistry));
     }
 }
 
@@ -247,14 +253,14 @@ contract MetaRegistryInitializeTest is MetaRegistryBaseTest {
     }
 
     function test_initialize_SetsAdmin() public {
-        MetaRegistry r = new MetaRegistry(address(module));
+        MetaRegistry r = new MetaRegistry(address(module), address(tiersRegistry));
         _enableInitializers(address(r));
         r.initialize(admin);
         assertTrue(r.hasRole(r.DEFAULT_ADMIN_ROLE(), admin));
     }
 
     function test_initialize_NoGroupsInitially() public {
-        MetaRegistry r = new MetaRegistry(address(module));
+        MetaRegistry r = new MetaRegistry(address(module), address(tiersRegistry));
         _enableInitializers(address(r));
         r.initialize(admin);
 
@@ -267,14 +273,14 @@ contract MetaRegistryInitializeTest is MetaRegistryBaseTest {
     }
 
     function test_initialize_RevertWhen_ZeroAdmin() public {
-        MetaRegistry r = new MetaRegistry(address(module));
+        MetaRegistry r = new MetaRegistry(address(module), address(tiersRegistry));
         _enableInitializers(address(r));
         vm.expectRevert(IMetaRegistry.ZeroAdminAddress.selector);
         r.initialize(address(0));
     }
 
     function test_initialize_RevertWhen_DoubleCall() public {
-        MetaRegistry r = new MetaRegistry(address(module));
+        MetaRegistry r = new MetaRegistry(address(module), address(tiersRegistry));
         _enableInitializers(address(r));
         r.initialize(admin);
         vm.expectRevert(Initializable.InvalidInitialization.selector);
@@ -1198,6 +1204,35 @@ contract MetaRegistryBondCurveTest is MetaRegistryGroupsBaseTest {
         // Operator 1 still has stale cached weight.
         (uint256 w1After, ) = registry.getNodeOperatorWeightAndExternalStake(1);
         assertEq(w1After, 4000);
+    }
+
+    function test_refreshOperatorWeight_AppliesTierWeightMultiplier() public {
+        uint64 noId = 0;
+
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(noId, MAX_BP), _extOperatorsArr0());
+
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        tiersRegistry.mock_setWeightMultiplierInc(noId, 5_000);
+        registry.refreshOperatorWeight(noId);
+
+        (uint256 weight, ) = registry.getNodeOperatorWeightAndExternalStake(noId);
+        assertEq(weight, 15_000); // 10000 * 15000 / 10000
+    }
+
+    function test_refreshOperatorWeight_TierWeightMultiplierScalesAfterShare() public {
+        IMetaRegistry.SubNodeOperator memory op0 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: 6000 });
+        IMetaRegistry.SubNodeOperator memory op1 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: 4000 });
+
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr2(op0, op1), _extOperatorsArr0());
+
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        tiersRegistry.mock_setWeightMultiplierInc(0, 5_000);
+        registry.refreshOperatorWeight(0);
+
+        (uint256 weight, ) = registry.getNodeOperatorWeightAndExternalStake(0);
+        assertEq(weight, 9000); // weighted=6000 (share), 6000 * 15000 / 10000 = 9000
     }
 }
 

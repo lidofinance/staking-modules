@@ -10,6 +10,7 @@ import { IStakingModule } from "src/interfaces/IStakingModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 
 import { Accounting } from "src/Accounting.sol";
+import { MAX_BP } from "src/lib/Constants.sol";
 
 import { Stub } from "../../helpers/mocks/Stub.sol";
 import { LidoMock } from "../../helpers/mocks/LidoMock.sol";
@@ -170,6 +171,7 @@ contract BaseTest is AccountingFixtures {
         accounting.grantRole(accounting.RESUME_ROLE(), admin);
         accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), admin);
         accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), admin);
+        accounting.grantRole(accounting.SET_BOND_CURVE_MULTIPLIER_ROLE(), admin);
         vm.stopPrank();
     }
 
@@ -205,6 +207,10 @@ abstract contract BondAmountModifiersTest {
     // 2 keys -> 3 ether + 1 ether
     // n keys -> 2 + (n - 1) * 1 ether + 1 ether
     function test_WithCurveAndLocked() public virtual;
+
+    // bond curve scaled by an effective multiplier (e.g. 1.5x):
+    // n keys -> (2 + (n - 1) * 2) ether * multiplier / MAX_BP
+    function test_WithMultiplier() public virtual;
 }
 
 abstract contract BondStateBaseTest is BondAmountModifiersTest, BaseTest {
@@ -240,6 +246,13 @@ abstract contract BondStateBaseTest is BondAmountModifiersTest, BaseTest {
         uint256 bondBefore = accounting.getBond(0);
         vm.prank(address(stakingModule));
         accounting.penalize(0, bondBefore + amount);
+    }
+
+    // @dev Sets the operator's bond curve multiplier. `multiplier` is the effective value in
+    //      basis points (>= MAX_BP); stored as the increment above MAX_BP.
+    function _multiplier(uint256 multiplier) internal virtual {
+        vm.prank(admin);
+        accounting.setBondCurveMultiplier(0, multiplier - MAX_BP);
     }
 
     function test_WithOneWithdrawnValidator() public virtual;

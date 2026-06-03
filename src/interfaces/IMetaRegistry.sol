@@ -5,6 +5,7 @@ pragma solidity 0.8.33;
 
 import { IAccounting } from "./IAccounting.sol";
 import { ICuratedModule } from "./ICuratedModule.sol";
+import { ITiersRegistry } from "./ITiersRegistry.sol";
 
 /// @notice Stored operator metadata.
 struct OperatorMetadata {
@@ -71,6 +72,9 @@ interface IMetaRegistry {
 
     /// @notice Accounting contract used for bond curve lookups.
     function ACCOUNTING() external view returns (IAccounting);
+
+    /// @notice Tier provider that manages operator bond tiers.
+    function TIERS_REGISTRY() external view returns (ITiersRegistry);
 
     /// @notice Initialize the registry.
     /// @param admin Address to receive DEFAULT_ADMIN_ROLE.

@@ -3,6 +3,7 @@
 pragma solidity 0.8.33;
 
 import { IFeeSplits } from "../interfaces/IFeeSplits.sol";
+import { MAX_BP } from "../lib/Constants.sol";
 
 /// @dev Fee split mechanics abstract contract
 ///
@@ -25,7 +26,6 @@ abstract contract FeeSplits is IFeeSplits {
     bytes32 private constant FEE_SPLITS_STORAGE_LOCATION =
         0xac5584dcb35bfb1b3f4187762b10cb284ff937e63b5eb675e2e8e8876c7ee000;
 
-    uint256 internal constant MAX_BP = 10_000;
     uint256 public constant MAX_FEE_SPLITS = 10;
 
     /// @inheritdoc IFeeSplits

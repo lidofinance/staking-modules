@@ -25,6 +25,8 @@ contract AccountingMock {
 
     mapping(uint256 nodeOperatorId => IBondLock.BondLockData) bondLock;
     mapping(uint256 nodeOperatorId => uint256) bond;
+    mapping(uint256 nodeOperatorId => uint256) curveMultiplier;
+    mapping(uint256 nodeOperatorId => uint256) requiredBondAtMul;
 
     mapping(uint256 nodeOperatorId => uint256 bondCurveId) operatorBondCurveId;
     uint256[] bondCurves;
@@ -40,6 +42,30 @@ contract AccountingMock {
         wstETH = IWstETH(_wstETH);
         LIDO = ILido(lido);
         FEE_DISTRIBUTOR = IFeeDistributor(_feeDistributor);
+    }
+
+    function setBondCurveMultiplier(uint256 nodeOperatorId, uint256 multiplier) external {
+        curveMultiplier[nodeOperatorId] = multiplier;
+    }
+
+    function getBondCurveMultiplier(uint256 nodeOperatorId) external view returns (uint256) {
+        return 10_000 + curveMultiplier[nodeOperatorId];
+    }
+
+    /// @dev Sets the base required bond (at identity multiplier MAX_BP). The 3-arg `getRequiredBondForNextKeys`
+    ///      scales it by the requested multiplier and subtracts the current bond, mirroring real Accounting.
+    function mock_setRequiredBond(uint256 nodeOperatorId, uint256 amount) external {
+        requiredBondAtMul[nodeOperatorId] = amount;
+    }
+
+    function getRequiredBondForNextKeys(
+        uint256 nodeOperatorId,
+        uint256 /* additionalKeys */,
+        uint256 multiplier
+    ) public view returns (uint256) {
+        uint256 totalRequired = (requiredBondAtMul[nodeOperatorId] * multiplier) / 10_000;
+        uint256 current = getBond(nodeOperatorId);
+        return totalRequired > current ? totalRequired - current : 0;
     }
 
     function setModule(IBaseModule _module) external {
@@ -241,6 +267,14 @@ contract AccountingMock {
         uint256 additionalKeys
     ) public view returns (uint256) {
         return wstETH.getWstETHByStETH(getRequiredBondForNextKeys(nodeOperatorId, additionalKeys));
+    }
+
+    function getRequiredBondForNextKeysWstETH(
+        uint256 nodeOperatorId,
+        uint256 additionalKeys,
+        uint256 multiplier
+    ) external view returns (uint256) {
+        return wstETH.getWstETHByStETH(getRequiredBondForNextKeys(nodeOperatorId, additionalKeys, multiplier));
     }
 
     function getLockedBond(uint256 nodeOperatorId) public view returns (uint256) {
