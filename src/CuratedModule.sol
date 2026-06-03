@@ -10,15 +10,12 @@ import { NodeOperator } from "./interfaces/IBaseModule.sol";
 
 import { BaseModule } from "./abstract/BaseModule.sol";
 
-import { NOAddresses } from "./lib/NOAddresses.sol";
 import { SigningKeys } from "./lib/SigningKeys.sol";
 import { CuratedDepositAllocator } from "./lib/allocator/CuratedDepositAllocator.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
 import { StakeTracker } from "./lib/StakeTracker.sol";
 
 contract CuratedModule is ICuratedModule, BaseModule {
-    bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE = keccak256("OPERATOR_ADDRESSES_ADMIN_ROLE");
-
     IMetaRegistry public immutable META_REGISTRY;
 
     constructor(
@@ -132,22 +129,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
         allocations = _allocateTopUps(maxDepositAmount, operatorIds, keyIndices, cappedTopUpLimits);
 
         _incrementModuleNonce();
-    }
-
-    /// @inheritdoc ICuratedModule
-    function changeNodeOperatorAddresses(
-        uint256 nodeOperatorId,
-        address newManagerAddress,
-        address newRewardAddress
-    ) external {
-        _checkRole(OPERATOR_ADDRESSES_ADMIN_ROLE);
-        NOAddresses.changeNodeOperatorAddresses({
-            nodeOperators: _baseStorage().nodeOperators,
-            nodeOperatorId: nodeOperatorId,
-            newManagerAddress: newManagerAddress,
-            newRewardAddress: newRewardAddress,
-            stETH: address(STETH)
-        });
     }
 
     /// @inheritdoc ICuratedModule

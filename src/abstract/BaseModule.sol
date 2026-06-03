@@ -44,6 +44,7 @@ abstract contract BaseModule is
     bytes32 public constant REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE =
         keccak256("REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE");
     bytes32 public constant CREATE_NODE_OPERATOR_ROLE = keccak256("CREATE_NODE_OPERATOR_ROLE");
+    bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE = keccak256("OPERATOR_ADDRESSES_ADMIN_ROLE");
     ILidoLocator public immutable LIDO_LOCATOR;
     IStETH public immutable STETH;
     IParametersRegistry public immutable PARAMETERS_REGISTRY;
@@ -203,6 +204,22 @@ abstract contract BaseModule is
             newAddress,
             address(STETH)
         );
+    }
+
+    /// @inheritdoc IBaseModule
+    function changeNodeOperatorAddresses(
+        uint256 nodeOperatorId,
+        address newManagerAddress,
+        address newRewardAddress
+    ) external {
+        _checkRole(OPERATOR_ADDRESSES_ADMIN_ROLE);
+        NOAddresses.changeNodeOperatorAddresses({
+            nodeOperators: _baseStorage().nodeOperators,
+            nodeOperatorId: nodeOperatorId,
+            newManagerAddress: newManagerAddress,
+            newRewardAddress: newRewardAddress,
+            stETH: address(STETH)
+        });
     }
 
     /// @inheritdoc IStakingModule

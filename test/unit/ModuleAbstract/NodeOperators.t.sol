@@ -946,6 +946,300 @@ abstract contract ModuleChangeNodeOperatorRewardAddress is ModuleFixtures {
     }
 }
 
+abstract contract ModuleChangeNodeOperatorAddresses is ModuleFixtures {
+    function test_changeNodeOperatorAddresses_NoExtendedManagerPermissions_SingleOwner() public {
+        uint256 noId = module.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: address(0),
+                rewardAddress: address(0),
+                extendedManagerPermissions: false
+            }),
+            address(0)
+        );
+
+        vm.startPrank(admin);
+        module.grantRole(module.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
+        vm.stopPrank();
+
+        address manager = nextAddress();
+        address rewards = nextAddress();
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, nodeOperator, manager);
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, nodeOperator, rewards);
+
+        module.changeNodeOperatorAddresses(noId, manager, rewards);
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(no.managerAddress, manager);
+        assertEq(no.rewardAddress, rewards);
+    }
+
+    function test_changeNodeOperatorAddresses_NoExtendedManagerPermissions_SeparateManagerReward() public {
+        address managerToChange = nextAddress();
+        address rewardsToChange = nextAddress();
+
+        uint256 noId = module.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: managerToChange,
+                rewardAddress: rewardsToChange,
+                extendedManagerPermissions: false
+            }),
+            address(0)
+        );
+
+        vm.startPrank(admin);
+        module.grantRole(module.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
+        vm.stopPrank();
+
+        address manager = nextAddress();
+        address rewards = nextAddress();
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, managerToChange, manager);
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, rewardsToChange, rewards);
+
+        module.changeNodeOperatorAddresses(noId, manager, rewards);
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(no.managerAddress, manager);
+        assertEq(no.rewardAddress, rewards);
+    }
+
+    function test_changeNodeOperatorAddresses_ExtendedManagerPermissions_SingleOwner() public {
+        uint256 noId = module.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: address(0),
+                rewardAddress: address(0),
+                extendedManagerPermissions: true
+            }),
+            address(0)
+        );
+
+        vm.startPrank(admin);
+        module.grantRole(module.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
+        vm.stopPrank();
+
+        address manager = nextAddress();
+        address rewards = nextAddress();
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, nodeOperator, manager);
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, nodeOperator, rewards);
+
+        module.changeNodeOperatorAddresses(noId, manager, rewards);
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(no.managerAddress, manager);
+        assertEq(no.rewardAddress, rewards);
+    }
+
+    function test_changeNodeOperatorAddresses_ExtendedManagerPermissions_SeparateManagerReward() public {
+        address managerToChange = nextAddress();
+        address rewardsToChange = nextAddress();
+
+        uint256 noId = module.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: managerToChange,
+                rewardAddress: rewardsToChange,
+                extendedManagerPermissions: true
+            }),
+            address(0)
+        );
+
+        vm.startPrank(admin);
+        module.grantRole(module.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
+        vm.stopPrank();
+
+        address manager = nextAddress();
+        address rewards = nextAddress();
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, managerToChange, manager);
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, rewardsToChange, rewards);
+
+        module.changeNodeOperatorAddresses(noId, manager, rewards);
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(no.managerAddress, manager);
+        assertEq(no.rewardAddress, rewards);
+    }
+
+    function test_changeNodeOperatorAddresses_ChangesOnlyGivenAddress() public {
+        address managerToChange = nextAddress();
+        address rewardsToChange = nextAddress();
+
+        uint256 noId = module.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: managerToChange,
+                rewardAddress: rewardsToChange,
+                extendedManagerPermissions: false
+            }),
+            address(0)
+        );
+
+        vm.startPrank(admin);
+        module.grantRole(module.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
+        vm.stopPrank();
+
+        address manager = nextAddress();
+        address rewards = nextAddress();
+
+        uint256 snapshot = vm.snapshotState();
+
+        {
+            vm.expectEmit(address(module));
+            emit IBaseModule.NodeOperatorRewardAddressChanged(noId, rewardsToChange, rewards);
+
+            vm.recordLogs();
+            module.changeNodeOperatorAddresses(noId, managerToChange, rewards);
+            assertEq(vm.getRecordedLogs().length, 1);
+        }
+        vm.revertToState(snapshot);
+
+        {
+            vm.expectEmit(address(module));
+            emit IBaseModule.NodeOperatorManagerAddressChanged(noId, managerToChange, manager);
+
+            vm.recordLogs();
+            module.changeNodeOperatorAddresses(noId, manager, rewardsToChange);
+            assertEq(vm.getRecordedLogs().length, 1);
+        }
+        vm.revertToState(snapshot);
+    }
+
+    function test_changeNodeOperatorAddresses_ResetProposedAddresses() public {
+        uint256 noId = module.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: address(0),
+                rewardAddress: address(0),
+                extendedManagerPermissions: false
+            }),
+            address(0)
+        );
+
+        address proposedManager = nextAddress();
+        address proposedRewards = nextAddress();
+
+        vm.startPrank(nodeOperator);
+        module.proposeNodeOperatorManagerAddressChange(noId, proposedManager);
+        module.proposeNodeOperatorRewardAddressChange(noId, proposedRewards);
+        vm.stopPrank();
+
+        assertEq(module.getNodeOperator(noId).proposedManagerAddress, proposedManager);
+        assertEq(module.getNodeOperator(noId).proposedRewardAddress, proposedRewards);
+
+        vm.startPrank(admin);
+        module.grantRole(module.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
+        vm.stopPrank();
+
+        address manager = nextAddress();
+        address rewards = nextAddress();
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, nodeOperator, manager);
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, nodeOperator, rewards);
+
+        module.changeNodeOperatorAddresses(noId, manager, rewards);
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(no.managerAddress, manager);
+        assertEq(no.rewardAddress, rewards);
+        assertEq(module.getNodeOperator(noId).proposedManagerAddress, address(0));
+        assertEq(module.getNodeOperator(noId).proposedRewardAddress, address(0));
+    }
+
+    function test_changeNodeOperatorAddresses_RevertsIfOperatorDoesNotExist() public {
+        vm.startPrank(admin);
+        module.grantRole(module.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
+        vm.stopPrank();
+
+        address manager = nextAddress();
+        address rewards = nextAddress();
+
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
+        module.changeNodeOperatorAddresses(0, manager, rewards);
+    }
+
+    function test_changeNodeOperatorAddresses_RevertsIfHasNoRole() public {
+        assertFalse(module.hasRole(module.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this)));
+
+        address manager = nextAddress();
+        address rewards = nextAddress();
+
+        expectRoleRevert(address(this), module.OPERATOR_ADDRESSES_ADMIN_ROLE());
+        module.changeNodeOperatorAddresses(0, manager, rewards);
+    }
+
+    function test_changeNodeOperatorAddresses_RevertsIfZeroAddressProvided() public {
+        uint256 noId = module.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: nextAddress(),
+                rewardAddress: nextAddress(),
+                extendedManagerPermissions: false
+            }),
+            address(0)
+        );
+
+        vm.startPrank(admin);
+        module.grantRole(module.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
+        vm.stopPrank();
+
+        address manager = nextAddress();
+        address rewards = nextAddress();
+
+        vm.expectRevert(IBaseModule.ZeroManagerAddress.selector);
+        module.changeNodeOperatorAddresses(noId, address(0), rewards);
+
+        vm.expectRevert(IBaseModule.ZeroRewardAddress.selector);
+        module.changeNodeOperatorAddresses(noId, manager, address(0));
+    }
+
+    function test_changeNodeOperatorAddresses_RevertsIfInvalidAddressProvided() public {
+        uint256 noId = module.createNodeOperator(
+            nodeOperator,
+            NodeOperatorManagementProperties({
+                managerAddress: nextAddress(),
+                rewardAddress: nextAddress(),
+                extendedManagerPermissions: false
+            }),
+            address(0)
+        );
+
+        vm.startPrank(admin);
+        module.grantRole(module.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
+        vm.stopPrank();
+
+        address stETH = address(module.STETH());
+
+        address manager = nextAddress();
+        address rewards = nextAddress();
+
+        vm.expectRevert(IBaseModule.InvalidManagerAddress.selector);
+        module.changeNodeOperatorAddresses(noId, stETH, rewards);
+
+        vm.expectRevert(IBaseModule.InvalidRewardAddress.selector);
+        module.changeNodeOperatorAddresses(noId, manager, stETH);
+    }
+}
+
 abstract contract ModuleCreateNodeOperators is ModuleFixtures {
     function createMultipleOperatorsWithKeysETH(
         uint256 operators,

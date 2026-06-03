@@ -179,6 +179,8 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
 
     function CREATE_NODE_OPERATOR_ROLE() external view returns (bytes32);
 
+    function OPERATOR_ADDRESSES_ADMIN_ROLE() external view returns (bytes32);
+
     function LIDO_LOCATOR() external view returns (ILidoLocator);
 
     function STETH() external view returns (IStETH);
@@ -325,6 +327,17 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @param nodeOperatorId ID of the Node Operator
     /// @param newAddress Proposed reward address
     function changeNodeOperatorRewardAddress(uint256 nodeOperatorId, address newAddress) external;
+
+    /// @notice Change both reward and manager addresses of a node operator. An emergency method.
+    /// @dev Only privileged role member can call this method if the role is assigned.
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @param newManagerAddress New manager address
+    /// @param newRewardAddress New reward address
+    function changeNodeOperatorAddresses(
+        uint256 nodeOperatorId,
+        address newManagerAddress,
+        address newRewardAddress
+    ) external;
 
     /// @notice Update depositable validators data for the given Node Operator.
     /// @dev The following rules are applied:

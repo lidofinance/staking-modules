@@ -1558,6 +1558,8 @@ contract CSMResetNodeOperatorManagerAddress is ModuleResetNodeOperatorManagerAdd
 
 contract CSMChangeNodeOperatorRewardAddress is ModuleChangeNodeOperatorRewardAddress, CSMCommon {}
 
+contract CSMChangeNodeOperatorAddresses is ModuleChangeNodeOperatorAddresses, CSMCommon {}
+
 contract CSMVetKeys is ModuleVetKeys, CSMCommon {}
 
 contract CSMQueueOps is CSMCommon {
