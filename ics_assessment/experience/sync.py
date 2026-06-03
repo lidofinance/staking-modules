@@ -238,8 +238,8 @@ def sync_mainnet_performance() -> None:
 def sync_hoodi_eligible() -> None:
     from ics_assessment.experience.sync_hoodi import (
         ReportMeta,
+        append_report_frames,
         evaluate_eligibility_window,
-        extract_frame_epochs,
     )
 
     w3 = Web3(Web3.HTTPProvider(HOODI_RPC_URL))
@@ -253,21 +253,7 @@ def sync_hoodi_eligible() -> None:
     reports_with_meta: list[tuple[ReportMeta, dict]] = []
     for cid in cids:
         report = request_performance_report(cid)
-        if isinstance(report, list):
-            for item in report:
-                start_epoch, end_epoch = extract_frame_epochs(item)
-                if start_epoch is None or end_epoch is None:
-                    continue
-                reports_with_meta.append(
-                    (ReportMeta(cid=cid, version="v2", start_epoch=start_epoch, end_epoch=end_epoch), item)
-                )
-            continue
-        start_epoch, end_epoch = extract_frame_epochs(report)
-        if start_epoch is None or end_epoch is None:
-            continue
-        reports_with_meta.append(
-            (ReportMeta(cid=cid, version="v1", start_epoch=start_epoch, end_epoch=end_epoch), report)
-        )
+        append_report_frames(reports_with_meta, cid, report)
 
     reports_with_meta.sort(key=lambda item: item[0].start_epoch)
     eligible = sorted(evaluate_eligibility_window(reports_with_meta))
