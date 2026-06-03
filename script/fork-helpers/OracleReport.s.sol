@@ -33,10 +33,11 @@ contract OracleReport is Script, DeploymentFixtures, ForkHelpersCommon {
         // Fund FeeDistributor with stETH shares if needed
         uint256 pending = feeDistributor.pendingSharesToDistribute();
         if (pending < distributed + rebate) {
-            uint256 needed = distributed + rebate - pending + 1 ether;
-            _setBalance(address(feeDistributor), needed + 1 ether);
+            uint256 neededShares = distributed + rebate - pending;
+            uint256 neededEth = lido.getPooledEthByShares(neededShares) + 1 ether;
+            _setBalance(address(feeDistributor), neededEth + 1 ether);
             vm.startBroadcast(address(feeDistributor));
-            lido.submit{ value: needed }(address(0));
+            lido.submit{ value: neededEth }(address(0));
             vm.stopBroadcast();
         }
 
