@@ -5,6 +5,9 @@ pragma solidity 0.8.33;
 
 import { DeployCSM0x02Base } from "./DeployCSM0x02Base.s.sol";
 import { GIndices } from "../constants/GIndices.sol";
+import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
+import { HashConsensus } from "../../src/lib/base-oracle/HashConsensus.sol";
+import { ILidoLocator } from "../../src/interfaces/ILidoLocator.sol";
 
 contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
     constructor() DeployCSM0x02Base("local-devnet", vm.envUint("DEVNET_CHAIN_ID")) {
@@ -21,11 +24,7 @@ contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
         config.oracleReportEpochsPerFrame = vm.envUint("CSM_EPOCHS_PER_FRAME");
         config.fastLaneLengthSlots = 0;
         config.consensusVersion = 4;
-        config.oracleMembers = new address[](3);
-        config.oracleMembers[0] = vm.envAddress("CSM_ORACLE_1_ADDRESS");
-        config.oracleMembers[1] = vm.envAddress("CSM_ORACLE_2_ADDRESS");
-        config.oracleMembers[2] = vm.envAddress("CSM_ORACLE_3_ADDRESS");
-        config.hashConsensusQuorum = 2;
+        (config.oracleMembers, config.hashConsensusQuorum) = _readAccountingHashConsensus();
         // Verifier
         config.gIFirstWithdrawal = GIndices.FIRST_WITHDRAWAL_ELECTRA;
         config.gIFirstValidator = GIndices.FIRST_VALIDATOR_ELECTRA;
@@ -80,5 +79,13 @@ contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
         config.secondAdminAddress = vm.envOr("CSM_SECOND_ADMIN_ADDRESS", address(0));
 
         _setUp();
+    }
+
+    function _readAccountingHashConsensus() private view returns (address[] memory members, uint256 quorum) {
+        HashConsensus accountingConsensus = HashConsensus(
+            BaseOracle(ILidoLocator(config.lidoLocatorAddress).accountingOracle()).getConsensusContract()
+        );
+        (members, ) = accountingConsensus.getMembers();
+        quorum = accountingConsensus.getQuorum();
     }
 }
