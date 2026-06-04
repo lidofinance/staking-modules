@@ -653,6 +653,45 @@ contract BondCurveFuzz is Test {
         assertEq(keysMinBondAmount, keysToCheck, "keysMinBondAmount != keysToCheck");
     }
 
+    function testFuzz_onTheFlyMultiplierEqualsMultipliedCurve(
+        uint256[] memory minKeysCount,
+        uint256[] memory trend,
+        uint256 keysToCheck,
+        uint256 bondToCheck,
+        uint256 multiplier
+    ) public {
+        uint256[2][] memory _bondCurve;
+        (_bondCurve, keysToCheck, bondToCheck) = prepareInputs(minKeysCount, trend, keysToCheck, bondToCheck);
+        multiplier = bound(multiplier, MAX_BP, MAX_MULTIPLIER);
+
+        bondCurve = new BondCurveTestable();
+
+        IBondCurve.BondCurveIntervalInput[] memory refInput = new IBondCurve.BondCurveIntervalInput[](
+            _bondCurve.length
+        );
+        for (uint256 i = 0; i < _bondCurve.length; ++i) {
+            refInput[i] = IBondCurve.BondCurveIntervalInput(_bondCurve[i][0], _bondCurve[i][1]);
+        }
+        bondCurve.initialize(refInput);
+
+        IBondCurve.BondCurveIntervalInput[] memory mulInput = new IBondCurve.BondCurveIntervalInput[](
+            _bondCurve.length
+        );
+        for (uint256 i = 0; i < _bondCurve.length; ++i) {
+            mulInput[i] = IBondCurve.BondCurveIntervalInput(_bondCurve[i][0], (_bondCurve[i][1] * multiplier) / MAX_BP);
+        }
+        uint256 mulId = bondCurve.addBondCurve(mulInput);
+
+        assertEq(
+            bondCurve.getBondAmountByKeysCount(keysToCheck, 0, multiplier),
+            bondCurve.getBondAmountByKeysCount(keysToCheck, mulId)
+        );
+        assertEq(
+            bondCurve.getKeysCountByBondAmount(bondToCheck, 0, multiplier),
+            bondCurve.getKeysCountByBondAmount(bondToCheck, mulId)
+        );
+    }
+
     /// NOTE: Ugly, ineffective version of binary search algorithm from the contract.
     //        Needed only as a second opinion to compare outputs.
     function getBondAmountByKeysCountSecondOpinion(
@@ -762,44 +801,5 @@ contract BondCurveFuzz is Test {
         keysToCheck = bound(keysToCheck, 1, MAX_FROM_KEYS_COUNT_VALUE);
         bondToCheck = bound(bondToCheck, trend[0], type(uint256).max);
         return (_bondCurve, keysToCheck, bondToCheck);
-    }
-
-    function testFuzz_keysAndBondValues_withMultiplier(
-        uint256[] memory minKeysCount,
-        uint256[] memory trend,
-        uint256 keysToCheck,
-        uint256 bondToCheck,
-        uint256 multiplier
-    ) public {
-        uint256[2][] memory _bondCurve;
-        (_bondCurve, keysToCheck, bondToCheck) = prepareInputs(minKeysCount, trend, keysToCheck, bondToCheck);
-        // Bound multiplier to [MAX_BP, MAX_MULTIPLIER] — ensures sTrend >= 1 for any valid trend >= 1 wei.
-        multiplier = bound(multiplier, MAX_BP, MAX_MULTIPLIER);
-
-        bondCurve = new BondCurveTestable();
-        IBondCurve.BondCurveIntervalInput[] memory bondCurveInput = new IBondCurve.BondCurveIntervalInput[](
-            _bondCurve.length
-        );
-        for (uint256 i = 0; i < _bondCurve.length; ++i) {
-            bondCurveInput[i] = IBondCurve.BondCurveIntervalInput(_bondCurve[i][0], _bondCurve[i][1]);
-        }
-        bondCurve.initialize(bondCurveInput);
-
-        uint256 bondOut = bondCurve.getBondAmountByKeysCount(keysToCheck, 0, multiplier);
-        assertEq(bondCurve.getKeysCountByBondAmount(bondOut, 0, multiplier), keysToCheck);
-
-        uint256 keysOut = bondCurve.getKeysCountByBondAmount(bondToCheck, 0, multiplier);
-        assertGe(bondToCheck, bondCurve.getBondAmountByKeysCount(keysOut, 0, multiplier));
-
-        assertEq(
-            bondCurve.getBondAmountByKeysCount(keysToCheck, 0, MAX_BP),
-            bondCurve.getBondAmountByKeysCount(keysToCheck, 0),
-            "3-arg with MAX_BP must equal 2-arg"
-        );
-        assertEq(
-            bondCurve.getKeysCountByBondAmount(bondToCheck, 0, MAX_BP),
-            bondCurve.getKeysCountByBondAmount(bondToCheck, 0),
-            "3-arg with MAX_BP must equal 2-arg"
-        );
     }
 }
