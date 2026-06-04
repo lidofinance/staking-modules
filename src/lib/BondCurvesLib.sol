@@ -43,11 +43,8 @@ library BondCurvesLib {
     ) external view returns (uint256) {
         if (multiplier < MAX_BP) revert IBondCurve.InvalidMultiplier();
         _ensureCurveExists(bondCurveStorage, curveId);
-        IBondCurve.BondCurveInterval[] memory intervals = _scaleCurve(
-            bondCurveStorage.bondCurves[curveId].intervals,
-            multiplier
-        );
         if (keys == 0) return 0;
+        IBondCurve.BondCurveInterval[] memory intervals = _loadCurve(bondCurveStorage, curveId, multiplier);
 
         unchecked {
             uint256 low = 0;
@@ -60,7 +57,8 @@ library BondCurvesLib {
                     low = mid;
                 }
             }
-            return intervals[low].minBond + (keys - intervals[low].minKeysCount) * intervals[low].trend;
+            IBondCurve.BondCurveInterval memory interval = intervals[low];
+            return interval.minBond + (keys - interval.minKeysCount) * interval.trend;
         }
     }
 
@@ -72,12 +70,10 @@ library BondCurvesLib {
     ) external view returns (uint256) {
         if (multiplier < MAX_BP) revert IBondCurve.InvalidMultiplier();
         _ensureCurveExists(bondCurveStorage, curveId);
-        IBondCurve.BondCurveInterval[] memory intervals = _scaleCurve(
-            bondCurveStorage.bondCurves[curveId].intervals,
-            multiplier
-        );
+        IBondCurve.BondCurveInterval[] memory intervals = _loadCurve(bondCurveStorage, curveId, multiplier);
 
         unchecked {
+            // intervals[0].minBond is essentially the amount of bond required for the very first key
             if (amount < intervals[0].minBond) return 0;
 
             uint256 low = 0;
@@ -91,6 +87,8 @@ library BondCurvesLib {
                 }
             }
 
+            IBondCurve.BondCurveInterval memory interval;
+
             //
             // Imagine we have:
             //  Interval 0: minKeysCount = 1, minBond = 2 ETH, trend = 2 ETH
@@ -100,10 +98,11 @@ library BondCurvesLib {
             // So we need a special check for bond amounts between Interval 0 maxBond and Interval 1 minBond.
             //
             if (low < intervals.length - 1) {
-                if (amount > intervals[low + 1].minBond - intervals[low + 1].trend)
-                    return intervals[low + 1].minKeysCount - 1;
+                interval = intervals[low + 1];
+                if (amount > interval.minBond - interval.trend) return interval.minKeysCount - 1;
             }
-            return intervals[low].minKeysCount + (amount - intervals[low].minBond) / intervals[low].trend;
+            interval = intervals[low];
+            return interval.minKeysCount + (amount - interval.minBond) / interval.trend;
         }
     }
 
@@ -129,26 +128,30 @@ library BondCurvesLib {
         }
     }
 
-    function _scaleCurve(
-        IBondCurve.BondCurveInterval[] storage src,
+    function _loadCurve(
+        BondCurve.BondCurveStorage storage bondCurveStorage,
+        uint256 curveId,
         uint256 multiplier
-    ) private view returns (IBondCurve.BondCurveInterval[] memory scaled) {
+    ) private view returns (IBondCurve.BondCurveInterval[] memory curve) {
+        IBondCurve.BondCurveInterval[] storage src = bondCurveStorage.bondCurves[curveId].intervals;
+        if (multiplier == MAX_BP) return src;
+
         uint256 len = src.length;
-        scaled = new IBondCurve.BondCurveInterval[](len);
+        curve = new IBondCurve.BondCurveInterval[](len);
 
         uint256 sTrend = (src[0].trend * multiplier) / MAX_BP;
-        scaled[0].minKeysCount = src[0].minKeysCount;
-        scaled[0].trend = sTrend;
-        scaled[0].minBond = sTrend;
+        curve[0].minKeysCount = src[0].minKeysCount;
+        curve[0].trend = sTrend;
+        curve[0].minBond = sTrend;
 
         for (uint256 i = 1; i < len; ++i) {
-            IBondCurve.BondCurveInterval memory prev = scaled[i - 1];
+            IBondCurve.BondCurveInterval memory prev = curve[i - 1];
             uint256 currMinKeysCount = src[i].minKeysCount;
             uint256 currTrend = (src[i].trend * multiplier) / MAX_BP;
 
-            scaled[i].minKeysCount = currMinKeysCount;
-            scaled[i].trend = currTrend;
-            scaled[i].minBond = prev.minBond + currTrend + (currMinKeysCount - prev.minKeysCount - 1) * prev.trend;
+            curve[i].minKeysCount = currMinKeysCount;
+            curve[i].trend = currTrend;
+            curve[i].minBond = prev.minBond + currTrend + (currMinKeysCount - prev.minKeysCount - 1) * prev.trend;
         }
     }
 
