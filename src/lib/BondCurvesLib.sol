@@ -41,10 +41,8 @@ library BondCurvesLib {
         uint256 curveId,
         uint256 multiplier
     ) external view returns (uint256) {
-        if (multiplier < MAX_BP) revert IBondCurve.InvalidMultiplier();
-        _ensureCurveExists(bondCurveStorage, curveId);
-        if (keys == 0) return 0;
         IBondCurve.BondCurveInterval[] memory intervals = _loadCurve(bondCurveStorage, curveId, multiplier);
+        if (keys == 0) return 0;
 
         unchecked {
             uint256 low = 0;
@@ -68,8 +66,6 @@ library BondCurvesLib {
         uint256 curveId,
         uint256 multiplier
     ) external view returns (uint256) {
-        if (multiplier < MAX_BP) revert IBondCurve.InvalidMultiplier();
-        _ensureCurveExists(bondCurveStorage, curveId);
         IBondCurve.BondCurveInterval[] memory intervals = _loadCurve(bondCurveStorage, curveId, multiplier);
 
         unchecked {
@@ -133,8 +129,10 @@ library BondCurvesLib {
         uint256 curveId,
         uint256 multiplier
     ) private view returns (IBondCurve.BondCurveInterval[] memory curve) {
+        _ensureCurveExists(bondCurveStorage, curveId);
         IBondCurve.BondCurveInterval[] storage src = bondCurveStorage.bondCurves[curveId].intervals;
         if (multiplier == MAX_BP) return src;
+        if (multiplier < MAX_BP) revert IBondCurve.InvalidMultiplier();
 
         uint256 len = src.length;
         curve = new IBondCurve.BondCurveInterval[](len);
