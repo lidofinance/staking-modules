@@ -23,8 +23,6 @@ contract TiersRegistry is ITiersRegistry, Initializable, AccessControlEnumerable
         mapping(uint256 nodeOperatorId => uint256) curveMultiplierCooldownUntil;
     }
 
-    bytes32 public constant MANAGE_TIERS_ROLE = keccak256("MANAGE_TIERS_ROLE");
-
     uint256 public constant MAX_CURVE_MULTIPLIER_INC = 10 * MAX_BP;
     uint256 public constant MAX_WEIGHT_MULTIPLIER_INC = 10 * MAX_BP;
 
@@ -59,7 +57,7 @@ contract TiersRegistry is ITiersRegistry, Initializable, AccessControlEnumerable
     function addTier(
         uint256 curveMultiplierInc,
         uint256 weightMultiplierInc
-    ) external onlyRole(MANAGE_TIERS_ROLE) returns (uint256 tierId) {
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256 tierId) {
         if (curveMultiplierInc > MAX_CURVE_MULTIPLIER_INC) revert InvalidCurveMultiplier();
         if (weightMultiplierInc > MAX_WEIGHT_MULTIPLIER_INC) revert InvalidWeightMultiplier();
         TiersRegistryStorage storage $ = _storage();

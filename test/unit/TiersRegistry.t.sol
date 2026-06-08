@@ -89,18 +89,8 @@ contract TiersRegistryInitializeTest is TiersRegistryBaseTest {
 }
 
 contract TiersRegistryAddTierTest is TiersRegistryBaseTest {
-    address internal tiersManager;
-
-    function setUp() public virtual override {
-        super.setUp();
-        tiersManager = nextAddress("TIERS_MANAGER");
-        bytes32 role = tiersRegistry.MANAGE_TIERS_ROLE();
-        vm.prank(admin);
-        tiersRegistry.grantRole(role, tiersManager);
-    }
-
     function _addTier(uint256 bond, uint256 weight) internal returns (uint256 tierId) {
-        vm.prank(tiersManager);
+        vm.prank(admin);
         tierId = tiersRegistry.addTier(bond, weight);
     }
 
@@ -151,7 +141,7 @@ contract TiersRegistryAddTierTest is TiersRegistryBaseTest {
         assertEq(t.weightMultiplierInc, maxWeight);
     }
 
-    function test_addTier_RevertWhen_NotManager() public {
+    function test_addTier_RevertWhen_NotAdmin() public {
         vm.expectRevert();
         vm.prank(stranger);
         tiersRegistry.addTier(T1_BOND, T1_WEIGHT);
@@ -171,24 +161,13 @@ contract TiersRegistryAddTierTest is TiersRegistryBaseTest {
 }
 
 contract TiersRegistrySelectTierBaseTest is TiersRegistryBaseTest {
-    address internal tiersManager;
-
     uint256 constant T1_BOND = 5_000;
     uint256 constant T1_WEIGHT = 2_000;
     uint256 constant T2_BOND = 10_000;
     uint256 constant T2_WEIGHT = 8_000;
 
-    function setUp() public virtual override {
-        super.setUp();
-        tiersManager = nextAddress("TIERS_MANAGER");
-
-        bytes32 role = tiersRegistry.MANAGE_TIERS_ROLE();
-        vm.prank(admin);
-        tiersRegistry.grantRole(role, tiersManager);
-    }
-
     function _addTier(uint256 bond, uint256 weight) internal returns (uint256 tierId) {
-        vm.prank(tiersManager);
+        vm.prank(admin);
         tierId = tiersRegistry.addTier(bond, weight);
     }
 }

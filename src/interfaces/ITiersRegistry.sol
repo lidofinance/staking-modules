@@ -41,9 +41,6 @@ interface ITiersRegistry {
     error CurveMultiplierCooldownNotElapsed();
     error CurveMultiplierCooldownActive();
 
-    /// @notice Role required to add tiers.
-    function MANAGE_TIERS_ROLE() external view returns (bytes32);
-
     /// @notice Curated module address.
     function MODULE() external view returns (ICuratedModule);
 
