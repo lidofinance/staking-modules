@@ -9,13 +9,13 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { IAccounting } from "./interfaces/IAccounting.sol";
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
-import { ITiersRegistry, TierInfo, OperatorTierState } from "./interfaces/ITiersRegistry.sol";
+import { IAdditionalBondRegistry, TierInfo, OperatorTierState } from "./interfaces/IAdditionalBondRegistry.sol";
 import { MAX_BP } from "./lib/Constants.sol";
 
 /// @notice Manages operator tiers.
-contract TiersRegistry is ITiersRegistry, Initializable, AccessControlEnumerableUpgradeable {
-    /// @custom:storage-location erc7201:TiersRegistry
-    struct TiersRegistryStorage {
+contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, AccessControlEnumerableUpgradeable {
+    /// @custom:storage-location erc7201:AdditionalBondRegistry
+    struct AdditionalBondRegistryStorage {
         mapping(uint256 tierId => TierInfo) tiers;
         uint256 tiersCount;
         mapping(uint256 nodeOperatorId => uint256 tierId) operatorTier;
@@ -31,9 +31,9 @@ contract TiersRegistry is ITiersRegistry, Initializable, AccessControlEnumerable
     IMetaRegistry public immutable META_REGISTRY;
     uint256 public immutable CURVE_MULTIPLIER_COOLDOWN;
 
-    // keccak256(abi.encode(uint256(keccak256("TiersRegistry")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant TIERS_REGISTRY_STORAGE_LOCATION =
-        0x24229ad7430930455d78884db559ea2267e225054337247a405ccbe0a9cfca00;
+    // keccak256(abi.encode(uint256(keccak256("AdditionalBondRegistry")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant ADDITIONAL_BOND_REGISTRY_STORAGE_LOCATION =
+        0xe06435b00cfe5ab72c52612ef2f4c7b5f9c4cc44634ef79a78a1888f5b1eb300;
 
     /// @param module                CuratedModule address.
     /// @param curveMultiplierCooldown Cooldown in seconds after a tier downgrade before `releaseCurveMultiplier` can be called.
@@ -47,20 +47,20 @@ contract TiersRegistry is ITiersRegistry, Initializable, AccessControlEnumerable
         _disableInitializers();
     }
 
-    /// @inheritdoc ITiersRegistry
+    /// @inheritdoc IAdditionalBondRegistry
     function initialize(address admin) external initializer {
         if (admin == address(0)) revert ZeroAdminAddress();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
-    /// @inheritdoc ITiersRegistry
+    /// @inheritdoc IAdditionalBondRegistry
     function addTier(
         uint256 curveMultiplierInc,
         uint256 weightMultiplierInc
     ) external onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256 tierId) {
         if (curveMultiplierInc > MAX_CURVE_MULTIPLIER_INC) revert InvalidCurveMultiplier();
         if (weightMultiplierInc > MAX_WEIGHT_MULTIPLIER_INC) revert InvalidWeightMultiplier();
-        TiersRegistryStorage storage $ = _storage();
+        AdditionalBondRegistryStorage storage $ = _storage();
         tierId = ++$.tiersCount;
         $.tiers[tierId] = TierInfo({
             curveMultiplierInc: uint128(curveMultiplierInc),
@@ -69,9 +69,9 @@ contract TiersRegistry is ITiersRegistry, Initializable, AccessControlEnumerable
         emit TierAdded(tierId, curveMultiplierInc, weightMultiplierInc);
     }
 
-    /// @inheritdoc ITiersRegistry
+    /// @inheritdoc IAdditionalBondRegistry
     function selectTier(uint256 nodeOperatorId, uint256 tierId) external {
-        TiersRegistryStorage storage $ = _storage();
+        AdditionalBondRegistryStorage storage $ = _storage();
         _checkOperatorOwner(nodeOperatorId);
 
         if (tierId > $.tiersCount) revert InvalidTierId();
@@ -98,11 +98,11 @@ contract TiersRegistry is ITiersRegistry, Initializable, AccessControlEnumerable
         META_REGISTRY.refreshOperatorWeight(nodeOperatorId);
     }
 
-    /// @inheritdoc ITiersRegistry
+    /// @inheritdoc IAdditionalBondRegistry
     function releaseCurveMultiplier(uint256 nodeOperatorId) external {
         _checkOperatorOwner(nodeOperatorId);
 
-        TiersRegistryStorage storage $ = _storage();
+        AdditionalBondRegistryStorage storage $ = _storage();
         uint256 cooldownUntil = $.curveMultiplierCooldownUntil[nodeOperatorId];
         if (cooldownUntil == 0) revert NoCurveMultiplierCooldown();
         if (cooldownUntil > block.timestamp) revert CurveMultiplierCooldownNotElapsed();
@@ -116,23 +116,23 @@ contract TiersRegistry is ITiersRegistry, Initializable, AccessControlEnumerable
         );
     }
 
-    /// @inheritdoc ITiersRegistry
+    /// @inheritdoc IAdditionalBondRegistry
     function getTiersCount() external view returns (uint256) {
         return _storage().tiersCount;
     }
 
-    /// @inheritdoc ITiersRegistry
+    /// @inheritdoc IAdditionalBondRegistry
     function getOperatorTierState(uint256 nodeOperatorId) external view returns (OperatorTierState memory state) {
-        TiersRegistryStorage storage $ = _storage();
+        AdditionalBondRegistryStorage storage $ = _storage();
         state.tierId = $.operatorTier[nodeOperatorId];
         state.curveMultiplierCooldownUntil = $.curveMultiplierCooldownUntil[nodeOperatorId];
         state.weightMultiplier = MAX_BP + $.tiers[state.tierId].weightMultiplierInc;
         state.curveMultiplier = ACCOUNTING.getBondCurveMultiplier(nodeOperatorId);
     }
 
-    /// @inheritdoc ITiersRegistry
+    /// @inheritdoc IAdditionalBondRegistry
     function getTierInfo(uint256 tierId) public view returns (TierInfo memory) {
-        TiersRegistryStorage storage $ = _storage();
+        AdditionalBondRegistryStorage storage $ = _storage();
         if (tierId > $.tiersCount) revert InvalidTierId();
         if (tierId == 0) return TierInfo({ curveMultiplierInc: 0, weightMultiplierInc: 0 });
         return $.tiers[tierId];
@@ -149,10 +149,10 @@ contract TiersRegistry is ITiersRegistry, Initializable, AccessControlEnumerable
         if (msg.sender != MODULE.getNodeOperatorOwner(nodeOperatorId)) revert SenderIsNotOperatorOwner();
     }
 
-    function _storage() internal pure returns (TiersRegistryStorage storage $) {
+    function _storage() internal pure returns (AdditionalBondRegistryStorage storage $) {
         assembly ("memory-safe") {
-            // keccak256(abi.encode(uint256(keccak256("TiersRegistry")) - 1)) & ~bytes32(uint256(0xff))
-            $.slot := TIERS_REGISTRY_STORAGE_LOCATION
+            // keccak256(abi.encode(uint256(keccak256("AdditionalBondRegistry")) - 1)) & ~bytes32(uint256(0xff))
+            $.slot := ADDITIONAL_BOND_REGISTRY_STORAGE_LOCATION
         }
     }
 }

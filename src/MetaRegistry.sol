@@ -15,7 +15,7 @@ import { IBaseModule } from "./interfaces/IBaseModule.sol";
 import { IStakingModule } from "./interfaces/IStakingModule.sol";
 import { IStakingRouter } from "./interfaces/IStakingRouter.sol";
 import { IMetaRegistry, OperatorMetadata } from "./interfaces/IMetaRegistry.sol";
-import { ITiersRegistry } from "./interfaces/ITiersRegistry.sol";
+import { IAdditionalBondRegistry } from "./interfaces/IAdditionalBondRegistry.sol";
 import { ExternalOperatorLib, OperatorType } from "./lib/ExternalOperatorLib.sol";
 import { MAX_BP } from "./lib/Constants.sol";
 
@@ -63,7 +63,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     ICuratedModule public immutable MODULE;
     IAccounting public immutable ACCOUNTING;
     IStakingRouter public immutable STAKING_ROUTER;
-    ITiersRegistry public immutable TIERS_REGISTRY;
+    IAdditionalBondRegistry public immutable ADDITIONAL_BOND_REGISTRY;
 
     uint256 internal constant EXTERNAL_STAKE_PER_VALIDATOR = 32 ether;
     uint256 internal constant MAX_NAME_LENGTH = 256;
@@ -74,14 +74,14 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         0xa7ec41e1a061c67796a04fcd9cc7cab9545b0a750beebc54139d9ed9d2251c00;
 
     /// @param module       CuratedModule proxy address.
-    /// @param tiersRegistry TiersRegistry proxy address.
-    constructor(address module, address tiersRegistry) {
+    /// @param additionalBondRegistry AdditionalBondRegistry proxy address.
+    constructor(address module, address additionalBondRegistry) {
         if (module == address(0)) revert ZeroModuleAddress();
 
         MODULE = ICuratedModule(module);
         ACCOUNTING = IAccounting(MODULE.ACCOUNTING());
         STAKING_ROUTER = IStakingRouter(MODULE.LIDO_LOCATOR().stakingRouter());
-        TIERS_REGISTRY = ITiersRegistry(tiersRegistry);
+        ADDITIONAL_BOND_REGISTRY = IAdditionalBondRegistry(additionalBondRegistry);
 
         _disableInitializers();
     }
@@ -410,7 +410,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         uint256 baseWeight = _storage().bondCurveWeight[ACCOUNTING.getBondCurveId(nodeOperatorId)];
         if (baseWeight == 0 || share == 0) return 0;
         uint256 weighted = Math.mulDiv(baseWeight, share, MAX_BP);
-        uint256 weightMul = TIERS_REGISTRY.getOperatorTierState(nodeOperatorId).weightMultiplier;
+        uint256 weightMul = ADDITIONAL_BOND_REGISTRY.getOperatorTierState(nodeOperatorId).weightMultiplier;
         if (weightMul == MAX_BP) return weighted;
         return Math.mulDiv(weighted, weightMul, MAX_BP);
     }

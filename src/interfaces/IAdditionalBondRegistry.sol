@@ -24,7 +24,7 @@ struct OperatorTierState {
 }
 
 /// @notice Manages operator bond tiers and associated tier downgrade cooldown state.
-interface ITiersRegistry {
+interface IAdditionalBondRegistry {
     event TierAdded(uint256 indexed tierId, uint256 curveMultiplierInc, uint256 weightMultiplierInc);
     event TierSelected(uint256 indexed nodeOperatorId, uint256 tierId);
     event CurveMultiplierCooldownSet(uint256 indexed nodeOperatorId, uint256 cooldownUntil);
