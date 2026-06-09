@@ -409,6 +409,7 @@ Address,EventID,EventName
 0x47db0983550bc24fac27e3ed365b7f6ba55a589f,1132,2025 Ethereum.org Contributor
 0x47df988119d2cc521b0dbaa43ec0aea29b00e76f,879,2023 Ethereum.org Contributor
 0x4889614fb9ba043a8f126d5bc3b7eb7f55cc15ed,74,2022 Ethereum.org Contributor
+0x48b4761698561dd63d395de63b608f67ed12d96f,1132,2025 Ethereum.org Contributor
 0x4973b48d5a7680839563cf8d09671fe97cb2912f,1081,2024 Ethereum.org Contributor
 0x4973b48d5a7680839563cf8d09671fe97cb2912f,842,2023 Teku Contributor
 0x4973b48d5a7680839563cf8d09671fe97cb2912f,879,2023 Ethereum.org Contributor
@@ -600,6 +601,7 @@ Address,EventID,EventName
 0x658963b3c4b2afe81c3bcd2b6afbcc6b98b822f0,879,2023 Ethereum.org Contributor
 0x65a63cee206bfa6b2a3287479d28c8902b4055e9,842,2023 Teku Contributor
 0x65b54a4646369d8ad83cb58a5a6b39f22fcd8cee,73,2021 Ethereum.org Contributor
+0x65e0919a481ab93a2ece0f8e996d18b227ea2dc9,1081,2024 Ethereum.org Contributor
 0x65ec2ae4bcc672b7ff72386741fcb849f906cd6f,879,2023 Ethereum.org Contributor
 0x66288f48574c58a179f20f311f257ef34bdb0ed6,1132,2025 Ethereum.org Contributor
 0x66471666ad5474c14ed35f1d8545d11b27e16dd2,1088,2024 CoinCashew Contributor
@@ -1212,6 +1214,7 @@ Address,EventID,EventName
 0xc5adc6f0949fb494d78bfd9f3a54247b4e4570fa,879,2023 Ethereum.org Contributor
 0xc629700c063c9848c2d09e79248d39b997fad48e,879,2023 Ethereum.org Contributor
 0xc657cde060630fa261eff331b92da1c493e9721f,74,2022 Ethereum.org Contributor
+0xc689194c9b3e2293f47da4d555a2eb80e716b419,213,2019 Prysm Contributor
 0xc6946c537b70402ed0591aab0ccb992ed8a24102,1081,2024 Ethereum.org Contributor
 0xc69fb49a73ac2b9de09cb22d98970ec90777c6de,1132,2025 Ethereum.org Contributor
 0xc6fc2f4a5c166d7cb3ae935134bfb218f5cb0576,1081,2024 Ethereum.org Contributor
@@ -1550,7 +1553,6 @@ Address,EventID,EventName
 0xf35a92505e10864c2210af4db2c410aea52598d7,74,2022 Ethereum.org Contributor
 0xf3e6f572d9e062c0c39c2ae0a3b56466a09626a2,74,2022 Ethereum.org Contributor
 0xf41eeec6156459d9a41a77bf00c6b6117d33416a,1132,2025 Ethereum.org Contributor
-0xf48971f264433b914c4df8db268c1f71748e4707,213,2019 Prysm Contributor
 0xf51c53b2c184aa43a7d24aa4f0cf13d0e8b56c51,879,2023 Ethereum.org Contributor
 0xf5db2b088f3b1ed20473e6a9f67f60e7d2236dde,1132,2025 Ethereum.org Contributor
 0xf5dd53eadf5a00b7c991fab11b34b7c27ac9609d,74,2022 Ethereum.org Contributor
