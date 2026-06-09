@@ -125,6 +125,95 @@ contract MetaRegistryDeploymentTest is DeploymentBaseTest {
     }
 }
 
+contract AdditionalBondRegistryDeploymentTest is DeploymentBaseTest {
+    function test_state_onlyFull() public view {
+        assertEq(additionalBondRegistry.getTiersCount(), 0);
+    }
+
+    function test_immutables_onlyFull() public view {
+        assertEq(address(additionalBondRegistry.MODULE()), address(curatedModule), "additional bond registry module");
+        assertEq(
+            address(additionalBondRegistry.ACCOUNTING()),
+            address(accounting),
+            "additional bond registry accounting"
+        );
+        assertEq(
+            address(additionalBondRegistry.META_REGISTRY()),
+            address(metaRegistry),
+            "additional bond registry meta registry"
+        );
+        assertEq(
+            additionalBondRegistry.CURVE_MULTIPLIER_COOLDOWN(),
+            deployParams.additionalBondRegistryConfig.curveMultiplierCooldown,
+            "additional bond registry cooldown"
+        );
+        assertEq(
+            additionalBondRegistry.MAX_CURVE_MULTIPLIER_INC(),
+            100_000,
+            "additional bond registry max curve multiplier"
+        );
+        assertEq(
+            additionalBondRegistry.MAX_WEIGHT_MULTIPLIER_INC(),
+            100_000,
+            "additional bond registry max weight multiplier"
+        );
+    }
+
+    function test_roles_onlyFull() public view {
+        assertEq(additionalBondRegistry.getRoleMemberCount(additionalBondRegistry.DEFAULT_ADMIN_ROLE()), adminsCount);
+        assertTrue(
+            additionalBondRegistry.hasRole(additionalBondRegistry.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent)
+        );
+
+        // AdditionalBondRegistry must be able to update the operator curve multiplier in Accounting.
+        assertTrue(
+            accounting.hasRole(accounting.SET_BOND_CURVE_MULTIPLIER_ROLE(), address(additionalBondRegistry)),
+            "additional bond registry missing accounting set curve multiplier role"
+        );
+    }
+
+    function test_wiring_onlyFull() public view {
+        assertEq(
+            address(metaRegistry.ADDITIONAL_BOND_REGISTRY()),
+            address(additionalBondRegistry),
+            "meta registry additional bond registry wiring"
+        );
+    }
+
+    function test_initialization_onlyFull() public {
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        additionalBondRegistry.initialize(deployParams.aragonAgent);
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        additionalBondRegistryImpl.initialize(deployParams.aragonAgent);
+    }
+
+    function test_proxy_onlyFull() public view {
+        OssifiableProxy proxy = OssifiableProxy(payable(address(additionalBondRegistry)));
+        assertEq(
+            proxy.proxy__getImplementation(),
+            address(additionalBondRegistryImpl),
+            "additional bond registry proxy getter impl"
+        );
+        assertEq(
+            ProxySlotUtils.getImplementation(address(additionalBondRegistry)),
+            address(additionalBondRegistryImpl),
+            "additional bond registry proxy slot impl"
+        );
+        assertEq(
+            proxy.proxy__getAdmin(),
+            address(deployParams.proxyAdmin),
+            "additional bond registry proxy getter admin"
+        );
+        assertEq(
+            ProxySlotUtils.getAdmin(address(additionalBondRegistry)),
+            address(deployParams.proxyAdmin),
+            "additional bond registry proxy slot admin"
+        );
+        assertFalse(proxy.proxy__getIsOssified(), "additional bond registry proxy ossified");
+    }
+}
+
 contract CuratedGatesDeploymentTest is DeploymentBaseTest {
     function _expectedCurveId(uint256 gateIndex) internal view returns (uint256 curveId) {
         uint256 nextCustomCurveId = 1;

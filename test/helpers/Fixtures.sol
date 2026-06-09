@@ -33,6 +33,7 @@ import { Verifier } from "src/Verifier.sol";
 import { CuratedModule } from "src/CuratedModule.sol";
 import { MetaRegistry } from "src/MetaRegistry.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
+import { AdditionalBondRegistry } from "src/AdditionalBondRegistry.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
@@ -246,6 +247,8 @@ contract DeploymentHelpers is Test {
         address hashConsensus;
         address metaRegistry;
         address metaRegistryImpl;
+        address additionalBondRegistry;
+        address additionalBondRegistryImpl;
         address curatedGateFactory;
         address curatedGateImpl;
         address[] curatedGates;
@@ -424,6 +427,12 @@ contract DeploymentHelpers is Test {
         deploymentConfig.metaRegistryImpl = vm.parseJsonAddress(config, ".MetaRegistryImpl");
         vm.label(deploymentConfig.metaRegistryImpl, "metaRegistryImpl");
 
+        deploymentConfig.additionalBondRegistry = vm.parseJsonAddress(config, ".AdditionalBondRegistry");
+        vm.label(deploymentConfig.additionalBondRegistry, "additionalBondRegistry");
+
+        deploymentConfig.additionalBondRegistryImpl = vm.parseJsonAddress(config, ".AdditionalBondRegistryImpl");
+        vm.label(deploymentConfig.additionalBondRegistryImpl, "additionalBondRegistryImpl");
+
         if (vm.keyExistsJson(config, ".CuratedGateFactory")) {
             deploymentConfig.curatedGateFactory = vm.parseJsonAddress(config, ".CuratedGateFactory");
         }
@@ -553,6 +562,9 @@ contract DeploymentHelpers is Test {
 
         // Testnet stuff
         dst.secondAdminAddress = src.secondAdminAddress;
+
+        // AdditionalBondRegistry
+        dst.additionalBondRegistryConfig = src.additionalBondRegistryConfig;
     }
 
     function parseCommonDeployParams(string memory config) internal view returns (CommonDeployParams memory params) {
@@ -839,6 +851,8 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     CuratedModule public curatedModule;
     CuratedModule public curatedModuleImpl;
     MetaRegistry public metaRegistry;
+    AdditionalBondRegistry public additionalBondRegistry;
+    AdditionalBondRegistry public additionalBondRegistryImpl;
     CuratedGate public curatedGateImpl;
     address[] public curatedGates;
 
@@ -952,6 +966,8 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         burner = IBurner(locator.burner());
 
         metaRegistry = MetaRegistry(deploymentConfig.metaRegistry);
+        additionalBondRegistry = AdditionalBondRegistry(deploymentConfig.additionalBondRegistry);
+        additionalBondRegistryImpl = AdditionalBondRegistry(deploymentConfig.additionalBondRegistryImpl);
         curatedGateImpl = CuratedGate(deploymentConfig.curatedGateImpl);
         curatedGates = deploymentConfig.curatedGates;
     }
