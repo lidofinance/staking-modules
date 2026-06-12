@@ -317,7 +317,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         module.grantRole(role, actor);
 
         vm.prank(actor);
-        module.settleGeneralDelayedPenalty(UintArr(noId), UintArr(type(uint256).max));
+        module.settleGeneralDelayedPenalty(UintArr(noId), UintArr(0));
     }
 
     function test_settleGeneralDelayedPenaltyRole_revert() public {
@@ -326,7 +326,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        module.settleGeneralDelayedPenalty(UintArr(noId), UintArr(type(uint256).max));
+        module.settleGeneralDelayedPenalty(UintArr(noId), UintArr(0));
     }
 
     function test_verifierRole() public {

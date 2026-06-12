@@ -310,16 +310,18 @@ contract Accounting is
     /// @inheritdoc IAccounting
     function settleLockedBond(
         uint256 nodeOperatorId,
-        uint256 maxAmount
+        uint256 bondLockNonce
     ) external onlyModule returns (uint256 amountSettled) {
         uint256 lockedAmount = BondLock.getLockedBond(nodeOperatorId);
         if (lockedAmount == 0) return amountSettled;
+        if (BondLock.getBondLockNonce(nodeOperatorId) != bondLockNonce) revert InvalidBondLockNonce();
 
         if (BondLock.isLockExpired(nodeOperatorId)) {
             unlockExpiredLock(nodeOperatorId);
             return amountSettled;
         }
-        amountSettled = lockedAmount < maxAmount ? lockedAmount : maxAmount;
+
+        amountSettled = lockedAmount;
         if (amountSettled > 0) {
             BondCore._burn(nodeOperatorId, amountSettled);
             // unlock all amountSettled even if bond isn't covered lock fully since debt will be created in this case

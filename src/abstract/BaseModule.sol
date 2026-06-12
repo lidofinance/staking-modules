@@ -303,15 +303,18 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function settleGeneralDelayedPenalty(uint256[] calldata nodeOperatorIds, uint256[] calldata maxAmounts) external {
+    function settleGeneralDelayedPenalty(
+        uint256[] calldata nodeOperatorIds,
+        uint256[] calldata bondLockNonces
+    ) external {
         _checkRole(SETTLE_GENERAL_DELAYED_PENALTY_ROLE);
-        if (nodeOperatorIds.length != maxAmounts.length) revert InvalidInput();
+        if (nodeOperatorIds.length != bondLockNonces.length) revert InvalidInput();
 
         for (uint256 i; i < nodeOperatorIds.length; ++i) {
             uint256 nodeOperatorId = nodeOperatorIds[i];
             _onlyExistingNodeOperator(nodeOperatorId);
 
-            bool settled = GeneralPenalty.settleGeneralDelayedPenalty(nodeOperatorId, maxAmounts[i]);
+            bool settled = GeneralPenalty.settleGeneralDelayedPenalty(nodeOperatorId, bondLockNonces[i]);
 
             if (!settled) continue;
 

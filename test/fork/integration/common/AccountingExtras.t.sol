@@ -111,7 +111,9 @@ abstract contract AccountingExtrasTestBase is ModuleTypeBase, PermitHelper {
             "Large penalty"
         );
 
-        module.settleGeneralDelayedPenalty(UintArr(defaultNoId), UintArr(type(uint256).max));
+        uint256 bondLockNonce = accounting.getBondLockNonce(defaultNoId);
+
+        module.settleGeneralDelayedPenalty(UintArr(defaultNoId), UintArr(bondLockNonce));
 
         uint256 debt = accounting.getBondDebt(defaultNoId);
         assertTrue(debt > 0, "Bond debt should be created");
@@ -136,7 +138,9 @@ abstract contract AccountingExtrasTestBase is ModuleTypeBase, PermitHelper {
             "Large penalty"
         );
 
-        module.settleGeneralDelayedPenalty(UintArr(defaultNoId), UintArr(type(uint256).max));
+        uint256 bondLockNonce = accounting.getBondLockNonce(defaultNoId);
+
+        module.settleGeneralDelayedPenalty(UintArr(defaultNoId), UintArr(bondLockNonce));
 
         uint256 debtBefore = accounting.getBondDebt(defaultNoId);
         assertTrue(debtBefore > 0, "Debt should exist before deposit");
@@ -167,7 +171,9 @@ abstract contract AccountingExtrasTestBase is ModuleTypeBase, PermitHelper {
             "Large penalty"
         );
 
-        module.settleGeneralDelayedPenalty(UintArr(defaultNoId), UintArr(type(uint256).max));
+        uint256 bondLockNonce = accounting.getBondLockNonce(defaultNoId);
+
+        module.settleGeneralDelayedPenalty(UintArr(defaultNoId), UintArr(bondLockNonce));
 
         uint256 debtBefore = accounting.getBondDebt(defaultNoId);
         assertTrue(debtBefore > 0, "Debt should exist before rewards");

@@ -480,8 +480,9 @@ contract LockBondTest is BaseTest {
         accounting.lockBond(noId, amount);
         assertEq(accounting.getLockedBond(noId), amount);
 
+        uint256 bondLockNonce = accounting.getBondLockNonce(noId);
         vm.prank(address(stakingModule));
-        uint256 settled = accounting.settleLockedBond(noId, amount);
+        uint256 settled = accounting.settleLockedBond(noId, bondLockNonce);
         assertEq(settled, amount);
         assertEq(accounting.getLockedBond(noId), 0);
     }
@@ -493,9 +494,10 @@ contract LockBondTest is BaseTest {
         vm.prank(address(stakingModule));
         accounting.depositETH{ value: 32 ether }(user, noId);
         uint256 bond = accounting.getBondShares(noId);
+        uint256 bondLockNonce = accounting.getBondLockNonce(noId);
 
         vm.prank(address(stakingModule));
-        accounting.settleLockedBond(noId, 1 ether);
+        accounting.settleLockedBond(noId, bondLockNonce);
         assertEq(accounting.getLockedBond(noId), 0);
         assertEq(accounting.getBondShares(noId), bond);
     }
@@ -512,6 +514,8 @@ contract LockBondTest is BaseTest {
 
         vm.warp(block.timestamp + accounting.getBondLockPeriod() + 1 seconds);
 
+        uint256 bondLockNonce = accounting.getBondLockNonce(noId);
+
         vm.expectCall(
             address(accounting.MODULE()),
             abi.encodeWithSelector(IBaseModule.updateDepositableValidatorsCount.selector, noId)
@@ -519,13 +523,13 @@ contract LockBondTest is BaseTest {
         vm.expectEmit(address(accounting));
         emit IBondLock.BondLockRemoved(noId);
         vm.prank(address(stakingModule));
-        uint256 settled = accounting.settleLockedBond(noId, amount);
+        uint256 settled = accounting.settleLockedBond(noId, bondLockNonce);
 
         assertEq(settled, 0);
         assertEq(accounting.getLockedBond(noId), 0);
     }
 
-    function test_settleLockedBond_maxGreaterThanLocked() public assertInvariants {
+    function test_settleLockedBond_revertWhen_InvalidNonce() public assertInvariants {
         mock_getNodeOperatorsCount(1);
         uint256 noId = 0;
         uint256 amount = 1 ether;
@@ -535,26 +539,11 @@ contract LockBondTest is BaseTest {
         accounting.lockBond(noId, amount);
         assertEq(accounting.getLockedBond(noId), amount);
 
-        vm.prank(address(stakingModule));
-        uint256 settled = accounting.settleLockedBond(noId, amount + 0.4 ether);
-        assertEq(settled, amount);
-        assertEq(accounting.getLockedBond(noId), 0);
-    }
+        uint256 bondLockNonce = accounting.getBondLockNonce(noId);
 
-    function test_settleLockedBond_maxLessThanLocked() public assertInvariants {
-        mock_getNodeOperatorsCount(1);
-        uint256 noId = 0;
-        uint256 amount = 1 ether;
-        addBond(noId, amount);
-
+        vm.expectRevert(IAccounting.InvalidBondLockNonce.selector);
         vm.prank(address(stakingModule));
-        accounting.lockBond(noId, amount);
-        assertEq(accounting.getLockedBond(noId), amount);
-
-        vm.prank(address(stakingModule));
-        uint256 settled = accounting.settleLockedBond(noId, amount - 0.4 ether);
-        assertEq(settled, amount - 0.4 ether);
-        assertEq(accounting.getLockedBond(noId), 0.4 ether);
+        uint256 settled = accounting.settleLockedBond(noId, bondLockNonce + 1);
     }
 
     function test_settleLockedBond_noBond() public assertInvariants {
@@ -565,8 +554,9 @@ contract LockBondTest is BaseTest {
         vm.startPrank(address(stakingModule));
         accounting.lockBond(noId, amount);
 
+        uint256 bondLockNonce = accounting.getBondLockNonce(noId);
         expectNoCall(address(burner), abi.encodeWithSelector(IBurner.requestBurnMyShares.selector));
-        accounting.settleLockedBond(noId, amount);
+        accounting.settleLockedBond(noId, bondLockNonce);
         vm.stopPrank();
 
         Accounting.BondLockData memory bondLockAfter = accounting.getLockedBondInfo(0);
@@ -589,10 +579,11 @@ contract LockBondTest is BaseTest {
         accounting.lockBond(noId, locked);
 
         uint256 bondSharesBefore = accounting.getBondShares(noId);
-        vm.expectCall(locator.burner(), abi.encodeWithSelector(IBurner.requestBurnMyShares.selector, bondSharesBefore));
+        uint256 bondLockNonce = accounting.getBondLockNonce(noId);
 
+        vm.expectCall(locator.burner(), abi.encodeWithSelector(IBurner.requestBurnMyShares.selector, bondSharesBefore));
         vm.prank(address(stakingModule));
-        accounting.settleLockedBond(noId, locked);
+        accounting.settleLockedBond(noId, bondLockNonce);
 
         Accounting.BondLockData memory lockAfter = accounting.getLockedBondInfo(noId);
         assertEq(lockAfter.amount, 0);
@@ -610,8 +601,10 @@ contract LockBondTest is BaseTest {
         vm.prank(address(stakingModule));
         accounting.lockBond(noId, amount);
 
+        uint256 bondLockNonce = accounting.getBondLockNonce(noId);
+
         vm.prank(address(stakingModule));
-        accounting.settleLockedBond(noId, amount);
+        accounting.settleLockedBond(noId, bondLockNonce);
 
         Accounting.BondLockData memory lockAfter = accounting.getLockedBondInfo(noId);
         assertEq(lockAfter.amount, 0);

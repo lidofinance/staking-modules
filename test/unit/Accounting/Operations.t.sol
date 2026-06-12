@@ -1442,8 +1442,9 @@ contract ScenarioTest is BaseTest {
         assertEq(accounting.getUnbondedKeysCountToEject(0), 0);
 
         // 7) Settle lock
+        uint256 bondLockNonce = accounting.getBondLockNonce(0);
         vm.prank(address(stakingModule));
-        accounting.settleLockedBond(0, 3 ether);
+        accounting.settleLockedBond(0, bondLockNonce);
 
         (, req) = accounting.getBondSummary(0);
 

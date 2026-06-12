@@ -293,8 +293,8 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @notice Settles locked bond for eligible Node Operators
     /// @dev SETTLE_GENERAL_DELAYED_PENALTY_ROLE role is expected to be assigned to Easy Track
     /// @param nodeOperatorIds IDs of the Node Operators
-    /// @param maxAmounts Maximum amounts to settle for each Node Operator
-    function settleGeneralDelayedPenalty(uint256[] memory nodeOperatorIds, uint256[] memory maxAmounts) external;
+    /// @param bondLockNonces Bond lock nonces for each Node Operator
+    function settleGeneralDelayedPenalty(uint256[] memory nodeOperatorIds, uint256[] memory bondLockNonces) external;
 
     /// @notice Propose a new manager address for the Node Operator.
     /// @dev Passing address(0) clears the pending proposal without changing the current manager address.

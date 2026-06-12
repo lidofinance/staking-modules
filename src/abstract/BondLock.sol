@@ -37,6 +37,9 @@ abstract contract BondLock is IBondLock, Initializable {
         uint256 bondLockPeriod;
         /// @dev Mapping of the Node Operator id to the bond lock
         mapping(uint256 nodeOperatorId => BondLockData) bondLock;
+        /// @dev Mapping of the Node Operator id to the bond lock nonce. Expired lock removals and compensations do not increment the nonce, since they do not create a new lock, but only remove the existing one.
+        ///      Nonce is incremented on each new lock and used to prevent settling wrong lock in case of multiple locks for the same Node Operator.
+        mapping(uint256 nodeOperatorId => uint256) bondLockNonce;
     }
 
     // keccak256(abi.encode(uint256(keccak256("CSBondLock")) - 1)) & ~bytes32(uint256(0xff))
@@ -71,6 +74,11 @@ abstract contract BondLock is IBondLock, Initializable {
     }
 
     /// @inheritdoc IBondLock
+    function getBondLockNonce(uint256 nodeOperatorId) public view returns (uint256) {
+        return _getBondLockStorage().bondLockNonce[nodeOperatorId];
+    }
+
+    /// @inheritdoc IBondLock
     function isLockExpired(uint256 nodeOperatorId) public view returns (bool) {
         uint256 lockUntil = _getBondLockStorage().bondLock[nodeOperatorId].until;
         return lockUntil == 0 ? false : lockUntil <= block.timestamp;
@@ -88,6 +96,7 @@ abstract contract BondLock is IBondLock, Initializable {
         uint256 until = block.timestamp + $.bondLockPeriod;
         if (currentLockUntil > until) until = currentLockUntil;
         _changeBondLock(nodeOperatorId, amount, until);
+        _incrementBondLockNonce(nodeOperatorId);
     }
 
     /// @dev Unlock the locked bond amount for the given Node Operator without changing the lock period
@@ -121,6 +130,12 @@ abstract contract BondLock is IBondLock, Initializable {
         if (getLockedBond(nodeOperatorId) == 0) revert NoBondLocked();
         if (!isLockExpired(nodeOperatorId)) revert BondLockNotExpired();
         _changeBondLock(nodeOperatorId, 0, 0);
+    }
+
+    function _incrementBondLockNonce(uint256 nodeOperatorId) internal {
+        unchecked {
+            emit BondLockNonceIncremented(nodeOperatorId, ++_getBondLockStorage().bondLockNonce[nodeOperatorId]);
+        }
     }
 
     // solhint-disable-next-line func-name-mixedcase
