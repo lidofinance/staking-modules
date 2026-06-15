@@ -51,7 +51,7 @@ contract DeployLocalDevNet is DeployBase {
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0;
         config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
-        config.defaultKeysLimit = 100;
+        config.defaultKeysLimit = 80;
         config.defaultAvgPerfLeewayBP = 10000;
         config.defaultRewardShareBP = 6250; // 62.5% of 4% = 2.5% of the total
         config.defaultStrikesLifetimeFrames = 6;
