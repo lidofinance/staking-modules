@@ -126,8 +126,7 @@ contract AccountingMock {
             return 0;
         }
         if (nonce != bondLockNonce[nodeOperatorId]) revert IAccounting.InvalidBondLockNonce();
-        uint256 lockedBond = getLockedBond(nodeOperatorId);
-        settledAmount = lockedBond;
+        settledAmount = getLockedBond(nodeOperatorId);
         if (settledAmount > bond[nodeOperatorId]) {
             bond[nodeOperatorId] = 0;
         } else {

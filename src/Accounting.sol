@@ -322,11 +322,9 @@ contract Accounting is
         }
 
         amountSettled = lockedAmount;
-        if (amountSettled > 0) {
-            BondCore._burn(nodeOperatorId, amountSettled);
-            // unlock all amountSettled even if bond isn't covered lock fully since debt will be created in this case
-            BondLock._unlock(nodeOperatorId, amountSettled);
-        }
+        BondCore._burn(nodeOperatorId, amountSettled);
+        // unlock all amountSettled even if bond isn't covered lock fully since debt will be created in this case
+        BondLock._unlock(nodeOperatorId, amountSettled);
     }
 
     /// @inheritdoc IAccounting
