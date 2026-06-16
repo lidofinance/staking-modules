@@ -282,6 +282,10 @@ library CuratedDepositAllocator {
             weightsByOperatorId[i] = weight;
             weightSum += weight;
 
+            // NOTE: Ongoing consolidation might lower the `currentStake` relative to the balance observed on CL. This
+            // is because external stake is decreased as soon as a validator is reported as exited, but the operator
+            // balance tracked by the module changes only when the consolidation from the exited validator lands on the
+            // target validator and the balance change proof is delivered via the Verifier.
             uint256 currentStake = balance + externalStake;
             currentStakeByOperatorId[i] = currentStake;
             totalCurrent += currentStake;
