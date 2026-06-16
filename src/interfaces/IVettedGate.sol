@@ -21,6 +21,7 @@ interface IVettedGate is IMerkleGate {
     ///         At least one deposit data and corresponding bond should be provided.
     ///         msg.sender is marked as consumed and will not be able to create Node Operators
     ///         or claim the beneficial curve via this VettedGate instance.
+    ///         Any excess msg.value will be sent to the bond and can be claimed from there.
     /// @param keysCount Signing keys count.
     /// @param publicKeys Public keys to submit.
     /// @param signatures Signatures of `(deposit_message_root, domain)` tuples.
