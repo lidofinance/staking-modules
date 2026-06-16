@@ -14,7 +14,7 @@ struct TierInfo {
 }
 
 /// @dev Operator's effective tier state, with multipliers as full basis-point values (not `TierInfo` increments).
-///      During a downgrade cooldown `curveMultiplier` keeps the pre-downgrade value until `releaseCurveMultiplier`,
+///      During a downgrade cooldown `curveMultiplier` keeps the pre-downgrade value until `applyCurveMultiplier`,
 ///      so it may exceed the current tier's value (and stay above MAX_BP while `tierId == 0`).
 struct OperatorTierState {
     uint256 tierId;
@@ -56,7 +56,7 @@ interface IAdditionalBondRegistry {
     /// @notice Upper bound for `weightMultiplierInc`.
     function MAX_WEIGHT_MULTIPLIER_INC() external view returns (uint256);
 
-    /// @notice Cooldown in seconds after a downgrade before `releaseCurveMultiplier` can be called.
+    /// @notice Cooldown in seconds after a downgrade before `applyCurveMultiplier` can be called.
     function CURVE_MULTIPLIER_COOLDOWN() external view returns (uint256);
 
     /// @notice Initialize the provider.
@@ -72,7 +72,7 @@ interface IAdditionalBondRegistry {
     /// @notice Select a bond tier for the Node Operator. An upgrade (target effective curve multiplier above the
     ///         operator's current one) applies both multipliers at once and requires the bond to cover the new
     ///         requirement; a downgrade applies the new weight now but keeps the higher curve multiplier until
-    ///         `releaseCurveMultiplier`. Either clears an active cooldown (upgrade) or reverts on it (downgrade).
+    ///         `applyCurveMultiplier`. Either clears an active cooldown (upgrade) or reverts on it (downgrade).
     /// @param nodeOperatorId ID of the Node Operator.
     /// @param tierId         Target tier ID (0 = default tier).
     function selectTier(uint256 nodeOperatorId, uint256 tierId) external;
@@ -80,7 +80,7 @@ interface IAdditionalBondRegistry {
     /// @notice Apply a pending downgrade after its cooldown elapses, lowering the curve multiplier to the current
     ///         tier. Callable only by the Node Operator owner.
     /// @param nodeOperatorId ID of the Node Operator.
-    function releaseCurveMultiplier(uint256 nodeOperatorId) external;
+    function applyCurveMultiplier(uint256 nodeOperatorId) external;
 
     /// @notice Number of stored tiers (not counting the implicit default tier 0).
     function getTiersCount() external view returns (uint256);

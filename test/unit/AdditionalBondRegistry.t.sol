@@ -64,8 +64,8 @@ contract AdditionalBondRegistryConstructorTest is AdditionalBondRegistryBaseTest
         assertEq(address(additionalBondRegistry.MODULE()), address(module));
         assertEq(address(additionalBondRegistry.ACCOUNTING()), address(module.ACCOUNTING()));
         assertEq(address(additionalBondRegistry.META_REGISTRY()), address(metaRegistryMock));
-        assertEq(additionalBondRegistry.MAX_CURVE_MULTIPLIER_INC(), 100_000);
-        assertEq(additionalBondRegistry.MAX_WEIGHT_MULTIPLIER_INC(), 100_000);
+        assertEq(additionalBondRegistry.MAX_CURVE_MULTIPLIER_INC(), 90_000);
+        assertEq(additionalBondRegistry.MAX_WEIGHT_MULTIPLIER_INC(), 90_000);
         assertEq(additionalBondRegistry.CURVE_MULTIPLIER_COOLDOWN(), CURVE_MULTIPLIER_COOLDOWN);
     }
 }
@@ -331,19 +331,19 @@ contract AdditionalBondRegistryReleaseCurveMultiplierTest is AdditionalBondRegis
         additionalBondRegistry.selectTier(0, 0);
     }
 
-    function test_releaseCurveMultiplier() public {
+    function test_applyCurveMultiplier() public {
         vm.warp(block.timestamp + CURVE_MULTIPLIER_COOLDOWN + 1);
 
         vm.expectEmit(true, false, false, false, address(additionalBondRegistry));
         emit IAdditionalBondRegistry.CurveMultiplierCooldownRemoved(0);
         vm.prank(nodeOperatorOwner);
-        additionalBondRegistry.releaseCurveMultiplier(0);
+        additionalBondRegistry.applyCurveMultiplier(0);
 
         assertEq(additionalBondRegistry.getOperatorTierState(0).curveMultiplierCooldownUntil, 0);
         assertEq(acct.getBondCurveMultiplier(0), MAX_BP);
     }
 
-    function test_releaseCurveMultiplier_SettlesToCurrentTierNotDefault() public {
+    function test_applyCurveMultiplier_SettlesToCurrentTierNotDefault() public {
         vm.prank(nodeOperatorOwner);
         additionalBondRegistry.selectTier(0, 2);
         vm.prank(nodeOperatorOwner);
@@ -352,32 +352,32 @@ contract AdditionalBondRegistryReleaseCurveMultiplierTest is AdditionalBondRegis
 
         vm.warp(block.timestamp + CURVE_MULTIPLIER_COOLDOWN + 1);
         vm.prank(nodeOperatorOwner);
-        additionalBondRegistry.releaseCurveMultiplier(0);
+        additionalBondRegistry.applyCurveMultiplier(0);
 
         assertEq(additionalBondRegistry.getOperatorTierState(0).curveMultiplierCooldownUntil, 0);
         assertEq(acct.getBondCurveMultiplier(0), MAX_BP + T1_BOND);
     }
 
-    function test_releaseCurveMultiplier_RevertWhen_NotOwner() public {
+    function test_applyCurveMultiplier_RevertWhen_NotOwner() public {
         vm.warp(block.timestamp + CURVE_MULTIPLIER_COOLDOWN + 1);
         vm.expectRevert(IAdditionalBondRegistry.SenderIsNotOperatorOwner.selector);
         vm.prank(stranger);
-        additionalBondRegistry.releaseCurveMultiplier(0);
+        additionalBondRegistry.applyCurveMultiplier(0);
     }
 
-    function test_releaseCurveMultiplier_RevertWhen_NoCurveMultiplierCooldown() public {
+    function test_applyCurveMultiplier_RevertWhen_NoCurveMultiplierCooldown() public {
         vm.warp(block.timestamp + CURVE_MULTIPLIER_COOLDOWN + 1);
         vm.prank(nodeOperatorOwner);
-        additionalBondRegistry.releaseCurveMultiplier(0);
+        additionalBondRegistry.applyCurveMultiplier(0);
         vm.expectRevert(IAdditionalBondRegistry.NoCurveMultiplierCooldown.selector);
         vm.prank(nodeOperatorOwner);
-        additionalBondRegistry.releaseCurveMultiplier(0);
+        additionalBondRegistry.applyCurveMultiplier(0);
     }
 
-    function test_releaseCurveMultiplier_RevertWhen_CurveMultiplierCooldownNotElapsed() public {
+    function test_applyCurveMultiplier_RevertWhen_CurveMultiplierCooldownNotElapsed() public {
         vm.expectRevert(IAdditionalBondRegistry.CurveMultiplierCooldownNotElapsed.selector);
         vm.prank(nodeOperatorOwner);
-        additionalBondRegistry.releaseCurveMultiplier(0);
+        additionalBondRegistry.applyCurveMultiplier(0);
     }
 }
 

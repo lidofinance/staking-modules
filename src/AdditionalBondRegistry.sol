@@ -37,7 +37,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
         0xe06435b00cfe5ab72c52612ef2f4c7b5f9c4cc44634ef79a78a1888f5b1eb300;
 
     /// @param module                CuratedModule address.
-    /// @param curveMultiplierCooldown Cooldown in seconds after a tier downgrade before `releaseCurveMultiplier` can be called.
+    /// @param curveMultiplierCooldown Cooldown in seconds after a tier downgrade before `applyCurveMultiplier` can be called.
     constructor(address module, uint256 curveMultiplierCooldown) {
         MODULE = ICuratedModule(module);
         ACCOUNTING = IAccounting(MODULE.ACCOUNTING());
@@ -100,7 +100,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
     }
 
     /// @inheritdoc IAdditionalBondRegistry
-    function releaseCurveMultiplier(uint256 nodeOperatorId) external {
+    function applyCurveMultiplier(uint256 nodeOperatorId) external {
         _checkOperatorOwner(nodeOperatorId);
 
         AdditionalBondRegistryStorage storage $ = _storage();
