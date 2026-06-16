@@ -956,6 +956,76 @@ contract GetRequiredBondForNextKeysAtMultiplierTest is BaseTest {
     }
 }
 
+contract GetRequiredBondForNextKeysAtMultiplierWstETHTest is BaseTest {
+    function test_default() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0, MAX_BP), wstETH.getWstETHByStETH(32 ether));
+    }
+
+    function test_WithMultiplier() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        assertEq(accounting.getRequiredBondForNextKeysWstETH(0, 0, 15_000), wstETH.getWstETHByStETH(48 ether));
+    }
+
+    function test_SubtractsCurrentBond() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 16 ether });
+        assertEq(
+            accounting.getRequiredBondForNextKeysWstETH(0, 0, 15_000),
+            wstETH.getWstETHByStETH(48 ether - accounting.getBond(0))
+        );
+    }
+
+    function test_RevertWhen_MultiplierBelowMaxBP() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        vm.expectRevert(IBondCurve.InvalidMultiplier.selector);
+        accounting.getRequiredBondForNextKeysWstETH(0, 0, MAX_BP - 1);
+    }
+}
+
+contract BondCurveMultiplierTest is BaseTest {
+    function test_default() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        assertEq(accounting.getBondCurveMultiplier(0), MAX_BP);
+    }
+
+    function test_setBondCurveMultiplier() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        vm.prank(admin);
+        accounting.setBondCurveMultiplier(0, 5_000);
+        assertEq(accounting.getBondCurveMultiplier(0), MAX_BP + 5_000);
+    }
+
+    function test_setBondCurveMultiplier_ResetsToDefault() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        vm.startPrank(admin);
+        accounting.setBondCurveMultiplier(0, 5_000);
+        accounting.setBondCurveMultiplier(0, 0);
+        vm.stopPrank();
+        assertEq(accounting.getBondCurveMultiplier(0), MAX_BP);
+    }
+
+    function test_setBondCurveMultiplier_UpdatesDepositInfo() public {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        vm.expectCall(address(accounting.MODULE()), abi.encodeWithSelector(IBaseModule.updateDepositInfo.selector, 0));
+        vm.prank(admin);
+        accounting.setBondCurveMultiplier(0, 5_000);
+    }
+
+    function test_setBondCurveMultiplier_RevertWhen_DoesNotHaveRole() public {
+        expectRoleRevert(stranger, accounting.SET_BOND_CURVE_MULTIPLIER_ROLE());
+        vm.prank(stranger);
+        accounting.setBondCurveMultiplier(0, 5_000);
+    }
+
+    function test_setBondCurveMultiplier_RevertWhen_OperatorDoesNotExist() public {
+        mock_getNodeOperatorsCount(0);
+        vm.expectRevert(IAccounting.NodeOperatorDoesNotExist.selector);
+        vm.prank(admin);
+        accounting.setBondCurveMultiplier(0, 5_000);
+    }
+}
+
 // Combined bond summary and shares tests
 
 contract GetBondSummaryTest is BondStateBaseTest {
