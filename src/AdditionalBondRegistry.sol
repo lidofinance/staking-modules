@@ -139,7 +139,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
     }
 
     /// @dev Sets the cooldown deadline to `block.timestamp + CURVE_MULTIPLIER_COOLDOWN`.
-    function _setCurveMultiplierCooldown(uint256 nodeOperatorId) private {
+    function _setCurveMultiplierCooldown(uint256 nodeOperatorId) internal {
         uint256 cooldownUntil = block.timestamp + CURVE_MULTIPLIER_COOLDOWN;
         _storage().curveMultiplierCooldownUntil[nodeOperatorId] = cooldownUntil;
         emit CurveMultiplierCooldownSet(nodeOperatorId, cooldownUntil);

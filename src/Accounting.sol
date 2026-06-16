@@ -289,12 +289,6 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function unlockExpiredLock(uint256 nodeOperatorId) public {
-        BondLock._unlockExpiredLock(nodeOperatorId);
-        MODULE.updateDepositableValidatorsCount(nodeOperatorId);
-    }
-
-    /// @inheritdoc IAccounting
     function compensateLockedBond(uint256 nodeOperatorId) external onlyModule returns (uint256 compensatedAmount) {
         uint256 lockedAmount = BondLock.getLockedBond(nodeOperatorId);
         if (lockedAmount == 0) return 0;
@@ -455,6 +449,12 @@ contract Accounting is
         info.lockedBond = BondLock.getLockedBond(nodeOperatorId);
         info.bondDebt = BondCore.getBondDebt(nodeOperatorId);
         info.pendingSharesToSplit = FeeSplits.getPendingSharesToSplit(nodeOperatorId);
+    }
+
+    /// @inheritdoc IAccounting
+    function unlockExpiredLock(uint256 nodeOperatorId) public {
+        BondLock._unlockExpiredLock(nodeOperatorId);
+        MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
     /// @inheritdoc IAccounting

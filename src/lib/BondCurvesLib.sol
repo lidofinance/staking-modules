@@ -67,11 +67,10 @@ library BondCurvesLib {
         uint256 multiplier
     ) external view returns (uint256) {
         IBondCurve.BondCurveInterval[] memory intervals = _loadCurve(bondCurveStorage, curveId, multiplier);
+        // intervals[0].minBond is essentially the amount of bond required for the very first key
+        if (amount < intervals[0].minBond) return 0;
 
         unchecked {
-            // intervals[0].minBond is essentially the amount of bond required for the very first key
-            if (amount < intervals[0].minBond) return 0;
-
             uint256 low = 0;
             uint256 high = intervals.length - 1;
             while (low < high) {
@@ -128,7 +127,7 @@ library BondCurvesLib {
         BondCurve.BondCurveStorage storage bondCurveStorage,
         uint256 curveId,
         uint256 multiplier
-    ) private view returns (IBondCurve.BondCurveInterval[] memory curve) {
+    ) internal view returns (IBondCurve.BondCurveInterval[] memory curve) {
         _ensureCurveExists(bondCurveStorage, curveId);
         IBondCurve.BondCurveInterval[] storage src = bondCurveStorage.bondCurves[curveId].intervals;
         if (multiplier == MAX_BP) return src;

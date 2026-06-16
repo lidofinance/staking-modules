@@ -71,11 +71,6 @@ abstract contract BondCurve is IBondCurve, Initializable {
         return MAX_BP + _getBondCurveStorage().operatorBondCurveMultiplier[nodeOperatorId];
     }
 
-    /// @dev Stores the bond curve multiplier increment above MAX_BP (0 = no scaling).
-    function _setBondCurveMultiplier(uint256 nodeOperatorId, uint256 multiplier) internal {
-        _getBondCurveStorage().operatorBondCurveMultiplier[nodeOperatorId] = multiplier;
-    }
-
     /// @inheritdoc IBondCurve
     function getBondAmountByKeysCount(uint256 keys, uint256 curveId) public view returns (uint256) {
         return BondCurvesLib.getBondAmountByKeysCount(_getBondCurveStorage(), keys, curveId, MAX_BP);
@@ -126,6 +121,12 @@ abstract contract BondCurve is IBondCurve, Initializable {
         if ($.operatorBondCurveId[nodeOperatorId] == curveId) revert SameBondCurveId();
         $.operatorBondCurveId[nodeOperatorId] = curveId;
         emit BondCurveSet(nodeOperatorId, curveId, msg.sender);
+    }
+
+    /// @dev Stores the bond curve multiplier increment above MAX_BP (0 = no scaling).
+    function _setBondCurveMultiplier(uint256 nodeOperatorId, uint256 multiplier) internal {
+        _getBondCurveStorage().operatorBondCurveMultiplier[nodeOperatorId] = multiplier;
+        emit BondCurveMultiplierSet(nodeOperatorId, multiplier, msg.sender);
     }
 
     function _getCurveInfo(uint256 curveId) private view returns (BondCurveData storage) {
