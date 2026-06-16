@@ -23,8 +23,9 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
         mapping(uint256 nodeOperatorId => uint256) curveMultiplierCooldownUntil;
     }
 
-    uint256 public constant MAX_CURVE_MULTIPLIER_INC = 10 * MAX_BP;
-    uint256 public constant MAX_WEIGHT_MULTIPLIER_INC = 10 * MAX_BP;
+    // NOTE: Sanity guard for tier creation: effective multiplier <= 10x the default multiplier.
+    uint256 public constant MAX_CURVE_MULTIPLIER_INC = 9 * MAX_BP;
+    uint256 public constant MAX_WEIGHT_MULTIPLIER_INC = 9 * MAX_BP;
 
     ICuratedModule public immutable MODULE;
     IAccounting public immutable ACCOUNTING;
@@ -84,8 +85,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
             //       Value `0` as a second arg for the following method means current keys count.
             if (ACCOUNTING.getRequiredBondForNextKeys(nodeOperatorId, 0, newMul) > 0) revert InsufficientBondForTier();
             if ($.curveMultiplierCooldownUntil[nodeOperatorId] != 0) {
-                delete $.curveMultiplierCooldownUntil[nodeOperatorId];
-                emit CurveMultiplierCooldownRemoved(nodeOperatorId);
+                _removeCurveMultiplierCooldown(nodeOperatorId);
             }
             ACCOUNTING.setBondCurveMultiplier(nodeOperatorId, newMulInc);
         } else {
@@ -108,8 +108,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
         if (cooldownUntil == 0) revert NoCurveMultiplierCooldown();
         if (cooldownUntil > block.timestamp) revert CurveMultiplierCooldownNotElapsed();
 
-        delete $.curveMultiplierCooldownUntil[nodeOperatorId];
-        emit CurveMultiplierCooldownRemoved(nodeOperatorId);
+        _removeCurveMultiplierCooldown(nodeOperatorId);
 
         ACCOUNTING.setBondCurveMultiplier(
             nodeOperatorId,
@@ -144,6 +143,11 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
         uint256 cooldownUntil = block.timestamp + CURVE_MULTIPLIER_COOLDOWN;
         _storage().curveMultiplierCooldownUntil[nodeOperatorId] = cooldownUntil;
         emit CurveMultiplierCooldownSet(nodeOperatorId, cooldownUntil);
+    }
+
+    function _removeCurveMultiplierCooldown(uint256 nodeOperatorId) internal {
+        delete _storage().curveMultiplierCooldownUntil[nodeOperatorId];
+        emit CurveMultiplierCooldownRemoved(nodeOperatorId);
     }
 
     function _checkOperatorOwner(uint256 nodeOperatorId) internal view {
