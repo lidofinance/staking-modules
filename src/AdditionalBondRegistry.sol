@@ -81,6 +81,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
         uint256 newMul = MAX_BP + newMulInc;
         if (newMul > ACCOUNTING.getBondCurveMultiplier(nodeOperatorId)) {
             // NOTE: Takes into account current bond amount and keys count.
+            //       Value `0` as a second arg for the following method means current keys count.
             if (ACCOUNTING.getRequiredBondForNextKeys(nodeOperatorId, 0, newMul) > 0) revert InsufficientBondForTier();
             if ($.curveMultiplierCooldownUntil[nodeOperatorId] != 0) {
                 delete $.curveMultiplierCooldownUntil[nodeOperatorId];

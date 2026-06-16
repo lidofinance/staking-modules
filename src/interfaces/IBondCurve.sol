@@ -96,7 +96,7 @@ interface IBondCurve {
     ///         MAX_BP (10_000) means no scaling, and is the default when none is set.
     function getBondCurveMultiplier(uint256 nodeOperatorId) external view returns (uint256);
 
-    /// @notice Get required bond in ETH for the given number of keys for the given bond curve
+    /// @notice Get required bond in ETH for the given number of keys for the given bond curve with default `multiplier`.
     /// @dev To calculate the amount for the new keys 2 calls are required:
     ///      getBondAmountByKeysCount(newTotal) - getBondAmountByKeysCount(currentTotal)
     /// @param keys Number of keys to get required bond for
@@ -116,7 +116,7 @@ interface IBondCurve {
         uint256 multiplier
     ) external view returns (uint256);
 
-    /// @notice Get keys count for the given bond amount with the given bond curve
+    /// @notice Get keys count for the given bond amount with the given bond curve with default `multiplier`.
     /// @param amount Bond amount in ETH (stETH) to get keys count for
     /// @param curveId Id of the curve to perform calculations against
     /// @return Keys count
