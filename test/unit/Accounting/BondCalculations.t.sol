@@ -991,6 +991,8 @@ contract BondCurveMultiplierTest is BaseTest {
 
     function test_setBondCurveMultiplier() public {
         _operator({ ongoing: 16, withdrawn: 0 });
+        vm.expectEmit(address(accounting));
+        emit IBondCurve.BondCurveMultiplierSet(0, 5_000, admin);
         vm.prank(admin);
         accounting.setBondCurveMultiplier(0, 5_000);
         assertEq(accounting.getBondCurveMultiplier(0), MAX_BP + 5_000);
