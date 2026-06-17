@@ -26,9 +26,6 @@ library DepositAllocatorGreedy {
     // Fixed-point scale (2^96) for share ratios to represent fractional shares as integers.
     uint256 internal constant S_SCALE = uint256(1) << 96;
 
-    error LengthMismatch();
-    error ZeroStep();
-
     /// @dev Expected input invariants:
     ///      - state.capacities[i] > 0
     ///      - state.sharesX96[i] > 0

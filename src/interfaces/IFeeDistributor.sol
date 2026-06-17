@@ -53,7 +53,6 @@ interface IFeeDistributor is IAssetRecovererLib {
     error SenderIsNotAccounting();
     error SenderIsNotOracle();
 
-    error InvalidReportData();
     error InvalidTreeRoot();
     error InvalidTreeCid();
     error InvalidLogCID();

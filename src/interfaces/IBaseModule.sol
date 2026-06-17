@@ -133,7 +133,6 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     error ValidatorSlashingAlreadyReported();
     error InvalidWithdrawnValidatorInfo();
 
-    error PubkeyMismatch();
     error InvalidAmount();
     error InvalidInput();
     error NotEnoughKeys();
