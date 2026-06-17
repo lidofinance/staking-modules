@@ -1213,7 +1213,7 @@ contract MetaRegistryBondCurveTest is MetaRegistryGroupsBaseTest {
         _createGroup(_subOperatorsArr1(noId, MAX_BP), _extOperatorsArr0());
 
         _setBondCurveWeight(0, CURVE_WEIGHT);
-        additionalBondRegistry.mock_setWeightMultiplierInc(noId, 5_000);
+        additionalBondRegistry.mock_setWeightMultiplier(noId, 5_000);
         registry.refreshOperatorWeight(noId);
 
         (uint256 weight, ) = registry.getNodeOperatorWeightAndExternalStake(noId);
@@ -1228,7 +1228,7 @@ contract MetaRegistryBondCurveTest is MetaRegistryGroupsBaseTest {
         _createGroup(_subOperatorsArr2(op0, op1), _extOperatorsArr0());
 
         _setBondCurveWeight(0, CURVE_WEIGHT);
-        additionalBondRegistry.mock_setWeightMultiplierInc(0, 5_000);
+        additionalBondRegistry.mock_setWeightMultiplier(0, 5_000);
         registry.refreshOperatorWeight(0);
 
         (uint256 weight, ) = registry.getNodeOperatorWeightAndExternalStake(0);

@@ -64,8 +64,8 @@ contract AdditionalBondRegistryConstructorTest is AdditionalBondRegistryBaseTest
         assertEq(address(additionalBondRegistry.MODULE()), address(module));
         assertEq(address(additionalBondRegistry.ACCOUNTING()), address(module.ACCOUNTING()));
         assertEq(address(additionalBondRegistry.META_REGISTRY()), address(metaRegistryMock));
-        assertEq(additionalBondRegistry.MAX_CURVE_MULTIPLIER_INC(), 90_000);
-        assertEq(additionalBondRegistry.MAX_WEIGHT_MULTIPLIER_INC(), 90_000);
+        assertEq(additionalBondRegistry.MAX_CURVE_MULTIPLIER(), 90_000);
+        assertEq(additionalBondRegistry.MAX_WEIGHT_MULTIPLIER(), 90_000);
         assertEq(additionalBondRegistry.CURVE_MULTIPLIER_COOLDOWN(), CURVE_MULTIPLIER_COOLDOWN);
     }
 }
@@ -107,8 +107,8 @@ contract AdditionalBondRegistryAddTierTest is AdditionalBondRegistryBaseTest {
         assertEq(tierId, 1);
         assertEq(additionalBondRegistry.getTiersCount(), 1);
         TierInfo memory t = additionalBondRegistry.getTierInfo(1);
-        assertEq(t.curveMultiplierInc, T1_BOND);
-        assertEq(t.weightMultiplierInc, T1_WEIGHT);
+        assertEq(t.curveMultiplier, MAX_BP + T1_BOND);
+        assertEq(t.weightMultiplier, MAX_BP + T1_WEIGHT);
     }
 
     function test_addTier_SecondTier() public {
@@ -121,24 +121,24 @@ contract AdditionalBondRegistryAddTierTest is AdditionalBondRegistryBaseTest {
     function test_addTier_AllowsZeroCurveMultiplierInc() public {
         uint256 tierId = _addTier(0, T1_WEIGHT);
         TierInfo memory t = additionalBondRegistry.getTierInfo(tierId);
-        assertEq(t.curveMultiplierInc, 0);
-        assertEq(t.weightMultiplierInc, T1_WEIGHT);
+        assertEq(t.curveMultiplier, MAX_BP);
+        assertEq(t.weightMultiplier, MAX_BP + T1_WEIGHT);
     }
 
     function test_addTier_AllowsZeroWeightMultiplierInc() public {
         uint256 tierId = _addTier(T1_BOND, 0);
         TierInfo memory t = additionalBondRegistry.getTierInfo(tierId);
-        assertEq(t.curveMultiplierInc, T1_BOND);
-        assertEq(t.weightMultiplierInc, 0);
+        assertEq(t.curveMultiplier, MAX_BP + T1_BOND);
+        assertEq(t.weightMultiplier, MAX_BP);
     }
 
     function test_addTier_AllowsMaxIncrement() public {
-        uint256 maxCurve = additionalBondRegistry.MAX_CURVE_MULTIPLIER_INC();
-        uint256 maxWeight = additionalBondRegistry.MAX_WEIGHT_MULTIPLIER_INC();
+        uint256 maxCurve = additionalBondRegistry.MAX_CURVE_MULTIPLIER();
+        uint256 maxWeight = additionalBondRegistry.MAX_WEIGHT_MULTIPLIER();
         uint256 tierId = _addTier(maxCurve, maxWeight);
         TierInfo memory t = additionalBondRegistry.getTierInfo(tierId);
-        assertEq(t.curveMultiplierInc, maxCurve);
-        assertEq(t.weightMultiplierInc, maxWeight);
+        assertEq(t.curveMultiplier, MAX_BP + maxCurve);
+        assertEq(t.weightMultiplier, MAX_BP + maxWeight);
     }
 
     function test_addTier_RevertWhen_NotAdmin() public {
@@ -148,13 +148,13 @@ contract AdditionalBondRegistryAddTierTest is AdditionalBondRegistryBaseTest {
     }
 
     function test_addTier_RevertWhen_BondMulAboveMax() public {
-        uint256 aboveMax = additionalBondRegistry.MAX_CURVE_MULTIPLIER_INC() + 1;
+        uint256 aboveMax = additionalBondRegistry.MAX_CURVE_MULTIPLIER() + 1;
         vm.expectRevert(IAdditionalBondRegistry.InvalidCurveMultiplier.selector);
         _addTier(aboveMax, T1_WEIGHT);
     }
 
     function test_addTier_RevertWhen_WeightMulAboveMax() public {
-        uint256 aboveMax = additionalBondRegistry.MAX_WEIGHT_MULTIPLIER_INC() + 1;
+        uint256 aboveMax = additionalBondRegistry.MAX_WEIGHT_MULTIPLIER() + 1;
         vm.expectRevert(IAdditionalBondRegistry.InvalidWeightMultiplier.selector);
         _addTier(T1_BOND, aboveMax);
     }
@@ -394,14 +394,14 @@ contract AdditionalBondRegistryViewsTest is AdditionalBondRegistrySelectTierBase
 
     function test_getTierInfo_Tier0() public view {
         TierInfo memory t = additionalBondRegistry.getTierInfo(0);
-        assertEq(t.curveMultiplierInc, 0);
-        assertEq(t.weightMultiplierInc, 0);
+        assertEq(t.curveMultiplier, MAX_BP);
+        assertEq(t.weightMultiplier, MAX_BP);
     }
 
     function test_getTierInfo_Tier1() public view {
         TierInfo memory t = additionalBondRegistry.getTierInfo(1);
-        assertEq(t.curveMultiplierInc, T1_BOND);
-        assertEq(t.weightMultiplierInc, T1_WEIGHT);
+        assertEq(t.curveMultiplier, MAX_BP + T1_BOND);
+        assertEq(t.weightMultiplier, MAX_BP + T1_WEIGHT);
     }
 
     function test_getTierInfo_RevertWhen_InvalidTierId() public {

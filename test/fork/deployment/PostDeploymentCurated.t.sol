@@ -148,12 +148,12 @@ contract AdditionalBondRegistryDeploymentTest is DeploymentBaseTest {
             "additional bond registry cooldown"
         );
         assertEq(
-            additionalBondRegistry.MAX_CURVE_MULTIPLIER_INC(),
+            additionalBondRegistry.MAX_CURVE_MULTIPLIER(),
             90_000,
             "additional bond registry max curve multiplier"
         );
         assertEq(
-            additionalBondRegistry.MAX_WEIGHT_MULTIPLIER_INC(),
+            additionalBondRegistry.MAX_WEIGHT_MULTIPLIER(),
             90_000,
             "additional bond registry max weight multiplier"
         );

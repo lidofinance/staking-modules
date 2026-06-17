@@ -7,10 +7,11 @@ import { IAccounting } from "./IAccounting.sol";
 import { ICuratedModule } from "./ICuratedModule.sol";
 import { IMetaRegistry } from "./IMetaRegistry.sol";
 
-/// @dev Bond tier. Multipliers are stored as increments above MAX_BP (effective = MAX_BP + increment).
+/// @dev Bond tier. Fields hold increments above MAX_BP in storage; `getTierInfo` returns them as full
+///      effective multipliers (MAX_BP + stored increment).
 struct TierInfo {
-    uint128 curveMultiplierInc;
-    uint128 weightMultiplierInc;
+    uint128 curveMultiplier;
+    uint128 weightMultiplier;
 }
 
 /// @dev Operator's effective tier state, with multipliers as full basis-point values (not `TierInfo` increments).
@@ -25,7 +26,7 @@ struct OperatorTierState {
 
 /// @notice Manages operator bond tiers and associated tier downgrade cooldown state.
 interface IAdditionalBondRegistry {
-    event TierAdded(uint256 indexed tierId, uint256 curveMultiplierInc, uint256 weightMultiplierInc);
+    event TierAdded(uint256 indexed tierId, uint256 curveMultiplier, uint256 weightMultiplier);
     event TierSelected(uint256 indexed nodeOperatorId, uint256 tierId);
     event CurveMultiplierCooldownSet(uint256 indexed nodeOperatorId, uint256 cooldownUntil);
     event CurveMultiplierCooldownRemoved(uint256 indexed nodeOperatorId);
@@ -50,11 +51,11 @@ interface IAdditionalBondRegistry {
     /// @notice MetaRegistry called back via `refreshOperatorWeight` on tier changes.
     function META_REGISTRY() external view returns (IMetaRegistry);
 
-    /// @notice Upper bound for `curveMultiplierInc`.
-    function MAX_CURVE_MULTIPLIER_INC() external view returns (uint256);
+    /// @notice Upper bound for `curveMultiplier`.
+    function MAX_CURVE_MULTIPLIER() external view returns (uint256);
 
-    /// @notice Upper bound for `weightMultiplierInc`.
-    function MAX_WEIGHT_MULTIPLIER_INC() external view returns (uint256);
+    /// @notice Upper bound for `weightMultiplier`.
+    function MAX_WEIGHT_MULTIPLIER() external view returns (uint256);
 
     /// @notice Cooldown in seconds after a downgrade before `applyCurveMultiplier` can be called.
     function CURVE_MULTIPLIER_COOLDOWN() external view returns (uint256);
@@ -64,10 +65,10 @@ interface IAdditionalBondRegistry {
     function initialize(address admin) external;
 
     /// @notice Add a new bond tier. Tier IDs are assigned sequentially starting from 1.
-    /// @param curveMultiplierInc  Curve multiplier increment above MAX_BP (must be <= MAX_CURVE_MULTIPLIER_INC).
-    /// @param weightMultiplierInc Weight multiplier increment above MAX_BP (must be <= MAX_WEIGHT_MULTIPLIER_INC).
+    /// @param curveMultiplier  Curve multiplier increment above MAX_BP (must be <= MAX_CURVE_MULTIPLIER).
+    /// @param weightMultiplier Weight multiplier increment above MAX_BP (must be <= MAX_WEIGHT_MULTIPLIER).
     /// @return tierId ID of the newly created tier.
-    function addTier(uint256 curveMultiplierInc, uint256 weightMultiplierInc) external returns (uint256 tierId);
+    function addTier(uint256 curveMultiplier, uint256 weightMultiplier) external returns (uint256 tierId);
 
     /// @notice Select a bond tier for the Node Operator. An upgrade (target effective curve multiplier above the
     ///         operator's current one) applies both multipliers at once and requires the bond to cover the new
@@ -85,8 +86,8 @@ interface IAdditionalBondRegistry {
     /// @notice Number of stored tiers (not counting the implicit default tier 0).
     function getTiersCount() external view returns (uint256);
 
-    /// @notice Static parameters of a tier definition, as increments above MAX_BP.
-    /// @dev Do not use this to read an operator's effective bond multiplier — use `getOperatorTierState`.
+    /// @notice Effective multipliers of a tier as full basis-point values (tier 0 = MAX_BP, no scaling).
+    /// @dev For an operator's CURRENT curve multiplier (which may lag during a downgrade cooldown) use `getOperatorTierState`.
     function getTierInfo(uint256 tierId) external view returns (TierInfo memory);
 
     /// @notice Full effective tier-related state of a Node Operator.

@@ -7,16 +7,16 @@ import { MAX_BP } from "src/lib/Constants.sol";
 import { OperatorTierState } from "src/interfaces/IAdditionalBondRegistry.sol";
 
 /// @dev Minimal AdditionalBondRegistry mock for MetaRegistry tests.
-///      Stores weight multiplier increments above MAX_BP, mirroring AdditionalBondRegistry storage.
-///      Effective weightMultiplier = MAX_BP + increment (0 increment = identity = MAX_BP).
+///      Stores the weight multiplier increment above MAX_BP, mirroring AdditionalBondRegistry storage;
+///      getOperatorTierState returns the effective value MAX_BP + increment (0 = identity = MAX_BP).
 contract AdditionalBondRegistryMock {
-    mapping(uint256 => uint256) private _weightMultiplierInc;
+    mapping(uint256 => uint256) private _weightMultiplier;
 
     function getOperatorTierState(uint256 nodeOperatorId) external view returns (OperatorTierState memory state) {
-        state.weightMultiplier = MAX_BP + _weightMultiplierInc[nodeOperatorId];
+        state.weightMultiplier = MAX_BP + _weightMultiplier[nodeOperatorId];
     }
 
-    function mock_setWeightMultiplierInc(uint256 nodeOperatorId, uint256 increment) external {
-        _weightMultiplierInc[nodeOperatorId] = increment;
+    function mock_setWeightMultiplier(uint256 nodeOperatorId, uint256 weightMultiplier) external {
+        _weightMultiplier[nodeOperatorId] = weightMultiplier;
     }
 }

@@ -24,8 +24,8 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
     }
 
     // NOTE: Sanity guard for tier creation: effective multiplier <= 10x the default multiplier.
-    uint256 public constant MAX_CURVE_MULTIPLIER_INC = 9 * MAX_BP;
-    uint256 public constant MAX_WEIGHT_MULTIPLIER_INC = 9 * MAX_BP;
+    uint256 public constant MAX_CURVE_MULTIPLIER = 9 * MAX_BP;
+    uint256 public constant MAX_WEIGHT_MULTIPLIER = 9 * MAX_BP;
 
     ICuratedModule public immutable MODULE;
     IAccounting public immutable ACCOUNTING;
@@ -56,18 +56,18 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
 
     /// @inheritdoc IAdditionalBondRegistry
     function addTier(
-        uint256 curveMultiplierInc,
-        uint256 weightMultiplierInc
+        uint256 curveMultiplier,
+        uint256 weightMultiplier
     ) external onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256 tierId) {
-        if (curveMultiplierInc > MAX_CURVE_MULTIPLIER_INC) revert InvalidCurveMultiplier();
-        if (weightMultiplierInc > MAX_WEIGHT_MULTIPLIER_INC) revert InvalidWeightMultiplier();
+        if (curveMultiplier > MAX_CURVE_MULTIPLIER) revert InvalidCurveMultiplier();
+        if (weightMultiplier > MAX_WEIGHT_MULTIPLIER) revert InvalidWeightMultiplier();
         AdditionalBondRegistryStorage storage $ = _storage();
         tierId = ++$.tiersCount;
         $.tiers[tierId] = TierInfo({
-            curveMultiplierInc: uint128(curveMultiplierInc),
-            weightMultiplierInc: uint128(weightMultiplierInc)
+            curveMultiplier: uint128(curveMultiplier),
+            weightMultiplier: uint128(weightMultiplier)
         });
-        emit TierAdded(tierId, curveMultiplierInc, weightMultiplierInc);
+        emit TierAdded(tierId, curveMultiplier, weightMultiplier);
     }
 
     /// @inheritdoc IAdditionalBondRegistry
@@ -78,7 +78,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
         if (tierId > $.tiersCount) revert InvalidTierId();
         if (tierId == $.operatorTier[nodeOperatorId]) revert SameTier();
 
-        uint256 newMulInc = getTierInfo(tierId).curveMultiplierInc;
+        uint256 newMulInc = $.tiers[tierId].curveMultiplier;
         uint256 newMul = MAX_BP + newMulInc;
         if (newMul > ACCOUNTING.getBondCurveMultiplier(nodeOperatorId)) {
             // NOTE: Takes into account current bond amount and keys count.
@@ -110,10 +110,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
 
         _removeCurveMultiplierCooldown(nodeOperatorId);
 
-        ACCOUNTING.setBondCurveMultiplier(
-            nodeOperatorId,
-            getTierInfo($.operatorTier[nodeOperatorId]).curveMultiplierInc
-        );
+        ACCOUNTING.setBondCurveMultiplier(nodeOperatorId, $.tiers[$.operatorTier[nodeOperatorId]].curveMultiplier);
     }
 
     /// @inheritdoc IAdditionalBondRegistry
@@ -126,7 +123,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
         AdditionalBondRegistryStorage storage $ = _storage();
         state.tierId = $.operatorTier[nodeOperatorId];
         state.curveMultiplierCooldownUntil = $.curveMultiplierCooldownUntil[nodeOperatorId];
-        state.weightMultiplier = MAX_BP + $.tiers[state.tierId].weightMultiplierInc;
+        state.weightMultiplier = MAX_BP + $.tiers[state.tierId].weightMultiplier;
         state.curveMultiplier = ACCOUNTING.getBondCurveMultiplier(nodeOperatorId);
     }
 
@@ -134,8 +131,12 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
     function getTierInfo(uint256 tierId) public view returns (TierInfo memory) {
         AdditionalBondRegistryStorage storage $ = _storage();
         if (tierId > $.tiersCount) revert InvalidTierId();
-        if (tierId == 0) return TierInfo({ curveMultiplierInc: 0, weightMultiplierInc: 0 });
-        return $.tiers[tierId];
+        TierInfo storage t = $.tiers[tierId];
+        return
+            TierInfo({
+                curveMultiplier: uint128(MAX_BP + t.curveMultiplier),
+                weightMultiplier: uint128(MAX_BP + t.weightMultiplier)
+            });
     }
 
     /// @dev Sets the cooldown deadline to `block.timestamp + CURVE_MULTIPLIER_COOLDOWN`.
@@ -150,6 +151,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
         emit CurveMultiplierCooldownRemoved(nodeOperatorId);
     }
 
+    // TODO: Have the same in many places. Move to lib
     function _checkOperatorOwner(uint256 nodeOperatorId) internal view {
         if (msg.sender != MODULE.getNodeOperatorOwner(nodeOperatorId)) revert SenderIsNotOperatorOwner();
     }
