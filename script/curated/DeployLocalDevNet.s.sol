@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { DeployBase, CuratedGateConfig } from "./DeployBase.s.sol";
+import { DeployBase, CuratedGateConfig, AdditionalBondRegistryConfig } from "./DeployBase.s.sol";
 import { GIndices } from "../constants/GIndices.sol";
 import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
 import { HashConsensus } from "../../src/lib/base-oracle/HashConsensus.sol";
@@ -30,6 +30,7 @@ contract DeployLocalDevNet is DeployBase {
         config.gIFirstWithdrawal = GIndices.FIRST_WITHDRAWAL_ELECTRA;
         config.gIFirstValidator = GIndices.FIRST_VALIDATOR_ELECTRA;
         config.gIFirstHistoricalSummary = GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA; // prettier-ignore
+        config.gIFirstBalanceNode = GIndices.FIRST_BALANCE_NODE_ELECTRA;
         config.verifierFirstSupportedSlot = vm.envUint("DEVNET_ELECTRA_EPOCH") * config.slotsPerEpoch;
         config.capellaSlot = vm.envUint("DEVNET_CAPELLA_EPOCH") * config.slotsPerEpoch;
         config.minWithdrawalRatio = 9950;
@@ -185,6 +186,9 @@ contract DeployLocalDevNet is DeployBase {
         config.circuitBreakerPauser = address(0);
 
         config.secondAdminAddress = vm.envOr("CSM_SECOND_ADMIN_ADDRESS", address(0));
+
+        // CurveMultiplier
+        config.additionalBondRegistryConfig.curveMultiplierCooldown = 1 days;
 
         _setUp();
     }

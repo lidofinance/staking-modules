@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { DeployBase, CuratedGateConfig } from "./DeployBase.s.sol";
+import { DeployBase, CuratedGateConfig, AdditionalBondRegistryConfig } from "./DeployBase.s.sol";
 import { GIndices } from "../constants/GIndices.sol";
 
 contract DeployMainnet is DeployBase {
@@ -194,6 +194,10 @@ contract DeployMainnet is DeployBase {
 
         // DG
         config.resealManager = 0x7914b5a1539b97Bd0bbd155757F25FD79A522d24;
+
+        // CurveMultiplier
+        config.additionalBondRegistryConfig.curveMultiplierCooldown = 7 days;
+
         _setUp();
     }
 }

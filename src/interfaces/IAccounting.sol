@@ -48,6 +48,8 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
 
     function SET_BOND_CURVE_ROLE() external view returns (bytes32);
 
+    function SET_BOND_CURVE_MULTIPLIER_ROLE() external view returns (bytes32);
+
     function MODULE() external view returns (IBaseModule);
 
     function FEE_DISTRIBUTOR() external view returns (IFeeDistributor);
@@ -117,6 +119,17 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     /// @return Required bond amount in ETH
     function getRequiredBondForNextKeys(uint256 nodeOperatorId, uint256 additionalKeys) external view returns (uint256);
 
+    /// @notice Get the required bond in ETH (inc. missed and excess) at the given curve multiplier for the given Node Operator to upload new deposit data.
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @param additionalKeys Number of new keys to add
+    /// @param multiplier     Full curve multiplier in basis points (>= MAX_BP; MAX_BP = no scaling).
+    /// @return Required bond amount in ETH
+    function getRequiredBondForNextKeys(
+        uint256 nodeOperatorId,
+        uint256 additionalKeys,
+        uint256 multiplier
+    ) external view returns (uint256);
+
     /// @notice Get the bond amount in wstETH required for the `keysCount` keys for the given bond curve
     /// @param keysCount Keys count to calculate the required bond amount
     /// @param curveId Id of the curve to perform calculations against
@@ -130,6 +143,17 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     function getRequiredBondForNextKeysWstETH(
         uint256 nodeOperatorId,
         uint256 additionalKeys
+    ) external view returns (uint256);
+
+    /// @notice Get the required bond in wstETH (inc. missed and excess) at the given curve multiplier for the given Node Operator to upload new keys.
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @param additionalKeys Number of new keys to add
+    /// @param multiplier     Full curve multiplier in basis points (>= MAX_BP; MAX_BP = no scaling).
+    /// @return Required bond in wstETH
+    function getRequiredBondForNextKeysWstETH(
+        uint256 nodeOperatorId,
+        uint256 additionalKeys,
+        uint256 multiplier
     ) external view returns (uint256);
 
     /// @notice Get the number of the unbonded keys
@@ -318,6 +342,13 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     /// @param nodeOperatorId ID of the Node Operator
     /// @param curveId ID of the bond curve to set
     function setBondCurve(uint256 nodeOperatorId, uint256 curveId) external;
+
+    /// @notice Set the bond curve multiplier increment (above MAX_BP) for the given Node Operator.
+    ///         Pass 0 to reset to the default (no scaling).
+    /// @dev Triggers a deposit info update so key pointers stay consistent.
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @param multiplier Bond curve multiplier increment above MAX_BP in basis points (0 = no scaling)
+    function setBondCurveMultiplier(uint256 nodeOperatorId, uint256 multiplier) external;
 
     /// @notice Penalize bond by burning stETH shares of the given Node Operator
     /// @dev Penalty application has a priority over the locked bond.

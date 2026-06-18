@@ -17,6 +17,7 @@ import { Verifier } from "../../src/Verifier.sol";
 import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
 import { ExitPenalties } from "../../src/ExitPenalties.sol";
 import { MetaRegistry } from "../../src/MetaRegistry.sol";
+import { AdditionalBondRegistry } from "../../src/AdditionalBondRegistry.sol";
 import { CuratedGate } from "../../src/CuratedGate.sol";
 import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 
@@ -56,6 +57,10 @@ struct CuratedGateConfig {
     bytes32 treeRoot;
     string treeCid;
     GateCurveParams params;
+}
+
+struct AdditionalBondRegistryConfig {
+    uint256 curveMultiplierCooldown;
 }
 
 struct CuratedDeployParams {
@@ -121,6 +126,8 @@ struct CuratedDeployParams {
     address resealManager;
     // Testnet stuff
     address secondAdminAddress;
+    // AdditionalBondRegistry
+    AdditionalBondRegistryConfig additionalBondRegistryConfig;
 }
 
 abstract contract DeployBase is Script {
@@ -143,6 +150,7 @@ abstract contract DeployBase is Script {
     HashConsensus public hashConsensus;
     ParametersRegistry public parametersRegistry;
     MetaRegistry public metaRegistry;
+    AdditionalBondRegistry public additionalBondRegistry;
     MerkleGateFactory public curatedGateFactory;
     address[] public curatedGateInstances;
     address internal curatedGateImpl;
@@ -231,6 +239,7 @@ abstract contract DeployBase is Script {
             accounting = Accounting(_deployProxy(deployer, address(dummyImpl)));
             oracle = FeeOracle(_deployProxy(deployer, address(dummyImpl)));
             metaRegistry = MetaRegistry(_deployProxy(deployer, address(dummyImpl)));
+            additionalBondRegistry = AdditionalBondRegistry(_deployProxy(deployer, address(dummyImpl)));
 
             FeeDistributor feeDistributorImpl = new FeeDistributor({
                 stETH: locator.lido(),
@@ -309,7 +318,10 @@ abstract contract DeployBase is Script {
                 moduleProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
-            MetaRegistry metaRegistryImpl = new MetaRegistry(address(curatedModule));
+            MetaRegistry metaRegistryImpl = new MetaRegistry({
+                module: address(curatedModule),
+                additionalBondRegistry: address(additionalBondRegistry)
+            });
 
             {
                 OssifiableProxy metaRegistryProxy = OssifiableProxy(payable(address(metaRegistry)));
@@ -320,7 +332,22 @@ abstract contract DeployBase is Script {
                 metaRegistryProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
+            AdditionalBondRegistry additionalBondRegistryImpl = new AdditionalBondRegistry({
+                module: address(curatedModule),
+                curveMultiplierCooldown: config.additionalBondRegistryConfig.curveMultiplierCooldown
+            });
+
+            {
+                OssifiableProxy additionalBondRegistryProxy = OssifiableProxy(payable(address(additionalBondRegistry)));
+                additionalBondRegistryProxy.proxy__upgradeToAndCall(
+                    address(additionalBondRegistryImpl),
+                    abi.encodeCall(AdditionalBondRegistry.initialize, (deployer))
+                );
+                additionalBondRegistryProxy.proxy__changeAdmin(config.proxyAdmin);
+            }
+
             accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
+            accounting.grantRole(accounting.SET_BOND_CURVE_MULTIPLIER_ROLE(), address(additionalBondRegistry));
             metaRegistry.grantRole(metaRegistry.SET_BOND_CURVE_WEIGHT_ROLE(), deployer);
 
             for (uint256 i = 0; i < gatesCount; i++) {
@@ -520,6 +547,9 @@ abstract contract DeployBase is Script {
             metaRegistry.grantRole(metaRegistry.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             metaRegistry.revokeRole(metaRegistry.DEFAULT_ADMIN_ROLE(), deployer);
 
+            additionalBondRegistry.grantRole(additionalBondRegistry.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
+            additionalBondRegistry.revokeRole(additionalBondRegistry.DEFAULT_ADMIN_ROLE(), deployer);
+
             verifier.grantRole(verifier.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             verifier.revokeRole(verifier.DEFAULT_ADMIN_ROLE(), deployer);
 
@@ -544,6 +574,8 @@ abstract contract DeployBase is Script {
             deployJson.set("CuratedModuleImpl", address(curatedModuleImpl));
             deployJson.set("MetaRegistry", address(metaRegistry));
             deployJson.set("MetaRegistryImpl", address(metaRegistryImpl));
+            deployJson.set("AdditionalBondRegistry", address(additionalBondRegistry));
+            deployJson.set("AdditionalBondRegistryImpl", address(additionalBondRegistryImpl));
             deployJson.set("ParametersRegistry", address(parametersRegistry));
             deployJson.set("ParametersRegistryImpl", address(parametersRegistryImpl));
             deployJson.set("Accounting", address(accounting));
@@ -639,6 +671,7 @@ abstract contract DeployBase is Script {
         hashConsensus.grantRole(hashConsensus.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         parametersRegistry.grantRole(parametersRegistry.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         metaRegistry.grantRole(metaRegistry.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        additionalBondRegistry.grantRole(additionalBondRegistry.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         for (uint256 i = 0; i < curatedGateInstances.length; i++) {
             CuratedGate gate = CuratedGate(curatedGateInstances[i]);
             gate.grantRole(gate.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);

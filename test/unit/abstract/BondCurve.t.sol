@@ -535,21 +535,95 @@ contract BondCurveTest is Test {
     }
 }
 
+contract BondCurveScaledTest is BondCurveTest {
+    uint256 internal constant MAX_BP = 10_000;
+    uint256 internal constant MUL_1_5X = 15_000;
+
+    function test_getBondAmountByKeysCount_withMultiplier_IdentityAtMaxBP() public view {
+        assertEq(bondCurve.getBondAmountByKeysCount(0, 0, MAX_BP), bondCurve.getBondAmountByKeysCount(0, 0));
+        assertEq(bondCurve.getBondAmountByKeysCount(1, 0, MAX_BP), bondCurve.getBondAmountByKeysCount(1, 0));
+        assertEq(bondCurve.getBondAmountByKeysCount(2, 0, MAX_BP), bondCurve.getBondAmountByKeysCount(2, 0));
+        assertEq(bondCurve.getBondAmountByKeysCount(3, 0, MAX_BP), bondCurve.getBondAmountByKeysCount(3, 0));
+        assertEq(bondCurve.getBondAmountByKeysCount(4, 0, MAX_BP), bondCurve.getBondAmountByKeysCount(4, 0));
+    }
+
+    function test_getBondAmountByKeysCount_withMultiplier() public view {
+        assertEq(bondCurve.getBondAmountByKeysCount(0, 0, MUL_1_5X), 0);
+        assertEq(bondCurve.getBondAmountByKeysCount(1, 0, MUL_1_5X), 3 ether);
+        assertEq(bondCurve.getBondAmountByKeysCount(2, 0, MUL_1_5X), 6 ether);
+        assertEq(bondCurve.getBondAmountByKeysCount(3, 0, MUL_1_5X), 7.5 ether);
+        assertEq(bondCurve.getBondAmountByKeysCount(4, 0, MUL_1_5X), 9 ether);
+    }
+
+    function test_getKeysCountByBondAmount_withMultiplier_IdentityAtMaxBP() public view {
+        assertEq(bondCurve.getKeysCountByBondAmount(0, 0, MAX_BP), bondCurve.getKeysCountByBondAmount(0, 0));
+        assertEq(
+            bondCurve.getKeysCountByBondAmount(2 ether, 0, MAX_BP),
+            bondCurve.getKeysCountByBondAmount(2 ether, 0)
+        );
+        assertEq(
+            bondCurve.getKeysCountByBondAmount(4 ether, 0, MAX_BP),
+            bondCurve.getKeysCountByBondAmount(4 ether, 0)
+        );
+        assertEq(
+            bondCurve.getKeysCountByBondAmount(5 ether, 0, MAX_BP),
+            bondCurve.getKeysCountByBondAmount(5 ether, 0)
+        );
+        assertEq(
+            bondCurve.getKeysCountByBondAmount(6 ether, 0, MAX_BP),
+            bondCurve.getKeysCountByBondAmount(6 ether, 0)
+        );
+    }
+
+    function test_getKeysCountByBondAmount_withMultiplier() public view {
+        assertEq(bondCurve.getKeysCountByBondAmount(0, 0, MUL_1_5X), 0);
+        assertEq(bondCurve.getKeysCountByBondAmount(2.9 ether, 0, MUL_1_5X), 0);
+        assertEq(bondCurve.getKeysCountByBondAmount(3 ether, 0, MUL_1_5X), 1);
+        assertEq(bondCurve.getKeysCountByBondAmount(6 ether, 0, MUL_1_5X), 2);
+        assertEq(bondCurve.getKeysCountByBondAmount(7.5 ether, 0, MUL_1_5X), 3);
+        assertEq(bondCurve.getKeysCountByBondAmount(9 ether, 0, MUL_1_5X), 4);
+    }
+
+    function test_viceVersa_withMultiplier() public view {
+        for (uint256 k = 0; k < 100; ++k) {
+            uint256 bond = bondCurve.getBondAmountByKeysCount(k, 0, MUL_1_5X);
+            assertEq(bondCurve.getKeysCountByBondAmount(bond, 0, MUL_1_5X), k);
+        }
+        for (uint256 bond = 0; bond < 33 ether; bond += 1.5 ether) {
+            uint256 keys = bondCurve.getKeysCountByBondAmount(bond, 0, MUL_1_5X);
+            assertGe(bond, bondCurve.getBondAmountByKeysCount(keys, 0, MUL_1_5X));
+        }
+    }
+
+    function test_getBondAmountByKeysCount_RevertWhen_MultiplierBelowMaxBP() public {
+        vm.expectRevert(IBondCurve.InvalidMultiplier.selector);
+        bondCurve.getBondAmountByKeysCount(1, 0, MAX_BP - 1);
+    }
+
+    function test_getKeysCountByBondAmount_RevertWhen_MultiplierBelowMaxBP() public {
+        vm.expectRevert(IBondCurve.InvalidMultiplier.selector);
+        bondCurve.getKeysCountByBondAmount(2 ether, 0, MAX_BP - 1);
+    }
+}
+
 contract BondCurveFuzz is Test {
     BondCurveTestable public bondCurve;
 
     uint256 public constant MAX_BOND_CURVE_INTERVALS_COUNT = 100;
     uint256 public constant MAX_FROM_KEYS_COUNT_VALUE = 10000;
     uint256 public constant MAX_TREND_VALUE = 1000 ether;
+    uint256 public constant MAX_BP = 10_000;
+    uint256 public constant MAX_MULTIPLIER = 100_000_000;
 
     function testFuzz_keysAndBondValues(
         uint256[] memory minKeysCount,
         uint256[] memory trend,
         uint256 keysToCheck,
-        uint256 bondToCheck
+        uint256 bondToCheck,
+        uint256 offset
     ) public {
         uint256[2][] memory _bondCurve;
-        (_bondCurve, keysToCheck, bondToCheck) = prepareInputs(minKeysCount, trend, keysToCheck, bondToCheck);
+        (_bondCurve, keysToCheck, bondToCheck) = prepareInputs(minKeysCount, trend, keysToCheck, bondToCheck, offset);
         bondCurve = new BondCurveTestable();
         IBondCurve.BondCurveIntervalInput[] memory bondCurveInput = new IBondCurve.BondCurveIntervalInput[](
             _bondCurve.length
@@ -578,6 +652,102 @@ contract BondCurveFuzz is Test {
         // Check that values are the same in both directions
         uint256 keysMinBondAmount = bondCurve.getKeysCountByBondAmount(bondAmount, 0);
         assertEq(keysMinBondAmount, keysToCheck, "keysMinBondAmount != keysToCheck");
+    }
+
+    function testFuzz_onTheFlyMultiplierEqualsMultipliedCurve(
+        uint256[] memory minKeysCount,
+        uint256[] memory trend,
+        uint256 keysToCheck,
+        uint256 bondToCheck,
+        uint256 multiplier,
+        uint256 offset
+    ) public {
+        vm.assume(multiplier >= MAX_BP && multiplier <= MAX_MULTIPLIER);
+        uint256[2][] memory _bondCurve;
+        (_bondCurve, keysToCheck, bondToCheck) = prepareInputs(minKeysCount, trend, keysToCheck, bondToCheck, offset);
+
+        bondCurve = new BondCurveTestable();
+
+        IBondCurve.BondCurveIntervalInput[] memory refInput = new IBondCurve.BondCurveIntervalInput[](
+            _bondCurve.length
+        );
+        for (uint256 i = 0; i < _bondCurve.length; ++i) {
+            refInput[i] = IBondCurve.BondCurveIntervalInput(_bondCurve[i][0], _bondCurve[i][1]);
+        }
+        bondCurve.initialize(refInput);
+
+        IBondCurve.BondCurveIntervalInput[] memory mulInput = new IBondCurve.BondCurveIntervalInput[](
+            _bondCurve.length
+        );
+        for (uint256 i = 0; i < _bondCurve.length; ++i) {
+            mulInput[i] = IBondCurve.BondCurveIntervalInput(_bondCurve[i][0], (_bondCurve[i][1] * multiplier) / MAX_BP);
+        }
+        uint256 mulId = bondCurve.addBondCurve(mulInput);
+
+        assertEq(
+            bondCurve.getBondAmountByKeysCount(keysToCheck, 0, multiplier),
+            bondCurve.getBondAmountByKeysCount(keysToCheck, mulId)
+        );
+        assertEq(
+            bondCurve.getKeysCountByBondAmount(bondToCheck, 0, multiplier),
+            bondCurve.getKeysCountByBondAmount(bondToCheck, mulId)
+        );
+    }
+
+    function testFuzz_onTheFlyMultiplierEqualsMultipliedCurve_withPresetCurve(
+        uint256 multiplier,
+        uint256 bondStep
+    ) public {
+        vm.assume(multiplier >= MAX_BP && multiplier <= MAX_MULTIPLIER);
+        vm.assume(bondStep > 1 ether && bondStep < 10 ether);
+
+        uint256[2][] memory _bondCurve = new uint256[2][](5);
+        _bondCurve[0][0] = 1;
+        _bondCurve[0][1] = 1 ether;
+
+        _bondCurve[1][0] = 10;
+        _bondCurve[1][1] = 0.5 ether;
+
+        _bondCurve[2][0] = 35;
+        _bondCurve[2][1] = 3.2 ether;
+
+        _bondCurve[3][0] = 50;
+        _bondCurve[3][1] = 0.001 ether;
+
+        _bondCurve[4][0] = 100;
+        _bondCurve[4][1] = 10.1000000000001 ether;
+
+        bondCurve = new BondCurveTestable();
+
+        IBondCurve.BondCurveIntervalInput[] memory refInput = new IBondCurve.BondCurveIntervalInput[](
+            _bondCurve.length
+        );
+        for (uint256 i = 0; i < _bondCurve.length; ++i) {
+            refInput[i] = IBondCurve.BondCurveIntervalInput(_bondCurve[i][0], _bondCurve[i][1]);
+        }
+        bondCurve.initialize(refInput);
+
+        IBondCurve.BondCurveIntervalInput[] memory mulInput = new IBondCurve.BondCurveIntervalInput[](
+            _bondCurve.length
+        );
+        for (uint256 i = 0; i < _bondCurve.length; ++i) {
+            mulInput[i] = IBondCurve.BondCurveIntervalInput(_bondCurve[i][0], (_bondCurve[i][1] * multiplier) / MAX_BP);
+        }
+        uint256 mulId = bondCurve.addBondCurve(mulInput);
+
+        for (uint256 keysToCheck = 0; keysToCheck < 150; keysToCheck++) {
+            assertEq(
+                bondCurve.getBondAmountByKeysCount(keysToCheck, 0, multiplier),
+                bondCurve.getBondAmountByKeysCount(keysToCheck, mulId)
+            );
+        }
+
+        for (uint256 bondToCheck = 0; bondToCheck < bondStep * 100; bondToCheck += bondStep) {
+            assertEq(
+                bondCurve.getKeysCountByBondAmount(bondToCheck, 0, multiplier),
+                bondCurve.getKeysCountByBondAmount(bondToCheck, mulId)
+            );
+        }
     }
 
     /// NOTE: Ugly, ineffective version of binary search algorithm from the contract.
@@ -646,48 +816,58 @@ contract BondCurveFuzz is Test {
         uint256[] memory minKeysCount,
         uint256[] memory trend,
         uint256 keysToCheck,
-        uint256 bondToCheck
+        uint256 bondToCheck,
+        uint256 offset
     ) public pure returns (uint256[2][] memory, uint256, uint256) {
         vm.assume(minKeysCount.length > 0);
+        vm.assume(minKeysCount.length < MAX_BOND_CURVE_INTERVALS_COUNT);
         vm.assume(trend.length > 0);
+        vm.assume(trend.length < MAX_BOND_CURVE_INTERVALS_COUNT);
+        offset = bound(offset, 1, 10);
 
         // Assume: intervals.length > 0
-        uint256 intervalsCount = Math.max(
-            1,
-            Math.min(minKeysCount.length, trend.length) % MAX_BOND_CURVE_INTERVALS_COUNT
-        );
-        for (uint256 i = 0; i < intervalsCount; ++i) {
-            // Assume: minKeysCount[i] > 0
-            minKeysCount[i] = Math.max(1, minKeysCount[i] % MAX_FROM_KEYS_COUNT_VALUE);
-            // Assume: trend[i] > 0
-            trend[i] = Math.max(1 wei, trend[i] % MAX_TREND_VALUE);
-        }
+        uint256 intervalsCount = Math.min(minKeysCount.length, trend.length);
+
         assembly ("memory-safe") {
             // Shrink `minKeysCount` and `trend` arrays to `intervalsCount`
             mstore(minKeysCount, intervalsCount)
             mstore(trend, intervalsCount)
         }
 
+        assertEq(minKeysCount.length, trend.length);
+
+        for (uint256 i = 0; i < intervalsCount; ++i) {
+            // Assume: minKeysCount[i] > 0
+            minKeysCount[i] = Math.max(1, minKeysCount[i] % MAX_FROM_KEYS_COUNT_VALUE);
+            // Assume: trend[i] > 0
+            trend[i] = Math.max(1 wei, trend[i] % MAX_TREND_VALUE);
+        }
+
         // Assume: minKeysCount[i] < minKeysCount[i + 1]
         Arrays.sort(minKeysCount);
+        // Assume: first interval starts from "1" keys count
+        minKeysCount[0] = 1;
         for (uint256 j = 0; j < minKeysCount.length - 1; j++) {
             if (minKeysCount[j] >= minKeysCount[j + 1]) {
                 // Make it different because we need to have unique values
-                minKeysCount[j + 1] = minKeysCount[j] + 1;
+                minKeysCount[j + 1] = minKeysCount[j] + offset;
             }
         }
-        // Assume: first interval starts from "1" keys count
-        minKeysCount[0] = 1;
 
-        assertEq(minKeysCount.length, trend.length);
+        // Assume: minKeysCount sorted and unique
+        for (uint256 j = 0; j < minKeysCount.length - 1; j++) {
+            assertLt(minKeysCount[j], minKeysCount[j + 1]);
+        }
 
         // Dev: zip `minKeysCount` and `trend` arrays to `uint256[2][] intervals`
         uint256[2][] memory _bondCurve = new uint256[2][](minKeysCount.length);
         for (uint256 i = 0; i < intervalsCount; ++i) {
             _bondCurve[i] = [minKeysCount[i], trend[i]];
         }
-        keysToCheck = bound(keysToCheck, 1, MAX_FROM_KEYS_COUNT_VALUE);
+
+        keysToCheck = bound(keysToCheck, 1, minKeysCount[intervalsCount - 1] + offset);
         bondToCheck = bound(bondToCheck, trend[0], type(uint256).max);
+
         return (_bondCurve, keysToCheck, bondToCheck);
     }
 }

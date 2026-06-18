@@ -8,6 +8,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { BondCurvesLib } from "../lib/BondCurvesLib.sol";
 
 import { IBondCurve } from "../interfaces/IBondCurve.sol";
+import { MAX_BP } from "../lib/Constants.sol";
 
 /// @dev Bond curve mechanics abstract contract
 ///
@@ -35,6 +36,8 @@ abstract contract BondCurve is IBondCurve, Initializable {
         /// @dev Mapping of Node Operator id to bond curve id
         mapping(uint256 nodeOperatorId => uint256 bondCurveId) operatorBondCurveId;
         BondCurveData[] bondCurves;
+        /// @dev Node Operator id to bond curve multiplier increment above MAX_BP (0 = no scaling)
+        mapping(uint256 nodeOperatorId => uint256 multiplier) operatorBondCurveMultiplier;
     }
 
     // keccak256(abi.encode(uint256(keccak256("CSBondCurve")) - 1)) & ~bytes32(uint256(0xff))
@@ -64,13 +67,32 @@ abstract contract BondCurve is IBondCurve, Initializable {
     }
 
     /// @inheritdoc IBondCurve
+    function getBondCurveMultiplier(uint256 nodeOperatorId) public view returns (uint256) {
+        return MAX_BP + _getBondCurveStorage().operatorBondCurveMultiplier[nodeOperatorId];
+    }
+
+    /// @inheritdoc IBondCurve
     function getBondAmountByKeysCount(uint256 keys, uint256 curveId) public view returns (uint256) {
-        return BondCurvesLib.getBondAmountByKeysCount(_getBondCurveStorage(), keys, curveId);
+        return BondCurvesLib.getBondAmountByKeysCount(_getBondCurveStorage(), keys, curveId, MAX_BP);
+    }
+
+    /// @inheritdoc IBondCurve
+    function getBondAmountByKeysCount(uint256 keys, uint256 curveId, uint256 multiplier) public view returns (uint256) {
+        return BondCurvesLib.getBondAmountByKeysCount(_getBondCurveStorage(), keys, curveId, multiplier);
     }
 
     /// @inheritdoc IBondCurve
     function getKeysCountByBondAmount(uint256 amount, uint256 curveId) public view returns (uint256) {
-        return BondCurvesLib.getKeysCountByBondAmount(_getBondCurveStorage(), amount, curveId);
+        return BondCurvesLib.getKeysCountByBondAmount(_getBondCurveStorage(), amount, curveId, MAX_BP);
+    }
+
+    /// @inheritdoc IBondCurve
+    function getKeysCountByBondAmount(
+        uint256 amount,
+        uint256 curveId,
+        uint256 multiplier
+    ) public view returns (uint256) {
+        return BondCurvesLib.getKeysCountByBondAmount(_getBondCurveStorage(), amount, curveId, multiplier);
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -99,6 +121,12 @@ abstract contract BondCurve is IBondCurve, Initializable {
         if ($.operatorBondCurveId[nodeOperatorId] == curveId) revert SameBondCurveId();
         $.operatorBondCurveId[nodeOperatorId] = curveId;
         emit BondCurveSet(nodeOperatorId, curveId, msg.sender);
+    }
+
+    /// @dev Stores the bond curve multiplier increment above MAX_BP (0 = no scaling).
+    function _setBondCurveMultiplier(uint256 nodeOperatorId, uint256 multiplier) internal {
+        _getBondCurveStorage().operatorBondCurveMultiplier[nodeOperatorId] = multiplier;
+        emit BondCurveMultiplierSet(nodeOperatorId, multiplier, msg.sender);
     }
 
     function _getCurveInfo(uint256 curveId) private view returns (BondCurveData storage) {

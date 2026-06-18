@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { DeployBase, CuratedGateConfig } from "./DeployBase.s.sol";
+import { DeployBase, CuratedGateConfig, AdditionalBondRegistryConfig } from "./DeployBase.s.sol";
 import { GIndices } from "../constants/GIndices.sol";
 
 contract DeployHoodi is DeployBase {
@@ -198,6 +198,10 @@ contract DeployHoodi is DeployBase {
         config.resealManager = 0x05172CbCDb7307228F781436b327679e4DAE166B;
 
         config.secondAdminAddress = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
+
+        // CurveMultiplier
+        config.additionalBondRegistryConfig.curveMultiplierCooldown = 7 days;
+
         _setUp();
     }
 }

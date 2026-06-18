@@ -15,9 +15,11 @@ import { IBaseModule } from "./interfaces/IBaseModule.sol";
 import { IStakingModule } from "./interfaces/IStakingModule.sol";
 import { IStakingRouter } from "./interfaces/IStakingRouter.sol";
 import { IMetaRegistry, OperatorMetadata } from "./interfaces/IMetaRegistry.sol";
+import { IAdditionalBondRegistry } from "./interfaces/IAdditionalBondRegistry.sol";
 import { ExternalOperatorLib, OperatorType } from "./lib/ExternalOperatorLib.sol";
+import { MAX_BP } from "./lib/Constants.sol";
 
-/// @notice Stores meta-operator group definitions for the curated module.
+/// @notice Stores meta-operator group definitions and weight composition for the curated module.
 contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUpgradeable {
     using ExternalOperatorLib for ExternalOperator;
 
@@ -61,8 +63,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     ICuratedModule public immutable MODULE;
     IAccounting public immutable ACCOUNTING;
     IStakingRouter public immutable STAKING_ROUTER;
+    IAdditionalBondRegistry public immutable ADDITIONAL_BOND_REGISTRY;
 
-    uint256 internal constant MAX_BP = 10000;
     uint256 internal constant EXTERNAL_STAKE_PER_VALIDATOR = 32 ether;
     uint256 internal constant MAX_NAME_LENGTH = 256;
     uint256 internal constant MAX_DESCRIPTION_LENGTH = 1024;
@@ -71,12 +73,15 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     bytes32 private constant META_REGISTRY_STORAGE_LOCATION =
         0xa7ec41e1a061c67796a04fcd9cc7cab9545b0a750beebc54139d9ed9d2251c00;
 
-    constructor(address module) {
+    /// @param module       CuratedModule proxy address.
+    /// @param additionalBondRegistry AdditionalBondRegistry proxy address.
+    constructor(address module, address additionalBondRegistry) {
         if (module == address(0)) revert ZeroModuleAddress();
 
         MODULE = ICuratedModule(module);
         ACCOUNTING = IAccounting(MODULE.ACCOUNTING());
         STAKING_ROUTER = IStakingRouter(MODULE.LIDO_LOCATOR().stakingRouter());
+        ADDITIONAL_BOND_REGISTRY = IAdditionalBondRegistry(additionalBondRegistry);
 
         _disableInitializers();
     }
@@ -402,13 +407,12 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     }
 
     function _getLatestEffectiveWeight(uint256 nodeOperatorId, uint256 share) internal view returns (uint256) {
-        uint256 baseWeight = _getOperatorBaseWeight(nodeOperatorId);
+        uint256 baseWeight = _storage().bondCurveWeight[ACCOUNTING.getBondCurveId(nodeOperatorId)];
         if (baseWeight == 0 || share == 0) return 0;
-        return Math.mulDiv(baseWeight, share, MAX_BP);
-    }
-
-    function _getOperatorBaseWeight(uint256 nodeOperatorId) internal view returns (uint256) {
-        return _storage().bondCurveWeight[ACCOUNTING.getBondCurveId(nodeOperatorId)];
+        uint256 weighted = Math.mulDiv(baseWeight, share, MAX_BP);
+        uint256 weightMul = ADDITIONAL_BOND_REGISTRY.getOperatorTierState(nodeOperatorId).weightMultiplier;
+        if (weightMul == MAX_BP) return weighted;
+        return Math.mulDiv(weighted, weightMul, MAX_BP);
     }
 
     /// @dev Returns the cached module address. Reverts if the address was
