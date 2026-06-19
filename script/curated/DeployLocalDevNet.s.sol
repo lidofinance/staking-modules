@@ -51,7 +51,7 @@ contract DeployLocalDevNet is DeployBase {
         // ParametersRegistry
         config.defaultKeyRemovalCharge = 0;
         config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
-        config.defaultKeysLimit = 80;
+        config.defaultKeysLimit = 100;
         config.defaultAvgPerfLeewayBP = 10000;
         config.defaultRewardShareBP = 6250; // 62.5% of 4% = 2.5% of the total
         config.defaultStrikesLifetimeFrames = 6;
@@ -75,7 +75,8 @@ contract DeployLocalDevNet is DeployBase {
             gate.name = "Professional Operator Gate";
             gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
             gate.treeCid = "TODO: ipfs-cid-cohort-a";
-            gate.params.metaRegistryBondCurveWeight = _m(70000);
+            gate.params.metaRegistryBondCurveWeight = _m(50000);
+            gate.params.keysLimit = _m(80);
         }
 
         // Professional Trusted Operator Gate
