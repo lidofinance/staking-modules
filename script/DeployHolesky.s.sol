@@ -139,11 +139,10 @@ contract DeployHolesky is DeployBase {
         config
             .identifiedCommunityStakersGateMaxWithdrawalRequestFee = 0.1 ether;
 
-        // GateSeal
-        config.gateSealFactory = 0x1134F7077055b0B3559BE52AfeF9aA22A0E1eEC2;
-        config.sealingCommittee = 0xc4DAB3a3ef68C6DFd8614a870D64D475bA44F164; // Dev team EOA
-        config.sealDuration = 6 days;
-        config.sealExpiryTimestamp = block.timestamp + 365 days;
+        // CircuitBreaker
+        config.circuitBreaker = address(0x63697263756974627265616b6572); // TODO: Set real CircuitBreaker address
+        config
+            .circuitBreakerPauser = 0xc4DAB3a3ef68C6DFd8614a870D64D475bA44F164; // Dev team EOA
 
         // DG
         config.resealManager = 0x9dE2273f9f1e81145171CcA927EFeE7aCC64c9fb;

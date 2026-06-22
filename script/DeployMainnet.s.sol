@@ -120,11 +120,10 @@ contract DeployMainnet is DeployBase {
         config
             .identifiedCommunityStakersGateMaxWithdrawalRequestFee = 0.1 ether;
 
-        // GateSeal
-        config.gateSealFactory = 0x6C82877cAC5a7A739f16Ca0A89c0A328B8764A24;
-        config.sealingCommittee = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
-        config.sealDuration = 11 days;
-        config.sealExpiryTimestamp = block.timestamp + 365 days;
+        // CircuitBreaker
+        config.circuitBreaker = 0x6019CB557978296BA3C08a7B73225C0975DFB2F7;
+        config
+            .circuitBreakerPauser = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
 
         // DG
         config.resealManager = 0x7914b5a1539b97Bd0bbd155757F25FD79A522d24;

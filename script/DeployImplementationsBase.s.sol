@@ -31,7 +31,7 @@ import { Slot } from "../src/lib/Types.sol";
 import { DeployBase } from "./DeployBase.s.sol";
 
 abstract contract DeployImplementationsBase is DeployBase {
-    address public gateSealV2;
+    address public legacyGateSeal;
     CSVerifier public verifierV2;
     address public earlyAdoption;
 
@@ -246,15 +246,6 @@ abstract contract DeployImplementationsBase is DeployBase {
                 admin: deployer
             });
 
-            address[] memory sealables = new address[](6);
-            sealables[0] = address(csm);
-            sealables[1] = address(accounting);
-            sealables[2] = address(oracle);
-            sealables[3] = address(verifierV2);
-            sealables[4] = address(vettedGate);
-            sealables[5] = address(ejector);
-            gateSealV2 = _deployGateSeal(sealables);
-
             if (config.secondAdminAddress != address(0)) {
                 if (config.secondAdminAddress == deployer) {
                     revert InvalidSecondAdmin();
@@ -275,11 +266,15 @@ abstract contract DeployImplementationsBase is DeployBase {
             ejector.grantRole(ejector.PAUSE_ROLE(), config.resealManager);
             ejector.grantRole(ejector.RESUME_ROLE(), config.resealManager);
 
-            ejector.grantRole(ejector.PAUSE_ROLE(), gateSealV2);
+            if (circuitBreaker != address(0)) {
+                ejector.grantRole(ejector.PAUSE_ROLE(), circuitBreaker);
+            }
             ejector.grantRole(ejector.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             ejector.revokeRole(ejector.DEFAULT_ADMIN_ROLE(), deployer);
 
-            vettedGate.grantRole(vettedGate.PAUSE_ROLE(), gateSealV2);
+            if (circuitBreaker != address(0)) {
+                vettedGate.grantRole(vettedGate.PAUSE_ROLE(), circuitBreaker);
+            }
             vettedGate.grantRole(
                 vettedGate.DEFAULT_ADMIN_ROLE(),
                 config.aragonAgent
@@ -307,7 +302,9 @@ abstract contract DeployImplementationsBase is DeployBase {
                 deployer
             );
 
-            verifierV2.grantRole(verifierV2.PAUSE_ROLE(), gateSealV2);
+            if (circuitBreaker != address(0)) {
+                verifierV2.grantRole(verifierV2.PAUSE_ROLE(), circuitBreaker);
+            }
             verifierV2.grantRole(
                 verifierV2.DEFAULT_ADMIN_ROLE(),
                 config.aragonAgent
@@ -354,8 +351,8 @@ abstract contract DeployImplementationsBase is DeployBase {
             deployJson.set("VettedGate", address(vettedGate));
             deployJson.set("VettedGateImpl", address(vettedGateImpl));
             deployJson.set("LidoLocator", config.lidoLocatorAddress);
-            deployJson.set("GateSeal", gateSeal);
-            deployJson.set("GateSealV2", gateSealV2);
+            deployJson.set("GateSeal", legacyGateSeal);
+            deployJson.set("CircuitBreaker", circuitBreaker);
             deployJson.set("DeployParams", abi.encode(config));
             deployJson.set("git-ref", gitRef);
             vm.writeJson(

@@ -56,14 +56,9 @@ contract CSModuleInvariants is InvariantsBase {
             "default admin address"
         );
 
-        assertEq(csm.getRoleMemberCount(csm.PAUSE_ROLE()), 2, "pause");
-        assertTrue(
-            csm.hasRole(csm.PAUSE_ROLE(), address(gateSeal)),
-            "pause address"
-        );
-        assertTrue(
-            csm.hasRole(csm.PAUSE_ROLE(), deployParams.resealManager),
-            "pause address"
+        _assertCircuitBreakerPauseRoleState(
+            address(csm),
+            deployParams.resealManager
         );
 
         assertEq(csm.getRoleMemberCount(csm.RESUME_ROLE()), 1, "resume");
@@ -175,21 +170,9 @@ contract CSAccountingInvariants is InvariantsBase {
             "default admin address"
         );
 
-        assertEq(
-            accounting.getRoleMemberCount(accounting.PAUSE_ROLE()),
-            2,
-            "pause"
-        );
-        assertTrue(
-            accounting.hasRole(accounting.PAUSE_ROLE(), address(gateSeal)),
-            "pause address"
-        );
-        assertTrue(
-            accounting.hasRole(
-                accounting.PAUSE_ROLE(),
-                deployParams.resealManager
-            ),
-            "pause address"
+        _assertCircuitBreakerPauseRoleState(
+            address(accounting),
+            deployParams.resealManager
         );
 
         assertEq(
@@ -295,14 +278,9 @@ contract CSFeeOracleInvariant is InvariantsBase {
             "submit data"
         );
 
-        assertEq(oracle.getRoleMemberCount(oracle.PAUSE_ROLE()), 2, "pause");
-        assertTrue(
-            oracle.hasRole(oracle.PAUSE_ROLE(), address(gateSeal)),
-            "pause address"
-        );
-        assertTrue(
-            oracle.hasRole(oracle.PAUSE_ROLE(), deployParams.resealManager),
-            "pause address"
+        _assertCircuitBreakerPauseRoleState(
+            address(oracle),
+            deployParams.resealManager
         );
 
         assertEq(oracle.getRoleMemberCount(oracle.RESUME_ROLE()), 1, "resume");
@@ -361,18 +339,9 @@ contract VerifierInvariant is InvariantsBase {
             "default admin address"
         );
 
-        assertEq(
-            verifier.getRoleMemberCount(verifier.PAUSE_ROLE()),
-            2,
-            "pause"
-        );
-        assertTrue(
-            verifier.hasRole(verifier.PAUSE_ROLE(), address(gateSeal)),
-            "pause address"
-        );
-        assertTrue(
-            verifier.hasRole(verifier.PAUSE_ROLE(), deployParams.resealManager),
-            "pause address"
+        _assertCircuitBreakerPauseRoleState(
+            address(verifier),
+            deployParams.resealManager
         );
 
         assertEq(
@@ -405,14 +374,9 @@ contract EjectorInvariant is InvariantsBase {
             "default admin address"
         );
 
-        assertEq(verifier.getRoleMemberCount(ejector.PAUSE_ROLE()), 2, "pause");
-        assertTrue(
-            ejector.hasRole(ejector.PAUSE_ROLE(), address(gateSeal)),
-            "pause address"
-        );
-        assertTrue(
-            ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager),
-            "pause address"
+        _assertCircuitBreakerPauseRoleState(
+            address(ejector),
+            deployParams.resealManager
         );
 
         assertEq(

@@ -125,11 +125,9 @@ contract DeployLocalDevNet is DeployBase {
         config
             .identifiedCommunityStakersGateMaxWithdrawalRequestFee = 0.05 ether;
 
-        // GateSeal
-        config.gateSealFactory = 0x0000000000000000000000000000000000000000;
-        config.sealingCommittee = 0x0000000000000000000000000000000000000000;
-        config.sealDuration = 0;
-        config.sealExpiryTimestamp = 0;
+        // CircuitBreaker
+        config.circuitBreaker = address(0);
+        config.circuitBreakerPauser = address(0);
 
         config.secondAdminAddress = vm.envOr(
             "CSM_SECOND_ADMIN_ADDRESS",

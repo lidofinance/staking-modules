@@ -39,7 +39,10 @@ contract DeployImplementationsHolesky is
         feeDistributor = CSFeeDistributor(deploymentConfig.feeDistributor);
         hashConsensus = HashConsensus(deploymentConfig.hashConsensus);
         verifier = CSVerifier(deploymentConfig.verifier);
-        gateSeal = deploymentConfig.gateSeal;
+        legacyGateSeal = deploymentConfig.gateSeal;
+        if (deploymentConfig.circuitBreaker != address(0)) {
+            circuitBreaker = deploymentConfig.circuitBreaker;
+        }
 
         _deploy();
     }
