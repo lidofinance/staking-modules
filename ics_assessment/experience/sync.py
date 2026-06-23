@@ -34,7 +34,6 @@ from ics_assessment.sync import (
     get_event_logs,
     get_raw_logs,
     read_csm_abi,
-    write_csv,
     write_lines,
 )
 
@@ -64,9 +63,8 @@ def sync_ssv_verified() -> None:
     response.raise_for_status()
     items = response.json()["operators"]
     addresses = sorted({item["owner_address"].lower() for item in items})
-    rows = [[address] for address in addresses]
-    write_csv(SSV_VERIFIED_OPERATORS_PATH, ["Address"], rows)
-    print(f"Wrote {len(rows)} SSV verified operators to {SSV_VERIFIED_OPERATORS_PATH}")
+    write_lines(SSV_VERIFIED_OPERATORS_PATH, addresses)
+    print(f"Wrote {len(addresses)} SSV verified operators to {SSV_VERIFIED_OPERATORS_PATH}")
 
 
 async def _sync_node_operator_owners_one(
