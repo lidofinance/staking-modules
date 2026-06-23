@@ -93,9 +93,10 @@ contract CSModuleDeploymentTest is DeploymentBaseTest {
         );
         assertEq(csm.getRoleMemberCount(csm.STAKING_ROUTER_ROLE()), 1);
 
-        assertTrue(csm.hasRole(csm.PAUSE_ROLE(), address(gateSeal)));
-        assertTrue(csm.hasRole(csm.PAUSE_ROLE(), deployParams.resealManager));
-        assertEq(csm.getRoleMemberCount(csm.PAUSE_ROLE()), 2);
+        _assertCircuitBreakerPauseRoleState(
+            address(csm),
+            deployParams.resealManager
+        );
 
         assertTrue(csm.hasRole(csm.RESUME_ROLE(), deployParams.resealManager));
         assertEq(csm.getRoleMemberCount(csm.RESUME_ROLE()), 1);
@@ -305,16 +306,10 @@ contract CSAccountingDeploymentTest is DeploymentBaseTest {
             adminsCount
         );
 
-        assertTrue(
-            accounting.hasRole(accounting.PAUSE_ROLE(), address(gateSeal))
+        _assertCircuitBreakerPauseRoleState(
+            address(accounting),
+            deployParams.resealManager
         );
-        assertTrue(
-            accounting.hasRole(
-                accounting.PAUSE_ROLE(),
-                deployParams.resealManager
-            )
-        );
-        assertEq(accounting.getRoleMemberCount(accounting.PAUSE_ROLE()), 2);
 
         assertTrue(
             accounting.hasRole(
@@ -505,11 +500,10 @@ contract CSFeeOracleDeploymentTest is DeploymentBaseTest {
             adminsCount
         );
 
-        assertTrue(oracle.hasRole(oracle.PAUSE_ROLE(), address(gateSeal)));
-        assertTrue(
-            oracle.hasRole(oracle.PAUSE_ROLE(), deployParams.resealManager)
+        _assertCircuitBreakerPauseRoleState(
+            address(oracle),
+            deployParams.resealManager
         );
-        assertEq(oracle.getRoleMemberCount(oracle.PAUSE_ROLE()), 2);
 
         assertTrue(
             oracle.hasRole(oracle.RESUME_ROLE(), deployParams.resealManager)
@@ -708,11 +702,10 @@ contract CSVerifierDeploymentTest is DeploymentBaseTest {
             adminsCount
         );
 
-        assertTrue(verifier.hasRole(verifier.PAUSE_ROLE(), address(gateSeal)));
-        assertTrue(
-            verifier.hasRole(verifier.PAUSE_ROLE(), deployParams.resealManager)
+        _assertCircuitBreakerPauseRoleState(
+            address(verifier),
+            deployParams.resealManager
         );
-        assertEq(verifier.getRoleMemberCount(verifier.PAUSE_ROLE()), 2);
 
         assertTrue(
             verifier.hasRole(verifier.RESUME_ROLE(), deployParams.resealManager)
@@ -1185,16 +1178,10 @@ contract VettedGateDeploymentTest is DeploymentBaseTest {
             adminsCount
         );
 
-        assertTrue(
-            vettedGate.hasRole(vettedGate.PAUSE_ROLE(), address(gateSeal))
+        _assertCircuitBreakerPauseRoleState(
+            address(vettedGate),
+            deployParams.resealManager
         );
-        assertTrue(
-            vettedGate.hasRole(
-                vettedGate.PAUSE_ROLE(),
-                deployParams.resealManager
-            )
-        );
-        assertEq(vettedGate.getRoleMemberCount(vettedGate.PAUSE_ROLE()), 2);
 
         assertTrue(
             vettedGate.hasRole(
@@ -1291,11 +1278,10 @@ contract CSEjectorDeploymentTest is DeploymentBaseTest {
             ejector.getRoleMemberCount(ejector.DEFAULT_ADMIN_ROLE()),
             adminsCount
         );
-        assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), address(gateSeal)));
-        assertTrue(
-            ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager)
+        _assertCircuitBreakerPauseRoleState(
+            address(ejector),
+            deployParams.resealManager
         );
-        assertEq(ejector.getRoleMemberCount(verifier.PAUSE_ROLE()), 2);
 
         assertTrue(
             ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager)

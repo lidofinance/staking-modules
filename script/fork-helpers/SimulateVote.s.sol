@@ -11,13 +11,11 @@ import { CSModule } from "../../src/CSModule.sol";
 import { CSAccounting } from "../../src/CSAccounting.sol";
 import { CSFeeOracle } from "../../src/CSFeeOracle.sol";
 import { CSFeeDistributor } from "../../src/CSFeeDistributor.sol";
-import { CSEjector } from "../../src/CSEjector.sol";
-import { CSParametersRegistry } from "../../src/CSParametersRegistry.sol";
 
 import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
 import { ICSBondCurve } from "../../src/interfaces/ICSBondCurve.sol";
 import { IBurner } from "../../src/interfaces/IBurner.sol";
-import { ICSParametersRegistry } from "../../src/interfaces/ICSParametersRegistry.sol";
+import { ICircuitBreaker } from "../../src/interfaces/ICircuitBreaker.sol";
 
 import { CommonScriptUtils } from "../utils/Common.sol";
 
@@ -27,6 +25,8 @@ import { DeployParams } from "../DeployBase.s.sol";
 contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
     function addModule() external {
         _setUp();
+        Env memory env = envVars();
+        DeployParams memory deployParams = parseDeployParams(env.DEPLOY_CONFIG);
 
         IStakingRouter stakingRouter = IStakingRouter(locator.stakingRouter());
         IBurner burner = IBurner(locator.burner());
@@ -75,6 +75,33 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
         csm.revokeRole(csm.RESUME_ROLE(), agent);
         // 6. Update initial epoch
         hashConsensus.updateInitialEpoch(47480);
+        // 7-12. Register pausers in CircuitBreaker
+        if (address(circuitBreaker).code.length > 0) {
+            circuitBreaker.registerPauser(
+                address(csm),
+                deployParams.circuitBreakerPauser
+            );
+            circuitBreaker.registerPauser(
+                address(accounting),
+                deployParams.circuitBreakerPauser
+            );
+            circuitBreaker.registerPauser(
+                address(oracle),
+                deployParams.circuitBreakerPauser
+            );
+            circuitBreaker.registerPauser(
+                address(verifier),
+                deployParams.circuitBreakerPauser
+            );
+            circuitBreaker.registerPauser(
+                address(vettedGate),
+                deployParams.circuitBreakerPauser
+            );
+            circuitBreaker.registerPauser(
+                address(ejector),
+                deployParams.circuitBreakerPauser
+            );
+        }
     }
 
     function upgrade() external {
@@ -84,6 +111,7 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
             deploymentConfigContent
         );
         DeployParams memory deployParams = parseDeployParams(env.DEPLOY_CONFIG);
+        address circuitBreakerAddress = deploymentConfig.circuitBreaker;
 
         ICSBondCurve.BondCurveIntervalInput[][]
             memory bondCurves = new ICSBondCurve.BondCurveIntervalInput[][](
@@ -201,15 +229,14 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
             address(deploymentConfig.gateSeal)
         );
 
-        csm.grantRole(csm.PAUSE_ROLE(), address(deploymentConfig.gateSealV2));
-        accounting.grantRole(
-            accounting.PAUSE_ROLE(),
-            address(deploymentConfig.gateSealV2)
-        );
-        oracle.grantRole(
-            oracle.PAUSE_ROLE(),
-            address(deploymentConfig.gateSealV2)
-        );
+        if (circuitBreakerAddress != address(0)) {
+            csm.grantRole(csm.PAUSE_ROLE(), circuitBreakerAddress);
+            accounting.grantRole(
+                accounting.PAUSE_ROLE(),
+                circuitBreakerAddress
+            );
+            oracle.grantRole(oracle.PAUSE_ROLE(), circuitBreakerAddress);
+        }
 
         csm.grantRole(csm.PAUSE_ROLE(), deployParams.resealManager);
         csm.grantRole(csm.RESUME_ROLE(), deployParams.resealManager);
@@ -233,6 +260,31 @@ contract SimulateVote is Script, DeploymentFixtures, ForkHelpersCommon {
             keccak256("RESET_BOND_CURVE_ROLE"),
             address(csmCommittee)
         );
+
+        if (circuitBreakerAddress.code.length > 0) {
+            ICircuitBreaker cb = ICircuitBreaker(circuitBreakerAddress);
+            cb.registerPauser(address(csm), deployParams.circuitBreakerPauser);
+            cb.registerPauser(
+                address(accounting),
+                deployParams.circuitBreakerPauser
+            );
+            cb.registerPauser(
+                address(oracle),
+                deployParams.circuitBreakerPauser
+            );
+            cb.registerPauser(
+                address(deploymentConfig.verifierV2),
+                deployParams.circuitBreakerPauser
+            );
+            cb.registerPauser(
+                address(deploymentConfig.vettedGate),
+                deployParams.circuitBreakerPauser
+            );
+            cb.registerPauser(
+                address(deploymentConfig.ejector),
+                deployParams.circuitBreakerPauser
+            );
+        }
 
         vm.stopBroadcast();
     }

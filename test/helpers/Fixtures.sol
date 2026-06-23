@@ -16,6 +16,8 @@ import { IBurner } from "../../src/interfaces/IBurner.sol";
 import { ILidoLocator } from "../../src/interfaces/ILidoLocator.sol";
 import { IWstETH } from "../../src/interfaces/IWstETH.sol";
 import { IGateSeal } from "../../src/interfaces/IGateSeal.sol";
+import { ICircuitBreaker } from "../../src/interfaces/ICircuitBreaker.sol";
+import { IPausableWithRoles } from "../../src/interfaces/IPausableWithRoles.sol";
 import { NodeOperator, NodeOperatorManagementProperties } from "../../src/interfaces/ICSModule.sol";
 import { HashConsensus } from "../../src/lib/base-oracle/HashConsensus.sol";
 import { IWithdrawalQueue } from "../../src/interfaces/IWithdrawalQueue.sol";
@@ -91,6 +93,10 @@ contract Fixtures is StdCheats, Test {
 }
 
 contract DeploymentHelpers is Test {
+    /// @dev Placeholder address used until the real CircuitBreaker is deployed.
+    address internal constant CIRCUIT_BREAKER_STUB =
+        address(0x63697263756974627265616b6572);
+
     struct Env {
         string RPC_URL;
         string DEPLOY_CONFIG;
@@ -126,6 +132,7 @@ contract DeploymentHelpers is Test {
         address lidoLocator;
         address gateSeal;
         address gateSealV2;
+        address circuitBreaker;
     }
 
     function envVars() public returns (Env memory) {
@@ -286,7 +293,13 @@ contract DeploymentHelpers is Test {
         );
         vm.label(deploymentConfig.lidoLocator, "LidoLocator");
 
-        deploymentConfig.gateSeal = vm.parseJsonAddress(config, ".GateSeal");
+        if (vm.keyExistsJson(config, ".GateSeal")) {
+            deploymentConfig.gateSeal = vm.parseJsonAddress(
+                config,
+                ".GateSeal"
+            );
+            vm.label(deploymentConfig.gateSeal, "GateSeal");
+        }
         if (vm.keyExistsJson(config, ".GateSealV2")) {
             deploymentConfig.gateSealV2 = vm.parseJsonAddress(
                 config,
@@ -294,7 +307,14 @@ contract DeploymentHelpers is Test {
             );
             vm.label(deploymentConfig.gateSealV2, "GateSealV2");
         }
-        vm.label(deploymentConfig.gateSeal, "GateSeal");
+
+        if (vm.keyExistsJson(config, ".CircuitBreaker")) {
+            deploymentConfig.circuitBreaker = vm.parseJsonAddress(
+                config,
+                ".CircuitBreaker"
+            );
+            vm.label(deploymentConfig.circuitBreaker, "CircuitBreaker");
+        }
     }
 
     function parseDeployParams(
@@ -342,6 +362,7 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
     IStakingRouter public stakingRouter;
     ILido public lido;
     IGateSeal public gateSeal;
+    ICircuitBreaker public circuitBreaker;
     IBurner public burner;
 
     error CSModuleNotFound();
@@ -399,7 +420,70 @@ contract DeploymentFixtures is StdCheats, DeploymentHelpers {
                 ? deploymentConfig.gateSeal
                 : deploymentConfig.gateSealV2
         );
+        circuitBreaker = ICircuitBreaker(deploymentConfig.circuitBreaker);
         burner = IBurner(locator.burner());
+    }
+
+    function _hasPauseRole(
+        address target,
+        address holder
+    ) internal view returns (bool) {
+        IPausableWithRoles pausable = IPausableWithRoles(target);
+        return pausable.hasRole(pausable.PAUSE_ROLE(), holder);
+    }
+
+    function _isCircuitBreakerDeployed() internal view returns (bool) {
+        return _isCircuitBreakerDeployed(address(circuitBreaker));
+    }
+
+    function _isCircuitBreakerDeployed(
+        address cb
+    ) internal view returns (bool) {
+        return
+            cb != address(0) &&
+            cb != CIRCUIT_BREAKER_STUB &&
+            cb.code.length > 0;
+    }
+
+    function _isCircuitBreakerConfigured() internal view returns (bool) {
+        return _isCircuitBreakerConfigured(address(circuitBreaker));
+    }
+
+    function _isCircuitBreakerConfigured(
+        address cb
+    ) internal pure returns (bool) {
+        return cb != address(0);
+    }
+
+    function _hasCircuitBreakerPauseRole(
+        address target
+    ) internal view returns (bool) {
+        return
+            _isCircuitBreakerDeployed() &&
+            _hasPauseRole(target, address(circuitBreaker));
+    }
+
+    function _assertCircuitBreakerPauseRoleState(
+        address target,
+        address resealManager
+    ) internal view {
+        IPausableWithRoles pausable = IPausableWithRoles(target);
+        bytes32 pauseRole = pausable.PAUSE_ROLE();
+        uint256 expectedRoleMembers = 1;
+
+        assertTrue(pausable.hasRole(pauseRole, resealManager), "pause address");
+        if (_isCircuitBreakerConfigured()) {
+            assertTrue(
+                _hasPauseRole(target, address(circuitBreaker)),
+                "pause address"
+            );
+            expectedRoleMembers += 1;
+        }
+        assertEq(
+            pausable.getRoleMemberCount(pauseRole),
+            expectedRoleMembers,
+            "pause"
+        );
     }
 
     function handleStakingLimit() public {
