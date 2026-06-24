@@ -82,7 +82,7 @@ def _check(main_address: str, members: list[str], suggest_update: bool = True) -
             json.dump(approved_clusters, f, indent=2)
         print(f"✅ Updated {OUTPUT_JSON} with new cluster")
     
-    return eligible
+    return 0 if eligible else 1
 
 def _check_idvtc_application(main_address: str, members: list[str], approved_clusters: list[dict], ics_addresses: set[str]) -> bool:
     print(f"Checking IDVTC application\nMain address: {main_address}\nMembers {members}...")
