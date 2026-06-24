@@ -17,7 +17,7 @@ python idvtc.py update
 ### Assess a cluster for approval:
 
 ```bash
-python idvtc.py assess <main_address> <member1> <member2> <member3> <member4>
+python idvtc.py check <main_address> <member1> <member2> <member3> <member4>
 ```
 
 ### Assess all clusters in the CSV file for approval:

@@ -57,11 +57,11 @@ def _update():
             addresses.add(row["clusterMember2Address"].strip())
             addresses.add(row["clusterMember3Address"].strip())
             addresses.add(row["clusterMember4Address"].strip())
-            assert len(addresses) == 4, f"Expected 4 addresses, got {len(addresses)}: {addresses}"
+            assert len(set(addresses)) == 4, f"Expected 4 unique addresses, got {len(addresses)}: {addresses}"
             main_address = row["mainAddress"].strip()
             approved = row["status"].strip() == "APPROVED"
             if approved:
-                approved_clusters.append({"main_address": main_address.lower(), "addresses": [addr.lower() for addr in addresses]})
+                approved_clusters.append({"main_address": main_address.lower(), "addresses": sorted(addr.lower() for addr in addresses)})
 
     with open(OUTPUT_JSON, "w") as f:
         json.dump(approved_clusters, f, indent=2)
@@ -74,20 +74,27 @@ def _check(main_address: str, members: list[str], suggest_update: bool = True) -
     approved_clusters = _get_approved_clusters()
     ics_addresses = _get_ics_addresses()
 
-    eligible =  _check_idvtc_application(main_address, members, approved_clusters, ics_addresses)
+    eligible = _check_idvtc_application(main_address, members, approved_clusters, ics_addresses)
 
     if eligible and suggest_update and _prompt_bool("Update the approved clusters JSON file with this new cluster?"):
         approved_clusters.append({"main_address": main_address, "addresses": list(members)})
         with open(OUTPUT_JSON, "w") as f:
             json.dump(approved_clusters, f, indent=2)
         print(f"✅ Updated {OUTPUT_JSON} with new cluster")
+    
+    return eligible
 
 def _check_idvtc_application(main_address: str, members: list[str], approved_clusters: list[dict], ics_addresses: set[str]) -> bool:
     print(f"Checking IDVTC application\nMain address: {main_address}\nMembers {members}...")
 
-    if len(members) != 4:
+    if len(set(members)) != 4:
         print(f"🚨 Expected 4 unique member addresses, got {len(members)}: {members}")
         return False
+    
+    for member in members:
+        if member not in ics_addresses:
+            print(f"🚨 Member address {member} is not in the ICS list.")
+            return False
 
     for cluster in approved_clusters:
         if cluster["main_address"] == main_address:
@@ -96,9 +103,6 @@ def _check_idvtc_application(main_address: str, members: list[str], approved_clu
         for member in members:
             if member in cluster["addresses"]:
                 print(f"🚨 Member address {member} is already part of an approved cluster.")
-                return False
-            if member not in ics_addresses:
-                print(f"🚨 Member address {member} is not in the ICS list.")
                 return False
     
     print(f"✅ Cluster eligible for approval.")
@@ -130,12 +134,13 @@ def _batch_process():
             if approved:
                 eligible = _check_idvtc_application(main_address, members, approved_clusters, ics_addresses)
                 if eligible:
-                    approved_clusters.append({"main_address": main_address, "addresses": [addr for addr in members]})
+                    approved_clusters.append({"main_address": main_address, "addresses": sorted(set(members))})
                     main_addresses.add(main_address)
                 else:
                     has_errors = True
             else:
                 print(f"Skipping application ID {id} as it is not marked as APPROVED.")
+
     if not has_errors:
         print("✅ All APPROVED applications in the new round are assessed successfully.")
         with open(OUTPUT_JSON_NEW_ROUND, "w") as f:
