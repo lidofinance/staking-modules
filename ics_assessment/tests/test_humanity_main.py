@@ -27,10 +27,10 @@ def mod(tmp_path):
 def test_human_passport_score_with_source_address(mod):
     outcome = mod.HumanityEvaluator(
         mod.sources,
-        mod.HumanityRuntimeInputs(human_passport_score=7.2, human_passport_address="0xdef"),
+        mod.HumanityRuntimeInputs(human_passport_score=7.2, human_passport_address="0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
     ).human_passport_score()
     assert outcome.score == 7.2
-    assert "address=0xdef" in outcome.detail
+    assert "address=0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" in outcome.detail
 
 
 def test_human_passport_score_min_and_cap(mod):
@@ -49,21 +49,24 @@ def test_human_passport_score_none_zero(mod):
 
 
 def test_circles_verified_score(mod):
-    mod.sources.circle_group_members_path.write_text("0xabc\n")
-    assert mod.evaluator.circles_verified_score({"0xabc"}) == mod.CheckOutcome(
+    mod.sources.circle_group_members_path.write_text("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n")
+    assert mod.evaluator.circles_verified_score({"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}) == mod.CheckOutcome(
         score=mod.HUMANITY_SCORES["circles-verified"],
-        detail="0xabc",
+        detail="0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     )
-    assert mod.evaluator.circles_verified_score({"0xdef"}) == mod.CheckOutcome(score=0)
+    assert mod.evaluator.circles_verified_score({"0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}) == mod.CheckOutcome(score=0)
 
 
 def test_ssv_verified_score(mod):
-    mod.sources.ssv_verified_operators_path.write_text("0xabc\n")
-    assert mod.evaluator.ssv_verified_score({"0xabc"}) == mod.CheckOutcome(
-        score=mod.HUMANITY_SCORES["ssv-verified"],
-        detail="0xabc",
+    mod.sources.ssv_verified_operators_path.write_text(
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
     )
-    assert mod.evaluator.ssv_verified_score({"0xdef"}) == mod.CheckOutcome(score=0)
+    assert mod.evaluator.ssv_verified_score({"address"}) == mod.CheckOutcome(score=0)
+    assert mod.evaluator.ssv_verified_score({"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}) == mod.CheckOutcome(
+        score=mod.HUMANITY_SCORES["ssv-verified"],
+        detail="0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    )
+    assert mod.evaluator.ssv_verified_score({"0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}) == mod.CheckOutcome(score=0)
 
 
 def test_discord_and_x_account_scores(mod):
@@ -79,18 +82,18 @@ def test_main_aggregator_threshold_and_capping(monkeypatch, mod):
     monkeypatch.setattr(mod.HumanityEvaluator, "ssv_verified_score", lambda self, a: mod.CheckOutcome(score=0))
     monkeypatch.setattr(mod.HumanityEvaluator, "discord_account_score", lambda self, discord: 2)
     monkeypatch.setattr(mod.HumanityEvaluator, "x_account_score", lambda self, x: 1)
-    assert mod.evaluator.evaluate({"0xabc"}).final_score == 0
+    assert mod.evaluator.evaluate({"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}).final_score == 0
 
     monkeypatch.setattr(mod.HumanityEvaluator, "human_passport_score", lambda self: mod.CheckOutcome(score=8))
     monkeypatch.setattr(mod.HumanityEvaluator, "circles_verified_score", lambda self, a: mod.CheckOutcome(score=4))
     monkeypatch.setattr(mod.HumanityEvaluator, "ssv_verified_score", lambda self, a: mod.CheckOutcome(score=3))
     monkeypatch.setattr(mod.HumanityEvaluator, "discord_account_score", lambda self, discord: 2)
     monkeypatch.setattr(mod.HumanityEvaluator, "x_account_score", lambda self, x: 1)
-    assert mod.evaluator.evaluate({"0xabc"}).final_score == mod.HUMANITY_MAX_SCORE
+    assert mod.evaluator.evaluate({"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}).final_score == mod.HUMANITY_MAX_SCORE
 
     monkeypatch.setattr(mod.HumanityEvaluator, "human_passport_score", lambda self: mod.CheckOutcome(score=4))
     monkeypatch.setattr(mod.HumanityEvaluator, "circles_verified_score", lambda self, a: mod.CheckOutcome(score=0))
     monkeypatch.setattr(mod.HumanityEvaluator, "ssv_verified_score", lambda self, a: mod.CheckOutcome(score=0))
     monkeypatch.setattr(mod.HumanityEvaluator, "discord_account_score", lambda self, discord: 0)
     monkeypatch.setattr(mod.HumanityEvaluator, "x_account_score", lambda self, x: 0)
-    assert mod.evaluator.evaluate({"0xabc"}).final_score == 4
+    assert mod.evaluator.evaluate({"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}).final_score == 4

@@ -173,11 +173,8 @@ def test_sync_ssv_verified_writes_holders(monkeypatch, tmp_path):
     monkeypatch.setattr(mod.experience_jobs.requests, "get", fake_get)
     mod.experience_jobs.sync_ssv_verified()
 
-    rows = list(csv.DictReader(mod.experience_jobs.SSV_VERIFIED_OPERATORS_PATH.open()))
-    assert rows == [
-        {"Address": "0xabc"},
-        {"Address": "0xdef"},
-    ]
+    rows = mod.experience_jobs.SSV_VERIFIED_OPERATORS_PATH.read_text().splitlines()
+    assert rows == ["0xabc", "0xdef"]
 
 
 def test_write_csv_uses_lf_line_endings(tmp_path):

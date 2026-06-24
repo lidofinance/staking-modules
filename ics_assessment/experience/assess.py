@@ -24,8 +24,17 @@ from ics_assessment.experience.sources import (
 class ExperienceEvaluator:
     sources: ExperienceSources
 
-    def find_addresses_in_csv(self, addresses: set[str], csv_file: str, base_dir=None) -> list[str]:
-        return csv_matches(addresses, csv_file, base_dir or self.sources.data_dir)
+    def find_addresses_in_csv(
+        self,
+        addresses: set[str],
+        csv_file: str,
+        base_dir=None,
+    ) -> list[str]:
+        return csv_matches(
+            addresses,
+            csv_file,
+            base_dir or self.sources.data_dir,
+        )
 
     def is_addresses_in_csv(self, addresses: set[str], csv_file: str, base_dir=None) -> bool:
         """
@@ -34,19 +43,38 @@ class ExperienceEvaluator:
         """
         return bool(self.find_addresses_in_csv(addresses, csv_file, base_dir=base_dir))
 
-    def _safe_csv_matches(self, addresses: set[str], csv_files: list[str], base_dir=None) -> str | None:
+    def _safe_csv_matches(
+        self,
+        addresses: set[str],
+        csv_files: list[str],
+        base_dir=None,
+    ) -> str | None:
         matches: list[str] = []
         try:
             for csv_file in csv_files:
-                matches.extend(self.find_addresses_in_csv(addresses, csv_file, base_dir=base_dir))
+                matches.extend(
+                    self.find_addresses_in_csv(
+                        addresses,
+                        csv_file,
+                        base_dir=base_dir,
+                    )
+                )
         except FileNotFoundError:
             return None
         return truncate(matches) if matches else None
 
     def _csv_outcome(
-        self, addresses: set[str], csv_files: list[str], score: int, base_dir=None
+        self,
+        addresses: set[str],
+        csv_files: list[str],
+        score: int,
+        base_dir=None,
     ) -> CheckOutcome:
-        detail = self._safe_csv_matches(addresses, csv_files, base_dir=base_dir)
+        detail = self._safe_csv_matches(
+            addresses,
+            csv_files,
+            base_dir=base_dir,
+        )
         if detail:
             return CheckOutcome(score=score, detail=detail)
         return CheckOutcome(score=0)
@@ -113,7 +141,11 @@ class ExperienceEvaluator:
         """
         Returns the score for SSV Verified Operators if any address is present, otherwise 0.
         """
-        return self._csv_outcome(addresses, ["ssv-verified-operators.csv"], EXPERIENCE_SCORES["ssv-verified"])
+        return self._csv_outcome(
+            addresses,
+            ["ssv-verified-operators.csv"],
+            EXPERIENCE_SCORES["ssv-verified"],
+        )
 
     def sdvtm_score(self, addresses: set[str]) -> CheckOutcome:
         """
@@ -161,7 +193,7 @@ class ExperienceEvaluator:
         eligible_addresses_holesky = load_holesky_eligible_addresses(self.sources)
         eligible_holesky = any(a in eligible_addresses_holesky for a in addresses)
 
-        addr_to_id: dict[str, str] = {v.lower(): k for k, v in node_operators.items()}
+        addr_to_id: dict[str, str] = {addr.lower(): no_id for no_id, addr in node_operators.items()}
         found_ids = {addr_to_id[a] for a in addresses if a in addr_to_id}
         if not found_ids and not eligible_holesky:
             return 0

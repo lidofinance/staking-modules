@@ -22,6 +22,7 @@ from ics_assessment.config import (
     SNAPSHOT_VOTERS_PATH,
     SSV_VERIFIED_OPERATORS_PATH,
 )
+from ics_assessment.data_utils import normalize_evm_addresses
 from ics_assessment.engagement.assess import EngagementEvaluator
 from ics_assessment.engagement.sources import EngagementSources, fetch_high_signal_max
 from ics_assessment.experience.assess import ExperienceEvaluator
@@ -71,6 +72,7 @@ def evaluate_assessment(
     experience_sources: ExperienceSources = DEFAULT_EXPERIENCE_SOURCES,
     humanity_sources: HumanitySources = DEFAULT_HUMANITY_SOURCES,
 ) -> AssessmentResult:
+    addresses = normalize_evm_addresses(addresses)
     if runtime_inputs is None:
         runtime_inputs = AssessmentRuntimeInputs()
 
@@ -235,7 +237,7 @@ def _run_assess(
     lido_high_signal_score: float | None = None,
     ssv_high_signal_score: float | None = None,
 ) -> int:
-    normalized_addresses = {address.strip().lower() for address in addresses}
+    normalized_addresses = normalize_evm_addresses(addresses)
     runtime_inputs = resolve_runtime_inputs(
         normalized_addresses,
         discord=discord,
