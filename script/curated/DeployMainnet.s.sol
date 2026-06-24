@@ -189,7 +189,7 @@ contract DeployMainnet is DeployBase {
         config.setOperatorInfoManager = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
 
         // CircuitBreaker
-        config.circuitBreaker = address(0x63697263756974627265616b6572); // TODO: Set real CircuitBreaker address
+        config.circuitBreaker = 0x6019CB557978296BA3C08a7B73225C0975DFB2F7; // Proposed by LIP-34
         config.circuitBreakerPauser = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
 
         // DG
