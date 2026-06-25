@@ -43,24 +43,24 @@ verify-csm-live *args:
     just _verify-live-generic {{deploy_script_path}} {{args}}
 
 deploy-csm-impl *args:
-    just _deploy-csm-impl {{anvil_rpc_url}} --broadcast --slow {{args}}
+    RPC_URL={{anvil_rpc_url}} just _deploy-csm-impl --broadcast --slow {{args}}
     just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} {{anvil_rpc_url}} "" "deploy-latest.json" {{csm_local_upgrade_config_path}}
 
 [confirm("You are about to broadcast deployment transactions to the network. Are you sure?")]
 deploy-csm-impl-live *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
     ARTIFACTS_DIR={{csm_artifacts_latest_dir}} \
-        just _deploy-csm-impl $RPC_URL --broadcast --verify {{args}}
+        just _deploy-csm-impl --broadcast --verify {{args}}
     just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "" "deploy-latest.json" {{csm_latest_upgrade_config_path}}
 
 deploy-csm-impl-live-no-confirm *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
     ARTIFACTS_DIR={{csm_artifacts_latest_dir}} \
-        just _deploy-csm-impl $RPC_URL --broadcast --verify {{args}}
+        just _deploy-csm-impl --broadcast --verify {{args}}
     just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "" "deploy-latest.json" {{csm_latest_upgrade_config_path}}
 
 deploy-csm-impl-dry *args:
-    just _deploy-csm-impl $RPC_URL {{args}}
+    just _deploy-csm-impl {{args}}
     just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "/dry-run" "deploy-latest.json" {{csm_local_upgrade_config_path}}
 
 # Governance helpers
@@ -90,7 +90,7 @@ test-csm-upgrade *args:
     export RPC_URL={{anvil_rpc_url}}
     local_private_key="$(just _local-private-key)"
 
-    just _deploy-csm-impl $RPC_URL --broadcast --private-key="${local_private_key}"
+    just _deploy-csm-impl --broadcast --private-key="${local_private_key}"
     just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} "$RPC_URL" "" "deploy-latest.json" {{csm_local_upgrade_config_path}}
 
     export DEPLOY_CONFIG={{csm_local_upgrade_config_path}}
@@ -142,7 +142,7 @@ test-csm-v3-only-deploy *args:
     export RPC_URL={{anvil_rpc_url}}
     local_private_key="$(just _local-private-key)"
 
-    just _deploy-csm-impl $RPC_URL --broadcast --private-key="${local_private_key}" {{disable_code_size_limit}}
+    just _deploy-csm-impl --broadcast --private-key="${local_private_key}" {{disable_code_size_limit}}
     just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} "$RPC_URL" "" "deploy-latest.json" {{csm_local_upgrade_config_path}}
 
     export DEPLOY_CONFIG={{csm_local_upgrade_config_path}}
@@ -166,8 +166,8 @@ test-deployment-csm-v3-only-scratch *args:
     forge test --match-path 'test/fork/deployment/*' --no-match-test '(.*_afterVote.*)|(.*_onlyFull.*)' -vvv --show-progress --summary --detailed {{args}}
 
 # Internal helpers
-_deploy-csm-impl rpc_url *args:
+_deploy-csm-impl *args:
     FOUNDRY_PROFILE=deploy \
         forge script {{deploy_csm_impls_script_path}} --sig="deploy(string,string)" \
-            --rpc-url {{rpc_url}} {{disable_code_size_limit}} {{args}} \
+            --rpc-url ${RPC_URL} {{disable_code_size_limit}} {{args}} \
             -- {{deploy_config_path}} `git rev-parse HEAD`
