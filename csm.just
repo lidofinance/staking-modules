@@ -43,8 +43,7 @@ verify-csm-live *args:
     just _verify-live-generic {{deploy_script_path}} {{args}}
 
 deploy-csm-impl *args:
-    RPC_URL={{anvil_rpc_url}} just _deploy-csm-impl --broadcast --slow {{args}}
-    just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} {{anvil_rpc_url}} "" "deploy-latest.json" {{csm_local_upgrade_config_path}}
+    just _deploy-csm-impl {{args}}
 
 [confirm("You are about to broadcast deployment transactions to the network. Are you sure?")]
 deploy-csm-impl-live *args:
