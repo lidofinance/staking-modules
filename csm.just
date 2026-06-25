@@ -43,8 +43,6 @@ verify-csm-live *args:
     just _verify-live-generic {{deploy_script_path}} {{args}}
 
 deploy-csm-impl *args:
-    # Broadcast to the local fork (like deploy-csm) so the deployer nonce advances;
-    # otherwise a follow-up deploy (e.g. curated) reuses the same CREATE addresses.
     just _deploy-csm-impl {{anvil_rpc_url}} --broadcast --slow {{args}}
     just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} {{anvil_rpc_url}} "" "deploy-latest.json" {{csm_local_upgrade_config_path}}
 
