@@ -209,7 +209,7 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
     function _clearAllOperatorGroups(MetaRegistry registry) internal {
         IMetaRegistry.OperatorGroup memory emptyGroup;
         uint256 groupsCount = registry.getOperatorGroupsCount();
-        for (uint256 groupId = 1; groupId < groupsCount; ++groupId) {
+        for (uint256 groupId = 1; groupId <= groupsCount; ++groupId) {
             registry.createOrUpdateOperatorGroup(groupId, emptyGroup);
         }
     }

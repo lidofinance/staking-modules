@@ -48,6 +48,6 @@ interface IBondLock {
 
     /// @notice Check if the bond lock for the given Node Operator has expired
     /// @param nodeOperatorId ID of the Node Operator
-    /// @return True if the bond lock has expired or there is no lock, false otherwise
+    /// @return True if the bond lock has expired, false otherwise
     function isLockExpired(uint256 nodeOperatorId) external view returns (bool);
 }
