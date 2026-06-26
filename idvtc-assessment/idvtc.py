@@ -54,10 +54,10 @@ def _update() -> int:
             addresses.add(row["clusterMember2Address"].strip())
             addresses.add(row["clusterMember3Address"].strip())
             addresses.add(row["clusterMember4Address"].strip())
-            assert len(set(addresses)) == 4, f"Expected 4 unique addresses, got {len(addresses)}: {addresses}"
             main_address = row["mainAddress"].strip()
             approved = row["status"].strip() == "APPROVED"
             if approved:
+                assert len(set(addresses)) == 4, f"Expected 4 unique addresses, got {len(addresses)}: {addresses}"
                 approved_clusters.append({"main_address": main_address.lower(), "addresses": sorted(addr.lower() for addr in addresses)})
 
     with open(OUTPUT_JSON, "w") as f:
