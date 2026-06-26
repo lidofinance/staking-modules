@@ -92,10 +92,8 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
     /// @inheritdoc INodeOperatorStrikes
     function removeStrike(uint256 nodeOperatorId, uint256 strikeId) external onlyRole(STRIKES_COMMITTEE_ROLE) {
         OperatorStrikes storage rec = _storage().operatorStrikes[nodeOperatorId];
-        uint256 position = rec.index[strikeId];
-        if (position == 0) revert StrikeNotActive();
-
-        _popStrike(rec, nodeOperatorId, position - 1, strikeId);
+        _ensureStrikeExists(rec, strikeId);
+        _popStrike(rec, nodeOperatorId, rec.index[strikeId] - 1, strikeId);
 
         META_REGISTRY.refreshOperatorWeight(nodeOperatorId);
     }
@@ -145,9 +143,8 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
     /// @inheritdoc INodeOperatorStrikes
     function getStrike(uint256 nodeOperatorId, uint256 strikeId) external view returns (Strike memory strike) {
         OperatorStrikes storage rec = _storage().operatorStrikes[nodeOperatorId];
-        uint256 position = rec.index[strikeId];
-        if (position == 0) return strike;
-        return rec.active[position - 1];
+        _ensureStrikeExists(rec, strikeId);
+        return rec.active[rec.index[strikeId] - 1];
     }
 
     /// @inheritdoc INodeOperatorStrikes
@@ -155,7 +152,9 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         uint256 nodeOperatorId,
         uint256 strikeId
     ) external view returns (string memory description) {
-        return _storage().operatorStrikes[nodeOperatorId].descriptions[strikeId];
+        OperatorStrikes storage rec = _storage().operatorStrikes[nodeOperatorId];
+        _ensureStrikeExists(rec, strikeId);
+        return rec.descriptions[strikeId];
     }
 
     /// @inheritdoc INodeOperatorStrikes
@@ -164,27 +163,13 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
     }
 
     /// @inheritdoc INodeOperatorStrikes
-    function getExpiredStrikes(uint256 nodeOperatorId) external view returns (uint256[] memory strikeIds) {
-        Strike[] storage active = _storage().operatorStrikes[nodeOperatorId].active;
-        uint256 len = active.length;
-
-        strikeIds = new uint256[](len);
-        uint256 j;
-        for (uint256 i; i < len; ++i) {
-            if (active[i].expiry <= block.timestamp) {
-                strikeIds[j] = active[i].id;
-                ++j;
-            }
-        }
-
-        assembly ("memory-safe") {
-            mstore(strikeIds, j)
-        }
-    }
-
-    /// @inheritdoc INodeOperatorStrikes
     function getStrikeThresholds() external view returns (StrikeThreshold[] memory thresholds) {
         return _storage().thresholds;
+    }
+
+    /// @dev Reverts `StrikeNotExist` if the strike is removed or was never issued.
+    function _ensureStrikeExists(OperatorStrikes storage rec, uint256 strikeId) private view {
+        if (rec.index[strikeId] == 0) revert StrikeNotExist();
     }
 
     /// @dev Swap-pops the strike at `idx` and clears its bookkeeping. Caller refreshes the weight.
@@ -202,7 +187,7 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         emit StrikeRemoved(nodeOperatorId, strikeId, msg.sender);
     }
 
-    function _setStrikeThresholds(StrikeThreshold[] calldata thresholds) internal {
+    function _setStrikeThresholds(StrikeThreshold[] calldata thresholds) private {
         _validateStrikeThresholds(thresholds);
 
         delete _storage().thresholds;
@@ -214,7 +199,7 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         emit StrikeThresholdsSet(thresholds);
     }
 
-    function _onlyExistingOperator(uint256 nodeOperatorId) internal view {
+    function _onlyExistingOperator(uint256 nodeOperatorId) private view {
         if (nodeOperatorId >= MODULE.getNodeOperatorsCount()) revert NodeOperatorDoesNotExist();
     }
 

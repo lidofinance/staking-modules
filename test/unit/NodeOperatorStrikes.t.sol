@@ -81,6 +81,11 @@ contract NodeOperatorStrikesBaseTest is Test, Utilities, Fixtures {
         vm.prank(committee);
         strikeId = strikes.issueStrike(_input(nodeOperatorId, CATEGORY, LIFETIME));
     }
+
+    function _expectNoStrike(uint256 nodeOperatorId, uint256 strikeId) internal {
+        vm.expectRevert(INodeOperatorStrikes.StrikeNotExist.selector);
+        strikes.getStrike(nodeOperatorId, strikeId);
+    }
 }
 
 contract NodeOperatorStrikesConstructorTest is NodeOperatorStrikesBaseTest {
@@ -229,7 +234,7 @@ contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
         strikes.removeStrike(NO_ID, id);
 
         assertEq(strikes.getActiveStrikesCount(NO_ID), 0);
-        assertEq(strikes.getStrike(NO_ID, id).id, 0); // removed -> zeroed slot
+        _expectNoStrike(NO_ID, id); // removed
         assertEq(metaRegistryMock.refreshOperatorWeightCallCount(), refreshesBefore + 1);
     }
 
@@ -240,7 +245,8 @@ contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
         vm.prank(committee);
         strikes.removeStrike(NO_ID, id);
 
-        assertEq(strikes.getStrikeDescription(NO_ID, id), "");
+        vm.expectRevert(INodeOperatorStrikes.StrikeNotExist.selector);
+        strikes.getStrikeDescription(NO_ID, id);
     }
 
     function test_removeStrike_RevertWhen_NotCommittee() public {
@@ -258,7 +264,7 @@ contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
     }
 
     function test_removeStrike_RevertWhen_NonExistent() public {
-        vm.expectRevert(INodeOperatorStrikes.StrikeNotActive.selector);
+        vm.expectRevert(INodeOperatorStrikes.StrikeNotExist.selector);
         vm.prank(committee);
         strikes.removeStrike(NO_ID, 1);
     }
@@ -268,7 +274,7 @@ contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
         vm.prank(committee);
         strikes.removeStrike(NO_ID, id);
 
-        vm.expectRevert(INodeOperatorStrikes.StrikeNotActive.selector);
+        vm.expectRevert(INodeOperatorStrikes.StrikeNotExist.selector);
         vm.prank(committee);
         strikes.removeStrike(NO_ID, id);
     }
@@ -291,11 +297,10 @@ contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
         // After lifetime elapses expired strikes stay in active until explicitly removed.
         vm.warp(block.timestamp + LIFETIME);
         assertEq(strikes.getActiveStrikesCount(NO_ID), 4);
-        assertEq(strikes.getExpiredStrikes(NO_ID).length, 4);
 
         // Gap at id 2 returns zeroed; all others are individually reachable.
         assertEq(strikes.getStrike(NO_ID, 1).id, 1);
-        assertEq(strikes.getStrike(NO_ID, 2).id, 0);
+        _expectNoStrike(NO_ID, 2); // gap
         assertEq(strikes.getStrike(NO_ID, 3).id, 3);
         assertEq(strikes.getStrike(NO_ID, 4).id, 4);
         assertEq(strikes.getStrike(NO_ID, 5).id, 5);
@@ -327,7 +332,7 @@ contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
 
         assertEq(strikes.getActiveStrikesCount(NO_ID), 1);
         assertEq(strikes.getStrike(NO_ID, id2).id, id2);
-        assertEq(strikes.getStrike(NO_ID, id3).id, 0); // removed
+        _expectNoStrike(NO_ID, id3); // removed
     }
 }
 
@@ -358,14 +363,13 @@ contract NodeOperatorStrikesRemoveExpiredTest is NodeOperatorStrikesBaseTest {
         strikes.removeExpiredStrikes(NO_ID);
 
         assertEq(strikes.getActiveStrikesCount(NO_ID), 3);
-        assertEq(strikes.getExpiredStrikes(NO_ID).length, 0);
         // Every survivor still resolves by its id (index stayed consistent through the shuffles).
         assertEq(strikes.getStrike(NO_ID, id2).id, id2);
         assertEq(strikes.getStrike(NO_ID, id4).id, id4);
         assertEq(strikes.getStrike(NO_ID, id6).id, id6);
-        assertEq(strikes.getStrike(NO_ID, 1).id, 0);
-        assertEq(strikes.getStrike(NO_ID, 3).id, 0);
-        assertEq(strikes.getStrike(NO_ID, 5).id, 0);
+        _expectNoStrike(NO_ID, 1);
+        _expectNoStrike(NO_ID, 3);
+        _expectNoStrike(NO_ID, 5);
     }
 
     function test_removeExpiredStrikes_RemovesOnlyExpired() public {
@@ -378,11 +382,10 @@ contract NodeOperatorStrikesRemoveExpiredTest is NodeOperatorStrikesBaseTest {
         strikes.removeExpiredStrikes(NO_ID);
 
         assertEq(strikes.getActiveStrikesCount(NO_ID), 2);
-        assertEq(strikes.getStrike(NO_ID, id1).id, 0);
-        assertEq(strikes.getStrike(NO_ID, id3).id, 0);
+        _expectNoStrike(NO_ID, id1);
+        _expectNoStrike(NO_ID, id3);
         assertEq(strikes.getStrike(NO_ID, id2).id, id2);
         assertEq(strikes.getStrike(NO_ID, id4).id, id4);
-        assertEq(strikes.getExpiredStrikes(NO_ID).length, 0);
         assertEq(metaRegistryMock.refreshOperatorWeightCallCount(), refreshesBefore + 1); // refreshed once
     }
 
@@ -574,29 +577,5 @@ contract NodeOperatorStrikesWeightMultiplierTest is NodeOperatorStrikesBaseTest 
         assertEq(active.length, 2);
         assertEq(active[0].id, id1);
         assertEq(active[1].id, id3);
-    }
-
-    function test_getExpiredStrikes() public {
-        // Two short-lived strikes and one long-lived, all issued at the same time.
-        uint256 idA = _issue(NO_ID); // lifetime = LIFETIME
-        uint256 idB = _issue(NO_ID); // lifetime = LIFETIME
-        vm.prank(committee);
-        uint256 idC = strikes.issueStrike(_input(NO_ID, CATEGORY, LIFETIME * 2));
-
-        // Nothing expired yet.
-        assertEq(strikes.getExpiredStrikes(NO_ID).length, 0);
-
-        // Warp to the short lifetime boundary: A and B expired, C not.
-        vm.warp(block.timestamp + LIFETIME);
-
-        uint256[] memory expired = strikes.getExpiredStrikes(NO_ID);
-        assertEq(expired.length, 2);
-        assertEq(expired[0], idA);
-        assertEq(expired[1], idB);
-        assertGt(strikes.getStrike(NO_ID, idC).expiry, block.timestamp);
-
-        // Warp past the long lifetime: all three expired.
-        vm.warp(strikes.getStrike(NO_ID, idC).expiry);
-        assertEq(strikes.getExpiredStrikes(NO_ID).length, 3);
     }
 }

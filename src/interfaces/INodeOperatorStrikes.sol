@@ -42,7 +42,7 @@ interface INodeOperatorStrikes {
     error ZeroModuleAddress();
     error ZeroAdminAddress();
     error NodeOperatorDoesNotExist();
-    error StrikeNotActive();
+    error StrikeNotExist();
     error InvalidLifetime();
     error InvalidStrikeThresholds();
     error DescriptionTooLong();
@@ -97,12 +97,12 @@ interface INodeOperatorStrikes {
     /// @param nodeOperatorId ID of the Node Operator.
     function getStrikeWeightMultiplier(uint256 nodeOperatorId) external view returns (uint256 multiplierBP);
 
-    /// @notice Return a single strike record (zeroed if removed or never issued).
+    /// @notice Return a single strike record. Reverts with `StrikeNotExist` if removed or never issued.
     /// @param nodeOperatorId ID of the Node Operator.
     /// @param strikeId       ID of the strike.
     function getStrike(uint256 nodeOperatorId, uint256 strikeId) external view returns (Strike memory strike);
 
-    /// @notice On-chain description of a strike (empty if removed or never issued).
+    /// @notice On-chain description of a strike. Reverts with `StrikeNotExist` if removed or never issued.
     /// @param nodeOperatorId ID of the Node Operator.
     /// @param strikeId       ID of the strike.
     function getStrikeDescription(
@@ -113,11 +113,6 @@ interface INodeOperatorStrikes {
     /// @notice Return the active (non-removed) strikes of a Node Operator.
     /// @param nodeOperatorId ID of the Node Operator.
     function getStrikes(uint256 nodeOperatorId) external view returns (Strike[] memory strikes);
-
-    /// @notice Return IDs of active strikes whose lifetime has elapsed (`block.timestamp >= expiry`),
-    ///         i.e. the ones that can be removed permissionlessly.
-    /// @param nodeOperatorId ID of the Node Operator.
-    function getExpiredStrikes(uint256 nodeOperatorId) external view returns (uint256[] memory strikeIds);
 
     /// @notice Return the configured global weight-reduction thresholds.
     function getStrikeThresholds() external view returns (StrikeThreshold[] memory thresholds);
