@@ -15,9 +15,8 @@ interface IBondLock {
 
     event BondLockChanged(uint256 indexed nodeOperatorId, uint256 newAmount, uint256 until);
     event BondLockRemoved(uint256 indexed nodeOperatorId);
-    event ExpiredBondLockRemoved(uint256 indexed nodeOperatorId);
-
     event BondLockPeriodChanged(uint256 period);
+    event BondLockNonceIncremented(uint256 indexed nodeOperatorId, uint256 newNonce);
 
     error InvalidBondLockPeriod();
     error InvalidBondLockAmount();
@@ -42,8 +41,13 @@ interface IBondLock {
     /// @return Amount of the actual locked bond
     function getLockedBond(uint256 nodeOperatorId) external view returns (uint256);
 
+    /// @notice Get bond lock nonce for the given Node Operator
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @return Bond lock nonce
+    function getBondLockNonce(uint256 nodeOperatorId) external view returns (uint256);
+
     /// @notice Check if the bond lock for the given Node Operator has expired
     /// @param nodeOperatorId ID of the Node Operator
-    /// @return True if the bond lock has expired or there is no lock, false otherwise
+    /// @return True if the bond lock has expired, false otherwise
     function isLockExpired(uint256 nodeOperatorId) external view returns (bool);
 }

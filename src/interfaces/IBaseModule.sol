@@ -133,7 +133,6 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     error ValidatorSlashingAlreadyReported();
     error InvalidWithdrawnValidatorInfo();
 
-    error PubkeyMismatch();
     error InvalidAmount();
     error InvalidInput();
     error NotEnoughKeys();
@@ -178,6 +177,8 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     function REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE() external view returns (bytes32);
 
     function CREATE_NODE_OPERATOR_ROLE() external view returns (bytes32);
+
+    function OPERATOR_ADDRESSES_ADMIN_ROLE() external view returns (bytes32);
 
     function LIDO_LOCATOR() external view returns (ILidoLocator);
 
@@ -291,8 +292,8 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @notice Settles locked bond for eligible Node Operators
     /// @dev SETTLE_GENERAL_DELAYED_PENALTY_ROLE role is expected to be assigned to Easy Track
     /// @param nodeOperatorIds IDs of the Node Operators
-    /// @param maxAmounts Maximum amounts to settle for each Node Operator
-    function settleGeneralDelayedPenalty(uint256[] memory nodeOperatorIds, uint256[] memory maxAmounts) external;
+    /// @param bondLockNonces Bond lock nonces for each Node Operator
+    function settleGeneralDelayedPenalty(uint256[] memory nodeOperatorIds, uint256[] memory bondLockNonces) external;
 
     /// @notice Propose a new manager address for the Node Operator.
     /// @dev Passing address(0) clears the pending proposal without changing the current manager address.
@@ -325,6 +326,17 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @param nodeOperatorId ID of the Node Operator
     /// @param newAddress Proposed reward address
     function changeNodeOperatorRewardAddress(uint256 nodeOperatorId, address newAddress) external;
+
+    /// @notice Change both reward and manager addresses of a node operator. An emergency method.
+    /// @dev Only privileged role member can call this method if the role is assigned.
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @param newManagerAddress New manager address
+    /// @param newRewardAddress New reward address
+    function changeNodeOperatorAddresses(
+        uint256 nodeOperatorId,
+        address newManagerAddress,
+        address newRewardAddress
+    ) external;
 
     /// @notice Update depositable validators data for the given Node Operator.
     /// @dev The following rules are applied:

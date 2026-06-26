@@ -67,7 +67,9 @@ abstract contract PenaltyIntegrationTestBase is ModuleTypeBase, PermitHelper {
         uint256[] memory idsToSettle = new uint256[](1);
         idsToSettle[0] = defaultNoId;
 
-        module.settleGeneralDelayedPenalty(idsToSettle, UintArr(type(uint256).max));
+        uint256 bondLockNonce = accounting.getBondLockNonce(defaultNoId);
+
+        module.settleGeneralDelayedPenalty(idsToSettle, UintArr(bondLockNonce));
 
         (uint256 bondAfter, ) = accounting.getBondSummaryShares(defaultNoId);
 

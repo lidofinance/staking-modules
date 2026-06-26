@@ -1934,6 +1934,57 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         assertEq(cm.getNodeOperatorBalance(noId), 0);
     }
 
+    function test_topUp_slashedKeyGetsZeroAllocation() public {
+        uint256 noId = createNodeOperator(1);
+        cm.obtainDepositData(1, "");
+
+        cm.reportValidatorSlashing(noId, 0);
+        assertTrue(cm.isValidatorSlashed(noId, 0));
+
+        bytes memory key = cm.getSigningKeys(noId, 0, 1);
+        uint256[] memory allocations = cm.allocateDeposits({
+            maxDepositAmount: 5 ether,
+            pubkeys: BytesArr(key),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(noId),
+            topUpLimits: UintArr(5 ether)
+        });
+
+        assertEq(allocations, UintArr(0));
+        assertEq(cm.getKeyAllocatedBalances(noId, 0, 1), UintArr(0));
+        assertEq(
+            module.getTotalModuleStake(),
+            ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+            "slashed key must not receive top-up"
+        );
+        assertEq(cm.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+    }
+
+    function test_topUp_slashedKeySkippedAmongMixedBatch() public {
+        uint256 noId = createNodeOperator(2);
+        cm.obtainDepositData(2, "");
+
+        // Slash key 0, leave key 1 intact.
+        cm.reportValidatorSlashing(noId, 0);
+
+        bytes memory packed = cm.getSigningKeys(noId, 0, 2);
+        bytes[] memory pubkeys = BytesArr(slice(packed, 0, 48), slice(packed, 48, 48));
+
+        uint256[] memory allocations = cm.allocateDeposits({
+            maxDepositAmount: 10 ether,
+            pubkeys: pubkeys,
+            keyIndices: UintArr(0, 1),
+            operatorIds: UintArr(noId, noId),
+            topUpLimits: UintArr(5 ether, 5 ether)
+        });
+
+        // Slashed head key gets no allocation; remaining key receives the full per-key limit.
+        assertEq(allocations, UintArr(0, 4 ether));
+        assertEq(cm.getKeyAllocatedBalances(noId, 0, 2), UintArr(0, 4 ether));
+        assertEq(module.getTotalModuleStake(), 2 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
+        assertEq(cm.getNodeOperatorBalance(noId), 2 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
+    }
+
     function test_topUp_duplicateKeySharesRemainingHeadroom() public {
         createNodeOperator(1);
         cm.obtainDepositData(1, "");
@@ -2185,299 +2236,7 @@ contract CuratedOnValidatorExitTriggered is ModuleOnValidatorExitTriggered, Cura
 
 contract CuratedCreateNodeOperators is ModuleCreateNodeOperators, CuratedCommon {}
 
-contract CuratedChangeNodeOperatorAddresses is CuratedCommon {
-    function test_changeNodeOperatorAddresses_NoExtendedManagerPermissions_SingleOwner() public {
-        uint256 noId = cm.createNodeOperator(
-            nodeOperator,
-            NodeOperatorManagementProperties({
-                managerAddress: address(0),
-                rewardAddress: address(0),
-                extendedManagerPermissions: false
-            }),
-            address(0)
-        );
-
-        vm.startPrank(admin);
-        cm.grantRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
-        vm.stopPrank();
-
-        address manager = nextAddress();
-        address rewards = nextAddress();
-
-        vm.expectEmit(address(cm));
-        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, nodeOperator, manager);
-
-        vm.expectEmit(address(cm));
-        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, nodeOperator, rewards);
-
-        cm.changeNodeOperatorAddresses(noId, manager, rewards);
-
-        NodeOperator memory no = cm.getNodeOperator(noId);
-        assertEq(no.managerAddress, manager);
-        assertEq(no.rewardAddress, rewards);
-    }
-
-    function test_changeNodeOperatorAddresses_NoExtendedManagerPermissions_SeparateManagerReward() public {
-        address managerToChange = nextAddress();
-        address rewardsToChange = nextAddress();
-
-        uint256 noId = cm.createNodeOperator(
-            nodeOperator,
-            NodeOperatorManagementProperties({
-                managerAddress: managerToChange,
-                rewardAddress: rewardsToChange,
-                extendedManagerPermissions: false
-            }),
-            address(0)
-        );
-
-        vm.startPrank(admin);
-        cm.grantRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
-        vm.stopPrank();
-
-        address manager = nextAddress();
-        address rewards = nextAddress();
-
-        vm.expectEmit(address(cm));
-        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, managerToChange, manager);
-
-        vm.expectEmit(address(cm));
-        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, rewardsToChange, rewards);
-
-        cm.changeNodeOperatorAddresses(noId, manager, rewards);
-
-        NodeOperator memory no = cm.getNodeOperator(noId);
-        assertEq(no.managerAddress, manager);
-        assertEq(no.rewardAddress, rewards);
-    }
-
-    function test_changeNodeOperatorAddresses_ExtendedManagerPermissions_SingleOwner() public {
-        uint256 noId = cm.createNodeOperator(
-            nodeOperator,
-            NodeOperatorManagementProperties({
-                managerAddress: address(0),
-                rewardAddress: address(0),
-                extendedManagerPermissions: true
-            }),
-            address(0)
-        );
-
-        vm.startPrank(admin);
-        cm.grantRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
-        vm.stopPrank();
-
-        address manager = nextAddress();
-        address rewards = nextAddress();
-
-        vm.expectEmit(address(cm));
-        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, nodeOperator, manager);
-
-        vm.expectEmit(address(cm));
-        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, nodeOperator, rewards);
-
-        cm.changeNodeOperatorAddresses(noId, manager, rewards);
-
-        NodeOperator memory no = cm.getNodeOperator(noId);
-        assertEq(no.managerAddress, manager);
-        assertEq(no.rewardAddress, rewards);
-    }
-
-    function test_changeNodeOperatorAddresses_ExtendedManagerPermissions_SeparateManagerReward() public {
-        address managerToChange = nextAddress();
-        address rewardsToChange = nextAddress();
-
-        uint256 noId = cm.createNodeOperator(
-            nodeOperator,
-            NodeOperatorManagementProperties({
-                managerAddress: managerToChange,
-                rewardAddress: rewardsToChange,
-                extendedManagerPermissions: true
-            }),
-            address(0)
-        );
-
-        vm.startPrank(admin);
-        cm.grantRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
-        vm.stopPrank();
-
-        address manager = nextAddress();
-        address rewards = nextAddress();
-
-        vm.expectEmit(address(cm));
-        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, managerToChange, manager);
-
-        vm.expectEmit(address(cm));
-        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, rewardsToChange, rewards);
-
-        cm.changeNodeOperatorAddresses(noId, manager, rewards);
-
-        NodeOperator memory no = cm.getNodeOperator(noId);
-        assertEq(no.managerAddress, manager);
-        assertEq(no.rewardAddress, rewards);
-    }
-
-    function test_changeNodeOperatorAddresses_ChangesOnlyGivenAddress() public {
-        address managerToChange = nextAddress();
-        address rewardsToChange = nextAddress();
-
-        uint256 noId = cm.createNodeOperator(
-            nodeOperator,
-            NodeOperatorManagementProperties({
-                managerAddress: managerToChange,
-                rewardAddress: rewardsToChange,
-                extendedManagerPermissions: false
-            }),
-            address(0)
-        );
-
-        vm.startPrank(admin);
-        cm.grantRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
-        vm.stopPrank();
-
-        address manager = nextAddress();
-        address rewards = nextAddress();
-
-        uint256 snapshot = vm.snapshotState();
-
-        {
-            vm.expectEmit(address(cm));
-            emit IBaseModule.NodeOperatorRewardAddressChanged(noId, rewardsToChange, rewards);
-
-            vm.recordLogs();
-            cm.changeNodeOperatorAddresses(noId, managerToChange, rewards);
-            assertEq(vm.getRecordedLogs().length, 1);
-        }
-        vm.revertToState(snapshot);
-
-        {
-            vm.expectEmit(address(cm));
-            emit IBaseModule.NodeOperatorManagerAddressChanged(noId, managerToChange, manager);
-
-            vm.recordLogs();
-            cm.changeNodeOperatorAddresses(noId, manager, rewardsToChange);
-            assertEq(vm.getRecordedLogs().length, 1);
-        }
-        vm.revertToState(snapshot);
-    }
-
-    function test_changeNodeOperatorAddresses_ResetProposedAddresses() public {
-        uint256 noId = cm.createNodeOperator(
-            nodeOperator,
-            NodeOperatorManagementProperties({
-                managerAddress: address(0),
-                rewardAddress: address(0),
-                extendedManagerPermissions: false
-            }),
-            address(0)
-        );
-
-        address proposedManager = nextAddress();
-        address proposedRewards = nextAddress();
-
-        vm.startPrank(nodeOperator);
-        cm.proposeNodeOperatorManagerAddressChange(noId, proposedManager);
-        cm.proposeNodeOperatorRewardAddressChange(noId, proposedRewards);
-        vm.stopPrank();
-
-        assertEq(cm.getNodeOperator(noId).proposedManagerAddress, proposedManager);
-        assertEq(cm.getNodeOperator(noId).proposedRewardAddress, proposedRewards);
-
-        vm.startPrank(admin);
-        cm.grantRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
-        vm.stopPrank();
-
-        address manager = nextAddress();
-        address rewards = nextAddress();
-
-        vm.expectEmit(address(cm));
-        emit IBaseModule.NodeOperatorManagerAddressChanged(noId, nodeOperator, manager);
-
-        vm.expectEmit(address(cm));
-        emit IBaseModule.NodeOperatorRewardAddressChanged(noId, nodeOperator, rewards);
-
-        cm.changeNodeOperatorAddresses(noId, manager, rewards);
-
-        NodeOperator memory no = cm.getNodeOperator(noId);
-        assertEq(no.managerAddress, manager);
-        assertEq(no.rewardAddress, rewards);
-        assertEq(cm.getNodeOperator(noId).proposedManagerAddress, address(0));
-        assertEq(cm.getNodeOperator(noId).proposedRewardAddress, address(0));
-    }
-
-    function test_changeNodeOperatorAddresses_RevertsIfOperatorDoesNotExist() public {
-        vm.startPrank(admin);
-        cm.grantRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
-        vm.stopPrank();
-
-        address manager = nextAddress();
-        address rewards = nextAddress();
-
-        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
-        cm.changeNodeOperatorAddresses(0, manager, rewards);
-    }
-
-    function test_changeNodeOperatorAddresses_RevertsIfHasNoRole() public {
-        assertFalse(cm.hasRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this)));
-
-        address manager = nextAddress();
-        address rewards = nextAddress();
-
-        expectRoleRevert(address(this), cm.OPERATOR_ADDRESSES_ADMIN_ROLE());
-        cm.changeNodeOperatorAddresses(0, manager, rewards);
-    }
-
-    function test_changeNodeOperatorAddresses_RevertsIfZeroAddressProvided() public {
-        uint256 noId = cm.createNodeOperator(
-            nodeOperator,
-            NodeOperatorManagementProperties({
-                managerAddress: nextAddress(),
-                rewardAddress: nextAddress(),
-                extendedManagerPermissions: false
-            }),
-            address(0)
-        );
-
-        vm.startPrank(admin);
-        cm.grantRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
-        vm.stopPrank();
-
-        address manager = nextAddress();
-        address rewards = nextAddress();
-
-        vm.expectRevert(IBaseModule.ZeroManagerAddress.selector);
-        cm.changeNodeOperatorAddresses(noId, address(0), rewards);
-
-        vm.expectRevert(IBaseModule.ZeroRewardAddress.selector);
-        cm.changeNodeOperatorAddresses(noId, manager, address(0));
-    }
-
-    function test_changeNodeOperatorAddresses_RevertsIfInvalidAddressProvided() public {
-        uint256 noId = cm.createNodeOperator(
-            nodeOperator,
-            NodeOperatorManagementProperties({
-                managerAddress: nextAddress(),
-                rewardAddress: nextAddress(),
-                extendedManagerPermissions: false
-            }),
-            address(0)
-        );
-
-        vm.startPrank(admin);
-        cm.grantRole(cm.OPERATOR_ADDRESSES_ADMIN_ROLE(), address(this));
-        vm.stopPrank();
-
-        address stETH = address(cm.STETH());
-
-        address manager = nextAddress();
-        address rewards = nextAddress();
-
-        vm.expectRevert(IBaseModule.InvalidManagerAddress.selector);
-        cm.changeNodeOperatorAddresses(noId, stETH, rewards);
-
-        vm.expectRevert(IBaseModule.InvalidRewardAddress.selector);
-        cm.changeNodeOperatorAddresses(noId, manager, stETH);
-    }
-}
+contract CuratedChangeNodeOperatorAddresses is ModuleChangeNodeOperatorAddresses, CuratedCommon {}
 
 contract CuratedHooks is CuratedCommon {
     function test_notifyNodeOperatorWeightChange_bumpsNonce() public {

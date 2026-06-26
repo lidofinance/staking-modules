@@ -130,6 +130,13 @@ contract BondLockTest is Test {
         assertTrue(expired);
     }
 
+    function test_isLockExpired_NoLock() public view {
+        uint256 noId = 0;
+
+        bool expired = bondLock.isLockExpired(noId);
+        assertFalse(expired);
+    }
+
     function test_lock() public {
         uint256 period = bondLock.getBondLockPeriod();
         uint256 noId = 0;
@@ -138,10 +145,13 @@ contract BondLockTest is Test {
 
         vm.expectEmit(address(bondLock));
         emit IBondLock.BondLockChanged(noId, amount, until);
+        emit IBondLock.BondLockNonceIncremented(noId, 1);
 
         bondLock.lock(noId, amount);
 
         BondLock.BondLockData memory lock = bondLock.getLockedBondInfo(noId);
+        uint256 nonce = bondLock.getBondLockNonce(noId);
+        assertEq(nonce, 1);
         assertEq(lock.amount, amount);
         assertEq(lock.until, until);
     }
@@ -155,8 +165,10 @@ contract BondLockTest is Test {
 
         bondLock.lock(noId, 1 ether);
         BondLock.BondLockData memory lock = bondLock.getLockedBondInfo(noId);
+        uint256 nonce = bondLock.getBondLockNonce(noId);
         assertEq(lock.amount, 2 ether);
         assertEq(lock.until, lockBefore.until + 1 hours);
+        assertEq(nonce, 2);
     }
 
     function test_lock_WhenSecondLockOnUntil() public {
@@ -169,8 +181,10 @@ contract BondLockTest is Test {
 
         bondLock.lock(noId, 1 ether);
         BondLock.BondLockData memory lock = bondLock.getLockedBondInfo(noId);
+        uint256 nonce = bondLock.getBondLockNonce(noId);
         assertEq(lock.amount, 1 ether);
         assertEq(lock.until, lockBefore.until + period);
+        assertEq(nonce, 2);
     }
 
     function test_lock_WhenSecondLockAfterFirstExpired() public {
@@ -183,6 +197,8 @@ contract BondLockTest is Test {
 
         bondLock.lock(noId, 1 ether);
         BondLock.BondLockData memory lock = bondLock.getLockedBondInfo(noId);
+        uint256 nonce = bondLock.getBondLockNonce(noId);
+        assertEq(nonce, 2);
         assertEq(lock.amount, 1 ether);
         assertEq(lock.until, block.timestamp + period);
     }
@@ -219,15 +235,23 @@ contract BondLockTest is Test {
         uint256 amount = 100 ether;
 
         bondLock.lock(noId, amount);
+        assertEq(bondLock.getBondLockNonce(noId), 1);
 
         vm.expectEmit(address(bondLock));
         emit IBondLock.BondLockRemoved(noId);
 
+        vm.recordLogs();
         bondLock.unlock(noId, amount);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        assertEq(entries.length, 1);
+        assertEq(entries[0].topics[0], IBondLock.BondLockRemoved.selector);
+        assertEq(entries[0].topics[1], bytes32(noId));
 
         BondLock.BondLockData memory lock = bondLock.getLockedBondInfo(0);
         assertEq(lock.amount, 0);
         assertEq(lock.until, 0);
+
+        assertEq(bondLock.getBondLockNonce(noId), 1);
     }
 
     function test_unlock_WhenPartial() public {
@@ -236,6 +260,8 @@ contract BondLockTest is Test {
         uint256 amount = 100 ether;
 
         bondLock.lock(noId, amount);
+        assertEq(bondLock.getBondLockNonce(noId), 1);
+
         uint256 periodWhenLock = block.timestamp + period;
 
         uint256 toRelease = 10 ether;
@@ -251,6 +277,8 @@ contract BondLockTest is Test {
         BondLock.BondLockData memory lock = bondLock.getLockedBondInfo(0);
         assertEq(lock.amount, rest);
         assertEq(lock.until, periodWhenLock);
+
+        assertEq(bondLock.getBondLockNonce(noId), 1);
     }
 
     function test_unlock_RevertWhen_ZeroAmount() public {
@@ -275,6 +303,8 @@ contract BondLockTest is Test {
 
         bondLock.lock(noId, amount);
 
+        assertEq(bondLock.getBondLockNonce(noId), 1);
+
         vm.expectEmit(address(bondLock));
         emit IBondLock.BondLockRemoved(noId);
 
@@ -285,6 +315,8 @@ contract BondLockTest is Test {
         BondLock.BondLockData memory lock = bondLock.getLockedBondInfo(0);
         assertEq(lock.amount, 0);
         assertEq(lock.until, 0);
+
+        assertEq(bondLock.getBondLockNonce(noId), 1);
     }
 
     function test_unlockExpiredLock_RevertWhen_NotExpired() public {
@@ -315,6 +347,7 @@ contract BondLockTest is Test {
         uint256 amount = 100 ether;
 
         bondLock.lock(noId, amount);
+        assertEq(bondLock.getBondLockNonce(noId), 1);
 
         vm.expectEmit(address(bondLock));
         emit IBondLock.BondLockRemoved(noId);
@@ -324,5 +357,6 @@ contract BondLockTest is Test {
         BondLock.BondLockData memory lock = bondLock.getLockedBondInfo(0);
         assertEq(lock.amount, 0);
         assertEq(lock.until, 0);
+        assertEq(bondLock.getBondLockNonce(noId), 1);
     }
 }

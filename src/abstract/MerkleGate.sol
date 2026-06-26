@@ -11,7 +11,7 @@ import { AssetRecoverer } from "./AssetRecoverer.sol";
 import { NamedUpgradeable } from "./NamedUpgradeable.sol";
 import { PausableWithRoles } from "./PausableWithRoles.sol";
 
-import { IMerkleGate } from "../interfaces/IMerkleGate.sol";
+import { IMerkleGate, INamedUpgradeable } from "../interfaces/IMerkleGate.sol";
 
 /// @notice Shared Merkle-based gate logic for gated node-operator flows.
 abstract contract MerkleGate is
@@ -40,6 +40,7 @@ abstract contract MerkleGate is
         _setTreeParams(treeRoot_, treeCid_);
     }
 
+    /// @inheritdoc INamedUpgradeable
     function setName(string calldata name_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setName(name_);
     }

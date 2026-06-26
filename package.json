@@ -1,8 +1,8 @@
 {
-  "name": "community-staking-module",
+  "name": "staking-modules",
   "version": "0.0.1",
-  "description": "Community Staking Module for Lido protocol",
-  "repository": "https://github.com/lidofinance/community-staking-module.git",
+  "description": "Staking Modules for Lido protocol",
+  "repository": "https://github.com/lidofinance/staking-modules.git",
   "author": "Community Staking Team <csm@lido.fi>",
   "license": "GPL-3.0",
   "private": true,

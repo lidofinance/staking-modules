@@ -12,7 +12,7 @@ interface IMerkleGateFactory {
     function GATE_IMPL() external view returns (address);
 
     /// @notice Creates a new gate proxy for the predefined implementation and initializes it.
-    /// @param curveId Bond curve id to assign to eligible members.
+    /// @param curveId Bond curve id used by the gate.
     /// @param treeRoot Initial Merkle tree root.
     /// @param treeCid Initial Merkle tree CID.
     /// @param name Human-readable gate name.

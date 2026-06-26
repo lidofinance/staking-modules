@@ -24,6 +24,7 @@ contract AccountingMock {
     ILido public immutable LIDO;
 
     mapping(uint256 nodeOperatorId => IBondLock.BondLockData) bondLock;
+    mapping(uint256 nodeOperatorId => uint256) bondLockNonce;
     mapping(uint256 nodeOperatorId => uint256) bond;
 
     mapping(uint256 nodeOperatorId => uint256 bondCurveId) operatorBondCurveId;
@@ -99,6 +100,7 @@ contract AccountingMock {
         // forge-lint: disable-next-line(unsafe-typecast)
         uint128 unlockAt = uint128(unlockTs);
         bondLock[nodeOperatorId].until = unlockAt;
+        bondLockNonce[nodeOperatorId]++;
     }
 
     function releaseLockedBond(uint256 nodeOperatorId, uint256 amount) external returns (bool) {
@@ -118,25 +120,20 @@ contract AccountingMock {
         MODULE.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
-    function settleLockedBond(uint256 nodeOperatorId, uint256 maxAmount) external returns (uint256 settledAmount) {
+    function settleLockedBond(uint256 nodeOperatorId, uint256 nonce) external returns (uint256 settledAmount) {
         if (bondLock[nodeOperatorId].until <= block.timestamp) {
             unlockExpiredLock(nodeOperatorId);
             return 0;
         }
-        uint256 lockedBond = getLockedBond(nodeOperatorId);
-        settledAmount = Math.min(lockedBond, maxAmount);
+        if (nonce != bondLockNonce[nodeOperatorId]) revert IAccounting.InvalidBondLockNonce();
+        settledAmount = getLockedBond(nodeOperatorId);
         if (settledAmount > bond[nodeOperatorId]) {
             bond[nodeOperatorId] = 0;
         } else {
             bond[nodeOperatorId] -= settledAmount;
         }
-        if (settledAmount < lockedBond) {
-            // Bond lock amounts mirror production's uint128 slot, so truncation cannot happen.
-            // forge-lint: disable-next-line(unsafe-typecast)
-            bondLock[nodeOperatorId].amount -= uint128(settledAmount);
-        } else {
-            delete bondLock[nodeOperatorId];
-        }
+
+        delete bondLock[nodeOperatorId];
     }
 
     function compensateLockedBond(uint256 nodeOperatorId) external returns (uint256 compensatedAmount) {
@@ -183,6 +180,10 @@ contract AccountingMock {
         if (curve.length > 0) trend = curve[0].trend;
         bondCurves.push(trend);
         _nextCurveId = bondCurves.length;
+    }
+
+    function getCurvesCount() external view returns (uint256) {
+        return bondCurves.length;
     }
 
     function penalize(uint256 nodeOperatorId, uint256 amount) external returns (bool fullyBurned) {
@@ -245,6 +246,10 @@ contract AccountingMock {
 
     function getLockedBondInfo(uint256 nodeOperatorId) external view returns (IBondLock.BondLockData memory) {
         return bondLock[nodeOperatorId];
+    }
+
+    function getBondLockNonce(uint256 nodeOperatorId) external view returns (uint256) {
+        return bondLockNonce[nodeOperatorId];
     }
 
     function getBondLockPeriod() external pure returns (uint256) {

@@ -11,6 +11,7 @@ from ics_assessment.config import (
     BATCH_LOGS_DIR,
     BATCH_APPROVED_ADDRESS_SUMMARY_PATH,
 )
+from ics_assessment.data_utils import normalize_evm_address
 from ics_assessment.main import evaluate_assessment, resolve_runtime_inputs
 from ics_assessment.render import render_assessment_result
 
@@ -23,16 +24,14 @@ def _short_addr(addr: str) -> str:
 def _parse_addresses(main_addr: str | None, additional: str | None) -> list[str]:
     addrs: list[str] = []
     if main_addr:
-        m = main_addr.strip().lower()
-        addrs.append(m)
+        addrs.append(normalize_evm_address(main_addr))
 
     if additional:
         # Normalize separators to commas, then split on comma and whitespace.
         s = additional.replace(";", ",").replace("\n", ",").replace("|", ",")
         raw = re.split(r"[\s,]+", s)
         for r in raw:
-            a = r.strip().lower()
-            addrs.append(a)
+            addrs.append(normalize_evm_address(r))
 
     return list(dict.fromkeys(addrs))
 
@@ -130,7 +129,7 @@ def main(full: bool = False):
             )
             processed += 1
             if status == "APPROVED":
-                approved_addresses.append((row_id, main_addr.lower()))
+                approved_addresses.append((row_id, addresses[0] if main_addr else ""))
             if status == "APPROVED" and eligible == "NO":
                 print(f"⚠️ {row_id} Application is approved but not eligible with score")
                 approved_ineligible += 1

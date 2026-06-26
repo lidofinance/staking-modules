@@ -44,6 +44,7 @@ abstract contract BaseModule is
     bytes32 public constant REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE =
         keccak256("REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE");
     bytes32 public constant CREATE_NODE_OPERATOR_ROLE = keccak256("CREATE_NODE_OPERATOR_ROLE");
+    bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE = keccak256("OPERATOR_ADDRESSES_ADMIN_ROLE");
     ILidoLocator public immutable LIDO_LOCATOR;
     IStETH public immutable STETH;
     IParametersRegistry public immutable PARAMETERS_REGISTRY;
@@ -205,6 +206,22 @@ abstract contract BaseModule is
         );
     }
 
+    /// @inheritdoc IBaseModule
+    function changeNodeOperatorAddresses(
+        uint256 nodeOperatorId,
+        address newManagerAddress,
+        address newRewardAddress
+    ) external {
+        _checkRole(OPERATOR_ADDRESSES_ADMIN_ROLE);
+        NOAddresses.changeNodeOperatorAddresses({
+            nodeOperators: _baseStorage().nodeOperators,
+            nodeOperatorId: nodeOperatorId,
+            newManagerAddress: newManagerAddress,
+            newRewardAddress: newRewardAddress,
+            stETH: address(STETH)
+        });
+    }
+
     /// @inheritdoc IStakingModule
     /// @dev Passes through the minted stETH shares to the fee distributor
     function onRewardsMinted(uint256 totalShares) external {
@@ -286,15 +303,18 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function settleGeneralDelayedPenalty(uint256[] calldata nodeOperatorIds, uint256[] calldata maxAmounts) external {
+    function settleGeneralDelayedPenalty(
+        uint256[] calldata nodeOperatorIds,
+        uint256[] calldata bondLockNonces
+    ) external {
         _checkRole(SETTLE_GENERAL_DELAYED_PENALTY_ROLE);
-        if (nodeOperatorIds.length != maxAmounts.length) revert InvalidInput();
+        if (nodeOperatorIds.length != bondLockNonces.length) revert InvalidInput();
 
         for (uint256 i; i < nodeOperatorIds.length; ++i) {
             uint256 nodeOperatorId = nodeOperatorIds[i];
             _onlyExistingNodeOperator(nodeOperatorId);
 
-            bool settled = GeneralPenalty.settleGeneralDelayedPenalty(nodeOperatorId, maxAmounts[i]);
+            bool settled = GeneralPenalty.settleGeneralDelayedPenalty(nodeOperatorId, bondLockNonces[i]);
 
             if (!settled) continue;
 
@@ -451,11 +471,13 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function isValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool) {
+        _onlyValidKeyIndex(nodeOperatorId, keyIndex);
         return _baseStorage().isValidatorSlashed[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 
     /// @inheritdoc IBaseModule
     function isValidatorWithdrawn(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool) {
+        _onlyValidKeyIndex(nodeOperatorId, keyIndex);
         return _baseStorage().isValidatorWithdrawn[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)];
     }
 
@@ -778,9 +800,16 @@ abstract contract BaseModule is
         revert NodeOperatorDoesNotExist();
     }
 
+    /// NOTE: The function does not revert when `startIndex` is equal to `totalAddedKeys` and `keysCount` is zero. The
+    /// method might be fixed later once we're sure all off-chain tooling will handle the updated behaviour.
     function _onlyValidIndexRange(uint256 nodeOperatorId, uint256 startIndex, uint256 keysCount) internal view {
         if (startIndex + keysCount > _baseStorage().nodeOperators[nodeOperatorId].totalAddedKeys)
             revert SigningKeysInvalidOffset();
+    }
+
+    function _onlyValidKeyIndex(uint256 nodeOperatorId, uint256 keyIndex) internal view {
+        if (keyIndex < _baseStorage().nodeOperators[nodeOperatorId].totalAddedKeys) return;
+        revert SigningKeysInvalidOffset();
     }
 
     function _getBondCurveId(uint256 nodeOperatorId) internal view returns (uint256) {

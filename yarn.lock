@@ -719,25 +719,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"community-staking-module@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "community-staking-module@workspace:."
-  dependencies:
-    "@lodestar/types": "npm:^1.31.0"
-    "@openzeppelin/contracts": "npm:5.4.0"
-    "@openzeppelin/contracts-upgradeable": "npm:5.4.0"
-    "@openzeppelin/merkle-tree": "npm:^1.0.8"
-    forge-std: "https://github.com/foundry-rs/forge-std.git#v1.9.6"
-    husky: "npm:^8.0.3"
-    lint-staged: "npm:^15.4.3"
-    prettier: "npm:^3.0.3"
-    prettier-plugin-solidity: "npm:^1.1.3"
-    solhint: "npm:5.0.1"
-    solhint-plugin-lido-csm: "https://github.com/lidofinance/solhint-plugin-lido-csm.git#0.3.3"
-    web3-eth-abi: "npm:^4.4.1"
-  languageName: unknown
-  linkType: soft
-
 "config-chain@npm:^1.1.11":
   version: 1.1.13
   resolution: "config-chain@npm:1.1.13"
@@ -2034,6 +2015,25 @@ __metadata:
   checksum: 10c0/57fb166ff71812404288ae1a386bb9bbb6330662aedc3b45d89f6f0ce51ee0e36c9f4b9d4fd363c2b37fbf607e42df088e734c532fb93e2f345601b429813d9e
   languageName: node
   linkType: hard
+
+"staking-modules@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "staking-modules@workspace:."
+  dependencies:
+    "@lodestar/types": "npm:^1.31.0"
+    "@openzeppelin/contracts": "npm:5.4.0"
+    "@openzeppelin/contracts-upgradeable": "npm:5.4.0"
+    "@openzeppelin/merkle-tree": "npm:^1.0.8"
+    forge-std: "https://github.com/foundry-rs/forge-std.git#v1.9.6"
+    husky: "npm:^8.0.3"
+    lint-staged: "npm:^15.4.3"
+    prettier: "npm:^3.0.3"
+    prettier-plugin-solidity: "npm:^1.1.3"
+    solhint: "npm:5.0.1"
+    solhint-plugin-lido-csm: "https://github.com/lidofinance/solhint-plugin-lido-csm.git#0.3.3"
+    web3-eth-abi: "npm:^4.4.1"
+  languageName: unknown
+  linkType: soft
 
 "string-argv@npm:^0.3.2":
   version: 0.3.2

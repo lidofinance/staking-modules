@@ -16,14 +16,9 @@ interface ICSModule is IBaseModule, IStakingModuleV2, IDepositQueueLib, ITopUpQu
     event TopUpQueueLimitSet(uint256 limit);
     event TopUpQueueRewound(uint256 to);
 
-    error NotEligibleForPriorityQueue();
-    error PriorityQueueAlreadyUsed();
-    error PriorityQueueMaxDepositsUsed();
-    error NoQueuedKeysToMigrate();
     error TopUpQueueDisabled();
     error ZeroTopUpQueueLimit();
     error SameTopUpQueueLimit();
-    error InvalidSigningKey();
     error InvalidTopUpOrder();
     error UnexpectedExtraKey();
     error UpgradeIsNotFinalized();

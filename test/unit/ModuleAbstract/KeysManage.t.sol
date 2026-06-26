@@ -202,7 +202,12 @@ abstract contract ModuleGetSigningKeys is ModuleFixtures {
         assertEq(obtainedKeys, keys, "unexpected keys");
     }
 
-    function test_getSigningKeys_getNonExistingKeys() public assertInvariants brutalizeMemory {
+    function test_getSigningKeys_RevertWhen_InvalidRange() public assertInvariants brutalizeMemory {
+        uint256 emptyNoId = createNodeOperator(0);
+
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.getSigningKeys({ nodeOperatorId: emptyNoId, startIndex: 0, keysCount: 1 });
+
         bytes memory keys = randomBytes(48);
 
         uint256 noId = createNodeOperator({
@@ -214,6 +219,10 @@ abstract contract ModuleGetSigningKeys is ModuleFixtures {
 
         vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
         module.getSigningKeys({ nodeOperatorId: noId, startIndex: 0, keysCount: 3 });
+
+        uint256 twoKeysNoId = createNodeOperator(2);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.getSigningKeys({ nodeOperatorId: twoKeysNoId, startIndex: 1, keysCount: 2 });
     }
 
     function test_getSigningKeys_getKeysFromOffset() public assertInvariants brutalizeMemory {
@@ -267,7 +276,12 @@ abstract contract ModuleGetSigningKeysWithSignatures is ModuleFixtures {
         assertEq(obtainedSignatures, signatures, "unexpected signatures");
     }
 
-    function test_getSigningKeysWithSignatures_getNonExistingKeys() public assertInvariants brutalizeMemory {
+    function test_getSigningKeysWithSignatures_RevertWhen_InvalidRange() public assertInvariants brutalizeMemory {
+        uint256 emptyNoId = createNodeOperator(0);
+
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.getSigningKeysWithSignatures({ nodeOperatorId: emptyNoId, startIndex: 0, keysCount: 1 });
+
         bytes memory keys = randomBytes(48);
         bytes memory signatures = randomBytes(96);
 
@@ -280,6 +294,10 @@ abstract contract ModuleGetSigningKeysWithSignatures is ModuleFixtures {
 
         vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
         module.getSigningKeysWithSignatures({ nodeOperatorId: noId, startIndex: 0, keysCount: 3 });
+
+        uint256 twoKeysNoId = createNodeOperator(2);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.getSigningKeysWithSignatures({ nodeOperatorId: twoKeysNoId, startIndex: 1, keysCount: 2 });
     }
 
     function test_getSigningKeysWithSignatures_getKeysFromOffset() public assertInvariants brutalizeMemory {

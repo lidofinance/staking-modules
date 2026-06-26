@@ -15,7 +15,8 @@ interface IPermissionlessGate {
     function MODULE() external view returns (IBaseModule);
 
     /// @notice Add a new Node Operator using ETH as a bond.
-    ///         At least one deposit data and corresponding bond should be provided
+    ///         At least one deposit data and corresponding bond should be provided.
+    ///         Any excess msg.value will be sent to the bond and can be claimed from there.
     /// @param keysCount Signing keys count
     /// @param publicKeys Public keys to submit
     /// @param signatures Signatures of `(deposit_message_root, domain)` tuples

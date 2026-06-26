@@ -1,3 +1,5 @@
+import pytest
+
 from ics_assessment.experience import sync_hoodi as mod
 
 
@@ -25,8 +27,61 @@ def patch_status_monkey(monkeypatch):
     def _v2(rep, op_id):
         return (rep.get("status") or {}).get(op_id, None)
 
+    def _v3(rep, op_id):
+        return (rep.get("status") or {}).get(op_id, None)
+
     monkeypatch.setattr(mod, "operator_passes_in_report_v1", _v1)
     monkeypatch.setattr(mod, "operator_passes_in_report_v2", _v2)
+    monkeypatch.setattr(mod, "operator_passes_in_report_v3", _v3)
+
+
+def test_append_report_frames_raises_with_cid_for_missing_frame():
+    with pytest.raises(
+        ValueError,
+        match="invalid Hoodi performance report frame: CID",
+    ):
+        mod.append_report_frames([], "CID", {"_ver": 1, "frames": [{}]})
+
+
+def test_iter_performance_report_frames_supports_v3_wrapper():
+    frame = {
+        "frame": [91325, 92899],
+        "operators": {
+            "1": {
+                "validators": {
+                    "v1": {
+                        "distributed_rewards": 1,
+                    }
+                }
+            }
+        },
+    }
+
+    assert mod.iter_performance_report_frames({"_ver": 1, "frames": [frame]}) == [
+        ("v3", frame),
+    ]
+
+
+def test_v3_good_logic_used(monkeypatch):
+    patch_status_monkey(monkeypatch)
+    day_epochs = mod.SECONDS_PER_DAY // mod.EPOCH_SECONDS
+    statuses = [{"8": True} for _ in range(3)]
+    reports = make_reports(day_epochs, statuses, version="v3")
+    eligible = mod.evaluate_eligibility_window(reports, min_days=3)
+    assert "8" in eligible
+
+
+def test_v3_dispatch_uses_v3_parser(monkeypatch):
+    day_epochs = mod.SECONDS_PER_DAY // mod.EPOCH_SECONDS
+    reports = make_reports(day_epochs, [{"8": True}], version="v3")
+
+    monkeypatch.setattr(mod, "operator_passes_in_report_v1", lambda rep, op_id: None)
+    monkeypatch.setattr(mod, "operator_passes_in_report_v2", lambda rep, op_id: False)
+    monkeypatch.setattr(mod, "operator_passes_in_report_v3", lambda rep, op_id: True)
+
+    eligible = mod.evaluate_eligibility_window(reports, min_days=1)
+
+    assert "8" in eligible
 
 
 def test_all_good_contiguous_meets_threshold(monkeypatch):

@@ -8,6 +8,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IAccounting } from "./interfaces/IAccounting.sol";
+import { IBondCurve } from "./interfaces/IBondCurve.sol";
 import { INodeOperatorsRegistry } from "./interfaces/INodeOperatorsRegistry.sol";
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IBaseModule } from "./interfaces/IBaseModule.sol";
@@ -136,6 +137,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     /// @inheritdoc IMetaRegistry
     function setBondCurveWeight(uint256 curveId, uint256 weight) external onlyRole(SET_BOND_CURVE_WEIGHT_ROLE) {
         MetaRegistryStorage storage $ = _storage();
+        if (curveId >= ACCOUNTING.getCurvesCount()) revert IBondCurve.InvalidBondCurveId();
         if (weight != 0 && weight < MAX_BP) revert InvalidBondCurveWeight();
         if ($.bondCurveWeight[curveId] == weight) revert SameBondCurveWeight();
 
@@ -274,7 +276,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
         $.effectiveWeightCache.groupEffectiveWeightSum[groupId] = 0;
 
-        for (uint256 i; i < group.subNodeOperatorIds.length; ++i) {
+        uint256 subOperatorsCount = group.subNodeOperatorIds.length;
+        for (uint256 i; i < subOperatorsCount; ++i) {
             uint256 noId = group.subNodeOperatorIds[i];
             delete $.groupIndex.groupIdByOperatorId[noId];
             delete $.groupIndex.shareByOperatorId[noId];
@@ -282,7 +285,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             _setEffectiveWeight(noId, 0);
         }
 
-        for (uint256 i; i < group.externalOperators.length; ++i) {
+        uint256 externalOperatorsCount = group.externalOperators.length;
+        for (uint256 i; i < externalOperatorsCount; ++i) {
             delete $.groupIndex.groupIdByExternalKey[group.externalOperators[i].uniqueKey()];
         }
 
@@ -351,10 +355,14 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         uint256 oldWeight = _setEffectiveWeight(noId, newWeight);
 
         if (oldWeight != newWeight) {
-            $.effectiveWeightCache.groupEffectiveWeightSum[groupId] =
-                $.effectiveWeightCache.groupEffectiveWeightSum[groupId] +
-                newWeight -
-                oldWeight;
+            // It's unlikely in practice that the new weight will be large enough to lead to an overflow
+            // and the old weight subtraction can't underflow since it's part of the weight sum.
+            unchecked {
+                $.effectiveWeightCache.groupEffectiveWeightSum[groupId] =
+                    $.effectiveWeightCache.groupEffectiveWeightSum[groupId] +
+                    newWeight -
+                    oldWeight;
+            }
         }
     }
 
@@ -425,7 +433,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     function _totalExternalStake(
         ExternalOperator[] storage externalOperators
     ) internal view returns (uint256 totalExternalStake) {
-        for (uint256 i; i < externalOperators.length; ++i) {
+        uint256 externalOperatorsCount = externalOperators.length;
+        for (uint256 i; i < externalOperatorsCount; ++i) {
             ExternalOperator memory op = externalOperators[i];
 
             OperatorType opType = op.tryGetExtOpType();

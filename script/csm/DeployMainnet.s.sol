@@ -86,11 +86,11 @@ contract DeployMainnet is DeployBase {
         config.identifiedCommunityStakersGateCurveId = 2;
         config.identifiedCommunityStakersGateName = "Identified Community Stakers Gate";
         config
-            .identifiedCommunityStakersGateTreeRoot = 0x91545c42adde0f5d82e4c228f81449eab20349c1d31a8538e0468466f93495c5;
-        config.identifiedCommunityStakersGateTreeCid = "bafkreido7ieacbe6nlhdivxfp2gd5kxovofngf6qdmahih4laihm675e2a";
+            .identifiedCommunityStakersGateTreeRoot = 0x897c27523df17a9f5513651c006b75cba576d3dad2a13dd2334cb50c6b5a003e;
+        config.identifiedCommunityStakersGateTreeCid = "bafkreigiuxjg7vkjti4ynydrhyr47fit3c5n7peqogehunba2gxignhrqu";
         config.identifiedDVTClusterGateName = "Identified DVT Clusters Gate";
-        config.identifiedDVTClusterGateTreeRoot = bytes32(uint256(0xdeadbeef)); // TODO: Set real IDVTC tree root
-        config.identifiedDVTClusterGateTreeCid = "someCid"; // TODO: Set real IDVTC tree CID
+        config.identifiedDVTClusterGateTreeRoot = 0xb61a11aaa84f3956f54784f7e8548ff165cab8a4866f3950ea7edbc9cd19464e;
+        config.identifiedDVTClusterGateTreeCid = "bafkreiakdug6tbysfvwm5hoizdvmex4wxh3kfkjq6pfxxjp5cv4mrokdiq";
         // 1.5 -> 1.3
         config.identifiedCommunityStakersGateBondCurve.push([1, 1.5 ether]);
         config.identifiedCommunityStakersGateBondCurve.push([2, 1.3 ether]);
@@ -128,7 +128,7 @@ contract DeployMainnet is DeployBase {
         config.identifiedDVTClusterExitDelayFee = 0.05 ether;
 
         // CircuitBreaker
-        config.circuitBreaker = address(0x63697263756974627265616b6572); // TODO: Set real CircuitBreaker address
+        config.circuitBreaker = 0x6019CB557978296BA3C08a7B73225C0975DFB2F7; // Proposed by LIP-34
         config.circuitBreakerPauser = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
 
         // DG

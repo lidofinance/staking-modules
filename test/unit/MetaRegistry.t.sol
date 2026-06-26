@@ -9,6 +9,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { MetaRegistry } from "src/MetaRegistry.sol";
 import { IMetaRegistry, OperatorMetadata } from "src/interfaces/IMetaRegistry.sol";
+import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { IBaseModule } from "src/interfaces/IBaseModule.sol";
@@ -33,7 +34,7 @@ contract MetaRegistryForTest is MetaRegistry {
     }
 }
 
-contract MetaRegistryTestBase is Test, Utilities, Fixtures {
+contract MetaRegistryBaseTest is Test, Utilities, Fixtures {
     CuratedMock public module;
     StakingRouterMock public stakingRouter;
     MetaRegistryForTest public registry;
@@ -87,7 +88,7 @@ contract MetaRegistryTestBase is Test, Utilities, Fixtures {
     }
 }
 
-contract MetaRegistryTestGroupsBase is MetaRegistryTestBase {
+contract MetaRegistryGroupsBaseTest is MetaRegistryBaseTest {
     NodeOperatorsRegistryMock public externalModule;
 
     function setUp() public virtual override {
@@ -226,7 +227,7 @@ contract MetaRegistryTestGroupsBase is MetaRegistryTestBase {
     }
 }
 
-contract MetaRegistryTestConstructor is MetaRegistryTestBase {
+contract MetaRegistryConstructorTest is MetaRegistryBaseTest {
     function test_constructor_SetsImmutables() public {
         MetaRegistry r = new MetaRegistry(address(module));
         assertEq(address(r.STAKING_ROUTER()), address(stakingRouter));
@@ -240,7 +241,7 @@ contract MetaRegistryTestConstructor is MetaRegistryTestBase {
     }
 }
 
-contract MetaRegistryTestInitialize is MetaRegistryTestBase {
+contract MetaRegistryInitializeTest is MetaRegistryBaseTest {
     function test_getInitializedVersion() public view {
         assertEq(registry.getInitializedVersion(), 1);
     }
@@ -281,7 +282,7 @@ contract MetaRegistryTestInitialize is MetaRegistryTestBase {
     }
 }
 
-contract MetaRegistryTestSetMetadataAsAdmin is MetaRegistryTestBase {
+contract MetaRegistrySetMetadataAsAdminTest is MetaRegistryBaseTest {
     function test_setOperatorMetadataAsAdmin() public {
         uint256 nodeOperatorId = 0;
 
@@ -373,7 +374,7 @@ contract MetaRegistryTestSetMetadataAsAdmin is MetaRegistryTestBase {
     }
 }
 
-contract MetaRegistryTestSetMetadataAsOwner is MetaRegistryTestBase {
+contract MetaRegistrySetMetadataAsOwnerTest is MetaRegistryBaseTest {
     function test_setOperatorMetadataAsOwner() public {
         uint256 nodeOperatorId = 0;
 
@@ -441,7 +442,7 @@ contract MetaRegistryTestSetMetadataAsOwner is MetaRegistryTestBase {
     }
 }
 
-contract MetaRegistryTestGetMetadata is MetaRegistryTestBase {
+contract MetaRegistryGetMetadataTest is MetaRegistryBaseTest {
     function test_getOperatorMetadata_ReturnsEmptyWhenUnset() public {
         uint256 nodeOperatorId = 0;
 
@@ -453,7 +454,7 @@ contract MetaRegistryTestGetMetadata is MetaRegistryTestBase {
     }
 }
 
-contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
+contract MetaRegistryGroupsCreateTest is MetaRegistryGroupsBaseTest {
     function test_createGroup_CreatesGroup() public {
         IMetaRegistry.SubNodeOperator memory op0 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: 6000 });
         IMetaRegistry.SubNodeOperator memory op1 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: 4000 });
@@ -639,7 +640,7 @@ contract MetaRegistryTestGroupsCreate is MetaRegistryTestGroupsBase {
     }
 }
 
-contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
+contract MetaRegistryGroupsUpdateTest is MetaRegistryGroupsBaseTest {
     function test_updateGroup_OnlySubOperators() public {
         uint256 newGroupId = _nextGroupId();
         _createDefaultGroupWithExternal(0, MAX_BP, 0);
@@ -865,7 +866,7 @@ contract MetaRegistryTestGroupsUpdate is MetaRegistryTestGroupsBase {
     }
 }
 
-contract MetaRegistryTestGroupsGetters is MetaRegistryTestGroupsBase {
+contract MetaRegistryGroupsGettersTest is MetaRegistryGroupsBaseTest {
     function test_getOperatorGroup_ReturnsGroup() public {
         IMetaRegistry.SubNodeOperator memory op0 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: 7000 });
         IMetaRegistry.SubNodeOperator memory op1 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: 3000 });
@@ -943,7 +944,7 @@ contract MetaRegistryTestGroupsGetters is MetaRegistryTestGroupsBase {
     }
 }
 
-contract MetaRegistryTestWeights is MetaRegistryTestGroupsBase {
+contract MetaRegistryWeightsTest is MetaRegistryGroupsBaseTest {
     function test_getOperatorWeights_ReturnsWeightsInOrder() public {
         _setBondCurveWeight(0, CURVE_WEIGHT);
 
@@ -1067,7 +1068,7 @@ contract MetaRegistryTestWeights is MetaRegistryTestGroupsBase {
     }
 }
 
-contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
+contract MetaRegistryBondCurveTest is MetaRegistryGroupsBaseTest {
     uint256 internal constant VALID_BOND_CURVE_WEIGHT = CURVE_WEIGHT + 123;
 
     function test_getBondCurveWeight_ReturnsValue() public {
@@ -1086,6 +1087,13 @@ contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
         expectRoleRevert(stranger, registry.SET_BOND_CURVE_WEIGHT_ROLE());
         vm.prank(stranger);
         registry.setBondCurveWeight(0, VALID_BOND_CURVE_WEIGHT);
+    }
+
+    function test_setBondCurveWeight_RevertWhen_InvalidBondCurveId() public {
+        uint256 nonExistingCurveId = module.ACCOUNTING().getCurvesCount();
+        vm.prank(bondCurveWeightManager);
+        vm.expectRevert(IBondCurve.InvalidBondCurveId.selector);
+        registry.setBondCurveWeight(nonExistingCurveId, VALID_BOND_CURVE_WEIGHT);
     }
 
     function test_setBondCurveWeight_RevertWhen_BelowMinNonZeroWeight() public {
@@ -1193,7 +1201,7 @@ contract MetaRegistryTestBondCurve is MetaRegistryTestGroupsBase {
     }
 }
 
-contract MetaRegistryTestModuleAddressCache is MetaRegistryTestGroupsBase {
+contract MetaRegistryModuleAddressCacheTest is MetaRegistryGroupsBaseTest {
     function test_createGroup_CachesModuleAddressFromRouter() public {
         externalModule.mock_setNodeOperatorsCount(1);
         _setExternalNodeOperator(0, 1, 2);
@@ -1243,7 +1251,7 @@ contract MetaRegistryTestModuleAddressCache is MetaRegistryTestGroupsBase {
     }
 }
 
-contract MetaRegistryTestGroupName is MetaRegistryTestGroupsBase {
+contract MetaRegistryTestGroupName is MetaRegistryGroupsBaseTest {
     function test_createGroup_SetsName() public {
         uint256 gid = _nextGroupId();
         vm.prank(groupManager);

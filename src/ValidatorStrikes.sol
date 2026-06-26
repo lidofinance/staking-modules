@@ -107,7 +107,7 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
         if (msg.value % keysCount > 0) revert ValueNotEvenlyDivisible();
 
         bytes[] memory pubkeys = new bytes[](keysCount);
-        for (uint256 i; i < pubkeys.length; ++i) {
+        for (uint256 i; i < keysCount; ++i) {
             pubkeys[i] = MODULE.getSigningKeys(keyStrikesList[i].nodeOperatorId, keyStrikesList[i].keyIndex, 1);
         }
 
@@ -160,7 +160,8 @@ contract ValidatorStrikes is IValidatorStrikes, Initializable, AccessControlEnum
         address refundRecipient
     ) internal {
         uint256 strikes = 0;
-        for (uint256 i; i < keyStrikes.data.length; ++i) {
+        uint256 strikesCount = keyStrikes.data.length;
+        for (uint256 i; i < strikesCount; ++i) {
             strikes += keyStrikes.data[i];
         }
 

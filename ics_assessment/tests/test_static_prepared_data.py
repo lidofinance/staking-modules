@@ -47,13 +47,22 @@ EXPERIENCE_SOURCES = ExperienceSources(
     node_operator_owners_mainnet_path=NODE_OPERATOR_OWNERS_MAINNET_PATH,
 )
 EXPERIENCE_EVALUATOR = ExperienceEvaluator(EXPERIENCE_SOURCES)
-HUMANITY_SOURCES = HumanitySources(circle_group_members_path=CIRCLE_GROUP_MEMBERS_PATH)
+HUMANITY_SOURCES = HumanitySources(
+    circle_group_members_path=CIRCLE_GROUP_MEMBERS_PATH,
+    ssv_verified_operators_path=SSV_VERIFIED_OPERATORS_PATH,
+)
 HUMANITY_EVALUATOR = HumanityEvaluator(HUMANITY_SOURCES)
 
 
 def _first_csv_row(path: Path) -> list[str]:
     with path.open("r", encoding="utf-8") as file:
         return next(csv.reader(file))
+
+
+def _first_csv_address(path: Path) -> str:
+    with path.open("r", encoding="utf-8") as file:
+        row = next(csv.reader(file))
+    return row[0].strip().lower()
 
 
 def _first_dict_row_matching(path: Path, predicate) -> dict[str, str]:
@@ -87,7 +96,7 @@ def test_static_aragon_vote_uses_prepared_data():
 
 
 def test_static_protocol_guild_uses_prepared_data():
-    address = _first_csv_row(PROTOCOL_GUILD_PATH)[0].strip().lower()
+    address = _first_csv_address(PROTOCOL_GUILD_PATH)
 
     outcome = ENGAGEMENT_EVALUATOR.protocol_guild({address})
 
@@ -96,7 +105,7 @@ def test_static_protocol_guild_uses_prepared_data():
 
 
 def test_static_eth_staker_uses_prepared_data():
-    address = _first_csv_row(ROOT / "experience/static/eth-staker-solo-stakers.csv")[0].strip().lower()
+    address = _first_csv_address(ROOT / "experience/static/eth-staker-solo-stakers.csv")
 
     outcome = EXPERIENCE_EVALUATOR.eth_staker_score({address})
 
@@ -105,7 +114,7 @@ def test_static_eth_staker_uses_prepared_data():
 
 
 def test_static_stake_cat_uses_prepared_data():
-    address = _first_csv_row(ROOT / "experience/static/stake-cat-solo-B.csv")[0].strip().lower()
+    address = _first_csv_address(ROOT / "experience/static/stake-cat-solo-B.csv")
 
     outcome = EXPERIENCE_EVALUATOR.stake_cat_score({address})
 
@@ -114,7 +123,7 @@ def test_static_stake_cat_uses_prepared_data():
 
 
 def test_static_obol_techne_uses_prepared_data():
-    address = _first_csv_row(ROOT / "experience/data/obol-techne-credentials-silver.csv")[0].strip().lower()
+    address = _first_csv_address(ROOT / "experience/data/obol-techne-credentials-silver.csv")
 
     outcome = EXPERIENCE_EVALUATOR.obol_techne_score({address})
 
@@ -123,7 +132,7 @@ def test_static_obol_techne_uses_prepared_data():
 
 
 def test_static_ssv_verified_uses_prepared_data():
-    address = _first_csv_row(SSV_VERIFIED_OPERATORS_PATH)[0].strip().lower()
+    address = _first_csv_address(SSV_VERIFIED_OPERATORS_PATH)
 
     outcome = EXPERIENCE_EVALUATOR.ssv_verified_score({address})
 
@@ -131,8 +140,17 @@ def test_static_ssv_verified_uses_prepared_data():
     assert address in (outcome.detail or "")
 
 
+def test_static_ssv_verified_humanity_uses_prepared_data():
+    address = _first_csv_address(SSV_VERIFIED_OPERATORS_PATH)
+
+    outcome = HUMANITY_EVALUATOR.ssv_verified_score({address})
+
+    assert outcome.score == HUMANITY_SCORES["ssv-verified"]
+    assert address in (outcome.detail or "")
+
+
 def test_static_sdvtm_uses_prepared_data():
-    address = _first_csv_row(ROOT / "experience/static/sdvtm-mainnet.csv")[0].strip().lower()
+    address = _first_csv_address(ROOT / "experience/static/sdvtm-mainnet.csv")
 
     outcome = EXPERIENCE_EVALUATOR.sdvtm_score({address})
 
@@ -165,7 +183,7 @@ def test_static_csm_mainnet_uses_prepared_data():
 
 
 def test_static_circles_uses_prepared_data():
-    address = _first_csv_row(CIRCLE_GROUP_MEMBERS_PATH)[0].strip().lower()
+    address = _first_csv_address(CIRCLE_GROUP_MEMBERS_PATH)
 
     outcome = HUMANITY_EVALUATOR.circles_verified_score({address})
 

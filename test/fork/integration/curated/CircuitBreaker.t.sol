@@ -11,13 +11,8 @@ contract CircuitBreakerTest is CuratedIntegrationBase {
         vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
     }
 
-    function _ensureLiveAndPause(address pausable) internal {
-        address pauser = circuitBreaker.getPauser(pausable);
-        if (!circuitBreaker.isPauserLive(pauser)) {
-            vm.prank(pauser);
-            circuitBreaker.heartbeat();
-        }
-        vm.prank(pauser);
+    function _pause(address pausable) internal {
+        vm.prank(circuitBreaker.getPauser(pausable));
         circuitBreaker.pause(pausable);
     }
 
@@ -30,7 +25,7 @@ contract CircuitBreakerTest is CuratedIntegrationBase {
         pausables[4] = address(ejector);
 
         for (uint256 i = 0; i < pausables.length; i++) {
-            _ensureLiveAndPause(pausables[i]);
+            _pause(pausables[i]);
         }
 
         assertTrue(curatedModule.isPaused());
@@ -41,7 +36,7 @@ contract CircuitBreakerTest is CuratedIntegrationBase {
     }
 
     function test_pauseCuratedModule() public {
-        _ensureLiveAndPause(address(curatedModule));
+        _pause(address(curatedModule));
 
         assertTrue(curatedModule.isPaused());
         assertFalse(accounting.isPaused());
@@ -51,7 +46,7 @@ contract CircuitBreakerTest is CuratedIntegrationBase {
     }
 
     function test_pauseAccounting() public {
-        _ensureLiveAndPause(address(accounting));
+        _pause(address(accounting));
 
         assertFalse(curatedModule.isPaused());
         assertTrue(accounting.isPaused());
@@ -61,7 +56,7 @@ contract CircuitBreakerTest is CuratedIntegrationBase {
     }
 
     function test_pauseOracle() public {
-        _ensureLiveAndPause(address(oracle));
+        _pause(address(oracle));
 
         assertFalse(curatedModule.isPaused());
         assertFalse(accounting.isPaused());
@@ -71,7 +66,7 @@ contract CircuitBreakerTest is CuratedIntegrationBase {
     }
 
     function test_pauseVerifier() public {
-        _ensureLiveAndPause(address(verifier));
+        _pause(address(verifier));
 
         assertFalse(curatedModule.isPaused());
         assertFalse(accounting.isPaused());
@@ -81,7 +76,7 @@ contract CircuitBreakerTest is CuratedIntegrationBase {
     }
 
     function test_pauseEjector() public {
-        _ensureLiveAndPause(address(ejector));
+        _pause(address(ejector));
 
         assertFalse(curatedModule.isPaused());
         assertFalse(accounting.isPaused());

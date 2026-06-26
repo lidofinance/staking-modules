@@ -15,16 +15,6 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
     /// @param admin An address to grant the DEFAULT_ADMIN_ROLE to.
     function initialize(address admin) external;
 
-    /// @notice Change both reward and manager addresses of a node operator.
-    /// @param nodeOperatorId ID of the Node Operator
-    /// @param newManagerAddress New manager address
-    /// @param newRewardAddress New reward address
-    function changeNodeOperatorAddresses(
-        uint256 nodeOperatorId,
-        address newManagerAddress,
-        address newRewardAddress
-    ) external;
-
     /// @notice Notifies the module about the weight change of a node operator.
     /// @param nodeOperatorId ID of the Node Operator
     /// @param oldWeight The old weight of the node operator.
@@ -79,8 +69,6 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
     function getDepositsAllocation(
         uint256 depositAmount
     ) external view returns (uint256 allocated, uint256[] memory operatorIds, uint256[] memory allocations);
-
-    function OPERATOR_ADDRESSES_ADMIN_ROLE() external view returns (bytes32);
 
     /// @notice Returns current meta registry.
     function META_REGISTRY() external view returns (IMetaRegistry);

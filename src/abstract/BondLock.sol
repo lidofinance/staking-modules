@@ -37,6 +37,9 @@ abstract contract BondLock is IBondLock, Initializable {
         uint256 bondLockPeriod;
         /// @dev Mapping of the Node Operator id to the bond lock
         mapping(uint256 nodeOperatorId => BondLockData) bondLock;
+        /// @dev Mapping of the Node Operator id to the bond lock nonce. Expired lock removals and compensations do not increment the nonce, since they do not create a new lock, but only remove the existing one.
+        ///      Nonce is incremented on each new lock and used to prevent settling wrong lock in case of multiple locks for the same Node Operator.
+        mapping(uint256 nodeOperatorId => uint256) bondLockNonce;
     }
 
     // keccak256(abi.encode(uint256(keccak256("CSBondLock")) - 1)) & ~bytes32(uint256(0xff))
@@ -71,11 +74,18 @@ abstract contract BondLock is IBondLock, Initializable {
     }
 
     /// @inheritdoc IBondLock
+    function getBondLockNonce(uint256 nodeOperatorId) public view returns (uint256) {
+        return _getBondLockStorage().bondLockNonce[nodeOperatorId];
+    }
+
+    /// @inheritdoc IBondLock
     function isLockExpired(uint256 nodeOperatorId) public view returns (bool) {
-        return _getBondLockStorage().bondLock[nodeOperatorId].until <= block.timestamp;
+        uint256 lockUntil = _getBondLockStorage().bondLock[nodeOperatorId].until;
+        return lockUntil == 0 ? false : lockUntil <= block.timestamp;
     }
 
     /// @dev Lock bond amount for the given Node Operator until the period.
+    /// @dev If there's an existing non-expired lock, its amount is added to the `amount` provided.
     function _lock(uint256 nodeOperatorId, uint256 amount) internal {
         if (amount == 0) revert InvalidBondLockAmount();
 
@@ -86,6 +96,7 @@ abstract contract BondLock is IBondLock, Initializable {
         uint256 until = block.timestamp + $.bondLockPeriod;
         if (currentLockUntil > until) until = currentLockUntil;
         _changeBondLock(nodeOperatorId, amount, until);
+        _incrementBondLockNonce(nodeOperatorId);
     }
 
     /// @dev Unlock the locked bond amount for the given Node Operator without changing the lock period
@@ -93,6 +104,10 @@ abstract contract BondLock is IBondLock, Initializable {
         if (amount == 0) revert InvalidBondLockAmount();
         uint256 locked = getLockedBond(nodeOperatorId);
         if (locked < amount) revert InvalidBondLockAmount();
+        if (locked == amount) {
+            _changeBondLock(nodeOperatorId, 0, 0);
+            return;
+        }
         unchecked {
             _changeBondLock(nodeOperatorId, locked - amount, _getBondLockStorage().bondLock[nodeOperatorId].until);
         }
@@ -115,7 +130,12 @@ abstract contract BondLock is IBondLock, Initializable {
         if (getLockedBond(nodeOperatorId) == 0) revert NoBondLocked();
         if (!isLockExpired(nodeOperatorId)) revert BondLockNotExpired();
         _changeBondLock(nodeOperatorId, 0, 0);
-        emit ExpiredBondLockRemoved(nodeOperatorId);
+    }
+
+    function _incrementBondLockNonce(uint256 nodeOperatorId) internal {
+        unchecked {
+            emit BondLockNonceIncremented(nodeOperatorId, ++_getBondLockStorage().bondLockNonce[nodeOperatorId]);
+        }
     }
 
     // solhint-disable-next-line func-name-mixedcase

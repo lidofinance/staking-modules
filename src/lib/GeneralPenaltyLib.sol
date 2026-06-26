@@ -51,10 +51,10 @@ library GeneralPenalty {
         module.updateDepositableValidatorsCount(nodeOperatorId);
     }
 
-    function settleGeneralDelayedPenalty(uint256 nodeOperatorId, uint256 maxAmount) external returns (bool) {
+    function settleGeneralDelayedPenalty(uint256 nodeOperatorId, uint256 bondLockNonce) external returns (bool) {
         IAccounting accounting = IBaseModule(address(this)).ACCOUNTING();
 
-        uint256 settledAmount = accounting.settleLockedBond(nodeOperatorId, maxAmount);
+        uint256 settledAmount = accounting.settleLockedBond(nodeOperatorId, bondLockNonce);
         if (settledAmount == 0) return false;
 
         emit IBaseModule.GeneralDelayedPenaltySettled(nodeOperatorId, settledAmount);

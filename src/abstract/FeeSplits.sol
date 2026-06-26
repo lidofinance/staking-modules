@@ -47,7 +47,8 @@ abstract contract FeeSplits is IFeeSplits {
         FeeSplitsStorage storage $ = _getFeeSplitsStorage();
         FeeSplit[] storage splits = $.feeSplits[nodeOperatorId];
         transfers = new SplitTransfer[](splits.length);
-        for (uint256 i; i < splits.length; ++i) {
+        uint256 splitsCount = splits.length;
+        for (uint256 i; i < splitsCount; ++i) {
             FeeSplit storage feeSplit = splits[i];
             // NOTE: Due to rounding error, shares left for the node operator might contain some dust.
             uint256 amount = (splittableShares * feeSplit.share) / MAX_BP;
@@ -83,12 +84,11 @@ abstract contract FeeSplits is IFeeSplits {
         emit PendingSharesToSplitChanged(nodeOperatorId, newPendingSharesToSplit);
     }
 
-    function _decreasePendingSharesToSplit(uint256 nodeOperatorId, uint256 shares) internal {
+    /// @dev Expects `shares` not to exceed the current value of `pendingSharesToSplit`.
+    function _unsafeDecreasePendingSharesToSplit(uint256 nodeOperatorId, uint256 shares) internal {
         if (shares == 0) return;
         FeeSplitsStorage storage $ = _getFeeSplitsStorage();
-        uint256 current = $.pendingSharesToSplit[nodeOperatorId];
-        shares = shares > current ? current : shares;
-        uint256 newPendingSharesToSplit = current - (shares);
+        uint256 newPendingSharesToSplit = $.pendingSharesToSplit[nodeOperatorId] - shares;
         $.pendingSharesToSplit[nodeOperatorId] = newPendingSharesToSplit;
         emit PendingSharesToSplitChanged(nodeOperatorId, newPendingSharesToSplit);
     }

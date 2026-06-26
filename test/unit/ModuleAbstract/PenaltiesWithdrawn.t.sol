@@ -17,6 +17,19 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertFalse(module.isValidatorWithdrawn(noId, 0));
     }
 
+    function test_isValidatorWithdrawn_RevertWhen_InvalidKeyIndex() public {
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.isValidatorWithdrawn(0, 0);
+
+        uint256 emptyNoId = createNodeOperator(0);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.isValidatorWithdrawn(emptyNoId, 0);
+
+        uint256 noId = createNodeOperator(1);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.isValidatorWithdrawn(noId, 1);
+    }
+
     function test_reportRegularWithdrawnValidators_NoPenalties() public assertInvariants {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
@@ -1241,6 +1254,27 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(module.getNonce(), nonceBefore + 1, "Module nonce should increment only once for batch withdrawals");
     }
 
+    function test_reportRegularWithdrawnValidators_gas16Withdrawals() public {
+        uint256 keysCount = 16;
+        uint256 noId = createNodeOperator(keysCount);
+        module.obtainDepositData(keysCount, "");
+
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](keysCount);
+        for (uint256 i = 0; i < keysCount; ++i) {
+            validatorInfos[i] = WithdrawnValidatorInfo({
+                nodeOperatorId: noId,
+                keyIndex: i,
+                exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+                slashingPenalty: 0,
+                isSlashed: false
+            });
+        }
+
+        vm.startSnapshotGas("reportRegularWithdrawnValidators_16");
+        module.reportRegularWithdrawnValidators(validatorInfos);
+        vm.stopSnapshotGas();
+    }
+
     function test_reportValidatorSlashing_HappyPath() public {
         uint256 noId = createNodeOperator(17);
         module.obtainDepositData(17, "");
@@ -1258,6 +1292,19 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         uint256 noId = createNodeOperator(1);
 
         assertFalse(module.isValidatorSlashed(noId, 0));
+    }
+
+    function test_isValidatorSlashed_RevertWhen_InvalidKeyIndex() public {
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.isValidatorSlashed(0, 0);
+
+        uint256 emptyNoId = createNodeOperator(0);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.isValidatorSlashed(emptyNoId, 0);
+
+        uint256 noId = createNodeOperator(1);
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.isValidatorSlashed(noId, 1);
     }
 
     function test_reportValidatorSlashing_RevertWhen_CalledTwice() public {

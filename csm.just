@@ -52,6 +52,12 @@ deploy-csm-impl-live *args:
         just _deploy-csm-impl --broadcast --verify {{args}}
     just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "" "deploy-latest.json" {{csm_latest_upgrade_config_path}}
 
+deploy-csm-impl-live-no-confirm *args:
+    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
+    ARTIFACTS_DIR={{csm_artifacts_latest_dir}} \
+        just _deploy-csm-impl --broadcast --verify {{args}}
+    just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "" "deploy-latest.json" {{csm_latest_upgrade_config_path}}
+
 deploy-csm-impl-dry *args:
     just _deploy-csm-impl {{args}}
     just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "/dry-run" "deploy-latest.json" {{csm_local_upgrade_config_path}}
@@ -164,40 +170,3 @@ _deploy-csm-impl *args:
         forge script {{deploy_csm_impls_script_path}} --sig="deploy(string,string)" \
             --rpc-url ${RPC_URL} {{disable_code_size_limit}} {{args}} \
             -- {{deploy_config_path}} `git rev-parse HEAD`
-
-# Deprecated aliases
-
-deploy-local *args:
-    just deploy-csm-local {{args}}
-
-deploy *args:
-    just _warn "Deprecated. Use deploy-csm."
-    just deploy-csm {{args}}
-
-deploy-live *args:
-    just _warn "Deprecated. Use deploy-csm-live."
-    just deploy-csm-live {{args}}
-
-deploy-live-no-confirm *args:
-    just _warn "Deprecated. Use deploy-csm-live-no-confirm."
-    just deploy-csm-live-no-confirm {{args}}
-
-deploy-live-dry *args:
-    just _warn "Deprecated. Use deploy-csm-live-dry."
-    just deploy-csm-live-dry {{args}}
-
-verify-live *args:
-    just _warn "Deprecated. Use verify-csm-live."
-    just verify-csm-live {{args}}
-
-deploy-impl-live *args:
-    just _warn "Deprecated. Use deploy-csm-impl-live."
-    just deploy-csm-impl-live {{args}}
-
-deploy-impl-dry *args:
-    just _warn "Deprecated. Use deploy-csm-impl-dry."
-    just deploy-csm-impl-dry {{args}}
-
-upgrade-v3:
-    just _warn "Deprecated. Use upgrade-csm-v3."
-    just upgrade-csm-v3

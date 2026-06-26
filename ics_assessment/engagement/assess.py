@@ -84,6 +84,10 @@ class EngagementEvaluator:
         else:
             return CheckOutcome(score=0)
         detail = f"score={high_signal_score}"
+        if self.runtime_inputs.high_signal_project:
+            detail += f"; project={self.runtime_inputs.high_signal_project}"
+        if self.runtime_inputs.high_signal_username:
+            detail += f"; username={self.runtime_inputs.high_signal_username}"
         if self.runtime_inputs.high_signal_address:
             detail += f"; address={self.runtime_inputs.high_signal_address}"
         return CheckOutcome(score=hs_points, detail=detail)

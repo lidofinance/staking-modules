@@ -308,23 +308,21 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function settleLockedBond(
-        uint256 nodeOperatorId,
-        uint256 maxAmount
-    ) external onlyModule returns (uint256 amountSettled) {
+    function settleLockedBond(uint256 nodeOperatorId, uint256 bondLockNonce) external onlyModule returns (uint256) {
         uint256 lockedAmount = BondLock.getLockedBond(nodeOperatorId);
-        if (lockedAmount == 0) return amountSettled;
+        if (lockedAmount == 0) return 0;
+
+        if (BondLock.getBondLockNonce(nodeOperatorId) != bondLockNonce) revert InvalidBondLockNonce();
 
         if (BondLock.isLockExpired(nodeOperatorId)) {
             unlockExpiredLock(nodeOperatorId);
-            return amountSettled;
+            return 0;
         }
-        amountSettled = lockedAmount < maxAmount ? lockedAmount : maxAmount;
-        if (amountSettled > 0) {
-            BondCore._burn(nodeOperatorId, amountSettled);
-            // unlock all amountSettled even if bond isn't covered lock fully since debt will be created in this case
-            BondLock._unlock(nodeOperatorId, amountSettled);
-        }
+
+        BondCore._burn(nodeOperatorId, lockedAmount);
+        // unlock all lockedAmount even if bond isn't covered lock fully since debt will be created in this case
+        BondLock._unlock(nodeOperatorId, lockedAmount);
+        return lockedAmount;
     }
 
     /// @inheritdoc IAccounting
@@ -479,6 +477,8 @@ contract Accounting is
         claimableShares = _getClaimableBondShares(nodeOperatorId);
         if (hasSplits && claimableShares != 0) {
             uint256 pendingToSplit = FeeSplits.getPendingSharesToSplit(nodeOperatorId);
+            if (pendingToSplit == 0) return claimableShares;
+
             uint256 splittableShares = claimableShares > pendingToSplit ? pendingToSplit : claimableShares;
             SplitTransfer[] memory transfers = FeeSplits.getFeeSplitTransfers(nodeOperatorId, splittableShares);
             uint256 transferredShares;
@@ -492,7 +492,7 @@ contract Accounting is
             // NOTE: `splittableShares` is the whole split operation base. It includes
             //       the Node Operator's retained shares (split remainder), so we
             //       must decrease pending by the base, not by transferred shares sum.
-            FeeSplits._decreasePendingSharesToSplit(nodeOperatorId, splittableShares);
+            FeeSplits._unsafeDecreasePendingSharesToSplit(nodeOperatorId, splittableShares);
             BondCore._unsafeReduceBond(nodeOperatorId, transferredShares);
             // NOTE: It is safe to use unchecked here since `transferredShares` is always <= `claimableShares`
             unchecked {
@@ -516,8 +516,8 @@ contract Accounting is
     }
 
     /// @dev Calculates claimable bond shares accounting for locked bond and withdrawn validators.
-    ///      Does not subtract pending split transfers, so in rare cases (e.g. locked or debted bond)
-    ///      may overestimate operator-receivable amount.
+    ///      Does not subtract pending split transfers, so in rare cases (e.g. locked bond or bond debt)
+    ///      may overestimate the operator-receivable amount.
     ///      Off-chain integrations should account for `getPendingSharesToSplit`.
     function _getClaimableBondShares(uint256 nodeOperatorId) internal view returns (uint256) {
         (uint256 currentShares, uint256 requiredShares) = getBondSummaryShares(nodeOperatorId);

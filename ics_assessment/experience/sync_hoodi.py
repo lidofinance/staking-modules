@@ -114,6 +114,21 @@ def operator_passes_in_report_v2(report: dict, operator_id: str) -> Optional[boo
     return True
 
 
+def operator_passes_in_report_v3(report: dict, operator_id: str) -> Optional[bool]:
+    ops = report.get("operators", {}) or {}
+    data = ops.get(operator_id)
+    if not data:
+        return None
+    validators = list((data.get("validators") or {}).values())
+    if not validators:
+        return None
+    for v in validators:
+        dr = int(v.get("distributed_rewards", 0))
+        if dr <= 0:
+            return False
+    return True
+
+
 @dataclass
 class ReportMeta:
     cid: str
@@ -122,11 +137,40 @@ class ReportMeta:
     end_epoch: int = 0
 
 
-def extract_frame_epochs(report: dict) -> Tuple[Optional[int], Optional[int]]:
-    frame = report.get("frame")
-    start_e = int(frame[0])
-    end_e = int(frame[1])
-    return start_e, end_e
+def extract_frame_epochs(report: dict) -> Tuple[int, int]:
+    start_epoch, end_epoch = report["frame"]
+    return int(start_epoch), int(end_epoch)
+
+
+def iter_performance_report_frames(report: dict | list[dict]) -> list[tuple[str, dict]]:
+    if isinstance(report, list):
+        return [("v2", item) for item in report]
+    if "frames" in report:
+        return [("v3", item) for item in report["frames"]]
+    return [("v1", report)]
+
+
+def append_report_frames(
+    reports_with_meta: list[tuple[ReportMeta, dict]],
+    cid: str,
+    report: dict | list[dict],
+) -> None:
+    for version, item in iter_performance_report_frames(report):
+        try:
+            start_epoch, end_epoch = extract_frame_epochs(item)
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(f"invalid Hoodi performance report frame: {cid}") from exc
+        reports_with_meta.append(
+            (
+                ReportMeta(
+                    cid=cid,
+                    version=version,
+                    start_epoch=start_epoch,
+                    end_epoch=end_epoch,
+                ),
+                item,
+            )
+        )
 
 
 def evaluate_eligibility_window(
@@ -141,7 +185,7 @@ def evaluate_eligibility_window(
     are tolerated and also contribute 0.
 
     Rules:
-    - GOOD frame: operator present and all relevant validators pass (v1/v2 rules)
+    - GOOD frame: operator present and all relevant validators pass (v1/v2/v3 rules)
       -> add frame duration to the cumulative sum.
     - BAD frame: any validator fails -> add 0, do not reset.
     - EMPTY frame: operator absent or has zero validators -> add 0, do not reset.
@@ -169,6 +213,8 @@ def evaluate_eligibility_window(
         for meta, rep in reports:
             if meta.version == "v2":
                 status = operator_passes_in_report_v2(rep, op_id)
+            elif meta.version == "v3":
+                status = operator_passes_in_report_v3(rep, op_id)
             elif meta.version == "v1":
                 status = operator_passes_in_report_v1(rep, op_id)
             else:
@@ -207,19 +253,7 @@ def main() -> int:
     reports_with_meta: List[Tuple[ReportMeta, dict]] = []
     for cid in cids:
         rep = request_performance_report(cid)
-        # V2: root is list — flatten into individual items
-        if isinstance(rep, list):
-            for item in rep:
-                start_e, end_e = extract_frame_epochs(item)
-                if start_e is None or end_e is None:
-                    continue
-                reports_with_meta.append((ReportMeta(cid=cid, version="v2", start_epoch=start_e, end_epoch=end_e), item))
-            continue
-        # V1: single dict
-        start_e, end_e = extract_frame_epochs(rep)
-        if start_e is None or end_e is None:
-            continue
-        reports_with_meta.append((ReportMeta(cid=cid, version="v1", start_epoch=start_e, end_epoch=end_e), rep))
+        append_report_frames(reports_with_meta, cid, rep)
     # Sort by epoch start
     reports_with_meta.sort(key=lambda x: x[0].start_epoch)
 
