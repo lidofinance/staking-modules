@@ -40,7 +40,7 @@ def _get_ics_addresses() -> set[str]:
         ics_addresses = {row[0].strip().lower() for row in reader}
     return ics_addresses
 
-def _update():
+def _update() -> int:
     approved_clusters = []
     if not os.path.exists(INPUT_CSV):
         print(f"Input CSV file {INPUT_CSV} does not exist.")
@@ -48,9 +48,6 @@ def _update():
     with open(INPUT_CSV, newline='') as csvfile:
         reader = csv.DictReader(csvfile)
         addresses = set()
-        id = 0
-        approved = False
-        main_address = None
         for row in reader:
             addresses.clear()
             addresses.add(row["clusterMember1Address"].strip())
@@ -66,8 +63,9 @@ def _update():
     with open(OUTPUT_JSON, "w") as f:
         json.dump(approved_clusters, f, indent=2)
     print(f"Wrote {len(approved_clusters)} clusters to {OUTPUT_JSON}")
+    return 0
 
-def _check(main_address: str, members: list[str], suggest_update: bool = True) -> bool:
+def _check(main_address: str, members: list[str], suggest_update: bool = True) -> int:
     members = {member.lower() for member in members}
     main_address = main_address.lower()
 

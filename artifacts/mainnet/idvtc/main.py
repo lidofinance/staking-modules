@@ -6,9 +6,9 @@ def main():
     final_addresses = []
     for i in range(IDVTC_ROUNDS):
         with open(f"sources/idvtc_assessment_{i+1}.json", "r") as f:
-            ics_round_addresses = json.load(f)
-        print(f"Adding {len(ics_round_addresses)} addresses from ICS Round {i+1}")
-        for addr in ics_round_addresses:
+            idvtc_round_addresses = json.load(f)
+        print(f"Adding {len(idvtc_round_addresses)} addresses from IDVTC Round {i+1}")
+        for addr in idvtc_round_addresses:
             final_addresses.append(addr)
 
     final_addresses_set = set(final_addresses)
