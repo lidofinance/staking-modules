@@ -28,6 +28,7 @@ contract NodeOperatorStrikesBaseTest is Test, Utilities, Fixtures {
     uint256 internal constant LIFETIME = 30 days;
     bytes32 internal constant CATEGORY = keccak256("performance");
     uint256 internal constant NO_ID = 0;
+    string internal constant DESCRIPTION = "Operator missed attestations for two consecutive frames";
 
     function setUp() public virtual {
         admin = nextAddress("ADMIN");
@@ -42,7 +43,7 @@ contract NodeOperatorStrikesBaseTest is Test, Utilities, Fixtures {
 
         strikes = new NodeOperatorStrikes({ module: address(module) });
         _enableInitializers(address(strikes));
-        strikes.initialize(admin);
+        strikes.initialize(admin, _exampleThresholds());
 
         bytes32 committeeRole = strikes.STRIKES_COMMITTEE_ROLE();
         vm.prank(admin);
@@ -59,8 +60,7 @@ contract NodeOperatorStrikesBaseTest is Test, Utilities, Fixtures {
                 nodeOperatorId: nodeOperatorId,
                 category: category,
                 lifetime: lifetime,
-                name: "Late attestations",
-                description: "Operator missed attestations for two consecutive frames"
+                description: DESCRIPTION
             });
     }
 
@@ -100,16 +100,45 @@ contract NodeOperatorStrikesInitializeTest is NodeOperatorStrikesBaseTest {
         assertTrue(strikes.hasRole(strikes.DEFAULT_ADMIN_ROLE(), admin));
     }
 
+    function test_initialize_SetsThresholds() public {
+        NodeOperatorStrikes s = new NodeOperatorStrikes(address(module));
+        _enableInitializers(address(s));
+        s.initialize(admin, _exampleThresholds());
+
+        StrikeThreshold[] memory stored = s.getStrikeThresholds();
+        assertEq(stored.length, 4);
+        assertEq(stored[0].minCount, 2);
+        assertEq(stored[3].reductionBP, 10_000);
+    }
+
     function test_initialize_RevertWhen_ZeroAdmin() public {
         NodeOperatorStrikes s = new NodeOperatorStrikes(address(module));
         _enableInitializers(address(s));
         vm.expectRevert(INodeOperatorStrikes.ZeroAdminAddress.selector);
-        s.initialize(address(0));
+        s.initialize(address(0), new StrikeThreshold[](0));
+    }
+
+    function test_initialize_RevertWhen_InvalidThresholds() public {
+        NodeOperatorStrikes s = new NodeOperatorStrikes(address(module));
+        _enableInitializers(address(s));
+
+        StrikeThreshold[] memory bad = new StrikeThreshold[](1);
+        bad[0] = StrikeThreshold({ minCount: 0, reductionBP: 1_000 }); // minCount 0 is invalid
+        vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
+        s.initialize(admin, bad);
+    }
+
+    function test_initialize_RevertWhen_EmptyThresholds() public {
+        NodeOperatorStrikes s = new NodeOperatorStrikes(address(module));
+        _enableInitializers(address(s));
+
+        vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
+        s.initialize(admin, new StrikeThreshold[](0));
     }
 
     function test_initialize_RevertWhen_DoubleCall() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        strikes.initialize(admin);
+        strikes.initialize(admin, new StrikeThreshold[](0));
     }
 }
 
@@ -118,14 +147,7 @@ contract NodeOperatorStrikesIssueTest is NodeOperatorStrikesBaseTest {
         uint256 expiry = block.timestamp + LIFETIME;
 
         vm.expectEmit(true, true, true, true, address(strikes));
-        emit INodeOperatorStrikes.StrikeIssued(
-            NO_ID,
-            1,
-            CATEGORY,
-            expiry,
-            "Late attestations",
-            "Operator missed attestations for two consecutive frames"
-        );
+        emit INodeOperatorStrikes.StrikeIssued(NO_ID, 1, CATEGORY, expiry, DESCRIPTION);
 
         vm.prank(committee);
         uint256 strikeId = strikes.issueStrike(_input(NO_ID, CATEGORY, LIFETIME));
@@ -137,6 +159,7 @@ contract NodeOperatorStrikesIssueTest is NodeOperatorStrikesBaseTest {
         assertEq(s.id, 1);
         assertEq(s.expiry, expiry);
         assertEq(s.category, CATEGORY);
+        assertEq(strikes.getStrikeDescription(NO_ID, 1), DESCRIPTION);
 
         assertEq(metaRegistryMock.refreshOperatorWeightCallCount(), 1);
         assertEq(metaRegistryMock.lastRefreshedOperatorId(), NO_ID);
@@ -173,6 +196,25 @@ contract NodeOperatorStrikesIssueTest is NodeOperatorStrikesBaseTest {
         vm.prank(committee);
         strikes.issueStrike(_input(NO_ID, CATEGORY, hugeLifetime));
     }
+
+    function test_issueStrike_AllowsMaxLengthDescription() public {
+        uint256 maxLen = strikes.MAX_DESCRIPTION_LENGTH();
+        StrikeInput memory input = _input(NO_ID, CATEGORY, LIFETIME);
+        input.description = string(new bytes(maxLen));
+
+        vm.prank(committee);
+        uint256 id = strikes.issueStrike(input);
+        assertEq(bytes(strikes.getStrikeDescription(NO_ID, id)).length, maxLen);
+    }
+
+    function test_issueStrike_RevertWhen_DescriptionTooLong() public {
+        StrikeInput memory input = _input(NO_ID, CATEGORY, LIFETIME);
+        input.description = string(new bytes(strikes.MAX_DESCRIPTION_LENGTH() + 1));
+
+        vm.expectRevert(INodeOperatorStrikes.DescriptionTooLong.selector);
+        vm.prank(committee);
+        strikes.issueStrike(input);
+    }
 }
 
 contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
@@ -191,40 +233,28 @@ contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
         assertEq(metaRegistryMock.refreshOperatorWeightCallCount(), refreshesBefore + 1);
     }
 
-    function test_removeStrike_RevertWhen_StrangerBeforeExpiry() public {
+    function test_removeStrike_ClearsDescription() public {
         uint256 id = _issue(NO_ID);
-        vm.expectRevert(INodeOperatorStrikes.StrikeNotExpired.selector);
-        vm.prank(stranger);
+        assertEq(strikes.getStrikeDescription(NO_ID, id), DESCRIPTION);
+
+        vm.prank(committee);
         strikes.removeStrike(NO_ID, id);
+
+        assertEq(strikes.getStrikeDescription(NO_ID, id), "");
     }
 
-    function test_removeStrike_PermissionlessAtExpiry() public {
+    function test_removeStrike_RevertWhen_NotCommittee() public {
         uint256 id = _issue(NO_ID);
+        bytes32 role = strikes.STRIKES_COMMITTEE_ROLE();
         uint256 expiry = strikes.getStrike(NO_ID, id).expiry;
 
-        // One second before expiry: stranger cannot remove.
-        vm.warp(expiry - 1);
-        vm.expectRevert(INodeOperatorStrikes.StrikeNotExpired.selector);
-        vm.prank(stranger);
-        strikes.removeStrike(NO_ID, id);
-
-        // Exactly at expiry: removal is permissionless.
+        // Even after the lifetime elapses removeStrike stays committee-only;
+        // permissionless cleanup goes through removeExpiredStrikes.
         vm.warp(expiry);
+
+        expectRoleRevert(stranger, role);
         vm.prank(stranger);
         strikes.removeStrike(NO_ID, id);
-
-        assertEq(strikes.getActiveStrikesCount(NO_ID), 0);
-    }
-
-    function test_removeStrike_PermissionlessAfterExpiry() public {
-        uint256 id = _issue(NO_ID);
-        uint256 expiry = strikes.getStrike(NO_ID, id).expiry;
-
-        vm.warp(expiry + 1 days);
-        vm.prank(stranger);
-        strikes.removeStrike(NO_ID, id);
-
-        assertEq(strikes.getActiveStrikesCount(NO_ID), 0);
     }
 
     function test_removeStrike_RevertWhen_NonExistent() public {
@@ -301,6 +331,100 @@ contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
     }
 }
 
+contract NodeOperatorStrikesRemoveExpiredTest is NodeOperatorStrikesBaseTest {
+    /// @dev Issues four strikes: id1/id3 short-lived (LIFETIME), id2/id4 long-lived (2x LIFETIME).
+    function _issueMixed() internal returns (uint256 id1, uint256 id2, uint256 id3, uint256 id4) {
+        vm.startPrank(committee);
+        id1 = strikes.issueStrike(_input(NO_ID, CATEGORY, LIFETIME));
+        id2 = strikes.issueStrike(_input(NO_ID, CATEGORY, LIFETIME * 2));
+        id3 = strikes.issueStrike(_input(NO_ID, CATEGORY, LIFETIME));
+        id4 = strikes.issueStrike(_input(NO_ID, CATEGORY, LIFETIME * 2));
+        vm.stopPrank();
+    }
+
+    function test_removeExpiredStrikes_AlternatingSurvivorsStayResolvable() public {
+        // Alternate expiring/surviving so back-to-front swap-pop must shuffle survivors repeatedly.
+        vm.startPrank(committee);
+        strikes.issueStrike(_input(NO_ID, CATEGORY, LIFETIME)); // id1 expire
+        uint256 id2 = strikes.issueStrike(_input(NO_ID, CATEGORY, LIFETIME * 2)); // keep
+        strikes.issueStrike(_input(NO_ID, CATEGORY, LIFETIME)); // id3 expire
+        uint256 id4 = strikes.issueStrike(_input(NO_ID, CATEGORY, LIFETIME * 2)); // keep
+        strikes.issueStrike(_input(NO_ID, CATEGORY, LIFETIME)); // id5 expire
+        uint256 id6 = strikes.issueStrike(_input(NO_ID, CATEGORY, LIFETIME * 2)); // keep
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + LIFETIME);
+        vm.prank(stranger);
+        strikes.removeExpiredStrikes(NO_ID);
+
+        assertEq(strikes.getActiveStrikesCount(NO_ID), 3);
+        assertEq(strikes.getExpiredStrikes(NO_ID).length, 0);
+        // Every survivor still resolves by its id (index stayed consistent through the shuffles).
+        assertEq(strikes.getStrike(NO_ID, id2).id, id2);
+        assertEq(strikes.getStrike(NO_ID, id4).id, id4);
+        assertEq(strikes.getStrike(NO_ID, id6).id, id6);
+        assertEq(strikes.getStrike(NO_ID, 1).id, 0);
+        assertEq(strikes.getStrike(NO_ID, 3).id, 0);
+        assertEq(strikes.getStrike(NO_ID, 5).id, 0);
+    }
+
+    function test_removeExpiredStrikes_RemovesOnlyExpired() public {
+        (uint256 id1, uint256 id2, uint256 id3, uint256 id4) = _issueMixed();
+
+        vm.warp(block.timestamp + LIFETIME); // id1, id3 expired; id2, id4 still active
+        uint256 refreshesBefore = metaRegistryMock.refreshOperatorWeightCallCount();
+
+        vm.prank(stranger); // permissionless
+        strikes.removeExpiredStrikes(NO_ID);
+
+        assertEq(strikes.getActiveStrikesCount(NO_ID), 2);
+        assertEq(strikes.getStrike(NO_ID, id1).id, 0);
+        assertEq(strikes.getStrike(NO_ID, id3).id, 0);
+        assertEq(strikes.getStrike(NO_ID, id2).id, id2);
+        assertEq(strikes.getStrike(NO_ID, id4).id, id4);
+        assertEq(strikes.getExpiredStrikes(NO_ID).length, 0);
+        assertEq(metaRegistryMock.refreshOperatorWeightCallCount(), refreshesBefore + 1); // refreshed once
+    }
+
+    function test_removeExpiredStrikes_KeepsIndexConsistent() public {
+        (, uint256 id2, , uint256 id4) = _issueMixed();
+
+        vm.warp(block.timestamp + LIFETIME);
+        vm.prank(stranger);
+        strikes.removeExpiredStrikes(NO_ID);
+
+        // Survivors stay resolvable by id and removable (their slots were swapped during cleanup).
+        vm.prank(committee);
+        strikes.removeStrike(NO_ID, id2);
+        assertEq(strikes.getActiveStrikesCount(NO_ID), 1);
+        assertEq(strikes.getStrike(NO_ID, id4).id, id4);
+    }
+
+    function test_removeExpiredStrikes_AllExpired() public {
+        _issue(NO_ID);
+        _issue(NO_ID);
+        _issue(NO_ID);
+
+        vm.warp(block.timestamp + LIFETIME);
+        vm.prank(stranger);
+        strikes.removeExpiredStrikes(NO_ID);
+
+        assertEq(strikes.getActiveStrikesCount(NO_ID), 0);
+    }
+
+    function test_removeExpiredStrikes_NoopWhenNoneExpired() public {
+        _issue(NO_ID);
+        _issue(NO_ID);
+        uint256 refreshesBefore = metaRegistryMock.refreshOperatorWeightCallCount();
+
+        vm.prank(stranger);
+        strikes.removeExpiredStrikes(NO_ID);
+
+        assertEq(strikes.getActiveStrikesCount(NO_ID), 2);
+        assertEq(metaRegistryMock.refreshOperatorWeightCallCount(), refreshesBefore); // no refresh
+    }
+}
+
 contract NodeOperatorStrikesThresholdsTest is NodeOperatorStrikesBaseTest {
     function test_setStrikeThresholds_RoundTrip() public {
         StrikeThreshold[] memory thresholds = _exampleThresholds();
@@ -373,6 +497,15 @@ contract NodeOperatorStrikesThresholdsTest is NodeOperatorStrikesBaseTest {
         strikes.setStrikeThresholds(thresholds);
     }
 
+    function test_setStrikeThresholds_RevertWhen_ReductionNotIncreasing() public {
+        StrikeThreshold[] memory thresholds = new StrikeThreshold[](2);
+        thresholds[0] = StrikeThreshold({ minCount: 2, reductionBP: 2_500 });
+        thresholds[1] = StrikeThreshold({ minCount: 3, reductionBP: 2_500 }); // equal -> redundant band
+        vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
+        vm.prank(admin);
+        strikes.setStrikeThresholds(thresholds);
+    }
+
     function test_setStrikeThresholds_RevertWhen_ReductionAboveMaxBp() public {
         StrikeThreshold[] memory thresholds = new StrikeThreshold[](1);
         thresholds[0] = StrikeThreshold({ minCount: 2, reductionBP: MAX_BP + 1 });
@@ -394,17 +527,7 @@ contract NodeOperatorStrikesThresholdsTest is NodeOperatorStrikesBaseTest {
 }
 
 contract NodeOperatorStrikesWeightMultiplierTest is NodeOperatorStrikesBaseTest {
-    function test_getStrikeWeightMultiplier_EmptyThresholdsIsMaxBP() public {
-        // No thresholds configured yet.
-        _issue(NO_ID);
-        _issue(NO_ID);
-        _issue(NO_ID);
-        assertEq(strikes.getStrikeWeightMultiplier(NO_ID), MAX_BP);
-    }
-
     function test_getStrikeWeightMultiplier_StepFunction() public {
-        _setExampleThresholds();
-
         // 0 strikes -> full weight.
         assertEq(strikes.getStrikeWeightMultiplier(NO_ID), MAX_BP);
 
@@ -428,8 +551,6 @@ contract NodeOperatorStrikesWeightMultiplierTest is NodeOperatorStrikesBaseTest 
     }
 
     function test_getStrikeWeightMultiplier_IncreasesAfterRemoval() public {
-        _setExampleThresholds();
-
         uint256 id1 = _issue(NO_ID);
         _issue(NO_ID);
         _issue(NO_ID); // 3 active -> 50%

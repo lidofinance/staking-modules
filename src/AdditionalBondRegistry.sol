@@ -52,6 +52,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
     function initialize(address admin) external initializer {
         if (admin == address(0)) revert ZeroAdminAddress();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        // TODO: set initial tiers here
     }
 
     /// @inheritdoc IAdditionalBondRegistry
