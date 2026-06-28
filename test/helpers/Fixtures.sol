@@ -111,27 +111,19 @@ contract DeploymentHelpers is Test {
         return cb != address(0) && cb != CIRCUIT_BREAKER_STUB && cb.code.length > 0;
     }
 
-    function _expectedPauseRoleMembersWithoutCb(bool isUpgradeFlow) internal view returns (uint256) {
-        // TODO: Always return 1 once the legacy GateSeal pause-role migration is done.
-        if (block.chainid == 1) return isUpgradeFlow ? 2 : 1;
-        else return 1;
-    }
-
-    function _assertCircuitBreakerPauseRoleState(
-        address target,
-        address cb,
-        uint256 expectedRoleMembersWithoutCb
-    ) internal view {
+    function _checkPauseRole(address target, address resealManager, address cb) internal view {
         IPausableWithRoles pausable = IPausableWithRoles(target);
         IAccessControlEnumerable accessControl = IAccessControlEnumerable(target);
-        uint256 expectedRoleMembers = expectedRoleMembersWithoutCb;
+        bytes32 role = pausable.PAUSE_ROLE();
+        uint256 expectedRoleMembers = 1;
 
+        assertTrue(accessControl.hasRole(role, resealManager), "reseal manager pause role");
         if (_isCircuitBreakerConfigured(cb)) {
-            assertTrue(accessControl.hasRole(pausable.PAUSE_ROLE(), cb));
+            assertTrue(accessControl.hasRole(role, cb), "circuit breaker pause role");
             expectedRoleMembers += 1;
         }
 
-        assertEq(accessControl.getRoleMemberCount(pausable.PAUSE_ROLE()), expectedRoleMembers);
+        assertEq(accessControl.getRoleMemberCount(role), expectedRoleMembers, "pause role member count");
     }
 
     struct Env {

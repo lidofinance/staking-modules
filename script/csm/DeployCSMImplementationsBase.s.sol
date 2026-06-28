@@ -29,7 +29,6 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
     Verifier public verifierV3;
     OneShotCurveSetup public identifiedDVTClusterCurveSetup;
     address public earlyAdoption;
-    address public legacyGateSeal; // TODO: remove after the CB mainnet deployment.
 
     bytes32 internal constant LEGACY_QUEUE_SLOT = bytes32(uint256(1));
 
@@ -195,7 +194,6 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
             deployJson.set("VettedGate", address(vettedGate));
             deployJson.set("VettedGateImpl", address(vettedGateImpl));
             deployJson.set("LidoLocator", config.lidoLocatorAddress);
-            deployJson.set("GateSeal", legacyGateSeal);
             deployJson.set("CircuitBreaker", config.circuitBreaker);
             deployJson.set("DeployParams", abi.encode(config));
             deployJson.set("git-ref", gitRef);
