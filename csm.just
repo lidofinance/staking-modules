@@ -5,8 +5,8 @@ deploy_config_path := "artifacts" / chain / "deploy-" + chain + ".json"
 deploy_script_path := "script" / "csm" / deploy_script_name + ".s.sol:" + deploy_script_name
 deploy_csm_impls_script_path := "script" / "csm" / deploy_csm_implementations_script_name + ".s.sol:" + deploy_csm_implementations_script_name
 
-csm_artifacts_latest_dir := "./artifacts/latest/"
-csm_artifacts_local_dir := "./artifacts/local/"
+csm_artifacts_latest_dir := "./artifacts/latest/csm/"
+csm_artifacts_local_dir := "./artifacts/local/csm/"
 csm_latest_transactions_path := csm_artifacts_latest_dir + "transactions.json"
 csm_local_transactions_path := csm_artifacts_local_dir + "transactions.json"
 csm_latest_deploy_config_path := csm_artifacts_latest_dir + "deploy-" + chain + ".json"
@@ -59,7 +59,9 @@ deploy-csm-impl-live-no-confirm *args:
     just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "" "deploy-latest.json" {{csm_latest_upgrade_config_path}}
 
 deploy-csm-impl-dry *args:
-    just _deploy-csm-impl {{args}}
+    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
+    ARTIFACTS_DIR={{csm_artifacts_local_dir}} \
+        just _deploy-csm-impl {{args}}
     just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "/dry-run" "deploy-latest.json" {{csm_local_upgrade_config_path}}
 
 # Governance helpers
