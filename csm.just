@@ -44,7 +44,8 @@ verify-csm-live *args:
     just _verify-live-generic {{deploy_script_path}} {{args}}
 
 deploy-csm-impl *args:
-    just _deploy-csm-impl {{args}}
+    ARTIFACTS_DIR={{csm_artifacts_local_dir}} \
+        just _deploy-csm-impl {{args}}
 
 [confirm("You are about to broadcast deployment transactions to the network. Are you sure?")]
 deploy-csm-impl-live *args:
