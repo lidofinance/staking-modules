@@ -82,7 +82,7 @@ contract DeployMainnet is DeployBase {
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
             gate.name = "Professional Operator Gate";
-            gate.treeRoot = 0x11111111111111111111111111111111; // Unusable root. Effectively means that the gate is disabled until the real root is set.
+            gate.treeRoot = 0x1111111111111111111111111111111111111111111111111111111111111111; // Unusable root. Effectively means that the gate is disabled until the real root is set.
             gate.treeCid = "QmU4cnyaKWgMVCZVLiuQaqu6yGXahjzi4F1Vcnq2SXBBmT"; // Points to the "null" json file
             gate.params.metaRegistryBondCurveWeight = _m(50000);
             gate.params.keysLimit = _m(80);
@@ -128,7 +128,7 @@ contract DeployMainnet is DeployBase {
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
-            gate.treeRoot = 0x11111111111111111111111111111111; // Unusable root. Effectively means that the gate is disabled until the real root is set.
+            gate.treeRoot = 0x1111111111111111111111111111111111111111111111111111111111111111; // Unusable root. Effectively means that the gate is disabled until the real root is set.
             gate.treeCid = "QmU4cnyaKWgMVCZVLiuQaqu6yGXahjzi4F1Vcnq2SXBBmT"; // Points to the "null" json file
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
@@ -145,7 +145,7 @@ contract DeployMainnet is DeployBase {
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
-            gate.treeRoot = 0x11111111111111111111111111111111; // Unusable root. Effectively means that the gate is disabled until the real root is set.
+            gate.treeRoot = 0x1111111111111111111111111111111111111111111111111111111111111111; // Unusable root. Effectively means that the gate is disabled until the real root is set.
             gate.treeCid = "QmU4cnyaKWgMVCZVLiuQaqu6yGXahjzi4F1Vcnq2SXBBmT"; // Points to the "null" json file
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
