@@ -454,13 +454,11 @@ abstract contract DeployBase is Script {
                 oracleProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
-            if (circuitBreaker != address(0)) {
-                curatedModule.grantRole(curatedModule.PAUSE_ROLE(), circuitBreaker);
-                accounting.grantRole(accounting.PAUSE_ROLE(), circuitBreaker);
-                oracle.grantRole(oracle.PAUSE_ROLE(), circuitBreaker);
-                verifier.grantRole(verifier.PAUSE_ROLE(), circuitBreaker);
-                ejector.grantRole(ejector.PAUSE_ROLE(), circuitBreaker);
-            }
+            curatedModule.grantRole(curatedModule.PAUSE_ROLE(), circuitBreaker);
+            accounting.grantRole(accounting.PAUSE_ROLE(), circuitBreaker);
+            oracle.grantRole(oracle.PAUSE_ROLE(), circuitBreaker);
+            verifier.grantRole(verifier.PAUSE_ROLE(), circuitBreaker);
+            ejector.grantRole(ejector.PAUSE_ROLE(), circuitBreaker);
 
             curatedModule.grantRole(curatedModule.PAUSE_ROLE(), config.resealManager);
             curatedModule.grantRole(curatedModule.RESUME_ROLE(), config.resealManager);

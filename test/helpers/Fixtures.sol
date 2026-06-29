@@ -103,25 +103,14 @@ contract DeploymentHelpers is Test {
     /// @dev Placeholder address used until the real CircuitBreaker is deployed.
     address internal constant CIRCUIT_BREAKER_STUB = address(0x63697263756974627265616b6572);
 
-    function _isCircuitBreakerConfigured(address cb) internal pure returns (bool) {
-        return cb != address(0);
-    }
-
-    function _isCircuitBreakerDeployed(address cb) internal view returns (bool) {
-        return cb != address(0) && cb != CIRCUIT_BREAKER_STUB && cb.code.length > 0;
-    }
-
     function _checkPauseRole(address target, address resealManager, address cb) internal view {
         IPausableWithRoles pausable = IPausableWithRoles(target);
         IAccessControlEnumerable accessControl = IAccessControlEnumerable(target);
         bytes32 role = pausable.PAUSE_ROLE();
-        uint256 expectedRoleMembers = 1;
+        uint256 expectedRoleMembers = 2;
 
         assertTrue(accessControl.hasRole(role, resealManager), "reseal manager pause role");
-        if (_isCircuitBreakerConfigured(cb)) {
-            assertTrue(accessControl.hasRole(role, cb), "circuit breaker pause role");
-            expectedRoleMembers += 1;
-        }
+        assertTrue(accessControl.hasRole(role, cb), "circuit breaker pause role");
 
         assertEq(accessControl.getRoleMemberCount(role), expectedRoleMembers, "pause role member count");
     }

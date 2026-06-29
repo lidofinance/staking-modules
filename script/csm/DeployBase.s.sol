@@ -501,15 +501,13 @@ abstract contract DeployBase is Script {
                 oracleProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
-            if (circuitBreaker != address(0)) {
-                csm.grantRole(csm.PAUSE_ROLE(), circuitBreaker);
-                accounting.grantRole(accounting.PAUSE_ROLE(), circuitBreaker);
-                oracle.grantRole(oracle.PAUSE_ROLE(), circuitBreaker);
-                verifier.grantRole(verifier.PAUSE_ROLE(), circuitBreaker);
-                vettedGate.grantRole(vettedGate.PAUSE_ROLE(), circuitBreaker);
-                identifiedDVTClusterGate.grantRole(identifiedDVTClusterGate.PAUSE_ROLE(), circuitBreaker);
-                ejector.grantRole(ejector.PAUSE_ROLE(), circuitBreaker);
-            }
+            csm.grantRole(csm.PAUSE_ROLE(), circuitBreaker);
+            accounting.grantRole(accounting.PAUSE_ROLE(), circuitBreaker);
+            oracle.grantRole(oracle.PAUSE_ROLE(), circuitBreaker);
+            verifier.grantRole(verifier.PAUSE_ROLE(), circuitBreaker);
+            vettedGate.grantRole(vettedGate.PAUSE_ROLE(), circuitBreaker);
+            identifiedDVTClusterGate.grantRole(identifiedDVTClusterGate.PAUSE_ROLE(), circuitBreaker);
+            ejector.grantRole(ejector.PAUSE_ROLE(), circuitBreaker);
 
             csm.grantRole(csm.PAUSE_ROLE(), config.resealManager);
             csm.grantRole(csm.RESUME_ROLE(), config.resealManager);

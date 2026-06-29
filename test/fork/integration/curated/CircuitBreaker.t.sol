@@ -8,7 +8,6 @@ import { CuratedIntegrationBase } from "../common/ModuleTypeBase.sol";
 contract CircuitBreakerTest is CuratedIntegrationBase {
     function setUp() public {
         _setUpModule();
-        vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
     }
 
     function _pause(address pausable) internal {
