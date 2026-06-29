@@ -81,7 +81,7 @@ contract DeployCSM0x02Hoodi is DeployCSM0x02Base {
         config.penaltiesManager = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
 
         // CircuitBreaker
-        config.circuitBreaker = address(0x63697263756974627265616b6572); // TODO: Set real CircuitBreaker address
+        config.circuitBreaker = 0x44a5789dFeDa59cD176Ab5709ec2F4829dE4d555;
         config.circuitBreakerPauser = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
 
         // DG

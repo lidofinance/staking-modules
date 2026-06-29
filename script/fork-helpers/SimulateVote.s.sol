@@ -99,17 +99,15 @@ contract SimulateVote is Script, ForkHelpersCommon {
         // 7. Update initial epoch
         hashConsensus.updateInitialEpoch(47480);
         // 8-14. Register pausers in CircuitBreaker
-        if (address(circuitBreaker).code.length > 0) {
-            circuitBreaker.registerPauser(address(module), cbPauser);
-            circuitBreaker.registerPauser(address(accounting), cbPauser);
-            circuitBreaker.registerPauser(address(oracle), cbPauser);
-            circuitBreaker.registerPauser(address(verifier), cbPauser);
-            circuitBreaker.registerPauser(address(ejector), cbPauser);
-            if (moduleType == ModuleType.Community) {
-                // VettedGate pauser (Community0x02 has no VettedGate)
-                circuitBreaker.registerPauser(address(vettedGate), cbPauser);
-                circuitBreaker.registerPauser(address(identifiedDVTClusterGate), cbPauser);
-            }
+        circuitBreaker.registerPauser(address(module), cbPauser);
+        circuitBreaker.registerPauser(address(accounting), cbPauser);
+        circuitBreaker.registerPauser(address(oracle), cbPauser);
+        circuitBreaker.registerPauser(address(verifier), cbPauser);
+        circuitBreaker.registerPauser(address(ejector), cbPauser);
+        if (moduleType == ModuleType.Community) {
+            // VettedGate pauser (Community0x02 has no VettedGate)
+            circuitBreaker.registerPauser(address(vettedGate), cbPauser);
+            circuitBreaker.registerPauser(address(identifiedDVTClusterGate), cbPauser);
         }
 
         vm.stopBroadcast();
@@ -173,13 +171,11 @@ contract SimulateVote is Script, ForkHelpersCommon {
         // 7. Update initial epoch
         hashConsensus.updateInitialEpoch(47480);
         // 8-12. Register pausers in CircuitBreaker
-        if (address(circuitBreaker).code.length > 0) {
-            circuitBreaker.registerPauser(address(curatedModule), cbPauser);
-            circuitBreaker.registerPauser(address(accounting), cbPauser);
-            circuitBreaker.registerPauser(address(oracle), cbPauser);
-            circuitBreaker.registerPauser(address(verifier), cbPauser);
-            circuitBreaker.registerPauser(address(ejector), cbPauser);
-        }
+        circuitBreaker.registerPauser(address(curatedModule), cbPauser);
+        circuitBreaker.registerPauser(address(accounting), cbPauser);
+        circuitBreaker.registerPauser(address(oracle), cbPauser);
+        circuitBreaker.registerPauser(address(verifier), cbPauser);
+        circuitBreaker.registerPauser(address(ejector), cbPauser);
 
         vm.stopBroadcast();
     }
@@ -340,28 +336,19 @@ contract SimulateVote is Script, ForkHelpersCommon {
             existingVettedGate.setName(deployParams.identifiedCommunityStakersGateName);
 
             // 32-42. Setup CircuitBreaker: grant PAUSE_ROLE and register pausers
-            if (deploymentConfig.circuitBreaker != address(0)) {
-                module.grantRole(module.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
-                accounting.grantRole(accounting.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
-                oracle.grantRole(oracle.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
-                existingVettedGate.grantRole(existingVettedGate.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
+            module.grantRole(module.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
+            accounting.grantRole(accounting.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
+            oracle.grantRole(oracle.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
+            existingVettedGate.grantRole(existingVettedGate.PAUSE_ROLE(), deploymentConfig.circuitBreaker);
 
-                if (deploymentConfig.circuitBreaker.code.length > 0) {
-                    ICircuitBreaker cb = ICircuitBreaker(deploymentConfig.circuitBreaker);
-                    cb.registerPauser(address(module), deployParams.circuitBreakerPauser);
-                    cb.registerPauser(address(accounting), deployParams.circuitBreakerPauser);
-                    cb.registerPauser(address(oracle), deployParams.circuitBreakerPauser);
-                    cb.registerPauser(address(existingVettedGate), deployParams.circuitBreakerPauser);
-                    cb.registerPauser(deploymentConfig.identifiedDVTClusterGate, deployParams.circuitBreakerPauser);
-                    cb.registerPauser(deploymentConfig.verifierV3, deployParams.circuitBreakerPauser);
-                    cb.registerPauser(deploymentConfig.ejector, deployParams.circuitBreakerPauser);
-                } else {
-                    console.log("CircuitBreaker is EOA, skipping registering pausers");
-                }
-            } else {
-                console.log("CircuitBreaker is not configured");
-            }
-
+            ICircuitBreaker cb = ICircuitBreaker(deploymentConfig.circuitBreaker);
+            cb.registerPauser(address(module), deployParams.circuitBreakerPauser);
+            cb.registerPauser(address(accounting), deployParams.circuitBreakerPauser);
+            cb.registerPauser(address(oracle), deployParams.circuitBreakerPauser);
+            cb.registerPauser(address(existingVettedGate), deployParams.circuitBreakerPauser);
+            cb.registerPauser(deploymentConfig.identifiedDVTClusterGate, deployParams.circuitBreakerPauser);
+            cb.registerPauser(deploymentConfig.verifierV3, deployParams.circuitBreakerPauser);
+            cb.registerPauser(deploymentConfig.ejector, deployParams.circuitBreakerPauser);
             // 43-44. Grant Identified DVT Cluster gate permissions
             module.grantRole(module.CREATE_NODE_OPERATOR_ROLE(), deploymentConfig.identifiedDVTClusterGate);
             accounting.grantRole(accounting.SET_BOND_CURVE_ROLE(), deploymentConfig.identifiedDVTClusterGate);

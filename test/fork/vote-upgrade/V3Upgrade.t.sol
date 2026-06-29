@@ -794,7 +794,6 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_circuitBreakerChanges() public {
-        vm.skip(!_isCircuitBreakerDeployed(deploymentConfig.circuitBreaker), "CircuitBreaker is not deployed");
         vm.selectFork(forkIdAfterUpgrade);
         ICircuitBreaker cb = ICircuitBreaker(deploymentConfig.circuitBreaker);
 
