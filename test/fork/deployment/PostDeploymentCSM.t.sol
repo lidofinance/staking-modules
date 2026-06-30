@@ -20,7 +20,6 @@ import { ProxySlotUtils } from "../../helpers/ProxySlotUtils.sol";
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     DeployParams internal deployParams;
     uint256 adminsCount;
-    bool internal isUpgradeFlow;
 
     function setUp() public {
         Env memory env = envVars();
@@ -28,7 +27,6 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         initializeFromDeployment();
         if (moduleType != ModuleType.Community) vm.skip(true, "Current deployment is not Community module type");
         deployParams = parseDeployParams(env.DEPLOY_CONFIG);
-        isUpgradeFlow = env.VOTE_PREV_BLOCK != 0;
         adminsCount = block.chainid == 1 ? 1 : 2;
     }
 }
@@ -346,10 +344,6 @@ abstract contract VettedGateDeploymentBaseTest is DeploymentBaseTest {
 
     function _expectedName() internal view virtual returns (string memory);
 
-    function _expectedPauseRoleMembersWithoutCb() internal view virtual returns (uint256) {
-        return 1;
-    }
-
     function test_state() public view {
         VettedGate gate = _gate();
 
@@ -373,13 +367,7 @@ abstract contract VettedGateDeploymentBaseTest is DeploymentBaseTest {
         assertTrue(gate.hasRole(gate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
         assertEq(gate.getRoleMemberCount(gate.DEFAULT_ADMIN_ROLE()), adminsCount);
 
-        assertTrue(gate.hasRole(gate.PAUSE_ROLE(), deployParams.resealManager));
-        // TODO: Drop the ICS override once legacy GateSeal PAUSE_ROLE migration is complete.
-        _assertCircuitBreakerPauseRoleState(
-            address(gate),
-            address(circuitBreaker),
-            _expectedPauseRoleMembersWithoutCb()
-        );
+        _checkPauseRole(address(gate), deployParams.resealManager, address(circuitBreaker));
 
         assertTrue(gate.hasRole(gate.RESUME_ROLE(), deployParams.resealManager));
         assertEq(gate.getRoleMemberCount(gate.RESUME_ROLE()), 1);
@@ -455,10 +443,6 @@ contract IdentifiedCommunityStakersGateDeploymentTest is VettedGateDeploymentBas
     function test_name_afterVote() public view {
         assertEq(_gate().name(), _expectedName());
     }
-
-    function _expectedPauseRoleMembersWithoutCb() internal view override returns (uint256) {
-        return _expectedPauseRoleMembersWithoutCb(isUpgradeFlow);
-    }
 }
 
 contract IdentifiedDVTClusterGateDeploymentTest is VettedGateDeploymentBaseTest {
@@ -498,13 +482,11 @@ contract VettedGateFactoryDeploymentTest is DeploymentBaseTest {
 
 contract CircuitBreakerDeploymentTest is DeploymentBaseTest {
     function test_configuration_afterVote() public {
-        vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
         address pauser = circuitBreaker.getPauser(address(module));
         assertEq(pauser, deployParams.circuitBreakerPauser, "pauser");
     }
 
     function test_pausables_afterVote() public {
-        vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
         assertEq(circuitBreaker.getPauser(address(module)), deployParams.circuitBreakerPauser, "module pauser");
         assertEq(circuitBreaker.getPauser(address(accounting)), deployParams.circuitBreakerPauser, "accounting pauser");
         assertEq(circuitBreaker.getPauser(address(oracle)), deployParams.circuitBreakerPauser, "oracle pauser");

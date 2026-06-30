@@ -44,7 +44,6 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IACL } from "src/interfaces/IACL.sol";
 import { IKernel } from "src/interfaces/IKernel.sol";
 import { Batch } from "src/lib/DepositQueueLib.sol";
-import { BaseOracle } from "src/lib/base-oracle/BaseOracle.sol";
 
 import { Utilities } from "./Utilities.sol";
 import { MerkleTree } from "./MerkleTree.sol";
@@ -104,35 +103,16 @@ contract DeploymentHelpers is Test {
     /// @dev Placeholder address used until the real CircuitBreaker is deployed.
     address internal constant CIRCUIT_BREAKER_STUB = address(0x63697263756974627265616b6572);
 
-    function _isCircuitBreakerConfigured(address cb) internal pure returns (bool) {
-        return cb != address(0);
-    }
-
-    function _isCircuitBreakerDeployed(address cb) internal view returns (bool) {
-        return cb != address(0) && cb != CIRCUIT_BREAKER_STUB && cb.code.length > 0;
-    }
-
-    function _expectedPauseRoleMembersWithoutCb(bool isUpgradeFlow) internal view returns (uint256) {
-        // TODO: Always return 1 once the legacy GateSeal pause-role migration is done.
-        if (block.chainid == 1) return isUpgradeFlow ? 2 : 1;
-        else return 1;
-    }
-
-    function _assertCircuitBreakerPauseRoleState(
-        address target,
-        address cb,
-        uint256 expectedRoleMembersWithoutCb
-    ) internal view {
+    function _checkPauseRole(address target, address resealManager, address cb) internal view {
         IPausableWithRoles pausable = IPausableWithRoles(target);
         IAccessControlEnumerable accessControl = IAccessControlEnumerable(target);
-        uint256 expectedRoleMembers = expectedRoleMembersWithoutCb;
+        bytes32 role = pausable.PAUSE_ROLE();
+        uint256 expectedRoleMembers = 2;
 
-        if (_isCircuitBreakerConfigured(cb)) {
-            assertTrue(accessControl.hasRole(pausable.PAUSE_ROLE(), cb));
-            expectedRoleMembers += 1;
-        }
+        assertTrue(accessControl.hasRole(role, resealManager), "reseal manager pause role");
+        assertTrue(accessControl.hasRole(role, cb), "circuit breaker pause role");
 
-        assertEq(accessControl.getRoleMemberCount(pausable.PAUSE_ROLE()), expectedRoleMembers);
+        assertEq(accessControl.getRoleMemberCount(role), expectedRoleMembers, "pause role member count");
     }
 
     struct Env {
@@ -762,46 +742,6 @@ contract DeploymentHelpers is Test {
     }
 }
 
-interface IAccountingOracle {
-    struct ReportData {
-        uint256 consensusVersion;
-        uint256 refSlot;
-        uint256 clActiveBalanceGwei;
-        uint256 clPendingBalanceGwei;
-        uint256[] stakingModuleIdsWithNewlyExitedValidators;
-        uint256[] numExitedValidatorsByStakingModule;
-        uint256[] stakingModuleIdsWithUpdatedBalance;
-        uint256[] activeBalancesGweiByStakingModule;
-        uint256[] pendingBalancesGweiByStakingModule;
-        uint256 withdrawalVaultBalance;
-        uint256 elRewardsVaultBalance;
-        uint256 sharesRequestedToBurn;
-        uint256[] withdrawalFinalizationBatches;
-        uint256 simulatedShareRate;
-        bool isBunkerMode;
-        bytes32 vaultsDataTreeRoot;
-        string vaultsDataTreeCid;
-        uint256 extraDataFormat;
-        bytes32 extraDataHash;
-        uint256 extraDataItemsCount;
-    }
-
-    function getConsensusVersion() external view returns (uint256);
-
-    function getContractVersion() external view returns (uint256);
-
-    function submitReportData(ReportData calldata data, uint256 contractVersion) external;
-
-    function submitReportExtraDataEmpty() external;
-}
-
-interface ILidoBalanceStats {
-    function getBalanceStats()
-        external
-        view
-        returns (uint256 clActiveBalance, uint256 clPendingBalance, uint256 depositedBalance);
-}
-
 interface ILidoLegacyDeposit {
     function deposit(uint256 _maxDepositsCount, uint256 _stakingModuleId, bytes calldata _depositCalldata) external;
 }
@@ -857,7 +797,6 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     address[] public curatedGates;
 
     error ModuleNotFound();
-    error CannotEnableStakingRouterDeposits();
 
     function _isStakingRouterUpgraded() internal view returns (bool) {
         return stakingRouter.getContractVersion() >= STAKING_ROUTER_NEW_CONTRACT_VERSION;
@@ -1003,60 +942,14 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         lido.submit{ value: 1e7 ether }(address(0));
     }
 
-    function _ensureStakingRouterCanDeposit(uint256 moduleId) internal {
-        if (!_isStakingRouterUpgraded()) return;
-        if (stakingRouter.canDeposit(moduleId)) return;
+    function _getRouterDepositableCount(uint256 moduleId) internal view returns (uint256 count) {
+        uint256 byAmount = stakingRouter.getStakingModuleMaxDepositsCount(moduleId, lido.getDepositableEther());
+        uint256 maxPerBlock = stakingRouter.getStakingModuleMaxDepositsPerBlock(moduleId);
+        (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
 
-        IAccountingOracle accountingOracle = IAccountingOracle(locator.accountingOracle());
-        HashConsensus accountingConsensus = HashConsensus(BaseOracle(address(accountingOracle)).getConsensusContract());
-
-        _waitForNextRefSlot(accountingConsensus);
-
-        (uint256 refSlot, ) = accountingConsensus.getCurrentFrame();
-        uint256 consensusVersion = accountingOracle.getConsensusVersion();
-
-        (uint256 clActiveBalance, uint256 clPendingBalance, uint256 depositedBalance) = ILidoBalanceStats(address(lido))
-            .getBalanceStats();
-
-        IAccountingOracle.ReportData memory report = IAccountingOracle.ReportData({
-            consensusVersion: consensusVersion,
-            refSlot: refSlot,
-            clActiveBalanceGwei: clActiveBalance / 1 gwei,
-            clPendingBalanceGwei: (clPendingBalance + depositedBalance) / 1 gwei,
-            stakingModuleIdsWithNewlyExitedValidators: new uint256[](0),
-            numExitedValidatorsByStakingModule: new uint256[](0),
-            stakingModuleIdsWithUpdatedBalance: new uint256[](0),
-            activeBalancesGweiByStakingModule: new uint256[](0),
-            pendingBalancesGweiByStakingModule: new uint256[](0),
-            withdrawalVaultBalance: 0,
-            elRewardsVaultBalance: 0,
-            sharesRequestedToBurn: 0,
-            withdrawalFinalizationBatches: new uint256[](0),
-            simulatedShareRate: 0,
-            isBunkerMode: false,
-            vaultsDataTreeRoot: bytes32(0),
-            vaultsDataTreeCid: "",
-            extraDataFormat: 0,
-            extraDataHash: bytes32(0),
-            extraDataItemsCount: 0
-        });
-
-        bytes32 reportHash = keccak256(abi.encode(report));
-        (address[] memory members, ) = accountingConsensus.getFastLaneMembers();
-        if (members.length == 0) {
-            (members, ) = accountingConsensus.getMembers();
-        }
-        for (uint256 i = 0; i < members.length; ++i) {
-            vm.prank(members[i]);
-            accountingConsensus.submitReport(refSlot, reportHash, consensusVersion);
-        }
-
-        vm.startPrank(members[0]);
-        accountingOracle.submitReportData(report, accountingOracle.getContractVersion());
-        accountingOracle.submitReportExtraDataEmpty();
-        vm.stopPrank();
-
-        if (!stakingRouter.canDeposit(moduleId)) revert CannotEnableStakingRouterDeposits();
+        count = byAmount;
+        if (maxPerBlock < count) count = maxPerBlock;
+        if (depositableValidatorsCount < count) count = depositableValidatorsCount;
     }
 
     function _disableDepositsForOtherModules(uint256 targetModuleId) internal {

@@ -9,13 +9,12 @@ function readJsonFile(path) {
 
 function main() {
   const result = {};
-  const possibleArtifacts = fs.readdirSync(ARTIFACTS_DIR);
-  if (!possibleArtifacts.includes(process.argv[2])) {
-    throw new Error("Invalid arg. Possible values: " + possibleArtifacts.join(", "));
+  // Accepts nested subdirs, e.g. "local/csm" or "hoodi/curated".
+  const txPath = path.join(ARTIFACTS_DIR, process.argv[2] || "", "transactions.json");
+  if (!fs.existsSync(txPath)) {
+    throw new Error("transactions.json not found at: " + txPath);
   }
-  const transactions = readJsonFile(
-    path.join(ARTIFACTS_DIR, process.argv[2], "transactions.json"),
-  ).transactions;
+  const transactions = readJsonFile(txPath).transactions;
 
   transactions.forEach((tx) => {
     if (tx.transactionType.startsWith("CREATE") && tx.contractAddress && tx.contractName) {

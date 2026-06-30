@@ -1,12 +1,12 @@
 deploy_script_name := "Deploy" + chain_script_suffix
 deploy_csm_implementations_script_name := "DeployCSMImplementations" + chain_script_suffix
 
-deploy_config_path := "artifacts" / chain / "deploy-" + chain + ".json"
+deploy_config_path := "artifacts" / chain / "csm" / "deploy-" + chain + ".json"
 deploy_script_path := "script" / "csm" / deploy_script_name + ".s.sol:" + deploy_script_name
 deploy_csm_impls_script_path := "script" / "csm" / deploy_csm_implementations_script_name + ".s.sol:" + deploy_csm_implementations_script_name
 
-csm_artifacts_latest_dir := "./artifacts/latest/"
-csm_artifacts_local_dir := "./artifacts/local/"
+csm_artifacts_latest_dir := "./artifacts/latest/csm/"
+csm_artifacts_local_dir := "./artifacts/local/csm/"
 csm_latest_transactions_path := csm_artifacts_latest_dir + "transactions.json"
 csm_local_transactions_path := csm_artifacts_local_dir + "transactions.json"
 csm_latest_deploy_config_path := csm_artifacts_latest_dir + "deploy-" + chain + ".json"
@@ -17,7 +17,8 @@ csm_local_upgrade_config_path := csm_artifacts_local_dir + "upgrade-" + chain + 
 # Deployment
 
 deploy-csm *args:
-    just _deploy-generic {{deploy_script_path}} {{anvil_rpc_url}} {{args}}
+    ARTIFACTS_DIR={{csm_artifacts_local_dir}} \
+        just _deploy-generic {{deploy_script_path}} {{anvil_rpc_url}} {{args}}
     just _finalize-broadcast-artifacts {{deploy_script_name}} {{anvil_rpc_url}} "" "run-latest.json" {{csm_local_deploy_config_path}}
 
 deploy-csm-live *args:
@@ -43,7 +44,8 @@ verify-csm-live *args:
     just _verify-live-generic {{deploy_script_path}} {{args}}
 
 deploy-csm-impl *args:
-    just _deploy-csm-impl {{args}}
+    ARTIFACTS_DIR={{csm_artifacts_local_dir}} \
+        just _deploy-csm-impl {{args}}
 
 [confirm("You are about to broadcast deployment transactions to the network. Are you sure?")]
 deploy-csm-impl-live *args:
@@ -52,8 +54,16 @@ deploy-csm-impl-live *args:
         just _deploy-csm-impl --broadcast --verify {{args}}
     just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "" "deploy-latest.json" {{csm_latest_upgrade_config_path}}
 
+deploy-csm-impl-live-no-confirm *args:
+    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
+    ARTIFACTS_DIR={{csm_artifacts_latest_dir}} \
+        just _deploy-csm-impl --broadcast --verify {{args}}
+    just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "" "deploy-latest.json" {{csm_latest_upgrade_config_path}}
+
 deploy-csm-impl-dry *args:
-    just _deploy-csm-impl {{args}}
+    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
+    ARTIFACTS_DIR={{csm_artifacts_local_dir}} \
+        just _deploy-csm-impl {{args}}
     just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "/dry-run" "deploy-latest.json" {{csm_local_upgrade_config_path}}
 
 # Governance helpers
@@ -83,7 +93,8 @@ test-csm-upgrade *args:
     export RPC_URL={{anvil_rpc_url}}
     local_private_key="$(just _local-private-key)"
 
-    just _deploy-csm-impl --broadcast --private-key="${local_private_key}"
+    ARTIFACTS_DIR={{csm_artifacts_local_dir}} \
+        just _deploy-csm-impl --broadcast --private-key="${local_private_key}"
     just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} "$RPC_URL" "" "deploy-latest.json" {{csm_local_upgrade_config_path}}
 
     export DEPLOY_CONFIG={{csm_local_upgrade_config_path}}
@@ -135,7 +146,8 @@ test-csm-v3-only-deploy *args:
     export RPC_URL={{anvil_rpc_url}}
     local_private_key="$(just _local-private-key)"
 
-    just _deploy-csm-impl --broadcast --private-key="${local_private_key}" {{disable_code_size_limit}}
+    ARTIFACTS_DIR={{csm_artifacts_local_dir}} \
+        just _deploy-csm-impl --broadcast --private-key="${local_private_key}" {{disable_code_size_limit}}
     just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} "$RPC_URL" "" "deploy-latest.json" {{csm_local_upgrade_config_path}}
 
     export DEPLOY_CONFIG={{csm_local_upgrade_config_path}}
@@ -164,40 +176,3 @@ _deploy-csm-impl *args:
         forge script {{deploy_csm_impls_script_path}} --sig="deploy(string,string)" \
             --rpc-url ${RPC_URL} {{disable_code_size_limit}} {{args}} \
             -- {{deploy_config_path}} `git rev-parse HEAD`
-
-# Deprecated aliases
-
-deploy-local *args:
-    just deploy-csm-local {{args}}
-
-deploy *args:
-    just _warn "Deprecated. Use deploy-csm."
-    just deploy-csm {{args}}
-
-deploy-live *args:
-    just _warn "Deprecated. Use deploy-csm-live."
-    just deploy-csm-live {{args}}
-
-deploy-live-no-confirm *args:
-    just _warn "Deprecated. Use deploy-csm-live-no-confirm."
-    just deploy-csm-live-no-confirm {{args}}
-
-deploy-live-dry *args:
-    just _warn "Deprecated. Use deploy-csm-live-dry."
-    just deploy-csm-live-dry {{args}}
-
-verify-live *args:
-    just _warn "Deprecated. Use verify-csm-live."
-    just verify-csm-live {{args}}
-
-deploy-impl-live *args:
-    just _warn "Deprecated. Use deploy-csm-impl-live."
-    just deploy-csm-impl-live {{args}}
-
-deploy-impl-dry *args:
-    just _warn "Deprecated. Use deploy-csm-impl-dry."
-    just deploy-csm-impl-dry {{args}}
-
-upgrade-v3:
-    just _warn "Deprecated. Use upgrade-csm-v3."
-    just upgrade-csm-v3

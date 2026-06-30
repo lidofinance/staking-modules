@@ -144,12 +144,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertEq(module.getRoleMemberCount(REPORT_EL_REWARDS_STEALING_PENALTY_ROLE), 0);
         assertEq(module.getRoleMemberCount(SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE), 0);
 
-        // TODO: Tighten to the final exact count once CircuitBreaker is live and migration is done.
-        _assertCircuitBreakerPauseRoleState(
-            address(module),
-            deploymentConfig.circuitBreaker,
-            _expectedPauseRoleMembersWithoutCb(true)
-        );
+        _checkPauseRole(address(module), deployParams.resealManager, deploymentConfig.circuitBreaker);
     }
 
     function test_burnerRoleChanges() public {
@@ -425,12 +420,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertFalse(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(permissionlessGate)));
         assertFalse(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(module)));
 
-        // TODO: Tighten to the final exact count once CircuitBreaker is live and migration is done.
-        _assertCircuitBreakerPauseRoleState(
-            address(accounting),
-            deploymentConfig.circuitBreaker,
-            _expectedPauseRoleMembersWithoutCb(true)
-        );
+        _checkPauseRole(address(accounting), deployParams.resealManager, deploymentConfig.circuitBreaker);
 
         IBondLock oldAccountingBondLock = IBondLock(address(implBefore));
         IBondLock newAccountingBondLock = IBondLock(address(implAfter));
@@ -633,16 +623,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertTrue(gate.hasRole(gate.SET_TREE_ROLE(), deployParams.easyTrackEVMScriptExecutor), "gate set tree role");
         assertEq(gate.getRoleMemberCount(gate.SET_TREE_ROLE()), 1, "gate set tree count");
 
-        assertTrue(gate.hasRole(gate.PAUSE_ROLE(), deployParams.resealManager), "gate pause role");
-        if (_isCircuitBreakerConfigured(deploymentConfig.circuitBreaker)) {
-            assertTrue(
-                gate.hasRole(gate.PAUSE_ROLE(), deploymentConfig.circuitBreaker),
-                "gate circuit breaker pause role"
-            );
-            assertEq(gate.getRoleMemberCount(gate.PAUSE_ROLE()), 2, "gate pause count");
-        } else {
-            assertEq(gate.getRoleMemberCount(gate.PAUSE_ROLE()), 1, "gate pause count");
-        }
+        _checkPauseRole(address(gate), deployParams.resealManager, deploymentConfig.circuitBreaker);
 
         assertTrue(gate.hasRole(gate.RESUME_ROLE(), deployParams.resealManager), "gate resume role");
         assertEq(gate.getRoleMemberCount(gate.RESUME_ROLE()), 1, "gate resume count");
@@ -741,12 +722,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
         assertNotEq(implBefore, implAfter);
         assertEq(implAfter, address(oracleImpl));
 
-        // TODO: Tighten to the final exact count once CircuitBreaker is live and migration is done.
-        _assertCircuitBreakerPauseRoleState(
-            address(oracle),
-            deploymentConfig.circuitBreaker,
-            _expectedPauseRoleMembersWithoutCb(true)
-        );
+        _checkPauseRole(address(oracle), deployParams.resealManager, deploymentConfig.circuitBreaker);
 
         assertEq(oracle.getContractVersion(), contractVersionBefore + 1);
         assertEq(oracle.getConsensusVersion(), consensusVersionBefore + 1);
@@ -810,12 +786,7 @@ contract VoteChangesTest is V3UpgradeTestBase {
             keccak256(bytes(deployParams.identifiedCommunityStakersGateName))
         );
 
-        // TODO: Tighten to the final exact count once CircuitBreaker is live and migration is done.
-        _assertCircuitBreakerPauseRoleState(
-            address(vettedGate),
-            deploymentConfig.circuitBreaker,
-            _expectedPauseRoleMembersWithoutCb(true)
-        );
+        _checkPauseRole(address(vettedGate), deployParams.resealManager, deploymentConfig.circuitBreaker);
         assertFalse(vettedGate.hasRole(START_REFERRAL_SEASON_ROLE, deployParams.aragonAgent));
         assertFalse(vettedGate.hasRole(END_REFERRAL_SEASON_ROLE, deployParams.identifiedCommunityStakersGateManager));
         assertEq(vettedGate.getRoleMemberCount(START_REFERRAL_SEASON_ROLE), 0);
@@ -823,7 +794,6 @@ contract VoteChangesTest is V3UpgradeTestBase {
     }
 
     function test_circuitBreakerChanges() public {
-        vm.skip(!_isCircuitBreakerDeployed(deploymentConfig.circuitBreaker), "CircuitBreaker is not deployed");
         vm.selectFork(forkIdAfterUpgrade);
         ICircuitBreaker cb = ICircuitBreaker(deploymentConfig.circuitBreaker);
 

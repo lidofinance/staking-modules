@@ -7,7 +7,6 @@ Initial list consists of the current EA members excluding the following categori
 - Inactive Node Operators
 - Bad performers
 - Associated node operators
-- VAAS (Allnodes, Stakely, Launchnodes, etc.)
 - SSV delegated
 
 Steps to reproduce the list:

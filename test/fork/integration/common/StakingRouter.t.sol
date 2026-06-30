@@ -51,16 +51,15 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
 
     function moduleDepositWithNoGasMetering(uint256 keysCount) internal returns (uint256 deposited) {
         (, uint256 depositedBefore, ) = module.getStakingModuleSummary();
-        vm.startPrank(locator.depositSecurityModule());
         vm.pauseGasMetering();
+        vm.startPrank(locator.depositSecurityModule());
         if (isStakingRouterUpgraded) {
-            _ensureStakingRouterCanDeposit(moduleId);
             stakingRouter.deposit(moduleId, "");
         } else {
             _legacyLidoDeposit(keysCount, moduleId, "");
         }
-        vm.resumeGasMetering();
         vm.stopPrank();
+        vm.resumeGasMetering();
 
         (, uint256 depositedAfter, ) = module.getStakingModuleSummary();
         deposited = depositedAfter - depositedBefore;
@@ -117,7 +116,6 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
             integrationHelpers.addNodeOperator(nextAddress(), keysCount - depositableValidatorsCount);
         }
 
-        if (isStakingRouterUpgraded) _ensureStakingRouterCanDeposit(moduleId);
         vm.prank(locator.depositSecurityModule());
         vm.startSnapshotGas("CSM.lidoDepositCSM_30keys");
         if (isStakingRouterUpgraded) {
@@ -326,13 +324,7 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
             // Skip: request-count logic depends on router-v2 and Lido-v2 deposit interfaces.
             vm.skip(true, "Request-count logic depends on router-v2 and Lido-v2 deposit interfaces");
         }
-        uint256 byAmount = stakingRouter.getStakingModuleMaxDepositsCount(moduleId, lido.getDepositableEther());
-        uint256 maxPerBlock = stakingRouter.getStakingModuleMaxDepositsPerBlock(moduleId);
-        (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
-
-        expected = byAmount;
-        if (maxPerBlock < expected) expected = maxPerBlock;
-        if (depositableValidatorsCount < expected) expected = depositableValidatorsCount;
+        expected = _getRouterDepositableCount(moduleId);
     }
 
     function _getExpectedRouterTopUpAmount() internal view returns (uint256 expected) {

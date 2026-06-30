@@ -93,13 +93,11 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
 
 contract CircuitBreakerDeploymentTest is DeploymentBaseTest {
     function test_configuration_afterVote() public {
-        vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
         address pauser = circuitBreaker.getPauser(address(module));
         assertEq(pauser, deployParams.circuitBreakerPauser, "pauser");
     }
 
     function test_pausables_afterVote() public {
-        vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
         assertEq(circuitBreaker.getPauser(address(module)), deployParams.circuitBreakerPauser, "module pauser");
         assertEq(circuitBreaker.getPauser(address(accounting)), deployParams.circuitBreakerPauser, "accounting pauser");
         assertEq(circuitBreaker.getPauser(address(oracle)), deployParams.circuitBreakerPauser, "oracle pauser");

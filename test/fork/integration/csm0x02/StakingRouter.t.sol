@@ -34,7 +34,6 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
         _maximizeModuleShare(moduleId);
         _disableDepositsForOtherModules(moduleId);
         hugeDeposit();
-        _ensureStakingRouterCanDeposit(moduleId);
     }
 
     function test_routerDeposit_happyPath_callsObtainDepositDataAndUsesReturnedCount() public assertInvariants {
