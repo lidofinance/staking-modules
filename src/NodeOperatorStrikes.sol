@@ -16,12 +16,9 @@ import { MAX_BP } from "./lib/Constants.sol";
 ///         removal is permissionless once a strike's lifetime elapses.
 contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessControlEnumerableUpgradeable {
     struct OperatorStrikes {
-        uint64 lastStrikeId;
-        Strike[] active;
-        /// @dev maps a strike id to its position in `active` (0 = not active).
-        mapping(uint256 strikeId => uint256 position) index;
-        /// @dev on-chain strike description; cleared on removal (empty if removed or never issued).
-        mapping(uint256 strikeId => string description) descriptions;
+        uint64 lastId;
+        uint256[] activeIds;
+        mapping(uint256 strikeId => Strike) strikes;
     }
 
     /// @custom:storage-location erc7201:NodeOperatorStrikes
@@ -65,7 +62,8 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
     ) external onlyRole(STRIKES_COMMITTEE_ROLE) returns (uint256 strikeId) {
         _onlyExistingOperator(input.nodeOperatorId);
 
-        if (bytes(input.description).length > MAX_DESCRIPTION_LENGTH) revert DescriptionTooLong();
+        uint256 descLength = bytes(input.description).length;
+        if (descLength == 0 || descLength > MAX_DESCRIPTION_LENGTH) revert InvalidDescription();
 
         uint256 lifetime = input.lifetime;
         if (lifetime == 0) revert InvalidLifetime();
@@ -73,10 +71,14 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         if (expiry > type(uint64).max) revert InvalidLifetime();
 
         OperatorStrikes storage rec = _storage().operatorStrikes[input.nodeOperatorId];
-        strikeId = ++rec.lastStrikeId;
-        rec.active.push(Strike({ id: uint64(strikeId), expiry: uint64(expiry), category: input.category }));
-        rec.index[strikeId] = rec.active.length;
-        rec.descriptions[strikeId] = input.description;
+        strikeId = ++rec.lastId;
+        rec.activeIds.push(strikeId);
+        rec.strikes[strikeId] = Strike({
+            id: uint64(strikeId),
+            expiry: uint64(expiry),
+            category: input.category,
+            description: input.description
+        });
 
         emit StrikeIssued({
             nodeOperatorId: input.nodeOperatorId,
@@ -92,8 +94,7 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
     /// @inheritdoc INodeOperatorStrikes
     function removeStrike(uint256 nodeOperatorId, uint256 strikeId) external onlyRole(STRIKES_COMMITTEE_ROLE) {
         OperatorStrikes storage rec = _storage().operatorStrikes[nodeOperatorId];
-        _ensureStrikeExists(rec, strikeId);
-        _popStrike(rec, nodeOperatorId, rec.index[strikeId] - 1, strikeId);
+        _removeStrike(rec, nodeOperatorId, _activeIndex(rec, strikeId), strikeId);
 
         META_REGISTRY.refreshOperatorWeight(nodeOperatorId);
     }
@@ -101,14 +102,16 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
     /// @inheritdoc INodeOperatorStrikes
     function removeExpiredStrikes(uint256 nodeOperatorId) external {
         OperatorStrikes storage rec = _storage().operatorStrikes[nodeOperatorId];
+        uint256[] storage activeIds = rec.activeIds;
 
-        // Back-to-front: swap-pop only moves an already-kept strike down, so none are skipped.
+        // Back-to-front so swap-pop never skips an id.
         bool removed;
-        uint256 i = rec.active.length;
+        uint256 i = activeIds.length;
         while (i > 0) {
             --i;
-            if (rec.active[i].expiry > block.timestamp) continue;
-            _popStrike(rec, nodeOperatorId, i, rec.active[i].id);
+            uint256 strikeId = activeIds[i];
+            if (rec.strikes[strikeId].expiry > block.timestamp) continue;
+            _removeStrike(rec, nodeOperatorId, i, strikeId);
             removed = true;
         }
 
@@ -122,7 +125,7 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
 
     /// @inheritdoc INodeOperatorStrikes
     function getActiveStrikesCount(uint256 nodeOperatorId) external view returns (uint256 count) {
-        return _storage().operatorStrikes[nodeOperatorId].active.length;
+        return _storage().operatorStrikes[nodeOperatorId].activeIds.length;
     }
 
     /// @inheritdoc INodeOperatorStrikes
@@ -130,7 +133,7 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         multiplierBP = MAX_BP;
 
         NodeOperatorStrikesStorage storage $ = _storage();
-        uint256 count = $.operatorStrikes[nodeOperatorId].active.length;
+        uint256 count = $.operatorStrikes[nodeOperatorId].activeIds.length;
 
         StrikeThreshold[] storage thresholds = $.thresholds;
         uint256 len = thresholds.length;
@@ -142,24 +145,21 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
 
     /// @inheritdoc INodeOperatorStrikes
     function getStrike(uint256 nodeOperatorId, uint256 strikeId) external view returns (Strike memory strike) {
-        OperatorStrikes storage rec = _storage().operatorStrikes[nodeOperatorId];
-        _ensureStrikeExists(rec, strikeId);
-        return rec.active[rec.index[strikeId] - 1];
-    }
-
-    /// @inheritdoc INodeOperatorStrikes
-    function getStrikeDescription(
-        uint256 nodeOperatorId,
-        uint256 strikeId
-    ) external view returns (string memory description) {
-        OperatorStrikes storage rec = _storage().operatorStrikes[nodeOperatorId];
-        _ensureStrikeExists(rec, strikeId);
-        return rec.descriptions[strikeId];
+        strike = _storage().operatorStrikes[nodeOperatorId].strikes[strikeId];
+        // expiry == 0 means removed or never issued.
+        if (strike.expiry == 0) revert StrikeNotExist();
     }
 
     /// @inheritdoc INodeOperatorStrikes
     function getStrikes(uint256 nodeOperatorId) external view returns (Strike[] memory strikes) {
-        return _storage().operatorStrikes[nodeOperatorId].active;
+        OperatorStrikes storage rec = _storage().operatorStrikes[nodeOperatorId];
+        uint256[] storage activeIds = rec.activeIds;
+        uint256 len = activeIds.length;
+
+        strikes = new Strike[](len);
+        for (uint256 i; i < len; ++i) {
+            strikes[i] = rec.strikes[activeIds[i]];
+        }
     }
 
     /// @inheritdoc INodeOperatorStrikes
@@ -167,22 +167,25 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         return _storage().thresholds;
     }
 
-    /// @dev Reverts `StrikeNotExist` if the strike is removed or was never issued.
-    function _ensureStrikeExists(OperatorStrikes storage rec, uint256 strikeId) private view {
-        if (rec.index[strikeId] == 0) revert StrikeNotExist();
+    /// @dev Index of `strikeId` in `activeIds`; reverts `StrikeNotExist` if absent.
+    function _activeIndex(OperatorStrikes storage rec, uint256 strikeId) private view returns (uint256) {
+        uint256[] storage activeIds = rec.activeIds;
+        uint256 len = activeIds.length;
+        for (uint256 i; i < len; ++i) {
+            if (activeIds[i] == strikeId) return i;
+        }
+        revert StrikeNotExist();
     }
 
-    /// @dev Swap-pops the strike at `idx` and clears its bookkeeping. Caller refreshes the weight.
-    function _popStrike(OperatorStrikes storage rec, uint256 nodeOperatorId, uint256 idx, uint256 strikeId) private {
-        uint256 lastIdx = rec.active.length - 1;
+    /// @dev Swap-pops the id, deletes the record, emits. Caller refreshes the weight (once per batch).
+    function _removeStrike(OperatorStrikes storage rec, uint256 nodeOperatorId, uint256 idx, uint256 strikeId) private {
+        uint256[] storage activeIds = rec.activeIds;
+        uint256 lastIdx = activeIds.length - 1;
         if (idx != lastIdx) {
-            Strike memory moved = rec.active[lastIdx];
-            rec.active[idx] = moved;
-            rec.index[moved.id] = idx + 1; // 1-based position
+            activeIds[idx] = activeIds[lastIdx];
         }
-        rec.active.pop();
-        delete rec.index[strikeId];
-        delete rec.descriptions[strikeId];
+        activeIds.pop();
+        delete rec.strikes[strikeId];
 
         emit StrikeRemoved(nodeOperatorId, strikeId, msg.sender);
     }
@@ -190,10 +193,10 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
     function _setStrikeThresholds(StrikeThreshold[] calldata thresholds) private {
         _validateStrikeThresholds(thresholds);
 
-        delete _storage().thresholds;
-        StrikeThreshold[] storage stored = _storage().thresholds;
+        NodeOperatorStrikesStorage storage $ = _storage();
+        delete $.thresholds;
         for (uint256 i; i < thresholds.length; ++i) {
-            stored.push(thresholds[i]);
+            $.thresholds.push(thresholds[i]);
         }
 
         emit StrikeThresholdsSet(thresholds);

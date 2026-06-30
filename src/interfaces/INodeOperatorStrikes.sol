@@ -6,7 +6,7 @@ pragma solidity 0.8.33;
 import { ICuratedModule } from "./ICuratedModule.sol";
 import { IMetaRegistry } from "./IMetaRegistry.sol";
 
-/// @dev Payload describing a strike to issue. For the stored `description` see `getStrikeDescription`.
+/// @dev Payload describing a strike to issue.
 struct StrikeInput {
     uint256 nodeOperatorId;
     bytes32 category;
@@ -14,11 +14,13 @@ struct StrikeInput {
     string description;
 }
 
-/// @dev Removed or never-issued strike reads as a zeroed slot (`id == 0`).
+/// @dev Stored strike record (kept in a mapping by id, so the struct can grow without migration).
+///      A live strike has `expiry != 0`; a removed or never-issued one reads as zeroed.
 struct Strike {
     uint64 id;
     uint64 expiry;
     bytes32 category;
+    string description;
 }
 
 /// @dev Cumulative weight reduction step. At `minCount` active strikes the operator's weight is
@@ -45,7 +47,7 @@ interface INodeOperatorStrikes {
     error StrikeNotExist();
     error InvalidLifetime();
     error InvalidStrikeThresholds();
-    error DescriptionTooLong();
+    error InvalidDescription();
 
     /// @notice Role allowed to issue and remove strikes.
     function STRIKES_COMMITTEE_ROLE() external view returns (bytes32);
@@ -102,15 +104,7 @@ interface INodeOperatorStrikes {
     /// @param strikeId       ID of the strike.
     function getStrike(uint256 nodeOperatorId, uint256 strikeId) external view returns (Strike memory strike);
 
-    /// @notice On-chain description of a strike. Reverts with `StrikeNotExist` if removed or never issued.
-    /// @param nodeOperatorId ID of the Node Operator.
-    /// @param strikeId       ID of the strike.
-    function getStrikeDescription(
-        uint256 nodeOperatorId,
-        uint256 strikeId
-    ) external view returns (string memory description);
-
-    /// @notice Return the active (non-removed) strikes of a Node Operator.
+    /// @notice Return all of a Node Operator's active (non-removed) strikes.
     /// @param nodeOperatorId ID of the Node Operator.
     function getStrikes(uint256 nodeOperatorId) external view returns (Strike[] memory strikes);
 

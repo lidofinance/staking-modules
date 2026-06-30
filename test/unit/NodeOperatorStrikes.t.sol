@@ -164,7 +164,7 @@ contract NodeOperatorStrikesIssueTest is NodeOperatorStrikesBaseTest {
         assertEq(s.id, 1);
         assertEq(s.expiry, expiry);
         assertEq(s.category, CATEGORY);
-        assertEq(strikes.getStrikeDescription(NO_ID, 1), DESCRIPTION);
+        assertEq(s.description, DESCRIPTION);
 
         assertEq(metaRegistryMock.refreshOperatorWeightCallCount(), 1);
         assertEq(metaRegistryMock.lastRefreshedOperatorId(), NO_ID);
@@ -209,21 +209,30 @@ contract NodeOperatorStrikesIssueTest is NodeOperatorStrikesBaseTest {
 
         vm.prank(committee);
         uint256 id = strikes.issueStrike(input);
-        assertEq(bytes(strikes.getStrikeDescription(NO_ID, id)).length, maxLen);
+        assertEq(bytes(strikes.getStrike(NO_ID, id).description).length, maxLen);
     }
 
     function test_issueStrike_RevertWhen_DescriptionTooLong() public {
         StrikeInput memory input = _input(NO_ID, CATEGORY, LIFETIME);
         input.description = string(new bytes(strikes.MAX_DESCRIPTION_LENGTH() + 1));
 
-        vm.expectRevert(INodeOperatorStrikes.DescriptionTooLong.selector);
+        vm.expectRevert(INodeOperatorStrikes.InvalidDescription.selector);
+        vm.prank(committee);
+        strikes.issueStrike(input);
+    }
+
+    function test_issueStrike_RevertWhen_EmptyDescription() public {
+        StrikeInput memory input = _input(NO_ID, CATEGORY, LIFETIME);
+        input.description = "";
+
+        vm.expectRevert(INodeOperatorStrikes.InvalidDescription.selector);
         vm.prank(committee);
         strikes.issueStrike(input);
     }
 }
 
 contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
-    function test_removeStrike_CommitteeBeforeExpiry() public {
+    function test_removeStrike_RemovesAndRefreshes() public {
         uint256 id = _issue(NO_ID);
         uint256 refreshesBefore = metaRegistryMock.refreshOperatorWeightCallCount();
 
@@ -236,17 +245,6 @@ contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
         assertEq(strikes.getActiveStrikesCount(NO_ID), 0);
         _expectNoStrike(NO_ID, id); // removed
         assertEq(metaRegistryMock.refreshOperatorWeightCallCount(), refreshesBefore + 1);
-    }
-
-    function test_removeStrike_ClearsDescription() public {
-        uint256 id = _issue(NO_ID);
-        assertEq(strikes.getStrikeDescription(NO_ID, id), DESCRIPTION);
-
-        vm.prank(committee);
-        strikes.removeStrike(NO_ID, id);
-
-        vm.expectRevert(INodeOperatorStrikes.StrikeNotExist.selector);
-        strikes.getStrikeDescription(NO_ID, id);
     }
 
     function test_removeStrike_RevertWhen_NotCommittee() public {
@@ -298,7 +296,7 @@ contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
         vm.warp(block.timestamp + LIFETIME);
         assertEq(strikes.getActiveStrikesCount(NO_ID), 4);
 
-        // Gap at id 2 returns zeroed; all others are individually reachable.
+        // Gap at id 2 reverts; all others are individually reachable.
         assertEq(strikes.getStrike(NO_ID, 1).id, 1);
         _expectNoStrike(NO_ID, 2); // gap
         assertEq(strikes.getStrike(NO_ID, 3).id, 3);
@@ -313,7 +311,7 @@ contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
         assertEq(idSum, 1 + 3 + 4 + 5);
     }
 
-    function test_removeStrike_SwapPopKeepsIndexConsistent() public {
+    function test_removeStrike_SwapPopResolvesById() public {
         _issue(NO_ID); // id 1
         uint256 id2 = _issue(NO_ID);
         uint256 id3 = _issue(NO_ID);
@@ -389,14 +387,14 @@ contract NodeOperatorStrikesRemoveExpiredTest is NodeOperatorStrikesBaseTest {
         assertEq(metaRegistryMock.refreshOperatorWeightCallCount(), refreshesBefore + 1); // refreshed once
     }
 
-    function test_removeExpiredStrikes_KeepsIndexConsistent() public {
+    function test_removeExpiredStrikes_SurvivorStaysRemovable() public {
         (, uint256 id2, , uint256 id4) = _issueMixed();
 
         vm.warp(block.timestamp + LIFETIME);
         vm.prank(stranger);
         strikes.removeExpiredStrikes(NO_ID);
 
-        // Survivors stay resolvable by id and removable (their slots were swapped during cleanup).
+        // A survivor stays removable by the committee (its slot was swapped during cleanup).
         vm.prank(committee);
         strikes.removeStrike(NO_ID, id2);
         assertEq(strikes.getActiveStrikesCount(NO_ID), 1);
@@ -500,7 +498,7 @@ contract NodeOperatorStrikesThresholdsTest is NodeOperatorStrikesBaseTest {
         strikes.setStrikeThresholds(thresholds);
     }
 
-    function test_setStrikeThresholds_RevertWhen_ReductionNotIncreasing() public {
+    function test_setStrikeThresholds_RevertWhen_ReductionEqual() public {
         StrikeThreshold[] memory thresholds = new StrikeThreshold[](2);
         thresholds[0] = StrikeThreshold({ minCount: 2, reductionBP: 2_500 });
         thresholds[1] = StrikeThreshold({ minCount: 3, reductionBP: 2_500 }); // equal -> redundant band
@@ -564,7 +562,7 @@ contract NodeOperatorStrikesWeightMultiplierTest is NodeOperatorStrikesBaseTest 
         assertEq(strikes.getStrikeWeightMultiplier(NO_ID), 7_500);
     }
 
-    function test_getStrikes_ReturnsActiveOnlyWithIds() public {
+    function test_getStrikes_ExcludesRemoved() public {
         uint256 id1 = _issue(NO_ID);
         uint256 id2 = _issue(NO_ID);
         uint256 id3 = _issue(NO_ID);
@@ -577,5 +575,34 @@ contract NodeOperatorStrikesWeightMultiplierTest is NodeOperatorStrikesBaseTest 
         assertEq(active.length, 2);
         assertEq(active[0].id, id1);
         assertEq(active[1].id, id3);
+    }
+
+    function test_getStrikes() public {
+        uint256 t = block.timestamp;
+        bytes32 catA = keccak256("late-attestations");
+        bytes32 catB = keccak256("missed-proposal");
+
+        vm.startPrank(committee);
+        uint256 idA = strikes.issueStrike(
+            StrikeInput({ nodeOperatorId: NO_ID, category: catA, lifetime: LIFETIME, description: "first" })
+        );
+        uint256 idB = strikes.issueStrike(
+            StrikeInput({ nodeOperatorId: NO_ID, category: catB, lifetime: LIFETIME * 2, description: "second" })
+        );
+        vm.stopPrank();
+
+        Strike[] memory active = strikes.getStrikes(NO_ID);
+        assertEq(active.length, 2);
+
+        // Each record carries its own distinct fields.
+        assertEq(active[0].id, idA);
+        assertEq(active[0].category, catA);
+        assertEq(uint256(active[0].expiry), t + LIFETIME);
+        assertEq(active[0].description, "first");
+
+        assertEq(active[1].id, idB);
+        assertEq(active[1].category, catB);
+        assertEq(uint256(active[1].expiry), t + LIFETIME * 2);
+        assertEq(active[1].description, "second");
     }
 }
