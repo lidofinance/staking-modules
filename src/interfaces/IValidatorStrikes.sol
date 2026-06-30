@@ -79,7 +79,7 @@ interface IValidatorStrikes {
     /// @param pubkeys Public keys corresponding to each entry in keyStrikesList
     /// @param proof Multi-proof of the strikes
     /// @param proofFlags Flags to process the multi-proof, see OZ `processMultiProof`
-    /// @return bool True if proof is accepted
+    /// @return True if proof is accepted
     function verifyProof(
         KeyStrikes[] calldata keyStrikesList,
         bytes[] memory pubkeys,

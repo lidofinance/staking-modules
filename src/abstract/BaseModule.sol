@@ -82,7 +82,7 @@ abstract contract BaseModule is
     function createNodeOperator(
         address from,
         NodeOperatorManagementProperties calldata managementProperties,
-        address /* referrer */
+        address referrer // solhint-disable-line no-unused-vars
     ) public virtual whenResumed returns (uint256 nodeOperatorId) {
         _checkCreateNodeOperatorRole();
         BaseModuleStorage storage $ = _baseStorage();
@@ -380,8 +380,7 @@ abstract contract BaseModule is
     /// @inheritdoc IStakingModule
     function reportValidatorExitDelay(
         uint256 nodeOperatorId,
-        uint256,
-        /* proofSlotTimestamp */
+        uint256 proofSlotTimestamp, // solhint-disable-line no-unused-vars
         bytes calldata publicKey,
         uint256 eligibleToExitInSec
     ) external {
@@ -608,8 +607,7 @@ abstract contract BaseModule is
     /// @inheritdoc IStakingModule
     function isValidatorExitDelayPenaltyApplicable(
         uint256 nodeOperatorId,
-        uint256,
-        /* proofSlotTimestamp */
+        uint256 proofSlotTimestamp, // solhint-disable-line no-unused-vars
         bytes calldata publicKey,
         uint256 eligibleToExitInSec
     ) external view returns (bool) {

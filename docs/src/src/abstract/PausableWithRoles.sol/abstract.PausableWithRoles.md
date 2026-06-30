@@ -1,5 +1,5 @@
 # PausableWithRoles
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/abstract/PausableWithRoles.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/daa40a3672f26250a2437c260b2926e18e6eb453/src/abstract/PausableWithRoles.sol)
 
 **Inherits:**
 [IPausableWithRoles](/src/interfaces/IPausableWithRoles.sol/interface.IPausableWithRoles.md), [PausableUntil](/src/lib/utils/PausableUntil.sol/contract.PausableUntil.md)

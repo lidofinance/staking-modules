@@ -1,5 +1,5 @@
 # CSModule
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/CSModule.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/daa40a3672f26250a2437c260b2926e18e6eb453/src/CSModule.sol)
 
 **Inherits:**
 [ICSModule](/src/interfaces/ICSModule.sol/interface.ICSModule.md), [BaseModule](/src/abstract/BaseModule.sol/abstract.BaseModule.md)
@@ -71,6 +71,18 @@ To prevent possible frontrun this method should strictly be called in the same T
 function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION);
 ```
 
+### rebuildTotalWithdrawnValidators
+
+Rebuilds the global withdrawn validator counter from per-operator counters.
+
+One-time migration helper for v2-to-v3 upgrades. The function is permissionless
+because the resulting value is fully derived from stored Node Operator state.
+
+
+```solidity
+function rebuildTotalWithdrawnValidators() external;
+```
+
 ### createNodeOperator
 
 Permissioned method to add a new Node Operator
@@ -108,7 +120,7 @@ Second param `depositCalldata` is not used
 ```solidity
 function obtainDepositData(
     uint256 depositsCount,
-    bytes calldata /* depositCalldata */
+    bytes calldata depositCalldata // solhint-disable-line no-unused-vars
 )
     external
     returns (bytes memory publicKeys, bytes memory signatures);
@@ -118,7 +130,7 @@ function obtainDepositData(
 |Name|Type|Description|
 |----|----|-----------|
 |`depositsCount`|`uint256`|Number of deposits to be done|
-|`<none>`|`bytes`||
+|`depositCalldata`|`bytes`|Staking module defined data encoded as bytes. IMPORTANT: depositCalldata MUST NOT modify the deposit data set of the staking module|
 
 **Returns**
 
@@ -164,9 +176,9 @@ function allocateDeposits(
 
 ### reportValidatorBalance
 
-Sync tracked added balance for a key based on proven validator balance.
+Update verified on-chain balance for a key.
 
-The function only increases the key added value at the moment.
+The function stores balance relative to MIN_ACTIVATION_BALANCE.
 
 
 ```solidity
@@ -297,26 +309,6 @@ function getTopUpQueueItem(uint256 index) external view returns (uint256 nodeOpe
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|Node operator ID.|
 |`keyIndex`|`uint256`|Index of the key in the Node Operator's keys storage|
-
-
-### updateOperatorBalances
-
-Called by StakingRouter to update node operator total balances.
-
-The function does nothing in CSM, since the information about the operator balances is not used in the
-module. If it becomes needed in the future, the method should be implemented and the oracle should deliver
-the actual balances.
-
-
-```solidity
-function updateOperatorBalances(bytes calldata, bytes calldata) external view;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bytes`||
-|`<none>`|`bytes`||
 
 
 ### getStakingModuleSummary

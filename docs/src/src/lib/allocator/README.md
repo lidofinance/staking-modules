@@ -6,3 +6,4 @@
 - [DepositAllocatorGreedy](DepositAllocatorGreedy.sol/library.DepositAllocatorGreedy.md)
 - [PackedSortKey](PackedSortKeyLib.sol/type.PackedSortKey.md)
 - [PackedSortKeyLib](PackedSortKeyLib.sol/library.PackedSortKeyLib.md)
+- [PackedSortKeyMaxHeapLib](PackedSortKeyMaxHeapLib.sol/library.PackedSortKeyMaxHeapLib.md)

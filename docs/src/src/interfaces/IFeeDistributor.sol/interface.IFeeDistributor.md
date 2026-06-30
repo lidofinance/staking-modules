@@ -1,5 +1,5 @@
 # IFeeDistributor
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IFeeDistributor.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/daa40a3672f26250a2437c260b2926e18e6eb453/src/interfaces/IFeeDistributor.sol)
 
 **Inherits:**
 [IAssetRecovererLib](/src/lib/AssetRecovererLib.sol/interface.IAssetRecovererLib.md)
@@ -123,7 +123,7 @@ function getFeesToDistribute(uint256 nodeOperatorId, uint256 cumulativeFeeShares
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|sharesToDistribute Amount of stETH shares that can be distributed|
+|`<none>`|`uint256`|Amount of stETH shares that can be distributed|
 
 
 ### distributeFees
@@ -148,7 +148,7 @@ function distributeFees(uint256 nodeOperatorId, uint256 cumulativeFeeShares, byt
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|sharesToDistribute Amount of stETH shares distributed|
+|`<none>`|`uint256`|Amount of stETH shares distributed|
 
 
 ### processOracleReport
@@ -190,7 +190,7 @@ function pendingSharesToDistribute() external view returns (uint256);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|pendingShares Amount shares that are pending to distribute|
+|`<none>`|`uint256`|Amount shares that are pending to distribute|
 
 
 ### getHistoricalDistributionData
@@ -318,6 +318,12 @@ error ZeroOracleAddress();
 error ZeroRebateRecipientAddress();
 ```
 
+### InvalidRebateRecipientAddress
+
+```solidity
+error InvalidRebateRecipientAddress();
+```
+
 ### SameRebateRecipientAddress
 
 ```solidity
@@ -334,12 +340,6 @@ error SenderIsNotAccounting();
 
 ```solidity
 error SenderIsNotOracle();
-```
-
-### InvalidReportData
-
-```solidity
-error InvalidReportData();
 ```
 
 ### InvalidTreeRoot

@@ -1,5 +1,5 @@
 # Ejector
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/Ejector.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/daa40a3672f26250a2437c260b2926e18e6eb453/src/Ejector.sol)
 
 **Inherits:**
 [IEjector](/src/interfaces/IEjector.sol/interface.IEjector.md), [ExitTypes](/src/abstract/ExitTypes.sol/abstract.ExitTypes.md), AccessControlEnumerable, [PausableWithRoles](/src/abstract/PausableWithRoles.sol/abstract.PausableWithRoles.md), [AssetRecoverer](/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)

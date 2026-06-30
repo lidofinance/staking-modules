@@ -14,13 +14,13 @@ interface ICuratedGate is IMerkleGate {
     /// Errors
     error ZeroModuleAddress();
 
-    /// @return MODULE Curated module reference
+    /// @return Curated module reference
     function MODULE() external view returns (ICuratedModule);
 
-    /// @return ACCOUNTING Accounting reference
+    /// @return Accounting reference
     function ACCOUNTING() external view returns (IAccounting);
 
-    /// @return META_REGISTRY Operators metadata registry reference
+    /// @return Operators metadata registry reference
     function META_REGISTRY() external view returns (IMetaRegistry);
 
     /// @notice Create an empty Node Operator for the caller if eligible.

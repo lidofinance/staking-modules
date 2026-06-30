@@ -472,7 +472,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @notice Checks if a validator was reported as slashed
     /// @param nodeOperatorId The ID of the node operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
-    /// @return bool True if a validator was reported as slashed
+    /// @return True if a validator was reported as slashed
     function isValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool);
 
     /// @notice Check if the given Node Operator's key is reported as withdrawn

@@ -1,5 +1,5 @@
 # IERC20Permit
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IERC20Permit.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/daa40a3672f26250a2437c260b2926e18e6eb453/src/interfaces/IERC20Permit.sol)
 
 **Inherits:**
 [IERC2612](/src/interfaces/IERC2612.sol/interface.IERC2612.md)

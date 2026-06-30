@@ -1,5 +1,5 @@
 # IVettedGate
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IVettedGate.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/daa40a3672f26250a2437c260b2926e18e6eb453/src/interfaces/IVettedGate.sol)
 
 **Inherits:**
 [IMerkleGate](/src/interfaces/IMerkleGate.sol/interface.IMerkleGate.md)
@@ -26,6 +26,7 @@ Add a new Node Operator using ETH as bond.
 At least one deposit data and corresponding bond should be provided.
 msg.sender is marked as consumed and will not be able to create Node Operators
 or claim the beneficial curve via this VettedGate instance.
+Any excess msg.value will be sent to the bond and can be claimed from there.
 
 
 ```solidity

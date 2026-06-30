@@ -1,5 +1,5 @@
 # FeeDistributor
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/FeeDistributor.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/daa40a3672f26250a2437c260b2926e18e6eb453/src/FeeDistributor.sol)
 
 **Inherits:**
 [IFeeDistributor](/src/interfaces/IFeeDistributor.sol/interface.IFeeDistributor.md), Initializable, AccessControlEnumerableUpgradeable, [AssetRecoverer](/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
@@ -258,7 +258,7 @@ function pendingSharesToDistribute() external view returns (uint256);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|pendingShares Amount shares that are pending to distribute|
+|`<none>`|`uint256`|Amount shares that are pending to distribute|
 
 
 ### getHistoricalDistributionData

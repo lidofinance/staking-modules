@@ -1,5 +1,5 @@
 # IValidatorStrikes
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IValidatorStrikes.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/daa40a3672f26250a2437c260b2926e18e6eb453/src/interfaces/IValidatorStrikes.sol)
 
 
 ## Functions
@@ -141,7 +141,7 @@ function verifyProof(
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`bool`|bool True if proof is accepted|
+|`<none>`|`bool`|True if proof is accepted|
 
 
 ### hashLeaf
@@ -223,18 +223,6 @@ error ZeroModuleAddress();
 
 ```solidity
 error ZeroOracleAddress();
-```
-
-### ZeroExitPenaltiesAddress
-
-```solidity
-error ZeroExitPenaltiesAddress();
-```
-
-### ZeroParametersRegistryAddress
-
-```solidity
-error ZeroParametersRegistryAddress();
 ```
 
 ### ZeroAdminAddress

@@ -1,5 +1,5 @@
 # ExitPenalties
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/ExitPenalties.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/daa40a3672f26250a2437c260b2926e18e6eb453/src/ExitPenalties.sol)
 
 **Inherits:**
 [IExitPenalties](/src/interfaces/IExitPenalties.sol/interface.IExitPenalties.md), [ExitTypes](/src/abstract/ExitTypes.sol/abstract.ExitTypes.md)
@@ -151,7 +151,7 @@ function isValidatorExitDelayPenaltyApplicable(
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`bool`|bool Returns true if contract should receive updated validator's status.|
+|`<none>`|`bool`|Returns true if contract should receive updated validator's status.|
 
 
 ### getExitPenaltyInfo

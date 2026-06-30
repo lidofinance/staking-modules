@@ -53,7 +53,7 @@ interface IStakingModule {
     /// @param _proofSlotTimestamp The timestamp (slot time) when the validator was last known to be in an active ongoing state.
     /// @param _publicKey The public key of the validator.
     /// @param _eligibleToExitInSec The number of seconds the validator was eligible to exit but did not.
-    /// @return bool Returns true if the contract should receive the updated status of the validator.
+    /// @return Returns true if the contract should receive the updated status of the validator.
     function isValidatorExitDelayPenaltyApplicable(
         uint256 _nodeOperatorId,
         uint256 _proofSlotTimestamp,

@@ -12,7 +12,7 @@ interface INamedUpgradeable {
 
     error InvalidName();
 
-    /// @return name Human-readable name
+    /// @return Human-readable name
     function name() external view returns (string memory);
 
     /// @notice Update the human-readable name

@@ -1,167 +1,59 @@
 <p align="center">
-  <img src="logo.png" width="240" alt="CSM Logo"/>
+  <img src="logo.png" width="240" alt="Staking Modules Logo"/>
 </p>
-<h1 align="center"> Lido Community Staking Module </h1>
+<h1 align="center">Lido Staking Modules</h1>
 
 ## Intro
 
-Lido Community Staking Module (CSM) is a permissionless module allowing community stakers to operate Ethereum validators with lower entry costs. Stakers provide stETH bonds, serving as security collateral, and receive rewards in the form of bond rebase and staking rewards (including execution layer rewards), which are socialized across Lido’s staking modules.
+Smart contracts for the staking modules of the [Lido](https://lido.fi) protocol. Three modules ship from this repository and share a common code base:
 
-More on CSM in the [docs](https://docs.lido.fi/staking-modules/csm/intro).
+- **Community Staking Module (CSM)** — permissionless module for community stakers. See more in [CSM docs](https://docs.lido.fi/staking-modules/csm/intro).
+- **CSM 0x02** — CSM dedicated to validators with the `0x02` withdrawal credentials prefix.
+- **Curated Module v2 (CMv2)** — next iteration of Lido's curated module. Reuses CSM components to introduce bond-based security, flexible operator classification, improved incentive alignment, and lower governance friction compared to the legacy curated module.
 
-## Contributing
+## Repository layout
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md).
+- `src/` — Solidity sources
+- `script/` — deploy and helper scripts
+- `test/` — [Foundry](https://github.com/foundry-rs/foundry) tests
+- `artifacts/` — per-chain deployment artifacts (`mainnet/`, `hoodi/`, plus `latest/` and `local/` working dirs)
 
 ## Getting Started
 
-- Install [Foundry tools](https://book.getfoundry.sh/getting-started/installation) (version 1.2.3, see `.foundryref`)
+Prerequisites:
 
-- Install [Just](https://github.com/casey/just) (version 1.24.0 or later)
+- [Foundry](https://book.getfoundry.sh/getting-started/installation) — version pinned in `.foundryref`.
+- [Just](https://github.com/casey/just) 1.24.0 or later.
+- [Yarn](https://classic.yarnpkg.com/) — 4.1 or later.
+- [jq](https://jqlang.org/download/) 1.6 or later.
+- OpenBSD-flavored `nc` (netcat) on some Linux distributions (e.g. Arch) for local fork recipes.
 
-- Install [jq](https://jqlang.org/download/) (version 1.6 or later)
-
-> Some Linux distributions (like Arch Linux) might require additional install of [netcat (nc)](https://en.wikipedia.org/wiki/Netcat). The preferred version is OpenBSD.
-
-- Install project dependencies
+Bootstrap
 
 ```bash
 just deps
 ```
 
-- Config environment variables
+Build and run unit tests
 
 ```bash
-cp .env.sample .env
-```
-
-Fill vars in the `.env` file with your own values
-
-- Build and test contracts
-
-```bash
-just
-```
-
-## Run tests
-
-Run unit tests only
-
-```bash
+just build
 just test-unit
 ```
 
-For the following tests, make sure that the following variables are set in the `.env` file:
+Run `just --list` to see all available recipes.
 
-```bash
-export CHAIN=hoodi
-export RPC_URL=<PUT_YOUR_URL_HERE>
-```
+## Utility contracts
 
-Deploy CSM to the fork and run `deployment` and `integration` tests over it
+The repository also ships a few utilities used for the modules:
 
-```bash
-just test-local
-```
+- **`TwoPhaseFrameConfigUpdate`** — shifts the Oracle report window by reconfiguring the `HashConsensus` in a safe manner
+- **`OneShotCurveSetup`** — atomically adds a new bond curve and applies its parameter overrides
 
-Run all tests in one (`unit`, `deployment`, `integration`)
+## ICS Assessment
 
-```bash
-just test-all
-```
+Python utilities for assessing Identified Community Stakers (ICS) eligibility across engagement, experience, and humanity categories live in [`ics_assessment/`](./ics_assessment/). Methodology and scoring are described in the [Research Forum post](https://research.lido.fi/t/community-staking-module/5917/141); see [`ics_assessment/README.md`](./ics_assessment/README.md) for usage.
 
-## Make a gas report
+## Contributing
 
-It requires all unit tests to be green
-
-```bash
-just gas-report
-```
-
-## Add new dependencies
-
-Dependencies are managed using yarn. To install new dependencies, run:
-
-```bash
-yarn add <package-name>
-```
-
-Whenever you install new libraries using yarn, make sure to update your
-`remappings.txt`.
-
-## Advanced testing scenarios using local fork
-
-Deploy contracts to the local fork
-
-```bash
-just deploy-local
-```
-
-Set up environment for the local fork
-Further test commands require the following environment variables to be set:
-
-```bash
-export RPC_URL=http://127.0.0.1:8545
-export DEPLOY_CONFIG=./artifacts/local/deploy-hoodi.json
-# Optional: utility deployment config for `test-utils`
-export UTILS_DEPLOY_CONFIG=./artifacts/local/utils/TwoPhaseFrameConfigUpdate/deploy-hoodi.json
-```
-
-The result of deployment is `./artifacts/local/deploy-hoodi.json` deployment config, which is required for integration testing
-
-Verify deploy by running `deployment` tests.
-Note that these are meant to be run only right after deployment, so they don't supposed to be green after any actions in the contracts
-
-```bash
-just test-deployment
-```
-
-Integration tests should pass either before a vote, or after at any state of contracts
-
-```bash
-just test-integration
-```
-
-There also fork helper scripts to prepare a fork state for e.g. UI testing purposes,
-see [fork.just](./fork.just) to get all available commands
-
-```bash
-just vote-upgrade
-```
-
-After a vote, you can test the contracts in the new state. It includes both `integration` and `vote-upgrade` tests
-
-```bash
-just test-post-upgrade
-```
-
-Kill fork after testing
-
-```bash
-just kill-fork
-```
-
-## Deploy on a chain
-
-The following commands are related to the deployment process:
-
-- Dry run of deploy script to be sure it works as expected
-
-```bash
-just deploy-live-dry
-```
-
-- Broadcast transactions
-
-> Note: pass `--legacy` arg in case of the following error: `Failed to get EIP-1559 fees`
-
-```bash
-just deploy-live
-```
-
-After that there should be artifacts in the `./artifacts/latest` directory,
-which is might be moved to the particular directory and committed
-
-```bash
-mv ./artifacts/latest ./artifacts/$CHAIN
-```
+See the [Contributing Guide](CONTRIBUTING.md) and repository conventions in `AGENTS.md`.

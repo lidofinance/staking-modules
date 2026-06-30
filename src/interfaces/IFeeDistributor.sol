@@ -92,7 +92,7 @@ interface IFeeDistributor is IAssetRecovererLib {
     /// @param nodeOperatorId ID of the Node Operator
     /// @param cumulativeFeeShares Total Amount of stETH shares earned as fees
     /// @param proof Merkle proof of the leaf
-    /// @return sharesToDistribute Amount of stETH shares that can be distributed
+    /// @return Amount of stETH shares that can be distributed
     function getFeesToDistribute(
         uint256 nodeOperatorId,
         uint256 cumulativeFeeShares,
@@ -103,7 +103,7 @@ interface IFeeDistributor is IAssetRecovererLib {
     /// @param nodeOperatorId ID of the Node Operator
     /// @param cumulativeFeeShares Total Amount of stETH shares earned as fees
     /// @param proof Merkle proof of the leaf
-    /// @return sharesToDistribute Amount of stETH shares distributed
+    /// @return Amount of stETH shares distributed
     function distributeFees(
         uint256 nodeOperatorId,
         uint256 cumulativeFeeShares,
@@ -127,7 +127,7 @@ interface IFeeDistributor is IAssetRecovererLib {
     ) external;
 
     /// @notice Get the Amount of stETH shares that are pending to be distributed
-    /// @return pendingShares Amount shares that are pending to distribute
+    /// @return Amount shares that are pending to distribute
     function pendingSharesToDistribute() external view returns (uint256);
 
     /// @notice Get the historical record of distribution data

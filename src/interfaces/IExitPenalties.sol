@@ -77,7 +77,7 @@ interface IExitPenalties is IExitTypes {
     /// @param nodeOperatorId The ID of the node operator.
     /// @param publicKey Validator's public key.
     /// @param eligibleToExitInSec The number of seconds the validator was eligible to exit but did not.
-    /// @return bool Returns true if contract should receive updated validator's status.
+    /// @return Returns true if contract should receive updated validator's status.
     function isValidatorExitDelayPenaltyApplicable(
         uint256 nodeOperatorId,
         bytes calldata publicKey,

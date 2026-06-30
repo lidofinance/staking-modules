@@ -1,5 +1,5 @@
 # TwoPhaseFrameConfigUpdate
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/utils/TwoPhaseFrameConfigUpdate.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/daa40a3672f26250a2437c260b2926e18e6eb453/src/utils/TwoPhaseFrameConfigUpdate.sol)
 
 A helper to offset the Oracle report schedule (e.g., move the report window by N epochs).
 This is achieved via a two-phase frame configuration update in the HashConsensus contract used by the Oracle:

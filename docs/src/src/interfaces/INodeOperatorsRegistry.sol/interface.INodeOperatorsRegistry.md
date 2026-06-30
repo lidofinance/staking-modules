@@ -1,5 +1,5 @@
 # INodeOperatorsRegistry
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/INodeOperatorsRegistry.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/daa40a3672f26250a2437c260b2926e18e6eb453/src/interfaces/INodeOperatorsRegistry.sol)
 
 Node operator registry interface for legacy curated module.
 
