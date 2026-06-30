@@ -10,6 +10,7 @@ import { IAccounting } from "./interfaces/IAccounting.sol";
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
 import { IAdditionalBondRegistry, TierInfo, OperatorTierState } from "./interfaces/IAdditionalBondRegistry.sol";
+import { IWeightBoostProvider } from "./interfaces/IWeightBoostProvider.sol";
 import { MAX_BP } from "./lib/Constants.sol";
 
 /// @notice Manages operator tiers.
@@ -96,7 +97,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
         $.operatorTier[nodeOperatorId] = tierId;
         emit TierSelected(nodeOperatorId, tierId);
 
-        META_REGISTRY.refreshOperatorWeight(nodeOperatorId);
+        META_REGISTRY.notifyWeightBoostChanged(nodeOperatorId);
     }
 
     /// @inheritdoc IAdditionalBondRegistry
@@ -125,6 +126,12 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
         state.curveMultiplierCooldownUntil = $.curveMultiplierCooldownUntil[nodeOperatorId];
         state.weightMultiplier = MAX_BP + $.tiers[state.tierId].weightMultiplier;
         state.curveMultiplier = ACCOUNTING.getBondCurveMultiplier(nodeOperatorId);
+    }
+
+    /// @inheritdoc IWeightBoostProvider
+    function getWeightBoostMultiplierBP(uint256 nodeOperatorId) external view returns (uint256 multiplierBP) {
+        AdditionalBondRegistryStorage storage $ = _storage();
+        multiplierBP = MAX_BP + $.tiers[$.operatorTier[nodeOperatorId]].weightMultiplier;
     }
 
     /// @inheritdoc IAdditionalBondRegistry

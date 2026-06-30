@@ -24,6 +24,8 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     CommonDeployParams internal deployParams;
     uint256 adminsCount;
     uint256 expectedModuleScratchNonce;
+    uint256 expectedModuleScratchNonceFromGates;
+    uint256 expectedModuleScratchNonceFromWeightBoostProviders;
 
     function setUp() public {
         Env memory env = envVars();
@@ -36,7 +38,14 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         if (moduleType == ModuleType.Curated) {
             // Curated deployment sets bond-curve weights once per gate. Each set triggers
             // requestFullDepositInfoUpdate(), which increments module nonce.
-            expectedModuleScratchNonce = vm.parseJsonAddressArray(config, ".CuratedGates").length;
+            expectedModuleScratchNonceFromGates = vm.parseJsonAddressArray(config, ".CuratedGates").length;
+
+            // Each registered weight boost provider also requests full update and contributes one nonce.
+            expectedModuleScratchNonceFromWeightBoostProviders = metaRegistry.getWeightBoostProvidersCount();
+
+            expectedModuleScratchNonce =
+                expectedModuleScratchNonceFromGates +
+                expectedModuleScratchNonceFromWeightBoostProviders;
         }
     }
 }

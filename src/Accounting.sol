@@ -15,7 +15,6 @@ import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 
 import { AssetRecovererLib } from "./lib/AssetRecovererLib.sol";
 
-import { IStakingModule } from "./interfaces/IStakingModule.sol";
 import { IBaseModule, NodeOperatorManagementProperties } from "./interfaces/IBaseModule.sol";
 import { IAccounting } from "./interfaces/IAccounting.sol";
 import { IFeeDistributor } from "./interfaces/IFeeDistributor.sol";
@@ -614,7 +613,7 @@ contract Accounting is
     }
 
     function _onlyExistingNodeOperator(uint256 nodeOperatorId) internal view {
-        if (nodeOperatorId < IStakingModule(address(MODULE)).getNodeOperatorsCount()) return;
+        if (nodeOperatorId < MODULE.getNodeOperatorsCount()) return;
 
         revert NodeOperatorDoesNotExist();
     }
