@@ -1,5 +1,5 @@
 # BondLock
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/abstract/BondLock.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/abstract/BondLock.sol)
 
 **Inherits:**
 [IBondLock](/src/interfaces/IBondLock.sol/interface.IBondLock.md), Initializable
@@ -111,6 +111,27 @@ function getLockedBond(uint256 nodeOperatorId) public view returns (uint256);
 |`<none>`|`uint256`|Amount of the actual locked bond|
 
 
+### getBondLockNonce
+
+Get bond lock nonce for the given Node Operator
+
+
+```solidity
+function getBondLockNonce(uint256 nodeOperatorId) public view returns (uint256);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Bond lock nonce|
+
+
 ### isLockExpired
 
 Check if the bond lock for the given Node Operator has expired
@@ -129,12 +150,14 @@ function isLockExpired(uint256 nodeOperatorId) public view returns (bool);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`bool`|True if the bond lock has expired or there is no lock, false otherwise|
+|`<none>`|`bool`|True if the bond lock has expired, false otherwise|
 
 
 ### _lock
 
 Lock bond amount for the given Node Operator until the period.
+
+If there's an existing non-expired lock, its amount is added to the `amount` provided.
 
 
 ```solidity
@@ -162,6 +185,13 @@ function _changeBondLock(uint256 nodeOperatorId, uint256 amount, uint256 until) 
 
 ```solidity
 function _unlockExpiredLock(uint256 nodeOperatorId) internal;
+```
+
+### _incrementBondLockNonce
+
+
+```solidity
+function _incrementBondLockNonce(uint256 nodeOperatorId) internal;
 ```
 
 ### __BondLock_init
@@ -200,6 +230,9 @@ struct BondLockStorage {
     uint256 bondLockPeriod;
     /// @dev Mapping of the Node Operator id to the bond lock
     mapping(uint256 nodeOperatorId => BondLockData) bondLock;
+    /// @dev Mapping of the Node Operator id to the bond lock nonce. Expired lock removals and compensations do not increment the nonce, since they do not create a new lock, but only remove the existing one.
+    ///      Nonce is incremented on each new lock and used to prevent settling wrong lock in case of multiple locks for the same Node Operator.
+    mapping(uint256 nodeOperatorId => uint256) bondLockNonce;
 }
 ```
 

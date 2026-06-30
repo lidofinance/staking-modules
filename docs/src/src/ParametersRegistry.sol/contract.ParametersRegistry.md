@@ -1,5 +1,5 @@
 # ParametersRegistry
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/ParametersRegistry.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/ParametersRegistry.sol)
 
 **Inherits:**
 [IParametersRegistry](/src/interfaces/IParametersRegistry.sol/interface.IParametersRegistry.md), Initializable, AccessControlEnumerableUpgradeable
@@ -328,7 +328,7 @@ function setDefaultKeyRemovalCharge(uint256 keyRemovalCharge)
 
 |Name|Type|Description|
 |----|----|-----------|
-|`keyRemovalCharge`|`uint256`|value to be set as default for the key removal charge|
+|`keyRemovalCharge`|`uint256`|Value to be set as default for the key removal charge|
 
 
 ### setDefaultGeneralDelayedPenaltyAdditionalFine
@@ -345,7 +345,7 @@ function setDefaultGeneralDelayedPenaltyAdditionalFine(uint256 fine)
 
 |Name|Type|Description|
 |----|----|-----------|
-|`fine`|`uint256`|value to be set as default for the general delayed penalty additional fine|
+|`fine`|`uint256`|Value to be set as default for the general delayed penalty additional fine|
 
 
 ### setDefaultKeysLimit
@@ -360,7 +360,7 @@ function setDefaultKeysLimit(uint256 limit) external onlyRoleMemberOrAdmin(MANAG
 
 |Name|Type|Description|
 |----|----|-----------|
-|`limit`|`uint256`|value to be set as default for the keys limit|
+|`limit`|`uint256`|Value to be set as default for the keys limit|
 
 
 ### setDefaultQueueConfig
@@ -393,7 +393,7 @@ function setDefaultRewardShare(uint256 share) external onlyRoleMemberOrAdmin(MAN
 
 |Name|Type|Description|
 |----|----|-----------|
-|`share`|`uint256`|value to be set as default for the reward share|
+|`share`|`uint256`|Value to be set as default for the reward share|
 
 
 ### setDefaultPerformanceLeeway
@@ -410,7 +410,7 @@ function setDefaultPerformanceLeeway(uint256 leeway)
 
 |Name|Type|Description|
 |----|----|-----------|
-|`leeway`|`uint256`|value to be set as default for the performance leeway|
+|`leeway`|`uint256`|Value to be set as default for the performance leeway|
 
 
 ### setDefaultStrikesParams
@@ -446,7 +446,7 @@ function setDefaultBadPerformancePenalty(uint256 penalty)
 
 |Name|Type|Description|
 |----|----|-----------|
-|`penalty`|`uint256`|value to be set as default for the bad performance penalty|
+|`penalty`|`uint256`|Value to be set as default for the bad performance penalty|
 
 
 ### setDefaultPerformanceCoefficients
@@ -463,9 +463,9 @@ function setDefaultPerformanceCoefficients(uint256 attestationsWeight, uint256 b
 
 |Name|Type|Description|
 |----|----|-----------|
-|`attestationsWeight`|`uint256`|value to be set as default for the attestations effectiveness weight|
-|`blocksWeight`|`uint256`|value to be set as default for block proposals effectiveness weight|
-|`syncWeight`|`uint256`|value to be set as default for sync participation effectiveness weight|
+|`attestationsWeight`|`uint256`|Value to be set as default for the attestations effectiveness weight|
+|`blocksWeight`|`uint256`|Value to be set as default for block proposals effectiveness weight|
+|`syncWeight`|`uint256`|Value to be set as default for sync participation effectiveness weight|
 
 
 ### setDefaultAllowedExitDelay
@@ -482,7 +482,7 @@ function setDefaultAllowedExitDelay(uint256 delay)
 
 |Name|Type|Description|
 |----|----|-----------|
-|`delay`|`uint256`|value to be set as default for the allowed exit delay|
+|`delay`|`uint256`|Value to be set as default for the allowed exit delay|
 
 
 ### setDefaultExitDelayFee
@@ -492,15 +492,13 @@ This value is used if a specific value is not set for the curveId
 
 
 ```solidity
-function setDefaultExitDelayFee(uint256 penalty)
-    external
-    onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE);
+function setDefaultExitDelayFee(uint256 fee) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`penalty`|`uint256`||
+|`fee`|`uint256`|The value to be set as default for the exit delay fee|
 
 
 ### setDefaultMaxElWithdrawalRequestFee
@@ -517,7 +515,7 @@ function setDefaultMaxElWithdrawalRequestFee(uint256 fee)
 
 |Name|Type|Description|
 |----|----|-----------|
-|`fee`|`uint256`|value to be set as default for the max EL withdrawal request fee|
+|`fee`|`uint256`|Value to be set as default for the max EL withdrawal request fee|
 
 
 ### setKeyRemovalCharge
@@ -710,7 +708,7 @@ function setAllowedExitDelay(uint256 curveId, uint256 delay)
 |Name|Type|Description|
 |----|----|-----------|
 |`curveId`|`uint256`|Curve Id to associate allowed exit delay with|
-|`delay`|`uint256`|allowed exit delay|
+|`delay`|`uint256`|Allowed exit delay|
 
 
 ### setExitDelayFee
@@ -719,7 +717,7 @@ Set the exit delay penalty for a single 32 ether validator for the given curveId
 
 
 ```solidity
-function setExitDelayFee(uint256 curveId, uint256 penalty)
+function setExitDelayFee(uint256 curveId, uint256 fee)
     external
     onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE);
 ```
@@ -728,7 +726,7 @@ function setExitDelayFee(uint256 curveId, uint256 penalty)
 |Name|Type|Description|
 |----|----|-----------|
 |`curveId`|`uint256`|Curve Id to associate exit delay penalty with|
-|`penalty`|`uint256`||
+|`fee`|`uint256`|Exit delay fee|
 
 
 ### setMaxElWithdrawalRequestFee
@@ -1001,7 +999,7 @@ function getGeneralDelayedPenaltyAdditionalFine(uint256 curveId) external view r
 
 ### getKeysLimit
 
-Get keys limit by the curveId. A limit indicates the maximal amount of the non-exited keys Node Operator can upload
+Get keys limit by the curveId. A limit indicates the maximal amount of the non-withdrawn keys Node Operator can upload
 
 `defaultKeysLimit` is returned if the value is not set for the given curveId.
 
@@ -1028,7 +1026,7 @@ Get the queue config for the given curve. This parameter is not used in Curated 
 
 
 ```solidity
-function getQueueConfig(uint256 curveId) external view returns (uint32 queuePriority, uint32 maxDeposits);
+function getQueueConfig(uint256 curveId) external view returns (uint32 priority, uint32 maxDeposits);
 ```
 **Parameters**
 
@@ -1040,7 +1038,7 @@ function getQueueConfig(uint256 curveId) external view returns (uint32 queuePrio
 
 |Name|Type|Description|
 |----|----|-----------|
-|`queuePriority`|`uint32`|priority Queue priority.|
+|`priority`|`uint32`|Queue priority.|
 |`maxDeposits`|`uint32`|Maximum number of the first deposits a Node Operator can get via the priority queue. Ex. with `maxDeposits = 10` the Node Operator сan get keys added to the priority queue until the Node Operator has totalDepositedKeys + enqueued >= 10.|
 
 

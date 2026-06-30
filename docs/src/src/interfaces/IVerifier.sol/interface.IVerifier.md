@@ -1,5 +1,5 @@
 # IVerifier
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IVerifier.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IVerifier.sol)
 
 
 ## Functions
@@ -66,18 +66,11 @@ function GI_FIRST_HISTORICAL_SUMMARY_PREV() external view returns (GIndex);
 function GI_FIRST_HISTORICAL_SUMMARY_CURR() external view returns (GIndex);
 ```
 
-### GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV
+### GI_FIRST_BLOCK_ROOT_IN_SUMMARY
 
 
 ```solidity
-function GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV() external view returns (GIndex);
-```
-
-### GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR
-
-
-```solidity
-function GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR() external view returns (GIndex);
+function GI_FIRST_BLOCK_ROOT_IN_SUMMARY() external view returns (GIndex);
 ```
 
 ### FIRST_SUPPORTED_SLOT
@@ -108,6 +101,13 @@ function CAPELLA_SLOT() external view returns (Slot);
 function WITHDRAWAL_ADDRESS() external view returns (address);
 ```
 
+### MIN_WITHDRAWAL_RATIO
+
+
+```solidity
+function MIN_WITHDRAWAL_RATIO() external view returns (uint256);
+```
+
 ### MODULE
 
 
@@ -117,7 +117,7 @@ function MODULE() external view returns (IBaseModule);
 
 ### processSlashedProof
 
-Verify proof of a slashed validator being withdrawable and report it to the module
+Verify proof of a slashed validator and report it to the module
 
 
 ```solidity
@@ -244,6 +244,12 @@ error ValidatorIsNotSlashed();
 error ValidatorIsNotWithdrawable();
 ```
 
+### ValidatorIsWithdrawable
+
+```solidity
+error ValidatorIsWithdrawable();
+```
+
 ### InvalidWithdrawalAddress
 
 ```solidity
@@ -298,6 +304,12 @@ error InvalidPivotSlot();
 error InvalidCapellaSlot();
 ```
 
+### InvalidMinWithdrawalRatio
+
+```solidity
+error InvalidMinWithdrawalRatio();
+```
+
 ### HistoricalSummaryDoesNotExist
 
 ```solidity
@@ -315,8 +327,6 @@ struct GIndices {
     GIndex gIFirstValidatorCurr;
     GIndex gIFirstHistoricalSummaryPrev;
     GIndex gIFirstHistoricalSummaryCurr;
-    GIndex gIFirstBlockRootInSummaryPrev;
-    GIndex gIFirstBlockRootInSummaryCurr;
     GIndex gIFirstBalanceNodePrev;
     GIndex gIFirstBalanceNodeCurr;
 }

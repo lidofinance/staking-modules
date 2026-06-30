@@ -1,5 +1,5 @@
 # IFeeDistributor
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IFeeDistributor.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IFeeDistributor.sol)
 
 **Inherits:**
 [IAssetRecovererLib](/src/lib/AssetRecovererLib.sol/interface.IAssetRecovererLib.md)
@@ -29,12 +29,16 @@ function ORACLE() external view returns (address);
 
 ### treeRoot
 
+The latest Merkle Tree root
+
 
 ```solidity
 function treeRoot() external view returns (bytes32);
 ```
 
 ### treeCid
+
+CID of the last published Merkle tree
 
 
 ```solidity
@@ -43,12 +47,16 @@ function treeCid() external view returns (string calldata);
 
 ### logCid
 
+CID of the file with log for the last frame reported
+
 
 ```solidity
 function logCid() external view returns (string calldata);
 ```
 
 ### distributedShares
+
+Amount of stETH shares sent to the Accounting in favor of the NO
 
 
 ```solidity
@@ -57,6 +65,8 @@ function distributedShares(uint256) external view returns (uint256);
 
 ### totalClaimableShares
 
+Total Amount of stETH shares available for claiming by NOs
+
 
 ```solidity
 function totalClaimableShares() external view returns (uint256);
@@ -64,12 +74,16 @@ function totalClaimableShares() external view returns (uint256);
 
 ### distributionDataHistoryCount
 
+The number of records retrievable via `getHistoricalDistributionData`
+
 
 ```solidity
 function distributionDataHistoryCount() external view returns (uint256);
 ```
 
 ### rebateRecipient
+
+The address to transfer rebate to
 
 
 ```solidity
@@ -123,7 +137,7 @@ function getFeesToDistribute(uint256 nodeOperatorId, uint256 cumulativeFeeShares
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|sharesToDistribute Amount of stETH shares that can be distributed|
+|`<none>`|`uint256`|Amount of stETH shares that can be distributed|
 
 
 ### distributeFees
@@ -148,7 +162,7 @@ function distributeFees(uint256 nodeOperatorId, uint256 cumulativeFeeShares, byt
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|sharesToDistribute Amount of stETH shares distributed|
+|`<none>`|`uint256`|Amount of stETH shares distributed|
 
 
 ### processOracleReport
@@ -171,11 +185,11 @@ function processOracleReport(
 |Name|Type|Description|
 |----|----|-----------|
 |`_treeRoot`|`bytes32`|Root of the Merkle tree|
-|`_treeCid`|`string`|an IPFS CID of the tree|
-|`_logCid`|`string`|an IPFS CID of the log|
-|`distributed`|`uint256`|an amount of the distributed shares|
-|`rebate`|`uint256`|an amount of the rebate shares|
-|`refSlot`|`uint256`|refSlot of the report|
+|`_treeCid`|`string`|IPFS CID of the tree|
+|`_logCid`|`string`|IPFS CID of the log|
+|`distributed`|`uint256`|Amount of the distributed shares|
+|`rebate`|`uint256`|Amount of the rebate shares|
+|`refSlot`|`uint256`|Reference slot of the report|
 
 
 ### pendingSharesToDistribute
@@ -190,7 +204,7 @@ function pendingSharesToDistribute() external view returns (uint256);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|pendingShares Amount shares that are pending to distribute|
+|`<none>`|`uint256`|Amount shares that are pending to distribute|
 
 
 ### getHistoricalDistributionData
@@ -318,6 +332,12 @@ error ZeroOracleAddress();
 error ZeroRebateRecipientAddress();
 ```
 
+### InvalidRebateRecipientAddress
+
+```solidity
+error InvalidRebateRecipientAddress();
+```
+
 ### SameRebateRecipientAddress
 
 ```solidity
@@ -334,12 +354,6 @@ error SenderIsNotAccounting();
 
 ```solidity
 error SenderIsNotOracle();
-```
-
-### InvalidReportData
-
-```solidity
-error InvalidReportData();
 ```
 
 ### InvalidTreeRoot

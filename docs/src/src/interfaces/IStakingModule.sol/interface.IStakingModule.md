@@ -1,5 +1,5 @@
 # IStakingModule
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IStakingModule.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IStakingModule.sol)
 
 **Title:**
 Lido's Staking Module interface
@@ -86,7 +86,7 @@ function isValidatorExitDelayPenaltyApplicable(
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`bool`|bool Returns true if the contract should receive the updated status of the validator.|
+|`<none>`|`bool`|Returns true if the contract should receive the updated status of the validator.|
 
 
 ### exitDeadlineThreshold
@@ -140,9 +140,9 @@ function getStakingModuleSummary()
 
 |Name|Type|Description|
 |----|----|-----------|
-|`totalExitedValidators`|`uint256`|total number of validators in the EXITED state on the Consensus Layer. This value can't decrease in normal conditions|
-|`totalDepositedValidators`|`uint256`|total number of validators deposited via the official Deposit Contract. This value is a cumulative counter: even when the validator goes into EXITED state this counter is not decreasing|
-|`depositableValidatorsCount`|`uint256`|number of validators in the set available for deposit|
+|`totalExitedValidators`|`uint256`|Total number of validators in the EXITED state on the Consensus Layer. This value can't decrease in normal conditions|
+|`totalDepositedValidators`|`uint256`|Total number of validators deposited via the official Deposit Contract. This value is a cumulative counter: even when the validator goes into EXITED state this counter is not decreasing|
+|`depositableValidatorsCount`|`uint256`|Number of validators in the set available for deposit|
 
 
 ### getNodeOperatorSummary
@@ -298,8 +298,8 @@ function updateExitedValidatorsCount(bytes calldata nodeOperatorIds, bytes calld
 
 |Name|Type|Description|
 |----|----|-----------|
-|`nodeOperatorIds`|`bytes`|bytes packed array of the node operators id|
-|`exitedValidatorsCounts`|`bytes`|bytes packed array of the new number of EXITED validators for the node operators|
+|`nodeOperatorIds`|`bytes`|Packed array of the node operators id|
+|`exitedValidatorsCounts`|`bytes`|Packed array of the new number of EXITED validators for the node operators|
 
 
 ### updateTargetValidatorsLimits

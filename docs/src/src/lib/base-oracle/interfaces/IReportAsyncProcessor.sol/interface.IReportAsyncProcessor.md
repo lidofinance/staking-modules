@@ -1,5 +1,5 @@
 # IReportAsyncProcessor
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/lib/base-oracle/interfaces/IReportAsyncProcessor.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/lib/base-oracle/interfaces/IReportAsyncProcessor.sol)
 
 A contract that gets consensus reports (i.e. hashes) pushed to and processes them
 asynchronously.

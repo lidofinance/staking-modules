@@ -1,7 +1,8 @@
 # NodeOperatorOps
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/lib/NodeOperatorOps.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/lib/NodeOperatorOps.sol)
 
-The library is used to reduce BaseModule bytecode size.
+External deployment-linked library used by BaseModule-compatible modules
+to reduce bytecode size.
 
 
 ## Functions
@@ -13,7 +14,8 @@ function createNodeOperator(
     mapping(uint256 => NodeOperator) storage nodeOperators,
     uint256 nodeOperatorId,
     address from,
-    NodeOperatorManagementProperties calldata managementProperties
+    NodeOperatorManagementProperties calldata managementProperties,
+    address stETH
 ) external;
 ```
 
@@ -71,18 +73,6 @@ function reportValidatorBalance(
     uint256 nodeOperatorId,
     uint256 keyIndex,
     uint256 currentBalanceWei
-) external;
-```
-
-### increaseKeyAddedBalancesByAllocations
-
-
-```solidity
-function increaseKeyAddedBalancesByAllocations(
-    mapping(uint256 => uint256) storage keyAddedBalances,
-    uint256[] calldata operatorIds,
-    uint256[] calldata keyIndices,
-    uint256[] calldata allocations
 ) external;
 ```
 
@@ -150,11 +140,35 @@ function getNodeOperatorSummary(
 
 ```solidity
 function capTopUpLimitsByKeyBalance(
-    mapping(uint256 => uint256) storage keyAddedBalances,
+    ModuleLinearStorage.BaseModuleStorage storage $,
     uint256[] calldata operatorIds,
     uint256[] calldata keyIndices,
     uint256[] calldata topUpLimits
-) external view returns (uint256[] memory cappedTopUpLimits);
+) external returns (uint256[] memory cappedTopUpLimits);
+```
+
+### getKeyAllocatedBalances
+
+
+```solidity
+function getKeyAllocatedBalances(
+    ModuleLinearStorage.BaseModuleStorage storage $,
+    uint256 nodeOperatorId,
+    uint256 startIndex,
+    uint256 keysCount
+) external view returns (uint256[] memory balances);
+```
+
+### getKeyConfirmedBalances
+
+
+```solidity
+function getKeyConfirmedBalances(
+    ModuleLinearStorage.BaseModuleStorage storage $,
+    uint256 nodeOperatorId,
+    uint256 startIndex,
+    uint256 keysCount
+) external view returns (uint256[] memory balances);
 ```
 
 ### getNodeOperatorIds
@@ -165,33 +179,6 @@ function getNodeOperatorIds(uint256 nodeOperatorsCount, uint256 offset, uint256 
     external
     pure
     returns (uint256[] memory nodeOperatorIds);
-```
-
-### distributeTopUpAllocations
-
-Distribute per-operator allocations to per-key allocations with per-key limits.
-
-
-```solidity
-function distributeTopUpAllocations(
-    uint256[] calldata operatorIds,
-    uint256[] calldata topUpLimits,
-    uint256[] calldata allocatedOperatorIds,
-    uint256[] calldata operatorAllocations,
-    uint256 operatorsCount
-) external pure returns (uint256[] memory allocations, uint256[] memory perOperatorIncrements);
-```
-
-### _increaseKeyAddedBalance
-
-
-```solidity
-function _increaseKeyAddedBalance(
-    mapping(uint256 => uint256) storage keyAddedBalances,
-    uint256 nodeOperatorId,
-    uint256 keyIndex,
-    uint256 incrementWei
-) internal;
 ```
 
 ### _updateExitedValidatorsCount
@@ -213,10 +200,10 @@ function _updateExitedValidatorsCount(
 function _onlyExistingNodeOperator(uint256 nodeOperatorId, uint256 nodeOperatorsCount) internal pure;
 ```
 
-### _keyAddedBalanceCap
+### _keyBalanceCap
 
 
 ```solidity
-function _keyAddedBalanceCap() private pure returns (uint256);
+function _keyBalanceCap() private pure returns (uint256);
 ```
 

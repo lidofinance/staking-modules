@@ -1,5 +1,8 @@
 # IMerkleGate
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IMerkleGate.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IMerkleGate.sol)
+
+**Inherits:**
+[INamedUpgradeable](/src/interfaces/INamedUpgradeable.sol/interface.INamedUpgradeable.md)
 
 **Title:**
 Merkle Gate Interface
@@ -18,7 +21,7 @@ function SET_TREE_ROLE() external view returns (bytes32);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`bytes32`|SET_TREE_ROLE role required to update tree parameters|
+|`<none>`|`bytes32`|role required to update tree parameters|
 
 
 ### treeRoot
@@ -31,7 +34,7 @@ function treeRoot() external view returns (bytes32);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`bytes32`|treeRoot Current Merkle tree root|
+|`<none>`|`bytes32`|Current Merkle tree root|
 
 
 ### treeCid
@@ -44,7 +47,7 @@ function treeCid() external view returns (string memory);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`string`|treeCid Current Merkle tree CID|
+|`<none>`|`string`|Current Merkle tree CID|
 
 
 ### curveId
@@ -57,7 +60,7 @@ function curveId() external view returns (uint256);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|curveId Instance-specific bond curve id|
+|`<none>`|`uint256`|Instance-specific bond curve id|
 
 
 ### setTreeParams
@@ -66,14 +69,14 @@ Update Merkle tree params
 
 
 ```solidity
-function setTreeParams(bytes32 _treeRoot, string calldata _treeCid) external;
+function setTreeParams(bytes32 treeRoot_, string calldata treeCid_) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`_treeRoot`|`bytes32`|New root|
-|`_treeCid`|`string`|New CID|
+|`treeRoot_`|`bytes32`|New root|
+|`treeCid_`|`string`|New CID|
 
 
 ### isConsumed
@@ -109,15 +112,17 @@ Initialize the gate instance.
 
 
 ```solidity
-function initialize(uint256 curveId, bytes32 treeRoot, string calldata treeCid, address admin) external;
+function initialize(uint256 curveId, bytes32 treeRoot, string calldata treeCid, string calldata name, address admin)
+    external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`curveId`|`uint256`|Bond curve id to assign to eligible members.|
+|`curveId`|`uint256`|Bond curve id used by the gate.|
 |`treeRoot`|`bytes32`|Initial Merkle tree root.|
 |`treeCid`|`string`|Initial Merkle tree CID.|
+|`name`|`string`|Human-readable gate name.|
 |`admin`|`address`|Address to be granted DEFAULT_ADMIN_ROLE.|
 
 

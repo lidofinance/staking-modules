@@ -1,5 +1,5 @@
 # ICuratedModule
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/ICuratedModule.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/ICuratedModule.sol)
 
 **Inherits:**
 [IBaseModule](/src/interfaces/IBaseModule.sol/interface.IBaseModule.md), [IStakingModuleV2](/src/interfaces/IStakingModule.sol/interface.IStakingModuleV2.md)
@@ -21,24 +21,6 @@ function initialize(address admin) external;
 |`admin`|`address`|An address to grant the DEFAULT_ADMIN_ROLE to.|
 
 
-### changeNodeOperatorAddresses
-
-Change both reward and manager addresses of a node operator.
-
-
-```solidity
-function changeNodeOperatorAddresses(uint256 nodeOperatorId, address newManagerAddress, address newRewardAddress)
-    external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`newManagerAddress`|`address`|New manager address|
-|`newRewardAddress`|`address`|New reward address|
-
-
 ### notifyNodeOperatorWeightChange
 
 Notifies the module about the weight change of a node operator.
@@ -54,21 +36,6 @@ function notifyNodeOperatorWeightChange(uint256 nodeOperatorId, uint256 oldWeigh
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
 |`oldWeight`|`uint256`|The old weight of the node operator.|
 |`newWeight`|`uint256`|The new weight of the node operator.|
-
-
-### getNodeOperatorBalance
-
-Returns stored operator balance (validators + pending).
-
-
-```solidity
-function getNodeOperatorBalance(uint256 operatorId) external view returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`operatorId`|`uint256`|ID of the Node Operator|
 
 
 ### getOperatorWeights
@@ -94,13 +61,40 @@ function getOperatorWeights(uint256[] calldata operatorIds) external view return
 |`operatorWeights`|`uint256[]`|Weights aligned with operatorIds.|
 
 
+### getNodeOperatorWeightAndExternalStake
+
+Returns effective weight and external stake for a node operator.
+
+Reverts until the module deposit info cache is fully refreshed.
+
+
+```solidity
+function getNodeOperatorWeightAndExternalStake(uint256 nodeOperatorId)
+    external
+    view
+    returns (uint256 weight, uint256 externalStake);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|Node operator ID to query.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`weight`|`uint256`|Effective allocation weight.|
+|`externalStake`|`uint256`|External stake amount in wei.|
+
+
 ### getDepositAllocationTargets
 
 Returns current deposit allocation targets for all operators.
 
 Target = totalCurrent * operatorWeight / totalWeight (in validator count).
 Includes operators regardless of depositable capacity for informational purposes.
-Actual allocation recalculates shares only across operators with available capacity,
+Actual allocation recalculates shares only across operators with usable capacity,
 so real per-operator amounts may differ from the targets shown here.
 Arrays are indexed by operator id; zero-weight operators have zero values.
 
@@ -123,9 +117,9 @@ function getDepositAllocationTargets()
 
 Returns current top-up allocation targets for all operators.
 
-Target = totalCurrent * operatorWeight / totalWeight (in wei).
+`target = totalCurrent * operatorWeight / totalWeight` (in wei).
 Includes operators regardless of top-up capacity for informational purposes.
-Actual allocation recalculates shares only across operators with available capacity,
+Actual allocation recalculates shares only across operators with usable capacity,
 so real per-operator amounts may differ from the targets shown here.
 Arrays are indexed by operator id; zero-weight operators have zero values.
 
@@ -162,13 +156,6 @@ function getDepositsAllocation(uint256 depositAmount)
 |`depositAmount`|`uint256`|Amount of Eth that can be deposited to module|
 
 
-### OPERATOR_ADDRESSES_ADMIN_ROLE
-
-
-```solidity
-function OPERATOR_ADDRESSES_ADMIN_ROLE() external view returns (bytes32);
-```
-
 ### META_REGISTRY
 
 Returns current meta registry.
@@ -176,13 +163,6 @@ Returns current meta registry.
 
 ```solidity
 function META_REGISTRY() external view returns (IMetaRegistry);
-```
-
-## Events
-### NodeOperatorBalanceUpdated
-
-```solidity
-event NodeOperatorBalanceUpdated(uint256 indexed operatorId, uint256 balanceWei);
 ```
 
 ## Errors
@@ -196,17 +176,5 @@ error ZeroMetaRegistryAddress();
 
 ```solidity
 error SenderIsNotMetaRegistry();
-```
-
-### InvalidMaxCount
-
-```solidity
-error InvalidMaxCount();
-```
-
-### NodeOperatorWeightsUpdateInProgress
-
-```solidity
-error NodeOperatorWeightsUpdateInProgress();
 ```
 

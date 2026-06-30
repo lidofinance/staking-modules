@@ -1,24 +1,11 @@
 # WithdrawnValidatorLib
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/lib/WithdrawnValidatorLib.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/lib/WithdrawnValidatorLib.sol)
 
-A library to extract a part of the code from the CSModule contract.
+External deployment-linked library used by BaseModule-compatible modules
+to extract withdrawn validator processing from module bytecode.
 
 
 ## State Variables
-### MAX_EFFECTIVE_BALANCE
-
-```solidity
-uint256 public constant MAX_EFFECTIVE_BALANCE = 2048 ether
-```
-
-
-### MIN_ACTIVATION_BALANCE
-
-```solidity
-uint256 public constant MIN_ACTIVATION_BALANCE = 32 ether
-```
-
-
 ### PENALTY_QUOTIENT
 
 ```solidity
@@ -31,11 +18,18 @@ Acts as the denominator to calculate the scaled penalty.
 
 
 ```solidity
-uint256 public constant PENALTY_SCALE = MIN_ACTIVATION_BALANCE / PENALTY_QUOTIENT
+uint256 public constant PENALTY_SCALE = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE / PENALTY_QUOTIENT
 ```
 
 
 ## Functions
+### rebuildTotalWithdrawnValidators
+
+
+```solidity
+function rebuildTotalWithdrawnValidators(ModuleLinearStorage.BaseModuleStorage storage $) external;
+```
+
 ### processBatch
 
 
@@ -44,15 +38,20 @@ function processBatch(
     WithdrawnValidatorInfo[] calldata validatorInfos,
     bool slashed,
     ModuleLinearStorage.BaseModuleStorage storage $
-) external returns (uint256[] memory touchedOperatorIds, uint256 touchedCount);
+)
+    external
+    returns (uint256[] memory touchedOperatorIds, uint256[] memory trackedBalanceDecreases, uint256 touchedCount);
 ```
 
 ### _process
 
 
 ```solidity
-function _process(NodeOperator storage no, WithdrawnValidatorInfo calldata validatorInfo, uint256 keyAddedBalance)
-    private;
+function _process(
+    NodeOperator storage no,
+    WithdrawnValidatorInfo calldata validatorInfo,
+    uint256 keyConfirmedBalance
+) private;
 ```
 
 ### _fulfillExitObligations
@@ -62,13 +61,15 @@ function _process(NodeOperator storage no, WithdrawnValidatorInfo calldata valid
 function _fulfillExitObligations(
     WithdrawnValidatorInfo calldata validatorInfo,
     ExitPenaltyInfo memory penaltyInfo,
-    uint256 keyAddedBalance
-) internal;
+    uint256 keyConfirmedBalance
+) private;
 ```
 
 ### _getPenaltyMultiplier
 
 Acts as the numerator to calculate the scaled penalty.
+
+Expects the `balance` value between MIN_ACTIVATION_BALANCE and MAX_EFFECTIVE_BALANCE.
 
 
 ```solidity
@@ -82,10 +83,10 @@ function _getPenaltyMultiplier(uint256 balance) internal pure returns (uint256 p
 function _scalePenaltyByMultiplier(uint256 penalty, uint256 multiplier) internal pure returns (uint256);
 ```
 
-### _keyPointer
+### _clamp
 
 
 ```solidity
-function _keyPointer(uint256 nodeOperatorId, uint256 keyIndex) internal pure returns (uint256 pointer);
+function _clamp(uint256 v, uint256 min, uint256 max) internal pure returns (uint256);
 ```
 

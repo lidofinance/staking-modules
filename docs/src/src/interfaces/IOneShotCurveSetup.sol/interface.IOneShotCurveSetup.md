@@ -1,5 +1,5 @@
 # IOneShotCurveSetup
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IOneShotCurveSetup.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IOneShotCurveSetup.sol)
 
 **Title:**
 One-shot setup helper for a bond curve plus per-curve parameter overrides.

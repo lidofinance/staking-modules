@@ -1,5 +1,5 @@
 # CuratedGate
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/CuratedGate.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/CuratedGate.sol)
 
 **Inherits:**
 [ICuratedGate](/src/interfaces/ICuratedGate.sol/interface.ICuratedGate.md), [MerkleGate](/src/abstract/MerkleGate.sol/abstract.MerkleGate.md)
@@ -50,7 +50,7 @@ constructor(address module) ;
 
 
 ```solidity
-function initialize(uint256 curveId, bytes32 treeRoot, string calldata treeCid, address admin)
+function initialize(uint256 curveId, bytes32 treeRoot, string calldata treeCid, string calldata name, address admin)
     public
     override(IMerkleGate, MerkleGate)
     initializer;
@@ -60,6 +60,9 @@ function initialize(uint256 curveId, bytes32 treeRoot, string calldata treeCid, 
 
 Create an empty Node Operator for the caller if eligible.
 Stores provided name/description in MetaRegistry. Marks caller as consumed.
+
+If `curveId()` equals `Accounting.DEFAULT_BOND_CURVE_ID()`,
+the created operator stays on the default bond curve.
 
 
 ```solidity

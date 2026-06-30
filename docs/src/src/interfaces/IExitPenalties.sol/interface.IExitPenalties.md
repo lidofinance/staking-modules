@@ -1,5 +1,5 @@
 # IExitPenalties
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IExitPenalties.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IExitPenalties.sol)
 
 **Inherits:**
 [IExitTypes](/src/interfaces/IExitTypes.sol/interface.IExitTypes.md)
@@ -38,7 +38,7 @@ function STRIKES() external view returns (address);
 
 Handles tracking and penalization logic for a validator that remains active beyond its eligible exit window.
 
-see IStakingModule.reportValidatorExitDelay for details
+See `IStakingModule.reportValidatorExitDelay` for details.
 
 
 ```solidity
@@ -95,7 +95,7 @@ function processStrikesReport(uint256 nodeOperatorId, bytes calldata publicKey) 
 
 ### isValidatorExitDelayPenaltyApplicable
 
-Determines whether a validator exit status should be updated and will have affect on Node Operator.
+Determines whether a validator exit status should be updated and will have an effect on the Node Operator.
 
 called only by the module
 
@@ -119,12 +119,12 @@ function isValidatorExitDelayPenaltyApplicable(
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`bool`|bool Returns true if contract should receive updated validator's status.|
+|`<none>`|`bool`|Returns true if contract should receive updated validator's status.|
 
 
 ### getExitPenaltyInfo
 
-get delayed exit penalty info for the given Node Operator
+Get delayed exit penalty info for the given Node Operator
 
 
 ```solidity
@@ -177,12 +177,6 @@ event StrikesPenaltyProcessed(uint256 indexed nodeOperatorId, bytes pubkey, uint
 
 ```solidity
 error ZeroModuleAddress();
-```
-
-### ZeroParametersRegistryAddress
-
-```solidity
-error ZeroParametersRegistryAddress();
 ```
 
 ### ZeroStrikesAddress

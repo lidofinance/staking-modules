@@ -1,5 +1,5 @@
 # FeeSplits
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/abstract/FeeSplits.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/abstract/FeeSplits.sol)
 
 **Inherits:**
 [IFeeSplits](/src/interfaces/IFeeSplits.sol/interface.IFeeSplits.md)
@@ -105,7 +105,7 @@ function hasSplits(uint256 nodeOperatorId) public view returns (bool);
 
 
 ```solidity
-function _updateFeeSplits(uint256 nodeOperatorId, FeeSplit[] calldata feeSplits) internal;
+function _updateFeeSplits(uint256 nodeOperatorId, FeeSplit[] calldata feeSplits, address stETH) internal;
 ```
 
 ### _increasePendingSharesToSplit
@@ -115,11 +115,13 @@ function _updateFeeSplits(uint256 nodeOperatorId, FeeSplit[] calldata feeSplits)
 function _increasePendingSharesToSplit(uint256 nodeOperatorId, uint256 shares) internal;
 ```
 
-### _decreasePendingSharesToSplit
+### _unsafeDecreasePendingSharesToSplit
+
+Expects `shares` not to exceed the current value of `pendingSharesToSplit`.
 
 
 ```solidity
-function _decreasePendingSharesToSplit(uint256 nodeOperatorId, uint256 shares) internal;
+function _unsafeDecreasePendingSharesToSplit(uint256 nodeOperatorId, uint256 shares) internal;
 ```
 
 ### _getFeeSplitsStorage
@@ -133,7 +135,7 @@ function _getFeeSplitsStorage() internal pure returns (FeeSplitsStorage storage 
 
 
 ```solidity
-function _validateFeeSplits(FeeSplit[] calldata feeSplits) private pure returns (uint256 len);
+function _validateFeeSplits(FeeSplit[] calldata feeSplits, address stETH) private pure returns (uint256 len);
 ```
 
 ## Structs

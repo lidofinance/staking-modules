@@ -1,5 +1,5 @@
 # ModuleLinearStorage
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/abstract/ModuleLinearStorage.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/abstract/ModuleLinearStorage.sol)
 
 
 ## Functions
@@ -19,21 +19,23 @@ accessed via `_baseStorage()` at slot 0.
 ```solidity
 struct BaseModuleStorage {
     /// @dev Having this mapping here to preserve the current layout of the storage of the CSModule.
-    mapping(uint256 priority => DepositQueueLib.Queue queue) depositQueueByPriority;
-    bytes32 freeSlot1;
-    uint256 upToDateOperatorDepositInfoCount;
+    /* 0 */ mapping(uint256 priority => DepositQueueLib.Queue queue) depositQueueByPriority;
     /// @dev Total number of withdrawn validators reported for the module.
-    uint256 totalWithdrawnValidators;
-    mapping(uint256 noKeyIndexPacked => uint256) keyAddedBalances;
-    uint256 nonce;
-    mapping(uint256 nodeOperatorId => NodeOperator) nodeOperators;
+    /* 1 */ uint256 totalWithdrawnValidators;
+    /* 2 */ uint256 upToDateOperatorDepositInfoCount; /// XXX: the slot was used as a mapping in CSM v1 and v2.
+    /* 3 */ mapping(uint256 noKeyIndexPacked => uint256) keyAllocatedBalance;
+    /* 4 */ mapping(uint256 noKeyIndexPacked => uint256) keyConfirmedBalance;
+    /* 5 */ uint256 nonce;
+    /* 6 */ mapping(uint256 nodeOperatorId => NodeOperator) nodeOperators;
     /// @dev see KeyPointerLib.keyPointer function for details of noKeyIndexPacked structure
-    mapping(uint256 noKeyIndexPacked => bool) isValidatorWithdrawn;
-    mapping(uint256 noKeyIndexPacked => bool) isValidatorSlashed;
-    uint64 totalDepositedValidators;
-    uint64 totalExitedValidators;
-    uint64 depositableValidatorsCount;
-    uint64 nodeOperatorsCount;
+    /* 7 */ mapping(uint256 noKeyIndexPacked => bool) isValidatorWithdrawn;
+    /* 8 */ mapping(uint256 noKeyIndexPacked => bool) isValidatorSlashed;
+    /* 9 */ uint64 totalDepositedValidators;
+    /* 9 */ uint64 totalExitedValidators;
+    /* 9 */ uint64 depositableValidatorsCount;
+    /* 9 */ uint64 nodeOperatorsCount;
+    /* 10 */ mapping(uint256 nodeOperatorId => uint256 extraBalance) operatorBalances;
+    /* 11 */ uint256 totalExtraStake;
 }
 ```
 

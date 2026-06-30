@@ -1,5 +1,5 @@
 # ICuratedGate
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/ICuratedGate.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/ICuratedGate.sol)
 
 **Inherits:**
 [IMerkleGate](/src/interfaces/IMerkleGate.sol/interface.IMerkleGate.md)
@@ -21,7 +21,7 @@ function MODULE() external view returns (ICuratedModule);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`ICuratedModule`|MODULE Curated module reference|
+|`<none>`|`ICuratedModule`|Curated module reference|
 
 
 ### ACCOUNTING
@@ -34,7 +34,7 @@ function ACCOUNTING() external view returns (IAccounting);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`IAccounting`|ACCOUNTING Accounting reference|
+|`<none>`|`IAccounting`|Accounting reference|
 
 
 ### META_REGISTRY
@@ -47,13 +47,16 @@ function META_REGISTRY() external view returns (IMetaRegistry);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`IMetaRegistry`|META_REGISTRY Operators metadata registry reference|
+|`<none>`|`IMetaRegistry`|Operators metadata registry reference|
 
 
 ### createNodeOperator
 
 Create an empty Node Operator for the caller if eligible.
 Stores provided name/description in MetaRegistry. Marks caller as consumed.
+
+If `curveId()` equals `Accounting.DEFAULT_BOND_CURVE_ID()`,
+the created operator stays on the default bond curve.
 
 
 ```solidity
@@ -83,15 +86,9 @@ function createNodeOperator(
 
 
 ## Errors
-### InvalidCurveId
+### ZeroModuleAddress
 Errors
 
-
-```solidity
-error InvalidCurveId();
-```
-
-### ZeroModuleAddress
 
 ```solidity
 error ZeroModuleAddress();

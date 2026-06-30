@@ -1,8 +1,10 @@
 # FeeOracle
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/FeeOracle.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/FeeOracle.sol)
 
 **Inherits:**
 [IFeeOracle](/src/interfaces/IFeeOracle.sol/interface.IFeeOracle.md), [BaseOracle](/src/lib/base-oracle/BaseOracle.sol/abstract.BaseOracle.md), [PausableWithRoles](/src/abstract/PausableWithRoles.sol/abstract.PausableWithRoles.md), [AssetRecoverer](/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
+
+No assets are stored in the contract
 
 
 ## State Variables
@@ -15,8 +17,6 @@ uint256 internal constant INITIALIZED_VERSION = 3
 
 ### SUBMIT_DATA_ROLE
 An ACL role granting the permission to submit the data for a committee report.
-
-No assets are stored in the contract
 
 
 ```solidity

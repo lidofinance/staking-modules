@@ -1,28 +1,15 @@
 # CuratedDepositAllocator
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/lib/allocator/CuratedDepositAllocator.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/lib/allocator/CuratedDepositAllocator.sol)
 
-Curated deposit allocation helpers (external library for bytecode savings).
+Curated deposit allocation helpers.
 
+External deployment-linked library used by CuratedModule for bytecode savings.
 Invariants assumed by this library:
 - totalWithdrawnKeys <= totalDepositedKeys per operator.
 - each operatorId < operatorsCount.
 
 
 ## State Variables
-### MAX_EFFECTIVE_BALANCE
-
-```solidity
-uint256 public constant MAX_EFFECTIVE_BALANCE = 2048 ether
-```
-
-
-### MIN_ACTIVATION_BALANCE
-
-```solidity
-uint256 public constant MIN_ACTIVATION_BALANCE = 32 ether
-```
-
-
 ### DEPOSIT_STEP
 
 ```solidity
@@ -77,27 +64,21 @@ function allocateInitialDeposits(
 
 ### allocateTopUps
 
-Allocate top-up deposit amount across curated operators.
-
-Input preparation and iteration behavior:
+Returns operator-level top-up allocations for the provided operators.
 - Duplicated operator ids are not expected (caller guarantees uniqueness).
-- Only operators with non-zero allocation weight are included.
+- Only operators with non-zero allocation weight and usable top-up capacity are included.
 - Shares are computed across all eligible operators in the module
-(non-zero weight, non-zero top-up capacity),
+(non-zero weight, non-zero quantized top-up capacity),
 so a subset cannot bias its share by omitting other eligible operators.
 - Per-operator capacity is computed as:
 `(active_validators * 2048 ETH) - current_operator_balance`, floored at zero.
-- Per-key top-up limits are *not* used as caps for allocation; they are
-applied later per-key and may leave unallocated remainder.
-- Operators that have zero remaining balance after allocation are excluded
-on later iterations by capacity == 0 at the module level.
+- `current_operator_balance` here is the module's tracked stake view, not a live decrementing oracle value:
+active balance decreases are intentionally reflected later via withdrawal reporting.
 
 
 ```solidity
 function allocateTopUps(
-    mapping(uint256 => NodeOperator) storage nodeOperators,
-    mapping(uint256 => uint256) storage nodeOperatorBalances,
-    uint256 operatorsCount,
+    ModuleLinearStorage.BaseModuleStorage storage $,
     uint256 allocationAmount,
     uint256[] calldata operatorIds
 ) external view returns (uint256 allocated, uint256[] memory allocatedOperatorIds, uint256[] memory allocations);
@@ -106,11 +87,9 @@ function allocateTopUps(
 
 |Name|Type|Description|
 |----|----|-----------|
-|`nodeOperators`|`mapping(uint256 => NodeOperator)`|Node operator storage mapping from the module.|
-|`nodeOperatorBalances`|`mapping(uint256 => uint256)`|Per-operator balance (in wei) storage mapping from the module.|
-|`operatorsCount`|`uint256`|Total operators count in the module.|
+|`$`|`ModuleLinearStorage.BaseModuleStorage`|Base module storage pointer.|
 |`allocationAmount`|`uint256`|Total top-up amount in wei to allocate.|
-|`operatorIds`|`uint256[]`|Key owner operator ids for this top-up request.|
+|`operatorIds`|`uint256[]`|Unique operator ids to include in allocation.|
 
 **Returns**
 
@@ -120,6 +99,49 @@ function allocateTopUps(
 |`allocatedOperatorIds`|`uint256[]`|Operator ids for allocated operators.|
 |`allocations`|`uint256[]`|Per-operator allocations aligned to allocatedOperatorIds.|
 
+
+### allocateAndDistributeTopUps
+
+Allocate top-ups across unique operators and immediately distribute them to keys.
+- Raw operator ids may contain duplicates; they are deduplicated before operator-level allocation
+to avoid overweighting operators that appear on multiple requested keys.
+- Shares are computed across all eligible operators in the module
+(non-zero weight, non-zero quantized top-up capacity),
+so a subset cannot bias its share by omitting other eligible operators.
+- Per-operator capacity is computed as:
+`(active_validators * 2048 ETH) - current_operator_balance`, floored at zero.
+- `current_operator_balance` is intentionally based on tracked stake that preserves prior observed highs
+until withdrawal settlement, so active slashing/leakage is accounted when penalties are finalized.
+- Per-key top-up limits are not used as caps for operator-level allocation; they are
+applied during key-level distribution and may leave unallocated remainder.
+
+
+```solidity
+function allocateAndDistributeTopUps(
+    ModuleLinearStorage.BaseModuleStorage storage $,
+    uint256 allocationAmount,
+    uint256[] calldata operatorIds,
+    uint256[] calldata topUpLimits
+) external returns (uint256[] memory allocations);
+```
+
+### _uniqueOperatorIds
+
+
+```solidity
+function _uniqueOperatorIds(uint256[] calldata operatorIds) private returns (uint256[] memory uniqueOperatorIds);
+```
+
+### _allocateTopUps
+
+
+```solidity
+function _allocateTopUps(
+    ModuleLinearStorage.BaseModuleStorage storage $,
+    uint256 allocationAmount,
+    uint256[] memory operatorIds
+) private view returns (uint256 allocated, uint256[] memory allocatedOperatorIds, uint256[] memory allocations);
+```
 
 ### _collectDepositableOperatorsData
 
@@ -131,7 +153,7 @@ Filters out zero capacity and zero-weight operators.
 function _collectDepositableOperatorsData(
     mapping(uint256 => NodeOperator) storage nodeOperators,
     uint256 operatorsCount
-) internal view returns (DepositableOperatorsData memory data);
+) private view returns (DepositableOperatorsData memory data);
 ```
 
 ### _collectTopUpEligibleOperatorsData
@@ -142,23 +164,17 @@ Duplicates in operatorIds are disallowed and must be filtered by the caller.
 
 ```solidity
 function _collectTopUpEligibleOperatorsData(
-    mapping(uint256 => NodeOperator) storage nodeOperators,
-    mapping(uint256 => uint256) storage nodeOperatorBalances,
-    uint256 operatorsCount,
-    uint256[] calldata operatorIds
-) internal view returns (DepositableOperatorsData memory data);
+    ModuleLinearStorage.BaseModuleStorage storage $,
+    uint256[] memory operatorIds
+) private view returns (DepositableOperatorsData memory data);
 ```
 
 ### _collectTopUpGlobalBaseline
 
 
 ```solidity
-function _collectTopUpGlobalBaseline(
-    mapping(uint256 => NodeOperator) storage nodeOperators,
-    mapping(uint256 => uint256) storage nodeOperatorBalances,
-    uint256 operatorsCount
-)
-    internal
+function _collectTopUpGlobalBaseline(ModuleLinearStorage.BaseModuleStorage storage $)
+    private
     view
     returns (
         uint256 weightSum,
@@ -185,7 +201,7 @@ Returns current deposit allocation targets for all operators.
 
 Target = totalCurrent * operatorWeight / totalWeight (in validator count).
 Includes operators regardless of depositable capacity for informational purposes.
-Actual allocation recalculates shares only across operators with available capacity,
+Actual allocation recalculates shares only across operators with usable capacity,
 so real per-operator amounts may differ from the targets shown here.
 Arrays are indexed by operator id; zero-weight operators have zero values.
 
@@ -217,13 +233,13 @@ Returns current top-up allocation targets for all operators.
 
 Target = totalCurrent * operatorWeight / totalWeight (in wei).
 Includes operators regardless of top-up capacity for informational purposes.
-Actual allocation recalculates shares only across operators with available capacity,
+Actual allocation recalculates shares only across operators with usable capacity,
 so real per-operator amounts may differ from the targets shown here.
 Arrays are indexed by operator id; zero-weight operators have zero values.
 
 
 ```solidity
-function getTopUpAllocationTargets(mapping(uint256 => uint256) storage nodeOperatorBalances, uint256 operatorsCount)
+function getTopUpAllocationTargets(ModuleLinearStorage.BaseModuleStorage storage $)
     external
     view
     returns (uint256[] memory currentAllocations, uint256[] memory targetAllocations);
@@ -232,8 +248,7 @@ function getTopUpAllocationTargets(mapping(uint256 => uint256) storage nodeOpera
 
 |Name|Type|Description|
 |----|----|-----------|
-|`nodeOperatorBalances`|`mapping(uint256 => uint256)`|Per-operator balance (in wei) storage mapping from the module.|
-|`operatorsCount`|`uint256`|Total operators count in the module.|
+|`$`|`ModuleLinearStorage.BaseModuleStorage`|Base module storage pointer.|
 
 **Returns**
 
@@ -252,6 +267,18 @@ Quantizes a value down to the nearest multiple of TOP_UP_STEP.
 function quantizeForTopUp(uint256 value) internal pure returns (uint256);
 ```
 
+### _distributeAllocationsWithinLimits
+
+
+```solidity
+function _distributeAllocationsWithinLimits(
+    uint256[] calldata operatorIds,
+    uint256[] calldata topUpLimits,
+    uint256[] memory allocatedOperatorIds,
+    uint256[] memory remainingOperatorAllocations
+) private returns (uint256[] memory allocations);
+```
+
 ### _computeAllocations
 
 Normalizes raw weights into X96 shares and runs the allocator in-memory.
@@ -260,7 +287,7 @@ Expects operatorsData arrays already filtered/truncated to eligible operators.
 
 ```solidity
 function _computeAllocations(DepositableOperatorsData memory operatorsData, uint256 step, uint256 allocationAmount)
-    internal
+    private
     pure
     returns (uint256 allocated, uint256[] memory allocations);
 ```
@@ -270,7 +297,7 @@ function _computeAllocations(DepositableOperatorsData memory operatorsData, uint
 
 ```solidity
 function _compactAllocations(uint256[] memory operatorIds, uint256[] memory eligibleAllocations, uint256 count)
-    internal
+    private
     pure
     returns (uint256[] memory compactIds, uint256[] memory allocations);
 ```
@@ -281,7 +308,7 @@ Converts raw weights in alloc.sharesX96 to X96-scaled shares in-place.
 
 
 ```solidity
-function _normalizeWeightsToShares(DepositableOperatorsData memory data) internal pure;
+function _normalizeWeightsToShares(DepositableOperatorsData memory data) private pure;
 ```
 
 ### _truncateDepositable
@@ -290,7 +317,7 @@ Shrinks eligible arrays to the collected eligible count.
 
 
 ```solidity
-function _truncateDepositable(DepositableOperatorsData memory data) internal pure;
+function _truncateDepositable(DepositableOperatorsData memory data) private pure;
 ```
 
 ## Structs

@@ -1,5 +1,5 @@
 # IFeeSplits
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IFeeSplits.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IFeeSplits.sol)
 
 
 ## Functions
@@ -109,6 +109,12 @@ error TooManySplitShares();
 
 ```solidity
 error ZeroSplitRecipient();
+```
+
+### InvalidSplitRecipient
+
+```solidity
+error InvalidSplitRecipient();
 ```
 
 ### ZeroSplitShare

@@ -1,5 +1,5 @@
 # FeeDistributor
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/FeeDistributor.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/FeeDistributor.sol)
 
 **Inherits:**
 [IFeeDistributor](/src/interfaces/IFeeDistributor.sol/interface.IFeeDistributor.md), Initializable, AccessControlEnumerableUpgradeable, [AssetRecoverer](/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
@@ -92,7 +92,7 @@ mapping(uint256 index => DistributionData) internal _distributionDataHistory
 
 
 ### distributionDataHistoryCount
-The number of _distributionDataHistory records
+The number of records retrievable via `getHistoricalDistributionData`
 
 
 ```solidity
@@ -214,11 +214,11 @@ function processOracleReport(
 |Name|Type|Description|
 |----|----|-----------|
 |`_treeRoot`|`bytes32`|Root of the Merkle tree|
-|`_treeCid`|`string`|an IPFS CID of the tree|
-|`_logCid`|`string`|an IPFS CID of the log|
-|`distributed`|`uint256`|an amount of the distributed shares|
-|`rebate`|`uint256`|an amount of the rebate shares|
-|`refSlot`|`uint256`|refSlot of the report|
+|`_treeCid`|`string`|IPFS CID of the tree|
+|`_logCid`|`string`|IPFS CID of the log|
+|`distributed`|`uint256`|Amount of the distributed shares|
+|`rebate`|`uint256`|Amount of the rebate shares|
+|`refSlot`|`uint256`|Reference slot of the report|
 
 
 ### recoverERC20
@@ -258,7 +258,7 @@ function pendingSharesToDistribute() external view returns (uint256);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|pendingShares Amount shares that are pending to distribute|
+|`<none>`|`uint256`|Amount shares that are pending to distribute|
 
 
 ### getHistoricalDistributionData

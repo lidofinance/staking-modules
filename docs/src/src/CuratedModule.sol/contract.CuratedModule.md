@@ -1,30 +1,15 @@
 # CuratedModule
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/CuratedModule.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/CuratedModule.sol)
 
 **Inherits:**
 [ICuratedModule](/src/interfaces/ICuratedModule.sol/interface.ICuratedModule.md), [BaseModule](/src/abstract/BaseModule.sol/abstract.BaseModule.md)
 
 
 ## State Variables
-### OPERATOR_ADDRESSES_ADMIN_ROLE
-
-```solidity
-bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE = keccak256("OPERATOR_ADDRESSES_ADMIN_ROLE")
-```
-
-
 ### META_REGISTRY
 
 ```solidity
 IMetaRegistry public immutable META_REGISTRY
-```
-
-
-### CURATED_MODULE_STORAGE_LOCATION
-
-```solidity
-bytes32 private constant CURATED_MODULE_STORAGE_LOCATION =
-    0x748416948424a2a643c796b7b8213bcf41155fd3a072f0851ad0a3d6ca632500
 ```
 
 
@@ -63,7 +48,7 @@ contract
 ```solidity
 function obtainDepositData(
     uint256 depositsCount,
-    bytes calldata /* depositCalldata */
+    bytes calldata depositCalldata // solhint-disable-line no-unused-vars
 )
     external
     returns (bytes memory publicKeys, bytes memory signatures);
@@ -73,7 +58,7 @@ function obtainDepositData(
 |Name|Type|Description|
 |----|----|-----------|
 |`depositsCount`|`uint256`|Number of deposits to be done|
-|`<none>`|`bytes`||
+|`depositCalldata`|`bytes`|Staking module defined data encoded as bytes. IMPORTANT: depositCalldata MUST NOT modify the deposit data set of the staking module|
 
 **Returns**
 
@@ -114,42 +99,6 @@ function allocateDeposits(
 |Name|Type|Description|
 |----|----|-----------|
 |`allocations`|`uint256[]`|Amount to deposit to each key|
-
-
-### updateOperatorBalances
-
-Called by StakingRouter to update node operator total balances.
-
-Total balances are denominated in gwei.
-
-
-```solidity
-function updateOperatorBalances(bytes calldata operatorIds, bytes calldata totalBalancesGwei) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`operatorIds`|`bytes`|Bytes packed array of node operator IDs.|
-|`totalBalancesGwei`|`bytes`|Bytes packed array of total balances (validators + pending), in gwei.|
-
-
-### changeNodeOperatorAddresses
-
-Change both reward and manager addresses of a node operator.
-
-
-```solidity
-function changeNodeOperatorAddresses(uint256 nodeOperatorId, address newManagerAddress, address newRewardAddress)
-    external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`newManagerAddress`|`address`|New manager address|
-|`newRewardAddress`|`address`|New reward address|
 
 
 ### notifyNodeOperatorWeightChange
@@ -195,19 +144,31 @@ function getOperatorWeights(uint256[] calldata operatorIds)
 |`operatorWeights`|`uint256[]`|Weights aligned with operatorIds.|
 
 
-### getNodeOperatorBalance
+### getNodeOperatorWeightAndExternalStake
 
-Returns stored operator balance (validators + pending).
+Returns effective weight and external stake for a node operator.
+
+Reverts until the module deposit info cache is fully refreshed.
 
 
 ```solidity
-function getNodeOperatorBalance(uint256 operatorId) external view returns (uint256);
+function getNodeOperatorWeightAndExternalStake(uint256 nodeOperatorId)
+    external
+    view
+    returns (uint256 weight, uint256 externalStake);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`operatorId`|`uint256`|ID of the Node Operator|
+|`nodeOperatorId`|`uint256`|Node operator ID to query.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`weight`|`uint256`|Effective allocation weight.|
+|`externalStake`|`uint256`|External stake amount in wei.|
 
 
 ### getDepositAllocationTargets
@@ -216,7 +177,7 @@ Returns current deposit allocation targets for all operators.
 
 Target = totalCurrent * operatorWeight / totalWeight (in validator count).
 Includes operators regardless of depositable capacity for informational purposes.
-Actual allocation recalculates shares only across operators with available capacity,
+Actual allocation recalculates shares only across operators with usable capacity,
 so real per-operator amounts may differ from the targets shown here.
 Arrays are indexed by operator id; zero-weight operators have zero values.
 
@@ -239,9 +200,9 @@ function getDepositAllocationTargets()
 
 Returns current top-up allocation targets for all operators.
 
-Target = totalCurrent * operatorWeight / totalWeight (in wei).
+`target = totalCurrent * operatorWeight / totalWeight` (in wei).
 Includes operators regardless of top-up capacity for informational purposes.
-Actual allocation recalculates shares only across operators with available capacity,
+Actual allocation recalculates shares only across operators with usable capacity,
 so real per-operator amounts may differ from the targets shown here.
 Arrays are indexed by operator id; zero-weight operators have zero values.
 
@@ -309,15 +270,6 @@ function _allocateTopUps(
 ) internal returns (uint256[] memory allocations);
 ```
 
-### _uniqueOperatorIds
-
-Deduplicate operator ids for allocation to avoid overweighting by repeated keys.
-
-
-```solidity
-function _uniqueOperatorIds(uint256[] calldata operatorIds) internal returns (uint256[] memory uniqueOperatorIds);
-```
-
 ### _validateTopUpPublicKeys
 
 
@@ -341,25 +293,5 @@ function _metaRegistry() internal view returns (IMetaRegistry);
 
 ```solidity
 function _canRequestDepositInfoUpdate() internal view override;
-```
-
-### _curatedStorage
-
-
-```solidity
-function _curatedStorage() internal pure returns (CuratedModuleStorage storage $);
-```
-
-## Structs
-### CuratedModuleStorage
-**Note:**
-storage-location: erc7201:CuratedModule
-
-
-```solidity
-struct CuratedModuleStorage {
-    // Tracks per-operator balances (in wei) reported by the Accounting oracle.
-    mapping(uint256 nodeOperatorId => uint256 balance) operatorBalances;
-}
 ```
 
