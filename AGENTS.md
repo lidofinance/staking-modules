@@ -9,6 +9,10 @@
 - `gists/`: small code examples related to the module.
 - `node_modules/`: dependencies; see `remappings.txt`.
 - `docs/`: documentation and design notes.
+- `docs/src/`: generated Forge documentation output. It is not the
+  source of truth and may be stale; do not edit it manually. Update
+  Solidity/NatSpec or source documentation instead, then run `forge doc`
+  and commit the generated output.
 
 ## Build, Test, and Development Commands
 

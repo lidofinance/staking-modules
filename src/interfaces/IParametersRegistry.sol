@@ -197,15 +197,15 @@ interface IParametersRegistry {
     function defaultMaxElWithdrawalRequestFee() external returns (uint256);
 
     /// @notice Set default value for the key removal charge. Default value is used if a specific value is not set for the curveId. This parameter is not used in Curated Module
-    /// @param keyRemovalCharge value to be set as default for the key removal charge
+    /// @param keyRemovalCharge Value to be set as default for the key removal charge
     function setDefaultKeyRemovalCharge(uint256 keyRemovalCharge) external;
 
     /// @notice Set default value for the general delayed penalty additional fine. Default value is used if a specific value is not set for the curveId
-    /// @param fine value to be set as default for the general delayed penalty additional fine
+    /// @param fine Value to be set as default for the general delayed penalty additional fine
     function setDefaultGeneralDelayedPenaltyAdditionalFine(uint256 fine) external;
 
     /// @notice Set default value for the keys limit. Default value is used if a specific value is not set for the curveId
-    /// @param limit value to be set as default for the keys limit
+    /// @param limit Value to be set as default for the keys limit
     function setDefaultKeysLimit(uint256 limit) external;
 
     /// @notice Set default value for QueueConfig. Default value is used if a specific value is not set for the curveId. This parameter is not used in Curated Module
@@ -216,11 +216,11 @@ interface IParametersRegistry {
     function setDefaultQueueConfig(uint256 priority, uint256 maxDeposits) external;
 
     /// @notice Set default value for the reward share. Default value is used if a specific value is not set for the curveId
-    /// @param share value to be set as default for the reward share
+    /// @param share Value to be set as default for the reward share
     function setDefaultRewardShare(uint256 share) external;
 
     /// @notice Set default value for the performance leeway. Default value is used if a specific value is not set for the curveId
-    /// @param leeway value to be set as default for the performance leeway
+    /// @param leeway Value to be set as default for the performance leeway
     function setDefaultPerformanceLeeway(uint256 leeway) external;
 
     /// @notice Set default values for the strikes lifetime and threshold. Default values are used if specific values are not set for the curveId
@@ -230,13 +230,13 @@ interface IParametersRegistry {
 
     /// @notice Set the default value for the bad performance penalty for a single 32 ether validator
     /// This value is used if a specific value is not set for the curveId
-    /// @param penalty value to be set as default for the bad performance penalty
+    /// @param penalty Value to be set as default for the bad performance penalty
     function setDefaultBadPerformancePenalty(uint256 penalty) external;
 
     /// @notice Set default values for the performance coefficients. Default values are used if specific values are not set for the curveId
-    /// @param attestationsWeight value to be set as default for the attestations effectiveness weight
-    /// @param blocksWeight value to be set as default for block proposals effectiveness weight
-    /// @param syncWeight value to be set as default for sync participation effectiveness weight
+    /// @param attestationsWeight Value to be set as default for the attestations effectiveness weight
+    /// @param blocksWeight Value to be set as default for block proposals effectiveness weight
+    /// @param syncWeight Value to be set as default for sync participation effectiveness weight
     function setDefaultPerformanceCoefficients(
         uint256 attestationsWeight,
         uint256 blocksWeight,
@@ -244,7 +244,7 @@ interface IParametersRegistry {
     ) external;
 
     /// @notice set default value for the allowed exit delay in seconds. Default value is used if a specific value is not set for the curveId
-    /// @param delay value to be set as default for the allowed exit delay
+    /// @param delay Value to be set as default for the allowed exit delay
     function setDefaultAllowedExitDelay(uint256 delay) external;
 
     /// @notice Set the default value for exit delay penalty for a single 32 ether validator
@@ -253,7 +253,7 @@ interface IParametersRegistry {
     function setDefaultExitDelayFee(uint256 fee) external;
 
     /// @notice set default value for max EL withdrawal request fee. Default value is used if a specific value is not set for the curveId
-    /// @param fee value to be set as default for the max EL withdrawal request fee
+    /// @param fee Value to be set as default for the max EL withdrawal request fee
     function setDefaultMaxElWithdrawalRequestFee(uint256 fee) external;
 
     /// @notice Set key removal charge for the curveId. This parameter is not used in Curated Module
@@ -419,7 +419,7 @@ interface IParametersRegistry {
 
     /// @notice Set allowed exit delay for the curveId in seconds
     /// @param curveId Curve Id to associate allowed exit delay with
-    /// @param delay allowed exit delay
+    /// @param delay Allowed exit delay
     function setAllowedExitDelay(uint256 curveId, uint256 delay) external;
 
     /// @notice Unset allowed exit delay for the curveId

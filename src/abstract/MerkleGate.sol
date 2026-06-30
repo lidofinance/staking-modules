@@ -41,8 +41,8 @@ abstract contract MerkleGate is
     }
 
     /// @inheritdoc INamedUpgradeable
-    function setName(string calldata name_) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setName(name_);
+    function setName(string calldata name) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setName(name);
     }
 
     /// @inheritdoc IMerkleGate

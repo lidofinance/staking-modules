@@ -45,7 +45,7 @@ interface IExitPenalties is IExitTypes {
     function STRIKES() external view returns (address);
 
     /// @notice Handles tracking and penalization logic for a validator that remains active beyond its eligible exit window.
-    /// @dev see IStakingModule.reportValidatorExitDelay for details
+    /// @dev See `IStakingModule.reportValidatorExitDelay` for details.
     /// @param nodeOperatorId The ID of the node operator whose validator's status is being delivered.
     /// @param publicKey The public key of the validator being reported.
     /// @param eligibleToExitInSec The duration (in seconds) indicating how long the validator has been eligible to exit but has not exited.
@@ -72,19 +72,19 @@ interface IExitPenalties is IExitTypes {
     /// @param publicKey Public key of the validator
     function processStrikesReport(uint256 nodeOperatorId, bytes calldata publicKey) external;
 
-    /// @notice Determines whether a validator exit status should be updated and will have affect on Node Operator.
+    /// @notice Determines whether a validator exit status should be updated and will have an effect on the Node Operator.
     /// @dev called only by the module
     /// @param nodeOperatorId The ID of the node operator.
     /// @param publicKey Validator's public key.
     /// @param eligibleToExitInSec The number of seconds the validator was eligible to exit but did not.
-    /// @return bool Returns true if contract should receive updated validator's status.
+    /// @return Returns true if contract should receive updated validator's status.
     function isValidatorExitDelayPenaltyApplicable(
         uint256 nodeOperatorId,
         bytes calldata publicKey,
         uint256 eligibleToExitInSec
     ) external view returns (bool);
 
-    /// @notice get delayed exit penalty info for the given Node Operator
+    /// @notice Get delayed exit penalty info for the given Node Operator
     /// @param nodeOperatorId ID of the Node Operator
     /// @param publicKey Public key of the validator
     /// @return penaltyInfo Delayed exit penalty info

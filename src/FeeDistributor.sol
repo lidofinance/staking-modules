@@ -23,28 +23,28 @@ contract FeeDistributor is IFeeDistributor, Initializable, AccessControlEnumerab
     address public immutable ACCOUNTING;
     address public immutable ORACLE;
 
-    /// @notice The latest Merkle Tree root
+    /// @inheritdoc IFeeDistributor
     bytes32 public treeRoot;
 
-    /// @notice CID of the last published Merkle tree
+    /// @inheritdoc IFeeDistributor
     string public treeCid;
 
-    /// @notice CID of the file with log for the last frame reported
+    /// @inheritdoc IFeeDistributor
     string public logCid;
 
     /// @notice Amount of stETH shares sent to the Accounting in favor of the NO
     mapping(uint256 nodeOperatorId => uint256 distributed) public distributedShares;
 
-    /// @notice Total Amount of stETH shares available for claiming by NOs
+    /// @inheritdoc IFeeDistributor
     uint256 public totalClaimableShares;
 
     /// @notice Array of the distribution data history
     mapping(uint256 index => DistributionData) internal _distributionDataHistory;
 
-    /// @notice The number of _distributionDataHistory records
+    /// @inheritdoc IFeeDistributor
     uint256 public distributionDataHistoryCount;
 
-    /// @notice The address to transfer rebate to
+    /// @inheritdoc IFeeDistributor
     address public rebateRecipient;
 
     modifier onlyAccounting() {

@@ -47,7 +47,7 @@ interface IEjector is IExitTypes {
     /// @dev Called by the `ValidatorStrikes` contract.
     ///         See `ValidatorStrikes.processBadPerformanceProof` to use this method permissionless
     /// @param nodeOperatorId ID of the Node Operator
-    /// @param keyIndex index of deposited key to eject
+    /// @param keyIndex Index of deposited key to eject
     /// @param refundRecipient Address to send the refund to
     function ejectBadPerformer(uint256 nodeOperatorId, uint256 keyIndex, address refundRecipient) external payable;
 

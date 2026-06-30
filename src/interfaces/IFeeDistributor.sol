@@ -67,18 +67,25 @@ interface IFeeDistributor is IAssetRecovererLib {
 
     function ORACLE() external view returns (address);
 
+    /// @notice The latest Merkle Tree root
     function treeRoot() external view returns (bytes32);
 
+    /// @notice CID of the last published Merkle tree
     function treeCid() external view returns (string calldata);
 
+    /// @notice CID of the file with log for the last frame reported
     function logCid() external view returns (string calldata);
 
+    /// @notice Amount of stETH shares sent to the Accounting in favor of the NO
     function distributedShares(uint256) external view returns (uint256);
 
+    /// @notice Total Amount of stETH shares available for claiming by NOs
     function totalClaimableShares() external view returns (uint256);
 
+    /// @notice The number of records retrievable via `getHistoricalDistributionData`
     function distributionDataHistoryCount() external view returns (uint256);
 
+    /// @notice The address to transfer rebate to
     function rebateRecipient() external view returns (address);
 
     /// @notice Get the initialized version of the contract
@@ -92,7 +99,7 @@ interface IFeeDistributor is IAssetRecovererLib {
     /// @param nodeOperatorId ID of the Node Operator
     /// @param cumulativeFeeShares Total Amount of stETH shares earned as fees
     /// @param proof Merkle proof of the leaf
-    /// @return sharesToDistribute Amount of stETH shares that can be distributed
+    /// @return Amount of stETH shares that can be distributed
     function getFeesToDistribute(
         uint256 nodeOperatorId,
         uint256 cumulativeFeeShares,
@@ -103,7 +110,7 @@ interface IFeeDistributor is IAssetRecovererLib {
     /// @param nodeOperatorId ID of the Node Operator
     /// @param cumulativeFeeShares Total Amount of stETH shares earned as fees
     /// @param proof Merkle proof of the leaf
-    /// @return sharesToDistribute Amount of stETH shares distributed
+    /// @return Amount of stETH shares distributed
     function distributeFees(
         uint256 nodeOperatorId,
         uint256 cumulativeFeeShares,
@@ -112,11 +119,11 @@ interface IFeeDistributor is IAssetRecovererLib {
 
     /// @notice Receive the data of the Merkle tree from the Oracle contract and process it
     /// @param _treeRoot Root of the Merkle tree
-    /// @param _treeCid an IPFS CID of the tree
-    /// @param _logCid an IPFS CID of the log
-    /// @param distributed an amount of the distributed shares
-    /// @param rebate an amount of the rebate shares
-    /// @param refSlot refSlot of the report
+    /// @param _treeCid IPFS CID of the tree
+    /// @param _logCid IPFS CID of the log
+    /// @param distributed Amount of the distributed shares
+    /// @param rebate Amount of the rebate shares
+    /// @param refSlot Reference slot of the report
     function processOracleReport(
         bytes32 _treeRoot,
         string calldata _treeCid,
@@ -127,7 +134,7 @@ interface IFeeDistributor is IAssetRecovererLib {
     ) external;
 
     /// @notice Get the Amount of stETH shares that are pending to be distributed
-    /// @return pendingShares Amount shares that are pending to distribute
+    /// @return Amount shares that are pending to distribute
     function pendingSharesToDistribute() external view returns (uint256);
 
     /// @notice Get the historical record of distribution data

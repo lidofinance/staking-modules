@@ -104,9 +104,9 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
     }
 
     /// @inheritdoc IExitPenalties
-    /// @dev there is a `onlyModule` modifier to prevent using it from outside
+    /// @dev There is a `onlyModule` modifier to prevent using it from outside
     ///     as it gives a false-positive information for non-existent node operators.
-    ///     use `isValidatorExitDelayPenaltyApplicable` in the CSModule.sol instead
+    ///     Use `isValidatorExitDelayPenaltyApplicable` in the `BaseModule.sol` instead.
     function isValidatorExitDelayPenaltyApplicable(
         uint256 nodeOperatorId,
         bytes calldata publicKey,
