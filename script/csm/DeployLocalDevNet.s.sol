@@ -81,8 +81,8 @@ contract DeployLocalDevNet is DeployBase {
         );
         config.identifiedCommunityStakersGateTreeCid = vm.envOr("CSM_VETTED_GATE_TREE_CID", string("someCid"));
         config.identifiedDVTClusterGateName = "Identified DVT Clusters Gate";
-        config.identifiedDVTClusterGateTreeRoot = bytes32(uint256(0xdeadbeef)); // TODO: Set real IDVTC tree root
-        config.identifiedDVTClusterGateTreeCid = "someCid"; // TODO: Set real IDVTC tree CID
+        config.identifiedDVTClusterGateTreeRoot = 0xb61a11aaa84f3956f54784f7e8548ff165cab8a4866f3950ea7edbc9cd19464e;
+        config.identifiedDVTClusterGateTreeCid = "bafkreiakdug6tbysfvwm5hoizdvmex4wxh3kfkjq6pfxxjp5cv4mrokdiq";
         // 1.5 -> 1.3
         config.identifiedCommunityStakersGateBondCurve.push([1, 1.5 ether]);
         config.identifiedCommunityStakersGateBondCurve.push([2, 1.3 ether]);

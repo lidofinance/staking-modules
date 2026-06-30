@@ -176,8 +176,6 @@ interface IStakingRouter {
         bytes memory _vettedSigningKeysCounts
     ) external;
 
-    function canDeposit(uint256 _stakingModuleId) external view returns (bool);
-
     function deposit(uint256 _stakingModuleId, bytes memory _depositCalldata) external payable;
 
     function topUp(

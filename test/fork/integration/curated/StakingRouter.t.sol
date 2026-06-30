@@ -32,7 +32,6 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
         _maximizeModuleShare(moduleId);
         _disableDepositsForOtherModules(moduleId);
         hugeDeposit();
-        _ensureStakingRouterCanDeposit(moduleId);
     }
 
     function test_routerDeposit_happyPath_callsObtainDepositDataAndUsesReturnedCount() public assertInvariants {
@@ -209,7 +208,7 @@ contract StakingRouterIntegrationTestCurated is StakingRouterIntegrationTestBase
     function _clearAllOperatorGroups(MetaRegistry registry) internal {
         IMetaRegistry.OperatorGroup memory emptyGroup;
         uint256 groupsCount = registry.getOperatorGroupsCount();
-        for (uint256 groupId = 1; groupId < groupsCount; ++groupId) {
+        for (uint256 groupId = 1; groupId <= groupsCount; ++groupId) {
             registry.createOrUpdateOperatorGroup(groupId, emptyGroup);
         }
     }

@@ -18,7 +18,6 @@ contract StakingRouterIntegrationTestCSM is StakingRouterIntegrationTestBase, CS
         _maximizeModuleShare(moduleId);
         _disableDepositsForOtherModules(moduleId);
         hugeDeposit();
-        _ensureStakingRouterCanDeposit(moduleId);
     }
 
     function test_routerDeposit_happyPath_callsObtainDepositDataAndUsesReturnedCount() public assertInvariants {
