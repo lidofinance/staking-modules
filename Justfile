@@ -289,42 +289,60 @@ oz-upgrades:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    FOUNDRY_PROFILE=upgrades just build --skip=script,test
-
     CURR_DIR=$(pwd)
+    REFERENCE_REF="${OZ_UPGRADES_REFERENCE_REF:-v2.0}"
+    REFERENCE_REPO="${OZ_UPGRADES_REFERENCE_REPO:-$CURR_DIR}"
     TMP_DIR=$(mktemp -d)
-    git clone --depth 1 --branch main https://github.com/lidofinance/staking-modules "$TMP_DIR"
+    trap 'rm -rf "$TMP_DIR"' EXIT
+
+    # OpenZeppelin validates only full build-info. Do not use `just build --skip=...` here.
+    FOUNDRY_PROFILE=upgrades forge clean
+    FOUNDRY_PROFILE=upgrades forge build
+
+    git clone --branch "$REFERENCE_REF" "$REFERENCE_REPO" "$TMP_DIR"
 
     cd "$TMP_DIR"
     just deps
-    FOUNDRY_PROFILE=upgrades just build --skip=script,test
+    FOUNDRY_PROFILE=upgrades forge clean
+    FOUNDRY_PROFILE=upgrades forge build
     cd "$CURR_DIR"
 
-    cp -r "$TMP_DIR/out/build-info" out/v1
+    rm -rf out/v2
+    cp -r "$TMP_DIR/out/build-info" out/v2
 
     # Muted some errors globally
     #   --unsafeAllowLinkedLibraries due to no support for linked libraries in upgrades-core
     #   --unsafeAllow=constructor,state-variable-immutable - all the contracts have immutables with safe usage
-    # These changes fixing a mistake in the custom annotations in the v1 contract, but no changes in the actual storage pointer
-    #   - Deleted namespace `erc7201:CSAccounting.CSBondLock`
-    #   - Deleted namespace `erc7201:CSAccounting.CSBondCurve`
-    #   - Deleted namespace `erc7201:CSAccounting.CSBondCore`
-    # These findings related to the namespaced storage structs which can't be annotated properly https://github.com/OpenZeppelin/openzeppelin-upgrades/issues/802
-    #   - Renamed `bondLockRetentionPeriod` to `bondLockPeriod`
-    #   - Upgraded `bondLock` to an incompatible type
-    # A safe change in the CSFeeOracle. We nullify the whole slot in the upgrade call
-    #   - Layout changed for `strikes` (uint256 -> contract ICSStrikes). Number of bytes changed from 32 to 20
+    #
+    # Expected CSM v2 -> v3 findings:
+    # - CSModule: the old linear variables were moved to ModuleLinearStorage.BaseModuleStorage accessed at slot 0.
+    #   OZ does not match top-level variables with struct fields accessed through assembly and reports them as deleted.
+    #   Slots 0, 5, 6, 7, 8, and 9 preserve their meanings. Slots 1-2 replace the legacy queue with
+    #   `totalWithdrawnValidators` and `upToDateOperatorDepositInfoCount` in `finalizeUpgradeV3`. Slots 3-4 reuse
+    #   fields nullified in `finalizeUpgradeV2` for key balance mappings.
+    # - Accounting: slot 0 replaces `_feeDistributorOld`, nullified in `finalizeUpgradeV2`, with `_rewardsClaimers`.
+    # - FeeOracle: slots 0-1 replace deprecated values, nullified in `finalizeUpgradeV2`, with `__freeSlot1/2`.
+    # - ParametersRegistry: only names changed for existing penalty/fee fields; slots and types are preserved.
+    # - VettedGate: referral program storage was removed and is no longer used after the v3 vote migration.
+    # - ExitPenalties: only struct member names changed for existing penalty/fee fields; slots and types are preserved.
+    # - FeeDistributor and ValidatorStrikes: no storage layout changes are expected.
 
-    npx @openzeppelin/upgrades-core validate --contract=CSModule --reference=v1:CSModule --referenceBuildInfoDirs=out/v1 \
+    npx --yes @openzeppelin/upgrades-core validate --contract=CSModule --reference=v2:CSModule --referenceBuildInfoDirs=out/v2 \
         --unsafeAllowLinkedLibraries --unsafeAllow=constructor,state-variable-immutable || true
-    npx @openzeppelin/upgrades-core validate --contract=Accounting --reference=v1:Accounting --referenceBuildInfoDirs=out/v1 \
+    npx --yes @openzeppelin/upgrades-core validate --contract=ParametersRegistry --reference=v2:CSParametersRegistry --referenceBuildInfoDirs=out/v2 \
+        --unsafeAllowLinkedLibraries --unsafeAllow=constructor,state-variable-immutable --unsafeAllowRenames || true
+    npx --yes @openzeppelin/upgrades-core validate --contract=FeeOracle --reference=v2:CSFeeOracle --referenceBuildInfoDirs=out/v2 \
         --unsafeAllowLinkedLibraries --unsafeAllow=constructor,state-variable-immutable || true
-    npx @openzeppelin/upgrades-core validate --contract=FeeOracle --reference=v1:FeeOracle --referenceBuildInfoDirs=out/v1 \
+    npx --yes @openzeppelin/upgrades-core validate --contract=VettedGate --reference=v2:VettedGate --referenceBuildInfoDirs=out/v2 \
         --unsafeAllowLinkedLibraries --unsafeAllow=constructor,state-variable-immutable || true
-    npx @openzeppelin/upgrades-core validate --contract=FeeDistributor --reference=v1:FeeDistributor --referenceBuildInfoDirs=out/v1 \
+    npx --yes @openzeppelin/upgrades-core validate --contract=Accounting --reference=v2:CSAccounting --referenceBuildInfoDirs=out/v2 \
         --unsafeAllowLinkedLibraries --unsafeAllow=constructor,state-variable-immutable || true
-
-    rm -rf "$TMP_DIR"
+    npx --yes @openzeppelin/upgrades-core validate --contract=FeeDistributor --reference=v2:CSFeeDistributor --referenceBuildInfoDirs=out/v2 \
+        --unsafeAllowLinkedLibraries --unsafeAllow=constructor,state-variable-immutable || true
+    npx --yes @openzeppelin/upgrades-core validate --contract=ExitPenalties --reference=v2:CSExitPenalties --referenceBuildInfoDirs=out/v2 \
+        --unsafeAllowLinkedLibraries --unsafeAllow=constructor,state-variable-immutable --unsafeAllowRenames || true
+    npx --yes @openzeppelin/upgrades-core validate --contract=ValidatorStrikes --reference=v2:CSStrikes --referenceBuildInfoDirs=out/v2 \
+        --unsafeAllowLinkedLibraries --unsafeAllow=constructor,state-variable-immutable || true
 
 make-fork *args:
     @if nc -z -w 1 {{anvil_host}} {{anvil_port}} > /dev/null 2>&1; \
