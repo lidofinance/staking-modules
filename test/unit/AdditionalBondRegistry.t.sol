@@ -185,11 +185,13 @@ contract AdditionalBondRegistrySelectTierTest is AdditionalBondRegistrySelectTie
         vm.prank(nodeOperatorOwner);
         additionalBondRegistry.selectTier(0, 1);
 
-        assertEq(additionalBondRegistry.getOperatorTierState(0).tierId, 1);
-        assertEq(additionalBondRegistry.getOperatorTierState(0).weightMultiplier, MAX_BP + T1_WEIGHT);
+        OperatorTierState memory s = additionalBondRegistry.getOperatorTierState(0);
+        assertEq(s.tierId, 1);
+        assertEq(s.weightMultiplier, MAX_BP + T1_WEIGHT);
+        assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP + T1_WEIGHT);
         assertEq(acct.getBondCurveMultiplier(0), MAX_BP + T1_BOND);
-        assertEq(metaRegistryMock.refreshOperatorWeightCallCount(), 1);
-        assertEq(metaRegistryMock.lastRefreshedOperatorId(), 0);
+        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), 1);
+        assertEq(metaRegistryMock.lastChangedBoostOperatorId(), 0);
     }
 
     function test_selectTier_Upgrade_Tier1ToTier2() public {
@@ -204,6 +206,7 @@ contract AdditionalBondRegistrySelectTierTest is AdditionalBondRegistrySelectTie
         OperatorTierState memory s = additionalBondRegistry.getOperatorTierState(0);
         assertEq(s.tierId, 2);
         assertEq(s.weightMultiplier, MAX_BP + T2_WEIGHT);
+        assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP + T2_WEIGHT);
         assertEq(s.curveMultiplier, MAX_BP + T2_BOND);
         assertEq(s.curveMultiplierCooldownUntil, 0);
         assertEq(acct.getBondCurveMultiplier(0), MAX_BP + T2_BOND);
@@ -226,7 +229,8 @@ contract AdditionalBondRegistrySelectTierTest is AdditionalBondRegistrySelectTie
         // Tier 0 keeps the pre-downgrade multiplier until release, so it stays above MAX_BP.
         assertEq(s.curveMultiplier, MAX_BP + T1_BOND);
         assertEq(acct.getBondCurveMultiplier(0), MAX_BP + T1_BOND);
-        assertEq(metaRegistryMock.refreshOperatorWeightCallCount(), 2);
+        assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP);
+        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), 2);
     }
 
     function test_selectTier_Upgrade_ClearsCooldownIfActive() public {
@@ -415,6 +419,7 @@ contract AdditionalBondRegistryViewsTest is AdditionalBondRegistrySelectTierBase
         assertEq(s.weightMultiplier, MAX_BP);
         assertEq(s.curveMultiplier, MAX_BP);
         assertEq(s.curveMultiplierCooldownUntil, 0);
+        assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP);
     }
 
     function test_getOperatorTierState_AfterUpgrade() public {
@@ -423,6 +428,7 @@ contract AdditionalBondRegistryViewsTest is AdditionalBondRegistrySelectTierBase
         OperatorTierState memory s = additionalBondRegistry.getOperatorTierState(0);
         assertEq(s.tierId, 1);
         assertEq(s.weightMultiplier, MAX_BP + T1_WEIGHT);
+        assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP + T1_WEIGHT);
         assertEq(s.curveMultiplier, MAX_BP + T1_BOND);
         assertEq(s.curveMultiplierCooldownUntil, 0);
     }
@@ -436,6 +442,7 @@ contract AdditionalBondRegistryViewsTest is AdditionalBondRegistrySelectTierBase
         OperatorTierState memory s = additionalBondRegistry.getOperatorTierState(0);
         assertEq(s.tierId, 1);
         assertEq(s.weightMultiplier, MAX_BP + T1_WEIGHT);
+        assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP + T1_WEIGHT);
         assertEq(s.curveMultiplier, MAX_BP + T2_BOND);
         assertEq(s.curveMultiplierCooldownUntil, block.timestamp + CURVE_MULTIPLIER_COOLDOWN);
     }

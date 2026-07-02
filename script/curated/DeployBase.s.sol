@@ -27,6 +27,8 @@ import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
 import { IVerifier } from "../../src/interfaces/IVerifier.sol";
 import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.sol";
 import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
+import { IMetaRegistry } from "../../src/interfaces/IMetaRegistry.sol";
+import { IWeightBoostProvider } from "../../src/interfaces/IWeightBoostProvider.sol";
 
 import { JsonObj, Json } from "../utils/Json.sol";
 import { Dummy } from "../utils/Dummy.sol";
@@ -348,6 +350,10 @@ abstract contract DeployBase is Script {
 
             accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
             accounting.grantRole(accounting.SET_BOND_CURVE_MULTIPLIER_ROLE(), address(additionalBondRegistry));
+            metaRegistry.addWeightBoostProvider(
+                IWeightBoostProvider(address(additionalBondRegistry)),
+                IMetaRegistry.WeightBoostProviderMode.NodeOperator
+            );
             metaRegistry.grantRole(metaRegistry.SET_BOND_CURVE_WEIGHT_ROLE(), deployer);
 
             for (uint256 i = 0; i < gatesCount; i++) {
