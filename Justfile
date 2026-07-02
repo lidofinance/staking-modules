@@ -54,13 +54,15 @@ _deploy-live-generic deploy_script_path *args:
     just _deploy-live-generic-no-confirm {{deploy_script_path}} --broadcast --verify {{args}}
 
 _deploy-live-generic-no-confirm deploy_script_path *args:
-    forge script {{deploy_script_path}} --sig="run(string)" --force --rpc-url ${RPC_URL} {{args}} -- `git rev-parse HEAD`
+    FOUNDRY_PROFILE=deploy \
+        forge script {{deploy_script_path}} --sig="run(string)" --force --rpc-url ${RPC_URL} {{args}} -- `git rev-parse HEAD`
 
 _deploy-live-generic-dry deploy_script_path *args:
-    FOUNDRY_PROFILE=deploy just _deploy-live-generic-no-confirm {{deploy_script_path}} {{args}}
+    just _deploy-live-generic-no-confirm {{deploy_script_path}} {{args}}
 
 _verify-live-generic deploy_script_path *args:
-    forge script {{deploy_script_path}} --sig="run(string)" --rpc-url ${RPC_URL} --verify {{args}} --unlocked -- `git rev-parse HEAD`
+    FOUNDRY_PROFILE=deploy \
+        forge script {{deploy_script_path}} --sig="run(string)" --rpc-url ${RPC_URL} --verify {{args}} --unlocked -- `git rev-parse HEAD`
 
 # Shared artifact helpers
 _copy-broadcast-json script_name rpc_url dry_prefix json_name dest_path:
