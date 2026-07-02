@@ -52,7 +52,7 @@ contract LidoGovernanceLockVaultFactory is ILidoGovernanceLockVaultFactory, Acce
                 provider: provider,
                 module: module,
                 votingContract: VOTING_CONTRACT,
-                governanceConfig: address(this)
+                vaultFactory: address(this)
             })
         );
     }

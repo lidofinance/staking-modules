@@ -35,6 +35,8 @@ import { MetaRegistry } from "src/MetaRegistry.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { AdditionalBondRegistry } from "src/AdditionalBondRegistry.sol";
 import { NodeOperatorStrikes } from "src/NodeOperatorStrikes.sol";
+import { ERC20LockBoostProvider } from "src/ERC20LockBoostProvider.sol";
+import { LidoGovernanceLockVaultFactory } from "src/LidoGovernanceLockVaultFactory.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
@@ -184,6 +186,7 @@ contract DeploymentHelpers is Test {
         uint256 defaultExitDelayFee;
         uint256 defaultMaxElWithdrawalRequestFee;
         address penaltiesManager;
+        uint256 weightBoostProviderConfigChangesCount;
     }
 
     struct DeploymentConfig {
@@ -243,6 +246,9 @@ contract DeploymentHelpers is Test {
         address additionalBondRegistryImpl;
         address nodeOperatorStrikes;
         address nodeOperatorStrikesImpl;
+        address ldoLockBoostProvider;
+        address ldoLockBoostProviderImpl;
+        address ldoLockVaultFactory;
         address curatedGateFactory;
         address curatedGateImpl;
         address[] curatedGates;
@@ -432,6 +438,15 @@ contract DeploymentHelpers is Test {
         deploymentConfig.nodeOperatorStrikesImpl = vm.parseJsonAddress(config, ".NodeOperatorStrikesImpl");
         vm.label(deploymentConfig.nodeOperatorStrikesImpl, "nodeOperatorStrikesImpl");
 
+        deploymentConfig.ldoLockBoostProvider = vm.parseJsonAddress(config, ".LDOLockBoostProvider");
+        vm.label(deploymentConfig.ldoLockBoostProvider, "ldoLockBoostProvider");
+
+        deploymentConfig.ldoLockBoostProviderImpl = vm.parseJsonAddress(config, ".LDOLockBoostProviderImpl");
+        vm.label(deploymentConfig.ldoLockBoostProviderImpl, "ldoLockBoostProviderImpl");
+
+        deploymentConfig.ldoLockVaultFactory = vm.parseJsonAddress(config, ".LDOLockVaultFactory");
+        vm.label(deploymentConfig.ldoLockVaultFactory, "ldoLockVaultFactory");
+
         if (vm.keyExistsJson(config, ".CuratedGateFactory")) {
             deploymentConfig.curatedGateFactory = vm.parseJsonAddress(config, ".CuratedGateFactory");
         }
@@ -578,6 +593,17 @@ contract DeploymentHelpers is Test {
         for (uint256 i; i < src.strikesThresholds.length; ++i) {
             dst.strikesThresholds.push(src.strikesThresholds[i]);
         }
+
+        // LDO lock boost provider
+        dst.ldoLockBoostProviderConfig.token = src.ldoLockBoostProviderConfig.token;
+        dst.ldoLockBoostProviderConfig.votingContract = src.ldoLockBoostProviderConfig.votingContract;
+        dst.ldoLockBoostProviderConfig.snapshotDelegation = src.ldoLockBoostProviderConfig.snapshotDelegation;
+        dst.ldoLockBoostProviderConfig.minLockPeriod = src.ldoLockBoostProviderConfig.minLockPeriod;
+        dst.ldoLockBoostProviderConfig.maxLockPeriod = src.ldoLockBoostProviderConfig.maxLockPeriod;
+        dst.ldoLockBoostProviderConfig.lockPeriod = src.ldoLockBoostProviderConfig.lockPeriod;
+        for (uint256 i; i < src.ldoLockBoostProviderConfig.lockBoostSteps.length; ++i) {
+            dst.ldoLockBoostProviderConfig.lockBoostSteps.push(src.ldoLockBoostProviderConfig.lockBoostSteps[i]);
+        }
     }
 
     function parseCommonDeployParams(string memory config) internal view returns (CommonDeployParams memory params) {
@@ -659,6 +685,9 @@ contract DeploymentHelpers is Test {
         params.defaultExitDelayFee = decoded.defaultExitDelayFee;
         params.defaultMaxElWithdrawalRequestFee = decoded.defaultMaxElWithdrawalRequestFee;
         params.penaltiesManager = decoded.penaltiesManager;
+        if (decoded.ldoLockBoostProviderConfig.lockBoostSteps.length != 0) {
+            params.weightBoostProviderConfigChangesCount = 1;
+        }
         return params;
     }
 
@@ -828,6 +857,9 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     AdditionalBondRegistry public additionalBondRegistryImpl;
     NodeOperatorStrikes public nodeOperatorStrikes;
     NodeOperatorStrikes public nodeOperatorStrikesImpl;
+    ERC20LockBoostProvider public ldoLockBoostProvider;
+    ERC20LockBoostProvider public ldoLockBoostProviderImpl;
+    LidoGovernanceLockVaultFactory public ldoLockVaultFactory;
     CuratedGate public curatedGateImpl;
     address[] public curatedGates;
 
@@ -944,6 +976,9 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         additionalBondRegistryImpl = AdditionalBondRegistry(deploymentConfig.additionalBondRegistryImpl);
         nodeOperatorStrikes = NodeOperatorStrikes(deploymentConfig.nodeOperatorStrikes);
         nodeOperatorStrikesImpl = NodeOperatorStrikes(deploymentConfig.nodeOperatorStrikesImpl);
+        ldoLockBoostProvider = ERC20LockBoostProvider(deploymentConfig.ldoLockBoostProvider);
+        ldoLockBoostProviderImpl = ERC20LockBoostProvider(deploymentConfig.ldoLockBoostProviderImpl);
+        ldoLockVaultFactory = LidoGovernanceLockVaultFactory(deploymentConfig.ldoLockVaultFactory);
         curatedGateImpl = CuratedGate(deploymentConfig.curatedGateImpl);
         curatedGates = deploymentConfig.curatedGates;
     }

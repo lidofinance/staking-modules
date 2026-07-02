@@ -4,12 +4,13 @@
 pragma solidity 0.8.33;
 
 import { IWeightBoostProvider } from "./IWeightBoostProvider.sol";
+import { IERC20LockVaultFactory } from "./IERC20LockVaultFactory.sol";
 
 /// @notice Operator-level ERC20 lock registry and weight boost provider.
 interface IERC20LockBoostProvider is IWeightBoostProvider {
     struct LockBoostStep {
         uint128 minAmount;
-        uint16 multiplierBP;
+        uint32 multiplierBP;
     }
 
     struct LockInfo {
@@ -44,7 +45,7 @@ interface IERC20LockBoostProvider is IWeightBoostProvider {
     function TOKEN() external view returns (address);
 
     /// @notice Factory creating per-operator ERC20 lock vaults.
-    function VAULT_FACTORY() external view returns (address);
+    function VAULT_FACTORY() external view returns (IERC20LockVaultFactory);
 
     /// @notice Minimum lock period allowed by the registry.
     function MIN_LOCK_PERIOD() external view returns (uint256);

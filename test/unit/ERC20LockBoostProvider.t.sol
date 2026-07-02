@@ -20,6 +20,7 @@ import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { ISnapshotDelegationLockVault } from "src/interfaces/ISnapshotDelegationLockVault.sol";
 import { MetaRegistry } from "src/MetaRegistry.sol";
 import { NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
+import { MAX_EFFECTIVE_MULTIPLIER_BP } from "src/lib/Constants.sol";
 
 import { CuratedMock } from "../helpers/mocks/CuratedMock.sol";
 import { StakingRouterMock } from "../helpers/mocks/StakingRouterMock.sol";
@@ -71,12 +72,6 @@ contract SnapshotDelegationMock {
     }
 }
 
-contract ERC20LockVaultFactoryZeroMock is IERC20LockVaultFactory {
-    function createVault(uint256, address, address, address) external pure returns (address) {
-        return address(0);
-    }
-}
-
 contract ERC20LockBoostProviderForTest is ERC20LockBoostProvider {
     constructor(
         address module,
@@ -123,7 +118,6 @@ contract ERC20LockBoostProviderBaseTest is Utilities, Fixtures {
     uint16 internal constant STEP_1_MULTIPLIER_BP = 11000;
     uint16 internal constant STEP_2_MULTIPLIER_BP = 11500;
     bytes32 internal constant SNAPSHOT_ALL_SPACES = bytes32(0);
-    bytes32 internal constant SNAPSHOT_SPACE_ID = bytes32("lido-snapshot-space");
 
     function setUp() public virtual {
         admin = nextAddress("ADMIN");
@@ -176,7 +170,7 @@ contract ERC20LockBoostProviderBaseTest is Utilities, Fixtures {
 
         vm.startPrank(admin);
         provider.grantRole(provider.SET_LOCK_PERIOD_ROLE(), lockPeriodManager);
-        registry.addWeightBoostProvider(provider, IMetaRegistry.WeightBoostProviderMode.GroupMax);
+        registry.addWeightBoostProvider(provider, IMetaRegistry.WeightBoostProviderMode.MaxPerGroup);
         vm.stopPrank();
 
         vm.prank(bondCurveWeightManager);
@@ -237,9 +231,9 @@ contract ERC20LockBoostProviderBaseTest is Utilities, Fixtures {
 
     function _steps(
         uint128 amount0,
-        uint16 multiplier0,
+        uint32 multiplier0,
         uint128 amount1,
-        uint16 multiplier1
+        uint32 multiplier1
     ) internal pure returns (IERC20LockBoostProvider.LockBoostStep[] memory steps) {
         steps = new IERC20LockBoostProvider.LockBoostStep[](2);
         steps[0] = IERC20LockBoostProvider.LockBoostStep({ minAmount: amount0, multiplierBP: multiplier0 });
@@ -248,7 +242,7 @@ contract ERC20LockBoostProviderBaseTest is Utilities, Fixtures {
 
     function _steps1(
         uint128 amount,
-        uint16 multiplier
+        uint32 multiplier
     ) internal pure returns (IERC20LockBoostProvider.LockBoostStep[] memory steps) {
         steps = new IERC20LockBoostProvider.LockBoostStep[](1);
         steps[0] = IERC20LockBoostProvider.LockBoostStep({ minAmount: amount, multiplierBP: multiplier });
@@ -262,7 +256,7 @@ contract ERC20LockBoostProviderConstructorTest is ERC20LockBoostProviderBaseTest
         assertEq(address(provider.MODULE()), address(module));
         assertEq(address(provider.META_REGISTRY()), address(registry));
         assertEq(provider.TOKEN(), address(token));
-        assertEq(provider.VAULT_FACTORY(), address(vaultFactory));
+        assertEq(address(provider.VAULT_FACTORY()), address(vaultFactory));
         assertEq(provider.MIN_LOCK_PERIOD(), MIN_LOCK_PERIOD);
         assertEq(provider.MAX_LOCK_PERIOD(), MAX_LOCK_PERIOD);
     }
@@ -448,7 +442,10 @@ contract ERC20LockBoostProviderAdminTest is ERC20LockBoostProviderBaseTest {
         vm.startPrank(admin);
 
         vm.expectRevert(IERC20LockBoostProvider.InvalidLockBoostSteps.selector);
-        provider.setLockBoostSteps(_steps1(STEP_1_AMOUNT, uint16(20001)));
+        provider.setLockBoostSteps(_steps1(0, STEP_1_MULTIPLIER_BP));
+
+        vm.expectRevert(IERC20LockBoostProvider.InvalidLockBoostSteps.selector);
+        provider.setLockBoostSteps(_steps1(STEP_1_AMOUNT, uint32(MAX_EFFECTIVE_MULTIPLIER_BP + 1)));
 
         vm.expectRevert(IERC20LockBoostProvider.InvalidLockBoostSteps.selector);
         provider.setLockBoostSteps(_steps(STEP_1_AMOUNT, STEP_1_MULTIPLIER_BP, STEP_1_AMOUNT, STEP_2_MULTIPLIER_BP));
@@ -457,7 +454,12 @@ contract ERC20LockBoostProviderAdminTest is ERC20LockBoostProviderBaseTest {
         provider.setLockBoostSteps(_steps(STEP_1_AMOUNT, STEP_2_MULTIPLIER_BP, STEP_2_AMOUNT, STEP_1_MULTIPLIER_BP));
 
         vm.expectRevert(IERC20LockBoostProvider.InvalidLockBoostSteps.selector);
-        provider.setLockBoostSteps(_steps(STEP_1_AMOUNT, STEP_1_MULTIPLIER_BP, STEP_2_AMOUNT, uint16(20001)));
+        provider.setLockBoostSteps(_steps(STEP_1_AMOUNT, STEP_1_MULTIPLIER_BP, STEP_2_AMOUNT, STEP_1_MULTIPLIER_BP));
+
+        vm.expectRevert(IERC20LockBoostProvider.InvalidLockBoostSteps.selector);
+        provider.setLockBoostSteps(
+            _steps(STEP_1_AMOUNT, STEP_1_MULTIPLIER_BP, STEP_2_AMOUNT, uint32(MAX_EFFECTIVE_MULTIPLIER_BP + 1))
+        );
 
         vm.stopPrank();
     }
@@ -528,7 +530,7 @@ contract ERC20LockBoostProviderLockTest is ERC20LockBoostProviderBaseTest {
         assertEq(registry.getNodeOperatorWeight(NODE_OPERATOR_ID), _weight(STEP_2_MULTIPLIER_BP));
     }
 
-    function test_lock_GroupMaxBoostAppliesToWholeGroup() public {
+    function test_lock_MaxPerGroupBoostAppliesToWholeGroup() public {
         module.mock_setNodeOperatorsCount(2);
         _setDefaultSteps();
         _lock(STEP_1_AMOUNT);
@@ -571,26 +573,6 @@ contract ERC20LockBoostProviderLockTest is ERC20LockBoostProviderBaseTest {
         vm.prank(nodeOperatorOwner);
         vm.expectRevert(IERC20LockBoostProvider.NodeOperatorDoesNotExist.selector);
         provider.lock(NODE_OPERATOR_ID + 1, 1 ether);
-    }
-
-    function test_lock_RevertWhen_FactoryReturnsZeroVault() public {
-        ERC20LockBoostProvider p = new ERC20LockBoostProvider(
-            address(module),
-            address(token),
-            address(new ERC20LockVaultFactoryZeroMock()),
-            MIN_LOCK_PERIOD,
-            MAX_LOCK_PERIOD
-        );
-        _enableInitializers(address(p));
-        p.initialize(admin, LOCK_PERIOD);
-
-        token.mint(nodeOperatorOwner, 1 ether);
-        vm.prank(nodeOperatorOwner);
-        token.approve(address(p), 1 ether);
-
-        vm.prank(nodeOperatorOwner);
-        vm.expectRevert(IERC20LockBoostProvider.ZeroAddress.selector);
-        p.lock(NODE_OPERATOR_ID, 1 ether);
     }
 }
 
@@ -752,18 +734,18 @@ contract ERC20LockBoostProviderVotingTest is ERC20LockBoostProviderBaseTest {
         ISnapshotDelegationLockVault vault = ISnapshotDelegationLockVault(lockInfo.vault);
 
         vm.prank(nodeOperatorOwner);
-        vault.assignSnapshotDelegate(SNAPSHOT_SPACE_ID, snapshotDelegate);
+        vault.assignSnapshotDelegate(snapshotDelegate);
 
-        assertEq(snapshotDelegation.delegateOf(lockInfo.vault, SNAPSHOT_SPACE_ID), snapshotDelegate);
+        assertEq(snapshotDelegation.delegateOf(lockInfo.vault, SNAPSHOT_ALL_SPACES), snapshotDelegate);
         assertEq(snapshotDelegation.lastDelegator(), lockInfo.vault);
-        assertEq(snapshotDelegation.lastId(), SNAPSHOT_SPACE_ID);
+        assertEq(snapshotDelegation.lastId(), SNAPSHOT_ALL_SPACES);
 
         vm.prank(nodeOperatorOwner);
-        vault.unassignSnapshotDelegate(SNAPSHOT_SPACE_ID);
+        vault.unassignSnapshotDelegate();
 
-        assertEq(snapshotDelegation.delegateOf(lockInfo.vault, SNAPSHOT_SPACE_ID), address(0));
+        assertEq(snapshotDelegation.delegateOf(lockInfo.vault, SNAPSHOT_ALL_SPACES), address(0));
         assertEq(snapshotDelegation.lastDelegator(), lockInfo.vault);
-        assertEq(snapshotDelegation.lastId(), SNAPSHOT_SPACE_ID);
+        assertEq(snapshotDelegation.lastId(), SNAPSHOT_ALL_SPACES);
     }
 
     function test_assignVotingDelegate_ReassignsAndCanAssignAfterUnassign() public {
@@ -834,7 +816,7 @@ contract ERC20LockBoostProviderVotingTest is ERC20LockBoostProviderBaseTest {
 
         vm.startPrank(nodeOperatorOwner);
         IAragonVotingLockVault(lockInfo.vault).assignVotingDelegate(votingDelegate);
-        ISnapshotDelegationLockVault(lockInfo.vault).assignSnapshotDelegate(SNAPSHOT_ALL_SPACES, snapshotDelegate);
+        ISnapshotDelegationLockVault(lockInfo.vault).assignSnapshotDelegate(snapshotDelegate);
         vm.stopPrank();
 
         assertEq(voting.delegateOf(lockInfo.vault), votingDelegate);
@@ -1016,7 +998,7 @@ contract LidoGovernanceLockVaultTest is Test, Utilities {
     address public stranger;
 
     uint256 internal constant NODE_OPERATOR_ID = 0;
-    bytes32 internal constant SNAPSHOT_SPACE_ID = bytes32("lido-snapshot-space");
+    bytes32 internal constant SNAPSHOT_ALL_SPACES = bytes32(0);
 
     function setUp() public {
         admin = nextAddress("ADMIN");
@@ -1054,7 +1036,7 @@ contract LidoGovernanceLockVaultTest is Test, Utilities {
         assertEq(vault.PROVIDER(), provider);
         assertEq(address(vault.MODULE()), address(module));
         assertEq(vault.VOTING_CONTRACT(), address(voting));
-        assertEq(address(vault.GOVERNANCE_CONFIG()), address(vaultFactory));
+        assertEq(address(vault.VAULT_FACTORY()), address(vaultFactory));
         assertEq(vault.snapshotDelegation(), address(snapshotDelegation));
     }
 
@@ -1094,18 +1076,18 @@ contract LidoGovernanceLockVaultTest is Test, Utilities {
 
     function test_assignAndUnassignSnapshotDelegate() public {
         vm.prank(nodeOperatorOwner);
-        vault.assignSnapshotDelegate(SNAPSHOT_SPACE_ID, snapshotDelegate);
+        vault.assignSnapshotDelegate(snapshotDelegate);
 
-        assertEq(snapshotDelegation.delegateOf(address(vault), SNAPSHOT_SPACE_ID), snapshotDelegate);
+        assertEq(snapshotDelegation.delegateOf(address(vault), SNAPSHOT_ALL_SPACES), snapshotDelegate);
         assertEq(snapshotDelegation.lastDelegator(), address(vault));
-        assertEq(snapshotDelegation.lastId(), SNAPSHOT_SPACE_ID);
+        assertEq(snapshotDelegation.lastId(), SNAPSHOT_ALL_SPACES);
 
         vm.prank(nodeOperatorOwner);
-        vault.unassignSnapshotDelegate(SNAPSHOT_SPACE_ID);
+        vault.unassignSnapshotDelegate();
 
-        assertEq(snapshotDelegation.delegateOf(address(vault), SNAPSHOT_SPACE_ID), address(0));
+        assertEq(snapshotDelegation.delegateOf(address(vault), SNAPSHOT_ALL_SPACES), address(0));
         assertEq(snapshotDelegation.lastDelegator(), address(vault));
-        assertEq(snapshotDelegation.lastId(), SNAPSHOT_SPACE_ID);
+        assertEq(snapshotDelegation.lastId(), SNAPSHOT_ALL_SPACES);
     }
 
     function test_assignSnapshotDelegate_UsesCurrentSnapshotDelegation() public {
@@ -1115,10 +1097,10 @@ contract LidoGovernanceLockVaultTest is Test, Utilities {
         vaultFactory.setSnapshotDelegation(address(newSnapshotDelegation));
 
         vm.prank(nodeOperatorOwner);
-        vault.assignSnapshotDelegate(SNAPSHOT_SPACE_ID, snapshotDelegate);
+        vault.assignSnapshotDelegate(snapshotDelegate);
 
-        assertEq(snapshotDelegation.delegateOf(address(vault), SNAPSHOT_SPACE_ID), address(0));
-        assertEq(newSnapshotDelegation.delegateOf(address(vault), SNAPSHOT_SPACE_ID), snapshotDelegate);
+        assertEq(snapshotDelegation.delegateOf(address(vault), SNAPSHOT_ALL_SPACES), address(0));
+        assertEq(newSnapshotDelegation.delegateOf(address(vault), SNAPSHOT_ALL_SPACES), snapshotDelegate);
     }
 
     function test_vote() public {
@@ -1140,10 +1122,10 @@ contract LidoGovernanceLockVaultTest is Test, Utilities {
     function test_snapshotDelegationCalls_RevertWhen_InvalidCaller() public {
         vm.prank(stranger);
         vm.expectRevert(IERC20LockVault.SenderIsNotNodeOperatorOwner.selector);
-        vault.assignSnapshotDelegate(SNAPSHOT_SPACE_ID, snapshotDelegate);
+        vault.assignSnapshotDelegate(snapshotDelegate);
 
         vm.prank(stranger);
         vm.expectRevert(IERC20LockVault.SenderIsNotNodeOperatorOwner.selector);
-        vault.unassignSnapshotDelegate(SNAPSHOT_SPACE_ID);
+        vault.unassignSnapshotDelegate();
     }
 }

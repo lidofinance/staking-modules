@@ -10,11 +10,12 @@ import { IERC20LockVault } from "./interfaces/IERC20LockVault.sol";
 import { ILidoGovernanceLockVaultFactory } from "./interfaces/ILidoGovernanceLockVaultFactory.sol";
 import { ISnapshotDelegation } from "./interfaces/ISnapshotDelegation.sol";
 import { ISnapshotDelegationLockVault } from "./interfaces/ISnapshotDelegationLockVault.sol";
+import { SNAPSHOT_ALL_SPACES } from "./lib/Constants.sol";
 
 /// @notice ERC20 lock vault with Lido Aragon Voting and Snapshot delegation capabilities.
 contract LidoGovernanceLockVault is ERC20LockVault, IAragonVotingLockVault, ISnapshotDelegationLockVault {
     address public immutable VOTING_CONTRACT;
-    ILidoGovernanceLockVaultFactory public immutable GOVERNANCE_CONFIG;
+    ILidoGovernanceLockVaultFactory public immutable VAULT_FACTORY;
 
     constructor(
         uint256 nodeOperatorId,
@@ -22,53 +23,53 @@ contract LidoGovernanceLockVault is ERC20LockVault, IAragonVotingLockVault, ISna
         address provider,
         address module,
         address votingContract,
-        address governanceConfig
+        address vaultFactory
     ) ERC20LockVault(nodeOperatorId, token, provider, module) {
-        if (votingContract == address(0) || governanceConfig == address(0)) {
+        if (votingContract == address(0) || vaultFactory == address(0)) {
             revert IERC20LockVault.ZeroAddress();
         }
 
         VOTING_CONTRACT = votingContract;
-        GOVERNANCE_CONFIG = ILidoGovernanceLockVaultFactory(governanceConfig);
+        VAULT_FACTORY = ILidoGovernanceLockVaultFactory(vaultFactory);
     }
 
     /// @inheritdoc IAragonVotingLockVault
     function assignVotingDelegate(address votingDelegate) external {
-        _checkNodeOperatorOwner();
+        _onlyNodeOperatorOwner();
 
         ILidoAragonVoting(VOTING_CONTRACT).assignDelegate(votingDelegate);
     }
 
     /// @inheritdoc IAragonVotingLockVault
     function unassignVotingDelegate() external {
-        _checkNodeOperatorOwner();
+        _onlyNodeOperatorOwner();
 
         ILidoAragonVoting(VOTING_CONTRACT).unassignDelegate();
     }
 
     /// @inheritdoc ISnapshotDelegationLockVault
-    function assignSnapshotDelegate(bytes32 snapshotSpaceId, address snapshotDelegate) external {
-        _checkNodeOperatorOwner();
+    function assignSnapshotDelegate(address snapshotDelegate) external {
+        _onlyNodeOperatorOwner();
 
-        ISnapshotDelegation(snapshotDelegation()).setDelegate(snapshotSpaceId, snapshotDelegate);
+        ISnapshotDelegation(snapshotDelegation()).setDelegate(SNAPSHOT_ALL_SPACES, snapshotDelegate);
     }
 
     /// @inheritdoc ISnapshotDelegationLockVault
-    function unassignSnapshotDelegate(bytes32 snapshotSpaceId) external {
-        _checkNodeOperatorOwner();
+    function unassignSnapshotDelegate() external {
+        _onlyNodeOperatorOwner();
 
-        ISnapshotDelegation(snapshotDelegation()).clearDelegate(snapshotSpaceId);
+        ISnapshotDelegation(snapshotDelegation()).clearDelegate(SNAPSHOT_ALL_SPACES);
     }
 
     /// @inheritdoc IAragonVotingLockVault
     function vote(uint256 voteId, bool support) external {
-        _checkNodeOperatorOwner();
+        _onlyNodeOperatorOwner();
 
         ILidoAragonVoting(VOTING_CONTRACT).vote(voteId, support, false);
     }
 
     /// @inheritdoc ISnapshotDelegationLockVault
     function snapshotDelegation() public view returns (address) {
-        return GOVERNANCE_CONFIG.snapshotDelegation();
+        return VAULT_FACTORY.snapshotDelegation();
     }
 }

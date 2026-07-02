@@ -29,17 +29,17 @@ contract ERC20LockVault is IERC20LockVault {
 
     /// @inheritdoc IERC20LockVault
     function transferTokens(address receiver, uint256 amount) external {
-        _checkProvider();
+        _onlyProvider();
         if (receiver == address(0)) revert ZeroAddress();
 
         IERC20(TOKEN).safeTransfer(receiver, amount);
     }
 
-    function _checkNodeOperatorOwner() internal view {
+    function _onlyNodeOperatorOwner() internal view {
         if (msg.sender != MODULE.getNodeOperatorOwner(NODE_OPERATOR_ID)) revert SenderIsNotNodeOperatorOwner();
     }
 
-    function _checkProvider() internal view {
+    function _onlyProvider() internal view {
         if (msg.sender != PROVIDER) revert SenderIsNotProvider();
     }
 }

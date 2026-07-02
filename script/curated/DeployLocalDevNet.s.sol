@@ -201,6 +201,16 @@ contract DeployLocalDevNet is DeployBase {
         config.strikesThresholds.push(StrikeThreshold({ minCount: 4, reductionBP: 7_500 }));
         config.strikesThresholds.push(StrikeThreshold({ minCount: 5, reductionBP: 10_000 }));
 
+        // LDO lock boost provider
+        config.ldoLockBoostProviderConfig.token = vm.envAddress("CSM_LDO_TOKEN_ADDRESS");
+        config.ldoLockBoostProviderConfig.votingContract = vm.envAddress("CSM_LDO_VOTING_ADDRESS");
+        config.ldoLockBoostProviderConfig.snapshotDelegation = vm.envAddress("CSM_SNAPSHOT_DELEGATION_ADDRESS");
+        config.ldoLockBoostProviderConfig.minLockPeriod = 1 days;
+        config.ldoLockBoostProviderConfig.maxLockPeriod = 365 days;
+        config.ldoLockBoostProviderConfig.lockPeriod = 1 days;
+        _addLDOLockBoostStep(100_000 ether, 11_000);
+        _addLDOLockBoostStep(200_000 ether, 11_500);
+
         _setUp();
     }
 

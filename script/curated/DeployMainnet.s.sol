@@ -213,6 +213,16 @@ contract DeployMainnet is DeployBase {
         config.strikesThresholds.push(StrikeThreshold({ minCount: 4, reductionBP: 7_500 }));
         config.strikesThresholds.push(StrikeThreshold({ minCount: 5, reductionBP: 10_000 }));
 
+        // LDO lock boost provider
+        config.ldoLockBoostProviderConfig.token = 0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32;
+        config.ldoLockBoostProviderConfig.votingContract = 0x2e59A20f205bB85a89C53f1936454680651E618e;
+        config.ldoLockBoostProviderConfig.snapshotDelegation = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
+        config.ldoLockBoostProviderConfig.minLockPeriod = 30 days;
+        config.ldoLockBoostProviderConfig.maxLockPeriod = 365 days;
+        config.ldoLockBoostProviderConfig.lockPeriod = 30 days;
+        _addLDOLockBoostStep(100_000 ether, 11_000);
+        _addLDOLockBoostStep(200_000 ether, 11_500);
+
         _setUp();
     }
 }

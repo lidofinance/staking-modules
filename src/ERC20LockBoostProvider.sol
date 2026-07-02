@@ -16,7 +16,7 @@ import { IERC20LockVault } from "./interfaces/IERC20LockVault.sol";
 import { IERC20LockVaultFactory } from "./interfaces/IERC20LockVaultFactory.sol";
 import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
 import { IWeightBoostProvider } from "./interfaces/IWeightBoostProvider.sol";
-import { MAX_BP } from "./lib/Constants.sol";
+import { MAX_BP, MAX_EFFECTIVE_MULTIPLIER_BP } from "./lib/Constants.sol";
 
 /// @notice Stores operator-level ERC20 locks and exposes node operator boost for scoring.
 contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgradeable, IERC20LockBoostProvider {
@@ -32,13 +32,11 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
     ICuratedModule public immutable MODULE;
     IMetaRegistry public immutable META_REGISTRY;
     address public immutable TOKEN;
-    address public immutable VAULT_FACTORY;
+    IERC20LockVaultFactory public immutable VAULT_FACTORY;
     uint256 public immutable MIN_LOCK_PERIOD;
     uint256 public immutable MAX_LOCK_PERIOD;
 
     bytes32 public constant SET_LOCK_PERIOD_ROLE = keccak256("SET_LOCK_PERIOD_ROLE");
-
-    uint256 internal constant MAX_LOCK_PROVIDER_MULTIPLIER_BP = 2 * MAX_BP;
 
     // keccak256(abi.encode(uint256(keccak256("ERC20LockBoostProvider")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant ERC20_LOCK_BOOST_PROVIDER_STORAGE_LOCATION =
@@ -55,7 +53,7 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
         MODULE = curatedModule;
         META_REGISTRY = metaRegistry;
         TOKEN = token;
-        VAULT_FACTORY = vaultFactory;
+        VAULT_FACTORY = IERC20LockVaultFactory(vaultFactory);
         MIN_LOCK_PERIOD = minLockPeriod;
         MAX_LOCK_PERIOD = maxLockPeriod;
 
@@ -77,7 +75,6 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
 
     /// @inheritdoc IERC20LockBoostProvider
     function setLockPeriod(uint256 lockPeriod) external onlyRole(SET_LOCK_PERIOD_ROLE) {
-        if (_storage().lockPeriod == lockPeriod) revert SameLockPeriod();
         _setLockPeriod(lockPeriod);
     }
 
@@ -150,13 +147,12 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
 
         address vault = lockInfo.vault;
         if (vault == address(0)) {
-            vault = IERC20LockVaultFactory(VAULT_FACTORY).createVault({
+            vault = VAULT_FACTORY.createVault({
                 nodeOperatorId: nodeOperatorId,
                 token: TOKEN,
                 provider: address(this),
                 module: address(MODULE)
             });
-            if (vault == address(0)) revert ZeroAddress();
             lockInfo.vault = vault;
             emit VaultCreated(nodeOperatorId, vault, TOKEN);
         }
@@ -195,14 +191,14 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
     }
 
     function _syncWeightAfterLockChange(uint256 nodeOperatorId, uint256 oldAmount, uint256 newAmount) internal {
-        uint16 oldMultiplierBP = _getMultiplierBP(oldAmount);
-        uint16 newMultiplierBP = _getMultiplierBP(newAmount);
+        uint256 oldMultiplierBP = _getMultiplierBP(oldAmount);
+        uint256 newMultiplierBP = _getMultiplierBP(newAmount);
         if (oldMultiplierBP != newMultiplierBP) META_REGISTRY.notifyWeightBoostChanged(nodeOperatorId);
     }
 
-    function _getMultiplierBP(uint256 amount) internal view returns (uint16 multiplierBP) {
+    function _getMultiplierBP(uint256 amount) internal view returns (uint256 multiplierBP) {
         ERC20LockBoostProviderStorage storage $ = _storage();
-        multiplierBP = uint16(MAX_BP);
+        multiplierBP = MAX_BP;
         uint256 stepsCount = $.lockBoostSteps.length;
         for (uint256 i; i < stepsCount; ++i) {
             LockBoostStep storage step = $.lockBoostSteps[i];
@@ -230,13 +226,14 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
 
         uint256 previousMinAmount = steps[0].minAmount;
         uint256 previousMultiplierBP = steps[0].multiplierBP;
-        if (steps[0].multiplierBP > MAX_LOCK_PROVIDER_MULTIPLIER_BP) revert InvalidLockBoostSteps();
+        if (previousMinAmount == 0) revert InvalidLockBoostSteps();
+        if (steps[0].multiplierBP > MAX_EFFECTIVE_MULTIPLIER_BP) revert InvalidLockBoostSteps();
 
         for (uint256 i = 1; i < stepsCount; ++i) {
             LockBoostStep calldata step = steps[i];
             if (step.minAmount <= previousMinAmount) revert InvalidLockBoostSteps();
-            if (step.multiplierBP < previousMultiplierBP) revert InvalidLockBoostSteps();
-            if (step.multiplierBP > MAX_LOCK_PROVIDER_MULTIPLIER_BP) revert InvalidLockBoostSteps();
+            if (step.multiplierBP <= previousMultiplierBP) revert InvalidLockBoostSteps();
+            if (step.multiplierBP > MAX_EFFECTIVE_MULTIPLIER_BP) revert InvalidLockBoostSteps();
 
             previousMinAmount = step.minAmount;
             previousMultiplierBP = step.multiplierBP;
@@ -245,6 +242,7 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
 
     function _setLockPeriod(uint256 lockPeriod) internal {
         if (lockPeriod < MIN_LOCK_PERIOD || lockPeriod > MAX_LOCK_PERIOD) revert InvalidLockPeriod();
+        if (_storage().lockPeriod == lockPeriod) revert SameLockPeriod();
 
         _storage().lockPeriod = lockPeriod;
         emit LockPeriodSet(lockPeriod);

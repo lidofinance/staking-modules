@@ -188,7 +188,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         if (entry.enabled == enabled) revert SameWeightBoostProviderEnabled();
 
         entry.enabled = enabled;
-        emit WeightBoostProviderEnabledSet(providerAddr, enabled);
+        emit WeightBoostProviderStateSet(providerAddr, enabled);
         _requestFullDepositInfoUpdate();
     }
 
@@ -233,12 +233,12 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         WeightBoostProviderEntry storage entry = $.weightBoostProviders[providerId];
         if (!entry.enabled) return;
 
-        if (entry.mode == WeightBoostProviderMode.NodeOperator) {
+        if (entry.mode == WeightBoostProviderMode.PerNodeOperator) {
             _refreshOperatorWeight(groupId, nodeOperatorId);
             return;
         }
 
-        if (entry.mode == WeightBoostProviderMode.GroupMax) {
+        if (entry.mode == WeightBoostProviderMode.MaxPerGroup) {
             _refreshGroupWeights(groupId);
             return;
         }
@@ -489,8 +489,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         MetaRegistryStorage storage $ = _storage();
         CachedOperatorGroup storage group = $.groups[groupId];
         uint256 providersCount = $.weightBoostProvidersCount;
-        uint256[] memory groupMaxMultipliersBP = new uint256[](providersCount);
-        bool[] memory groupMaxMultiplierCached = new bool[](providersCount);
+        uint256[] memory maxPerGroupMultipliersBP = new uint256[](providersCount);
+        bool[] memory maxPerGroupMultiplierCached = new bool[](providersCount);
 
         uint256 effectiveWeightSum;
         uint256 subOperatorsCount = group.subNodeOperatorIds.length;
@@ -502,8 +502,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             uint256 multiplierBP = _getWeightBoostMultiplierBP(
                 group,
                 noId,
-                groupMaxMultipliersBP,
-                groupMaxMultiplierCached
+                maxPerGroupMultipliersBP,
+                maxPerGroupMultiplierCached
             );
             uint256 effectiveWeight = _getLatestEffectiveWeight(noId, share, multiplierBP);
             _setEffectiveWeight(noId, effectiveWeight);
@@ -581,12 +581,12 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             if (!entry.enabled) continue;
 
             IWeightBoostProvider provider = entry.provider;
-            if (entry.mode == WeightBoostProviderMode.NodeOperator) {
+            if (entry.mode == WeightBoostProviderMode.PerNodeOperator) {
                 multiplierBP = Math.mulDiv(multiplierBP, provider.getWeightBoostMultiplierBP(nodeOperatorId), MAX_BP);
-            } else if (entry.mode == WeightBoostProviderMode.GroupMax) {
+            } else if (entry.mode == WeightBoostProviderMode.MaxPerGroup) {
                 multiplierBP = Math.mulDiv(
                     multiplierBP,
-                    _getProviderGroupMaxWeightBoostMultiplierBP(provider, group),
+                    _getProviderMaxPerGroupWeightBoostMultiplierBP(provider, group),
                     MAX_BP
                 );
             } else {
@@ -598,32 +598,32 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     function _getWeightBoostMultiplierBP(
         CachedOperatorGroup storage group,
         uint256 nodeOperatorId,
-        uint256[] memory groupMaxMultipliersBP,
-        bool[] memory groupMaxMultiplierCached
+        uint256[] memory maxPerGroupMultipliersBP,
+        bool[] memory maxPerGroupMultiplierCached
     ) internal view returns (uint256 multiplierBP) {
         MetaRegistryStorage storage $ = _storage();
         multiplierBP = MAX_BP;
-        uint256 providersCount = groupMaxMultipliersBP.length;
+        uint256 providersCount = maxPerGroupMultipliersBP.length;
         for (uint256 i; i < providersCount; ++i) {
             WeightBoostProviderEntry storage entry = $.weightBoostProviders[i + 1];
             if (!entry.enabled) continue;
 
             IWeightBoostProvider provider = entry.provider;
-            if (entry.mode == WeightBoostProviderMode.NodeOperator) {
+            if (entry.mode == WeightBoostProviderMode.PerNodeOperator) {
                 multiplierBP = Math.mulDiv(multiplierBP, provider.getWeightBoostMultiplierBP(nodeOperatorId), MAX_BP);
-            } else if (entry.mode == WeightBoostProviderMode.GroupMax) {
-                if (!groupMaxMultiplierCached[i]) {
-                    groupMaxMultipliersBP[i] = _getProviderGroupMaxWeightBoostMultiplierBP(provider, group);
-                    groupMaxMultiplierCached[i] = true;
+            } else if (entry.mode == WeightBoostProviderMode.MaxPerGroup) {
+                if (!maxPerGroupMultiplierCached[i]) {
+                    maxPerGroupMultipliersBP[i] = _getProviderMaxPerGroupWeightBoostMultiplierBP(provider, group);
+                    maxPerGroupMultiplierCached[i] = true;
                 }
-                multiplierBP = Math.mulDiv(multiplierBP, groupMaxMultipliersBP[i], MAX_BP);
+                multiplierBP = Math.mulDiv(multiplierBP, maxPerGroupMultipliersBP[i], MAX_BP);
             } else {
                 revert InvalidWeightBoostProviderMode();
             }
         }
     }
 
-    function _getProviderGroupMaxWeightBoostMultiplierBP(
+    function _getProviderMaxPerGroupWeightBoostMultiplierBP(
         IWeightBoostProvider provider,
         CachedOperatorGroup storage group
     ) internal view returns (uint256 maxMultiplierBP) {
