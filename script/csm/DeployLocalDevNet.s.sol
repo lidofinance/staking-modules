@@ -120,8 +120,8 @@ contract DeployLocalDevNet is DeployBase {
         config.identifiedDVTClusterExitDelayFee = 0.05 ether;
 
         // CircuitBreaker
-        config.circuitBreaker = address(0);
-        config.circuitBreakerPauser = address(0);
+        config.circuitBreaker = vm.envAddress("CSM_CIRCUIT_BREAKER_ADDRESS");
+        config.circuitBreakerPauser = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
         // DG
         config.resealManager = vm.envAddress("CSM_RESEAL_MANAGER_ADDRESS");

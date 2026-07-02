@@ -29,12 +29,28 @@ anvil_rpc_url := "http://" + anvil_host + ":" + anvil_port
 disable_code_size_limit := if env("DISABLE_CODE_SIZE_LIMIT", "") != "" { "--disable-code-size-limit" } else { "" }
 
 # Shared deployment helpers
+_assert-clean-workspace:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ "${ALLOW_DIRTY_LIVE_DEPLOY:-}" = "1" ]; then
+        echo "Skipping clean workspace check because ALLOW_DIRTY_LIVE_DEPLOY=1." >&2
+        exit 0
+    fi
+
+    if [ -n "$(git status --porcelain=v1 --untracked-files=all)" ]; then
+        echo "Live deployment requires a clean git workspace." >&2
+        git status --short >&2
+        exit 1
+    fi
+
 _deploy-generic deploy_script_path rpc_url *args:
     FOUNDRY_PROFILE=deploy \
         forge script {{deploy_script_path}} --sig="run(string)" --rpc-url {{rpc_url}} --broadcast --slow {{args}} -- `git rev-parse HEAD`
 
 [confirm("You are about to broadcast deployment transactions to the network. Are you sure?")]
 _deploy-live-generic deploy_script_path *args:
+    just _assert-clean-workspace
     just _deploy-live-generic-no-confirm {{deploy_script_path}} --broadcast --verify {{args}}
 
 _deploy-live-generic-no-confirm deploy_script_path *args:
@@ -367,6 +383,7 @@ deploy-utils-live module_name contract_name *args:
 
 [confirm("You are about to broadcast utility contract deployment transactions to the network. Are you sure?")]
 _deploy-utils-live-confirmed module_name contract_name *args:
+    just _assert-clean-workspace
     just _deploy-utils {{module_name}} {{contract_name}} $RPC_URL ./artifacts/latest/{{module_name}}/utils/{{contract_name}}/ "" --broadcast --verify {{args}}
 
 _deploy-utils module_name contract_name rpc_url artifacts_dir dry-prefix *args:

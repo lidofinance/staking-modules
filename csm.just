@@ -50,6 +50,7 @@ deploy-csm-impl *args:
 [confirm("You are about to broadcast deployment transactions to the network. Are you sure?")]
 deploy-csm-impl-live *args:
     just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
+    just _assert-clean-workspace
     ARTIFACTS_DIR={{csm_artifacts_latest_dir}} \
         just _deploy-csm-impl --broadcast --verify {{args}}
     just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "" "deploy-latest.json" {{csm_latest_upgrade_config_path}}
