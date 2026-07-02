@@ -114,6 +114,18 @@ contract DeploymentHelpers is Test {
         assertEq(accessControl.getRoleMemberCount(role), expectedRoleMembers, "pause role member count");
     }
 
+    function _checkAdminRole(address target, address admin, address secondAdmin) internal view {
+        IAccessControlEnumerable accessControl = IAccessControlEnumerable(target);
+        bytes32 role = bytes32(0); // DEFAULT_ADMIN_ROLE
+        uint256 expectedMembers = block.chainid == 1 ? 1 : 2;
+
+        assertTrue(accessControl.hasRole(role, admin), "missing admin default admin role");
+        if (secondAdmin != address(0)) {
+            assertTrue(accessControl.hasRole(role, secondAdmin), "missing second admin default admin role");
+        }
+        assertEq(accessControl.getRoleMemberCount(role), expectedMembers, "unexpected default admin role member count");
+    }
+
     struct Env {
         string RPC_URL;
         string DEPLOY_CONFIG;
