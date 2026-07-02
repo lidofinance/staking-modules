@@ -70,8 +70,8 @@ contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
         config.penaltiesManager = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
         // CircuitBreaker
-        config.circuitBreaker = address(0);
-        config.circuitBreakerPauser = address(0);
+        config.circuitBreaker = vm.envAddress("CSM_CIRCUIT_BREAKER_ADDRESS");
+        config.circuitBreakerPauser = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
         // DG
         config.resealManager = vm.envAddress("CSM_RESEAL_MANAGER_ADDRESS");
