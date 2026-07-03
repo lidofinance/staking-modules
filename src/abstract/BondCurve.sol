@@ -73,7 +73,7 @@ abstract contract BondCurve is IBondCurve, Initializable {
 
     /// @inheritdoc IBondCurve
     function getBondAmountByKeysCount(uint256 keys, uint256 curveId) public view returns (uint256) {
-        return BondCurvesLib.getBondAmountByKeysCount(_getBondCurveStorage(), keys, curveId, MAX_BP);
+        return getBondAmountByKeysCount(keys, curveId, MAX_BP);
     }
 
     /// @inheritdoc IBondCurve
@@ -83,7 +83,7 @@ abstract contract BondCurve is IBondCurve, Initializable {
 
     /// @inheritdoc IBondCurve
     function getKeysCountByBondAmount(uint256 amount, uint256 curveId) public view returns (uint256) {
-        return BondCurvesLib.getKeysCountByBondAmount(_getBondCurveStorage(), amount, curveId, MAX_BP);
+        return getKeysCountByBondAmount(amount, curveId, MAX_BP);
     }
 
     /// @inheritdoc IBondCurve

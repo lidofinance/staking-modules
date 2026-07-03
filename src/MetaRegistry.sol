@@ -12,6 +12,7 @@ import { IBondCurve } from "./interfaces/IBondCurve.sol";
 import { INodeOperatorsRegistry } from "./interfaces/INodeOperatorsRegistry.sol";
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IBaseModule } from "./interfaces/IBaseModule.sol";
+import { IWeightBoostProvider } from "./interfaces/IWeightBoostProvider.sol";
 import { IStakingModule } from "./interfaces/IStakingModule.sol";
 import { IStakingRouter } from "./interfaces/IStakingRouter.sol";
 import { IMetaRegistry, OperatorMetadata } from "./interfaces/IMetaRegistry.sol";
@@ -50,6 +51,9 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         mapping(uint256 nodeOperatorId => OperatorMetadata) operatorMetadata;
         mapping(uint256 moduleId => address moduleAddress) moduleAddressCache;
         uint256 groupsCount;
+        mapping(uint256 providerId => WeightBoostProviderEntry entry) weightBoostProviders;
+        mapping(address provider => uint256 providerId) weightBoostProviderIdByAddress;
+        uint256 weightBoostProvidersCount;
     }
 
     bytes32 public constant MANAGE_OPERATOR_GROUPS_ROLE = keccak256("MANAGE_OPERATOR_GROUPS_ROLE");
@@ -148,7 +152,44 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
         $.bondCurveWeight[curveId] = weight;
         emit BondCurveWeightSet(curveId, weight);
-        MODULE.requestFullDepositInfoUpdate();
+        _requestFullDepositInfoUpdate();
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function addWeightBoostProvider(
+        IWeightBoostProvider provider,
+        WeightBoostProviderMode mode
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        address providerAddr = address(provider);
+        if (providerAddr == address(0)) revert InvalidWeightBoostProvider();
+
+        MetaRegistryStorage storage $ = _storage();
+        if ($.weightBoostProviderIdByAddress[providerAddr] != 0) {
+            revert WeightBoostProviderAlreadyAdded();
+        }
+
+        uint256 providerId = ++$.weightBoostProvidersCount;
+        $.weightBoostProviders[providerId] = WeightBoostProviderEntry({
+            provider: provider,
+            mode: mode,
+            enabled: true
+        });
+        $.weightBoostProviderIdByAddress[providerAddr] = providerId;
+        emit WeightBoostProviderAdded(providerAddr, mode);
+        _requestFullDepositInfoUpdate();
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function setWeightBoostProviderEnabled(uint256 providerId, bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        MetaRegistryStorage storage $ = _storage();
+        WeightBoostProviderEntry storage entry = $.weightBoostProviders[providerId];
+        address providerAddr = address(entry.provider);
+        if (providerAddr == address(0)) revert WeightBoostProviderNotFound();
+        if (entry.enabled == enabled) revert SameWeightBoostProviderEnabled();
+
+        entry.enabled = enabled;
+        emit WeightBoostProviderEnabledSet(providerAddr, enabled);
+        _requestFullDepositInfoUpdate();
     }
 
     /// @inheritdoc IMetaRegistry
@@ -157,6 +198,82 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         if (groupId == NO_GROUP_ID) return;
 
         _refreshOperatorWeight(groupId, nodeOperatorId);
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function refreshGroupWeights(uint256 groupId) external {
+        if (groupId == NO_GROUP_ID) revert InvalidOperatorGroupId();
+        if (groupId > _storage().groupsCount) revert InvalidOperatorGroupId();
+
+        _refreshGroupWeights(groupId);
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function notifyWeightBoostProviderConfigChanged() external {
+        MetaRegistryStorage storage $ = _storage();
+        uint256 providerId = $.weightBoostProviderIdByAddress[msg.sender];
+        if (providerId == 0) revert WeightBoostProviderNotFound();
+
+        if (!$.weightBoostProviders[providerId].enabled) return;
+
+        emit WeightBoostProviderConfigChanged(msg.sender);
+        _requestFullDepositInfoUpdate();
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function notifyWeightBoostChanged(uint256 nodeOperatorId) external {
+        MetaRegistryStorage storage $ = _storage();
+        uint256 providerId = $.weightBoostProviderIdByAddress[msg.sender];
+        if (providerId == 0) revert WeightBoostProviderNotFound();
+
+        uint256 groupId = $.groupIndex.groupIdByOperatorId[nodeOperatorId];
+        // Provider notifications are node-operator scoped; operators outside groups have no group cache to refresh.
+        if (groupId == NO_GROUP_ID) return;
+
+        WeightBoostProviderEntry storage entry = $.weightBoostProviders[providerId];
+        if (!entry.enabled) return;
+
+        if (entry.mode == WeightBoostProviderMode.NodeOperator) {
+            _refreshOperatorWeight(groupId, nodeOperatorId);
+            return;
+        }
+
+        if (entry.mode == WeightBoostProviderMode.GroupMax) {
+            _refreshGroupWeights(groupId);
+            return;
+        }
+
+        revert InvalidWeightBoostProviderMode();
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function getWeightBoostProviders() external view returns (IWeightBoostProvider[] memory providers) {
+        MetaRegistryStorage storage $ = _storage();
+        uint256 providersCount = $.weightBoostProvidersCount;
+        providers = new IWeightBoostProvider[](providersCount);
+        for (uint256 i; i < providersCount; ++i) {
+            providers[i] = $.weightBoostProviders[i + 1].provider;
+        }
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function getWeightBoostProvidersCount() external view returns (uint256 count) {
+        count = _storage().weightBoostProvidersCount;
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function getWeightBoostProvider(uint256 providerId) external view returns (WeightBoostProviderEntry memory entry) {
+        entry = _storage().weightBoostProviders[providerId];
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function getWeightBoostProviderMode(uint256 providerId) external view returns (WeightBoostProviderMode mode) {
+        mode = _storage().weightBoostProviders[providerId].mode;
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function getWeightBoostProviderId(address provider) external view returns (uint256 providerId) {
+        providerId = _storage().weightBoostProviderIdByAddress[provider];
     }
 
     /// @inheritdoc IMetaRegistry
@@ -249,6 +366,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
         uint256 groupId = ++_storage().groupsCount;
         _storeGroupData(groupId, groupInfo);
+        _refreshGroupWeights(groupId);
         emit OperatorGroupCreated(groupId, groupInfo);
     }
 
@@ -263,6 +381,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             emit OperatorGroupCleared(groupId);
         } else {
             _storeGroupData(groupId, groupInfo);
+            _refreshGroupWeights(groupId);
             emit OperatorGroupUpdated(groupId, groupInfo);
         }
     }
@@ -310,7 +429,6 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         CachedOperatorGroup storage group = $.groups[groupId];
 
         uint256 shareSum;
-        uint256 effectiveWeightSum;
         for (uint256 i; i < subNodeOperators.length; ++i) {
             uint64 noId = subNodeOperators[i].nodeOperatorId;
             uint16 share = subNodeOperators[i].share;
@@ -322,15 +440,10 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
             $.groupIndex.shareByOperatorId[noId] = share;
             group.subNodeOperatorIds.push(noId);
 
-            uint256 effectiveWeight = _getLatestEffectiveWeight(noId, share);
-            _setEffectiveWeight(noId, effectiveWeight);
-            effectiveWeightSum += effectiveWeight;
             shareSum += share;
         }
 
         if (shareSum != MAX_BP) revert InvalidSubNodeOperatorShares();
-
-        $.effectiveWeightCache.groupEffectiveWeightSum[groupId] = effectiveWeightSum;
     }
 
     function _storeExternalOperators(uint256 groupId, ExternalOperator[] calldata externalOperators) internal {
@@ -356,7 +469,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         MetaRegistryStorage storage $ = _storage();
         uint256 share = $.groupIndex.shareByOperatorId[noId];
 
-        uint256 newWeight = _getLatestEffectiveWeight(noId, share);
+        uint256 multiplierBP = _getWeightBoostMultiplierBP($.groups[groupId], noId);
+        uint256 newWeight = _getLatestEffectiveWeight(noId, share, multiplierBP);
         uint256 oldWeight = _setEffectiveWeight(noId, newWeight);
 
         if (oldWeight != newWeight) {
@@ -371,6 +485,35 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         }
     }
 
+    function _refreshGroupWeights(uint256 groupId) internal {
+        MetaRegistryStorage storage $ = _storage();
+        CachedOperatorGroup storage group = $.groups[groupId];
+        uint256 providersCount = $.weightBoostProvidersCount;
+        uint256[] memory groupMaxMultipliersBP = new uint256[](providersCount);
+        bool[] memory groupMaxMultiplierCached = new bool[](providersCount);
+
+        uint256 effectiveWeightSum;
+        uint256 subOperatorsCount = group.subNodeOperatorIds.length;
+        for (uint256 i; i < subOperatorsCount; ++i) {
+            uint256 noId = group.subNodeOperatorIds[i];
+            uint256 share = $.groupIndex.shareByOperatorId[noId];
+            // Keep full-group and single-operator refreshes on the same ordered multiplier path.
+            // Each Math.mulDiv floors, so pre-aggregating providers by mode can produce different weights.
+            uint256 multiplierBP = _getWeightBoostMultiplierBP(
+                group,
+                noId,
+                groupMaxMultipliersBP,
+                groupMaxMultiplierCached
+            );
+            uint256 effectiveWeight = _getLatestEffectiveWeight(noId, share, multiplierBP);
+            _setEffectiveWeight(noId, effectiveWeight);
+            effectiveWeightSum += effectiveWeight;
+        }
+
+        $.effectiveWeightCache.groupEffectiveWeightSum[groupId] = effectiveWeightSum;
+        emit GroupWeightsRefreshed(groupId);
+    }
+
     function _setEffectiveWeight(uint256 nodeOperatorId, uint256 newWeight) internal returns (uint256 oldWeight) {
         MetaRegistryStorage storage $ = _storage();
         oldWeight = $.effectiveWeightCache.operatorEffectiveWeight[nodeOperatorId];
@@ -381,6 +524,10 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         emit NodeOperatorEffectiveWeightChanged(nodeOperatorId, oldWeight, newWeight);
 
         MODULE.notifyNodeOperatorWeightChange(nodeOperatorId, oldWeight, newWeight);
+    }
+
+    function _requestFullDepositInfoUpdate() internal {
+        MODULE.requestFullDepositInfoUpdate();
     }
 
     function _storeOperatorMetadata(uint256 nodeOperatorId, OperatorMetadata memory metadata) internal {
@@ -406,13 +553,90 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         }
     }
 
-    function _getLatestEffectiveWeight(uint256 nodeOperatorId, uint256 share) internal view returns (uint256) {
-        uint256 baseWeight = _storage().bondCurveWeight[ACCOUNTING.getBondCurveId(nodeOperatorId)];
+    function _getLatestEffectiveWeight(
+        uint256 nodeOperatorId,
+        uint256 share,
+        uint256 multiplierBP
+    ) internal view returns (uint256) {
+        uint256 baseWeight = _getOperatorBaseWeight(nodeOperatorId);
         if (baseWeight == 0 || share == 0) return 0;
-        uint256 weighted = Math.mulDiv(baseWeight, share, MAX_BP);
-        uint256 weightMul = ADDITIONAL_BOND_REGISTRY.getOperatorTierState(nodeOperatorId).weightMultiplier;
-        if (weightMul == MAX_BP) return weighted;
-        return Math.mulDiv(weighted, weightMul, MAX_BP);
+
+        uint256 sharedBaseWeight = Math.mulDiv(baseWeight, share, MAX_BP);
+        return Math.mulDiv(sharedBaseWeight, multiplierBP, MAX_BP);
+    }
+
+    function _getOperatorBaseWeight(uint256 nodeOperatorId) internal view returns (uint256) {
+        return _storage().bondCurveWeight[ACCOUNTING.getBondCurveId(nodeOperatorId)];
+    }
+
+    function _getWeightBoostMultiplierBP(
+        CachedOperatorGroup storage group,
+        uint256 nodeOperatorId
+    ) internal view returns (uint256 multiplierBP) {
+        MetaRegistryStorage storage $ = _storage();
+        multiplierBP = MAX_BP;
+        uint256 providersCount = $.weightBoostProvidersCount;
+        for (uint256 i; i < providersCount; ++i) {
+            WeightBoostProviderEntry storage entry = $.weightBoostProviders[i + 1];
+            if (!entry.enabled) continue;
+
+            IWeightBoostProvider provider = entry.provider;
+            if (entry.mode == WeightBoostProviderMode.NodeOperator) {
+                multiplierBP = Math.mulDiv(multiplierBP, provider.getWeightBoostMultiplierBP(nodeOperatorId), MAX_BP);
+            } else if (entry.mode == WeightBoostProviderMode.GroupMax) {
+                multiplierBP = Math.mulDiv(
+                    multiplierBP,
+                    _getProviderGroupMaxWeightBoostMultiplierBP(provider, group),
+                    MAX_BP
+                );
+            } else {
+                revert InvalidWeightBoostProviderMode();
+            }
+        }
+    }
+
+    function _getWeightBoostMultiplierBP(
+        CachedOperatorGroup storage group,
+        uint256 nodeOperatorId,
+        uint256[] memory groupMaxMultipliersBP,
+        bool[] memory groupMaxMultiplierCached
+    ) internal view returns (uint256 multiplierBP) {
+        MetaRegistryStorage storage $ = _storage();
+        multiplierBP = MAX_BP;
+        uint256 providersCount = groupMaxMultipliersBP.length;
+        for (uint256 i; i < providersCount; ++i) {
+            WeightBoostProviderEntry storage entry = $.weightBoostProviders[i + 1];
+            if (!entry.enabled) continue;
+
+            IWeightBoostProvider provider = entry.provider;
+            if (entry.mode == WeightBoostProviderMode.NodeOperator) {
+                multiplierBP = Math.mulDiv(multiplierBP, provider.getWeightBoostMultiplierBP(nodeOperatorId), MAX_BP);
+            } else if (entry.mode == WeightBoostProviderMode.GroupMax) {
+                if (!groupMaxMultiplierCached[i]) {
+                    groupMaxMultipliersBP[i] = _getProviderGroupMaxWeightBoostMultiplierBP(provider, group);
+                    groupMaxMultiplierCached[i] = true;
+                }
+                multiplierBP = Math.mulDiv(multiplierBP, groupMaxMultipliersBP[i], MAX_BP);
+            } else {
+                revert InvalidWeightBoostProviderMode();
+            }
+        }
+    }
+
+    function _getProviderGroupMaxWeightBoostMultiplierBP(
+        IWeightBoostProvider provider,
+        CachedOperatorGroup storage group
+    ) internal view returns (uint256 maxMultiplierBP) {
+        uint256 subOperatorsCount = group.subNodeOperatorIds.length;
+        if (subOperatorsCount == 0) return MAX_BP;
+
+        maxMultiplierBP = provider.getWeightBoostMultiplierBP(group.subNodeOperatorIds[0]);
+        for (uint256 i = 1; i < subOperatorsCount; ++i) {
+            uint256 candidateMultiplierBP = provider.getWeightBoostMultiplierBP(group.subNodeOperatorIds[i]);
+            if (candidateMultiplierBP > maxMultiplierBP) {
+                maxMultiplierBP = candidateMultiplierBP;
+            }
+        }
     }
 
     /// @dev Returns the cached module address. Reverts if the address was

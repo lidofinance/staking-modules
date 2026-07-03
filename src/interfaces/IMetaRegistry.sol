@@ -6,6 +6,7 @@ pragma solidity 0.8.33;
 import { IAccounting } from "./IAccounting.sol";
 import { ICuratedModule } from "./ICuratedModule.sol";
 import { IAdditionalBondRegistry } from "./IAdditionalBondRegistry.sol";
+import { IWeightBoostProvider } from "./IWeightBoostProvider.sol";
 
 /// @notice Stored operator metadata.
 struct OperatorMetadata {
@@ -31,10 +32,25 @@ interface IMetaRegistry {
         ExternalOperator[] externalOperators;
     }
 
+    enum WeightBoostProviderMode {
+        NodeOperator,
+        GroupMax
+    }
+
+    struct WeightBoostProviderEntry {
+        IWeightBoostProvider provider;
+        WeightBoostProviderMode mode;
+        bool enabled;
+    }
+
     event OperatorGroupCreated(uint256 indexed groupId, OperatorGroup groupInfo);
     event OperatorGroupUpdated(uint256 indexed groupId, OperatorGroup groupInfo);
     event OperatorGroupCleared(uint256 indexed groupId);
     event BondCurveWeightSet(uint256 indexed curveId, uint256 weight);
+    event WeightBoostProviderAdded(address indexed provider, WeightBoostProviderMode mode);
+    event WeightBoostProviderEnabledSet(address indexed provider, bool enabled);
+    event WeightBoostProviderConfigChanged(address indexed provider);
+    event GroupWeightsRefreshed(uint256 indexed groupId);
     event OperatorMetadataSet(uint256 indexed nodeOperatorId, OperatorMetadata metadata);
     event NodeOperatorEffectiveWeightChanged(uint256 indexed nodeOperatorId, uint256 oldWeight, uint256 newWeight);
 
@@ -51,6 +67,11 @@ interface IMetaRegistry {
     error OwnerEditsRestricted();
     error SameBondCurveWeight();
     error InvalidBondCurveWeight();
+    error InvalidWeightBoostProvider();
+    error InvalidWeightBoostProviderMode();
+    error WeightBoostProviderAlreadyAdded();
+    error WeightBoostProviderNotFound();
+    error SameWeightBoostProviderEnabled();
     error ModuleAddressNotCached();
     error OperatorNameTooLong();
     error OperatorDescriptionTooLong();
@@ -75,6 +96,27 @@ interface IMetaRegistry {
 
     /// @notice Tier provider that manages operator bond tiers.
     function ADDITIONAL_BOND_REGISTRY() external view returns (IAdditionalBondRegistry);
+
+    /// @notice Returns configured weight boost providers.
+    function getWeightBoostProviders() external view returns (IWeightBoostProvider[] memory providers);
+
+    /// @notice Returns configured weight boost providers count.
+    function getWeightBoostProvidersCount() external view returns (uint256 count);
+
+    /// @notice Returns configured weight boost provider entry by ID.
+    /// @param providerId Provider ID.
+    /// @return entry Configured boost provider entry.
+    function getWeightBoostProvider(uint256 providerId) external view returns (WeightBoostProviderEntry memory entry);
+
+    /// @notice Returns configured weight boost provider mode by ID.
+    /// @param providerId Provider ID.
+    /// @return mode Provider aggregation mode.
+    function getWeightBoostProviderMode(uint256 providerId) external view returns (WeightBoostProviderMode mode);
+
+    /// @notice Returns configured weight boost provider ID by address.
+    /// @param provider Address to check.
+    /// @return providerId Provider ID, or zero if the address is not a configured provider.
+    function getWeightBoostProviderId(address provider) external view returns (uint256 providerId);
 
     /// @notice Initialize the registry.
     /// @param admin Address to receive DEFAULT_ADMIN_ROLE.
@@ -141,6 +183,21 @@ interface IMetaRegistry {
     /// @param weight Base allocation weight.
     function setBondCurveWeight(uint256 curveId, uint256 weight) external;
 
+    /// @notice Add a weight boost provider.
+    /// @dev Adding a provider is expected to be a rare operation and does not refresh cached weights automatically.
+    ///      A full deposit info update is requested and affected groups must be refreshed asynchronously.
+    ///      Added providers are enabled by default. Providers are append-only and can only be disabled.
+    /// @param provider Boost provider consumed during weight calculation.
+    /// @param mode Provider aggregation mode.
+    function addWeightBoostProvider(IWeightBoostProvider provider, WeightBoostProviderMode mode) external;
+
+    /// @notice Enable or disable a weight boost provider.
+    /// @dev Enabling or disabling a provider does not refresh cached weights automatically.
+    ///      A full deposit info update is requested and affected groups must be refreshed asynchronously.
+    /// @param providerId Boost provider ID to update.
+    /// @param enabled Whether the provider should participate in weight calculations.
+    function setWeightBoostProviderEnabled(uint256 providerId, bool enabled) external;
+
     /// @notice Returns effective weight for the node operator.
     /// @param nodeOperatorId Node operator ID to query.
     /// @return weight Effective allocation weight.
@@ -170,4 +227,19 @@ interface IMetaRegistry {
     /// @notice Trigger the operator weight update routine in the registry.
     /// @param nodeOperatorId Node operator ID to trigger the update for.
     function refreshOperatorWeight(uint256 nodeOperatorId) external;
+
+    /// @notice Trigger the group weight update routine in the registry.
+    /// @param groupId Operator group ID to trigger the update for.
+    /// @dev Use this after asynchronous provider configuration changes such as addWeightBoostProvider(),
+    ///      notifyWeightBoostProviderConfigChanged(), and setWeightBoostProviderEnabled().
+    function refreshGroupWeights(uint256 groupId) external;
+
+    /// @notice Notify the registry that a configured provider changed a node operator boost.
+    /// @param nodeOperatorId Node operator ID whose provider boost changed.
+    function notifyWeightBoostChanged(uint256 nodeOperatorId) external;
+
+    /// @notice Notify the registry that a configured provider changed global boost parameters.
+    /// @dev Requests a full deposit info update when the sender is an enabled provider.
+    ///      Unregistered or disabled providers are ignored since cached weights do not depend on them.
+    function notifyWeightBoostProviderConfigChanged() external;
 }
