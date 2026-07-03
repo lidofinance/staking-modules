@@ -95,8 +95,8 @@ contract DeployMainnet is DeployBase {
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
-            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: Fill in before deployment
-            gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: Fill in before deployment
+            gate.treeRoot = 0x2be2e6ef3183615954ff2eef0a1425133132db440efa6c2b6162906d92057a97; // /artifacts/mainnet/curated/gates/pto/merkle-tree.json
+            gate.treeCid = "bafkreidgr4wofdx5x2efyianenyi3ldq5hxareq6ydj6pjoolpu3izqq2u";
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 8750]); // 87.5% of 4% = 3.5% of the total
@@ -111,8 +111,8 @@ contract DeployMainnet is DeployBase {
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
-            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: Fill in before deployment
-            gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: Fill in before deployment
+            gate.treeRoot = 0x57db3289376dfbe035e073d81d5b297b8f5269fbdfee12643ded0180aac80839; // /artifacts/mainnet/curated/gates/pgo/merkle-tree.json
+            gate.treeCid = "bafkreihicf5dj4rfa42j4prxegrzxfcdkhwzgvgqjhuntgytdvffxkhjim";
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
@@ -161,8 +161,8 @@ contract DeployMainnet is DeployBase {
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
-            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: Fill in before deployment
-            gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: Fill in before deployment
+            gate.treeRoot = 0xfda6c221ae0f44dfa57c64324ebbd0c468bb402cbcc20326ad65a18e96a3df0c; // /artifacts/mainnet/curated/gates/iodvtc/merkle-tree.json
+            gate.treeCid = "bafkreigm3mqlqdto2ggxpq22w7tblfbx4p4o4a3gudf2lkfduwxeh2m62e";
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 8750]); // 87.5% of 4% = 3.5% of the total
@@ -177,8 +177,8 @@ contract DeployMainnet is DeployBase {
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
-            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: Fill in before deployment
-            gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: Fill in before deployment
+            gate.treeRoot = 0x1111111111111111111111111111111111111111111111111111111111111111; // Unusable root. Effectively means that the gate is disabled until the real root is set.
+            gate.treeCid = "QmU4cnyaKWgMVCZVLiuQaqu6yGXahjzi4F1Vcnq2SXBBmT"; // Points to the "null" json file
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
