@@ -462,7 +462,10 @@ contract DeploymentHelpers is Test {
 
     function updateCuratedDeployParams(CuratedDeployParams storage dst, string memory deployConfigPath) internal {
         string memory config = vm.readFile(deployConfigPath);
-        CuratedDeployParams memory src = abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (CuratedDeployParams));
+        CuratedDeployParams memory src = abi.decode(
+            vm.parseJsonBytes(config, ".CuratedDeployParams"),
+            (CuratedDeployParams)
+        );
         // copy every value separately to avoid `Unimplemented feature` error from solc when copying memory array of structs into storage
         // Lido addresses
         dst.lidoLocatorAddress = src.lidoLocatorAddress;
