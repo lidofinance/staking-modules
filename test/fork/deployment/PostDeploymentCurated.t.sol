@@ -21,7 +21,6 @@ import { ProxySlotUtils } from "../../helpers/ProxySlotUtils.sol";
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     CuratedDeployParams internal deployParams;
     CuratedGateConfig[] internal deployGateConfigs;
-    uint256 adminsCount;
 
     function setUp() public {
         Env memory env = envVars();
@@ -31,7 +30,6 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         string memory config = vm.readFile(env.DEPLOY_CONFIG);
         // mutates storage variable
         updateCuratedDeployParams(deployParams, env.DEPLOY_CONFIG);
-        adminsCount = block.chainid == 1 ? 1 : 2;
     }
 }
 
@@ -92,8 +90,7 @@ contract MetaRegistryDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles_onlyFull() public view {
-        assertEq(metaRegistry.getRoleMemberCount(metaRegistry.DEFAULT_ADMIN_ROLE()), adminsCount);
-        assertTrue(metaRegistry.hasRole(metaRegistry.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
+        _checkAdminRole(address(metaRegistry), deployParams.aragonAgent, deployParams.secondAdminAddress);
 
         bytes32 setterRole = metaRegistry.SET_OPERATOR_INFO_ROLE();
         uint256 gatesCount = curatedGates.length;
@@ -334,8 +331,7 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
         for (uint256 i = 0; i < gatesCount; ++i) {
             {
                 CuratedGate gate = CuratedGate(curatedGates[i]);
-                assertEq(gate.getRoleMemberCount(gate.DEFAULT_ADMIN_ROLE()), adminsCount);
-                assertTrue(gate.hasRole(gate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent), "missing aragon admin");
+                _checkAdminRole(address(gate), deployParams.aragonAgent, deployParams.secondAdminAddress);
 
                 // Operational roles
                 assertTrue(
@@ -410,13 +406,11 @@ contract CuratedGateFactoryDeploymentTest is DeploymentBaseTest {
 
 contract CircuitBreakerDeploymentTest is DeploymentBaseTest {
     function test_configuration_afterVote() public {
-        vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
         address pauser = circuitBreaker.getPauser(address(module));
         assertEq(pauser, deployParams.circuitBreakerPauser, "pauser");
     }
 
     function test_pausables_afterVote() public {
-        vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
         assertEq(circuitBreaker.getPauser(address(module)), deployParams.circuitBreakerPauser, "module pauser");
         assertEq(circuitBreaker.getPauser(address(accounting)), deployParams.circuitBreakerPauser, "accounting pauser");
         assertEq(circuitBreaker.getPauser(address(oracle)), deployParams.circuitBreakerPauser, "oracle pauser");
@@ -425,7 +419,6 @@ contract CircuitBreakerDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles() public {
-        vm.skip(!_isCircuitBreakerDeployed(address(circuitBreaker)), "CircuitBreaker is not deployed");
         assertTrue(
             curatedModule.hasRole(curatedModule.PAUSE_ROLE(), address(circuitBreaker)),
             "curated module pause role"

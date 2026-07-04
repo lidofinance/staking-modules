@@ -1,5 +1,5 @@
 # IBondLock
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IBondLock.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IBondLock.sol)
 
 
 ## Functions
@@ -74,6 +74,27 @@ function getLockedBond(uint256 nodeOperatorId) external view returns (uint256);
 |`<none>`|`uint256`|Amount of the actual locked bond|
 
 
+### getBondLockNonce
+
+Get bond lock nonce for the given Node Operator
+
+
+```solidity
+function getBondLockNonce(uint256 nodeOperatorId) external view returns (uint256);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Bond lock nonce|
+
+
 ### isLockExpired
 
 Check if the bond lock for the given Node Operator has expired
@@ -92,7 +113,7 @@ function isLockExpired(uint256 nodeOperatorId) external view returns (bool);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`bool`|True if the bond lock has expired or there is no lock, false otherwise|
+|`<none>`|`bool`|True if the bond lock has expired, false otherwise|
 
 
 ## Events
@@ -112,6 +133,12 @@ event BondLockRemoved(uint256 indexed nodeOperatorId);
 
 ```solidity
 event BondLockPeriodChanged(uint256 period);
+```
+
+### BondLockNonceIncremented
+
+```solidity
+event BondLockNonceIncremented(uint256 indexed nodeOperatorId, uint256 newNonce);
 ```
 
 ## Errors

@@ -1,5 +1,5 @@
 # IParametersRegistry
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IParametersRegistry.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IParametersRegistry.sol)
 
 
 ## Functions
@@ -219,7 +219,7 @@ function setDefaultKeyRemovalCharge(uint256 keyRemovalCharge) external;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`keyRemovalCharge`|`uint256`|value to be set as default for the key removal charge|
+|`keyRemovalCharge`|`uint256`|Value to be set as default for the key removal charge|
 
 
 ### setDefaultGeneralDelayedPenaltyAdditionalFine
@@ -234,7 +234,7 @@ function setDefaultGeneralDelayedPenaltyAdditionalFine(uint256 fine) external;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`fine`|`uint256`|value to be set as default for the general delayed penalty additional fine|
+|`fine`|`uint256`|Value to be set as default for the general delayed penalty additional fine|
 
 
 ### setDefaultKeysLimit
@@ -249,7 +249,7 @@ function setDefaultKeysLimit(uint256 limit) external;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`limit`|`uint256`|value to be set as default for the keys limit|
+|`limit`|`uint256`|Value to be set as default for the keys limit|
 
 
 ### setDefaultQueueConfig
@@ -280,7 +280,7 @@ function setDefaultRewardShare(uint256 share) external;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`share`|`uint256`|value to be set as default for the reward share|
+|`share`|`uint256`|Value to be set as default for the reward share|
 
 
 ### setDefaultPerformanceLeeway
@@ -295,7 +295,7 @@ function setDefaultPerformanceLeeway(uint256 leeway) external;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`leeway`|`uint256`|value to be set as default for the performance leeway|
+|`leeway`|`uint256`|Value to be set as default for the performance leeway|
 
 
 ### setDefaultStrikesParams
@@ -327,7 +327,7 @@ function setDefaultBadPerformancePenalty(uint256 penalty) external;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`penalty`|`uint256`|value to be set as default for the bad performance penalty|
+|`penalty`|`uint256`|Value to be set as default for the bad performance penalty|
 
 
 ### setDefaultPerformanceCoefficients
@@ -343,9 +343,9 @@ function setDefaultPerformanceCoefficients(uint256 attestationsWeight, uint256 b
 
 |Name|Type|Description|
 |----|----|-----------|
-|`attestationsWeight`|`uint256`|value to be set as default for the attestations effectiveness weight|
-|`blocksWeight`|`uint256`|value to be set as default for block proposals effectiveness weight|
-|`syncWeight`|`uint256`|value to be set as default for sync participation effectiveness weight|
+|`attestationsWeight`|`uint256`|Value to be set as default for the attestations effectiveness weight|
+|`blocksWeight`|`uint256`|Value to be set as default for block proposals effectiveness weight|
+|`syncWeight`|`uint256`|Value to be set as default for sync participation effectiveness weight|
 
 
 ### setDefaultAllowedExitDelay
@@ -360,7 +360,7 @@ function setDefaultAllowedExitDelay(uint256 delay) external;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`delay`|`uint256`|value to be set as default for the allowed exit delay|
+|`delay`|`uint256`|Value to be set as default for the allowed exit delay|
 
 
 ### setDefaultExitDelayFee
@@ -391,7 +391,7 @@ function setDefaultMaxElWithdrawalRequestFee(uint256 fee) external;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`fee`|`uint256`|value to be set as default for the max EL withdrawal request fee|
+|`fee`|`uint256`|Value to be set as default for the max EL withdrawal request fee|
 
 
 ### setKeyRemovalCharge
@@ -535,7 +535,7 @@ function unsetKeysLimit(uint256 curveId) external;
 
 ### getKeysLimit
 
-Get keys limit by the curveId. A limit indicates the maximal amount of the non-exited keys Node Operator can upload
+Get keys limit by the curveId. A limit indicates the maximal amount of the non-withdrawn keys Node Operator can upload
 
 `defaultKeysLimit` is returned if the value is not set for the given curveId.
 
@@ -919,7 +919,7 @@ function setAllowedExitDelay(uint256 curveId, uint256 delay) external;
 |Name|Type|Description|
 |----|----|-----------|
 |`curveId`|`uint256`|Curve Id to associate allowed exit delay with|
-|`delay`|`uint256`|allowed exit delay|
+|`delay`|`uint256`|Allowed exit delay|
 
 
 ### unsetAllowedExitDelay

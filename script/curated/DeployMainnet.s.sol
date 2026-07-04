@@ -53,7 +53,7 @@ contract DeployMainnet is DeployBase {
         config.chargePenaltyRecipient = 0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c; // locator.treasury()
 
         // Module
-        config.moduleType = "curated-onchain-v2"; // TODO reconsider
+        config.moduleType = "curated-onchain-v2";
         config.generalDelayedPenaltyReporter = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
 
         // ParametersRegistry
@@ -78,11 +78,12 @@ contract DeployMainnet is DeployBase {
 
         // Curated gates
         // Professional Operator Gate
+        // This gate is deployed "empty" since there are no plans to onboard new operators to CMv2 in the nearest future. The gate will be populated later by the CMC if needed.
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
             gate.name = "Professional Operator Gate";
-            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
-            gate.treeCid = "TODO: ipfs-cid-cohort-a";
+            gate.treeRoot = 0x1111111111111111111111111111111111111111111111111111111111111111; // Unusable root. Effectively means that the gate is disabled until the real root is set.
+            gate.treeCid = "QmU4cnyaKWgMVCZVLiuQaqu6yGXahjzi4F1Vcnq2SXBBmT"; // Points to the "null" json file
             gate.params.metaRegistryBondCurveWeight = _m(50000);
             gate.params.keysLimit = _m(80);
         }
@@ -94,8 +95,8 @@ contract DeployMainnet is DeployBase {
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
-            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
-            gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
+            gate.treeRoot = 0x2be2e6ef3183615954ff2eef0a1425133132db440efa6c2b6162906d92057a97; // /artifacts/mainnet/curated/gates/pto/merkle-tree.json
+            gate.treeCid = "bafkreidgr4wofdx5x2efyianenyi3ldq5hxareq6ydj6pjoolpu3izqq2u";
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 8750]); // 87.5% of 4% = 3.5% of the total
@@ -110,8 +111,8 @@ contract DeployMainnet is DeployBase {
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
-            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
-            gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
+            gate.treeRoot = 0x57db3289376dfbe035e073d81d5b297b8f5269fbdfee12643ded0180aac80839; // /artifacts/mainnet/curated/gates/pgo/merkle-tree.json
+            gate.treeCid = "bafkreihicf5dj4rfa42j4prxegrzxfcdkhwzgvgqjhuntgytdvffxkhjim";
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
@@ -120,14 +121,15 @@ contract DeployMainnet is DeployBase {
         }
 
         // Decentralization Operator Gate
+        // This gate is deployed "empty" since the participants list will not be available at the time of deployment. The gate will be populated later by the CMC.
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
             gate.name = "Decentralization Operator Gate";
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
-            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
-            gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
+            gate.treeRoot = 0x1111111111111111111111111111111111111111111111111111111111111111; // Unusable root. Effectively means that the gate is disabled until the real root is set.
+            gate.treeCid = "QmU4cnyaKWgMVCZVLiuQaqu6yGXahjzi4F1Vcnq2SXBBmT"; // Points to the "null" json file
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
@@ -136,14 +138,15 @@ contract DeployMainnet is DeployBase {
         }
 
         // Extra Effort Operator Gate
+        // This gate is deployed "empty" since the participants list will not be available at the time of deployment. The gate will be populated later by the CMC.
         {
             CuratedGateConfig storage gate = config.curatedGates.push();
             gate.name = "Extra Effort Operator Gate";
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
-            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
-            gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
+            gate.treeRoot = 0x1111111111111111111111111111111111111111111111111111111111111111; // Unusable root. Effectively means that the gate is disabled until the real root is set.
+            gate.treeCid = "QmU4cnyaKWgMVCZVLiuQaqu6yGXahjzi4F1Vcnq2SXBBmT"; // Points to the "null" json file
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total
@@ -158,8 +161,8 @@ contract DeployMainnet is DeployBase {
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
-            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
-            gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
+            gate.treeRoot = 0xfda6c221ae0f44dfa57c64324ebbd0c468bb402cbcc20326ad65a18e96a3df0c; // /artifacts/mainnet/curated/gates/iodvtc/merkle-tree.json
+            gate.treeCid = "bafkreigm3mqlqdto2ggxpq22w7tblfbx4p4o4a3gudf2lkfduwxeh2m62e";
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 8750]); // 87.5% of 4% = 3.5% of the total
@@ -174,8 +177,8 @@ contract DeployMainnet is DeployBase {
             gate.bondCurve.push([1, 11 ether]);
             gate.bondCurve.push([2, 0.1 ether]);
             gate.bondCurve.push([19, 0.7 ether]);
-            gate.treeRoot = bytes32(uint256(0xaaaabbbb)); // TODO: derive from final tree
-            gate.treeCid = "TODO: ipfs-cid-cohort-a"; // TODO: derive from final tree
+            gate.treeRoot = 0x1111111111111111111111111111111111111111111111111111111111111111; // Unusable root. Effectively means that the gate is disabled until the real root is set.
+            gate.treeCid = "QmU4cnyaKWgMVCZVLiuQaqu6yGXahjzi4F1Vcnq2SXBBmT"; // Points to the "null" json file
             gate.params.generalDelayedPenaltyAdditionalFine = _m(0.05 ether);
             gate.params.keysLimit = _m(500);
             gate.params.rewardShareData.push([1, 10000]); // 100% of 4% = 4% of the total

@@ -10,13 +10,11 @@ import { CSMIntegrationBase } from "../../common/ModuleTypeBase.sol";
 contract InvariantsBase is CSMIntegrationBase {
     uint256 adminsCount;
     DeployParams internal deployParams;
-    bool internal isUpgradeFlow;
 
     function setUp() public {
         Env memory env = envVars();
         _setUpModule();
         deployParams = parseDeployParams(env.DEPLOY_CONFIG);
-        isUpgradeFlow = env.VOTE_PREV_BLOCK != 0;
         adminsCount = block.chainid == 1 ? 1 : 2;
     }
 }
@@ -34,12 +32,7 @@ contract CSModuleInvariants is InvariantsBase {
         assertEq(module.getRoleMemberCount(module.DEFAULT_ADMIN_ROLE()), adminsCount, "default admin");
         assertTrue(module.hasRole(module.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent), "default admin address");
 
-        assertTrue(module.hasRole(module.PAUSE_ROLE(), deployParams.resealManager), "pause address");
-        _assertCircuitBreakerPauseRoleState(
-            address(module),
-            address(circuitBreaker),
-            _expectedPauseRoleMembersWithoutCb(isUpgradeFlow)
-        );
+        _checkPauseRole(address(module), deployParams.resealManager, address(circuitBreaker));
 
         assertEq(module.getRoleMemberCount(module.RESUME_ROLE()), 1, "resume");
         assertTrue(module.hasRole(module.RESUME_ROLE(), deployParams.resealManager), "resume address");
@@ -112,12 +105,7 @@ contract AccountingInvariants is InvariantsBase {
             "default admin address"
         );
 
-        assertTrue(accounting.hasRole(accounting.PAUSE_ROLE(), deployParams.resealManager), "pause address");
-        _assertCircuitBreakerPauseRoleState(
-            address(accounting),
-            address(circuitBreaker),
-            _expectedPauseRoleMembersWithoutCb(isUpgradeFlow)
-        );
+        _checkPauseRole(address(accounting), deployParams.resealManager, address(circuitBreaker));
 
         assertEq(accounting.getRoleMemberCount(accounting.RESUME_ROLE()), 1, "resume");
         assertTrue(accounting.hasRole(accounting.RESUME_ROLE(), deployParams.resealManager), "resume address");
@@ -168,12 +156,7 @@ contract FeeOracleInvariant is InvariantsBase {
 
         assertEq(oracle.getRoleMemberCount(oracle.SUBMIT_DATA_ROLE()), 0, "submit data");
 
-        assertTrue(oracle.hasRole(oracle.PAUSE_ROLE(), deployParams.resealManager), "pause address");
-        _assertCircuitBreakerPauseRoleState(
-            address(oracle),
-            address(circuitBreaker),
-            _expectedPauseRoleMembersWithoutCb(isUpgradeFlow)
-        );
+        _checkPauseRole(address(oracle), deployParams.resealManager, address(circuitBreaker));
 
         assertEq(oracle.getRoleMemberCount(oracle.RESUME_ROLE()), 1, "resume");
         assertTrue(oracle.hasRole(oracle.RESUME_ROLE(), deployParams.resealManager), "resume address");
@@ -196,8 +179,7 @@ contract VerifierInvariant is InvariantsBase {
         assertEq(verifier.getRoleMemberCount(verifier.DEFAULT_ADMIN_ROLE()), adminsCount, "default admin");
         assertTrue(verifier.hasRole(verifier.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent), "default admin address");
 
-        assertTrue(verifier.hasRole(verifier.PAUSE_ROLE(), deployParams.resealManager), "pause address");
-        _assertCircuitBreakerPauseRoleState(address(verifier), address(circuitBreaker), 1);
+        _checkPauseRole(address(verifier), deployParams.resealManager, address(circuitBreaker));
 
         assertEq(verifier.getRoleMemberCount(verifier.RESUME_ROLE()), 1, "resume");
         assertTrue(verifier.hasRole(verifier.RESUME_ROLE(), deployParams.resealManager), "resume address");
@@ -209,8 +191,7 @@ contract EjectorInvariant is InvariantsBase {
         assertEq(ejector.getRoleMemberCount(ejector.DEFAULT_ADMIN_ROLE()), adminsCount, "default admin");
         assertTrue(ejector.hasRole(ejector.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent), "default admin address");
 
-        assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager), "pause address");
-        _assertCircuitBreakerPauseRoleState(address(ejector), address(circuitBreaker), 1);
+        _checkPauseRole(address(ejector), deployParams.resealManager, address(circuitBreaker));
 
         assertEq(ejector.getRoleMemberCount(ejector.RESUME_ROLE()), 1, "resume");
         assertTrue(ejector.hasRole(ejector.RESUME_ROLE(), deployParams.resealManager), "resume address");

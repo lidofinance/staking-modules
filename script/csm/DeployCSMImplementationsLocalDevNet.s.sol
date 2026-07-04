@@ -24,7 +24,6 @@ contract DeployCSMImplementationsLocalDevNet is DeployCSMImplementationsBase, De
         gitRef = _gitRef;
         string memory deploymentConfigContent = vm.readFile(deploymentConfigPath);
         DeploymentConfig memory deploymentConfig = parseDeploymentConfig(deploymentConfigContent);
-        legacyGateSeal = vm.parseJsonAddress(deploymentConfigContent, ".GateSeal");
 
         csm = CSModule(deploymentConfig.csm);
         earlyAdoption = deploymentConfig.earlyAdoption;

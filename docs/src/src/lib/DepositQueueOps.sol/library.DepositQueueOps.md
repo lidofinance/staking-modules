@@ -1,8 +1,22 @@
 # DepositQueueOps
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/lib/DepositQueueOps.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/lib/DepositQueueOps.sol)
+
+External deployment-linked library used by CSModule.
 
 
 ## Functions
+### obtainDepositData
+
+
+```solidity
+function obtainDepositData(
+    ModuleLinearStorage.BaseModuleStorage storage $,
+    TopUpQueueLib.Queue storage topUpQueue,
+    uint256 depositsCount,
+    uint256 queueLowestPriority
+) external returns (bytes memory publicKeys, bytes memory signatures);
+```
+
 ### cleanDepositQueue
 
 
@@ -39,6 +53,31 @@ function _clean(
 ) private returns (uint256 removed, uint256 lastRemovedAtDepth, uint256 visited, bool reachedOutOfQueue);
 ```
 
+### _enqueueTopUpKeys
+
+
+```solidity
+function _enqueueTopUpKeys(
+    TopUpQueueLib.Queue storage topUpQueue,
+    uint32 noId,
+    uint32 keyIndexBase,
+    uint32 keysCount
+) private;
+```
+
+### _loadAndAccountDeposits
+
+
+```solidity
+function _loadAndAccountDeposits(
+    TopUpQueueLib.Queue storage topUpQueue,
+    NodeOperator storage no,
+    uint32 noId,
+    uint32 keysCount,
+    ObtainDepositDataContext memory ctx
+) private;
+```
+
 ### _enqueueNodeOperatorKeys
 
 
@@ -50,5 +89,16 @@ function _enqueueNodeOperatorKeys(
     uint256 queuePriority,
     uint32 count
 ) private;
+```
+
+## Structs
+### ObtainDepositDataContext
+
+```solidity
+struct ObtainDepositDataContext {
+    uint256 loadedKeysCount;
+    bytes publicKeys;
+    bytes signatures;
+}
 ```
 

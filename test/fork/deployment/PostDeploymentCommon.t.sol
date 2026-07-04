@@ -22,9 +22,7 @@ import { Versioned } from "../../../src/lib/utils/Versioned.sol";
 
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     CommonDeployParams internal deployParams;
-    uint256 adminsCount;
     uint256 expectedModuleScratchNonce;
-    bool internal isUpgradeFlow;
 
     function setUp() public {
         Env memory env = envVars();
@@ -32,8 +30,6 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         initializeFromDeployment();
         string memory config = vm.readFile(env.DEPLOY_CONFIG);
         deployParams = parseCommonDeployParams(config);
-        isUpgradeFlow = env.VOTE_PREV_BLOCK != 0;
-        adminsCount = block.chainid == 1 ? 1 : 2;
 
         if (moduleType == ModuleType.Curated) {
             // Curated deployment sets bond-curve weights once per gate. Each set triggers
@@ -65,18 +61,12 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles_onlyFull() public view {
-        assertTrue(module.hasRole(module.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
-        assertTrue(module.getRoleMemberCount(module.DEFAULT_ADMIN_ROLE()) == adminsCount);
+        _checkAdminRole(address(module), deployParams.aragonAgent, deployParams.secondAdminAddress);
 
         assertTrue(module.hasRole(module.STAKING_ROUTER_ROLE(), locator.stakingRouter()));
         assertEq(module.getRoleMemberCount(module.STAKING_ROUTER_ROLE()), 1);
 
-        assertTrue(module.hasRole(module.PAUSE_ROLE(), deployParams.resealManager));
-        _assertCircuitBreakerPauseRoleState(
-            address(module),
-            address(circuitBreaker),
-            _expectedPauseRoleMembersWithoutCb(isUpgradeFlow)
-        );
+        _checkPauseRole(address(module), deployParams.resealManager, address(circuitBreaker));
 
         assertTrue(module.hasRole(module.RESUME_ROLE(), deployParams.resealManager));
         assertEq(module.getRoleMemberCount(module.RESUME_ROLE()), 1);
@@ -149,15 +139,9 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles_onlyFull() public view {
-        assertTrue(accounting.hasRole(accounting.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
-        assertEq(accounting.getRoleMemberCount(accounting.DEFAULT_ADMIN_ROLE()), adminsCount);
+        _checkAdminRole(address(accounting), deployParams.aragonAgent, deployParams.secondAdminAddress);
 
-        assertTrue(accounting.hasRole(accounting.PAUSE_ROLE(), deployParams.resealManager));
-        _assertCircuitBreakerPauseRoleState(
-            address(accounting),
-            address(circuitBreaker),
-            _expectedPauseRoleMembersWithoutCb(isUpgradeFlow)
-        );
+        _checkPauseRole(address(accounting), deployParams.resealManager, address(circuitBreaker));
 
         assertTrue(accounting.hasRole(accounting.RESUME_ROLE(), deployParams.resealManager));
         assertEq(accounting.getRoleMemberCount(accounting.RESUME_ROLE()), 1);
@@ -233,8 +217,7 @@ contract FeeDistributorDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles_onlyFull() public view {
-        assertTrue(feeDistributor.hasRole(feeDistributor.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
-        assertEq(feeDistributor.getRoleMemberCount(feeDistributor.DEFAULT_ADMIN_ROLE()), adminsCount);
+        _checkAdminRole(address(feeDistributor), deployParams.aragonAgent, deployParams.secondAdminAddress);
 
         assertEq(feeDistributor.getRoleMemberCount(feeDistributor.RECOVERER_ROLE()), 0);
     }
@@ -298,15 +281,9 @@ contract FeeOracleDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles_onlyFull() public view {
-        assertTrue(oracle.hasRole(oracle.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
-        assertEq(oracle.getRoleMemberCount(oracle.DEFAULT_ADMIN_ROLE()), adminsCount);
+        _checkAdminRole(address(oracle), deployParams.aragonAgent, deployParams.secondAdminAddress);
 
-        assertTrue(oracle.hasRole(oracle.PAUSE_ROLE(), deployParams.resealManager));
-        _assertCircuitBreakerPauseRoleState(
-            address(oracle),
-            address(circuitBreaker),
-            _expectedPauseRoleMembersWithoutCb(isUpgradeFlow)
-        );
+        _checkPauseRole(address(oracle), deployParams.resealManager, address(circuitBreaker));
 
         assertTrue(oracle.hasRole(oracle.RESUME_ROLE(), deployParams.resealManager));
         assertEq(oracle.getRoleMemberCount(oracle.RESUME_ROLE()), 1);
@@ -375,8 +352,7 @@ contract HashConsensusDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles() public {
-        assertTrue(hashConsensus.hasRole(hashConsensus.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
-        assertEq(hashConsensus.getRoleMemberCount(hashConsensus.DEFAULT_ADMIN_ROLE()), adminsCount);
+        _checkAdminRole(address(hashConsensus), deployParams.aragonAgent, deployParams.secondAdminAddress);
 
         assertEq(hashConsensus.getRoleMemberCount(hashConsensus.DISABLE_CONSENSUS_ROLE()), 0);
 
@@ -428,14 +404,9 @@ contract VerifierDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles() public view {
-        assertTrue(verifier.hasRole(verifier.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
-        assertEq(verifier.getRoleMemberCount(verifier.DEFAULT_ADMIN_ROLE()), adminsCount);
-        if (deployParams.secondAdminAddress != address(0)) {
-            assertTrue(verifier.hasRole(verifier.DEFAULT_ADMIN_ROLE(), deployParams.secondAdminAddress));
-        }
+        _checkAdminRole(address(verifier), deployParams.aragonAgent, deployParams.secondAdminAddress);
 
-        assertTrue(verifier.hasRole(verifier.PAUSE_ROLE(), deployParams.resealManager));
-        _assertCircuitBreakerPauseRoleState(address(verifier), address(circuitBreaker), 1);
+        _checkPauseRole(address(verifier), deployParams.resealManager, address(circuitBreaker));
 
         assertTrue(verifier.hasRole(verifier.RESUME_ROLE(), deployParams.resealManager));
         assertEq(verifier.getRoleMemberCount(verifier.RESUME_ROLE()), 1);
@@ -462,8 +433,7 @@ contract ValidatorStrikesDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles() public view {
-        assertTrue(strikes.hasRole(strikes.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
-        assertEq(strikes.getRoleMemberCount(strikes.DEFAULT_ADMIN_ROLE()), adminsCount);
+        _checkAdminRole(address(strikes), deployParams.aragonAgent, deployParams.secondAdminAddress);
     }
 
     function test_initialization_onlyFull() public {
@@ -500,14 +470,9 @@ contract EjectorDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles() public view {
-        assertTrue(ejector.hasRole(ejector.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
-        assertEq(ejector.getRoleMemberCount(ejector.DEFAULT_ADMIN_ROLE()), adminsCount);
-        if (deployParams.secondAdminAddress != address(0)) {
-            assertTrue(ejector.hasRole(ejector.DEFAULT_ADMIN_ROLE(), deployParams.secondAdminAddress));
-        }
+        _checkAdminRole(address(ejector), deployParams.aragonAgent, deployParams.secondAdminAddress);
 
-        assertTrue(ejector.hasRole(ejector.PAUSE_ROLE(), deployParams.resealManager));
-        _assertCircuitBreakerPauseRoleState(address(ejector), address(circuitBreaker), 1);
+        _checkPauseRole(address(ejector), deployParams.resealManager, address(circuitBreaker));
 
         assertTrue(ejector.hasRole(ejector.RESUME_ROLE(), deployParams.resealManager));
         assertEq(ejector.getRoleMemberCount(ejector.RESUME_ROLE()), 1);
@@ -552,8 +517,7 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles_onlyFull() public view {
-        assertTrue(parametersRegistry.hasRole(parametersRegistry.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
-        assertEq(parametersRegistry.getRoleMemberCount(parametersRegistry.DEFAULT_ADMIN_ROLE()), adminsCount);
+        _checkAdminRole(address(parametersRegistry), deployParams.aragonAgent, deployParams.secondAdminAddress);
         assertTrue(
             parametersRegistry.hasRole(
                 parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(),
@@ -564,6 +528,7 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
             parametersRegistry.getRoleMemberCount(parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE()),
             1
         );
+        assertEq(parametersRegistry.getRoleMemberCount(parametersRegistry.MANAGE_CURVE_PARAMETERS_ROLE()), 0);
         assertEq(parametersRegistry.getRoleMemberCount(parametersRegistry.MANAGE_KEYS_LIMIT_ROLE()), 0);
         assertEq(parametersRegistry.getRoleMemberCount(parametersRegistry.MANAGE_QUEUE_CONFIG_ROLE()), 0);
         assertEq(parametersRegistry.getRoleMemberCount(parametersRegistry.MANAGE_PERFORMANCE_PARAMETERS_ROLE()), 0);

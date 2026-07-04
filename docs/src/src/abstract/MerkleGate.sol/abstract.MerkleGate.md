@@ -1,8 +1,8 @@
 # MerkleGate
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/abstract/MerkleGate.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/abstract/MerkleGate.sol)
 
 **Inherits:**
-[IMerkleGate](/src/interfaces/IMerkleGate.sol/interface.IMerkleGate.md), AccessControlEnumerableUpgradeable, [PausableWithRoles](/src/abstract/PausableWithRoles.sol/abstract.PausableWithRoles.md), [AssetRecoverer](/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
+[IMerkleGate](/src/interfaces/IMerkleGate.sol/interface.IMerkleGate.md), [NamedUpgradeable](/src/abstract/NamedUpgradeable.sol/abstract.NamedUpgradeable.md), AccessControlEnumerableUpgradeable, [PausableWithRoles](/src/abstract/PausableWithRoles.sol/abstract.PausableWithRoles.md), [AssetRecoverer](/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
 
 Shared Merkle-based gate logic for gated node-operator flows.
 
@@ -60,8 +60,23 @@ function setTreeParams(bytes32 treeRoot_, string calldata treeCid_) external onl
 
 |Name|Type|Description|
 |----|----|-----------|
-|`treeRoot_`|`bytes32`||
-|`treeCid_`|`string`||
+|`treeRoot_`|`bytes32`|New root|
+|`treeCid_`|`string`|New CID|
+
+
+### setName
+
+Update the human-readable name
+
+
+```solidity
+function setName(string calldata name) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`name`|`string`|New name|
 
 
 ### getInitializedVersion
@@ -79,10 +94,13 @@ Initialize the gate instance.
 
 
 ```solidity
-function initialize(uint256 curveId_, bytes32 treeRoot_, string calldata treeCid_, address admin)
-    public
-    virtual
-    onlyInitializing;
+function initialize(
+    uint256 curveId_,
+    bytes32 treeRoot_,
+    string calldata treeCid_,
+    string calldata name_,
+    address admin
+) public virtual onlyInitializing;
 ```
 **Parameters**
 
@@ -91,6 +109,7 @@ function initialize(uint256 curveId_, bytes32 treeRoot_, string calldata treeCid
 |`curveId_`|`uint256`||
 |`treeRoot_`|`bytes32`||
 |`treeCid_`|`string`||
+|`name_`|`string`||
 |`admin`|`address`|Address to be granted DEFAULT_ADMIN_ROLE.|
 
 

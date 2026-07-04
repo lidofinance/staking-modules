@@ -199,20 +199,20 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     }
 
     /// @inheritdoc IMetaRegistry
-    function getNodeOperatorWeight(uint256 noId) external view returns (uint256 weight) {
-        weight = _storage().effectiveWeightCache.operatorEffectiveWeight[noId];
+    function getNodeOperatorWeight(uint256 nodeOperatorId) external view returns (uint256 weight) {
+        weight = _storage().effectiveWeightCache.operatorEffectiveWeight[nodeOperatorId];
     }
 
     /// @inheritdoc IMetaRegistry
     function getNodeOperatorWeightAndExternalStake(
-        uint256 noId
+        uint256 nodeOperatorId
     ) external view returns (uint256 weight, uint256 externalStake) {
         MetaRegistryStorage storage $ = _storage();
-        uint256 groupId = $.groupIndex.groupIdByOperatorId[noId];
+        uint256 groupId = $.groupIndex.groupIdByOperatorId[nodeOperatorId];
         // If Node Operator is not in any group, it has no weight and external stake.
         if (groupId == NO_GROUP_ID) return (0, 0);
 
-        weight = $.effectiveWeightCache.operatorEffectiveWeight[noId];
+        weight = $.effectiveWeightCache.operatorEffectiveWeight[nodeOperatorId];
         // If the operator has no weight, it can't have external stake either, so we can skip the calculations.
         if (weight == 0) return (0, 0);
 

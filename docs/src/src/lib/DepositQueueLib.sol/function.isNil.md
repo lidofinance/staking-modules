@@ -1,5 +1,5 @@
 # isNil
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/lib/DepositQueueLib.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/lib/DepositQueueLib.sol)
 
 Batch of the operator with index 0, with no keys in it and the next Batch' index 0 is meaningless.
 

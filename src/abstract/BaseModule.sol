@@ -380,8 +380,7 @@ abstract contract BaseModule is
     /// @inheritdoc IStakingModule
     function reportValidatorExitDelay(
         uint256 nodeOperatorId,
-        uint256,
-        /* proofSlotTimestamp */
+        uint256 proofSlotTimestamp, // solhint-disable-line no-unused-vars
         bytes calldata publicKey,
         uint256 eligibleToExitInSec
     ) external {
@@ -608,8 +607,7 @@ abstract contract BaseModule is
     /// @inheritdoc IStakingModule
     function isValidatorExitDelayPenaltyApplicable(
         uint256 nodeOperatorId,
-        uint256,
-        /* proofSlotTimestamp */
+        uint256 proofSlotTimestamp, // solhint-disable-line no-unused-vars
         bytes calldata publicKey,
         uint256 eligibleToExitInSec
     ) external view returns (bool) {
@@ -643,6 +641,7 @@ abstract contract BaseModule is
         return NodeOperatorOps.getKeyConfirmedBalances(_baseStorage(), nodeOperatorId, startIndex, keysCount);
     }
 
+    /// @inheritdoc IStakingModuleV2
     function getTotalModuleStake() public view override returns (uint256) {
         return StakeTracker.getTotalModuleStake(_baseStorage());
     }

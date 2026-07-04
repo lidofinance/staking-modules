@@ -1,8 +1,20 @@
 # IStakingModuleV2
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IStakingModule.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IStakingModule.sol)
 
 
 ## Functions
+### getTotalModuleStake
+
+Returns the total tracked stake of the module in wei.
+
+This is the sum of the activation base for active validators and tracked extra stake.
+The tracked extra is intentionally reduced on withdrawal reporting rather than on intermediate validator balance decreases.
+
+
+```solidity
+function getTotalModuleStake() external view returns (uint256 totalModuleStakeWei);
+```
+
 ### allocateDeposits
 
 Validates that provided keys belong to the corresponding operators in the module and calculates deposit allocations for top-up
@@ -40,26 +52,5 @@ function allocateDeposits(
 |Name|Type|Description|
 |----|----|-----------|
 |`allocations`|`uint256[]`|Amount to deposit to each key|
-
-
-### updateOperatorBalances
-
-Called by StakingRouter to update node operator total balances.
-
-Total balances are denominated in gwei.
-
-Input format matches validator counts updates from StakingRouter:
-`operatorIds` packs ids as bytes8 entries and `totalBalancesGwei` packs values as bytes16 entries.
-
-
-```solidity
-function updateOperatorBalances(bytes calldata operatorIds, bytes calldata totalBalancesGwei) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`operatorIds`|`bytes`|Bytes packed array of node operator IDs.|
-|`totalBalancesGwei`|`bytes`|Bytes packed array of total balances (validators + pending), in gwei.|
 
 

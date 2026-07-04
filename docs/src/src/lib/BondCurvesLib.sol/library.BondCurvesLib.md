@@ -1,7 +1,9 @@
 # BondCurvesLib
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/lib/BondCurvesLib.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/lib/BondCurvesLib.sol)
 
 Library for managing BondCurves
+
+External deployment-linked library used by Accounting.
 
 
 ## State Variables
@@ -75,6 +77,13 @@ function _addIntervals(
     IBondCurve.BondCurveData storage bondCurve,
     IBondCurve.BondCurveIntervalInput[] calldata intervals
 ) internal;
+```
+
+### _ensureCurveExists
+
+
+```solidity
+function _ensureCurveExists(BondCurve.BondCurveStorage storage bondCurveStorage, uint256 curveId) internal view;
 ```
 
 ### _check

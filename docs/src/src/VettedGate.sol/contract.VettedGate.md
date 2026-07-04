@@ -1,5 +1,5 @@
 # VettedGate
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/VettedGate.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/VettedGate.sol)
 
 **Inherits:**
 [IVettedGate](/src/interfaces/IVettedGate.sol/interface.IVettedGate.md), [MerkleGate](/src/abstract/MerkleGate.sol/abstract.MerkleGate.md)
@@ -38,7 +38,7 @@ constructor(address module) ;
 
 
 ```solidity
-function initialize(uint256 curveId, bytes32 treeRoot, string calldata treeCid, address admin)
+function initialize(uint256 curveId, bytes32 treeRoot, string calldata treeCid, string calldata name, address admin)
     public
     override(IMerkleGate, MerkleGate)
     initializer;
@@ -50,6 +50,7 @@ Add a new Node Operator using ETH as bond.
 At least one deposit data and corresponding bond should be provided.
 msg.sender is marked as consumed and will not be able to create Node Operators
 or claim the beneficial curve via this VettedGate instance.
+Any excess msg.value will be sent to the bond and can be claimed from there.
 
 
 ```solidity

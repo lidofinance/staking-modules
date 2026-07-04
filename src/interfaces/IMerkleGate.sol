@@ -24,22 +24,22 @@ interface IMerkleGate is INamedUpgradeable {
     error InvalidTreeCid();
     error ZeroAdminAddress();
 
-    /// @return SET_TREE_ROLE role required to update tree parameters
+    /// @return role required to update tree parameters
     function SET_TREE_ROLE() external view returns (bytes32);
 
-    /// @return treeRoot Current Merkle tree root
+    /// @return Current Merkle tree root
     function treeRoot() external view returns (bytes32);
 
-    /// @return treeCid Current Merkle tree CID
+    /// @return Current Merkle tree CID
     function treeCid() external view returns (string memory);
 
-    /// @return curveId Instance-specific bond curve id
+    /// @return Instance-specific bond curve id
     function curveId() external view returns (uint256);
 
     /// @notice Update Merkle tree params
-    /// @param _treeRoot New root
-    /// @param _treeCid New CID
-    function setTreeParams(bytes32 _treeRoot, string calldata _treeCid) external;
+    /// @param treeRoot_ New root
+    /// @param treeCid_ New CID
+    function setTreeParams(bytes32 treeRoot_, string calldata treeCid_) external;
 
     /// @notice Returns whether a member already consumed eligibility
     function isConsumed(address member) external view returns (bool);

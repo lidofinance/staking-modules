@@ -54,7 +54,6 @@ abstract contract OracleTestBase is ModuleTypeBase {
 
         bool isStakingRouterUpgraded = _isStakingRouterUpgraded();
         if (isStakingRouterUpgraded) {
-            _ensureStakingRouterCanDeposit(moduleId);
             vm.prank(locator.depositSecurityModule());
             stakingRouter.deposit(moduleId, "");
         } else {

@@ -1,5 +1,5 @@
 # IValidatorStrikes
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IValidatorStrikes.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IValidatorStrikes.sol)
 
 
 ## Functions
@@ -112,7 +112,7 @@ function processOracleReport(bytes32 _treeRoot, string calldata _treeCid) extern
 |Name|Type|Description|
 |----|----|-----------|
 |`_treeRoot`|`bytes32`|Root of the Merkle tree|
-|`_treeCid`|`string`|an IPFS CID of the tree|
+|`_treeCid`|`string`|IPFS CID of the tree|
 
 
 ### verifyProof
@@ -141,7 +141,7 @@ function verifyProof(
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`bool`|bool True if proof is accepted|
+|`<none>`|`bool`|True if proof is accepted|
 
 
 ### hashLeaf
@@ -223,18 +223,6 @@ error ZeroModuleAddress();
 
 ```solidity
 error ZeroOracleAddress();
-```
-
-### ZeroExitPenaltiesAddress
-
-```solidity
-error ZeroExitPenaltiesAddress();
-```
-
-### ZeroParametersRegistryAddress
-
-```solidity
-error ZeroParametersRegistryAddress();
 ```
 
 ### ZeroAdminAddress

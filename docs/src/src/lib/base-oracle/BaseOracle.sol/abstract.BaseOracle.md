@@ -1,5 +1,5 @@
 # BaseOracle
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/lib/base-oracle/BaseOracle.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/lib/base-oracle/BaseOracle.sol)
 
 **Inherits:**
 [IReportAsyncProcessor](/src/lib/base-oracle/interfaces/IReportAsyncProcessor.sol/interface.IReportAsyncProcessor.md), AccessControlEnumerableUpgradeable, [Versioned](/src/lib/utils/Versioned.sol/contract.Versioned.md)
@@ -99,6 +99,9 @@ function getConsensusContract() external view returns (address);
 ### setConsensusContract
 
 Sets the address of the HashConsensus contract.
+
+The value of the consensus version should also be changed to prevent processing a report for which the
+consensus was reached on the old contract.
 
 
 ```solidity

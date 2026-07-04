@@ -1,8 +1,8 @@
 # IBaseModule
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IBaseModule.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IBaseModule.sol)
 
 **Inherits:**
-[IStakingModule](/src/interfaces/IStakingModule.sol/interface.IStakingModule.md), IAccessControlEnumerable, [INOAddresses](/src/lib/NOAddresses.sol/interface.INOAddresses.md), [IAssetRecovererLib](/src/lib/AssetRecovererLib.sol/interface.IAssetRecovererLib.md)
+[IStakingModule](/src/interfaces/IStakingModule.sol/interface.IStakingModule.md), IAccessControlEnumerable, [IAssetRecovererLib](/src/lib/AssetRecovererLib.sol/interface.IAssetRecovererLib.md)
 
 Base module interface for repository modules such as `ICSModule` and `ICuratedModule`.
 
@@ -55,6 +55,13 @@ function REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE() external view returns (bytes
 
 ```solidity
 function CREATE_NODE_OPERATOR_ROLE() external view returns (bytes32);
+```
+
+### OPERATOR_ADDRESSES_ADMIN_ROLE
+
+
+```solidity
+function OPERATOR_ADDRESSES_ADMIN_ROLE() external view returns (bytes32);
 ```
 
 ### LIDO_LOCATOR
@@ -126,13 +133,17 @@ function createNodeOperator(
 |Name|Type|Description|
 |----|----|-----------|
 |`from`|`address`|Sender address. Initial sender address to be used as a default manager and reward addresses. Gates must pass the correct address in order to specify which address should be the owner of the Node Operator.|
-|`managementProperties`|`NodeOperatorManagementProperties`|Optional. Management properties to be used for the Node Operator. managerAddress: Used as `managerAddress` for the Node Operator. If not passed `from` will be used. rewardAddress: Used as `rewardAddress` for the Node Operator. If not passed `from` will be used. extendedManagerPermissions: Flag indicating that `managerAddress` will be able to change `rewardAddress`. If set to true `resetNodeOperatorManagerAddress` method will be disabled|
+|`managementProperties`|`NodeOperatorManagementProperties`|Optional. Management properties to be used for the Node Operator. `managerAddress`: Used as `managerAddress` for the Node Operator. If not passed `from` will be used. `rewardAddress`: Used as `rewardAddress` for the Node Operator. If not passed `from` will be used. `extendedManagerPermissions`: Flag indicating that `managerAddress` will be able to change `rewardAddress`. If set to true `resetNodeOperatorManagerAddress` method will be disabled|
 |`referrer`|`address`|Optional. Referrer address. Should be passed when Node Operator is created using partners integration|
 
 
 ### addValidatorKeysETH
 
 Add new keys to the existing Node Operator using ETH as a bond
+
+Any excess msg.value will be sent to the bond and can be claimed from there. This behaviour is intentional
+and protects users from key upload transaction front runs rendering the user transaction invalid due to changes
+in the required bond amount.
 
 
 ```solidity
@@ -281,19 +292,21 @@ SETTLE_GENERAL_DELAYED_PENALTY_ROLE role is expected to be assigned to Easy Trac
 
 
 ```solidity
-function settleGeneralDelayedPenalty(uint256[] memory nodeOperatorIds, uint256[] memory maxAmounts) external;
+function settleGeneralDelayedPenalty(uint256[] memory nodeOperatorIds, uint256[] memory bondLockNonces) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorIds`|`uint256[]`|IDs of the Node Operators|
-|`maxAmounts`|`uint256[]`|Maximum amounts to settle for each Node Operator|
+|`bondLockNonces`|`uint256[]`|Bond lock nonces for each Node Operator|
 
 
 ### proposeNodeOperatorManagerAddressChange
 
-Propose a new manager address for the Node Operator
+Propose a new manager address for the Node Operator.
+
+Passing address(0) clears the pending proposal without changing the current manager address.
 
 
 ```solidity
@@ -304,7 +317,7 @@ function proposeNodeOperatorManagerAddressChange(uint256 nodeOperatorId, address
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`proposedAddress`|`address`|Proposed manager address|
+|`proposedAddress`|`address`|Proposed manager address, or address(0) to cancel the current proposal|
 
 
 ### confirmNodeOperatorManagerAddressChange
@@ -341,7 +354,9 @@ function resetNodeOperatorManagerAddress(uint256 nodeOperatorId) external;
 
 ### proposeNodeOperatorRewardAddressChange
 
-Propose a new reward address for the Node Operator
+Propose a new reward address for the Node Operator.
+
+Passing address(0) clears the pending proposal without changing the current reward address.
 
 
 ```solidity
@@ -352,7 +367,7 @@ function proposeNodeOperatorRewardAddressChange(uint256 nodeOperatorId, address 
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`proposedAddress`|`address`|Proposed reward address|
+|`proposedAddress`|`address`|Proposed reward address, or address(0) to cancel the current proposal|
 
 
 ### confirmNodeOperatorRewardAddressChange
@@ -387,6 +402,26 @@ function changeNodeOperatorRewardAddress(uint256 nodeOperatorId, address newAddr
 |`newAddress`|`address`|Proposed reward address|
 
 
+### changeNodeOperatorAddresses
+
+Change both reward and manager addresses of a node operator. An emergency method.
+
+Only privileged role member can call this method if the role is assigned.
+
+
+```solidity
+function changeNodeOperatorAddresses(uint256 nodeOperatorId, address newManagerAddress, address newRewardAddress)
+    external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
+|`newManagerAddress`|`address`|New manager address|
+|`newRewardAddress`|`address`|New reward address|
+
+
 ### updateDepositableValidatorsCount
 
 Update depositable validators data for the given Node Operator.
@@ -407,13 +442,13 @@ function updateDepositableValidatorsCount(uint256 nodeOperatorId) external;
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
 
 
-### onNodeOperatorBondCurveChange
+### updateDepositInfo
 
-Notify the module about a node operator bond curve change.
+Update deposit info for the given Node Operator.
 
 
 ```solidity
-function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external;
+function updateDepositInfo(uint256 nodeOperatorId) external;
 ```
 **Parameters**
 
@@ -551,6 +586,24 @@ function getNodeOperatorNonWithdrawnKeys(uint256 nodeOperatorId) external view r
 |`<none>`|`uint256`|Non-withdrawn keys count|
 
 
+### getNodeOperatorBalance
+
+Returns tracked operator balance (active validator base stake plus tracked extra).
+
+The tracked extra is intentionally monotonic for active validators and is reduced on withdrawal reporting,
+not on intermediate balance decreases, so the value serves both top-up allocation and withdrawal penalty accounting.
+
+
+```solidity
+function getNodeOperatorBalance(uint256 nodeOperatorId) external view returns (uint256);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
+
+
 ### getSigningKeys
 
 Get Node Operator signing keys
@@ -624,9 +677,9 @@ function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex) exter
 
 ### reportValidatorBalance
 
-Sync tracked added balance for a key based on proven validator balance.
+Update verified on-chain balance for a key.
 
-The function only increases the key added value at the moment.
+The function stores balance relative to MIN_ACTIVATION_BALANCE.
 
 
 ```solidity
@@ -641,26 +694,56 @@ function reportValidatorBalance(uint256 nodeOperatorId, uint256 keyIndex, uint25
 |`currentBalanceWei`|`uint256`|Proven current validator balance in wei|
 
 
-### getKeyAddedBalance
+### getKeyAllocatedBalances
 
-Get tracked added balance for a particular key
+Get cumulative top-up amounts allocated to Node Operator keys (above MIN_ACTIVATION_BALANCE)
 
 
 ```solidity
-function getKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256);
+function getKeyAllocatedBalances(uint256 nodeOperatorId, uint256 startIndex, uint256 keysCount)
+    external
+    view
+    returns (uint256[] memory balances);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`keyIndex`|`uint256`|Index of the Key in the Node Operator's keys storage|
+|`startIndex`|`uint256`|Index of the first key|
+|`keysCount`|`uint256`|Count of keys to get|
 
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|Tracked added balance (wei)|
+|`balances`|`uint256[]`|Allocated balances above MIN_ACTIVATION_BALANCE (wei)|
+
+
+### getKeyConfirmedBalances
+
+Get verifier-confirmed balances for Node Operator keys (above MIN_ACTIVATION_BALANCE)
+
+
+```solidity
+function getKeyConfirmedBalances(uint256 nodeOperatorId, uint256 startIndex, uint256 keysCount)
+    external
+    view
+    returns (uint256[] memory balances);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
+|`startIndex`|`uint256`|Index of the first key|
+|`keysCount`|`uint256`|Count of keys to get|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`balances`|`uint256[]`|Confirmed balances above MIN_ACTIVATION_BALANCE (wei)|
 
 
 ### reportRegularWithdrawnValidators
@@ -724,7 +807,7 @@ function isValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external v
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`bool`|bool True if a validator was reported as slashed|
+|`<none>`|`bool`|True if a validator was reported as slashed|
 
 
 ### isValidatorWithdrawn
@@ -839,16 +922,34 @@ event ValidatorWithdrawn(
 );
 ```
 
+### TotalWithdrawnValidatorsRebuilt
+
+```solidity
+event TotalWithdrawnValidatorsRebuilt(uint256 totalWithdrawnValidators);
+```
+
+### NodeOperatorBalanceUpdated
+
+```solidity
+event NodeOperatorBalanceUpdated(uint256 indexed operatorId, uint256 balanceWei);
+```
+
 ### ValidatorSlashingReported
 
 ```solidity
 event ValidatorSlashingReported(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
 ```
 
-### KeyAddedBalanceChanged
+### KeyAllocatedBalanceChanged
 
 ```solidity
-event KeyAddedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
+event KeyAllocatedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
+```
+
+### KeyConfirmedBalanceChanged
+
+```solidity
+event KeyConfirmedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newBalance);
 ```
 
 ### KeyRemovalChargeApplied
@@ -899,6 +1000,38 @@ event NodeOperatorDepositInfoFullyUpdated();
 event FullDepositInfoUpdateRequested();
 ```
 
+### NodeOperatorManagerAddressChangeProposed
+
+```solidity
+event NodeOperatorManagerAddressChangeProposed(
+    uint256 indexed nodeOperatorId, address indexed oldProposedAddress, address indexed newProposedAddress
+);
+```
+
+### NodeOperatorRewardAddressChangeProposed
+
+```solidity
+event NodeOperatorRewardAddressChangeProposed(
+    uint256 indexed nodeOperatorId, address indexed oldProposedAddress, address indexed newProposedAddress
+);
+```
+
+### NodeOperatorManagerAddressChanged
+
+```solidity
+event NodeOperatorManagerAddressChanged(
+    uint256 indexed nodeOperatorId, address indexed oldAddress, address indexed newAddress
+);
+```
+
+### NodeOperatorRewardAddressChanged
+
+```solidity
+event NodeOperatorRewardAddressChanged(
+    uint256 indexed nodeOperatorId, address indexed oldAddress, address indexed newAddress
+);
+```
+
 ## Errors
 ### CannotAddKeys
 
@@ -946,12 +1079,6 @@ error ValidatorSlashingAlreadyReported();
 
 ```solidity
 error InvalidWithdrawnValidatorInfo();
-```
-
-### PubkeyMismatch
-
-```solidity
-error PubkeyMismatch();
 ```
 
 ### InvalidAmount
@@ -1048,5 +1175,65 @@ error DepositInfoIsNotUpToDate();
 
 ```solidity
 error UnreportableBalance();
+```
+
+### InvalidManagerAddress
+
+```solidity
+error InvalidManagerAddress();
+```
+
+### InvalidRewardAddress
+
+```solidity
+error InvalidRewardAddress();
+```
+
+### AlreadyProposed
+
+```solidity
+error AlreadyProposed();
+```
+
+### SameAddress
+
+```solidity
+error SameAddress();
+```
+
+### SenderIsNotManagerAddress
+
+```solidity
+error SenderIsNotManagerAddress();
+```
+
+### SenderIsNotRewardAddress
+
+```solidity
+error SenderIsNotRewardAddress();
+```
+
+### SenderIsNotProposedAddress
+
+```solidity
+error SenderIsNotProposedAddress();
+```
+
+### MethodCallIsNotAllowed
+
+```solidity
+error MethodCallIsNotAllowed();
+```
+
+### ZeroManagerAddress
+
+```solidity
+error ZeroManagerAddress();
+```
+
+### ZeroRewardAddress
+
+```solidity
+error ZeroRewardAddress();
 ```
 

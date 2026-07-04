@@ -99,7 +99,7 @@ contract CSModule is ICSModule, BaseModule {
     /// @dev Second param `depositCalldata` is not used
     function obtainDepositData(
         uint256 depositsCount,
-        bytes calldata /* depositCalldata */
+        bytes calldata depositCalldata // solhint-disable-line no-unused-vars
     ) external returns (bytes memory publicKeys, bytes memory signatures) {
         _checkStakingRouterRole();
         _requireDepositInfoUpToDate();

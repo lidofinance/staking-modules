@@ -1,8 +1,8 @@
 # BaseModule
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/abstract/BaseModule.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/abstract/BaseModule.sol)
 
 **Inherits:**
-[IBaseModule](/src/interfaces/IBaseModule.sol/interface.IBaseModule.md), [ModuleLinearStorage](/src/abstract/ModuleLinearStorage.sol/abstract.ModuleLinearStorage.md), AccessControlEnumerableUpgradeable, [PausableWithRoles](/src/abstract/PausableWithRoles.sol/abstract.PausableWithRoles.md), [AssetRecoverer](/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
+[IBaseModule](/src/interfaces/IBaseModule.sol/interface.IBaseModule.md), [IStakingModuleV2](/src/interfaces/IStakingModule.sol/interface.IStakingModuleV2.md), [ModuleLinearStorage](/src/abstract/ModuleLinearStorage.sol/abstract.ModuleLinearStorage.md), AccessControlEnumerableUpgradeable, [PausableWithRoles](/src/abstract/PausableWithRoles.sol/abstract.PausableWithRoles.md), [AssetRecoverer](/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
 
 
 ## State Variables
@@ -54,6 +54,13 @@ bytes32 public constant REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE =
 
 ```solidity
 bytes32 public constant CREATE_NODE_OPERATOR_ROLE = keccak256("CREATE_NODE_OPERATOR_ROLE")
+```
+
+
+### OPERATOR_ADDRESSES_ADMIN_ROLE
+
+```solidity
+bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE = keccak256("OPERATOR_ADDRESSES_ADMIN_ROLE")
 ```
 
 
@@ -142,13 +149,17 @@ function createNodeOperator(
 |Name|Type|Description|
 |----|----|-----------|
 |`from`|`address`|Sender address. Initial sender address to be used as a default manager and reward addresses. Gates must pass the correct address in order to specify which address should be the owner of the Node Operator.|
-|`managementProperties`|`NodeOperatorManagementProperties`|Optional. Management properties to be used for the Node Operator. managerAddress: Used as `managerAddress` for the Node Operator. If not passed `from` will be used. rewardAddress: Used as `rewardAddress` for the Node Operator. If not passed `from` will be used. extendedManagerPermissions: Flag indicating that `managerAddress` will be able to change `rewardAddress`. If set to true `resetNodeOperatorManagerAddress` method will be disabled|
+|`managementProperties`|`NodeOperatorManagementProperties`|Optional. Management properties to be used for the Node Operator. `managerAddress`: Used as `managerAddress` for the Node Operator. If not passed `from` will be used. `rewardAddress`: Used as `rewardAddress` for the Node Operator. If not passed `from` will be used. `extendedManagerPermissions`: Flag indicating that `managerAddress` will be able to change `rewardAddress`. If set to true `resetNodeOperatorManagerAddress` method will be disabled|
 |`<none>`|`address`||
 
 
 ### addValidatorKeysETH
 
 Add new keys to the existing Node Operator using ETH as a bond
+
+Any excess msg.value will be sent to the bond and can be claimed from there. This behaviour is intentional
+and protects users from key upload transaction front runs rendering the user transaction invalid due to changes
+in the required bond amount.
 
 
 ```solidity
@@ -227,7 +238,9 @@ function addValidatorKeysWstETH(
 
 ### proposeNodeOperatorManagerAddressChange
 
-Propose a new manager address for the Node Operator
+Propose a new manager address for the Node Operator.
+
+Passing address(0) clears the pending proposal without changing the current manager address.
 
 
 ```solidity
@@ -238,7 +251,7 @@ function proposeNodeOperatorManagerAddressChange(uint256 nodeOperatorId, address
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`proposedAddress`|`address`|Proposed manager address|
+|`proposedAddress`|`address`|Proposed manager address, or address(0) to cancel the current proposal|
 
 
 ### confirmNodeOperatorManagerAddressChange
@@ -259,7 +272,9 @@ function confirmNodeOperatorManagerAddressChange(uint256 nodeOperatorId) externa
 
 ### proposeNodeOperatorRewardAddressChange
 
-Propose a new reward address for the Node Operator
+Propose a new reward address for the Node Operator.
+
+Passing address(0) clears the pending proposal without changing the current reward address.
 
 
 ```solidity
@@ -270,7 +285,7 @@ function proposeNodeOperatorRewardAddressChange(uint256 nodeOperatorId, address 
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`proposedAddress`|`address`|Proposed reward address|
+|`proposedAddress`|`address`|Proposed reward address, or address(0) to cancel the current proposal|
 
 
 ### confirmNodeOperatorRewardAddressChange
@@ -321,6 +336,26 @@ function changeNodeOperatorRewardAddress(uint256 nodeOperatorId, address newAddr
 |`newAddress`|`address`|Proposed reward address|
 
 
+### changeNodeOperatorAddresses
+
+Change both reward and manager addresses of a node operator. An emergency method.
+
+Only privileged role member can call this method if the role is assigned.
+
+
+```solidity
+function changeNodeOperatorAddresses(uint256 nodeOperatorId, address newManagerAddress, address newRewardAddress)
+    external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
+|`newManagerAddress`|`address`|New manager address|
+|`newRewardAddress`|`address`|New reward address|
+
+
 ### onRewardsMinted
 
 Called by StakingRouter to signal that stETH rewards were minted for this module.
@@ -342,7 +377,9 @@ function onRewardsMinted(uint256 totalShares) external;
 
 Updates the number of the validators in the EXITED state for node operator with given id
 
-DEPRECATED: Should be removed in the future versions.
+exitedValidatorsCount is not used inside the module, but SR still expects this data to be stored and
+returned. The method should be removed once there are no legacy modules in the Lido protocol and SR no longer
+calls this method.
 
 
 ```solidity
@@ -353,8 +390,8 @@ function updateExitedValidatorsCount(bytes calldata nodeOperatorIds, bytes calld
 
 |Name|Type|Description|
 |----|----|-----------|
-|`nodeOperatorIds`|`bytes`|bytes packed array of the node operators id|
-|`exitedValidatorsCounts`|`bytes`|bytes packed array of the new number of EXITED validators for the node operators|
+|`nodeOperatorIds`|`bytes`|Packed array of the node operators id|
+|`exitedValidatorsCounts`|`bytes`|Packed array of the new number of EXITED validators for the node operators|
 
 
 ### unsafeUpdateValidatorsCount
@@ -362,7 +399,9 @@ function updateExitedValidatorsCount(bytes calldata nodeOperatorIds, bytes calld
 Unsafely updates the number of validators in the EXITED/STUCK states for node operator with given id
 'unsafely' means that this method can both increase and decrease exited and stuck counters
 
-DEPRECATED: Should be removed in the future versions.
+exitedValidatorsCount is not used inside the module, but SR still expects this data to be stored and
+returned. The method should be removed once there are no legacy modules in the Lido protocol and SR no longer
+calls this method.
 
 
 ```solidity
@@ -498,14 +537,15 @@ SETTLE_GENERAL_DELAYED_PENALTY_ROLE role is expected to be assigned to Easy Trac
 
 
 ```solidity
-function settleGeneralDelayedPenalty(uint256[] calldata nodeOperatorIds, uint256[] calldata maxAmounts) external;
+function settleGeneralDelayedPenalty(uint256[] calldata nodeOperatorIds, uint256[] calldata bondLockNonces)
+    external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorIds`|`uint256[]`|IDs of the Node Operators|
-|`maxAmounts`|`uint256[]`|Maximum amounts to settle for each Node Operator|
+|`bondLockNonces`|`uint256[]`|Bond lock nonces for each Node Operator|
 
 
 ### compensateGeneralDelayedPenalty
@@ -543,9 +583,9 @@ function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex) exter
 
 ### reportValidatorBalance
 
-Sync tracked added balance for a key based on proven validator balance.
+Update verified on-chain balance for a key.
 
-The function only increases the key added value at the moment.
+The function stores balance relative to MIN_ACTIVATION_BALANCE.
 
 
 ```solidity
@@ -613,8 +653,7 @@ This data could be used to trigger penalties for the node operator if the valida
 ```solidity
 function reportValidatorExitDelay(
     uint256 nodeOperatorId,
-    uint256,
-    /* proofSlotTimestamp */
+    uint256 proofSlotTimestamp, // solhint-disable-line no-unused-vars
     bytes calldata publicKey,
     uint256 eligibleToExitInSec
 ) external;
@@ -624,7 +663,7 @@ function reportValidatorExitDelay(
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`||
-|`<none>`|`uint256`||
+|`proofSlotTimestamp`|`uint256`||
 |`publicKey`|`bytes`||
 |`eligibleToExitInSec`|`uint256`||
 
@@ -655,13 +694,13 @@ function onValidatorExitTriggered(
 |`exitType`|`uint256`||
 
 
-### onNodeOperatorBondCurveChange
+### updateDepositInfo
 
-Notify the module about a node operator bond curve change.
+Update deposit info for the given Node Operator.
 
 
 ```solidity
-function onNodeOperatorBondCurveChange(uint256 nodeOperatorId) external;
+function updateDepositInfo(uint256 nodeOperatorId) external;
 ```
 **Parameters**
 
@@ -736,9 +775,9 @@ function getStakingModuleSummary()
 
 |Name|Type|Description|
 |----|----|-----------|
-|`totalExitedValidators`|`uint256`|total number of validators in the EXITED state on the Consensus Layer. This value can't decrease in normal conditions|
-|`totalDepositedValidators`|`uint256`|total number of validators deposited via the official Deposit Contract. This value is a cumulative counter: even when the validator goes into EXITED state this counter is not decreasing|
-|`depositableValidatorsCount`|`uint256`|number of validators in the set available for deposit|
+|`totalExitedValidators`|`uint256`|Total number of validators in the EXITED state on the Consensus Layer. This value can't decrease in normal conditions|
+|`totalDepositedValidators`|`uint256`|Total number of validators deposited via the official Deposit Contract. This value is a cumulative counter: even when the validator goes into EXITED state this counter is not decreasing|
+|`depositableValidatorsCount`|`uint256`|Number of validators in the set available for deposit|
 
 
 ### onWithdrawalCredentialsChanged
@@ -782,7 +821,7 @@ function isValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external v
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`bool`|bool True if a validator was reported as slashed|
+|`<none>`|`bool`|True if a validator was reported as slashed|
 
 
 ### isValidatorWithdrawn
@@ -907,6 +946,24 @@ function getNodeOperatorNonWithdrawnKeys(uint256 nodeOperatorId) external view r
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|Non-withdrawn keys count|
+
+
+### getNodeOperatorBalance
+
+Returns tracked operator balance (active validator base stake plus tracked extra).
+
+The tracked extra is intentionally monotonic for active validators and is reduced on withdrawal reporting,
+not on intermediate balance decreases, so the value serves both top-up allocation and withdrawal penalty accounting.
+
+
+```solidity
+function getNodeOperatorBalance(uint256 nodeOperatorId) external view returns (uint256);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
 
 
 ### getNodeOperatorSummary
@@ -1041,6 +1098,8 @@ function getNodeOperatorsCount() external view returns (uint256);
 
 Returns number of active node operators
 
+The module has no inactive Node Operator state, so active operators are all existing operators.
+
 
 ```solidity
 function getActiveNodeOperatorsCount() external view returns (uint256);
@@ -1049,6 +1108,8 @@ function getActiveNodeOperatorsCount() external view returns (uint256);
 ### getNodeOperatorIsActive
 
 Returns if the node operator with given id is active
+
+The module has no inactive Node Operator state, so active means existing.
 
 
 ```solidity
@@ -1085,8 +1146,7 @@ Determines whether a validator's exit status should be updated and will have an 
 ```solidity
 function isValidatorExitDelayPenaltyApplicable(
     uint256 nodeOperatorId,
-    uint256,
-    /* proofSlotTimestamp */
+    uint256 proofSlotTimestamp, // solhint-disable-line no-unused-vars
     bytes calldata publicKey,
     uint256 eligibleToExitInSec
 ) external view returns (bool);
@@ -1096,7 +1156,7 @@ function isValidatorExitDelayPenaltyApplicable(
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`||
-|`<none>`|`uint256`||
+|`proofSlotTimestamp`|`uint256`||
 |`publicKey`|`bytes`||
 |`eligibleToExitInSec`|`uint256`||
 
@@ -1104,7 +1164,7 @@ function isValidatorExitDelayPenaltyApplicable(
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`bool`|bool Returns true if the contract should receive the updated status of the validator.|
+|`<none>`|`bool`|Returns true if the contract should receive the updated status of the validator.|
 
 
 ### exitDeadlineThreshold
@@ -1128,27 +1188,69 @@ function exitDeadlineThreshold(uint256 nodeOperatorId) external view returns (ui
 |`<none>`|`uint256`|The exit deadline threshold in seconds.|
 
 
-### getKeyAddedBalance
+### getKeyAllocatedBalances
 
-Get tracked added balance for a particular key
+Get cumulative top-up amounts allocated to Node Operator keys (above MIN_ACTIVATION_BALANCE)
 
 
 ```solidity
-function getKeyAddedBalance(uint256 nodeOperatorId, uint256 keyIndex) external view returns (uint256);
+function getKeyAllocatedBalances(uint256 nodeOperatorId, uint256 startIndex, uint256 keysCount)
+    external
+    view
+    returns (uint256[] memory balances);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`keyIndex`|`uint256`|Index of the Key in the Node Operator's keys storage|
+|`startIndex`|`uint256`|Index of the first key|
+|`keysCount`|`uint256`|Count of keys to get|
 
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|Tracked added balance (wei)|
+|`balances`|`uint256[]`|Allocated balances above MIN_ACTIVATION_BALANCE (wei)|
 
+
+### getKeyConfirmedBalances
+
+Get verifier-confirmed balances for Node Operator keys (above MIN_ACTIVATION_BALANCE)
+
+
+```solidity
+function getKeyConfirmedBalances(uint256 nodeOperatorId, uint256 startIndex, uint256 keysCount)
+    external
+    view
+    returns (uint256[] memory balances);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
+|`startIndex`|`uint256`|Index of the first key|
+|`keysCount`|`uint256`|Count of keys to get|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`balances`|`uint256[]`|Confirmed balances above MIN_ACTIVATION_BALANCE (wei)|
+
+
+### getTotalModuleStake
+
+Returns the total tracked stake of the module in wei.
+
+This is the sum of the activation base for active validators and tracked extra stake.
+The tracked extra is intentionally reduced on withdrawal reporting rather than on intermediate validator balance decreases.
+
+
+```solidity
+function getTotalModuleStake() public view override returns (uint256);
+```
 
 ### getNodeOperatorDepositInfoToUpdateCount
 
@@ -1243,6 +1345,13 @@ function _checkCanAddKeys(uint256 nodeOperatorId, address who) internal view vir
 function _onlyNodeOperatorManager(uint256 nodeOperatorId, address from) internal view;
 ```
 
+### _nodeOperatorExists
+
+
+```solidity
+function _nodeOperatorExists(uint256 nodeOperatorId) internal view returns (bool);
+```
+
 ### _onlyExistingNodeOperator
 
 
@@ -1252,9 +1361,19 @@ function _onlyExistingNodeOperator(uint256 nodeOperatorId) internal view;
 
 ### _onlyValidIndexRange
 
+NOTE: The function does not revert when `startIndex` is equal to `totalAddedKeys` and `keysCount` is zero. The
+method might be fixed later once we're sure all off-chain tooling will handle the updated behaviour.
+
 
 ```solidity
 function _onlyValidIndexRange(uint256 nodeOperatorId, uint256 startIndex, uint256 keysCount) internal view;
+```
+
+### _onlyValidKeyIndex
+
+
+```solidity
+function _onlyValidKeyIndex(uint256 nodeOperatorId, uint256 keyIndex) internal view;
 ```
 
 ### _getBondCurveId

@@ -10,4 +10,5 @@
 - [FeeSplits](FeeSplits.sol/abstract.FeeSplits.md)
 - [MerkleGate](MerkleGate.sol/abstract.MerkleGate.md)
 - [ModuleLinearStorage](ModuleLinearStorage.sol/abstract.ModuleLinearStorage.md)
+- [NamedUpgradeable](NamedUpgradeable.sol/abstract.NamedUpgradeable.md)
 - [PausableWithRoles](PausableWithRoles.sol/abstract.PausableWithRoles.md)

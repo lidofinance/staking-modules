@@ -70,7 +70,7 @@ interface IValidatorStrikes {
 
     /// @notice Receive the data of the Merkle tree from the Oracle contract and process it
     /// @param _treeRoot Root of the Merkle tree
-    /// @param _treeCid an IPFS CID of the tree
+    /// @param _treeCid IPFS CID of the tree
     /// @dev New tree might be empty and it is valid value because of `strikesLifetime`
     function processOracleReport(bytes32 _treeRoot, string calldata _treeCid) external;
 
@@ -79,7 +79,7 @@ interface IValidatorStrikes {
     /// @param pubkeys Public keys corresponding to each entry in keyStrikesList
     /// @param proof Multi-proof of the strikes
     /// @param proofFlags Flags to process the multi-proof, see OZ `processMultiProof`
-    /// @return bool True if proof is accepted
+    /// @return True if proof is accepted
     function verifyProof(
         KeyStrikes[] calldata keyStrikesList,
         bytes[] memory pubkeys,

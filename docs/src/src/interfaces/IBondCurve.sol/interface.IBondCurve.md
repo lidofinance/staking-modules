@@ -1,5 +1,5 @@
 # IBondCurve
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IBondCurve.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IBondCurve.sol)
 
 
 ## Functions
@@ -153,7 +153,7 @@ event BondCurveUpdated(uint256 indexed curveId, BondCurveIntervalInput[] bondCur
 ### BondCurveSet
 
 ```solidity
-event BondCurveSet(uint256 indexed nodeOperatorId, uint256 curveId);
+event BondCurveSet(uint256 indexed nodeOperatorId, uint256 curveId, address indexed setter);
 ```
 
 ## Errors

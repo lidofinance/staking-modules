@@ -1,5 +1,5 @@
 # IMetaRegistry
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IMetaRegistry.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IMetaRegistry.sol)
 
 Meta registry for curated node operator groups.
 
@@ -74,6 +74,15 @@ function initialize(address admin) external;
 |`admin`|`address`|Address to receive DEFAULT_ADMIN_ROLE.|
 
 
+### getInitializedVersion
+
+Returns the initialized version of the contract.
+
+
+```solidity
+function getInitializedVersion() external view returns (uint64);
+```
+
 ### setOperatorMetadataAsAdmin
 
 Set or update metadata for a node operator (callable by SET_OPERATOR_INFO_ROLE).
@@ -136,6 +145,8 @@ function getOperatorMetadata(uint256 nodeOperatorId) external view returns (Oper
 Create a new operator group or update an existing one.
 
 Creating is allowed only when groupId == NO_GROUP_ID.
+
+To clear a group pass empty subNodeOperators, empty externalOperators, and empty name.
 
 
 ```solidity
@@ -265,7 +276,9 @@ function setBondCurveWeight(uint256 curveId, uint256 weight) external;
 
 Returns effective weight for the node operator.
 
-Returns 0 if the operator is not in a group.
+Returns the cached effective weight.
+
+Operators outside any group are expected to have zero cached weight.
 
 
 ```solidity
@@ -289,6 +302,10 @@ function getNodeOperatorWeight(uint256 nodeOperatorId) external view returns (ui
 Returns effective weight and external stake for the node operator.
 
 Returns (0, 0) if the operator is not in a group.
+
+During partial deposit info refreshes, cached weights may be updated only for a subset
+of operators, so direct reads can transiently reflect mixed-state group totals.
+Integrations that require a fully refreshed view should prefer the curated module getter.
 
 
 ```solidity
@@ -394,22 +411,10 @@ event NodeOperatorEffectiveWeightChanged(uint256 indexed nodeOperatorId, uint256
 error ZeroModuleAddress();
 ```
 
-### ZeroAccountingAddress
-
-```solidity
-error ZeroAccountingAddress();
-```
-
 ### ZeroAdminAddress
 
 ```solidity
 error ZeroAdminAddress();
-```
-
-### ZeroStakingRouterAddress
-
-```solidity
-error ZeroStakingRouterAddress();
 ```
 
 ### InvalidOperatorGroup
@@ -430,6 +435,12 @@ error InvalidSubNodeOperatorShares();
 error InvalidOperatorGroupId();
 ```
 
+### InvalidOperatorGroupName
+
+```solidity
+error InvalidOperatorGroupName();
+```
+
 ### NodeOperatorDoesNotExist
 
 ```solidity
@@ -448,18 +459,6 @@ error NodeOperatorAlreadyInGroup(uint256 nodeOperatorId);
 error AlreadyUsedAsExternalOperator();
 ```
 
-### NodeOperatorNotInGroup
-
-```solidity
-error NodeOperatorNotInGroup();
-```
-
-### SenderIsNotModule
-
-```solidity
-error SenderIsNotModule();
-```
-
 ### SenderIsNotEligible
 
 ```solidity
@@ -472,16 +471,16 @@ error SenderIsNotEligible();
 error OwnerEditsRestricted();
 ```
 
-### UnsupportedExternalOperatorType
-
-```solidity
-error UnsupportedExternalOperatorType();
-```
-
 ### SameBondCurveWeight
 
 ```solidity
 error SameBondCurveWeight();
+```
+
+### InvalidBondCurveWeight
+
+```solidity
+error InvalidBondCurveWeight();
 ```
 
 ### ModuleAddressNotCached
@@ -524,6 +523,7 @@ struct ExternalOperator {
 
 ```solidity
 struct OperatorGroup {
+    string name;
     SubNodeOperator[] subNodeOperators;
     ExternalOperator[] externalOperators;
 }

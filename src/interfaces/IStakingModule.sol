@@ -53,7 +53,7 @@ interface IStakingModule {
     /// @param _proofSlotTimestamp The timestamp (slot time) when the validator was last known to be in an active ongoing state.
     /// @param _publicKey The public key of the validator.
     /// @param _eligibleToExitInSec The number of seconds the validator was eligible to exit but did not.
-    /// @return bool Returns true if the contract should receive the updated status of the validator.
+    /// @return Returns true if the contract should receive the updated status of the validator.
     function isValidatorExitDelayPenaltyApplicable(
         uint256 _nodeOperatorId,
         uint256 _proofSlotTimestamp,
@@ -71,12 +71,12 @@ interface IStakingModule {
     function getType() external view returns (bytes32);
 
     /// @notice Returns all-validators summary in the staking module
-    /// @return totalExitedValidators total number of validators in the EXITED state
+    /// @return totalExitedValidators Total number of validators in the EXITED state
     ///     on the Consensus Layer. This value can't decrease in normal conditions
-    /// @return totalDepositedValidators total number of validators deposited via the
+    /// @return totalDepositedValidators Total number of validators deposited via the
     ///     official Deposit Contract. This value is a cumulative counter: even when the validator
     ///     goes into EXITED state this counter is not decreasing
-    /// @return depositableValidatorsCount number of validators in the set available for deposit
+    /// @return depositableValidatorsCount Number of validators in the set available for deposit
     function getStakingModuleSummary()
         external
         view
@@ -157,8 +157,8 @@ interface IStakingModule {
     ) external;
 
     /// @notice Updates the number of the validators in the EXITED state for node operator with given id
-    /// @param nodeOperatorIds bytes packed array of the node operators id
-    /// @param exitedValidatorsCounts bytes packed array of the new number of EXITED validators for the node operators
+    /// @param nodeOperatorIds Packed array of the node operators id
+    /// @param exitedValidatorsCounts Packed array of the new number of EXITED validators for the node operators
     function updateExitedValidatorsCount(
         bytes calldata nodeOperatorIds,
         bytes calldata exitedValidatorsCounts

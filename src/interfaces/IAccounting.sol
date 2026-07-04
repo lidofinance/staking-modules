@@ -108,7 +108,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     /// @notice Get the custom rewards claimer for the given Node Operator. This address is allowed to claim rewards on behalf of the Node Operator.
     ///         The rewards are still transferred to the Node Operator's reward address as usual.
     /// @param nodeOperatorId ID of the Node Operator
-    /// @return rewardsClaimer Address allowed to claim rewards on behalf of the Node Operator
+    /// @return Address allowed to claim rewards on behalf of the Node Operator
     function getCustomRewardsClaimer(uint256 nodeOperatorId) external view returns (address);
 
     /// @notice Get the required bond in ETH (inc. missed and excess) for the given Node Operator to upload new deposit data

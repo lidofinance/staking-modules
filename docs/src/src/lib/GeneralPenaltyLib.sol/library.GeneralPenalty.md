@@ -1,9 +1,10 @@
 # GeneralPenalty
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/lib/GeneralPenaltyLib.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/lib/GeneralPenaltyLib.sol)
 
 Library for General Penalty logic
 
-the only use of this to be a library is to save CSModule contract size via delegatecalls
+External deployment-linked library used by BaseModule-compatible modules
+to save contract size via delegatecalls.
 
 
 ## Functions
@@ -30,7 +31,7 @@ function cancelGeneralDelayedPenalty(uint256 nodeOperatorId, uint256 amount) ext
 
 
 ```solidity
-function settleGeneralDelayedPenalty(uint256 nodeOperatorId, uint256 maxAmount) external returns (bool);
+function settleGeneralDelayedPenalty(uint256 nodeOperatorId, uint256 bondLockNonce) external returns (bool);
 ```
 
 ### compensateGeneralDelayedPenalty

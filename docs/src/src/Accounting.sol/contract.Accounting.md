@@ -1,5 +1,5 @@
 # Accounting
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/Accounting.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/Accounting.sol)
 
 **Inherits:**
 [IAccounting](/src/interfaces/IAccounting.sol/interface.IAccounting.md), [BondCore](/src/abstract/BondCore.sol/abstract.BondCore.md), [BondCurve](/src/abstract/BondCurve.sol/abstract.BondCurve.md), [BondLock](/src/abstract/BondLock.sol/abstract.BondLock.md), [FeeSplits](/src/abstract/FeeSplits.sol/abstract.FeeSplits.md), [PausableWithRoles](/src/abstract/PausableWithRoles.sol/abstract.PausableWithRoles.md), AccessControlEnumerableUpgradeable, [AssetRecoverer](/src/abstract/AssetRecoverer.sol/abstract.AssetRecoverer.md)
@@ -217,9 +217,10 @@ function addBondCurve(BondCurveIntervalInput[] calldata bondCurve)
 Update existing bond curve
 
 If the curve is updated to a curve with higher values for any point,
-Extensive checks and actions should be performed by the method caller to avoid
+extensive checks and actions should be performed by the method caller to avoid
 inconsistency in the keys accounting. A manual update of the depositable validators count
 in staking module might be required to ensure that the keys pointers are consistent.
+Note that node operators might face unbonded keys due to changes to bond requirements.
 
 
 ```solidity
@@ -562,23 +563,20 @@ Called by staking module exclusively
 
 
 ```solidity
-function settleLockedBond(uint256 nodeOperatorId, uint256 maxAmount)
-    external
-    onlyModule
-    returns (uint256 amountSettled);
+function settleLockedBond(uint256 nodeOperatorId, uint256 bondLockNonce) external onlyModule returns (uint256);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`maxAmount`|`uint256`|Maximum amount to settle in ETH (stETH)|
+|`bondLockNonce`|`uint256`|Bond lock nonce|
 
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`amountSettled`|`uint256`|Amount settled in ETH (stETH)|
+|`<none>`|`uint256`|amountSettled Amount settled in ETH (stETH)|
 
 
 ### penalize
@@ -635,13 +633,18 @@ function chargeFee(uint256 nodeOperatorId, uint256 amount) external onlyModule r
 
 Pull fees (if proof provided) from FeeDistributor to the Node Operator's bond and split according to configured fee splits.
 
+Reverts while Accounting is paused.
+Previously reward pulling during pause was useful for emergency penalty handling.
+Now penalties can create bond debt while paused, and later rewards can repay it after resume.
+So this method is paused together with the rest of the reward-handling flows.
+
 
 ```solidity
 function pullAndSplitFeeRewards(
     uint256 nodeOperatorId,
     uint256 cumulativeFeeShares,
     bytes32[] calldata rewardsProof
-) external;
+) external whenResumed;
 ```
 **Parameters**
 
@@ -724,7 +727,7 @@ function getCustomRewardsClaimer(uint256 nodeOperatorId) external view returns (
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`address`|rewardsClaimer Address allowed to claim rewards on behalf of the Node Operator|
+|`<none>`|`address`|Address allowed to claim rewards on behalf of the Node Operator|
 
 
 ### getUnbondedKeysCount
@@ -981,8 +984,8 @@ function _unwrapPermitIfRequired(address token, address from, PermitInput callda
 ### _getClaimableBondShares
 
 Calculates claimable bond shares accounting for locked bond and withdrawn validators.
-Does not subtract pending split transfers, so in rare cases (e.g. paused Accounting, locked or debted bond)
-may overestimate operator-receivable amount.
+Does not subtract pending split transfers, so in rare cases (e.g. locked bond or bond debt)
+may overestimate the operator-receivable amount.
 Off-chain integrations should account for `getPendingSharesToSplit`.
 
 
