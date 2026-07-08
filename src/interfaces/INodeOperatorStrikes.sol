@@ -5,6 +5,7 @@ pragma solidity 0.8.33;
 
 import { ICuratedModule } from "./ICuratedModule.sol";
 import { IMetaRegistry } from "./IMetaRegistry.sol";
+import { IWeightBoostProvider } from "./IWeightBoostProvider.sol";
 
 /// @dev Payload describing a strike to issue.
 struct StrikeInput {
@@ -30,7 +31,8 @@ struct StrikeThreshold {
     uint256 reductionBP;
 }
 
-interface INodeOperatorStrikes {
+/// @notice Committee-issued strikes act as a weight-reduction provider consumed by MetaRegistry.
+interface INodeOperatorStrikes is IWeightBoostProvider {
     event StrikeIssued(
         uint256 indexed nodeOperatorId,
         uint256 indexed strikeId,
@@ -61,7 +63,7 @@ interface INodeOperatorStrikes {
     /// @notice Curated module used to check operator existence.
     function MODULE() external view returns (ICuratedModule);
 
-    /// @notice MetaRegistry called back via `refreshOperatorWeight` on every strike change.
+    /// @notice MetaRegistry called back via `notifyWeightBoostChanged` on every strike change.
     function META_REGISTRY() external view returns (IMetaRegistry);
 
     /// @notice Initialize the contract.
@@ -86,18 +88,13 @@ interface INodeOperatorStrikes {
     function removeExpiredStrikes(uint256 nodeOperatorId) external;
 
     /// @notice Set the global weight-reduction thresholds (callable by DEFAULT_ADMIN_ROLE).
-    /// @dev MUST be paired with `MetaRegistry.refreshOperatorWeight` for every operator with active strikes.
+    /// @dev Notifies MetaRegistry of the config change so affected operator weights are refreshed.
     /// @param thresholds Step function mapping active strike count to weight reduction.
     function setStrikeThresholds(StrikeThreshold[] calldata thresholds) external;
 
     /// @notice Number of active (non-removed) strikes of a Node Operator.
     /// @param nodeOperatorId ID of the Node Operator.
     function getActiveStrikesCount(uint256 nodeOperatorId) external view returns (uint256 count);
-
-    /// @notice Weight multiplier (in basis points) implied by the operator's active strike count.
-    /// @dev Counts strikes regardless of expiry: an expired strike keeps reducing the weight until removed.
-    /// @param nodeOperatorId ID of the Node Operator.
-    function getStrikeWeightMultiplier(uint256 nodeOperatorId) external view returns (uint256 multiplierBP);
 
     /// @notice Return a single strike record. Reverts with `StrikeNotExist` if removed or never issued.
     /// @param nodeOperatorId ID of the Node Operator.

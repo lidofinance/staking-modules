@@ -18,6 +18,7 @@ import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
 import { ExitPenalties } from "../../src/ExitPenalties.sol";
 import { MetaRegistry } from "../../src/MetaRegistry.sol";
 import { AdditionalBondRegistry } from "../../src/AdditionalBondRegistry.sol";
+import { NodeOperatorStrikes } from "../../src/NodeOperatorStrikes.sol";
 import { CuratedGate } from "../../src/CuratedGate.sol";
 import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 
@@ -29,6 +30,7 @@ import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.so
 import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
 import { IMetaRegistry } from "../../src/interfaces/IMetaRegistry.sol";
 import { IWeightBoostProvider } from "../../src/interfaces/IWeightBoostProvider.sol";
+import { StrikeThreshold } from "../../src/interfaces/INodeOperatorStrikes.sol";
 
 import { JsonObj, Json } from "../utils/Json.sol";
 import { Dummy } from "../utils/Dummy.sol";
@@ -130,6 +132,9 @@ struct CuratedDeployParams {
     address secondAdminAddress;
     // AdditionalBondRegistry
     AdditionalBondRegistryConfig additionalBondRegistryConfig;
+    // NodeOperatorStrikes
+    address strikesCommittee;
+    StrikeThreshold[] strikesThresholds;
 }
 
 abstract contract DeployBase is Script {
@@ -153,6 +158,7 @@ abstract contract DeployBase is Script {
     ParametersRegistry public parametersRegistry;
     MetaRegistry public metaRegistry;
     AdditionalBondRegistry public additionalBondRegistry;
+    NodeOperatorStrikes public nodeOperatorStrikes;
     MerkleGateFactory public curatedGateFactory;
     address[] public curatedGateInstances;
     address internal curatedGateImpl;
@@ -242,6 +248,7 @@ abstract contract DeployBase is Script {
             oracle = FeeOracle(_deployProxy(deployer, address(dummyImpl)));
             metaRegistry = MetaRegistry(_deployProxy(deployer, address(dummyImpl)));
             additionalBondRegistry = AdditionalBondRegistry(_deployProxy(deployer, address(dummyImpl)));
+            nodeOperatorStrikes = NodeOperatorStrikes(_deployProxy(deployer, address(dummyImpl)));
 
             FeeDistributor feeDistributorImpl = new FeeDistributor({
                 stETH: locator.lido(),
@@ -348,12 +355,28 @@ abstract contract DeployBase is Script {
                 additionalBondRegistryProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
+            NodeOperatorStrikes nodeOperatorStrikesImpl = new NodeOperatorStrikes({ module: address(curatedModule) });
+
+            {
+                OssifiableProxy nodeOperatorStrikesProxy = OssifiableProxy(payable(address(nodeOperatorStrikes)));
+                nodeOperatorStrikesProxy.proxy__upgradeToAndCall(
+                    address(nodeOperatorStrikesImpl),
+                    abi.encodeCall(NodeOperatorStrikes.initialize, (deployer, config.strikesThresholds))
+                );
+                nodeOperatorStrikesProxy.proxy__changeAdmin(config.proxyAdmin);
+            }
+
             accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
             accounting.grantRole(accounting.SET_BOND_CURVE_MULTIPLIER_ROLE(), address(additionalBondRegistry));
             metaRegistry.addWeightBoostProvider(
                 IWeightBoostProvider(address(additionalBondRegistry)),
                 IMetaRegistry.WeightBoostProviderMode.NodeOperator
             );
+            metaRegistry.addWeightBoostProvider(
+                IWeightBoostProvider(address(nodeOperatorStrikes)),
+                IMetaRegistry.WeightBoostProviderMode.NodeOperator
+            );
+            nodeOperatorStrikes.grantRole(nodeOperatorStrikes.STRIKES_COMMITTEE_ROLE(), config.strikesCommittee);
             metaRegistry.grantRole(metaRegistry.SET_BOND_CURVE_WEIGHT_ROLE(), deployer);
 
             for (uint256 i = 0; i < gatesCount; i++) {
@@ -554,6 +577,9 @@ abstract contract DeployBase is Script {
             additionalBondRegistry.grantRole(additionalBondRegistry.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             additionalBondRegistry.revokeRole(additionalBondRegistry.DEFAULT_ADMIN_ROLE(), deployer);
 
+            nodeOperatorStrikes.grantRole(nodeOperatorStrikes.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
+            nodeOperatorStrikes.revokeRole(nodeOperatorStrikes.DEFAULT_ADMIN_ROLE(), deployer);
+
             verifier.grantRole(verifier.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             verifier.revokeRole(verifier.DEFAULT_ADMIN_ROLE(), deployer);
 
@@ -580,6 +606,8 @@ abstract contract DeployBase is Script {
             deployJson.set("MetaRegistryImpl", address(metaRegistryImpl));
             deployJson.set("AdditionalBondRegistry", address(additionalBondRegistry));
             deployJson.set("AdditionalBondRegistryImpl", address(additionalBondRegistryImpl));
+            deployJson.set("NodeOperatorStrikes", address(nodeOperatorStrikes));
+            deployJson.set("NodeOperatorStrikesImpl", address(nodeOperatorStrikesImpl));
             deployJson.set("ParametersRegistry", address(parametersRegistry));
             deployJson.set("ParametersRegistryImpl", address(parametersRegistryImpl));
             deployJson.set("Accounting", address(accounting));
@@ -676,6 +704,7 @@ abstract contract DeployBase is Script {
         parametersRegistry.grantRole(parametersRegistry.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         metaRegistry.grantRole(metaRegistry.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         additionalBondRegistry.grantRole(additionalBondRegistry.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        nodeOperatorStrikes.grantRole(nodeOperatorStrikes.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         for (uint256 i = 0; i < curatedGateInstances.length; i++) {
             CuratedGate gate = CuratedGate(curatedGateInstances[i]);
             gate.grantRole(gate.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);

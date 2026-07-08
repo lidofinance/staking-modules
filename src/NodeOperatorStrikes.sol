@@ -9,6 +9,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
 import { INodeOperatorStrikes, StrikeInput, Strike, StrikeThreshold } from "./interfaces/INodeOperatorStrikes.sol";
+import { IWeightBoostProvider } from "./interfaces/IWeightBoostProvider.sol";
 import { MAX_BP } from "./lib/Constants.sol";
 
 /// @notice Committee-issued, operator-level strikes that cumulatively reduce
@@ -88,7 +89,7 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
             description: input.description
         });
 
-        META_REGISTRY.refreshOperatorWeight(input.nodeOperatorId);
+        META_REGISTRY.notifyWeightBoostChanged(input.nodeOperatorId);
     }
 
     /// @inheritdoc INodeOperatorStrikes
@@ -96,7 +97,7 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         OperatorStrikes storage rec = _storage().operatorStrikes[nodeOperatorId];
         _removeStrike(rec, nodeOperatorId, _activeIndex(rec, strikeId), strikeId);
 
-        META_REGISTRY.refreshOperatorWeight(nodeOperatorId);
+        META_REGISTRY.notifyWeightBoostChanged(nodeOperatorId);
     }
 
     /// @inheritdoc INodeOperatorStrikes
@@ -115,12 +116,13 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
             removed = true;
         }
 
-        if (removed) META_REGISTRY.refreshOperatorWeight(nodeOperatorId);
+        if (removed) META_REGISTRY.notifyWeightBoostChanged(nodeOperatorId);
     }
 
     /// @inheritdoc INodeOperatorStrikes
     function setStrikeThresholds(StrikeThreshold[] calldata thresholds) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setStrikeThresholds(thresholds);
+        META_REGISTRY.notifyWeightBoostProviderConfigChanged();
     }
 
     /// @inheritdoc INodeOperatorStrikes
@@ -128,8 +130,9 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         return _storage().operatorStrikes[nodeOperatorId].activeIds.length;
     }
 
-    /// @inheritdoc INodeOperatorStrikes
-    function getStrikeWeightMultiplier(uint256 nodeOperatorId) external view returns (uint256 multiplierBP) {
+    /// @inheritdoc IWeightBoostProvider
+    /// @dev Counts strikes regardless of expiry: an expired one keeps reducing the weight until removed.
+    function getWeightBoostMultiplierBP(uint256 nodeOperatorId) external view returns (uint256 multiplierBP) {
         multiplierBP = MAX_BP;
 
         NodeOperatorStrikesStorage storage $ = _storage();

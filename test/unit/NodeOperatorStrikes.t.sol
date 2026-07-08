@@ -166,8 +166,8 @@ contract NodeOperatorStrikesIssueTest is NodeOperatorStrikesBaseTest {
         assertEq(s.category, CATEGORY);
         assertEq(s.description, DESCRIPTION);
 
-        assertEq(metaRegistryMock.refreshOperatorWeightCallCount(), 1);
-        assertEq(metaRegistryMock.lastRefreshedOperatorId(), NO_ID);
+        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), 1);
+        assertEq(metaRegistryMock.lastChangedBoostOperatorId(), NO_ID);
     }
 
     function test_issueStrike_AssignsSequentialIds() public {
@@ -234,7 +234,7 @@ contract NodeOperatorStrikesIssueTest is NodeOperatorStrikesBaseTest {
 contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
     function test_removeStrike_RemovesAndRefreshes() public {
         uint256 id = _issue(NO_ID);
-        uint256 refreshesBefore = metaRegistryMock.refreshOperatorWeightCallCount();
+        uint256 refreshesBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
 
         vm.expectEmit(true, true, true, true, address(strikes));
         emit INodeOperatorStrikes.StrikeRemoved(NO_ID, id, committee);
@@ -244,7 +244,7 @@ contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
 
         assertEq(strikes.getActiveStrikesCount(NO_ID), 0);
         _expectNoStrike(NO_ID, id); // removed
-        assertEq(metaRegistryMock.refreshOperatorWeightCallCount(), refreshesBefore + 1);
+        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), refreshesBefore + 1);
     }
 
     function test_removeStrike_RevertWhen_NotCommittee() public {
@@ -374,7 +374,7 @@ contract NodeOperatorStrikesRemoveExpiredTest is NodeOperatorStrikesBaseTest {
         (uint256 id1, uint256 id2, uint256 id3, uint256 id4) = _issueMixed();
 
         vm.warp(block.timestamp + LIFETIME); // id1, id3 expired; id2, id4 still active
-        uint256 refreshesBefore = metaRegistryMock.refreshOperatorWeightCallCount();
+        uint256 refreshesBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
 
         vm.prank(stranger); // permissionless
         strikes.removeExpiredStrikes(NO_ID);
@@ -384,7 +384,7 @@ contract NodeOperatorStrikesRemoveExpiredTest is NodeOperatorStrikesBaseTest {
         _expectNoStrike(NO_ID, id3);
         assertEq(strikes.getStrike(NO_ID, id2).id, id2);
         assertEq(strikes.getStrike(NO_ID, id4).id, id4);
-        assertEq(metaRegistryMock.refreshOperatorWeightCallCount(), refreshesBefore + 1); // refreshed once
+        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), refreshesBefore + 1); // refreshed once
     }
 
     function test_removeExpiredStrikes_SurvivorStaysRemovable() public {
@@ -416,13 +416,13 @@ contract NodeOperatorStrikesRemoveExpiredTest is NodeOperatorStrikesBaseTest {
     function test_removeExpiredStrikes_NoopWhenNoneExpired() public {
         _issue(NO_ID);
         _issue(NO_ID);
-        uint256 refreshesBefore = metaRegistryMock.refreshOperatorWeightCallCount();
+        uint256 refreshesBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
 
         vm.prank(stranger);
         strikes.removeExpiredStrikes(NO_ID);
 
         assertEq(strikes.getActiveStrikesCount(NO_ID), 2);
-        assertEq(metaRegistryMock.refreshOperatorWeightCallCount(), refreshesBefore); // no refresh
+        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), refreshesBefore); // no refresh
     }
 }
 
@@ -442,6 +442,9 @@ contract NodeOperatorStrikesThresholdsTest is NodeOperatorStrikesBaseTest {
         assertEq(stored[0].reductionBP, 2_500);
         assertEq(stored[3].minCount, 5);
         assertEq(stored[3].reductionBP, 10_000);
+
+        // The config change is pushed to MetaRegistry so cached weights get refreshed.
+        assertEq(metaRegistryMock.notifyConfigChangedCallCount(), 1);
     }
 
     function test_setStrikeThresholds_Replaces() public {
@@ -528,38 +531,38 @@ contract NodeOperatorStrikesThresholdsTest is NodeOperatorStrikesBaseTest {
 }
 
 contract NodeOperatorStrikesWeightMultiplierTest is NodeOperatorStrikesBaseTest {
-    function test_getStrikeWeightMultiplier_StepFunction() public {
+    function test_getWeightBoostMultiplierBP_StepFunction() public {
         // 0 strikes -> full weight.
-        assertEq(strikes.getStrikeWeightMultiplier(NO_ID), MAX_BP);
+        assertEq(strikes.getWeightBoostMultiplierBP(NO_ID), MAX_BP);
 
         _issue(NO_ID); // 1 -> full weight
-        assertEq(strikes.getStrikeWeightMultiplier(NO_ID), MAX_BP);
+        assertEq(strikes.getWeightBoostMultiplierBP(NO_ID), MAX_BP);
 
         _issue(NO_ID); // 2 -> 75%
-        assertEq(strikes.getStrikeWeightMultiplier(NO_ID), 7_500);
+        assertEq(strikes.getWeightBoostMultiplierBP(NO_ID), 7_500);
 
         _issue(NO_ID); // 3 -> 50%
-        assertEq(strikes.getStrikeWeightMultiplier(NO_ID), 5_000);
+        assertEq(strikes.getWeightBoostMultiplierBP(NO_ID), 5_000);
 
         _issue(NO_ID); // 4 -> 25%
-        assertEq(strikes.getStrikeWeightMultiplier(NO_ID), 2_500);
+        assertEq(strikes.getWeightBoostMultiplierBP(NO_ID), 2_500);
 
         _issue(NO_ID); // 5 -> 0%
-        assertEq(strikes.getStrikeWeightMultiplier(NO_ID), 0);
+        assertEq(strikes.getWeightBoostMultiplierBP(NO_ID), 0);
 
         _issue(NO_ID); // 6 -> still 0% (clamped to last band)
-        assertEq(strikes.getStrikeWeightMultiplier(NO_ID), 0);
+        assertEq(strikes.getWeightBoostMultiplierBP(NO_ID), 0);
     }
 
-    function test_getStrikeWeightMultiplier_IncreasesAfterRemoval() public {
+    function test_getWeightBoostMultiplierBP_IncreasesAfterRemoval() public {
         uint256 id1 = _issue(NO_ID);
         _issue(NO_ID);
         _issue(NO_ID); // 3 active -> 50%
-        assertEq(strikes.getStrikeWeightMultiplier(NO_ID), 5_000);
+        assertEq(strikes.getWeightBoostMultiplierBP(NO_ID), 5_000);
 
         vm.prank(committee);
         strikes.removeStrike(NO_ID, id1); // 2 active -> 75%
-        assertEq(strikes.getStrikeWeightMultiplier(NO_ID), 7_500);
+        assertEq(strikes.getWeightBoostMultiplierBP(NO_ID), 7_500);
     }
 
     function test_getStrikes_ExcludesRemoved() public {

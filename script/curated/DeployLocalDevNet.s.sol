@@ -4,6 +4,7 @@
 pragma solidity 0.8.33;
 
 import { DeployBase, CuratedGateConfig, AdditionalBondRegistryConfig } from "./DeployBase.s.sol";
+import { StrikeThreshold } from "../../src/interfaces/INodeOperatorStrikes.sol";
 import { GIndices } from "../constants/GIndices.sol";
 import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
 import { HashConsensus } from "../../src/lib/base-oracle/HashConsensus.sol";
@@ -189,6 +190,13 @@ contract DeployLocalDevNet is DeployBase {
 
         // CurveMultiplier
         config.additionalBondRegistryConfig.curveMultiplierCooldown = 1 days;
+
+        // NodeOperatorStrikes
+        config.strikesCommittee = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
+        config.strikesThresholds.push(StrikeThreshold({ minCount: 2, reductionBP: 2_500 }));
+        config.strikesThresholds.push(StrikeThreshold({ minCount: 3, reductionBP: 5_000 }));
+        config.strikesThresholds.push(StrikeThreshold({ minCount: 4, reductionBP: 7_500 }));
+        config.strikesThresholds.push(StrikeThreshold({ minCount: 5, reductionBP: 10_000 }));
 
         _setUp();
     }

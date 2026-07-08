@@ -8,6 +8,7 @@ import { IMetaRegistry, OperatorMetadata } from "src/interfaces/IMetaRegistry.so
 contract MetaRegistryMock {
     uint256 public notifyWeightBoostChangedCallCount;
     uint256 public lastChangedBoostOperatorId;
+    uint256 public notifyConfigChangedCallCount;
 
     function setOperatorMetadataAsAdmin(uint256 nodeOperatorId, OperatorMetadata calldata metadata) external {
         emit IMetaRegistry.OperatorMetadataSet({ nodeOperatorId: nodeOperatorId, metadata: metadata });
@@ -16,5 +17,9 @@ contract MetaRegistryMock {
     function notifyWeightBoostChanged(uint256 nodeOperatorId) external {
         notifyWeightBoostChangedCallCount++;
         lastChangedBoostOperatorId = nodeOperatorId;
+    }
+
+    function notifyWeightBoostProviderConfigChanged() external {
+        notifyConfigChangedCallCount++;
     }
 }
