@@ -544,7 +544,12 @@ contract DeploymentHelpers is Test {
         dst.secondAdminAddress = src.secondAdminAddress;
 
         // AdditionalBondRegistry
-        dst.additionalBondRegistryConfig = src.additionalBondRegistryConfig;
+        dst.additionalBondRegistryConfig.curveMultiplierCooldown = src
+            .additionalBondRegistryConfig
+            .curveMultiplierCooldown;
+        for (uint256 i; i < src.additionalBondRegistryConfig.boostSteps.length; ++i) {
+            dst.additionalBondRegistryConfig.boostSteps.push(src.additionalBondRegistryConfig.boostSteps[i]);
+        }
     }
 
     function parseCommonDeployParams(string memory config) internal view returns (CommonDeployParams memory params) {

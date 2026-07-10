@@ -200,6 +200,9 @@ contract DeployMainnet is DeployBase {
 
         // CurveMultiplier
         config.additionalBondRegistryConfig.curveMultiplierCooldown = 7 days;
+        // TODO: reconsider — placeholder initial boost steps.
+        config.additionalBondRegistryConfig.boostSteps.push([uint256(5_000), 2_000]);
+        config.additionalBondRegistryConfig.boostSteps.push([uint256(10_000), 8_000]);
 
         _setUp();
     }
