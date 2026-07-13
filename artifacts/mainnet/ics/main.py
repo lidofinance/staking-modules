@@ -60,6 +60,13 @@ def main():
         for addr in ics_round_addresses:
             final_addresses.append(addr)
 
+    ics_sdvt_addresses = []
+    with open(f"sources/ics_sdvt.json", "r") as f:
+        ics_sdvt_addresses.extend(json.load(f))
+    print(f"Adding {len(ics_sdvt_addresses)} addresses from ICS SDVT")
+    for addr in ics_sdvt_addresses:
+        final_addresses.append(addr)
+
     final_addresses_set = set(final_addresses)
     with open("ics.csv", "w") as f:
         for address in sorted(final_addresses_set):
