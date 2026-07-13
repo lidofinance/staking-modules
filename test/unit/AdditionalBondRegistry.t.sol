@@ -177,6 +177,11 @@ contract AdditionalBondRegistrySetBoostStepsTest is AdditionalBondRegistryBaseTe
         additionalBondRegistry.setBoostSteps(_boostSteps());
     }
 
+    function test_setBoostSteps_RevertWhen_Empty() public {
+        vm.expectRevert(IAdditionalBondRegistry.EmptyBoostSteps.selector);
+        _setBoostSteps(new BoostStep[](0));
+    }
+
     function test_setBoostSteps_RevertWhen_CurveMulAboveMax() public {
         uint256 aboveMax = additionalBondRegistry.MAX_CURVE_MULTIPLIER() + 1;
         BoostStep[] memory boostSteps = new BoostStep[](1);

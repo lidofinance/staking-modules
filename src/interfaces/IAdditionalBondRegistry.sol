@@ -69,8 +69,8 @@ interface IAdditionalBondRegistry is IWeightBoostProvider {
     /// @param boostSteps Initial boost steps; must be non-empty (same rules as `setBoostSteps`).
     function initialize(address admin, BoostStep[] calldata boostSteps) external;
 
-    /// @notice Replace the boost steps. Steps must be strictly ascending by both fields, each an increment
-    ///         above MAX_BP in [0, MAX_CURVE_MULTIPLIER] / [0, MAX_WEIGHT_MULTIPLIER].
+    /// @notice Replace the boost steps. The list must be non-empty and strictly ascending by both fields,
+    ///         each an increment above MAX_BP in [0, MAX_CURVE_MULTIPLIER] / [0, MAX_WEIGHT_MULTIPLIER].
     /// @param boostSteps New boost steps.
     function setBoostSteps(BoostStep[] calldata boostSteps) external;
 

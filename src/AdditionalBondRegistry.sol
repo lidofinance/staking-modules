@@ -52,7 +52,6 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
     /// @inheritdoc IAdditionalBondRegistry
     function initialize(address admin, BoostStep[] calldata boostSteps) external initializer {
         if (admin == address(0)) revert ZeroAdminAddress();
-        if (boostSteps.length == 0) revert EmptyBoostSteps();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _setBoostSteps(boostSteps);
     }
@@ -124,6 +123,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
     }
 
     function _setBoostSteps(BoostStep[] calldata boostSteps) internal {
+        if (boostSteps.length == 0) revert EmptyBoostSteps();
         AdditionalBondRegistryStorage storage $ = _storage();
         delete $.boostSteps;
         for (uint256 i = 0; i < boostSteps.length; ++i) {
