@@ -60,6 +60,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
     /// @inheritdoc IAdditionalBondRegistry
     function setBoostSteps(BoostStep[] calldata boostSteps) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setBoostSteps(boostSteps);
+        META_REGISTRY.notifyWeightBoostProviderConfigChanged();
     }
 
     /// @inheritdoc IAdditionalBondRegistry

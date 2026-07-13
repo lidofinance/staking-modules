@@ -142,6 +142,11 @@ contract AdditionalBondRegistrySetBoostStepsTest is AdditionalBondRegistryBaseTe
         assertEq(stored[1].weightMultiplier, T2_WEIGHT);
     }
 
+    function test_setBoostSteps_NotifiesProviderConfigChanged() public {
+        _setBoostSteps(_boostSteps());
+        assertEq(metaRegistryMock.notifyWeightBoostProviderConfigChangedCallCount(), 1);
+    }
+
     function test_setBoostSteps_Replaces() public {
         _setBoostSteps(_boostSteps());
         BoostStep[] memory boostSteps = new BoostStep[](1);
