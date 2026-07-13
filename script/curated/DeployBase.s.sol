@@ -395,7 +395,7 @@ abstract contract DeployBase is Script {
                 oracle: address(oracle)
             });
 
-            strikes = ValidatorStrikes(_deployProxy(deployer, address(new Dummy())));
+            strikes = ValidatorStrikes(_deployProxy(deployer, address(dummyImpl)));
 
             ExitPenalties exitPenaltiesImpl = new ExitPenalties(address(curatedModule), address(strikes));
 
@@ -562,7 +562,6 @@ abstract contract DeployBase is Script {
             deployJson.set("CuratedGates", curatedGateInstances);
             deployJson.set("LidoLocator", config.lidoLocatorAddress);
             deployJson.set("CircuitBreaker", circuitBreaker);
-            deployJson.set("DeployParams", abi.encode(config));
             deployJson.set("CuratedDeployParams", abi.encode(config));
             deployJson.set("git-ref", gitRef);
             if (!vm.exists(artifactDir)) {
