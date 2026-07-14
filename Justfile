@@ -374,6 +374,27 @@ make-fork *args:
         else exec anvil -f ${RPC_URL} --host {{anvil_host}} --port {{anvil_port}} --config-out localhost.json {{disable_code_size_limit}} --timeout 90000 {{args}}; \
     fi
 
+# Pins the fork to the block the state was captured at, so any account missing from the dump
+# is fetched from the remote at the same block. Override the block with the second argument;
+# extra anvil args are forwarded, e.g. `just make-fork-state state1.json 25523233 --steps-tracing`.
+# Start a local anvil fork preloaded with a saved state dump (see `anvil --dump-state`).
+make-fork-state state_file="mainnet-state.json" block_number="" *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ ! -f "{{state_file}}" ]; then
+        just _warn "state file '{{state_file}}' not found."
+        exit 1
+    fi
+
+    block="{{block_number}}"
+    if [ -z "${block}" ]; then
+        block="$(jq -re '.best_block_number' "{{state_file}}")"
+    fi
+
+    just _info "loading '{{state_file}}' pinned to block ${block}"
+    exec just make-fork --load-state "{{state_file}}" --fork-block-number "${block}" {{args}}
+
 kill-fork:
     @-pkill anvil && just _warn "anvil process is killed"
 
