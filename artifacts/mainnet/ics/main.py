@@ -1,7 +1,8 @@
 import json
+import os
 from web3 import Web3
 
-PROVIDER_URL_MAINNET = "http://localhost:8545"  # Replace with your actual Web3 provider URL
+PROVIDER_URL_MAINNET = os.environ.get('PROVIDER_URL_MAINNET')
 CONTRACT_ADDRESS_MAINNET = '0xdA7dE2ECdDfccC6c3AF10108Db212ACBBf9EA83F'
 
 with open("abi/csm_abi.json", "r") as file:
@@ -59,6 +60,13 @@ def main():
         print(f"Adding {len(ics_round_addresses)} addresses from ICS Round {i+1}")
         for addr in ics_round_addresses:
             final_addresses.append(addr)
+
+    ics_sdvt_addresses = []
+    with open(f"sources/ics_sdvt.json", "r") as f:
+        ics_sdvt_addresses.extend(json.load(f))
+    print(f"Adding {len(ics_sdvt_addresses)} addresses from ICS SDVT")
+    for addr in ics_sdvt_addresses:
+        final_addresses.append(addr)
 
     final_addresses_set = set(final_addresses)
     with open("ics.csv", "w") as f:
