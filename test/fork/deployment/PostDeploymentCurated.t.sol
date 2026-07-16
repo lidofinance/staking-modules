@@ -10,6 +10,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { CuratedDeployParams, CuratedGateConfig, GateCurveParams } from "script/curated/DeployBase.s.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
+import { BoostStep } from "src/interfaces/IAdditionalBondRegistry.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
 import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
@@ -127,7 +128,13 @@ contract MetaRegistryDeploymentTest is DeploymentBaseTest {
 
 contract AdditionalBondRegistryDeploymentTest is DeploymentBaseTest {
     function test_state_onlyFull() public view {
-        assertEq(additionalBondRegistry.getTiersCount(), 0);
+        BoostStep[] memory boostSteps = additionalBondRegistry.getBoostSteps();
+        uint256[2][] memory expected = deployParams.additionalBondRegistryConfig.boostSteps;
+        assertEq(boostSteps.length, expected.length);
+        for (uint256 i; i < expected.length; ++i) {
+            assertEq(boostSteps[i].minCurveMultiplier, expected[i][0]);
+            assertEq(boostSteps[i].weightMultiplier, expected[i][1]);
+        }
     }
 
     function test_immutables_onlyFull() public view {
@@ -143,7 +150,7 @@ contract AdditionalBondRegistryDeploymentTest is DeploymentBaseTest {
             "additional bond registry meta registry"
         );
         assertEq(
-            additionalBondRegistry.CURVE_MULTIPLIER_COOLDOWN(),
+            additionalBondRegistry.CURVE_MULTIPLIER_REDUCTION_COOLDOWN(),
             deployParams.additionalBondRegistryConfig.curveMultiplierCooldown,
             "additional bond registry cooldown"
         );
@@ -182,10 +189,10 @@ contract AdditionalBondRegistryDeploymentTest is DeploymentBaseTest {
 
     function test_initialization_onlyFull() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        additionalBondRegistry.initialize(deployParams.aragonAgent);
+        additionalBondRegistry.initialize(deployParams.aragonAgent, new BoostStep[](0));
 
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        additionalBondRegistryImpl.initialize(deployParams.aragonAgent);
+        additionalBondRegistryImpl.initialize(deployParams.aragonAgent, new BoostStep[](0));
     }
 
     function test_proxy_onlyFull() public view {

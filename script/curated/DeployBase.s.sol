@@ -19,6 +19,7 @@ import { ExitPenalties } from "../../src/ExitPenalties.sol";
 import { MetaRegistry } from "../../src/MetaRegistry.sol";
 import { AdditionalBondRegistry } from "../../src/AdditionalBondRegistry.sol";
 import { NodeOperatorStrikes } from "../../src/NodeOperatorStrikes.sol";
+import { BoostStep } from "../../src/interfaces/IAdditionalBondRegistry.sol";
 import { CuratedGate } from "../../src/CuratedGate.sol";
 import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 
@@ -65,6 +66,8 @@ struct CuratedGateConfig {
 
 struct AdditionalBondRegistryConfig {
     uint256 curveMultiplierCooldown;
+    // Each entry is [minCurveMultiplier, weightMultiplier] (increments above MAX_BP).
+    uint256[2][] boostSteps;
 }
 
 struct CuratedDeployParams {
@@ -348,9 +351,12 @@ abstract contract DeployBase is Script {
 
             {
                 OssifiableProxy additionalBondRegistryProxy = OssifiableProxy(payable(address(additionalBondRegistry)));
+                BoostStep[] memory initialBoostSteps = CommonScriptUtils.arraysToBoostSteps(
+                    config.additionalBondRegistryConfig.boostSteps
+                );
                 additionalBondRegistryProxy.proxy__upgradeToAndCall(
                     address(additionalBondRegistryImpl),
-                    abi.encodeCall(AdditionalBondRegistry.initialize, (deployer))
+                    abi.encodeCall(AdditionalBondRegistry.initialize, (deployer, initialBoostSteps))
                 );
                 additionalBondRegistryProxy.proxy__changeAdmin(config.proxyAdmin);
             }

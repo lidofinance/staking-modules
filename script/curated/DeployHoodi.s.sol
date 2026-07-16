@@ -202,6 +202,9 @@ contract DeployHoodi is DeployBase {
 
         // CurveMultiplier
         config.additionalBondRegistryConfig.curveMultiplierCooldown = 7 days;
+        // TODO: reconsider — placeholder initial boost steps.
+        config.additionalBondRegistryConfig.boostSteps.push([uint256(5_000), 2_000]);
+        config.additionalBondRegistryConfig.boostSteps.push([uint256(10_000), 8_000]);
 
         // NodeOperatorStrikes
         config.strikesCommittee = 0x84DffcfB232594975C608DE92544Ff239a24c9E9; // CMC on Hoodi

@@ -201,6 +201,9 @@ contract DeployMainnet is DeployBase {
 
         // CurveMultiplier
         config.additionalBondRegistryConfig.curveMultiplierCooldown = 7 days;
+        // TODO: reconsider — placeholder initial boost steps.
+        config.additionalBondRegistryConfig.boostSteps.push([uint256(5_000), 2_000]);
+        config.additionalBondRegistryConfig.boostSteps.push([uint256(10_000), 8_000]);
 
         // NodeOperatorStrikes
         config.strikesCommittee = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
