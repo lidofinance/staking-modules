@@ -190,14 +190,14 @@ contract NodeOperatorStrikesIssueTest is NodeOperatorStrikesBaseTest {
     }
 
     function test_issueStrike_RevertWhen_ZeroLifetime() public {
-        vm.expectRevert(INodeOperatorStrikes.InvalidLifetime.selector);
+        vm.expectRevert(INodeOperatorStrikes.ZeroLifetime.selector);
         vm.prank(committee);
         strikes.issueStrike(_input(NO_ID, CATEGORY, 0));
     }
 
     function test_issueStrike_RevertWhen_LifetimeOverflowsUint64() public {
         uint256 hugeLifetime = type(uint64).max; // block.timestamp + this overflows uint64
-        vm.expectRevert(INodeOperatorStrikes.InvalidLifetime.selector);
+        vm.expectRevert(INodeOperatorStrikes.LifetimeTooLong.selector);
         vm.prank(committee);
         strikes.issueStrike(_input(NO_ID, CATEGORY, hugeLifetime));
     }

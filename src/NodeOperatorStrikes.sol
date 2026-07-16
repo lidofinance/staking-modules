@@ -67,9 +67,9 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         if (descLength == 0 || descLength > MAX_DESCRIPTION_LENGTH) revert InvalidDescription();
 
         uint256 lifetime = input.lifetime;
-        if (lifetime == 0) revert InvalidLifetime();
+        if (lifetime == 0) revert ZeroLifetime();
         uint256 expiry = block.timestamp + lifetime;
-        if (expiry > type(uint64).max) revert InvalidLifetime();
+        if (expiry > type(uint64).max) revert LifetimeTooLong();
 
         OperatorStrikes storage rec = _storage().operatorStrikes[input.nodeOperatorId];
         strikeId = ++rec.lastId;
@@ -125,11 +125,6 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         META_REGISTRY.notifyWeightBoostProviderConfigChanged();
     }
 
-    /// @inheritdoc INodeOperatorStrikes
-    function getActiveStrikesCount(uint256 nodeOperatorId) external view returns (uint256 count) {
-        return _storage().operatorStrikes[nodeOperatorId].activeIds.length;
-    }
-
     /// @inheritdoc IWeightBoostProvider
     /// @dev Counts strikes regardless of expiry: an expired one keeps reducing the weight until removed.
     function getWeightBoostMultiplierBP(uint256 nodeOperatorId) external view returns (uint256 multiplierBP) {
@@ -144,6 +139,11 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
             if (count < thresholds[i].minCount) break; // thresholds ascend by minCount
             multiplierBP = MAX_BP - thresholds[i].reductionBP;
         }
+    }
+
+    /// @inheritdoc INodeOperatorStrikes
+    function getActiveStrikesCount(uint256 nodeOperatorId) external view returns (uint256 count) {
+        return _storage().operatorStrikes[nodeOperatorId].activeIds.length;
     }
 
     /// @inheritdoc INodeOperatorStrikes
@@ -170,18 +170,13 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         return _storage().thresholds;
     }
 
-    /// @dev Index of `strikeId` in `activeIds`; reverts `StrikeNotExist` if absent.
-    function _activeIndex(OperatorStrikes storage rec, uint256 strikeId) private view returns (uint256) {
-        uint256[] storage activeIds = rec.activeIds;
-        uint256 len = activeIds.length;
-        for (uint256 i; i < len; ++i) {
-            if (activeIds[i] == strikeId) return i;
-        }
-        revert StrikeNotExist();
-    }
-
     /// @dev Swap-pops the id, deletes the record, emits. Caller refreshes the weight (once per batch).
-    function _removeStrike(OperatorStrikes storage rec, uint256 nodeOperatorId, uint256 idx, uint256 strikeId) private {
+    function _removeStrike(
+        OperatorStrikes storage rec,
+        uint256 nodeOperatorId,
+        uint256 idx,
+        uint256 strikeId
+    ) internal {
         uint256[] storage activeIds = rec.activeIds;
         uint256 lastIdx = activeIds.length - 1;
         if (idx != lastIdx) {
@@ -193,7 +188,7 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         emit StrikeRemoved(nodeOperatorId, strikeId, msg.sender);
     }
 
-    function _setStrikeThresholds(StrikeThreshold[] calldata thresholds) private {
+    function _setStrikeThresholds(StrikeThreshold[] calldata thresholds) internal {
         _validateStrikeThresholds(thresholds);
 
         NodeOperatorStrikesStorage storage $ = _storage();
@@ -205,17 +200,21 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         emit StrikeThresholdsSet(thresholds);
     }
 
-    function _onlyExistingOperator(uint256 nodeOperatorId) private view {
+    function _onlyExistingOperator(uint256 nodeOperatorId) internal view {
         if (nodeOperatorId >= MODULE.getNodeOperatorsCount()) revert NodeOperatorDoesNotExist();
     }
 
-    function _storage() internal pure returns (NodeOperatorStrikesStorage storage $) {
-        assembly ("memory-safe") {
-            $.slot := NODE_OPERATOR_STRIKES_STORAGE_LOCATION
+    /// @dev Index of `strikeId` in `activeIds`; reverts `StrikeNotExist` if absent.
+    function _activeIndex(OperatorStrikes storage rec, uint256 strikeId) internal view returns (uint256) {
+        uint256[] storage activeIds = rec.activeIds;
+        uint256 len = activeIds.length;
+        for (uint256 i; i < len; ++i) {
+            if (activeIds[i] == strikeId) return i;
         }
+        revert StrikeNotExist();
     }
 
-    function _validateStrikeThresholds(StrikeThreshold[] calldata thresholds) private pure {
+    function _validateStrikeThresholds(StrikeThreshold[] calldata thresholds) internal pure {
         uint256 len = thresholds.length;
         if (len == 0 || len > MAX_THRESHOLDS) revert InvalidStrikeThresholds();
         if (thresholds[0].minCount == 0) revert InvalidStrikeThresholds();
@@ -225,6 +224,12 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
             if (thresholds[i].minCount <= thresholds[i - 1].minCount) revert InvalidStrikeThresholds();
             if (thresholds[i].reductionBP <= thresholds[i - 1].reductionBP) revert InvalidStrikeThresholds();
             if (thresholds[i].reductionBP > MAX_BP) revert InvalidStrikeThresholds();
+        }
+    }
+
+    function _storage() internal pure returns (NodeOperatorStrikesStorage storage $) {
+        assembly ("memory-safe") {
+            $.slot := NODE_OPERATOR_STRIKES_STORAGE_LOCATION
         }
     }
 }

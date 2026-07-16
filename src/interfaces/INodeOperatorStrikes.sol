@@ -47,7 +47,8 @@ interface INodeOperatorStrikes is IWeightBoostProvider {
     error ZeroAdminAddress();
     error NodeOperatorDoesNotExist();
     error StrikeNotExist();
-    error InvalidLifetime();
+    error ZeroLifetime();
+    error LifetimeTooLong();
     error InvalidStrikeThresholds();
     error InvalidDescription();
 
