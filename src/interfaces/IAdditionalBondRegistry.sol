@@ -8,89 +8,82 @@ import { ICuratedModule } from "./ICuratedModule.sol";
 import { IMetaRegistry } from "./IMetaRegistry.sol";
 import { IWeightBoostProvider } from "./IWeightBoostProvider.sol";
 
-/// @dev Bond tier. Fields hold increments above MAX_BP in storage; `getTierInfo` returns them as full
-///      effective multipliers (MAX_BP + stored increment).
-struct TierInfo {
-    uint128 curveMultiplier;
+/// @dev A boost step: curve multiplier increments at or above `minCurveMultiplier` map to
+///      `weightMultiplier`. Both are increments above MAX_BP in basis points (0 = no scaling).
+struct BoostStep {
+    uint128 minCurveMultiplier;
     uint128 weightMultiplier;
 }
 
-/// @dev Operator's effective tier state, with multipliers as full basis-point values.
-///      During a downgrade cooldown `curveMultiplier` keeps the pre-downgrade value until `applyCurveMultiplier`,
-///      so it may exceed the current tier's value (and stay above MAX_BP while `tierId == 0`).
-struct OperatorTierState {
-    uint256 tierId;
-    uint256 curveMultiplier;
-    uint256 weightMultiplier;
-    uint256 curveMultiplierCooldownUntil;
+/// @dev A pending downgrade: the cooldown deadline and the curve multiplier increment to apply once it
+///      elapses. `cooldownUntil == 0` means no active cooldown. Packed into a single slot.
+struct PendingCurveMultiplierReduction {
+    uint128 cooldownUntil;
+    uint128 curveMultiplier;
 }
 
-/// @notice Manages operator bond tiers and associated tier downgrade cooldown state.
+/// @notice Maps an operator's curve multiplier to a weight multiplier via governance-set boost steps.
+///         The curve multiplier itself lives in Accounting; this registry only requests changes and serves
+///         the resulting weight boost. Lowering the weight applies immediately, while the curve multiplier
+///         decrease is deferred until the cooldown elapses.
 interface IAdditionalBondRegistry is IWeightBoostProvider {
-    event TierAdded(uint256 indexed tierId, uint256 curveMultiplier, uint256 weightMultiplier);
-    event TierSelected(uint256 indexed nodeOperatorId, uint256 tierId);
-    event CurveMultiplierCooldownSet(uint256 indexed nodeOperatorId, uint256 cooldownUntil);
-    event CurveMultiplierCooldownRemoved(uint256 indexed nodeOperatorId);
+    event BoostStepsSet(BoostStep[] boostSteps);
+    event CurveMultiplierReductionRequested(uint256 indexed nodeOperatorId, uint256 curveMultiplier);
+    event CurveMultiplierReductionCooldownSet(uint256 indexed nodeOperatorId, uint256 cooldownUntil);
+    event CurveMultiplierReductionCooldownRemoved(uint256 indexed nodeOperatorId);
 
     error ZeroAdminAddress();
+    error EmptyBoostSteps();
     error InvalidCurveMultiplier();
     error InvalidWeightMultiplier();
-    error InvalidTierId();
-    error SameTier();
-    error InsufficientBondForTier();
+    error InsufficientBond();
+    error SameCurveMultiplier();
     error SenderIsNotOperatorOwner();
-    error NoCurveMultiplierCooldown();
-    error CurveMultiplierCooldownNotElapsed();
-    error CurveMultiplierCooldownActive();
+    error NoCurveMultiplierReductionCooldown();
+    error CurveMultiplierReductionCooldownNotElapsed();
 
-    /// @notice Curated module address.
     function MODULE() external view returns (ICuratedModule);
 
-    /// @notice Accounting contract holding bond curves and the operator curve multiplier.
+    /// @dev Holding bond curves and the operator curve multiplier.
     function ACCOUNTING() external view returns (IAccounting);
 
-    /// @notice MetaRegistry called back via `notifyWeightBoostChanged` on tier changes.
+    /// @dev Notified via `notifyWeightBoostChanged` on weight changes.
     function META_REGISTRY() external view returns (IMetaRegistry);
 
-    /// @notice Upper bound for `curveMultiplier`.
+    /// @dev Upper bound for a boost step's curve multiplier increment (above MAX_BP, in basis points).
     function MAX_CURVE_MULTIPLIER() external view returns (uint256);
 
-    /// @notice Upper bound for `weightMultiplier`.
+    /// @dev Upper bound for a boost step's weight multiplier increment (above MAX_BP, in basis points).
     function MAX_WEIGHT_MULTIPLIER() external view returns (uint256);
 
-    /// @notice Cooldown in seconds after a downgrade before `applyCurveMultiplier` can be called.
-    function CURVE_MULTIPLIER_COOLDOWN() external view returns (uint256);
+    /// @dev Cooldown in seconds after a downgrade request before `applyCurveMultiplier` can be called.
+    function CURVE_MULTIPLIER_REDUCTION_COOLDOWN() external view returns (uint256);
+
+    /// @dev Requested curve multiplier must be a multiple of this (1%).
+    function CURVE_MULTIPLIER_STEP() external view returns (uint256);
 
     /// @notice Initialize the provider.
     /// @param admin Address to receive DEFAULT_ADMIN_ROLE.
-    function initialize(address admin) external;
+    /// @param boostSteps Initial boost steps; must be non-empty (same rules as `setBoostSteps`).
+    function initialize(address admin, BoostStep[] calldata boostSteps) external;
 
-    /// @notice Add a new bond tier. Tier IDs are assigned sequentially starting from 1.
-    /// @param curveMultiplier  Curve multiplier increment above MAX_BP (must be <= MAX_CURVE_MULTIPLIER).
-    /// @param weightMultiplier Weight multiplier increment above MAX_BP (must be <= MAX_WEIGHT_MULTIPLIER).
-    /// @return tierId ID of the newly created tier.
-    function addTier(uint256 curveMultiplier, uint256 weightMultiplier) external returns (uint256 tierId);
+    /// @notice Replace the boost steps. The list must be non-empty and strictly ascending by both fields,
+    ///         each an increment above MAX_BP in [0, MAX_CURVE_MULTIPLIER] / [0, MAX_WEIGHT_MULTIPLIER].
+    /// @param boostSteps New boost steps.
+    function setBoostSteps(BoostStep[] calldata boostSteps) external;
 
-    /// @notice Select a bond tier for the Node Operator. An upgrade (target effective curve multiplier above the
-    ///         operator's current one) applies both multipliers at once and requires the bond to cover the new
-    ///         requirement; a downgrade applies the new weight now but keeps the higher curve multiplier until
-    ///         `applyCurveMultiplier`. Either clears an active cooldown (upgrade) or reverts on it (downgrade).
+    /// @notice Request a curve multiplier for the Node Operator. Raising it applies immediately (needs enough
+    ///         bond) and clears any pending downgrade; lowering it drops the weight now but reduces the
+    ///         multiplier in Accounting only after the cooldown, via `applyCurveMultiplier`. Reverts if unchanged.
     /// @param nodeOperatorId ID of the Node Operator.
-    /// @param tierId         Target tier ID (0 = default tier).
-    function selectTier(uint256 nodeOperatorId, uint256 tierId) external;
+    /// @param curveMultiplier Curve multiplier increment (above MAX_BP), a multiple of CURVE_MULTIPLIER_STEP; 0 = no boost.
+    function requestCurveMultiplier(uint256 nodeOperatorId, uint256 curveMultiplier) external;
 
-    /// @notice Apply a pending downgrade after its cooldown elapses, lowering the curve multiplier to the current
-    ///         tier. Callable only by the Node Operator owner.
+    /// @notice Apply a pending downgrade after its cooldown elapses, lowering the curve multiplier in
+    ///         Accounting to the requested value. Callable only by the Node Operator owner.
     /// @param nodeOperatorId ID of the Node Operator.
     function applyCurveMultiplier(uint256 nodeOperatorId) external;
 
-    /// @notice Number of stored tiers (not counting the implicit default tier 0).
-    function getTiersCount() external view returns (uint256);
-
-    /// @notice Effective multipliers of a tier as full basis-point values (tier 0 = MAX_BP, no scaling).
-    /// @dev For an operator's CURRENT curve multiplier (which may lag during a downgrade cooldown) use `getOperatorTierState`.
-    function getTierInfo(uint256 tierId) external view returns (TierInfo memory);
-
-    /// @notice Full effective tier-related state of a Node Operator.
-    function getOperatorTierState(uint256 nodeOperatorId) external view returns (OperatorTierState memory);
+    /// @notice The current boost steps.
+    function getBoostSteps() external view returns (BoostStep[] memory);
 }
