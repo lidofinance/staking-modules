@@ -150,7 +150,7 @@ contract AdditionalBondRegistryDeploymentTest is DeploymentBaseTest {
             "additional bond registry meta registry"
         );
         assertEq(
-            additionalBondRegistry.CURVE_MULTIPLIER_COOLDOWN(),
+            additionalBondRegistry.CURVE_MULTIPLIER_REDUCTION_COOLDOWN(),
             deployParams.additionalBondRegistryConfig.curveMultiplierCooldown,
             "additional bond registry cooldown"
         );

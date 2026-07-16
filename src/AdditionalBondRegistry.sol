@@ -9,7 +9,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { IAccounting } from "./interfaces/IAccounting.sol";
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
-import { IAdditionalBondRegistry, BoostStep, PendingCurveMultiplier } from "./interfaces/IAdditionalBondRegistry.sol";
+import { IAdditionalBondRegistry, BoostStep, PendingCurveMultiplierReduction } from "./interfaces/IAdditionalBondRegistry.sol";
 import { IWeightBoostProvider } from "./interfaces/IWeightBoostProvider.sol";
 import { MAX_BP } from "./lib/Constants.sol";
 
@@ -19,7 +19,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
     struct AdditionalBondRegistryStorage {
         BoostStep[] boostSteps;
         /// @dev Downgrade cooldown and pending curve multiplier increment, per operator.
-        mapping(uint256 nodeOperatorId => PendingCurveMultiplier) pending;
+        mapping(uint256 nodeOperatorId => PendingCurveMultiplierReduction) pending;
     }
 
     // Sanity guard: effective multiplier <= 10x.
@@ -31,7 +31,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
     ICuratedModule public immutable MODULE;
     IAccounting public immutable ACCOUNTING;
     IMetaRegistry public immutable META_REGISTRY;
-    uint256 public immutable CURVE_MULTIPLIER_COOLDOWN;
+    uint256 public immutable CURVE_MULTIPLIER_REDUCTION_COOLDOWN;
 
     // keccak256(abi.encode(uint256(keccak256("AdditionalBondRegistry")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant ADDITIONAL_BOND_REGISTRY_STORAGE_LOCATION =
@@ -44,7 +44,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
         ACCOUNTING = IAccounting(MODULE.ACCOUNTING());
         META_REGISTRY = IMetaRegistry(MODULE.META_REGISTRY());
 
-        CURVE_MULTIPLIER_COOLDOWN = curveMultiplierCooldown;
+        CURVE_MULTIPLIER_REDUCTION_COOLDOWN = curveMultiplierCooldown;
 
         _disableInitializers();
     }
@@ -82,15 +82,14 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
                 revert InsufficientBond();
             }
             if ($.pending[nodeOperatorId].cooldownUntil != 0) {
-                _removeCurveMultiplierCooldown(nodeOperatorId);
+                _removeCurveMultiplierReductionCooldown(nodeOperatorId);
             }
             ACCOUNTING.setBondCurveMultiplier(nodeOperatorId, curveMultiplier);
         } else {
-            if ($.pending[nodeOperatorId].cooldownUntil != 0) revert CurveMultiplierCooldownActive();
-            _setCurveMultiplierCooldown(nodeOperatorId, curveMultiplier);
+            _setCurveMultiplierReductionCooldown(nodeOperatorId, curveMultiplier);
+            emit CurveMultiplierReductionRequested(nodeOperatorId, curveMultiplier);
         }
 
-        emit CurveMultiplierRequested(nodeOperatorId, curveMultiplier);
         META_REGISTRY.notifyWeightBoostChanged(nodeOperatorId);
     }
 
@@ -98,12 +97,12 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
     function applyCurveMultiplier(uint256 nodeOperatorId) external {
         _checkOperatorOwner(nodeOperatorId);
 
-        PendingCurveMultiplier storage p = _storage().pending[nodeOperatorId];
-        if (p.cooldownUntil == 0) revert NoCurveMultiplierCooldown();
-        if (p.cooldownUntil > block.timestamp) revert CurveMultiplierCooldownNotElapsed();
+        PendingCurveMultiplierReduction storage p = _storage().pending[nodeOperatorId];
+        if (p.cooldownUntil == 0) revert NoCurveMultiplierReductionCooldown();
+        if (p.cooldownUntil > block.timestamp) revert CurveMultiplierReductionCooldownNotElapsed();
 
         uint256 curveMultiplier = p.curveMultiplier;
-        _removeCurveMultiplierCooldown(nodeOperatorId);
+        _removeCurveMultiplierReductionCooldown(nodeOperatorId);
         ACCOUNTING.setBondCurveMultiplier(nodeOperatorId, curveMultiplier);
     }
 
@@ -114,7 +113,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
 
     /// @inheritdoc IWeightBoostProvider
     function getWeightBoostMultiplierBP(uint256 nodeOperatorId) external view returns (uint256 multiplierBP) {
-        PendingCurveMultiplier storage p = _storage().pending[nodeOperatorId];
+        PendingCurveMultiplierReduction storage p = _storage().pending[nodeOperatorId];
         // During a downgrade cooldown, weight follows the pending (lower) multiplier; Accounting still holds the higher one.
         uint256 curveMultiplier = p.cooldownUntil != 0
             ? p.curveMultiplier
@@ -134,18 +133,18 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
     }
 
     /// @dev Starts the cooldown and stores the pending curve multiplier increment.
-    function _setCurveMultiplierCooldown(uint256 nodeOperatorId, uint256 curveMultiplier) internal {
-        uint256 cooldownUntil = block.timestamp + CURVE_MULTIPLIER_COOLDOWN;
-        _storage().pending[nodeOperatorId] = PendingCurveMultiplier({
+    function _setCurveMultiplierReductionCooldown(uint256 nodeOperatorId, uint256 curveMultiplier) internal {
+        uint256 cooldownUntil = block.timestamp + CURVE_MULTIPLIER_REDUCTION_COOLDOWN;
+        _storage().pending[nodeOperatorId] = PendingCurveMultiplierReduction({
             cooldownUntil: uint128(cooldownUntil),
             curveMultiplier: uint128(curveMultiplier)
         });
-        emit CurveMultiplierCooldownSet(nodeOperatorId, cooldownUntil);
+        emit CurveMultiplierReductionCooldownSet(nodeOperatorId, cooldownUntil);
     }
 
-    function _removeCurveMultiplierCooldown(uint256 nodeOperatorId) internal {
+    function _removeCurveMultiplierReductionCooldown(uint256 nodeOperatorId) internal {
         delete _storage().pending[nodeOperatorId];
-        emit CurveMultiplierCooldownRemoved(nodeOperatorId);
+        emit CurveMultiplierReductionCooldownRemoved(nodeOperatorId);
     }
 
     /// @dev Weight multiplier for a curve multiplier increment: MAX_BP + the highest step at or below it, else MAX_BP.

@@ -17,20 +17,20 @@ struct BoostStep {
 
 /// @dev A pending downgrade: the cooldown deadline and the curve multiplier increment to apply once it
 ///      elapses. `cooldownUntil == 0` means no active cooldown. Packed into a single slot.
-struct PendingCurveMultiplier {
+struct PendingCurveMultiplierReduction {
     uint128 cooldownUntil;
     uint128 curveMultiplier;
 }
 
 /// @notice Maps an operator's curve multiplier to a weight multiplier via governance-set boost steps.
 ///         The curve multiplier itself lives in Accounting; this registry only requests changes and serves
-///         the resulting weight boost. Lowering the weight is subject to a cooldown before the curve
-///         multiplier is actually reduced.
+///         the resulting weight boost. Lowering the weight applies immediately, while the curve multiplier
+///         decrease is deferred until the cooldown elapses.
 interface IAdditionalBondRegistry is IWeightBoostProvider {
     event BoostStepsSet(BoostStep[] boostSteps);
-    event CurveMultiplierRequested(uint256 indexed nodeOperatorId, uint256 curveMultiplier);
-    event CurveMultiplierCooldownSet(uint256 indexed nodeOperatorId, uint256 cooldownUntil);
-    event CurveMultiplierCooldownRemoved(uint256 indexed nodeOperatorId);
+    event CurveMultiplierReductionRequested(uint256 indexed nodeOperatorId, uint256 curveMultiplier);
+    event CurveMultiplierReductionCooldownSet(uint256 indexed nodeOperatorId, uint256 cooldownUntil);
+    event CurveMultiplierReductionCooldownRemoved(uint256 indexed nodeOperatorId);
 
     error ZeroAdminAddress();
     error EmptyBoostSteps();
@@ -39,29 +39,27 @@ interface IAdditionalBondRegistry is IWeightBoostProvider {
     error InsufficientBond();
     error SameCurveMultiplier();
     error SenderIsNotOperatorOwner();
-    error NoCurveMultiplierCooldown();
-    error CurveMultiplierCooldownNotElapsed();
-    error CurveMultiplierCooldownActive();
+    error NoCurveMultiplierReductionCooldown();
+    error CurveMultiplierReductionCooldownNotElapsed();
 
-    /// @notice Curated module address.
     function MODULE() external view returns (ICuratedModule);
 
-    /// @notice Accounting contract holding bond curves and the operator curve multiplier.
+    /// @dev Holding bond curves and the operator curve multiplier.
     function ACCOUNTING() external view returns (IAccounting);
 
-    /// @notice MetaRegistry notified via `notifyWeightBoostChanged` on weight changes.
+    /// @dev Notified via `notifyWeightBoostChanged` on weight changes.
     function META_REGISTRY() external view returns (IMetaRegistry);
 
-    /// @notice Upper bound for a boost step's curve multiplier increment (above MAX_BP, in basis points).
+    /// @dev Upper bound for a boost step's curve multiplier increment (above MAX_BP, in basis points).
     function MAX_CURVE_MULTIPLIER() external view returns (uint256);
 
-    /// @notice Upper bound for a boost step's weight multiplier increment (above MAX_BP, in basis points).
+    /// @dev Upper bound for a boost step's weight multiplier increment (above MAX_BP, in basis points).
     function MAX_WEIGHT_MULTIPLIER() external view returns (uint256);
 
-    /// @notice Cooldown in seconds after a downgrade request before `applyCurveMultiplier` can be called.
-    function CURVE_MULTIPLIER_COOLDOWN() external view returns (uint256);
+    /// @dev Cooldown in seconds after a downgrade request before `applyCurveMultiplier` can be called.
+    function CURVE_MULTIPLIER_REDUCTION_COOLDOWN() external view returns (uint256);
 
-    /// @notice Requested curve multiplier must be a multiple of this (1%).
+    /// @dev Requested curve multiplier must be a multiple of this (1%).
     function CURVE_MULTIPLIER_STEP() external view returns (uint256);
 
     /// @notice Initialize the provider.
