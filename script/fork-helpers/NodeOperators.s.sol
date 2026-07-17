@@ -213,9 +213,9 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
     function settleGeneralDelayedPenalty(uint256 noId) external broadcastPenaltySettler {
         uint256[] memory noIds = new uint256[](1);
         noIds[0] = noId;
-        uint256[] memory maxAmounts = new uint256[](1);
-        maxAmounts[0] = type(uint256).max; // Set to max to settle
-        module.settleGeneralDelayedPenalty(noIds, maxAmounts);
+        uint256[] memory bondLockNonces = new uint256[](1);
+        bondLockNonces[0] = accounting.getBondLockNonce(noId);
+        module.settleGeneralDelayedPenalty(noIds, bondLockNonces);
 
         assertEq(accounting.getLockedBond(noId), 0);
     }
