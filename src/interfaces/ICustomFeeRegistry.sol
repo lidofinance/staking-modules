@@ -24,51 +24,73 @@ struct TypeBonus {
 }
 
 /*
- * ── Fee scale and per-type ranges ─────────────────────────────────────────────
+ * ── Fee scale and per-type ranges ──────────────────────────────────────────────
  *
  *    All fees are basis points (BP) of the operator's own rewards; the lower
  *    axis shows the same fee as a share of the total staking rewards at a 4%
- *    module share. One character is one step of 250 BP.
+ *    module share. One character is 125 BP (half a fee step).
  *    An operator picks a custom fee between defaultMinFee and DEFAULT_MAX_FEE;
  *    the lower the fee, the higher the allocation weight. A type bonus shifts
  *    only the effective fee.
  *    ● custom (set by the operator)   ○ effective (billed by the oracle)
  *
- * portion BP      0         2500      5000 6250      8750 10000
- *                 ├─────────┼─────────┼────┼─────────┼────┤
- * total at 4%     0%        1%        2%   2.5%      3.5% 4%
- *                           └ defaultMinFee          └ DEFAULT_MAX_FEE
+ * portion BP    0                   2500                5000      6250                8750      10000
+ *               ├───────────────────┼───────────────────┼─────────┼───────────────────┼─────────┤
+ * total at 4%   0%                  1%                  2%        2.5%                3.5%      4%
+ *                                   └ defaultMinFee                                   └ DEFAULT_MAX_FEE
  *
  * type A — bonus +1250, effective = custom + 1250:
- *   custom                  ●────────────────────────●
- *   effective                    ○────────────────────────○
+ *   custom                          ●─────────────────────────────────────────────────●
+ *   effective                                 ○─────────────────────────────────────────────────○
  *
  * type B — bonus -2500, effective = custom - 2500; the minimum rises to 5000:
- *   custom                            ●──────────────●
- *   effective               ○──────────────○
+ *   custom                                              ●─────────────────────────────●
+ *   effective                       ○─────────────────────────────○
  *
  * A and B both pick custom = 5000: equal weights, different effective fees:
- *   custom A = B                      ●
- *   effective A                            ○
- *   effective B             ○
+ *   custom A = B                                        ●
+ *   effective A                                                   ○
+ *   effective B                     ○
  *
- * ── Fee increase timeline and oracle frames ───────────────────────────────────
+ * ── Custom fee to allocation weight ────────────────────────────────────────────
+ *
+ *    The weight multiplier depends on the fee only, never on a type bonus — on
+ *    the custom fee, or the pending target while an increase is pending (see the
+ *    timeline below). Two things are fixed: 1x at DEFAULT_MAX_FEE and a straight
+ *    slope of WEIGHT_BOOST_PER_STEP (400 BP) per FEE_STEP (250 BP) of discount.
+ *    The minimum is a parameter: the planned defaultMinFee of 2500 happens to
+ *    land at 2x, and governance may lower it further down the same line, no cap.
+ *
+ * multiplier
+ *   2.4x ┤╲                                            custom 0: hard floor, defaultMinFee > 0
+ *   2.2x ┤      ╲                                      below the min — only if DAO lowers it
+ *   2.0x ┤            ●                                2500 (planned defaultMinFee): 2x
+ *   1.8x ┤                  ╲
+ *   1.6x ┤                        ╲
+ *   1.4x ┤                              ╲
+ *   1.2x ┤                                    ╲
+ *   1.0x ┤                                          ●  8750 (DEFAULT_MAX_FEE, unset): 1x
+ *        └┬           ┬                             ┬─► custom fee, portion BP
+ *         0           2500                          8750
+ *                     ├────────reachable now────────┤
+ *
+ * ── Fee increase timeline and oracle frames ────────────────────────────────────
  *
  *    Z is the fee-increase cooldown. The oracle reads the fee at the refSlot.
  *    Keeping Z >= frame + margin (a governance invariant) guarantees at least one
  *    report at the old fee while the weight is already low. A decrease needs
  *    no timeline: it applies at once and cancels any pending increase.
  *
- *                         requestFee(6000)
- *                         │                applyFeeIncrease()
- *                         │                │
- * time            ────────●━━ Z >= frame ━━●──────────────────────►
- * frames          ├───────────────┼───────────────┼───────────────┤
- *                      frame k        frame k+1       frame k+2
- * weight          ──high──▼ low ───────────────────────────────────
- * pending                 ├────────────────┤
- * oracle samples                  ▲ old           ▲ new           ▲ new
- * frame billed          old *          new **           new
+ *                            requestFee(6000)
+ *                            │                       applyFeeIncrease()
+ *                            │                       │
+ * time           ────────────●━━━━━ Z >= frame ━━━━━━●────────────────────────────────────►
+ * frames         ├───────────────────────┼───────────────────────┼───────────────────────┤
+ *                         frame k                frame k+1               frame k+2
+ * weight         ── high ────▼ low ───────────────────────────────────────────────────────
+ * pending                    ├───────────────────────┤
+ * oracle samples                         ▲ old                   ▲ new                   ▲ new
+ * frame billed             old *                  new **                    new
  *
  *    pending: a decrease cancels it; a new increase overwrites it and restarts
  *    the cooldown.
