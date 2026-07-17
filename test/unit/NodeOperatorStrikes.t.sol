@@ -416,13 +416,13 @@ contract NodeOperatorStrikesRemoveExpiredTest is NodeOperatorStrikesBaseTest {
     function test_removeExpiredStrikes_NoopWhenNoneExpired() public {
         _issue(NO_ID);
         _issue(NO_ID);
-        uint256 refreshesBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
+        uint256 refreshesBefore = metaRegistryMock.notifyWeightBoostProviderConfigChangedCallCount();
 
         vm.prank(stranger);
         strikes.removeExpiredStrikes(NO_ID);
 
         assertEq(strikes.getActiveStrikesCount(NO_ID), 2);
-        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), refreshesBefore); // no refresh
+        assertEq(metaRegistryMock.notifyWeightBoostProviderConfigChangedCallCount(), refreshesBefore); // no refresh
     }
 }
 
@@ -444,7 +444,7 @@ contract NodeOperatorStrikesThresholdsTest is NodeOperatorStrikesBaseTest {
         assertEq(stored[3].reductionBP, 10_000);
 
         // The config change is pushed to MetaRegistry so cached weights get refreshed.
-        assertEq(metaRegistryMock.notifyConfigChangedCallCount(), 1);
+        assertEq(metaRegistryMock.notifyWeightBoostProviderConfigChangedCallCount(), 1);
     }
 
     function test_setStrikeThresholds_Replaces() public {
