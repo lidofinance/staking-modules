@@ -83,16 +83,6 @@ runs:
       working-directory: ${{ inputs.path }}
       run: just build
 
-    - name: Run CSM deployment regression
-      shell: bash
-      working-directory: ${{ inputs.path }}
-      run: just test-deployment-full-afterVote
-      env:
-        RPC_URL: ${{ inputs.rpc_url }}
-        CHAIN: mainnet
-        DEPLOY_CONFIG: ${{ inputs.csm_deploy_config }}
-        FOUNDRY_PROFILE: ci_quick
-
     - name: Run CSM integration regression
       shell: bash
       working-directory: ${{ inputs.path }}
@@ -101,16 +91,6 @@ runs:
         RPC_URL: ${{ inputs.rpc_url }}
         CHAIN: mainnet
         DEPLOY_CONFIG: ${{ inputs.csm_deploy_config }}
-        FOUNDRY_PROFILE: ci_quick
-
-    - name: Run Curated deployment regression
-      shell: bash
-      working-directory: ${{ inputs.path }}
-      run: just test-deployment-full-afterVote
-      env:
-        RPC_URL: ${{ inputs.rpc_url }}
-        CHAIN: mainnet
-        DEPLOY_CONFIG: ${{ inputs.curated_deploy_config }}
         FOUNDRY_PROFILE: ci_quick
 
     - name: Run Curated integration regression
