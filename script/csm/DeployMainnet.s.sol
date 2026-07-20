@@ -86,8 +86,8 @@ contract DeployMainnet is DeployBase {
         config.identifiedCommunityStakersGateCurveId = 2;
         config.identifiedCommunityStakersGateName = "Identified Community Stakers Gate";
         config
-            .identifiedCommunityStakersGateTreeRoot = 0x897c27523df17a9f5513651c006b75cba576d3dad2a13dd2334cb50c6b5a003e;
-        config.identifiedCommunityStakersGateTreeCid = "bafkreigiuxjg7vkjti4ynydrhyr47fit3c5n7peqogehunba2gxignhrqu";
+            .identifiedCommunityStakersGateTreeRoot = 0x8c92643a5320749acb56f82705e45e3cd680e1760c172e28a4945118f3769b69;
+        config.identifiedCommunityStakersGateTreeCid = "bafkreihg2mqulwsmhiho6bcd4mf4ao2kigzaq3uh5dlna34cjiyllawvja";
         config.identifiedDVTClusterGateName = "Identified DVT Clusters Gate";
         config.identifiedDVTClusterGateTreeRoot = 0xb61a11aaa84f3956f54784f7e8548ff165cab8a4866f3950ea7edbc9cd19464e;
         config.identifiedDVTClusterGateTreeCid = "bafkreiakdug6tbysfvwm5hoizdvmex4wxh3kfkjq6pfxxjp5cv4mrokdiq";
