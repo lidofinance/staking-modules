@@ -182,6 +182,27 @@ def test_static_csm_mainnet_uses_prepared_data():
     assert f"mainnet ids: {operator_id}" in (outcome.detail or "")
 
 
+def test_static_csm_mainnet_excludes_below_threshold_operators():
+    with ELIGIBLE_NODE_OPERATORS_MAINNET_PATH.open("r", encoding="utf-8") as file:
+        eligible_ids = set(json.load(file))
+
+    assert eligible_ids.isdisjoint({"315", "367", "485", "516", "559"})
+
+
+def test_static_csm_mainnet_excludes_operators_below_activity_window():
+    with ELIGIBLE_NODE_OPERATORS_MAINNET_PATH.open("r", encoding="utf-8") as file:
+        eligible_ids = set(json.load(file))
+
+    assert eligible_ids.isdisjoint({"531", "533", *map(str, range(544, 564))})
+
+
+def test_static_csm_mainnet_includes_historically_active_operators():
+    with ELIGIBLE_NODE_OPERATORS_MAINNET_PATH.open("r", encoding="utf-8") as file:
+        eligible_ids = set(json.load(file))
+
+    assert {"94", "241", "452"} <= eligible_ids
+
+
 def test_static_circles_uses_prepared_data():
     address = _first_csv_address(CIRCLE_GROUP_MEMBERS_PATH)
 

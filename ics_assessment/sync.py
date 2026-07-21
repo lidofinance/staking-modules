@@ -8,6 +8,14 @@ from typing import Iterable
 
 import requests
 
+from ics_assessment.config import (
+    ARBITRUM_RPC_URL,
+    HOODI_ARCHIVE_RPC_URL,
+    HOODI_RPC_URL,
+    MAINNET_ARCHIVE_RPC_URL,
+    MAINNET_RPC_URL,
+)
+
 
 TRANSFER_EVENT_ABI = [
     {
@@ -190,19 +198,21 @@ JOBS = {
 
 def _target_rpc_values(target: str) -> list[tuple[str, str]]:
     if target == "aragon" or target == "protocol-guild":
-        return [("MAINNET_RPC_URL", engagement_jobs.MAINNET_RPC_URL)]
+        return [("MAINNET_RPC_URL", MAINNET_RPC_URL)]
     if target == "obol-techne":
         return [
-            ("ARBITRUM_RPC_URL", experience_jobs.ARBITRUM_RPC_URL),
-            ("MAINNET_RPC_URL", experience_jobs.MAINNET_RPC_URL),
+            ("ARBITRUM_RPC_URL", ARBITRUM_RPC_URL),
+            ("MAINNET_RPC_URL", MAINNET_RPC_URL),
         ]
     if target == "node-owners":
         return [
-            ("MAINNET_ARCHIVE_RPC_URL", experience_jobs.MAINNET_ARCHIVE_RPC_URL),
-            ("HOODI_ARCHIVE_RPC_URL", experience_jobs.HOODI_ARCHIVE_RPC_URL),
+            ("MAINNET_ARCHIVE_RPC_URL", MAINNET_ARCHIVE_RPC_URL),
+            ("HOODI_ARCHIVE_RPC_URL", HOODI_ARCHIVE_RPC_URL),
         ]
+    if target == "mainnet-performance":
+        return [("MAINNET_RPC_URL", MAINNET_RPC_URL)]
     if target == "hoodi-eligible":
-        return [("HOODI_RPC_URL", experience_jobs.HOODI_RPC_URL)]
+        return [("HOODI_RPC_URL", HOODI_RPC_URL)]
     return []
 
 
