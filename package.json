@@ -14,12 +14,15 @@
     "gindex": "node script/gindex.mjs"
   },
   "dependencies": {
-    "@lodestar/types": "^1.31.0",
+    "@lodestar/types": "1.45.0-dev.d16fa2b13a",
     "@openzeppelin/contracts": "5.4.0",
     "@openzeppelin/contracts-upgradeable": "5.4.0",
     "@openzeppelin/merkle-tree": "^1.0.8",
     "forge-std": "https://github.com/foundry-rs/forge-std.git#v1.9.6",
     "web3-eth-abi": "^4.4.1"
+  },
+  "resolutions": {
+    "@lodestar/params": "1.45.0-dev.d16fa2b13a"
   },
   "devDependencies": {
     "husky": "^8.0.3",
