@@ -1,4 +1,4 @@
-// Usage: node balance.mjs [balance_gwei]
+// Usage: node balance.mjs <fork> [balance_gwei]
 
 "use strict";
 
@@ -13,19 +13,21 @@ import VerifierBalanceProofTest from "../../../out/Verifier.t.sol/VerifierBalanc
 
 const SLOTS_PER_EPOCH = 32;
 const MAX_VALIDATORS = 1_000;
-const Fork = ssz.electra;
 
 /**
  * @param {Object} opts
  * @param {number} opts.validatorIndex - Index of a validator in the `validators` list.
  * @param {bigint} opts.balanceGwei - The validator's balance in gwei.
+ * @param {string} opts.fork - Fork from the `ssz` library.
  * @param {number} opts.epoch - Epoch for the state slot.
  */
 function main(opts) {
   assert(opts);
   assert(opts.validatorIndex < MAX_VALIDATORS);
+  assert(["electra", "gloas"].includes(opts.fork));
 
   const faker = new Faker("seed sEed seEd");
+  const Fork = ssz[opts.fork];
 
   /** @type {import('@chainsafe/ssz').ContainerType} */
   const Validator = Fork.BeaconState.getPathInfo(["validators", 0]).type;
@@ -47,14 +49,12 @@ function main(opts) {
   const state = Fork.BeaconState.defaultView();
   state.slot = opts.epoch * SLOTS_PER_EPOCH;
 
-  while (state.validators.length < MAX_VALIDATORS) {
-    state.validators.push(Validator.defaultView());
-  }
+  state.validators = state.validators.type.toView(
+    Array.from({ length: MAX_VALIDATORS }, () => Validator.defaultValue()),
+  );
   state.validators.set(opts.validatorIndex, validator);
 
-  while (state.balances.length < MAX_VALIDATORS) {
-    state.balances.push(0);
-  }
+  state.balances = state.balances.type.toView(new Array(MAX_VALIDATORS).fill(0));
   state.balances.set(opts.validatorIndex, Number(opts.balanceGwei));
 
   const validatorProof = createProof(state.node, {
@@ -143,6 +143,7 @@ class Faker {
 
 main({
   validatorIndex: 17,
-  balanceGwei: BigInt(process.argv[2] || "64000000000"), // default 64 ETH in gwei
+  balanceGwei: BigInt(process.argv[3] || "64000000000"), // default 64 ETH in gwei
+  fork: process.argv[2],
   epoch: 100_500,
 });

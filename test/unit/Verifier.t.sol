@@ -1781,7 +1781,7 @@ contract VerifierBalanceProofTest is VerifierTestBase {
     Fixture internal fixture;
 
     function setUp() public {
-        _loadFixture();
+        _loadFixture("gloas");
 
         module = new Stub();
         admin = nextAddress("ADMIN");
@@ -1793,18 +1793,17 @@ contract VerifierBalanceProofTest is VerifierTestBase {
             gindices: IVerifier.GIndices({
                 gIWithdrawalsPreGloas: NULL_GINDEX,
                 gIWithdrawals: NULL_GINDEX,
-                gIValidatorsPreGloas: GIndices.VALIDATORS_ELECTRA,
-                gIValidators: GIndices.VALIDATORS_ELECTRA,
+                gIValidatorsPreGloas: NULL_GINDEX,
+                gIValidators: GIndices.VALIDATORS_GLOAS,
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: NULL_GINDEX,
-                gIBalancesPreGloas: GIndices.BALANCES_ELECTRA,
-                gIBalances: GIndices.BALANCES_ELECTRA,
+                gIBalancesPreGloas: NULL_GINDEX,
+                gIBalances: GIndices.BALANCES_GLOAS,
                 gIBlockRootsPreGloas: NULL_GINDEX,
                 gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
-            // Route through the pre-Gloas (static-list) branch.
-            pivotSlot: fixture.data.recentBlock.header.slot.inc(),
+            pivotSlot: fixture.data.recentBlock.header.slot.dec(),
             capellaSlot: Slot.wrap(0),
             minWithdrawalRatio: 9000,
             admin: admin
@@ -1819,13 +1818,6 @@ contract VerifierBalanceProofTest is VerifierTestBase {
         vm.stopPrank();
 
         _setMocks();
-    }
-
-    // TODO: Add test for Gloas path.
-    function test_processBalanceProof_HappyPath() public {
-        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector));
-
-        verifier.processBalanceProof(fixture.data);
     }
 
     function test_processBalanceProof_RevertWhen_SlotUnsupported() public {
@@ -1885,6 +1877,96 @@ contract VerifierBalanceProofTest is VerifierTestBase {
         verifier.processBalanceProof(fixture.data);
     }
 
+    function test_processBalanceProof_ForkBeforePivot() public {
+        _loadFixture("electra");
+        verifier = new Verifier({
+            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            module: address(module),
+            slotsPerEpoch: 32,
+            gindices: IVerifier.GIndices({
+                gIWithdrawalsPreGloas: NULL_GINDEX,
+                gIWithdrawals: NULL_GINDEX,
+                gIValidatorsPreGloas: GIndices.VALIDATORS_ELECTRA,
+                gIValidators: NULL_GINDEX,
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: NULL_GINDEX,
+                gIBalancesPreGloas: GIndices.BALANCES_ELECTRA,
+                gIBalances: NULL_GINDEX,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
+            }),
+            firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
+            pivotSlot: fixture.data.recentBlock.header.slot.inc(),
+            capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
+            admin: admin
+        });
+        _setMocks();
+
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector));
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function test_processBalanceProof_ForkAtPivot() public {
+        _loadFixture("gloas");
+        verifier = new Verifier({
+            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            module: address(module),
+            slotsPerEpoch: 32,
+            gindices: IVerifier.GIndices({
+                gIWithdrawalsPreGloas: NULL_GINDEX,
+                gIWithdrawals: NULL_GINDEX,
+                gIValidatorsPreGloas: GIndices.VALIDATORS_ELECTRA,
+                gIValidators: GIndices.VALIDATORS_GLOAS,
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: NULL_GINDEX,
+                gIBalancesPreGloas: GIndices.BALANCES_ELECTRA,
+                gIBalances: GIndices.BALANCES_GLOAS,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
+            }),
+            firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
+            pivotSlot: fixture.data.recentBlock.header.slot,
+            capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
+            admin: admin
+        });
+        _setMocks();
+
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector));
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function test_processBalanceProof_ForkAfterPivot() public {
+        _loadFixture("gloas");
+        verifier = new Verifier({
+            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            module: address(module),
+            slotsPerEpoch: 32,
+            gindices: IVerifier.GIndices({
+                gIWithdrawalsPreGloas: NULL_GINDEX,
+                gIWithdrawals: NULL_GINDEX,
+                gIValidatorsPreGloas: GIndices.VALIDATORS_ELECTRA,
+                gIValidators: GIndices.VALIDATORS_GLOAS,
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: NULL_GINDEX,
+                gIBalancesPreGloas: GIndices.BALANCES_ELECTRA,
+                gIBalances: GIndices.BALANCES_GLOAS,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
+            }),
+            firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
+            pivotSlot: fixture.data.recentBlock.header.slot.dec(),
+            capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
+            admin: admin
+        });
+        _setMocks();
+
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector));
+        verifier.processBalanceProof(fixture.data);
+    }
+
     function _setMocks() internal {
         vm.mockCall(
             verifier.BEACON_ROOTS(),
@@ -1905,11 +1987,12 @@ contract VerifierBalanceProofTest is VerifierTestBase {
         vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector), "");
     }
 
-    function _loadFixture() internal {
-        string[] memory cmd = new string[](3);
+    function _loadFixture(string memory fork) internal {
+        string[] memory cmd = new string[](4);
         cmd[0] = "node";
         cmd[1] = "--no-warnings";
         cmd[2] = "test/fixtures/Verifier/balance.mjs";
+        cmd[3] = fork;
         bytes memory res = vm.ffi(cmd);
         fixture = abi.decode(res, (Fixture));
     }
