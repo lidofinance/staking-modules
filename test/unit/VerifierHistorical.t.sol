@@ -245,9 +245,7 @@ contract VerifierCrossForkHistoricalBalanceTest is Test, Utilities {
     address public admin;
 
     function setUp() public {
-        vm.skip(true, "Gloas helpers and fixtures are not ready yet");
-
-        _loadFixture("deneb");
+        _loadFixture("electra");
 
         module = new Stub();
         admin = nextAddress("ADMIN");
@@ -259,11 +257,11 @@ contract VerifierCrossForkHistoricalBalanceTest is Test, Utilities {
             gindices: IVerifier.GIndices({
                 gIWithdrawalsPreGloas: NULL_GINDEX,
                 gIWithdrawals: NULL_GINDEX,
-                gIValidatorsPreGloas: NULL_GINDEX,
+                gIValidatorsPreGloas: GIndices.VALIDATORS_ELECTRA,
                 gIValidators: NULL_GINDEX,
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
-                gIHistoricalSummaries: NULL_GINDEX,
-                gIBalancesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: GIndices.HISTORICAL_SUMMARIES_GLOAS,
+                gIBalancesPreGloas: GIndices.BALANCES_ELECTRA,
                 gIBalances: NULL_GINDEX,
                 gIBlockRootsPreGloas: NULL_GINDEX,
                 gIBlockRoots: NULL_GINDEX
@@ -331,9 +329,7 @@ contract VerifierCrossForkHistoricalBalanceAtPivotSlotTest is Test, Utilities {
     address public admin;
 
     function setUp() public {
-        vm.skip(true, "Gloas helpers and fixtures are not ready yet");
-
-        _loadFixture("deneb");
+        _loadFixture("electra");
 
         module = new Stub();
         admin = nextAddress("ADMIN");
@@ -345,12 +341,12 @@ contract VerifierCrossForkHistoricalBalanceAtPivotSlotTest is Test, Utilities {
             gindices: IVerifier.GIndices({
                 gIWithdrawalsPreGloas: NULL_GINDEX,
                 gIWithdrawals: NULL_GINDEX,
-                gIValidatorsPreGloas: NULL_GINDEX,
-                gIValidators: GIndices.VALIDATORS_GLOAS,
+                gIValidatorsPreGloas: GIndices.VALIDATORS_ELECTRA,
+                gIValidators: NULL_GINDEX,
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: GIndices.HISTORICAL_SUMMARIES_GLOAS,
-                gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: GIndices.BALANCES_GLOAS,
+                gIBalancesPreGloas: GIndices.BALANCES_ELECTRA,
+                gIBalances: NULL_GINDEX,
                 gIBlockRootsPreGloas: NULL_GINDEX,
                 gIBlockRoots: NULL_GINDEX
             }),
@@ -417,7 +413,7 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
     address public admin;
 
     function setUp() public {
-        _loadFixture();
+        _loadFixture("gloas");
 
         module = new Stub();
         admin = nextAddress("ADMIN");
@@ -438,9 +434,8 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
                 gIBlockRootsPreGloas: NULL_GINDEX,
                 gIBlockRoots: NULL_GINDEX
             }),
-            firstSupportedSlot: fixture.data.historicalBlock.header.slot,
-            // Route through the pre-Gloas (static-list) branch.
-            pivotSlot: fixture.data.recentBlock.header.slot.inc(),
+            firstSupportedSlot: Slot.wrap(8192),
+            pivotSlot: Slot.wrap(8192),
             capellaSlot: Slot.wrap(0),
             minWithdrawalRatio: 9000,
             admin: admin
@@ -543,10 +538,6 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
         );
 
         vm.mockCall(address(module), abi.encodeWithSelector(IBaseModule.reportValidatorBalance.selector), "");
-    }
-
-    function _loadFixture() internal {
-        _loadFixture("electra");
     }
 
     function _loadFixture(string memory fork) internal {
