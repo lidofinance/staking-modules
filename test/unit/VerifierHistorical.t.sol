@@ -84,9 +84,9 @@ contract VerifierHistoricalBase is Test, Utilities {
     function ffi_interface(Fixture memory) external {}
 }
 
-contract VerifierHistoricalTest is VerifierHistoricalBase {
+contract VerifierWithdrawalHistoricalTest is VerifierHistoricalBase {
     function setUp() public {
-        _loadFixture("electra");
+        _loadFixture("gloas");
 
         module = new Stub();
         verifier = new Verifier({
@@ -94,20 +94,19 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
-                gIWithdrawalsPreGloas: GIndices.WITHDRAWALS_ELECTRA,
-                gIWithdrawals: NULL_GINDEX,
-                gIValidatorsPreGloas: GIndices.VALIDATORS_ELECTRA,
-                gIValidators: NULL_GINDEX,
-                gIHistoricalSummariesPreGloas: GIndices.HISTORICAL_SUMMARIES_ELECTRA,
-                gIHistoricalSummaries: NULL_GINDEX,
+                gIWithdrawalsPreGloas: NULL_GINDEX,
+                gIWithdrawals: GIndices.WITHDRAWALS_GLOAS,
+                gIValidatorsPreGloas: NULL_GINDEX,
+                gIValidators: GIndices.VALIDATORS_GLOAS,
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: GIndices.HISTORICAL_SUMMARIES_GLOAS,
                 gIBalancesPreGloas: NULL_GINDEX,
                 gIBalances: NULL_GINDEX,
                 gIBlockRootsPreGloas: NULL_GINDEX,
                 gIBlockRoots: NULL_GINDEX
             }),
             firstSupportedSlot: fixture.data.withdrawalBlock.header.slot,
-            // Route through the pre-Gloas branch for both historical and recent blocks.
-            pivotSlot: fixture.data.recentBlock.header.slot.inc(),
+            pivotSlot: fixture.data.withdrawalBlock.header.slot,
             capellaSlot: Slot.wrap(0),
             minWithdrawalRatio: 9000,
             admin: nextAddress("ADMIN")
@@ -228,6 +227,102 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
         fixture.data.withdrawal.object.amount = 28_800_000_000 - 1;
 
         vm.expectRevert(IVerifier.PartialWithdrawal.selector);
+        verifier.processHistoricalWithdrawalProof(fixture.data);
+    }
+}
+
+contract VerifierWithdrawalCrossForkHistoricalTest is VerifierHistoricalBase {
+    function setUp() public virtual {
+        module = new Stub();
+    }
+
+    function test_processHistoricalWithdrawalProof_AfterPivot() public {
+        _loadFixture("electra");
+
+        verifier = new Verifier({
+            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            module: address(module),
+            slotsPerEpoch: 32,
+            gindices: IVerifier.GIndices({
+                gIWithdrawalsPreGloas: GIndices.WITHDRAWALS_ELECTRA,
+                gIWithdrawals: GIndices.WITHDRAWALS_GLOAS,
+                gIValidatorsPreGloas: GIndices.VALIDATORS_ELECTRA,
+                gIValidators: GIndices.VALIDATORS_GLOAS,
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: GIndices.HISTORICAL_SUMMARIES_GLOAS,
+                gIBalancesPreGloas: NULL_GINDEX,
+                gIBalances: NULL_GINDEX,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
+            }),
+            firstSupportedSlot: fixture.data.withdrawalBlock.header.slot,
+            pivotSlot: fixture.data.recentBlock.header.slot.dec(),
+            capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
+            admin: nextAddress("ADMIN")
+        });
+
+        _setMocks();
+
+        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
+        withdrawals[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: 0,
+            keyIndex: 0,
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
+        );
+
+        verifier.processHistoricalWithdrawalProof(fixture.data);
+    }
+
+    function test_processHistoricalWithdrawalProof_AtPivot() public {
+        _loadFixture("electra");
+
+        verifier = new Verifier({
+            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            module: address(module),
+            slotsPerEpoch: 32,
+            gindices: IVerifier.GIndices({
+                gIWithdrawalsPreGloas: GIndices.WITHDRAWALS_ELECTRA,
+                gIWithdrawals: GIndices.WITHDRAWALS_GLOAS,
+                gIValidatorsPreGloas: GIndices.VALIDATORS_ELECTRA,
+                gIValidators: GIndices.VALIDATORS_GLOAS,
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: GIndices.HISTORICAL_SUMMARIES_GLOAS,
+                gIBalancesPreGloas: NULL_GINDEX,
+                gIBalances: NULL_GINDEX,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
+            }),
+            firstSupportedSlot: fixture.data.withdrawalBlock.header.slot,
+            pivotSlot: fixture.data.recentBlock.header.slot,
+            capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
+            admin: nextAddress("ADMIN")
+        });
+
+        _setMocks();
+
+        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
+        withdrawals[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: 0,
+            keyIndex: 0,
+            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        vm.expectCall(
+            address(module),
+            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
+        );
+
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 }
@@ -551,106 +646,4 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
     }
 
     function ffi_interface(Fixture memory) external {}
-}
-
-contract VerifierWithdrawalCrossForkHistoricalTest is VerifierHistoricalBase {
-    function setUp() public virtual {
-        vm.skip(true, "Gloas helpers and fixtures are not ready yet");
-
-        _loadFixture("deneb");
-
-        module = new Stub();
-        verifier = new Verifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
-            module: address(module),
-            slotsPerEpoch: 32,
-            gindices: IVerifier.GIndices({
-                gIWithdrawalsPreGloas: GIndices.WITHDRAWALS_ELECTRA,
-                gIWithdrawals: GIndices.WITHDRAWALS_GLOAS,
-                gIValidatorsPreGloas: GIndices.VALIDATORS_ELECTRA,
-                gIValidators: GIndices.VALIDATORS_GLOAS,
-                gIHistoricalSummariesPreGloas: NULL_GINDEX,
-                gIHistoricalSummaries: GIndices.HISTORICAL_SUMMARIES_GLOAS,
-                gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: NULL_GINDEX,
-                gIBlockRootsPreGloas: NULL_GINDEX,
-                gIBlockRoots: NULL_GINDEX
-            }),
-            firstSupportedSlot: fixture.data.withdrawalBlock.header.slot,
-            pivotSlot: fixture.data.recentBlock.header.slot.dec(),
-            capellaSlot: Slot.wrap(0),
-            minWithdrawalRatio: 9000,
-            admin: nextAddress("ADMIN")
-        });
-        _setMocks();
-    }
-
-    function test_processHistoricalWithdrawalProof_HappyPath() public {
-        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
-        withdrawals[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: 0,
-            keyIndex: 0,
-            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-
-        vm.expectCall(
-            address(module),
-            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
-        );
-
-        verifier.processHistoricalWithdrawalProof(fixture.data);
-    }
-}
-
-contract VerifierCrossForkHistoricalAtPivotSlotTest is VerifierHistoricalBase {
-    function setUp() public {
-        vm.skip(true, "Gloas helpers and fixtures are not ready yet");
-
-        _loadFixture("deneb");
-
-        module = new Stub();
-        verifier = new Verifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
-            module: address(module),
-            slotsPerEpoch: 32,
-            gindices: IVerifier.GIndices({
-                gIWithdrawalsPreGloas: GIndices.WITHDRAWALS_ELECTRA,
-                gIWithdrawals: GIndices.WITHDRAWALS_GLOAS,
-                gIValidatorsPreGloas: GIndices.VALIDATORS_ELECTRA,
-                gIValidators: GIndices.VALIDATORS_GLOAS,
-                gIHistoricalSummariesPreGloas: NULL_GINDEX,
-                gIHistoricalSummaries: GIndices.HISTORICAL_SUMMARIES_GLOAS,
-                gIBalancesPreGloas: NULL_GINDEX,
-                gIBalances: NULL_GINDEX,
-                gIBlockRootsPreGloas: NULL_GINDEX,
-                gIBlockRoots: NULL_GINDEX
-            }),
-            firstSupportedSlot: fixture.data.withdrawalBlock.header.slot,
-            pivotSlot: fixture.data.recentBlock.header.slot,
-            capellaSlot: Slot.wrap(0),
-            minWithdrawalRatio: 9000,
-            admin: nextAddress("ADMIN")
-        });
-        _setMocks();
-    }
-
-    function test_processHistoricalWithdrawalProof_HappyPath() public {
-        WithdrawnValidatorInfo[] memory withdrawals = new WithdrawnValidatorInfo[](1);
-        withdrawals[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: 0,
-            keyIndex: 0,
-            exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-
-        vm.expectCall(
-            address(module),
-            abi.encodeWithSelector(IBaseModule.reportRegularWithdrawnValidators.selector, withdrawals)
-        );
-
-        verifier.processHistoricalWithdrawalProof(fixture.data);
-    }
 }
