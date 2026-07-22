@@ -41,16 +41,17 @@ library StakeTracker {
     }
 
     /// @dev Applies per-key top-up allocations, updates key allocated balances, and aggregates stake deltas per operator.
+    /// @return allocatedOperatorIds Unique IDs of operators whose tracked stake increased.
     function increaseKeyBalances(
         ModuleLinearStorage.BaseModuleStorage storage $,
         uint256[] calldata operatorIds,
         uint256[] calldata keyIndices,
         uint256[] calldata allocations
-    ) external {
-        uint256[] memory allocatedOperatorIds = new uint256[](operatorIds.length);
+    ) external returns (uint256[] memory allocatedOperatorIds) {
+        allocatedOperatorIds = new uint256[](operatorIds.length);
         uint256[] memory increments = new uint256[](operatorIds.length);
         TransientUintUintMap operatorIndexes = TransientUintUintMapLib.create();
-        uint256 touchedOperatorsCount;
+        uint256 allocatedOperatorsCount;
 
         for (uint256 i; i < allocations.length; ++i) {
             uint256 allocationWei = allocations[i];
@@ -67,14 +68,14 @@ library StakeTracker {
 
             uint256 operatorIndex = operatorIndexes.get(operatorIds[i]);
             if (operatorIndex == 0) {
-                operatorIndex = touchedOperatorsCount;
+                operatorIndex = allocatedOperatorsCount;
                 allocatedOperatorIds[operatorIndex] = operatorIds[i];
                 increments[operatorIndex] = appliedIncrementWei;
                 unchecked {
-                    ++touchedOperatorsCount;
+                    ++allocatedOperatorsCount;
                 }
                 // Store index + 1 so zero can remain the "not seen yet" sentinel in the transient map.
-                operatorIndexes.set(operatorIds[i], touchedOperatorsCount);
+                operatorIndexes.set(operatorIds[i], allocatedOperatorsCount);
             } else {
                 unchecked {
                     increments[operatorIndex - 1] += appliedIncrementWei;
@@ -82,7 +83,11 @@ library StakeTracker {
             }
         }
 
-        for (uint256 i; i < touchedOperatorsCount; ++i) {
+        assembly ("memory-safe") {
+            mstore(allocatedOperatorIds, allocatedOperatorsCount)
+        }
+
+        for (uint256 i; i < allocatedOperatorIds.length; ++i) {
             increaseOperatorBalance($, allocatedOperatorIds[i], increments[i]);
         }
     }

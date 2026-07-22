@@ -24,6 +24,8 @@ import { MAX_BP } from "./lib/Constants.sol";
 contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUpgradeable {
     using ExternalOperatorLib for ExternalOperator;
 
+    uint64 internal constant INITIALIZED_VERSION = 2;
+
     struct CachedOperatorGroup {
         string name;
         uint64[] subNodeOperatorIds;
@@ -54,11 +56,13 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         mapping(uint256 providerId => WeightBoostProviderEntry entry) weightBoostProviders;
         mapping(address provider => uint256 providerId) weightBoostProviderIdByAddress;
         uint256 weightBoostProvidersCount;
+        uint256 maximumStakeCapPerNodeOperator;
     }
 
     bytes32 public constant MANAGE_OPERATOR_GROUPS_ROLE = keccak256("MANAGE_OPERATOR_GROUPS_ROLE");
     bytes32 public constant SET_OPERATOR_INFO_ROLE = keccak256("SET_OPERATOR_INFO_ROLE");
     bytes32 public constant SET_BOND_CURVE_WEIGHT_ROLE = keccak256("SET_BOND_CURVE_WEIGHT_ROLE");
+    bytes32 public constant MANAGE_STAKE_CAP_ROLE = keccak256("MANAGE_STAKE_CAP_ROLE");
 
     // ID of the stub node operator group that means "not in any group". This value is used for all node operators that are not assigned to any group, so it
     // can't be used as a real group ID.
@@ -91,15 +95,31 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     }
 
     /// @inheritdoc IMetaRegistry
-    function initialize(address admin) external initializer {
+    function initialize(address admin, uint256 initialCap) external reinitializer(INITIALIZED_VERSION) {
         if (admin == address(0)) revert ZeroAdminAddress();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _setMaximumStakeCapPerNodeOperator(initialCap);
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function finalizeUpgradeV2(uint256 initialCap) external reinitializer(INITIALIZED_VERSION) {
+        _setMaximumStakeCapPerNodeOperator(initialCap);
     }
 
     /// @inheritdoc IMetaRegistry
     function getInitializedVersion() external view returns (uint64) {
         return _getInitializedVersion();
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function maximumStakeCapPerNodeOperator() external view returns (uint256 cap) {
+        return _storage().maximumStakeCapPerNodeOperator;
+    }
+
+    /// @inheritdoc IMetaRegistry
+    function setMaximumStakeCapPerNodeOperator(uint256 newCap) external onlyRole(MANAGE_STAKE_CAP_ROLE) {
+        _setMaximumStakeCapPerNodeOperator(newCap);
     }
 
     /// @inheritdoc IMetaRegistry
@@ -528,6 +548,18 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
     function _requestFullDepositInfoUpdate() internal {
         MODULE.requestFullDepositInfoUpdate();
+    }
+
+    function _setMaximumStakeCapPerNodeOperator(uint256 newCap) internal {
+        if (newCap == 0 || newCap % 1 ether != 0) revert InvalidStakeCap();
+
+        MetaRegistryStorage storage $ = _storage();
+        uint256 previousCap = $.maximumStakeCapPerNodeOperator;
+        if (newCap == previousCap) revert SameMaximumStakeCap();
+
+        $.maximumStakeCapPerNodeOperator = newCap;
+        emit MaximumStakeCapPerNodeOperatorSet(previousCap, newCap);
+        _requestFullDepositInfoUpdate();
     }
 
     function _storeOperatorMetadata(uint256 nodeOperatorId, OperatorMetadata memory metadata) internal {

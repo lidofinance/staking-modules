@@ -70,7 +70,7 @@ library CuratedDepositAllocator {
     ///        (non-zero weight, non-zero quantized top-up capacity),
     ///        so a subset cannot bias its share by omitting other eligible operators.
     ///      - Per-operator capacity is computed as:
-    ///        `(active_validators * 2048 ETH) - current_operator_balance`, floored at zero.
+    ///        `min(active_validators * 2048 ETH, stake_cap) - current_operator_balance`, floored at zero.
     ///      - `current_operator_balance` here is the module's tracked stake view, not a live decrementing oracle value:
     ///        active balance decreases are intentionally reflected later via withdrawal reporting.
     /// @param $ Base module storage pointer.
@@ -95,7 +95,7 @@ library CuratedDepositAllocator {
     ///        (non-zero weight, non-zero quantized top-up capacity),
     ///        so a subset cannot bias its share by omitting other eligible operators.
     ///      - Per-operator capacity is computed as:
-    ///        `(active_validators * 2048 ETH) - current_operator_balance`, floored at zero.
+    ///        `min(active_validators * 2048 ETH, stake_cap) - current_operator_balance`, floored at zero.
     ///      - `current_operator_balance` is intentionally based on tracked stake that preserves prior observed highs
     ///        until withdrawal settlement, so active slashing/leakage is accounted when penalties are finalized.
     ///      - Per-key top-up limits are not used as caps for operator-level allocation; they are
@@ -269,11 +269,12 @@ library CuratedDepositAllocator {
         currentStakeByOperatorId = new uint256[](operatorsCount);
 
         IMetaRegistry metaRegistry = ICuratedModule(address(this)).META_REGISTRY();
+        uint256 stakeCap = metaRegistry.maximumStakeCapPerNodeOperator();
 
         // Build global share baseline across all eligible operators (non-zero weight + usable capacity).
         for (uint256 i; i < operatorsCount; ++i) {
             uint256 balance = StakeTracker.getOperatorBalance($, i);
-            uint256 capacity = quantizeForTopUp(_topUpCapacity($.nodeOperators[i], balance));
+            uint256 capacity = quantizeForTopUp(_topUpCapacity($.nodeOperators[i], balance, stakeCap));
             if (capacity == 0) continue;
             capacitiesByOperatorId[i] = capacity;
 
@@ -293,11 +294,17 @@ library CuratedDepositAllocator {
     }
 
     /// @dev Maximum top-up capacity for an operator:
-    ///      (active validators * 2048 ETH) - current balance, floored at zero.
-    function _topUpCapacity(NodeOperator storage no, uint256 balanceWei) internal view returns (uint256 capacity) {
+    ///      min(active validators * 2048 ETH, stake cap) - current balance, floored at zero.
+    function _topUpCapacity(
+        NodeOperator storage no,
+        uint256 balanceWei,
+        uint256 stakeCap
+    ) internal view returns (uint256 capacity) {
         unchecked {
-            uint256 maxTotal = (no.totalDepositedKeys - no.totalWithdrawnKeys) *
-                ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE;
+            uint256 maxTotal = Math.min(
+                (no.totalDepositedKeys - no.totalWithdrawnKeys) * ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE,
+                stakeCap
+            );
             if (maxTotal > balanceWei) capacity = maxTotal - balanceWei;
         }
     }
