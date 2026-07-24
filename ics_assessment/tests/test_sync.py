@@ -205,6 +205,65 @@ def test_run_sync_requires_configured_rpc_env():
     assert called["value"] is False
 
 
+def test_rpc_chain_id_uses_json_rpc_probe(monkeypatch):
+    mod = _load_module()
+    request = {}
+
+    def fake_post(url, json=None, timeout=None):
+        request.update(url=url, json=json, timeout=timeout)
+        return DummyResp(data={"jsonrpc": "2.0", "id": 1, "result": "0x88bb0"})
+
+    monkeypatch.setattr(mod.requests, "post", fake_post)
+
+    assert mod._rpc_chain_id("https://hoodi.example") == mod.HOODI_CHAIN_ID
+    assert request == {
+        "url": "https://hoodi.example",
+        "json": {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "eth_chainId",
+            "params": [],
+        },
+        "timeout": 20,
+    }
+
+
+def test_run_sync_verifies_rpc_chain_id(monkeypatch):
+    mod = _load_module()
+    mod.MAINNET_RPC_URL = "https://mainnet.example"
+    called = {"value": False}
+    mod.JOBS["aragon"] = lambda: called.__setitem__("value", True)
+
+    monkeypatch.setattr(
+        mod,
+        "_rpc_chain_id",
+        lambda url: 1 if url == mod.MAINNET_RPC_URL else None,
+    )
+
+    assert mod.run_sync(["aragon"]) == 0
+    assert called["value"] is True
+
+
+def test_run_sync_rejects_wrong_rpc_chain_id(monkeypatch):
+    mod = _load_module()
+    mod.MAINNET_RPC_URL = "https://hoodi.example"
+    called = {"value": False}
+    mod.JOBS["aragon"] = lambda: called.__setitem__("value", True)
+
+    monkeypatch.setattr(
+        mod,
+        "_rpc_chain_id",
+        lambda url: 560048 if url == mod.MAINNET_RPC_URL else None,
+    )
+
+    with pytest.raises(
+        SystemExit,
+        match="expected MAINNET_RPC_URL chain ID 1, got 560048",
+    ):
+        mod.run_sync(["aragon"])
+    assert called["value"] is False
+
+
 def test_request_performance_report_retries_then_succeeds(monkeypatch):
     mod = _load_module()
     calls = {"count": 0}
