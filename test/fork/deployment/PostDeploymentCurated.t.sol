@@ -192,10 +192,7 @@ contract AdditionalBondRegistryDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles_onlyFull() public view {
-        assertEq(additionalBondRegistry.getRoleMemberCount(additionalBondRegistry.DEFAULT_ADMIN_ROLE()), adminsCount);
-        assertTrue(
-            additionalBondRegistry.hasRole(additionalBondRegistry.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent)
-        );
+        _checkAdminRole(address(additionalBondRegistry), deployParams.aragonAgent, deployParams.secondAdminAddress);
 
         // AdditionalBondRegistry must be able to update the operator curve multiplier in Accounting.
         assertTrue(
@@ -263,8 +260,7 @@ contract NodeOperatorStrikesDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles_onlyFull() public view {
-        assertEq(nodeOperatorStrikes.getRoleMemberCount(nodeOperatorStrikes.DEFAULT_ADMIN_ROLE()), adminsCount);
-        assertTrue(nodeOperatorStrikes.hasRole(nodeOperatorStrikes.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
+        _checkAdminRole(address(nodeOperatorStrikes), deployParams.aragonAgent, deployParams.secondAdminAddress);
 
         bytes32 committeeRole = nodeOperatorStrikes.STRIKES_COMMITTEE_ROLE();
         assertEq(nodeOperatorStrikes.getRoleMemberCount(committeeRole), 1);
@@ -359,9 +355,9 @@ contract LDOLockBoostProviderDeploymentTest is DeploymentBaseTest {
             "LDO lock provider token"
         );
         assertEq(
-            address(ldoLockBoostProvider.VAULT_FACTORY()),
-            address(ldoLockVaultFactory),
-            "LDO lock provider vault factory"
+            address(ldoLockBoostProvider.VAULT_BEACON()),
+            address(ldoLockVaultBeacon),
+            "LDO lock provider vault beacon"
         );
         assertEq(
             ldoLockBoostProvider.MIN_LOCK_PERIOD(),
@@ -376,24 +372,31 @@ contract LDOLockBoostProviderDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles_onlyFull() public view {
-        assertEq(ldoLockBoostProvider.getRoleMemberCount(ldoLockBoostProvider.DEFAULT_ADMIN_ROLE()), adminsCount);
-        assertTrue(ldoLockBoostProvider.hasRole(ldoLockBoostProvider.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
+        _checkAdminRole(address(ldoLockBoostProvider), deployParams.aragonAgent, deployParams.secondAdminAddress);
     }
 
-    function test_factory_onlyFull() public view {
-        assertGt(address(ldoLockVaultFactory).code.length, 0, "LDO lock vault factory code");
+    function test_vaultBeacon_onlyFull() public view {
+        assertGt(address(ldoLockVaultImpl).code.length, 0, "LDO lock vault impl code");
+        assertGt(address(ldoLockVaultBeacon).code.length, 0, "LDO lock vault beacon code");
+        assertEq(ldoLockVaultBeacon.implementation(), address(ldoLockVaultImpl), "LDO lock vault beacon impl");
+        assertEq(ldoLockVaultBeacon.owner(), deployParams.aragonAgent, "LDO lock vault beacon owner");
+    }
+
+    function test_vaultImplementation_onlyFull() public view {
+        assertEq(ldoLockVaultImpl.nodeOperatorId(), 0, "LDO lock vault impl node operator ID");
+        assertEq(ldoLockVaultImpl.TOKEN(), deployParams.ldoLockBoostProviderConfig.token, "LDO lock vault impl token");
+        assertEq(ldoLockVaultImpl.PROVIDER(), address(ldoLockBoostProvider), "LDO lock vault impl provider");
+        assertEq(address(ldoLockVaultImpl.MODULE()), address(curatedModule), "LDO lock vault impl module");
         assertEq(
-            ldoLockVaultFactory.VOTING_CONTRACT(),
+            ldoLockVaultImpl.VOTING_CONTRACT(),
             deployParams.ldoLockBoostProviderConfig.votingContract,
-            "LDO lock vault factory voting"
+            "LDO lock vault impl voting"
         );
         assertEq(
-            ldoLockVaultFactory.snapshotDelegation(),
+            ldoLockVaultImpl.snapshotDelegation(),
             deployParams.ldoLockBoostProviderConfig.snapshotDelegation,
-            "LDO lock vault factory snapshot delegation"
+            "LDO lock vault impl snapshot delegation"
         );
-        assertEq(ldoLockVaultFactory.getRoleMemberCount(ldoLockVaultFactory.DEFAULT_ADMIN_ROLE()), adminsCount);
-        assertTrue(ldoLockVaultFactory.hasRole(ldoLockVaultFactory.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
     }
 
     function test_initialization_onlyFull() public {
@@ -405,6 +408,9 @@ contract LDOLockBoostProviderDeploymentTest is DeploymentBaseTest {
             deployParams.aragonAgent,
             deployParams.ldoLockBoostProviderConfig.lockPeriod
         );
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        ldoLockVaultImpl.initialize(0);
     }
 
     function test_proxy_onlyFull() public view {

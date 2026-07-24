@@ -6,16 +6,15 @@ pragma solidity 0.8.33;
 import { Test } from "forge-std/Test.sol";
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
 import { ERC20LockBoostProvider } from "src/ERC20LockBoostProvider.sol";
 import { ERC20LockVault } from "src/ERC20LockVault.sol";
 import { LidoGovernanceLockVault } from "src/LidoGovernanceLockVault.sol";
-import { LidoGovernanceLockVaultFactory } from "src/LidoGovernanceLockVaultFactory.sol";
 import { IAragonVotingLockVault } from "src/interfaces/IAragonVotingLockVault.sol";
 import { IERC20LockBoostProvider } from "src/interfaces/IERC20LockBoostProvider.sol";
 import { IERC20LockVault } from "src/interfaces/IERC20LockVault.sol";
-import { IERC20LockVaultFactory } from "src/interfaces/IERC20LockVaultFactory.sol";
-import { ILidoGovernanceLockVaultFactory } from "src/interfaces/ILidoGovernanceLockVaultFactory.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { ISnapshotDelegationLockVault } from "src/interfaces/ISnapshotDelegationLockVault.sol";
 import { MetaRegistry } from "src/MetaRegistry.sol";
@@ -76,10 +75,10 @@ contract ERC20LockBoostProviderForTest is ERC20LockBoostProvider {
     constructor(
         address module,
         address token,
-        address vaultFactory,
+        address vaultBeacon,
         uint256 minLockPeriod,
         uint256 maxLockPeriod
-    ) ERC20LockBoostProvider(module, token, vaultFactory, minLockPeriod, maxLockPeriod) {}
+    ) ERC20LockBoostProvider(module, token, vaultBeacon, minLockPeriod, maxLockPeriod) {}
 
     function mock_withdraw(uint256 nodeOperatorId, uint256 amount, address receiver) external {
         _withdraw(nodeOperatorId, amount, receiver);
@@ -93,7 +92,8 @@ contract ERC20LockBoostProviderBaseTest is Utilities, Fixtures {
     ERC20Testable public token;
     LidoAragonVotingMock public voting;
     SnapshotDelegationMock public snapshotDelegation;
-    LidoGovernanceLockVaultFactory public vaultFactory;
+    LidoGovernanceLockVault public vaultImpl;
+    UpgradeableBeacon public vaultBeacon;
     ERC20LockBoostProvider public provider;
 
     address public admin;
@@ -157,14 +157,23 @@ contract ERC20LockBoostProviderBaseTest is Utilities, Fixtures {
         token = new ERC20Testable();
         voting = new LidoAragonVotingMock();
         snapshotDelegation = new SnapshotDelegationMock();
-        vaultFactory = new LidoGovernanceLockVaultFactory(admin, address(voting), address(snapshotDelegation));
+        address expectedProvider = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 2);
+        vaultImpl = new LidoGovernanceLockVault(
+            address(token),
+            expectedProvider,
+            address(module),
+            address(voting),
+            address(snapshotDelegation)
+        );
+        vaultBeacon = new UpgradeableBeacon(address(vaultImpl), admin);
         provider = new ERC20LockBoostProvider(
             address(module),
             address(token),
-            address(vaultFactory),
+            address(vaultBeacon),
             MIN_LOCK_PERIOD,
             MAX_LOCK_PERIOD
         );
+        assertEq(address(provider), expectedProvider);
         _enableInitializers(address(provider));
         provider.initialize(admin, LOCK_PERIOD);
 
@@ -256,23 +265,17 @@ contract ERC20LockBoostProviderConstructorTest is ERC20LockBoostProviderBaseTest
         assertEq(address(provider.MODULE()), address(module));
         assertEq(address(provider.META_REGISTRY()), address(registry));
         assertEq(provider.TOKEN(), address(token));
-        assertEq(address(provider.VAULT_FACTORY()), address(vaultFactory));
+        assertEq(address(provider.VAULT_BEACON()), address(vaultBeacon));
         assertEq(provider.MIN_LOCK_PERIOD(), MIN_LOCK_PERIOD);
         assertEq(provider.MAX_LOCK_PERIOD(), MAX_LOCK_PERIOD);
     }
 
     function test_constructor_RevertWhen_ZeroAddresses() public {
         vm.expectRevert(IERC20LockBoostProvider.ZeroAddress.selector);
-        new ERC20LockBoostProvider(address(0), address(token), address(vaultFactory), MIN_LOCK_PERIOD, MAX_LOCK_PERIOD);
+        new ERC20LockBoostProvider(address(0), address(token), address(vaultBeacon), MIN_LOCK_PERIOD, MAX_LOCK_PERIOD);
 
         vm.expectRevert(IERC20LockBoostProvider.ZeroAddress.selector);
-        new ERC20LockBoostProvider(
-            address(module),
-            address(0),
-            address(vaultFactory),
-            MIN_LOCK_PERIOD,
-            MAX_LOCK_PERIOD
-        );
+        new ERC20LockBoostProvider(address(module), address(0), address(vaultBeacon), MIN_LOCK_PERIOD, MAX_LOCK_PERIOD);
 
         vm.expectRevert(IERC20LockBoostProvider.ZeroAddress.selector);
         new ERC20LockBoostProvider(address(module), address(token), address(0), MIN_LOCK_PERIOD, MAX_LOCK_PERIOD);
@@ -280,13 +283,13 @@ contract ERC20LockBoostProviderConstructorTest is ERC20LockBoostProviderBaseTest
 
     function test_constructor_RevertWhen_InvalidLockPeriodBounds() public {
         vm.expectRevert(IERC20LockBoostProvider.InvalidLockPeriod.selector);
-        new ERC20LockBoostProvider(address(module), address(token), address(vaultFactory), 0, MAX_LOCK_PERIOD);
+        new ERC20LockBoostProvider(address(module), address(token), address(vaultBeacon), 0, MAX_LOCK_PERIOD);
 
         vm.expectRevert(IERC20LockBoostProvider.InvalidLockPeriod.selector);
         new ERC20LockBoostProvider(
             address(module),
             address(token),
-            address(vaultFactory),
+            address(vaultBeacon),
             MAX_LOCK_PERIOD,
             MIN_LOCK_PERIOD
         );
@@ -295,7 +298,7 @@ contract ERC20LockBoostProviderConstructorTest is ERC20LockBoostProviderBaseTest
         new ERC20LockBoostProvider(
             address(module),
             address(token),
-            address(vaultFactory),
+            address(vaultBeacon),
             MIN_LOCK_PERIOD,
             uint256(type(uint128).max) + 1
         );
@@ -313,7 +316,7 @@ contract ERC20LockBoostProviderInitializeTest is ERC20LockBoostProviderBaseTest 
         ERC20LockBoostProvider p = new ERC20LockBoostProvider(
             address(module),
             address(token),
-            address(vaultFactory),
+            address(vaultBeacon),
             MIN_LOCK_PERIOD,
             MAX_LOCK_PERIOD
         );
@@ -327,7 +330,7 @@ contract ERC20LockBoostProviderInitializeTest is ERC20LockBoostProviderBaseTest 
         ERC20LockBoostProvider p = new ERC20LockBoostProvider(
             address(module),
             address(token),
-            address(vaultFactory),
+            address(vaultBeacon),
             MIN_LOCK_PERIOD,
             MAX_LOCK_PERIOD
         );
@@ -608,6 +611,36 @@ contract ERC20LockBoostProviderWithdrawTest is ERC20LockBoostProviderBaseTest {
         assertEq(lockInfo.lockUntil, 0);
     }
 
+    function test_withdraw_AfterVaultImplementationUpgrade() public {
+        _lock(10 ether);
+        IERC20LockBoostProvider.LockInfo memory lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        IERC20LockVault vault = IERC20LockVault(lockInfo.vault);
+        SnapshotDelegationMock newSnapshotDelegation = new SnapshotDelegationMock();
+        LidoGovernanceLockVault newVaultImpl = new LidoGovernanceLockVault(
+            address(token),
+            address(provider),
+            address(module),
+            address(voting),
+            address(newSnapshotDelegation)
+        );
+
+        vm.prank(admin);
+        vaultBeacon.upgradeTo(address(newVaultImpl));
+
+        assertEq(vault.nodeOperatorId(), NODE_OPERATOR_ID);
+        assertEq(vault.TOKEN(), address(token));
+        assertEq(vault.PROVIDER(), address(provider));
+        assertEq(address(vault.MODULE()), address(module));
+        assertEq(token.balanceOf(lockInfo.vault), 10 ether);
+
+        vm.warp(lockInfo.lockUntil);
+        vm.prank(nodeOperatorOwner);
+        provider.withdraw(NODE_OPERATOR_ID, 10 ether, receiver);
+
+        assertEq(token.balanceOf(receiver), 10 ether);
+        assertEq(token.balanceOf(lockInfo.vault), 0);
+    }
+
     function test_withdraw_DoesNotRefreshRegistryWhenBoostUnchanged() public {
         _setDefaultSteps();
         _lock(STEP_1_AMOUNT + 10 ether);
@@ -701,7 +734,7 @@ contract ERC20LockBoostProviderWithdrawTest is ERC20LockBoostProviderBaseTest {
         ERC20LockBoostProviderForTest p = new ERC20LockBoostProviderForTest(
             address(module),
             address(token),
-            address(vaultFactory),
+            address(vaultBeacon),
             MIN_LOCK_PERIOD,
             MAX_LOCK_PERIOD
         );
@@ -828,103 +861,13 @@ contract ERC20LockBoostProviderVotingTest is ERC20LockBoostProviderBaseTest {
     }
 }
 
-contract LidoGovernanceLockVaultFactoryTest is Test, Utilities {
-    CuratedMock public module;
-    ERC20Testable public token;
-    LidoAragonVotingMock public voting;
-    SnapshotDelegationMock public snapshotDelegation;
-    LidoGovernanceLockVaultFactory public vaultFactory;
-
-    address public admin;
-    address public provider;
-    address public stranger;
-
-    uint256 internal constant NODE_OPERATOR_ID = 0;
-
-    function setUp() public {
-        admin = nextAddress("ADMIN");
-        provider = nextAddress("PROVIDER");
-        stranger = nextAddress("STRANGER");
-
-        module = new CuratedMock();
-        token = new ERC20Testable();
-        voting = new LidoAragonVotingMock();
-        snapshotDelegation = new SnapshotDelegationMock();
-        vaultFactory = new LidoGovernanceLockVaultFactory(admin, address(voting), address(snapshotDelegation));
-    }
-
-    function test_constructor_SetsImmutables() public view {
-        assertEq(vaultFactory.VOTING_CONTRACT(), address(voting));
-        assertEq(vaultFactory.snapshotDelegation(), address(snapshotDelegation));
-        assertTrue(vaultFactory.hasRole(vaultFactory.DEFAULT_ADMIN_ROLE(), admin));
-    }
-
-    function test_constructor_RevertWhen_ZeroAddresses() public {
-        vm.expectRevert(IERC20LockVaultFactory.ZeroAddress.selector);
-        new LidoGovernanceLockVaultFactory(address(0), address(voting), address(snapshotDelegation));
-
-        vm.expectRevert(IERC20LockVaultFactory.ZeroAddress.selector);
-        new LidoGovernanceLockVaultFactory(admin, address(0), address(snapshotDelegation));
-
-        vm.expectRevert(IERC20LockVaultFactory.ZeroAddress.selector);
-        new LidoGovernanceLockVaultFactory(admin, address(voting), address(0));
-    }
-
-    function test_setSnapshotDelegation() public {
-        SnapshotDelegationMock newSnapshotDelegation = new SnapshotDelegationMock();
-
-        vm.expectEmit(address(vaultFactory));
-        emit ILidoGovernanceLockVaultFactory.SnapshotDelegationSet(address(newSnapshotDelegation));
-        vm.prank(admin);
-        vaultFactory.setSnapshotDelegation(address(newSnapshotDelegation));
-
-        assertEq(vaultFactory.snapshotDelegation(), address(newSnapshotDelegation));
-    }
-
-    function test_setSnapshotDelegation_UpdatesCreatedVaults() public {
-        address vaultAddress = vaultFactory.createVault(NODE_OPERATOR_ID, address(token), provider, address(module));
-        LidoGovernanceLockVault vault = LidoGovernanceLockVault(vaultAddress);
-        SnapshotDelegationMock newSnapshotDelegation = new SnapshotDelegationMock();
-
-        vm.prank(admin);
-        vaultFactory.setSnapshotDelegation(address(newSnapshotDelegation));
-
-        assertEq(vault.snapshotDelegation(), address(newSnapshotDelegation));
-    }
-
-    function test_setSnapshotDelegation_RevertWhen_InvalidInputOrNoRole() public {
-        SnapshotDelegationMock newSnapshotDelegation = new SnapshotDelegationMock();
-
-        vm.prank(admin);
-        vm.expectRevert(IERC20LockVaultFactory.ZeroAddress.selector);
-        vaultFactory.setSnapshotDelegation(address(0));
-
-        vm.prank(admin);
-        vm.expectRevert(ILidoGovernanceLockVaultFactory.SameSnapshotDelegation.selector);
-        vaultFactory.setSnapshotDelegation(address(snapshotDelegation));
-
-        expectRoleRevert(stranger, vaultFactory.DEFAULT_ADMIN_ROLE());
-        vm.prank(stranger);
-        vaultFactory.setSnapshotDelegation(address(newSnapshotDelegation));
-    }
-
-    function test_createVault() public {
-        address vaultAddress = vaultFactory.createVault(NODE_OPERATOR_ID, address(token), provider, address(module));
-        LidoGovernanceLockVault vault = LidoGovernanceLockVault(vaultAddress);
-
-        assertEq(vault.NODE_OPERATOR_ID(), NODE_OPERATOR_ID);
-        assertEq(vault.TOKEN(), address(token));
-        assertEq(vault.PROVIDER(), provider);
-        assertEq(address(vault.MODULE()), address(module));
-        assertEq(vault.VOTING_CONTRACT(), address(voting));
-        assertEq(vault.snapshotDelegation(), address(snapshotDelegation));
-    }
-}
-
 contract ERC20LockVaultTest is Test, Utilities {
     ERC20Testable public token;
+    ERC20LockVault public vaultImpl;
+    UpgradeableBeacon public vaultBeacon;
     ERC20LockVault public vault;
 
+    address public admin;
     address public provider;
     address public module;
     address public receiver;
@@ -933,17 +876,27 @@ contract ERC20LockVaultTest is Test, Utilities {
     uint256 internal constant NODE_OPERATOR_ID = 13;
 
     function setUp() public {
+        admin = nextAddress("ADMIN");
         provider = nextAddress("PROVIDER");
         module = nextAddress("MODULE");
         receiver = nextAddress("RECEIVER");
         stranger = nextAddress("STRANGER");
 
         token = new ERC20Testable();
-        vault = new ERC20LockVault(NODE_OPERATOR_ID, address(token), provider, module);
+        vaultImpl = new ERC20LockVault(address(token), provider, module);
+        vaultBeacon = new UpgradeableBeacon(address(vaultImpl), admin);
+        vault = ERC20LockVault(
+            address(
+                new BeaconProxy({
+                    beacon: address(vaultBeacon),
+                    data: abi.encodeCall(IERC20LockVault.initialize, (NODE_OPERATOR_ID))
+                })
+            )
+        );
     }
 
-    function test_constructor_SetsImmutables() public view {
-        assertEq(vault.NODE_OPERATOR_ID(), NODE_OPERATOR_ID);
+    function test_initialize_SetsState() public view {
+        assertEq(vault.nodeOperatorId(), NODE_OPERATOR_ID);
         assertEq(vault.TOKEN(), address(token));
         assertEq(vault.PROVIDER(), provider);
         assertEq(address(vault.MODULE()), module);
@@ -951,13 +904,18 @@ contract ERC20LockVaultTest is Test, Utilities {
 
     function test_constructor_RevertWhen_ZeroAddresses() public {
         vm.expectRevert(IERC20LockVault.ZeroAddress.selector);
-        new ERC20LockVault(NODE_OPERATOR_ID, address(0), provider, module);
+        new ERC20LockVault(address(0), provider, module);
 
         vm.expectRevert(IERC20LockVault.ZeroAddress.selector);
-        new ERC20LockVault(NODE_OPERATOR_ID, address(token), address(0), module);
+        new ERC20LockVault(address(token), address(0), module);
 
         vm.expectRevert(IERC20LockVault.ZeroAddress.selector);
-        new ERC20LockVault(NODE_OPERATOR_ID, address(token), provider, address(0));
+        new ERC20LockVault(address(token), provider, address(0));
+    }
+
+    function test_initialize_RevertWhen_DoubleCall() public {
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        vault.initialize(NODE_OPERATOR_ID);
     }
 
     function test_transferTokens() public {
@@ -987,7 +945,8 @@ contract LidoGovernanceLockVaultTest is Test, Utilities {
     ERC20Testable public token;
     LidoAragonVotingMock public voting;
     SnapshotDelegationMock public snapshotDelegation;
-    LidoGovernanceLockVaultFactory public vaultFactory;
+    LidoGovernanceLockVault public vaultImpl;
+    UpgradeableBeacon public vaultBeacon;
     LidoGovernanceLockVault public vault;
 
     address public admin;
@@ -1019,47 +978,40 @@ contract LidoGovernanceLockVaultTest is Test, Utilities {
         token = new ERC20Testable();
         voting = new LidoAragonVotingMock();
         snapshotDelegation = new SnapshotDelegationMock();
-        vaultFactory = new LidoGovernanceLockVaultFactory(admin, address(voting), address(snapshotDelegation));
-        vault = new LidoGovernanceLockVault(
-            NODE_OPERATOR_ID,
+        vaultImpl = new LidoGovernanceLockVault(
             address(token),
             provider,
             address(module),
             address(voting),
-            address(vaultFactory)
+            address(snapshotDelegation)
+        );
+        vaultBeacon = new UpgradeableBeacon(address(vaultImpl), admin);
+        vault = LidoGovernanceLockVault(
+            address(
+                new BeaconProxy({
+                    beacon: address(vaultBeacon),
+                    data: abi.encodeCall(IERC20LockVault.initialize, (NODE_OPERATOR_ID))
+                })
+            )
         );
     }
 
-    function test_constructor_SetsImmutables() public view {
-        assertEq(vault.NODE_OPERATOR_ID(), NODE_OPERATOR_ID);
+    function test_initialize_SetsStateAndImmutables() public view {
+        assertEq(vault.nodeOperatorId(), NODE_OPERATOR_ID);
         assertEq(vault.TOKEN(), address(token));
         assertEq(vault.PROVIDER(), provider);
         assertEq(address(vault.MODULE()), address(module));
         assertEq(vault.VOTING_CONTRACT(), address(voting));
-        assertEq(address(vault.VAULT_FACTORY()), address(vaultFactory));
+        assertEq(vault.SNAPSHOT_DELEGATION(), address(snapshotDelegation));
         assertEq(vault.snapshotDelegation(), address(snapshotDelegation));
     }
 
     function test_constructor_RevertWhen_ZeroGovernanceAddresses() public {
         vm.expectRevert(IERC20LockVault.ZeroAddress.selector);
-        new LidoGovernanceLockVault(
-            NODE_OPERATOR_ID,
-            address(token),
-            provider,
-            address(module),
-            address(0),
-            address(vaultFactory)
-        );
+        new LidoGovernanceLockVault(address(token), provider, address(module), address(0), address(snapshotDelegation));
 
         vm.expectRevert(IERC20LockVault.ZeroAddress.selector);
-        new LidoGovernanceLockVault(
-            NODE_OPERATOR_ID,
-            address(token),
-            provider,
-            address(module),
-            address(voting),
-            address(0)
-        );
+        new LidoGovernanceLockVault(address(token), provider, address(module), address(voting), address(0));
     }
 
     function test_assignAndUnassignVotingDelegate() public {
@@ -1090,15 +1042,23 @@ contract LidoGovernanceLockVaultTest is Test, Utilities {
         assertEq(snapshotDelegation.lastId(), SNAPSHOT_ALL_SPACES);
     }
 
-    function test_assignSnapshotDelegate_UsesCurrentSnapshotDelegation() public {
+    function test_assignSnapshotDelegate_UsesCurrentBeaconImplementation() public {
         SnapshotDelegationMock newSnapshotDelegation = new SnapshotDelegationMock();
+        LidoGovernanceLockVault newVaultImpl = new LidoGovernanceLockVault(
+            address(token),
+            provider,
+            address(module),
+            address(voting),
+            address(newSnapshotDelegation)
+        );
 
         vm.prank(admin);
-        vaultFactory.setSnapshotDelegation(address(newSnapshotDelegation));
+        vaultBeacon.upgradeTo(address(newVaultImpl));
 
         vm.prank(nodeOperatorOwner);
         vault.assignSnapshotDelegate(snapshotDelegate);
 
+        assertEq(vault.snapshotDelegation(), address(newSnapshotDelegation));
         assertEq(snapshotDelegation.delegateOf(address(vault), SNAPSHOT_ALL_SPACES), address(0));
         assertEq(newSnapshotDelegation.delegateOf(address(vault), SNAPSHOT_ALL_SPACES), snapshotDelegate);
     }

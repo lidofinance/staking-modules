@@ -5,6 +5,8 @@ pragma solidity 0.8.33;
 
 import { Script } from "forge-std/Script.sol";
 
+import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+
 import { HashConsensus } from "../../src/lib/base-oracle/HashConsensus.sol";
 import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 import { CuratedModule } from "../../src/CuratedModule.sol";
@@ -21,7 +23,7 @@ import { AdditionalBondRegistry } from "../../src/AdditionalBondRegistry.sol";
 import { NodeOperatorStrikes } from "../../src/NodeOperatorStrikes.sol";
 import { BoostStep } from "../../src/interfaces/IAdditionalBondRegistry.sol";
 import { ERC20LockBoostProvider } from "../../src/ERC20LockBoostProvider.sol";
-import { LidoGovernanceLockVaultFactory } from "../../src/LidoGovernanceLockVaultFactory.sol";
+import { LidoGovernanceLockVault } from "../../src/LidoGovernanceLockVault.sol";
 import { CuratedGate } from "../../src/CuratedGate.sol";
 import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 
@@ -179,7 +181,8 @@ abstract contract DeployBase is Script {
     NodeOperatorStrikes public nodeOperatorStrikes;
     ERC20LockBoostProvider public ldoLockBoostProvider;
     ERC20LockBoostProvider public ldoLockBoostProviderImpl;
-    LidoGovernanceLockVaultFactory public ldoLockVaultFactory;
+    LidoGovernanceLockVault public ldoLockVaultImpl;
+    UpgradeableBeacon public ldoLockVaultBeacon;
     MerkleGateFactory public curatedGateFactory;
     address[] public curatedGateInstances;
     address internal curatedGateImpl;
@@ -395,16 +398,19 @@ abstract contract DeployBase is Script {
             {
                 ERC20LockBoostProviderConfig storage ldoConfig = config.ldoLockBoostProviderConfig;
 
-                ldoLockVaultFactory = new LidoGovernanceLockVaultFactory({
-                    admin: deployer,
+                ldoLockVaultImpl = new LidoGovernanceLockVault({
+                    token: ldoConfig.token,
+                    provider: address(ldoLockBoostProvider),
+                    module: address(curatedModule),
                     votingContract: ldoConfig.votingContract,
                     snapshotDelegation_: ldoConfig.snapshotDelegation
                 });
+                ldoLockVaultBeacon = new UpgradeableBeacon(address(ldoLockVaultImpl), deployer);
 
                 ldoLockBoostProviderImpl = new ERC20LockBoostProvider({
                     module: address(curatedModule),
                     token: ldoConfig.token,
-                    vaultFactory: address(ldoLockVaultFactory),
+                    vaultBeacon: address(ldoLockVaultBeacon),
                     minLockPeriod: ldoConfig.minLockPeriod,
                     maxLockPeriod: ldoConfig.maxLockPeriod
                 });
@@ -639,8 +645,7 @@ abstract contract DeployBase is Script {
             ldoLockBoostProvider.grantRole(ldoLockBoostProvider.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             ldoLockBoostProvider.revokeRole(ldoLockBoostProvider.DEFAULT_ADMIN_ROLE(), deployer);
 
-            ldoLockVaultFactory.grantRole(ldoLockVaultFactory.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
-            ldoLockVaultFactory.revokeRole(ldoLockVaultFactory.DEFAULT_ADMIN_ROLE(), deployer);
+            ldoLockVaultBeacon.transferOwnership(config.aragonAgent);
 
             verifier.grantRole(verifier.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             verifier.revokeRole(verifier.DEFAULT_ADMIN_ROLE(), deployer);
@@ -672,7 +677,8 @@ abstract contract DeployBase is Script {
             deployJson.set("NodeOperatorStrikesImpl", address(nodeOperatorStrikesImpl));
             deployJson.set("LDOLockBoostProvider", address(ldoLockBoostProvider));
             deployJson.set("LDOLockBoostProviderImpl", address(ldoLockBoostProviderImpl));
-            deployJson.set("LDOLockVaultFactory", address(ldoLockVaultFactory));
+            deployJson.set("LDOLockVaultImpl", address(ldoLockVaultImpl));
+            deployJson.set("LDOLockVaultBeacon", address(ldoLockVaultBeacon));
             deployJson.set("ParametersRegistry", address(parametersRegistry));
             deployJson.set("ParametersRegistryImpl", address(parametersRegistryImpl));
             deployJson.set("Accounting", address(accounting));
@@ -776,7 +782,6 @@ abstract contract DeployBase is Script {
         additionalBondRegistry.grantRole(additionalBondRegistry.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         nodeOperatorStrikes.grantRole(nodeOperatorStrikes.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         ldoLockBoostProvider.grantRole(ldoLockBoostProvider.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
-        ldoLockVaultFactory.grantRole(ldoLockVaultFactory.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         for (uint256 i = 0; i < curatedGateInstances.length; i++) {
             CuratedGate gate = CuratedGate(curatedGateInstances[i]);
             gate.grantRole(gate.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);

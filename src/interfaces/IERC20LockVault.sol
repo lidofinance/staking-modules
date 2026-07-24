@@ -12,7 +12,7 @@ interface IERC20LockVault {
     error SenderIsNotNodeOperatorOwner();
 
     /// @notice Node Operator ID this vault belongs to.
-    function NODE_OPERATOR_ID() external view returns (uint256);
+    function nodeOperatorId() external view returns (uint256);
 
     /// @notice ERC20 token address.
     function TOKEN() external view returns (address);
@@ -22,6 +22,10 @@ interface IERC20LockVault {
 
     /// @notice Module used to resolve the current Node Operator owner.
     function MODULE() external view returns (IBaseModule);
+
+    /// @notice Initialize per-vault state.
+    /// @param nodeOperatorId Node Operator ID this vault belongs to.
+    function initialize(uint256 nodeOperatorId) external;
 
     /// @notice Transfer tokens to the receiver.
     /// @param receiver Address to receive tokens.

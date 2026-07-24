@@ -36,9 +36,10 @@ import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { AdditionalBondRegistry } from "src/AdditionalBondRegistry.sol";
 import { NodeOperatorStrikes } from "src/NodeOperatorStrikes.sol";
 import { ERC20LockBoostProvider } from "src/ERC20LockBoostProvider.sol";
-import { LidoGovernanceLockVaultFactory } from "src/LidoGovernanceLockVaultFactory.sol";
+import { LidoGovernanceLockVault } from "src/LidoGovernanceLockVault.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
+import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
 import { DeployCSM0x02Params } from "script/csm0x02/DeployCSM0x02Base.s.sol";
 import { CuratedDeployParams } from "script/curated/DeployBase.s.sol";
@@ -248,7 +249,8 @@ contract DeploymentHelpers is Test {
         address nodeOperatorStrikesImpl;
         address ldoLockBoostProvider;
         address ldoLockBoostProviderImpl;
-        address ldoLockVaultFactory;
+        address ldoLockVaultImpl;
+        address ldoLockVaultBeacon;
         address curatedGateFactory;
         address curatedGateImpl;
         address[] curatedGates;
@@ -444,8 +446,11 @@ contract DeploymentHelpers is Test {
         deploymentConfig.ldoLockBoostProviderImpl = vm.parseJsonAddress(config, ".LDOLockBoostProviderImpl");
         vm.label(deploymentConfig.ldoLockBoostProviderImpl, "ldoLockBoostProviderImpl");
 
-        deploymentConfig.ldoLockVaultFactory = vm.parseJsonAddress(config, ".LDOLockVaultFactory");
-        vm.label(deploymentConfig.ldoLockVaultFactory, "ldoLockVaultFactory");
+        deploymentConfig.ldoLockVaultImpl = vm.parseJsonAddress(config, ".LDOLockVaultImpl");
+        vm.label(deploymentConfig.ldoLockVaultImpl, "ldoLockVaultImpl");
+
+        deploymentConfig.ldoLockVaultBeacon = vm.parseJsonAddress(config, ".LDOLockVaultBeacon");
+        vm.label(deploymentConfig.ldoLockVaultBeacon, "ldoLockVaultBeacon");
 
         if (vm.keyExistsJson(config, ".CuratedGateFactory")) {
             deploymentConfig.curatedGateFactory = vm.parseJsonAddress(config, ".CuratedGateFactory");
@@ -859,7 +864,8 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     NodeOperatorStrikes public nodeOperatorStrikesImpl;
     ERC20LockBoostProvider public ldoLockBoostProvider;
     ERC20LockBoostProvider public ldoLockBoostProviderImpl;
-    LidoGovernanceLockVaultFactory public ldoLockVaultFactory;
+    LidoGovernanceLockVault public ldoLockVaultImpl;
+    UpgradeableBeacon public ldoLockVaultBeacon;
     CuratedGate public curatedGateImpl;
     address[] public curatedGates;
 
@@ -978,7 +984,8 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         nodeOperatorStrikesImpl = NodeOperatorStrikes(deploymentConfig.nodeOperatorStrikesImpl);
         ldoLockBoostProvider = ERC20LockBoostProvider(deploymentConfig.ldoLockBoostProvider);
         ldoLockBoostProviderImpl = ERC20LockBoostProvider(deploymentConfig.ldoLockBoostProviderImpl);
-        ldoLockVaultFactory = LidoGovernanceLockVaultFactory(deploymentConfig.ldoLockVaultFactory);
+        ldoLockVaultImpl = LidoGovernanceLockVault(deploymentConfig.ldoLockVaultImpl);
+        ldoLockVaultBeacon = UpgradeableBeacon(deploymentConfig.ldoLockVaultBeacon);
         curatedGateImpl = CuratedGate(deploymentConfig.curatedGateImpl);
         curatedGates = deploymentConfig.curatedGates;
     }

@@ -3,8 +3,9 @@
 
 pragma solidity 0.8.33;
 
+import { IBeacon } from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
+
 import { IWeightBoostProvider } from "./IWeightBoostProvider.sol";
-import { IERC20LockVaultFactory } from "./IERC20LockVaultFactory.sol";
 
 /// @notice Operator-level ERC20 lock registry and weight boost provider.
 interface IERC20LockBoostProvider is IWeightBoostProvider {
@@ -44,8 +45,8 @@ interface IERC20LockBoostProvider is IWeightBoostProvider {
     /// @notice ERC20 token address.
     function TOKEN() external view returns (address);
 
-    /// @notice Factory creating per-operator ERC20 lock vaults.
-    function VAULT_FACTORY() external view returns (IERC20LockVaultFactory);
+    /// @notice Beacon used by per-operator ERC20 lock vault proxies.
+    function VAULT_BEACON() external view returns (IBeacon);
 
     /// @notice Minimum lock period allowed by the registry.
     function MIN_LOCK_PERIOD() external view returns (uint256);

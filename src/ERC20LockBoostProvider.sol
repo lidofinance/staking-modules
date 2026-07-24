@@ -5,6 +5,8 @@ pragma solidity 0.8.33;
 
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import { IBeacon } from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -13,7 +15,6 @@ import { NodeOperator } from "./interfaces/IBaseModule.sol";
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IERC20LockBoostProvider } from "./interfaces/IERC20LockBoostProvider.sol";
 import { IERC20LockVault } from "./interfaces/IERC20LockVault.sol";
-import { IERC20LockVaultFactory } from "./interfaces/IERC20LockVaultFactory.sol";
 import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
 import { IWeightBoostProvider } from "./interfaces/IWeightBoostProvider.sol";
 import { MAX_BP, MAX_EFFECTIVE_MULTIPLIER_BP } from "./lib/Constants.sol";
@@ -32,7 +33,7 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
     ICuratedModule public immutable MODULE;
     IMetaRegistry public immutable META_REGISTRY;
     address public immutable TOKEN;
-    IERC20LockVaultFactory public immutable VAULT_FACTORY;
+    IBeacon public immutable VAULT_BEACON;
     uint256 public immutable MIN_LOCK_PERIOD;
     uint256 public immutable MAX_LOCK_PERIOD;
 
@@ -42,8 +43,8 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
     bytes32 private constant ERC20_LOCK_BOOST_PROVIDER_STORAGE_LOCATION =
         0x0d048d8a76e474169bd4c83d3eb46f84ff5b8d069b5f5174bf8047b6bd66fb00;
 
-    constructor(address module, address token, address vaultFactory, uint256 minLockPeriod, uint256 maxLockPeriod) {
-        if (module == address(0) || token == address(0) || vaultFactory == address(0)) revert ZeroAddress();
+    constructor(address module, address token, address vaultBeacon, uint256 minLockPeriod, uint256 maxLockPeriod) {
+        if (module == address(0) || token == address(0) || vaultBeacon == address(0)) revert ZeroAddress();
         if (minLockPeriod == 0 || minLockPeriod > maxLockPeriod) revert InvalidLockPeriod();
         if (maxLockPeriod > type(uint128).max) revert InvalidLockPeriod();
 
@@ -53,7 +54,7 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
         MODULE = curatedModule;
         META_REGISTRY = metaRegistry;
         TOKEN = token;
-        VAULT_FACTORY = IERC20LockVaultFactory(vaultFactory);
+        VAULT_BEACON = IBeacon(vaultBeacon);
         MIN_LOCK_PERIOD = minLockPeriod;
         MAX_LOCK_PERIOD = maxLockPeriod;
 
@@ -147,12 +148,12 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
 
         address vault = lockInfo.vault;
         if (vault == address(0)) {
-            vault = VAULT_FACTORY.createVault({
-                nodeOperatorId: nodeOperatorId,
-                token: TOKEN,
-                provider: address(this),
-                module: address(MODULE)
-            });
+            vault = address(
+                new BeaconProxy({
+                    beacon: address(VAULT_BEACON),
+                    data: abi.encodeCall(IERC20LockVault.initialize, (nodeOperatorId))
+                })
+            );
             lockInfo.vault = vault;
             emit VaultCreated(nodeOperatorId, vault, TOKEN);
         }
