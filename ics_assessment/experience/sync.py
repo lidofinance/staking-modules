@@ -1,5 +1,4 @@
 import asyncio
-import csv
 import json
 import time
 from pathlib import Path
@@ -18,15 +17,21 @@ from ics_assessment.config import (
     HOODI_FEE_DISTRIBUTOR_FROM_BLOCK,
     HOODI_RPC_URL,
     MAINNET_ARCHIVE_RPC_URL,
-    MAINNET_RPC_URL,
-    ARBITRUM_RPC_URL,
     MAINNET_CUTOFF_BLOCK,
-    MAINNET_PERFORMANCE_REPORT_CIDS,
+    MAINNET_FEE_DISTRIBUTOR_ADDRESS,
+    MAINNET_FEE_DISTRIBUTOR_FROM_BLOCK,
+    MAINNET_RPC_URL,
     NODE_OPERATOR_OWNERS_HOODI_PATH,
     NODE_OPERATOR_OWNERS_MAINNET_PATH,
     OBOL_TECHNE_CREDENTIALS,
+    REQUIRED_ACTIVITY_WINDOW_MAINNET,
     SSV_OPERATORS_API_URL,
     SSV_VERIFIED_OPERATORS_PATH,
+)
+from ics_assessment.experience.performance import (
+    PerformanceFrame,
+    parse_performance_frames,
+    parse_performance_report,
 )
 from ics_assessment.sync import (
     FEE_DISTRIBUTOR_EVENT_SIGNATURE,
@@ -36,6 +41,9 @@ from ics_assessment.sync import (
     read_csm_abi,
     write_lines,
 )
+
+SECONDS_PER_DAY = 24 * 60 * 60
+SECONDS_PER_EPOCH = 32 * 12
 
 
 def sync_obol_techne() -> None:
@@ -195,35 +203,49 @@ def request_performance_report(cid: str) -> dict | list[dict]:
     raise RuntimeError("unexpected: no exception but no data")
 
 
-def _operator_meets_report_threshold(operator: dict, threshold: float) -> bool:
-    for validator in operator.get("validators", {}).values():
-        perf = validator.get("perf", {})
-        assigned = perf.get("assigned", 0)
-        included = perf.get("included", 0)
-        if assigned == 0:
-            continue
-        if included / assigned < threshold:
-            return False
-    return True
-
-
 def _eligible_operator_ids_from_report(report: dict | list[dict]) -> set[str]:
-    data = report[0] if isinstance(report, list) else report
-    threshold = data.get("threshold", 0)
-    operators = data.get("operators", {})
-    eligible: set[str] = set()
-    for operator_id, operator in operators.items():
-        if _operator_meets_report_threshold(operator, threshold):
-            eligible.add(str(operator_id))
-    return eligible
+    return set().union(
+        *(frame.eligible_operator_ids for frame in parse_performance_report(report))
+    )
+
+
+def _historically_active_operator_ids(frames: list[PerformanceFrame]) -> set[str]:
+    required_epochs = (
+        REQUIRED_ACTIVITY_WINDOW_MAINNET * SECONDS_PER_DAY // SECONDS_PER_EPOCH
+    )
+    assigned_epochs_by_operator: dict[str, int] = {}
+    for frame in frames:
+        for operator_id, assigned_epochs in frame.assigned_epochs_by_operator.items():
+            assigned_epochs_by_operator[operator_id] = (
+                assigned_epochs_by_operator.get(operator_id, 0) + assigned_epochs
+            )
+    return {
+        operator_id
+        for operator_id, assigned_epochs in assigned_epochs_by_operator.items()
+        if assigned_epochs >= required_epochs
+    }
+
+
+def _eligible_mainnet_operator_ids(reports: list[dict | list[dict]]) -> set[str]:
+    frames = parse_performance_frames(reports)
+    historically_active = _historically_active_operator_ids(frames)
+    return historically_active & frames[-1].eligible_operator_ids
 
 
 def sync_mainnet_performance() -> None:
-    eligible: set[str] = set()
-    for cid in MAINNET_PERFORMANCE_REPORT_CIDS:
+    w3 = Web3(Web3.HTTPProvider(MAINNET_RPC_URL))
+    cids = _fetch_cids_via_getlogs(
+        w3,
+        MAINNET_FEE_DISTRIBUTOR_ADDRESS,
+        MAINNET_FEE_DISTRIBUTOR_FROM_BLOCK,
+        MAINNET_CUTOFF_BLOCK,
+    )
+    reports: list[dict | list[dict]] = []
+    for cid in cids:
         report = request_performance_report(cid)
-        eligible.update(_eligible_operator_ids_from_report(report))
+        reports.append(report)
         print(f"Processed mainnet performance report {cid}")
+    eligible = _eligible_mainnet_operator_ids(reports)
     ELIGIBLE_NODE_OPERATORS_MAINNET_PATH.parent.mkdir(parents=True, exist_ok=True)
     with ELIGIBLE_NODE_OPERATORS_MAINNET_PATH.open("w", encoding="utf-8") as file:
         json.dump(sorted(eligible, key=int), file, indent=2)

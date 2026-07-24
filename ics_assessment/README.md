@@ -45,8 +45,6 @@ Commonly edited constants:
 - High Signal window:
   - `HIGH_SIGNAL_START_DATE`
   - `HIGH_SIGNAL_END_DATE`
-- mainnet performance inputs:
-  - `MAINNET_PERFORMANCE_REPORT_CIDS`
 
 ### 2. Sync Artifacts
 
@@ -121,6 +119,7 @@ python main.py sync snapshot galxe gitpoap
 
 # Sync with a custom chunk size
 python main.py sync --chunk-size 50000 aragon
+python main.py sync --chunk-size 50000 mainnet-performance
 ```
 
 Supported sync targets:
@@ -153,9 +152,7 @@ Commonly edited constants:
 - High Signal window:
   - `HIGH_SIGNAL_START_DATE`
   - `HIGH_SIGNAL_END_DATE`
-- mainnet performance inputs:
-  - `MAINNET_PERFORMANCE_REPORT_CIDS`
-  - `REQUIRED_PERFORMANCE_WINDOW_HOODI`
+- `REQUIRED_PERFORMANCE_WINDOW_HOODI`
 
 Typical refresh flow:
 
@@ -196,6 +193,13 @@ Important sync outputs:
   - `experience/data/eligible_node_operators_hoodi.json`
 
 The assessment now reads compact eligible-node artifacts for both mainnet and Hoodi CSM checks. Raw mainnet performance report JSON files are not needed at runtime.
+
+Mainnet performance sync reads the complete report history from
+`DistributionLogUpdated` events, starting with the first CSM v1 report and
+ending at `MAINNET_CUTOFF_BLOCK`. Mainnet eligibility requires at least 30
+accumulated days of historical attestation activity and passing performance in
+the latest report. Once accumulated, historical activity is not reset by later
+reports.
 
 ### Batch assessment
 

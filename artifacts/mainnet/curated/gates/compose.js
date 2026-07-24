@@ -5,7 +5,10 @@ const { StandardMerkleTree } = require("@openzeppelin/merkle-tree");
 const csvFiles = [
   "pto.csv",
   "pgo.csv",
+  "do.csv",
+  "ee.csv",
   "iodvtc.csv",
+  "iodvtc+.csv"
 ];
 
 
