@@ -262,8 +262,8 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
     /// @inheritdoc IVerifier
     function processBalanceProof(ProcessBalanceProofInput calldata data) external whenResumed {
-        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(data.recentBlock.header.slot);
+        if (data.balanceBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.balanceBlock.header.slot);
         }
 
         {
@@ -271,11 +271,18 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             if (trustedHeaderRoot != data.recentBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
         }
 
+        SSZ.verifyProof({
+            proof: data.balanceBlock.proof,
+            root: data.recentBlock.header.stateRoot,
+            leaf: data.balanceBlock.header.hashTreeRoot(),
+            gI: _getBlockRootsBlockGI(data.recentBlock.header.slot, data.balanceBlock.header.slot)
+        });
+
         uint64 balanceGwei = _processBalanceProof(
             data.validator,
             data.balance,
-            data.recentBlock.header.stateRoot,
-            data.recentBlock.header.slot
+            data.balanceBlock.header.stateRoot,
+            data.balanceBlock.header.slot
         );
 
         MODULE.reportValidatorBalance(data.validator.nodeOperatorId, data.validator.keyIndex, gweiToWei(balanceGwei));

@@ -1771,6 +1771,8 @@ contract VerifierValidatorBalanceTest is Test, Utilities {
 }
 
 contract VerifierBalanceProofTest is VerifierTestBase {
+    using SSZ for BeaconBlockHeader;
+
     struct Fixture {
         bytes32 blockRoot;
         IVerifier.ProcessBalanceProofInput data;
@@ -1798,10 +1800,10 @@ contract VerifierBalanceProofTest is VerifierTestBase {
                 gIBalancesPreGloas: NULL_GINDEX,
                 gIBalances: GIndices.BALANCES_GLOAS,
                 gIBlockRootsPreGloas: NULL_GINDEX,
-                gIBlockRoots: NULL_GINDEX
+                gIBlockRoots: GIndices.BLOCK_ROOTS_GLOAS
             }),
-            firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
-            pivotSlot: fixture.data.recentBlock.header.slot.dec(),
+            firstSupportedSlot: fixture.data.balanceBlock.header.slot.dec(),
+            pivotSlot: fixture.data.balanceBlock.header.slot.dec(),
             capellaSlot: Slot.wrap(0),
             minWithdrawalRatio: 9000,
             admin: admin
@@ -1818,11 +1820,11 @@ contract VerifierBalanceProofTest is VerifierTestBase {
         _setMocks();
     }
 
-    function test_processBalanceProof_RevertWhen_SlotUnsupported() public {
-        fixture.data.recentBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
+    function test_processBalanceProof_RevertWhen_UnsupportedSlot_BalanceBlock() public {
+        fixture.data.balanceBlock.header.slot = verifier.FIRST_SUPPORTED_SLOT().dec();
 
         vm.expectRevert(
-            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.recentBlock.header.slot)
+            abi.encodeWithSelector(IVerifier.UnsupportedSlot.selector, fixture.data.balanceBlock.header.slot)
         );
         verifier.processBalanceProof(fixture.data);
     }
@@ -1835,6 +1837,50 @@ contract VerifierBalanceProofTest is VerifierTestBase {
         );
 
         vm.expectRevert(IVerifier.InvalidBlockHeader.selector);
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function test_processBalanceProof_RevertWhen_InvalidBalanceBlock() public {
+        fixture.data.balanceBlock.header.parentRoot = someBytes32();
+
+        vm.expectRevert(SSZ.InvalidProof.selector);
+        verifier.processBalanceProof(fixture.data);
+    }
+
+    function test_processBalanceProof_RevertWhen_BlockRootNotInRange() public {
+        verifier = new Verifier({
+            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            module: address(module),
+            slotsPerEpoch: 32,
+            gindices: IVerifier.GIndices({
+                gIWithdrawalsPreGloas: NULL_GINDEX,
+                gIWithdrawals: NULL_GINDEX,
+                gIValidatorsPreGloas: NULL_GINDEX,
+                gIValidators: NULL_GINDEX,
+                gIHistoricalSummariesPreGloas: NULL_GINDEX,
+                gIHistoricalSummaries: NULL_GINDEX,
+                gIBalancesPreGloas: NULL_GINDEX,
+                gIBalances: NULL_GINDEX,
+                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRoots: NULL_GINDEX
+            }),
+            firstSupportedSlot: Slot.wrap(0),
+            pivotSlot: Slot.wrap(0),
+            capellaSlot: Slot.wrap(0),
+            minWithdrawalRatio: 9000,
+            admin: admin
+        });
+
+        fixture.data.balanceBlock.header.slot = fixture.data.recentBlock.header.slot;
+        vm.expectRevert(IVerifier.BlockRootNotInRange.selector);
+        verifier.processBalanceProof(fixture.data);
+
+        fixture.data.balanceBlock.header.slot = fixture.data.recentBlock.header.slot.inc();
+        vm.expectRevert(IVerifier.BlockRootNotInRange.selector);
+        verifier.processBalanceProof(fixture.data);
+
+        fixture.data.balanceBlock.header.slot = Slot.wrap(fixture.data.recentBlock.header.slot.unwrap() - 8192 - 1);
+        vm.expectRevert(IVerifier.BlockRootNotInRange.selector);
         verifier.processBalanceProof(fixture.data);
     }
 
@@ -1861,7 +1907,7 @@ contract VerifierBalanceProofTest is VerifierTestBase {
     }
 
     function test_processBalanceProof_RevertWhen_ValidatorIsWithdrawable() public {
-        fixture.data.validator.object.withdrawableEpoch = uint64(fixture.data.recentBlock.header.slot.unwrap() / 32);
+        fixture.data.validator.object.withdrawableEpoch = uint64(fixture.data.balanceBlock.header.slot.unwrap() / 32);
 
         vm.expectRevert(IVerifier.ValidatorIsWithdrawable.selector);
         verifier.processBalanceProof(fixture.data);
@@ -1890,10 +1936,10 @@ contract VerifierBalanceProofTest is VerifierTestBase {
                 gIHistoricalSummaries: NULL_GINDEX,
                 gIBalancesPreGloas: GIndices.BALANCES_ELECTRA,
                 gIBalances: NULL_GINDEX,
-                gIBlockRootsPreGloas: NULL_GINDEX,
+                gIBlockRootsPreGloas: GIndices.BLOCK_ROOTS_ELECTRA,
                 gIBlockRoots: NULL_GINDEX
             }),
-            firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
+            firstSupportedSlot: fixture.data.balanceBlock.header.slot.dec(),
             pivotSlot: fixture.data.recentBlock.header.slot.inc(),
             capellaSlot: Slot.wrap(0),
             minWithdrawalRatio: 9000,
@@ -1914,17 +1960,17 @@ contract VerifierBalanceProofTest is VerifierTestBase {
             gindices: IVerifier.GIndices({
                 gIWithdrawalsPreGloas: NULL_GINDEX,
                 gIWithdrawals: NULL_GINDEX,
-                gIValidatorsPreGloas: GIndices.VALIDATORS_ELECTRA,
+                gIValidatorsPreGloas: NULL_GINDEX,
                 gIValidators: GIndices.VALIDATORS_GLOAS,
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: NULL_GINDEX,
-                gIBalancesPreGloas: GIndices.BALANCES_ELECTRA,
+                gIBalancesPreGloas: NULL_GINDEX,
                 gIBalances: GIndices.BALANCES_GLOAS,
                 gIBlockRootsPreGloas: NULL_GINDEX,
-                gIBlockRoots: NULL_GINDEX
+                gIBlockRoots: GIndices.BLOCK_ROOTS_GLOAS
             }),
-            firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
-            pivotSlot: fixture.data.recentBlock.header.slot,
+            firstSupportedSlot: fixture.data.balanceBlock.header.slot.dec(),
+            pivotSlot: fixture.data.balanceBlock.header.slot,
             capellaSlot: Slot.wrap(0),
             minWithdrawalRatio: 9000,
             admin: admin
@@ -1944,17 +1990,17 @@ contract VerifierBalanceProofTest is VerifierTestBase {
             gindices: IVerifier.GIndices({
                 gIWithdrawalsPreGloas: NULL_GINDEX,
                 gIWithdrawals: NULL_GINDEX,
-                gIValidatorsPreGloas: GIndices.VALIDATORS_ELECTRA,
+                gIValidatorsPreGloas: NULL_GINDEX,
                 gIValidators: GIndices.VALIDATORS_GLOAS,
                 gIHistoricalSummariesPreGloas: NULL_GINDEX,
                 gIHistoricalSummaries: NULL_GINDEX,
-                gIBalancesPreGloas: GIndices.BALANCES_ELECTRA,
+                gIBalancesPreGloas: NULL_GINDEX,
                 gIBalances: GIndices.BALANCES_GLOAS,
                 gIBlockRootsPreGloas: NULL_GINDEX,
-                gIBlockRoots: NULL_GINDEX
+                gIBlockRoots: GIndices.BLOCK_ROOTS_GLOAS
             }),
-            firstSupportedSlot: fixture.data.recentBlock.header.slot.dec(),
-            pivotSlot: fixture.data.recentBlock.header.slot.dec(),
+            firstSupportedSlot: fixture.data.balanceBlock.header.slot.dec(),
+            pivotSlot: fixture.data.balanceBlock.header.slot.dec(),
             capellaSlot: Slot.wrap(0),
             minWithdrawalRatio: 9000,
             admin: admin

@@ -74,6 +74,8 @@ interface IVerifier {
 
     struct ProcessBalanceProofInput {
         RecentHeaderWitness recentBlock;
+        // The block containing the balance, proven against `recentBlock` state block roots.
+        HistoricalHeaderWitness balanceBlock;
         ValidatorWitness validator;
         BalanceWitness balance;
     }
@@ -160,8 +162,8 @@ interface IVerifier {
     /// @param data @see ProcessHistoricalWithdrawalInput
     function processHistoricalWithdrawalProof(ProcessHistoricalWithdrawalInput calldata data) external;
 
-    /// @notice Verify a validator's balance proof from a recent beacon block and sync the key added balance.
-    /// @param data The balance proof input containing recent block header, validator witness, and balance witness.
+    /// @notice Verify a validator's balance proof from a beacon block available through recent state block roots.
+    /// @param data The balance proof input containing recent and balance block headers and proof witnesses.
     function processBalanceProof(ProcessBalanceProofInput calldata data) external;
 
     /// @notice Verify a validator's balance proof from a historical beacon block and sync the key added balance.
