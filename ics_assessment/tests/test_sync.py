@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import importlib
 import json
@@ -21,11 +22,66 @@ class DummyResp:
         return self._data
 
 
+def _patch_node_owner_web3(monkeypatch, mod, count, failure_counts):
+    state = {
+        "calls": {},
+        "disconnected": False,
+    }
+
+    class CountCall:
+        async def call(self, block_identifier=None):
+            return count
+
+    class OperatorCall:
+        def __init__(self, operator_id):
+            self.operator_id = operator_id
+
+        async def call(self, block_identifier=None):
+            operator_id = self.operator_id
+            state["calls"][operator_id] = state["calls"].get(operator_id, 0) + 1
+            if state["calls"][operator_id] <= failure_counts.get(operator_id, 0):
+                raise ConnectionError(f"failed operator {operator_id}")
+            address = f"0x{operator_id + 1:040x}"
+            return types.SimpleNamespace(
+                extendedManagerPermissions=False,
+                managerAddress=address,
+                rewardAddress=address,
+            )
+
+    functions = types.SimpleNamespace(
+        getNodeOperatorsCount=lambda: CountCall(),
+        getNodeOperator=lambda operator_id: OperatorCall(operator_id),
+    )
+    contract = types.SimpleNamespace(functions=functions)
+
+    class Provider:
+        async def disconnect(self):
+            state["disconnected"] = True
+
+    class FakeAsyncWeb3:
+        AsyncHTTPProvider = staticmethod(lambda url: url)
+
+        def __init__(self, provider):
+            self.eth = types.SimpleNamespace(contract=lambda **kwargs: contract)
+            self.provider = Provider()
+
+    monkeypatch.setattr(mod.experience_jobs, "AsyncWeb3", FakeAsyncWeb3)
+    monkeypatch.setattr(mod.experience_jobs, "read_csm_abi", lambda: "[]")
+    return state
+
+
 def _load_module():
     async_web3_stub = types.SimpleNamespace(AsyncHTTPProvider=object)
+
+    class Web3Stub:
+        HTTPProvider = staticmethod(lambda url: url)
+
+        def __init__(self, provider):
+            self.provider = provider
+
     web3_stub = types.SimpleNamespace(
         AsyncWeb3=async_web3_stub,
-        Web3=types.SimpleNamespace(HTTPProvider=object),
+        Web3=Web3Stub,
     )
     sys.modules.setdefault("web3", web3_stub)
     sys.modules.pop("ics_assessment.sync", None)
@@ -262,6 +318,62 @@ def test_run_sync_rejects_wrong_rpc_chain_id(monkeypatch):
     ):
         mod.run_sync(["aragon"])
     assert called["value"] is False
+
+
+def test_node_owner_sync_writes_complete_snapshot_atomically(monkeypatch, tmp_path):
+    mod = _load_module()
+    state = _patch_node_owner_web3(
+        monkeypatch,
+        mod,
+        count=5,
+        failure_counts={},
+    )
+    output_path = tmp_path / "owners.json"
+
+    asyncio.run(
+        mod.experience_jobs._sync_node_operator_owners_one(
+            "https://archive.example",
+            "0xcontract",
+            123,
+            output_path,
+        )
+    )
+
+    assert state["calls"][1] == 1
+    assert state["disconnected"] is True
+    assert set(json.loads(output_path.read_text())) == {"0", "1", "2", "3", "4"}
+    assert list(tmp_path.glob(".owners.json.*.tmp")) == []
+
+
+def test_node_owner_sync_failure_preserves_retained_snapshot(monkeypatch, tmp_path):
+    mod = _load_module()
+    state = _patch_node_owner_web3(
+        monkeypatch,
+        mod,
+        count=5,
+        failure_counts={1: 1},
+    )
+    output_path = tmp_path / "owners.json"
+    retained = '{"retained": true}\n'
+    output_path.write_text(retained)
+
+    with pytest.raises(
+        ConnectionError,
+        match="failed operator 1",
+    ):
+        asyncio.run(
+            mod.experience_jobs._sync_node_operator_owners_one(
+                "https://archive.example",
+                "0xcontract",
+                123,
+                output_path,
+            )
+        )
+
+    assert state["calls"][1] == 1
+    assert state["disconnected"] is True
+    assert output_path.read_text() == retained
+    assert list(tmp_path.glob(".owners.json.*.tmp")) == []
 
 
 def test_request_performance_report_retries_then_succeeds(monkeypatch):
