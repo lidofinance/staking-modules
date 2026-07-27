@@ -220,7 +220,9 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         uint256 len = thresholds.length;
         if (len == 0 || len > MAX_THRESHOLDS) revert InvalidStrikeThresholds();
         if (thresholds[0].minCount == 0) revert InvalidStrikeThresholds();
-        if (thresholds[0].reductionBP > MAX_BP) revert InvalidStrikeThresholds();
+        if (thresholds[0].reductionBP == 0 || thresholds[0].reductionBP > MAX_BP) {
+            revert InvalidStrikeThresholds();
+        }
 
         for (uint256 i = 1; i < len; ++i) {
             if (thresholds[i].minCount <= thresholds[i - 1].minCount) revert InvalidStrikeThresholds();

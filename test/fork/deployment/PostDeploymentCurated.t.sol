@@ -11,6 +11,7 @@ import { CuratedDeployParams, CuratedGateConfig, GateCurveParams } from "script/
 import { CuratedGate } from "src/CuratedGate.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { BoostStep } from "src/interfaces/IAdditionalBondRegistry.sol";
+import { StrikeThreshold } from "src/interfaces/INodeOperatorStrikes.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
 import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
@@ -218,6 +219,80 @@ contract AdditionalBondRegistryDeploymentTest is DeploymentBaseTest {
             "additional bond registry proxy slot admin"
         );
         assertFalse(proxy.proxy__getIsOssified(), "additional bond registry proxy ossified");
+    }
+}
+
+contract NodeOperatorStrikesDeploymentTest is DeploymentBaseTest {
+    function test_state_onlyFull() public view {
+        StrikeThreshold[] memory thresholds = nodeOperatorStrikes.getStrikeThresholds();
+        StrikeThreshold[] storage expected = deployParams.strikesThresholds;
+        assertEq(thresholds.length, expected.length);
+        for (uint256 i; i < expected.length; ++i) {
+            assertEq(thresholds[i].minCount, expected[i].minCount);
+            assertEq(thresholds[i].reductionBP, expected[i].reductionBP);
+        }
+    }
+
+    function test_immutables_onlyFull() public view {
+        assertEq(address(nodeOperatorStrikes.MODULE()), address(curatedModule), "node operator strikes module");
+        assertEq(address(nodeOperatorStrikes.META_REGISTRY()), address(metaRegistry), "node operator strikes registry");
+    }
+
+    function test_roles_onlyFull() public view {
+        assertEq(nodeOperatorStrikes.getRoleMemberCount(nodeOperatorStrikes.DEFAULT_ADMIN_ROLE()), adminsCount);
+        assertTrue(nodeOperatorStrikes.hasRole(nodeOperatorStrikes.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
+
+        bytes32 committeeRole = nodeOperatorStrikes.STRIKES_COMMITTEE_ROLE();
+        assertEq(nodeOperatorStrikes.getRoleMemberCount(committeeRole), 1);
+        assertTrue(nodeOperatorStrikes.hasRole(committeeRole, deployParams.strikesCommittee));
+    }
+
+    function test_wiring_onlyFull() public view {
+        assertEq(metaRegistry.getWeightBoostProvidersCount(), 2, "unexpected weight boost providers count");
+
+        uint256 additionalBondProviderId = metaRegistry.getWeightBoostProviderId(address(additionalBondRegistry));
+        assertNotEq(additionalBondProviderId, 0, "additional bond provider not registered");
+        IMetaRegistry.WeightBoostProviderEntry memory additionalBondEntry = metaRegistry.getWeightBoostProvider(
+            additionalBondProviderId
+        );
+        assertEq(address(additionalBondEntry.provider), address(additionalBondRegistry));
+        assertEq(uint256(additionalBondEntry.mode), uint256(IMetaRegistry.WeightBoostProviderMode.NodeOperator));
+        assertTrue(additionalBondEntry.enabled);
+
+        uint256 strikesProviderId = metaRegistry.getWeightBoostProviderId(address(nodeOperatorStrikes));
+        assertNotEq(strikesProviderId, 0, "node operator strikes provider not registered");
+        assertNotEq(strikesProviderId, additionalBondProviderId, "weight boost provider ids must differ");
+        IMetaRegistry.WeightBoostProviderEntry memory strikesEntry = metaRegistry.getWeightBoostProvider(
+            strikesProviderId
+        );
+        assertEq(address(strikesEntry.provider), address(nodeOperatorStrikes));
+        assertEq(uint256(strikesEntry.mode), uint256(IMetaRegistry.WeightBoostProviderMode.NodeOperator));
+        assertTrue(strikesEntry.enabled);
+    }
+
+    function test_initialization_onlyFull() public {
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        nodeOperatorStrikes.initialize(deployParams.aragonAgent, new StrikeThreshold[](0));
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        nodeOperatorStrikesImpl.initialize(deployParams.aragonAgent, new StrikeThreshold[](0));
+    }
+
+    function test_proxy_onlyFull() public view {
+        OssifiableProxy proxy = OssifiableProxy(payable(address(nodeOperatorStrikes)));
+        assertEq(proxy.proxy__getImplementation(), address(nodeOperatorStrikesImpl), "strikes proxy getter impl");
+        assertEq(
+            ProxySlotUtils.getImplementation(address(nodeOperatorStrikes)),
+            address(nodeOperatorStrikesImpl),
+            "strikes proxy slot impl"
+        );
+        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "strikes proxy getter admin");
+        assertEq(
+            ProxySlotUtils.getAdmin(address(nodeOperatorStrikes)),
+            address(deployParams.proxyAdmin),
+            "strikes proxy slot admin"
+        );
+        assertFalse(proxy.proxy__getIsOssified(), "strikes proxy ossified");
     }
 }
 

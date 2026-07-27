@@ -422,13 +422,13 @@ contract NodeOperatorStrikesRemoveExpiredTest is NodeOperatorStrikesBaseTest {
     function test_removeExpiredStrikes_NoopWhenNoneExpired() public {
         _issue(NO_ID);
         _issue(NO_ID);
-        uint256 refreshesBefore = metaRegistryMock.notifyWeightBoostProviderConfigChangedCallCount();
+        uint256 refreshesBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
 
         vm.prank(stranger);
         strikes.removeExpiredStrikes(NO_ID);
 
         assertEq(strikes.getActiveStrikesCount(NO_ID), 2);
-        assertEq(metaRegistryMock.notifyWeightBoostProviderConfigChangedCallCount(), refreshesBefore); // no refresh
+        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), refreshesBefore); // no refresh
     }
 }
 
@@ -484,6 +484,14 @@ contract NodeOperatorStrikesThresholdsTest is NodeOperatorStrikesBaseTest {
     function test_setStrikeThresholds_RevertWhen_FirstMinCountZero() public {
         StrikeThreshold[] memory thresholds = new StrikeThreshold[](1);
         thresholds[0] = StrikeThreshold({ minCount: 0, reductionBP: 1_000 });
+        vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
+        vm.prank(admin);
+        strikes.setStrikeThresholds(thresholds);
+    }
+
+    function test_setStrikeThresholds_RevertWhen_FirstReductionZero() public {
+        StrikeThreshold[] memory thresholds = new StrikeThreshold[](1);
+        thresholds[0] = StrikeThreshold({ minCount: 1, reductionBP: 0 });
         vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
         vm.prank(admin);
         strikes.setStrikeThresholds(thresholds);
