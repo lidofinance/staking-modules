@@ -202,6 +202,12 @@ contract NodeOperatorStrikesIssueTest is NodeOperatorStrikesBaseTest {
         strikes.issueStrike(_input(NO_ID, CATEGORY, hugeLifetime));
     }
 
+    function test_issueStrike_RevertWhen_LifetimeOverflowsUint256() public {
+        vm.expectRevert(INodeOperatorStrikes.LifetimeTooLong.selector);
+        vm.prank(committee);
+        strikes.issueStrike(_input(NO_ID, CATEGORY, type(uint256).max));
+    }
+
     function test_issueStrike_AllowsMaxLengthDescription() public {
         uint256 maxLen = strikes.MAX_DESCRIPTION_LENGTH();
         StrikeInput memory input = _input(NO_ID, CATEGORY, LIFETIME);

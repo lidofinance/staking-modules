@@ -68,8 +68,10 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
 
         uint256 lifetime = input.lifetime;
         if (lifetime == 0) revert ZeroLifetime();
+        if (block.timestamp > type(uint64).max || lifetime > type(uint64).max - block.timestamp) {
+            revert LifetimeTooLong();
+        }
         uint256 expiry = block.timestamp + lifetime;
-        if (expiry > type(uint64).max) revert LifetimeTooLong();
 
         OperatorStrikes storage rec = _storage().operatorStrikes[input.nodeOperatorId];
         strikeId = ++rec.lastId;
