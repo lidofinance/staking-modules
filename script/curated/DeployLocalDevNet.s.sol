@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { DeployBase, CuratedGateConfig, AdditionalBondRegistryConfig } from "./DeployBase.s.sol";
+import { DeployBase, CuratedGateConfig } from "./DeployBase.s.sol";
 import { StrikeThreshold } from "../../src/interfaces/INodeOperatorStrikes.sol";
 import { GIndices } from "../constants/GIndices.sol";
 import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
@@ -209,6 +209,10 @@ contract DeployLocalDevNet is DeployBase {
         config.ldoLockBoostProviderConfig.lockPeriod = 1 days;
         _addLDOLockBoostStep(100_000 ether, 1_000);
         _addLDOLockBoostStep(200_000 ether, 1_500);
+
+        // CustomFeeRegistry
+        config.customFeeRegistryConfig.defaultMinFee = 2_500;
+        config.customFeeRegistryConfig.feeIncreaseCooldown = 15 days;
 
         _setUp();
     }

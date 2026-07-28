@@ -37,6 +37,7 @@ import { AdditionalBondRegistry } from "src/AdditionalBondRegistry.sol";
 import { NodeOperatorStrikes } from "src/NodeOperatorStrikes.sol";
 import { ERC20LockBoostProvider } from "src/ERC20LockBoostProvider.sol";
 import { LidoGovernanceLockVault } from "src/LidoGovernanceLockVault.sol";
+import { CustomFeeRegistry } from "src/CustomFeeRegistry.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
@@ -251,6 +252,8 @@ contract DeploymentHelpers is Test {
         address ldoLockBoostProviderImpl;
         address ldoLockVaultImpl;
         address ldoLockVaultBeacon;
+        address customFeeRegistry;
+        address customFeeRegistryImpl;
         address curatedGateFactory;
         address curatedGateImpl;
         address[] curatedGates;
@@ -452,6 +455,12 @@ contract DeploymentHelpers is Test {
         deploymentConfig.ldoLockVaultBeacon = vm.parseJsonAddress(config, ".LDOLockVaultBeacon");
         vm.label(deploymentConfig.ldoLockVaultBeacon, "ldoLockVaultBeacon");
 
+        deploymentConfig.customFeeRegistry = vm.parseJsonAddress(config, ".CustomFeeRegistry");
+        vm.label(deploymentConfig.customFeeRegistry, "customFeeRegistry");
+
+        deploymentConfig.customFeeRegistryImpl = vm.parseJsonAddress(config, ".CustomFeeRegistryImpl");
+        vm.label(deploymentConfig.customFeeRegistryImpl, "customFeeRegistryImpl");
+
         if (vm.keyExistsJson(config, ".CuratedGateFactory")) {
             deploymentConfig.curatedGateFactory = vm.parseJsonAddress(config, ".CuratedGateFactory");
         }
@@ -607,6 +616,13 @@ contract DeploymentHelpers is Test {
         dst.ldoLockBoostProviderConfig.lockPeriod = src.ldoLockBoostProviderConfig.lockPeriod;
         for (uint256 i; i < src.ldoLockBoostProviderConfig.lockBoostSteps.length; ++i) {
             dst.ldoLockBoostProviderConfig.lockBoostSteps.push(src.ldoLockBoostProviderConfig.lockBoostSteps[i]);
+        }
+
+        // CustomFeeRegistry
+        dst.customFeeRegistryConfig.defaultMinFee = src.customFeeRegistryConfig.defaultMinFee;
+        dst.customFeeRegistryConfig.feeIncreaseCooldown = src.customFeeRegistryConfig.feeIncreaseCooldown;
+        for (uint256 i; i < src.customFeeRegistryConfig.typeBonuses.length; ++i) {
+            dst.customFeeRegistryConfig.typeBonuses.push(src.customFeeRegistryConfig.typeBonuses[i]);
         }
     }
 
@@ -865,6 +881,8 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     ERC20LockBoostProvider public ldoLockBoostProviderImpl;
     LidoGovernanceLockVault public ldoLockVaultImpl;
     UpgradeableBeacon public ldoLockVaultBeacon;
+    CustomFeeRegistry public customFeeRegistry;
+    CustomFeeRegistry public customFeeRegistryImpl;
     CuratedGate public curatedGateImpl;
     address[] public curatedGates;
 
@@ -985,6 +1003,8 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         ldoLockBoostProviderImpl = ERC20LockBoostProvider(deploymentConfig.ldoLockBoostProviderImpl);
         ldoLockVaultImpl = LidoGovernanceLockVault(deploymentConfig.ldoLockVaultImpl);
         ldoLockVaultBeacon = UpgradeableBeacon(deploymentConfig.ldoLockVaultBeacon);
+        customFeeRegistry = CustomFeeRegistry(deploymentConfig.customFeeRegistry);
+        customFeeRegistryImpl = CustomFeeRegistry(deploymentConfig.customFeeRegistryImpl);
         curatedGateImpl = CuratedGate(deploymentConfig.curatedGateImpl);
         curatedGates = deploymentConfig.curatedGates;
     }

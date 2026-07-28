@@ -21,6 +21,7 @@ import { ExitPenalties } from "../../src/ExitPenalties.sol";
 import { MetaRegistry } from "../../src/MetaRegistry.sol";
 import { AdditionalBondRegistry } from "../../src/AdditionalBondRegistry.sol";
 import { NodeOperatorStrikes } from "../../src/NodeOperatorStrikes.sol";
+import { CustomFeeRegistry } from "../../src/CustomFeeRegistry.sol";
 import { BoostStep } from "../../src/interfaces/IAdditionalBondRegistry.sol";
 import { ERC20LockBoostProvider } from "../../src/ERC20LockBoostProvider.sol";
 import { LidoGovernanceLockVault } from "../../src/LidoGovernanceLockVault.sol";
@@ -82,6 +83,18 @@ struct ERC20LockBoostProviderConfig {
     uint256 minLockPeriod;
     uint256 lockPeriod;
     IERC20LockBoostProvider.LockBoostStep[] lockBoostSteps;
+}
+
+struct CurveTypeBonusConfig {
+    uint256 curveId;
+    uint256 value;
+    bool negative;
+}
+
+struct CustomFeeRegistryConfig {
+    uint256 defaultMinFee;
+    uint256 feeIncreaseCooldown;
+    CurveTypeBonusConfig[] typeBonuses;
 }
 
 struct CuratedDeployParams {
@@ -154,6 +167,8 @@ struct CuratedDeployParams {
     StrikeThreshold[] strikesThresholds;
     // LDO lock boost provider
     ERC20LockBoostProviderConfig ldoLockBoostProviderConfig;
+    // CustomFeeRegistry
+    CustomFeeRegistryConfig customFeeRegistryConfig;
 }
 
 abstract contract DeployBase is Script {
@@ -182,6 +197,8 @@ abstract contract DeployBase is Script {
     ERC20LockBoostProvider public ldoLockBoostProviderImpl;
     LidoGovernanceLockVault public ldoLockVaultImpl;
     UpgradeableBeacon public ldoLockVaultBeacon;
+    CustomFeeRegistry public customFeeRegistry;
+    CustomFeeRegistry public customFeeRegistryImpl;
     MerkleGateFactory public curatedGateFactory;
     address[] public curatedGateInstances;
     address internal curatedGateImpl;
@@ -273,6 +290,7 @@ abstract contract DeployBase is Script {
             additionalBondRegistry = AdditionalBondRegistry(_deployProxy(deployer, address(dummyImpl)));
             nodeOperatorStrikes = NodeOperatorStrikes(_deployProxy(deployer, address(dummyImpl)));
             ldoLockBoostProvider = ERC20LockBoostProvider(_deployProxy(deployer, address(dummyImpl)));
+            customFeeRegistry = CustomFeeRegistry(_deployProxy(deployer, address(dummyImpl)));
 
             FeeDistributor feeDistributorImpl = new FeeDistributor({
                 stETH: locator.lido(),
@@ -421,6 +439,24 @@ abstract contract DeployBase is Script {
                 ldoLockBoostProviderProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
+            customFeeRegistryImpl = new CustomFeeRegistry({ module: address(curatedModule) });
+
+            {
+                OssifiableProxy customFeeRegistryProxy = OssifiableProxy(payable(address(customFeeRegistry)));
+                customFeeRegistryProxy.proxy__upgradeToAndCall(
+                    address(customFeeRegistryImpl),
+                    abi.encodeCall(
+                        CustomFeeRegistry.initialize,
+                        (
+                            deployer,
+                            config.customFeeRegistryConfig.defaultMinFee,
+                            config.customFeeRegistryConfig.feeIncreaseCooldown
+                        )
+                    )
+                );
+                customFeeRegistryProxy.proxy__changeAdmin(config.proxyAdmin);
+            }
+
             accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
             accounting.grantRole(accounting.SET_BOND_CURVE_MULTIPLIER_ROLE(), address(additionalBondRegistry));
             metaRegistry.addWeightBoostProvider(
@@ -429,6 +465,10 @@ abstract contract DeployBase is Script {
             );
             metaRegistry.addWeightBoostProvider(
                 IWeightBoostProvider(address(nodeOperatorStrikes)),
+                IMetaRegistry.WeightBoostProviderMode.PerNodeOperator
+            );
+            metaRegistry.addWeightBoostProvider(
+                IWeightBoostProvider(address(customFeeRegistry)),
                 IMetaRegistry.WeightBoostProviderMode.PerNodeOperator
             );
             nodeOperatorStrikes.grantRole(nodeOperatorStrikes.STRIKES_COMMITTEE_ROLE(), config.strikesCommittee);
@@ -503,6 +543,12 @@ abstract contract DeployBase is Script {
                     parametersRegistry.setMaxElWithdrawalRequestFee(curveId, params.maxElWithdrawalRequestFee.value);
                 }
             }
+
+            for (uint256 i; i < config.customFeeRegistryConfig.typeBonuses.length; ++i) {
+                CurveTypeBonusConfig storage bonus = config.customFeeRegistryConfig.typeBonuses[i];
+                customFeeRegistry.setTypeBonus(bonus.curveId, bonus.value, bonus.negative);
+            }
+
             accounting.revokeRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
             metaRegistry.revokeRole(metaRegistry.SET_BOND_CURVE_WEIGHT_ROLE(), deployer);
 
@@ -644,6 +690,8 @@ abstract contract DeployBase is Script {
             ldoLockBoostProvider.revokeRole(ldoLockBoostProvider.DEFAULT_ADMIN_ROLE(), deployer);
 
             ldoLockVaultBeacon.transferOwnership(config.aragonAgent);
+            customFeeRegistry.grantRole(customFeeRegistry.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
+            customFeeRegistry.revokeRole(customFeeRegistry.DEFAULT_ADMIN_ROLE(), deployer);
 
             verifier.grantRole(verifier.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             verifier.revokeRole(verifier.DEFAULT_ADMIN_ROLE(), deployer);
@@ -677,6 +725,8 @@ abstract contract DeployBase is Script {
             deployJson.set("LDOLockBoostProviderImpl", address(ldoLockBoostProviderImpl));
             deployJson.set("LDOLockVaultImpl", address(ldoLockVaultImpl));
             deployJson.set("LDOLockVaultBeacon", address(ldoLockVaultBeacon));
+            deployJson.set("CustomFeeRegistry", address(customFeeRegistry));
+            deployJson.set("CustomFeeRegistryImpl", address(customFeeRegistryImpl));
             deployJson.set("ParametersRegistry", address(parametersRegistry));
             deployJson.set("ParametersRegistryImpl", address(parametersRegistryImpl));
             deployJson.set("Accounting", address(accounting));
@@ -780,6 +830,7 @@ abstract contract DeployBase is Script {
         additionalBondRegistry.grantRole(additionalBondRegistry.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         nodeOperatorStrikes.grantRole(nodeOperatorStrikes.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         ldoLockBoostProvider.grantRole(ldoLockBoostProvider.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        customFeeRegistry.grantRole(customFeeRegistry.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         for (uint256 i = 0; i < curatedGateInstances.length; i++) {
             CuratedGate gate = CuratedGate(curatedGateInstances[i]);
             gate.grantRole(gate.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);

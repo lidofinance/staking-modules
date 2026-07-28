@@ -13,6 +13,7 @@ import { IERC20LockBoostProvider } from "src/interfaces/IERC20LockBoostProvider.
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { BoostStep } from "src/interfaces/IAdditionalBondRegistry.sol";
 import { StrikeThreshold } from "src/interfaces/INodeOperatorStrikes.sol";
+import { TypeBonus } from "src/interfaces/ICustomFeeRegistry.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
 import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
@@ -24,12 +25,14 @@ import { ProxySlotUtils } from "../../helpers/ProxySlotUtils.sol";
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     CuratedDeployParams internal deployParams;
     CuratedGateConfig[] internal deployGateConfigs;
+    uint256 internal adminsCount;
 
     function setUp() public {
         Env memory env = envVars();
         vm.createSelectFork(env.RPC_URL);
         initializeFromDeployment();
         if (moduleType != ModuleType.Curated) vm.skip(true, "Current deployment is not Curated module type");
+        adminsCount = block.chainid == 1 ? 1 : 2;
         string memory config = vm.readFile(env.DEPLOY_CONFIG);
         // mutates storage variable
         updateCuratedDeployParams(deployParams, env.DEPLOY_CONFIG);
@@ -138,13 +141,14 @@ contract MetaRegistryDeploymentTest is DeploymentBaseTest {
     }
 
     function test_weightBoostProviders_onlyFull() public view {
-        assertEq(metaRegistry.getWeightBoostProvidersCount(), 3, "unexpected weight boost providers count");
+        assertEq(metaRegistry.getWeightBoostProvidersCount(), 4, "unexpected weight boost providers count");
         _assertWeightBoostProvider(
             address(additionalBondRegistry),
             IMetaRegistry.WeightBoostProviderMode.PerNodeOperator
         );
         _assertWeightBoostProvider(address(nodeOperatorStrikes), IMetaRegistry.WeightBoostProviderMode.PerNodeOperator);
         _assertWeightBoostProvider(address(ldoLockBoostProvider), IMetaRegistry.WeightBoostProviderMode.MaxPerGroup);
+        _assertWeightBoostProvider(address(customFeeRegistry), IMetaRegistry.WeightBoostProviderMode.PerNodeOperator);
     }
 }
 
@@ -402,6 +406,63 @@ contract LDOLockBoostProviderDeploymentTest is DeploymentBaseTest {
             "LDO lock provider proxy slot admin"
         );
         assertFalse(proxy.proxy__getIsOssified(), "LDO lock provider proxy ossified");
+    }
+}
+
+contract CustomFeeRegistryDeploymentTest is DeploymentBaseTest {
+    function test_state_onlyFull() public view {
+        assertEq(customFeeRegistry.getDefaultMinFee(), deployParams.customFeeRegistryConfig.defaultMinFee);
+        assertEq(customFeeRegistry.getFeeIncreaseCooldown(), deployParams.customFeeRegistryConfig.feeIncreaseCooldown);
+
+        for (uint256 i; i < deployParams.customFeeRegistryConfig.typeBonuses.length; ++i) {
+            TypeBonus memory actual = customFeeRegistry.getTypeBonus(
+                deployParams.customFeeRegistryConfig.typeBonuses[i].curveId
+            );
+            assertEq(actual.value, deployParams.customFeeRegistryConfig.typeBonuses[i].value);
+            assertEq(actual.negative, deployParams.customFeeRegistryConfig.typeBonuses[i].negative);
+        }
+    }
+
+    function test_immutables_onlyFull() public view {
+        assertEq(address(customFeeRegistry.MODULE()), address(curatedModule), "custom fee registry module");
+        assertEq(address(customFeeRegistry.ACCOUNTING()), address(accounting), "custom fee registry accounting");
+        assertEq(
+            address(customFeeRegistry.META_REGISTRY()),
+            address(metaRegistry),
+            "custom fee registry meta registry"
+        );
+        assertEq(customFeeRegistry.FEE_STEP(), 250, "custom fee step");
+        assertEq(customFeeRegistry.DEFAULT_MAX_FEE(), 8_750, "custom fee default max");
+        assertEq(customFeeRegistry.WEIGHT_BOOST_PER_STEP(), 400, "custom fee weight boost per step");
+    }
+
+    function test_roles_onlyFull() public view {
+        _checkAdminRole(address(customFeeRegistry), deployParams.aragonAgent, deployParams.secondAdminAddress);
+    }
+
+    function test_initialization_onlyFull() public {
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        customFeeRegistry.initialize(deployParams.aragonAgent, 2_500, 15 days);
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        customFeeRegistryImpl.initialize(deployParams.aragonAgent, 2_500, 15 days);
+    }
+
+    function test_proxy_onlyFull() public view {
+        OssifiableProxy proxy = OssifiableProxy(payable(address(customFeeRegistry)));
+        assertEq(proxy.proxy__getImplementation(), address(customFeeRegistryImpl), "custom fee proxy getter impl");
+        assertEq(
+            ProxySlotUtils.getImplementation(address(customFeeRegistry)),
+            address(customFeeRegistryImpl),
+            "custom fee proxy slot impl"
+        );
+        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "custom fee proxy getter admin");
+        assertEq(
+            ProxySlotUtils.getAdmin(address(customFeeRegistry)),
+            address(deployParams.proxyAdmin),
+            "custom fee proxy slot admin"
+        );
+        assertFalse(proxy.proxy__getIsOssified(), "custom fee proxy ossified");
     }
 }
 
