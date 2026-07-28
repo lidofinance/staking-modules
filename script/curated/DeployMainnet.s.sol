@@ -4,6 +4,7 @@
 pragma solidity 0.8.33;
 
 import { DeployBase, CuratedGateConfig, AdditionalBondRegistryConfig } from "./DeployBase.s.sol";
+import { StrikeThreshold } from "../../src/interfaces/INodeOperatorStrikes.sol";
 import { GIndices } from "../constants/GIndices.sol";
 
 contract DeployMainnet is DeployBase {
@@ -203,6 +204,14 @@ contract DeployMainnet is DeployBase {
         // TODO: reconsider — placeholder initial boost steps.
         config.additionalBondRegistryConfig.boostSteps.push([uint256(5_000), 2_000]);
         config.additionalBondRegistryConfig.boostSteps.push([uint256(10_000), 8_000]);
+
+        // NodeOperatorStrikes
+        config.strikesCommittee = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
+        // TODO: finalize strike weight-reduction thresholds
+        config.strikesThresholds.push(StrikeThreshold({ minCount: 2, reductionBP: 2_500 }));
+        config.strikesThresholds.push(StrikeThreshold({ minCount: 3, reductionBP: 5_000 }));
+        config.strikesThresholds.push(StrikeThreshold({ minCount: 4, reductionBP: 7_500 }));
+        config.strikesThresholds.push(StrikeThreshold({ minCount: 5, reductionBP: 10_000 }));
 
         _setUp();
     }

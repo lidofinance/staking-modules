@@ -34,6 +34,7 @@ import { CuratedModule } from "src/CuratedModule.sol";
 import { MetaRegistry } from "src/MetaRegistry.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { AdditionalBondRegistry } from "src/AdditionalBondRegistry.sol";
+import { NodeOperatorStrikes } from "src/NodeOperatorStrikes.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
@@ -229,6 +230,8 @@ contract DeploymentHelpers is Test {
         address metaRegistryImpl;
         address additionalBondRegistry;
         address additionalBondRegistryImpl;
+        address nodeOperatorStrikes;
+        address nodeOperatorStrikesImpl;
         address curatedGateFactory;
         address curatedGateImpl;
         address[] curatedGates;
@@ -413,6 +416,12 @@ contract DeploymentHelpers is Test {
         deploymentConfig.additionalBondRegistryImpl = vm.parseJsonAddress(config, ".AdditionalBondRegistryImpl");
         vm.label(deploymentConfig.additionalBondRegistryImpl, "additionalBondRegistryImpl");
 
+        deploymentConfig.nodeOperatorStrikes = vm.parseJsonAddress(config, ".NodeOperatorStrikes");
+        vm.label(deploymentConfig.nodeOperatorStrikes, "nodeOperatorStrikes");
+
+        deploymentConfig.nodeOperatorStrikesImpl = vm.parseJsonAddress(config, ".NodeOperatorStrikesImpl");
+        vm.label(deploymentConfig.nodeOperatorStrikesImpl, "nodeOperatorStrikesImpl");
+
         if (vm.keyExistsJson(config, ".CuratedGateFactory")) {
             deploymentConfig.curatedGateFactory = vm.parseJsonAddress(config, ".CuratedGateFactory");
         }
@@ -549,6 +558,12 @@ contract DeploymentHelpers is Test {
             .curveMultiplierCooldown;
         for (uint256 i; i < src.additionalBondRegistryConfig.boostSteps.length; ++i) {
             dst.additionalBondRegistryConfig.boostSteps.push(src.additionalBondRegistryConfig.boostSteps[i]);
+        }
+
+        // NodeOperatorStrikes
+        dst.strikesCommittee = src.strikesCommittee;
+        for (uint256 i; i < src.strikesThresholds.length; ++i) {
+            dst.strikesThresholds.push(src.strikesThresholds[i]);
         }
     }
 
@@ -798,6 +813,8 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
     MetaRegistry public metaRegistry;
     AdditionalBondRegistry public additionalBondRegistry;
     AdditionalBondRegistry public additionalBondRegistryImpl;
+    NodeOperatorStrikes public nodeOperatorStrikes;
+    NodeOperatorStrikes public nodeOperatorStrikesImpl;
     CuratedGate public curatedGateImpl;
     address[] public curatedGates;
 
@@ -912,6 +929,8 @@ abstract contract DeploymentFixturesBase is StdCheats, DeploymentHelpers {
         metaRegistry = MetaRegistry(deploymentConfig.metaRegistry);
         additionalBondRegistry = AdditionalBondRegistry(deploymentConfig.additionalBondRegistry);
         additionalBondRegistryImpl = AdditionalBondRegistry(deploymentConfig.additionalBondRegistryImpl);
+        nodeOperatorStrikes = NodeOperatorStrikes(deploymentConfig.nodeOperatorStrikes);
+        nodeOperatorStrikesImpl = NodeOperatorStrikes(deploymentConfig.nodeOperatorStrikesImpl);
         curatedGateImpl = CuratedGate(deploymentConfig.curatedGateImpl);
         curatedGates = deploymentConfig.curatedGates;
     }
