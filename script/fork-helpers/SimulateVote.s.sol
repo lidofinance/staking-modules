@@ -79,12 +79,15 @@ contract SimulateVote is Script, ForkHelpersCommon {
         stakingRouter.addStakingModule({
             _name: "community-staking-v1",
             _stakingModuleAddress: address(module),
-            _stakeShareLimit: 2000, // 20%
-            _priorityExitShareThreshold: 2500, // 25%
-            _stakingModuleFee: 800, // 8%
-            _treasuryFee: 200, // 2%
-            _maxDepositsPerBlock: 30,
-            _minDepositBlockDistance: 25
+            _stakingModuleConfig: IStakingRouter.StakingModuleConfig({
+                stakeShareLimit: 2000, // 20%
+                priorityExitShareThreshold: 2500, // 25%
+                stakingModuleFee: 800, // 8%
+                treasuryFee: 200, // 2%
+                maxDepositsPerBlock: 30,
+                minDepositBlockDistance: 25,
+                withdrawalCredentialsType: moduleType == ModuleType.Community ? 0x01 : 0x02
+            })
         });
         // 2. burner role
         burner.grantRole(burner.REQUEST_BURN_MY_STETH_ROLE(), address(accounting));
@@ -148,12 +151,15 @@ contract SimulateVote is Script, ForkHelpersCommon {
         stakingRouter.addStakingModule({
             _name: "curated-onchain-v2",
             _stakingModuleAddress: address(curatedModule),
-            _stakeShareLimit: 2000, // 20%
-            _priorityExitShareThreshold: 2500, // 25%
-            _stakingModuleFee: 400, // 4%
-            _treasuryFee: 600, // 6%
-            _maxDepositsPerBlock: 30,
-            _minDepositBlockDistance: 25
+            _stakingModuleConfig: IStakingRouter.StakingModuleConfig({
+                stakeShareLimit: 2000, // 20%
+                priorityExitShareThreshold: 2500, // 25%
+                stakingModuleFee: 400, // 4%
+                treasuryFee: 600, // 6%
+                maxDepositsPerBlock: 30,
+                minDepositBlockDistance: 25,
+                withdrawalCredentialsType: 0x02
+            })
         });
 
         // 2. burner role

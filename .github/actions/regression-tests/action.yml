@@ -25,11 +25,6 @@ inputs:
     description: "Curated module deployment config used by fork tests."
     required: false
     default: "./artifacts/mainnet/curated/deploy-mainnet.json"
-  vote_prev_block:
-    description: "Block number before the vote execution; enables temporary post-vote upgrade tests."
-    required: false
-    default: ""
-
 runs:
   using: "composite"
   steps:
@@ -101,16 +96,4 @@ runs:
         RPC_URL: ${{ inputs.rpc_url }}
         CHAIN: mainnet
         DEPLOY_CONFIG: ${{ inputs.curated_deploy_config }}
-        FOUNDRY_PROFILE: ci_quick
-
-    - name: Run CSM post-vote regression
-      if: ${{ inputs.vote_prev_block != '' }}
-      shell: bash
-      working-directory: ${{ inputs.path }}
-      run: just test-post-upgrade
-      env:
-        RPC_URL: ${{ inputs.rpc_url }}
-        CHAIN: mainnet
-        DEPLOY_CONFIG: ${{ inputs.csm_deploy_config }}
-        VOTE_PREV_BLOCK: ${{ inputs.vote_prev_block }}
         FOUNDRY_PROFILE: ci_quick

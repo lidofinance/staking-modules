@@ -83,28 +83,6 @@ deploy-csm-local *args:
     just deploy-csm {{args}}
     just _warn "anvil is kept running in the background: {{anvil_rpc_url}}"
 
-# Test flows own fork lifecycle via _fork-up-and-down.
-# Deploy CSM v3 components, upgrade CSM, run deployment, integration, and post-upgrade tests
-test-csm-upgrade *args:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    eval "$(just _fork-up-and-down)"
-
-    export RPC_URL={{anvil_rpc_url}}
-    local_private_key="$(just _local-private-key)"
-
-    ARTIFACTS_DIR={{csm_artifacts_local_dir}} \
-        just _deploy-csm-impl --broadcast --private-key="${local_private_key}"
-    just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} "$RPC_URL" "" "deploy-latest.json" {{csm_local_upgrade_config_path}}
-
-    export DEPLOY_CONFIG={{csm_local_upgrade_config_path}}
-    export VOTE_PREV_BLOCK="$(cast block-number -r "$RPC_URL")"
-
-    just vote-upgrade
-    just test-deployment-full-afterVote {{args}}
-    just test-post-upgrade {{args}}
-
 # Deploy CSM from scratch, add module to the SR, and run deployment and integration tests
 test-csm-local *args:
     #!/usr/bin/env bash
@@ -137,24 +115,6 @@ test-csm-full-deploy *args:
 
     just test-deployment-full-scratch {{args}}
 
-# Deploy CSM v3 components and run deployment tests
-test-csm-v3-only-deploy *args:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    eval "$(just _fork-up-and-down)"
-
-    export RPC_URL={{anvil_rpc_url}}
-    local_private_key="$(just _local-private-key)"
-
-    ARTIFACTS_DIR={{csm_artifacts_local_dir}} \
-        just _deploy-csm-impl --broadcast --private-key="${local_private_key}" {{disable_code_size_limit}}
-    just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} "$RPC_URL" "" "deploy-latest.json" {{csm_local_upgrade_config_path}}
-
-    export DEPLOY_CONFIG={{csm_local_upgrade_config_path}}
-
-    just test-deployment-csm-v3-only-scratch {{args}}
-
 # Run utility tests on fork with current state
 test-csm-current *args:
     #!/usr/bin/env bash
@@ -166,10 +126,6 @@ test-csm-current *args:
     export DEPLOY_CONFIG={{deploy_config_path}}
 
     just test-utils {{args}}
-
-# Run all deployment tests that should be executed against CSM v3 scratch deployment before the module upgrade vote
-test-deployment-csm-v3-only-scratch *args:
-    forge test --match-path 'test/fork/deployment/*' --no-match-test '(.*_afterVote.*)|(.*_onlyFull.*)' -vvv --show-progress --summary --detailed {{args}}
 
 # Internal helpers
 _deploy-csm-impl *args:
