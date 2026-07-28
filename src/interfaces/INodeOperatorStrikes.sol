@@ -40,7 +40,8 @@ interface INodeOperatorStrikes is IWeightBoostProvider {
         uint256 expiry,
         string description
     );
-    event StrikeRemoved(uint256 indexed nodeOperatorId, uint256 indexed strikeId, address indexed remover);
+    event StrikeRemoved(uint256 indexed nodeOperatorId, uint256 indexed strikeId);
+    event ExpiredStrikeRemoved(uint256 indexed nodeOperatorId, uint256 indexed strikeId);
     event StrikeThresholdsSet(StrikeThreshold[] thresholds);
 
     error ZeroModuleAddress();

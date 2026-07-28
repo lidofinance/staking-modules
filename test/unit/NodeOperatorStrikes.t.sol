@@ -236,8 +236,8 @@ contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
         uint256 id = _issue(NO_ID);
         uint256 refreshesBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
 
-        vm.expectEmit(true, true, true, true, address(strikes));
-        emit INodeOperatorStrikes.StrikeRemoved(NO_ID, id, committee);
+        vm.expectEmit(true, true, false, false, address(strikes));
+        emit INodeOperatorStrikes.StrikeRemoved(NO_ID, id);
 
         vm.prank(committee);
         strikes.removeStrike(NO_ID, id);
@@ -376,6 +376,10 @@ contract NodeOperatorStrikesRemoveExpiredTest is NodeOperatorStrikesBaseTest {
         vm.warp(block.timestamp + LIFETIME); // id1, id3 expired; id2, id4 still active
         uint256 refreshesBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
 
+        vm.expectEmit(true, true, false, false, address(strikes));
+        emit INodeOperatorStrikes.ExpiredStrikeRemoved(NO_ID, id3);
+        vm.expectEmit(true, true, false, false, address(strikes));
+        emit INodeOperatorStrikes.ExpiredStrikeRemoved(NO_ID, id1);
         vm.prank(stranger); // permissionless
         strikes.removeExpiredStrikes(NO_ID);
 

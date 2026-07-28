@@ -97,7 +97,8 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
     /// @inheritdoc INodeOperatorStrikes
     function removeStrike(uint256 nodeOperatorId, uint256 strikeId) external onlyRole(STRIKES_COMMITTEE_ROLE) {
         OperatorStrikes storage rec = _storage().operatorStrikes[nodeOperatorId];
-        _removeStrike(rec, nodeOperatorId, _activeIndex(rec, strikeId), strikeId);
+        _removeStrike(rec, _activeIndex(rec, strikeId), strikeId);
+        emit StrikeRemoved(nodeOperatorId, strikeId);
 
         META_REGISTRY.notifyWeightBoostChanged(nodeOperatorId);
     }
@@ -114,7 +115,8 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
             --i;
             uint256 strikeId = activeIds[i];
             if (rec.strikes[strikeId].expiry > block.timestamp) continue;
-            _removeStrike(rec, nodeOperatorId, i, strikeId);
+            _removeStrike(rec, i, strikeId);
+            emit ExpiredStrikeRemoved(nodeOperatorId, strikeId);
             removed = true;
         }
 
@@ -174,13 +176,8 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         return _storage().thresholds;
     }
 
-    /// @dev Swap-pops the id, deletes the record, emits. Caller refreshes the weight (once per batch).
-    function _removeStrike(
-        OperatorStrikes storage rec,
-        uint256 nodeOperatorId,
-        uint256 idx,
-        uint256 strikeId
-    ) internal {
+    /// @dev Swap-pops the id and deletes the record. Caller emits and refreshes the weight (once per batch).
+    function _removeStrike(OperatorStrikes storage rec, uint256 idx, uint256 strikeId) internal {
         uint256[] storage activeIds = rec.activeIds;
         uint256 lastIdx = activeIds.length - 1;
         if (idx != lastIdx) {
@@ -188,8 +185,6 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         }
         activeIds.pop();
         delete rec.strikes[strikeId];
-
-        emit StrikeRemoved(nodeOperatorId, strikeId, msg.sender);
     }
 
     function _setStrikeThresholds(StrikeThreshold[] calldata thresholds) internal {
