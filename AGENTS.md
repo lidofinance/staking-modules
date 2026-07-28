@@ -62,7 +62,7 @@
 - `*_scratch*`: checks for post-deploy, pre-vote state only.
 - `*_afterVote*`: checks for post-governance state only; these should validate changes introduced by vote execution (`script/fork-helpers/SimulateVote.s.sol`), e.g. upgrades, finalize steps, role migrations, pause/resume transitions.
 - Flow semantics:
-- `*_onlyFull*`: checks that run only in full deployment flows and are excluded from `test-deployment-csm-v3-only-scratch`.
+- `*_onlyFull*`: checks that run only in full deployment flows.
 - Combined semantics:
 - `*_scratch_onlyFull*`: scratch-phase checks that also require full-flow context.
 - No suffix (`test_*`): use only for invariants expected to hold in every phase/flow where the suite is executed.
