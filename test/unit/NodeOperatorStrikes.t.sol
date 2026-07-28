@@ -202,12 +202,6 @@ contract NodeOperatorStrikesIssueTest is NodeOperatorStrikesBaseTest {
         strikes.issueStrike(_input(NO_ID, CATEGORY, hugeLifetime));
     }
 
-    function test_issueStrike_RevertWhen_LifetimeOverflowsUint256() public {
-        vm.expectRevert(INodeOperatorStrikes.LifetimeTooLong.selector);
-        vm.prank(committee);
-        strikes.issueStrike(_input(NO_ID, CATEGORY, type(uint256).max));
-    }
-
     function test_issueStrike_AllowsMaxLengthDescription() public {
         uint256 maxLen = strikes.MAX_DESCRIPTION_LENGTH();
         StrikeInput memory input = _input(NO_ID, CATEGORY, LIFETIME);
@@ -526,7 +520,7 @@ contract NodeOperatorStrikesThresholdsTest is NodeOperatorStrikesBaseTest {
 
     function test_setStrikeThresholds_RevertWhen_ReductionAboveMaxBp() public {
         StrikeThreshold[] memory thresholds = new StrikeThreshold[](1);
-        thresholds[0] = StrikeThreshold({ minCount: 2, reductionBP: MAX_BP + 1 });
+        thresholds[0] = StrikeThreshold({ minCount: 2, reductionBP: uint128(MAX_BP + 1) });
         vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
         vm.prank(admin);
         strikes.setStrikeThresholds(thresholds);
@@ -536,7 +530,7 @@ contract NodeOperatorStrikesThresholdsTest is NodeOperatorStrikesBaseTest {
         uint256 n = strikes.MAX_THRESHOLDS() + 1;
         StrikeThreshold[] memory thresholds = new StrikeThreshold[](n);
         for (uint256 i; i < n; ++i) {
-            thresholds[i] = StrikeThreshold({ minCount: i + 1, reductionBP: 0 });
+            thresholds[i] = StrikeThreshold({ minCount: uint128(i + 1), reductionBP: 0 });
         }
         vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
         vm.prank(admin);

@@ -17,7 +17,9 @@ import { MAX_BP } from "./lib/Constants.sol";
 ///         removal is permissionless once a strike's lifetime elapses.
 contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessControlEnumerableUpgradeable {
     struct OperatorStrikes {
+        /// @dev Monotonic strike ID counter; removed IDs are never reused.
         uint64 lastId;
+        /// @dev IDs of non-removed strikes, used for enumeration, counting, and swap-pop removal.
         uint256[] activeIds;
         mapping(uint256 strikeId => Strike) strikes;
     }
@@ -68,10 +70,8 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
 
         uint256 lifetime = input.lifetime;
         if (lifetime == 0) revert ZeroLifetime();
-        if (block.timestamp > type(uint64).max || lifetime > type(uint64).max - block.timestamp) {
-            revert LifetimeTooLong();
-        }
         uint256 expiry = block.timestamp + lifetime;
+        if (expiry > type(uint64).max) revert LifetimeTooLong();
 
         OperatorStrikes storage rec = _storage().operatorStrikes[input.nodeOperatorId];
         strikeId = ++rec.lastId;
@@ -128,18 +128,20 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
     }
 
     /// @inheritdoc IWeightBoostProvider
-    /// @dev Counts strikes regardless of expiry: an expired one keeps reducing the weight until removed.
+    /// @dev Expiry only enables permissionless removal; a strike keeps reducing weight until it is removed.
     function getWeightBoostMultiplierBP(uint256 nodeOperatorId) external view returns (uint256 multiplierBP) {
-        multiplierBP = MAX_BP;
-
         NodeOperatorStrikesStorage storage $ = _storage();
         uint256 count = $.operatorStrikes[nodeOperatorId].activeIds.length;
 
         StrikeThreshold[] storage thresholds = $.thresholds;
+        uint256 reductionBP;
         uint256 len = thresholds.length;
         for (uint256 i; i < len; ++i) {
             if (count < thresholds[i].minCount) break; // thresholds ascend by minCount
-            multiplierBP = MAX_BP - thresholds[i].reductionBP;
+            reductionBP = thresholds[i].reductionBP;
+        }
+        unchecked {
+            multiplierBP = MAX_BP - reductionBP;
         }
     }
 
@@ -225,9 +227,11 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         }
 
         for (uint256 i = 1; i < len; ++i) {
-            if (thresholds[i].minCount <= thresholds[i - 1].minCount) revert InvalidStrikeThresholds();
-            if (thresholds[i].reductionBP <= thresholds[i - 1].reductionBP) revert InvalidStrikeThresholds();
-            if (thresholds[i].reductionBP > MAX_BP) revert InvalidStrikeThresholds();
+            StrikeThreshold calldata current = thresholds[i];
+            StrikeThreshold calldata previous = thresholds[i - 1];
+            if (current.minCount <= previous.minCount) revert InvalidStrikeThresholds();
+            if (current.reductionBP <= previous.reductionBP) revert InvalidStrikeThresholds();
+            if (current.reductionBP > MAX_BP) revert InvalidStrikeThresholds();
         }
     }
 

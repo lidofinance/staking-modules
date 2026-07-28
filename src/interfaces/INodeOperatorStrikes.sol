@@ -27,8 +27,8 @@ struct Strike {
 /// @dev Cumulative weight reduction step. At `minCount` active strikes the operator's weight is
 ///      reduced by `reductionBP` basis points (effective multiplier = MAX_BP - reductionBP).
 struct StrikeThreshold {
-    uint256 minCount;
-    uint256 reductionBP;
+    uint128 minCount;
+    uint128 reductionBP;
 }
 
 /// @notice Committee-issued strikes act as a weight-reduction provider consumed by MetaRegistry.
