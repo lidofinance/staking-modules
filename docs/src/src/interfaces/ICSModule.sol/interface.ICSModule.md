@@ -1,5 +1,5 @@
 # ICSModule
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/ICSModule.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/ICSModule.sol)
 
 **Inherits:**
 [IBaseModule](/src/interfaces/IBaseModule.sol/interface.IBaseModule.md), [IStakingModuleV2](/src/interfaces/IStakingModule.sol/interface.IStakingModuleV2.md), [IDepositQueueLib](/src/lib/DepositQueueLib.sol/interface.IDepositQueueLib.md), [ITopUpQueueLib](/src/lib/TopUpQueueLib.sol/interface.ITopUpQueueLib.md)
@@ -24,6 +24,18 @@ function initialize(address admin, uint8 topUpQueueLimit) external;
 |`admin`|`address`|An address to grant the DEFAULT_ADMIN_ROLE to.|
 |`topUpQueueLimit`|`uint8`|The limit of the top-up queue.|
 
+
+### rebuildTotalWithdrawnValidators
+
+Rebuilds the global withdrawn validator counter from per-operator counters.
+
+One-time migration helper for v2-to-v3 upgrades. The function is permissionless
+because the resulting value is fully derived from stored Node Operator state.
+
+
+```solidity
+function rebuildTotalWithdrawnValidators() external;
+```
 
 ### cleanDepositQueue
 
@@ -214,30 +226,6 @@ event TopUpQueueRewound(uint256 to);
 ```
 
 ## Errors
-### NotEligibleForPriorityQueue
-
-```solidity
-error NotEligibleForPriorityQueue();
-```
-
-### PriorityQueueAlreadyUsed
-
-```solidity
-error PriorityQueueAlreadyUsed();
-```
-
-### PriorityQueueMaxDepositsUsed
-
-```solidity
-error PriorityQueueMaxDepositsUsed();
-```
-
-### NoQueuedKeysToMigrate
-
-```solidity
-error NoQueuedKeysToMigrate();
-```
-
 ### TopUpQueueDisabled
 
 ```solidity
@@ -256,12 +244,6 @@ error ZeroTopUpQueueLimit();
 error SameTopUpQueueLimit();
 ```
 
-### InvalidSigningKey
-
-```solidity
-error InvalidSigningKey();
-```
-
 ### InvalidTopUpOrder
 
 ```solidity
@@ -272,5 +254,11 @@ error InvalidTopUpOrder();
 
 ```solidity
 error UnexpectedExtraKey();
+```
+
+### UpgradeIsNotFinalized
+
+```solidity
+error UpgradeIsNotFinalized();
 ```
 

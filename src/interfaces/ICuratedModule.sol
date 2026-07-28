@@ -52,7 +52,7 @@ interface ICuratedModule is IBaseModule, IStakingModuleV2 {
         returns (uint256[] memory currentValidators, uint256[] memory targetValidators);
 
     /// @notice Returns current top-up allocation targets for all operators.
-    /// @dev Target = totalCurrent * operatorWeight / totalWeight (in wei).
+    /// @dev `target = totalCurrent * operatorWeight / totalWeight` (in wei).
     ///      Includes operators regardless of top-up capacity for informational purposes.
     ///      Actual allocation recalculates shares only across operators with usable capacity,
     ///      so real per-operator amounts may differ from the targets shown here.

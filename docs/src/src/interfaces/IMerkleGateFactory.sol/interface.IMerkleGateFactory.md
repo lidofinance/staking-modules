@@ -1,5 +1,5 @@
 # IMerkleGateFactory
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IMerkleGateFactory.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IMerkleGateFactory.sol)
 
 
 ## Functions
@@ -18,7 +18,7 @@ Creates a new gate proxy for the predefined implementation and initializes it.
 
 
 ```solidity
-function create(uint256 curveId, bytes32 treeRoot, string calldata treeCid, address admin)
+function create(uint256 curveId, bytes32 treeRoot, string calldata treeCid, string calldata name, address admin)
     external
     returns (address instance);
 ```
@@ -26,9 +26,10 @@ function create(uint256 curveId, bytes32 treeRoot, string calldata treeCid, addr
 
 |Name|Type|Description|
 |----|----|-----------|
-|`curveId`|`uint256`|Bond curve id to assign to eligible members.|
+|`curveId`|`uint256`|Bond curve id used by the gate.|
 |`treeRoot`|`bytes32`|Initial Merkle tree root.|
 |`treeCid`|`string`|Initial Merkle tree CID.|
+|`name`|`string`|Human-readable gate name.|
 |`admin`|`address`|Address of the proxy admin and DEFAULT_ADMIN_ROLE holder.|
 
 **Returns**

@@ -1,5 +1,5 @@
 # CSModule
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/CSModule.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/CSModule.sol)
 
 **Inherits:**
 [ICSModule](/src/interfaces/ICSModule.sol/interface.ICSModule.md), [BaseModule](/src/abstract/BaseModule.sol/abstract.BaseModule.md)
@@ -71,6 +71,18 @@ To prevent possible frontrun this method should strictly be called in the same T
 function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION);
 ```
 
+### rebuildTotalWithdrawnValidators
+
+Rebuilds the global withdrawn validator counter from per-operator counters.
+
+One-time migration helper for v2-to-v3 upgrades. The function is permissionless
+because the resulting value is fully derived from stored Node Operator state.
+
+
+```solidity
+function rebuildTotalWithdrawnValidators() external;
+```
+
 ### createNodeOperator
 
 Permissioned method to add a new Node Operator
@@ -89,7 +101,7 @@ function createNodeOperator(
 |Name|Type|Description|
 |----|----|-----------|
 |`from`|`address`|Sender address. Initial sender address to be used as a default manager and reward addresses. Gates must pass the correct address in order to specify which address should be the owner of the Node Operator.|
-|`managementProperties`|`NodeOperatorManagementProperties`|Optional. Management properties to be used for the Node Operator. managerAddress: Used as `managerAddress` for the Node Operator. If not passed `from` will be used. rewardAddress: Used as `rewardAddress` for the Node Operator. If not passed `from` will be used. extendedManagerPermissions: Flag indicating that `managerAddress` will be able to change `rewardAddress`. If set to true `resetNodeOperatorManagerAddress` method will be disabled|
+|`managementProperties`|`NodeOperatorManagementProperties`|Optional. Management properties to be used for the Node Operator. `managerAddress`: Used as `managerAddress` for the Node Operator. If not passed `from` will be used. `rewardAddress`: Used as `rewardAddress` for the Node Operator. If not passed `from` will be used. `extendedManagerPermissions`: Flag indicating that `managerAddress` will be able to change `rewardAddress`. If set to true `resetNodeOperatorManagerAddress` method will be disabled|
 |`referrer`|`address`|Optional. Referrer address. Should be passed when Node Operator is created using partners integration|
 
 
@@ -108,7 +120,7 @@ Second param `depositCalldata` is not used
 ```solidity
 function obtainDepositData(
     uint256 depositsCount,
-    bytes calldata /* depositCalldata */
+    bytes calldata depositCalldata // solhint-disable-line no-unused-vars
 )
     external
     returns (bytes memory publicKeys, bytes memory signatures);
@@ -118,7 +130,7 @@ function obtainDepositData(
 |Name|Type|Description|
 |----|----|-----------|
 |`depositsCount`|`uint256`|Number of deposits to be done|
-|`<none>`|`bytes`||
+|`depositCalldata`|`bytes`|Staking module defined data encoded as bytes. IMPORTANT: depositCalldata MUST NOT modify the deposit data set of the staking module|
 
 **Returns**
 
@@ -164,9 +176,9 @@ function allocateDeposits(
 
 ### reportValidatorBalance
 
-Sync tracked added balance for a key based on proven validator balance.
+Update verified on-chain balance for a key.
 
-The function only increases the key added value at the moment.
+The function stores balance relative to MIN_ACTIVATION_BALANCE.
 
 
 ```solidity
@@ -299,26 +311,6 @@ function getTopUpQueueItem(uint256 index) external view returns (uint256 nodeOpe
 |`keyIndex`|`uint256`|Index of the key in the Node Operator's keys storage|
 
 
-### updateOperatorBalances
-
-Called by StakingRouter to update node operator total balances.
-
-The function does nothing in CSM, since the information about the operator balances is not used in the
-module. If it becomes needed in the future, the method should be implemented and the oracle should deliver
-the actual balances.
-
-
-```solidity
-function updateOperatorBalances(bytes calldata, bytes calldata) external view;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bytes`||
-|`<none>`|`bytes`||
-
-
 ### getStakingModuleSummary
 
 Returns all-validators summary in the staking module
@@ -335,9 +327,9 @@ function getStakingModuleSummary()
 
 |Name|Type|Description|
 |----|----|-----------|
-|`totalExitedValidators`|`uint256`|total number of validators in the EXITED state on the Consensus Layer. This value can't decrease in normal conditions|
-|`totalDepositedValidators`|`uint256`|total number of validators deposited via the official Deposit Contract. This value is a cumulative counter: even when the validator goes into EXITED state this counter is not decreasing|
-|`depositableValidatorsCount`|`uint256`|number of validators in the set available for deposit|
+|`totalExitedValidators`|`uint256`|Total number of validators in the EXITED state on the Consensus Layer. This value can't decrease in normal conditions|
+|`totalDepositedValidators`|`uint256`|Total number of validators deposited via the official Deposit Contract. This value is a cumulative counter: even when the validator goes into EXITED state this counter is not decreasing|
+|`depositableValidatorsCount`|`uint256`|Number of validators in the set available for deposit|
 
 
 ### depositQueuePointers

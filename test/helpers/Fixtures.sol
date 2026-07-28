@@ -116,6 +116,18 @@ contract DeploymentHelpers is Test {
         assertEq(accessControl.getRoleMemberCount(role), expectedRoleMembers, "pause role member count");
     }
 
+    function _checkAdminRole(address target, address admin, address secondAdmin) internal view {
+        IAccessControlEnumerable accessControl = IAccessControlEnumerable(target);
+        bytes32 role = bytes32(0); // DEFAULT_ADMIN_ROLE
+        uint256 expectedMembers = block.chainid == 1 ? 1 : 2;
+
+        assertTrue(accessControl.hasRole(role, admin), "missing admin default admin role");
+        if (secondAdmin != address(0)) {
+            assertTrue(accessControl.hasRole(role, secondAdmin), "missing second admin default admin role");
+        }
+        assertEq(accessControl.getRoleMemberCount(role), expectedMembers, "unexpected default admin role member count");
+    }
+
     struct Env {
         string RPC_URL;
         string DEPLOY_CONFIG;
@@ -468,7 +480,10 @@ contract DeploymentHelpers is Test {
 
     function updateCuratedDeployParams(CuratedDeployParams storage dst, string memory deployConfigPath) internal {
         string memory config = vm.readFile(deployConfigPath);
-        CuratedDeployParams memory src = abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (CuratedDeployParams));
+        CuratedDeployParams memory src = abi.decode(
+            vm.parseJsonBytes(config, ".CuratedDeployParams"),
+            (CuratedDeployParams)
+        );
         // copy every value separately to avoid `Unimplemented feature` error from solc when copying memory array of structs into storage
         // Lido addresses
         dst.lidoLocatorAddress = src.lidoLocatorAddress;

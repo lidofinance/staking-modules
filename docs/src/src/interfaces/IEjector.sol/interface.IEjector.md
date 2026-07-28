@@ -1,5 +1,5 @@
 # IEjector
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IEjector.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IEjector.sol)
 
 **Inherits:**
 [IExitTypes](/src/interfaces/IExitTypes.sol/interface.IExitTypes.md)
@@ -64,7 +64,7 @@ function ejectBadPerformer(uint256 nodeOperatorId, uint256 keyIndex, address ref
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`keyIndex`|`uint256`|index of deposited key to eject|
+|`keyIndex`|`uint256`|Index of deposited key to eject|
 |`refundRecipient`|`address`|Address to send the refund to|
 
 

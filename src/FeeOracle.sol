@@ -12,10 +12,9 @@ import { IValidatorStrikes } from "./interfaces/IValidatorStrikes.sol";
 import { IFeeDistributor } from "./interfaces/IFeeDistributor.sol";
 import { IFeeOracle } from "./interfaces/IFeeOracle.sol";
 
+/// @dev No assets are stored in the contract
 contract FeeOracle is IFeeOracle, BaseOracle, PausableWithRoles, AssetRecoverer {
     uint256 internal constant INITIALIZED_VERSION = 3;
-
-    /// @dev No assets are stored in the contract
 
     /// @notice An ACL role granting the permission to submit the data for a committee report.
     bytes32 public constant SUBMIT_DATA_ROLE = keccak256("SUBMIT_DATA_ROLE");

@@ -1,5 +1,5 @@
 # Verifier
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/Verifier.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/Verifier.sol)
 
 **Inherits:**
 [IVerifier](/src/interfaces/IVerifier.sol/interface.IVerifier.md), AccessControlEnumerable, [PausableWithRoles](/src/abstract/PausableWithRoles.sol/abstract.PausableWithRoles.md)
@@ -21,15 +21,12 @@ uint256 internal constant MAX_BP = 10_000
 
 
 ### MIN_WITHDRAWAL_RATIO
-Minimum withdrawal amount as a ratio of total ether deposited to the validator,
-expressed in basis points (10 000 = 100%). At ~3% top APY, losing >10% of balance
-requires ~3 years offline — implausible for any legitimately run validator.
-We do not accept slashed validators in normal withdrawal processing, so we do not need to account for slashing penalties here.
-In case of unexpected network conditions, the DAO can always replace the verifier contract with one having a different threshold.
+Minimum withdrawal amount as a ratio of the expected validator balance,
+expressed in basis points (10 000 = 100%).
 
 
 ```solidity
-uint256 internal constant MIN_WITHDRAWAL_RATIO = 9000
+uint256 public immutable MIN_WITHDRAWAL_RATIO
 ```
 
 
@@ -47,7 +44,7 @@ See https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-cha
 
 
 ```solidity
-uint64 public immutable SLOTS_PER_HISTORICAL_ROOT
+uint64 public constant SLOTS_PER_HISTORICAL_ROOT = 8192
 ```
 
 
@@ -105,21 +102,14 @@ GIndex public immutable GI_FIRST_HISTORICAL_SUMMARY_CURR
 ```
 
 
-### GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV
+### GI_FIRST_BLOCK_ROOT_IN_SUMMARY
 This index is relative to HistoricalSummary like: HistoricalSummary.blockRoots[0].
+Considered constant across forks.
 
 
 ```solidity
-GIndex public immutable GI_FIRST_BLOCK_ROOT_IN_SUMMARY_PREV
-```
-
-
-### GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR
-This index is relative to HistoricalSummary like: HistoricalSummary.blockRoots[0].
-
-
-```solidity
-GIndex public immutable GI_FIRST_BLOCK_ROOT_IN_SUMMARY_CURR
+GIndex public constant GI_FIRST_BLOCK_ROOT_IN_SUMMARY =
+    GIndex.wrap(0x000000000000000000000000000000000000000000000000000000000040000d)
 ```
 
 
@@ -197,18 +187,18 @@ constructor(
     address withdrawalAddress,
     address module,
     uint64 slotsPerEpoch,
-    uint64 slotsPerHistoricalRoot,
     GIndices memory gindices,
     Slot firstSupportedSlot,
     Slot pivotSlot,
     Slot capellaSlot,
+    uint256 minWithdrawalRatio,
     address admin
 ) ;
 ```
 
 ### processSlashedProof
 
-Verify proof of a slashed validator being withdrawable and report it to the module
+Verify proof of a slashed validator and report it to the module
 
 
 ```solidity

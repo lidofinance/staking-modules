@@ -1,5 +1,5 @@
 # MetaRegistry
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/MetaRegistry.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/MetaRegistry.sol)
 
 **Inherits:**
 [IMetaRegistry](/src/interfaces/IMetaRegistry.sol/interface.IMetaRegistry.md), Initializable, AccessControlEnumerableUpgradeable
@@ -71,6 +71,20 @@ uint256 internal constant EXTERNAL_STAKE_PER_VALIDATOR = 32 ether
 ```
 
 
+### MAX_NAME_LENGTH
+
+```solidity
+uint256 internal constant MAX_NAME_LENGTH = 256
+```
+
+
+### MAX_DESCRIPTION_LENGTH
+
+```solidity
+uint256 internal constant MAX_DESCRIPTION_LENGTH = 1024
+```
+
+
 ### META_REGISTRY_STORAGE_LOCATION
 
 ```solidity
@@ -101,6 +115,15 @@ function initialize(address admin) external initializer;
 |----|----|-----------|
 |`admin`|`address`|Address to receive DEFAULT_ADMIN_ROLE.|
 
+
+### getInitializedVersion
+
+Returns the initialized version of the contract.
+
+
+```solidity
+function getInitializedVersion() external view returns (uint64);
+```
 
 ### setOperatorMetadataAsAdmin
 
@@ -312,17 +335,17 @@ function getBondCurveWeight(uint256 curveId) external view returns (uint256 weig
 
 Returns effective weight for the node operator.
 
-Returns 0 if the operator is not in a group.
+Returns the cached effective weight.
 
 
 ```solidity
-function getNodeOperatorWeight(uint256 noId) external view returns (uint256 weight);
+function getNodeOperatorWeight(uint256 nodeOperatorId) external view returns (uint256 weight);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`noId`|`uint256`||
+|`nodeOperatorId`|`uint256`|Node operator ID to query.|
 
 **Returns**
 
@@ -339,7 +362,7 @@ Returns (0, 0) if the operator is not in a group.
 
 
 ```solidity
-function getNodeOperatorWeightAndExternalStake(uint256 noId)
+function getNodeOperatorWeightAndExternalStake(uint256 nodeOperatorId)
     external
     view
     returns (uint256 weight, uint256 externalStake);
@@ -348,7 +371,7 @@ function getNodeOperatorWeightAndExternalStake(uint256 noId)
 
 |Name|Type|Description|
 |----|----|-----------|
-|`noId`|`uint256`||
+|`nodeOperatorId`|`uint256`|Node operator ID to query.|
 
 **Returns**
 
@@ -396,11 +419,25 @@ function _createGroup(OperatorGroup calldata groupInfo) internal;
 function _updateGroup(uint256 groupId, OperatorGroup calldata groupInfo) internal;
 ```
 
+### _storeGroupData
+
+
+```solidity
+function _storeGroupData(uint256 groupId, OperatorGroup calldata groupInfo) internal;
+```
+
 ### _resetGroup
 
 
 ```solidity
 function _resetGroup(uint256 groupId) internal;
+```
+
+### _setGroupName
+
+
+```solidity
+function _setGroupName(uint256 groupId, string calldata name) internal;
 ```
 
 ### _storeSubOperators
@@ -531,6 +568,7 @@ function _storage() internal pure returns (MetaRegistryStorage storage $);
 
 ```solidity
 struct CachedOperatorGroup {
+    string name;
     uint64[] subNodeOperatorIds;
     ExternalOperator[] externalOperators;
 }
@@ -550,6 +588,7 @@ struct GroupIndex {
 
 ```solidity
 struct EffectiveWeightCache {
+    // Invariant: operators outside any group must have zero cached effective weight.
     mapping(uint256 nodeOperatorId => uint256 weight) operatorEffectiveWeight;
     mapping(uint256 groupId => uint256 weight) groupEffectiveWeightSum;
 }
@@ -563,11 +602,12 @@ storage-location: erc7201:MetaRegistry
 ```solidity
 struct MetaRegistryStorage {
     mapping(uint256 curveId => uint256 weight) bondCurveWeight;
-    CachedOperatorGroup[] groups;
+    mapping(uint256 groupId => CachedOperatorGroup) groups;
     GroupIndex groupIndex;
     EffectiveWeightCache effectiveWeightCache;
     mapping(uint256 nodeOperatorId => OperatorMetadata) operatorMetadata;
     mapping(uint256 moduleId => address moduleAddress) moduleAddressCache;
+    uint256 groupsCount;
 }
 ```
 

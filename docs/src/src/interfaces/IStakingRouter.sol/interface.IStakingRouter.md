@@ -1,5 +1,5 @@
 # IStakingRouter
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IStakingRouter.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IStakingRouter.sol)
 
 
 ## Functions
@@ -114,13 +114,6 @@ function decreaseStakingModuleVettedKeysCountByNodeOperator(
 ) external;
 ```
 
-### canDeposit
-
-
-```solidity
-function canDeposit(uint256 _stakingModuleId) external view returns (bool);
-```
-
 ### deposit
 
 
@@ -169,24 +162,14 @@ function getAllStakingModuleDigests() external view returns (StakingModuleDigest
 function getContractVersion() external view returns (uint256);
 ```
 
-### getDepositsAllocation
+### getDepositAllocations
 
 
 ```solidity
-function getDepositsAllocation(uint256 _depositsCount)
+function getDepositAllocations(uint256 _depositAmount, bool _isTopUp)
     external
     view
-    returns (uint256 allocated, uint256[] memory allocations);
-```
-
-### getTopUpAllocation
-
-
-```solidity
-function getTopUpAllocation(uint256 _depositAmount)
-    external
-    view
-    returns (uint256 allocated, uint256[] memory allocations);
+    returns (uint256 totalAllocated, uint256[] memory allocated, uint256[] memory newAllocations);
 ```
 
 ### getLido
@@ -491,17 +474,6 @@ function reportStakingModuleExitedValidatorsCountByNodeOperator(
     uint256 _stakingModuleId,
     bytes memory _nodeOperatorIds,
     bytes memory _exitedValidatorsCounts
-) external;
-```
-
-### reportStakingModuleOperatorBalances
-
-
-```solidity
-function reportStakingModuleOperatorBalances(
-    uint256 _stakingModuleId,
-    bytes memory _nodeOperatorIds,
-    bytes memory _totalBalancesGwei
 ) external;
 ```
 

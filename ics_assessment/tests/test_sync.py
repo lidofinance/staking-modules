@@ -3,8 +3,8 @@ import importlib
 import json
 import sys
 import types
-from pathlib import Path
 
+import pytest
 import requests
 
 
@@ -190,7 +190,7 @@ def test_write_csv_uses_lf_line_endings(tmp_path):
 
 def test_run_sync_requires_configured_rpc_env():
     mod = _load_module()
-    mod.engagement_jobs.MAINNET_RPC_URL = ""
+    mod.MAINNET_RPC_URL = ""
     called = {"value": False}
     mod.JOBS["aragon"] = lambda: called.__setitem__("value", True)
 
@@ -238,20 +238,54 @@ def test_sync_mainnet_performance_writes_eligible_ids(monkeypatch, tmp_path):
     mod.experience_jobs.ELIGIBLE_NODE_OPERATORS_MAINNET_PATH = (
         tmp_path / "eligible_node_operators_mainnet.json"
     )
+    mod.experience_jobs.MAINNET_FEE_DISTRIBUTOR_ADDRESS = "0x" + "12" * 20
+    mod.experience_jobs.MAINNET_FEE_DISTRIBUTOR_FROM_BLOCK = 100
+    mod.experience_jobs.MAINNET_CUTOFF_BLOCK = 200
+
+    def fake_fetch_cids(w3, address, from_block, to_block):
+        assert address == mod.experience_jobs.MAINNET_FEE_DISTRIBUTOR_ADDRESS
+        assert from_block == 100
+        assert to_block == 200
+        return ["first", "latest"]
+
+    monkeypatch.setattr(
+        mod.experience_jobs,
+        "_fetch_cids_via_getlogs",
+        fake_fetch_cids,
+    )
 
     reports = iter(
         [
             {
+                "frame": [0, 6299],
                 "threshold": 0.9,
                 "operators": {
-                    "42": {"validators": {"v1": {"perf": {"assigned": 10, "included": 10}}}},
-                    "43": {"validators": {"v1": {"perf": {"assigned": 10, "included": 8}}}},
+                    "42": {
+                        "validators": {
+                            "v1": {"perf": {"assigned": 500, "included": 400}}
+                        }
+                    },
+                    "43": {
+                        "validators": {
+                            "v1": {"perf": {"assigned": 6300, "included": 6300}}
+                        }
+                    },
                 },
             },
             {
-                "threshold": 0.8,
+                "frame": [6300, 12599],
+                "threshold": 0.9,
                 "operators": {
-                    "44": {"validators": {"v1": {"perf": {"assigned": 5, "included": 4}}}},
+                    "42": {
+                        "validators": {
+                            "v1": {"perf": {"assigned": 6250, "included": 6250}}
+                        }
+                    },
+                    "44": {
+                        "validators": {
+                            "v1": {"perf": {"assigned": 6300, "included": 6300}}
+                        }
+                    },
                 },
             },
         ]
@@ -266,8 +300,163 @@ def test_sync_mainnet_performance_writes_eligible_ids(monkeypatch, tmp_path):
     mod.experience_jobs.sync_mainnet_performance()
 
     assert json.loads(
-        mod.experience_jobs.ELIGIBLE_NODE_OPERATORS_MAINNET_PATH.read_text(encoding="utf-8")
-    ) == ["42", "44"]
+        mod.experience_jobs.ELIGIBLE_NODE_OPERATORS_MAINNET_PATH.read_text(
+            encoding="utf-8"
+        )
+    ) == ["42"]
+
+
+def _v2_validator(performance, threshold, assigned=10):
+    return {
+        "performance": performance,
+        "threshold": threshold,
+        "attestation_duty": {"assigned": assigned, "included": assigned},
+        "proposal_duty": {"assigned": 0, "included": 0},
+        "sync_duty": {"assigned": 0, "included": 0},
+    }
+
+
+def test_mainnet_performance_supports_v2_validator_thresholds():
+    mod = _load_module()
+    report = [
+        {
+            "frame": [0, 9],
+            "operators": {
+                "42": {"validators": {"v1": _v2_validator(0.95, 0.9)}},
+                "43": {"validators": {"v1": _v2_validator(0.8, 0.9)}},
+            },
+        }
+    ]
+
+    assert mod.experience_jobs._eligible_operator_ids_from_report(report) == {"42"}
+
+
+def test_mainnet_performance_supports_all_v3_frames():
+    mod = _load_module()
+    report = {
+        "_ver": 1,
+        "frames": [
+            {
+                "frame": [0, 9],
+                "operators": {
+                    "42": {"validators": {"v1": _v2_validator(0.8, 0.9)}},
+                },
+            },
+            {
+                "frame": [10, 19],
+                "operators": {
+                    "42": {"validators": {"v1": _v2_validator(0.95, 0.9)}},
+                },
+            },
+        ],
+    }
+
+    assert mod.experience_jobs._eligible_operator_ids_from_report(report) == {"42"}
+
+
+def test_mainnet_performance_rejects_missing_v2_fields():
+    mod = _load_module()
+    validator = _v2_validator(0.95, 0.9)
+    del validator["performance"]
+
+    with pytest.raises(KeyError, match="performance"):
+        mod.experience_jobs._eligible_operator_ids_from_report(
+            [{"frame": [0, 9], "operators": {"42": {"validators": {"v1": validator}}}}]
+        )
+
+
+@pytest.mark.parametrize(
+    "report",
+    [
+        [],
+        {"_ver": 1, "frames": []},
+    ],
+)
+def test_mainnet_performance_rejects_empty_or_unknown_reports(report):
+    mod = _load_module()
+
+    with pytest.raises(ValueError):
+        mod.experience_jobs._eligible_operator_ids_from_report(report)
+
+
+def test_mainnet_performance_rejects_unsupported_v3_logs_version():
+    mod = _load_module()
+
+    with pytest.raises(ValueError, match="unsupported staking module logs version"):
+        mod.experience_jobs._eligible_operator_ids_from_report(
+            {"_ver": 2, "frames": [{"frame": [0, 9], "operators": {}}]}
+        )
+
+
+def test_mainnet_performance_requires_duty_evidence():
+    mod = _load_module()
+    report = [
+        {
+            "frame": [0, 9],
+            "operators": {
+                "42": {"validators": {"v1": _v2_validator(0, 0, assigned=0)}},
+                "43": {"validators": {}},
+            },
+        }
+    ]
+
+    assert mod.experience_jobs._eligible_operator_ids_from_report(report) == set()
+
+
+def test_mainnet_eligibility_requires_30_days_and_latest_performance():
+    mod = _load_module()
+    reports = [
+        [
+            {
+                "frame": [0, 6299],
+                "operators": {
+                    "42": {"validators": {"v1": _v2_validator(0.8, 0.9, assigned=450)}},
+                    "43": {"validators": {"v1": _v2_validator(1, 0.9, assigned=449)}},
+                    "44": {"validators": {"v1": _v2_validator(1, 0.9, assigned=6300)}},
+                },
+            }
+        ],
+        [
+            {
+                "frame": [6300, 12599],
+                "operators": {
+                    "42": {"validators": {"v1": _v2_validator(1, 0.9, assigned=6300)}},
+                    "43": {"validators": {"v1": _v2_validator(1, 0.9, assigned=6300)}},
+                    "45": {"validators": {"v1": _v2_validator(1, 0.9, assigned=6300)}},
+                },
+            }
+        ],
+    ]
+
+    assert mod.experience_jobs._eligible_mainnet_operator_ids(reports) == {"42"}
+
+
+def test_mainnet_activity_qualification_is_permanent():
+    mod = _load_module()
+    reports = [
+        [
+            {
+                "frame": [0, 6299],
+                "operators": {
+                    "42": {"validators": {"v1": _v2_validator(0.8, 0.9, assigned=450)}},
+                },
+            }
+        ],
+        [
+            {
+                "frame": [6300, 12599],
+                "operators": {
+                    "42": {"validators": {"v1": _v2_validator(1, 0.9, assigned=6300)}},
+                },
+            }
+        ],
+        [{"frame": [12600, 18899], "operators": {}}],
+    ]
+    frames = mod.experience_jobs.parse_performance_frames(reports)
+
+    assert mod.experience_jobs._historically_active_operator_ids(frames[:1]) == set()
+    assert mod.experience_jobs._historically_active_operator_ids(frames[:2]) == {"42"}
+    assert mod.experience_jobs._historically_active_operator_ids(frames) == {"42"}
 
 
 def test_get_event_logs_splits_range_on_failure():

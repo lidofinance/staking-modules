@@ -204,10 +204,8 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     }
 
     /// @inheritdoc IParametersRegistry
-    function setDefaultExitDelayFee(
-        uint256 penalty
-    ) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
-        _setDefaultExitDelayFee(penalty);
+    function setDefaultExitDelayFee(uint256 fee) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
+        _setDefaultExitDelayFee(fee);
     }
 
     /// @inheritdoc IParametersRegistry
@@ -336,10 +334,10 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     /// @inheritdoc IParametersRegistry
     function setExitDelayFee(
         uint256 curveId,
-        uint256 penalty
+        uint256 fee
     ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
-        _exitDelayFees[curveId] = MarkedUint248(penalty.toUint248(), true);
-        emit ExitDelayFeeSet(curveId, penalty);
+        _exitDelayFees[curveId] = MarkedUint248(fee.toUint248(), true);
+        emit ExitDelayFeeSet(curveId, fee);
     }
 
     /// @inheritdoc IParametersRegistry
@@ -471,7 +469,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     }
 
     /// @inheritdoc IParametersRegistry
-    function getQueueConfig(uint256 curveId) external view returns (uint32 queuePriority, uint32 maxDeposits) {
+    function getQueueConfig(uint256 curveId) external view returns (uint32 priority, uint32 maxDeposits) {
         return _getQueueConfig(curveId);
     }
 

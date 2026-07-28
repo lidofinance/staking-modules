@@ -1,5 +1,5 @@
 # IAccounting
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IAccounting.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IAccounting.sol)
 
 **Inherits:**
 [IBondCore](/src/interfaces/IBondCore.sol/interface.IBondCore.md), [IBondCurve](/src/interfaces/IBondCurve.sol/interface.IBondCurve.md), [IBondLock](/src/interfaces/IBondLock.sol/interface.IBondLock.md), [IFeeSplits](/src/interfaces/IFeeSplits.sol/interface.IFeeSplits.md), [IAssetRecovererLib](/src/lib/AssetRecovererLib.sol/interface.IAssetRecovererLib.md)
@@ -136,9 +136,10 @@ function addBondCurve(BondCurveIntervalInput[] calldata bondCurve) external retu
 Update existing bond curve
 
 If the curve is updated to a curve with higher values for any point,
-Extensive checks and actions should be performed by the method caller to avoid
+extensive checks and actions should be performed by the method caller to avoid
 inconsistency in the keys accounting. A manual update of the depositable validators count
 in staking module might be required to ensure that the keys pointers are consistent.
+Note that node operators might face unbonded keys due to changes to bond requirements.
 
 
 ```solidity
@@ -188,7 +189,7 @@ function getCustomRewardsClaimer(uint256 nodeOperatorId) external view returns (
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`address`|rewardsClaimer Address allowed to claim rewards on behalf of the Node Operator|
+|`<none>`|`address`|Address allowed to claim rewards on behalf of the Node Operator|
 
 
 ### getRequiredBondForNextKeys
@@ -705,14 +706,14 @@ Called by staking module exclusively
 
 
 ```solidity
-function settleLockedBond(uint256 nodeOperatorId, uint256 maxAmount) external returns (uint256 amountSettled);
+function settleLockedBond(uint256 nodeOperatorId, uint256 bondLockNonce) external returns (uint256 amountSettled);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`maxAmount`|`uint256`|Maximum amount to settle in ETH (stETH)|
+|`bondLockNonce`|`uint256`|Bond lock nonce|
 
 **Returns**
 
@@ -816,6 +817,11 @@ function chargeFee(uint256 nodeOperatorId, uint256 amount) external returns (boo
 
 Pull fees (if proof provided) from FeeDistributor to the Node Operator's bond and split according to configured fee splits.
 
+Reverts while Accounting is paused.
+Previously reward pulling during pause was useful for emergency penalty handling.
+Now penalties can create bond debt while paused, and later rewards can repay it after resume.
+So this method is paused together with the rest of the reward-handling flows.
+
 
 ```solidity
 function pullAndSplitFeeRewards(
@@ -889,28 +895,28 @@ error ZeroFeeDistributorAddress();
 error ZeroChargePenaltyRecipientAddress();
 ```
 
+### InvalidChargePenaltyRecipientAddress
+
+```solidity
+error InvalidChargePenaltyRecipientAddress();
+```
+
 ### NodeOperatorDoesNotExist
 
 ```solidity
 error NodeOperatorDoesNotExist();
 ```
 
-### ElRewardsVaultReceiveFailed
-
-```solidity
-error ElRewardsVaultReceiveFailed();
-```
-
-### InvalidBondCurvesLength
-
-```solidity
-error InvalidBondCurvesLength();
-```
-
 ### SameAddress
 
 ```solidity
 error SameAddress();
+```
+
+### InvalidBondLockNonce
+
+```solidity
+error InvalidBondLockNonce();
 ```
 
 ## Structs

@@ -200,9 +200,9 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @param from Sender address. Initial sender address to be used as a default manager and reward addresses.
     ///             Gates must pass the correct address in order to specify which address should be the owner of the Node Operator.
     /// @param managementProperties Optional. Management properties to be used for the Node Operator.
-    ///                             managerAddress: Used as `managerAddress` for the Node Operator. If not passed `from` will be used.
-    ///                             rewardAddress: Used as `rewardAddress` for the Node Operator. If not passed `from` will be used.
-    ///                             extendedManagerPermissions: Flag indicating that `managerAddress` will be able to change `rewardAddress`.
+    ///                             `managerAddress`: Used as `managerAddress` for the Node Operator. If not passed `from` will be used.
+    ///                             `rewardAddress`: Used as `rewardAddress` for the Node Operator. If not passed `from` will be used.
+    ///                             `extendedManagerPermissions`: Flag indicating that `managerAddress` will be able to change `rewardAddress`.
     ///                                                         If set to true `resetNodeOperatorManagerAddress` method will be disabled
     /// @param referrer Optional. Referrer address. Should be passed when Node Operator is created using partners integration
     function createNodeOperator(
@@ -472,7 +472,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @notice Checks if a validator was reported as slashed
     /// @param nodeOperatorId The ID of the node operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
-    /// @return bool True if a validator was reported as slashed
+    /// @return True if a validator was reported as slashed
     function isValidatorSlashed(uint256 nodeOperatorId, uint256 keyIndex) external view returns (bool);
 
     /// @notice Check if the given Node Operator's key is reported as withdrawn

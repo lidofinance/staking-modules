@@ -1,5 +1,6 @@
 snapshots/
 node_modules/
+digest/
 
 .env*
 !.env.sample

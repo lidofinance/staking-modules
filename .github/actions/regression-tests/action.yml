@@ -1,5 +1,5 @@
 name: "Regression tests"
-description: "Checkout and run regression tests for community-staking-module"
+description: "Checkout and run staking modules fork regression suites"
 
 inputs:
   rpc_url:
@@ -12,17 +12,29 @@ inputs:
   ref:
     description: "Git ref of the repository to test."
     required: false
-    default: "main"
+    default: "develop"
   path:
     description: "Path to checkout the repository."
     required: false
     default: "community-staking-module"
+  csm_deploy_config:
+    description: "CSM deployment config used by fork tests."
+    required: false
+    default: "./artifacts/mainnet/csm/upgrade-v3-mainnet.json"
+  curated_deploy_config:
+    description: "Curated module deployment config used by fork tests."
+    required: false
+    default: "./artifacts/mainnet/curated/deploy-mainnet.json"
+  vote_prev_block:
+    description: "Block number before the vote execution; enables temporary post-vote upgrade tests."
+    required: false
+    default: ""
 
 runs:
   using: "composite"
   steps:
-    - name: Checkout community-staking-module
-      uses: actions/checkout@v4
+    - name: Checkout staking modules repository
+      uses: actions/checkout@v7
       with:
         repository: ${{ inputs.repository }}
         ref: ${{ inputs.ref }}
@@ -32,7 +44,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.path }}
       run: |
-        echo "FOUNDRY_VERSION=$(head .foundryref)" >> "$GITHUB_ENV"
+        echo "FOUNDRY_VERSION=$(head -n 1 .foundryref)" >> "$GITHUB_ENV"
         echo "JUST_TAG=1.24.0" >> "$GITHUB_ENV"
 
     - name: Cache just
@@ -71,12 +83,34 @@ runs:
       working-directory: ${{ inputs.path }}
       run: just build
 
-    - name: Run regression tests
+    - name: Run CSM integration regression
       shell: bash
       working-directory: ${{ inputs.path }}
       run: just test-integration
       env:
         RPC_URL: ${{ inputs.rpc_url }}
         CHAIN: mainnet
-        DEPLOY_CONFIG: ./artifacts/mainnet/upgrade-v2-mainnet.json
+        DEPLOY_CONFIG: ${{ inputs.csm_deploy_config }}
+        FOUNDRY_PROFILE: ci_quick
+
+    - name: Run Curated integration regression
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: just test-integration
+      env:
+        RPC_URL: ${{ inputs.rpc_url }}
+        CHAIN: mainnet
+        DEPLOY_CONFIG: ${{ inputs.curated_deploy_config }}
+        FOUNDRY_PROFILE: ci_quick
+
+    - name: Run CSM post-vote regression
+      if: ${{ inputs.vote_prev_block != '' }}
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: just test-post-upgrade
+      env:
+        RPC_URL: ${{ inputs.rpc_url }}
+        CHAIN: mainnet
+        DEPLOY_CONFIG: ${{ inputs.csm_deploy_config }}
+        VOTE_PREV_BLOCK: ${{ inputs.vote_prev_block }}
         FOUNDRY_PROFILE: ci_quick
