@@ -75,7 +75,7 @@ struct TypeBonus {
  *   1.0x ┤                                          ●  8750 (DEFAULT_MAX_FEE, unset): 1x
  *        └┬           ┬                             ┬─► custom fee, portion BP
  *         0           2500                          8750
- *                     ├────reachable when defaultMinFee = 2500────┤
+ *                     ├─── reachable at min 2500 ───┤
  *
  * ── Fee increase timeline and oracle frames ────────────────────────────────────
  *
