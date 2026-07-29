@@ -49,6 +49,7 @@ struct GateCurveParams {
     IParametersRegistry.MarkedUint248 generalDelayedPenaltyAdditionalFine;
     IParametersRegistry.MarkedUint248 keysLimit;
     uint256[2][] avgPerfLeewayData;
+    // Legacy ParametersRegistry compatibility value. Curated fees are sourced from CustomFeeRegistry.
     uint256[2][] rewardShareData;
     IParametersRegistry.MarkedUint248 strikesLifetimeFrames;
     IParametersRegistry.MarkedUint248 strikesThreshold;
@@ -135,6 +136,7 @@ struct CuratedDeployParams {
     uint256 defaultGeneralDelayedPenaltyAdditionalFine;
     uint256 defaultKeysLimit;
     uint256 defaultAvgPerfLeewayBP;
+    // Legacy ParametersRegistry compatibility value. Curated fees are sourced from CustomFeeRegistry.
     uint256 defaultRewardShareBP;
     uint256 defaultStrikesLifetimeFrames;
     uint256 defaultStrikesThreshold;

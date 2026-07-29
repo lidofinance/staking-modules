@@ -421,6 +421,13 @@ contract CustomFeeRegistryDeploymentTest is DeploymentBaseTest {
             assertEq(actual.value, deployParams.customFeeRegistryConfig.typeBonuses[i].value);
             assertEq(actual.negative, deployParams.customFeeRegistryConfig.typeBonuses[i].negative);
         }
+
+        uint256 defaultFee = customFeeRegistry.DEFAULT_MAX_FEE();
+        for (uint256 curveId; curveId < accounting.getCurvesCount(); ++curveId) {
+            TypeBonus memory bonus = customFeeRegistry.getTypeBonus(curveId);
+            uint256 effectiveFee = bonus.negative ? defaultFee - bonus.value : defaultFee + bonus.value;
+            assertEq(effectiveFee, curveId == 0 ? 6_250 : 8_750, "unexpected initial effective fee");
+        }
     }
 
     function test_immutables_onlyFull() public view {

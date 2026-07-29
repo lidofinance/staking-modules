@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { DeployBase, CuratedGateConfig } from "./DeployBase.s.sol";
+import { DeployBase, CuratedGateConfig, CurveTypeBonusConfig } from "./DeployBase.s.sol";
 import { StrikeThreshold } from "../../src/interfaces/INodeOperatorStrikes.sol";
 import { GIndices } from "../constants/GIndices.sol";
 
@@ -62,6 +62,7 @@ contract DeployMainnet is DeployBase {
         config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
         config.defaultKeysLimit = 100;
         config.defaultAvgPerfLeewayBP = 10000;
+        // Legacy ParametersRegistry compatibility value; Curated fees come from CustomFeeRegistry.
         config.defaultRewardShareBP = 6250; // 62.5% of 4% = 2.5% of the total
         config.defaultStrikesLifetimeFrames = 6;
         config.defaultStrikesThreshold = 3;
@@ -223,9 +224,13 @@ contract DeployMainnet is DeployBase {
         _addLDOLockBoostStep(200_000 ether, 1_500);
 
         // CustomFeeRegistry
-        // TODO: finalize custom fee parameters and per-type bonuses.
+        // TODO: finalize custom fee parameters.
         config.customFeeRegistryConfig.defaultMinFee = 2_500;
         config.customFeeRegistryConfig.feeIncreaseCooldown = 15 days;
+        // Professional Operator uses the default bond curve (curve 0): 8_750 - 2_500 = 6_250.
+        config.customFeeRegistryConfig.typeBonuses.push(
+            CurveTypeBonusConfig({ curveId: 0, value: 2_500, negative: true })
+        );
 
         _setUp();
     }
