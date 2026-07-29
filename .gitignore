@@ -1,5 +1,6 @@
 snapshots/
 node_modules/
+digest/
 
 .env*
 !.env.sample
@@ -8,6 +9,9 @@ node_modules/
 .vscode
 .direnv
 .DS_Store
+tmp/
+
+**/venv
 
 # Foundry files
 broadcast/
@@ -16,6 +20,7 @@ cache/
 out/
 localhost.json
 lcov.info
+ics-assessment/engagement/.cache/
 
 # Yarn
 .yarn/*
@@ -25,5 +30,6 @@ lcov.info
 !.yarn/sdks
 !.yarn/versions
 
+.local.just
 .wake/
 tags

@@ -1,7 +1,10 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
+
+/// @dev Target limit mode id for forced mode.
+uint8 constant FORCED_TARGET_LIMIT_MODE_ID = 2;
 
 /// @title Lido's Staking Module interface
 interface IStakingModule {
@@ -50,7 +53,7 @@ interface IStakingModule {
     /// @param _proofSlotTimestamp The timestamp (slot time) when the validator was last known to be in an active ongoing state.
     /// @param _publicKey The public key of the validator.
     /// @param _eligibleToExitInSec The number of seconds the validator was eligible to exit but did not.
-    /// @return bool Returns true if the contract should receive the updated status of the validator.
+    /// @return Returns true if the contract should receive the updated status of the validator.
     function isValidatorExitDelayPenaltyApplicable(
         uint256 _nodeOperatorId,
         uint256 _proofSlotTimestamp,
@@ -61,29 +64,23 @@ interface IStakingModule {
     /// @notice Returns the number of seconds after which a validator is considered late.
     /// @param _nodeOperatorId The ID of the node operator.
     /// @return The exit deadline threshold in seconds.
-    function exitDeadlineThreshold(
-        uint256 _nodeOperatorId
-    ) external view returns (uint256);
+    function exitDeadlineThreshold(uint256 _nodeOperatorId) external view returns (uint256);
 
     /// @notice Returns the type of the staking module
     /// @return Module type
     function getType() external view returns (bytes32);
 
     /// @notice Returns all-validators summary in the staking module
-    /// @return totalExitedValidators total number of validators in the EXITED state
+    /// @return totalExitedValidators Total number of validators in the EXITED state
     ///     on the Consensus Layer. This value can't decrease in normal conditions
-    /// @return totalDepositedValidators total number of validators deposited via the
+    /// @return totalDepositedValidators Total number of validators deposited via the
     ///     official Deposit Contract. This value is a cumulative counter: even when the validator
     ///     goes into EXITED state this counter is not decreasing
-    /// @return depositableValidatorsCount number of validators in the set available for deposit
+    /// @return depositableValidatorsCount Number of validators in the set available for deposit
     function getStakingModuleSummary()
         external
         view
-        returns (
-            uint256 totalExitedValidators,
-            uint256 totalDepositedValidators,
-            uint256 depositableValidatorsCount
-        );
+        returns (uint256 totalExitedValidators, uint256 totalDepositedValidators, uint256 depositableValidatorsCount);
 
     /// @notice Returns all-validators summary belonging to the node operator with the given id
     /// @param nodeOperatorId id of the operator to return report for
@@ -137,18 +134,13 @@ interface IStakingModule {
 
     /// @notice Returns if the node operator with given id is active
     /// @param nodeOperatorId Id of the node operator
-    function getNodeOperatorIsActive(
-        uint256 nodeOperatorId
-    ) external view returns (bool);
+    function getNodeOperatorIsActive(uint256 nodeOperatorId) external view returns (bool);
 
     /// @notice Returns up to `limit` node operator ids starting from the `offset`. The order of
     ///     the returned ids is not defined and might change between calls.
     /// @dev This view must not revert in case of invalid data passed. When `offset` exceeds the
     ///     total node operators count or when `limit` is equal to 0 MUST be returned empty array.
-    function getNodeOperatorIds(
-        uint256 offset,
-        uint256 limit
-    ) external view returns (uint256[] memory nodeOperatorIds);
+    function getNodeOperatorIds(uint256 offset, uint256 limit) external view returns (uint256[] memory nodeOperatorIds);
 
     /// @notice Called by StakingRouter to signal that stETH rewards were minted for this module.
     /// @param totalShares Amount of stETH shares that were minted to reward all node operators.
@@ -165,8 +157,8 @@ interface IStakingModule {
     ) external;
 
     /// @notice Updates the number of the validators in the EXITED state for node operator with given id
-    /// @param nodeOperatorIds bytes packed array of the node operators id
-    /// @param exitedValidatorsCounts bytes packed array of the new number of EXITED validators for the node operators
+    /// @param nodeOperatorIds Packed array of the node operators id
+    /// @param exitedValidatorsCounts Packed array of the new number of EXITED validators for the node operators
     function updateExitedValidatorsCount(
         bytes calldata nodeOperatorIds,
         bytes calldata exitedValidatorsCounts
@@ -189,14 +181,10 @@ interface IStakingModule {
     ///      'unsafely' means that this method can both increase and decrease exited and stuck counters
     /// @param _nodeOperatorId Id of the node operator
     /// @param _exitedValidatorsCount New number of EXITED validators for the node operator
-    function unsafeUpdateValidatorsCount(
-        uint256 _nodeOperatorId,
-        uint256 _exitedValidatorsCount
-    ) external;
+    function unsafeUpdateValidatorsCount(uint256 _nodeOperatorId, uint256 _exitedValidatorsCount) external;
 
     /// @notice Obtains deposit data to be used by StakingRouter to deposit to the Ethereum Deposit
     ///     contract
-    /// @dev The method MUST revert when the staking module has not enough deposit data items
     /// @param depositsCount Number of deposits to be done
     /// @param depositCalldata Staking module defined data encoded as bytes.
     ///        IMPORTANT: depositCalldata MUST NOT modify the deposit data set of the staking module
@@ -226,4 +214,30 @@ interface IStakingModule {
     /// @dev IMPORTANT: this method SHOULD revert with empty error data ONLY because of "out of gas".
     ///      Details about error data: https://docs.soliditylang.org/en/v0.8.9/control-structures.html#error-handling-assert-require-revert-and-exceptions
     function onWithdrawalCredentialsChanged() external;
+}
+
+interface IStakingModuleV2 {
+    /// @notice Returns the total tracked stake of the module in wei.
+    /// @dev This is the sum of the activation base for active validators and tracked extra stake.
+    ///      The tracked extra is intentionally reduced on withdrawal reporting rather than on intermediate validator balance decreases.
+    function getTotalModuleStake() external view returns (uint256 totalModuleStakeWei);
+
+    /// @notice Validates that provided keys belong to the corresponding operators in the module and calculates deposit allocations for top-up
+    /// @dev Reverts if any key doesn't belong to the module or data is invalid
+    /// @param maxDepositAmount Total ether amount available for top-up (must be multiple of 1 gwei)
+    /// @param pubkeys List of validator public keys to top up
+    /// @param keyIndices Indices of keys within their respective operators
+    /// @param operatorIds Node operator IDs that own the keys
+    /// @param topUpLimits Maximum amount that can be deposited per key based on CL data and SR internal logic.
+    /// @return allocations Amount to deposit to each key
+    /// @dev Values depositAmount, topUpLimits, allocations are denominated in wei
+    /// @dev allocations list can contain zero values
+    /// @dev sum of allocations can be less or equal to maxDepositAmount
+    function allocateDeposits(
+        uint256 maxDepositAmount,
+        bytes[] calldata pubkeys,
+        uint256[] calldata keyIndices,
+        uint256[] calldata operatorIds,
+        uint256[] calldata topUpLimits
+    ) external returns (uint256[] memory allocations);
 }

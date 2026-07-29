@@ -1,28 +1,23 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
-import "forge-std/Script.sol";
+import { Script } from "forge-std/Script.sol";
+
+import { IVEBO } from "src/interfaces/IVEBO.sol";
+import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
+import { NodeOperator, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
+
 import { DeploymentFixtures } from "test/helpers/Fixtures.sol";
-import { ForkHelpersCommon } from "./Common.sol";
-import "../../src/interfaces/IVEBO.sol";
-import { Utilities } from "../../test/helpers/Utilities.sol";
-import { IStakingRouter } from "../../src/interfaces/IStakingRouter.sol";
-import { NodeOperator, ValidatorWithdrawalInfo } from "../../src/interfaces/ICSModule.sol";
+import { Utilities } from "test/helpers/Utilities.sol";
 
-contract NodeOperators is
-    Script,
-    DeploymentFixtures,
-    ForkHelpersCommon,
-    Utilities
-{
+import { ForkHelpersCommon } from "./Common.sol";
+
+contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utilities {
     modifier broadcastPenaltyReporter() {
         _setUp();
-        address penaltyReporter = csm.getRoleMember(
-            csm.REPORT_EL_REWARDS_STEALING_PENALTY_ROLE(),
-            0
-        );
+        address penaltyReporter = module.getRoleMember(module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), 0);
         _setBalance(penaltyReporter);
         vm.startBroadcast(penaltyReporter);
         _;
@@ -31,10 +26,7 @@ contract NodeOperators is
 
     modifier broadcastPenaltySettler() {
         _setUp();
-        address penaltySettler = csm.getRoleMember(
-            csm.SETTLE_EL_REWARDS_STEALING_PENALTY_ROLE(),
-            0
-        );
+        address penaltySettler = module.getRoleMember(module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(), 0);
         _setBalance(penaltySettler);
         vm.startBroadcast(penaltySettler);
         _;
@@ -68,7 +60,7 @@ contract NodeOperators is
 
     modifier broadcastManager(uint256 noId) {
         _setUp();
-        address nodeOperator = csm.getNodeOperator(noId).managerAddress;
+        address nodeOperator = module.getNodeOperator(noId).managerAddress;
         _setBalance(nodeOperator);
         vm.startBroadcast(nodeOperator);
         _;
@@ -77,7 +69,7 @@ contract NodeOperators is
 
     modifier broadcastProposedManager(uint256 noId) {
         _setUp();
-        address nodeOperator = csm.getNodeOperator(noId).proposedManagerAddress;
+        address nodeOperator = module.getNodeOperator(noId).proposedManagerAddress;
         _setBalance(nodeOperator);
         vm.startBroadcast(nodeOperator);
         _;
@@ -86,7 +78,7 @@ contract NodeOperators is
 
     modifier broadcastReward(uint256 noId) {
         _setUp();
-        address nodeOperator = csm.getNodeOperator(noId).managerAddress;
+        address nodeOperator = module.getNodeOperator(noId).managerAddress;
         _setBalance(nodeOperator);
         vm.startBroadcast(nodeOperator);
         _;
@@ -95,211 +87,145 @@ contract NodeOperators is
 
     modifier broadcastProposedReward(uint256 noId) {
         _setUp();
-        address nodeOperator = csm.getNodeOperator(noId).proposedRewardAddress;
+        address nodeOperator = module.getNodeOperator(noId).proposedRewardAddress;
         _setBalance(nodeOperator);
         vm.startBroadcast(nodeOperator);
         _;
         vm.stopBroadcast();
     }
 
-    function proposeManagerAddress(
-        uint256 noId,
-        address managerAddress
-    ) external broadcastManager(noId) {
-        csm.proposeNodeOperatorManagerAddressChange(noId, managerAddress);
+    function proposeManagerAddress(uint256 noId, address managerAddress) external broadcastManager(noId) {
+        module.proposeNodeOperatorManagerAddressChange(noId, managerAddress);
     }
 
-    function proposeRewardAddress(
-        uint256 noId,
-        address rewardAddress
-    ) external broadcastReward(noId) {
-        csm.proposeNodeOperatorRewardAddressChange(noId, rewardAddress);
+    function proposeRewardAddress(uint256 noId, address rewardAddress) external broadcastReward(noId) {
+        module.proposeNodeOperatorRewardAddressChange(noId, rewardAddress);
     }
 
-    function confirmManagerAddress(
-        uint256 noId
-    ) external broadcastProposedManager(noId) {
-        csm.confirmNodeOperatorManagerAddressChange(noId);
+    function confirmManagerAddress(uint256 noId) external broadcastProposedManager(noId) {
+        module.confirmNodeOperatorManagerAddressChange(noId);
     }
 
-    function confirmRewardAddress(
-        uint256 noId
-    ) external broadcastProposedReward(noId) {
-        csm.confirmNodeOperatorRewardAddressChange(noId);
+    function confirmRewardAddress(uint256 noId) external broadcastProposedReward(noId) {
+        module.confirmNodeOperatorRewardAddressChange(noId);
     }
 
-    function addKeys(
-        uint256 noId,
-        uint256 keysCount
-    ) external broadcastManager(noId) {
+    function addKeys(uint256 noId, uint256 keysCount) external broadcastManager(noId) {
         uint256 amount = accounting.getRequiredBondForNextKeys(noId, keysCount);
         bytes memory keys = randomBytes(48 * keysCount);
         bytes memory signatures = randomBytes(96 * keysCount);
-        csm.addValidatorKeysETH{ value: amount }(
-            msg.sender,
-            noId,
-            keysCount,
-            keys,
-            signatures
-        );
+        module.addValidatorKeysETH{ value: amount }(msg.sender, noId, keysCount, keys, signatures);
     }
 
     function deposit(uint256 depositCount) external broadcastStakingRouter {
-        (, , uint256 depositableValidatorsCount) = csm
-            .getStakingModuleSummary();
-        if (depositCount > depositableValidatorsCount) {
-            depositCount = depositableValidatorsCount;
-        }
-        (, uint256 totalDepositedValidators, ) = csm.getStakingModuleSummary();
+        (, , uint256 depositableValidatorsCount) = module.getStakingModuleSummary();
+        if (depositCount > depositableValidatorsCount) depositCount = depositableValidatorsCount;
+        (, uint256 totalDepositedValidators, ) = module.getStakingModuleSummary();
 
-        csm.obtainDepositData(depositCount, "");
+        module.obtainDepositData(depositCount, "");
 
-        (, uint256 totalDepositedValidatorsAfter, ) = csm
-            .getStakingModuleSummary();
-        assertEq(
-            totalDepositedValidatorsAfter,
-            totalDepositedValidators + depositCount
-        );
+        (, uint256 totalDepositedValidatorsAfter, ) = module.getStakingModuleSummary();
+        assertEq(totalDepositedValidatorsAfter, totalDepositedValidators + depositCount);
     }
 
-    function removeKey(
-        uint256 noId,
-        uint256 keyIndex
-    ) external broadcastManager(noId) {
-        csm.removeKeys(noId, keyIndex, 1);
+    function removeKey(uint256 noId, uint256 keyIndex) external broadcastManager(noId) {
+        module.removeKeys(noId, keyIndex, 1);
     }
 
-    function unvet(
-        uint256 noId,
-        uint256 vettedKeysCount
-    ) external broadcastStakingRouter {
-        csm.decreaseVettedSigningKeysCount(
-            bytes.concat(bytes8(uint64(noId))),
-            bytes.concat(bytes16(uint128(vettedKeysCount)))
-        );
+    function unvet(uint256 noId, uint256 vettedKeysCount) external broadcastStakingRouter {
+        module.decreaseVettedSigningKeysCount(_encodeNodeOperatorId(noId), _encodeUint128Value(vettedKeysCount));
 
-        assertEq(csm.getNodeOperator(noId).totalVettedKeys, vettedKeysCount);
+        assertEq(module.getNodeOperator(noId).totalVettedKeys, vettedKeysCount);
     }
 
-    function exit(
-        uint256 noId,
-        uint256 exitedKeysCount
-    ) external broadcastStakingRouter {
-        csm.updateExitedValidatorsCount(
-            bytes.concat(bytes8(uint64(noId))),
-            bytes.concat(bytes16(uint128(exitedKeysCount)))
-        );
+    function exit(uint256 noId, uint256 exitedKeysCount) external broadcastStakingRouter {
+        module.updateExitedValidatorsCount(_encodeNodeOperatorId(noId), _encodeUint128Value(exitedKeysCount));
 
-        assertEq(csm.getNodeOperator(noId).totalExitedKeys, exitedKeysCount);
+        assertEq(module.getNodeOperator(noId).totalExitedKeys, exitedKeysCount);
+    }
+
+    function slash(uint256 noId, uint256 keyIndex) external broadcastVerifier {
+        module.reportValidatorSlashing(noId, keyIndex);
     }
 
     function withdraw(
         uint256 noId,
         uint256 keyIndex,
-        uint256 amount
+        uint256 exitBalance,
+        uint256 slashingPenalty
     ) external broadcastVerifier {
-        uint256 withdrawnBefore = csm.getNodeOperator(noId).totalWithdrawnKeys;
+        uint256 withdrawnBefore = module.getNodeOperator(noId).totalWithdrawnKeys;
 
-        ValidatorWithdrawalInfo[]
-            memory withdrawalInfo = new ValidatorWithdrawalInfo[](1);
-        withdrawalInfo[0] = ValidatorWithdrawalInfo(noId, keyIndex, amount);
-        csm.submitWithdrawals(withdrawalInfo);
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo(noId, keyIndex, exitBalance, slashingPenalty, slashingPenalty > 0);
+        module.reportRegularWithdrawnValidators(validatorInfos);
 
-        assertTrue(csm.isValidatorWithdrawn(noId, keyIndex));
-        assertEq(
-            csm.getNodeOperator(noId).totalWithdrawnKeys,
-            withdrawnBefore + 1
-        );
+        assertTrue(module.isValidatorWithdrawn(noId, keyIndex));
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, withdrawnBefore + 1);
     }
 
-    function targetLimit(
-        uint256 noId,
-        uint256 targetLimitMode,
-        uint256 limit
-    ) external broadcastStakingRouter {
-        csm.updateTargetValidatorsLimits(noId, targetLimitMode, limit);
+    function targetLimit(uint256 noId, uint256 targetLimitMode, uint256 limit) external broadcastStakingRouter {
+        module.updateTargetValidatorsLimits(noId, targetLimitMode, limit);
 
-        NodeOperator memory no = csm.getNodeOperator(noId);
+        NodeOperator memory no = module.getNodeOperator(noId);
         assertEq(no.targetLimit, limit);
         assertEq(no.targetLimitMode, targetLimitMode);
     }
 
-    function reportStealing(
-        uint256 noId,
-        uint256 amount
-    ) external broadcastPenaltyReporter {
-        uint256 lockedBefore = accounting.getActualLockedBond(noId);
+    function reportGeneralDelayedPenalty(uint256 noId, uint256 amount) external broadcastPenaltyReporter {
+        uint256 lockedBefore = accounting.getLockedBond(noId);
 
-        csm.reportELRewardsStealingPenalty(
-            noId,
-            blockhash(block.number),
-            amount
-        );
+        module.reportGeneralDelayedPenalty(noId, bytes32(abi.encode(1)), amount, "Test penalty");
 
-        uint256 lockedAfter = accounting.getActualLockedBond(noId);
+        uint256 lockedAfter = accounting.getLockedBond(noId);
         assertEq(
             lockedAfter,
             lockedBefore +
                 amount +
-                csm.PARAMETERS_REGISTRY().getElRewardsStealingAdditionalFine(
-                    accounting.getBondCurveId(noId)
-                )
+                module.PARAMETERS_REGISTRY().getGeneralDelayedPenaltyAdditionalFine(accounting.getBondCurveId(noId))
         );
     }
 
-    function cancelStealing(
-        uint256 noId,
-        uint256 amount
-    ) external broadcastPenaltyReporter {
-        uint256 lockedBefore = accounting.getActualLockedBond(noId);
+    function cancelGeneralDelayedPenalty(uint256 noId, uint256 amount) external broadcastPenaltyReporter {
+        uint256 lockedBefore = accounting.getLockedBond(noId);
 
-        csm.cancelELRewardsStealingPenalty(noId, amount);
+        module.cancelGeneralDelayedPenalty(noId, amount);
 
-        uint256 lockedAfter = accounting.getActualLockedBond(noId);
+        uint256 lockedAfter = accounting.getLockedBond(noId);
         assertEq(lockedAfter, lockedBefore - amount);
     }
 
-    function settleStealing(uint256 noId) external broadcastPenaltySettler {
+    function settleGeneralDelayedPenalty(uint256 noId) external broadcastPenaltySettler {
         uint256[] memory noIds = new uint256[](1);
         noIds[0] = noId;
-        csm.settleELRewardsStealingPenalty(noIds);
+        uint256[] memory maxAmounts = new uint256[](1);
+        maxAmounts[0] = type(uint256).max; // Set to max to settle
+        module.settleGeneralDelayedPenalty(noIds, maxAmounts);
 
-        assertEq(accounting.getActualLockedBond(noId), 0);
+        assertEq(accounting.getLockedBond(noId), 0);
     }
 
-    function compensateStealing(
-        uint256 noId,
-        uint256 amount
-    ) external broadcastStranger {
-        uint256 lockedBefore = accounting.getActualLockedBond(noId);
-
-        csm.compensateELRewardsStealingPenalty{ value: amount }(noId);
-
-        assertEq(accounting.getActualLockedBond(noId), lockedBefore - amount);
+    function compensateGeneralDelayedPenalty(uint256 noId) external broadcastStranger {
+        module.compensateGeneralDelayedPenalty(noId);
     }
 
-    function exitRequest(
-        uint256 noId,
-        uint256 validatorIndex,
-        bytes calldata validatorPubKey
-    ) external {
+    function exitRequest(uint256 noId, uint256 validatorIndex, bytes calldata validatorPubKey) external {
         _setUp();
         IVEBO vebo = IVEBO(locator.validatorsExitBusOracle());
         bytes memory data;
 
-        bytes3 moduleId = bytes3(uint24(_getCSMId()));
+        bytes3 moduleId = bytes3(uint24(_getModuleId()));
+        // Node operator ids stay below 2^40 (queue limit), mirroring production encoding.
+        // forge-lint: disable-next-line(unsafe-typecast)
         bytes5 nodeOpId = bytes5(uint40(noId));
+        // Validator indices are limited by the number of keys in the queue (< 2^32), so 64 bits suffice.
+        // forge-lint: disable-next-line(unsafe-typecast)
         bytes8 _validatorIndex = bytes8(uint64(validatorIndex));
 
         (, uint256 refSlot, , ) = vebo.getConsensusReport();
         uint256 reportRefSlot = refSlot + 1;
 
-        data = abi.encodePacked(
-            moduleId,
-            nodeOpId,
-            _validatorIndex,
-            validatorPubKey
-        );
+        data = abi.encodePacked(moduleId, nodeOpId, _validatorIndex, validatorPubKey);
         IVEBO.ReportData memory report = IVEBO.ReportData({
             consensusVersion: vebo.getConsensusVersion(),
             refSlot: reportRefSlot,
@@ -312,11 +238,7 @@ contract NodeOperators is
         _setBalance(consensus);
 
         vm.startBroadcast(consensus);
-        vebo.submitConsensusReport(
-            keccak256(abi.encode(report)),
-            reportRefSlot,
-            block.timestamp + 1 days
-        );
+        vebo.submitConsensusReport(keccak256(abi.encode(report)), reportRefSlot, block.timestamp + 1 days);
         vm.stopBroadcast();
 
         address veboSubmitter = _prepareVEBOSubmitter(vebo);
@@ -325,9 +247,7 @@ contract NodeOperators is
         vm.stopBroadcast();
     }
 
-    function _prepareVEBOSubmitter(
-        IVEBO vebo
-    ) internal returns (address veboSubmitter) {
+    function _prepareVEBOSubmitter(IVEBO vebo) internal returns (address veboSubmitter) {
         address veboAdmin = _prepareAdmin(address(vebo));
         veboSubmitter = nextAddress();
 
@@ -338,17 +258,14 @@ contract NodeOperators is
         _setBalance(address(veboSubmitter));
     }
 
-    error CSMNotFound();
+    error NodeOperatorsModuleNotFound();
 
-    function _getCSMId() internal view returns (uint256) {
+    function _getModuleId() internal view returns (uint256) {
         uint256[] memory ids = stakingRouter.getStakingModuleIds();
         for (uint256 i = ids.length - 1; i > 0; i--) {
-            IStakingRouter.StakingModule memory module = stakingRouter
-                .getStakingModule(ids[i]);
-            if (module.stakingModuleAddress == address(csm)) {
-                return ids[i];
-            }
+            IStakingRouter.StakingModule memory moduleInfo = stakingRouter.getStakingModule(ids[i]);
+            if (moduleInfo.stakingModuleAddress == address(module)) return ids[i];
         }
-        revert CSMNotFound();
+        revert NodeOperatorsModuleNotFound();
     }
 }

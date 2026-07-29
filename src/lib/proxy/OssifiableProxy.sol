@@ -1,11 +1,12 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
 import { StorageSlot } from "@openzeppelin/contracts/utils/StorageSlot.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { ERC1967Utils } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
+import { IERC1967 } from "@openzeppelin/contracts/interfaces/IERC1967.sol";
 
 /// @notice An ossifiable proxy contract. Extends the ERC1967Proxy contract by
 ///     adding admin functionality
@@ -18,13 +19,7 @@ contract OssifiableProxy is ERC1967Proxy {
     /// @dev Validates that proxy is not ossified and that method is called by the admin
     ///     of the proxy
     modifier onlyAdmin() {
-        address admin = ERC1967Utils.getAdmin();
-        if (admin == address(0)) {
-            revert ProxyIsOssified();
-        }
-        if (admin != msg.sender) {
-            revert NotAdmin();
-        }
+        _onlyAdmin();
         _;
     }
 
@@ -33,11 +28,7 @@ contract OssifiableProxy is ERC1967Proxy {
     /// @param admin_ Address of the admin of the proxy
     /// @param data_ Data used in a delegate call to implementation. The delegate call will be
     ///     skipped if the data is empty bytes
-    constructor(
-        address implementation_,
-        address admin_,
-        bytes memory data_
-    ) ERC1967Proxy(implementation_, data_) {
+    constructor(address implementation_, address admin_, bytes memory data_) ERC1967Proxy(implementation_, data_) {
         ERC1967Utils.changeAdmin(admin_);
     }
 
@@ -56,7 +47,7 @@ contract OssifiableProxy is ERC1967Proxy {
     function proxy__ossify() external onlyAdmin {
         address prevAdmin = ERC1967Utils.getAdmin();
         StorageSlot.getAddressSlot(ERC1967Utils.ADMIN_SLOT).value = address(0);
-        emit ERC1967Utils.AdminChanged(prevAdmin, address(0));
+        emit IERC1967.AdminChanged(prevAdmin, address(0));
         emit ProxyOssified();
     }
 
@@ -79,10 +70,7 @@ contract OssifiableProxy is ERC1967Proxy {
     /// @param newImplementation_ Address of the new implementation
     /// @param setupCalldata_ Data for the setup call. The call is skipped if setupCalldata_ is empty
     // solhint-disable-next-line func-name-mixedcase
-    function proxy__upgradeToAndCall(
-        address newImplementation_,
-        bytes calldata setupCalldata_
-    ) external onlyAdmin {
+    function proxy__upgradeToAndCall(address newImplementation_, bytes calldata setupCalldata_) external onlyAdmin {
         ERC1967Utils.upgradeToAndCall(newImplementation_, setupCalldata_);
     }
 
@@ -102,5 +90,11 @@ contract OssifiableProxy is ERC1967Proxy {
     // solhint-disable-next-line func-name-mixedcase
     function proxy__getIsOssified() external view returns (bool) {
         return ERC1967Utils.getAdmin() == address(0);
+    }
+
+    function _onlyAdmin() internal view {
+        address admin = ERC1967Utils.getAdmin();
+        if (admin == address(0)) revert ProxyIsOssified();
+        if (admin != msg.sender) revert NotAdmin();
     }
 }

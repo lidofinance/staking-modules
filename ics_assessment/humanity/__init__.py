@@ -1,0 +1,1 @@
+"""Humanity assessment package."""

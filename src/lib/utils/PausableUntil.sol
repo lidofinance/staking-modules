@@ -1,6 +1,6 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
 import { UnstructuredStorage } from "../UnstructuredStorage.sol";
 
@@ -8,8 +8,7 @@ contract PausableUntil {
     using UnstructuredStorage for bytes32;
 
     /// Contract resume/pause control storage slot
-    bytes32 internal constant RESUME_SINCE_TIMESTAMP_POSITION =
-        keccak256("lido.PausableUntil.resumeSinceTimestamp");
+    bytes32 internal constant RESUME_SINCE_TIMESTAMP_POSITION = keccak256("lido.PausableUntil.resumeSinceTimestamp");
     /// Special value for the infinite pause
     uint256 public constant PAUSE_INFINITELY = type(uint256).max;
 
@@ -36,18 +35,16 @@ contract PausableUntil {
     }
 
     /// @notice Returns one of:
-    ///  - PAUSE_INFINITELY if paused infinitely returns
-    ///  - first second when get contract get resumed if paused for specific duration
-    ///  - some timestamp in past if not paused
+    ///  - PAUSE_INFINITELY if paused infinitely
+    ///  - first second when the contract gets resumed if paused for a specific duration
+    ///  - some timestamp in the past if not paused
     function getResumeSinceTimestamp() external view returns (uint256) {
         return RESUME_SINCE_TIMESTAMP_POSITION.getStorageUint256();
     }
 
     /// @notice Returns whether the contract is paused
     function isPaused() public view returns (bool) {
-        return
-            block.timestamp <
-            RESUME_SINCE_TIMESTAMP_POSITION.getStorageUint256();
+        return block.timestamp < RESUME_SINCE_TIMESTAMP_POSITION.getStorageUint256();
     }
 
     function _resume() internal {
@@ -58,9 +55,7 @@ contract PausableUntil {
 
     function _pauseFor(uint256 duration) internal {
         _checkResumed();
-        if (duration == 0) {
-            revert ZeroPauseDuration();
-        }
+        if (duration == 0) revert ZeroPauseDuration();
 
         uint256 resumeSince;
         if (duration == PAUSE_INFINITELY) {
@@ -73,9 +68,7 @@ contract PausableUntil {
 
     function _pauseUntil(uint256 pauseUntilInclusive) internal {
         _checkResumed();
-        if (pauseUntilInclusive < block.timestamp) {
-            revert PauseUntilMustBeInFuture();
-        }
+        if (pauseUntilInclusive < block.timestamp) revert PauseUntilMustBeInFuture();
 
         uint256 resumeSince;
         if (pauseUntilInclusive != PAUSE_INFINITELY) {
@@ -96,14 +89,10 @@ contract PausableUntil {
     }
 
     function _checkPaused() internal view {
-        if (!isPaused()) {
-            revert PausedExpected();
-        }
+        if (!isPaused()) revert PausedExpected();
     }
 
     function _checkResumed() internal view {
-        if (isPaused()) {
-            revert ResumedExpected();
-        }
+        if (isPaused()) revert ResumedExpected();
     }
 }

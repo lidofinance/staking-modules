@@ -1,12 +1,12 @@
 # AssetRecovererLib
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/lib/AssetRecovererLib.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/lib/AssetRecovererLib.sol)
 
 
 ## Functions
 ### recoverEther
 
-*Allows the sender to recover Ether held by the contract.
-Emits an EtherRecovered event upon success.*
+Allows the sender to recover Ether held by the contract.
+Emits an EtherRecovered event upon success.
 
 
 ```solidity
@@ -15,7 +15,7 @@ function recoverEther() external;
 
 ### recoverERC20
 
-*Allows the sender to recover ERC20 tokens held by the contract.*
+Allows the sender to recover ERC20 tokens held by the contract.
 
 
 ```solidity
@@ -31,8 +31,8 @@ function recoverERC20(address token, uint256 amount) external;
 
 ### recoverStETHShares
 
-*Allows the sender to recover stETH shares held by the contract.
-The use of a separate method for stETH is to avoid rounding problems when converting shares to stETH.*
+Allows the sender to recover stETH shares held by the contract.
+The use of a separate method for stETH is to avoid rounding problems when converting shares to stETH.
 
 
 ```solidity
@@ -48,7 +48,7 @@ function recoverStETHShares(address lido, uint256 shares) external;
 
 ### recoverERC721
 
-*Allows the sender to recover ERC721 tokens held by the contract.*
+Allows the sender to recover ERC721 tokens held by the contract.
 
 
 ```solidity
@@ -64,7 +64,7 @@ function recoverERC721(address token, uint256 tokenId) external;
 
 ### recoverERC1155
 
-*Allows the sender to recover ERC1155 tokens held by the contract.*
+Allows the sender to recover ERC1155 tokens held by the contract.
 
 
 ```solidity

@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
 interface ILidoLocator {
     error ZeroAddress();
@@ -10,10 +10,7 @@ interface ILidoLocator {
 
     function burner() external view returns (address);
 
-    function coreComponents()
-        external
-        view
-        returns (address, address, address, address, address, address);
+    function coreComponents() external view returns (address, address, address, address, address, address);
 
     function depositSecurityModule() external view returns (address);
 
@@ -37,6 +34,8 @@ interface ILidoLocator {
     function stakingRouter() external view returns (address payable);
 
     function treasury() external view returns (address);
+
+    function topUpGateway() external view returns (address);
 
     function validatorsExitBusOracle() external view returns (address);
 

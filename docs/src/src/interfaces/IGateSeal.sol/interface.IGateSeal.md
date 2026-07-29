@@ -1,5 +1,5 @@
 # IGateSeal
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/interfaces/IGateSeal.sol)
+[Git Source](https://github.com/lidofinance/community-staking-module/blob/de4144084a97217bb3f534716c5d2055d3f33c86/src/interfaces/IGateSeal.sol)
 
 
 ## Functions

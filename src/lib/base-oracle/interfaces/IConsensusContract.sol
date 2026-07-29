@@ -1,23 +1,25 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
 interface IConsensusContract {
+    function MANAGE_FRAME_CONFIG_ROLE() external view returns (bytes32);
+
     function getIsMember(address addr) external view returns (bool);
 
-    function getCurrentFrame()
-        external
-        view
-        returns (uint256 refSlot, uint256 reportProcessingDeadlineSlot);
+    function getCurrentFrame() external view returns (uint256 refSlot, uint256 reportProcessingDeadlineSlot);
 
     function getChainConfig()
         external
         view
-        returns (
-            uint256 slotsPerEpoch,
-            uint256 secondsPerSlot,
-            uint256 genesisTime
-        );
+        returns (uint256 slotsPerEpoch, uint256 secondsPerSlot, uint256 genesisTime);
+
+    function getFrameConfig()
+        external
+        view
+        returns (uint256 initialEpoch, uint256 epochsPerFrame, uint256 fastLaneLengthSlots);
 
     function getInitialRefSlot() external view returns (uint256);
+
+    function setFrameConfig(uint256 epochsPerFrame, uint256 fastLaneLengthSlots) external;
 }

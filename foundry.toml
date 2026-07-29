@@ -1,32 +1,33 @@
 [profile.default]
-solc = "0.8.24"
-evm_version = "cancun"
+evm_version = "osaka"
 optimizer = true
-optimizer_runs = 250
+optimizer_runs = 150
 bytecode_hash = "none" # The metadata hash removed from the bytecode (not the metadata itself).
 # uncomment this to inspect storage layouts in build artifacts
 # extra_output = ["storageLayout"]
+verbosity = 3
 
 src = "src"
 out = "out"
 libs = ["lib", "node_modules"]
-cache_path  = "cache"
+cache_path = "cache"
 
 block_gas_limit = 30_000_000
-fuzz = { runs = 256 }
+fuzz = { runs = 256, max_test_rejects = 100_000 }
+ffi = true
 
 gas_reports = [
     "VettedGate",
     "PermissionlessGate",
-    "CSAccounting",
-    "CSFeeDistributor",
-    "CSFeeOracle",
+    "Accounting",
+    "FeeDistributor",
+    "FeeOracle",
     "CSModule",
-    "CSVerifier",
-    "CSPerksRegistry",
+    "Verifier",
+    "ParametersRegistry",
     "AssetRecovererLib",
     "OssifiableProxy",
-    "HashConsensus"
+    "HashConsensus",
 ]
 
 fs_permissions = [
@@ -35,13 +36,27 @@ fs_permissions = [
     { access = "read", path = "./test/fixtures" },
 ]
 
-ignored_warnings_from = ["src/lib/base-oracle/HashConsensus.sol", "test/OssifiableProxy.t.sol"]
+ignored_warnings_from = [
+    "src/lib/base-oracle/HashConsensus.sol",
+    "test/OssifiableProxy.t.sol",
+    "node_modules"
+]
+
+[profile.lite]
+optimizer = false
+fuzz = { runs = 50 }
+block_gas_limit = 60_000_000
 
 [profile.ci]
 verbosity = 3
+eth_rpc_timeout = 120
 fuzz = { runs = 10_000, max_test_rejects = 2_000_000 }
+block_gas_limit = 60_000_000
 
-# See more config options https://github.com/foundry-rs/foundry/tree/master/crates/config
+[profile.ci_quick]
+verbosity = 3
+eth_rpc_timeout = 120
+fuzz = { runs = 1000, max_test_rejects = 500_000 }
 
 [profile.coverage]
 # due to coverage running with optimizer disabled, we need to increase the gas limit
@@ -55,4 +70,20 @@ block_gas_limit = 60_000_000
 
 [profile.upgrades]
 extra_output = ["storageLayout"]
-build_info=true
+build_info = true
+
+[lint]
+lint_on_build = false
+exclude_lints = [
+    # Temporarily silence all existing lint findings; we will re-enable them one by one.
+    "asm-keccak256",
+    "mixed-case-function",
+    "mixed-case-variable",
+    "named-struct-fields",
+    "pascal-case-struct",
+    "erc20-unchecked-transfer",
+    "incorrect-shift",
+    "unsafe-cheatcode",
+]
+
+# See more config options https://github.com/foundry-rs/foundry/tree/master/crates/config

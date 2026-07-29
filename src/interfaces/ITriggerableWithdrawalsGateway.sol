@@ -1,6 +1,6 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
 struct ValidatorData {
     uint256 stakingModuleId;
@@ -9,6 +9,18 @@ struct ValidatorData {
 }
 
 interface ITriggerableWithdrawalsGateway {
+    function ADD_FULL_WITHDRAWAL_REQUEST_ROLE() external view returns (bytes32);
+
+    function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
+
+    function getRoleMember(bytes32 role, uint256 index) external view returns (address);
+
+    function grantRole(bytes32 role, address account) external;
+
+    function revokeRole(bytes32 role, address account) external;
+
+    function hasRole(bytes32 role, address account) external view returns (bool);
+
     /**
      * @dev Submits Triggerable Withdrawal Requests to the Withdrawal Vault as full withdrawal requests
      *      for the specified validator public keys.

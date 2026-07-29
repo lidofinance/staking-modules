@@ -1,10 +1,10 @@
-// The script can be used to find the gindicies required for CSVerifier deployment.
+// The script can be used to find the gindicies required for Verifier deployment.
 
 import { concatGindices } from "@chainsafe/persistent-merkle-tree";
 import { ssz } from "@lodestar/types";
 
-for (const fork of ["deneb", "electra"]) {
-  /** @type ssz.deneb|ssz.electra */
+for (const fork of ["electra"]) {
+  /** @type ssz.electra */
   const Fork = ssz[fork];
 
   {
@@ -34,6 +34,14 @@ for (const fork of ["deneb", "electra"]) {
   }
 
   {
+    const Balances = Fork.BeaconState.getPathInfo(["balances"]).type;
+
+    const gI = pack(Fork.BeaconState.getPathInfo(["balances", 0]).gindex, Balances.limit);
+
+    console.log(`${fork}::gIFirstBalanceNode:`, toBytes32String(gI));
+  }
+
+  {
     const HistoricalSummaries = Fork.BeaconState.getPathInfo(["historicalSummaries"]).type;
     const gI = pack(
       Fork.BeaconState.getPathInfo(["historicalSummaries", 0]).gindex,
@@ -42,25 +50,10 @@ for (const fork of ["deneb", "electra"]) {
     console.log(`${fork}::gIFirstHistoricalSummary:`, toBytes32String(gI));
   }
 
-  {
-    const HistoricalSummary = Fork.BeaconState.getPathInfo(["historicalSummaries", 0]).type;
-    const BlockRoots = Fork.BeaconState.getPathInfo(["blockRoots"]).type;
-
-    const gI = pack(
-      concatGindices([
-        HistoricalSummary.getPathInfo(["blockSummaryRoot"]).gindex,
-        BlockRoots.getPropertyGindex(0),
-      ]),
-      BlockRoots.length,
-    );
-
-    console.log(`${fork}::gIFirstBlockRootInSummary:`, toBytes32String(gI));
-  }
-
   console.log();
 }
 
-// Analog of the GIndex.pack (lib used in CSVerifier)
+// Analog of the GIndex.pack (lib used in Verifier)
 // @param {bigint} gI
 // @param {number} limit
 // @return {bigint}

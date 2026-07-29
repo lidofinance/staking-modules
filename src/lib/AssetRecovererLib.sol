@@ -1,6 +1,6 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -10,23 +10,10 @@ import { ILido } from "../interfaces/ILido.sol";
 
 interface IAssetRecovererLib {
     event EtherRecovered(address indexed recipient, uint256 amount);
-    event ERC20Recovered(
-        address indexed token,
-        address indexed recipient,
-        uint256 amount
-    );
+    event ERC20Recovered(address indexed token, address indexed recipient, uint256 amount);
     event StETHSharesRecovered(address indexed recipient, uint256 shares);
-    event ERC721Recovered(
-        address indexed token,
-        uint256 tokenId,
-        address indexed recipient
-    );
-    event ERC1155Recovered(
-        address indexed token,
-        uint256 tokenId,
-        address indexed recipient,
-        uint256 amount
-    );
+    event ERC721Recovered(address indexed token, uint256 tokenId, address indexed recipient);
+    event ERC1155Recovered(address indexed token, uint256 tokenId, address indexed recipient, uint256 amount);
 
     error FailedToSendEther();
     error NotAllowedToRecover();
@@ -36,6 +23,7 @@ interface IAssetRecovererLib {
  * @title AssetRecovererLib
  * @dev Library providing mechanisms for recovering various asset types (ETH, ERC20, ERC721, ERC1155).
  * This library is designed to be used by a contract that implements the AssetRecoverer interface.
+ * External deployment-linked library used by multiple production contracts.
  */
 library AssetRecovererLib {
     using SafeERC20 for IERC20;
@@ -47,9 +35,7 @@ library AssetRecovererLib {
     function recoverEther() external {
         uint256 amount = address(this).balance;
         (bool success, ) = msg.sender.call{ value: amount }("");
-        if (!success) {
-            revert IAssetRecovererLib.FailedToSendEther();
-        }
+        if (!success) revert IAssetRecovererLib.FailedToSendEther();
 
         emit IAssetRecovererLib.EtherRecovered(msg.sender, amount);
     }
@@ -96,18 +82,7 @@ library AssetRecovererLib {
      */
     function recoverERC1155(address token, uint256 tokenId) external {
         uint256 amount = IERC1155(token).balanceOf(address(this), tokenId);
-        IERC1155(token).safeTransferFrom({
-            from: address(this),
-            to: msg.sender,
-            id: tokenId,
-            value: amount,
-            data: ""
-        });
-        emit IAssetRecovererLib.ERC1155Recovered(
-            token,
-            tokenId,
-            msg.sender,
-            amount
-        );
+        IERC1155(token).safeTransferFrom({ from: address(this), to: msg.sender, id: tokenId, value: amount, data: "" });
+        emit IAssetRecovererLib.ERC1155Recovered(token, tokenId, msg.sender, amount);
     }
 }

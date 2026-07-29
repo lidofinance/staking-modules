@@ -2,7 +2,13 @@
 
 # Contents
 - [AssetRecoverer](AssetRecoverer.sol/abstract.AssetRecoverer.md)
-- [CSBondCore](CSBondCore.sol/abstract.CSBondCore.md)
-- [CSBondCurve](CSBondCurve.sol/abstract.CSBondCurve.md)
-- [CSBondLock](CSBondLock.sol/abstract.CSBondLock.md)
+- [BaseModule](BaseModule.sol/abstract.BaseModule.md)
+- [BondCore](BondCore.sol/abstract.BondCore.md)
+- [BondCurve](BondCurve.sol/abstract.BondCurve.md)
+- [BondLock](BondLock.sol/abstract.BondLock.md)
 - [ExitTypes](ExitTypes.sol/abstract.ExitTypes.md)
+- [FeeSplits](FeeSplits.sol/abstract.FeeSplits.md)
+- [MerkleGate](MerkleGate.sol/abstract.MerkleGate.md)
+- [ModuleLinearStorage](ModuleLinearStorage.sol/abstract.ModuleLinearStorage.md)
+- [NamedUpgradeable](NamedUpgradeable.sol/abstract.NamedUpgradeable.md)
+- [PausableWithRoles](PausableWithRoles.sol/abstract.PausableWithRoles.md)

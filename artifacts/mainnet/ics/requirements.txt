@@ -1,2 +1,2 @@
 requests
-web3py==6
+web3

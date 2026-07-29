@@ -1,24 +1,21 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
 /// @author skhomuti
 library ValidatorCountsReport {
     error InvalidReportData();
 
-    function safeCountOperators(
-        bytes calldata ids,
-        bytes calldata counts
-    ) internal pure returns (uint256) {
-        if (
-            counts.length / 16 != ids.length / 8 ||
-            ids.length % 8 != 0 ||
-            counts.length % 16 != 0
-        ) {
-            revert InvalidReportData();
+    function safeCountOperators(bytes calldata ids, bytes calldata counts) internal pure returns (uint256 len) {
+        bool ok;
+
+        assembly ("memory-safe") {
+            len := div(ids.length, 8)
+
+            ok := and(eq(ids.length, mul(len, 8)), eq(counts.length, mul(len, 16)))
         }
 
-        return ids.length / 8;
+        if (!ok) revert InvalidReportData();
     }
 
     function next(

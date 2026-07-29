@@ -1,8 +1,8 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
-import "../../../src/interfaces/IStETH.sol";
+import { IStETH } from "../../../src/interfaces/IStETH.sol";
 
 contract DistributorMock {
     uint256 internal mockShares;

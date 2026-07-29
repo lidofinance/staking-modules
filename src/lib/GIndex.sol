@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
 type GIndex is bytes32;
 
@@ -13,9 +13,7 @@ error IndexOutOfRange();
 /// @param p Is a power of a tree level the node belongs to.
 /// @return GIndex
 function pack(uint256 gI, uint8 p) pure returns (GIndex) {
-    if (gI > type(uint248).max) {
-        revert IndexOutOfRange();
-    }
+    if (gI > type(uint248).max) revert IndexOutOfRange();
 
     // NOTE: We can consider adding additional metadata like a fork version.
     return GIndex.wrap(bytes32((gI << 8) | p));
@@ -46,9 +44,7 @@ function shr(GIndex self, uint256 n) pure returns (GIndex) {
     uint256 i = index(self);
     uint256 w = width(self);
 
-    if ((i % w) + n >= w) {
-        revert IndexOutOfRange();
-    }
+    if ((i % w) + n >= w) revert IndexOutOfRange();
 
     return pack(i + n, pow(self));
 }
@@ -58,9 +54,7 @@ function shl(GIndex self, uint256 n) pure returns (GIndex) {
     uint256 i = index(self);
     uint256 w = width(self);
 
-    if (i % w < n) {
-        revert IndexOutOfRange();
-    }
+    if (i % w < n) revert IndexOutOfRange();
 
     return pack(i - n, pow(self));
 }
@@ -73,29 +67,19 @@ function concat(GIndex lhs, GIndex rhs) pure returns (GIndex) {
     uint256 lhsMSbIndex = fls(lindex);
     uint256 rhsMSbIndex = fls(rindex);
 
-    if (lhsMSbIndex + 1 + rhsMSbIndex > 248) {
-        revert IndexOutOfRange();
-    }
+    if (lhsMSbIndex + 1 + rhsMSbIndex > 248) revert IndexOutOfRange();
 
-    return
-        pack((lindex << rhsMSbIndex) | (rindex ^ (1 << rhsMSbIndex)), pow(rhs));
+    return pack((lindex << rhsMSbIndex) | (rindex ^ (1 << rhsMSbIndex)), pow(rhs));
 }
 
-/// @dev From Solady LibBit, see https://github.com/Vectorized/solady/blob/main/src/utils/LibBit.sol.
 /// @dev Find last set.
 /// Returns the index of the most significant bit of `x`,
 /// counting from the least significant bit position.
 /// If `x` is zero, returns 256.
 function fls(uint256 x) pure returns (uint256 r) {
+    if (x == 0) return 256;
+
     assembly ("memory-safe") {
-        // prettier-ignore
-        r := or(shl(8, iszero(x)), shl(7, lt(0xffffffffffffffffffffffffffffffff, x)))
-        r := or(r, shl(6, lt(0xffffffffffffffff, shr(r, x))))
-        r := or(r, shl(5, lt(0xffffffff, shr(r, x))))
-        r := or(r, shl(4, lt(0xffff, shr(r, x))))
-        r := or(r, shl(3, lt(0xff, shr(r, x))))
-        // prettier-ignore
-        r := or(r, byte(and(0x1f, shr(shr(r, x), 0x8421084210842108cc6318c6db6d54be)),
-                0x0706060506020504060203020504030106050205030304010505030400000000))
+        r := sub(255, clz(x))
     }
 }

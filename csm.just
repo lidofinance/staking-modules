@@ -1,0 +1,135 @@
+deploy_script_name := "Deploy" + chain_script_suffix
+deploy_csm_implementations_script_name := "DeployCSMImplementations" + chain_script_suffix
+
+deploy_config_path := "artifacts" / chain / "csm" / "deploy-" + chain + ".json"
+deploy_script_path := "script" / "csm" / deploy_script_name + ".s.sol:" + deploy_script_name
+deploy_csm_impls_script_path := "script" / "csm" / deploy_csm_implementations_script_name + ".s.sol:" + deploy_csm_implementations_script_name
+
+csm_artifacts_latest_dir := "./artifacts/latest/csm/"
+csm_artifacts_local_dir := "./artifacts/local/csm/"
+csm_latest_transactions_path := csm_artifacts_latest_dir + "transactions.json"
+csm_local_transactions_path := csm_artifacts_local_dir + "transactions.json"
+csm_latest_deploy_config_path := csm_artifacts_latest_dir + "deploy-" + chain + ".json"
+csm_local_deploy_config_path := csm_artifacts_local_dir + "deploy-" + chain + ".json"
+csm_latest_upgrade_config_path := csm_artifacts_latest_dir + "upgrade-" + chain + ".json"
+csm_local_upgrade_config_path := csm_artifacts_local_dir + "upgrade-" + chain + ".json"
+
+# Deployment
+
+deploy-csm *args:
+    ARTIFACTS_DIR={{csm_artifacts_local_dir}} \
+        just _deploy-generic {{deploy_script_path}} {{anvil_rpc_url}} {{args}}
+    just _finalize-broadcast-artifacts {{deploy_script_name}} {{anvil_rpc_url}} "" "run-latest.json" {{csm_local_deploy_config_path}}
+
+deploy-csm-live *args:
+    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
+    ARTIFACTS_DIR={{csm_artifacts_latest_dir}} \
+        just _deploy-live-generic {{deploy_script_path}} {{args}}
+    just _finalize-broadcast-artifacts {{deploy_script_name}} $RPC_URL "" "run-latest.json" {{csm_latest_deploy_config_path}}
+
+deploy-csm-live-no-confirm *args:
+    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
+    ARTIFACTS_DIR={{csm_artifacts_latest_dir}} \
+        just _deploy-live-generic-no-confirm {{deploy_script_path}} --broadcast {{args}}
+    just _finalize-broadcast-artifacts {{deploy_script_name}} $RPC_URL "" "run-latest.json" {{csm_latest_deploy_config_path}}
+
+deploy-csm-live-dry *args:
+    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
+    ARTIFACTS_DIR={{csm_artifacts_local_dir}} \
+        just _deploy-live-generic-dry {{deploy_script_path}} {{args}}
+    just _finalize-broadcast-artifacts {{deploy_script_name}} $RPC_URL "/dry-run" "run-latest.json" {{csm_local_deploy_config_path}}
+
+verify-csm-live *args:
+    just _warn "Pass --chain=your_chain manually. e.g. --chain=hoodi for testnet deployment"
+    just _verify-live-generic {{deploy_script_path}} {{args}}
+
+deploy-csm-impl *args:
+    ARTIFACTS_DIR={{csm_artifacts_local_dir}} \
+        just _deploy-csm-impl {{args}}
+
+[confirm("You are about to broadcast deployment transactions to the network. Are you sure?")]
+deploy-csm-impl-live *args:
+    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
+    just _assert-clean-workspace
+    ARTIFACTS_DIR={{csm_artifacts_latest_dir}} \
+        just _deploy-csm-impl --broadcast --verify {{args}}
+    just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "" "deploy-latest.json" {{csm_latest_upgrade_config_path}}
+
+deploy-csm-impl-live-no-confirm *args:
+    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
+    ARTIFACTS_DIR={{csm_artifacts_latest_dir}} \
+        just _deploy-csm-impl --broadcast --verify {{args}}
+    just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "" "deploy-latest.json" {{csm_latest_upgrade_config_path}}
+
+deploy-csm-impl-dry *args:
+    just _warn "The current `tput bold`chain={{chain}}`tput sgr0` with the following rpc url: $RPC_URL"
+    ARTIFACTS_DIR={{csm_artifacts_local_dir}} \
+        just _deploy-csm-impl {{args}}
+    just _finalize-broadcast-artifacts {{deploy_csm_implementations_script_name}} $RPC_URL "/dry-run" "deploy-latest.json" {{csm_local_upgrade_config_path}}
+
+# Governance helpers
+upgrade-csm-v3:
+    just vote-upgrade
+
+# Local fork flows
+
+# Start/reuse local fork and keep it running after deployment.
+deploy-csm-local *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    just _fork-up > /dev/null
+
+    just deploy-csm {{args}}
+    just _warn "anvil is kept running in the background: {{anvil_rpc_url}}"
+
+# Deploy CSM from scratch, add module to the SR, and run deployment and integration tests
+test-csm-local *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    eval "$(just _fork-up-and-down)"
+
+    local_private_key="$(just _local-private-key)"
+    just deploy-csm --silent --private-key="${local_private_key}" {{disable_code_size_limit}}
+
+    export DEPLOY_CONFIG={{csm_local_deploy_config_path}}
+    export RPC_URL={{anvil_rpc_url}}
+
+    just vote-add-module
+    just test-deployment-full-afterVote {{args}}
+    just test-integration {{args}}
+
+# Deploy CSM from scratch and run deployment tests
+test-csm-full-deploy *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    eval "$(just _fork-up-and-down)"
+
+    local_private_key="$(just _local-private-key)"
+    just deploy-csm --private-key="${local_private_key}" {{disable_code_size_limit}} -vvv
+
+    export DEPLOY_CONFIG={{csm_local_deploy_config_path}}
+    export RPC_URL={{anvil_rpc_url}}
+
+    just test-deployment-full-scratch {{args}}
+
+# Run utility tests on fork with current state
+test-csm-current *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    eval "$(just _fork-up-and-down)"
+
+    export RPC_URL={{anvil_rpc_url}}
+    export DEPLOY_CONFIG={{deploy_config_path}}
+
+    just test-utils {{args}}
+
+# Internal helpers
+_deploy-csm-impl *args:
+    FOUNDRY_PROFILE=deploy \
+        forge script {{deploy_csm_impls_script_path}} --sig="deploy(string,string)" \
+            --rpc-url ${RPC_URL} {{disable_code_size_limit}} {{args}} \
+            -- {{deploy_config_path}} `git rev-parse HEAD`

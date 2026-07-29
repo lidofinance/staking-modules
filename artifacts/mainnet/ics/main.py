@@ -1,13 +1,15 @@
 import json
+import os
 from web3 import Web3
 
-PROVIDER_URL_MAINNET = "http://localhost:8545"  # Replace with your actual Web3 provider URL
+PROVIDER_URL_MAINNET = os.environ.get('PROVIDER_URL_MAINNET')
 CONTRACT_ADDRESS_MAINNET = '0xdA7dE2ECdDfccC6c3AF10108Db212ACBBf9EA83F'
 
 with open("abi/csm_abi.json", "r") as file:
     CSM_ABI = file.read()
 
 REFERENCE_BLOCK_MAINNET = 22845716
+ICS_ROUNDS = 5
 
 exclude_files = [
     "exclude/allnodes.json",
@@ -35,6 +37,14 @@ def main():
     filtered_nos = ea_nos - exclude
     print(f"Filtered Node Operators (excluding {len(exclude)}): {len(filtered_nos)}")
 
+    ics_addresses = []
+
+    for i in range(ICS_ROUNDS):
+        with open(f"sources/ics_assessment_{i+1}.json", "r") as f:
+            ics_addresses.append(json.load(f))
+        print(f"Total ICS Round {i+1} Addresses: {len(ics_addresses[i])}")
+
+
     w3 = Web3(Web3.HTTPProvider(PROVIDER_URL_MAINNET))
     contract = w3.eth.contract(address=CONTRACT_ADDRESS_MAINNET, abi=CSM_ABI, decode_tuples=True)
 
@@ -45,8 +55,22 @@ def main():
         final_addresses.append(no_address)
         print(f"Node Operator ID: {no_id}, Address: {no_address}")
 
+    for i in range(ICS_ROUNDS):
+        ics_round_addresses = ics_addresses[i]
+        print(f"Adding {len(ics_round_addresses)} addresses from ICS Round {i+1}")
+        for addr in ics_round_addresses:
+            final_addresses.append(addr)
+
+    ics_sdvt_addresses = []
+    with open(f"sources/ics_sdvt.json", "r") as f:
+        ics_sdvt_addresses.extend(json.load(f))
+    print(f"Adding {len(ics_sdvt_addresses)} addresses from ICS SDVT")
+    for addr in ics_sdvt_addresses:
+        final_addresses.append(addr)
+
+    final_addresses_set = set(final_addresses)
     with open("ics.csv", "w") as f:
-        for address in set(final_addresses):
+        for address in sorted(final_addresses_set):
             f.write(f"{address}\n")
 
 if __name__ == '__main__':

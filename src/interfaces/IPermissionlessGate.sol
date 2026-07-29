@@ -1,22 +1,22 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.24;
-import { ICSModule, NodeOperatorManagementProperties } from "./ICSModule.sol";
-import { ICSAccounting } from "./ICSAccounting.sol";
+pragma solidity 0.8.33;
+
+import { IBaseModule, NodeOperatorManagementProperties } from "./IBaseModule.sol";
+import { IAccounting } from "./IAccounting.sol";
 
 interface IPermissionlessGate {
     error ZeroModuleAddress();
     error ZeroAdminAddress();
 
-    function RECOVERER_ROLE() external view returns (bytes32);
-
     function CURVE_ID() external view returns (uint256);
 
-    function MODULE() external view returns (ICSModule);
+    function MODULE() external view returns (IBaseModule);
 
     /// @notice Add a new Node Operator using ETH as a bond.
-    ///         At least one deposit data and corresponding bond should be provided
+    ///         At least one deposit data and corresponding bond should be provided.
+    ///         Any excess msg.value will be sent to the bond and can be claimed from there.
     /// @param keysCount Signing keys count
     /// @param publicKeys Public keys to submit
     /// @param signatures Signatures of `(deposit_message_root, domain)` tuples
@@ -56,7 +56,7 @@ interface IPermissionlessGate {
         bytes memory publicKeys,
         bytes memory signatures,
         NodeOperatorManagementProperties memory managementProperties,
-        ICSAccounting.PermitInput memory permit,
+        IAccounting.PermitInput memory permit,
         address referrer
     ) external returns (uint256 nodeOperatorId);
 
@@ -80,7 +80,7 @@ interface IPermissionlessGate {
         bytes memory publicKeys,
         bytes memory signatures,
         NodeOperatorManagementProperties memory managementProperties,
-        ICSAccounting.PermitInput memory permit,
+        IAccounting.PermitInput memory permit,
         address referrer
     ) external returns (uint256 nodeOperatorId);
 }

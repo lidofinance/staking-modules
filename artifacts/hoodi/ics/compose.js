@@ -18,8 +18,8 @@ async function readCsvFiles(files) {
     });
 
     for await (const line of rl) {
-      let [address] = line.split(","); // Assuming CSV has only one column for addresses
-      address = address.toLowerCase();
+      let items = line.split(",");
+      let address = items[0].toLowerCase();
       if (addresses[address]) {
         addresses[address].sources.push(file);
       } else {

@@ -1,12 +1,13 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
-import "../../../src/lib/base-oracle/interfaces/IReportAsyncProcessor.sol";
+import { IReportAsyncProcessor } from "../../../src/lib/base-oracle/interfaces/IReportAsyncProcessor.sol";
 
 contract ReportProcessorMock is IReportAsyncProcessor {
     uint256 internal _consensusVersion;
+    address internal _consensusContract;
 
     struct SubmitReportCall {
         bytes32 report;
@@ -32,23 +33,19 @@ contract ReportProcessorMock is IReportAsyncProcessor {
         _consensusVersion = consensusVersion;
     }
 
+    function setConsensusContract(address consensusContract) external {
+        _consensusContract = consensusContract;
+    }
+
     function setLastProcessingStartedRefSlot(uint256 refSlot) external {
         _lastProcessingRefSlot = refSlot;
     }
 
-    function getLastCall_submitReport()
-        external
-        view
-        returns (SubmitReportCall memory)
-    {
+    function getLastCall_submitReport() external view returns (SubmitReportCall memory) {
         return _submitReportLastCall;
     }
 
-    function getLastCall_discardReport()
-        external
-        view
-        returns (DiscardReportCall memory)
-    {
+    function getLastCall_discardReport() external view returns (DiscardReportCall memory) {
         return _discardReportLastCall;
     }
 
@@ -64,11 +61,11 @@ contract ReportProcessorMock is IReportAsyncProcessor {
         return _consensusVersion;
     }
 
-    function submitConsensusReport(
-        bytes32 report,
-        uint256 refSlot,
-        uint256 deadline
-    ) external {
+    function getConsensusContract() external view returns (address) {
+        return _consensusContract;
+    }
+
+    function submitConsensusReport(bytes32 report, uint256 refSlot, uint256 deadline) external {
         _submitReportLastCall.report = report;
         _submitReportLastCall.refSlot = refSlot;
         _submitReportLastCall.deadline = deadline;

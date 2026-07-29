@@ -1,8 +1,9 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.24;
-import "../../../src/interfaces/IStETH.sol";
+pragma solidity 0.8.33;
+
+import { IStETH } from "../../../src/interfaces/IStETH.sol";
 
 contract BurnerMock {
     address public STETH;
@@ -12,15 +13,8 @@ contract BurnerMock {
         STETH = _stETH;
     }
 
-    function requestBurnShares(
-        address _from,
-        uint256 _sharesAmountToBurn
-    ) external {
+    function requestBurnMyShares(uint256 _sharesAmountToBurn) external {
         if (_sharesAmountToBurn == 0) revert ZeroBurnAmount();
-        IStETH(STETH).transferSharesFrom(
-            _from,
-            address(this),
-            _sharesAmountToBurn
-        );
+        IStETH(STETH).transferSharesFrom(msg.sender, address(this), _sharesAmountToBurn);
     }
 }
