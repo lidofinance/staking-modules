@@ -188,6 +188,9 @@ contract DeployLocalDevNet is DeployBase {
 
         config.secondAdminAddress = vm.envOr("CSM_SECOND_ADMIN_ADDRESS", address(0));
 
+        // TODO: finalize the maximum stake cap per node operator.
+        config.maximumStakeCapPerNodeOperator = 512_000 ether;
+
         // CurveMultiplier
         config.additionalBondRegistryConfig.curveMultiplierCooldown = 1 days;
         // TODO: reconsider — placeholder initial boost steps.
