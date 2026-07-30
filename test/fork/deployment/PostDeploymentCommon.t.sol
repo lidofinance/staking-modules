@@ -25,6 +25,7 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     uint256 expectedModuleScratchNonce;
     uint256 expectedModuleScratchNonceFromGates;
     uint256 expectedModuleScratchNonceFromWeightBoostProviders;
+    uint256 expectedModuleScratchNonceFromStakeCap;
 
     function setUp() public {
         Env memory env = envVars();
@@ -41,9 +42,13 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
             // Each registered weight boost provider also requests full update and contributes one nonce.
             expectedModuleScratchNonceFromWeightBoostProviders = metaRegistry.getWeightBoostProvidersCount();
 
+            // Initializing the stake cap requests a full deposit info update and contributes one nonce.
+            expectedModuleScratchNonceFromStakeCap = 1;
+
             expectedModuleScratchNonce =
                 expectedModuleScratchNonceFromGates +
-                expectedModuleScratchNonceFromWeightBoostProviders;
+                expectedModuleScratchNonceFromWeightBoostProviders +
+                expectedModuleScratchNonceFromStakeCap;
         }
     }
 }
