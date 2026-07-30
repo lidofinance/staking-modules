@@ -11,7 +11,7 @@ import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
 import { IAdditionalBondRegistry, BoostStep, PendingCurveMultiplierReduction } from "./interfaces/IAdditionalBondRegistry.sol";
 import { IWeightBoostProvider } from "./interfaces/IWeightBoostProvider.sol";
-import { MAX_BP, MAX_EFFECTIVE_MULTIPLIER_BP } from "./lib/Constants.sol";
+import { MAX_BP, MAX_WEIGHT_BOOST_BP } from "./lib/Constants.sol";
 
 /// @notice Maps an operator's curve multiplier to a weight multiplier via governance-set boost steps.
 contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, AccessControlEnumerableUpgradeable {
@@ -23,8 +23,8 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
     }
 
     // Sanity guard: effective multiplier <= 10x.
-    uint256 public constant MAX_CURVE_MULTIPLIER = MAX_EFFECTIVE_MULTIPLIER_BP - MAX_BP;
-    uint256 public constant MAX_WEIGHT_MULTIPLIER = MAX_EFFECTIVE_MULTIPLIER_BP - MAX_BP;
+    uint256 public constant MAX_CURVE_MULTIPLIER = MAX_WEIGHT_BOOST_BP;
+    uint256 public constant MAX_WEIGHT_MULTIPLIER = MAX_WEIGHT_BOOST_BP;
     // Requested curve multiplier must be a multiple of this (1%).
     uint256 public constant CURVE_MULTIPLIER_STEP = MAX_BP / 100;
 

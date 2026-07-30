@@ -604,7 +604,6 @@ contract DeploymentHelpers is Test {
         dst.ldoLockBoostProviderConfig.votingContract = src.ldoLockBoostProviderConfig.votingContract;
         dst.ldoLockBoostProviderConfig.snapshotDelegation = src.ldoLockBoostProviderConfig.snapshotDelegation;
         dst.ldoLockBoostProviderConfig.minLockPeriod = src.ldoLockBoostProviderConfig.minLockPeriod;
-        dst.ldoLockBoostProviderConfig.maxLockPeriod = src.ldoLockBoostProviderConfig.maxLockPeriod;
         dst.ldoLockBoostProviderConfig.lockPeriod = src.ldoLockBoostProviderConfig.lockPeriod;
         for (uint256 i; i < src.ldoLockBoostProviderConfig.lockBoostSteps.length; ++i) {
             dst.ldoLockBoostProviderConfig.lockBoostSteps.push(src.ldoLockBoostProviderConfig.lockBoostSteps[i]);

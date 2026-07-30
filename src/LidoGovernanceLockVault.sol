@@ -9,10 +9,11 @@ import { ILidoAragonVoting } from "./interfaces/ILidoAragonVoting.sol";
 import { IERC20LockVault } from "./interfaces/IERC20LockVault.sol";
 import { ISnapshotDelegation } from "./interfaces/ISnapshotDelegation.sol";
 import { ISnapshotDelegationLockVault } from "./interfaces/ISnapshotDelegationLockVault.sol";
-import { SNAPSHOT_ALL_SPACES } from "./lib/Constants.sol";
 
 /// @notice ERC20 lock vault with Lido Aragon Voting and Snapshot delegation capabilities.
 contract LidoGovernanceLockVault is ERC20LockVault, IAragonVotingLockVault, ISnapshotDelegationLockVault {
+    bytes32 private constant SNAPSHOT_ALL_SPACES = bytes32(0);
+
     address public immutable VOTING_CONTRACT;
     address public immutable SNAPSHOT_DELEGATION;
 

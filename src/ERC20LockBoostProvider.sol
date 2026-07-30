@@ -17,7 +17,7 @@ import { IERC20LockBoostProvider } from "./interfaces/IERC20LockBoostProvider.so
 import { IERC20LockVault } from "./interfaces/IERC20LockVault.sol";
 import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
 import { IWeightBoostProvider } from "./interfaces/IWeightBoostProvider.sol";
-import { MAX_BP, MAX_EFFECTIVE_MULTIPLIER_BP } from "./lib/Constants.sol";
+import { MAX_BP, MAX_WEIGHT_BOOST_BP } from "./lib/Constants.sol";
 
 /// @notice Stores operator-level ERC20 locks and exposes node operator boost for scoring.
 contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgradeable, IERC20LockBoostProvider {
@@ -35,18 +35,17 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
     address public immutable TOKEN;
     IBeacon public immutable VAULT_BEACON;
     uint256 public immutable MIN_LOCK_PERIOD;
-    uint256 public immutable MAX_LOCK_PERIOD;
 
     bytes32 public constant SET_LOCK_PERIOD_ROLE = keccak256("SET_LOCK_PERIOD_ROLE");
+    uint256 public constant MAX_LOCK_PERIOD = 365 days;
 
     // keccak256(abi.encode(uint256(keccak256("ERC20LockBoostProvider")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant ERC20_LOCK_BOOST_PROVIDER_STORAGE_LOCATION =
         0x0d048d8a76e474169bd4c83d3eb46f84ff5b8d069b5f5174bf8047b6bd66fb00;
 
-    constructor(address module, address token, address vaultBeacon, uint256 minLockPeriod, uint256 maxLockPeriod) {
+    constructor(address module, address token, address vaultBeacon, uint256 minLockPeriod) {
         if (module == address(0) || token == address(0) || vaultBeacon == address(0)) revert ZeroAddress();
-        if (minLockPeriod == 0 || minLockPeriod > maxLockPeriod) revert InvalidLockPeriod();
-        if (maxLockPeriod > type(uint128).max) revert InvalidLockPeriod();
+        if (minLockPeriod == 0 || minLockPeriod > MAX_LOCK_PERIOD) revert InvalidLockPeriod();
 
         ICuratedModule curatedModule = ICuratedModule(module);
         IMetaRegistry metaRegistry = curatedModule.META_REGISTRY();
@@ -56,7 +55,6 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
         TOKEN = token;
         VAULT_BEACON = IBeacon(vaultBeacon);
         MIN_LOCK_PERIOD = minLockPeriod;
-        MAX_LOCK_PERIOD = maxLockPeriod;
 
         _disableInitializers();
     }
@@ -67,11 +65,6 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _setLockPeriod(lockPeriod);
-    }
-
-    /// @inheritdoc IERC20LockBoostProvider
-    function getInitializedVersion() external view returns (uint64) {
-        return _getInitializedVersion();
     }
 
     /// @inheritdoc IERC20LockBoostProvider
@@ -88,17 +81,12 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
         uint256 stepsCount = steps.length;
         for (uint256 i; i < stepsCount; ++i) {
             $.lockBoostSteps.push(
-                LockBoostStep({ minAmount: steps[i].minAmount, multiplierBP: steps[i].multiplierBP })
+                LockBoostStep({ minAmount: steps[i].minAmount, weightBoostBP: steps[i].weightBoostBP })
             );
         }
 
         emit LockBoostStepsSet(steps);
         META_REGISTRY.notifyWeightBoostProviderConfigChanged();
-    }
-
-    /// @inheritdoc IERC20LockBoostProvider
-    function getLockBoostSteps() external view returns (LockBoostStep[] memory steps) {
-        steps = _storage().lockBoostSteps;
     }
 
     /// @inheritdoc IERC20LockBoostProvider
@@ -118,6 +106,16 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
         }
 
         _withdraw(nodeOperatorId, amount, receiver);
+    }
+
+    /// @inheritdoc IERC20LockBoostProvider
+    function getInitializedVersion() external view returns (uint64) {
+        return _getInitializedVersion();
+    }
+
+    /// @inheritdoc IERC20LockBoostProvider
+    function getLockBoostSteps() external view returns (LockBoostStep[] memory steps) {
+        steps = _storage().lockBoostSteps;
     }
 
     /// @inheritdoc IWeightBoostProvider
@@ -197,6 +195,14 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
         if (oldMultiplierBP != newMultiplierBP) META_REGISTRY.notifyWeightBoostChanged(nodeOperatorId);
     }
 
+    function _setLockPeriod(uint256 lockPeriod) internal {
+        if (lockPeriod < MIN_LOCK_PERIOD || lockPeriod > MAX_LOCK_PERIOD) revert InvalidLockPeriod();
+        if (_storage().lockPeriod == lockPeriod) revert SameLockPeriod();
+
+        _storage().lockPeriod = lockPeriod;
+        emit LockPeriodSet(lockPeriod);
+    }
+
     function _getMultiplierBP(uint256 amount) internal view returns (uint256 multiplierBP) {
         ERC20LockBoostProviderStorage storage $ = _storage();
         multiplierBP = MAX_BP;
@@ -204,7 +210,7 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
         for (uint256 i; i < stepsCount; ++i) {
             LockBoostStep storage step = $.lockBoostSteps[i];
             if (amount < step.minAmount) return multiplierBP;
-            multiplierBP = step.multiplierBP;
+            multiplierBP = MAX_BP + step.weightBoostBP;
         }
     }
 
@@ -225,28 +231,23 @@ contract ERC20LockBoostProvider is Initializable, AccessControlEnumerableUpgrade
         uint256 stepsCount = steps.length;
         if (stepsCount == 0) revert InvalidLockBoostSteps();
 
+        if (steps[0].minAmount == 0) revert InvalidLockBoostSteps();
+        if (steps[0].weightBoostBP > MAX_WEIGHT_BOOST_BP) revert InvalidLockBoostSteps();
+
         uint256 previousMinAmount = steps[0].minAmount;
-        uint256 previousMultiplierBP = steps[0].multiplierBP;
-        if (previousMinAmount == 0) revert InvalidLockBoostSteps();
-        if (steps[0].multiplierBP > MAX_EFFECTIVE_MULTIPLIER_BP) revert InvalidLockBoostSteps();
+        uint256 previousWeightBoostBP = steps[0].weightBoostBP;
 
         for (uint256 i = 1; i < stepsCount; ++i) {
             LockBoostStep calldata step = steps[i];
-            if (step.minAmount <= previousMinAmount) revert InvalidLockBoostSteps();
-            if (step.multiplierBP <= previousMultiplierBP) revert InvalidLockBoostSteps();
-            if (step.multiplierBP > MAX_EFFECTIVE_MULTIPLIER_BP) revert InvalidLockBoostSteps();
+            if (
+                step.minAmount <= previousMinAmount ||
+                step.weightBoostBP <= previousWeightBoostBP ||
+                step.weightBoostBP > MAX_WEIGHT_BOOST_BP
+            ) revert InvalidLockBoostSteps();
 
             previousMinAmount = step.minAmount;
-            previousMultiplierBP = step.multiplierBP;
+            previousWeightBoostBP = step.weightBoostBP;
         }
-    }
-
-    function _setLockPeriod(uint256 lockPeriod) internal {
-        if (lockPeriod < MIN_LOCK_PERIOD || lockPeriod > MAX_LOCK_PERIOD) revert InvalidLockPeriod();
-        if (_storage().lockPeriod == lockPeriod) revert SameLockPeriod();
-
-        _storage().lockPeriod = lockPeriod;
-        emit LockPeriodSet(lockPeriod);
     }
 
     function _storage() internal pure returns (ERC20LockBoostProviderStorage storage $) {

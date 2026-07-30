@@ -335,9 +335,9 @@ contract LDOLockBoostProviderDeploymentTest is DeploymentBaseTest {
                 "LDO lock boost step min amount"
             );
             assertEq(
-                actualSteps[i].multiplierBP,
-                deployParams.ldoLockBoostProviderConfig.lockBoostSteps[i].multiplierBP,
-                "LDO lock boost step multiplier"
+                actualSteps[i].weightBoostBP,
+                deployParams.ldoLockBoostProviderConfig.lockBoostSteps[i].weightBoostBP,
+                "LDO lock boost step weight boost"
             );
         }
     }
@@ -364,11 +364,7 @@ contract LDOLockBoostProviderDeploymentTest is DeploymentBaseTest {
             deployParams.ldoLockBoostProviderConfig.minLockPeriod,
             "LDO lock provider min lock period"
         );
-        assertEq(
-            ldoLockBoostProvider.MAX_LOCK_PERIOD(),
-            deployParams.ldoLockBoostProviderConfig.maxLockPeriod,
-            "LDO lock provider max lock period"
-        );
+        assertEq(ldoLockBoostProvider.MAX_LOCK_PERIOD(), 365 days, "LDO lock provider max lock period");
     }
 
     function test_roles_onlyFull() public view {

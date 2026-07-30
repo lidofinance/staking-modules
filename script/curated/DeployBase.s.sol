@@ -80,7 +80,6 @@ struct ERC20LockBoostProviderConfig {
     address votingContract;
     address snapshotDelegation;
     uint256 minLockPeriod;
-    uint256 maxLockPeriod;
     uint256 lockPeriod;
     IERC20LockBoostProvider.LockBoostStep[] lockBoostSteps;
 }
@@ -411,8 +410,7 @@ abstract contract DeployBase is Script {
                     module: address(curatedModule),
                     token: ldoConfig.token,
                     vaultBeacon: address(ldoLockVaultBeacon),
-                    minLockPeriod: ldoConfig.minLockPeriod,
-                    maxLockPeriod: ldoConfig.maxLockPeriod
+                    minLockPeriod: ldoConfig.minLockPeriod
                 });
 
                 OssifiableProxy ldoLockBoostProviderProxy = OssifiableProxy(payable(address(ldoLockBoostProvider)));
@@ -746,9 +744,9 @@ abstract contract DeployBase is Script {
         return gates;
     }
 
-    function _addLDOLockBoostStep(uint128 minAmount, uint32 multiplierBP) internal {
+    function _addLDOLockBoostStep(uint128 minAmount, uint32 weightBoostBP) internal {
         config.ldoLockBoostProviderConfig.lockBoostSteps.push(
-            IERC20LockBoostProvider.LockBoostStep({ minAmount: minAmount, multiplierBP: multiplierBP })
+            IERC20LockBoostProvider.LockBoostStep({ minAmount: minAmount, weightBoostBP: weightBoostBP })
         );
     }
 

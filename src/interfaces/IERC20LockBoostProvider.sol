@@ -11,7 +11,7 @@ import { IWeightBoostProvider } from "./IWeightBoostProvider.sol";
 interface IERC20LockBoostProvider is IWeightBoostProvider {
     struct LockBoostStep {
         uint128 minAmount;
-        uint32 multiplierBP;
+        uint32 weightBoostBP;
     }
 
     struct LockInfo {
@@ -57,6 +57,7 @@ interface IERC20LockBoostProvider is IWeightBoostProvider {
     /// @notice Role allowed to set the default lock period.
     function SET_LOCK_PERIOD_ROLE() external view returns (bytes32);
 
+    // TODO: Add initialize functions to the remaining initializable contract interfaces.
     /// @notice Initialize the provider.
     /// @param admin Address to receive DEFAULT_ADMIN_ROLE.
     /// @param lockPeriod Initial token lock period.
@@ -73,9 +74,9 @@ interface IERC20LockBoostProvider is IWeightBoostProvider {
     function setLockPeriod(uint256 lockPeriod) external;
 
     /// @notice Set token lock weight multiplier steps.
-    /// @param steps Ordered lock amount thresholds with full multiplier in basis points.
+    /// @param steps Ordered lock amount thresholds with weight boost increments in basis points.
     /// @dev Each step applies from minAmount inclusive until the next step minAmount.
-    ///      10_000 means no scaling, values below 10_000 penalize the weight.
+    ///      The effective multiplier is 10_000 + weightBoostBP; zero means no scaling.
     ///      Existing weights are not refreshed by this call;
     ///      a full deposit info update is requested via MetaRegistry.
     ///      Disable the boost provider in MetaRegistry to turn off the configured boosts.

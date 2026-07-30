@@ -219,10 +219,9 @@ contract DeployHoodi is DeployBase {
         config.ldoLockBoostProviderConfig.votingContract = 0x49B3512c44891bef83F8967d075121Bd1b07a01B;
         config.ldoLockBoostProviderConfig.snapshotDelegation = address(1); // TODO: Fill in before deployment
         config.ldoLockBoostProviderConfig.minLockPeriod = 30 days;
-        config.ldoLockBoostProviderConfig.maxLockPeriod = 365 days;
         config.ldoLockBoostProviderConfig.lockPeriod = 30 days;
-        _addLDOLockBoostStep(100_000 ether, 11_000);
-        _addLDOLockBoostStep(200_000 ether, 11_500);
+        _addLDOLockBoostStep(100_000 ether, 1_000);
+        _addLDOLockBoostStep(200_000 ether, 1_500);
 
         _setUp();
     }
