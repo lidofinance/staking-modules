@@ -23,6 +23,7 @@ import { ProxySlotUtils } from "../../helpers/ProxySlotUtils.sol";
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     CuratedDeployParams internal deployParams;
     CuratedGateConfig[] internal deployGateConfigs;
+    uint256 internal adminsCount;
 
     function setUp() public {
         Env memory env = envVars();
@@ -32,6 +33,7 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         string memory config = vm.readFile(env.DEPLOY_CONFIG);
         // mutates storage variable
         updateCuratedDeployParams(deployParams, env.DEPLOY_CONFIG);
+        adminsCount = block.chainid == 1 ? 1 : 2;
     }
 }
 
@@ -83,7 +85,8 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
 
 contract MetaRegistryDeploymentTest is DeploymentBaseTest {
     function test_state_onlyFull() public view {
-        assertEq(metaRegistry.getInitializedVersion(), 1);
+        assertEq(metaRegistry.getInitializedVersion(), 2);
+        assertEq(metaRegistry.maximumStakeCapPerNodeOperator(), deployParams.maximumStakeCapPerNodeOperator);
         assertEq(metaRegistry.getOperatorGroupsCount(), 0);
 
         IMetaRegistry.OperatorGroup memory groupInfo = metaRegistry.getOperatorGroup(metaRegistry.NO_GROUP_ID());
