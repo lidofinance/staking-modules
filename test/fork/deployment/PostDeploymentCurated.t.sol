@@ -83,6 +83,19 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
 }
 
 contract MetaRegistryDeploymentTest is DeploymentBaseTest {
+    function _assertWeightBoostProvider(
+        address expectedProvider,
+        IMetaRegistry.WeightBoostProviderMode expectedMode
+    ) internal view {
+        uint256 providerId = metaRegistry.getWeightBoostProviderId(expectedProvider);
+        assertNotEq(providerId, 0, "weight boost provider not registered");
+
+        IMetaRegistry.WeightBoostProviderEntry memory entry = metaRegistry.getWeightBoostProvider(providerId);
+        assertEq(address(entry.provider), expectedProvider, "unexpected weight boost provider");
+        assertEq(uint256(entry.mode), uint256(expectedMode), "unexpected weight boost provider mode");
+        assertTrue(entry.enabled, "weight boost provider disabled");
+    }
+
     function test_state_onlyFull() public view {
         assertEq(metaRegistry.getInitializedVersion(), 1);
         assertEq(metaRegistry.getOperatorGroupsCount(), 0);
@@ -125,29 +138,13 @@ contract MetaRegistryDeploymentTest is DeploymentBaseTest {
     }
 
     function test_weightBoostProviders_onlyFull() public view {
-        assertEq(metaRegistry.getWeightBoostProvidersCount(), 2, "unexpected weight boost providers count");
-
-        IMetaRegistry.WeightBoostProviderEntry memory additionalBondEntry = metaRegistry.getWeightBoostProvider(1);
-        assertEq(
-            address(additionalBondEntry.provider),
+        assertEq(metaRegistry.getWeightBoostProvidersCount(), 3, "unexpected weight boost providers count");
+        _assertWeightBoostProvider(
             address(additionalBondRegistry),
-            "unexpected additional bond provider"
+            IMetaRegistry.WeightBoostProviderMode.PerNodeOperator
         );
-        assertEq(
-            uint256(additionalBondEntry.mode),
-            uint256(IMetaRegistry.WeightBoostProviderMode.PerNodeOperator),
-            "unexpected additional bond provider mode"
-        );
-        assertTrue(additionalBondEntry.enabled, "additional bond provider disabled");
-
-        IMetaRegistry.WeightBoostProviderEntry memory ldoLockEntry = metaRegistry.getWeightBoostProvider(2);
-        assertEq(address(ldoLockEntry.provider), address(ldoLockBoostProvider), "unexpected LDO lock provider");
-        assertEq(
-            uint256(ldoLockEntry.mode),
-            uint256(IMetaRegistry.WeightBoostProviderMode.MaxPerGroup),
-            "unexpected LDO lock provider mode"
-        );
-        assertTrue(ldoLockEntry.enabled, "LDO lock provider disabled");
+        _assertWeightBoostProvider(address(nodeOperatorStrikes), IMetaRegistry.WeightBoostProviderMode.PerNodeOperator);
+        _assertWeightBoostProvider(address(ldoLockBoostProvider), IMetaRegistry.WeightBoostProviderMode.MaxPerGroup);
     }
 }
 
@@ -265,29 +262,6 @@ contract NodeOperatorStrikesDeploymentTest is DeploymentBaseTest {
         bytes32 committeeRole = nodeOperatorStrikes.STRIKES_COMMITTEE_ROLE();
         assertEq(nodeOperatorStrikes.getRoleMemberCount(committeeRole), 1);
         assertTrue(nodeOperatorStrikes.hasRole(committeeRole, deployParams.strikesCommittee));
-    }
-
-    function test_wiring_onlyFull() public view {
-        assertEq(metaRegistry.getWeightBoostProvidersCount(), 3, "unexpected weight boost providers count");
-
-        uint256 additionalBondProviderId = metaRegistry.getWeightBoostProviderId(address(additionalBondRegistry));
-        assertNotEq(additionalBondProviderId, 0, "additional bond provider not registered");
-        IMetaRegistry.WeightBoostProviderEntry memory additionalBondEntry = metaRegistry.getWeightBoostProvider(
-            additionalBondProviderId
-        );
-        assertEq(address(additionalBondEntry.provider), address(additionalBondRegistry));
-        assertEq(uint256(additionalBondEntry.mode), uint256(IMetaRegistry.WeightBoostProviderMode.PerNodeOperator));
-        assertTrue(additionalBondEntry.enabled);
-
-        uint256 strikesProviderId = metaRegistry.getWeightBoostProviderId(address(nodeOperatorStrikes));
-        assertNotEq(strikesProviderId, 0, "node operator strikes provider not registered");
-        assertNotEq(strikesProviderId, additionalBondProviderId, "weight boost provider ids must differ");
-        IMetaRegistry.WeightBoostProviderEntry memory strikesEntry = metaRegistry.getWeightBoostProvider(
-            strikesProviderId
-        );
-        assertEq(address(strikesEntry.provider), address(nodeOperatorStrikes));
-        assertEq(uint256(strikesEntry.mode), uint256(IMetaRegistry.WeightBoostProviderMode.PerNodeOperator));
-        assertTrue(strikesEntry.enabled);
     }
 
     function test_initialization_onlyFull() public {
