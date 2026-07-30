@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
 import { IStETH } from "./IStETH.sol";
 
@@ -13,11 +13,7 @@ interface ILido is IStETH {
 
     function submit(address _referral) external payable returns (uint256);
 
-    function deposit(
-        uint256 _maxDepositsCount,
-        uint256 _stakingModuleId,
-        bytes calldata _depositCalldata
-    ) external;
+    function getDepositableEther() external view returns (uint256);
 
     function removeStakingLimit() external;
 

@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
 contract LidoLocatorMock {
     address public l;
@@ -12,15 +12,7 @@ contract LidoLocatorMock {
     address public sr;
     address public twg;
 
-    constructor(
-        address _lido,
-        address _burner,
-        address _wq,
-        address _el,
-        address _t,
-        address _sr,
-        address _twg
-    ) {
+    constructor(address _lido, address _burner, address _wq, address _el, address _t, address _sr, address _twg) {
         l = _lido;
         b = _burner;
         wq = _wq;

@@ -1,5 +1,8 @@
 # SigningKeys
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/lib/SigningKeys.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/lib/SigningKeys.sol)
+
+**Title:**
+Library for manage operator keys in storage
 
 **Author:**
 KRogLA
@@ -9,28 +12,28 @@ KRogLA
 ### SIGNING_KEYS_POSITION
 
 ```solidity
-bytes32 internal constant SIGNING_KEYS_POSITION = keccak256("lido.CommunityStakingModule.signingKeysPosition");
+bytes32 internal constant SIGNING_KEYS_POSITION = keccak256("lido.CommunityStakingModule.signingKeysPosition")
 ```
 
 
 ### PUBKEY_LENGTH
 
 ```solidity
-uint64 internal constant PUBKEY_LENGTH = 48;
+uint64 internal constant PUBKEY_LENGTH = 48
 ```
 
 
 ### SIGNATURE_LENGTH
 
 ```solidity
-uint64 internal constant SIGNATURE_LENGTH = 96;
+uint64 internal constant SIGNATURE_LENGTH = 96
 ```
 
 
 ## Functions
 ### saveKeysSigs
 
-*store operator keys to storage*
+store operator keys to storage
 
 
 ```solidity
@@ -61,7 +64,7 @@ function saveKeysSigs(
 
 ### removeKeysSigs
 
-*remove operator keys from storage*
+remove operator keys from storage
 
 
 ```solidity
@@ -87,9 +90,9 @@ function removeKeysSigs(uint256 nodeOperatorId, uint256 startIndex, uint256 keys
 
 ### loadKeysSigs
 
-*Load operator's keys and signatures from the storage to the given in-memory arrays.*
+Load operator's keys and signatures from the storage to the given in-memory arrays.
 
-*The function doesn't check for `pubkeys` and `signatures` out of boundaries access.*
+The function doesn't check for `pubkeys` and `signatures` out of boundaries access.
 
 
 ```solidity
@@ -124,6 +127,15 @@ function loadKeys(uint256 nodeOperatorId, uint256 startIndex, uint256 keysCount)
     returns (bytes memory pubkeys);
 ```
 
+### verifySigningKey
+
+Verify that the key matches the key stored for a specific operator/index.
+
+
+```solidity
+function verifySigningKey(uint256 nodeOperatorId, uint256 keyIndex, bytes calldata key) internal view;
+```
+
 ### initKeysSigsBuf
 
 
@@ -136,6 +148,13 @@ function initKeysSigsBuf(uint256 count) internal pure returns (bytes memory, byt
 
 ```solidity
 function getKeyOffset(bytes32 position, uint256 nodeOperatorId, uint256 keyIndex) internal pure returns (uint256);
+```
+
+### _signingKeysPosition
+
+
+```solidity
+function _signingKeysPosition() internal pure returns (bytes32);
 ```
 
 ## Errors
@@ -155,5 +174,11 @@ error InvalidLength();
 
 ```solidity
 error EmptyKey();
+```
+
+### InvalidSigningKey
+
+```solidity
+error InvalidSigningKey();
 ```
 

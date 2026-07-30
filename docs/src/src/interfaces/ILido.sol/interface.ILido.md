@@ -1,8 +1,11 @@
 # ILido
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/interfaces/ILido.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/ILido.sol)
 
 **Inherits:**
 [IStETH](/src/interfaces/IStETH.sol/interface.IStETH.md)
+
+**Title:**
+Interface defining Lido contract
 
 
 ## Functions
@@ -20,11 +23,11 @@ function STAKING_CONTROL_ROLE() external view returns (bytes32);
 function submit(address _referral) external payable returns (uint256);
 ```
 
-### deposit
+### getDepositableEther
 
 
 ```solidity
-function deposit(uint256 _maxDepositsCount, uint256 _stakingModuleId, bytes calldata _depositCalldata) external;
+function getDepositableEther() external view returns (uint256);
 ```
 
 ### removeStakingLimit

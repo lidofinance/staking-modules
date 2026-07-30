@@ -1,22 +1,11 @@
 # IWstETH
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/interfaces/IWstETH.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IWstETH.sol)
+
+**Inherits:**
+[IERC20Permit](/src/interfaces/IERC20Permit.sol/interface.IERC20Permit.md)
 
 
 ## Functions
-### balanceOf
-
-
-```solidity
-function balanceOf(address account) external view returns (uint256);
-```
-
-### approve
-
-
-```solidity
-function approve(address _spender, uint256 _amount) external returns (bool);
-```
-
 ### wrap
 
 
@@ -31,20 +20,6 @@ function wrap(uint256 _stETHAmount) external returns (uint256);
 function unwrap(uint256 _wstETHAmount) external returns (uint256);
 ```
 
-### transferFrom
-
-
-```solidity
-function transferFrom(address sender, address recipient, uint256 amount) external;
-```
-
-### transfer
-
-
-```solidity
-function transfer(address recipient, uint256 amount) external;
-```
-
 ### getStETHByWstETH
 
 
@@ -57,20 +32,5 @@ function getStETHByWstETH(uint256 _wstETHAmount) external view returns (uint256)
 
 ```solidity
 function getWstETHByStETH(uint256 _stETHAmount) external view returns (uint256);
-```
-
-### permit
-
-
-```solidity
-function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
-    external;
-```
-
-### allowance
-
-
-```solidity
-function allowance(address _owner, address _spender) external view returns (uint256);
 ```
 

@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
 interface IWithdrawalQueue {
     struct WithdrawalRequestStatus {
@@ -21,10 +21,7 @@ interface IWithdrawalQueue {
 
     function ORACLE_ROLE() external view returns (bytes32);
 
-    function getRoleMember(
-        bytes32 role,
-        uint256 index
-    ) external view returns (address);
+    function getRoleMember(bytes32 role, uint256 index) external view returns (address);
 
     function WSTETH() external view returns (address);
 
@@ -45,9 +42,7 @@ interface IWithdrawalQueue {
         uint256[] calldata _requestIds
     ) external view returns (WithdrawalRequestStatus[] memory statuses);
 
-    function getWithdrawalRequests(
-        address _owner
-    ) external view returns (uint256[] memory requestsIds);
+    function getWithdrawalRequests(address _owner) external view returns (uint256[] memory requestsIds);
 
     function isBunkerModeActive() external view returns (bool);
 

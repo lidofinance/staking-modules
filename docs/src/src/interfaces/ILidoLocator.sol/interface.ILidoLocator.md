@@ -1,5 +1,5 @@
 # ILidoLocator
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/interfaces/ILidoLocator.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/ILidoLocator.sol)
 
 
 ## Functions
@@ -95,6 +95,13 @@ function stakingRouter() external view returns (address payable);
 
 ```solidity
 function treasury() external view returns (address);
+```
+
+### topUpGateway
+
+
+```solidity
+function topUpGateway() external view returns (address);
 ```
 
 ### validatorsExitBusOracle

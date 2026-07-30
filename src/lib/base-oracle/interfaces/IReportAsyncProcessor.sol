@@ -1,6 +1,6 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
 /// @notice A contract that gets consensus reports (i.e. hashes) pushed to and processes them
 /// asynchronously.
@@ -26,11 +26,7 @@ interface IReportAsyncProcessor {
     /// submit it using this same function, or to lose the consensus on the submitted report,
     /// notifying the processor via `discardConsensusReport`.
     ///
-    function submitConsensusReport(
-        bytes32 report,
-        uint256 refSlot,
-        uint256 deadline
-    ) external;
+    function submitConsensusReport(bytes32 report, uint256 refSlot, uint256 deadline) external;
 
     /// @notice Notifies that the report for the given ref. slot is not a consensus report anymore
     /// and should be discarded. This can happen when a member changes their report, is removed
@@ -59,8 +55,11 @@ interface IReportAsyncProcessor {
     /// Consensus version must change every time consensus rules change, meaning that
     /// an oracle looking at the same reference slot would calculate a different hash.
     ///
-    /// HashConsensus won't accept member reports any consensus version different form the
+    /// HashConsensus won't accept member reports any consensus version different from the
     /// one returned from this function.
     ///
     function getConsensusVersion() external view returns (uint256);
+
+    /// @notice Returns the address of the consensus contract.
+    function getConsensusContract() external view returns (address);
 }

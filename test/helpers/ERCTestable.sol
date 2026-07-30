@@ -1,6 +1,6 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -25,12 +25,7 @@ contract ERC721Testable is ERC721 {
 contract ERC1155Testable is ERC1155 {
     constructor() ERC1155("") {}
 
-    function mint(
-        address to,
-        uint256 tokenId,
-        uint256 amount,
-        bytes memory data
-    ) public {
+    function mint(address to, uint256 tokenId, uint256 amount, bytes memory data) public {
         _mint(to, tokenId, amount, data);
     }
 }

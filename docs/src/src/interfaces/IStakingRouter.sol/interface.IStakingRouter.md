@@ -1,5 +1,5 @@
 # IStakingRouter
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/interfaces/IStakingRouter.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/interfaces/IStakingRouter.sol)
 
 
 ## Functions
@@ -118,7 +118,20 @@ function decreaseStakingModuleVettedKeysCountByNodeOperator(
 
 
 ```solidity
-function deposit(uint256 _depositsCount, uint256 _stakingModuleId, bytes memory _depositCalldata) external payable;
+function deposit(uint256 _stakingModuleId, bytes memory _depositCalldata) external payable;
+```
+
+### topUp
+
+
+```solidity
+function topUp(
+    uint256 _stakingModuleId,
+    uint256[] memory _keyIndices,
+    uint256[] memory _operatorIds,
+    bytes[] memory _pubkeys,
+    uint256[] memory _topUpLimits
+) external;
 ```
 
 ### finalizeUpgrade_v2
@@ -149,14 +162,14 @@ function getAllStakingModuleDigests() external view returns (StakingModuleDigest
 function getContractVersion() external view returns (uint256);
 ```
 
-### getDepositsAllocation
+### getDepositAllocations
 
 
 ```solidity
-function getDepositsAllocation(uint256 _depositsCount)
+function getDepositAllocations(uint256 _depositAmount, bool _isTopUp)
     external
     view
-    returns (uint256 allocated, uint256[] memory allocations);
+    returns (uint256 totalAllocated, uint256[] memory allocated, uint256[] memory newAllocations);
 ```
 
 ### getLido
@@ -632,7 +645,9 @@ event StakingModuleFeesSet(
 ### StakingModuleMaxDepositsPerBlockSet
 
 ```solidity
-event StakingModuleMaxDepositsPerBlockSet(uint256 indexed stakingModuleId, uint256 maxDepositsPerBlock, address setBy);
+event StakingModuleMaxDepositsPerBlockSet(
+    uint256 indexed stakingModuleId, uint256 maxDepositsPerBlock, address setBy
+);
 ```
 
 ### StakingModuleMinDepositBlockDistanceSet
@@ -763,7 +778,9 @@ error NonZeroContractVersionOnInit();
 ### ReportedExitedValidatorsExceedDeposited
 
 ```solidity
-error ReportedExitedValidatorsExceedDeposited(uint256 reportedExitedValidatorsCount, uint256 depositedValidatorsCount);
+error ReportedExitedValidatorsExceedDeposited(
+    uint256 reportedExitedValidatorsCount, uint256 depositedValidatorsCount
+);
 ```
 
 ### StakingModuleAddressExists
@@ -911,6 +928,17 @@ struct ValidatorsCountsCorrection {
     uint256 currentNodeOperatorExitedValidatorsCount;
     uint256 newModuleExitedValidatorsCount;
     uint256 newNodeOperatorExitedValidatorsCount;
+}
+```
+
+## Enums
+### StakingModuleStatus
+
+```solidity
+enum StakingModuleStatus {
+    Active,
+    DepositsPaused,
+    Stopped
 }
 ```
 

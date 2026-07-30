@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
 import { IStETH } from "../../../src/interfaces/IStETH.sol";
 
@@ -9,17 +9,12 @@ contract WstETHMock {
     IStETH public stETH;
 
     mapping(address => uint256) public _balance;
-    mapping(address account => mapping(address spender => uint256))
-        private _allowances;
+    mapping(address account => mapping(address spender => uint256)) private _allowances;
     uint256 public _totalSupply;
 
     error NotEnoughBalance(uint256 balance);
 
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 
     /**
      * @param _stETH address of the StETH token to wrap
@@ -48,24 +43,18 @@ contract WstETHMock {
         return wstETHAmount;
     }
 
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) public {
-        if (_balance[sender] < amount) {
-            revert NotEnoughBalance(_balance[sender]);
-        }
+    function transferFrom(address sender, address recipient, uint256 amount) public returns (bool) {
+        if (_balance[sender] < amount) revert NotEnoughBalance(_balance[sender]);
         _balance[sender] -= amount;
         _balance[recipient] += amount;
+        return true;
     }
 
-    function transfer(address recipient, uint256 amount) public {
-        if (_balance[msg.sender] < amount) {
-            revert NotEnoughBalance(_balance[msg.sender]);
-        }
+    function transfer(address recipient, uint256 amount) public returns (bool) {
+        if (_balance[msg.sender] < amount) revert NotEnoughBalance(_balance[msg.sender]);
         _balance[msg.sender] -= amount;
         _balance[recipient] += amount;
+        return true;
     }
 
     /**
@@ -73,9 +62,7 @@ contract WstETHMock {
      * @param _stETHAmount amount of stETH
      * @return Amount of wstETH for a given stETH amount
      */
-    function getWstETHByStETH(
-        uint256 _stETHAmount
-    ) external view returns (uint256) {
+    function getWstETHByStETH(uint256 _stETHAmount) external view returns (uint256) {
         return stETH.getSharesByPooledEth(_stETHAmount);
     }
 
@@ -84,9 +71,7 @@ contract WstETHMock {
      * @param _wstETHAmount amount of wstETH
      * @return Amount of stETH for a given wstETH amount
      */
-    function getStETHByWstETH(
-        uint256 _wstETHAmount
-    ) external view returns (uint256) {
+    function getStETHByWstETH(uint256 _wstETHAmount) external view returns (uint256) {
         return stETH.getPooledEthByShares(_wstETHAmount);
     }
 
@@ -100,18 +85,12 @@ contract WstETHMock {
         _balance[_account] -= _amount;
     }
 
-    function approve(
-        address spender,
-        uint256 value
-    ) public virtual returns (bool) {
+    function approve(address spender, uint256 value) public virtual returns (bool) {
         _allowances[msg.sender][spender] = value;
         return true;
     }
 
-    function allowance(
-        address _owner,
-        address _spender
-    ) external view returns (uint256) {
+    function allowance(address _owner, address _spender) external view returns (uint256) {
         return _allowances[_owner][_spender];
     }
 

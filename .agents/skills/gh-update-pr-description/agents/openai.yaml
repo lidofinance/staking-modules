@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub PR Description Updater"
+  short_description: "Update PR title, description, and labels via gh CLI"
+  default_prompt: "Update the current branch PR title/description using the repo template and align labels/checklist state."

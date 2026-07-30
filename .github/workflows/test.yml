@@ -10,7 +10,7 @@ on:
       - develop
 
 env:
-  FOUNDRY_PROFILE: ci
+  FOUNDRY_PROFILE: ci_quick
   TERM: ansi
 
 permissions:
@@ -58,14 +58,22 @@ jobs:
     runs-on: ubuntu-latest
     needs: bootstrap
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
+
+      - name: Set FOUNDRY_VERSION
+        run: echo "FOUNDRY_VERSION=$(head .foundryref)" >> "$GITHUB_ENV"
 
       - uses: actions/cache@v4
         with:
           path: ${{ needs.bootstrap.outputs.cache-path }}
           key: ${{ needs.bootstrap.outputs.cache-key }}
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
 
       - name: Install node
         uses: actions/setup-node@v4
@@ -84,8 +92,9 @@ jobs:
     name: Foundry project
     runs-on: ubuntu-latest
     needs: bootstrap
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -114,24 +123,63 @@ jobs:
 
       - name: Build
         run: just build --sizes
+        continue-on-error: false
 
       - name: Run unit-tests
         run: just test-unit
 
-      - name: Run local deployment tests for scratch deploy
-        run: just test-full-deploy
+      - name: Run tests for current CSM state on fork
+        run: just test-csm-current
         env:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
-      - name: Run local deployment tests for v2 deploy
-        run: just test-v2-only-deploy
+      # TODO: Enable later after mainnet deployment
+      # - name: Run tests for current Curated state on fork
+      #   run: just test-curated-current
+      #   env:
+      #     CHAIN: mainnet
+      #     RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+
+      # TODO: Enable later after mainnet deployment
+      # - name: Run tests for current CSM0x02 state on fork
+      #   run: just test-csm0x02-current
+      #   env:
+      #     CHAIN: mainnet
+      #     RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+
+      - name: Run local deployment tests for CSM scratch deploy
+        run: just test-csm-full-deploy
         env:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
-      - name: Run local integration tests
-        run: just test-local
+      - name: Run local deployment tests for Curated scratch deploy
+        run: just test-curated-full-deploy
+        env:
+          CHAIN: mainnet
+          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+
+      - name: Run local deployment tests for CSM0x02 scratch deploy
+        run: just test-csm0x02-full-deploy
+        env:
+          CHAIN: mainnet
+          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+
+      - name: Run local integration tests for CSM deployment
+        run: just test-csm-local
+        env:
+          CHAIN: mainnet
+          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+
+      - name: Run local integration tests for Curated deployment
+        run: just test-curated-local
+        env:
+          CHAIN: mainnet
+          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
+
+      - name: Run local integration tests for CSM0x02 deployment
+        run: just test-csm0x02-local
         env:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}

@@ -1,8 +1,15 @@
 # IConsensusContract
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/lib/base-oracle/interfaces/IConsensusContract.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/lib/base-oracle/interfaces/IConsensusContract.sol)
 
 
 ## Functions
+### MANAGE_FRAME_CONFIG_ROLE
+
+
+```solidity
+function MANAGE_FRAME_CONFIG_ROLE() external view returns (bytes32);
+```
+
 ### getIsMember
 
 
@@ -24,10 +31,27 @@ function getCurrentFrame() external view returns (uint256 refSlot, uint256 repor
 function getChainConfig() external view returns (uint256 slotsPerEpoch, uint256 secondsPerSlot, uint256 genesisTime);
 ```
 
+### getFrameConfig
+
+
+```solidity
+function getFrameConfig()
+    external
+    view
+    returns (uint256 initialEpoch, uint256 epochsPerFrame, uint256 fastLaneLengthSlots);
+```
+
 ### getInitialRefSlot
 
 
 ```solidity
 function getInitialRefSlot() external view returns (uint256);
+```
+
+### setFrameConfig
+
+
+```solidity
+function setFrameConfig(uint256 epochsPerFrame, uint256 fastLaneLengthSlots) external;
 ```
 

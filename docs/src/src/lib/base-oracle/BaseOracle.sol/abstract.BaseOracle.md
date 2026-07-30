@@ -1,5 +1,5 @@
 # BaseOracle
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/lib/base-oracle/BaseOracle.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/lib/base-oracle/BaseOracle.sol)
 
 **Inherits:**
 [IReportAsyncProcessor](/src/lib/base-oracle/interfaces/IReportAsyncProcessor.sol/interface.IReportAsyncProcessor.md), AccessControlEnumerableUpgradeable, [Versioned](/src/lib/utils/Versioned.sol/contract.Versioned.md)
@@ -12,7 +12,7 @@ contract address by calling setConsensusContract.
 
 
 ```solidity
-bytes32 public constant MANAGE_CONSENSUS_CONTRACT_ROLE = keccak256("MANAGE_CONSENSUS_CONTRACT_ROLE");
+bytes32 public constant MANAGE_CONSENSUS_CONTRACT_ROLE = keccak256("MANAGE_CONSENSUS_CONTRACT_ROLE")
 ```
 
 
@@ -22,57 +22,57 @@ version by calling setConsensusVersion.
 
 
 ```solidity
-bytes32 public constant MANAGE_CONSENSUS_VERSION_ROLE = keccak256("MANAGE_CONSENSUS_VERSION_ROLE");
+bytes32 public constant MANAGE_CONSENSUS_VERSION_ROLE = keccak256("MANAGE_CONSENSUS_VERSION_ROLE")
 ```
 
 
 ### CONSENSUS_CONTRACT_POSITION
-*Storage slot: address consensusContract*
+Storage slot: address consensusContract
 
 
 ```solidity
-bytes32 internal constant CONSENSUS_CONTRACT_POSITION = keccak256("lido.BaseOracle.consensusContract");
+bytes32 internal constant CONSENSUS_CONTRACT_POSITION = keccak256("lido.BaseOracle.consensusContract")
 ```
 
 
 ### CONSENSUS_VERSION_POSITION
-*Storage slot: uint256 consensusVersion*
+Storage slot: uint256 consensusVersion
 
 
 ```solidity
-bytes32 internal constant CONSENSUS_VERSION_POSITION = keccak256("lido.BaseOracle.consensusVersion");
+bytes32 internal constant CONSENSUS_VERSION_POSITION = keccak256("lido.BaseOracle.consensusVersion")
 ```
 
 
 ### LAST_PROCESSING_REF_SLOT_POSITION
-*Storage slot: uint256 lastProcessingRefSlot*
+Storage slot: uint256 lastProcessingRefSlot
 
 
 ```solidity
-bytes32 internal constant LAST_PROCESSING_REF_SLOT_POSITION = keccak256("lido.BaseOracle.lastProcessingRefSlot");
+bytes32 internal constant LAST_PROCESSING_REF_SLOT_POSITION = keccak256("lido.BaseOracle.lastProcessingRefSlot")
 ```
 
 
 ### CONSENSUS_REPORT_POSITION
-*Storage slot: ConsensusReport consensusReport*
+Storage slot: ConsensusReport consensusReport
 
 
 ```solidity
-bytes32 internal constant CONSENSUS_REPORT_POSITION = keccak256("lido.BaseOracle.consensusReport");
+bytes32 internal constant CONSENSUS_REPORT_POSITION = keccak256("lido.BaseOracle.consensusReport")
 ```
 
 
 ### SECONDS_PER_SLOT
 
 ```solidity
-uint256 public immutable SECONDS_PER_SLOT;
+uint256 public immutable SECONDS_PER_SLOT
 ```
 
 
 ### GENESIS_TIME
 
 ```solidity
-uint256 public immutable GENESIS_TIME;
+uint256 public immutable GENESIS_TIME
 ```
 
 
@@ -84,7 +84,7 @@ Initialization & admin functions
 
 
 ```solidity
-constructor(uint256 secondsPerSlot, uint256 genesisTime);
+constructor(uint256 secondsPerSlot, uint256 genesisTime) ;
 ```
 
 ### getConsensusContract
@@ -99,6 +99,9 @@ function getConsensusContract() external view returns (address);
 ### setConsensusContract
 
 Sets the address of the HashConsensus contract.
+
+The value of the consensus version should also be changed to prevent processing a report for which the
+consensus was reached on the old contract.
 
 
 ```solidity
@@ -132,7 +135,7 @@ Data provider interface
 
 Returns the last consensus report hash and metadata.
 
-*Zero hash means that either there have been no reports yet, or the report for `refSlot` was discarded.*
+Zero hash means that either there have been no reports yet, or the report for `refSlot` was discarded.
 
 
 ```solidity

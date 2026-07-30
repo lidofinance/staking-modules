@@ -1,0 +1,282 @@
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity 0.8.33;
+
+import { MerkleTree } from "../../../helpers/MerkleTree.sol";
+import { ModuleTypeBase, CSMIntegrationBase, CSM0x02IntegrationBase, CuratedIntegrationBase } from "./ModuleTypeBase.sol";
+
+import { IValidatorStrikes } from "../../../../src/interfaces/IValidatorStrikes.sol";
+import { IFeeOracle } from "../../../../src/interfaces/IFeeOracle.sol";
+import { IExitPenalties, ExitPenaltyInfo } from "../../../../src/interfaces/IExitPenalties.sol";
+import { IWithdrawalVault } from "../../../../src/interfaces/IWithdrawalVault.sol";
+
+abstract contract OracleTestBase is ModuleTypeBase {
+    uint256 private nodeOperatorId;
+    address private refundRecipient;
+    MerkleTree private feesTree;
+    MerkleTree private strikesTree;
+
+    modifier assertInvariants() {
+        _;
+        vm.pauseGasMetering();
+        uint256 noCount = module.getNodeOperatorsCount();
+        assertModuleKeys(module);
+        _assertModuleEnqueuedCount();
+        assertAccountingTotalBondShares(noCount, lido, accounting);
+        assertAccountingBurnerApproval(lido, address(accounting), locator.burner());
+        assertAccountingUnusedStorageSlots(accounting);
+        assertFeeDistributorClaimableShares(lido, feeDistributor);
+        assertFeeDistributorTree(feeDistributor);
+        assertFeeOracleUnusedStorageSlots(oracle);
+        vm.resumeGasMetering();
+    }
+
+    function setUp() public {
+        _setUpModule();
+
+        vm.startPrank(module.getRoleMember(module.DEFAULT_ADMIN_ROLE(), 0));
+        module.grantRole(module.RESUME_ROLE(), address(this));
+        module.grantRole(module.DEFAULT_ADMIN_ROLE(), address(this));
+        vm.stopPrank();
+
+        feesTree = new MerkleTree();
+        strikesTree = new MerkleTree();
+
+        if (module.isPaused()) module.resume();
+
+        hugeDeposit();
+
+        refundRecipient = nextAddress("refundRecipient");
+        uint256 keysCount;
+        uint256 moduleId = findModule();
+        (nodeOperatorId, keysCount) = integrationHelpers.getDepositableNodeOperator(nextAddress());
+
+        bool isStakingRouterUpgraded = _isStakingRouterUpgraded();
+        if (isStakingRouterUpgraded) {
+            vm.prank(locator.depositSecurityModule());
+            stakingRouter.deposit(moduleId, "");
+        } else {
+            vm.prank(locator.depositSecurityModule());
+            _legacyLidoDeposit(keysCount, moduleId, "");
+        }
+
+        if (module.getNodeOperator(nodeOperatorId).totalDepositedKeys == 0) {
+            // Skip: this scenario requires at least one deposited key for the selected node operator.
+            vm.skip(true, "Scenario requires at least one deposited key for selected node operator");
+        }
+    }
+
+    function reachConsensus(uint256 refSlot, bytes32 hash) public {
+        (address[] memory addresses, ) = hashConsensus.getFastLaneMembers();
+        uint256 consensusVersion = oracle.getConsensusVersion();
+        for (uint256 i = 0; i < addresses.length; i++) {
+            vm.prank(addresses[i]);
+            hashConsensus.submitReport(refSlot, hash, consensusVersion);
+        }
+    }
+
+    function waitForNextRefSlot() public {
+        (uint256 SLOTS_PER_EPOCH, uint256 SECONDS_PER_SLOT, uint256 GENESIS_TIME) = hashConsensus.getChainConfig();
+        (uint256 initialEpoch, , ) = hashConsensus.getFrameConfig();
+        uint256 epoch = (block.timestamp - GENESIS_TIME) / SECONDS_PER_SLOT / SLOTS_PER_EPOCH;
+        if (epoch < initialEpoch) {
+            uint256 targetTime = GENESIS_TIME + 1 + initialEpoch * SLOTS_PER_EPOCH * SECONDS_PER_SLOT;
+            uint256 currentTime = block.timestamp;
+            if (targetTime > currentTime) {
+                uint256 sleepTime = targetTime - currentTime;
+                vm.warp(block.timestamp + sleepTime);
+            }
+        }
+        (uint256 refSlot, ) = hashConsensus.getCurrentFrame();
+
+        (, uint256 EPOCHS_PER_FRAME, ) = hashConsensus.getFrameConfig();
+        uint256 frameStartWithOffset = GENESIS_TIME +
+            (refSlot + SLOTS_PER_EPOCH * EPOCHS_PER_FRAME + 1) *
+            SECONDS_PER_SLOT;
+        if (frameStartWithOffset > block.timestamp) vm.warp(block.timestamp + frameStartWithOffset - block.timestamp);
+    }
+
+    function prepareReport(
+        bytes32 feesTreeRoot,
+        uint256 distributedShares,
+        bytes32 strikesTreeRoot
+    ) public returns (IFeeOracle.ReportData memory data) {
+        return prepareReport(feesTreeRoot, "", distributedShares, 0, strikesTreeRoot, "");
+    }
+
+    function prepareReport(
+        bytes32 feesTreeRoot,
+        string memory feesTreeCid,
+        uint256 distributedShares,
+        uint256 rebateShares,
+        bytes32 strikesTreeRoot,
+        string memory strikesTreeCid
+    ) public returns (IFeeOracle.ReportData memory data) {
+        uint256 consensusVersion = oracle.getConsensusVersion();
+        waitForNextRefSlot();
+        (uint256 refSlot, ) = hashConsensus.getCurrentFrame();
+        string memory resolvedFeesTreeCid = feesTreeCid;
+        string memory resolvedStrikesTreeCid = strikesTreeCid;
+
+        if (bytes(resolvedFeesTreeCid).length == 0 && feesTreeRoot != bytes32(0)) {
+            resolvedFeesTreeCid = someCIDv0();
+        }
+        if (bytes(resolvedStrikesTreeCid).length == 0 && strikesTreeRoot != bytes32(0)) {
+            resolvedStrikesTreeCid = someCIDv0();
+        }
+
+        data = IFeeOracle.ReportData({
+            consensusVersion: consensusVersion,
+            refSlot: refSlot,
+            treeRoot: feesTreeRoot,
+            treeCid: resolvedFeesTreeCid,
+            logCid: someCIDv0(),
+            distributed: distributedShares,
+            rebate: rebateShares,
+            strikesTreeRoot: strikesTreeRoot,
+            strikesTreeCid: resolvedStrikesTreeCid
+        });
+        reachConsensus(refSlot, keccak256(abi.encode(data)));
+    }
+
+    function test_reportDistributedFees() public assertInvariants {
+        vm.deal(address(feeDistributor), 1 ether);
+        vm.prank(address(feeDistributor));
+        lido.submit{ value: 1 ether }(address(0));
+        uint256 distributed = feeDistributor.pendingSharesToDistribute();
+        uint256 claimed = feeDistributor.distributedShares(nodeOperatorId);
+        feesTree.pushLeaf(abi.encode(nodeOperatorId, claimed + distributed));
+        feesTree.pushLeaf(abi.encode(type(uint64).max, 0));
+
+        uint256[] memory strikesData = new uint256[](1);
+        strikesData[0] = 0;
+        strikesTree.pushLeaf(abi.encode(nodeOperatorId, randomBytes(48), strikesData));
+        strikesTree.pushLeaf(abi.encode(nodeOperatorId + 1, randomBytes(48), strikesData));
+
+        IFeeOracle.ReportData memory data = prepareReport(feesTree.root(), distributed, strikesTree.root());
+        uint256 contractVersion = oracle.getContractVersion();
+        (address[] memory addresses, ) = hashConsensus.getMembers();
+        vm.startPrank(addresses[0]);
+        vm.startSnapshotGas("FeeOracle.submitReportData_fees");
+        oracle.submitReportData(data, contractVersion);
+        vm.stopSnapshotGas();
+        vm.stopPrank();
+
+        assertEq(feeDistributor.pendingSharesToDistribute(), 0);
+        assertEq(
+            feeDistributor.getFeesToDistribute(nodeOperatorId, claimed + distributed, feesTree.getProof(0)),
+            distributed
+        );
+    }
+
+    function test_reportStrikes() public assertInvariants {
+        uint256 distributed = 0;
+        bytes32 feeTreeRootBefore = feeDistributor.treeRoot();
+        string memory feeTreeCidBefore = feeDistributor.treeCid();
+        uint256 keyIndex = module.getNodeOperator(nodeOperatorId).totalDepositedKeys - 1;
+        bytes memory key = module.getSigningKeys(nodeOperatorId, keyIndex, 1);
+
+        (, uint256 threshold) = parametersRegistry.getStrikesParams(accounting.getBondCurveId(nodeOperatorId));
+        uint256[] memory strikesData = new uint256[](threshold);
+        for (uint256 i = 0; i < threshold; i++) {
+            strikesData[i] = 1;
+        }
+        strikesTree.pushLeaf(abi.encode(nodeOperatorId, key, strikesData));
+        strikesTree.pushLeaf(abi.encode(nodeOperatorId + 1, randomBytes(48), strikesData));
+
+        IFeeOracle.ReportData memory data = prepareReport({
+            feesTreeRoot: feeTreeRootBefore,
+            feesTreeCid: feeTreeCidBefore,
+            distributedShares: distributed,
+            rebateShares: 0,
+            strikesTreeRoot: strikesTree.root(),
+            strikesTreeCid: ""
+        });
+        uint256 contractVersion = oracle.getContractVersion();
+        (address[] memory addresses, ) = hashConsensus.getMembers();
+        vm.startPrank(addresses[0]);
+        vm.startSnapshotGas("FeeOracle.submitReportData_strikes");
+        oracle.submitReportData(data, contractVersion);
+        vm.stopSnapshotGas();
+        vm.stopPrank();
+
+        bytes32[] memory proof = strikesTree.getProof(0);
+        uint256 penalty = parametersRegistry.getBadPerformancePenalty(accounting.getBondCurveId(nodeOperatorId));
+
+        uint256 initialBalance = 1 ether;
+        vm.deal(refundRecipient, initialBalance);
+        uint256 expectedWithdrawalFee = IWithdrawalVault(locator.withdrawalVault()).getWithdrawalRequestFee();
+
+        IValidatorStrikes.KeyStrikes[] memory keyStrikesList = new IValidatorStrikes.KeyStrikes[](1);
+        keyStrikesList[0] = IValidatorStrikes.KeyStrikes({
+            nodeOperatorId: nodeOperatorId,
+            keyIndex: keyIndex,
+            data: strikesData
+        });
+        bool[] memory proofFlags = new bool[](proof.length);
+
+        vm.expectEmit(address(exitPenalties));
+        emit IExitPenalties.StrikesPenaltyProcessed(nodeOperatorId, key, penalty);
+        vm.prank(refundRecipient);
+        vm.startSnapshotGas("ValidatorStrikes.processBadPerformanceProof");
+        this.processBadPerformanceProof{ value: 1 ether }(keyStrikesList, proof, proofFlags, refundRecipient);
+        vm.stopSnapshotGas();
+
+        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(nodeOperatorId, key);
+        assertEq(exitPenaltyInfo.strikesPenalty.value, penalty);
+        assertTrue(exitPenaltyInfo.elWithdrawalRequestFee.isValue);
+        assertEq(exitPenaltyInfo.elWithdrawalRequestFee.value, expectedWithdrawalFee);
+        assertEq(refundRecipient.balance, initialBalance - expectedWithdrawalFee);
+    }
+
+    function test_reportRebateOnlyFees() public assertInvariants {
+        bytes32 feeTreeRootBefore = feeDistributor.treeRoot();
+        string memory feeTreeCidBefore = feeDistributor.treeCid();
+        uint256 pendingSharesBefore = feeDistributor.pendingSharesToDistribute();
+        uint256 totalClaimableSharesBefore = feeDistributor.totalClaimableShares();
+        uint256 feeDistributorSharesBefore = lido.sharesOf(address(feeDistributor));
+
+        vm.deal(address(feeDistributor), 1 ether);
+        vm.prank(address(feeDistributor));
+        uint256 rebate = lido.submit{ value: 1 ether }(address(0));
+
+        address rebateAddr = feeDistributor.rebateRecipient();
+        uint256 rebateSharesBefore = lido.sharesOf(rebateAddr);
+
+        IFeeOracle.ReportData memory data = prepareReport({
+            feesTreeRoot: feeTreeRootBefore,
+            feesTreeCid: feeTreeCidBefore,
+            distributedShares: 0,
+            rebateShares: rebate,
+            strikesTreeRoot: bytes32(0),
+            strikesTreeCid: ""
+        });
+        uint256 contractVersion = oracle.getContractVersion();
+        (address[] memory addresses, ) = hashConsensus.getMembers();
+        vm.prank(addresses[0]);
+        oracle.submitReportData(data, contractVersion);
+
+        assertEq(feeDistributor.treeRoot(), feeTreeRootBefore);
+        assertEq(keccak256(bytes(feeDistributor.treeCid())), keccak256(bytes(feeTreeCidBefore)));
+        assertEq(feeDistributor.pendingSharesToDistribute(), pendingSharesBefore);
+        assertEq(feeDistributor.totalClaimableShares(), totalClaimableSharesBefore);
+        assertEq(lido.sharesOf(rebateAddr) - rebateSharesBefore, rebate);
+        assertEq(lido.sharesOf(address(feeDistributor)), feeDistributorSharesBefore);
+    }
+
+    function processBadPerformanceProof(
+        IValidatorStrikes.KeyStrikes[] calldata keyStrikes,
+        bytes32[] calldata proof,
+        bool[] calldata proofFlags,
+        address _refundRecipient
+    ) external payable {
+        strikes.processBadPerformanceProof{ value: msg.value }(keyStrikes, proof, proofFlags, _refundRecipient);
+    }
+}
+
+contract OracleTestCSM is OracleTestBase, CSMIntegrationBase {}
+
+contract OracleTestCSM0x02 is OracleTestBase, CSM0x02IntegrationBase {}
+
+contract OracleTestCurated is OracleTestBase, CuratedIntegrationBase {}

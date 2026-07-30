@@ -1,10 +1,9 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 // https://eips.ethereum.org/EIPS/eip-2612
 contract PermitHelper {
@@ -24,17 +23,7 @@ contract PermitHelper {
         uint256 deadline,
         address token
     ) public view returns (bytes32) {
-        return
-            _preparePermitDigest(
-                owner,
-                spender,
-                value,
-                nonce,
-                deadline,
-                token,
-                STETH_NAME,
-                STETH_VERSION
-            );
+        return _preparePermitDigest(owner, spender, value, nonce, deadline, token, STETH_NAME, STETH_VERSION);
     }
 
     function wstETHPermitDigest(
@@ -45,17 +34,7 @@ contract PermitHelper {
         uint256 deadline,
         address token
     ) public view returns (bytes32) {
-        return
-            _preparePermitDigest(
-                owner,
-                spender,
-                value,
-                nonce,
-                deadline,
-                token,
-                WSTETH_NAME,
-                WSTETH_VERSION
-            );
+        return _preparePermitDigest(owner, spender, value, nonce, deadline, token, WSTETH_NAME, WSTETH_VERSION);
     }
 
     // Prepare a permit digest for a specific ERC20 token
@@ -71,9 +50,7 @@ contract PermitHelper {
     ) internal view returns (bytes32) {
         bytes32 encodeData = keccak256(
             abi.encode(
-                keccak256(
-                    "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
-                ),
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
                 owner,
                 spender,
                 value,
@@ -88,9 +65,7 @@ contract PermitHelper {
         }
         bytes32 DOMAIN_SEPARATOR = keccak256(
             abi.encode(
-                keccak256(
-                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                ),
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
                 keccak256(bytes(name)),
                 keccak256(bytes(version)),
                 chainId,
@@ -99,9 +74,6 @@ contract PermitHelper {
         );
 
         // The final digest is created by prefixing the data with "\x19\x01" and hashing it
-        return
-            keccak256(
-                abi.encodePacked(hex"1901", DOMAIN_SEPARATOR, encodeData)
-            );
+        return keccak256(abi.encodePacked(hex"1901", DOMAIN_SEPARATOR, encodeData));
     }
 }

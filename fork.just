@@ -2,9 +2,9 @@
 # Fork helper scripts
 ####
 
-# Gets bond curve info from CSAccounting
+# Gets bond curve info from Accounting
 get-curve-info id:
-    cast call --rpc-url=$RPC_URL $(jq -r '.CSAccounting' ./artifacts/{{chain}}/deploy-{{chain}}.json) \
+    cast call --rpc-url=$RPC_URL $(jq -r '.Accounting' ./artifacts/{{chain}}/deploy-{{chain}}.json) \
          'getCurveInfo' {{id}}
 
 vote-add-module:
@@ -12,6 +12,7 @@ vote-add-module:
 
 vote-upgrade:
     just _impersonate-script SimulateVote --sig="upgrade"
+    just _impersonate-script SimulateVote --sig="postUpgrade"
 
 public-release:
     just _impersonate-script PauseResume --sig="publicRelease"
@@ -27,6 +28,9 @@ pause-accounting:
 
 resume-accounting:
     just _impersonate-script PauseResume --sig="resumeAccounting"
+
+grant-role role where who:
+    just _impersonate-script Roles --sig="grantRole\(bytes32,address,address\)" -- {{role}} {{where}} {{who}}
 
 propose-reward noId address:
     just _impersonate-script NodeOperators --sig="proposeRewardAddress\(uint256,address\)" -- {{noId}} {{address}}
@@ -53,8 +57,8 @@ stuck-keys noId stuckKeysCount:
     just _impersonate-script NodeOperators --sig="stuck\(uint256,uint256\)" -- {{noId}} {{stuckKeysCount}}
 
 defaultAmount := "32000000000000000000"
-withdraw-key noId keyIndex amount=defaultAmount:
-    just _impersonate-script NodeOperators --sig="withdraw\(uint256,uint256,uint256\)" -- {{noId}} {{keyIndex}} {{amount}}
+withdraw-key noId keyIndex exitBalance=defaultAmount slashingPenalty="0":
+    just _impersonate-script NodeOperators --sig="withdraw\(uint256,uint256,uint256,uint256\)" -- {{noId}} {{keyIndex}} {{exitBalance}} {{slashingPenalty}}
 
 slash-key noId keyIndex:
     just _impersonate-script NodeOperators --sig="slash\(uint256,uint256\)" -- {{noId}} {{keyIndex}}

@@ -1,5 +1,5 @@
 # SSZ
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/lib/SSZ.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/lib/SSZ.sol)
 
 
 ## Functions
@@ -21,7 +21,7 @@ function hashTreeRoot(Validator memory validator) internal view returns (bytes32
 
 Modified version of `verify` from Solady `MerkleProofLib` to support generalized indices and sha256 precompile.
 
-*Reverts if `leaf` doesn't exist in the Merkle tree with `root`, given `proof`.*
+Reverts if `leaf` doesn't exist in the Merkle tree with `root`, given `proof`.
 
 
 ```solidity
@@ -47,6 +47,13 @@ function toLittleEndian(uint256 v) internal pure returns (bytes32);
 
 ```solidity
 function toLittleEndian(bool v) internal pure returns (bytes32);
+```
+
+### endianReverse
+
+
+```solidity
+function endianReverse(bytes32 v) internal pure returns (bytes32);
 ```
 
 ## Errors

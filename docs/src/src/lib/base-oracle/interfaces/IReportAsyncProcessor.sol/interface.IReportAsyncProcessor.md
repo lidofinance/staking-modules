@@ -1,5 +1,5 @@
 # IReportAsyncProcessor
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/lib/base-oracle/interfaces/IReportAsyncProcessor.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/lib/base-oracle/interfaces/IReportAsyncProcessor.sol)
 
 A contract that gets consensus reports (i.e. hashes) pushed to and processes them
 asynchronously.
@@ -62,11 +62,20 @@ function getLastProcessingRefSlot() external view returns (uint256);
 Returns the current consensus version.
 Consensus version must change every time consensus rules change, meaning that
 an oracle looking at the same reference slot would calculate a different hash.
-HashConsensus won't accept member reports any consensus version different form the
+HashConsensus won't accept member reports any consensus version different from the
 one returned from this function.
 
 
 ```solidity
 function getConsensusVersion() external view returns (uint256);
+```
+
+### getConsensusContract
+
+Returns the address of the consensus contract.
+
+
+```solidity
+function getConsensusContract() external view returns (address);
 ```
 

@@ -1,11 +1,15 @@
 # NOAddresses
-[Git Source](https://github.com/lidofinance/community-staking-module/blob/3a4f57c9cf742468b087015f451ef8dce648f719/src/lib/NOAddresses.sol)
+[Git Source](https://github.com/lidofinance/staking-modules/blob/68bbef5148bb51c1967785a7c6ed6e168acccc0f/src/lib/NOAddresses.sol)
+
+External deployment-linked library used by BaseModule-compatible modules.
 
 
 ## Functions
 ### proposeNodeOperatorManagerAddressChange
 
-Propose a new manager address for the Node Operator
+Propose a new manager address for the Node Operator.
+
+Passing address(0) clears the pending proposal without changing the current manager address.
 
 
 ```solidity
@@ -21,7 +25,7 @@ function proposeNodeOperatorManagerAddressChange(
 |----|----|-----------|
 |`nodeOperators`|`mapping(uint256 => NodeOperator)`||
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`proposedAddress`|`address`|Proposed manager address|
+|`proposedAddress`|`address`|Proposed manager address, or address(0) to cancel the current proposal|
 
 
 ### confirmNodeOperatorManagerAddressChange
@@ -46,7 +50,9 @@ function confirmNodeOperatorManagerAddressChange(
 
 ### proposeNodeOperatorRewardAddressChange
 
-Propose a new reward address for the Node Operator
+Propose a new reward address for the Node Operator.
+
+Passing address(0) clears the pending proposal without changing the current reward address.
 
 
 ```solidity
@@ -62,7 +68,7 @@ function proposeNodeOperatorRewardAddressChange(
 |----|----|-----------|
 |`nodeOperators`|`mapping(uint256 => NodeOperator)`||
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
-|`proposedAddress`|`address`|Proposed reward address|
+|`proposedAddress`|`address`|Proposed reward address, or address(0) to cancel the current proposal|
 
 
 ### confirmNodeOperatorRewardAddressChange
@@ -92,8 +98,10 @@ Should be called from the reward address
 
 
 ```solidity
-function resetNodeOperatorManagerAddress(mapping(uint256 => NodeOperator) storage nodeOperators, uint256 nodeOperatorId)
-    external;
+function resetNodeOperatorManagerAddress(
+    mapping(uint256 => NodeOperator) storage nodeOperators,
+    uint256 nodeOperatorId
+) external;
 ```
 **Parameters**
 
@@ -113,7 +121,8 @@ Should be called from the current manager address
 function changeNodeOperatorRewardAddress(
     mapping(uint256 => NodeOperator) storage nodeOperators,
     uint256 nodeOperatorId,
-    address newAddress
+    address newAddress,
+    address stETH
 ) external;
 ```
 **Parameters**
@@ -123,5 +132,33 @@ function changeNodeOperatorRewardAddress(
 |`nodeOperators`|`mapping(uint256 => NodeOperator)`||
 |`nodeOperatorId`|`uint256`|ID of the Node Operator|
 |`newAddress`|`address`|New reward address|
+|`stETH`|`address`||
+
+
+### changeNodeOperatorAddresses
+
+Change both reward and manager addresses of a node operator.
+
+XXX: Use with caution! No check of the caller.
+
+
+```solidity
+function changeNodeOperatorAddresses(
+    mapping(uint256 => NodeOperator) storage nodeOperators,
+    uint256 nodeOperatorId,
+    address newManagerAddress,
+    address newRewardAddress,
+    address stETH
+) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nodeOperators`|`mapping(uint256 => NodeOperator)`||
+|`nodeOperatorId`|`uint256`|ID of the Node Operator|
+|`newManagerAddress`|`address`|New manager address|
+|`newRewardAddress`|`address`|New reward address|
+|`stETH`|`address`||
 
 

@@ -1,18 +1,18 @@
-// SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2026 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.33;
 
-import { ICSModule } from "../../../src/interfaces/ICSModule.sol";
-import { ICSAccounting } from "../../../src/interfaces/ICSAccounting.sol";
-import { ICSExitPenalties } from "../../../src/interfaces/ICSExitPenalties.sol";
-import { ICSParametersRegistry } from "../../../src/interfaces/ICSParametersRegistry.sol";
-import { ExitPenaltyInfo } from "../../../src/interfaces/ICSExitPenalties.sol";
+import { IBaseModule } from "../../../src/interfaces/IBaseModule.sol";
+import { IAccounting } from "../../../src/interfaces/IAccounting.sol";
+import { IExitPenalties } from "../../../src/interfaces/IExitPenalties.sol";
+import { IParametersRegistry } from "../../../src/interfaces/IParametersRegistry.sol";
+import { ExitPenaltyInfo } from "../../../src/interfaces/IExitPenalties.sol";
 import { ExitTypes } from "../../../src/abstract/ExitTypes.sol";
 
-contract ExitPenaltiesMock is ICSExitPenalties, ExitTypes {
-    ICSModule public MODULE;
-    ICSAccounting public ACCOUNTING;
-    ICSParametersRegistry public immutable PARAMETERS_REGISTRY;
+contract ExitPenaltiesMock is IExitPenalties, ExitTypes {
+    IBaseModule public MODULE;
+    IAccounting public ACCOUNTING;
+    IParametersRegistry public immutable PARAMETERS_REGISTRY;
     ExitPenaltyInfo internal penaltyInfo;
     bool applicable;
 
@@ -20,46 +20,25 @@ contract ExitPenaltiesMock is ICSExitPenalties, ExitTypes {
         return address(0);
     }
 
-    function processExitDelayReport(
-        uint256,
-        bytes calldata,
-        uint256
-    ) external {}
+    function processExitDelayReport(uint256, bytes calldata, uint256) external {}
 
-    function processTriggeredExit(
-        uint256,
-        bytes calldata,
-        uint256,
-        uint256
-    ) external {}
+    function processTriggeredExit(uint256, bytes calldata, uint256, uint256) external {}
 
-    function processStrikesReport(
-        uint256 nodeOperatorId,
-        bytes calldata publicKey
-    ) external {}
+    function processStrikesReport(uint256 nodeOperatorId, bytes calldata publicKey) external {}
 
     function mock_isValidatorExitDelayPenaltyApplicable(bool flag) external {
         applicable = flag;
     }
 
-    function isValidatorExitDelayPenaltyApplicable(
-        uint256,
-        bytes calldata,
-        uint256
-    ) external view returns (bool) {
+    function isValidatorExitDelayPenaltyApplicable(uint256, bytes calldata, uint256) external view returns (bool) {
         return applicable;
     }
 
-    function mock_setDelayedExitPenaltyInfo(
-        ExitPenaltyInfo memory _penaltyInfo
-    ) external {
+    function mock_setDelayedExitPenaltyInfo(ExitPenaltyInfo memory _penaltyInfo) external {
         penaltyInfo = _penaltyInfo;
     }
 
-    function getExitPenaltyInfo(
-        uint256,
-        bytes calldata
-    ) external view returns (ExitPenaltyInfo memory) {
+    function getExitPenaltyInfo(uint256, bytes calldata) external view returns (ExitPenaltyInfo memory) {
         return penaltyInfo;
     }
 
