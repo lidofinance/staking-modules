@@ -3,6 +3,8 @@
 
 pragma solidity 0.8.33;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
 import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.sol";
@@ -14,6 +16,7 @@ import { SigningKeys } from "./lib/SigningKeys.sol";
 import { CuratedDepositAllocator } from "./lib/allocator/CuratedDepositAllocator.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
 import { StakeTracker } from "./lib/StakeTracker.sol";
+import { ValidatorBalanceLimits } from "./lib/ValidatorBalanceLimits.sol";
 
 contract CuratedModule is ICuratedModule, BaseModule {
     IMetaRegistry public immutable META_REGISTRY;
@@ -219,8 +222,10 @@ contract CuratedModule is ICuratedModule, BaseModule {
         bool incrementNonceIfUpdated
     ) internal override returns (bool depositableChanged) {
         if (newCount > 0) {
-            uint256 weight = _metaRegistry().getNodeOperatorWeight(nodeOperatorId);
+            IMetaRegistry metaRegistry = _metaRegistry();
+            uint256 weight = metaRegistry.getNodeOperatorWeight(nodeOperatorId);
             if (weight == 0) newCount = 0;
+            if (newCount > 0) newCount = _applyStakeCap(no, newCount, metaRegistry.stakeCap());
         }
 
         depositableChanged = super._applyDepositableValidatorsCount({
@@ -246,6 +251,13 @@ contract CuratedModule is ICuratedModule, BaseModule {
         });
 
         StakeTracker.increaseKeyBalances($, operatorIds, keyIndices, allocations);
+    }
+
+    function _applyStakeCap(NodeOperator storage no, uint256 count, uint256 cap) internal view returns (uint256) {
+        uint256 maxValidators = cap / ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE;
+        uint256 activeValidators = no.totalDepositedKeys - no.totalWithdrawnKeys;
+        if (activeValidators >= maxValidators) return 0;
+        return Math.min(count, maxValidators - activeValidators);
     }
 
     function _validateTopUpPublicKeys(

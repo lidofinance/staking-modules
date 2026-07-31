@@ -118,11 +118,16 @@ contract CuratedCommon is ModuleFixtures {
     }
 
     function _mockMetaOperatorDefaults() internal {
+        _mockStakeCap(type(uint256).max);
         for (uint256 i; i < MAX_MOCKED_OPERATORS; ++i) {
             _mockOperatorGroupMembership(i, true);
             _mockOperatorWeightUpdated(i, false);
             _mockOperatorWeight(i, DEFAULT_OPERATOR_WEIGHT);
         }
+    }
+
+    function _mockStakeCap(uint256 cap) internal {
+        vm.mockCall(address(metaRegistry), abi.encodeWithSelector(IMetaRegistry.stakeCap.selector), abi.encode(cap));
     }
 
     function _mockAllOperatorWeights(uint256 weight) internal {
@@ -350,6 +355,21 @@ contract CuratedAddValidatorKeys is ModuleAddValidatorKeys, CuratedCommon {}
 contract CuratedAddValidatorKeysNegative is ModuleAddValidatorKeysNegative, CuratedCommon {}
 
 contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
+    function test_obtainDepositData_StopsAtStakeCap() public assertInvariants {
+        _mockStakeCap(4096 ether);
+        uint256 noId = createNodeOperator(4);
+
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 2);
+
+        (bytes memory pubkeys, bytes memory signatures) = module.obtainDepositData(4, "");
+
+        assertEq(pubkeys.length, 2 * 48);
+        assertEq(signatures.length, 2 * 96);
+        assertEq(module.getNodeOperator(noId).totalDepositedKeys, 2);
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 0);
+        assertEq(cm.getNodeOperatorBalance(noId), 64 ether);
+    }
+
     function test_obtainDepositData_MultipleOperators() public assertInvariants {
         uint256 firstId = createNodeOperator(2);
         uint256 secondId = createNodeOperator(3);
@@ -1133,6 +1153,38 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         assertEq(allocs[0], 2 ether);
     }
 
+    function test_getDepositsAllocation_StakeCapCapsAllocationAndDistribution() public assertInvariants {
+        uint256 firstId = createNodeOperator(1);
+        uint256 secondId = createNodeOperator(1);
+        module.obtainDepositData(2, "");
+        curatedHarness.exposedIncreaseKeyBalances(
+            UintArr(firstId, secondId),
+            UintArr(0, 0),
+            UintArr(2012 ether, 2012 ether)
+        );
+        _mockStakeCap(2048 ether);
+
+        (uint256 allocated, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(10 ether);
+
+        assertEq(allocated, 8 ether);
+        assertEq(ids, UintArr(firstId, secondId));
+        assertEq(allocs, UintArr(4 ether, 4 ether));
+
+        bytes memory firstKey = module.getSigningKeys(firstId, 0, 1);
+        bytes memory secondKey = module.getSigningKeys(secondId, 0, 1);
+        uint256[] memory keyAllocations = cm.allocateDeposits(
+            10 ether,
+            BytesArr(firstKey, secondKey),
+            UintArr(0, 0),
+            UintArr(firstId, secondId),
+            UintArr(10 ether, 10 ether)
+        );
+
+        assertEq(keyAllocations, UintArr(4 ether, 4 ether));
+        assertEq(cm.getNodeOperatorBalance(firstId), 2048 ether);
+        assertEq(cm.getNodeOperatorBalance(secondId), 2048 ether);
+    }
+
     function test_getDepositsAllocation_balancesReweightAllocation() public assertInvariants {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
@@ -1813,6 +1865,20 @@ contract CuratedReportWithdrawnValidators is ModuleReportWithdrawnValidators, Cu
 contract CuratedKeyAllocatedBalance is ModuleKeyAllocatedBalance, CuratedCommon {}
 
 contract CuratedReportValidatorBalance is ModuleReportValidatorBalance, CuratedCommon {
+    function test_reportValidatorBalance_DoesNotChangeStakeCapValidatorCapacity() public assertInvariants {
+        _mockStakeCap(4096 ether);
+        uint256 noId = createNodeOperator(4);
+        module.obtainDepositData(1, "");
+
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 1);
+
+        cm.reportValidatorBalance(noId, 0, 65 ether);
+
+        assertEq(cm.getNodeOperatorBalance(noId), 65 ether);
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 1);
+        assertEq(getStakingModuleSummary().depositableValidatorsCount, 1);
+    }
+
     function test_reportValidatorBalance_doesNotDecreaseKeyAllocatedBalance() public {
         uint256 noId = createNodeOperator();
         cm.obtainDepositData(1, "");
@@ -2135,6 +2201,14 @@ contract CuratedAccessControl is ModuleAccessControl, CuratedCommonNoRoles {}
 contract CuratedStakingRouterAccessControl is ModuleStakingRouterAccessControl, CuratedCommonNoRoles {}
 
 contract CuratedDepositableValidatorsCount is ModuleDepositableValidatorsCount, CuratedCommon {
+    function test_updateDepositableValidatorsCount_AppliesStakeCapValidatorCapacity() public assertInvariants {
+        _mockStakeCap(4096 ether);
+        uint256 noId = createNodeOperator(4);
+
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 2);
+        assertEq(getStakingModuleSummary().depositableValidatorsCount, 2);
+    }
+
     function test_updateDepositableValidatorsCount_zeroWeightNullifiesDepositable() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 1);

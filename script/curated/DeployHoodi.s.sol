@@ -200,6 +200,9 @@ contract DeployHoodi is DeployBase {
 
         config.secondAdminAddress = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
 
+        // TODO: finalize the stake cap.
+        config.stakeCap = 512_000 ether;
+
         // CurveMultiplier
         config.additionalBondRegistryConfig.curveMultiplierCooldown = 7 days;
         // TODO: reconsider — placeholder initial boost steps.

@@ -47,7 +47,7 @@ library StakeTracker {
         uint256[] calldata keyIndices,
         uint256[] calldata allocations
     ) external {
-        uint256[] memory allocatedOperatorIds = new uint256[](operatorIds.length);
+        uint256[] memory touchedOperatorIds = new uint256[](operatorIds.length);
         uint256[] memory increments = new uint256[](operatorIds.length);
         TransientUintUintMap operatorIndexes = TransientUintUintMapLib.create();
         uint256 touchedOperatorsCount;
@@ -68,7 +68,7 @@ library StakeTracker {
             uint256 operatorIndex = operatorIndexes.get(operatorIds[i]);
             if (operatorIndex == 0) {
                 operatorIndex = touchedOperatorsCount;
-                allocatedOperatorIds[operatorIndex] = operatorIds[i];
+                touchedOperatorIds[operatorIndex] = operatorIds[i];
                 increments[operatorIndex] = appliedIncrementWei;
                 unchecked {
                     ++touchedOperatorsCount;
@@ -83,7 +83,7 @@ library StakeTracker {
         }
 
         for (uint256 i; i < touchedOperatorsCount; ++i) {
-            increaseOperatorBalance($, allocatedOperatorIds[i], increments[i]);
+            increaseOperatorBalance($, touchedOperatorIds[i], increments[i]);
         }
     }
 

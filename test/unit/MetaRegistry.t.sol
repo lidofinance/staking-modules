@@ -62,6 +62,7 @@ contract MetaRegistryBaseTest is Test, Utilities, Fixtures {
     address public metadataAdmin;
     address public groupManager;
     address public bondCurveWeightManager;
+    address public stakeCapManager;
     address public nodeOperatorOwner;
     address public stranger;
 
@@ -72,12 +73,14 @@ contract MetaRegistryBaseTest is Test, Utilities, Fixtures {
     uint256 internal constant NO_GROUP_ID = 0;
     uint256 internal constant CURVE_WEIGHT = 10000;
     uint16 internal constant MAX_BP = 10000;
+    uint256 internal constant INITIAL_STAKE_CAP = 512_000 ether;
 
     function setUp() public virtual {
         admin = nextAddress("ADMIN");
         metadataAdmin = nextAddress("METADATA_ADMIN");
         groupManager = nextAddress("GROUP_MANAGER");
         bondCurveWeightManager = nextAddress("BOND_CURVE_WEIGHT_MANAGER");
+        stakeCapManager = nextAddress("STAKE_CAP_MANAGER");
         nodeOperatorOwner = nextAddress("NODE_OPERATOR_OWNER");
         stranger = nextAddress("STRANGER");
 
@@ -99,12 +102,13 @@ contract MetaRegistryBaseTest is Test, Utilities, Fixtures {
 
         registry = new MetaRegistryForTest(address(module), address(additionalBondRegistry));
         _enableInitializers(address(registry));
-        registry.initialize(admin);
+        registry.initialize(admin, INITIAL_STAKE_CAP);
 
         vm.startPrank(admin);
         registry.grantRole(registry.SET_OPERATOR_INFO_ROLE(), metadataAdmin);
         registry.grantRole(registry.MANAGE_OPERATOR_GROUPS_ROLE(), groupManager);
         registry.grantRole(registry.SET_BOND_CURVE_WEIGHT_ROLE(), bondCurveWeightManager);
+        registry.grantRole(registry.MANAGE_STAKE_CAP_ROLE(), stakeCapManager);
         vm.stopPrank();
     }
 }
@@ -265,20 +269,26 @@ contract MetaRegistryConstructorTest is MetaRegistryBaseTest {
 
 contract MetaRegistryInitializeTest is MetaRegistryBaseTest {
     function test_getInitializedVersion() public view {
-        assertEq(registry.getInitializedVersion(), 1);
+        assertEq(registry.getInitializedVersion(), 2);
     }
 
-    function test_initialize_SetsAdmin() public {
+    function test_initialize_SetsAdminAndStakeCap() public {
         MetaRegistry r = new MetaRegistry(address(module), address(additionalBondRegistry));
         _enableInitializers(address(r));
-        r.initialize(admin);
+
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector));
+        vm.expectEmit(address(r));
+        emit IMetaRegistry.StakeCapSet(0, INITIAL_STAKE_CAP);
+        r.initialize(admin, INITIAL_STAKE_CAP);
+
         assertTrue(r.hasRole(r.DEFAULT_ADMIN_ROLE(), admin));
+        assertEq(r.stakeCap(), INITIAL_STAKE_CAP);
     }
 
     function test_initialize_NoGroupsInitially() public {
         MetaRegistry r = new MetaRegistry(address(module), address(additionalBondRegistry));
         _enableInitializers(address(r));
-        r.initialize(admin);
+        r.initialize(admin, INITIAL_STAKE_CAP);
 
         assertEq(r.getOperatorGroupsCount(), 0);
         // NO_GROUP_ID stub is implicitly readable as an empty group.
@@ -292,15 +302,82 @@ contract MetaRegistryInitializeTest is MetaRegistryBaseTest {
         MetaRegistry r = new MetaRegistry(address(module), address(additionalBondRegistry));
         _enableInitializers(address(r));
         vm.expectRevert(IMetaRegistry.ZeroAdminAddress.selector);
-        r.initialize(address(0));
+        r.initialize(address(0), INITIAL_STAKE_CAP);
+    }
+
+    function test_initialize_RevertWhen_InvalidStakeCap() public {
+        MetaRegistry r = new MetaRegistry(address(module), address(additionalBondRegistry));
+        _enableInitializers(address(r));
+        vm.expectRevert(IMetaRegistry.InvalidStakeCap.selector);
+        r.initialize(admin, INITIAL_STAKE_CAP + 1 ether);
     }
 
     function test_initialize_RevertWhen_DoubleCall() public {
         MetaRegistry r = new MetaRegistry(address(module), address(additionalBondRegistry));
         _enableInitializers(address(r));
-        r.initialize(admin);
+        r.initialize(admin, INITIAL_STAKE_CAP);
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        r.initialize(admin);
+        r.initialize(admin, INITIAL_STAKE_CAP);
+    }
+
+    function test_finalizeUpgradeV2_SetsStakeCap() public {
+        MetaRegistry r = new MetaRegistry(address(module), address(additionalBondRegistry));
+        _enableInitializers(address(r));
+
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector));
+        vm.expectEmit(address(r));
+        emit IMetaRegistry.StakeCapSet(0, INITIAL_STAKE_CAP);
+        r.finalizeUpgradeV2(INITIAL_STAKE_CAP);
+
+        assertEq(r.getInitializedVersion(), 2);
+        assertEq(r.stakeCap(), INITIAL_STAKE_CAP);
+    }
+
+    function test_finalizeUpgradeV2_RevertWhen_DoubleCall() public {
+        MetaRegistry r = new MetaRegistry(address(module), address(additionalBondRegistry));
+        _enableInitializers(address(r));
+        r.finalizeUpgradeV2(INITIAL_STAKE_CAP);
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        r.finalizeUpgradeV2(INITIAL_STAKE_CAP * 2);
+    }
+}
+
+contract MetaRegistryStakeCapTest is MetaRegistryBaseTest {
+    function test_setStakeCap() public {
+        uint256 newCap = INITIAL_STAKE_CAP * 2;
+
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector));
+        vm.expectEmit(address(registry));
+        emit IMetaRegistry.StakeCapSet(INITIAL_STAKE_CAP, newCap);
+        vm.prank(stakeCapManager);
+        registry.setStakeCap(newCap);
+
+        assertEq(registry.stakeCap(), newCap);
+    }
+
+    function test_setStakeCap_RevertWhen_NoRole() public {
+        expectRoleRevert(stranger, registry.MANAGE_STAKE_CAP_ROLE());
+        vm.prank(stranger);
+        registry.setStakeCap(INITIAL_STAKE_CAP * 2);
+    }
+
+    function test_setStakeCap_RevertWhen_Zero() public {
+        vm.expectRevert(IMetaRegistry.InvalidStakeCap.selector);
+        vm.prank(stakeCapManager);
+        registry.setStakeCap(0);
+    }
+
+    function test_setStakeCap_RevertWhen_NotMultipleOfMeb() public {
+        vm.expectRevert(IMetaRegistry.InvalidStakeCap.selector);
+        vm.prank(stakeCapManager);
+        registry.setStakeCap(INITIAL_STAKE_CAP + 1 ether);
+    }
+
+    function test_setStakeCap_RevertWhen_SameCap() public {
+        vm.expectRevert(IMetaRegistry.SameStakeCap.selector);
+        vm.prank(stakeCapManager);
+        registry.setStakeCap(INITIAL_STAKE_CAP);
     }
 }
 

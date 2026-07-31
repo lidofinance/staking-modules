@@ -554,6 +554,7 @@ contract DeploymentHelpers is Test {
 
         // MetaRegistry
         dst.setOperatorInfoManager = src.setOperatorInfoManager;
+        dst.stakeCap = src.stakeCap;
 
         // CircuitBreaker
         dst.circuitBreaker = src.circuitBreaker;
