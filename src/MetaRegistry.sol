@@ -19,6 +19,7 @@ import { IMetaRegistry, OperatorMetadata } from "./interfaces/IMetaRegistry.sol"
 import { IAdditionalBondRegistry } from "./interfaces/IAdditionalBondRegistry.sol";
 import { ExternalOperatorLib, OperatorType } from "./lib/ExternalOperatorLib.sol";
 import { MAX_BP } from "./lib/Constants.sol";
+import { ValidatorBalanceLimits } from "./lib/ValidatorBalanceLimits.sol";
 
 /// @notice Stores meta-operator group definitions and weight composition for the curated module.
 contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUpgradeable {
@@ -56,7 +57,7 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         mapping(uint256 providerId => WeightBoostProviderEntry entry) weightBoostProviders;
         mapping(address provider => uint256 providerId) weightBoostProviderIdByAddress;
         uint256 weightBoostProvidersCount;
-        uint256 maximumStakeCapPerNodeOperator;
+        uint256 stakeCap;
     }
 
     bytes32 public constant MANAGE_OPERATOR_GROUPS_ROLE = keccak256("MANAGE_OPERATOR_GROUPS_ROLE");
@@ -99,12 +100,12 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         if (admin == address(0)) revert ZeroAdminAddress();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _setMaximumStakeCapPerNodeOperator(initialCap);
+        _setStakeCap(initialCap);
     }
 
     /// @inheritdoc IMetaRegistry
     function finalizeUpgradeV2(uint256 initialCap) external reinitializer(INITIALIZED_VERSION) {
-        _setMaximumStakeCapPerNodeOperator(initialCap);
+        _setStakeCap(initialCap);
     }
 
     /// @inheritdoc IMetaRegistry
@@ -113,13 +114,13 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     }
 
     /// @inheritdoc IMetaRegistry
-    function maximumStakeCapPerNodeOperator() external view returns (uint256 cap) {
-        return _storage().maximumStakeCapPerNodeOperator;
+    function stakeCap() external view returns (uint256 cap) {
+        return _storage().stakeCap;
     }
 
     /// @inheritdoc IMetaRegistry
-    function setMaximumStakeCapPerNodeOperator(uint256 newCap) external onlyRole(MANAGE_STAKE_CAP_ROLE) {
-        _setMaximumStakeCapPerNodeOperator(newCap);
+    function setStakeCap(uint256 newCap) external onlyRole(MANAGE_STAKE_CAP_ROLE) {
+        _setStakeCap(newCap);
     }
 
     /// @inheritdoc IMetaRegistry
@@ -550,15 +551,15 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         MODULE.requestFullDepositInfoUpdate();
     }
 
-    function _setMaximumStakeCapPerNodeOperator(uint256 newCap) internal {
-        if (newCap == 0 || newCap % 1 ether != 0) revert InvalidStakeCap();
+    function _setStakeCap(uint256 newCap) internal {
+        if (newCap == 0 || newCap % ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE != 0) revert InvalidStakeCap();
 
         MetaRegistryStorage storage $ = _storage();
-        uint256 previousCap = $.maximumStakeCapPerNodeOperator;
-        if (newCap == previousCap) revert SameMaximumStakeCap();
+        uint256 previousCap = $.stakeCap;
+        if (newCap == previousCap) revert SameStakeCap();
 
-        $.maximumStakeCapPerNodeOperator = newCap;
-        emit MaximumStakeCapPerNodeOperatorSet(previousCap, newCap);
+        $.stakeCap = newCap;
+        emit StakeCapSet(previousCap, newCap);
         _requestFullDepositInfoUpdate();
     }
 

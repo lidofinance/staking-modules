@@ -118,7 +118,7 @@ contract CuratedCommon is ModuleFixtures {
     }
 
     function _mockMetaOperatorDefaults() internal {
-        _mockMaximumStakeCap(type(uint256).max);
+        _mockStakeCap(type(uint256).max);
         for (uint256 i; i < MAX_MOCKED_OPERATORS; ++i) {
             _mockOperatorGroupMembership(i, true);
             _mockOperatorWeightUpdated(i, false);
@@ -126,12 +126,8 @@ contract CuratedCommon is ModuleFixtures {
         }
     }
 
-    function _mockMaximumStakeCap(uint256 cap) internal {
-        vm.mockCall(
-            address(metaRegistry),
-            abi.encodeWithSelector(IMetaRegistry.maximumStakeCapPerNodeOperator.selector),
-            abi.encode(cap)
-        );
+    function _mockStakeCap(uint256 cap) internal {
+        vm.mockCall(address(metaRegistry), abi.encodeWithSelector(IMetaRegistry.stakeCap.selector), abi.encode(cap));
     }
 
     function _mockAllOperatorWeights(uint256 weight) internal {
@@ -360,7 +356,7 @@ contract CuratedAddValidatorKeysNegative is ModuleAddValidatorKeysNegative, Cura
 
 contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
     function test_obtainDepositData_StopsAtStakeCap() public assertInvariants {
-        _mockMaximumStakeCap(64 ether);
+        _mockStakeCap(4096 ether);
         uint256 noId = createNodeOperator(4);
 
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 2);
@@ -1161,7 +1157,12 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         uint256 firstId = createNodeOperator(1);
         uint256 secondId = createNodeOperator(1);
         module.obtainDepositData(2, "");
-        _mockMaximumStakeCap(36 ether);
+        curatedHarness.exposedIncreaseKeyBalances(
+            UintArr(firstId, secondId),
+            UintArr(0, 0),
+            UintArr(2012 ether, 2012 ether)
+        );
+        _mockStakeCap(2048 ether);
 
         (uint256 allocated, uint256[] memory ids, uint256[] memory allocs) = cm.getDepositsAllocation(10 ether);
 
@@ -1180,8 +1181,8 @@ contract CuratedTopUpObtainDepositData is CuratedCommon {
         );
 
         assertEq(keyAllocations, UintArr(4 ether, 4 ether));
-        assertEq(cm.getNodeOperatorBalance(firstId), 36 ether);
-        assertEq(cm.getNodeOperatorBalance(secondId), 36 ether);
+        assertEq(cm.getNodeOperatorBalance(firstId), 2048 ether);
+        assertEq(cm.getNodeOperatorBalance(secondId), 2048 ether);
     }
 
     function test_getDepositsAllocation_balancesReweightAllocation() public assertInvariants {
@@ -1864,18 +1865,18 @@ contract CuratedReportWithdrawnValidators is ModuleReportWithdrawnValidators, Cu
 contract CuratedKeyAllocatedBalance is ModuleKeyAllocatedBalance, CuratedCommon {}
 
 contract CuratedReportValidatorBalance is ModuleReportValidatorBalance, CuratedCommon {
-    function test_reportValidatorBalance_ReducesStakeCapHeadroom() public assertInvariants {
-        _mockMaximumStakeCap(96 ether);
+    function test_reportValidatorBalance_DoesNotChangeStakeCapValidatorCapacity() public assertInvariants {
+        _mockStakeCap(4096 ether);
         uint256 noId = createNodeOperator(4);
         module.obtainDepositData(1, "");
 
-        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 2);
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 1);
 
         cm.reportValidatorBalance(noId, 0, 65 ether);
 
         assertEq(cm.getNodeOperatorBalance(noId), 65 ether);
-        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 0);
-        assertEq(getStakingModuleSummary().depositableValidatorsCount, 0);
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 1);
+        assertEq(getStakingModuleSummary().depositableValidatorsCount, 1);
     }
 
     function test_reportValidatorBalance_doesNotDecreaseKeyAllocatedBalance() public {
@@ -2200,8 +2201,8 @@ contract CuratedAccessControl is ModuleAccessControl, CuratedCommonNoRoles {}
 contract CuratedStakingRouterAccessControl is ModuleStakingRouterAccessControl, CuratedCommonNoRoles {}
 
 contract CuratedDepositableValidatorsCount is ModuleDepositableValidatorsCount, CuratedCommon {
-    function test_updateDepositableValidatorsCount_FloorsStakeCapHeadroom() public assertInvariants {
-        _mockMaximumStakeCap(95 ether);
+    function test_updateDepositableValidatorsCount_AppliesStakeCapValidatorCapacity() public assertInvariants {
+        _mockStakeCap(4096 ether);
         uint256 noId = createNodeOperator(4);
 
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 2);

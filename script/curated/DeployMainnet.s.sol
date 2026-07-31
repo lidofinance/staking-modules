@@ -199,8 +199,8 @@ contract DeployMainnet is DeployBase {
         // DG
         config.resealManager = 0x7914b5a1539b97Bd0bbd155757F25FD79A522d24;
 
-        // TODO: finalize the maximum stake cap per node operator.
-        config.maximumStakeCapPerNodeOperator = 512_000 ether;
+        // TODO: finalize the stake cap.
+        config.stakeCap = 512_000 ether;
 
         // CurveMultiplier
         config.additionalBondRegistryConfig.curveMultiplierCooldown = 7 days;

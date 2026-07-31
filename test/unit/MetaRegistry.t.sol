@@ -73,7 +73,7 @@ contract MetaRegistryBaseTest is Test, Utilities, Fixtures {
     uint256 internal constant NO_GROUP_ID = 0;
     uint256 internal constant CURVE_WEIGHT = 10000;
     uint16 internal constant MAX_BP = 10000;
-    uint256 internal constant INITIAL_STAKE_CAP = 1_000 ether;
+    uint256 internal constant INITIAL_STAKE_CAP = 512_000 ether;
 
     function setUp() public virtual {
         admin = nextAddress("ADMIN");
@@ -278,11 +278,11 @@ contract MetaRegistryInitializeTest is MetaRegistryBaseTest {
 
         vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector));
         vm.expectEmit(address(r));
-        emit IMetaRegistry.MaximumStakeCapPerNodeOperatorSet(0, INITIAL_STAKE_CAP);
+        emit IMetaRegistry.StakeCapSet(0, INITIAL_STAKE_CAP);
         r.initialize(admin, INITIAL_STAKE_CAP);
 
         assertTrue(r.hasRole(r.DEFAULT_ADMIN_ROLE(), admin));
-        assertEq(r.maximumStakeCapPerNodeOperator(), INITIAL_STAKE_CAP);
+        assertEq(r.stakeCap(), INITIAL_STAKE_CAP);
     }
 
     function test_initialize_NoGroupsInitially() public {
@@ -309,7 +309,7 @@ contract MetaRegistryInitializeTest is MetaRegistryBaseTest {
         MetaRegistry r = new MetaRegistry(address(module), address(additionalBondRegistry));
         _enableInitializers(address(r));
         vm.expectRevert(IMetaRegistry.InvalidStakeCap.selector);
-        r.initialize(admin, INITIAL_STAKE_CAP + 1 wei);
+        r.initialize(admin, INITIAL_STAKE_CAP + 1 ether);
     }
 
     function test_initialize_RevertWhen_DoubleCall() public {
@@ -326,11 +326,11 @@ contract MetaRegistryInitializeTest is MetaRegistryBaseTest {
 
         vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector));
         vm.expectEmit(address(r));
-        emit IMetaRegistry.MaximumStakeCapPerNodeOperatorSet(0, INITIAL_STAKE_CAP);
+        emit IMetaRegistry.StakeCapSet(0, INITIAL_STAKE_CAP);
         r.finalizeUpgradeV2(INITIAL_STAKE_CAP);
 
         assertEq(r.getInitializedVersion(), 2);
-        assertEq(r.maximumStakeCapPerNodeOperator(), INITIAL_STAKE_CAP);
+        assertEq(r.stakeCap(), INITIAL_STAKE_CAP);
     }
 
     function test_finalizeUpgradeV2_RevertWhen_DoubleCall() public {
@@ -343,41 +343,41 @@ contract MetaRegistryInitializeTest is MetaRegistryBaseTest {
     }
 }
 
-contract MetaRegistryMaximumStakeCapTest is MetaRegistryBaseTest {
-    function test_setMaximumStakeCapPerNodeOperator() public {
+contract MetaRegistryStakeCapTest is MetaRegistryBaseTest {
+    function test_setStakeCap() public {
         uint256 newCap = INITIAL_STAKE_CAP * 2;
 
         vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector));
         vm.expectEmit(address(registry));
-        emit IMetaRegistry.MaximumStakeCapPerNodeOperatorSet(INITIAL_STAKE_CAP, newCap);
+        emit IMetaRegistry.StakeCapSet(INITIAL_STAKE_CAP, newCap);
         vm.prank(stakeCapManager);
-        registry.setMaximumStakeCapPerNodeOperator(newCap);
+        registry.setStakeCap(newCap);
 
-        assertEq(registry.maximumStakeCapPerNodeOperator(), newCap);
+        assertEq(registry.stakeCap(), newCap);
     }
 
-    function test_setMaximumStakeCapPerNodeOperator_RevertWhen_NoRole() public {
+    function test_setStakeCap_RevertWhen_NoRole() public {
         expectRoleRevert(stranger, registry.MANAGE_STAKE_CAP_ROLE());
         vm.prank(stranger);
-        registry.setMaximumStakeCapPerNodeOperator(INITIAL_STAKE_CAP * 2);
+        registry.setStakeCap(INITIAL_STAKE_CAP * 2);
     }
 
-    function test_setMaximumStakeCapPerNodeOperator_RevertWhen_Zero() public {
+    function test_setStakeCap_RevertWhen_Zero() public {
         vm.expectRevert(IMetaRegistry.InvalidStakeCap.selector);
         vm.prank(stakeCapManager);
-        registry.setMaximumStakeCapPerNodeOperator(0);
+        registry.setStakeCap(0);
     }
 
-    function test_setMaximumStakeCapPerNodeOperator_RevertWhen_NotWholeEther() public {
+    function test_setStakeCap_RevertWhen_NotMultipleOfMeb() public {
         vm.expectRevert(IMetaRegistry.InvalidStakeCap.selector);
         vm.prank(stakeCapManager);
-        registry.setMaximumStakeCapPerNodeOperator(INITIAL_STAKE_CAP + 1 wei);
+        registry.setStakeCap(INITIAL_STAKE_CAP + 1 ether);
     }
 
-    function test_setMaximumStakeCapPerNodeOperator_RevertWhen_SameCap() public {
-        vm.expectRevert(IMetaRegistry.SameMaximumStakeCap.selector);
+    function test_setStakeCap_RevertWhen_SameCap() public {
+        vm.expectRevert(IMetaRegistry.SameStakeCap.selector);
         vm.prank(stakeCapManager);
-        registry.setMaximumStakeCapPerNodeOperator(INITIAL_STAKE_CAP);
+        registry.setStakeCap(INITIAL_STAKE_CAP);
     }
 }
 

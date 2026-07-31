@@ -41,17 +41,16 @@ library StakeTracker {
     }
 
     /// @dev Applies per-key top-up allocations, updates key allocated balances, and aggregates stake deltas per operator.
-    /// @return allocatedOperatorIds Unique IDs of operators whose tracked stake increased.
     function increaseKeyBalances(
         ModuleLinearStorage.BaseModuleStorage storage $,
         uint256[] calldata operatorIds,
         uint256[] calldata keyIndices,
         uint256[] calldata allocations
-    ) external returns (uint256[] memory allocatedOperatorIds) {
-        allocatedOperatorIds = new uint256[](operatorIds.length);
+    ) external {
+        uint256[] memory touchedOperatorIds = new uint256[](operatorIds.length);
         uint256[] memory increments = new uint256[](operatorIds.length);
         TransientUintUintMap operatorIndexes = TransientUintUintMapLib.create();
-        uint256 allocatedOperatorsCount;
+        uint256 touchedOperatorsCount;
 
         for (uint256 i; i < allocations.length; ++i) {
             uint256 allocationWei = allocations[i];
@@ -68,14 +67,14 @@ library StakeTracker {
 
             uint256 operatorIndex = operatorIndexes.get(operatorIds[i]);
             if (operatorIndex == 0) {
-                operatorIndex = allocatedOperatorsCount;
-                allocatedOperatorIds[operatorIndex] = operatorIds[i];
+                operatorIndex = touchedOperatorsCount;
+                touchedOperatorIds[operatorIndex] = operatorIds[i];
                 increments[operatorIndex] = appliedIncrementWei;
                 unchecked {
-                    ++allocatedOperatorsCount;
+                    ++touchedOperatorsCount;
                 }
                 // Store index + 1 so zero can remain the "not seen yet" sentinel in the transient map.
-                operatorIndexes.set(operatorIds[i], allocatedOperatorsCount);
+                operatorIndexes.set(operatorIds[i], touchedOperatorsCount);
             } else {
                 unchecked {
                     increments[operatorIndex - 1] += appliedIncrementWei;
@@ -83,12 +82,8 @@ library StakeTracker {
             }
         }
 
-        assembly ("memory-safe") {
-            mstore(allocatedOperatorIds, allocatedOperatorsCount)
-        }
-
-        for (uint256 i; i < allocatedOperatorIds.length; ++i) {
-            increaseOperatorBalance($, allocatedOperatorIds[i], increments[i]);
+        for (uint256 i; i < touchedOperatorsCount; ++i) {
+            increaseOperatorBalance($, touchedOperatorIds[i], increments[i]);
         }
     }
 

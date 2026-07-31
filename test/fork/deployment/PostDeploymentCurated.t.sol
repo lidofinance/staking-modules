@@ -86,7 +86,7 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
 contract MetaRegistryDeploymentTest is DeploymentBaseTest {
     function test_state_onlyFull() public view {
         assertEq(metaRegistry.getInitializedVersion(), 2);
-        assertEq(metaRegistry.maximumStakeCapPerNodeOperator(), deployParams.maximumStakeCapPerNodeOperator);
+        assertEq(metaRegistry.stakeCap(), deployParams.stakeCap);
         assertEq(metaRegistry.getOperatorGroupsCount(), 0);
 
         IMetaRegistry.OperatorGroup memory groupInfo = metaRegistry.getOperatorGroup(metaRegistry.NO_GROUP_ID());

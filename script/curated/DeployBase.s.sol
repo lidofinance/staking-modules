@@ -126,7 +126,7 @@ struct CuratedDeployParams {
     address curatedGatePauseManager;
     // MetaRegistry
     address setOperatorInfoManager;
-    uint256 maximumStakeCapPerNodeOperator;
+    uint256 stakeCap;
     // CircuitBreaker
     address circuitBreaker;
     address circuitBreakerPauser;
@@ -340,7 +340,7 @@ abstract contract DeployBase is Script {
                 OssifiableProxy metaRegistryProxy = OssifiableProxy(payable(address(metaRegistry)));
                 metaRegistryProxy.proxy__upgradeToAndCall(
                     address(metaRegistryImpl),
-                    abi.encodeCall(MetaRegistry.initialize, (deployer, config.maximumStakeCapPerNodeOperator))
+                    abi.encodeCall(MetaRegistry.initialize, (deployer, config.stakeCap))
                 );
                 metaRegistryProxy.proxy__changeAdmin(config.proxyAdmin);
             }

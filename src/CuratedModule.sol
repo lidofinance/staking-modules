@@ -3,10 +3,12 @@
 
 pragma solidity 0.8.33;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
 import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.sol";
-import { IBaseModule, NodeOperator } from "./interfaces/IBaseModule.sol";
+import { NodeOperator } from "./interfaces/IBaseModule.sol";
 
 import { BaseModule } from "./abstract/BaseModule.sol";
 
@@ -92,17 +94,6 @@ contract CuratedModule is ICuratedModule, BaseModule {
         }
 
         _incrementModuleNonce();
-    }
-
-    /// @inheritdoc IBaseModule
-    function reportValidatorBalance(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        uint256 currentBalanceWei
-    ) public override(BaseModule, IBaseModule) {
-        super.reportValidatorBalance(nodeOperatorId, keyIndex, currentBalanceWei);
-        // Balance reports may change the allocated stake and, consequently, the stake cap headroom.
-        _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: true });
     }
 
     /// @inheritdoc IStakingModuleV2
@@ -234,16 +225,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             IMetaRegistry metaRegistry = _metaRegistry();
             uint256 weight = metaRegistry.getNodeOperatorWeight(nodeOperatorId);
             if (weight == 0) newCount = 0;
-
-            if (newCount > 0) {
-                uint256 cap = metaRegistry.maximumStakeCapPerNodeOperator();
-                uint256 currentStake = StakeTracker.getOperatorBalance(_baseStorage(), nodeOperatorId);
-                uint256 capCapacity;
-                if (currentStake < cap) {
-                    capCapacity = (cap - currentStake) / ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
-                }
-                if (newCount > capCapacity) newCount = capCapacity;
-            }
+            if (newCount > 0) newCount = _applyStakeCap(no, newCount, metaRegistry.stakeCap());
         }
 
         depositableChanged = super._applyDepositableValidatorsCount({
@@ -268,19 +250,14 @@ contract CuratedModule is ICuratedModule, BaseModule {
             topUpLimits: topUpLimits
         });
 
-        uint256[] memory allocatedOperatorIds = StakeTracker.increaseKeyBalances(
-            $,
-            operatorIds,
-            keyIndices,
-            allocations
-        );
+        StakeTracker.increaseKeyBalances($, operatorIds, keyIndices, allocations);
+    }
 
-        for (uint256 i; i < allocatedOperatorIds.length; ++i) {
-            _updateDepositableValidatorsCount({
-                nodeOperatorId: allocatedOperatorIds[i],
-                incrementNonceIfUpdated: false
-            });
-        }
+    function _applyStakeCap(NodeOperator storage no, uint256 count, uint256 cap) internal view returns (uint256) {
+        uint256 maxValidators = cap / ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE;
+        uint256 activeValidators = no.totalDepositedKeys - no.totalWithdrawnKeys;
+        if (activeValidators >= maxValidators) return 0;
+        return Math.min(count, maxValidators - activeValidators);
     }
 
     function _validateTopUpPublicKeys(

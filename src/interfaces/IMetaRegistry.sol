@@ -53,7 +53,7 @@ interface IMetaRegistry {
     event GroupWeightsRefreshed(uint256 indexed groupId);
     event OperatorMetadataSet(uint256 indexed nodeOperatorId, OperatorMetadata metadata);
     event NodeOperatorEffectiveWeightChanged(uint256 indexed nodeOperatorId, uint256 oldWeight, uint256 newWeight);
-    event MaximumStakeCapPerNodeOperatorSet(uint256 previousCap, uint256 newCap);
+    event StakeCapSet(uint256 previousCap, uint256 newCap);
 
     error ZeroModuleAddress();
     error ZeroAdminAddress();
@@ -77,7 +77,7 @@ interface IMetaRegistry {
     error OperatorNameTooLong();
     error OperatorDescriptionTooLong();
     error InvalidStakeCap();
-    error SameMaximumStakeCap();
+    error SameStakeCap();
 
     /// @notice Role allowed to manage operator groups.
     function MANAGE_OPERATOR_GROUPS_ROLE() external view returns (bytes32);
@@ -91,7 +91,7 @@ interface IMetaRegistry {
     /// @notice Role allowed to set bond curve weights.
     function SET_BOND_CURVE_WEIGHT_ROLE() external view returns (bytes32);
 
-    /// @notice Role allowed to manage the maximum allocated stake cap per Node Operator.
+    /// @notice Role allowed to manage the stake cap.
     function MANAGE_STAKE_CAP_ROLE() external view returns (bytes32);
 
     /// @notice Curated module allowed to call module-only hooks.
@@ -126,26 +126,26 @@ interface IMetaRegistry {
 
     /// @notice Initialize the registry.
     /// @param admin Address to receive DEFAULT_ADMIN_ROLE.
-    /// @param initialCap Initial maximum stake cap in wei.
+    /// @param initialCap Initial stake cap in wei.
     function initialize(address admin, uint256 initialCap) external;
 
-    /// @notice Finalize the upgrade that introduces the maximum stake cap.
+    /// @notice Finalize the upgrade that introduces the stake cap.
     /// @dev Must be called atomically with the implementation upgrade.
-    /// @param initialCap Initial maximum stake cap in wei.
+    /// @param initialCap Initial stake cap in wei.
     function finalizeUpgradeV2(uint256 initialCap) external;
 
     /// @notice Returns the initialized version of the contract.
     function getInitializedVersion() external view returns (uint64);
 
-    /// @notice Returns the maximum CuratedModule stake allocated to a single Node Operator.
-    /// @return cap Maximum stake cap in wei.
-    function maximumStakeCapPerNodeOperator() external view returns (uint256 cap);
+    /// @notice Returns the CuratedModule stake cap per node operator.
+    /// @return cap Stake cap in wei.
+    function stakeCap() external view returns (uint256 cap);
 
-    /// @notice Sets the maximum CuratedModule stake allocated to a single Node Operator.
+    /// @notice Sets the CuratedModule stake cap per node operator.
     /// @dev The cap limits new initial deposits and top-ups. It does not initiate exits and may be exceeded
-    ///      by allocated balance changes reported after allocation. The value must be positive and divisible by 1 ETH.
-    /// @param newCap New maximum stake cap in wei.
-    function setMaximumStakeCapPerNodeOperator(uint256 newCap) external;
+    ///      by allocated balance changes reported after allocation. The value must be positive and divisible by MEB.
+    /// @param newCap New stake cap in wei.
+    function setStakeCap(uint256 newCap) external;
 
     /// @notice Set or update metadata for a node operator (callable by SET_OPERATOR_INFO_ROLE).
     /// @param nodeOperatorId Node operator ID.

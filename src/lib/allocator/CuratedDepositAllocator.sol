@@ -269,7 +269,7 @@ library CuratedDepositAllocator {
         currentStakeByOperatorId = new uint256[](operatorsCount);
 
         IMetaRegistry metaRegistry = ICuratedModule(address(this)).META_REGISTRY();
-        uint256 stakeCap = metaRegistry.maximumStakeCapPerNodeOperator();
+        uint256 stakeCap = metaRegistry.stakeCap();
 
         // Build global share baseline across all eligible operators (non-zero weight + usable capacity).
         for (uint256 i; i < operatorsCount; ++i) {
