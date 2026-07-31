@@ -24,6 +24,7 @@ struct NodeOperator {
     /* 1 */ uint32 depositableValidatorsCount; // @dev any value
     /* 1 */ uint32 targetLimit;
     /* 1 */ uint8 targetLimitMode;
+    /* 1 */ uint24 unresolvedSlashedValidators; // @dev slashed validators whose withdrawal losses are not processed
     /* 2 */ uint32 totalExitedKeys; // @dev only increased except for the unsafe updates
     /* 2 */ uint32 enqueuedCount; // Tracks how many places are occupied by the node operator's keys in the queue.
     /* 2 */ address managerAddress;
@@ -392,6 +393,13 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @return Non-withdrawn keys count
     function getNodeOperatorNonWithdrawnKeys(uint256 nodeOperatorId) external view returns (uint256);
 
+    /// @notice Get the number of slashed validators whose withdrawal losses have not been processed yet
+    /// @dev Increased on a slashing report and decreased on the withdrawal report of the slashed validator.
+    ///      A non-zero value restricts bond claims, see `IAccounting.getClaimableBondShares`.
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @return Unresolved slashed validators count
+    function getNodeOperatorUnresolvedSlashedValidators(uint256 nodeOperatorId) external view returns (uint256);
+
     /// @notice Returns tracked operator balance (active validator base stake plus tracked extra).
     /// @dev The tracked extra is intentionally monotonic for active validators and is reduced on withdrawal reporting,
     ///      not on intermediate balance decreases, so the value serves both top-up allocation and withdrawal penalty accounting.
@@ -424,6 +432,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
 
     /// @notice Report Node Operator's key as slashed.
     /// @notice Called by `Verifier` contract. See `Verifier.processSlashedProof`.
+    /// @dev A slashing reported for an already withdrawn key does not restrict the bond claims.
     /// @param nodeOperatorId The ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex) external;

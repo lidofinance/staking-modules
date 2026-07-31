@@ -55,9 +55,17 @@ library WithdrawnValidatorLib {
             if (info.isSlashed != slashed) revert IBaseModule.InvalidWithdrawnValidatorInfo();
             if (info.isSlashed && !$.isValidatorSlashed[pointer]) revert IBaseModule.SlashingPenaltyIsNotApplicable();
 
-            _process($.nodeOperators[info.nodeOperatorId], info, $.keyConfirmedBalance[pointer]);
+            NodeOperator storage no = $.nodeOperators[info.nodeOperatorId];
+            _process(no, info, $.keyConfirmedBalance[pointer]);
 
             $.isValidatorWithdrawn[pointer] = true;
+            // Any withdrawal report accounts for the key losses, hence resolves the slashing.
+            // The decrement is saturating: a slashing reported before the counter was introduced is not counted.
+            if ($.isValidatorSlashed[pointer] && no.unresolvedSlashedValidators != 0) {
+                unchecked {
+                    --no.unresolvedSlashedValidators;
+                }
+            }
             touchedOperatorIds[touchedCount] = info.nodeOperatorId;
             trackedBalanceDecreases[touchedCount] = $.keyAllocatedBalance[pointer];
             unchecked {

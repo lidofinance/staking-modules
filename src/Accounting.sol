@@ -427,6 +427,8 @@ contract Accounting is
         uint256 cumulativeFeeShares,
         bytes32[] calldata rewardsProof
     ) external view returns (uint256 claimableShares) {
+        if (_isBondClaimRestricted(nodeOperatorId)) return 0;
+
         uint256 feesToDistribute = FEE_DISTRIBUTOR.getFeesToDistribute(
             nodeOperatorId,
             cumulativeFeeShares,
@@ -540,9 +542,18 @@ contract Accounting is
     ///      Does not subtract pending split transfers, so in rare cases (e.g. locked bond or bond debt)
     ///      may overestimate the operator-receivable amount.
     ///      Off-chain integrations should account for `getPendingSharesToSplit`.
+    /// @dev Returns zero while bond claims are restricted, blocking fee split payouts as well.
     function _getClaimableBondShares(uint256 nodeOperatorId) internal view returns (uint256) {
+        if (_isBondClaimRestricted(nodeOperatorId)) return 0;
+
         (uint256 currentShares, uint256 requiredShares) = getBondSummaryShares(nodeOperatorId);
         return Math.saturatingSub(currentShares, requiredShares);
+    }
+
+    /// @dev Returns true until all the slashed validators are reported as withdrawn. The uncovered losses remain
+    ///      as the bond debt, which is a part of the required bond.
+    function _isBondClaimRestricted(uint256 nodeOperatorId) internal view returns (bool) {
+        return MODULE.getNodeOperatorUnresolvedSlashedValidators(nodeOperatorId) != 0;
     }
 
     function _getRequiredBond(
