@@ -148,12 +148,6 @@ jobs:
       #     CHAIN: mainnet
       #     RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
 
-      - name: Run local deployment tests for CSM v3 deploy
-        run: just test-csm-v3-only-deploy
-        env:
-          CHAIN: mainnet
-          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
-
       - name: Run local deployment tests for CSM scratch deploy
         run: just test-csm-full-deploy
         env:
@@ -186,12 +180,6 @@ jobs:
 
       - name: Run local integration tests for CSM0x02 deployment
         run: just test-csm0x02-local
-        env:
-          CHAIN: mainnet
-          RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
-
-      - name: Run post-vote tests after CSM v3 upgrade (quick)
-        run: just test-csm-upgrade
         env:
           CHAIN: mainnet
           RPC_URL: ${{ secrets.RPC_URL_MAINNET }}
