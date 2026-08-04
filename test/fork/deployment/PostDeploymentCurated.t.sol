@@ -13,7 +13,7 @@ import { IERC20LockBoostProvider } from "src/interfaces/IERC20LockBoostProvider.
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { BoostStep } from "src/interfaces/IAdditionalBondRegistry.sol";
 import { StrikeThreshold } from "src/interfaces/INodeOperatorStrikes.sol";
-import { TypeBonus } from "src/interfaces/ICustomFeeRegistry.sol";
+import { FeeModifier } from "src/interfaces/ICustomFeeRegistry.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
 import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
@@ -414,18 +414,20 @@ contract CustomFeeRegistryDeploymentTest is DeploymentBaseTest {
         assertEq(customFeeRegistry.getDefaultMinFee(), deployParams.customFeeRegistryConfig.defaultMinFee);
         assertEq(customFeeRegistry.getFeeIncreaseCooldown(), deployParams.customFeeRegistryConfig.feeIncreaseCooldown);
 
-        for (uint256 i; i < deployParams.customFeeRegistryConfig.typeBonuses.length; ++i) {
-            TypeBonus memory actual = customFeeRegistry.getTypeBonus(
-                deployParams.customFeeRegistryConfig.typeBonuses[i].curveId
+        for (uint256 i; i < deployParams.customFeeRegistryConfig.feeModifiers.length; ++i) {
+            FeeModifier memory actual = customFeeRegistry.getFeeModifier(
+                deployParams.customFeeRegistryConfig.feeModifiers[i].curveId
             );
-            assertEq(actual.value, deployParams.customFeeRegistryConfig.typeBonuses[i].value);
-            assertEq(actual.negative, deployParams.customFeeRegistryConfig.typeBonuses[i].negative);
+            assertEq(actual.value, deployParams.customFeeRegistryConfig.feeModifiers[i].value);
+            assertEq(actual.negative, deployParams.customFeeRegistryConfig.feeModifiers[i].negative);
         }
 
         uint256 defaultFee = customFeeRegistry.DEFAULT_MAX_FEE();
         for (uint256 curveId; curveId < accounting.getCurvesCount(); ++curveId) {
-            TypeBonus memory bonus = customFeeRegistry.getTypeBonus(curveId);
-            uint256 effectiveFee = bonus.negative ? defaultFee - bonus.value : defaultFee + bonus.value;
+            FeeModifier memory feeModifier = customFeeRegistry.getFeeModifier(curveId);
+            uint256 effectiveFee = feeModifier.negative
+                ? defaultFee - feeModifier.value
+                : defaultFee + feeModifier.value;
             assertEq(effectiveFee, curveId == 0 ? 6_250 : 8_750, "unexpected initial effective fee");
         }
     }
@@ -441,6 +443,7 @@ contract CustomFeeRegistryDeploymentTest is DeploymentBaseTest {
         assertEq(customFeeRegistry.FEE_STEP(), 250, "custom fee step");
         assertEq(customFeeRegistry.DEFAULT_MAX_FEE(), 8_750, "custom fee default max");
         assertEq(customFeeRegistry.WEIGHT_BOOST_PER_STEP(), 400, "custom fee weight boost per step");
+        assertEq(customFeeRegistry.MAX_FEE_INCREASE_COOLDOWN(), type(uint32).max, "custom fee max increase cooldown");
     }
 
     function test_roles_onlyFull() public view {

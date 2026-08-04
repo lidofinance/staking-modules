@@ -86,7 +86,7 @@ struct ERC20LockBoostProviderConfig {
     IERC20LockBoostProvider.LockBoostStep[] lockBoostSteps;
 }
 
-struct CurveTypeBonusConfig {
+struct CurveFeeModifierConfig {
     uint256 curveId;
     uint256 value;
     bool negative;
@@ -95,7 +95,7 @@ struct CurveTypeBonusConfig {
 struct CustomFeeRegistryConfig {
     uint256 defaultMinFee;
     uint256 feeIncreaseCooldown;
-    CurveTypeBonusConfig[] typeBonuses;
+    CurveFeeModifierConfig[] feeModifiers;
 }
 
 struct CuratedDeployParams {
@@ -546,9 +546,9 @@ abstract contract DeployBase is Script {
                 }
             }
 
-            for (uint256 i; i < config.customFeeRegistryConfig.typeBonuses.length; ++i) {
-                CurveTypeBonusConfig storage bonus = config.customFeeRegistryConfig.typeBonuses[i];
-                customFeeRegistry.setTypeBonus(bonus.curveId, bonus.value, bonus.negative);
+            for (uint256 i; i < config.customFeeRegistryConfig.feeModifiers.length; ++i) {
+                CurveFeeModifierConfig storage feeModifier = config.customFeeRegistryConfig.feeModifiers[i];
+                customFeeRegistry.setFeeModifier(feeModifier.curveId, feeModifier.value, feeModifier.negative);
             }
 
             accounting.revokeRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));

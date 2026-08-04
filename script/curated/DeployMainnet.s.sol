@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { DeployBase, CuratedGateConfig, CurveTypeBonusConfig } from "./DeployBase.s.sol";
+import { DeployBase, CuratedGateConfig, CurveFeeModifierConfig } from "./DeployBase.s.sol";
 import { StrikeThreshold } from "../../src/interfaces/INodeOperatorStrikes.sol";
 import { GIndices } from "../constants/GIndices.sol";
 
@@ -228,8 +228,8 @@ contract DeployMainnet is DeployBase {
         config.customFeeRegistryConfig.defaultMinFee = 2_500;
         config.customFeeRegistryConfig.feeIncreaseCooldown = 15 days;
         // Professional Operator uses the default bond curve (curve 0): 8_750 - 2_500 = 6_250.
-        config.customFeeRegistryConfig.typeBonuses.push(
-            CurveTypeBonusConfig({ curveId: 0, value: 2_500, negative: true })
+        config.customFeeRegistryConfig.feeModifiers.push(
+            CurveFeeModifierConfig({ curveId: 0, value: 2_500, negative: true })
         );
 
         _setUp();

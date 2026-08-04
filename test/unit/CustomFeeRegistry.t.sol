@@ -8,7 +8,7 @@ import { Test } from "forge-std/Test.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import { CustomFeeRegistry } from "src/CustomFeeRegistry.sol";
-import { ICustomFeeRegistry, TypeBonus } from "src/interfaces/ICustomFeeRegistry.sol";
+import { ICustomFeeRegistry, FeeModifier } from "src/interfaces/ICustomFeeRegistry.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 
 import { CuratedMock } from "../helpers/mocks/CuratedMock.sol";
@@ -76,14 +76,19 @@ contract CustomFeeRegistryBaseTest is Test, Utilities, Fixtures {
         feeRegistry.applyFeeIncrease(NO_ID);
     }
 
+    function _cancelFeeIncrease() internal {
+        vm.prank(nodeOperatorOwner);
+        feeRegistry.cancelFeeIncrease(NO_ID);
+    }
+
     function _assertNoPendingFeeIncrease() internal view {
         assertEq(feeRegistry.getPendingFeeIncrease(NO_ID), 0);
         assertEq(feeRegistry.getFeeIncreaseCooldownUntil(NO_ID), 0);
     }
 
-    function _setTypeBonus(uint256 curveId, uint256 value, bool negative) internal {
+    function _setFeeModifier(uint256 curveId, uint256 value, bool negative) internal {
         vm.prank(admin);
-        feeRegistry.setTypeBonus(curveId, value, negative);
+        feeRegistry.setFeeModifier(curveId, value, negative);
     }
 }
 
@@ -98,6 +103,7 @@ contract CustomFeeRegistryConstructorTest is CustomFeeRegistryBaseTest {
         assertEq(feeRegistry.FEE_STEP(), STEP);
         assertEq(feeRegistry.DEFAULT_MAX_FEE(), MAX_FEE);
         assertEq(feeRegistry.WEIGHT_BOOST_PER_STEP(), SLOPE);
+        assertEq(feeRegistry.MAX_FEE_INCREASE_COOLDOWN(), type(uint32).max);
     }
 }
 
@@ -157,10 +163,10 @@ contract CustomFeeRegistryInitializeTest is CustomFeeRegistryBaseTest {
         registry.initialize(admin, MIN_FEE, 0);
     }
 
-    function test_initialize_RevertWhen_CooldownExceedsUint64() public {
+    function test_initialize_RevertWhen_CooldownExceedsMax() public {
         CustomFeeRegistry registry = _newRegistry();
         vm.expectRevert(ICustomFeeRegistry.InvalidFeeIncreaseCooldown.selector);
-        registry.initialize(admin, MIN_FEE, uint256(type(uint64).max) + 1);
+        registry.initialize(admin, MIN_FEE, uint256(type(uint32).max) + 1);
     }
 }
 
@@ -269,8 +275,8 @@ contract CustomFeeRegistryRequestFeeTest is CustomFeeRegistryBaseTest {
     }
 
     function test_requestFee_RevertWhen_BelowTypeMinimum() public {
-        _setTypeBonus(0, 2_500, true);
-        // The negative bonus raises the operator's minimum to 5_000.
+        _setFeeModifier(0, 2_500, true);
+        // The negative modifier raises the operator's minimum to 5_000.
         vm.expectRevert(ICustomFeeRegistry.InvalidFee.selector);
         _requestFee(4_750);
     }
@@ -286,14 +292,27 @@ contract CustomFeeRegistryRequestFeeTest is CustomFeeRegistryBaseTest {
         _requestFee(5_000);
     }
 
-    function test_requestFee_SameFeeCancelsPending() public {
+    function test_requestFee_RevertWhen_SameFeeWithPendingIncrease() public {
         _requestFee(5_000);
         _requestFee(6_000);
 
+        vm.expectRevert(ICustomFeeRegistry.SameFee.selector);
+        _requestFee(5_000);
+    }
+}
+
+contract CustomFeeRegistryCancelFeeIncreaseTest is CustomFeeRegistryBaseTest {
+    function setUp() public override {
+        super.setUp();
+        _requestFee(5_000);
+        _requestFee(6_000);
+    }
+
+    function test_cancelFeeIncrease() public {
         uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
         vm.expectEmit(address(feeRegistry));
         emit ICustomFeeRegistry.FeeIncreaseCancelled(NO_ID);
-        _requestFee(5_000);
+        _cancelFeeIncrease();
 
         assertEq(feeRegistry.getFee(NO_ID), 5_000);
         _assertNoPendingFeeIncrease();
@@ -301,25 +320,30 @@ contract CustomFeeRegistryRequestFeeTest is CustomFeeRegistryBaseTest {
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore + 1);
     }
 
-    function test_requestFee_SameFeeCancelsPendingAfterCooldown() public {
-        _requestFee(5_000);
-        _requestFee(6_000);
+    function test_cancelFeeIncrease_AfterCooldown() public {
         vm.warp(block.timestamp + COOLDOWN + 1);
-
-        _requestFee(5_000);
-
+        _cancelFeeIncrease();
         _assertNoPendingFeeIncrease();
     }
 
-    function test_requestFee_SameFeeCancelsPendingWhenCurrentFeeBelowNewMin() public {
-        _requestFee(5_000);
-        _requestFee(6_000);
-        _setTypeBonus(0, 4_000, true); // New minimum is 6_500.
-
-        _requestFee(5_000);
+    function test_cancelFeeIncrease_WhenCurrentFeeBelowNewMin() public {
+        _setFeeModifier(0, 4_000, true); // New minimum is 6_500.
+        _cancelFeeIncrease();
 
         _assertNoPendingFeeIncrease();
         assertEq(feeRegistry.getFee(NO_ID), 5_000);
+    }
+
+    function test_cancelFeeIncrease_RevertWhen_NotOwner() public {
+        vm.expectRevert(ICustomFeeRegistry.SenderIsNotOperatorOwner.selector);
+        vm.prank(stranger);
+        feeRegistry.cancelFeeIncrease(NO_ID);
+    }
+
+    function test_cancelFeeIncrease_RevertWhen_NoPendingIncrease() public {
+        _cancelFeeIncrease();
+        vm.expectRevert(ICustomFeeRegistry.NoFeeIncreaseCooldown.selector);
+        _cancelFeeIncrease();
     }
 }
 
@@ -384,7 +408,7 @@ contract CustomFeeRegistryApplyFeeIncreaseTest is CustomFeeRegistryBaseTest {
     }
 
     function test_applyFeeIncrease_RevertWhen_PendingFeeBelowCurrentMin() public {
-        _setTypeBonus(0, 4_000, true); // New minimum is 6_500, pending fee is 6_000.
+        _setFeeModifier(0, 4_000, true); // New minimum is 6_500, pending fee is 6_000.
         vm.warp(cooldownUntil);
 
         vm.expectRevert(ICustomFeeRegistry.InvalidFee.selector);
@@ -396,7 +420,7 @@ contract CustomFeeRegistryApplyFeeIncreaseTest is CustomFeeRegistryBaseTest {
     }
 
     function test_applyFeeIncrease_InvalidPendingCanBeNormalizedPermissionlessly() public {
-        _setTypeBonus(0, 4_000, true); // New minimum is 6_500, pending fee is 6_000.
+        _setFeeModifier(0, 4_000, true); // New minimum is 6_500, pending fee is 6_000.
         vm.warp(cooldownUntil);
 
         vm.expectRevert(ICustomFeeRegistry.InvalidFee.selector);
@@ -414,10 +438,10 @@ contract CustomFeeRegistryApplyFeeIncreaseTest is CustomFeeRegistryBaseTest {
 contract CustomFeeRegistryNormalizeFeeTest is CustomFeeRegistryBaseTest {
     function setUp() public override {
         super.setUp();
-        // The operator settles at the type minimum, then the DAO tightens the bonus.
-        _setTypeBonus(0, 2_500, true);
+        // The operator settles at the type minimum, then the DAO tightens the modifier.
+        _setFeeModifier(0, 2_500, true);
         _requestFee(5_000);
-        _setTypeBonus(0, 5_000, true);
+        _setFeeModifier(0, 5_000, true);
         // The minimum is now 7_500 and the operator at 5_000 sits below it.
     }
 
@@ -493,9 +517,9 @@ contract CustomFeeRegistryNormalizeFeesTest is CustomFeeRegistryBaseTest {
         super.setUp();
 
         // Operator 0 is left below the new minimum; the other operators remain unset and valid.
-        _setTypeBonus(0, 2_500, true);
+        _setFeeModifier(0, 2_500, true);
         _requestFee(5_000);
-        _setTypeBonus(0, 5_000, true);
+        _setFeeModifier(0, 5_000, true);
     }
 
     function test_normalizeFees() public {
@@ -581,54 +605,54 @@ contract CustomFeeRegistrySetDefaultMinFeeTest is CustomFeeRegistryBaseTest {
     }
 }
 
-contract CustomFeeRegistrySetTypeBonusTest is CustomFeeRegistryBaseTest {
-    function test_setTypeBonus_Positive() public {
+contract CustomFeeRegistrySetFeeModifierTest is CustomFeeRegistryBaseTest {
+    function test_setFeeModifier_Positive() public {
         vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.TypeBonusSet(0, 1_250, false);
-        _setTypeBonus(0, 1_250, false);
+        emit ICustomFeeRegistry.FeeModifierSet(0, 1_250, false);
+        _setFeeModifier(0, 1_250, false);
 
-        TypeBonus memory bonus = feeRegistry.getTypeBonus(0);
-        assertEq(bonus.value, 1_250);
-        assertFalse(bonus.negative);
-        // The bonus tops the effective fee up to 100% for an unset operator.
+        FeeModifier memory feeModifier = feeRegistry.getFeeModifier(0);
+        assertEq(feeModifier.value, 1_250);
+        assertFalse(feeModifier.negative);
+        // The modifier tops the effective fee up to 100% for an unset operator.
         assertEq(feeRegistry.getEffectiveFee(NO_ID), MAX_BP);
         assertEq(feeRegistry.getMinFee(NO_ID), MIN_FEE);
     }
 
-    function test_setTypeBonus_Negative() public {
-        _setTypeBonus(0, 2_500, true);
+    function test_setFeeModifier_Negative() public {
+        _setFeeModifier(0, 2_500, true);
 
-        TypeBonus memory bonus = feeRegistry.getTypeBonus(0);
-        assertEq(bonus.value, 2_500);
-        assertTrue(bonus.negative);
+        FeeModifier memory feeModifier = feeRegistry.getFeeModifier(0);
+        assertEq(feeModifier.value, 2_500);
+        assertTrue(feeModifier.negative);
         assertEq(feeRegistry.getMinFee(NO_ID), MIN_FEE + 2_500);
     }
 
-    function test_setTypeBonus_ZeroWithAnySign() public {
-        _setTypeBonus(0, 0, true);
+    function test_setFeeModifier_ZeroWithAnySign() public {
+        _setFeeModifier(0, 0, true);
         assertEq(feeRegistry.getEffectiveFee(NO_ID), MAX_FEE);
         assertEq(feeRegistry.getMinFee(NO_ID), MIN_FEE);
 
-        _setTypeBonus(0, 0, false);
+        _setFeeModifier(0, 0, false);
         assertEq(feeRegistry.getEffectiveFee(NO_ID), MAX_FEE);
         assertEq(feeRegistry.getMinFee(NO_ID), MIN_FEE);
     }
 
-    function test_setTypeBonus_DoesNotNotifyAndDoesNotMoveWeight() public {
+    function test_setFeeModifier_DoesNotNotifyAndDoesNotMoveWeight() public {
         _requestFee(5_000);
         uint256 weightBefore = feeRegistry.getWeightBoostMultiplierBP(NO_ID);
         uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
 
-        _setTypeBonus(0, 1_250, false);
+        _setFeeModifier(0, 1_250, false);
 
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), weightBefore);
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore);
     }
 
-    function test_setTypeBonus_SameFeeSameWeightAcrossTypes() public {
-        _setTypeBonus(0, 1_250, false);
+    function test_setFeeModifier_SameFeeSameWeightAcrossTypes() public {
+        _setFeeModifier(0, 1_250, false);
         _accounting.setBondCurve(1, 1); // Add curve 1 without moving NO_ID from curve 0.
-        _setTypeBonus(1, 2_500, true);
+        _setFeeModifier(1, 2_500, true);
         _requestFee(5_000);
 
         uint256 weightOnTypeA = feeRegistry.getWeightBoostMultiplierBP(NO_ID);
@@ -640,32 +664,32 @@ contract CustomFeeRegistrySetTypeBonusTest is CustomFeeRegistryBaseTest {
         assertEq(feeRegistry.getEffectiveFee(NO_ID), 2_500);
     }
 
-    function test_setTypeBonus_RevertWhen_NotAdmin() public {
+    function test_setFeeModifier_RevertWhen_NotAdmin() public {
         expectRoleRevert(stranger, feeRegistry.DEFAULT_ADMIN_ROLE());
         vm.prank(stranger);
-        feeRegistry.setTypeBonus(0, 1_250, false);
+        feeRegistry.setFeeModifier(0, 1_250, false);
     }
 
-    function test_setTypeBonus_RevertWhen_PositiveAboveMax() public {
-        // MAX_BP - DEFAULT_MAX_FEE = 1_250 is the largest positive bonus.
-        vm.expectRevert(ICustomFeeRegistry.InvalidTypeBonus.selector);
-        _setTypeBonus(0, 1_250 + STEP, false);
+    function test_setFeeModifier_RevertWhen_PositiveAboveMax() public {
+        // MAX_BP - DEFAULT_MAX_FEE = 1_250 is the largest positive modifier.
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeModifier.selector);
+        _setFeeModifier(0, 1_250 + STEP, false);
     }
 
-    function test_setTypeBonus_RevertWhen_NegativeAboveMax() public {
-        // DEFAULT_MAX_FEE - defaultMinFee = 6_250 is the largest negative bonus.
-        vm.expectRevert(ICustomFeeRegistry.InvalidTypeBonus.selector);
-        _setTypeBonus(0, 6_250 + STEP, true);
+    function test_setFeeModifier_RevertWhen_NegativeAboveMax() public {
+        // DEFAULT_MAX_FEE - defaultMinFee = 6_250 is the largest negative modifier.
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeModifier.selector);
+        _setFeeModifier(0, 6_250 + STEP, true);
     }
 
-    function test_setTypeBonus_RevertWhen_NotStepAligned() public {
-        vm.expectRevert(ICustomFeeRegistry.InvalidTypeBonus.selector);
-        _setTypeBonus(0, 100, false);
+    function test_setFeeModifier_RevertWhen_NotStepAligned() public {
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeModifier.selector);
+        _setFeeModifier(0, 100, false);
     }
 
-    function test_setTypeBonus_RevertWhen_CurveDoesNotExist() public {
+    function test_setFeeModifier_RevertWhen_CurveDoesNotExist() public {
         vm.expectRevert(IBondCurve.InvalidBondCurveId.selector);
-        _setTypeBonus(1, 0, false);
+        _setFeeModifier(1, 0, false);
     }
 }
 
@@ -691,18 +715,21 @@ contract CustomFeeRegistrySetFeeIncreaseCooldownTest is CustomFeeRegistryBaseTes
         feeRegistry.setFeeIncreaseCooldown(0);
     }
 
-    function test_setFeeIncreaseCooldown_RevertWhen_ExceedsUint64() public {
-        vm.expectRevert(ICustomFeeRegistry.InvalidFeeIncreaseCooldown.selector);
+    function test_setFeeIncreaseCooldown_Max() public {
         vm.prank(admin);
-        feeRegistry.setFeeIncreaseCooldown(uint256(type(uint64).max) + 1);
+        feeRegistry.setFeeIncreaseCooldown(type(uint32).max);
+
+        _requestFee(5_000);
+        _requestFee(6_000);
+
+        assertEq(feeRegistry.getFeeIncreaseCooldown(), type(uint32).max);
+        assertEq(feeRegistry.getFeeIncreaseCooldownUntil(NO_ID), block.timestamp + type(uint32).max);
     }
 
-    function test_requestFeeIncrease_RevertWhen_DeadlineExceedsUint64() public {
-        _requestFee(5_000);
-        vm.warp(uint256(type(uint64).max) - COOLDOWN + 1);
-
+    function test_setFeeIncreaseCooldown_RevertWhen_ExceedsMax() public {
         vm.expectRevert(ICustomFeeRegistry.InvalidFeeIncreaseCooldown.selector);
-        _requestFee(6_000);
+        vm.prank(admin);
+        feeRegistry.setFeeIncreaseCooldown(uint256(type(uint32).max) + 1);
     }
 }
 
@@ -734,15 +761,15 @@ contract CustomFeeRegistryViewsTest is CustomFeeRegistryBaseTest {
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), 2 * MAX_BP);
     }
 
-    function test_getEffectiveFee_NoBonus() public {
+    function test_getEffectiveFee_NoModifier() public {
         _requestFee(5_000);
         assertEq(feeRegistry.getEffectiveFee(NO_ID), 5_000);
     }
 
     function test_getEffectiveFee_ClampsAtZero() public {
-        _setTypeBonus(0, 2_500, true);
+        _setFeeModifier(0, 2_500, true);
         _requestFee(5_000);
-        _setTypeBonus(0, 5_500, true);
+        _setFeeModifier(0, 5_500, true);
 
         assertEq(feeRegistry.getEffectiveFee(NO_ID), 0);
     }

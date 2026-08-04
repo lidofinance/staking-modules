@@ -621,8 +621,8 @@ contract DeploymentHelpers is Test {
         // CustomFeeRegistry
         dst.customFeeRegistryConfig.defaultMinFee = src.customFeeRegistryConfig.defaultMinFee;
         dst.customFeeRegistryConfig.feeIncreaseCooldown = src.customFeeRegistryConfig.feeIncreaseCooldown;
-        for (uint256 i; i < src.customFeeRegistryConfig.typeBonuses.length; ++i) {
-            dst.customFeeRegistryConfig.typeBonuses.push(src.customFeeRegistryConfig.typeBonuses[i]);
+        for (uint256 i; i < src.customFeeRegistryConfig.feeModifiers.length; ++i) {
+            dst.customFeeRegistryConfig.feeModifiers.push(src.customFeeRegistryConfig.feeModifiers[i]);
         }
     }
 

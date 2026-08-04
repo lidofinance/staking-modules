@@ -11,7 +11,7 @@ import { IAccounting } from "./interfaces/IAccounting.sol";
 import { IBondCurve } from "./interfaces/IBondCurve.sol";
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
-import { ICustomFeeRegistry, OperatorFee, TypeBonus } from "./interfaces/ICustomFeeRegistry.sol";
+import { ICustomFeeRegistry, OperatorFee, FeeModifier } from "./interfaces/ICustomFeeRegistry.sol";
 import { IWeightBoostProvider } from "./interfaces/IWeightBoostProvider.sol";
 import { MAX_BP } from "./lib/Constants.sol";
 
@@ -24,7 +24,7 @@ contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEn
     struct CustomFeeRegistryStorage {
         uint256 defaultMinFee;
         uint256 feeIncreaseCooldown;
-        mapping(uint256 curveId => TypeBonus) typeBonus;
+        mapping(uint256 curveId => FeeModifier) feeModifier;
         mapping(uint256 nodeOperatorId => OperatorFee) fees;
     }
 
@@ -36,6 +36,7 @@ contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEn
     uint256 public constant DEFAULT_MAX_FEE = 35 * FEE_STEP; // 87.5%
     // Slope of the weight line: multiplier basis points per FEE_STEP below DEFAULT_MAX_FEE.
     uint256 public constant WEIGHT_BOOST_PER_STEP = 400;
+    uint256 public constant MAX_FEE_INCREASE_COOLDOWN = type(uint32).max;
 
     ICuratedModule public immutable MODULE;
     IAccounting public immutable ACCOUNTING;
@@ -66,19 +67,8 @@ contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEn
     function requestFee(uint256 nodeOperatorId, uint256 requestedFee) external {
         _checkOperatorOwner(nodeOperatorId);
 
-        OperatorFee storage operatorFee = _storage().fees[nodeOperatorId];
         uint256 currentFee = _getCurrentFee(nodeOperatorId);
-
-        // Cancellation remains available if a curve or bonus change raised the minimum.
-        if (requestedFee == currentFee) {
-            if (operatorFee.cooldownUntil == 0) revert SameFee();
-
-            operatorFee.pendingFeeIncrease = 0;
-            operatorFee.cooldownUntil = 0;
-            emit FeeIncreaseCancelled(nodeOperatorId);
-            META_REGISTRY.notifyWeightBoostChanged(nodeOperatorId);
-            return;
-        }
+        if (requestedFee == currentFee) revert SameFee();
 
         _validateFee(nodeOperatorId, requestedFee);
 
@@ -90,6 +80,19 @@ contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEn
     }
 
     /// @inheritdoc ICustomFeeRegistry
+    function cancelFeeIncrease(uint256 nodeOperatorId) external {
+        _checkOperatorOwner(nodeOperatorId);
+
+        OperatorFee storage operatorFee = _storage().fees[nodeOperatorId];
+        if (operatorFee.cooldownUntil == 0) revert NoFeeIncreaseCooldown();
+
+        operatorFee.pendingFeeIncrease = 0;
+        operatorFee.cooldownUntil = 0;
+        emit FeeIncreaseCancelled(nodeOperatorId);
+        META_REGISTRY.notifyWeightBoostChanged(nodeOperatorId);
+    }
+
+    /// @inheritdoc ICustomFeeRegistry
     function applyFeeIncrease(uint256 nodeOperatorId) external {
         _checkOperatorOwner(nodeOperatorId);
 
@@ -98,7 +101,7 @@ contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEn
         if (operatorFee.cooldownUntil > block.timestamp) revert FeeIncreaseCooldownNotElapsed();
 
         uint16 pendingFee = operatorFee.pendingFeeIncrease;
-        // The fee may have become invalid during the cooldown after a curve or bonus change.
+        // The fee may have become invalid during the cooldown after a curve or modifier change.
         _validateFee(nodeOperatorId, pendingFee);
 
         operatorFee.currentFee = pendingFee;
@@ -127,17 +130,17 @@ contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEn
     }
 
     /// @inheritdoc ICustomFeeRegistry
-    function setTypeBonus(uint256 curveId, uint256 value, bool negative) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setFeeModifier(uint256 curveId, uint256 value, bool negative) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (curveId >= ACCOUNTING.getCurvesCount()) revert IBondCurve.InvalidBondCurveId();
 
         CustomFeeRegistryStorage storage $ = _storage();
         // Keeps the effective fee within MAX_BP and the per-type minimum within DEFAULT_MAX_FEE.
         uint256 maxValue = negative ? DEFAULT_MAX_FEE - $.defaultMinFee : MAX_BP - DEFAULT_MAX_FEE;
-        if (value > maxValue || value % FEE_STEP != 0) revert InvalidTypeBonus();
+        if (value > maxValue || value % FEE_STEP != 0) revert InvalidFeeModifier();
 
-        $.typeBonus[curveId] = TypeBonus({ value: value.toUint248(), negative: negative });
-        emit TypeBonusSet(curveId, value, negative);
-        // No weight notification: the bonus shifts only the effective fee.
+        $.feeModifier[curveId] = FeeModifier({ value: value.toUint248(), negative: negative });
+        emit FeeModifierSet(curveId, value, negative);
+        // No weight notification: the modifier shifts only the effective fee.
     }
 
     /// @inheritdoc ICustomFeeRegistry
@@ -156,8 +159,8 @@ contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEn
     }
 
     /// @inheritdoc ICustomFeeRegistry
-    function getTypeBonus(uint256 curveId) external view returns (TypeBonus memory) {
-        return _storage().typeBonus[curveId];
+    function getFeeModifier(uint256 curveId) external view returns (FeeModifier memory) {
+        return _storage().feeModifier[curveId];
     }
 
     /// @inheritdoc ICustomFeeRegistry
@@ -194,14 +197,14 @@ contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEn
     /// @inheritdoc ICustomFeeRegistry
     function getEffectiveFee(uint256 nodeOperatorId) external view returns (uint256) {
         uint256 currentFee = _getCurrentFee(nodeOperatorId);
-        TypeBonus storage bonus = _storage().typeBonus[ACCOUNTING.getBondCurveId(nodeOperatorId)];
-        if (bonus.negative) {
-            // A curve or bonus change can leave the current fee below the negative bonus.
-            return currentFee > bonus.value ? currentFee - bonus.value : 0;
+        FeeModifier storage feeModifier = _storage().feeModifier[ACCOUNTING.getBondCurveId(nodeOperatorId)];
+        if (feeModifier.negative) {
+            // A curve or modifier change can leave the current fee below the negative modifier.
+            return currentFee > feeModifier.value ? currentFee - feeModifier.value : 0;
         }
 
-        // The bonus bounds keep the sum within MAX_BP.
-        return currentFee + bonus.value;
+        // The modifier bounds keep the sum within MAX_BP.
+        return currentFee + feeModifier.value;
     }
 
     /// @dev Sets the custom fee immediately, drops any pending increase, and notifies if the
@@ -226,7 +229,6 @@ contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEn
         CustomFeeRegistryStorage storage $ = _storage();
         OperatorFee storage operatorFee = $.fees[nodeOperatorId];
         uint256 cooldownUntil = block.timestamp + $.feeIncreaseCooldown;
-        if (cooldownUntil > type(uint64).max) revert InvalidFeeIncreaseCooldown();
         operatorFee.pendingFeeIncrease = pendingFee.toUint16();
         operatorFee.cooldownUntil = cooldownUntil.toUint64();
         emit FeeIncreaseRequested(nodeOperatorId, pendingFee, cooldownUntil);
@@ -243,14 +245,14 @@ contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEn
     }
 
     function _setFeeIncreaseCooldown(uint256 feeIncreaseCooldown) internal {
-        if (feeIncreaseCooldown == 0 || feeIncreaseCooldown > type(uint64).max) {
+        if (feeIncreaseCooldown == 0 || feeIncreaseCooldown > MAX_FEE_INCREASE_COOLDOWN) {
             revert InvalidFeeIncreaseCooldown();
         }
         _storage().feeIncreaseCooldown = feeIncreaseCooldown;
         emit FeeIncreaseCooldownSet(feeIncreaseCooldown);
     }
 
-    /// @dev Normalizes the fee if a curve or bonus change left it below the current minimum.
+    /// @dev Normalizes the fee if a curve or modifier change left it below the current minimum.
     function _normalizeFee(uint256 nodeOperatorId) internal returns (bool normalized) {
         uint256 minFee = _getMinFee(nodeOperatorId);
         if (_getCurrentFee(nodeOperatorId) >= minFee) return false;
@@ -263,12 +265,12 @@ contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEn
         if (fee < _getMinFee(nodeOperatorId) || fee > DEFAULT_MAX_FEE || fee % FEE_STEP != 0) revert InvalidFee();
     }
 
-    /// @dev A negative bonus raises the per-type minimum so a valid current fee has an effective
+    /// @dev A negative modifier raises the per-type minimum so a valid current fee has an effective
     ///      fee of at least defaultMinFee. Existing fees may remain below it until normalized.
     function _getMinFee(uint256 nodeOperatorId) internal view returns (uint256) {
         CustomFeeRegistryStorage storage $ = _storage();
-        TypeBonus storage bonus = $.typeBonus[ACCOUNTING.getBondCurveId(nodeOperatorId)];
-        return bonus.negative ? $.defaultMinFee + bonus.value : $.defaultMinFee;
+        FeeModifier storage feeModifier = $.feeModifier[ACCOUNTING.getBondCurveId(nodeOperatorId)];
+        return feeModifier.negative ? $.defaultMinFee + feeModifier.value : $.defaultMinFee;
     }
 
     /// @dev Zero means "never set" and reads as DEFAULT_MAX_FEE; a real fee is never zero (defaultMinFee > 0).
