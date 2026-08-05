@@ -9,6 +9,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { CuratedDeployParams, CuratedGateConfig, GateCurveParams } from "script/curated/DeployBase.s.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
+import { IERC20LockBoostProvider } from "src/interfaces/IERC20LockBoostProvider.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { BoostStep } from "src/interfaces/IAdditionalBondRegistry.sol";
 import { StrikeThreshold } from "src/interfaces/INodeOperatorStrikes.sol";
@@ -82,6 +83,19 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
 }
 
 contract MetaRegistryDeploymentTest is DeploymentBaseTest {
+    function _assertWeightBoostProvider(
+        address expectedProvider,
+        IMetaRegistry.WeightBoostProviderMode expectedMode
+    ) internal view {
+        uint256 providerId = metaRegistry.getWeightBoostProviderId(expectedProvider);
+        assertNotEq(providerId, 0, "weight boost provider not registered");
+
+        IMetaRegistry.WeightBoostProviderEntry memory entry = metaRegistry.getWeightBoostProvider(providerId);
+        assertEq(address(entry.provider), expectedProvider, "unexpected weight boost provider");
+        assertEq(uint256(entry.mode), uint256(expectedMode), "unexpected weight boost provider mode");
+        assertTrue(entry.enabled, "weight boost provider disabled");
+    }
+
     function test_state_onlyFull() public view {
         assertEq(metaRegistry.getInitializedVersion(), 1);
         assertEq(metaRegistry.getOperatorGroupsCount(), 0);
@@ -121,6 +135,16 @@ contract MetaRegistryDeploymentTest is DeploymentBaseTest {
             0,
             "unexpected set bond curve weight role members count"
         );
+    }
+
+    function test_weightBoostProviders_onlyFull() public view {
+        assertEq(metaRegistry.getWeightBoostProvidersCount(), 3, "unexpected weight boost providers count");
+        _assertWeightBoostProvider(
+            address(additionalBondRegistry),
+            IMetaRegistry.WeightBoostProviderMode.PerNodeOperator
+        );
+        _assertWeightBoostProvider(address(nodeOperatorStrikes), IMetaRegistry.WeightBoostProviderMode.PerNodeOperator);
+        _assertWeightBoostProvider(address(ldoLockBoostProvider), IMetaRegistry.WeightBoostProviderMode.MaxPerGroup);
     }
 }
 
@@ -165,10 +189,7 @@ contract AdditionalBondRegistryDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles_onlyFull() public view {
-        assertEq(additionalBondRegistry.getRoleMemberCount(additionalBondRegistry.DEFAULT_ADMIN_ROLE()), adminsCount);
-        assertTrue(
-            additionalBondRegistry.hasRole(additionalBondRegistry.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent)
-        );
+        _checkAdminRole(address(additionalBondRegistry), deployParams.aragonAgent, deployParams.secondAdminAddress);
 
         // AdditionalBondRegistry must be able to update the operator curve multiplier in Accounting.
         assertTrue(
@@ -236,35 +257,11 @@ contract NodeOperatorStrikesDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles_onlyFull() public view {
-        assertEq(nodeOperatorStrikes.getRoleMemberCount(nodeOperatorStrikes.DEFAULT_ADMIN_ROLE()), adminsCount);
-        assertTrue(nodeOperatorStrikes.hasRole(nodeOperatorStrikes.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
+        _checkAdminRole(address(nodeOperatorStrikes), deployParams.aragonAgent, deployParams.secondAdminAddress);
 
         bytes32 committeeRole = nodeOperatorStrikes.STRIKES_COMMITTEE_ROLE();
         assertEq(nodeOperatorStrikes.getRoleMemberCount(committeeRole), 1);
         assertTrue(nodeOperatorStrikes.hasRole(committeeRole, deployParams.strikesCommittee));
-    }
-
-    function test_wiring_onlyFull() public view {
-        assertEq(metaRegistry.getWeightBoostProvidersCount(), 2, "unexpected weight boost providers count");
-
-        uint256 additionalBondProviderId = metaRegistry.getWeightBoostProviderId(address(additionalBondRegistry));
-        assertNotEq(additionalBondProviderId, 0, "additional bond provider not registered");
-        IMetaRegistry.WeightBoostProviderEntry memory additionalBondEntry = metaRegistry.getWeightBoostProvider(
-            additionalBondProviderId
-        );
-        assertEq(address(additionalBondEntry.provider), address(additionalBondRegistry));
-        assertEq(uint256(additionalBondEntry.mode), uint256(IMetaRegistry.WeightBoostProviderMode.NodeOperator));
-        assertTrue(additionalBondEntry.enabled);
-
-        uint256 strikesProviderId = metaRegistry.getWeightBoostProviderId(address(nodeOperatorStrikes));
-        assertNotEq(strikesProviderId, 0, "node operator strikes provider not registered");
-        assertNotEq(strikesProviderId, additionalBondProviderId, "weight boost provider ids must differ");
-        IMetaRegistry.WeightBoostProviderEntry memory strikesEntry = metaRegistry.getWeightBoostProvider(
-            strikesProviderId
-        );
-        assertEq(address(strikesEntry.provider), address(nodeOperatorStrikes));
-        assertEq(uint256(strikesEntry.mode), uint256(IMetaRegistry.WeightBoostProviderMode.NodeOperator));
-        assertTrue(strikesEntry.enabled);
     }
 
     function test_initialization_onlyFull() public {
@@ -290,6 +287,121 @@ contract NodeOperatorStrikesDeploymentTest is DeploymentBaseTest {
             "strikes proxy slot admin"
         );
         assertFalse(proxy.proxy__getIsOssified(), "strikes proxy ossified");
+    }
+}
+
+contract LDOLockBoostProviderDeploymentTest is DeploymentBaseTest {
+    function test_state_onlyFull() public view {
+        assertEq(ldoLockBoostProvider.getInitializedVersion(), 1);
+        assertEq(
+            ldoLockBoostProvider.getLockPeriod(),
+            deployParams.ldoLockBoostProviderConfig.lockPeriod,
+            "LDO lock provider lock period"
+        );
+
+        IERC20LockBoostProvider.LockBoostStep[] memory actualSteps = ldoLockBoostProvider.getLockBoostSteps();
+        uint256 stepsCount = deployParams.ldoLockBoostProviderConfig.lockBoostSteps.length;
+        assertEq(actualSteps.length, stepsCount, "LDO lock boost steps count");
+        for (uint256 i; i < stepsCount; ++i) {
+            assertEq(
+                actualSteps[i].minAmount,
+                deployParams.ldoLockBoostProviderConfig.lockBoostSteps[i].minAmount,
+                "LDO lock boost step min amount"
+            );
+            assertEq(
+                actualSteps[i].weightBoostBP,
+                deployParams.ldoLockBoostProviderConfig.lockBoostSteps[i].weightBoostBP,
+                "LDO lock boost step weight boost"
+            );
+        }
+    }
+
+    function test_immutables_onlyFull() public view {
+        assertEq(address(ldoLockBoostProvider.MODULE()), address(curatedModule), "LDO lock provider module");
+        assertEq(
+            address(ldoLockBoostProvider.META_REGISTRY()),
+            address(metaRegistry),
+            "LDO lock provider meta registry"
+        );
+        assertEq(
+            ldoLockBoostProvider.TOKEN(),
+            deployParams.ldoLockBoostProviderConfig.token,
+            "LDO lock provider token"
+        );
+        assertEq(
+            address(ldoLockBoostProvider.VAULT_BEACON()),
+            address(ldoLockVaultBeacon),
+            "LDO lock provider vault beacon"
+        );
+        assertEq(
+            ldoLockBoostProvider.MIN_LOCK_PERIOD(),
+            deployParams.ldoLockBoostProviderConfig.minLockPeriod,
+            "LDO lock provider min lock period"
+        );
+        assertEq(ldoLockBoostProvider.MAX_LOCK_PERIOD(), 365 days, "LDO lock provider max lock period");
+    }
+
+    function test_roles_onlyFull() public view {
+        _checkAdminRole(address(ldoLockBoostProvider), deployParams.aragonAgent, deployParams.secondAdminAddress);
+    }
+
+    function test_vaultBeacon_onlyFull() public view {
+        assertGt(address(ldoLockVaultImpl).code.length, 0, "LDO lock vault impl code");
+        assertGt(address(ldoLockVaultBeacon).code.length, 0, "LDO lock vault beacon code");
+        assertEq(ldoLockVaultBeacon.implementation(), address(ldoLockVaultImpl), "LDO lock vault beacon impl");
+        assertEq(ldoLockVaultBeacon.owner(), deployParams.aragonAgent, "LDO lock vault beacon owner");
+    }
+
+    function test_vaultImplementation_onlyFull() public view {
+        assertEq(ldoLockVaultImpl.nodeOperatorId(), 0, "LDO lock vault impl node operator ID");
+        assertEq(ldoLockVaultImpl.TOKEN(), deployParams.ldoLockBoostProviderConfig.token, "LDO lock vault impl token");
+        assertEq(ldoLockVaultImpl.PROVIDER(), address(ldoLockBoostProvider), "LDO lock vault impl provider");
+        assertEq(address(ldoLockVaultImpl.MODULE()), address(curatedModule), "LDO lock vault impl module");
+        assertEq(
+            ldoLockVaultImpl.VOTING_CONTRACT(),
+            deployParams.ldoLockBoostProviderConfig.votingContract,
+            "LDO lock vault impl voting"
+        );
+        assertEq(
+            ldoLockVaultImpl.snapshotDelegation(),
+            deployParams.ldoLockBoostProviderConfig.snapshotDelegation,
+            "LDO lock vault impl snapshot delegation"
+        );
+    }
+
+    function test_initialization_onlyFull() public {
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        ldoLockBoostProvider.initialize(deployParams.aragonAgent, deployParams.ldoLockBoostProviderConfig.lockPeriod);
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        ldoLockBoostProviderImpl.initialize(
+            deployParams.aragonAgent,
+            deployParams.ldoLockBoostProviderConfig.lockPeriod
+        );
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        ldoLockVaultImpl.initialize(0);
+    }
+
+    function test_proxy_onlyFull() public view {
+        OssifiableProxy proxy = OssifiableProxy(payable(address(ldoLockBoostProvider)));
+        assertEq(
+            proxy.proxy__getImplementation(),
+            address(ldoLockBoostProviderImpl),
+            "LDO lock provider proxy getter impl"
+        );
+        assertEq(
+            ProxySlotUtils.getImplementation(address(ldoLockBoostProvider)),
+            address(ldoLockBoostProviderImpl),
+            "LDO lock provider proxy slot impl"
+        );
+        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "LDO lock provider proxy getter admin");
+        assertEq(
+            ProxySlotUtils.getAdmin(address(ldoLockBoostProvider)),
+            address(deployParams.proxyAdmin),
+            "LDO lock provider proxy slot admin"
+        );
+        assertFalse(proxy.proxy__getIsOssified(), "LDO lock provider proxy ossified");
     }
 }
 

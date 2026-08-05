@@ -32,9 +32,11 @@ interface IMetaRegistry {
         ExternalOperator[] externalOperators;
     }
 
+    /// @dev `PerNodeOperator` applies the provider multiplier directly to each Node Operator.
+    ///      `MaxPerGroup` applies the max provider multiplier among group sub-operators to the whole group.
     enum WeightBoostProviderMode {
-        NodeOperator,
-        GroupMax
+        PerNodeOperator,
+        MaxPerGroup
     }
 
     struct WeightBoostProviderEntry {
@@ -48,7 +50,7 @@ interface IMetaRegistry {
     event OperatorGroupCleared(uint256 indexed groupId);
     event BondCurveWeightSet(uint256 indexed curveId, uint256 weight);
     event WeightBoostProviderAdded(address indexed provider, WeightBoostProviderMode mode);
-    event WeightBoostProviderEnabledSet(address indexed provider, bool enabled);
+    event WeightBoostProviderStateSet(address indexed provider, bool enabled);
     event WeightBoostProviderConfigChanged(address indexed provider);
     event GroupWeightsRefreshed(uint256 indexed groupId);
     event OperatorMetadataSet(uint256 indexed nodeOperatorId, OperatorMetadata metadata);

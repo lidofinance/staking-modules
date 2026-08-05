@@ -25,6 +25,7 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     uint256 expectedModuleScratchNonce;
     uint256 expectedModuleScratchNonceFromGates;
     uint256 expectedModuleScratchNonceFromWeightBoostProviders;
+    uint256 expectedModuleScratchNonceFromWeightBoostProviderConfigChanges;
 
     function setUp() public {
         Env memory env = envVars();
@@ -41,9 +42,14 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
             // Each registered weight boost provider also requests full update and contributes one nonce.
             expectedModuleScratchNonceFromWeightBoostProviders = metaRegistry.getWeightBoostProvidersCount();
 
+            // Each async weight boost provider config change also requests full update.
+            expectedModuleScratchNonceFromWeightBoostProviderConfigChanges = deployParams
+                .weightBoostProviderConfigChangesCount;
+
             expectedModuleScratchNonce =
                 expectedModuleScratchNonceFromGates +
-                expectedModuleScratchNonceFromWeightBoostProviders;
+                expectedModuleScratchNonceFromWeightBoostProviders +
+                expectedModuleScratchNonceFromWeightBoostProviderConfigChanges;
         }
     }
 }

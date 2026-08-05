@@ -9,6 +9,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { AdditionalBondRegistry } from "src/AdditionalBondRegistry.sol";
 import { IAdditionalBondRegistry, BoostStep } from "src/interfaces/IAdditionalBondRegistry.sol";
+import { MAX_WEIGHT_BOOST_BP } from "src/lib/Constants.sol";
 
 import { CuratedMock } from "../helpers/mocks/CuratedMock.sol";
 import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
@@ -67,8 +68,8 @@ contract AdditionalBondRegistryConstructorTest is AdditionalBondRegistryBaseTest
         assertEq(address(additionalBondRegistry.MODULE()), address(module));
         assertEq(address(additionalBondRegistry.ACCOUNTING()), address(module.ACCOUNTING()));
         assertEq(address(additionalBondRegistry.META_REGISTRY()), address(metaRegistryMock));
-        assertEq(additionalBondRegistry.MAX_CURVE_MULTIPLIER(), 90_000);
-        assertEq(additionalBondRegistry.MAX_WEIGHT_MULTIPLIER(), 90_000);
+        assertEq(additionalBondRegistry.MAX_CURVE_MULTIPLIER(), MAX_WEIGHT_BOOST_BP);
+        assertEq(additionalBondRegistry.MAX_WEIGHT_MULTIPLIER(), MAX_WEIGHT_BOOST_BP);
         assertEq(additionalBondRegistry.CURVE_MULTIPLIER_STEP(), 100);
         assertEq(additionalBondRegistry.CURVE_MULTIPLIER_REDUCTION_COOLDOWN(), CURVE_MULTIPLIER_REDUCTION_COOLDOWN);
     }

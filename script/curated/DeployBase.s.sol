@@ -5,6 +5,8 @@ pragma solidity 0.8.33;
 
 import { Script } from "forge-std/Script.sol";
 
+import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+
 import { HashConsensus } from "../../src/lib/base-oracle/HashConsensus.sol";
 import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 import { CuratedModule } from "../../src/CuratedModule.sol";
@@ -20,6 +22,8 @@ import { MetaRegistry } from "../../src/MetaRegistry.sol";
 import { AdditionalBondRegistry } from "../../src/AdditionalBondRegistry.sol";
 import { NodeOperatorStrikes } from "../../src/NodeOperatorStrikes.sol";
 import { BoostStep } from "../../src/interfaces/IAdditionalBondRegistry.sol";
+import { ERC20LockBoostProvider } from "../../src/ERC20LockBoostProvider.sol";
+import { LidoGovernanceLockVault } from "../../src/LidoGovernanceLockVault.sol";
 import { CuratedGate } from "../../src/CuratedGate.sol";
 import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 
@@ -29,6 +33,7 @@ import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
 import { IVerifier } from "../../src/interfaces/IVerifier.sol";
 import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.sol";
 import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
+import { IERC20LockBoostProvider } from "../../src/interfaces/IERC20LockBoostProvider.sol";
 import { IMetaRegistry } from "../../src/interfaces/IMetaRegistry.sol";
 import { IWeightBoostProvider } from "../../src/interfaces/IWeightBoostProvider.sol";
 import { StrikeThreshold } from "../../src/interfaces/INodeOperatorStrikes.sol";
@@ -68,6 +73,15 @@ struct AdditionalBondRegistryConfig {
     uint256 curveMultiplierCooldown;
     // Each entry is [minCurveMultiplier, weightMultiplier] (increments above MAX_BP).
     uint256[2][] boostSteps;
+}
+
+struct ERC20LockBoostProviderConfig {
+    address token;
+    address votingContract;
+    address snapshotDelegation;
+    uint256 minLockPeriod;
+    uint256 lockPeriod;
+    IERC20LockBoostProvider.LockBoostStep[] lockBoostSteps;
 }
 
 struct CuratedDeployParams {
@@ -138,6 +152,8 @@ struct CuratedDeployParams {
     // NodeOperatorStrikes
     address strikesCommittee;
     StrikeThreshold[] strikesThresholds;
+    // LDO lock boost provider
+    ERC20LockBoostProviderConfig ldoLockBoostProviderConfig;
 }
 
 abstract contract DeployBase is Script {
@@ -162,6 +178,10 @@ abstract contract DeployBase is Script {
     MetaRegistry public metaRegistry;
     AdditionalBondRegistry public additionalBondRegistry;
     NodeOperatorStrikes public nodeOperatorStrikes;
+    ERC20LockBoostProvider public ldoLockBoostProvider;
+    ERC20LockBoostProvider public ldoLockBoostProviderImpl;
+    LidoGovernanceLockVault public ldoLockVaultImpl;
+    UpgradeableBeacon public ldoLockVaultBeacon;
     MerkleGateFactory public curatedGateFactory;
     address[] public curatedGateInstances;
     address internal curatedGateImpl;
@@ -252,6 +272,7 @@ abstract contract DeployBase is Script {
             metaRegistry = MetaRegistry(_deployProxy(deployer, address(dummyImpl)));
             additionalBondRegistry = AdditionalBondRegistry(_deployProxy(deployer, address(dummyImpl)));
             nodeOperatorStrikes = NodeOperatorStrikes(_deployProxy(deployer, address(dummyImpl)));
+            ldoLockBoostProvider = ERC20LockBoostProvider(_deployProxy(deployer, address(dummyImpl)));
 
             FeeDistributor feeDistributorImpl = new FeeDistributor({
                 stETH: locator.lido(),
@@ -372,17 +393,50 @@ abstract contract DeployBase is Script {
                 nodeOperatorStrikesProxy.proxy__changeAdmin(config.proxyAdmin);
             }
 
+            // LDO lock boost provider
+            {
+                ERC20LockBoostProviderConfig storage ldoConfig = config.ldoLockBoostProviderConfig;
+
+                ldoLockVaultImpl = new LidoGovernanceLockVault({
+                    token: ldoConfig.token,
+                    provider: address(ldoLockBoostProvider),
+                    module: address(curatedModule),
+                    votingContract: ldoConfig.votingContract,
+                    snapshotDelegation_: ldoConfig.snapshotDelegation
+                });
+                ldoLockVaultBeacon = new UpgradeableBeacon(address(ldoLockVaultImpl), deployer);
+
+                ldoLockBoostProviderImpl = new ERC20LockBoostProvider({
+                    module: address(curatedModule),
+                    token: ldoConfig.token,
+                    vaultBeacon: address(ldoLockVaultBeacon),
+                    minLockPeriod: ldoConfig.minLockPeriod
+                });
+
+                OssifiableProxy ldoLockBoostProviderProxy = OssifiableProxy(payable(address(ldoLockBoostProvider)));
+                ldoLockBoostProviderProxy.proxy__upgradeToAndCall(
+                    address(ldoLockBoostProviderImpl),
+                    abi.encodeCall(ERC20LockBoostProvider.initialize, (deployer, ldoConfig.lockPeriod))
+                );
+                ldoLockBoostProviderProxy.proxy__changeAdmin(config.proxyAdmin);
+            }
+
             accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
             accounting.grantRole(accounting.SET_BOND_CURVE_MULTIPLIER_ROLE(), address(additionalBondRegistry));
             metaRegistry.addWeightBoostProvider(
                 IWeightBoostProvider(address(additionalBondRegistry)),
-                IMetaRegistry.WeightBoostProviderMode.NodeOperator
+                IMetaRegistry.WeightBoostProviderMode.PerNodeOperator
             );
             metaRegistry.addWeightBoostProvider(
                 IWeightBoostProvider(address(nodeOperatorStrikes)),
-                IMetaRegistry.WeightBoostProviderMode.NodeOperator
+                IMetaRegistry.WeightBoostProviderMode.PerNodeOperator
             );
             nodeOperatorStrikes.grantRole(nodeOperatorStrikes.STRIKES_COMMITTEE_ROLE(), config.strikesCommittee);
+            metaRegistry.addWeightBoostProvider(
+                IWeightBoostProvider(address(ldoLockBoostProvider)),
+                IMetaRegistry.WeightBoostProviderMode.MaxPerGroup
+            );
+            ldoLockBoostProvider.setLockBoostSteps(config.ldoLockBoostProviderConfig.lockBoostSteps);
             metaRegistry.grantRole(metaRegistry.SET_BOND_CURVE_WEIGHT_ROLE(), deployer);
 
             for (uint256 i = 0; i < gatesCount; i++) {
@@ -586,6 +640,11 @@ abstract contract DeployBase is Script {
             nodeOperatorStrikes.grantRole(nodeOperatorStrikes.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             nodeOperatorStrikes.revokeRole(nodeOperatorStrikes.DEFAULT_ADMIN_ROLE(), deployer);
 
+            ldoLockBoostProvider.grantRole(ldoLockBoostProvider.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
+            ldoLockBoostProvider.revokeRole(ldoLockBoostProvider.DEFAULT_ADMIN_ROLE(), deployer);
+
+            ldoLockVaultBeacon.transferOwnership(config.aragonAgent);
+
             verifier.grantRole(verifier.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             verifier.revokeRole(verifier.DEFAULT_ADMIN_ROLE(), deployer);
 
@@ -614,6 +673,10 @@ abstract contract DeployBase is Script {
             deployJson.set("AdditionalBondRegistryImpl", address(additionalBondRegistryImpl));
             deployJson.set("NodeOperatorStrikes", address(nodeOperatorStrikes));
             deployJson.set("NodeOperatorStrikesImpl", address(nodeOperatorStrikesImpl));
+            deployJson.set("LDOLockBoostProvider", address(ldoLockBoostProvider));
+            deployJson.set("LDOLockBoostProviderImpl", address(ldoLockBoostProviderImpl));
+            deployJson.set("LDOLockVaultImpl", address(ldoLockVaultImpl));
+            deployJson.set("LDOLockVaultBeacon", address(ldoLockVaultBeacon));
             deployJson.set("ParametersRegistry", address(parametersRegistry));
             deployJson.set("ParametersRegistryImpl", address(parametersRegistryImpl));
             deployJson.set("Accounting", address(accounting));
@@ -681,6 +744,12 @@ abstract contract DeployBase is Script {
         return gates;
     }
 
+    function _addLDOLockBoostStep(uint128 minAmount, uint32 weightBoostBP) internal {
+        config.ldoLockBoostProviderConfig.lockBoostSteps.push(
+            IERC20LockBoostProvider.LockBoostStep({ minAmount: minAmount, weightBoostBP: weightBoostBP })
+        );
+    }
+
     function _deployProxy(address admin, address implementation) internal returns (address) {
         return _deployProxy(admin, implementation, new bytes(0));
     }
@@ -710,6 +779,7 @@ abstract contract DeployBase is Script {
         metaRegistry.grantRole(metaRegistry.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         additionalBondRegistry.grantRole(additionalBondRegistry.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         nodeOperatorStrikes.grantRole(nodeOperatorStrikes.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        ldoLockBoostProvider.grantRole(ldoLockBoostProvider.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         for (uint256 i = 0; i < curatedGateInstances.length; i++) {
             CuratedGate gate = CuratedGate(curatedGateInstances[i]);
             gate.grantRole(gate.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);

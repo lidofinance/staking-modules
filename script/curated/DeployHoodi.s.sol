@@ -214,6 +214,15 @@ contract DeployHoodi is DeployBase {
         config.strikesThresholds.push(StrikeThreshold({ minCount: 4, reductionBP: 7_500 }));
         config.strikesThresholds.push(StrikeThreshold({ minCount: 5, reductionBP: 10_000 }));
 
+        // LDO lock boost provider
+        config.ldoLockBoostProviderConfig.token = 0xEf2573966D009CcEA0Fc74451dee2193564198dc;
+        config.ldoLockBoostProviderConfig.votingContract = 0x49B3512c44891bef83F8967d075121Bd1b07a01B;
+        config.ldoLockBoostProviderConfig.snapshotDelegation = address(1); // TODO: Fill in before deployment
+        config.ldoLockBoostProviderConfig.minLockPeriod = 30 days;
+        config.ldoLockBoostProviderConfig.lockPeriod = 30 days;
+        _addLDOLockBoostStep(100_000 ether, 1_000);
+        _addLDOLockBoostStep(200_000 ether, 1_500);
+
         _setUp();
     }
 }
