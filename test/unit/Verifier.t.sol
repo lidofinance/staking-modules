@@ -13,6 +13,7 @@ import { toGIndex } from "src/lib/GIndex.sol";
 import { BeaconBlockHeader, Slot } from "src/lib/Types.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 import { SSZ } from "src/lib/SSZ.sol";
+import { WCType, toWC } from "src/utils/WithdrawalCredentials.sol";
 
 import { IVerifier } from "src/interfaces/IVerifier.sol";
 import { IBaseModule, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
@@ -73,10 +74,10 @@ contract VerifierTestConstructor is VerifierTestBase {
     }
 
     function test_constructor_HappyPath() public {
-        address withdrawalAddress = nextAddress("WITHDRAWAL_ADDRESS");
+        bytes32 withdrawalCredentials = someBytes32();
 
         verifier = new Verifier({
-            withdrawalAddress: withdrawalAddress,
+            withdrawalCredentials: withdrawalCredentials,
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -98,7 +99,7 @@ contract VerifierTestConstructor is VerifierTestBase {
             admin: admin
         });
 
-        assertEq(address(verifier.WITHDRAWAL_ADDRESS()), withdrawalAddress);
+        assertEq(verifier.WITHDRAWAL_CREDENTIALS(), withdrawalCredentials);
         assertEq(address(verifier.MODULE()), address(module));
         assertEq(verifier.SLOTS_PER_EPOCH(), 32);
         assertEq(verifier.SLOTS_PER_HISTORICAL_ROOT(), 8192);
@@ -120,7 +121,7 @@ contract VerifierTestConstructor is VerifierTestBase {
     function test_constructor_RevertWhen_InvalidChainConfig_SlotsPerEpoch() public {
         vm.expectRevert(IVerifier.InvalidChainConfig.selector);
         verifier = new Verifier({
-            withdrawalAddress: nextAddress(),
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 0,
             gindices: IVerifier.GIndices({
@@ -146,7 +147,7 @@ contract VerifierTestConstructor is VerifierTestBase {
     function test_constructor_RevertWhen_InvalidPivotSlot() public {
         vm.expectRevert(IVerifier.InvalidPivotSlot.selector);
         verifier = new Verifier({
-            withdrawalAddress: nextAddress(),
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -172,7 +173,7 @@ contract VerifierTestConstructor is VerifierTestBase {
     function test_constructor_RevertWhen_InvalidCapellaSlot() public {
         vm.expectRevert(IVerifier.InvalidCapellaSlot.selector);
         verifier = new Verifier({
-            withdrawalAddress: nextAddress(),
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -198,7 +199,7 @@ contract VerifierTestConstructor is VerifierTestBase {
     function test_constructor_RevertWhen_ZeroModuleAddress() public {
         vm.expectRevert(IVerifier.ZeroModuleAddress.selector);
         verifier = new Verifier({
-            withdrawalAddress: nextAddress(),
+            withdrawalCredentials: someBytes32(),
             module: address(0),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -221,10 +222,10 @@ contract VerifierTestConstructor is VerifierTestBase {
         });
     }
 
-    function test_constructor_RevertWhen_ZeroWithdrawalAddress() public {
-        vm.expectRevert(IVerifier.ZeroWithdrawalAddress.selector);
+    function test_constructor_RevertWhen_ZeroWithdrawalCredentials() public {
+        vm.expectRevert(IVerifier.ZeroWithdrawalCredentials.selector);
         verifier = new Verifier({
-            withdrawalAddress: address(0),
+            withdrawalCredentials: bytes32(0),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -250,7 +251,7 @@ contract VerifierTestConstructor is VerifierTestBase {
     function test_constructor_RevertWhen_ZeroAdminAddress() public {
         vm.expectRevert(IVerifier.ZeroAdminAddress.selector);
         verifier = new Verifier({
-            withdrawalAddress: nextAddress(),
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -276,7 +277,7 @@ contract VerifierTestConstructor is VerifierTestBase {
     function test_constructor_RevertWhen_InvalidMinWithdrawalRatio_Zero() public {
         vm.expectRevert(IVerifier.InvalidMinWithdrawalRatio.selector);
         verifier = new Verifier({
-            withdrawalAddress: nextAddress(),
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -302,7 +303,7 @@ contract VerifierTestConstructor is VerifierTestBase {
     function test_constructor_RevertWhen_InvalidMinWithdrawalRatio_AboveMax() public {
         vm.expectRevert(IVerifier.InvalidMinWithdrawalRatio.selector);
         verifier = new Verifier({
-            withdrawalAddress: nextAddress(),
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -346,7 +347,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         admin = nextAddress("ADMIN");
 
         verifier = new Verifier({
-            withdrawalAddress: fixture.data.withdrawal.object.withdrawalAddress,
+            withdrawalCredentials: fixture.data.validator.object.withdrawalCredentials,
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -444,10 +445,12 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         verifier.processWithdrawalProof(fixture.data);
     }
 
-    function test_processWithdrawalProof_RevertWhen_InvalidWithdrawalCredentials() public {
-        fixture.data.validator.object.withdrawalCredentials = someBytes32();
+    function test_processWithdrawalProof_RevertWhen_VerifierEth1AndValidatorCompounding() public {
+        address withdrawalAddress = fixture.data.withdrawal.object.withdrawalAddress;
+        assertEq(verifier.WITHDRAWAL_CREDENTIALS(), toWC(withdrawalAddress, WCType.Eth1));
+        fixture.data.validator.object.withdrawalCredentials = toWC(withdrawalAddress, WCType.Compounding);
 
-        vm.expectRevert(IVerifier.InvalidWithdrawalAddress.selector);
+        vm.expectRevert(IVerifier.InvalidWithdrawalCredentials.selector);
         verifier.processWithdrawalProof(fixture.data);
     }
 
@@ -624,7 +627,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         }
 
         verifier = new Verifier({
-            withdrawalAddress: fixture.data.withdrawal.object.withdrawalAddress,
+            withdrawalCredentials: fixture.data.validator.object.withdrawalCredentials,
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -656,7 +659,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         }
 
         verifier = new Verifier({
-            withdrawalAddress: fixture.data.withdrawal.object.withdrawalAddress,
+            withdrawalCredentials: fixture.data.validator.object.withdrawalCredentials,
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -688,7 +691,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
         }
 
         verifier = new Verifier({
-            withdrawalAddress: fixture.data.withdrawal.object.withdrawalAddress,
+            withdrawalCredentials: fixture.data.validator.object.withdrawalCredentials,
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -788,7 +791,7 @@ contract VerifierSlashingTest is VerifierTestBase {
         admin = nextAddress("ADMIN");
 
         verifier = new Verifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -918,7 +921,7 @@ contract VerifierPauseTest is VerifierTestBase {
         stranger = nextAddress("STRANGER");
 
         verifier = new Verifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -1021,7 +1024,7 @@ contract VerifierPauseTest is VerifierTestBase {
 
 contract VerifierTestable is Verifier {
     constructor(
-        address withdrawalAddress,
+        bytes32 withdrawalCredentials,
         address module,
         uint64 slotsPerEpoch,
         IVerifier.GIndices memory gindices,
@@ -1032,7 +1035,7 @@ contract VerifierTestable is Verifier {
         address admin
     )
         Verifier(
-            withdrawalAddress,
+            withdrawalCredentials,
             module,
             slotsPerEpoch,
             gindices,
@@ -1099,7 +1102,7 @@ contract VerifierGIndexTest is Test, Utilities {
         // Pre-Gloas values are ad-hoc test fabrications; Gloas-side values are
         // the real `BeaconState` field gindices.
         verifier = new VerifierTestable({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -1459,7 +1462,7 @@ contract VerifierGIndexCapellaZeroTest is Test, Utilities {
         admin = nextAddress("ADMIN");
 
         verifier = new VerifierTestable({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -1584,7 +1587,7 @@ contract VerifierValidatorBalanceTest is Test, Utilities {
         admin = nextAddress("ADMIN");
 
         verifier = new VerifierTestable({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -1787,7 +1790,7 @@ contract VerifierBalanceProofTest is VerifierTestBase {
         admin = nextAddress("ADMIN");
 
         verifier = new Verifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -1849,7 +1852,7 @@ contract VerifierBalanceProofTest is VerifierTestBase {
 
     function test_processBalanceProof_RevertWhen_BlockRootNotInRange() public {
         verifier = new Verifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -1924,7 +1927,7 @@ contract VerifierBalanceProofTest is VerifierTestBase {
     function test_processBalanceProof_ForkBeforePivot() public {
         _loadFixture("electra");
         verifier = new Verifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -1954,7 +1957,7 @@ contract VerifierBalanceProofTest is VerifierTestBase {
     function test_processBalanceProof_ForkAtPivot() public {
         _loadFixture("gloas");
         verifier = new Verifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -1984,7 +1987,7 @@ contract VerifierBalanceProofTest is VerifierTestBase {
     function test_processBalanceProof_ForkAfterPivot() public {
         _loadFixture("gloas");
         verifier = new Verifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -2060,7 +2063,7 @@ contract VerifierParentBlockRootTest is Test, Utilities {
         admin = nextAddress("ADMIN");
 
         verifier = new VerifierTestable({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({

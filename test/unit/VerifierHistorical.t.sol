@@ -90,7 +90,7 @@ contract VerifierWithdrawalHistoricalTest is VerifierHistoricalBase {
 
         module = new Stub();
         verifier = new Verifier({
-            withdrawalAddress: fixture.data.withdrawal.object.withdrawalAddress,
+            withdrawalCredentials: fixture.data.validator.object.withdrawalCredentials,
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -190,7 +190,7 @@ contract VerifierWithdrawalHistoricalTest is VerifierHistoricalBase {
     function test_processHistoricalWithdrawalProof_RevertWhen_InvalidWithdrawalCredentials() public {
         fixture.data.validator.object.withdrawalCredentials = someBytes32();
 
-        vm.expectRevert(IVerifier.InvalidWithdrawalAddress.selector);
+        vm.expectRevert(IVerifier.InvalidWithdrawalCredentials.selector);
         verifier.processHistoricalWithdrawalProof(fixture.data);
     }
 
@@ -240,7 +240,7 @@ contract VerifierWithdrawalCrossForkHistoricalTest is VerifierHistoricalBase {
         _loadFixture("electra");
 
         verifier = new Verifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalCredentials: fixture.data.validator.object.withdrawalCredentials,
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -285,7 +285,7 @@ contract VerifierWithdrawalCrossForkHistoricalTest is VerifierHistoricalBase {
         _loadFixture("electra");
 
         verifier = new Verifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalCredentials: fixture.data.validator.object.withdrawalCredentials,
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -346,7 +346,7 @@ contract VerifierCrossForkHistoricalBalanceTest is Test, Utilities {
         admin = nextAddress("ADMIN");
 
         verifier = new Verifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -430,7 +430,7 @@ contract VerifierCrossForkHistoricalBalanceAtPivotSlotTest is Test, Utilities {
         admin = nextAddress("ADMIN");
 
         verifier = new Verifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({
@@ -514,7 +514,7 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
         admin = nextAddress("ADMIN");
 
         verifier = new Verifier({
-            withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
+            withdrawalCredentials: someBytes32(),
             module: address(module),
             slotsPerEpoch: 32,
             gindices: IVerifier.GIndices({

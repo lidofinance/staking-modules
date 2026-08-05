@@ -31,6 +31,7 @@ import { Dummy } from "../utils/Dummy.sol";
 import { CommonScriptUtils } from "../utils/Common.sol";
 import { GIndex } from "../../src/lib/GIndex.sol";
 import { Slot } from "../../src/lib/Types.sol";
+import { WCType, toWC } from "../../src/utils/WithdrawalCredentials.sol";
 
 struct GateCurveParams {
     IParametersRegistry.MarkedUint248 generalDelayedPenaltyAdditionalFine;
@@ -247,9 +248,8 @@ abstract contract DeployBase is Script {
                 )
             );
 
-            // prettier-ignore
             verifier = new Verifier({
-                withdrawalAddress: locator.withdrawalVault(),
+                withdrawalCredentials: toWC(locator.withdrawalVault(), WCType.Compounding),
                 module: address(curatedModule),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
                 gindices: IVerifier.GIndices({

@@ -91,15 +91,15 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     /// @dev Historical summaries started accumulating from the slot of Capella fork.
     Slot public immutable CAPELLA_SLOT;
 
-    /// @dev An address withdrawals are supposed to happen to (Lido withdrawal credentials).
-    address public immutable WITHDRAWAL_ADDRESS;
+    /// @dev Withdrawal credentials validators are supposed to have.
+    bytes32 public immutable WITHDRAWAL_CREDENTIALS;
 
     /// @dev Staking module contract.
     IBaseModule public immutable MODULE;
 
     /// @dev The previous and current forks can be essentially the same.
     constructor(
-        address withdrawalAddress,
+        bytes32 withdrawalCredentials,
         address module,
         uint64 slotsPerEpoch,
         GIndices memory gindices,
@@ -109,7 +109,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         uint256 minWithdrawalRatio,
         address admin
     ) {
-        if (withdrawalAddress == address(0)) revert ZeroWithdrawalAddress();
+        if (withdrawalCredentials == bytes32(0)) revert ZeroWithdrawalCredentials();
         if (module == address(0)) revert ZeroModuleAddress();
         if (admin == address(0)) revert ZeroAdminAddress();
         if (slotsPerEpoch == 0) revert InvalidChainConfig();
@@ -117,7 +117,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         if (capellaSlot > firstSupportedSlot) revert InvalidCapellaSlot();
         if (minWithdrawalRatio == 0 || minWithdrawalRatio > MAX_BP) revert InvalidMinWithdrawalRatio();
 
-        WITHDRAWAL_ADDRESS = withdrawalAddress;
+        WITHDRAWAL_CREDENTIALS = withdrawalCredentials;
         MODULE = IBaseModule(module);
         MIN_WITHDRAWAL_RATIO = minWithdrawalRatio;
 
@@ -339,10 +339,12 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         uint256 nodeOperatorId,
         uint256 keyIndex
     ) internal view returns (uint256 withdrawalAmount) {
-        if (address(uint160(uint256(validator.object.withdrawalCredentials))) != WITHDRAWAL_ADDRESS) {
+        if (validator.object.withdrawalCredentials != WITHDRAWAL_CREDENTIALS) {
+            revert InvalidWithdrawalCredentials();
+        }
+        if (withdrawal.object.withdrawalAddress != address(uint160(uint256(WITHDRAWAL_CREDENTIALS)))) {
             revert InvalidWithdrawalAddress();
         }
-        if (withdrawal.object.withdrawalAddress != WITHDRAWAL_ADDRESS) revert InvalidWithdrawalAddress();
 
         if (validator.object.slashed) revert ValidatorIsSlashed();
         if (_computeEpochAtSlot(header.slot) < validator.object.withdrawableEpoch) revert ValidatorIsNotWithdrawable();

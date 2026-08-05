@@ -95,12 +95,13 @@ interface IVerifier {
     error ValidatorIsNotSlashed();
     error ValidatorIsNotWithdrawable();
     error ValidatorIsWithdrawable();
+    error InvalidWithdrawalCredentials();
     error InvalidWithdrawalAddress();
     error InvalidPublicKey();
     error InvalidValidatorIndex();
     error UnsupportedSlot(Slot slot);
     error ZeroModuleAddress();
-    error ZeroWithdrawalAddress();
+    error ZeroWithdrawalCredentials();
     error ZeroAdminAddress();
     error InvalidPivotSlot();
     error InvalidCapellaSlot();
@@ -138,7 +139,7 @@ interface IVerifier {
 
     function CAPELLA_SLOT() external view returns (Slot);
 
-    function WITHDRAWAL_ADDRESS() external view returns (address);
+    function WITHDRAWAL_CREDENTIALS() external view returns (bytes32);
 
     function MIN_WITHDRAWAL_RATIO() external view returns (uint256);
 

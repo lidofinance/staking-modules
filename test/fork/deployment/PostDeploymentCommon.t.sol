@@ -18,6 +18,7 @@ import { IParametersRegistry } from "../../../src/interfaces/IParametersRegistry
 import { BaseOracle } from "../../../src/lib/base-oracle/BaseOracle.sol";
 import { GIndex } from "../../../src/lib/GIndex.sol";
 import { Slot } from "../../../src/lib/Types.sol";
+import { WCType, toWC } from "../../../src/utils/WithdrawalCredentials.sol";
 import { Versioned } from "../../../src/lib/utils/Versioned.sol";
 
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
@@ -381,7 +382,8 @@ contract VerifierDeploymentTest is DeploymentBaseTest {
     }
 
     function test_immutables() public view {
-        assertEq(verifier.WITHDRAWAL_ADDRESS(), locator.withdrawalVault());
+        WCType wcType = moduleType == ModuleType.Community ? WCType.Eth1 : WCType.Compounding;
+        assertEq(verifier.WITHDRAWAL_CREDENTIALS(), toWC(locator.withdrawalVault(), wcType));
         assertEq(address(verifier.MODULE()), address(module));
         assertEq(verifier.SLOTS_PER_EPOCH(), deployParams.slotsPerEpoch);
         assertEq(

@@ -24,6 +24,7 @@ import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 import { JsonObj, Json } from "../utils/Json.sol";
 import { CommonScriptUtils } from "../utils/Common.sol";
 import { Slot } from "../../src/lib/Types.sol";
+import { WCType, toWC } from "../../src/utils/WithdrawalCredentials.sol";
 
 abstract contract DeployCSMImplementationsBase is DeployBase {
     Verifier public verifierV3;
@@ -106,9 +107,8 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
                 _identifiedDVTClusterCurveSetupParams()
             );
 
-            // prettier-ignore
             verifierV3 = new Verifier({
-                withdrawalAddress: locator.withdrawalVault(),
+                withdrawalCredentials: toWC(locator.withdrawalVault(), WCType.Eth1),
                 module: address(csm),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
                 gindices: IVerifier.GIndices({
