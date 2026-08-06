@@ -78,20 +78,21 @@ function progressiveListNodeGIndex(uint256 i) pure returns (GIndex gI) {
     // min k = log2(i * 3 + 1) / 2;
     uint256 k = fls(i * 3 + 1) >> 1;
 
-    // This check ensures the index still fits into uint256 and shift operations are safe.
-    if (3 * k + 3 > GINDEX_BIT_SIZE) revert IndexOutOfRange();
+    unchecked {
+        if (3 * k + 3 > GINDEX_BIT_SIZE) revert IndexOutOfRange();
+    }
 
-    uint256 p;
-    // Down to the chunk root (getting in binary something like this: 0x101(1)).
-    p = (3 << k) - 1;
-    // One step to the left to the nodes.
-    p = p << 1;
-    // Down to the first node in the chunk.
-    p = p << (2 * k);
-    // Using the geometric series formula we compute how many nodes we skipped to get the correct offset in the level.
-    i = i - ((1 << (2 * k)) - 1) / 3;
-    // To the right to the node we're looking for.
-    p = p + i;
-
-    gI = toGIndex(p);
+    assembly ("memory-safe") {
+        let twoK := shl(1, k)
+        // Down to the chunk root (getting in binary something like this: 0x101(1)).
+        gI := sub(shl(k, 3), 1)
+        // One step to the left to the nodes.
+        gI := shl(1, gI)
+        // Down to the first node in the chunk.
+        gI := shl(twoK, gI)
+        // Using the geometric series formula we compute how many nodes we skipped to get the correct offset in the level.
+        i := sub(i, div(sub(shl(twoK, 1), 1), 3))
+        // To the right to the node we're looking for.
+        gI := add(gI, i)
+    }
 }
