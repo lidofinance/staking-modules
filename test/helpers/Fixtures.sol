@@ -595,9 +595,9 @@ contract DeploymentHelpers is Test {
         dst.secondAdminAddress = src.secondAdminAddress;
 
         // AdditionalBondRegistry
-        dst.additionalBondRegistryConfig.curveMultiplierCooldown = src
+        dst.additionalBondRegistryConfig.curveMultiplierReductionCooldown = src
             .additionalBondRegistryConfig
-            .curveMultiplierCooldown;
+            .curveMultiplierReductionCooldown;
         for (uint256 i; i < src.additionalBondRegistryConfig.boostSteps.length; ++i) {
             dst.additionalBondRegistryConfig.boostSteps.push(src.additionalBondRegistryConfig.boostSteps[i]);
         }
@@ -621,6 +621,9 @@ contract DeploymentHelpers is Test {
         // CustomFeeRegistry
         dst.customFeeRegistryConfig.defaultMinFee = src.customFeeRegistryConfig.defaultMinFee;
         dst.customFeeRegistryConfig.feeIncreaseCooldown = src.customFeeRegistryConfig.feeIncreaseCooldown;
+        for (uint256 i; i < src.customFeeRegistryConfig.feeWeightSteps.length; ++i) {
+            dst.customFeeRegistryConfig.feeWeightSteps.push(src.customFeeRegistryConfig.feeWeightSteps[i]);
+        }
         for (uint256 i; i < src.customFeeRegistryConfig.feeModifiers.length; ++i) {
             dst.customFeeRegistryConfig.feeModifiers.push(src.customFeeRegistryConfig.feeModifiers[i]);
         }
@@ -705,9 +708,6 @@ contract DeploymentHelpers is Test {
         params.defaultExitDelayFee = decoded.defaultExitDelayFee;
         params.defaultMaxElWithdrawalRequestFee = decoded.defaultMaxElWithdrawalRequestFee;
         params.penaltiesManager = decoded.penaltiesManager;
-        if (decoded.ldoLockBoostProviderConfig.lockBoostSteps.length != 0) {
-            params.weightBoostProviderConfigChangesCount = 1;
-        }
         return params;
     }
 

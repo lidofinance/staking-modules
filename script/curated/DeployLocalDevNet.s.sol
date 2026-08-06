@@ -4,7 +4,7 @@
 pragma solidity 0.8.33;
 
 import { DeployBase, CuratedGateConfig, CurveFeeModifierConfig } from "./DeployBase.s.sol";
-import { StrikeThreshold } from "../../src/interfaces/INodeOperatorStrikes.sol";
+import { Step } from "../../src/interfaces/IStepwiseWeightBoost.sol";
 import { GIndices } from "../constants/GIndices.sol";
 import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
 import { HashConsensus } from "../../src/lib/base-oracle/HashConsensus.sol";
@@ -190,17 +190,17 @@ contract DeployLocalDevNet is DeployBase {
         config.secondAdminAddress = vm.envOr("CSM_SECOND_ADMIN_ADDRESS", address(0));
 
         // CurveMultiplier
-        config.additionalBondRegistryConfig.curveMultiplierCooldown = 1 days;
+        config.additionalBondRegistryConfig.curveMultiplierReductionCooldown = 1 days;
         // TODO: reconsider — placeholder initial boost steps.
-        config.additionalBondRegistryConfig.boostSteps.push([uint256(5_000), 2_000]);
-        config.additionalBondRegistryConfig.boostSteps.push([uint256(10_000), 8_000]);
+        config.additionalBondRegistryConfig.boostSteps.push(Step({ threshold: 5_000, value: 2_000 }));
+        config.additionalBondRegistryConfig.boostSteps.push(Step({ threshold: 10_000, value: 8_000 }));
 
         // NodeOperatorStrikes
         config.strikesCommittee = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
-        config.strikesThresholds.push(StrikeThreshold({ minCount: 2, reductionBP: 2_500 }));
-        config.strikesThresholds.push(StrikeThreshold({ minCount: 3, reductionBP: 5_000 }));
-        config.strikesThresholds.push(StrikeThreshold({ minCount: 4, reductionBP: 7_500 }));
-        config.strikesThresholds.push(StrikeThreshold({ minCount: 5, reductionBP: 10_000 }));
+        config.strikesThresholds.push(Step({ threshold: 2, value: 2_500 }));
+        config.strikesThresholds.push(Step({ threshold: 3, value: 5_000 }));
+        config.strikesThresholds.push(Step({ threshold: 4, value: 7_500 }));
+        config.strikesThresholds.push(Step({ threshold: 5, value: 10_000 }));
 
         // LDO lock boost provider
         config.ldoLockBoostProviderConfig.token = vm.envAddress("CSM_LDO_TOKEN_ADDRESS");
@@ -214,6 +214,9 @@ contract DeployLocalDevNet is DeployBase {
         // CustomFeeRegistry
         config.customFeeRegistryConfig.defaultMinFee = 2_500;
         config.customFeeRegistryConfig.feeIncreaseCooldown = 15 days;
+        for (uint128 i = 1; i < 35; ++i) {
+            config.customFeeRegistryConfig.feeWeightSteps.push(Step({ threshold: i * 250, value: i * 400 }));
+        }
         // Professional Operator uses the default bond curve (curve 0): 8_750 - 2_500 = 6_250.
         config.customFeeRegistryConfig.feeModifiers.push(
             CurveFeeModifierConfig({ curveId: 0, value: 2_500, negative: true })

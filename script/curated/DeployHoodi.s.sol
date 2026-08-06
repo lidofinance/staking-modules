@@ -4,7 +4,7 @@
 pragma solidity 0.8.33;
 
 import { DeployBase, CuratedGateConfig, CurveFeeModifierConfig } from "./DeployBase.s.sol";
-import { StrikeThreshold } from "../../src/interfaces/INodeOperatorStrikes.sol";
+import { Step } from "../../src/interfaces/IStepwiseWeightBoost.sol";
 import { GIndices } from "../constants/GIndices.sol";
 
 contract DeployHoodi is DeployBase {
@@ -202,18 +202,18 @@ contract DeployHoodi is DeployBase {
         config.secondAdminAddress = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
 
         // CurveMultiplier
-        config.additionalBondRegistryConfig.curveMultiplierCooldown = 7 days;
+        config.additionalBondRegistryConfig.curveMultiplierReductionCooldown = 7 days;
         // TODO: reconsider — placeholder initial boost steps.
-        config.additionalBondRegistryConfig.boostSteps.push([uint256(5_000), 2_000]);
-        config.additionalBondRegistryConfig.boostSteps.push([uint256(10_000), 8_000]);
+        config.additionalBondRegistryConfig.boostSteps.push(Step({ threshold: 5_000, value: 2_000 }));
+        config.additionalBondRegistryConfig.boostSteps.push(Step({ threshold: 10_000, value: 8_000 }));
 
         // NodeOperatorStrikes
         config.strikesCommittee = 0x84DffcfB232594975C608DE92544Ff239a24c9E9; // CMC on Hoodi
         // TODO: finalize strike weight-reduction thresholds
-        config.strikesThresholds.push(StrikeThreshold({ minCount: 2, reductionBP: 2_500 }));
-        config.strikesThresholds.push(StrikeThreshold({ minCount: 3, reductionBP: 5_000 }));
-        config.strikesThresholds.push(StrikeThreshold({ minCount: 4, reductionBP: 7_500 }));
-        config.strikesThresholds.push(StrikeThreshold({ minCount: 5, reductionBP: 10_000 }));
+        config.strikesThresholds.push(Step({ threshold: 2, value: 2_500 }));
+        config.strikesThresholds.push(Step({ threshold: 3, value: 5_000 }));
+        config.strikesThresholds.push(Step({ threshold: 4, value: 7_500 }));
+        config.strikesThresholds.push(Step({ threshold: 5, value: 10_000 }));
 
         // LDO lock boost provider
         config.ldoLockBoostProviderConfig.token = 0xEf2573966D009CcEA0Fc74451dee2193564198dc;
@@ -228,6 +228,9 @@ contract DeployHoodi is DeployBase {
         // TODO: finalize custom fee parameters.
         config.customFeeRegistryConfig.defaultMinFee = 2_500;
         config.customFeeRegistryConfig.feeIncreaseCooldown = 15 days;
+        for (uint128 i = 1; i < 35; ++i) {
+            config.customFeeRegistryConfig.feeWeightSteps.push(Step({ threshold: i * 250, value: i * 400 }));
+        }
         // Professional Operator uses the default bond curve (curve 0): 8_750 - 2_500 = 6_250.
         config.customFeeRegistryConfig.feeModifiers.push(
             CurveFeeModifierConfig({ curveId: 0, value: 2_500, negative: true })

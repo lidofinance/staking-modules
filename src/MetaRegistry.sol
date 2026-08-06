@@ -16,7 +16,6 @@ import { IWeightBoostProvider } from "./interfaces/IWeightBoostProvider.sol";
 import { IStakingModule } from "./interfaces/IStakingModule.sol";
 import { IStakingRouter } from "./interfaces/IStakingRouter.sol";
 import { IMetaRegistry, OperatorMetadata } from "./interfaces/IMetaRegistry.sol";
-import { IAdditionalBondRegistry } from "./interfaces/IAdditionalBondRegistry.sol";
 import { ExternalOperatorLib, OperatorType } from "./lib/ExternalOperatorLib.sol";
 import { MAX_BP } from "./lib/Constants.sol";
 
@@ -67,7 +66,6 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     ICuratedModule public immutable MODULE;
     IAccounting public immutable ACCOUNTING;
     IStakingRouter public immutable STAKING_ROUTER;
-    IAdditionalBondRegistry public immutable ADDITIONAL_BOND_REGISTRY;
 
     uint256 internal constant EXTERNAL_STAKE_PER_VALIDATOR = 32 ether;
     uint256 internal constant MAX_NAME_LENGTH = 256;
@@ -77,15 +75,13 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
     bytes32 private constant META_REGISTRY_STORAGE_LOCATION =
         0xa7ec41e1a061c67796a04fcd9cc7cab9545b0a750beebc54139d9ed9d2251c00;
 
-    /// @param module       CuratedModule proxy address.
-    /// @param additionalBondRegistry AdditionalBondRegistry proxy address.
-    constructor(address module, address additionalBondRegistry) {
+    /// @param module CuratedModule proxy address.
+    constructor(address module) {
         if (module == address(0)) revert ZeroModuleAddress();
 
         MODULE = ICuratedModule(module);
         ACCOUNTING = IAccounting(MODULE.ACCOUNTING());
         STAKING_ROUTER = IStakingRouter(MODULE.LIDO_LOCATOR().stakingRouter());
-        ADDITIONAL_BOND_REGISTRY = IAdditionalBondRegistry(additionalBondRegistry);
 
         _disableInitializers();
     }
@@ -210,11 +206,8 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
     /// @inheritdoc IMetaRegistry
     function notifyWeightBoostProviderConfigChanged() external {
-        MetaRegistryStorage storage $ = _storage();
-        uint256 providerId = $.weightBoostProviderIdByAddress[msg.sender];
-        if (providerId == 0) revert WeightBoostProviderNotFound();
-
-        if (!$.weightBoostProviders[providerId].enabled) return;
+        WeightBoostProviderEntry storage entry = _callerWeightBoostProvider();
+        if (!entry.enabled) return;
 
         emit WeightBoostProviderConfigChanged(msg.sender);
         _requestFullDepositInfoUpdate();
@@ -222,15 +215,12 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
 
     /// @inheritdoc IMetaRegistry
     function notifyWeightBoostChanged(uint256 nodeOperatorId) external {
-        MetaRegistryStorage storage $ = _storage();
-        uint256 providerId = $.weightBoostProviderIdByAddress[msg.sender];
-        if (providerId == 0) revert WeightBoostProviderNotFound();
+        WeightBoostProviderEntry storage entry = _callerWeightBoostProvider();
 
-        uint256 groupId = $.groupIndex.groupIdByOperatorId[nodeOperatorId];
+        uint256 groupId = _storage().groupIndex.groupIdByOperatorId[nodeOperatorId];
         // Provider notifications are node-operator scoped; operators outside groups have no group cache to refresh.
         if (groupId == NO_GROUP_ID) return;
 
-        WeightBoostProviderEntry storage entry = $.weightBoostProviders[providerId];
         if (!entry.enabled) return;
 
         if (entry.mode == WeightBoostProviderMode.PerNodeOperator) {
@@ -569,30 +559,20 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
         return _storage().bondCurveWeight[ACCOUNTING.getBondCurveId(nodeOperatorId)];
     }
 
+    /// @dev Single-operator variant; allocates a fresh per-call cache so both refresh paths share one
+    ///      implementation and cannot diverge.
     function _getWeightBoostMultiplierBP(
         CachedOperatorGroup storage group,
         uint256 nodeOperatorId
     ) internal view returns (uint256 multiplierBP) {
-        MetaRegistryStorage storage $ = _storage();
-        multiplierBP = MAX_BP;
-        uint256 providersCount = $.weightBoostProvidersCount;
-        for (uint256 i; i < providersCount; ++i) {
-            WeightBoostProviderEntry storage entry = $.weightBoostProviders[i + 1];
-            if (!entry.enabled) continue;
-
-            IWeightBoostProvider provider = entry.provider;
-            if (entry.mode == WeightBoostProviderMode.PerNodeOperator) {
-                multiplierBP = Math.mulDiv(multiplierBP, provider.getWeightBoostMultiplierBP(nodeOperatorId), MAX_BP);
-            } else if (entry.mode == WeightBoostProviderMode.MaxPerGroup) {
-                multiplierBP = Math.mulDiv(
-                    multiplierBP,
-                    _getProviderMaxPerGroupWeightBoostMultiplierBP(provider, group),
-                    MAX_BP
-                );
-            } else {
-                revert InvalidWeightBoostProviderMode();
-            }
-        }
+        uint256 providersCount = _storage().weightBoostProvidersCount;
+        return
+            _getWeightBoostMultiplierBP(
+                group,
+                nodeOperatorId,
+                new uint256[](providersCount),
+                new bool[](providersCount)
+            );
     }
 
     function _getWeightBoostMultiplierBP(
@@ -637,6 +617,15 @@ contract MetaRegistry is IMetaRegistry, Initializable, AccessControlEnumerableUp
                 maxMultiplierBP = candidateMultiplierBP;
             }
         }
+    }
+
+    /// @dev Resolves the calling weight boost provider; reverts for unregistered callers.
+    function _callerWeightBoostProvider() internal view returns (WeightBoostProviderEntry storage entry) {
+        MetaRegistryStorage storage $ = _storage();
+        uint256 providerId = $.weightBoostProviderIdByAddress[msg.sender];
+        if (providerId == 0) revert WeightBoostProviderNotFound();
+
+        entry = $.weightBoostProviders[providerId];
     }
 
     /// @dev Returns the cached module address. Reverts if the address was

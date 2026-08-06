@@ -7,7 +7,10 @@ import { IBaseModule } from "./IBaseModule.sol";
 
 /// @notice Per-operator ERC20 vault used by the ERC20 lock boost provider.
 interface IERC20LockVault {
-    error ZeroAddress();
+    error ZeroTokenAddress();
+    error ZeroProviderAddress();
+    error ZeroModuleAddress();
+    error ZeroReceiverAddress();
     error SenderIsNotProvider();
     error SenderIsNotNodeOperatorOwner();
 

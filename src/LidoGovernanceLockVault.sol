@@ -6,7 +6,6 @@ pragma solidity 0.8.33;
 import { ERC20LockVault } from "./ERC20LockVault.sol";
 import { IAragonVotingLockVault } from "./interfaces/IAragonVotingLockVault.sol";
 import { ILidoAragonVoting } from "./interfaces/ILidoAragonVoting.sol";
-import { IERC20LockVault } from "./interfaces/IERC20LockVault.sol";
 import { ISnapshotDelegation } from "./interfaces/ISnapshotDelegation.sol";
 import { ISnapshotDelegationLockVault } from "./interfaces/ISnapshotDelegationLockVault.sol";
 
@@ -24,9 +23,8 @@ contract LidoGovernanceLockVault is ERC20LockVault, IAragonVotingLockVault, ISna
         address votingContract,
         address snapshotDelegation_
     ) ERC20LockVault(token, provider, module) {
-        if (votingContract == address(0) || snapshotDelegation_ == address(0)) {
-            revert IERC20LockVault.ZeroAddress();
-        }
+        if (votingContract == address(0)) revert ZeroVotingContractAddress();
+        if (snapshotDelegation_ == address(0)) revert ZeroSnapshotDelegationAddress();
 
         VOTING_CONTRACT = votingContract;
         SNAPSHOT_DELEGATION = snapshotDelegation_;

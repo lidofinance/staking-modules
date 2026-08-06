@@ -3,21 +3,19 @@
 
 pragma solidity 0.8.33;
 
-import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+import { StepwiseWeightBoost } from "./abstract/StepwiseWeightBoost.sol";
 import { IAccounting } from "./interfaces/IAccounting.sol";
 import { IBondCurve } from "./interfaces/IBondCurve.sol";
-import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
-import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
 import { ICustomFeeRegistry, OperatorFee, FeeModifier } from "./interfaces/ICustomFeeRegistry.sol";
+import { Step } from "./interfaces/IStepwiseWeightBoost.sol";
 import { IWeightBoostProvider } from "./interfaces/IWeightBoostProvider.sol";
 import { MAX_BP } from "./lib/Constants.sol";
 
 /// @notice Per-operator custom fees and the allocation weight boost derived from them. See
 ///         ICustomFeeRegistry for the model.
-contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEnumerableUpgradeable {
+contract CustomFeeRegistry is ICustomFeeRegistry, StepwiseWeightBoost {
     using SafeCast for uint256;
 
     /// @custom:storage-location erc7201:CustomFeeRegistry
@@ -28,73 +26,75 @@ contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEn
         mapping(uint256 nodeOperatorId => OperatorFee) fees;
     }
 
-    // All fees are basis points of the operator's own rewards.
-    // A custom fee moves in these increments: 2.5% of the operator's rewards, which is 0.1%
-    // of the total staking rewards at a 4% module reward share.
+    // All fees are basis points of the operator's own rewards. At the module's 4% share of
+    // the protocol staking rewards, one step is 0.1% of the total.
     uint256 public constant FEE_STEP = 250; // 2.5%
     // The fee of an unset operator and the inclusive upper bound for custom fees.
     uint256 public constant DEFAULT_MAX_FEE = 35 * FEE_STEP; // 87.5%
-    // Slope of the weight line: multiplier basis points per FEE_STEP below DEFAULT_MAX_FEE.
-    uint256 public constant WEIGHT_BOOST_PER_STEP = 400;
-    uint256 public constant MAX_FEE_INCREASE_COOLDOWN = type(uint32).max;
+    uint256 public constant MAX_FEE_INCREASE_COOLDOWN = 365 days;
 
-    ICuratedModule public immutable MODULE;
     IAccounting public immutable ACCOUNTING;
-    IMetaRegistry public immutable META_REGISTRY;
 
     // keccak256(abi.encode(uint256(keccak256("CustomFeeRegistry")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant CUSTOM_FEE_REGISTRY_STORAGE_LOCATION =
         0x231651de169707bf46042ddc0065dcd629da5632e3ccd31978f43f09a90a1200;
 
     /// @param module Curated module address.
-    constructor(address module) {
-        MODULE = ICuratedModule(module);
+    constructor(address module) StepwiseWeightBoost(module) {
         ACCOUNTING = IAccounting(MODULE.ACCOUNTING());
-        META_REGISTRY = IMetaRegistry(MODULE.META_REGISTRY());
-
-        _disableInitializers();
     }
 
     /// @inheritdoc ICustomFeeRegistry
-    function initialize(address admin, uint256 defaultMinFee, uint256 feeIncreaseCooldown) external initializer {
-        if (admin == address(0)) revert ZeroAdminAddress();
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+    function initialize(
+        address admin,
+        uint256 defaultMinFee,
+        uint256 feeIncreaseCooldown,
+        Step[] calldata steps
+    ) external initializer {
         _setDefaultMinFee(defaultMinFee, DEFAULT_MAX_FEE);
         _setFeeIncreaseCooldown(feeIncreaseCooldown);
+        StepwiseWeightBoost._initialize(admin, steps);
     }
 
     /// @inheritdoc ICustomFeeRegistry
-    function requestFee(uint256 nodeOperatorId, uint256 requestedFee) external {
-        _checkOperatorOwner(nodeOperatorId);
+    function requestFee(uint256 nodeOperatorId, uint256 fee) external {
+        StepwiseWeightBoost._onlyNodeOperatorOwner(nodeOperatorId);
 
         uint256 currentFee = _getCurrentFee(nodeOperatorId);
-        if (requestedFee == currentFee) revert SameFee();
+        if (fee == currentFee) revert SameFee();
 
-        _validateFee(nodeOperatorId, requestedFee);
+        _validateFee(nodeOperatorId, fee);
 
-        if (requestedFee < currentFee) {
-            _setCurrentFee(nodeOperatorId, requestedFee);
+        if (fee < currentFee) {
+            _setCurrentFee(nodeOperatorId, fee);
         } else {
-            _scheduleFeeIncrease(nodeOperatorId, requestedFee);
+            _scheduleFeeIncrease(nodeOperatorId, fee);
         }
     }
 
     /// @inheritdoc ICustomFeeRegistry
     function cancelFeeIncrease(uint256 nodeOperatorId) external {
-        _checkOperatorOwner(nodeOperatorId);
+        StepwiseWeightBoost._onlyNodeOperatorOwner(nodeOperatorId);
 
         OperatorFee storage operatorFee = _storage().fees[nodeOperatorId];
         if (operatorFee.cooldownUntil == 0) revert NoFeeIncreaseCooldown();
 
+        uint256 previousFee = _getTargetFee(nodeOperatorId);
+        uint256 currentFee = _getCurrentFee(nodeOperatorId);
+
         operatorFee.pendingFeeIncrease = 0;
         operatorFee.cooldownUntil = 0;
         emit FeeIncreaseCancelled(nodeOperatorId);
-        META_REGISTRY.notifyWeightBoostChanged(nodeOperatorId);
+        StepwiseWeightBoost._notifyMetaRegistryIfWeightChanged(
+            nodeOperatorId,
+            _feeDiscount(previousFee),
+            _feeDiscount(currentFee)
+        );
     }
 
     /// @inheritdoc ICustomFeeRegistry
     function applyFeeIncrease(uint256 nodeOperatorId) external {
-        _checkOperatorOwner(nodeOperatorId);
+        StepwiseWeightBoost._onlyNodeOperatorOwner(nodeOperatorId);
 
         OperatorFee storage operatorFee = _storage().fees[nodeOperatorId];
         if (operatorFee.cooldownUntil == 0) revert NoFeeIncreaseCooldown();
@@ -109,11 +109,6 @@ contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEn
         operatorFee.cooldownUntil = 0;
         emit FeeIncreaseApplied(nodeOperatorId, pendingFee);
         // No notification: the allocation weight changed when the increase was requested.
-    }
-
-    /// @inheritdoc ICustomFeeRegistry
-    function normalizeFee(uint256 nodeOperatorId) external {
-        if (!_normalizeFee(nodeOperatorId)) revert FeeNotBelowMinFee();
     }
 
     /// @inheritdoc ICustomFeeRegistry
@@ -185,13 +180,7 @@ contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEn
 
     /// @inheritdoc IWeightBoostProvider
     function getWeightBoostMultiplierBP(uint256 nodeOperatorId) external view returns (uint256 multiplierBP) {
-        OperatorFee storage operatorFee = _storage().fees[nodeOperatorId];
-        // A pending increase affects allocation weight before it becomes the current fee.
-        uint256 fee = operatorFee.cooldownUntil != 0 ? operatorFee.pendingFeeIncrease : _getCurrentFee(nodeOperatorId);
-        // The multiplier is 1x for an operator at DEFAULT_MAX_FEE and grows by
-        // WEIGHT_BOOST_PER_STEP for every step below it. Fees are multiples of FEE_STEP,
-        // so the division has no remainder.
-        multiplierBP = MAX_BP + ((DEFAULT_MAX_FEE - fee) * WEIGHT_BOOST_PER_STEP) / FEE_STEP;
+        multiplierBP = MAX_BP + StepwiseWeightBoost._stepValueAt(_feeDiscount(_getTargetFee(nodeOperatorId)));
     }
 
     /// @inheritdoc ICustomFeeRegistry
@@ -212,27 +201,35 @@ contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEn
     function _setCurrentFee(uint256 nodeOperatorId, uint256 newCurrentFee) internal {
         OperatorFee storage operatorFee = _storage().fees[nodeOperatorId];
         bool hadPendingIncrease = operatorFee.cooldownUntil != 0;
-        // A pending increase, if any, is the fee currently affecting allocation weight.
-        uint256 previousFee = hadPendingIncrease ? operatorFee.pendingFeeIncrease : _getCurrentFee(nodeOperatorId);
+        uint256 previousFee = _getTargetFee(nodeOperatorId);
 
         operatorFee.currentFee = newCurrentFee.toUint16();
         operatorFee.pendingFeeIncrease = 0;
         operatorFee.cooldownUntil = 0;
         if (hadPendingIncrease) emit FeeIncreaseCancelled(nodeOperatorId);
         emit FeeSet(nodeOperatorId, newCurrentFee);
-        if (previousFee != newCurrentFee) META_REGISTRY.notifyWeightBoostChanged(nodeOperatorId);
+        StepwiseWeightBoost._notifyMetaRegistryIfWeightChanged(
+            nodeOperatorId,
+            _feeDiscount(previousFee),
+            _feeDiscount(newCurrentFee)
+        );
     }
 
-    /// @dev Stores or replaces a pending increase, restarts its cooldown, and notifies MetaRegistry.
-    ///      Notification is sent even if the pending target and multiplier are unchanged.
+    /// @dev Stores or replaces a pending increase, restarts its cooldown, and notifies if the
+    ///      allocation weight changes.
     function _scheduleFeeIncrease(uint256 nodeOperatorId, uint256 pendingFee) internal {
         CustomFeeRegistryStorage storage $ = _storage();
         OperatorFee storage operatorFee = $.fees[nodeOperatorId];
+        uint256 previousFee = _getTargetFee(nodeOperatorId);
         uint256 cooldownUntil = block.timestamp + $.feeIncreaseCooldown;
         operatorFee.pendingFeeIncrease = pendingFee.toUint16();
         operatorFee.cooldownUntil = cooldownUntil.toUint64();
         emit FeeIncreaseRequested(nodeOperatorId, pendingFee, cooldownUntil);
-        META_REGISTRY.notifyWeightBoostChanged(nodeOperatorId);
+        StepwiseWeightBoost._notifyMetaRegistryIfWeightChanged(
+            nodeOperatorId,
+            _feeDiscount(previousFee),
+            _feeDiscount(pendingFee)
+        );
     }
 
     /// @dev The minimum must remain non-zero because zero currentFee is the unset marker.
@@ -279,15 +276,22 @@ contract CustomFeeRegistry is ICustomFeeRegistry, Initializable, AccessControlEn
         return fee == 0 ? DEFAULT_MAX_FEE : fee;
     }
 
-    function _checkOperatorOwner(uint256 nodeOperatorId) internal view {
-        if (msg.sender != MODULE.getNodeOperatorOwner(nodeOperatorId)) {
-            revert SenderIsNotOperatorOwner();
-        }
+    /// @dev The pending increase target, if any, otherwise the current fee. Allocation weight follows it.
+    function _getTargetFee(uint256 nodeOperatorId) internal view returns (uint256) {
+        OperatorFee storage operatorFee = _storage().fees[nodeOperatorId];
+        return operatorFee.cooldownUntil != 0 ? operatorFee.pendingFeeIncrease : _getCurrentFee(nodeOperatorId);
+    }
+
+    function _feeDiscount(uint256 fee) internal pure returns (uint256) {
+        return DEFAULT_MAX_FEE - fee;
+    }
+
+    function _isValidStep(Step calldata step) internal pure override returns (bool) {
+        return step.threshold < DEFAULT_MAX_FEE && step.threshold % FEE_STEP == 0;
     }
 
     function _storage() internal pure returns (CustomFeeRegistryStorage storage $) {
         assembly ("memory-safe") {
-            // keccak256(abi.encode(uint256(keccak256("CustomFeeRegistry")) - 1)) & ~bytes32(uint256(0xff))
             $.slot := CUSTOM_FEE_REGISTRY_STORAGE_LOCATION
         }
     }

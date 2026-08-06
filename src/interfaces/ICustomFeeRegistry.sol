@@ -4,9 +4,7 @@
 pragma solidity 0.8.33;
 
 import { IAccounting } from "./IAccounting.sol";
-import { ICuratedModule } from "./ICuratedModule.sol";
-import { IMetaRegistry } from "./IMetaRegistry.sol";
-import { IWeightBoostProvider } from "./IWeightBoostProvider.sol";
+import { IStepwiseWeightBoost, Step } from "./IStepwiseWeightBoost.sol";
 
 /// @dev Custom fee state of a Node Operator. `currentFee == 0` means "never set" and reads as
 ///      `DEFAULT_MAX_FEE`. `cooldownUntil == 0` means no pending increase. Packed into a single slot.
@@ -53,30 +51,6 @@ struct FeeModifier {
  *   effective A                                                   ○
  *   effective B                     ○
  *
- * ── Custom fee to allocation weight ────────────────────────────────────────────
- *
- *    The weight multiplier depends on the fee only, never on a fee modifier — on
- *    the custom fee, or the pending target while an increase is pending (see the
- *    timeline below). Two things are fixed: 1x at DEFAULT_MAX_FEE and a straight
- *    slope of WEIGHT_BOOST_PER_STEP (400 BP) per FEE_STEP (250 BP) of discount.
- *    The minimum is a parameter. For the illustrated defaultMinFee of 2500, the
- *    multiplier at the minimum is 2x. Governance may lower the minimum along the
- *    same line. Since it must remain a non-zero multiple of FEE_STEP, the lowest
- *    reachable fee is 250 and the highest reachable multiplier is 2.36x.
- *
- * multiplier
- *   2.4x ┤╲                                            custom 0: unreachable
- *   2.2x ┤      ╲                                      below 2500 — only if DAO lowers the minimum
- *   2.0x ┤            ●                                2500 (illustrated defaultMinFee): 2x
- *   1.8x ┤                  ╲
- *   1.6x ┤                        ╲
- *   1.4x ┤                              ╲
- *   1.2x ┤                                    ╲
- *   1.0x ┤                                          ●  8750 (DEFAULT_MAX_FEE, unset): 1x
- *        └┬           ┬                             ┬─► custom fee, portion BP
- *         0           2500                          8750
- *                     ├─── reachable at min 2500 ───┤
- *
  * ── Fee increase timeline and oracle frames ────────────────────────────────────
  *
  *    Z is the fee-increase cooldown. Off-chain fee-report construction is expected
@@ -106,59 +80,32 @@ struct FeeModifier {
 /// @notice Per-operator custom fees and the allocation weight boost derived from them: the lower
 ///         the custom fee, the higher the operator's allocation weight. The effective fee
 ///         (custom fee adjusted by the fee modifier) is exposed for off-chain fee-report construction.
-///         The registry itself does not enforce report timing or construction. See the diagrams above.
-interface ICustomFeeRegistry is IWeightBoostProvider {
-    /// @notice Emitted when a decrease or normalization sets the current fee immediately.
+///         In this provider, `Step.threshold` is the minimum fee discount from DEFAULT_MAX_FEE and
+///         `Step.value` is the weight multiplier increment above MAX_BP. The registry itself does not
+///         enforce report timing or construction. See the diagrams above.
+interface ICustomFeeRegistry is IStepwiseWeightBoost {
     event FeeSet(uint256 indexed nodeOperatorId, uint256 fee);
-    /// @notice Emitted when a pending increase is created or replaced.
     event FeeIncreaseRequested(uint256 indexed nodeOperatorId, uint256 pendingFeeIncrease, uint256 cooldownUntil);
-    /// @notice Emitted when a pending increase becomes the current fee and pending state is cleared.
     event FeeIncreaseApplied(uint256 indexed nodeOperatorId, uint256 fee);
-    /// @notice Emitted when a pending increase is cancelled explicitly, by a decrease, or by normalization.
     event FeeIncreaseCancelled(uint256 indexed nodeOperatorId);
-    /// @notice Emitted during initialization and whenever the default minimum is lowered.
     event DefaultMinFeeSet(uint256 defaultMinFee);
-    /// @notice Emitted when the sign and magnitude of an existing curve's fee modifier are stored.
     event FeeModifierSet(uint256 indexed curveId, uint256 value, bool negative);
-    /// @notice Emitted when the cooldown for future requests is set; existing deadlines are unchanged.
     event FeeIncreaseCooldownSet(uint256 feeIncreaseCooldown);
 
-    /// @notice The initializer admin is the zero address.
-    error ZeroAdminAddress();
-    /// @notice The caller is not the Node Operator owner.
-    error SenderIsNotOperatorOwner();
-    /// @notice A requested or pending fee is outside its current valid range or is not step-aligned.
     error InvalidFee();
-    /// @notice The requested fee equals the current fee.
     error SameFee();
-    /// @notice Strict normalization was requested while the current fee was already valid.
-    error FeeNotBelowMinFee();
-    /// @notice The Node Operator has no pending fee increase.
     error NoFeeIncreaseCooldown();
-    /// @notice The pending increase cannot be applied before its stored deadline.
     error FeeIncreaseCooldownNotElapsed();
-    /// @notice The default minimum is zero, not step-aligned, or not below its required upper bound.
     error InvalidDefaultMinFee();
-    /// @notice The fee modifier exceeds its sign-dependent bound or is not step-aligned.
     error InvalidFeeModifier();
-    /// @notice The cooldown duration is zero or exceeds MAX_FEE_INCREASE_COOLDOWN.
     error InvalidFeeIncreaseCooldown();
-
-    /// @notice Curated module address.
-    function MODULE() external view returns (ICuratedModule);
 
     /// @notice Accounting contract holding bond curves; an operator's type is its curve id.
     function ACCOUNTING() external view returns (IAccounting);
 
-    /// @notice MetaRegistry notified when fee operations may require an allocation-weight refresh.
-    function META_REGISTRY() external view returns (IMetaRegistry);
-
     /// @notice Fee returned for an operator whose fee has never been set, and the inclusive upper
     ///         bound for custom fees, in basis points.
     function DEFAULT_MAX_FEE() external view returns (uint256);
-
-    /// @notice Slope of the weight line: multiplier basis points per FEE_STEP below DEFAULT_MAX_FEE.
-    function WEIGHT_BOOST_PER_STEP() external view returns (uint256);
 
     /// @notice Custom fee granularity in basis points.
     function FEE_STEP() external view returns (uint256);
@@ -166,13 +113,20 @@ interface ICustomFeeRegistry is IWeightBoostProvider {
     /// @notice Maximum configurable fee-increase cooldown in seconds.
     function MAX_FEE_INCREASE_COOLDOWN() external view returns (uint256);
 
-    /// @notice Initialize the registry.
+    /// @notice Initialize the provider.
     /// @param admin Address to receive DEFAULT_ADMIN_ROLE.
     /// @param defaultMinFee Initial minimum custom fee: a non-zero multiple of FEE_STEP below
     ///        DEFAULT_MAX_FEE.
     /// @param feeIncreaseCooldown Stored cooldown duration in seconds, in
     ///        [1, MAX_FEE_INCREASE_COOLDOWN].
-    function initialize(address admin, uint256 defaultMinFee, uint256 feeIncreaseCooldown) external;
+    /// @param steps Initial steps. Thresholds must be FEE_STEP-aligned and below DEFAULT_MAX_FEE; values
+    ///        must not exceed MAX_STEP_VALUE.
+    function initialize(
+        address admin,
+        uint256 defaultMinFee,
+        uint256 feeIncreaseCooldown,
+        Step[] calldata steps
+    ) external;
 
     /// @notice Request a custom fee. Only the Node Operator owner. A decrease applies immediately
     ///         and cancels any pending increase. A request above the current fee creates or replaces
@@ -195,13 +149,10 @@ interface ICustomFeeRegistry is IWeightBoostProvider {
     /// @param nodeOperatorId ID of the Node Operator.
     function applyFeeIncrease(uint256 nodeOperatorId) external;
 
-    /// @notice Permissionlessly normalize a custom fee left below the current minimum after a
-    ///         curve or modifier change. Sets it to the minimum and cancels any pending increase.
-    /// @param nodeOperatorId ID of the Node Operator.
-    function normalizeFee(uint256 nodeOperatorId) external;
-
-    /// @notice Permissionlessly normalize multiple custom fees. Operators whose fees are already
-    ///         valid are skipped. Duplicate IDs are allowed and normalized at most once.
+    /// @notice Permissionlessly normalize custom fees left below the current minimum after a curve
+    ///         or modifier change: each is set to the minimum and its pending increase is cancelled.
+    ///         Operators whose fees are already valid are skipped. Duplicate IDs are allowed and
+    ///         normalized at most once.
     /// @param nodeOperatorIds IDs of the Node Operators.
     /// @return normalizedCount Number of fees normalized.
     function normalizeFees(uint256[] calldata nodeOperatorIds) external returns (uint256 normalizedCount);

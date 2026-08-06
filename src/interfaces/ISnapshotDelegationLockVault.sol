@@ -5,6 +5,8 @@ pragma solidity 0.8.33;
 
 /// @notice Optional Snapshot delegation capability for an ERC20 lock vault.
 interface ISnapshotDelegationLockVault {
+    error ZeroSnapshotDelegationAddress();
+
     /// @notice Snapshot delegation registry used by this vault.
     function snapshotDelegation() external view returns (address);
 

@@ -5,6 +5,8 @@ pragma solidity 0.8.33;
 
 /// @notice Optional Aragon Voting capability for an ERC20 lock vault.
 interface IAragonVotingLockVault {
+    error ZeroVotingContractAddress();
+
     /// @notice Lido Aragon Voting contract used by this vault.
     function VOTING_CONTRACT() external view returns (address);
 

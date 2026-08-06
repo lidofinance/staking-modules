@@ -26,7 +26,7 @@ import { Utilities } from "../helpers/Utilities.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
 
 contract MetaRegistryForTest is MetaRegistry {
-    constructor(address module, address additionalBondRegistry) MetaRegistry(module, additionalBondRegistry) {}
+    constructor(address module) MetaRegistry(module) {}
 
     function mock_setModuleAddressInCache(uint256 moduleId, address moduleAddress) external {
         _storage().moduleAddressCache[moduleId] = moduleAddress;
@@ -97,7 +97,7 @@ contract MetaRegistryBaseTest is Test, Utilities, Fixtures {
 
         additionalBondRegistry = new AdditionalBondRegistryMock();
 
-        registry = new MetaRegistryForTest(address(module), address(additionalBondRegistry));
+        registry = new MetaRegistryForTest(address(module));
         _enableInitializers(address(registry));
         registry.initialize(admin);
 
@@ -250,16 +250,15 @@ contract MetaRegistryGroupsBaseTest is MetaRegistryBaseTest {
 
 contract MetaRegistryConstructorTest is MetaRegistryBaseTest {
     function test_constructor_SetsImmutables() public {
-        MetaRegistry r = new MetaRegistry(address(module), address(additionalBondRegistry));
+        MetaRegistry r = new MetaRegistry(address(module));
         assertEq(address(r.STAKING_ROUTER()), address(stakingRouter));
         assertEq(address(r.MODULE()), address(module));
         assertEq(address(r.ACCOUNTING()), address(module.ACCOUNTING()));
-        assertEq(address(r.ADDITIONAL_BOND_REGISTRY()), address(additionalBondRegistry));
     }
 
     function test_constructor_RevertWhen_ZeroModule() public {
         vm.expectRevert(IMetaRegistry.ZeroModuleAddress.selector);
-        new MetaRegistry(address(0), address(additionalBondRegistry));
+        new MetaRegistry(address(0));
     }
 }
 
@@ -269,14 +268,14 @@ contract MetaRegistryInitializeTest is MetaRegistryBaseTest {
     }
 
     function test_initialize_SetsAdmin() public {
-        MetaRegistry r = new MetaRegistry(address(module), address(additionalBondRegistry));
+        MetaRegistry r = new MetaRegistry(address(module));
         _enableInitializers(address(r));
         r.initialize(admin);
         assertTrue(r.hasRole(r.DEFAULT_ADMIN_ROLE(), admin));
     }
 
     function test_initialize_NoGroupsInitially() public {
-        MetaRegistry r = new MetaRegistry(address(module), address(additionalBondRegistry));
+        MetaRegistry r = new MetaRegistry(address(module));
         _enableInitializers(address(r));
         r.initialize(admin);
 
@@ -289,14 +288,14 @@ contract MetaRegistryInitializeTest is MetaRegistryBaseTest {
     }
 
     function test_initialize_RevertWhen_ZeroAdmin() public {
-        MetaRegistry r = new MetaRegistry(address(module), address(additionalBondRegistry));
+        MetaRegistry r = new MetaRegistry(address(module));
         _enableInitializers(address(r));
         vm.expectRevert(IMetaRegistry.ZeroAdminAddress.selector);
         r.initialize(address(0));
     }
 
     function test_initialize_RevertWhen_DoubleCall() public {
-        MetaRegistry r = new MetaRegistry(address(module), address(additionalBondRegistry));
+        MetaRegistry r = new MetaRegistry(address(module));
         _enableInitializers(address(r));
         r.initialize(admin);
         vm.expectRevert(Initializable.InvalidInitialization.selector);

@@ -8,16 +8,15 @@ import { Test } from "forge-std/Test.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import { NodeOperatorStrikes } from "src/NodeOperatorStrikes.sol";
-import { INodeOperatorStrikes, StrikeInput, Strike, StrikeThreshold } from "src/interfaces/INodeOperatorStrikes.sol";
+import { INodeOperatorStrikes, StrikeInput, Strike } from "src/interfaces/INodeOperatorStrikes.sol";
+import { IStepwiseWeightBoost, Step } from "src/interfaces/IStepwiseWeightBoost.sol";
 
-import { CuratedMock } from "../helpers/mocks/CuratedMock.sol";
-import { MetaRegistryMock } from "../helpers/mocks/MetaRegistryMock.sol";
+import { CuratedProviderFixture } from "../helpers/CuratedProviderFixture.sol";
+import { StepwiseWeightBoostBehaviour } from "../helpers/StepwiseWeightBoostBehaviour.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
 
-contract NodeOperatorStrikesBaseTest is Test, Utilities, Fixtures {
-    CuratedMock public module;
-    MetaRegistryMock public metaRegistryMock;
+contract NodeOperatorStrikesBaseTest is Test, Utilities, Fixtures, CuratedProviderFixture {
     NodeOperatorStrikes public strikes;
 
     address public admin;
@@ -35,15 +34,11 @@ contract NodeOperatorStrikesBaseTest is Test, Utilities, Fixtures {
         committee = nextAddress("COMMITTEE");
         stranger = nextAddress("STRANGER");
 
-        module = new CuratedMock();
-        module.mock_setNodeOperatorsCount(3);
-
-        metaRegistryMock = new MetaRegistryMock();
-        module.mock_setMetaRegistry(address(metaRegistryMock));
+        _deployModuleWithMetaRegistryMock(3);
 
         strikes = new NodeOperatorStrikes({ module: address(module) });
         _enableInitializers(address(strikes));
-        strikes.initialize(admin, _exampleThresholds());
+        strikes.initialize(admin, _exampleSteps());
 
         bytes32 committeeRole = strikes.STRIKES_COMMITTEE_ROLE();
         vm.prank(admin);
@@ -64,17 +59,17 @@ contract NodeOperatorStrikesBaseTest is Test, Utilities, Fixtures {
             });
     }
 
-    function _exampleThresholds() internal pure returns (StrikeThreshold[] memory thresholds) {
-        thresholds = new StrikeThreshold[](4);
-        thresholds[0] = StrikeThreshold({ minCount: 2, reductionBP: 2_500 });
-        thresholds[1] = StrikeThreshold({ minCount: 3, reductionBP: 5_000 });
-        thresholds[2] = StrikeThreshold({ minCount: 4, reductionBP: 7_500 });
-        thresholds[3] = StrikeThreshold({ minCount: 5, reductionBP: 10_000 });
+    function _exampleSteps() internal pure returns (Step[] memory steps) {
+        steps = new Step[](4);
+        steps[0] = Step({ threshold: 2, value: 2_500 });
+        steps[1] = Step({ threshold: 3, value: 5_000 });
+        steps[2] = Step({ threshold: 4, value: 7_500 });
+        steps[3] = Step({ threshold: 5, value: 10_000 });
     }
 
-    function _setExampleThresholds() internal {
+    function _setExampleSteps() internal {
         vm.prank(admin);
-        strikes.setStrikeThresholds(_exampleThresholds());
+        strikes.setSteps(_exampleSteps());
     }
 
     function _issue(uint256 nodeOperatorId) internal returns (uint256 strikeId) {
@@ -83,7 +78,7 @@ contract NodeOperatorStrikesBaseTest is Test, Utilities, Fixtures {
     }
 
     function _expectNoStrike(uint256 nodeOperatorId, uint256 strikeId) internal {
-        vm.expectRevert(INodeOperatorStrikes.StrikeNotExist.selector);
+        vm.expectRevert(INodeOperatorStrikes.StrikeDoesNotExist.selector);
         strikes.getStrike(nodeOperatorId, strikeId);
     }
 }
@@ -95,7 +90,7 @@ contract NodeOperatorStrikesConstructorTest is NodeOperatorStrikesBaseTest {
     }
 
     function test_constructor_RevertWhen_ZeroModule() public {
-        vm.expectRevert(INodeOperatorStrikes.ZeroModuleAddress.selector);
+        vm.expectRevert(IStepwiseWeightBoost.ZeroModuleAddress.selector);
         new NodeOperatorStrikes(address(0));
     }
 }
@@ -105,50 +100,50 @@ contract NodeOperatorStrikesInitializeTest is NodeOperatorStrikesBaseTest {
         assertTrue(strikes.hasRole(strikes.DEFAULT_ADMIN_ROLE(), admin));
     }
 
-    function test_initialize_SetsThresholds() public {
+    function test_initialize_SetsSteps() public {
         NodeOperatorStrikes s = new NodeOperatorStrikes(address(module));
         _enableInitializers(address(s));
-        s.initialize(admin, _exampleThresholds());
+        s.initialize(admin, _exampleSteps());
 
-        StrikeThreshold[] memory stored = s.getStrikeThresholds();
+        Step[] memory stored = s.getSteps();
         assertEq(stored.length, 4);
-        assertEq(stored[0].minCount, 2);
-        assertEq(stored[3].reductionBP, 10_000);
+        assertEq(stored[0].threshold, 2);
+        assertEq(stored[3].value, 10_000);
     }
 
     function test_initialize_RevertWhen_ZeroAdmin() public {
         NodeOperatorStrikes s = new NodeOperatorStrikes(address(module));
         _enableInitializers(address(s));
-        vm.expectRevert(INodeOperatorStrikes.ZeroAdminAddress.selector);
-        s.initialize(address(0), new StrikeThreshold[](0));
+        vm.expectRevert(IStepwiseWeightBoost.ZeroAdminAddress.selector);
+        s.initialize(address(0), new Step[](0));
     }
 
-    function test_initialize_RevertWhen_InvalidThresholds() public {
+    function test_initialize_RevertWhen_InvalidStep() public {
         NodeOperatorStrikes s = new NodeOperatorStrikes(address(module));
         _enableInitializers(address(s));
 
-        StrikeThreshold[] memory bad = new StrikeThreshold[](1);
-        bad[0] = StrikeThreshold({ minCount: 0, reductionBP: 1_000 }); // minCount 0 is invalid
-        vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
+        Step[] memory bad = new Step[](1);
+        bad[0] = Step({ threshold: 0, value: 1_000 }); // threshold 0 is invalid
+        vm.expectRevert(abi.encodeWithSelector(IStepwiseWeightBoost.InvalidStep.selector, 0));
         s.initialize(admin, bad);
     }
 
-    function test_initialize_RevertWhen_EmptyThresholds() public {
+    function test_initialize_RevertWhen_EmptySteps() public {
         NodeOperatorStrikes s = new NodeOperatorStrikes(address(module));
         _enableInitializers(address(s));
 
-        vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
-        s.initialize(admin, new StrikeThreshold[](0));
+        vm.expectRevert(IStepwiseWeightBoost.InvalidStepCount.selector);
+        s.initialize(admin, new Step[](0));
     }
 
     function test_initialize_RevertWhen_DoubleCall() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        strikes.initialize(admin, new StrikeThreshold[](0));
+        strikes.initialize(admin, new Step[](0));
     }
 }
 
 contract NodeOperatorStrikesIssueTest is NodeOperatorStrikesBaseTest {
-    function test_issueStrike_StoresAndRefreshes() public {
+    function test_issueStrike_StoresWithoutRefreshBeforeFirstThreshold() public {
         uint256 expiry = block.timestamp + LIFETIME;
 
         vm.expectEmit(true, true, true, true, address(strikes));
@@ -165,6 +160,14 @@ contract NodeOperatorStrikesIssueTest is NodeOperatorStrikesBaseTest {
         assertEq(s.expiry, expiry);
         assertEq(s.category, CATEGORY);
         assertEq(s.description, DESCRIPTION);
+
+        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), 0);
+    }
+
+    function test_issueStrike_RefreshesWhenStepValueChanges() public {
+        _issue(NO_ID);
+
+        _issue(NO_ID);
 
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), 1);
         assertEq(metaRegistryMock.lastChangedBoostOperatorId(), NO_ID);
@@ -184,7 +187,7 @@ contract NodeOperatorStrikesIssueTest is NodeOperatorStrikesBaseTest {
     }
 
     function test_issueStrike_RevertWhen_OperatorDoesNotExist() public {
-        vm.expectRevert(INodeOperatorStrikes.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IStepwiseWeightBoost.NodeOperatorDoesNotExist.selector);
         vm.prank(committee);
         strikes.issueStrike(_input(3, CATEGORY, LIFETIME)); // count == 3, so id 3 doesn't exist
     }
@@ -234,6 +237,7 @@ contract NodeOperatorStrikesIssueTest is NodeOperatorStrikesBaseTest {
 contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
     function test_removeStrike_RemovesAndRefreshes() public {
         uint256 id = _issue(NO_ID);
+        _issue(NO_ID);
         uint256 refreshesBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
 
         vm.expectEmit(true, true, false, false, address(strikes));
@@ -242,9 +246,20 @@ contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
         vm.prank(committee);
         strikes.removeStrike(NO_ID, id);
 
-        assertEq(strikes.getActiveStrikesCount(NO_ID), 0);
+        assertEq(strikes.getActiveStrikesCount(NO_ID), 1);
         _expectNoStrike(NO_ID, id); // removed
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), refreshesBefore + 1);
+    }
+
+    function test_removeStrike_DoesNotRefreshWhenStepValueUnchanged() public {
+        uint256 id = _issue(NO_ID);
+        uint256 refreshesBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
+
+        vm.prank(committee);
+        strikes.removeStrike(NO_ID, id);
+
+        assertEq(strikes.getActiveStrikesCount(NO_ID), 0);
+        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), refreshesBefore);
     }
 
     function test_removeStrike_RevertWhen_NotCommittee() public {
@@ -262,7 +277,7 @@ contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
     }
 
     function test_removeStrike_RevertWhen_NonExistent() public {
-        vm.expectRevert(INodeOperatorStrikes.StrikeNotExist.selector);
+        vm.expectRevert(INodeOperatorStrikes.StrikeDoesNotExist.selector);
         vm.prank(committee);
         strikes.removeStrike(NO_ID, 1);
     }
@@ -272,7 +287,7 @@ contract NodeOperatorStrikesRemoveTest is NodeOperatorStrikesBaseTest {
         vm.prank(committee);
         strikes.removeStrike(NO_ID, id);
 
-        vm.expectRevert(INodeOperatorStrikes.StrikeNotExist.selector);
+        vm.expectRevert(INodeOperatorStrikes.StrikeDoesNotExist.selector);
         vm.prank(committee);
         strikes.removeStrike(NO_ID, id);
     }
@@ -428,117 +443,80 @@ contract NodeOperatorStrikesRemoveExpiredTest is NodeOperatorStrikesBaseTest {
         assertEq(strikes.getActiveStrikesCount(NO_ID), 2);
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), refreshesBefore); // no refresh
     }
+
+    function test_removeExpiredStrikes_DoesNotRefreshWhenStepValueUnchanged() public {
+        _issue(NO_ID);
+        uint256 refreshesBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
+        vm.warp(block.timestamp + LIFETIME);
+
+        vm.prank(stranger);
+        strikes.removeExpiredStrikes(NO_ID);
+
+        assertEq(strikes.getActiveStrikesCount(NO_ID), 0);
+        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), refreshesBefore);
+    }
 }
 
-contract NodeOperatorStrikesThresholdsTest is NodeOperatorStrikesBaseTest {
-    function test_setStrikeThresholds_RoundTrip() public {
-        StrikeThreshold[] memory thresholds = _exampleThresholds();
+contract NodeOperatorStrikesStepsTest is NodeOperatorStrikesBaseTest, StepwiseWeightBoostBehaviour {
+    function _stepwise() internal view override returns (IStepwiseWeightBoost) {
+        return IStepwiseWeightBoost(address(strikes));
+    }
+
+    function _stepwiseAdmin() internal view override returns (address) {
+        return admin;
+    }
+
+    function _stepwiseSteps(uint256 count) internal view override returns (Step[] memory steps) {
+        steps = new Step[](count);
+        for (uint256 i; i < count; ++i) {
+            // Strike counts start at one; reductions stay within MAX_BP.
+            steps[i] = Step({ threshold: uint128(i + 1), value: uint128((i + 1) * 100) });
+        }
+    }
+
+    function test_setSteps_RoundTrip() public {
+        Step[] memory steps = _exampleSteps();
 
         vm.expectEmit(false, false, false, true, address(strikes));
-        emit INodeOperatorStrikes.StrikeThresholdsSet(thresholds);
+        emit IStepwiseWeightBoost.StepsSet(steps);
 
         vm.prank(admin);
-        strikes.setStrikeThresholds(thresholds);
+        strikes.setSteps(steps);
 
-        StrikeThreshold[] memory stored = strikes.getStrikeThresholds();
+        Step[] memory stored = strikes.getSteps();
         assertEq(stored.length, 4);
-        assertEq(stored[0].minCount, 2);
-        assertEq(stored[0].reductionBP, 2_500);
-        assertEq(stored[3].minCount, 5);
-        assertEq(stored[3].reductionBP, 10_000);
+        assertEq(stored[0].threshold, 2);
+        assertEq(stored[0].value, 2_500);
+        assertEq(stored[3].threshold, 5);
+        assertEq(stored[3].value, 10_000);
 
         // The config change is pushed to MetaRegistry so cached weights get refreshed.
         assertEq(metaRegistryMock.notifyWeightBoostProviderConfigChangedCallCount(), 1);
     }
 
-    function test_setStrikeThresholds_Replaces() public {
-        _setExampleThresholds();
-
-        StrikeThreshold[] memory next = new StrikeThreshold[](1);
-        next[0] = StrikeThreshold({ minCount: 1, reductionBP: 1_000 });
+    function test_setSteps_RevertWhen_FirstThresholdZero() public {
+        Step[] memory steps = new Step[](1);
+        steps[0] = Step({ threshold: 0, value: 1_000 });
+        vm.expectRevert(abi.encodeWithSelector(IStepwiseWeightBoost.InvalidStep.selector, 0));
         vm.prank(admin);
-        strikes.setStrikeThresholds(next);
-
-        StrikeThreshold[] memory stored = strikes.getStrikeThresholds();
-        assertEq(stored.length, 1);
-        assertEq(stored[0].minCount, 1);
-        assertEq(stored[0].reductionBP, 1_000);
+        strikes.setSteps(steps);
     }
 
-    function test_setStrikeThresholds_RevertWhen_NotAdmin() public {
-        bytes32 adminRole = strikes.DEFAULT_ADMIN_ROLE();
-        expectRoleRevert(stranger, adminRole);
-        vm.prank(stranger);
-        strikes.setStrikeThresholds(_exampleThresholds());
+    function test_setSteps_RevertWhen_FirstValueZero() public {
+        Step[] memory steps = new Step[](1);
+        steps[0] = Step({ threshold: 1, value: 0 });
+        vm.expectRevert(abi.encodeWithSelector(IStepwiseWeightBoost.InvalidStep.selector, 0));
+        vm.prank(admin);
+        strikes.setSteps(steps);
     }
 
-    function test_setStrikeThresholds_RevertWhen_Empty() public {
-        StrikeThreshold[] memory thresholds = new StrikeThreshold[](0);
-        vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
+    /// @dev A reduction cannot exceed 100%, so this provider caps values below MAX_STEP_VALUE.
+    function test_setSteps_RevertWhen_ValueAboveMaxBp() public {
+        Step[] memory steps = new Step[](1);
+        steps[0] = Step({ threshold: 2, value: uint128(MAX_BP + 1) });
+        vm.expectRevert(abi.encodeWithSelector(IStepwiseWeightBoost.InvalidStep.selector, 0));
         vm.prank(admin);
-        strikes.setStrikeThresholds(thresholds);
-    }
-
-    function test_setStrikeThresholds_RevertWhen_FirstMinCountZero() public {
-        StrikeThreshold[] memory thresholds = new StrikeThreshold[](1);
-        thresholds[0] = StrikeThreshold({ minCount: 0, reductionBP: 1_000 });
-        vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
-        vm.prank(admin);
-        strikes.setStrikeThresholds(thresholds);
-    }
-
-    function test_setStrikeThresholds_RevertWhen_FirstReductionZero() public {
-        StrikeThreshold[] memory thresholds = new StrikeThreshold[](1);
-        thresholds[0] = StrikeThreshold({ minCount: 1, reductionBP: 0 });
-        vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
-        vm.prank(admin);
-        strikes.setStrikeThresholds(thresholds);
-    }
-
-    function test_setStrikeThresholds_RevertWhen_MinCountNotAscending() public {
-        StrikeThreshold[] memory thresholds = new StrikeThreshold[](2);
-        thresholds[0] = StrikeThreshold({ minCount: 2, reductionBP: 2_500 });
-        thresholds[1] = StrikeThreshold({ minCount: 2, reductionBP: 5_000 });
-        vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
-        vm.prank(admin);
-        strikes.setStrikeThresholds(thresholds);
-    }
-
-    function test_setStrikeThresholds_RevertWhen_ReductionDecreasing() public {
-        StrikeThreshold[] memory thresholds = new StrikeThreshold[](2);
-        thresholds[0] = StrikeThreshold({ minCount: 2, reductionBP: 5_000 });
-        thresholds[1] = StrikeThreshold({ minCount: 3, reductionBP: 2_500 });
-        vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
-        vm.prank(admin);
-        strikes.setStrikeThresholds(thresholds);
-    }
-
-    function test_setStrikeThresholds_RevertWhen_ReductionEqual() public {
-        StrikeThreshold[] memory thresholds = new StrikeThreshold[](2);
-        thresholds[0] = StrikeThreshold({ minCount: 2, reductionBP: 2_500 });
-        thresholds[1] = StrikeThreshold({ minCount: 3, reductionBP: 2_500 }); // equal -> redundant band
-        vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
-        vm.prank(admin);
-        strikes.setStrikeThresholds(thresholds);
-    }
-
-    function test_setStrikeThresholds_RevertWhen_ReductionAboveMaxBp() public {
-        StrikeThreshold[] memory thresholds = new StrikeThreshold[](1);
-        thresholds[0] = StrikeThreshold({ minCount: 2, reductionBP: uint128(MAX_BP + 1) });
-        vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
-        vm.prank(admin);
-        strikes.setStrikeThresholds(thresholds);
-    }
-
-    function test_setStrikeThresholds_RevertWhen_TooMany() public {
-        uint256 n = strikes.MAX_THRESHOLDS() + 1;
-        StrikeThreshold[] memory thresholds = new StrikeThreshold[](n);
-        for (uint256 i; i < n; ++i) {
-            thresholds[i] = StrikeThreshold({ minCount: uint128(i + 1), reductionBP: 0 });
-        }
-        vm.expectRevert(INodeOperatorStrikes.InvalidStrikeThresholds.selector);
-        vm.prank(admin);
-        strikes.setStrikeThresholds(thresholds);
+        strikes.setSteps(steps);
     }
 }
 
