@@ -196,11 +196,11 @@ contract DeployLocalDevNet is DeployBase {
         config.additionalBondRegistryConfig.boostSteps.push(Step({ threshold: 10_000, value: 8_000 }));
 
         // NodeOperatorStrikes
-        config.strikesCommittee = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
-        config.strikesThresholds.push(Step({ threshold: 2, value: 2_500 }));
-        config.strikesThresholds.push(Step({ threshold: 3, value: 5_000 }));
-        config.strikesThresholds.push(Step({ threshold: 4, value: 7_500 }));
-        config.strikesThresholds.push(Step({ threshold: 5, value: 10_000 }));
+        config.nodeOperatorStrikesConfig.committee = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 2, value: 2_500 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 3, value: 5_000 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 4, value: 7_500 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 5, value: 10_000 }));
 
         // LDO lock boost provider
         config.ldoLockBoostProviderConfig.token = vm.envAddress("CSM_LDO_TOKEN_ADDRESS");
@@ -208,8 +208,8 @@ contract DeployLocalDevNet is DeployBase {
         config.ldoLockBoostProviderConfig.snapshotDelegation = vm.envAddress("CSM_SNAPSHOT_DELEGATION_ADDRESS");
         config.ldoLockBoostProviderConfig.minLockPeriod = 1 days;
         config.ldoLockBoostProviderConfig.lockPeriod = 1 days;
-        _addLDOLockBoostStep(100_000 ether, 1_000);
-        _addLDOLockBoostStep(200_000 ether, 1_500);
+        config.ldoLockBoostProviderConfig.lockBoostSteps.push(Step({ threshold: 100_000 ether, value: 1_000 }));
+        config.ldoLockBoostProviderConfig.lockBoostSteps.push(Step({ threshold: 200_000 ether, value: 1_500 }));
 
         // CustomFeeRegistry
         config.customFeeRegistryConfig.defaultMinFee = 2_500;

@@ -208,12 +208,12 @@ contract DeployHoodi is DeployBase {
         config.additionalBondRegistryConfig.boostSteps.push(Step({ threshold: 10_000, value: 8_000 }));
 
         // NodeOperatorStrikes
-        config.strikesCommittee = 0x84DffcfB232594975C608DE92544Ff239a24c9E9; // CMC on Hoodi
+        config.nodeOperatorStrikesConfig.committee = 0x84DffcfB232594975C608DE92544Ff239a24c9E9; // CMC on Hoodi
         // TODO: finalize strike weight-reduction thresholds
-        config.strikesThresholds.push(Step({ threshold: 2, value: 2_500 }));
-        config.strikesThresholds.push(Step({ threshold: 3, value: 5_000 }));
-        config.strikesThresholds.push(Step({ threshold: 4, value: 7_500 }));
-        config.strikesThresholds.push(Step({ threshold: 5, value: 10_000 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 2, value: 2_500 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 3, value: 5_000 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 4, value: 7_500 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 5, value: 10_000 }));
 
         // LDO lock boost provider
         config.ldoLockBoostProviderConfig.token = 0xEf2573966D009CcEA0Fc74451dee2193564198dc;
@@ -221,8 +221,8 @@ contract DeployHoodi is DeployBase {
         config.ldoLockBoostProviderConfig.snapshotDelegation = address(1); // TODO: Fill in before deployment
         config.ldoLockBoostProviderConfig.minLockPeriod = 30 days;
         config.ldoLockBoostProviderConfig.lockPeriod = 30 days;
-        _addLDOLockBoostStep(100_000 ether, 1_000);
-        _addLDOLockBoostStep(200_000 ether, 1_500);
+        config.ldoLockBoostProviderConfig.lockBoostSteps.push(Step({ threshold: 100_000 ether, value: 1_000 }));
+        config.ldoLockBoostProviderConfig.lockBoostSteps.push(Step({ threshold: 200_000 ether, value: 1_500 }));
 
         // CustomFeeRegistry
         // TODO: finalize custom fee parameters.

@@ -207,12 +207,12 @@ contract DeployMainnet is DeployBase {
         config.additionalBondRegistryConfig.boostSteps.push(Step({ threshold: 10_000, value: 8_000 }));
 
         // NodeOperatorStrikes
-        config.strikesCommittee = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
+        config.nodeOperatorStrikesConfig.committee = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
         // TODO: finalize strike weight-reduction thresholds
-        config.strikesThresholds.push(Step({ threshold: 2, value: 2_500 }));
-        config.strikesThresholds.push(Step({ threshold: 3, value: 5_000 }));
-        config.strikesThresholds.push(Step({ threshold: 4, value: 7_500 }));
-        config.strikesThresholds.push(Step({ threshold: 5, value: 10_000 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 2, value: 2_500 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 3, value: 5_000 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 4, value: 7_500 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 5, value: 10_000 }));
 
         // LDO lock boost provider
         config.ldoLockBoostProviderConfig.token = 0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32;
@@ -220,8 +220,8 @@ contract DeployMainnet is DeployBase {
         config.ldoLockBoostProviderConfig.snapshotDelegation = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
         config.ldoLockBoostProviderConfig.minLockPeriod = 30 days;
         config.ldoLockBoostProviderConfig.lockPeriod = 30 days;
-        _addLDOLockBoostStep(100_000 ether, 1_000);
-        _addLDOLockBoostStep(200_000 ether, 1_500);
+        config.ldoLockBoostProviderConfig.lockBoostSteps.push(Step({ threshold: 100_000 ether, value: 1_000 }));
+        config.ldoLockBoostProviderConfig.lockBoostSteps.push(Step({ threshold: 200_000 ether, value: 1_500 }));
 
         // CustomFeeRegistry
         // TODO: finalize custom fee parameters.

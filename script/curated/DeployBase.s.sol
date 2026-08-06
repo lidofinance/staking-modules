@@ -75,6 +75,12 @@ struct AdditionalBondRegistryConfig {
     Step[] boostSteps;
 }
 
+struct NodeOperatorStrikesConfig {
+    address committee;
+    // `threshold` is the minimum active strike count and `value` the weight reduction from MAX_BP.
+    Step[] thresholds;
+}
+
 struct ERC20LockBoostProviderConfig {
     address token;
     address votingContract;
@@ -164,8 +170,7 @@ struct CuratedDeployParams {
     // AdditionalBondRegistry
     AdditionalBondRegistryConfig additionalBondRegistryConfig;
     // NodeOperatorStrikes
-    address strikesCommittee;
-    Step[] strikesThresholds;
+    NodeOperatorStrikesConfig nodeOperatorStrikesConfig;
     // LDO lock boost provider
     ERC20LockBoostProviderConfig ldoLockBoostProviderConfig;
     // CustomFeeRegistry
@@ -397,7 +402,7 @@ abstract contract DeployBase is Script {
             _upgradeAndHandoffProxy(
                 address(nodeOperatorStrikes),
                 address(nodeOperatorStrikesImpl),
-                abi.encodeCall(NodeOperatorStrikes.initialize, (deployer, config.strikesThresholds))
+                abi.encodeCall(NodeOperatorStrikes.initialize, (deployer, config.nodeOperatorStrikesConfig.thresholds))
             );
 
             // LDO lock boost provider
@@ -458,7 +463,10 @@ abstract contract DeployBase is Script {
             );
             _addWeightBoostProvider(address(ldoLockBoostProvider), IMetaRegistry.WeightBoostProviderMode.MaxPerGroup);
             _addWeightBoostProvider(address(customFeeRegistry), IMetaRegistry.WeightBoostProviderMode.PerNodeOperator);
-            nodeOperatorStrikes.grantRole(nodeOperatorStrikes.STRIKES_COMMITTEE_ROLE(), config.strikesCommittee);
+            nodeOperatorStrikes.grantRole(
+                nodeOperatorStrikes.STRIKES_COMMITTEE_ROLE(),
+                config.nodeOperatorStrikesConfig.committee
+            );
             metaRegistry.grantRole(metaRegistry.SET_BOND_CURVE_WEIGHT_ROLE(), deployer);
 
             for (uint256 i = 0; i < gatesCount; i++) {
@@ -786,10 +794,6 @@ abstract contract DeployBase is Script {
     /// @dev Registration order assigns the provider ids, so keep the call sequence stable.
     function _addWeightBoostProvider(address provider, IMetaRegistry.WeightBoostProviderMode mode) internal {
         metaRegistry.addWeightBoostProvider(IWeightBoostProvider(provider), mode);
-    }
-
-    function _addLDOLockBoostStep(uint128 minAmount, uint128 weightBoostBP) internal {
-        config.ldoLockBoostProviderConfig.lockBoostSteps.push(Step({ threshold: minAmount, value: weightBoostBP }));
     }
 
     function _deployProxy(address admin, address implementation) internal returns (address) {

@@ -603,9 +603,9 @@ contract DeploymentHelpers is Test {
         }
 
         // NodeOperatorStrikes
-        dst.strikesCommittee = src.strikesCommittee;
-        for (uint256 i; i < src.strikesThresholds.length; ++i) {
-            dst.strikesThresholds.push(src.strikesThresholds[i]);
+        dst.nodeOperatorStrikesConfig.committee = src.nodeOperatorStrikesConfig.committee;
+        for (uint256 i; i < src.nodeOperatorStrikesConfig.thresholds.length; ++i) {
+            dst.nodeOperatorStrikesConfig.thresholds.push(src.nodeOperatorStrikesConfig.thresholds[i]);
         }
 
         // LDO lock boost provider

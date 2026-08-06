@@ -265,7 +265,7 @@ contract NodeOperatorStrikesDeploymentTest is DeploymentBaseTest {
     function test_state_onlyFull() public view {
         assertEq(nodeOperatorStrikes.getInitializedVersion(), 1);
         // Strike count thresholds map to weight reductions in basis points.
-        _assertSteps(nodeOperatorStrikes.getSteps(), deployParams.strikesThresholds);
+        _assertSteps(nodeOperatorStrikes.getSteps(), deployParams.nodeOperatorStrikesConfig.thresholds);
     }
 
     function test_immutables_onlyFull() public view {
@@ -280,7 +280,7 @@ contract NodeOperatorStrikesDeploymentTest is DeploymentBaseTest {
 
         bytes32 committeeRole = nodeOperatorStrikes.STRIKES_COMMITTEE_ROLE();
         assertEq(nodeOperatorStrikes.getRoleMemberCount(committeeRole), 1);
-        assertTrue(nodeOperatorStrikes.hasRole(committeeRole, deployParams.strikesCommittee));
+        assertTrue(nodeOperatorStrikes.hasRole(committeeRole, deployParams.nodeOperatorStrikesConfig.committee));
     }
 
     function test_initialization_onlyFull() public {

@@ -10,8 +10,7 @@ import { ICuratedModule } from "../interfaces/ICuratedModule.sol";
 import { IStepwiseWeightBoost, Step } from "../interfaces/IStepwiseWeightBoost.sol";
 import { MAX_BP } from "../lib/Constants.sol";
 
-/// @notice Base of every weight boost provider: storage, validation, configuration, and lookup of the
-///         step function, module/MetaRegistry wiring, operator access checks, and weight notifications.
+/// @notice Shared base of the weight boost providers built on a governance-configurable step function.
 abstract contract StepwiseWeightBoost is IStepwiseWeightBoost, AccessControlEnumerableUpgradeable {
     /// @custom:storage-location erc7201:StepwiseWeightBoost
     struct StepwiseWeightBoostStorage {
@@ -28,7 +27,6 @@ abstract contract StepwiseWeightBoost is IStepwiseWeightBoost, AccessControlEnum
     bytes32 private constant STEPWISE_WEIGHT_BOOST_STORAGE_LOCATION =
         0x852fd528c3d50d3563ef75d3ae6120a75c34ba905ef4b17904bd8502a3b92900;
 
-    /// @dev Also locks the implementation: every provider is deployed behind a proxy.
     constructor(address module) {
         if (module == address(0)) revert ZeroModuleAddress();
         MODULE = ICuratedModule(module);
@@ -53,17 +51,14 @@ abstract contract StepwiseWeightBoost is IStepwiseWeightBoost, AccessControlEnum
         return _getInitializedVersion();
     }
 
-    /// @dev Initializes the common administrator and step function without requesting a weight refresh.
-    ///      Called qualified — `StepwiseWeightBoost._initialize(...)` — from provider initializers.
+    /// @dev Unlike `setSteps`, does not notify MetaRegistry: there are no cached weights yet.
     function _initialize(address admin, Step[] calldata steps) internal onlyInitializing {
         if (admin == address(0)) revert ZeroAdminAddress();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _setSteps(steps);
     }
 
-    /// @dev Notification policy shared by the providers: MetaRegistry is asked to refresh the operator's
-    ///      cached weight only when the transition crosses a step boundary, since the step value is what
-    ///      moves the weight multiplier.
+    /// @dev Skips the refresh while the input stays within one step: the weight has not moved.
     function _notifyMetaRegistryIfWeightChanged(
         uint256 nodeOperatorId,
         uint256 previousInput,
@@ -81,7 +76,7 @@ abstract contract StepwiseWeightBoost is IStepwiseWeightBoost, AccessControlEnum
         if (owner != msg.sender) revert SenderIsNotNodeOperatorOwner();
     }
 
-    /// @dev Reverts unless the Node Operator exists. Ids are dense, so the count is the authoritative bound.
+    /// @dev Ids are sequential, so an id below the operators count exists.
     function _onlyExistingNodeOperator(uint256 nodeOperatorId) internal view {
         if (nodeOperatorId >= MODULE.getNodeOperatorsCount()) revert NodeOperatorDoesNotExist();
     }
