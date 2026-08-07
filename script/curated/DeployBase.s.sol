@@ -97,9 +97,9 @@ struct CurveFeeModifierConfig {
 }
 
 struct CustomFeeRegistryConfig {
-    uint256 defaultMinFee;
-    uint256 feeIncreaseCooldown;
-    Step[] feeWeightSteps;
+    uint256 defaultMaxFeeDiscount;
+    uint256 feeDiscountCutCooldown;
+    Step[] feeDiscountWeightSteps;
     CurveFeeModifierConfig[] feeModifiers;
 }
 
@@ -444,9 +444,9 @@ abstract contract DeployBase is Script {
                     CustomFeeRegistry.initialize,
                     (
                         deployer,
-                        config.customFeeRegistryConfig.defaultMinFee,
-                        config.customFeeRegistryConfig.feeIncreaseCooldown,
-                        config.customFeeRegistryConfig.feeWeightSteps
+                        config.customFeeRegistryConfig.defaultMaxFeeDiscount,
+                        config.customFeeRegistryConfig.feeDiscountCutCooldown,
+                        config.customFeeRegistryConfig.feeDiscountWeightSteps
                     )
                 )
             );

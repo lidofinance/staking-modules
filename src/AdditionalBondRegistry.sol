@@ -61,7 +61,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, StepwiseWeightBoost 
         if (newMul == curMul) revert SameCurveMultiplier();
 
         PendingCurveMultiplierReduction storage pending = $.pending[nodeOperatorId];
-        uint256 previousEffectiveCurveMultiplier = _getEffectiveCurveMultiplier(pending, curMul);
+        uint256 previousTargetCurveMultiplier = _getTargetCurveMultiplier(pending, curMul);
 
         if (newMul > curMul) {
             // NOTE: Takes into account current bond amount and keys count.
@@ -85,7 +85,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, StepwiseWeightBoost 
 
         StepwiseWeightBoost._notifyMetaRegistryIfWeightChanged(
             nodeOperatorId,
-            previousEffectiveCurveMultiplier,
+            previousTargetCurveMultiplier,
             curveMultiplier
         );
     }
@@ -152,7 +152,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, StepwiseWeightBoost 
         uint256 currentMultiplierBP = ACCOUNTING.getBondCurveMultiplier(nodeOperatorId);
         multiplierBP =
             MAX_BP +
-            StepwiseWeightBoost._stepValueAt(_getEffectiveCurveMultiplier(pending, currentMultiplierBP));
+            StepwiseWeightBoost._stepValueAt(_getTargetCurveMultiplier(pending, currentMultiplierBP));
     }
 
     function _setCurveMultiplierReductionCooldown(uint256 curveMultiplierReductionCooldown) internal {
@@ -166,9 +166,9 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, StepwiseWeightBoost 
         emit CurveMultiplierReductionCooldownSet(curveMultiplierReductionCooldown);
     }
 
-    /// @dev During a downgrade cooldown, weight follows the pending lower multiplier while Accounting
-    ///      continues to hold the current higher multiplier.
-    function _getEffectiveCurveMultiplier(
+    /// @dev The multiplier increment the allocation weight follows: the pending one during a downgrade
+    ///      cooldown, otherwise the one Accounting currently holds.
+    function _getTargetCurveMultiplier(
         PendingCurveMultiplierReduction storage pending,
         uint256 currentMultiplierBP
     ) internal view returns (uint256) {

@@ -619,10 +619,12 @@ contract DeploymentHelpers is Test {
         }
 
         // CustomFeeRegistry
-        dst.customFeeRegistryConfig.defaultMinFee = src.customFeeRegistryConfig.defaultMinFee;
-        dst.customFeeRegistryConfig.feeIncreaseCooldown = src.customFeeRegistryConfig.feeIncreaseCooldown;
-        for (uint256 i; i < src.customFeeRegistryConfig.feeWeightSteps.length; ++i) {
-            dst.customFeeRegistryConfig.feeWeightSteps.push(src.customFeeRegistryConfig.feeWeightSteps[i]);
+        dst.customFeeRegistryConfig.defaultMaxFeeDiscount = src.customFeeRegistryConfig.defaultMaxFeeDiscount;
+        dst.customFeeRegistryConfig.feeDiscountCutCooldown = src.customFeeRegistryConfig.feeDiscountCutCooldown;
+        for (uint256 i; i < src.customFeeRegistryConfig.feeDiscountWeightSteps.length; ++i) {
+            dst.customFeeRegistryConfig.feeDiscountWeightSteps.push(
+                src.customFeeRegistryConfig.feeDiscountWeightSteps[i]
+            );
         }
         for (uint256 i; i < src.customFeeRegistryConfig.feeModifiers.length; ++i) {
             dst.customFeeRegistryConfig.feeModifiers.push(src.customFeeRegistryConfig.feeModifiers[i]);

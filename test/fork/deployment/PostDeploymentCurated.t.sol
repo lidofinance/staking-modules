@@ -385,11 +385,17 @@ contract LDOLockBoostProviderDeploymentTest is DeploymentBaseTest {
 contract CustomFeeRegistryDeploymentTest is DeploymentBaseTest {
     function test_state_onlyFull() public view {
         assertEq(customFeeRegistry.getInitializedVersion(), 1);
-        assertEq(customFeeRegistry.getDefaultMinFee(), deployParams.customFeeRegistryConfig.defaultMinFee);
-        assertEq(customFeeRegistry.getFeeIncreaseCooldown(), deployParams.customFeeRegistryConfig.feeIncreaseCooldown);
+        assertEq(
+            customFeeRegistry.getDefaultMaxFeeDiscount(),
+            deployParams.customFeeRegistryConfig.defaultMaxFeeDiscount
+        );
+        assertEq(
+            customFeeRegistry.getFeeDiscountCutCooldown(),
+            deployParams.customFeeRegistryConfig.feeDiscountCutCooldown
+        );
 
         // Fee discount thresholds map to weight multiplier increments.
-        _assertSteps(customFeeRegistry.getSteps(), deployParams.customFeeRegistryConfig.feeWeightSteps);
+        _assertSteps(customFeeRegistry.getSteps(), deployParams.customFeeRegistryConfig.feeDiscountWeightSteps);
 
         for (uint256 i; i < deployParams.customFeeRegistryConfig.feeModifiers.length; ++i) {
             FeeModifier memory actual = customFeeRegistry.getFeeModifier(
@@ -399,7 +405,7 @@ contract CustomFeeRegistryDeploymentTest is DeploymentBaseTest {
             assertEq(actual.negative, deployParams.customFeeRegistryConfig.feeModifiers[i].negative);
         }
 
-        uint256 defaultFee = customFeeRegistry.DEFAULT_MAX_FEE();
+        uint256 defaultFee = customFeeRegistry.BASE_FEE();
         for (uint256 curveId; curveId < accounting.getCurvesCount(); ++curveId) {
             FeeModifier memory feeModifier = customFeeRegistry.getFeeModifier(curveId);
             uint256 effectiveFee = feeModifier.negative
@@ -412,11 +418,15 @@ contract CustomFeeRegistryDeploymentTest is DeploymentBaseTest {
     function test_immutables_onlyFull() public view {
         _assertProviderWiring(address(customFeeRegistry), "custom fee registry");
         assertEq(address(customFeeRegistry.ACCOUNTING()), address(accounting), "custom fee registry accounting");
-        assertEq(customFeeRegistry.FEE_STEP(), 250, "custom fee step");
-        assertEq(customFeeRegistry.DEFAULT_MAX_FEE(), 8_750, "custom fee default max");
+        assertEq(customFeeRegistry.FEE_GRANULARITY(), 250, "custom fee step");
+        assertEq(customFeeRegistry.BASE_FEE(), 8_750, "custom fee default max");
         assertEq(customFeeRegistry.MAX_STEPS(), 35, "custom fee max weight steps");
         assertEq(customFeeRegistry.MAX_STEP_VALUE(), 90_000, "custom fee max weight multiplier");
-        assertEq(customFeeRegistry.MAX_FEE_INCREASE_COOLDOWN(), 365 days, "custom fee max increase cooldown");
+        assertEq(
+            customFeeRegistry.MAX_FEE_DISCOUNT_CUT_COOLDOWN(),
+            365 days,
+            "custom fee max discount decrease cooldown"
+        );
     }
 
     function test_roles_onlyFull() public view {
@@ -429,7 +439,7 @@ contract CustomFeeRegistryDeploymentTest is DeploymentBaseTest {
             address(customFeeRegistryImpl),
             abi.encodeCall(
                 customFeeRegistry.initialize,
-                (deployParams.aragonAgent, 2_500, 15 days, deployParams.customFeeRegistryConfig.feeWeightSteps)
+                (deployParams.aragonAgent, 6_250, 15 days, deployParams.customFeeRegistryConfig.feeDiscountWeightSteps)
             )
         );
     }

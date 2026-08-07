@@ -27,9 +27,9 @@ contract CustomFeeRegistryBaseTest is Test, Utilities, Fixtures, CuratedProvider
     address public stranger;
 
     uint256 internal constant MAX_BP = 10_000;
-    uint256 internal constant STEP = 250;
-    uint256 internal constant MAX_FEE = 8_750;
-    uint256 internal constant MIN_FEE = 2_500;
+    uint256 internal constant GRANULARITY = 250;
+    uint256 internal constant BASE_FEE = 8_750;
+    uint256 internal constant MAX_FEE_DISCOUNT = 6_250;
     uint256 internal constant COOLDOWN = 15 days;
 
     uint256 internal constant NO_ID = 0;
@@ -44,7 +44,7 @@ contract CustomFeeRegistryBaseTest is Test, Utilities, Fixtures, CuratedProvider
 
         feeRegistry = new CustomFeeRegistry(address(module));
         _enableInitializers(address(feeRegistry));
-        feeRegistry.initialize(admin, MIN_FEE, COOLDOWN, _steps());
+        feeRegistry.initialize(admin, MAX_FEE_DISCOUNT, COOLDOWN, _steps());
 
         _accounting = AccountingMock(address(module.ACCOUNTING()));
     }
@@ -58,8 +58,7 @@ contract CustomFeeRegistryBaseTest is Test, Utilities, Fixtures, CuratedProvider
         steps[3] = Step({ threshold: 6_250, value: 15_000 });
     }
 
-    function _weight(uint256 fee) internal pure returns (uint256) {
-        uint256 discount = MAX_FEE - fee;
+    function _weight(uint256 discount) internal pure returns (uint256) {
         if (discount >= 6_250) return 25_000;
         if (discount >= 3_750) return 20_000;
         if (discount >= 2_500) return 15_000;
@@ -67,24 +66,24 @@ contract CustomFeeRegistryBaseTest is Test, Utilities, Fixtures, CuratedProvider
         return MAX_BP;
     }
 
-    function _requestFee(uint256 fee) internal {
+    function _requestFeeDiscount(uint256 discount) internal {
         vm.prank(nodeOperatorOwner);
-        feeRegistry.requestFee(NO_ID, fee);
+        feeRegistry.requestFeeDiscount(NO_ID, discount);
     }
 
-    function _applyFeeIncrease() internal {
+    function _applyFeeDiscountCut() internal {
         vm.prank(nodeOperatorOwner);
-        feeRegistry.applyFeeIncrease(NO_ID);
+        feeRegistry.applyFeeDiscountCut(NO_ID);
     }
 
-    function _cancelFeeIncrease() internal {
+    function _cancelFeeDiscountCut() internal {
         vm.prank(nodeOperatorOwner);
-        feeRegistry.cancelFeeIncrease(NO_ID);
+        feeRegistry.cancelFeeDiscountCut(NO_ID);
     }
 
-    function _assertNoPendingFeeIncrease() internal view {
-        assertEq(feeRegistry.getPendingFeeIncrease(NO_ID), 0);
-        assertEq(feeRegistry.getFeeIncreaseCooldownUntil(NO_ID), 0);
+    function _assertNoPendingFeeDiscountCut() internal view {
+        assertEq(feeRegistry.getPendingFeeDiscount(NO_ID), 0);
+        assertEq(feeRegistry.getFeeDiscountCutCooldownUntil(NO_ID), 0);
     }
 
     function _setFeeModifier(uint256 curveId, uint256 value, bool negative) internal {
@@ -101,11 +100,11 @@ contract CustomFeeRegistryConstructorTest is CustomFeeRegistryBaseTest {
     }
 
     function test_constructor_Constants() public view {
-        assertEq(feeRegistry.FEE_STEP(), STEP);
-        assertEq(feeRegistry.DEFAULT_MAX_FEE(), MAX_FEE);
+        assertEq(feeRegistry.FEE_GRANULARITY(), GRANULARITY);
+        assertEq(feeRegistry.BASE_FEE(), BASE_FEE);
         assertEq(feeRegistry.MAX_STEPS(), 35);
         assertEq(feeRegistry.MAX_STEP_VALUE(), 9 * MAX_BP);
-        assertEq(feeRegistry.MAX_FEE_INCREASE_COOLDOWN(), 365 days);
+        assertEq(feeRegistry.MAX_FEE_DISCOUNT_CUT_COOLDOWN(), 365 days);
     }
 
     function test_constructor_RevertWhen_ZeroModule() public {
@@ -122,8 +121,8 @@ contract CustomFeeRegistryInitializeTest is CustomFeeRegistryBaseTest {
 
     function test_initialize() public view {
         assertTrue(feeRegistry.hasRole(feeRegistry.DEFAULT_ADMIN_ROLE(), admin));
-        assertEq(feeRegistry.getDefaultMinFee(), MIN_FEE);
-        assertEq(feeRegistry.getFeeIncreaseCooldown(), COOLDOWN);
+        assertEq(feeRegistry.getDefaultMaxFeeDiscount(), MAX_FEE_DISCOUNT);
+        assertEq(feeRegistry.getFeeDiscountCutCooldown(), COOLDOWN);
         Step[] memory actual = feeRegistry.getSteps();
         Step[] memory expected = _steps();
         assertEq(actual.length, expected.length);
@@ -136,438 +135,444 @@ contract CustomFeeRegistryInitializeTest is CustomFeeRegistryBaseTest {
     function test_initialize_EmitsEvents() public {
         CustomFeeRegistry registry = _newRegistry();
         vm.expectEmit(address(registry));
-        emit ICustomFeeRegistry.DefaultMinFeeSet(MIN_FEE);
+        emit ICustomFeeRegistry.DefaultMaxFeeDiscountSet(MAX_FEE_DISCOUNT);
         vm.expectEmit(address(registry));
-        emit ICustomFeeRegistry.FeeIncreaseCooldownSet(COOLDOWN);
+        emit ICustomFeeRegistry.FeeDiscountCutCooldownSet(COOLDOWN);
         vm.expectEmit(address(registry));
         emit IStepwiseWeightBoost.StepsSet(_steps());
-        registry.initialize(admin, MIN_FEE, COOLDOWN, _steps());
+        registry.initialize(admin, MAX_FEE_DISCOUNT, COOLDOWN, _steps());
     }
 
     function test_initialize_RevertWhen_ZeroAdmin() public {
         CustomFeeRegistry registry = _newRegistry();
         vm.expectRevert(IStepwiseWeightBoost.ZeroAdminAddress.selector);
-        registry.initialize(address(0), MIN_FEE, COOLDOWN, _steps());
+        registry.initialize(address(0), MAX_FEE_DISCOUNT, COOLDOWN, _steps());
     }
 
     function test_initialize_RevertWhen_DoubleCall() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        feeRegistry.initialize(admin, MIN_FEE, COOLDOWN, _steps());
+        feeRegistry.initialize(admin, MAX_FEE_DISCOUNT, COOLDOWN, _steps());
     }
 
-    function test_initialize_RevertWhen_ZeroMinFee() public {
+    function test_initialize_RevertWhen_ZeroMaxFeeDiscount() public {
         CustomFeeRegistry registry = _newRegistry();
-        vm.expectRevert(ICustomFeeRegistry.InvalidDefaultMinFee.selector);
+        vm.expectRevert(ICustomFeeRegistry.InvalidDefaultMaxFeeDiscount.selector);
         registry.initialize(admin, 0, COOLDOWN, _steps());
     }
 
-    function test_initialize_RevertWhen_MinFeeAtOrAboveMax() public {
+    function test_initialize_RevertWhen_MaxFeeDiscountAtOrAboveBaseFee() public {
         CustomFeeRegistry registry = _newRegistry();
-        vm.expectRevert(ICustomFeeRegistry.InvalidDefaultMinFee.selector);
-        registry.initialize(admin, MAX_FEE, COOLDOWN, _steps());
+        vm.expectRevert(ICustomFeeRegistry.InvalidDefaultMaxFeeDiscount.selector);
+        registry.initialize(admin, BASE_FEE, COOLDOWN, _steps());
     }
 
-    function test_initialize_RevertWhen_MinFeeNotStepAligned() public {
+    function test_initialize_RevertWhen_MaxFeeDiscountNotGranularityAligned() public {
         CustomFeeRegistry registry = _newRegistry();
-        vm.expectRevert(ICustomFeeRegistry.InvalidDefaultMinFee.selector);
-        registry.initialize(admin, MIN_FEE + 1, COOLDOWN, _steps());
+        vm.expectRevert(ICustomFeeRegistry.InvalidDefaultMaxFeeDiscount.selector);
+        registry.initialize(admin, MAX_FEE_DISCOUNT + 1, COOLDOWN, _steps());
     }
 
     function test_initialize_RevertWhen_ZeroCooldown() public {
         CustomFeeRegistry registry = _newRegistry();
-        vm.expectRevert(ICustomFeeRegistry.InvalidFeeIncreaseCooldown.selector);
-        registry.initialize(admin, MIN_FEE, 0, _steps());
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeDiscountCutCooldown.selector);
+        registry.initialize(admin, MAX_FEE_DISCOUNT, 0, _steps());
     }
 
     function test_initialize_RevertWhen_CooldownExceedsMax() public {
         CustomFeeRegistry registry = _newRegistry();
-        vm.expectRevert(ICustomFeeRegistry.InvalidFeeIncreaseCooldown.selector);
-        registry.initialize(admin, MIN_FEE, 365 days + 1, _steps());
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeDiscountCutCooldown.selector);
+        registry.initialize(admin, MAX_FEE_DISCOUNT, 365 days + 1, _steps());
     }
 }
 
-contract CustomFeeRegistryRequestFeeTest is CustomFeeRegistryBaseTest {
-    function test_requestFee_Decrease_AppliesImmediately() public {
+contract CustomFeeRegistryRequestFeeDiscountTest is CustomFeeRegistryBaseTest {
+    function test_requestFeeDiscount_Raise_AppliesImmediately() public {
         vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeSet(NO_ID, 5_000);
-        _requestFee(5_000);
+        emit ICustomFeeRegistry.FeeDiscountSet(NO_ID, 3_750);
+        _requestFeeDiscount(3_750);
 
-        assertEq(feeRegistry.getFee(NO_ID), 5_000);
-        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(5_000));
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 3_750);
+        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(3_750));
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), 1);
         assertEq(metaRegistryMock.lastChangedBoostOperatorId(), NO_ID);
     }
 
-    function test_requestFee_Decrease_ToMinFee() public {
-        _requestFee(MIN_FEE);
-        assertEq(feeRegistry.getFee(NO_ID), MIN_FEE);
-        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(MIN_FEE));
+    function test_requestFeeDiscount_Raise_ToMaxFeeDiscount() public {
+        _requestFeeDiscount(MAX_FEE_DISCOUNT);
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), MAX_FEE_DISCOUNT);
+        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(MAX_FEE_DISCOUNT));
     }
 
-    function test_requestFee_Decrease_DoesNotNotifyWhenStepValueUnchanged() public {
-        _requestFee(7_500);
+    function test_requestFeeDiscount_Raise_DoesNotNotifyWhenStepValueUnchanged() public {
+        _requestFeeDiscount(1_250);
         uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
 
-        _requestFee(7_250);
+        _requestFeeDiscount(1_500);
 
-        assertEq(feeRegistry.getFee(NO_ID), 7_250);
-        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(7_500));
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 1_500);
+        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(1_250));
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore);
     }
 
-    function test_requestFee_Increase_SetsPending() public {
-        _requestFee(5_000);
+    function test_requestFeeDiscount_Cut_SetsPending() public {
+        _requestFeeDiscount(3_750);
 
         uint256 cooldownUntil = block.timestamp + COOLDOWN;
         vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeIncreaseRequested(NO_ID, 6_000, cooldownUntil);
-        _requestFee(6_000);
+        emit ICustomFeeRegistry.FeeDiscountCutRequested(NO_ID, 2_750, cooldownUntil);
+        _requestFeeDiscount(2_750);
 
-        // The fee itself is unchanged, but the weight already follows the pending increase.
-        assertEq(feeRegistry.getFee(NO_ID), 5_000);
-        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(6_000));
+        // The discount itself is unchanged, but the weight already follows the pending decrease.
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 3_750);
+        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(2_750));
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), 2);
     }
 
-    function test_requestFee_Increase_OverwritesPendingAndRestartsCooldown() public {
-        _requestFee(5_000);
-        _requestFee(6_000);
+    function test_requestFeeDiscount_Cut_OverwritesPendingAndRestartsCooldown() public {
+        _requestFeeDiscount(3_750);
+        _requestFeeDiscount(2_750);
 
         vm.warp(block.timestamp + 1 days);
         uint256 cooldownUntil = block.timestamp + COOLDOWN;
         vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeIncreaseRequested(NO_ID, 7_000, cooldownUntil);
-        _requestFee(7_000);
+        emit ICustomFeeRegistry.FeeDiscountCutRequested(NO_ID, 1_750, cooldownUntil);
+        _requestFeeDiscount(1_750);
 
-        assertEq(feeRegistry.getFee(NO_ID), 5_000);
-        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(7_000));
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 3_750);
+        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(1_750));
 
-        // The old deadline is void: the increase applies only at the restarted one.
+        // The old deadline is void: the decrease applies only at the restarted one.
         vm.warp(cooldownUntil - 1 days);
-        vm.expectRevert(ICustomFeeRegistry.FeeIncreaseCooldownNotElapsed.selector);
-        _applyFeeIncrease();
+        vm.expectRevert(ICustomFeeRegistry.FeeDiscountCutCooldownNotElapsed.selector);
+        _applyFeeDiscountCut();
 
         vm.warp(cooldownUntil);
-        _applyFeeIncrease();
-        assertEq(feeRegistry.getFee(NO_ID), 7_000);
+        _applyFeeDiscountCut();
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 1_750);
     }
 
-    function test_requestFee_Increase_DoesNotNotifyWhenFeeBandUnchanged() public {
-        _requestFee(4_750);
+    function test_requestFeeDiscount_Cut_DoesNotNotifyWhenFeeDiscountBandUnchanged() public {
+        _requestFeeDiscount(4_000);
         uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
 
-        _requestFee(5_000);
+        _requestFeeDiscount(3_750);
 
-        assertEq(feeRegistry.getPendingFeeIncrease(NO_ID), 5_000);
-        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(4_750));
-        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore);
-    }
-
-    function test_requestFee_Increase_OverwriteDoesNotNotifyWhenFeeBandUnchanged() public {
-        _requestFee(5_000);
-        _requestFee(6_000);
-        uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
-
-        _requestFee(6_250);
-
-        assertEq(feeRegistry.getPendingFeeIncrease(NO_ID), 6_250);
-        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(6_000));
-        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore);
-    }
-
-    function test_requestFee_Increase_LoweringPendingRaisesWeight() public {
-        _requestFee(5_000);
-        _requestFee(7_000);
-        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(7_000));
-
-        _requestFee(6_000);
-        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(6_000));
-        assertEq(feeRegistry.getFee(NO_ID), 5_000);
-    }
-
-    function test_requestFee_Decrease_CancelsPending() public {
-        _requestFee(5_000);
-        _requestFee(6_000);
-
-        vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeIncreaseCancelled(NO_ID);
-        vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeSet(NO_ID, 4_000);
-        _requestFee(4_000);
-
-        assertEq(feeRegistry.getFee(NO_ID), 4_000);
+        assertEq(feeRegistry.getPendingFeeDiscount(NO_ID), 3_750);
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(4_000));
+        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore);
+    }
+
+    function test_requestFeeDiscount_Cut_OverwriteDoesNotNotifyWhenFeeDiscountBandUnchanged() public {
+        _requestFeeDiscount(3_750);
+        _requestFeeDiscount(2_750);
+        uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
+
+        _requestFeeDiscount(2_500);
+
+        assertEq(feeRegistry.getPendingFeeDiscount(NO_ID), 2_500);
+        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(2_750));
+        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore);
+    }
+
+    function test_requestFeeDiscount_Cut_RaisingPendingRaisesWeight() public {
+        _requestFeeDiscount(3_750);
+        _requestFeeDiscount(1_750);
+        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(1_750));
+
+        _requestFeeDiscount(2_750);
+        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(2_750));
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 3_750);
+    }
+
+    function test_requestFeeDiscount_Raise_CancelsPending() public {
+        _requestFeeDiscount(3_750);
+        _requestFeeDiscount(2_750);
+
+        vm.expectEmit(address(feeRegistry));
+        emit ICustomFeeRegistry.FeeDiscountCutCancelled(NO_ID);
+        vm.expectEmit(address(feeRegistry));
+        emit ICustomFeeRegistry.FeeDiscountSet(NO_ID, 4_750);
+        _requestFeeDiscount(4_750);
+
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 4_750);
+        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(4_750));
 
         vm.warp(block.timestamp + COOLDOWN + 1);
-        vm.expectRevert(ICustomFeeRegistry.NoFeeIncreaseCooldown.selector);
-        _applyFeeIncrease();
+        vm.expectRevert(ICustomFeeRegistry.NoPendingFeeDiscountCut.selector);
+        _applyFeeDiscountCut();
     }
 
-    function test_requestFee_RevertWhen_NotOwner() public {
+    function test_requestFeeDiscount_RevertWhen_NotOwner() public {
         vm.expectRevert(IStepwiseWeightBoost.SenderIsNotNodeOperatorOwner.selector);
         vm.prank(stranger);
-        feeRegistry.requestFee(NO_ID, 5_000);
+        feeRegistry.requestFeeDiscount(NO_ID, 3_750);
     }
 
-    function test_requestFee_RevertWhen_BelowMinFee() public {
-        vm.expectRevert(ICustomFeeRegistry.InvalidFee.selector);
-        _requestFee(MIN_FEE - STEP);
+    function test_requestFeeDiscount_RevertWhen_AboveMaxFeeDiscount() public {
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeDiscount.selector);
+        _requestFeeDiscount(MAX_FEE_DISCOUNT + GRANULARITY);
     }
 
-    function test_requestFee_RevertWhen_AboveMaxFee() public {
-        vm.expectRevert(ICustomFeeRegistry.InvalidFee.selector);
-        _requestFee(MAX_FEE + STEP);
+    function test_requestFeeDiscount_RevertWhen_NotGranularityAligned() public {
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeDiscount.selector);
+        _requestFeeDiscount(3_750 + 1);
     }
 
-    function test_requestFee_RevertWhen_NotStepAligned() public {
-        vm.expectRevert(ICustomFeeRegistry.InvalidFee.selector);
-        _requestFee(5_000 + 1);
-    }
-
-    function test_requestFee_RevertWhen_BelowTypeMinimum() public {
+    function test_requestFeeDiscount_RevertWhen_AboveTypeCeiling() public {
         _setFeeModifier(0, 2_500, true);
-        // The negative modifier raises the operator's minimum to 5_000.
-        vm.expectRevert(ICustomFeeRegistry.InvalidFee.selector);
-        _requestFee(4_750);
+        // The negative modifier lowers the operator's discount ceiling to 3_750.
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeDiscount.selector);
+        _requestFeeDiscount(4_000);
     }
 
-    function test_requestFee_RevertWhen_SameFee_Unset() public {
-        vm.expectRevert(ICustomFeeRegistry.SameFee.selector);
-        _requestFee(MAX_FEE);
+    function test_requestFeeDiscount_RevertWhen_SameFeeDiscount_Unset() public {
+        vm.expectRevert(ICustomFeeRegistry.SameFeeDiscount.selector);
+        _requestFeeDiscount(0);
     }
 
-    function test_requestFee_RevertWhen_SameFee_Set() public {
-        _requestFee(5_000);
-        vm.expectRevert(ICustomFeeRegistry.SameFee.selector);
-        _requestFee(5_000);
+    function test_requestFeeDiscount_RevertWhen_SameFeeDiscount_Set() public {
+        _requestFeeDiscount(3_750);
+        vm.expectRevert(ICustomFeeRegistry.SameFeeDiscount.selector);
+        _requestFeeDiscount(3_750);
     }
 
-    function test_requestFee_RevertWhen_SameFeeWithPendingIncrease() public {
-        _requestFee(5_000);
-        _requestFee(6_000);
+    function test_requestFeeDiscount_RevertWhen_SameFeeDiscountWithPendingCut() public {
+        _requestFeeDiscount(3_750);
+        _requestFeeDiscount(2_750);
 
-        vm.expectRevert(ICustomFeeRegistry.SameFee.selector);
-        _requestFee(5_000);
+        vm.expectRevert(ICustomFeeRegistry.SameFeeDiscount.selector);
+        _requestFeeDiscount(3_750);
     }
 }
 
-contract CustomFeeRegistryCancelFeeIncreaseTest is CustomFeeRegistryBaseTest {
+contract CustomFeeRegistryCancelFeeDiscountCutTest is CustomFeeRegistryBaseTest {
     function setUp() public override {
         super.setUp();
-        _requestFee(5_000);
-        _requestFee(6_000);
+        _requestFeeDiscount(3_750);
+        _requestFeeDiscount(2_750);
     }
 
-    function test_cancelFeeIncrease() public {
+    function test_cancelFeeDiscountCut() public {
         uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
         vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeIncreaseCancelled(NO_ID);
-        _cancelFeeIncrease();
+        emit ICustomFeeRegistry.FeeDiscountCutCancelled(NO_ID);
+        _cancelFeeDiscountCut();
 
-        assertEq(feeRegistry.getFee(NO_ID), 5_000);
-        _assertNoPendingFeeIncrease();
-        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(5_000));
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 3_750);
+        _assertNoPendingFeeDiscountCut();
+        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(3_750));
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore + 1);
     }
 
-    function test_cancelFeeIncrease_AfterCooldown() public {
+    function test_cancelFeeDiscountCut_AfterCooldown() public {
         vm.warp(block.timestamp + COOLDOWN + 1);
-        _cancelFeeIncrease();
-        _assertNoPendingFeeIncrease();
+        _cancelFeeDiscountCut();
+        _assertNoPendingFeeDiscountCut();
     }
 
-    function test_cancelFeeIncrease_DoesNotNotifyWhenFeeBandUnchanged() public {
-        _cancelFeeIncrease();
-        _requestFee(4_750);
-        _requestFee(5_000);
+    function test_cancelFeeDiscountCut_DoesNotNotifyWhenFeeDiscountBandUnchanged() public {
+        _cancelFeeDiscountCut();
+        _requestFeeDiscount(4_000);
+        _requestFeeDiscount(3_750);
         uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
 
-        _cancelFeeIncrease();
+        _cancelFeeDiscountCut();
 
-        assertEq(feeRegistry.getFee(NO_ID), 4_750);
-        _assertNoPendingFeeIncrease();
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 4_000);
+        _assertNoPendingFeeDiscountCut();
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore);
     }
 
-    function test_cancelFeeIncrease_WhenCurrentFeeBelowNewMin() public {
-        _setFeeModifier(0, 4_000, true); // New minimum is 6_500.
-        _cancelFeeIncrease();
+    function test_cancelFeeDiscountCut_WhenCurrentFeeDiscountAboveNewCeiling() public {
+        _setFeeModifier(0, 4_000, true); // The new ceiling is 2_250.
+        _cancelFeeDiscountCut();
 
-        _assertNoPendingFeeIncrease();
-        assertEq(feeRegistry.getFee(NO_ID), 5_000);
+        _assertNoPendingFeeDiscountCut();
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 3_750);
     }
 
-    function test_cancelFeeIncrease_RevertWhen_NotOwner() public {
+    function test_cancelFeeDiscountCut_RevertWhen_NotOwner() public {
         vm.expectRevert(IStepwiseWeightBoost.SenderIsNotNodeOperatorOwner.selector);
         vm.prank(stranger);
-        feeRegistry.cancelFeeIncrease(NO_ID);
+        feeRegistry.cancelFeeDiscountCut(NO_ID);
     }
 
-    function test_cancelFeeIncrease_RevertWhen_NoPendingIncrease() public {
-        _cancelFeeIncrease();
-        vm.expectRevert(ICustomFeeRegistry.NoFeeIncreaseCooldown.selector);
-        _cancelFeeIncrease();
+    function test_cancelFeeDiscountCut_RevertWhen_NoPendingCut() public {
+        _cancelFeeDiscountCut();
+        vm.expectRevert(ICustomFeeRegistry.NoPendingFeeDiscountCut.selector);
+        _cancelFeeDiscountCut();
     }
 }
 
-contract CustomFeeRegistryApplyFeeIncreaseTest is CustomFeeRegistryBaseTest {
+contract CustomFeeRegistryApplyFeeDiscountCutTest is CustomFeeRegistryBaseTest {
     uint256 internal cooldownUntil;
 
     function setUp() public override {
         super.setUp();
-        _requestFee(5_000);
-        _requestFee(6_000);
+        _requestFeeDiscount(3_750);
+        _requestFeeDiscount(2_750);
         cooldownUntil = block.timestamp + COOLDOWN;
     }
 
-    function test_applyFeeIncrease() public {
+    function test_applyFeeDiscountCut() public {
         vm.warp(cooldownUntil + 1);
 
         uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
         vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeIncreaseApplied(NO_ID, 6_000);
-        _applyFeeIncrease();
+        emit ICustomFeeRegistry.FeeDiscountCutApplied(NO_ID, 2_750);
+        _applyFeeDiscountCut();
 
-        assertEq(feeRegistry.getFee(NO_ID), 6_000);
-        // The weight followed the pending fee already, so no new notification.
-        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(6_000));
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 2_750);
+        // The weight followed the pending discount already, so no new notification.
+        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(2_750));
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore);
     }
 
-    function test_applyFeeIncrease_AtExactDeadline() public {
+    function test_applyFeeDiscountCut_AtExactDeadline() public {
         vm.warp(cooldownUntil);
-        _applyFeeIncrease();
-        assertEq(feeRegistry.getFee(NO_ID), 6_000);
+        _applyFeeDiscountCut();
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 2_750);
     }
 
-    function test_applyFeeIncrease_CooldownChangeDoesNotAffectPending() public {
+    function test_applyFeeDiscountCut_CooldownChangeDoesNotAffectPending() public {
         vm.prank(admin);
-        feeRegistry.setFeeIncreaseCooldown(COOLDOWN * 2);
+        feeRegistry.setFeeDiscountCutCooldown(COOLDOWN * 2);
 
         vm.warp(cooldownUntil);
-        _applyFeeIncrease();
-        assertEq(feeRegistry.getFee(NO_ID), 6_000);
+        _applyFeeDiscountCut();
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 2_750);
     }
 
-    function test_applyFeeIncrease_RevertWhen_NotOwner() public {
+    function test_applyFeeDiscountCut_PendingSurvivesAnInvalidatingModifier() public {
+        _setFeeModifier(0, 4_000, true); // The new ceiling is 2_250, the pending discount is 2_750.
+        vm.warp(cooldownUntil);
+
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeDiscount.selector);
+        _applyFeeDiscountCut();
+
+        // The pending discount is untouched and applies once the ceiling allows it again.
+        _setFeeModifier(0, 2_500, true);
+        _applyFeeDiscountCut();
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 2_750);
+    }
+
+    function test_applyFeeDiscountCut_InvalidPendingCanBeNormalizedPermissionlessly() public {
+        _setFeeModifier(0, 4_000, true); // The new ceiling is 2_250, the pending discount is 2_750.
+        vm.warp(cooldownUntil);
+
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeDiscount.selector);
+        _applyFeeDiscountCut();
+
+        vm.prank(stranger);
+        feeRegistry.normalizeFeeDiscounts(UintArr(NO_ID));
+
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 2_250);
+        _assertNoPendingFeeDiscountCut();
+        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(2_250));
+    }
+
+    function test_applyFeeDiscountCut_RevertWhen_NotOwner() public {
         vm.warp(cooldownUntil + 1);
         vm.expectRevert(IStepwiseWeightBoost.SenderIsNotNodeOperatorOwner.selector);
         vm.prank(stranger);
-        feeRegistry.applyFeeIncrease(NO_ID);
+        feeRegistry.applyFeeDiscountCut(NO_ID);
     }
 
-    function test_applyFeeIncrease_RevertWhen_NotElapsed() public {
+    function test_applyFeeDiscountCut_RevertWhen_NotElapsed() public {
         vm.warp(cooldownUntil - 1);
-        vm.expectRevert(ICustomFeeRegistry.FeeIncreaseCooldownNotElapsed.selector);
-        _applyFeeIncrease();
+        vm.expectRevert(ICustomFeeRegistry.FeeDiscountCutCooldownNotElapsed.selector);
+        _applyFeeDiscountCut();
     }
 
-    function test_applyFeeIncrease_RevertWhen_NoPending() public {
+    function test_applyFeeDiscountCut_RevertWhen_NoPending() public {
         vm.warp(cooldownUntil + 1);
-        _applyFeeIncrease();
+        _applyFeeDiscountCut();
 
-        vm.expectRevert(ICustomFeeRegistry.NoFeeIncreaseCooldown.selector);
-        _applyFeeIncrease();
-    }
-
-    function test_applyFeeIncrease_RevertWhen_PendingFeeBelowCurrentMin() public {
-        _setFeeModifier(0, 4_000, true); // New minimum is 6_500, pending fee is 6_000.
-        vm.warp(cooldownUntil);
-
-        vm.expectRevert(ICustomFeeRegistry.InvalidFee.selector);
-        _applyFeeIncrease();
-
-        assertEq(feeRegistry.getFee(NO_ID), 5_000);
-        assertEq(feeRegistry.getPendingFeeIncrease(NO_ID), 6_000);
-        assertEq(feeRegistry.getFeeIncreaseCooldownUntil(NO_ID), cooldownUntil);
-    }
-
-    function test_applyFeeIncrease_InvalidPendingCanBeNormalizedPermissionlessly() public {
-        _setFeeModifier(0, 4_000, true); // New minimum is 6_500, pending fee is 6_000.
-        vm.warp(cooldownUntil);
-
-        vm.expectRevert(ICustomFeeRegistry.InvalidFee.selector);
-        _applyFeeIncrease();
-
-        vm.prank(stranger);
-        feeRegistry.normalizeFees(UintArr(NO_ID));
-
-        assertEq(feeRegistry.getFee(NO_ID), 6_500);
-        _assertNoPendingFeeIncrease();
-        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(6_500));
+        vm.expectRevert(ICustomFeeRegistry.NoPendingFeeDiscountCut.selector);
+        _applyFeeDiscountCut();
     }
 }
 
-contract CustomFeeRegistryNormalizeFeesTest is CustomFeeRegistryBaseTest {
+contract CustomFeeRegistryNormalizeFeeDiscountsTest is CustomFeeRegistryBaseTest {
     function setUp() public override {
         super.setUp();
 
-        // Operator 0 is left below the new minimum; the other operators remain unset and valid.
+        // Operator 0 is left above the new ceiling; the other operators remain unset and valid.
         _setFeeModifier(0, 2_500, true);
-        _requestFee(5_000);
+        _requestFeeDiscount(3_750);
         _setFeeModifier(0, 5_000, true);
     }
 
-    function test_normalizeFees() public {
-        uint256 normalizedCount = feeRegistry.normalizeFees(UintArr(0, 1, 2));
+    function test_normalizeFeeDiscounts() public {
+        uint256 normalizedCount = feeRegistry.normalizeFeeDiscounts(UintArr(0, 1, 2));
 
         assertEq(normalizedCount, 1);
-        assertEq(feeRegistry.getFee(0), 7_500);
-        assertEq(feeRegistry.getFee(1), MAX_FEE);
-        assertEq(feeRegistry.getFee(2), MAX_FEE);
+        assertEq(feeRegistry.getFeeDiscount(0), 1_250);
+        assertEq(feeRegistry.getFeeDiscount(1), 0);
+        assertEq(feeRegistry.getFeeDiscount(2), 0);
     }
 
-    function test_normalizeFees_SetsFeeToMinimumAndRestoresEffectiveFee() public {
+    function test_normalizeFeeDiscounts_SetsFeeDiscountToCeilingAndRestoresEffectiveFee() public {
         assertEq(feeRegistry.getEffectiveFee(NO_ID), 0); // max(0, 5_000 - 5_000)
 
         vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeSet(NO_ID, 7_500);
+        emit ICustomFeeRegistry.FeeDiscountSet(NO_ID, 1_250);
         vm.prank(stranger); // permissionless
-        feeRegistry.normalizeFees(UintArr(NO_ID));
+        feeRegistry.normalizeFeeDiscounts(UintArr(NO_ID));
 
-        assertEq(feeRegistry.getFee(NO_ID), 7_500);
-        // The effective fee is back at the default minimum.
-        assertEq(feeRegistry.getEffectiveFee(NO_ID), MIN_FEE);
-        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(7_500));
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 1_250);
+        // The effective fee is back at the floor implied by the default discount ceiling.
+        assertEq(feeRegistry.getEffectiveFee(NO_ID), BASE_FEE - MAX_FEE_DISCOUNT);
+        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(1_250));
     }
 
-    function test_normalizeFees_CancelsPendingIncrease() public {
-        _requestFee(8_000);
+    function test_normalizeFeeDiscounts_ClampsToZeroWhenTypeGrantsNoDiscount() public {
+        _setFeeModifier(0, MAX_FEE_DISCOUNT, true); // The ceiling drops to zero.
 
-        vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeIncreaseCancelled(NO_ID);
-        vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeSet(NO_ID, 7_500);
         vm.prank(stranger);
-        feeRegistry.normalizeFees(UintArr(NO_ID));
+        feeRegistry.normalizeFeeDiscounts(UintArr(NO_ID));
 
-        assertEq(feeRegistry.getFee(NO_ID), 7_500);
-        _assertNoPendingFeeIncrease();
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 0);
+        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), MAX_BP);
     }
 
-    function test_normalizeFees_CancelsExpiredPendingIncrease() public {
-        _requestFee(8_000);
+    function test_normalizeFeeDiscounts_CancelsPendingCut() public {
+        _requestFeeDiscount(750);
+
+        vm.expectEmit(address(feeRegistry));
+        emit ICustomFeeRegistry.FeeDiscountCutCancelled(NO_ID);
+        vm.expectEmit(address(feeRegistry));
+        emit ICustomFeeRegistry.FeeDiscountSet(NO_ID, 1_250);
+        vm.prank(stranger);
+        feeRegistry.normalizeFeeDiscounts(UintArr(NO_ID));
+
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 1_250);
+        _assertNoPendingFeeDiscountCut();
+    }
+
+    function test_normalizeFeeDiscounts_CancelsExpiredPendingCut() public {
+        _requestFeeDiscount(750);
         vm.warp(block.timestamp + COOLDOWN + 1);
 
         vm.prank(stranger);
-        feeRegistry.normalizeFees(UintArr(NO_ID));
+        feeRegistry.normalizeFeeDiscounts(UintArr(NO_ID));
 
-        assertEq(feeRegistry.getFee(NO_ID), 7_500);
-        _assertNoPendingFeeIncrease();
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 1_250);
+        _assertNoPendingFeeDiscountCut();
     }
 
-    function test_normalizeFees_DoesNotNotifyWhenPendingFeeEqualsMin() public {
-        _requestFee(7_500);
+    function test_normalizeFeeDiscounts_DoesNotNotifyWhenPendingFeeDiscountEqualsCeiling() public {
+        _requestFeeDiscount(1_250);
         uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
 
         vm.prank(stranger);
-        feeRegistry.normalizeFees(UintArr(NO_ID));
+        feeRegistry.normalizeFeeDiscounts(UintArr(NO_ID));
 
-        assertEq(feeRegistry.getFee(NO_ID), 7_500);
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 1_250);
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore);
     }
 
-    function test_normalizeFees_SkipsDuplicatesAndValidOperators() public {
+    function test_normalizeFeeDiscounts_SkipsDuplicatesAndValidOperators() public {
         uint256[] memory nodeOperatorIds = new uint256[](4);
         nodeOperatorIds[0] = 0;
         nodeOperatorIds[1] = 0;
@@ -575,68 +580,74 @@ contract CustomFeeRegistryNormalizeFeesTest is CustomFeeRegistryBaseTest {
         nodeOperatorIds[3] = 1;
         uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
 
-        uint256 normalizedCount = feeRegistry.normalizeFees(nodeOperatorIds);
+        uint256 normalizedCount = feeRegistry.normalizeFeeDiscounts(nodeOperatorIds);
 
         assertEq(normalizedCount, 1);
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore + 1);
     }
 
-    function test_normalizeFees_EmptyArray() public {
-        uint256 normalizedCount = feeRegistry.normalizeFees(UintArr());
+    function test_normalizeFeeDiscounts_EmptyArray() public {
+        uint256 normalizedCount = feeRegistry.normalizeFeeDiscounts(UintArr());
         assertEq(normalizedCount, 0);
     }
 
-    function test_normalizeFees_NoFeesToNormalize() public {
+    function test_normalizeFeeDiscounts_NoFeeDiscountsToNormalize() public {
         uint256[] memory nodeOperatorIds = UintArr(0, 1);
-        feeRegistry.normalizeFees(nodeOperatorIds);
+        feeRegistry.normalizeFeeDiscounts(nodeOperatorIds);
 
-        uint256 normalizedCount = feeRegistry.normalizeFees(nodeOperatorIds);
+        uint256 normalizedCount = feeRegistry.normalizeFeeDiscounts(nodeOperatorIds);
 
         assertEq(normalizedCount, 0);
     }
 }
 
-contract CustomFeeRegistrySetDefaultMinFeeTest is CustomFeeRegistryBaseTest {
-    function test_setDefaultMinFee() public {
+contract CustomFeeRegistrySetDefaultMaxFeeDiscountTest is CustomFeeRegistryBaseTest {
+    function test_setDefaultMaxFeeDiscount() public {
         vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.DefaultMinFeeSet(2_000);
+        emit ICustomFeeRegistry.DefaultMaxFeeDiscountSet(6_500);
         vm.prank(admin);
-        feeRegistry.setDefaultMinFee(2_000);
+        feeRegistry.setDefaultMaxFeeDiscount(6_500);
 
-        assertEq(feeRegistry.getDefaultMinFee(), 2_000);
+        assertEq(feeRegistry.getDefaultMaxFeeDiscount(), 6_500);
     }
 
-    function test_setDefaultMinFee_UsesLastWeightStepBelowLastThreshold() public {
+    function test_setDefaultMaxFeeDiscount_UsesLastWeightStepAboveLastThreshold() public {
         vm.prank(admin);
-        feeRegistry.setDefaultMinFee(1_000);
+        feeRegistry.setDefaultMaxFeeDiscount(7_750);
 
-        _requestFee(1_000);
-        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(1_000));
+        _requestFeeDiscount(7_750);
+        assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(7_750));
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), 25_000);
     }
 
-    function test_setDefaultMinFee_RevertWhen_NotAdmin() public {
+    function test_setDefaultMaxFeeDiscount_RevertWhen_NotAdmin() public {
         expectRoleRevert(stranger, feeRegistry.DEFAULT_ADMIN_ROLE());
         vm.prank(stranger);
-        feeRegistry.setDefaultMinFee(2_000);
+        feeRegistry.setDefaultMaxFeeDiscount(6_500);
     }
 
-    function test_setDefaultMinFee_RevertWhen_Zero() public {
-        vm.expectRevert(ICustomFeeRegistry.InvalidDefaultMinFee.selector);
+    function test_setDefaultMaxFeeDiscount_RevertWhen_Zero() public {
+        vm.expectRevert(ICustomFeeRegistry.InvalidDefaultMaxFeeDiscount.selector);
         vm.prank(admin);
-        feeRegistry.setDefaultMinFee(0);
+        feeRegistry.setDefaultMaxFeeDiscount(0);
     }
 
-    function test_setDefaultMinFee_RevertWhen_NotBelowCurrent() public {
-        vm.expectRevert(ICustomFeeRegistry.InvalidDefaultMinFee.selector);
+    function test_setDefaultMaxFeeDiscount_RevertWhen_NotAboveCurrent() public {
+        vm.expectRevert(ICustomFeeRegistry.InvalidDefaultMaxFeeDiscount.selector);
         vm.prank(admin);
-        feeRegistry.setDefaultMinFee(MIN_FEE);
+        feeRegistry.setDefaultMaxFeeDiscount(MAX_FEE_DISCOUNT);
     }
 
-    function test_setDefaultMinFee_RevertWhen_NotStepAligned() public {
-        vm.expectRevert(ICustomFeeRegistry.InvalidDefaultMinFee.selector);
+    function test_setDefaultMaxFeeDiscount_RevertWhen_AtOrAboveBaseFee() public {
+        vm.expectRevert(ICustomFeeRegistry.InvalidDefaultMaxFeeDiscount.selector);
         vm.prank(admin);
-        feeRegistry.setDefaultMinFee(2_000 + 1);
+        feeRegistry.setDefaultMaxFeeDiscount(BASE_FEE);
+    }
+
+    function test_setDefaultMaxFeeDiscount_RevertWhen_NotGranularityAligned() public {
+        vm.expectRevert(ICustomFeeRegistry.InvalidDefaultMaxFeeDiscount.selector);
+        vm.prank(admin);
+        feeRegistry.setDefaultMaxFeeDiscount(6_500 + 1);
     }
 }
 
@@ -649,9 +660,9 @@ contract CustomFeeRegistrySetFeeModifierTest is CustomFeeRegistryBaseTest {
         FeeModifier memory feeModifier = feeRegistry.getFeeModifier(0);
         assertEq(feeModifier.value, 1_250);
         assertFalse(feeModifier.negative);
-        // The modifier tops the effective fee up to 100% for an unset operator.
+        // The modifier tops the effective fee up to 100% for an operator without a discount.
         assertEq(feeRegistry.getEffectiveFee(NO_ID), MAX_BP);
-        assertEq(feeRegistry.getMinFee(NO_ID), MIN_FEE);
+        assertEq(feeRegistry.getMaxFeeDiscount(NO_ID), MAX_FEE_DISCOUNT);
     }
 
     function test_setFeeModifier_Negative() public {
@@ -660,21 +671,44 @@ contract CustomFeeRegistrySetFeeModifierTest is CustomFeeRegistryBaseTest {
         FeeModifier memory feeModifier = feeRegistry.getFeeModifier(0);
         assertEq(feeModifier.value, 2_500);
         assertTrue(feeModifier.negative);
-        assertEq(feeRegistry.getMinFee(NO_ID), MIN_FEE + 2_500);
+        assertEq(feeRegistry.getMaxFeeDiscount(NO_ID), MAX_FEE_DISCOUNT - 2_500);
+    }
+
+    function test_setFeeModifier_NegativeAtDefaultCeilingLeavesNoDiscount() public {
+        _setFeeModifier(0, MAX_FEE_DISCOUNT, true);
+
+        // The ceiling is exactly zero: the type grants no discount at all.
+        assertEq(feeRegistry.getMaxFeeDiscount(NO_ID), 0);
+        assertEq(feeRegistry.getEffectiveFee(NO_ID), BASE_FEE - MAX_FEE_DISCOUNT);
+
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeDiscount.selector);
+        _requestFeeDiscount(GRANULARITY);
+    }
+
+    function test_setFeeModifier_NegativeAtDefaultCeilingSurvivesCeilingRaise() public {
+        _setFeeModifier(0, MAX_FEE_DISCOUNT, true);
+
+        vm.prank(admin);
+        feeRegistry.setDefaultMaxFeeDiscount(MAX_FEE_DISCOUNT + GRANULARITY);
+
+        // The default ceiling only ever grows, so the per-type ceiling can only widen from zero.
+        assertEq(feeRegistry.getMaxFeeDiscount(NO_ID), GRANULARITY);
+        _requestFeeDiscount(GRANULARITY);
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), GRANULARITY);
     }
 
     function test_setFeeModifier_ZeroWithAnySign() public {
         _setFeeModifier(0, 0, true);
-        assertEq(feeRegistry.getEffectiveFee(NO_ID), MAX_FEE);
-        assertEq(feeRegistry.getMinFee(NO_ID), MIN_FEE);
+        assertEq(feeRegistry.getEffectiveFee(NO_ID), BASE_FEE);
+        assertEq(feeRegistry.getMaxFeeDiscount(NO_ID), MAX_FEE_DISCOUNT);
 
         _setFeeModifier(0, 0, false);
-        assertEq(feeRegistry.getEffectiveFee(NO_ID), MAX_FEE);
-        assertEq(feeRegistry.getMinFee(NO_ID), MIN_FEE);
+        assertEq(feeRegistry.getEffectiveFee(NO_ID), BASE_FEE);
+        assertEq(feeRegistry.getMaxFeeDiscount(NO_ID), MAX_FEE_DISCOUNT);
     }
 
     function test_setFeeModifier_DoesNotNotifyAndDoesNotMoveWeight() public {
-        _requestFee(5_000);
+        _requestFeeDiscount(3_750);
         uint256 weightBefore = feeRegistry.getWeightBoostMultiplierBP(NO_ID);
         uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
 
@@ -684,11 +718,11 @@ contract CustomFeeRegistrySetFeeModifierTest is CustomFeeRegistryBaseTest {
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore);
     }
 
-    function test_setFeeModifier_SameFeeSameWeightAcrossTypes() public {
+    function test_setFeeModifier_SameFeeDiscountSameWeightAcrossTypes() public {
         _setFeeModifier(0, 1_250, false);
         _accounting.setBondCurve(1, 1); // Add curve 1 without moving NO_ID from curve 0.
         _setFeeModifier(1, 2_500, true);
-        _requestFee(5_000);
+        _requestFeeDiscount(3_750);
 
         uint256 weightOnTypeA = feeRegistry.getWeightBoostMultiplierBP(NO_ID);
         assertEq(feeRegistry.getEffectiveFee(NO_ID), 6_250);
@@ -706,18 +740,18 @@ contract CustomFeeRegistrySetFeeModifierTest is CustomFeeRegistryBaseTest {
     }
 
     function test_setFeeModifier_RevertWhen_PositiveAboveMax() public {
-        // MAX_BP - DEFAULT_MAX_FEE = 1_250 is the largest positive modifier.
+        // MAX_BP - BASE_FEE = 1_250 is the largest positive modifier.
         vm.expectRevert(ICustomFeeRegistry.InvalidFeeModifier.selector);
-        _setFeeModifier(0, 1_250 + STEP, false);
+        _setFeeModifier(0, 1_250 + GRANULARITY, false);
     }
 
     function test_setFeeModifier_RevertWhen_NegativeAboveMax() public {
-        // DEFAULT_MAX_FEE - defaultMinFee = 6_250 is the largest negative modifier.
+        // The default discount ceiling is the largest negative modifier.
         vm.expectRevert(ICustomFeeRegistry.InvalidFeeModifier.selector);
-        _setFeeModifier(0, 6_250 + STEP, true);
+        _setFeeModifier(0, MAX_FEE_DISCOUNT + GRANULARITY, true);
     }
 
-    function test_setFeeModifier_RevertWhen_NotStepAligned() public {
+    function test_setFeeModifier_RevertWhen_NotGranularityAligned() public {
         vm.expectRevert(ICustomFeeRegistry.InvalidFeeModifier.selector);
         _setFeeModifier(0, 100, false);
     }
@@ -745,8 +779,8 @@ contract CustomFeeRegistrySetStepsTest is CustomFeeRegistryBaseTest, StepwiseWei
     function _stepwiseSteps(uint256 count) internal view override returns (Step[] memory steps) {
         steps = new Step[](count);
         for (uint256 i; i < count; ++i) {
-            // Fee discounts are FEE_STEP-aligned and stay below DEFAULT_MAX_FEE.
-            steps[i] = Step({ threshold: uint128(i * STEP), value: uint128((i + 1) * 100) });
+            // Fee discounts are FEE_GRANULARITY-aligned and stay below BASE_FEE.
+            steps[i] = Step({ threshold: uint128(i * GRANULARITY), value: uint128((i + 1) * 100) });
         }
     }
 
@@ -769,8 +803,8 @@ contract CustomFeeRegistrySetStepsTest is CustomFeeRegistryBaseTest, StepwiseWei
         assertEq(metaRegistryMock.notifyWeightBoostProviderConfigChangedCallCount(), 1);
     }
 
-    function test_setSteps_ChangesFeeWeights() public {
-        _requestFee(5_000);
+    function test_setSteps_ChangesFeeDiscountWeights() public {
+        _requestFeeDiscount(3_750);
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), 20_000);
 
         Step[] memory steps = new Step[](1);
@@ -782,15 +816,15 @@ contract CustomFeeRegistrySetStepsTest is CustomFeeRegistryBaseTest, StepwiseWei
 
     function test_setSteps_AllowsMaximumValues() public {
         Step[] memory steps = new Step[](1);
-        steps[0] = Step({ threshold: uint128(MAX_FEE - STEP), value: uint128(feeRegistry.MAX_STEP_VALUE()) });
+        steps[0] = Step({ threshold: uint128(BASE_FEE - GRANULARITY), value: uint128(feeRegistry.MAX_STEP_VALUE()) });
         _setSteps(steps);
 
-        assertEq(feeRegistry.getSteps()[0].threshold, MAX_FEE - STEP);
+        assertEq(feeRegistry.getSteps()[0].threshold, BASE_FEE - GRANULARITY);
     }
 
-    function test_setSteps_RevertWhen_FeeDiscountAtMaxFee() public {
+    function test_setSteps_RevertWhen_FeeDiscountAtBaseFee() public {
         Step[] memory steps = new Step[](1);
-        steps[0] = Step({ threshold: uint128(MAX_FEE), value: 1 });
+        steps[0] = Step({ threshold: uint128(BASE_FEE), value: 1 });
         vm.expectRevert(abi.encodeWithSelector(IStepwiseWeightBoost.InvalidStep.selector, 0));
         _setSteps(steps);
     }
@@ -803,60 +837,60 @@ contract CustomFeeRegistrySetStepsTest is CustomFeeRegistryBaseTest, StepwiseWei
     }
 }
 
-contract CustomFeeRegistrySetFeeIncreaseCooldownTest is CustomFeeRegistryBaseTest {
-    function test_setFeeIncreaseCooldown() public {
+contract CustomFeeRegistrySetFeeDiscountCutCooldownTest is CustomFeeRegistryBaseTest {
+    function test_setFeeDiscountCutCooldown() public {
         vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeIncreaseCooldownSet(30 days);
+        emit ICustomFeeRegistry.FeeDiscountCutCooldownSet(30 days);
         vm.prank(admin);
-        feeRegistry.setFeeIncreaseCooldown(30 days);
+        feeRegistry.setFeeDiscountCutCooldown(30 days);
 
-        assertEq(feeRegistry.getFeeIncreaseCooldown(), 30 days);
+        assertEq(feeRegistry.getFeeDiscountCutCooldown(), 30 days);
     }
 
-    function test_setFeeIncreaseCooldown_RevertWhen_NotAdmin() public {
+    function test_setFeeDiscountCutCooldown_Max() public {
+        vm.prank(admin);
+        feeRegistry.setFeeDiscountCutCooldown(365 days);
+
+        _requestFeeDiscount(3_750);
+        _requestFeeDiscount(2_750);
+
+        assertEq(feeRegistry.getFeeDiscountCutCooldown(), 365 days);
+        assertEq(feeRegistry.getFeeDiscountCutCooldownUntil(NO_ID), block.timestamp + 365 days);
+    }
+
+    function test_setFeeDiscountCutCooldown_RevertWhen_NotAdmin() public {
         expectRoleRevert(stranger, feeRegistry.DEFAULT_ADMIN_ROLE());
         vm.prank(stranger);
-        feeRegistry.setFeeIncreaseCooldown(30 days);
+        feeRegistry.setFeeDiscountCutCooldown(30 days);
     }
 
-    function test_setFeeIncreaseCooldown_RevertWhen_Zero() public {
-        vm.expectRevert(ICustomFeeRegistry.InvalidFeeIncreaseCooldown.selector);
+    function test_setFeeDiscountCutCooldown_RevertWhen_Zero() public {
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeDiscountCutCooldown.selector);
         vm.prank(admin);
-        feeRegistry.setFeeIncreaseCooldown(0);
+        feeRegistry.setFeeDiscountCutCooldown(0);
     }
 
-    function test_setFeeIncreaseCooldown_Max() public {
+    function test_setFeeDiscountCutCooldown_RevertWhen_ExceedsMax() public {
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeDiscountCutCooldown.selector);
         vm.prank(admin);
-        feeRegistry.setFeeIncreaseCooldown(365 days);
-
-        _requestFee(5_000);
-        _requestFee(6_000);
-
-        assertEq(feeRegistry.getFeeIncreaseCooldown(), 365 days);
-        assertEq(feeRegistry.getFeeIncreaseCooldownUntil(NO_ID), block.timestamp + 365 days);
-    }
-
-    function test_setFeeIncreaseCooldown_RevertWhen_ExceedsMax() public {
-        vm.expectRevert(ICustomFeeRegistry.InvalidFeeIncreaseCooldown.selector);
-        vm.prank(admin);
-        feeRegistry.setFeeIncreaseCooldown(365 days + 1);
+        feeRegistry.setFeeDiscountCutCooldown(365 days + 1);
     }
 }
 
 contract CustomFeeRegistryViewsTest is CustomFeeRegistryBaseTest {
-    function test_getFee_UnsetReadsAsDefaultMax() public view {
-        assertEq(feeRegistry.getFee(NO_ID), MAX_FEE);
+    function test_getFeeDiscount_UnsetIsZero() public view {
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 0);
     }
 
-    function test_getPendingFeeIncreaseAndCooldownUntil() public {
-        assertEq(feeRegistry.getPendingFeeIncrease(NO_ID), 0);
-        assertEq(feeRegistry.getFeeIncreaseCooldownUntil(NO_ID), 0);
+    function test_getPendingFeeDiscountAndCooldownUntil() public {
+        assertEq(feeRegistry.getPendingFeeDiscount(NO_ID), 0);
+        assertEq(feeRegistry.getFeeDiscountCutCooldownUntil(NO_ID), 0);
 
-        _requestFee(5_000);
-        _requestFee(6_000);
+        _requestFeeDiscount(3_750);
+        _requestFeeDiscount(2_750);
 
-        assertEq(feeRegistry.getPendingFeeIncrease(NO_ID), 6_000);
-        assertEq(feeRegistry.getFeeIncreaseCooldownUntil(NO_ID), block.timestamp + COOLDOWN);
+        assertEq(feeRegistry.getPendingFeeDiscount(NO_ID), 2_750);
+        assertEq(feeRegistry.getFeeDiscountCutCooldownUntil(NO_ID), block.timestamp + COOLDOWN);
     }
 
     function test_getWeightBoostMultiplierBP_UnsetIsOne() public view {
@@ -864,16 +898,16 @@ contract CustomFeeRegistryViewsTest is CustomFeeRegistryBaseTest {
     }
 
     function test_getWeightBoostMultiplierBP_StepsAndBands() public {
-        _requestFee(MAX_FEE - STEP);
+        _requestFeeDiscount(GRANULARITY);
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), MAX_BP);
 
-        _requestFee(7_500);
+        _requestFeeDiscount(1_250);
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), 12_000);
 
-        _requestFee(7_250);
+        _requestFeeDiscount(1_500);
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), 12_000);
 
-        _requestFee(MIN_FEE);
+        _requestFeeDiscount(MAX_FEE_DISCOUNT);
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), 25_000);
     }
 
@@ -881,40 +915,40 @@ contract CustomFeeRegistryViewsTest is CustomFeeRegistryBaseTest {
         uint256 stepsCount = feeRegistry.MAX_STEPS();
         Step[] memory steps = new Step[](stepsCount);
         for (uint256 i; i < stepsCount; ++i) {
-            steps[i] = Step({ threshold: uint128(i * STEP), value: uint128(i * 1_000) });
+            steps[i] = Step({ threshold: uint128(i * GRANULARITY), value: uint128(i * 1_000) });
         }
         vm.prank(admin);
         feeRegistry.setSteps(steps);
 
-        _requestFee(4_500); // Discount 4_250 reaches step 17.
+        _requestFeeDiscount(4_250); // Reaches step 17.
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), MAX_BP + 17_000);
 
         vm.prank(admin);
-        feeRegistry.setDefaultMinFee(STEP);
-        _requestFee(STEP); // Discount 8_500 reaches the final step 34.
+        feeRegistry.setDefaultMaxFeeDiscount(BASE_FEE - GRANULARITY);
+        _requestFeeDiscount(BASE_FEE - GRANULARITY); // Reaches the final step 34.
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), MAX_BP + 34_000);
     }
 
     function test_getEffectiveFee_NoModifier() public {
-        _requestFee(5_000);
+        _requestFeeDiscount(3_750);
         assertEq(feeRegistry.getEffectiveFee(NO_ID), 5_000);
     }
 
     function test_getEffectiveFee_ClampsAtZero() public {
         _setFeeModifier(0, 2_500, true);
-        _requestFee(5_000);
+        _requestFeeDiscount(3_750);
         _setFeeModifier(0, 5_500, true);
 
         assertEq(feeRegistry.getEffectiveFee(NO_ID), 0);
     }
 
-    function test_getEffectiveFee_PendingIncreaseIsExcluded() public {
-        _requestFee(5_000);
-        _requestFee(6_000);
+    function test_getEffectiveFee_PendingCutIsExcluded() public {
+        _requestFeeDiscount(3_750);
+        _requestFeeDiscount(2_750);
         assertEq(feeRegistry.getEffectiveFee(NO_ID), 5_000);
     }
 
-    function test_getMinFee_Default() public view {
-        assertEq(feeRegistry.getMinFee(NO_ID), MIN_FEE);
+    function test_getMaxFeeDiscount_Default() public view {
+        assertEq(feeRegistry.getMaxFeeDiscount(NO_ID), MAX_FEE_DISCOUNT);
     }
 }

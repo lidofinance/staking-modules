@@ -225,10 +225,10 @@ contract DeployMainnet is DeployBase {
 
         // CustomFeeRegistry
         // TODO: finalize custom fee parameters.
-        config.customFeeRegistryConfig.defaultMinFee = 2_500;
-        config.customFeeRegistryConfig.feeIncreaseCooldown = 15 days;
+        config.customFeeRegistryConfig.defaultMaxFeeDiscount = 6_250;
+        config.customFeeRegistryConfig.feeDiscountCutCooldown = 15 days;
         for (uint128 i = 1; i < 35; ++i) {
-            config.customFeeRegistryConfig.feeWeightSteps.push(Step({ threshold: i * 250, value: i * 400 }));
+            config.customFeeRegistryConfig.feeDiscountWeightSteps.push(Step({ threshold: i * 250, value: i * 400 }));
         }
         // Professional Operator uses the default bond curve (curve 0): 8_750 - 2_500 = 6_250.
         config.customFeeRegistryConfig.feeModifiers.push(
