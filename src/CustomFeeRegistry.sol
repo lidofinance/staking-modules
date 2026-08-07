@@ -271,7 +271,7 @@ contract CustomFeeRegistry is ICustomFeeRegistry, StepwiseWeightBoost {
         return state.cooldownUntil != 0 ? state.pendingFeeDiscount : state.currentFeeDiscount;
     }
 
-    /// @dev The only crossing back into fee space, for the off-chain fee report.
+    /// @dev The only crossing back into fee space, for the off-chain reward distribution.
     function _asFee(uint256 feeDiscount) internal pure returns (uint256) {
         return BASE_FEE - feeDiscount;
     }
