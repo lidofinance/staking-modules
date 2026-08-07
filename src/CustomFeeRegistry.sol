@@ -107,9 +107,20 @@ contract CustomFeeRegistry is ICustomFeeRegistry, StepwiseWeightBoost {
     }
 
     /// @inheritdoc ICustomFeeRegistry
-    function normalizeFeeDiscounts(uint256[] calldata nodeOperatorIds) external returns (uint256 normalizedCount) {
+    function normalizeFeeDiscounts(uint256[] calldata nodeOperatorIds) external returns (uint256[] memory normalized) {
+        normalized = new uint256[](nodeOperatorIds.length);
+        uint256 count;
         for (uint256 i; i < nodeOperatorIds.length; ++i) {
-            if (_normalizeFeeDiscount(nodeOperatorIds[i])) ++normalizedCount;
+            uint256 nodeOperatorId = nodeOperatorIds[i];
+            if (_normalizeFeeDiscount(nodeOperatorId)) {
+                normalized[count] = nodeOperatorId;
+                ++count;
+            }
+        }
+
+        assembly ("memory-safe") {
+            // Shrink the array to the operators normalized; the unused tail stays allocated but unreferenced.
+            mstore(normalized, count)
         }
     }
 

@@ -504,9 +504,10 @@ contract CustomFeeRegistryNormalizeFeeDiscountsTest is CustomFeeRegistryBaseTest
     }
 
     function test_normalizeFeeDiscounts() public {
-        uint256 normalizedCount = feeRegistry.normalizeFeeDiscounts(UintArr(0, 1, 2));
+        uint256[] memory normalized = feeRegistry.normalizeFeeDiscounts(UintArr(0, 1, 2));
 
-        assertEq(normalizedCount, 1);
+        assertEq(normalized.length, 1);
+        assertEq(normalized[0], NO_ID);
         assertEq(feeRegistry.getFeeDiscount(0), 1_250);
         assertEq(feeRegistry.getFeeDiscount(1), 0);
         assertEq(feeRegistry.getFeeDiscount(2), 0);
@@ -580,24 +581,31 @@ contract CustomFeeRegistryNormalizeFeeDiscountsTest is CustomFeeRegistryBaseTest
         nodeOperatorIds[3] = 1;
         uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
 
-        uint256 normalizedCount = feeRegistry.normalizeFeeDiscounts(nodeOperatorIds);
+        uint256[] memory normalized = feeRegistry.normalizeFeeDiscounts(nodeOperatorIds);
 
-        assertEq(normalizedCount, 1);
+        assertEq(normalized.length, 1);
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore + 1);
     }
 
+    function test_normalizeFeeDiscounts_OffChainCallPreviewsWithoutChangingState() public {
+        uint256 snapshot = vm.snapshotState();
+        uint256[] memory normalized = feeRegistry.normalizeFeeDiscounts(UintArr(0, 1, 2));
+        vm.revertToState(snapshot);
+
+        assertEq(normalized.length, 1);
+        assertEq(normalized[0], NO_ID);
+        assertEq(feeRegistry.getFeeDiscount(NO_ID), 3_750);
+    }
+
     function test_normalizeFeeDiscounts_EmptyArray() public {
-        uint256 normalizedCount = feeRegistry.normalizeFeeDiscounts(UintArr());
-        assertEq(normalizedCount, 0);
+        assertEq(feeRegistry.normalizeFeeDiscounts(UintArr()).length, 0);
     }
 
     function test_normalizeFeeDiscounts_NoFeeDiscountsToNormalize() public {
         uint256[] memory nodeOperatorIds = UintArr(0, 1);
         feeRegistry.normalizeFeeDiscounts(nodeOperatorIds);
 
-        uint256 normalizedCount = feeRegistry.normalizeFeeDiscounts(nodeOperatorIds);
-
-        assertEq(normalizedCount, 0);
+        assertEq(feeRegistry.normalizeFeeDiscounts(nodeOperatorIds).length, 0);
     }
 }
 

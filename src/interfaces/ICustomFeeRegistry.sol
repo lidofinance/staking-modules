@@ -6,16 +6,16 @@ pragma solidity 0.8.33;
 import { IAccounting } from "./IAccounting.sol";
 import { IStepwiseWeightBoost, Step } from "./IStepwiseWeightBoost.sol";
 
-/// @dev Fee discount state of a Node Operator: zero is both "never set" and "no discount", and
-///      `cooldownUntil == 0` means no pending cut. Packed into a single slot.
+/// @dev Fee discount state of a Node Operator, packed into one slot. Zero `currentFeeDiscount` means no
+///      discount, set or not. A non-zero `cooldownUntil` flags a pending cut, as zero is a valid target.
 struct FeeDiscountState {
     uint16 currentFeeDiscount;
     uint16 pendingFeeDiscount;
     uint64 cooldownUntil;
 }
 
-/// @dev Sign-magnitude fee modifier of a Node Operator type: `value` basis points are subtracted from
-///      the fee kept when `negative` is true, added otherwise. Packed into a single slot.
+/// @dev Shift applied to the effective fee of a Node Operator type, packed into one slot. `value` basis
+///      points are subtracted from the fee kept when `negative` is true, added otherwise.
 struct FeeModifier {
     uint248 value;
     bool negative;
@@ -26,12 +26,10 @@ struct FeeModifier {
  *
  *    All values are basis points (BP) of the operator's own rewards; the axes show
  *    the fee the operator keeps, the matching discount and, for scale, that fee as a
- *    share of all protocol staking rewards at a 4% module share. One character is
- *    125 BP (half a granularity unit).
+ *    share of all protocol staking rewards at a 4% module share. One character is 125 BP.
  *    An operator picks a discount between zero and its current getMaxFeeDiscount(id);
  *    a negative fee modifier lowers that ceiling below defaultMaxFeeDiscount. The
- *    larger the discount, the lower the fee kept and the higher the allocation
- *    weight. A fee modifier shifts only the effective fee.
+ *    larger the discount, the lower the fee kept and the higher the allocation weight.
  *    ● fee kept (BASE_FEE - discount)   ○ effective (drives reward distribution)
  *
  *                                                                                     ┌ BASE_FEE
@@ -41,11 +39,11 @@ struct FeeModifier {
  * discount BP                       6250                3750      2500                0
  *                                   └ defaultMaxFeeDiscount
  *
- * type A — modifier +1250, effective = fee kept + 1250:
+ * Node Operator type A — modifier +1250, effective = fee kept + 1250:
  *   fee kept                        ●─────────────────────────────────────────────────●
  *   effective                                 ○─────────────────────────────────────────────────○
  *
- * type B — modifier -2500, effective = fee kept - 2500; the ceiling drops to 3750:
+ * Node Operator type B — modifier -2500, effective = fee kept - 2500; the ceiling drops to 3750:
  *   fee kept                                            ●─────────────────────────────●
  *   effective                       ○─────────────────────────────○
  *
@@ -147,10 +145,11 @@ interface ICustomFeeRegistry is IStepwiseWeightBoost {
     function applyFeeDiscountCut(uint256 nodeOperatorId) external;
 
     /// @notice Permissionlessly clamp discounts left above their ceiling by a curve or modifier change,
-    ///         cancelling any pending cut. Already valid discounts are skipped.
+    ///         cancelling any pending cut. Already valid discounts are skipped. Call it off-chain to
+    ///         learn which of the given operators need it.
     /// @param nodeOperatorIds IDs of the Node Operators.
-    /// @return normalizedCount Number of discounts normalized.
-    function normalizeFeeDiscounts(uint256[] calldata nodeOperatorIds) external returns (uint256 normalizedCount);
+    /// @return normalized IDs of the Node Operators whose discount was clamped.
+    function normalizeFeeDiscounts(uint256[] calldata nodeOperatorIds) external returns (uint256[] memory normalized);
 
     /// @notice Raise the default discount ceiling. Only DEFAULT_ADMIN_ROLE; must stay below BASE_FEE.
     /// @param defaultMaxFeeDiscount New ceiling in basis points, a non-zero multiple of FEE_GRANULARITY.
@@ -164,7 +163,7 @@ interface ICustomFeeRegistry is IStepwiseWeightBoost {
     /// @param negative Whether the modifier is subtracted from the fee.
     function setFeeModifier(uint256 curveId, uint256 value, bool negative) external;
 
-    /// @notice Set the cooldown for future discount cuts; pending deadlines are unchanged. Only
+    /// @notice Set the cooldown for future discount cuts; pending cuts are unaffected. Only
     ///         DEFAULT_ADMIN_ROLE.
     /// @dev Governance invariant, not enforced on-chain: keep it >= one oracle frame + margin;
     ///      raise it when frames are lengthened.
@@ -189,7 +188,7 @@ interface ICustomFeeRegistry is IStepwiseWeightBoost {
     /// @param nodeOperatorId ID of the Node Operator.
     function getPendingFeeDiscount(uint256 nodeOperatorId) external view returns (uint256);
 
-    /// @notice Deadline of the pending cut, or zero if none; it does not clear once elapsed.
+    /// @notice End of the pending cut's cooldown, or zero if none; it does not clear once elapsed.
     /// @param nodeOperatorId ID of the Node Operator.
     function getFeeDiscountCutCooldownUntil(uint256 nodeOperatorId) external view returns (uint256);
 
