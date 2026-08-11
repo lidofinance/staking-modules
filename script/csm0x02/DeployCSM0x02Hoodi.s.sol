@@ -45,7 +45,7 @@ contract DeployCSM0x02Hoodi is DeployCSM0x02Base {
 
         // Accounting
         config.defaultBondCurve.push([1, 32 ether]);
-        config.defaultBondCurve.push([2, 24 ether]);
+        config.defaultBondCurve.push([2, 30 ether]);
 
         config.minBondLockPeriod = 1 days;
         config.maxBondLockPeriod = 365 days;
