@@ -3,32 +3,28 @@
 
 pragma solidity 0.8.33;
 
-import { DeployParams } from "script/csm/DeployBase.s.sol";
+import { ModuleTypeBase } from "./ModuleTypeBase.sol";
 
-import { CSMIntegrationBase } from "../../common/ModuleTypeBase.sol";
+abstract contract CommunityInvariantsBase is ModuleTypeBase {
+    uint256 internal adminsCount;
+    CommonDeployParams internal deployParams;
 
-contract InvariantsBase is CSMIntegrationBase {
-    uint256 adminsCount;
-    DeployParams internal deployParams;
-
-    function setUp() public {
+    function setUp() public virtual {
         Env memory env = envVars();
         _setUpModule();
-        deployParams = parseDeployParams(env.DEPLOY_CONFIG);
+        deployParams = parseCommonDeployParams(vm.readFile(env.DEPLOY_CONFIG));
         adminsCount = block.chainid == 1 ? 1 : 2;
     }
-}
 
-contract CSModuleInvariants is InvariantsBase {
-    function test_keys() public noGasMetering {
+    function test_moduleKeys() public noGasMetering {
         assertModuleKeys(module);
     }
 
-    function test_enqueuedCount() public noGasMetering {
-        assertModuleEnqueuedCount(module);
+    function test_moduleEnqueuedCount() public noGasMetering {
+        _assertModuleEnqueuedCount();
     }
 
-    function test_roles() public view {
+    function _checkCommonModuleRoles() internal view {
         assertEq(module.getRoleMemberCount(module.DEFAULT_ADMIN_ROLE()), adminsCount, "default admin");
         assertTrue(module.hasRole(module.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent), "default admin address");
 
@@ -66,39 +62,26 @@ contract CSModuleInvariants is InvariantsBase {
         assertEq(module.getRoleMemberCount(module.VERIFIER_ROLE()), 1, "verifier");
         assertEq(module.getRoleMember(module.VERIFIER_ROLE(), 0), address(verifier), "verifier address");
 
-        assertEq(module.getRoleMemberCount(module.CREATE_NODE_OPERATOR_ROLE()), 3, "create node operator");
-        assertTrue(
-            module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), address(permissionlessGate)),
-            "create node operator address"
-        );
-        assertTrue(
-            module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), address(vettedGate)),
-            "create node operator address"
-        );
-        assertTrue(
-            module.hasRole(module.CREATE_NODE_OPERATOR_ROLE(), address(identifiedDVTClusterGate)),
-            "create node operator address"
-        );
+        bytes32 createRole = module.CREATE_NODE_OPERATOR_ROLE();
+        assertTrue(module.hasRole(createRole, address(permissionlessGate)), "permissionless gate create role");
 
         assertEq(module.getRoleMemberCount(module.RECOVERER_ROLE()), 0, "recoverer");
     }
-}
 
-contract AccountingInvariants is InvariantsBase {
-    function test_sharesAccounting() public noGasMetering {
+    function test_accountingShares() public noGasMetering {
         uint256 noCount = module.getNodeOperatorsCount();
         assertAccountingTotalBondShares(noCount, lido, accounting);
     }
 
-    function test_burnerApproval() public {
+    function test_accountingBurnerApproval() public {
         assertAccountingBurnerApproval(lido, address(accounting), locator.burner());
     }
 
-    function test_unusedStorageSlots() public noGasMetering {
+    function test_accountingUnusedStorageSlots() public noGasMetering {
         assertAccountingUnusedStorageSlots(accounting);
     }
 
-    function test_roles() public view {
+    function _checkCommonAccountingRoles() internal view {
         assertEq(accounting.getRoleMemberCount(accounting.DEFAULT_ADMIN_ROLE()), adminsCount, "default admin");
         assertTrue(
             accounting.hasRole(accounting.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent),
@@ -111,31 +94,22 @@ contract AccountingInvariants is InvariantsBase {
         assertTrue(accounting.hasRole(accounting.RESUME_ROLE(), deployParams.resealManager), "resume address");
 
         assertEq(accounting.getRoleMemberCount(accounting.MANAGE_BOND_CURVES_ROLE()), 0, "manage bond curves");
-        assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 3, "set bond curve");
-        assertTrue(
-            accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), deployParams.setResetBondCurveAddress),
-            "set bond curve address"
-        );
-        assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(vettedGate)), "set bond curve address");
-        assertTrue(
-            accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), address(identifiedDVTClusterGate)),
-            "set bond curve address"
-        );
+
+        bytes32 setCurveRole = accounting.SET_BOND_CURVE_ROLE();
+        assertTrue(accounting.hasRole(setCurveRole, deployParams.setResetBondCurveAddress), "set bond curve address");
 
         assertEq(accounting.getRoleMemberCount(accounting.RECOVERER_ROLE()), 0, "recoverer");
     }
-}
 
-contract FeeDistributorInvariants is InvariantsBase {
-    function test_claimableShares() public {
+    function test_feeDistributorClaimableShares() public {
         assertFeeDistributorClaimableShares(lido, feeDistributor);
     }
 
-    function test_tree() public {
+    function test_feeDistributorTree() public {
         assertFeeDistributorTree(feeDistributor);
     }
 
-    function test_roles() public view {
+    function test_feeDistributorRoles() public view {
         assertEq(feeDistributor.getRoleMemberCount(feeDistributor.DEFAULT_ADMIN_ROLE()), adminsCount, "default admin");
         assertTrue(
             feeDistributor.hasRole(feeDistributor.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent),
@@ -143,39 +117,34 @@ contract FeeDistributorInvariants is InvariantsBase {
         );
         assertEq(feeDistributor.getRoleMemberCount(feeDistributor.RECOVERER_ROLE()), 0, "recoverer");
     }
-}
 
-contract FeeOracleInvariant is InvariantsBase {
-    function test_unusedStorageSlots() public noGasMetering {
+    function test_feeOracleUnusedStorageSlots() public noGasMetering {
         assertFeeOracleUnusedStorageSlots(oracle);
     }
 
-    function test_roles() public view {
+    function test_feeOracleRoles() public view {
         assertEq(oracle.getRoleMemberCount(oracle.DEFAULT_ADMIN_ROLE()), adminsCount, "default admin");
         assertTrue(oracle.hasRole(oracle.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent), "default admin address");
-
         assertEq(oracle.getRoleMemberCount(oracle.SUBMIT_DATA_ROLE()), 0, "submit data");
 
         _checkPauseRole(address(oracle), deployParams.resealManager, address(circuitBreaker));
 
         assertEq(oracle.getRoleMemberCount(oracle.RESUME_ROLE()), 1, "resume");
         assertTrue(oracle.hasRole(oracle.RESUME_ROLE(), deployParams.resealManager), "resume address");
-
         assertEq(oracle.getRoleMemberCount(oracle.RECOVERER_ROLE()), 0, "recoverer");
-        assertEq(oracle.getRoleMemberCount(oracle.MANAGE_CONSENSUS_CONTRACT_ROLE()), 0, "manage_consensus_contract");
-        assertEq(oracle.getRoleMemberCount(oracle.MANAGE_CONSENSUS_VERSION_ROLE()), 0, "manage_consensus_version");
+        assertEq(oracle.getRoleMemberCount(oracle.MANAGE_CONSENSUS_CONTRACT_ROLE()), 0, "manage consensus contract");
+        assertEq(oracle.getRoleMemberCount(oracle.MANAGE_CONSENSUS_VERSION_ROLE()), 0, "manage consensus version");
     }
-}
 
-contract HashConsensusInvariant is InvariantsBase {
-    function test_roles() public view {
-        assertEq(oracle.getRoleMemberCount(oracle.DEFAULT_ADMIN_ROLE()), adminsCount, "default admin");
-        assertTrue(oracle.hasRole(oracle.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent), "default admin address");
+    function test_hashConsensusRoles() public view {
+        assertEq(hashConsensus.getRoleMemberCount(hashConsensus.DEFAULT_ADMIN_ROLE()), adminsCount, "default admin");
+        assertTrue(
+            hashConsensus.hasRole(hashConsensus.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent),
+            "default admin address"
+        );
     }
-}
 
-contract VerifierInvariant is InvariantsBase {
-    function test_roles() public view {
+    function test_verifierRoles() public view {
         assertEq(verifier.getRoleMemberCount(verifier.DEFAULT_ADMIN_ROLE()), adminsCount, "default admin");
         assertTrue(verifier.hasRole(verifier.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent), "default admin address");
 
@@ -184,10 +153,8 @@ contract VerifierInvariant is InvariantsBase {
         assertEq(verifier.getRoleMemberCount(verifier.RESUME_ROLE()), 1, "resume");
         assertTrue(verifier.hasRole(verifier.RESUME_ROLE(), deployParams.resealManager), "resume address");
     }
-}
 
-contract EjectorInvariant is InvariantsBase {
-    function test_roles() public view {
+    function test_ejectorRoles() public view {
         assertEq(ejector.getRoleMemberCount(ejector.DEFAULT_ADMIN_ROLE()), adminsCount, "default admin");
         assertTrue(ejector.hasRole(ejector.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent), "default admin address");
 
@@ -195,7 +162,6 @@ contract EjectorInvariant is InvariantsBase {
 
         assertEq(ejector.getRoleMemberCount(ejector.RESUME_ROLE()), 1, "resume");
         assertTrue(ejector.hasRole(ejector.RESUME_ROLE(), deployParams.resealManager), "resume address");
-
         assertEq(ejector.getRoleMemberCount(ejector.RECOVERER_ROLE()), 0, "recoverer");
     }
 }

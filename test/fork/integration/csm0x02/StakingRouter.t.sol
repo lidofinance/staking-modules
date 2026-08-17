@@ -22,10 +22,6 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
 
     function setUp() public override {
         super.setUp();
-        if (!isStakingRouterUpgraded) {
-            // Skip: this suite depends on router/core v2 APIs and is not executable on the old router version.
-            vm.skip(true, "Suite requires upgraded staking router version for router/core v2 APIs");
-        }
 
         topUpGateway = locator.topUpGateway();
         module.grantRole(module.VERIFIER_ROLE(), address(this));
@@ -54,7 +50,6 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
 
         (, uint256 depositedAfter, ) = module.getStakingModuleSummary();
         uint256 actualDeposits = depositedAfter - depositedBefore;
-        assertEq(depositedAfter - depositedBefore, actualDeposits);
         assertEq(actualDeposits, requestedDeposits);
 
         NodeOperator memory noAfter = module.getNodeOperator(noId);
