@@ -43,9 +43,8 @@ contract DeployCSM0x02Mainnet is DeployCSM0x02Base {
         config.minWithdrawalRatio = 9900;
 
         // Accounting
-        // TODO: Set proper default bond curve values for CSM0x02.
         config.defaultBondCurve.push([1, 32 ether]);
-        config.defaultBondCurve.push([2, 24 ether]);
+        config.defaultBondCurve.push([2, 30 ether]);
 
         config.minBondLockPeriod = 4 weeks;
         config.maxBondLockPeriod = 365 days;
@@ -54,7 +53,7 @@ contract DeployCSM0x02Mainnet is DeployCSM0x02Base {
         config.chargePenaltyRecipient = 0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c; // locator.treasury()
 
         // Module
-        config.moduleType = "community-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
+        config.moduleType = "community-onchain-v1"; // Type identifier used by the off-chain tooling
         config.generalDelayedPenaltyReporter = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
         // TODO: Reconsider the top-up queue limit value for CSM0x02.
         config.topUpQueueLimit = 32;
@@ -75,7 +74,7 @@ contract DeployCSM0x02Mainnet is DeployCSM0x02Base {
         config.defaultBlocksWeight = 8; // https://eth2book.info/capella/part2/incentives/rewards/
         config.defaultSyncWeight = 2; // https://eth2book.info/capella/part2/incentives/rewards/
         config.defaultAllowedExitDelay = 4 days;
-        config.defaultExitDelayFee = 0.01 ether;
+        config.defaultExitDelayFee = 0.1 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
         config.penaltiesManager = 0xC52fC3081123073078698F1EAc2f1Dc7Bd71880f; // CSM Committee MS
 
