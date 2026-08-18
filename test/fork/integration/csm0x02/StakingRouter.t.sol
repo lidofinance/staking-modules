@@ -102,7 +102,7 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
             nextAddress()
         );
 
-        uint256 topUpLimit = 1 ether;
+        uint256 topUpLimit = 2 ether;
         uint256 expectedMaxDepositAmount = _getExpectedRouterTopUpAmount();
         uint256 keyAllocatedBalanceBefore = module.getKeyAllocatedBalances(noId, keyIndex, 1)[0];
         uint256 remainingCapacity = _remainingTopUpCapacity(noId, keyIndex);
@@ -215,6 +215,12 @@ contract StakingRouterIntegrationTestCSM0x02 is StakingRouterIntegrationTestBase
         (uint256 noId, uint256 keyIndex, bytes memory pubkey) = integrationHelpers.getDepositableTopUpNodeOperator(
             nextAddress()
         );
+        // Keep the input length within the queue bounds so the call reaches the extra-key validation.
+        integrationHelpers.addNodeOperator(nextAddress(), 1);
+        vm.prank(address(stakingRouter));
+        module.obtainDepositData(1, "");
+        (, , uint256 queueLength, ) = module.getTopUpQueue();
+        assertGe(queueLength, 2);
 
         uint256 remainingCapacity = _remainingTopUpCapacity(noId, keyIndex);
         assertGt(remainingCapacity, 0);

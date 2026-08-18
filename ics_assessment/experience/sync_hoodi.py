@@ -221,8 +221,8 @@ def evaluate_eligibility_window(
                 raise ValueError(f"Unknown report version: {meta.version}")
 
             if status:
-                # GOOD: accumulate this frame's duration
-                good_sum_secs += (meta.end_epoch - meta.start_epoch) * EPOCH_SECONDS
+                # GOOD: accumulate this inclusive frame's duration
+                good_sum_secs += (meta.end_epoch - meta.start_epoch + 1) * EPOCH_SECONDS
                 if good_sum_secs >= min_span_secs:
                     eligible.add(op_id)
                     break

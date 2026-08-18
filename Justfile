@@ -253,11 +253,6 @@ test-utils *args:
     forge test --match-path 'test/fork/utils/*' \
         -vvv --show-progress --summary --detailed {{args}}
 
-# Run tests applicable after the module upgrade vote. Does not include deployment tests
-test-post-upgrade *args:
-    forge test --match-path='test/fork/**' --no-match-path 'test/fork/deployment/**' \
-        -vvv --show-progress --summary --detailed {{args}}
-
 gas-report:
     #!/usr/bin/env python
 

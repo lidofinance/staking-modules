@@ -76,19 +76,19 @@ contract SimulateVote is Script, ForkHelpersCommon {
         vm.startBroadcast(agent);
 
         // 1. Add CommunityStaking module
-        stakingRouter.addStakingModule(
-            "community-staking-0x02-v1",
-            address(module),
-            IStakingRouter.StakingModuleConfig({
+        stakingRouter.addStakingModule({
+            _name: moduleType == ModuleType.Community ? "community-staking-v1" : "community-staking-0x02-v1",
+            _stakingModuleAddress: address(module),
+            _stakingModuleConfig: IStakingRouter.StakingModuleConfig({
                 stakeShareLimit: 2000, // 20%
                 priorityExitShareThreshold: 2500, // 25%
                 stakingModuleFee: 800, // 8%
                 treasuryFee: 200, // 2%
                 maxDepositsPerBlock: 30,
                 minDepositBlockDistance: 25,
-                withdrawalCredentialsType: 2 // 0x02
+                withdrawalCredentialsType: moduleType == ModuleType.Community ? 0x01 : 0x02
             })
-        );
+        });
         // 2. burner role
         burner.grantRole(burner.REQUEST_BURN_MY_STETH_ROLE(), address(accounting));
         // 3. twg role
@@ -147,19 +147,20 @@ contract SimulateVote is Script, ForkHelpersCommon {
 
         vm.startBroadcast(agent);
 
-        stakingRouter.addStakingModule(
-            "curated-onchain-v2",
-            address(curatedModule),
-            IStakingRouter.StakingModuleConfig({
+        // 1. Add Curated module
+        stakingRouter.addStakingModule({
+            _name: "curated-onchain-v2",
+            _stakingModuleAddress: address(curatedModule),
+            _stakingModuleConfig: IStakingRouter.StakingModuleConfig({
                 stakeShareLimit: 2000, // 20%
                 priorityExitShareThreshold: 2500, // 25%
                 stakingModuleFee: 400, // 4%
                 treasuryFee: 600, // 6%
                 maxDepositsPerBlock: 30,
                 minDepositBlockDistance: 25,
-                withdrawalCredentialsType: 2 // 0x02
+                withdrawalCredentialsType: 0x02
             })
-        );
+        });
 
         // 2. burner role
         burner.grantRole(burner.REQUEST_BURN_MY_STETH_ROLE(), address(accounting));

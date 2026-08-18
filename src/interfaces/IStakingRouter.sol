@@ -116,6 +116,16 @@ interface IStakingRouter {
         uint8 withdrawalCredentialsType;
     }
 
+    struct StakingModuleConfig {
+        uint256 stakeShareLimit;
+        uint256 priorityExitShareThreshold;
+        uint256 stakingModuleFee;
+        uint256 treasuryFee;
+        uint256 maxDepositsPerBlock;
+        uint256 minDepositBlockDistance;
+        uint256 withdrawalCredentialsType;
+    }
+
     struct StakingModuleSummary {
         uint256 totalExitedValidators;
         uint256 totalDepositedValidators;
@@ -134,16 +144,6 @@ interface IStakingRouter {
         uint256 currentNodeOperatorExitedValidatorsCount;
         uint256 newModuleExitedValidatorsCount;
         uint256 newNodeOperatorExitedValidatorsCount;
-    }
-
-    struct StakingModuleConfig {
-        uint256 stakeShareLimit;
-        uint256 priorityExitShareThreshold;
-        uint256 stakingModuleFee;
-        uint256 treasuryFee;
-        uint256 maxDepositsPerBlock;
-        uint256 minDepositBlockDistance;
-        uint256 withdrawalCredentialsType;
     }
 
     function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
@@ -199,6 +199,9 @@ interface IStakingRouter {
     function getAllStakingModuleDigests() external view returns (StakingModuleDigest[] memory);
 
     function getContractVersion() external view returns (uint256);
+
+    /// @notice Returns the global per-block top-up cap in Gwei.
+    function getMaxTopUpPerBlockGwei() external view returns (uint64);
 
     function getDepositAllocations(
         uint256 _depositAmount,

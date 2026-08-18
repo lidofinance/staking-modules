@@ -10,6 +10,7 @@ import requests
 
 from ics_assessment.config import (
     ARBITRUM_RPC_URL,
+    GNOSIS_RPC_URL,
     HOODI_ARCHIVE_RPC_URL,
     HOODI_RPC_URL,
     MAINNET_ARCHIVE_RPC_URL,
@@ -49,6 +50,10 @@ HUB_ABI = """[{"anonymous": false, "inputs": [{"indexed": true, "internalType": 
 ARAGON_ABI = '[{"anonymous":false,"inputs":[{"indexed":true,"name":"voteId","type":"uint256"},{"indexed":true,"name":"voter","type":"address"},{"indexed":false,"name":"supports","type":"bool"},{"indexed":false,"name":"stake","type":"uint256"}],"name":"CastVote","type":"event"}]'
 FEE_DISTRIBUTOR_EVENT_SIGNATURE = "DistributionLogUpdated(string)"
 LOG_CHUNK_SIZE = int(os.getenv("ICS_SYNC_CHUNK_SIZE")) if os.getenv("ICS_SYNC_CHUNK_SIZE") else None
+MAINNET_CHAIN_ID = 1
+GNOSIS_CHAIN_ID = 100
+ARBITRUM_CHAIN_ID = 42161
+HOODI_CHAIN_ID = 560048
 
 
 def write_lines(path: Path, values: Iterable[str]) -> None:
@@ -196,34 +201,76 @@ JOBS = {
     "circles": humanity_jobs.sync_circles,
 }
 
-def _target_rpc_values(target: str) -> list[tuple[str, str]]:
+def _target_rpcs(target: str) -> list[tuple[str, str, int]]:
     if target == "aragon" or target == "protocol-guild":
-        return [("MAINNET_RPC_URL", MAINNET_RPC_URL)]
+        return [("MAINNET_RPC_URL", MAINNET_RPC_URL, MAINNET_CHAIN_ID)]
     if target == "obol-techne":
         return [
-            ("ARBITRUM_RPC_URL", ARBITRUM_RPC_URL),
-            ("MAINNET_RPC_URL", MAINNET_RPC_URL),
+            ("ARBITRUM_RPC_URL", ARBITRUM_RPC_URL, ARBITRUM_CHAIN_ID),
+            ("MAINNET_RPC_URL", MAINNET_RPC_URL, MAINNET_CHAIN_ID),
         ]
     if target == "node-owners":
         return [
-            ("MAINNET_ARCHIVE_RPC_URL", MAINNET_ARCHIVE_RPC_URL),
-            ("HOODI_ARCHIVE_RPC_URL", HOODI_ARCHIVE_RPC_URL),
+            (
+                "MAINNET_ARCHIVE_RPC_URL",
+                MAINNET_ARCHIVE_RPC_URL,
+                MAINNET_CHAIN_ID,
+            ),
+            (
+                "HOODI_ARCHIVE_RPC_URL",
+                HOODI_ARCHIVE_RPC_URL,
+                HOODI_CHAIN_ID,
+            ),
         ]
     if target == "mainnet-performance":
-        return [("MAINNET_RPC_URL", MAINNET_RPC_URL)]
+        return [("MAINNET_RPC_URL", MAINNET_RPC_URL, MAINNET_CHAIN_ID)]
     if target == "hoodi-eligible":
-        return [("HOODI_RPC_URL", HOODI_RPC_URL)]
+        return [("HOODI_RPC_URL", HOODI_RPC_URL, HOODI_CHAIN_ID)]
+    if target == "circles":
+        return [("GNOSIS_RPC_URL", GNOSIS_RPC_URL, GNOSIS_CHAIN_ID)]
     return []
 
 
+def _rpc_chain_id(url: str) -> int:
+    response = requests.post(
+        url,
+        json={
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "eth_chainId",
+            "params": [],
+        },
+        timeout=20,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    if "error" in payload:
+        raise RuntimeError(f"eth_chainId failed: {payload['error']}")
+    return int(payload["result"], 16)
+
+
 def _ensure_required_rpcs(target: str) -> None:
-    rpc_values = _target_rpc_values(target)
-    missing = [env_var for env_var, url in rpc_values if not url]
+    rpcs = _target_rpcs(target)
+    missing = [env_var for env_var, url, _ in rpcs if not url]
     if missing:
         raise SystemExit(
             f"Sync target '{target}' requires configured RPC URLs. "
             f"Export {', '.join(missing)} before running sync."
         )
+
+    for env_var, url, expected_chain_id in rpcs:
+        try:
+            chain_id = _rpc_chain_id(url)
+        except Exception as exc:
+            raise SystemExit(
+                f"Could not verify chain ID for {env_var} before running "
+                f"sync target '{target}'."
+            ) from exc
+        if chain_id != expected_chain_id:
+            raise SystemExit(
+                f"Sync target '{target}' expected {env_var} chain ID "
+                f"{expected_chain_id}, got {chain_id}."
+            )
 
 
 def _expand_targets(targets: list[str]) -> list[str]:

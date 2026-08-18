@@ -3,6 +3,7 @@
 
 pragma solidity 0.8.33;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { NodeOperator } from "src/interfaces/IBaseModule.sol";
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
 import { IWithdrawalVault } from "src/interfaces/IWithdrawalVault.sol";
@@ -334,6 +335,8 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         for (uint256 i; i < stakingModuleIds.length; ++i) {
             if (stakingModuleIds[i] == moduleId) {
                 expected = allocated[i];
+                uint256 maxTopUpPerBlockWei = uint256(stakingRouter.getMaxTopUpPerBlockGwei()) * 1 gwei;
+                expected = Math.min(expected, maxTopUpPerBlockWei);
                 return expected - (expected % 1 gwei);
             }
         }
