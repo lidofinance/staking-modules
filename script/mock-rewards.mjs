@@ -11,12 +11,20 @@ if (!DEPLOY_CONFIG) {
   process.exit(1);
 }
 
+const REPORT_FORMAT = (process.env.REPORT_FORMAT ?? "v3").toLowerCase();
+if (REPORT_FORMAT !== "v2" && REPORT_FORMAT !== "v3") {
+  console.error(`REPORT_FORMAT must be "v2" or "v3", got "${REPORT_FORMAT}"`);
+  process.exit(1);
+}
+
 // Mock report parameters
 const REWARD_MIN_WEI = 100_000_000_000_000_000n; // 0.1 ETH
 const REWARD_MAX_WEI = 200_000_000_000_000_000n; // 0.2 ETH
 const REWARD_SPAN = REWARD_MAX_WEI - REWARD_MIN_WEI; // 1e15, fits in Number
-const FULL_SHARE_VALIDATORS = 10; // first N validators per operator get rewards_share = 1
-const PARTIAL_SHARE = 0.5834; // rewards_share for the rest
+const FULL_SHARE_VALIDATORS = 10; // first N validators per operator get share = 1
+const PARTIAL_SHARE = 0.5834; // reward share for the rest
+const PARTICIPATION_MULTIPLIER = 1; // v3-only per-validator field; 1 = neutral (mock)
+const V3_LOG_VER = 1; // v3 wrapper `_ver`; mirrors the ics_assessment test fixtures
 const FRAME_START_EPOCH = 300000;
 const FRAME_END_EPOCH = 300225;
 const REF_SLOT = 9607200n;
@@ -138,12 +146,17 @@ for (const { noId, activeKeys } of operators) {
     const reward = randReward();
     opDistributed += reward;
 
+    const share = k < FULL_SHARE_VALIDATORS ? 1 : PARTIAL_SHARE;
+
     validators[String(valIdx)] = {
       attestation_duty: { assigned: attAssigned, included: attIncluded },
       distributed_rewards: reward,
       performance: perf,
       proposal_duty: { assigned: propAssigned, included: propIncluded },
-      rewards_share: k < FULL_SHARE_VALIDATORS ? 1 : PARTIAL_SHARE,
+      // v2 -> `rewards_share`; v3 renames it to `reward_share` and adds the multiplier
+      ...(REPORT_FORMAT === "v3"
+        ? { reward_share: share, participation_share_multiplier: PARTICIPATION_MULTIPLIER }
+        : { rewards_share: share }),
       slashed,
       strikes: slashed ? 1 : 0,
       sync_duty: { assigned: syncAssigned, included: syncIncluded },
@@ -266,7 +279,7 @@ const tree = leaves.length > 0 ? StandardMerkleTree.of(leaves, ["uint256", "uint
 const treeRoot = tree ? tree.root : ZERO_ROOT;
 console.log(`Merkle tree root: ${treeRoot}`);
 
-// --- build V2 report ---
+// --- build performance report frame ---
 
 const report = {
   blockstamp: {
@@ -290,7 +303,10 @@ const report = {
 mkdirSync(ARTIFACTS_DIR, { recursive: true });
 
 const treeStr = tree ? jsonStringify(tree.dump(), 2) : "{}";
-const reportStr = jsonStringify([report], 2);
+const reportStr = jsonStringify(
+  REPORT_FORMAT === "v3" ? { _ver: V3_LOG_VER, frames: [report] } : [report],
+  2,
+);
 
 const treePath = `${ARTIFACTS_DIR}merkle-tree.json`;
 writeFileSync(treePath, treeStr + "\n");
