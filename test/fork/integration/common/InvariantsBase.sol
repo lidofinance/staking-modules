@@ -62,9 +62,6 @@ abstract contract CommunityInvariantsBase is ModuleTypeBase {
         assertEq(module.getRoleMemberCount(module.VERIFIER_ROLE()), 1, "verifier");
         assertEq(module.getRoleMember(module.VERIFIER_ROLE(), 0), address(verifier), "verifier address");
 
-        bytes32 createRole = module.CREATE_NODE_OPERATOR_ROLE();
-        assertTrue(module.hasRole(createRole, address(permissionlessGate)), "permissionless gate create role");
-
         assertEq(module.getRoleMemberCount(module.RECOVERER_ROLE()), 0, "recoverer");
     }
 
@@ -94,9 +91,6 @@ abstract contract CommunityInvariantsBase is ModuleTypeBase {
         assertTrue(accounting.hasRole(accounting.RESUME_ROLE(), deployParams.resealManager), "resume address");
 
         assertEq(accounting.getRoleMemberCount(accounting.MANAGE_BOND_CURVES_ROLE()), 0, "manage bond curves");
-
-        bytes32 setCurveRole = accounting.SET_BOND_CURVE_ROLE();
-        assertTrue(accounting.hasRole(setCurveRole, deployParams.setResetBondCurveAddress), "set bond curve address");
 
         assertEq(accounting.getRoleMemberCount(accounting.RECOVERER_ROLE()), 0, "recoverer");
     }

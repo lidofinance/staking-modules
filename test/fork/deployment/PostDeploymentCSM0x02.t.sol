@@ -46,7 +46,7 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
 
         role = module.REWIND_TOP_UP_QUEUE_ROLE();
         assertEq(module.getRoleMemberCount(role), 1);
-        assertTrue(module.hasRole(role, deployParams.setResetBondCurveAddress));
+        assertTrue(module.hasRole(role, deployParams.rewindTopUpQueueRoleHolder));
     }
 
     function test_topUpQueueConfig() public view {

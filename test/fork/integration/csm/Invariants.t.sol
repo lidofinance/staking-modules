@@ -12,6 +12,7 @@ contract CommunityInvariantsCSM is CommunityInvariantsBase, CSMIntegrationBase {
 
         bytes32 createRole = module.CREATE_NODE_OPERATOR_ROLE();
         assertEq(module.getRoleMemberCount(createRole), 3, "create node operator");
+        assertTrue(module.hasRole(createRole, address(permissionlessGate)), "permissionless gate create role");
         assertTrue(module.hasRole(createRole, address(vettedGate)), "vetted gate create role");
         assertTrue(module.hasRole(createRole, address(identifiedDVTClusterGate)), "IDVTC gate create role");
     }
@@ -21,6 +22,7 @@ contract CommunityInvariantsCSM is CommunityInvariantsBase, CSMIntegrationBase {
 
         bytes32 setCurveRole = accounting.SET_BOND_CURVE_ROLE();
         assertEq(accounting.getRoleMemberCount(setCurveRole), 3, "set bond curve");
+        assertTrue(accounting.hasRole(setCurveRole, deployParams.setResetBondCurveAddress), "set bond curve address");
         assertTrue(accounting.hasRole(setCurveRole, address(vettedGate)), "vetted gate set curve role");
         assertTrue(accounting.hasRole(setCurveRole, address(identifiedDVTClusterGate)), "IDVTC gate set curve role");
     }
