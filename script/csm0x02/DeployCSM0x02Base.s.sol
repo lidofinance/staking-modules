@@ -65,6 +65,7 @@ struct DeployCSM0x02Params {
     // Module
     bytes32 moduleType;
     address generalDelayedPenaltyReporter;
+    address rewindTopUpQueueRoleHolder;
     uint8 topUpQueueLimit;
     // ParametersRegistry
     uint256 queueLowestPriority;
@@ -365,7 +366,7 @@ abstract contract DeployCSM0x02Base is Script {
 
             csm.grantRole(csm.CREATE_NODE_OPERATOR_ROLE(), address(permissionlessGate));
             csm.grantRole(csm.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), config.generalDelayedPenaltyReporter);
-            csm.grantRole(csm.REWIND_TOP_UP_QUEUE_ROLE(), config.setResetBondCurveAddress);
+            csm.grantRole(csm.REWIND_TOP_UP_QUEUE_ROLE(), config.rewindTopUpQueueRoleHolder);
             csm.grantRole(csm.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(), config.easyTrackEVMScriptExecutor);
 
             csm.grantRole(csm.VERIFIER_ROLE(), address(verifier));

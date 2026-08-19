@@ -12,11 +12,9 @@ import { CuratedGate } from "src/CuratedGate.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
-import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { ProxySlotUtils } from "../../helpers/ProxySlotUtils.sol";
 
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     CuratedDeployParams internal deployParams;
@@ -62,20 +60,7 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
     }
 
     function test_proxy_onlyFull() public view {
-        OssifiableProxy proxy = OssifiableProxy(payable(address(curatedModule)));
-        assertEq(proxy.proxy__getImplementation(), address(moduleImpl), "curated module proxy getter impl");
-        assertEq(
-            ProxySlotUtils.getImplementation(address(curatedModule)),
-            address(moduleImpl),
-            "curated module proxy slot impl"
-        );
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "curated module proxy getter admin");
-        assertEq(
-            ProxySlotUtils.getAdmin(address(curatedModule)),
-            address(deployParams.proxyAdmin),
-            "curated module proxy slot admin"
-        );
-        assertFalse(proxy.proxy__getIsOssified(), "curated module proxy ossified");
+        _assertProxy(address(curatedModule), address(moduleImpl), deployParams.proxyAdmin, "curated module");
     }
 }
 
@@ -184,12 +169,21 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
     function test_curveParameters() public view {
         uint256 gatesCount = curatedGates.length;
         assertGt(gatesCount, 0, "no curated gates deployed");
-        assertEq(accounting.getCurvesCount(), gatesCount, "unexpected total curves count"); // +1 for the default curve
+
+        uint256 expectedCurvesCount = 1;
+        _assertBondCurve(accounting, accounting.DEFAULT_BOND_CURVE_ID(), deployParams.defaultBondCurve);
+
         for (uint256 i = 0; i < gatesCount; ++i) {
             CuratedGate gate = CuratedGate(curatedGates[i]);
             uint256 curveId = gate.curveId();
+            CuratedGateConfig storage gateConfig = deployParams.curatedGates[i];
 
-            GateCurveParams memory params = deployParams.curatedGates[i].params;
+            if (gateConfig.bondCurve.length != 0) {
+                ++expectedCurvesCount;
+                _assertBondCurve(accounting, curveId, gateConfig.bondCurve);
+            }
+
+            GateCurveParams memory params = gateConfig.params;
             assertEq(parametersRegistry.getKeyRemovalCharge(curveId), deployParams.defaultKeyRemovalCharge);
 
             if (params.generalDelayedPenaltyAdditionalFine.isValue) {
@@ -301,6 +295,8 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
                 assertEq(metaRegistry.getBondCurveWeight(curveId), params.metaRegistryBondCurveWeight.value);
             }
         }
+
+        assertEq(accounting.getCurvesCount(), expectedCurvesCount, "unexpected total curves count");
     }
 
     function test_proxy() public view {
@@ -308,16 +304,7 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
         address implementation = address(curatedGateImpl);
         assertTrue(implementation != address(0), "factory implementation zero");
         for (uint256 i = 0; i < gatesCount; ++i) {
-            OssifiableProxy proxy = OssifiableProxy(payable(curatedGates[i]));
-            assertEq(proxy.proxy__getImplementation(), implementation, "curated gate proxy getter impl");
-            assertEq(ProxySlotUtils.getImplementation(curatedGates[i]), implementation, "curated gate proxy slot impl");
-            assertEq(proxy.proxy__getAdmin(), deployParams.proxyAdmin, "curated gate proxy getter admin");
-            assertEq(
-                ProxySlotUtils.getAdmin(curatedGates[i]),
-                deployParams.proxyAdmin,
-                "curated gate proxy slot admin"
-            );
-            assertFalse(proxy.proxy__getIsOssified(), "curated gate proxy ossified");
+            _assertProxy(curatedGates[i], implementation, deployParams.proxyAdmin, "curated gate");
         }
     }
 
@@ -405,11 +392,6 @@ contract CuratedGateFactoryDeploymentTest is DeploymentBaseTest {
 }
 
 contract CircuitBreakerDeploymentTest is DeploymentBaseTest {
-    function test_configuration_afterVote() public {
-        address pauser = circuitBreaker.getPauser(address(module));
-        assertEq(pauser, deployParams.circuitBreakerPauser, "pauser");
-    }
-
     function test_pausables_afterVote() public {
         assertEq(circuitBreaker.getPauser(address(module)), deployParams.circuitBreakerPauser, "module pauser");
         assertEq(circuitBreaker.getPauser(address(accounting)), deployParams.circuitBreakerPauser, "accounting pauser");
