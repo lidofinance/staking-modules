@@ -2,10 +2,18 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 
+// Local IPFS (kubo) node: RPC API for pinning, gateway for reads.
+const IPFS_API_URL = (process.env.IPFS_API_URL ?? "http://127.0.0.1:5001").replace(/\/+$/, "");
+const IPFS_GATEWAY_URL = (process.env.IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080").replace(
+  /\/+$/,
+  "",
+);
+const IPFS_TIMEOUT_MS = 10_000;
+
 const RPC_URL = process.env.ANVIL_RPC_URL ?? "http://127.0.0.1:8545";
 const DEPLOY_CONFIG = process.env.DEPLOY_CONFIG;
 const ARTIFACTS_DIR = `${process.env.ARTIFACTS_DIR ?? "./artifacts/local/"}rewards/`;
-
+console.log(DEPLOY_CONFIG, ARTIFACTS_DIR);
 if (!DEPLOY_CONFIG) {
   console.error("DEPLOY_CONFIG is not set");
   process.exit(1);
@@ -216,7 +224,10 @@ if (onChainRoot === ZERO_ROOT) {
   if (!loaded) {
     const treeCid = castCall(feeDistributor, "treeCid()(string)").replace(/^"|"$/g, "");
     console.log(`On-chain tree CID: ${treeCid}`);
+    // Content pinned on the local node is not announced to public gateways,
+    // so the local gateway must be tried first.
     const ipfsUrls = [
+      `${IPFS_GATEWAY_URL}/ipfs/${treeCid}`,
       `https://ipfs.io/ipfs/${treeCid}`,
       `https://gateway.pinata.cloud/ipfs/${treeCid}`,
     ];
@@ -224,7 +235,7 @@ if (onChainRoot === ZERO_ROOT) {
     let fetched = false;
     for (const url of ipfsUrls) {
       try {
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: AbortSignal.timeout(IPFS_TIMEOUT_MS) });
         if (!res.ok) {
           console.warn(`IPFS gateway ${url} returned ${res.status}`);
           continue;
@@ -316,10 +327,28 @@ const reportPath = `${ARTIFACTS_DIR}report.json`;
 writeFileSync(reportPath, reportStr + "\n");
 console.log(`Written: ${reportPath}`);
 
-// --- pin to IPFS via Pinata ---
+// --- pin to the local IPFS node ---
 
-const PINATA_API_KEY = process.env.PINATA_API_KEY;
-const PINATA_API_SECRET = process.env.PINATA_API_SECRET;
+// /api/v0/add streams one JSON object per line; the last one is the root entry.
+async function pinJson(name, jsonStr) {
+  const form = new FormData();
+  form.append("file", new Blob([jsonStr], { type: "application/json" }), name);
+  const res = await fetch(`${IPFS_API_URL}/api/v0/add?pin=true&cid-version=0&quieter=true`, {
+    method: "POST",
+    body: form,
+    signal: AbortSignal.timeout(IPFS_TIMEOUT_MS),
+  });
+  const body = await res.text();
+  if (!res.ok) {
+    throw new Error(`IPFS add ${name}: ${res.status} ${body}`);
+  }
+  const lines = body.trim().split("\n").filter(Boolean);
+  const { Hash } = JSON.parse(lines[lines.length - 1]);
+  if (!Hash) {
+    throw new Error(`IPFS add ${name}: no CID in response: ${body}`);
+  }
+  return Hash;
+}
 
 let treeCid;
 let logCid;
@@ -328,38 +357,13 @@ if (!tree) {
   treeCid = "";
   logCid = "";
   console.log("Empty report, skipping IPFS pinning");
-} else if (PINATA_API_KEY && PINATA_API_SECRET) {
-  async function pinJson(name, jsonStr) {
-    const blob = new Blob([jsonStr], { type: "application/json" });
-    const form = new FormData();
-    form.append("file", blob, name);
-    form.append("pinataMetadata", JSON.stringify({ name }));
-    const res = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
-      method: "POST",
-      headers: {
-        pinata_api_key: PINATA_API_KEY,
-        pinata_secret_api_key: PINATA_API_SECRET,
-      },
-      body: form,
-    });
-    if (!res.ok) {
-      throw new Error(`Pinata ${name}: ${res.status} ${await res.text()}`);
-    }
-    const { IpfsHash } = await res.json();
-    return IpfsHash;
-  }
-
+} else {
   [treeCid, logCid] = await Promise.all([
     pinJson("merkle-tree.json", treeStr),
     pinJson("report.json", reportStr),
   ]);
-  console.log(`Pinned merkle-tree: ${treeCid}`);
-  console.log(`Pinned report:      ${logCid}`);
-} else {
-  const ts = Math.floor(Date.now() / 1000);
-  treeCid = `local-tree-${ts}`;
-  logCid = `local-log-${ts}`;
-  console.log("PINATA_API_KEY/SECRET not set, using local CIDs");
+  console.log(`Pinned merkle-tree: ${treeCid}  ${IPFS_GATEWAY_URL}/ipfs/${treeCid}`);
+  console.log(`Pinned report:      ${logCid}  ${IPFS_GATEWAY_URL}/ipfs/${logCid}`);
 }
 
 // --- write oracle report data artifact ---

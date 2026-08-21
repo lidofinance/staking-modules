@@ -249,12 +249,13 @@ seed-cm:
     just add-keys 0 1
     just add-keys 1 1
 
-report-rewards:
-    just make-rewards
+report-rewards format="v3":
+    just make-rewards {{format}}
     just submit-rewards
 
-make-rewards:
-    ANVIL_RPC_URL={{anvil_rpc_url}} node script/mock-rewards.mjs
+# format: v2 (legacy array) | v3 (default; {_ver, frames} wrapper, reward_share)
+make-rewards format="v3":
+    REPORT_FORMAT={{format}} ANVIL_RPC_URL={{anvil_rpc_url}} node script/mock-rewards.mjs
 
 submit-rewards:
     just _impersonate-script OracleReport --sig="submitRewards" --skip-simulation
