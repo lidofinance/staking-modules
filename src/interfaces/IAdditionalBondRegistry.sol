@@ -51,8 +51,9 @@ interface IAdditionalBondRegistry is IStepwiseWeightBoost {
     /// @param admin Address to receive DEFAULT_ADMIN_ROLE.
     /// @param curveMultiplierReductionCooldown Stored cooldown duration in seconds, in
     ///        [1, MAX_CURVE_MULTIPLIER_REDUCTION_COOLDOWN].
-    /// @param steps Initial steps. Thresholds may start at zero and must not exceed MAX_CURVE_MULTIPLIER;
-    ///        values must not exceed MAX_STEP_VALUE.
+    /// @param steps Initial steps. Thresholds may start at zero, must be multiples of
+    ///        CURVE_MULTIPLIER_STEP and must not exceed MAX_CURVE_MULTIPLIER; values must not exceed
+    ///        MAX_STEP_VALUE.
     function initialize(address admin, uint256 curveMultiplierReductionCooldown, Step[] calldata steps) external;
 
     /// @notice Request a curve multiplier for the Node Operator. Only the Node Operator owner. Raising it

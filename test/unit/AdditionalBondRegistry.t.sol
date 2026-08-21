@@ -194,6 +194,14 @@ contract AdditionalBondRegistrySetStepsTest is AdditionalBondRegistryBaseTest, S
         vm.expectRevert(abi.encodeWithSelector(IStepwiseWeightBoost.InvalidStep.selector, 0));
         _setSteps(steps);
     }
+
+    function test_setSteps_RevertWhen_ThresholdNotAligned() public {
+        uint256 offGrid = T1_BOND + additionalBondRegistry.CURVE_MULTIPLIER_STEP() / 2;
+        Step[] memory steps = new Step[](1);
+        steps[0] = Step({ threshold: uint128(offGrid), value: uint128(T1_WEIGHT) });
+        vm.expectRevert(abi.encodeWithSelector(IStepwiseWeightBoost.InvalidStep.selector, 0));
+        _setSteps(steps);
+    }
 }
 
 contract AdditionalBondRegistryRequestCurveMultiplierBaseTest is AdditionalBondRegistryBaseTest {

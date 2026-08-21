@@ -140,7 +140,8 @@ interface ICustomFeeRegistry is IStepwiseWeightBoost {
     function cancelFeeDiscountCut(uint256 nodeOperatorId) external;
 
     /// @notice Settle a pending discount cut once its cooldown elapsed. Only the Node Operator owner.
-    ///         Reverts if a curve or modifier change invalidated the pending discount meanwhile.
+    ///         Reverts if a curve or modifier change invalidated the pending discount meanwhile; the cut
+    ///         then has to be dropped via `cancelFeeDiscountCut` and requested anew if still needed.
     /// @param nodeOperatorId ID of the Node Operator.
     function applyFeeDiscountCut(uint256 nodeOperatorId) external;
 

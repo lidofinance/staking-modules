@@ -20,8 +20,8 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, StepwiseWeightBoost 
         mapping(uint256 nodeOperatorId => PendingCurveMultiplierReduction) pending;
     }
 
-    // Sanity guard: effective multiplier <= 10x.
-    uint256 public constant MAX_CURVE_MULTIPLIER = 9 * MAX_BP;
+    // Sanity guard: effective multiplier <= 10x. MAX_STEP_VALUE caps step values, this caps thresholds.
+    uint256 public constant MAX_CURVE_MULTIPLIER = MAX_STEP_VALUE;
     // Requested curve multiplier must be a multiple of this (1%).
     uint256 public constant CURVE_MULTIPLIER_STEP = MAX_BP / 100;
     uint256 public constant MAX_CURVE_MULTIPLIER_REDUCTION_COOLDOWN = 365 days;
@@ -69,10 +69,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, StepwiseWeightBoost 
             if (ACCOUNTING.getRequiredBondForNextKeys(nodeOperatorId, 0, newMul) > 0) {
                 revert InsufficientBond();
             }
-            if (pending.cooldownUntil != 0) {
-                delete $.pending[nodeOperatorId];
-                emit CurveMultiplierReductionCancelled(nodeOperatorId);
-            }
+            if (pending.cooldownUntil != 0) _cancelCurveMultiplierReduction(nodeOperatorId);
             ACCOUNTING.setBondCurveMultiplier(nodeOperatorId, curveMultiplier);
         } else {
             uint256 cooldownUntil = block.timestamp + $.curveMultiplierReductionCooldown;
@@ -115,8 +112,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, StepwiseWeightBoost 
         // Dropping the pending target hands the weight back to the multiplier Accounting still holds.
         uint256 currentCurveMultiplier = ACCOUNTING.getBondCurveMultiplier(nodeOperatorId) - MAX_BP;
 
-        delete _storage().pending[nodeOperatorId];
-        emit CurveMultiplierReductionCancelled(nodeOperatorId);
+        _cancelCurveMultiplierReduction(nodeOperatorId);
         StepwiseWeightBoost._notifyMetaRegistryIfWeightChanged(
             nodeOperatorId,
             previousCurveMultiplier,
@@ -155,6 +151,12 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, StepwiseWeightBoost 
             StepwiseWeightBoost._stepValueAt(_getTargetCurveMultiplier(pending, currentMultiplierBP));
     }
 
+    /// @dev Drops the pending downgrade. The caller notifies MetaRegistry when the weight moves.
+    function _cancelCurveMultiplierReduction(uint256 nodeOperatorId) internal {
+        delete _storage().pending[nodeOperatorId];
+        emit CurveMultiplierReductionCancelled(nodeOperatorId);
+    }
+
     function _setCurveMultiplierReductionCooldown(uint256 curveMultiplierReductionCooldown) internal {
         if (
             curveMultiplierReductionCooldown == 0 ||
@@ -176,7 +178,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, StepwiseWeightBoost 
     }
 
     function _isValidStep(Step calldata step) internal pure override returns (bool) {
-        return step.threshold <= MAX_CURVE_MULTIPLIER;
+        return step.threshold <= MAX_CURVE_MULTIPLIER && step.threshold % CURVE_MULTIPLIER_STEP == 0;
     }
 
     function _storage() internal pure returns (AdditionalBondRegistryStorage storage $) {

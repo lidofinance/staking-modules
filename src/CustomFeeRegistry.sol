@@ -29,7 +29,7 @@ contract CustomFeeRegistry is ICustomFeeRegistry, StepwiseWeightBoost {
     // All fees and discounts are basis points of the operator's own rewards.
     uint256 public constant FEE_GRANULARITY = 250; // 2.5%
     // The operator's share of the module's rewards, mirroring the protocol reward share config.
-    uint256 public constant BASE_FEE = 8_750; // 87.5%
+    uint256 public constant BASE_FEE = 8_750; // 87.5% of the module fee on SR
     uint256 public constant MAX_FEE_DISCOUNT_CUT_COOLDOWN = 365 days;
 
     IAccounting public immutable ACCOUNTING;
@@ -96,7 +96,8 @@ contract CustomFeeRegistry is ICustomFeeRegistry, StepwiseWeightBoost {
         if (state.cooldownUntil > block.timestamp) revert FeeDiscountCutCooldownNotElapsed();
 
         uint16 pendingFeeDiscount = state.pendingFeeDiscount;
-        // A curve or modifier change during the cooldown may have invalidated it.
+        // A curve or modifier change during the cooldown may have invalidated it. If so, the cut has to be
+        // dropped via `cancelFeeDiscountCut` and a new discount requested if still needed.
         _validateFeeDiscount(nodeOperatorId, pendingFeeDiscount);
 
         state.currentFeeDiscount = pendingFeeDiscount;
