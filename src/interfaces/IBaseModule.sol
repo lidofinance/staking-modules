@@ -24,7 +24,6 @@ struct NodeOperator {
     /* 1 */ uint32 depositableValidatorsCount; // @dev any value
     /* 1 */ uint32 targetLimit;
     /* 1 */ uint8 targetLimitMode;
-    /* 1 */ uint24 unresolvedSlashedValidators; // @dev slashed validators whose withdrawal losses are not processed
     /* 2 */ uint32 totalExitedKeys; // @dev only increased except for the unsafe updates
     /* 2 */ uint32 enqueuedCount; // Tracks how many places are occupied by the node operator's keys in the queue.
     /* 2 */ address managerAddress;

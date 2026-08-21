@@ -344,10 +344,12 @@ abstract contract BaseModule is
         $.isValidatorSlashed[pointer] = true;
         // A slashing reported after the withdrawal of the key has nothing left to resolve.
         if (!$.isValidatorWithdrawn[pointer]) {
+            uint256 unresolved;
             unchecked {
-                ++no.unresolvedSlashedValidators;
+                unresolved = $.unresolvedSlashedValidators[nodeOperatorId] + 1;
             }
-            emit UnresolvedSlashedValidatorsCountChanged(nodeOperatorId, no.unresolvedSlashedValidators);
+            $.unresolvedSlashedValidators[nodeOperatorId] = unresolved;
+            emit UnresolvedSlashedValidatorsCountChanged(nodeOperatorId, unresolved);
         }
 
         bytes memory pubkey = SigningKeys.loadKeys(nodeOperatorId, keyIndex, 1);
@@ -528,7 +530,7 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function getNodeOperatorUnresolvedSlashedValidators(uint256 nodeOperatorId) external view returns (uint256) {
-        return _baseStorage().nodeOperators[nodeOperatorId].unresolvedSlashedValidators;
+        return _baseStorage().unresolvedSlashedValidators[nodeOperatorId];
     }
 
     /// @inheritdoc IBaseModule
