@@ -55,6 +55,10 @@ contract CSMMock is Utilities, Fixtures {
         return mockNodeOperator;
     }
 
+    function getNodeOperatorUnresolvedSlashedValidators(uint256 /* nodeOperatorId */) external view returns (uint256) {
+        return mockNodeOperator.unresolvedSlashedValidators;
+    }
+
     function mock_setNodeOperatorManagementProperties(
         NodeOperatorManagementProperties memory _managementProperties
     ) external {

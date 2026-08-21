@@ -422,6 +422,11 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
+    function isBondClaimRestricted(uint256 nodeOperatorId) external view returns (bool) {
+        return _isBondClaimRestricted(nodeOperatorId);
+    }
+
+    /// @inheritdoc IAccounting
     function getClaimableRewardsAndBondShares(
         uint256 nodeOperatorId,
         uint256 cumulativeFeeShares,

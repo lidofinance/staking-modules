@@ -85,6 +85,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     event TotalWithdrawnValidatorsRebuilt(uint256 totalWithdrawnValidators);
     event NodeOperatorBalanceUpdated(uint256 indexed operatorId, uint256 balanceWei);
     event ValidatorSlashingReported(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
+    event UnresolvedSlashedValidatorsCountChanged(uint256 indexed nodeOperatorId, uint256 count);
     event KeyAllocatedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
     event KeyConfirmedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newBalance);
     event KeyRemovalChargeApplied(uint256 indexed nodeOperatorId);

@@ -65,6 +65,10 @@ library WithdrawnValidatorLib {
                 unchecked {
                     --no.unresolvedSlashedValidators;
                 }
+                emit IBaseModule.UnresolvedSlashedValidatorsCountChanged(
+                    info.nodeOperatorId,
+                    no.unresolvedSlashedValidators
+                );
             }
             touchedOperatorIds[touchedCount] = info.nodeOperatorId;
             trackedBalanceDecreases[touchedCount] = $.keyAllocatedBalance[pointer];

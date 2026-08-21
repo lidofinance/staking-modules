@@ -197,6 +197,11 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     /// @return Current claimable bond in stETH shares
     function getClaimableBondShares(uint256 nodeOperatorId) external view returns (uint256);
 
+    /// @notice Check whether bond claims of the given Node Operator are restricted due to unresolved slashings
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @return True if the Node Operator has slashed validators with unreported withdrawals
+    function isBondClaimRestricted(uint256 nodeOperatorId) external view returns (bool);
+
     /// @notice Get current claimable bond in stETH shares for the given Node Operator
     ///         Includes potential rewards distributed by the Fee Distributor
     /// @dev Returns zero while the Node Operator's bond claims are restricted, see `getClaimableBondShares`

@@ -1318,7 +1318,12 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 0);
 
+        vm.expectEmit(address(module));
+        emit IBaseModule.UnresolvedSlashedValidatorsCountChanged(noId, 1);
         module.reportValidatorSlashing(noId, 0);
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.UnresolvedSlashedValidatorsCountChanged(noId, 2);
         module.reportValidatorSlashing(noId, 1);
         assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), keysCount);
 
@@ -1330,6 +1335,9 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             slashingPenalty: 1 ether,
             isSlashed: true
         });
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.UnresolvedSlashedValidatorsCountChanged(noId, 1);
         module.reportSlashedWithdrawnValidators(validatorInfos);
         assertEq(
             module.getNodeOperatorUnresolvedSlashedValidators(noId),

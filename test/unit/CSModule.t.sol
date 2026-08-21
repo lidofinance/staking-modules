@@ -110,6 +110,7 @@ contract CSMCommon is ModuleFixtures {
     function _moduleInvariants() internal override {
         assertModuleEnqueuedCount(csm);
         assertModuleKeys(module);
+        assertModuleSlashings(module);
     }
 
     // Checks that the queue is in the expected state starting from its head.

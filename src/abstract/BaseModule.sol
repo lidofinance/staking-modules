@@ -347,6 +347,7 @@ abstract contract BaseModule is
             unchecked {
                 ++no.unresolvedSlashedValidators;
             }
+            emit UnresolvedSlashedValidatorsCountChanged(nodeOperatorId, no.unresolvedSlashedValidators);
         }
 
         bytes memory pubkey = SigningKeys.loadKeys(nodeOperatorId, keyIndex, 1);

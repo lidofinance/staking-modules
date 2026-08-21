@@ -22,6 +22,13 @@ contract BondClaimRestrictionTest is BaseTest {
         _deposit({ bond: REQUIRED_BOND + EXCESS_BOND });
     }
 
+    function test_isBondClaimRestricted() public assertInvariants {
+        assertFalse(accounting.isBondClaimRestricted(0));
+
+        mock_getNodeOperatorUnresolvedSlashedValidators(1);
+        assertTrue(accounting.isBondClaimRestricted(0));
+    }
+
     function test_getClaimableBondShares_notRestricted() public assertInvariants {
         assertApproxEqAbs(
             accounting.getClaimableBondShares(0),
