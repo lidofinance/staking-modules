@@ -55,6 +55,7 @@ contract DeployCSM0x02Hoodi is DeployCSM0x02Base {
         // Module
         config.moduleType = "community-onchain-v1"; // Type identifier used by the off-chain tooling
         config.generalDelayedPenaltyReporter = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
+        config.rewindTopUpQueueRoleHolder = 0x4AF43Ee34a6fcD1fEcA1e1F832124C763561dA53; // Dev team EOA
         // TODO: Reconsider the top-up queue limit value for CSM0x02.
         config.topUpQueueLimit = 32;
 
