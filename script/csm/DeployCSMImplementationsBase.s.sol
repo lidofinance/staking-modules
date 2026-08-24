@@ -18,7 +18,6 @@ import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
 import { OneShotCurveSetup } from "../../src/utils/OneShotCurveSetup.sol";
 import { IOneShotCurveSetup } from "../../src/interfaces/IOneShotCurveSetup.sol";
-import { IVerifier } from "../../src/interfaces/IVerifier.sol";
 import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 
 import { JsonObj, Json } from "../utils/Json.sol";
@@ -111,20 +110,9 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
                 withdrawalCredentials: toWC(locator.withdrawalVault(), WCType.Eth1),
                 module: address(csm),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
-                gindices: IVerifier.GIndices({
-                    gIWithdrawalsPreGloas: config.gIWithdrawals,
-                    gIWithdrawals: config.gIWithdrawals,
-                    gIValidatorsPreGloas: config.gIValidators,
-                    gIValidators: config.gIValidators,
-                    gIHistoricalSummariesPreGloas: config.gIHistoricalSummaries,
-                    gIHistoricalSummaries: config.gIHistoricalSummaries,
-                    gIBalancesPreGloas: config.gIBalances,
-                    gIBalances: config.gIBalances,
-                    gIBlockRootsPreGloas: config.gIBlockRoots,
-                    gIBlockRoots: config.gIBlockRoots
-                }),
+                gindices: config.verifierGIndices,
                 firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
-                pivotSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
+                pivotSlot: Slot.wrap(uint64(config.verifierPivotSlot)),
                 capellaSlot: Slot.wrap(uint64(config.capellaSlot)),
                 minWithdrawalRatio: config.minWithdrawalRatio,
                 admin: deployer

@@ -34,6 +34,7 @@ import { CuratedModule } from "src/CuratedModule.sol";
 import { MetaRegistry } from "src/MetaRegistry.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
+import { IVerifier } from "src/interfaces/IVerifier.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
 import { DeployCSM0x02Params } from "script/csm0x02/DeployCSM0x02Base.s.sol";
@@ -157,11 +158,9 @@ contract DeploymentHelpers is Test {
         uint256 consensusVersion;
         address[] oracleMembers;
         uint256 hashConsensusQuorum;
-        GIndex gIWithdrawals;
-        GIndex gIValidators;
-        GIndex gIHistoricalSummaries;
-        GIndex gIBalances;
+        IVerifier.GIndices verifierGIndices;
         uint256 verifierFirstSupportedSlot;
+        uint256 verifierPivotSlot;
         uint256 capellaSlot;
         uint256 minWithdrawalRatio;
         uint256[2][] defaultBondCurve;
@@ -486,11 +485,9 @@ contract DeploymentHelpers is Test {
         dst.hashConsensusQuorum = src.hashConsensusQuorum;
 
         // Verifier
-        dst.gIWithdrawals = src.gIWithdrawals;
-        dst.gIValidators = src.gIValidators;
-        dst.gIHistoricalSummaries = src.gIHistoricalSummaries;
-        dst.gIBalances = src.gIBalances;
+        dst.verifierGIndices = src.verifierGIndices;
         dst.verifierFirstSupportedSlot = src.verifierFirstSupportedSlot;
+        dst.verifierPivotSlot = src.verifierPivotSlot;
         dst.capellaSlot = src.capellaSlot;
         dst.minWithdrawalRatio = src.minWithdrawalRatio;
 
@@ -602,11 +599,9 @@ contract DeploymentHelpers is Test {
         params.consensusVersion = decoded.consensusVersion;
         params.oracleMembers = decoded.oracleMembers;
         params.hashConsensusQuorum = decoded.hashConsensusQuorum;
-        params.gIWithdrawals = decoded.gIWithdrawals;
-        params.gIValidators = decoded.gIValidators;
-        params.gIHistoricalSummaries = decoded.gIHistoricalSummaries;
-        params.gIBalances = decoded.gIBalances;
+        params.verifierGIndices = decoded.verifierGIndices;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
+        params.verifierPivotSlot = decoded.verifierPivotSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.minWithdrawalRatio = decoded.minWithdrawalRatio;
         params.defaultBondCurve = decoded.defaultBondCurve;
@@ -656,11 +651,9 @@ contract DeploymentHelpers is Test {
         params.consensusVersion = decoded.consensusVersion;
         params.oracleMembers = decoded.oracleMembers;
         params.hashConsensusQuorum = decoded.hashConsensusQuorum;
-        params.gIWithdrawals = decoded.gIWithdrawals;
-        params.gIValidators = decoded.gIValidators;
-        params.gIHistoricalSummaries = decoded.gIHistoricalSummaries;
-        params.gIBalances = decoded.gIBalances;
+        params.verifierGIndices = decoded.verifierGIndices;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
+        params.verifierPivotSlot = decoded.verifierPivotSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.minWithdrawalRatio = decoded.minWithdrawalRatio;
         params.defaultBondCurve = decoded.defaultBondCurve;
@@ -710,11 +703,9 @@ contract DeploymentHelpers is Test {
         params.consensusVersion = decoded.consensusVersion;
         params.oracleMembers = decoded.oracleMembers;
         params.hashConsensusQuorum = decoded.hashConsensusQuorum;
-        params.gIWithdrawals = decoded.gIWithdrawals;
-        params.gIValidators = decoded.gIValidators;
-        params.gIHistoricalSummaries = decoded.gIHistoricalSummaries;
-        params.gIBalances = decoded.gIBalances;
+        params.verifierGIndices = decoded.verifierGIndices;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
+        params.verifierPivotSlot = decoded.verifierPivotSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.minWithdrawalRatio = decoded.minWithdrawalRatio;
         params.defaultBondCurve = decoded.defaultBondCurve;

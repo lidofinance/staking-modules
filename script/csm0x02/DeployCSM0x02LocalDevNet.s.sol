@@ -26,12 +26,9 @@ contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
         config.consensusVersion = 4;
         (config.oracleMembers, config.hashConsensusQuorum) = _readAccountingHashConsensus();
         // Verifier
-        config.gIWithdrawals = GIndices.WITHDRAWALS_ELECTRA;
-        config.gIValidators = GIndices.VALIDATORS_ELECTRA;
-        config.gIHistoricalSummaries = GIndices.HISTORICAL_SUMMARIES_ELECTRA; // prettier-ignore
-        config.gIBalances = GIndices.BALANCES_ELECTRA;
-        config.gIBlockRoots = GIndices.BLOCK_ROOTS_ELECTRA;
+        config.verifierGIndices = GIndices.electraToGloas();
         config.verifierFirstSupportedSlot = vm.envUint("DEVNET_ELECTRA_EPOCH") * config.slotsPerEpoch;
+        config.verifierPivotSlot = vm.envUint("DEVNET_GLOAS_EPOCH") * config.slotsPerEpoch;
         config.capellaSlot = vm.envUint("DEVNET_CAPELLA_EPOCH") * config.slotsPerEpoch;
         config.minWithdrawalRatio = 9900;
 

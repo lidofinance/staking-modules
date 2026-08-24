@@ -27,7 +27,6 @@ import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
 import { JsonObj, Json } from "../utils/Json.sol";
 import { Dummy } from "../utils/Dummy.sol";
 import { CommonScriptUtils } from "../utils/Common.sol";
-import { GIndex } from "../../src/lib/GIndex.sol";
 import { Slot } from "../../src/lib/Types.sol";
 import { WCType, toWC } from "../../src/utils/WithdrawalCredentials.sol";
 import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
@@ -49,12 +48,9 @@ struct DeployParams {
     address[] oracleMembers;
     uint256 hashConsensusQuorum;
     // Verifier
-    GIndex gIWithdrawals;
-    GIndex gIValidators;
-    GIndex gIHistoricalSummaries;
-    GIndex gIBalances;
-    GIndex gIBlockRoots;
+    IVerifier.GIndices verifierGIndices;
     uint256 verifierFirstSupportedSlot;
+    uint256 verifierPivotSlot;
     uint256 capellaSlot;
     uint256 minWithdrawalRatio;
     // Accounting
@@ -144,7 +140,6 @@ abstract contract DeployBase is Script {
     string internal chainName;
     uint256 internal chainId;
     ILidoLocator internal locator;
-
     address internal deployer;
     CSModule public csm;
     Accounting public accounting;
@@ -256,20 +251,9 @@ abstract contract DeployBase is Script {
                 withdrawalCredentials: toWC(locator.withdrawalVault(), WCType.Eth1),
                 module: address(csm),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
-                gindices: IVerifier.GIndices({
-                    gIWithdrawalsPreGloas: config.gIWithdrawals,
-                    gIWithdrawals: config.gIWithdrawals,
-                    gIValidatorsPreGloas: config.gIValidators,
-                    gIValidators: config.gIValidators,
-                    gIHistoricalSummariesPreGloas: config.gIHistoricalSummaries,
-                    gIHistoricalSummaries: config.gIHistoricalSummaries,
-                    gIBalancesPreGloas: config.gIBalances,
-                    gIBalances: config.gIBalances,
-                    gIBlockRootsPreGloas: config.gIBlockRoots,
-                    gIBlockRoots: config.gIBlockRoots
-                }),
+                gindices: config.verifierGIndices,
                 firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
-                pivotSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
+                pivotSlot: Slot.wrap(uint64(config.verifierPivotSlot)),
                 capellaSlot: Slot.wrap(uint64(config.capellaSlot)),
                 minWithdrawalRatio: config.minWithdrawalRatio,
                 admin: deployer

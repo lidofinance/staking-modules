@@ -4,6 +4,7 @@
 pragma solidity 0.8.33;
 
 import { GIndex } from "../../src/lib/GIndex.sol";
+import { IVerifier } from "../../src/interfaces/IVerifier.sol";
 
 library GIndices {
     GIndex public constant WITHDRAWALS_ELECTRA = GIndex.wrap(0xb0e);
@@ -17,4 +18,20 @@ library GIndices {
     GIndex public constant BALANCES_GLOAS = GIndex.wrap(0x167);
     GIndex public constant BLOCK_ROOTS_GLOAS = GIndex.wrap(0x160);
     GIndex public constant HISTORICAL_SUMMARIES_GLOAS = GIndex.wrap(0xb86);
+
+    function electraToGloas() internal pure returns (IVerifier.GIndices memory) {
+        return
+            IVerifier.GIndices({
+                gIWithdrawalsPreGloas: WITHDRAWALS_ELECTRA,
+                gIWithdrawals: WITHDRAWALS_GLOAS,
+                gIValidatorsPreGloas: VALIDATORS_ELECTRA,
+                gIValidators: VALIDATORS_GLOAS,
+                gIHistoricalSummariesPreGloas: HISTORICAL_SUMMARIES_ELECTRA,
+                gIHistoricalSummaries: HISTORICAL_SUMMARIES_GLOAS,
+                gIBalancesPreGloas: BALANCES_ELECTRA,
+                gIBalances: BALANCES_GLOAS,
+                gIBlockRootsPreGloas: BLOCK_ROOTS_ELECTRA,
+                gIBlockRoots: BLOCK_ROOTS_GLOAS
+            });
+    }
 }
