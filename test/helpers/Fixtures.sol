@@ -619,15 +619,9 @@ contract DeploymentHelpers is Test {
         }
 
         // CustomFeeRegistry
-        dst.customFeeRegistryConfig.defaultMaxFeeDiscount = src.customFeeRegistryConfig.defaultMaxFeeDiscount;
         dst.customFeeRegistryConfig.feeDiscountCutCooldown = src.customFeeRegistryConfig.feeDiscountCutCooldown;
-        for (uint256 i; i < src.customFeeRegistryConfig.feeDiscountWeightSteps.length; ++i) {
-            dst.customFeeRegistryConfig.feeDiscountWeightSteps.push(
-                src.customFeeRegistryConfig.feeDiscountWeightSteps[i]
-            );
-        }
-        for (uint256 i; i < src.customFeeRegistryConfig.feeModifiers.length; ++i) {
-            dst.customFeeRegistryConfig.feeModifiers.push(src.customFeeRegistryConfig.feeModifiers[i]);
+        for (uint256 i; i < src.customFeeRegistryConfig.boostSteps.length; ++i) {
+            dst.customFeeRegistryConfig.boostSteps.push(src.customFeeRegistryConfig.boostSteps[i]);
         }
     }
 

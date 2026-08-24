@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { DeployBase, CuratedGateConfig, CurveFeeModifierConfig } from "./DeployBase.s.sol";
+import { DeployBase, CuratedGateConfig } from "./DeployBase.s.sol";
 import { Step } from "../../src/interfaces/IStepwiseWeightBoost.sol";
 import { GIndices } from "../constants/GIndices.sol";
 import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
@@ -212,15 +212,10 @@ contract DeployLocalDevNet is DeployBase {
         config.ldoLockBoostProviderConfig.lockBoostSteps.push(Step({ threshold: 200_000 ether, value: 1_500 }));
 
         // CustomFeeRegistry
-        config.customFeeRegistryConfig.defaultMaxFeeDiscount = 6_250;
         config.customFeeRegistryConfig.feeDiscountCutCooldown = 15 days;
         for (uint128 i = 1; i < 35; ++i) {
-            config.customFeeRegistryConfig.feeDiscountWeightSteps.push(Step({ threshold: i * 250, value: i * 400 }));
+            config.customFeeRegistryConfig.boostSteps.push(Step({ threshold: i * 100, value: i * 400 }));
         }
-        // Professional Operator uses the default bond curve (curve 0): 8_750 - 2_500 = 6_250.
-        config.customFeeRegistryConfig.feeModifiers.push(
-            CurveFeeModifierConfig({ curveId: 0, value: 2_500, negative: true })
-        );
 
         _setUp();
     }

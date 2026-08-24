@@ -90,17 +90,9 @@ struct ERC20LockBoostProviderConfig {
     Step[] lockBoostSteps;
 }
 
-struct CurveFeeModifierConfig {
-    uint256 curveId;
-    uint256 value;
-    bool negative;
-}
-
 struct CustomFeeRegistryConfig {
-    uint256 defaultMaxFeeDiscount;
     uint256 feeDiscountCutCooldown;
-    Step[] feeDiscountWeightSteps;
-    CurveFeeModifierConfig[] feeModifiers;
+    Step[] boostSteps;
 }
 
 struct CuratedDeployParams {
@@ -444,9 +436,8 @@ abstract contract DeployBase is Script {
                     CustomFeeRegistry.initialize,
                     (
                         deployer,
-                        config.customFeeRegistryConfig.defaultMaxFeeDiscount,
                         config.customFeeRegistryConfig.feeDiscountCutCooldown,
-                        config.customFeeRegistryConfig.feeDiscountWeightSteps
+                        config.customFeeRegistryConfig.boostSteps
                     )
                 )
             );
@@ -532,11 +523,6 @@ abstract contract DeployBase is Script {
                 if (params.maxElWithdrawalRequestFee.isValue) {
                     parametersRegistry.setMaxElWithdrawalRequestFee(curveId, params.maxElWithdrawalRequestFee.value);
                 }
-            }
-
-            for (uint256 i; i < config.customFeeRegistryConfig.feeModifiers.length; ++i) {
-                CurveFeeModifierConfig storage feeModifier = config.customFeeRegistryConfig.feeModifiers[i];
-                customFeeRegistry.setFeeModifier(feeModifier.curveId, feeModifier.value, feeModifier.negative);
             }
 
             accounting.revokeRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
