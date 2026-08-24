@@ -1016,7 +1016,7 @@ contract VerifierPauseTest is VerifierTestBase {
         verifier.pauseFor(100_500);
         assertTrue(verifier.isPaused());
 
-        IVerifier.ProcessHistoricalWithdrawalInput memory emptyInput;
+        IVerifier.ProcessWithdrawalInput memory emptyInput;
         vm.expectRevert(PausableUntil.ResumedExpected.selector);
         verifier.processHistoricalWithdrawalProof(emptyInput);
     }

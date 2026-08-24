@@ -57,18 +57,14 @@ interface IVerifier {
         RecentHeaderWitness recentBlock;
     }
 
+    /// @notice Withdrawal proof input shared by the recent and historical withdrawal flows.
+    /// @dev `withdrawalBlock.proof` proves the withdrawal block against `recentBlock` state. The recent flow resolves
+    /// it through `block_roots`, while the historical flow resolves it through `historical_summaries`.
     struct ProcessWithdrawalInput {
         WithdrawalWitness withdrawal;
         ValidatorWitness validator;
         RecentHeaderWitness recentBlock;
-        // The block that actually contained the withdrawal, proven against `recentBlock` state block roots.
-        HistoricalHeaderWitness withdrawalBlock;
-    }
-
-    struct ProcessHistoricalWithdrawalInput {
-        WithdrawalWitness withdrawal;
-        ValidatorWitness validator;
-        RecentHeaderWitness recentBlock;
+        // The block that actually contained the withdrawal.
         HistoricalHeaderWitness withdrawalBlock;
     }
 
@@ -149,19 +145,19 @@ interface IVerifier {
     /// @param data @see ProcessSlashedInput
     function processSlashedProof(ProcessSlashedInput calldata data) external;
 
-    /// @notice Verify withdrawal proof and report withdrawal to the module for valid proofs.
+    /// @notice Verify a withdrawal block through recent state `block_roots` and report the withdrawal to the module.
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
     /// determining the exact penalty amounts and calling the `IBaseModule.reportSlashedWithdrawnValidators` method via
     /// an EasyTrack motion.
     /// @param data @see ProcessWithdrawalInput
     function processWithdrawalProof(ProcessWithdrawalInput calldata data) external;
 
-    /// @notice Verify withdrawal proof against historical summaries data and report withdrawal to the module for valid proofs
+    /// @notice Verify a withdrawal block through recent state `historical_summaries` and report the withdrawal to the module.
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
     /// determining the exact penalty amounts and calling the `IBaseModule.reportSlashedWithdrawnValidators` method via
     /// an EasyTrack motion.
-    /// @param data @see ProcessHistoricalWithdrawalInput
-    function processHistoricalWithdrawalProof(ProcessHistoricalWithdrawalInput calldata data) external;
+    /// @param data @see ProcessWithdrawalInput
+    function processHistoricalWithdrawalProof(ProcessWithdrawalInput calldata data) external;
 
     /// @notice Verify a validator's balance proof from a beacon block available through recent state block roots.
     /// @param data The balance proof input containing recent and balance block headers and proof witnesses.

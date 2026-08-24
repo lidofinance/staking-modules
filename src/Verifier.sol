@@ -216,7 +216,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     }
 
     /// @inheritdoc IVerifier
-    function processHistoricalWithdrawalProof(ProcessHistoricalWithdrawalInput calldata data) external whenResumed {
+    function processHistoricalWithdrawalProof(ProcessWithdrawalInput calldata data) external whenResumed {
         if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) revert UnsupportedSlot(data.recentBlock.header.slot);
         if (data.withdrawalBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.withdrawalBlock.header.slot);

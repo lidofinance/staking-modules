@@ -36,7 +36,7 @@ GIndex constant NULL_GINDEX = GIndex.wrap(0);
 contract VerifierHistoricalBase is Test, Utilities {
     struct Fixture {
         bytes32 blockRoot;
-        IVerifier.ProcessHistoricalWithdrawalInput data;
+        IVerifier.ProcessWithdrawalInput data;
     }
 
     Fixture public fixture;
