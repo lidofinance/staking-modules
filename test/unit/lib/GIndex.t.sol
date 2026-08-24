@@ -101,6 +101,26 @@ contract GIndexTest is Test {
         lib.concat(toGIndex(2 ** 200), toGIndex(2 ** 56));
     }
 
+    function testFuzz_concat(uint256 lhsPath, uint256 rhsPath, uint8 lhsDepth, uint8 rhsDepth) public {
+        uint256 lDepth = lhsDepth;
+        uint256 rDepth = uint256(rhsDepth) % (256 - lDepth);
+        uint256 lRoot = 1 << lDepth;
+        uint256 rRoot = 1 << rDepth;
+        GIndex lhs = toGIndex(lRoot | (lhsPath & (lRoot - 1)));
+        GIndex rhs = toGIndex(rRoot | (rhsPath & (rRoot - 1)));
+
+        string[] memory cmd = new string[](5);
+        cmd[0] = "node";
+        cmd[1] = "--no-warnings";
+        cmd[2] = "test/fixtures/ssz/concat_gindex.mjs";
+        cmd[3] = lhs.unwrap().toString();
+        cmd[4] = rhs.unwrap().toString();
+        bytes memory res = vm.ffi(cmd);
+        uint256 expected = abi.decode(res, (uint256));
+
+        assertEq(lhs.concat(rhs).unwrap(), expected);
+    }
+
     function testFuzz_concat_WithRoot(GIndex rhs) public view {
         vm.assume(rhs.unwrap() > 0);
         assertEq(ROOT.concat(rhs).unwrap(), rhs.unwrap(), "`concat` with a root should return right-hand side value");
