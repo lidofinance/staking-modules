@@ -369,6 +369,12 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @return Node Operator info
     function getNodeOperator(uint256 nodeOperatorId) external view returns (NodeOperator memory);
 
+    /// @notice Returns the timestamp when a Node Operator was created.
+    /// @dev Returns zero for Node Operators created before timestamp tracking was introduced.
+    /// @param nodeOperatorId ID of the Node Operator.
+    /// @return createdAt Node Operator creation timestamp.
+    function getNodeOperatorCreatedAt(uint256 nodeOperatorId) external view returns (uint256 createdAt);
+
     /// @notice Get Node Operator management properties
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Node Operator management properties

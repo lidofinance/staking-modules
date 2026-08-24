@@ -29,6 +29,7 @@ abstract contract ModuleLinearStorage {
         /* 9 */ uint64 nodeOperatorsCount;
         /* 10 */ mapping(uint256 nodeOperatorId => uint256 extraBalance) operatorBalances;
         /* 11 */ uint256 totalExtraStake;
+        /* 12 */ mapping(uint256 nodeOperatorId => uint256 createdAt) nodeOperatorCreatedAt;
     }
 
     function _baseStorage() internal pure returns (BaseModuleStorage storage $) {

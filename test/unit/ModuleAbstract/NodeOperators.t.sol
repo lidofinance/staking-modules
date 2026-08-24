@@ -10,6 +10,19 @@ import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 import { ModuleFixtures } from "./_Base.t.sol";
 
 abstract contract ModuleCreateNodeOperator is ModuleFixtures {
+    function test_getNodeOperatorCreatedAt_returnsZeroWhenNotRecorded() public view {
+        assertEq(module.getNodeOperatorCreatedAt(0), 0);
+    }
+
+    function test_createNodeOperator_setsCreatedAt() public {
+        uint256 createdAt = 1_754_000_000;
+        vm.warp(createdAt);
+
+        uint256 noId = createNodeOperator();
+
+        assertEq(module.getNodeOperatorCreatedAt(noId), createdAt);
+    }
+
     function test_createNodeOperator() public assertInvariants {
         uint256 nonce = module.getNonce();
         vm.expectEmit(address(module));
