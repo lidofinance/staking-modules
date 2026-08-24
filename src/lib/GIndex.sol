@@ -48,6 +48,15 @@ function fls(uint256 x) pure returns (uint256 r) {
     }
 }
 
+/// @return r The exponent of the smallest power of two greater than or equal to `x`.
+function ceilLog2(uint256 x) pure returns (uint256 r) {
+    if (x < 2) return 0;
+
+    unchecked {
+        return fls(x - 1) + 1;
+    }
+}
+
 /// @param i Index of a node in the List[type, N].
 /// @param depth Power of the List[type, N], so N = 2 ** d.
 /// @return gI Generalized index of the ith node in the List[type, N].
@@ -64,6 +73,18 @@ function staticListNodeGIndex(uint256 i, uint256 depth) pure returns (GIndex gI)
     p = p + i;
 
     gI = toGIndex(p);
+}
+
+/// @param i Index of a node in the Vector[type, N].
+/// @param length Length N of the vector.
+/// @return gI Generalized index of the ith node in the Vector[type, N].
+function vectorNodeGIndex(uint256 i, uint256 length) pure returns (GIndex gI) {
+    if (i >= length) revert IndexOutOfRange();
+    uint256 p = ceilLog2(length);
+    if (p >= GINDEX_BIT_SIZE) revert IndexOutOfRange();
+    unchecked {
+        gI = toGIndex((1 << p) + i);
+    }
 }
 
 /// @param i Index of a node in the ProgressiveList[type].

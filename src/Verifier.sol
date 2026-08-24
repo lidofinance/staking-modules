@@ -7,7 +7,7 @@ import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensio
 
 import { BeaconBlockHeader, Slot, Validator, Withdrawal } from "./lib/Types.sol";
 import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
-import { GIndex, toGIndex, staticListNodeGIndex, progressiveListNodeGIndex } from "./lib/GIndex.sol";
+import { GIndex, staticListNodeGIndex, vectorNodeGIndex, progressiveListNodeGIndex } from "./lib/GIndex.sol";
 import { SSZ } from "./lib/SSZ.sol";
 
 import { IVerifier } from "./interfaces/IVerifier.sol";
@@ -483,9 +483,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         } else {
             gI = GI_BLOCK_ROOTS;
         }
-        // `state.block_roots` is a Vector[Root, SLOTS_PER_HISTORICAL_ROOT]; the gindex
-        // of element rootIndex within a vector of capacity 2^d is (1 << d) | rootIndex.
-        gI = gI.concat(toGIndex(SLOTS_PER_HISTORICAL_ROOT | rootIndex));
+        gI = gI.concat(vectorNodeGIndex(rootIndex, SLOTS_PER_HISTORICAL_ROOT));
     }
 
     function _getHistoricalBlockRootGI(Slot recentSlot, Slot targetSlot) internal view returns (GIndex gI) {
@@ -505,9 +503,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         gI = gI.concat(staticListNodeGIndex(summaryIndex, 24)); // log2(HISTORICAL_ROOTS_LIMIT)
         // historical_summaries[summaryIndex].block_summary_root
         gI = gI.concat(GI_BLOCK_ROOT_IN_SUMMARY);
-        // .block_summary_root is a Vector[Root, SLOTS_PER_HISTORICAL_ROOT]; the gindex
-        // of element rootIndex within a vector of capacity 2^d is (1 << d) | rootIndex.
-        gI = gI.concat(toGIndex(SLOTS_PER_HISTORICAL_ROOT | rootIndex));
+        gI = gI.concat(vectorNodeGIndex(rootIndex, SLOTS_PER_HISTORICAL_ROOT));
     }
 
     // From HashConsensus contract.
