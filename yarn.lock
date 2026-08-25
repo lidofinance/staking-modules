@@ -172,21 +172,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lodestar/params@npm:1.45.0-dev.d16fa2b13a":
-  version: 1.45.0-dev.d16fa2b13a
-  resolution: "@lodestar/params@npm:1.45.0-dev.d16fa2b13a"
-  checksum: 10c0/2945381ae020bbc68cad7e264ce480ae00b21047bc1c41a28a906ed9a1b846fb719f518d949f7542fdca2ff80aefb10daa8a5e17b67ae8c0e5572c3dc5efd317
+"@lodestar/params@npm:^1.46.0":
+  version: 1.46.0
+  resolution: "@lodestar/params@npm:1.46.0"
+  checksum: 10c0/96bd1219125495e04fdc456411cf1c9230597b2c2fe19a83a024a43f1afe28600d2030eecdf7d3b75b184bbff6bad597303294298b3fbdf4d472a516b597df6e
   languageName: node
   linkType: hard
 
-"@lodestar/types@npm:1.45.0-dev.d16fa2b13a":
-  version: 1.45.0-dev.d16fa2b13a
-  resolution: "@lodestar/types@npm:1.45.0-dev.d16fa2b13a"
+"@lodestar/types@npm:1.46.0":
+  version: 1.46.0
+  resolution: "@lodestar/types@npm:1.46.0"
   dependencies:
     "@chainsafe/ssz": "npm:^1.6.2"
-    "@lodestar/params": "npm:^1.45.0-dev.d16fa2b13a"
+    "@lodestar/params": "npm:^1.46.0"
     ethereum-cryptography: "npm:^2.0.0"
-  checksum: 10c0/8f39c42982d07de6e150d7714eb067c68c434616c692da39677d5791101c63357ccba325456ba7bdaff7596e22c3b3265d931311d5c569e706337d531a3eb92a
+  checksum: 10c0/9dd5cf91a21b50dfa7bdd2c967d4b7e663b2f9c01674eb7697d6f487b976b03239b107ac382d7fdc74364acde6304ba84904a748b45888229b34218818bf8af4
   languageName: node
   linkType: hard
 
@@ -2050,7 +2050,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "staking-modules@workspace:."
   dependencies:
-    "@lodestar/types": "npm:1.45.0-dev.d16fa2b13a"
+    "@lodestar/types": "npm:1.46.0"
     "@openzeppelin/contracts": "npm:5.4.0"
     "@openzeppelin/contracts-upgradeable": "npm:5.4.0"
     "@openzeppelin/merkle-tree": "npm:^1.0.8"
