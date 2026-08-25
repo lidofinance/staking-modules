@@ -96,6 +96,8 @@ abstract contract BaseModule is
             stETH: address(STETH)
         });
 
+        $.nodeOperatorCreatedAt[nodeOperatorId] = block.timestamp;
+
         unchecked {
             ++$.nodeOperatorsCount;
         }
@@ -488,6 +490,11 @@ abstract contract BaseModule is
     /// @inheritdoc IBaseModule
     function getNodeOperator(uint256 nodeOperatorId) external view returns (NodeOperator memory) {
         return _baseStorage().nodeOperators[nodeOperatorId];
+    }
+
+    /// @inheritdoc IBaseModule
+    function getNodeOperatorCreatedAt(uint256 nodeOperatorId) external view returns (uint256 createdAt) {
+        return _baseStorage().nodeOperatorCreatedAt[nodeOperatorId];
     }
 
     /// @inheritdoc IBaseModule
