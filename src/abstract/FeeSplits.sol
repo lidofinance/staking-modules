@@ -27,6 +27,8 @@ abstract contract FeeSplits is IFeeSplits {
     bytes32 private constant FEE_SPLITS_STORAGE_LOCATION =
         0xac5584dcb35bfb1b3f4187762b10cb284ff937e63b5eb675e2e8e8876c7ee000;
 
+    uint256 public constant MAX_FEE_SPLITS = FeeSplitsLib.MAX_FEE_SPLITS;
+
     /// @inheritdoc IFeeSplits
     function getFeeSplits(uint256 nodeOperatorId) external view returns (FeeSplit[] memory) {
         return _getFeeSplitsStorage().feeSplits[nodeOperatorId];

@@ -10,7 +10,8 @@ import { MAX_BP } from "../lib/Constants.sol";
 /// Library for managing fee splits
 /// @dev External deployment-linked library used by Accounting.
 library FeeSplitsLib {
-    uint256 public constant MAX_FEE_SPLITS = 10;
+    /// @dev Exposed to the integrations via the `FeeSplits.MAX_FEE_SPLITS` getter
+    uint256 internal constant MAX_FEE_SPLITS = 10;
 
     /// @dev Set the fee split recipients and shares for the Node Operator
     function updateFeeSplits(
