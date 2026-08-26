@@ -112,13 +112,10 @@ contract CustomFeeRegistry is ICustomFeeRegistry, StepwiseWeightBoost {
     }
 
     /// @inheritdoc ICustomFeeRegistry
-    function getPendingFeeShareDiscount(uint256 nodeOperatorId) external view returns (uint256) {
-        return _storage().feeShareDiscounts[nodeOperatorId].pendingFeeShareDiscount;
-    }
-
-    /// @inheritdoc ICustomFeeRegistry
-    function getFeeShareDiscountCutCooldownUntil(uint256 nodeOperatorId) external view returns (uint256) {
-        return _storage().feeShareDiscounts[nodeOperatorId].cooldownUntil;
+    function getFeeShareDiscountState(
+        uint256 nodeOperatorId
+    ) external view returns (FeeShareDiscountState memory state) {
+        return _storage().feeShareDiscounts[nodeOperatorId];
     }
 
     /// @inheritdoc IWeightBoostProvider

@@ -133,13 +133,10 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, StepwiseWeightBoost 
     }
 
     /// @inheritdoc IAdditionalBondRegistry
-    function getPendingCurveMultiplier(uint256 nodeOperatorId) external view returns (uint256) {
-        return _storage().pending[nodeOperatorId].curveMultiplier;
-    }
-
-    /// @inheritdoc IAdditionalBondRegistry
-    function getCurveMultiplierReductionCooldownUntil(uint256 nodeOperatorId) external view returns (uint256) {
-        return _storage().pending[nodeOperatorId].cooldownUntil;
+    function getPendingCurveMultiplierReduction(
+        uint256 nodeOperatorId
+    ) external view returns (PendingCurveMultiplierReduction memory pending) {
+        return _storage().pending[nodeOperatorId];
     }
 
     /// @inheritdoc IWeightBoostProvider

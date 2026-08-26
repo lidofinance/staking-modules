@@ -259,8 +259,8 @@ contract AdditionalBondRegistryRequestCurveMultiplierTest is AdditionalBondRegis
         // The bond multiplier stays until apply, so it remains above MAX_BP while the weight already dropped.
         assertEq(acct.getBondCurveMultiplier(0), MAX_BP + T1_BOND);
         assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP);
-        assertEq(additionalBondRegistry.getPendingCurveMultiplier(0), 0);
-        assertEq(additionalBondRegistry.getCurveMultiplierReductionCooldownUntil(0), expectedCooldown);
+        assertEq(additionalBondRegistry.getPendingCurveMultiplierReduction(0).curveMultiplier, 0);
+        assertEq(additionalBondRegistry.getPendingCurveMultiplierReduction(0).cooldownUntil, expectedCooldown);
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), 2);
     }
 
@@ -277,7 +277,7 @@ contract AdditionalBondRegistryRequestCurveMultiplierTest is AdditionalBondRegis
         additionalBondRegistry.requestCurveMultiplier(0, T2_BOND);
 
         assertEq(acct.getBondCurveMultiplier(0), MAX_BP + T2_BOND);
-        assertEq(additionalBondRegistry.getCurveMultiplierReductionCooldownUntil(0), 0);
+        assertEq(additionalBondRegistry.getPendingCurveMultiplierReduction(0).cooldownUntil, 0);
     }
 
     function test_requestCurveMultiplier_WithinStep() public {
@@ -419,8 +419,8 @@ contract AdditionalBondRegistryApplyCurveMultiplierReductionTest is
         additionalBondRegistry.applyCurveMultiplierReduction(0);
 
         assertEq(acct.getBondCurveMultiplier(0), MAX_BP);
-        assertEq(additionalBondRegistry.getPendingCurveMultiplier(0), 0);
-        assertEq(additionalBondRegistry.getCurveMultiplierReductionCooldownUntil(0), 0);
+        assertEq(additionalBondRegistry.getPendingCurveMultiplierReduction(0).curveMultiplier, 0);
+        assertEq(additionalBondRegistry.getPendingCurveMultiplierReduction(0).cooldownUntil, 0);
     }
 
     function test_applyCurveMultiplierReduction_SettlesToRequestedNotDefault() public {
@@ -483,7 +483,7 @@ contract AdditionalBondRegistryCancelCurveMultiplierReductionTest is
         // The weight returns to the multiplier Accounting still holds; the bond was never touched.
         assertEq(acct.getBondCurveMultiplier(0), MAX_BP + T1_BOND);
         assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP + T1_WEIGHT);
-        assertEq(additionalBondRegistry.getCurveMultiplierReductionCooldownUntil(0), 0);
+        assertEq(additionalBondRegistry.getPendingCurveMultiplierReduction(0).cooldownUntil, 0);
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore + 1);
     }
 
@@ -494,7 +494,7 @@ contract AdditionalBondRegistryCancelCurveMultiplierReductionTest is
         additionalBondRegistry.cancelCurveMultiplierReduction(0);
 
         assertEq(acct.getBondCurveMultiplier(0), MAX_BP + T1_BOND);
-        assertEq(additionalBondRegistry.getCurveMultiplierReductionCooldownUntil(0), 0);
+        assertEq(additionalBondRegistry.getPendingCurveMultiplierReduction(0).cooldownUntil, 0);
     }
 
     function test_cancelCurveMultiplierReduction_DoesNotNotifyWhenWithinStep() public {

@@ -73,8 +73,8 @@ contract CustomFeeRegistryBaseTest is Test, Utilities, Fixtures, CuratedProvider
     }
 
     function _assertNoPendingFeeShareDiscountCut() internal view {
-        assertEq(feeRegistry.getPendingFeeShareDiscount(NO_ID), 0);
-        assertEq(feeRegistry.getFeeShareDiscountCutCooldownUntil(NO_ID), 0);
+        assertEq(feeRegistry.getFeeShareDiscountState(NO_ID).pendingFeeShareDiscount, 0);
+        assertEq(feeRegistry.getFeeShareDiscountState(NO_ID).cooldownUntil, 0);
     }
 }
 
@@ -183,8 +183,8 @@ contract CustomFeeRegistryRequestFeeShareDiscountTest is CustomFeeRegistryBaseTe
         _requestFeeShareDiscount(2_700);
 
         assertEq(feeRegistry.getFeeShareDiscount(NO_ID), 3_700);
-        assertEq(feeRegistry.getPendingFeeShareDiscount(NO_ID), 2_700);
-        assertEq(feeRegistry.getFeeShareDiscountCutCooldownUntil(NO_ID), cooldownUntil);
+        assertEq(feeRegistry.getFeeShareDiscountState(NO_ID).pendingFeeShareDiscount, 2_700);
+        assertEq(feeRegistry.getFeeShareDiscountState(NO_ID).cooldownUntil, cooldownUntil);
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(2_700));
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), 2);
     }
@@ -196,8 +196,8 @@ contract CustomFeeRegistryRequestFeeShareDiscountTest is CustomFeeRegistryBaseTe
         uint256 cooldownUntil = block.timestamp + COOLDOWN;
         _requestFeeShareDiscount(1_700);
 
-        assertEq(feeRegistry.getPendingFeeShareDiscount(NO_ID), 1_700);
-        assertEq(feeRegistry.getFeeShareDiscountCutCooldownUntil(NO_ID), cooldownUntil);
+        assertEq(feeRegistry.getFeeShareDiscountState(NO_ID).pendingFeeShareDiscount, 1_700);
+        assertEq(feeRegistry.getFeeShareDiscountState(NO_ID).cooldownUntil, cooldownUntil);
         vm.warp(cooldownUntil - 1);
         vm.expectRevert(ICustomFeeRegistry.FeeShareDiscountCutCooldownNotElapsed.selector);
         _applyFeeShareDiscountCut();

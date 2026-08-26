@@ -84,12 +84,11 @@ interface IAdditionalBondRegistry is IStepwiseWeightBoost {
     /// @notice Curve multiplier reduction cooldown in seconds.
     function getCurveMultiplierReductionCooldown() external view returns (uint256);
 
-    /// @notice Pending downgrade target increment. Meaningful only while a cooldown is active, since a
-    ///         legitimate target may be zero.
+    /// @notice Pending downgrade: the target increment and the timestamp at which it passes its time
+    ///         check. The target is meaningful only while `cooldownUntil` is non-zero, since a legitimate
+    ///         target may be zero.
     /// @param nodeOperatorId ID of the Node Operator.
-    function getPendingCurveMultiplier(uint256 nodeOperatorId) external view returns (uint256);
-
-    /// @notice Earliest timestamp at which the pending downgrade passes its time check, or zero if none.
-    /// @param nodeOperatorId ID of the Node Operator.
-    function getCurveMultiplierReductionCooldownUntil(uint256 nodeOperatorId) external view returns (uint256);
+    function getPendingCurveMultiplierReduction(
+        uint256 nodeOperatorId
+    ) external view returns (PendingCurveMultiplierReduction memory pending);
 }

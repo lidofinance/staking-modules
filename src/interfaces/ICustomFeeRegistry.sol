@@ -64,9 +64,9 @@ interface ICustomFeeRegistry is IStepwiseWeightBoost {
     /// @notice Stored fee share discount. Returns zero for an operator that has never set one.
     function getFeeShareDiscount(uint256 nodeOperatorId) external view returns (uint256);
 
-    /// @notice Pending cut target. Meaningful only while a cooldown is active.
-    function getPendingFeeShareDiscount(uint256 nodeOperatorId) external view returns (uint256);
-
-    /// @notice End of the pending cut cooldown, or zero if none.
-    function getFeeShareDiscountCutCooldownUntil(uint256 nodeOperatorId) external view returns (uint256);
+    /// @notice Fee share discount state: the stored discount, the pending cut target and its cooldown
+    ///         deadline. The pending target is meaningful only while `cooldownUntil` is non-zero.
+    function getFeeShareDiscountState(
+        uint256 nodeOperatorId
+    ) external view returns (FeeShareDiscountState memory state);
 }
