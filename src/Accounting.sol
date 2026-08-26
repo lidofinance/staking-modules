@@ -511,27 +511,13 @@ contract Accounting is
         }
         claimableShares = _getClaimableBondShares(nodeOperatorId);
         if (hasSplits && claimableShares != 0) {
-            uint256 pendingToSplit = FeeSplits.getPendingSharesToSplit(nodeOperatorId);
-            if (pendingToSplit == 0) return claimableShares;
-
-            uint256 splittableShares = claimableShares > pendingToSplit ? pendingToSplit : claimableShares;
-            SplitTransfer[] memory transfers = FeeSplits.getFeeSplitTransfers(nodeOperatorId, splittableShares);
-            uint256 transferredShares;
-            for (uint256 i; i < transfers.length; ++i) {
-                uint256 shares = transfers[i].shares;
-                if (shares != 0) {
-                    LIDO.transferShares(transfers[i].recipient, shares);
-                    transferredShares += shares;
+            uint256 transferredShares = FeeSplits._splitPendingShares(nodeOperatorId, claimableShares, address(LIDO));
+            if (transferredShares != 0) {
+                BondCore._unsafeReduceBond(nodeOperatorId, transferredShares);
+                // NOTE: It is safe to use unchecked here since `transferredShares` is always <= `claimableShares`
+                unchecked {
+                    claimableShares -= transferredShares;
                 }
-            }
-            // NOTE: `splittableShares` is the whole split operation base. It includes
-            //       the Node Operator's retained shares (split remainder), so we
-            //       must decrease pending by the base, not by transferred shares sum.
-            FeeSplits._unsafeDecreasePendingSharesToSplit(nodeOperatorId, splittableShares);
-            BondCore._unsafeReduceBond(nodeOperatorId, transferredShares);
-            // NOTE: It is safe to use unchecked here since `transferredShares` is always <= `claimableShares`
-            unchecked {
-                claimableShares -= transferredShares;
             }
         }
     }
