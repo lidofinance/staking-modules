@@ -212,7 +212,7 @@ contract DeployLocalDevNet is DeployBase {
         config.ldoLockBoostProviderConfig.lockBoostSteps.push(Step({ threshold: 200_000 ether, value: 1_500 }));
 
         // CustomFeeRegistry
-        config.customFeeRegistryConfig.feeDiscountCutCooldown = 15 days;
+        config.customFeeRegistryConfig.feeShareDiscountCutCooldown = 15 days;
         for (uint128 i = 1; i < 35; ++i) {
             config.customFeeRegistryConfig.boostSteps.push(Step({ threshold: i * 100, value: i * 400 }));
         }

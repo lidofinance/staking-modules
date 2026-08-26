@@ -41,7 +41,7 @@ contract CustomFeeRegistryBaseTest is Test, Utilities, Fixtures, CuratedProvider
     }
 
     function _exampleSteps() internal pure returns (Step[] memory steps) {
-        // Fee discount thresholds map to weight multiplier increments.
+        // Fee share discount thresholds map to weight multiplier increments.
         steps = new Step[](4);
         steps[0] = Step({ threshold: 1_200, value: 2_000 });
         steps[1] = Step({ threshold: 2_500, value: 5_000 });
@@ -49,32 +49,32 @@ contract CustomFeeRegistryBaseTest is Test, Utilities, Fixtures, CuratedProvider
         steps[3] = Step({ threshold: 6_200, value: 15_000 });
     }
 
-    function _weight(uint256 feeDiscount) internal pure returns (uint256) {
-        if (feeDiscount >= 6_200) return 25_000;
-        if (feeDiscount >= 3_700) return 20_000;
-        if (feeDiscount >= 2_500) return 15_000;
-        if (feeDiscount >= 1_200) return 12_000;
+    function _weight(uint256 feeShareDiscount) internal pure returns (uint256) {
+        if (feeShareDiscount >= 6_200) return 25_000;
+        if (feeShareDiscount >= 3_700) return 20_000;
+        if (feeShareDiscount >= 2_500) return 15_000;
+        if (feeShareDiscount >= 1_200) return 12_000;
         return MAX_BP;
     }
 
-    function _requestFeeDiscount(uint256 feeDiscount) internal {
+    function _requestFeeShareDiscount(uint256 feeShareDiscount) internal {
         vm.prank(nodeOperatorOwner);
-        feeRegistry.requestFeeDiscount(NO_ID, feeDiscount);
+        feeRegistry.requestFeeShareDiscount(NO_ID, feeShareDiscount);
     }
 
-    function _applyFeeDiscountCut() internal {
+    function _applyFeeShareDiscountCut() internal {
         vm.prank(nodeOperatorOwner);
-        feeRegistry.applyFeeDiscountCut(NO_ID);
+        feeRegistry.applyFeeShareDiscountCut(NO_ID);
     }
 
-    function _cancelFeeDiscountCut() internal {
+    function _cancelFeeShareDiscountCut() internal {
         vm.prank(nodeOperatorOwner);
-        feeRegistry.cancelFeeDiscountCut(NO_ID);
+        feeRegistry.cancelFeeShareDiscountCut(NO_ID);
     }
 
-    function _assertNoPendingFeeDiscountCut() internal view {
-        assertEq(feeRegistry.getPendingFeeDiscount(NO_ID), 0);
-        assertEq(feeRegistry.getFeeDiscountCutCooldownUntil(NO_ID), 0);
+    function _assertNoPendingFeeShareDiscountCut() internal view {
+        assertEq(feeRegistry.getPendingFeeShareDiscount(NO_ID), 0);
+        assertEq(feeRegistry.getFeeShareDiscountCutCooldownUntil(NO_ID), 0);
     }
 }
 
@@ -85,10 +85,10 @@ contract CustomFeeRegistryConstructorTest is CustomFeeRegistryBaseTest {
     }
 
     function test_constructor_Constants() public view {
-        assertEq(feeRegistry.FEE_DISCOUNT_STEP(), 100);
+        assertEq(feeRegistry.FEE_SHARE_DISCOUNT_STEP(), 100);
         assertEq(feeRegistry.MAX_STEPS(), 35);
         assertEq(feeRegistry.MAX_STEP_VALUE(), 9 * MAX_BP);
-        assertEq(feeRegistry.MAX_FEE_DISCOUNT_CUT_COOLDOWN(), 365 days);
+        assertEq(feeRegistry.MAX_FEE_SHARE_DISCOUNT_CUT_COOLDOWN(), 365 days);
     }
 
     function test_constructor_RevertWhen_ZeroModule() public {
@@ -103,7 +103,7 @@ contract CustomFeeRegistryInitializeTest is CustomFeeRegistryBaseTest {
     }
 
     function test_initialize_SetsCooldown() public view {
-        assertEq(feeRegistry.getFeeDiscountCutCooldown(), COOLDOWN);
+        assertEq(feeRegistry.getFeeShareDiscountCutCooldown(), COOLDOWN);
     }
 
     function test_initialize_SetsSteps() public view {
@@ -128,14 +128,14 @@ contract CustomFeeRegistryInitializeTest is CustomFeeRegistryBaseTest {
     function test_initialize_RevertWhen_ZeroCooldown() public {
         CustomFeeRegistry registry = new CustomFeeRegistry(address(module));
         _enableInitializers(address(registry));
-        vm.expectRevert(ICustomFeeRegistry.InvalidFeeDiscountCutCooldown.selector);
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeShareDiscountCutCooldown.selector);
         registry.initialize(admin, 0, new Step[](0));
     }
 
     function test_initialize_RevertWhen_CooldownExceedsMax() public {
         CustomFeeRegistry registry = new CustomFeeRegistry(address(module));
         _enableInitializers(address(registry));
-        vm.expectRevert(ICustomFeeRegistry.InvalidFeeDiscountCutCooldown.selector);
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeShareDiscountCutCooldown.selector);
         registry.initialize(admin, 365 days + 1, new Step[](0));
     }
 
@@ -147,184 +147,184 @@ contract CustomFeeRegistryInitializeTest is CustomFeeRegistryBaseTest {
     }
 }
 
-contract CustomFeeRegistryRequestFeeDiscountTest is CustomFeeRegistryBaseTest {
-    function test_requestFeeDiscount_Increase_AppliesImmediately() public {
+contract CustomFeeRegistryRequestFeeShareDiscountTest is CustomFeeRegistryBaseTest {
+    function test_requestFeeShareDiscount_Increase_AppliesImmediately() public {
         vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeDiscountSet(NO_ID, 3_700);
-        _requestFeeDiscount(3_700);
+        emit ICustomFeeRegistry.FeeShareDiscountSet(NO_ID, 3_700);
+        _requestFeeShareDiscount(3_700);
 
-        assertEq(feeRegistry.getFeeDiscount(NO_ID), 3_700);
+        assertEq(feeRegistry.getFeeShareDiscount(NO_ID), 3_700);
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(3_700));
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), 1);
         assertEq(metaRegistryMock.lastChangedBoostOperatorId(), NO_ID);
     }
 
-    function test_requestFeeDiscount_Increase_ToMaximum() public {
-        _requestFeeDiscount(10_000);
-        assertEq(feeRegistry.getFeeDiscount(NO_ID), 10_000);
+    function test_requestFeeShareDiscount_Increase_ToMaximum() public {
+        _requestFeeShareDiscount(10_000);
+        assertEq(feeRegistry.getFeeShareDiscount(NO_ID), 10_000);
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(10_000));
     }
 
-    function test_requestFeeDiscount_Increase_DoesNotNotifyWithinSameBand() public {
-        _requestFeeDiscount(1_200);
+    function test_requestFeeShareDiscount_Increase_DoesNotNotifyWithinSameBand() public {
+        _requestFeeShareDiscount(1_200);
         uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
-        _requestFeeDiscount(1_500);
+        _requestFeeShareDiscount(1_500);
 
-        assertEq(feeRegistry.getFeeDiscount(NO_ID), 1_500);
+        assertEq(feeRegistry.getFeeShareDiscount(NO_ID), 1_500);
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(1_200));
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore);
     }
 
-    function test_requestFeeDiscount_Cut_SetsPendingAndMovesWeightImmediately() public {
-        _requestFeeDiscount(3_700);
+    function test_requestFeeShareDiscount_Cut_SetsPendingAndMovesWeightImmediately() public {
+        _requestFeeShareDiscount(3_700);
         uint256 cooldownUntil = block.timestamp + COOLDOWN;
         vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeDiscountCutRequested(NO_ID, 2_700, cooldownUntil);
-        _requestFeeDiscount(2_700);
+        emit ICustomFeeRegistry.FeeShareDiscountCutRequested(NO_ID, 2_700, cooldownUntil);
+        _requestFeeShareDiscount(2_700);
 
-        assertEq(feeRegistry.getFeeDiscount(NO_ID), 3_700);
-        assertEq(feeRegistry.getPendingFeeDiscount(NO_ID), 2_700);
-        assertEq(feeRegistry.getFeeDiscountCutCooldownUntil(NO_ID), cooldownUntil);
+        assertEq(feeRegistry.getFeeShareDiscount(NO_ID), 3_700);
+        assertEq(feeRegistry.getPendingFeeShareDiscount(NO_ID), 2_700);
+        assertEq(feeRegistry.getFeeShareDiscountCutCooldownUntil(NO_ID), cooldownUntil);
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(2_700));
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), 2);
     }
 
-    function test_requestFeeDiscount_Cut_OverwritesPendingAndRestartsCooldown() public {
-        _requestFeeDiscount(3_700);
-        _requestFeeDiscount(2_700);
+    function test_requestFeeShareDiscount_Cut_OverwritesPendingAndRestartsCooldown() public {
+        _requestFeeShareDiscount(3_700);
+        _requestFeeShareDiscount(2_700);
         vm.warp(block.timestamp + 1 days);
         uint256 cooldownUntil = block.timestamp + COOLDOWN;
-        _requestFeeDiscount(1_700);
+        _requestFeeShareDiscount(1_700);
 
-        assertEq(feeRegistry.getPendingFeeDiscount(NO_ID), 1_700);
-        assertEq(feeRegistry.getFeeDiscountCutCooldownUntil(NO_ID), cooldownUntil);
+        assertEq(feeRegistry.getPendingFeeShareDiscount(NO_ID), 1_700);
+        assertEq(feeRegistry.getFeeShareDiscountCutCooldownUntil(NO_ID), cooldownUntil);
         vm.warp(cooldownUntil - 1);
-        vm.expectRevert(ICustomFeeRegistry.FeeDiscountCutCooldownNotElapsed.selector);
-        _applyFeeDiscountCut();
+        vm.expectRevert(ICustomFeeRegistry.FeeShareDiscountCutCooldownNotElapsed.selector);
+        _applyFeeShareDiscountCut();
     }
 
-    function test_requestFeeDiscount_Increase_CancelsPendingCut() public {
-        _requestFeeDiscount(3_700);
-        _requestFeeDiscount(2_700);
+    function test_requestFeeShareDiscount_Increase_CancelsPendingCut() public {
+        _requestFeeShareDiscount(3_700);
+        _requestFeeShareDiscount(2_700);
         vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeDiscountCutCancelled(NO_ID);
+        emit ICustomFeeRegistry.FeeShareDiscountCutCancelled(NO_ID);
         vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeDiscountSet(NO_ID, 4_700);
-        _requestFeeDiscount(4_700);
+        emit ICustomFeeRegistry.FeeShareDiscountSet(NO_ID, 4_700);
+        _requestFeeShareDiscount(4_700);
 
-        assertEq(feeRegistry.getFeeDiscount(NO_ID), 4_700);
-        _assertNoPendingFeeDiscountCut();
+        assertEq(feeRegistry.getFeeShareDiscount(NO_ID), 4_700);
+        _assertNoPendingFeeShareDiscountCut();
     }
 
-    function test_requestFeeDiscount_RevertWhen_NotOwner() public {
+    function test_requestFeeShareDiscount_RevertWhen_NotOwner() public {
         vm.expectRevert(IStepwiseWeightBoost.SenderIsNotNodeOperatorOwner.selector);
         vm.prank(stranger);
-        feeRegistry.requestFeeDiscount(NO_ID, 3_700);
+        feeRegistry.requestFeeShareDiscount(NO_ID, 3_700);
     }
 
-    function test_requestFeeDiscount_RevertWhen_AboveMaximum() public {
-        vm.expectRevert(ICustomFeeRegistry.InvalidFeeDiscount.selector);
-        _requestFeeDiscount(10_100);
+    function test_requestFeeShareDiscount_RevertWhen_AboveMaximum() public {
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeShareDiscount.selector);
+        _requestFeeShareDiscount(10_100);
     }
 
-    function test_requestFeeDiscount_RevertWhen_SameFeeDiscount_Unset() public {
-        vm.expectRevert(ICustomFeeRegistry.SameFeeDiscount.selector);
-        _requestFeeDiscount(0);
+    function test_requestFeeShareDiscount_RevertWhen_SameFeeShareDiscount_Unset() public {
+        vm.expectRevert(ICustomFeeRegistry.SameFeeShareDiscount.selector);
+        _requestFeeShareDiscount(0);
     }
 
-    function test_requestFeeDiscount_RevertWhen_NotAligned() public {
-        vm.expectRevert(ICustomFeeRegistry.InvalidFeeDiscount.selector);
-        _requestFeeDiscount(3_701);
+    function test_requestFeeShareDiscount_RevertWhen_NotAligned() public {
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeShareDiscount.selector);
+        _requestFeeShareDiscount(3_701);
     }
 
-    function test_requestFeeDiscount_RevertWhen_SameFeeDiscount() public {
-        _requestFeeDiscount(3_700);
-        vm.expectRevert(ICustomFeeRegistry.SameFeeDiscount.selector);
-        _requestFeeDiscount(3_700);
+    function test_requestFeeShareDiscount_RevertWhen_SameFeeShareDiscount() public {
+        _requestFeeShareDiscount(3_700);
+        vm.expectRevert(ICustomFeeRegistry.SameFeeShareDiscount.selector);
+        _requestFeeShareDiscount(3_700);
     }
 }
 
-contract CustomFeeRegistryCancelFeeDiscountCutTest is CustomFeeRegistryBaseTest {
+contract CustomFeeRegistryCancelFeeShareDiscountCutTest is CustomFeeRegistryBaseTest {
     function setUp() public override {
         super.setUp();
-        _requestFeeDiscount(3_700);
-        _requestFeeDiscount(2_700);
+        _requestFeeShareDiscount(3_700);
+        _requestFeeShareDiscount(2_700);
     }
 
-    function test_cancelFeeDiscountCut() public {
+    function test_cancelFeeShareDiscountCut() public {
         uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
         vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeDiscountCutCancelled(NO_ID);
-        _cancelFeeDiscountCut();
+        emit ICustomFeeRegistry.FeeShareDiscountCutCancelled(NO_ID);
+        _cancelFeeShareDiscountCut();
 
-        assertEq(feeRegistry.getFeeDiscount(NO_ID), 3_700);
-        _assertNoPendingFeeDiscountCut();
+        assertEq(feeRegistry.getFeeShareDiscount(NO_ID), 3_700);
+        _assertNoPendingFeeShareDiscountCut();
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(3_700));
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore + 1);
     }
 
-    function test_cancelFeeDiscountCut_RevertWhen_NotOwner() public {
+    function test_cancelFeeShareDiscountCut_RevertWhen_NotOwner() public {
         vm.expectRevert(IStepwiseWeightBoost.SenderIsNotNodeOperatorOwner.selector);
         vm.prank(stranger);
-        feeRegistry.cancelFeeDiscountCut(NO_ID);
+        feeRegistry.cancelFeeShareDiscountCut(NO_ID);
     }
 
-    function test_cancelFeeDiscountCut_RevertWhen_None() public {
-        _cancelFeeDiscountCut();
-        vm.expectRevert(ICustomFeeRegistry.NoPendingFeeDiscountCut.selector);
-        _cancelFeeDiscountCut();
+    function test_cancelFeeShareDiscountCut_RevertWhen_None() public {
+        _cancelFeeShareDiscountCut();
+        vm.expectRevert(ICustomFeeRegistry.NoPendingFeeShareDiscountCut.selector);
+        _cancelFeeShareDiscountCut();
     }
 }
 
-contract CustomFeeRegistryApplyFeeDiscountCutTest is CustomFeeRegistryBaseTest {
+contract CustomFeeRegistryApplyFeeShareDiscountCutTest is CustomFeeRegistryBaseTest {
     uint256 internal cooldownUntil;
 
     function setUp() public override {
         super.setUp();
-        _requestFeeDiscount(3_700);
-        _requestFeeDiscount(2_700);
+        _requestFeeShareDiscount(3_700);
+        _requestFeeShareDiscount(2_700);
         cooldownUntil = block.timestamp + COOLDOWN;
     }
 
-    function test_applyFeeDiscountCut_AtExactDeadline() public {
+    function test_applyFeeShareDiscountCut_AtExactDeadline() public {
         vm.warp(cooldownUntil);
         uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
         vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeDiscountCutApplied(NO_ID, 2_700);
-        _applyFeeDiscountCut();
+        emit ICustomFeeRegistry.FeeShareDiscountCutApplied(NO_ID, 2_700);
+        _applyFeeShareDiscountCut();
 
-        assertEq(feeRegistry.getFeeDiscount(NO_ID), 2_700);
-        _assertNoPendingFeeDiscountCut();
+        assertEq(feeRegistry.getFeeShareDiscount(NO_ID), 2_700);
+        _assertNoPendingFeeShareDiscountCut();
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(2_700));
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore);
     }
 
-    function test_applyFeeDiscountCut_CooldownChangeDoesNotAffectPending() public {
+    function test_applyFeeShareDiscountCut_CooldownChangeDoesNotAffectPending() public {
         vm.prank(admin);
-        feeRegistry.setFeeDiscountCutCooldown(COOLDOWN * 2);
+        feeRegistry.setFeeShareDiscountCutCooldown(COOLDOWN * 2);
         vm.warp(cooldownUntil);
-        _applyFeeDiscountCut();
-        assertEq(feeRegistry.getFeeDiscount(NO_ID), 2_700);
+        _applyFeeShareDiscountCut();
+        assertEq(feeRegistry.getFeeShareDiscount(NO_ID), 2_700);
     }
 
-    function test_applyFeeDiscountCut_RevertWhen_NotElapsed() public {
+    function test_applyFeeShareDiscountCut_RevertWhen_NotElapsed() public {
         vm.warp(cooldownUntil - 1);
-        vm.expectRevert(ICustomFeeRegistry.FeeDiscountCutCooldownNotElapsed.selector);
-        _applyFeeDiscountCut();
+        vm.expectRevert(ICustomFeeRegistry.FeeShareDiscountCutCooldownNotElapsed.selector);
+        _applyFeeShareDiscountCut();
     }
 
-    function test_applyFeeDiscountCut_RevertWhen_NotOwner() public {
+    function test_applyFeeShareDiscountCut_RevertWhen_NotOwner() public {
         vm.warp(cooldownUntil);
         vm.expectRevert(IStepwiseWeightBoost.SenderIsNotNodeOperatorOwner.selector);
         vm.prank(stranger);
-        feeRegistry.applyFeeDiscountCut(NO_ID);
+        feeRegistry.applyFeeShareDiscountCut(NO_ID);
     }
 
-    function test_applyFeeDiscountCut_RevertWhen_None() public {
+    function test_applyFeeShareDiscountCut_RevertWhen_None() public {
         vm.warp(cooldownUntil);
-        _applyFeeDiscountCut();
-        vm.expectRevert(ICustomFeeRegistry.NoPendingFeeDiscountCut.selector);
-        _applyFeeDiscountCut();
+        _applyFeeShareDiscountCut();
+        vm.expectRevert(ICustomFeeRegistry.NoPendingFeeShareDiscountCut.selector);
+        _applyFeeShareDiscountCut();
     }
 }
 
@@ -350,7 +350,7 @@ contract CustomFeeRegistrySetStepsTest is CustomFeeRegistryBaseTest, StepwiseWei
     }
 
     function test_setSteps_ChangesWeights() public {
-        _requestFeeDiscount(3_700);
+        _requestFeeShareDiscount(3_700);
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), 20_000);
 
         Step[] memory steps = new Step[](1);
@@ -381,37 +381,37 @@ contract CustomFeeRegistrySetStepsTest is CustomFeeRegistryBaseTest, StepwiseWei
     }
 }
 
-contract CustomFeeRegistrySetFeeDiscountCutCooldownTest is CustomFeeRegistryBaseTest {
-    function test_setFeeDiscountCutCooldown() public {
+contract CustomFeeRegistrySetFeeShareDiscountCutCooldownTest is CustomFeeRegistryBaseTest {
+    function test_setFeeShareDiscountCutCooldown() public {
         vm.expectEmit(address(feeRegistry));
-        emit ICustomFeeRegistry.FeeDiscountCutCooldownSet(30 days);
+        emit ICustomFeeRegistry.FeeShareDiscountCutCooldownSet(30 days);
         vm.prank(admin);
-        feeRegistry.setFeeDiscountCutCooldown(30 days);
-        assertEq(feeRegistry.getFeeDiscountCutCooldown(), 30 days);
+        feeRegistry.setFeeShareDiscountCutCooldown(30 days);
+        assertEq(feeRegistry.getFeeShareDiscountCutCooldown(), 30 days);
     }
 
-    function test_setFeeDiscountCutCooldown_RevertWhen_NotAdmin() public {
+    function test_setFeeShareDiscountCutCooldown_RevertWhen_NotAdmin() public {
         expectRoleRevert(stranger, feeRegistry.DEFAULT_ADMIN_ROLE());
         vm.prank(stranger);
-        feeRegistry.setFeeDiscountCutCooldown(30 days);
+        feeRegistry.setFeeShareDiscountCutCooldown(30 days);
     }
 
-    function test_setFeeDiscountCutCooldown_RevertWhen_Zero() public {
-        vm.expectRevert(ICustomFeeRegistry.InvalidFeeDiscountCutCooldown.selector);
+    function test_setFeeShareDiscountCutCooldown_RevertWhen_Zero() public {
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeShareDiscountCutCooldown.selector);
         vm.prank(admin);
-        feeRegistry.setFeeDiscountCutCooldown(0);
+        feeRegistry.setFeeShareDiscountCutCooldown(0);
     }
 
-    function test_setFeeDiscountCutCooldown_RevertWhen_ExceedsMax() public {
-        vm.expectRevert(ICustomFeeRegistry.InvalidFeeDiscountCutCooldown.selector);
+    function test_setFeeShareDiscountCutCooldown_RevertWhen_ExceedsMax() public {
+        vm.expectRevert(ICustomFeeRegistry.InvalidFeeShareDiscountCutCooldown.selector);
         vm.prank(admin);
-        feeRegistry.setFeeDiscountCutCooldown(365 days + 1);
+        feeRegistry.setFeeShareDiscountCutCooldown(365 days + 1);
     }
 }
 
 contract CustomFeeRegistryViewsTest is CustomFeeRegistryBaseTest {
-    function test_getFeeDiscount_UnsetIsZero() public view {
-        assertEq(feeRegistry.getFeeDiscount(NO_ID), 0);
+    function test_getFeeShareDiscount_UnsetIsZero() public view {
+        assertEq(feeRegistry.getFeeShareDiscount(NO_ID), 0);
     }
 
     function test_getWeightBoostMultiplierBP_UnsetIsOne() public view {
@@ -419,13 +419,13 @@ contract CustomFeeRegistryViewsTest is CustomFeeRegistryBaseTest {
     }
 
     function test_getWeightBoostMultiplierBP_StepsAndBands() public {
-        _requestFeeDiscount(1_200);
+        _requestFeeShareDiscount(1_200);
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), 12_000);
-        _requestFeeDiscount(2_500);
+        _requestFeeShareDiscount(2_500);
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), 15_000);
-        _requestFeeDiscount(3_700);
+        _requestFeeShareDiscount(3_700);
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), 20_000);
-        _requestFeeDiscount(10_000);
+        _requestFeeShareDiscount(10_000);
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), _weight(10_000));
     }
 
@@ -438,9 +438,9 @@ contract CustomFeeRegistryViewsTest is CustomFeeRegistryBaseTest {
         vm.prank(admin);
         feeRegistry.setSteps(steps);
 
-        _requestFeeDiscount(1_700); // Reaches step 17.
+        _requestFeeShareDiscount(1_700); // Reaches step 17.
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), MAX_BP + 17_000);
-        _requestFeeDiscount(3_400); // Reaches the final step 34.
+        _requestFeeShareDiscount(3_400); // Reaches the final step 34.
         assertEq(feeRegistry.getWeightBoostMultiplierBP(NO_ID), MAX_BP + 34_000);
     }
 }

@@ -619,7 +619,9 @@ contract DeploymentHelpers is Test {
         }
 
         // CustomFeeRegistry
-        dst.customFeeRegistryConfig.feeDiscountCutCooldown = src.customFeeRegistryConfig.feeDiscountCutCooldown;
+        dst.customFeeRegistryConfig.feeShareDiscountCutCooldown = src
+            .customFeeRegistryConfig
+            .feeShareDiscountCutCooldown;
         for (uint256 i; i < src.customFeeRegistryConfig.boostSteps.length; ++i) {
             dst.customFeeRegistryConfig.boostSteps.push(src.customFeeRegistryConfig.boostSteps[i]);
         }

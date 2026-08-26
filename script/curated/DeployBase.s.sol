@@ -91,7 +91,7 @@ struct ERC20LockBoostProviderConfig {
 }
 
 struct CustomFeeRegistryConfig {
-    uint256 feeDiscountCutCooldown;
+    uint256 feeShareDiscountCutCooldown;
     Step[] boostSteps;
 }
 
@@ -436,7 +436,7 @@ abstract contract DeployBase is Script {
                     CustomFeeRegistry.initialize,
                     (
                         deployer,
-                        config.customFeeRegistryConfig.feeDiscountCutCooldown,
+                        config.customFeeRegistryConfig.feeShareDiscountCutCooldown,
                         config.customFeeRegistryConfig.boostSteps
                     )
                 )

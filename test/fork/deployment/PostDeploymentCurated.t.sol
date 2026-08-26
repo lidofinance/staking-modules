@@ -385,8 +385,8 @@ contract CustomFeeRegistryDeploymentTest is DeploymentBaseTest {
     function test_state_onlyFull() public view {
         assertEq(customFeeRegistry.getInitializedVersion(), 1);
         assertEq(
-            customFeeRegistry.getFeeDiscountCutCooldown(),
-            deployParams.customFeeRegistryConfig.feeDiscountCutCooldown
+            customFeeRegistry.getFeeShareDiscountCutCooldown(),
+            deployParams.customFeeRegistryConfig.feeShareDiscountCutCooldown
         );
 
         _assertSteps(customFeeRegistry.getSteps(), deployParams.customFeeRegistryConfig.boostSteps);
@@ -394,10 +394,14 @@ contract CustomFeeRegistryDeploymentTest is DeploymentBaseTest {
 
     function test_immutables_onlyFull() public view {
         _assertProviderWiring(address(customFeeRegistry), "custom fee registry");
-        assertEq(customFeeRegistry.FEE_DISCOUNT_STEP(), 100, "custom fee discount step");
+        assertEq(customFeeRegistry.FEE_SHARE_DISCOUNT_STEP(), 100, "custom fee share discount step");
         assertEq(customFeeRegistry.MAX_STEPS(), 35, "custom fee max weight steps");
         assertEq(customFeeRegistry.MAX_STEP_VALUE(), 90_000, "custom fee max weight multiplier");
-        assertEq(customFeeRegistry.MAX_FEE_DISCOUNT_CUT_COOLDOWN(), 365 days, "custom fee max discount cut cooldown");
+        assertEq(
+            customFeeRegistry.MAX_FEE_SHARE_DISCOUNT_CUT_COOLDOWN(),
+            365 days,
+            "custom fee max discount cut cooldown"
+        );
     }
 
     function test_roles_onlyFull() public view {
