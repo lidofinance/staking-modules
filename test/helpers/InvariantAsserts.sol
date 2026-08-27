@@ -152,6 +152,31 @@ contract InvariantAsserts is Test {
         );
     }
 
+    /// @dev Only holds for the state built from scratch, since the slashings reported before the counter was
+    ///      introduced are not counted.
+    function assertModuleSlashings(IBaseModule module) public {
+        if (skipInvariants()) return;
+        if (skipLongForkTest()) return;
+
+        uint256 noCount = module.getNodeOperatorsCount();
+
+        for (uint256 noId = 0; noId < noCount; ++noId) {
+            uint256 unresolvedSlashings;
+            uint256 totalDepositedKeys = module.getNodeOperator(noId).totalDepositedKeys;
+
+            for (uint256 keyIndex = 0; keyIndex < totalDepositedKeys; ++keyIndex) {
+                if (module.isValidatorWithdrawn(noId, keyIndex)) continue;
+                if (module.isValidatorSlashed(noId, keyIndex)) ++unresolvedSlashings;
+            }
+
+            assertEq(
+                module.getNodeOperatorUnresolvedSlashedValidators(noId),
+                unresolvedSlashings,
+                "assert unresolved slashings"
+            );
+        }
+    }
+
     mapping(uint256 => uint256) batchKeys;
 
     function assertModuleEnqueuedCount(ICSModule csm) public {

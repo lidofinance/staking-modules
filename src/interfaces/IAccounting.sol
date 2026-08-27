@@ -191,12 +191,20 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     function getBondSummaryShares(uint256 nodeOperatorId) external view returns (uint256 current, uint256 required);
 
     /// @notice Get current claimable bond in stETH shares for the given Node Operator
+    /// @dev Returns zero while the Node Operator has slashed validators with unreported withdrawals. The uncovered
+    ///      losses remain as the bond debt, keeping the claimable amount at zero until compensated.
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Current claimable bond in stETH shares
     function getClaimableBondShares(uint256 nodeOperatorId) external view returns (uint256);
 
+    /// @notice Check whether bond claims of the given Node Operator are restricted due to unresolved slashings
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @return True if the Node Operator has slashed validators with unreported withdrawals
+    function isBondClaimRestricted(uint256 nodeOperatorId) external view returns (bool);
+
     /// @notice Get current claimable bond in stETH shares for the given Node Operator
     ///         Includes potential rewards distributed by the Fee Distributor
+    /// @dev Returns zero while the Node Operator's bond claims are restricted, see `getClaimableBondShares`
     /// @param nodeOperatorId ID of the Node Operator
     /// @param cumulativeFeeShares Cumulative fee stETH shares for the Node Operator
     /// @param rewardsProof Merkle proof of the rewards
@@ -267,6 +275,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     /// @return shares Amount of stETH shares claimed
     /// @dev It's impossible to use single-leaf proof via this method, so this case should be treated carefully by
     /// off-chain tooling, e.g. to make sure a tree has at least 2 leaves.
+    /// @dev Claims nothing while bond claims are restricted, see `getClaimableBondShares`. Rewards are still pulled.
     function claimRewardsStETH(
         uint256 nodeOperatorId,
         uint256 stETHAmount,
@@ -283,6 +292,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     /// @return claimedWstETHAmount Amount of wstETH claimed
     /// @dev It's impossible to use single-leaf proof via this method, so this case should be treated carefully by
     /// off-chain tooling, e.g. to make sure a tree has at least 2 leaves.
+    /// @dev Claims nothing while bond claims are restricted, see `getClaimableBondShares`. Rewards are still pulled.
     function claimRewardsWstETH(
         uint256 nodeOperatorId,
         uint256 wstETHAmount,
@@ -300,6 +310,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
     /// @return requestId Withdrawal NFT ID
     /// @dev It's impossible to use single-leaf proof via this method, so this case should be treated carefully by
     /// off-chain tooling, e.g. to make sure a tree has at least 2 leaves.
+    /// @dev Claims nothing while bond claims are restricted, see `getClaimableBondShares`. Rewards are still pulled.
     function claimRewardsUnstETH(
         uint256 nodeOperatorId,
         uint256 stETHAmount,
