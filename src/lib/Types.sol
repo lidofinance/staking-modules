@@ -18,7 +18,11 @@ function lt(Slot lhs, Slot rhs) pure returns (bool) {
     return lhs.unwrap() < rhs.unwrap();
 }
 
-using { unwrap, lt as <, gt as > } for Slot global;
+function gte(Slot lhs, Slot rhs) pure returns (bool) {
+    return lhs.unwrap() >= rhs.unwrap();
+}
+
+using { unwrap, lt as <, gt as >, gte as >= } for Slot global;
 
 // As defined in capella/beacon-chain.md:99
 struct Withdrawal {

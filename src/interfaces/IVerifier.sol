@@ -10,14 +10,16 @@ import { IBaseModule } from "./IBaseModule.sol";
 
 interface IVerifier {
     struct GIndices {
-        GIndex gIFirstWithdrawalPrev;
-        GIndex gIFirstWithdrawalCurr;
-        GIndex gIFirstValidatorPrev;
-        GIndex gIFirstValidatorCurr;
-        GIndex gIFirstHistoricalSummaryPrev;
-        GIndex gIFirstHistoricalSummaryCurr;
-        GIndex gIFirstBalanceNodePrev;
-        GIndex gIFirstBalanceNodeCurr;
+        GIndex gIWithdrawalsPreGloas;
+        GIndex gIWithdrawals;
+        GIndex gIValidatorsPreGloas;
+        GIndex gIValidators;
+        GIndex gIHistoricalSummariesPreGloas;
+        GIndex gIHistoricalSummaries;
+        GIndex gIBalancesPreGloas;
+        GIndex gIBalances;
+        GIndex gIBlockRootsPreGloas;
+        GIndex gIBlockRoots;
     }
 
     struct RecentHeaderWitness {
@@ -25,7 +27,7 @@ interface IVerifier {
         uint64 rootsTimestamp; // To be passed to the EIP-4788 block roots contract.
     }
 
-    // A witness for a block header which root is accessible via `historical_summaries` field.
+    // A witness for a block header which root is accessible either via historical_summaries or block_roots.
     struct HistoricalHeaderWitness {
         BeaconBlockHeader header;
         bytes32[] proof;
@@ -55,21 +57,21 @@ interface IVerifier {
         RecentHeaderWitness recentBlock;
     }
 
+    /// @notice Withdrawal proof input shared by the recent and historical withdrawal flows.
+    /// @dev `withdrawalBlock.proof` proves the withdrawal block against `recentBlock` state. The recent flow resolves
+    /// it through `block_roots`, while the historical flow resolves it through `historical_summaries`.
     struct ProcessWithdrawalInput {
         WithdrawalWitness withdrawal;
         ValidatorWitness validator;
-        RecentHeaderWitness withdrawalBlock;
-    }
-
-    struct ProcessHistoricalWithdrawalInput {
-        WithdrawalWitness withdrawal;
-        ValidatorWitness validator;
         RecentHeaderWitness recentBlock;
+        // The block that actually contained the withdrawal.
         HistoricalHeaderWitness withdrawalBlock;
     }
 
     struct ProcessBalanceProofInput {
         RecentHeaderWitness recentBlock;
+        // The block containing the balance, proven against `recentBlock` state block roots.
+        HistoricalHeaderWitness balanceBlock;
         ValidatorWitness validator;
         BalanceWitness balance;
     }
@@ -89,17 +91,19 @@ interface IVerifier {
     error ValidatorIsNotSlashed();
     error ValidatorIsNotWithdrawable();
     error ValidatorIsWithdrawable();
+    error InvalidWithdrawalCredentials();
     error InvalidWithdrawalAddress();
     error InvalidPublicKey();
     error InvalidValidatorIndex();
     error UnsupportedSlot(Slot slot);
     error ZeroModuleAddress();
-    error ZeroWithdrawalAddress();
+    error ZeroWithdrawalCredentials();
     error ZeroAdminAddress();
     error InvalidPivotSlot();
     error InvalidCapellaSlot();
     error InvalidMinWithdrawalRatio();
     error HistoricalSummaryDoesNotExist();
+    error BlockRootNotInRange();
 
     function BEACON_ROOTS() external view returns (address);
 
@@ -107,19 +111,23 @@ interface IVerifier {
 
     function SLOTS_PER_HISTORICAL_ROOT() external view returns (uint64);
 
-    function GI_FIRST_WITHDRAWAL_PREV() external view returns (GIndex);
+    function GI_WITHDRAWALS_PRE_GLOAS() external view returns (GIndex);
 
-    function GI_FIRST_WITHDRAWAL_CURR() external view returns (GIndex);
+    function GI_WITHDRAWALS() external view returns (GIndex);
 
-    function GI_FIRST_VALIDATOR_PREV() external view returns (GIndex);
+    function GI_VALIDATORS_PRE_GLOAS() external view returns (GIndex);
 
-    function GI_FIRST_VALIDATOR_CURR() external view returns (GIndex);
+    function GI_VALIDATORS() external view returns (GIndex);
 
-    function GI_FIRST_HISTORICAL_SUMMARY_PREV() external view returns (GIndex);
+    function GI_HISTORICAL_SUMMARIES_PRE_GLOAS() external view returns (GIndex);
 
-    function GI_FIRST_HISTORICAL_SUMMARY_CURR() external view returns (GIndex);
+    function GI_HISTORICAL_SUMMARIES() external view returns (GIndex);
 
-    function GI_FIRST_BLOCK_ROOT_IN_SUMMARY() external view returns (GIndex);
+    function GI_BLOCK_ROOT_IN_SUMMARY() external view returns (GIndex);
+
+    function GI_BLOCK_ROOTS_PRE_GLOAS() external view returns (GIndex);
+
+    function GI_BLOCK_ROOTS() external view returns (GIndex);
 
     function FIRST_SUPPORTED_SLOT() external view returns (Slot);
 
@@ -127,7 +135,7 @@ interface IVerifier {
 
     function CAPELLA_SLOT() external view returns (Slot);
 
-    function WITHDRAWAL_ADDRESS() external view returns (address);
+    function WITHDRAWAL_CREDENTIALS() external view returns (bytes32);
 
     function MIN_WITHDRAWAL_RATIO() external view returns (uint256);
 
@@ -137,22 +145,22 @@ interface IVerifier {
     /// @param data @see ProcessSlashedInput
     function processSlashedProof(ProcessSlashedInput calldata data) external;
 
-    /// @notice Verify withdrawal proof and report withdrawal to the module for valid proofs
+    /// @notice Verify a withdrawal block through recent state `block_roots` and report the withdrawal to the module.
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
     /// determining the exact penalty amounts and calling the `IBaseModule.reportSlashedWithdrawnValidators` method via
     /// an EasyTrack motion.
     /// @param data @see ProcessWithdrawalInput
     function processWithdrawalProof(ProcessWithdrawalInput calldata data) external;
 
-    /// @notice Verify withdrawal proof against historical summaries data and report withdrawal to the module for valid proofs
+    /// @notice Verify a withdrawal block through recent state `historical_summaries` and report the withdrawal to the module.
     /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
     /// determining the exact penalty amounts and calling the `IBaseModule.reportSlashedWithdrawnValidators` method via
     /// an EasyTrack motion.
-    /// @param data @see ProcessHistoricalWithdrawalInput
-    function processHistoricalWithdrawalProof(ProcessHistoricalWithdrawalInput calldata data) external;
+    /// @param data @see ProcessWithdrawalInput
+    function processHistoricalWithdrawalProof(ProcessWithdrawalInput calldata data) external;
 
-    /// @notice Verify a validator's balance proof from a recent beacon block and sync the key added balance.
-    /// @param data The balance proof input containing recent block header, validator witness, and balance witness.
+    /// @notice Verify a validator's balance proof from a beacon block available through recent state block roots.
+    /// @param data The balance proof input containing recent and balance block headers and proof witnesses.
     function processBalanceProof(ProcessBalanceProofInput calldata data) external;
 
     /// @notice Verify a validator's balance proof from a historical beacon block and sync the key added balance.

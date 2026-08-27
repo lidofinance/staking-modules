@@ -24,8 +24,6 @@ import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 import { ICircuitBreaker } from "../../src/interfaces/ICircuitBreaker.sol";
 import { ForkHelpersCommon } from "./Common.sol";
 import { DeployParams } from "../csm/DeployBase.s.sol";
-import { DeployCSM0x02Params } from "../csm0x02/DeployCSM0x02Base.s.sol";
-import { CuratedDeployParams } from "../curated/DeployBase.s.sol";
 
 contract SimulateVote is Script, ForkHelpersCommon {
     bytes32 internal constant REPORT_EL_REWARDS_STEALING_PENALTY_ROLE =

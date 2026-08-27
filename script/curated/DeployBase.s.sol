@@ -21,7 +21,6 @@ import { CuratedGate } from "../../src/CuratedGate.sol";
 import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 
 import { ILidoLocator } from "../../src/interfaces/ILidoLocator.sol";
-import { ICircuitBreaker } from "../../src/interfaces/ICircuitBreaker.sol";
 import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
 import { IVerifier } from "../../src/interfaces/IVerifier.sol";
 import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.sol";
@@ -30,8 +29,8 @@ import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
 import { JsonObj, Json } from "../utils/Json.sol";
 import { Dummy } from "../utils/Dummy.sol";
 import { CommonScriptUtils } from "../utils/Common.sol";
-import { GIndex } from "../../src/lib/GIndex.sol";
 import { Slot } from "../../src/lib/Types.sol";
+import { WCType, toWC } from "../../src/utils/WithdrawalCredentials.sol";
 
 struct GateCurveParams {
     IParametersRegistry.MarkedUint248 generalDelayedPenaltyAdditionalFine;
@@ -74,11 +73,9 @@ struct CuratedDeployParams {
     address[] oracleMembers;
     uint256 hashConsensusQuorum;
     // Verifier
-    GIndex gIFirstWithdrawal;
-    GIndex gIFirstValidator;
-    GIndex gIFirstHistoricalSummary;
-    GIndex gIFirstBalanceNode;
+    IVerifier.GIndices verifierGIndices;
     uint256 verifierFirstSupportedSlot;
+    uint256 verifierPivotSlot;
     uint256 capellaSlot;
     uint256 minWithdrawalRatio;
     // Accounting
@@ -130,7 +127,6 @@ abstract contract DeployBase is Script {
     string internal chainName;
     uint256 internal chainId;
     ILidoLocator internal locator;
-
     address internal deployer;
     CuratedModule public curatedModule;
     Accounting public accounting;
@@ -155,6 +151,8 @@ abstract contract DeployBase is Script {
     error InvalidInput(string reason);
 
     function _m(uint256 v) internal pure returns (IParametersRegistry.MarkedUint248 memory) {
+        // Deploy-config inputs fit in uint248 by construction; the narrowing is intentional.
+        // forge-lint: disable-next-line(unsafe-typecast)
         return IParametersRegistry.MarkedUint248({ value: uint248(v), isValue: true });
     }
 
@@ -245,23 +243,13 @@ abstract contract DeployBase is Script {
                 )
             );
 
-            // prettier-ignore
             verifier = new Verifier({
-                withdrawalAddress: locator.withdrawalVault(),
+                withdrawalCredentials: toWC(locator.withdrawalVault(), WCType.Compounding),
                 module: address(curatedModule),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
-                gindices: IVerifier.GIndices({
-                    gIFirstWithdrawalPrev: config.gIFirstWithdrawal,
-                    gIFirstWithdrawalCurr: config.gIFirstWithdrawal,
-                    gIFirstValidatorPrev: config.gIFirstValidator,
-                    gIFirstValidatorCurr: config.gIFirstValidator,
-                    gIFirstHistoricalSummaryPrev: config.gIFirstHistoricalSummary,
-                    gIFirstHistoricalSummaryCurr: config.gIFirstHistoricalSummary,
-                    gIFirstBalanceNodePrev: config.gIFirstBalanceNode,
-                    gIFirstBalanceNodeCurr: config.gIFirstBalanceNode
-                }),
+                gindices: config.verifierGIndices,
                 firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
-                pivotSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
+                pivotSlot: Slot.wrap(uint64(config.verifierPivotSlot)),
                 capellaSlot: Slot.wrap(uint64(config.capellaSlot)),
                 minWithdrawalRatio: config.minWithdrawalRatio,
                 admin: deployer
