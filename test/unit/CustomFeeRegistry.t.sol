@@ -9,6 +9,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { CustomFeeRegistry } from "src/CustomFeeRegistry.sol";
 import { ICustomFeeRegistry } from "src/interfaces/ICustomFeeRegistry.sol";
+import { IBaseWeightBoostProvider } from "src/interfaces/IBaseWeightBoostProvider.sol";
 import { IStepwiseWeightBoost, Step } from "src/interfaces/IStepwiseWeightBoost.sol";
 
 import { CuratedProviderFixture } from "../helpers/CuratedProviderFixture.sol";
@@ -92,7 +93,7 @@ contract CustomFeeRegistryConstructorTest is CustomFeeRegistryBaseTest {
     }
 
     function test_constructor_RevertWhen_ZeroModule() public {
-        vm.expectRevert(IStepwiseWeightBoost.ZeroModuleAddress.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.ZeroModuleAddress.selector);
         new CustomFeeRegistry(address(0));
     }
 }
@@ -116,7 +117,7 @@ contract CustomFeeRegistryInitializeTest is CustomFeeRegistryBaseTest {
     function test_initialize_RevertWhen_ZeroAdmin() public {
         CustomFeeRegistry registry = new CustomFeeRegistry(address(module));
         _enableInitializers(address(registry));
-        vm.expectRevert(IStepwiseWeightBoost.ZeroAdminAddress.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.ZeroAdminAddress.selector);
         registry.initialize(address(0), COOLDOWN, new Step[](0));
     }
 
@@ -217,7 +218,7 @@ contract CustomFeeRegistryRequestFeeShareDiscountTest is CustomFeeRegistryBaseTe
     }
 
     function test_requestFeeShareDiscount_RevertWhen_NotOwner() public {
-        vm.expectRevert(IStepwiseWeightBoost.SenderIsNotNodeOperatorOwner.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.SenderIsNotNodeOperatorOwner.selector);
         vm.prank(stranger);
         feeRegistry.requestFeeShareDiscount(NO_ID, 3_700);
     }
@@ -264,7 +265,7 @@ contract CustomFeeRegistryCancelFeeShareDiscountCutTest is CustomFeeRegistryBase
     }
 
     function test_cancelFeeShareDiscountCut_RevertWhen_NotOwner() public {
-        vm.expectRevert(IStepwiseWeightBoost.SenderIsNotNodeOperatorOwner.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.SenderIsNotNodeOperatorOwner.selector);
         vm.prank(stranger);
         feeRegistry.cancelFeeShareDiscountCut(NO_ID);
     }
@@ -315,7 +316,7 @@ contract CustomFeeRegistryApplyFeeShareDiscountCutTest is CustomFeeRegistryBaseT
 
     function test_applyFeeShareDiscountCut_RevertWhen_NotOwner() public {
         vm.warp(cooldownUntil);
-        vm.expectRevert(IStepwiseWeightBoost.SenderIsNotNodeOperatorOwner.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.SenderIsNotNodeOperatorOwner.selector);
         vm.prank(stranger);
         feeRegistry.applyFeeShareDiscountCut(NO_ID);
     }

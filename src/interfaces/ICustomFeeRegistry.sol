@@ -5,15 +5,15 @@ pragma solidity 0.8.33;
 
 import { IStepwiseWeightBoost, Step } from "./IStepwiseWeightBoost.sol";
 
-/// @dev Fee share discount state of a Node Operator, packed into one slot.
+/// @dev Packed into one slot.
 struct FeeShareDiscountState {
     uint16 currentFeeShareDiscount;
     uint16 pendingFeeShareDiscount;
     uint64 cooldownUntil;
 }
 
-/// @notice Per-operator discount from the operator's fee share and the allocation weight boost derived from it.
-///         The base and effective fees are intentionally calculated off-chain.
+/// @notice Per-operator discount from the operator's fee share and the weight boost derived from it.
+///         The base and effective fees are calculated off-chain.
 interface ICustomFeeRegistry is IStepwiseWeightBoost {
     event FeeShareDiscountSet(uint256 indexed nodeOperatorId, uint256 feeShareDiscount);
     event FeeShareDiscountCutRequested(
@@ -43,9 +43,9 @@ interface ICustomFeeRegistry is IStepwiseWeightBoost {
     /// @param steps Initial steps. A threshold is a fee share discount in basis points.
     function initialize(address admin, uint256 feeShareDiscountCutCooldown, Step[] calldata steps) external;
 
-    /// @notice Request a fee share discount, from zero to MAX_BP. An increase applies immediately;
-    ///         a cut enters cooldown while the allocation weight follows it immediately. Only the Node
-    ///         Operator owner.
+    /// @notice Request a discount in [0, MAX_BP], aligned to FEE_SHARE_DISCOUNT_STEP. Only the Node
+    ///         Operator owner. An increase applies at once, a cut only after the cooldown, while the
+    ///         allocation weight follows either immediately.
     function requestFeeShareDiscount(uint256 nodeOperatorId, uint256 feeShareDiscount) external;
 
     /// @notice Cancel a pending fee-share discount cut. Only the Node Operator owner.
@@ -64,8 +64,8 @@ interface ICustomFeeRegistry is IStepwiseWeightBoost {
     /// @notice Stored fee share discount. Returns zero for an operator that has never set one.
     function getFeeShareDiscount(uint256 nodeOperatorId) external view returns (uint256);
 
-    /// @notice Fee share discount state: the stored discount, the pending cut target and its cooldown
-    ///         deadline. The pending target is meaningful only while `cooldownUntil` is non-zero.
+    /// @notice Stored discount, pending cut target and its deadline. The target applies only while
+    ///         `cooldownUntil` is non-zero, since zero is a legitimate target.
     function getFeeShareDiscountState(
         uint256 nodeOperatorId
     ) external view returns (FeeShareDiscountState memory state);

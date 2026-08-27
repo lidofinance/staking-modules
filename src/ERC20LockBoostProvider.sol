@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+import { BaseWeightBoostProvider } from "./abstract/BaseWeightBoostProvider.sol";
 import { StepwiseWeightBoost } from "./abstract/StepwiseWeightBoost.sol";
 import { NodeOperator } from "./interfaces/IBaseModule.sol";
 import { IERC20LockBoostProvider } from "./interfaces/IERC20LockBoostProvider.sol";
@@ -61,13 +62,13 @@ contract ERC20LockBoostProvider is IERC20LockBoostProvider, StepwiseWeightBoost 
 
     /// @inheritdoc IERC20LockBoostProvider
     function lock(uint256 nodeOperatorId, uint256 amount) external {
-        StepwiseWeightBoost._onlyNodeOperatorOwner(nodeOperatorId);
+        BaseWeightBoostProvider._onlyNodeOperatorOwner(nodeOperatorId);
         _lockTokens(nodeOperatorId, amount);
     }
 
     /// @inheritdoc IERC20LockBoostProvider
     function withdraw(uint256 nodeOperatorId, uint256 amount, address receiver) external {
-        StepwiseWeightBoost._onlyNodeOperatorOwner(nodeOperatorId);
+        BaseWeightBoostProvider._onlyNodeOperatorOwner(nodeOperatorId);
 
         OperatorLock storage lockInfo = _storage().locks[nodeOperatorId];
         if (lockInfo.amount == 0) revert NoTokensLocked();

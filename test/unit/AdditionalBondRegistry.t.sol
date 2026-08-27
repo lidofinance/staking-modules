@@ -9,6 +9,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { AdditionalBondRegistry } from "src/AdditionalBondRegistry.sol";
 import { IAdditionalBondRegistry } from "src/interfaces/IAdditionalBondRegistry.sol";
+import { IBaseWeightBoostProvider } from "src/interfaces/IBaseWeightBoostProvider.sol";
 import { IStepwiseWeightBoost, Step } from "src/interfaces/IStepwiseWeightBoost.sol";
 
 import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
@@ -59,7 +60,7 @@ contract AdditionalBondRegistryConstructorTest is AdditionalBondRegistryBaseTest
     }
 
     function test_constructor_RevertWhen_ZeroModule() public {
-        vm.expectRevert(IStepwiseWeightBoost.ZeroModuleAddress.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.ZeroModuleAddress.selector);
         new AdditionalBondRegistry(address(0));
     }
 }
@@ -90,7 +91,7 @@ contract AdditionalBondRegistryInitializeTest is AdditionalBondRegistryBaseTest 
     function test_initialize_RevertWhen_ZeroAdmin() public {
         AdditionalBondRegistry tp = new AdditionalBondRegistry(address(module));
         _enableInitializers(address(tp));
-        vm.expectRevert(IStepwiseWeightBoost.ZeroAdminAddress.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.ZeroAdminAddress.selector);
         tp.initialize(address(0), CURVE_MULTIPLIER_REDUCTION_COOLDOWN, new Step[](0));
     }
 
@@ -295,7 +296,7 @@ contract AdditionalBondRegistryRequestCurveMultiplierTest is AdditionalBondRegis
     }
 
     function test_requestCurveMultiplier_RevertWhen_NotOwner() public {
-        vm.expectRevert(IStepwiseWeightBoost.SenderIsNotNodeOperatorOwner.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.SenderIsNotNodeOperatorOwner.selector);
         vm.prank(stranger);
         additionalBondRegistry.requestCurveMultiplier(0, T1_BOND);
     }
@@ -439,7 +440,7 @@ contract AdditionalBondRegistryApplyCurveMultiplierReductionTest is
 
     function test_applyCurveMultiplierReduction_RevertWhen_NotOwner() public {
         vm.warp(block.timestamp + CURVE_MULTIPLIER_REDUCTION_COOLDOWN + 1);
-        vm.expectRevert(IStepwiseWeightBoost.SenderIsNotNodeOperatorOwner.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.SenderIsNotNodeOperatorOwner.selector);
         vm.prank(stranger);
         additionalBondRegistry.applyCurveMultiplierReduction(0);
     }
@@ -512,7 +513,7 @@ contract AdditionalBondRegistryCancelCurveMultiplierReductionTest is
     }
 
     function test_cancelCurveMultiplierReduction_RevertWhen_NotOwner() public {
-        vm.expectRevert(IStepwiseWeightBoost.SenderIsNotNodeOperatorOwner.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.SenderIsNotNodeOperatorOwner.selector);
         vm.prank(stranger);
         additionalBondRegistry.cancelCurveMultiplierReduction(0);
     }

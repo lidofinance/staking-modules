@@ -3,8 +3,7 @@
 
 pragma solidity 0.8.33;
 
-import { ICuratedModule } from "./ICuratedModule.sol";
-import { IWeightBoostProvider } from "./IWeightBoostProvider.sol";
+import { IBaseWeightBoostProvider } from "./IBaseWeightBoostProvider.sol";
 
 /// @dev A point of a monotonically increasing step function, packed into one storage slot. At an input
 ///      greater than or equal to `threshold`, `value` applies until the next threshold is reached.
@@ -18,13 +17,9 @@ struct Step {
 ///      returns zero; at and after a threshold it returns that step's value; after the final threshold the
 ///      final value continues to apply. Provider-specific validation may impose additional bounds or forbid
 ///      a zero threshold or value.
-interface IStepwiseWeightBoost is IWeightBoostProvider {
+interface IStepwiseWeightBoost is IBaseWeightBoostProvider {
     event StepsSet(Step[] steps);
 
-    error ZeroModuleAddress();
-    error ZeroAdminAddress();
-    error NodeOperatorDoesNotExist();
-    error SenderIsNotNodeOperatorOwner();
     error InvalidStepCount();
     error InvalidStep(uint256 index);
     error UnorderedSteps(uint256 index);
@@ -35,12 +30,6 @@ interface IStepwiseWeightBoost is IWeightBoostProvider {
 
     /// @notice Returns the complete configured step function in ascending threshold order.
     function getSteps() external view returns (Step[] memory);
-
-    /// @notice Curated module the provider serves; its MetaRegistry consumes the weight boost.
-    function MODULE() external view returns (ICuratedModule);
-
-    /// @notice Returns the initialized version of the contract.
-    function getInitializedVersion() external view returns (uint64);
 
     /// @notice Maximum number of configured steps.
     function MAX_STEPS() external view returns (uint256);

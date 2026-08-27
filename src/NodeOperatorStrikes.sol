@@ -3,6 +3,7 @@
 
 pragma solidity 0.8.33;
 
+import { BaseWeightBoostProvider } from "./abstract/BaseWeightBoostProvider.sol";
 import { StepwiseWeightBoost } from "./abstract/StepwiseWeightBoost.sol";
 import { INodeOperatorStrikes, StrikeInput, Strike } from "./interfaces/INodeOperatorStrikes.sol";
 import { Step } from "./interfaces/IStepwiseWeightBoost.sol";
@@ -46,7 +47,7 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, StepwiseWeightBoost {
     function issueStrike(
         StrikeInput calldata input
     ) external onlyRole(STRIKES_COMMITTEE_ROLE) returns (uint256 strikeId) {
-        StepwiseWeightBoost._onlyExistingNodeOperator(input.nodeOperatorId);
+        BaseWeightBoostProvider._onlyExistingNodeOperator(input.nodeOperatorId);
 
         uint256 descLength = bytes(input.description).length;
         if (descLength == 0 || descLength > MAX_DESCRIPTION_LENGTH) revert InvalidDescription();

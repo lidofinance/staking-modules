@@ -3,6 +3,7 @@
 
 pragma solidity 0.8.33;
 
+import { BaseWeightBoostProvider } from "./abstract/BaseWeightBoostProvider.sol";
 import { StepwiseWeightBoost } from "./abstract/StepwiseWeightBoost.sol";
 import { ICustomFeeRegistry, FeeShareDiscountState } from "./interfaces/ICustomFeeRegistry.sol";
 import { Step } from "./interfaces/IStepwiseWeightBoost.sol";
@@ -39,7 +40,7 @@ contract CustomFeeRegistry is ICustomFeeRegistry, StepwiseWeightBoost {
 
     /// @inheritdoc ICustomFeeRegistry
     function requestFeeShareDiscount(uint256 nodeOperatorId, uint256 feeShareDiscount) external {
-        StepwiseWeightBoost._onlyNodeOperatorOwner(nodeOperatorId);
+        BaseWeightBoostProvider._onlyNodeOperatorOwner(nodeOperatorId);
         if (feeShareDiscount > MAX_BP || feeShareDiscount % FEE_SHARE_DISCOUNT_STEP != 0)
             revert InvalidFeeShareDiscount();
 
@@ -70,7 +71,7 @@ contract CustomFeeRegistry is ICustomFeeRegistry, StepwiseWeightBoost {
 
     /// @inheritdoc ICustomFeeRegistry
     function cancelFeeShareDiscountCut(uint256 nodeOperatorId) external {
-        StepwiseWeightBoost._onlyNodeOperatorOwner(nodeOperatorId);
+        BaseWeightBoostProvider._onlyNodeOperatorOwner(nodeOperatorId);
 
         FeeShareDiscountState storage state = _storage().feeShareDiscounts[nodeOperatorId];
         if (state.cooldownUntil == 0) revert NoPendingFeeShareDiscountCut();
@@ -87,7 +88,7 @@ contract CustomFeeRegistry is ICustomFeeRegistry, StepwiseWeightBoost {
 
     /// @inheritdoc ICustomFeeRegistry
     function applyFeeShareDiscountCut(uint256 nodeOperatorId) external {
-        StepwiseWeightBoost._onlyNodeOperatorOwner(nodeOperatorId);
+        BaseWeightBoostProvider._onlyNodeOperatorOwner(nodeOperatorId);
 
         FeeShareDiscountState storage state = _storage().feeShareDiscounts[nodeOperatorId];
         if (state.cooldownUntil == 0) revert NoPendingFeeShareDiscountCut();

@@ -9,6 +9,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { NodeOperatorStrikes } from "src/NodeOperatorStrikes.sol";
 import { INodeOperatorStrikes, StrikeInput, Strike } from "src/interfaces/INodeOperatorStrikes.sol";
+import { IBaseWeightBoostProvider } from "src/interfaces/IBaseWeightBoostProvider.sol";
 import { IStepwiseWeightBoost, Step } from "src/interfaces/IStepwiseWeightBoost.sol";
 
 import { CuratedProviderFixture } from "../helpers/CuratedProviderFixture.sol";
@@ -90,7 +91,7 @@ contract NodeOperatorStrikesConstructorTest is NodeOperatorStrikesBaseTest {
     }
 
     function test_constructor_RevertWhen_ZeroModule() public {
-        vm.expectRevert(IStepwiseWeightBoost.ZeroModuleAddress.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.ZeroModuleAddress.selector);
         new NodeOperatorStrikes(address(0));
     }
 }
@@ -114,7 +115,7 @@ contract NodeOperatorStrikesInitializeTest is NodeOperatorStrikesBaseTest {
     function test_initialize_RevertWhen_ZeroAdmin() public {
         NodeOperatorStrikes s = new NodeOperatorStrikes(address(module));
         _enableInitializers(address(s));
-        vm.expectRevert(IStepwiseWeightBoost.ZeroAdminAddress.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.ZeroAdminAddress.selector);
         s.initialize(address(0), new Step[](0));
     }
 
@@ -187,7 +188,7 @@ contract NodeOperatorStrikesIssueTest is NodeOperatorStrikesBaseTest {
     }
 
     function test_issueStrike_RevertWhen_OperatorDoesNotExist() public {
-        vm.expectRevert(IStepwiseWeightBoost.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.NodeOperatorDoesNotExist.selector);
         vm.prank(committee);
         strikes.issueStrike(_input(3, CATEGORY, LIFETIME)); // count == 3, so id 3 doesn't exist
     }

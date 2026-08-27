@@ -16,6 +16,7 @@ import { IAragonVotingLockVault } from "src/interfaces/IAragonVotingLockVault.so
 import { IERC20LockBoostProvider } from "src/interfaces/IERC20LockBoostProvider.sol";
 import { IERC20LockVault } from "src/interfaces/IERC20LockVault.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
+import { IBaseWeightBoostProvider } from "src/interfaces/IBaseWeightBoostProvider.sol";
 import { IStepwiseWeightBoost, Step } from "src/interfaces/IStepwiseWeightBoost.sol";
 import { ISnapshotDelegationLockVault } from "src/interfaces/ISnapshotDelegationLockVault.sol";
 import { MetaRegistry } from "src/MetaRegistry.sol";
@@ -264,7 +265,7 @@ contract ERC20LockBoostProviderConstructorTest is ERC20LockBoostProviderBaseTest
     }
 
     function test_constructor_RevertWhen_ZeroAddresses() public {
-        vm.expectRevert(IStepwiseWeightBoost.ZeroModuleAddress.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.ZeroModuleAddress.selector);
         new ERC20LockBoostProvider(address(0), address(token), address(vaultBeacon), MIN_LOCK_PERIOD);
 
         vm.expectRevert(IERC20LockBoostProvider.ZeroTokenAddress.selector);
@@ -321,7 +322,7 @@ contract ERC20LockBoostProviderInitializeTest is ERC20LockBoostProviderBaseTest 
         );
         _enableInitializers(address(p));
 
-        vm.expectRevert(IStepwiseWeightBoost.ZeroAdminAddress.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.ZeroAdminAddress.selector);
         p.initialize(address(0), LOCK_PERIOD, _defaultSteps());
     }
 
@@ -544,13 +545,13 @@ contract ERC20LockBoostProviderLockTest is ERC20LockBoostProviderBaseTest {
 
     function test_lock_RevertWhen_NotNodeOperatorOwner() public {
         vm.prank(stranger);
-        vm.expectRevert(IStepwiseWeightBoost.SenderIsNotNodeOperatorOwner.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.SenderIsNotNodeOperatorOwner.selector);
         provider.lock(NODE_OPERATOR_ID, 1 ether);
     }
 
     function test_lock_RevertWhen_NodeOperatorDoesNotExist() public {
         vm.prank(nodeOperatorOwner);
-        vm.expectRevert(IStepwiseWeightBoost.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.NodeOperatorDoesNotExist.selector);
         provider.lock(NODE_OPERATOR_ID + 1, 1 ether);
     }
 }

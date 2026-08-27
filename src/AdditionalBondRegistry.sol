@@ -3,6 +3,7 @@
 
 pragma solidity 0.8.33;
 
+import { BaseWeightBoostProvider } from "./abstract/BaseWeightBoostProvider.sol";
 import { StepwiseWeightBoost } from "./abstract/StepwiseWeightBoost.sol";
 import { IAccounting } from "./interfaces/IAccounting.sol";
 import { IAdditionalBondRegistry, PendingCurveMultiplierReduction } from "./interfaces/IAdditionalBondRegistry.sol";
@@ -50,7 +51,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, StepwiseWeightBoost 
     /// @inheritdoc IAdditionalBondRegistry
     function requestCurveMultiplier(uint256 nodeOperatorId, uint256 curveMultiplier) external {
         AdditionalBondRegistryStorage storage $ = _storage();
-        StepwiseWeightBoost._onlyNodeOperatorOwner(nodeOperatorId);
+        BaseWeightBoostProvider._onlyNodeOperatorOwner(nodeOperatorId);
 
         if (curveMultiplier > MAX_CURVE_MULTIPLIER || curveMultiplier % CURVE_MULTIPLIER_STEP != 0) {
             revert InvalidCurveMultiplier();
@@ -89,7 +90,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, StepwiseWeightBoost 
 
     /// @inheritdoc IAdditionalBondRegistry
     function applyCurveMultiplierReduction(uint256 nodeOperatorId) external {
-        StepwiseWeightBoost._onlyNodeOperatorOwner(nodeOperatorId);
+        BaseWeightBoostProvider._onlyNodeOperatorOwner(nodeOperatorId);
 
         PendingCurveMultiplierReduction storage p = _storage().pending[nodeOperatorId];
         if (p.cooldownUntil == 0) revert NoCurveMultiplierReductionCooldown();
@@ -103,7 +104,7 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, StepwiseWeightBoost 
 
     /// @inheritdoc IAdditionalBondRegistry
     function cancelCurveMultiplierReduction(uint256 nodeOperatorId) external {
-        StepwiseWeightBoost._onlyNodeOperatorOwner(nodeOperatorId);
+        BaseWeightBoostProvider._onlyNodeOperatorOwner(nodeOperatorId);
 
         PendingCurveMultiplierReduction storage pending = _storage().pending[nodeOperatorId];
         if (pending.cooldownUntil == 0) revert NoCurveMultiplierReductionCooldown();
