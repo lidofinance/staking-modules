@@ -58,6 +58,19 @@ library WithdrawnValidatorLib {
             _process($.nodeOperators[info.nodeOperatorId], info, $.keyConfirmedBalance[pointer]);
 
             $.isValidatorWithdrawn[pointer] = true;
+            // Any withdrawal report accounts for the key losses, hence resolves the slashing.
+            if ($.isValidatorSlashed[pointer]) {
+                uint256 unresolved = $.unresolvedSlashedValidators[info.nodeOperatorId];
+                // The decrement is saturating: a slashing reported before the counter was introduced is not counted.
+                // NOTE: The counter is per Node Operator, so such a legacy slashing resolves a newer one instead.
+                if (unresolved != 0) {
+                    unchecked {
+                        --unresolved;
+                    }
+                    $.unresolvedSlashedValidators[info.nodeOperatorId] = unresolved;
+                    emit IBaseModule.UnresolvedSlashedValidatorsCountChanged(info.nodeOperatorId, unresolved);
+                }
+            }
             touchedOperatorIds[touchedCount] = info.nodeOperatorId;
             trackedBalanceDecreases[touchedCount] = $.keyAllocatedBalance[pointer];
             unchecked {

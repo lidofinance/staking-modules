@@ -84,6 +84,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     event TotalWithdrawnValidatorsRebuilt(uint256 totalWithdrawnValidators);
     event NodeOperatorBalanceUpdated(uint256 indexed operatorId, uint256 balanceWei);
     event ValidatorSlashingReported(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
+    event UnresolvedSlashedValidatorsCountChanged(uint256 indexed nodeOperatorId, uint256 count);
     event KeyAllocatedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
     event KeyConfirmedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newBalance);
     event KeyRemovalChargeApplied(uint256 indexed nodeOperatorId);
@@ -392,6 +393,13 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @return Non-withdrawn keys count
     function getNodeOperatorNonWithdrawnKeys(uint256 nodeOperatorId) external view returns (uint256);
 
+    /// @notice Get the number of slashed validators whose withdrawal losses have not been processed yet
+    /// @dev Increased on a slashing report and decreased on the withdrawal report of the slashed validator.
+    ///      A non-zero value restricts bond claims, see `IAccounting.getClaimableBondShares`.
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @return Unresolved slashed validators count
+    function getNodeOperatorUnresolvedSlashedValidators(uint256 nodeOperatorId) external view returns (uint256);
+
     /// @notice Returns tracked operator balance (active validator base stake plus tracked extra).
     /// @dev The tracked extra is intentionally monotonic for active validators and is reduced on withdrawal reporting,
     ///      not on intermediate balance decreases, so the value serves both top-up allocation and withdrawal penalty accounting.
@@ -424,6 +432,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
 
     /// @notice Report Node Operator's key as slashed.
     /// @notice Called by `Verifier` contract. See `Verifier.processSlashedProof`.
+    /// @dev A slashing reported for an already withdrawn key does not restrict the bond claims.
     /// @param nodeOperatorId The ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex) external;
