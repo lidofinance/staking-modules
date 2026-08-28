@@ -27,8 +27,13 @@ def csv_matches(addresses: set[str], csv_file: str, base_dir: Path) -> list[str]
 
 def matched_node_operator_ids(addresses: set[str], owners_path: Path) -> list[str]:
     node_operators = load_owner_map(owners_path)
-    addr_to_id = {addr.lower(): no_id for no_id, addr in node_operators.items()}
-    return sorted({addr_to_id[address] for address in addresses if address in addr_to_id})
+    return sorted(
+        {
+            no_id
+            for no_id, address in node_operators.items()
+            if address.lower() in addresses
+        }
+    )
 
 
 def load_owner_map(owners_path: Path) -> dict[str, str]:

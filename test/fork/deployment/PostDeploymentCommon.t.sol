@@ -9,8 +9,6 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { ProxySlotUtils } from "../../helpers/ProxySlotUtils.sol";
-import { OssifiableProxy } from "../../../src/lib/proxy/OssifiableProxy.sol";
 import { HashConsensus } from "../../../src/lib/base-oracle/HashConsensus.sol";
 import { IWithdrawalQueue } from "../../../src/interfaces/IWithdrawalQueue.sol";
 import { IBondCurve } from "../../../src/interfaces/IBondCurve.sol";
@@ -195,20 +193,7 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
     }
 
     function test_proxy_onlyFull() public view {
-        OssifiableProxy proxy = OssifiableProxy(payable(address(accounting)));
-        assertEq(proxy.proxy__getImplementation(), address(accountingImpl), "accounting proxy getter impl");
-        assertEq(
-            ProxySlotUtils.getImplementation(address(accounting)),
-            address(accountingImpl),
-            "accounting proxy slot impl"
-        );
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "accounting proxy getter admin");
-        assertEq(
-            ProxySlotUtils.getAdmin(address(accounting)),
-            address(deployParams.proxyAdmin),
-            "accounting proxy slot admin"
-        );
-        assertFalse(proxy.proxy__getIsOssified(), "accounting proxy ossified");
+        _assertProxy(address(accounting), address(accountingImpl), deployParams.proxyAdmin, "accounting");
     }
 }
 
@@ -246,20 +231,7 @@ contract FeeDistributorDeploymentTest is DeploymentBaseTest {
     }
 
     function test_proxy_onlyFull() public view {
-        OssifiableProxy proxy = OssifiableProxy(payable(address(feeDistributor)));
-        assertEq(proxy.proxy__getImplementation(), address(feeDistributorImpl), "fee distributor proxy getter impl");
-        assertEq(
-            ProxySlotUtils.getImplementation(address(feeDistributor)),
-            address(feeDistributorImpl),
-            "fee distributor proxy slot impl"
-        );
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "fee distributor proxy getter admin");
-        assertEq(
-            ProxySlotUtils.getAdmin(address(feeDistributor)),
-            address(deployParams.proxyAdmin),
-            "fee distributor proxy slot admin"
-        );
-        assertFalse(proxy.proxy__getIsOssified(), "fee distributor proxy ossified");
+        _assertProxy(address(feeDistributor), address(feeDistributorImpl), deployParams.proxyAdmin, "fee distributor");
     }
 }
 
@@ -329,12 +301,7 @@ contract FeeOracleDeploymentTest is DeploymentBaseTest {
     }
 
     function test_proxy_onlyFull() public view {
-        OssifiableProxy proxy = OssifiableProxy(payable(address(oracle)));
-        assertEq(proxy.proxy__getImplementation(), address(oracleImpl), "oracle proxy getter impl");
-        assertEq(ProxySlotUtils.getImplementation(address(oracle)), address(oracleImpl), "oracle proxy slot impl");
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "oracle proxy getter admin");
-        assertEq(ProxySlotUtils.getAdmin(address(oracle)), address(deployParams.proxyAdmin), "oracle proxy slot admin");
-        assertFalse(proxy.proxy__getIsOssified(), "oracle proxy ossified");
+        _assertProxy(address(oracle), address(oracleImpl), deployParams.proxyAdmin, "oracle");
     }
 }
 
@@ -378,12 +345,7 @@ contract HashConsensusDeploymentTest is DeploymentBaseTest {
             assertTrue(hashConsensus.hasRole(hashConsensus.MANAGE_MEMBERS_AND_QUORUM_ROLE(), deployParams.aragonAgent));
             assertEq(hashConsensus.getRoleMemberCount(hashConsensus.MANAGE_MEMBERS_AND_QUORUM_ROLE()), 1);
 
-            assertLe(
-                hashConsensus.getRoleMemberCount(hashConsensus.MANAGE_FRAME_CONFIG_ROLE()),
-                // TODO: The role is on TwoPhaseFrameConfigUpdate contract.
-                //       Return `0` back when the contract is ossified.
-                1
-            );
+            assertLe(hashConsensus.getRoleMemberCount(hashConsensus.MANAGE_FRAME_CONFIG_ROLE()), 0);
 
             assertEq(hashConsensus.getRoleMemberCount(hashConsensus.MANAGE_FAST_LANE_CONFIG_ROLE()), 0);
         }
@@ -460,16 +422,7 @@ contract ValidatorStrikesDeploymentTest is DeploymentBaseTest {
     }
 
     function test_proxy_onlyFull() public view {
-        OssifiableProxy proxy = OssifiableProxy(payable(address(strikes)));
-        assertEq(proxy.proxy__getImplementation(), address(strikesImpl), "strikes proxy getter impl");
-        assertEq(ProxySlotUtils.getImplementation(address(strikes)), address(strikesImpl), "strikes proxy slot impl");
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "strikes proxy getter admin");
-        assertEq(
-            ProxySlotUtils.getAdmin(address(strikes)),
-            address(deployParams.proxyAdmin),
-            "strikes proxy slot admin"
-        );
-        assertFalse(proxy.proxy__getIsOssified(), "strikes proxy ossified");
+        _assertProxy(address(strikes), address(strikesImpl), deployParams.proxyAdmin, "strikes");
     }
 }
 
@@ -505,20 +458,7 @@ contract ExitPenaltiesDeploymentTest is DeploymentBaseTest {
     }
 
     function test_proxy_onlyFull() public view {
-        OssifiableProxy proxy = OssifiableProxy(payable(address(exitPenalties)));
-        assertEq(proxy.proxy__getImplementation(), address(exitPenaltiesImpl), "exit penalties proxy getter impl");
-        assertEq(
-            ProxySlotUtils.getImplementation(address(exitPenalties)),
-            address(exitPenaltiesImpl),
-            "exit penalties proxy slot impl"
-        );
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "exit penalties proxy getter admin");
-        assertEq(
-            ProxySlotUtils.getAdmin(address(exitPenalties)),
-            address(deployParams.proxyAdmin),
-            "exit penalties proxy slot admin"
-        );
-        assertFalse(proxy.proxy__getIsOssified(), "exit penalties proxy ossified");
+        _assertProxy(address(exitPenalties), address(exitPenaltiesImpl), deployParams.proxyAdmin, "exit penalties");
     }
 }
 
@@ -560,24 +500,12 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
     }
 
     function test_proxy_onlyFull() public view {
-        OssifiableProxy proxy = OssifiableProxy(payable(address(parametersRegistry)));
-        assertEq(
-            proxy.proxy__getImplementation(),
+        _assertProxy(
+            address(parametersRegistry),
             address(parametersRegistryImpl),
-            "parameters registry proxy getter impl"
+            deployParams.proxyAdmin,
+            "parameters registry"
         );
-        assertEq(
-            ProxySlotUtils.getImplementation(address(parametersRegistry)),
-            address(parametersRegistryImpl),
-            "parameters registry proxy slot impl"
-        );
-        assertEq(proxy.proxy__getAdmin(), address(deployParams.proxyAdmin), "parameters registry proxy getter admin");
-        assertEq(
-            ProxySlotUtils.getAdmin(address(parametersRegistry)),
-            address(deployParams.proxyAdmin),
-            "parameters registry proxy slot admin"
-        );
-        assertFalse(proxy.proxy__getIsOssified(), "parameters registry proxy ossified");
     }
 
     function _initData() internal view returns (IParametersRegistry.InitializationData memory) {

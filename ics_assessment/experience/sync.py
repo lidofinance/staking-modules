@@ -2,6 +2,7 @@ import asyncio
 import json
 import time
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 import requests
 from web3 import AsyncWeb3, Web3
@@ -112,37 +113,64 @@ async def _sync_node_operator_owners_one(
                     i = queue.get_nowait()
                 except asyncio.QueueEmpty:
                     break
-                try:
-                    node_operator = await contract.functions.getNodeOperator(i).call(
-                        block_identifier=reference_block
-                    )
-                    owner = (
-                        node_operator.managerAddress
-                        if node_operator.extendedManagerPermissions
-                        else node_operator.rewardAddress
-                    )
-                    node_operators[i] = owner.lower()
-                    async with progress_lock:
-                        processed += 1
-                        if processed % 100 == 0 or processed == count:
-                            print(
-                                f"[sync] node owners {output_path.name}: processed "
-                                f"{processed}/{count}"
-                            )
-                finally:
-                    queue.task_done()
+                node_operator = await contract.functions.getNodeOperator(i).call(
+                    block_identifier=reference_block
+                )
+                owner = (
+                    node_operator.managerAddress
+                    if node_operator.extendedManagerPermissions
+                    else node_operator.rewardAddress
+                )
+                node_operators[i] = owner.lower()
+                async with progress_lock:
+                    processed += 1
+                    if processed % 100 == 0 or processed == count:
+                        print(
+                            f"[sync] node owners {output_path.name}: processed "
+                            f"{processed}/{count}"
+                        )
 
         workers = [asyncio.create_task(worker()) for _ in range(4)]
         try:
-            await queue.join()
-        finally:
+            await asyncio.gather(*workers)
+        except BaseException:
             for worker_task in workers:
                 worker_task.cancel()
             await asyncio.gather(*workers, return_exceptions=True)
+            raise
+
+        expected_ids = set(range(count))
+        actual_ids = set(node_operators)
+        if actual_ids != expected_ids:
+            missing = sorted(expected_ids - actual_ids)
+            unexpected = sorted(actual_ids - expected_ids)
+            raise RuntimeError(
+                f"Incomplete node owner snapshot at block {reference_block}: "
+                f"missing IDs {missing}, unexpected IDs {unexpected}"
+            )
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with output_path.open("w", encoding="utf-8") as file:
-            json.dump(dict(sorted(node_operators.items(), key=lambda item: item[0])), file, indent=2)
+        temp_path: Path | None = None
+        try:
+            with NamedTemporaryFile(
+                "w",
+                encoding="utf-8",
+                dir=output_path.parent,
+                prefix=f".{output_path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as file:
+                temp_path = Path(file.name)
+                json.dump(
+                    dict(sorted(node_operators.items(), key=lambda item: item[0])),
+                    file,
+                    indent=2,
+                )
+                file.write("\n")
+            temp_path.replace(output_path)
+        finally:
+            if temp_path is not None:
+                temp_path.unlink(missing_ok=True)
         print(f"Wrote {len(node_operators)} node operators to {output_path}")
     finally:
         await w3.provider.disconnect()

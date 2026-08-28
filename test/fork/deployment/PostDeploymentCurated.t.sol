@@ -13,11 +13,9 @@ import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
 import { Step } from "src/interfaces/IStepwiseWeightBoost.sol";
-import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
 import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
-import { ProxySlotUtils } from "../../helpers/ProxySlotUtils.sol";
 
 /// @dev Minimal view of the wiring every weight boost provider exposes, so assertions can be shared across
 ///      providers with different concrete types.
@@ -31,20 +29,6 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     CuratedDeployParams internal deployParams;
     CuratedGateConfig[] internal deployGateConfigs;
     uint256 internal adminsCount;
-
-    /// @dev Asserts the proxy serves `impl`, is administered by the configured admin, and is not ossified.
-    function _assertProxy(address proxyAddress, address impl, string memory label) internal view {
-        OssifiableProxy proxy = OssifiableProxy(payable(proxyAddress));
-        assertEq(proxy.proxy__getImplementation(), impl, string.concat(label, " proxy getter impl"));
-        assertEq(ProxySlotUtils.getImplementation(proxyAddress), impl, string.concat(label, " proxy slot impl"));
-        assertEq(proxy.proxy__getAdmin(), deployParams.proxyAdmin, string.concat(label, " proxy getter admin"));
-        assertEq(
-            ProxySlotUtils.getAdmin(proxyAddress),
-            deployParams.proxyAdmin,
-            string.concat(label, " proxy slot admin")
-        );
-        assertFalse(proxy.proxy__getIsOssified(), string.concat(label, " proxy ossified"));
-    }
 
     /// @dev Asserts neither the proxy nor its implementation can be initialized again.
     function _assertNotReinitializable(address proxyAddress, address impl, bytes memory initCalldata) internal {
@@ -122,7 +106,7 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
     }
 
     function test_proxy_onlyFull() public view {
-        _assertProxy(address(curatedModule), address(moduleImpl), "curated module");
+        _assertProxy(address(curatedModule), address(moduleImpl), deployParams.proxyAdmin, "curated module");
     }
 }
 
@@ -256,7 +240,12 @@ contract AdditionalBondRegistryDeploymentTest is DeploymentBaseTest {
     }
 
     function test_proxy_onlyFull() public view {
-        _assertProxy(address(additionalBondRegistry), address(additionalBondRegistryImpl), "additional bond registry");
+        _assertProxy(
+            address(additionalBondRegistry),
+            address(additionalBondRegistryImpl),
+            deployParams.proxyAdmin,
+            "additional bond registry"
+        );
     }
 }
 
@@ -291,7 +280,12 @@ contract NodeOperatorStrikesDeploymentTest is DeploymentBaseTest {
     }
 
     function test_proxy_onlyFull() public view {
-        _assertProxy(address(nodeOperatorStrikes), address(nodeOperatorStrikesImpl), "strikes");
+        _assertProxy(
+            address(nodeOperatorStrikes),
+            address(nodeOperatorStrikesImpl),
+            deployParams.proxyAdmin,
+            "strikes"
+        );
     }
 }
 
@@ -377,7 +371,12 @@ contract LDOLockBoostProviderDeploymentTest is DeploymentBaseTest {
     }
 
     function test_proxy_onlyFull() public view {
-        _assertProxy(address(ldoLockBoostProvider), address(ldoLockBoostProviderImpl), "LDO lock provider");
+        _assertProxy(
+            address(ldoLockBoostProvider),
+            address(ldoLockBoostProviderImpl),
+            deployParams.proxyAdmin,
+            "LDO lock provider"
+        );
     }
 }
 
@@ -420,7 +419,7 @@ contract CustomFeeRegistryDeploymentTest is DeploymentBaseTest {
     }
 
     function test_proxy_onlyFull() public view {
-        _assertProxy(address(customFeeRegistry), address(customFeeRegistryImpl), "custom fee");
+        _assertProxy(address(customFeeRegistry), address(customFeeRegistryImpl), deployParams.proxyAdmin, "custom fee");
     }
 }
 
@@ -486,12 +485,21 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
     function test_curveParameters() public view {
         uint256 gatesCount = curatedGates.length;
         assertGt(gatesCount, 0, "no curated gates deployed");
-        assertEq(accounting.getCurvesCount(), gatesCount, "unexpected total curves count"); // +1 for the default curve
+
+        uint256 expectedCurvesCount = 1;
+        _assertBondCurve(accounting, accounting.DEFAULT_BOND_CURVE_ID(), deployParams.defaultBondCurve);
+
         for (uint256 i = 0; i < gatesCount; ++i) {
             CuratedGate gate = CuratedGate(curatedGates[i]);
             uint256 curveId = gate.curveId();
+            CuratedGateConfig storage gateConfig = deployParams.curatedGates[i];
 
-            GateCurveParams memory params = deployParams.curatedGates[i].params;
+            if (gateConfig.bondCurve.length != 0) {
+                ++expectedCurvesCount;
+                _assertBondCurve(accounting, curveId, gateConfig.bondCurve);
+            }
+
+            GateCurveParams memory params = gateConfig.params;
             assertEq(parametersRegistry.getKeyRemovalCharge(curveId), deployParams.defaultKeyRemovalCharge);
 
             if (params.generalDelayedPenaltyAdditionalFine.isValue) {
@@ -603,6 +611,8 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
                 assertEq(metaRegistry.getBondCurveWeight(curveId), params.metaRegistryBondCurveWeight.value);
             }
         }
+
+        assertEq(accounting.getCurvesCount(), expectedCurvesCount, "unexpected total curves count");
     }
 
     function test_proxy() public view {
@@ -610,7 +620,7 @@ contract CuratedGatesDeploymentTest is DeploymentBaseTest {
         address implementation = address(curatedGateImpl);
         assertTrue(implementation != address(0), "factory implementation zero");
         for (uint256 i = 0; i < gatesCount; ++i) {
-            _assertProxy(curatedGates[i], implementation, "curated gate");
+            _assertProxy(curatedGates[i], implementation, deployParams.proxyAdmin, "curated gate");
         }
     }
 
@@ -698,11 +708,6 @@ contract CuratedGateFactoryDeploymentTest is DeploymentBaseTest {
 }
 
 contract CircuitBreakerDeploymentTest is DeploymentBaseTest {
-    function test_configuration_afterVote() public {
-        address pauser = circuitBreaker.getPauser(address(module));
-        assertEq(pauser, deployParams.circuitBreakerPauser, "pauser");
-    }
-
     function test_pausables_afterVote() public {
         assertEq(circuitBreaker.getPauser(address(module)), deployParams.circuitBreakerPauser, "module pauser");
         assertEq(circuitBreaker.getPauser(address(accounting)), deployParams.circuitBreakerPauser, "accounting pauser");
