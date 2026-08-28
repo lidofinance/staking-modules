@@ -5,7 +5,6 @@ pragma solidity 0.8.33;
 
 import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.sol";
 import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
-import { BoostStep } from "../../src/interfaces/IAdditionalBondRegistry.sol";
 
 library CommonScriptUtils {
     function arraysToKeyIndexValueIntervals(
@@ -32,16 +31,5 @@ library CommonScriptUtils {
             bondCurveInputs[i] = IBondCurve.BondCurveIntervalInput({ minKeysCount: data[i][0], trend: data[i][1] });
         }
         return bondCurveInputs;
-    }
-
-    function arraysToBoostSteps(uint256[2][] memory data) internal pure returns (BoostStep[] memory) {
-        BoostStep[] memory boostSteps = new BoostStep[](data.length);
-        for (uint256 i = 0; i < data.length; i++) {
-            boostSteps[i] = BoostStep({
-                minCurveMultiplier: uint128(data[i][0]),
-                weightMultiplier: uint128(data[i][1])
-            });
-        }
-        return boostSteps;
     }
 }

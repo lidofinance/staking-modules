@@ -16,13 +16,15 @@ import { IAragonVotingLockVault } from "src/interfaces/IAragonVotingLockVault.so
 import { IERC20LockBoostProvider } from "src/interfaces/IERC20LockBoostProvider.sol";
 import { IERC20LockVault } from "src/interfaces/IERC20LockVault.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
+import { IBaseWeightBoostProvider } from "src/interfaces/IBaseWeightBoostProvider.sol";
+import { IStepwiseWeightBoost, Step } from "src/interfaces/IStepwiseWeightBoost.sol";
 import { ISnapshotDelegationLockVault } from "src/interfaces/ISnapshotDelegationLockVault.sol";
 import { MetaRegistry } from "src/MetaRegistry.sol";
 import { NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
-import { MAX_WEIGHT_BOOST_BP } from "src/lib/Constants.sol";
 
 import { CuratedMock } from "../helpers/mocks/CuratedMock.sol";
 import { StakingRouterMock } from "../helpers/mocks/StakingRouterMock.sol";
+import { StepwiseWeightBoostBehaviour } from "../helpers/StepwiseWeightBoostBehaviour.sol";
 import { ERC20Testable } from "../helpers/ERCTestable.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
@@ -84,7 +86,7 @@ contract ERC20LockBoostProviderForTest is ERC20LockBoostProvider {
     }
 }
 
-contract ERC20LockBoostProviderBaseTest is Utilities, Fixtures {
+contract ERC20LockBoostProviderBaseTest is Test, Utilities, Fixtures {
     CuratedMock public module;
     StakingRouterMock public stakingRouter;
     MetaRegistry public registry;
@@ -98,7 +100,6 @@ contract ERC20LockBoostProviderBaseTest is Utilities, Fixtures {
     address public admin;
     address public groupManager;
     address public bondCurveWeightManager;
-    address public lockPeriodManager;
     address public nodeOperatorOwner;
     address public receiver;
     address public votingDelegate;
@@ -114,8 +115,8 @@ contract ERC20LockBoostProviderBaseTest is Utilities, Fixtures {
     uint256 internal constant LOCK_PERIOD = 30 days;
     uint128 internal constant STEP_1_AMOUNT = 100 ether;
     uint128 internal constant STEP_2_AMOUNT = 200 ether;
-    uint32 internal constant STEP_1_WEIGHT_BOOST_BP = 1_000;
-    uint32 internal constant STEP_2_WEIGHT_BOOST_BP = 1_500;
+    uint128 internal constant STEP_1_WEIGHT_BOOST_BP = 1_000;
+    uint128 internal constant STEP_2_WEIGHT_BOOST_BP = 1_500;
     uint256 internal constant STEP_1_MULTIPLIER_BP = MAX_BP + STEP_1_WEIGHT_BOOST_BP;
     uint256 internal constant STEP_2_MULTIPLIER_BP = MAX_BP + STEP_2_WEIGHT_BOOST_BP;
     bytes32 internal constant SNAPSHOT_ALL_SPACES = bytes32(0);
@@ -124,7 +125,6 @@ contract ERC20LockBoostProviderBaseTest is Utilities, Fixtures {
         admin = nextAddress("ADMIN");
         groupManager = nextAddress("GROUP_MANAGER");
         bondCurveWeightManager = nextAddress("BOND_CURVE_WEIGHT_MANAGER");
-        lockPeriodManager = nextAddress("LOCK_PERIOD_MANAGER");
         nodeOperatorOwner = nextAddress("NODE_OPERATOR_OWNER");
         receiver = nextAddress("RECEIVER");
         votingDelegate = nextAddress("VOTING_DELEGATE");
@@ -145,7 +145,7 @@ contract ERC20LockBoostProviderBaseTest is Utilities, Fixtures {
         modules[0] = address(module);
         stakingRouter.setModules(modules);
 
-        registry = new MetaRegistry(address(module), address(0));
+        registry = new MetaRegistry(address(module));
         module.mock_setMetaRegistry(address(registry));
         _enableInitializers(address(registry));
         registry.initialize(admin);
@@ -170,12 +170,10 @@ contract ERC20LockBoostProviderBaseTest is Utilities, Fixtures {
         provider = new ERC20LockBoostProvider(address(module), address(token), address(vaultBeacon), MIN_LOCK_PERIOD);
         assertEq(address(provider), expectedProvider);
         _enableInitializers(address(provider));
-        provider.initialize(admin, LOCK_PERIOD);
+        provider.initialize(admin, LOCK_PERIOD, _defaultSteps());
 
-        vm.startPrank(admin);
-        provider.grantRole(provider.SET_LOCK_PERIOD_ROLE(), lockPeriodManager);
+        vm.prank(admin);
         registry.addWeightBoostProvider(provider, IMetaRegistry.WeightBoostProviderMode.MaxPerGroup);
-        vm.stopPrank();
 
         vm.prank(bondCurveWeightManager);
         registry.setBondCurveWeight(0, BASE_WEIGHT);
@@ -193,9 +191,11 @@ contract ERC20LockBoostProviderBaseTest is Utilities, Fixtures {
 
     function _setDefaultSteps() internal {
         vm.prank(admin);
-        provider.setLockBoostSteps(
-            _steps(STEP_1_AMOUNT, STEP_1_WEIGHT_BOOST_BP, STEP_2_AMOUNT, STEP_2_WEIGHT_BOOST_BP)
-        );
+        provider.setSteps(_defaultSteps());
+    }
+
+    function _defaultSteps() internal pure returns (Step[] memory) {
+        return _steps(STEP_1_AMOUNT, STEP_1_WEIGHT_BOOST_BP, STEP_2_AMOUNT, STEP_2_WEIGHT_BOOST_BP);
     }
 
     function _mintAndApprove(uint256 amount) internal {
@@ -237,24 +237,21 @@ contract ERC20LockBoostProviderBaseTest is Utilities, Fixtures {
 
     function _steps(
         uint128 amount0,
-        uint32 weightBoost0,
+        uint128 weightBoost0,
         uint128 amount1,
-        uint32 weightBoost1
-    ) internal pure returns (IERC20LockBoostProvider.LockBoostStep[] memory steps) {
-        steps = new IERC20LockBoostProvider.LockBoostStep[](2);
-        steps[0] = IERC20LockBoostProvider.LockBoostStep({ minAmount: amount0, weightBoostBP: weightBoost0 });
-        steps[1] = IERC20LockBoostProvider.LockBoostStep({ minAmount: amount1, weightBoostBP: weightBoost1 });
+        uint128 weightBoost1
+    ) internal pure returns (Step[] memory steps) {
+        steps = new Step[](2);
+        steps[0] = Step({ threshold: amount0, value: weightBoost0 });
+        steps[1] = Step({ threshold: amount1, value: weightBoost1 });
     }
 
-    function _steps1(
-        uint128 amount,
-        uint32 weightBoost
-    ) internal pure returns (IERC20LockBoostProvider.LockBoostStep[] memory steps) {
-        steps = new IERC20LockBoostProvider.LockBoostStep[](1);
-        steps[0] = IERC20LockBoostProvider.LockBoostStep({ minAmount: amount, weightBoostBP: weightBoost });
+    function _steps1(uint128 amount, uint128 weightBoost) internal pure returns (Step[] memory steps) {
+        steps = new Step[](1);
+        steps[0] = Step({ threshold: amount, value: weightBoost });
     }
 
-    function _steps0() internal pure returns (IERC20LockBoostProvider.LockBoostStep[] memory steps) {}
+    function _steps0() internal pure returns (Step[] memory steps) {}
 }
 
 contract ERC20LockBoostProviderConstructorTest is ERC20LockBoostProviderBaseTest {
@@ -268,13 +265,13 @@ contract ERC20LockBoostProviderConstructorTest is ERC20LockBoostProviderBaseTest
     }
 
     function test_constructor_RevertWhen_ZeroAddresses() public {
-        vm.expectRevert(IERC20LockBoostProvider.ZeroAddress.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.ZeroModuleAddress.selector);
         new ERC20LockBoostProvider(address(0), address(token), address(vaultBeacon), MIN_LOCK_PERIOD);
 
-        vm.expectRevert(IERC20LockBoostProvider.ZeroAddress.selector);
+        vm.expectRevert(IERC20LockBoostProvider.ZeroTokenAddress.selector);
         new ERC20LockBoostProvider(address(module), address(0), address(vaultBeacon), MIN_LOCK_PERIOD);
 
-        vm.expectRevert(IERC20LockBoostProvider.ZeroAddress.selector);
+        vm.expectRevert(IERC20LockBoostProvider.ZeroVaultBeaconAddress.selector);
         new ERC20LockBoostProvider(address(module), address(token), address(0), MIN_LOCK_PERIOD);
     }
 
@@ -288,10 +285,32 @@ contract ERC20LockBoostProviderConstructorTest is ERC20LockBoostProviderBaseTest
 }
 
 contract ERC20LockBoostProviderInitializeTest is ERC20LockBoostProviderBaseTest {
-    function test_initialize_SetsAdminAndLockPeriod() public view {
+    function test_initialize_SetsAdminLockPeriodAndSteps() public view {
         assertEq(provider.getInitializedVersion(), 1);
         assertEq(provider.getLockPeriod(), LOCK_PERIOD);
         assertTrue(provider.hasRole(provider.DEFAULT_ADMIN_ROLE(), admin));
+        Step[] memory steps = provider.getSteps();
+        assertEq(steps.length, 2);
+        assertEq(steps[0].threshold, STEP_1_AMOUNT);
+        assertEq(steps[0].value, STEP_1_WEIGHT_BOOST_BP);
+        assertEq(steps[1].threshold, STEP_2_AMOUNT);
+        assertEq(steps[1].value, STEP_2_WEIGHT_BOOST_BP);
+    }
+
+    function test_initialize_DoesNotNotifyProviderConfigChanged() public {
+        ERC20LockBoostProvider p = new ERC20LockBoostProvider(
+            address(module),
+            address(token),
+            address(vaultBeacon),
+            MIN_LOCK_PERIOD
+        );
+        _enableInitializers(address(p));
+
+        expectNoCall(
+            address(registry),
+            abi.encodeWithSelector(IMetaRegistry.notifyWeightBoostProviderConfigChanged.selector)
+        );
+        p.initialize(admin, LOCK_PERIOD, _defaultSteps());
     }
 
     function test_initialize_RevertWhen_ZeroAdmin() public {
@@ -303,8 +322,8 @@ contract ERC20LockBoostProviderInitializeTest is ERC20LockBoostProviderBaseTest 
         );
         _enableInitializers(address(p));
 
-        vm.expectRevert(IERC20LockBoostProvider.ZeroAdminAddress.selector);
-        p.initialize(address(0), LOCK_PERIOD);
+        vm.expectRevert(IBaseWeightBoostProvider.ZeroAdminAddress.selector);
+        p.initialize(address(0), LOCK_PERIOD, _defaultSteps());
     }
 
     function test_initialize_RevertWhen_InvalidLockPeriod() public {
@@ -317,86 +336,89 @@ contract ERC20LockBoostProviderInitializeTest is ERC20LockBoostProviderBaseTest 
         _enableInitializers(address(p));
 
         vm.expectRevert(IERC20LockBoostProvider.InvalidLockPeriod.selector);
-        p.initialize(admin, MIN_LOCK_PERIOD - 1);
+        p.initialize(admin, MIN_LOCK_PERIOD - 1, _defaultSteps());
     }
 
     function test_initialize_RevertWhen_DoubleCall() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        provider.initialize(admin, LOCK_PERIOD);
+        provider.initialize(admin, LOCK_PERIOD, _defaultSteps());
     }
 }
 
-contract ERC20LockBoostProviderAdminTest is ERC20LockBoostProviderBaseTest {
+contract ERC20LockBoostProviderAdminTest is ERC20LockBoostProviderBaseTest, StepwiseWeightBoostBehaviour {
+    function _stepwise() internal view override returns (IStepwiseWeightBoost) {
+        return IStepwiseWeightBoost(address(provider));
+    }
+
+    function _stepwiseAdmin() internal view override returns (address) {
+        return admin;
+    }
+
+    function _stepwiseSteps(uint256 count) internal view override returns (Step[] memory steps) {
+        steps = new Step[](count);
+        for (uint256 i; i < count; ++i) {
+            // Locked amounts must be nonzero.
+            steps[i] = Step({ threshold: uint128((i + 1) * 1 ether), value: uint128((i + 1) * 100) });
+        }
+    }
+
     function test_setLockPeriod() public {
         uint256 newLockPeriod = LOCK_PERIOD + 1 days;
 
         vm.expectEmit(address(provider));
         emit IERC20LockBoostProvider.LockPeriodSet(newLockPeriod);
-        vm.prank(lockPeriodManager);
+        vm.prank(admin);
         provider.setLockPeriod(newLockPeriod);
 
         assertEq(provider.getLockPeriod(), newLockPeriod);
     }
 
-    function test_setLockPeriod_RevertWhen_NoRole() public {
-        expectRoleRevert(stranger, provider.SET_LOCK_PERIOD_ROLE());
+    function test_setLockPeriod_RevertWhen_NotAdmin() public {
+        expectRoleRevert(stranger, provider.DEFAULT_ADMIN_ROLE());
         vm.prank(stranger);
         provider.setLockPeriod(LOCK_PERIOD + 1 days);
     }
 
     function test_setLockPeriod_RevertWhen_SamePeriod() public {
-        vm.prank(lockPeriodManager);
+        vm.prank(admin);
         vm.expectRevert(IERC20LockBoostProvider.SameLockPeriod.selector);
         provider.setLockPeriod(LOCK_PERIOD);
     }
 
     function test_setLockPeriod_RevertWhen_InvalidPeriod() public {
-        vm.prank(lockPeriodManager);
+        vm.prank(admin);
         vm.expectRevert(IERC20LockBoostProvider.InvalidLockPeriod.selector);
         provider.setLockPeriod(MIN_LOCK_PERIOD - 1);
     }
 
-    function test_setLockBoostSteps() public {
-        IERC20LockBoostProvider.LockBoostStep[] memory steps = _steps(
-            STEP_1_AMOUNT,
-            STEP_1_WEIGHT_BOOST_BP,
-            STEP_2_AMOUNT,
-            STEP_2_WEIGHT_BOOST_BP
-        );
+    function test_setSteps() public {
+        Step[] memory steps = _steps(STEP_1_AMOUNT, STEP_1_WEIGHT_BOOST_BP, STEP_2_AMOUNT, STEP_2_WEIGHT_BOOST_BP);
 
         vm.expectEmit(address(provider));
-        emit IERC20LockBoostProvider.LockBoostStepsSet(steps);
+        emit IStepwiseWeightBoost.StepsSet(steps);
         vm.expectCall(
             address(registry),
             abi.encodeWithSelector(IMetaRegistry.notifyWeightBoostProviderConfigChanged.selector)
         );
         vm.prank(admin);
-        provider.setLockBoostSteps(steps);
+        provider.setSteps(steps);
 
-        IERC20LockBoostProvider.LockBoostStep[] memory stored = provider.getLockBoostSteps();
+        Step[] memory stored = provider.getSteps();
         assertEq(stored.length, 2);
-        assertEq(stored[0].minAmount, STEP_1_AMOUNT);
-        assertEq(stored[0].weightBoostBP, STEP_1_WEIGHT_BOOST_BP);
-        assertEq(stored[1].minAmount, STEP_2_AMOUNT);
-        assertEq(stored[1].weightBoostBP, STEP_2_WEIGHT_BOOST_BP);
+        assertEq(stored[0].threshold, STEP_1_AMOUNT);
+        assertEq(stored[0].value, STEP_1_WEIGHT_BOOST_BP);
+        assertEq(stored[1].threshold, STEP_2_AMOUNT);
+        assertEq(stored[1].value, STEP_2_WEIGHT_BOOST_BP);
     }
 
-    function test_setLockBoostSteps_RevertWhen_EmptySteps() public {
-        _setDefaultSteps();
-
-        vm.prank(admin);
-        vm.expectRevert(IERC20LockBoostProvider.InvalidLockBoostSteps.selector);
-        provider.setLockBoostSteps(_steps0());
-    }
-
-    function test_setLockBoostSteps_DoesNotRefreshExistingWeights() public {
+    function test_setSteps_DoesNotRefreshExistingWeights() public {
         _setDefaultSteps();
         _lock(STEP_2_AMOUNT);
         assertEq(provider.getWeightBoostMultiplierBP(NODE_OPERATOR_ID), STEP_2_MULTIPLIER_BP);
         assertEq(registry.getNodeOperatorWeight(NODE_OPERATOR_ID), _weight(STEP_2_MULTIPLIER_BP));
 
         vm.prank(admin);
-        provider.setLockBoostSteps(_steps1(STEP_2_AMOUNT + 1, 2_000));
+        provider.setSteps(_steps1(STEP_2_AMOUNT + 1, 2_000));
 
         assertEq(provider.getWeightBoostMultiplierBP(NODE_OPERATOR_ID), MAX_BP);
         assertEq(registry.getNodeOperatorWeight(NODE_OPERATOR_ID), _weight(STEP_2_MULTIPLIER_BP));
@@ -405,9 +427,9 @@ contract ERC20LockBoostProviderAdminTest is ERC20LockBoostProviderBaseTest {
         assertEq(registry.getNodeOperatorWeight(NODE_OPERATOR_ID), BASE_WEIGHT);
     }
 
-    function test_setLockBoostSteps_AllowsZeroWeightBoost() public {
+    function test_setSteps_AllowsZeroWeightBoost() public {
         vm.prank(admin);
-        provider.setLockBoostSteps(_steps1(STEP_1_AMOUNT, 0));
+        provider.setSteps(_steps1(STEP_1_AMOUNT, 0));
 
         _lock(STEP_1_AMOUNT);
 
@@ -415,42 +437,11 @@ contract ERC20LockBoostProviderAdminTest is ERC20LockBoostProviderBaseTest {
         assertEq(registry.getNodeOperatorWeight(NODE_OPERATOR_ID), BASE_WEIGHT);
     }
 
-    function test_setLockBoostSteps_RevertWhen_NoRole() public {
-        expectRoleRevert(stranger, provider.DEFAULT_ADMIN_ROLE());
-        vm.prank(stranger);
-        provider.setLockBoostSteps(_steps1(STEP_1_AMOUNT, STEP_1_WEIGHT_BOOST_BP));
-    }
-
-    function test_setLockBoostSteps_RevertWhen_InvalidSteps() public {
-        vm.startPrank(admin);
-
-        vm.expectRevert(IERC20LockBoostProvider.InvalidLockBoostSteps.selector);
-        provider.setLockBoostSteps(_steps1(0, STEP_1_WEIGHT_BOOST_BP));
-
-        vm.expectRevert(IERC20LockBoostProvider.InvalidLockBoostSteps.selector);
-        provider.setLockBoostSteps(_steps1(STEP_1_AMOUNT, uint32(MAX_WEIGHT_BOOST_BP + 1)));
-
-        vm.expectRevert(IERC20LockBoostProvider.InvalidLockBoostSteps.selector);
-        provider.setLockBoostSteps(
-            _steps(STEP_1_AMOUNT, STEP_1_WEIGHT_BOOST_BP, STEP_1_AMOUNT, STEP_2_WEIGHT_BOOST_BP)
-        );
-
-        vm.expectRevert(IERC20LockBoostProvider.InvalidLockBoostSteps.selector);
-        provider.setLockBoostSteps(
-            _steps(STEP_1_AMOUNT, STEP_2_WEIGHT_BOOST_BP, STEP_2_AMOUNT, STEP_1_WEIGHT_BOOST_BP)
-        );
-
-        vm.expectRevert(IERC20LockBoostProvider.InvalidLockBoostSteps.selector);
-        provider.setLockBoostSteps(
-            _steps(STEP_1_AMOUNT, STEP_1_WEIGHT_BOOST_BP, STEP_2_AMOUNT, STEP_1_WEIGHT_BOOST_BP)
-        );
-
-        vm.expectRevert(IERC20LockBoostProvider.InvalidLockBoostSteps.selector);
-        provider.setLockBoostSteps(
-            _steps(STEP_1_AMOUNT, STEP_1_WEIGHT_BOOST_BP, STEP_2_AMOUNT, uint32(MAX_WEIGHT_BOOST_BP + 1))
-        );
-
-        vm.stopPrank();
+    /// @dev A lock threshold of zero would boost operators that locked nothing.
+    function test_setSteps_RevertWhen_ZeroThreshold() public {
+        vm.expectRevert(abi.encodeWithSelector(IStepwiseWeightBoost.InvalidStep.selector, 0));
+        vm.prank(admin);
+        provider.setSteps(_steps1(0, STEP_1_WEIGHT_BOOST_BP));
     }
 }
 
@@ -467,7 +458,7 @@ contract ERC20LockBoostProviderLockTest is ERC20LockBoostProviderBaseTest {
         vm.prank(nodeOperatorOwner);
         provider.lock(NODE_OPERATOR_ID, amount);
 
-        IERC20LockBoostProvider.LockInfo memory lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        IERC20LockBoostProvider.OperatorLock memory lockInfo = provider.getLock(NODE_OPERATOR_ID);
         assertTrue(lockInfo.vault != address(0));
         assertEq(provider.getVault(NODE_OPERATOR_ID), lockInfo.vault);
         assertEq(LidoGovernanceLockVault(lockInfo.vault).VOTING_CONTRACT(), address(voting));
@@ -487,7 +478,7 @@ contract ERC20LockBoostProviderLockTest is ERC20LockBoostProviderBaseTest {
         vm.warp(2000);
         _lock(1 ether);
 
-        IERC20LockBoostProvider.LockInfo memory lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        IERC20LockBoostProvider.OperatorLock memory lockInfo = provider.getLock(NODE_OPERATOR_ID);
         assertEq(lockInfo.amount, 2 ether);
         assertEq(lockInfo.lockUntil, 2000 + LOCK_PERIOD);
     }
@@ -554,13 +545,13 @@ contract ERC20LockBoostProviderLockTest is ERC20LockBoostProviderBaseTest {
 
     function test_lock_RevertWhen_NotNodeOperatorOwner() public {
         vm.prank(stranger);
-        vm.expectRevert(IERC20LockBoostProvider.SenderIsNotNodeOperatorOwner.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.SenderIsNotNodeOperatorOwner.selector);
         provider.lock(NODE_OPERATOR_ID, 1 ether);
     }
 
     function test_lock_RevertWhen_NodeOperatorDoesNotExist() public {
         vm.prank(nodeOperatorOwner);
-        vm.expectRevert(IERC20LockBoostProvider.NodeOperatorDoesNotExist.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.NodeOperatorDoesNotExist.selector);
         provider.lock(NODE_OPERATOR_ID + 1, 1 ether);
     }
 }
@@ -569,7 +560,7 @@ contract ERC20LockBoostProviderWithdrawTest is ERC20LockBoostProviderBaseTest {
     function test_withdraw_AfterLockPeriod() public {
         _setDefaultSteps();
         _lock(STEP_2_AMOUNT);
-        IERC20LockBoostProvider.LockInfo memory lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        IERC20LockBoostProvider.OperatorLock memory lockInfo = provider.getLock(NODE_OPERATOR_ID);
 
         vm.warp(lockInfo.lockUntil);
         vm.expectEmit(address(provider));
@@ -577,7 +568,7 @@ contract ERC20LockBoostProviderWithdrawTest is ERC20LockBoostProviderBaseTest {
         vm.prank(nodeOperatorOwner);
         provider.withdraw(NODE_OPERATOR_ID, 60 ether, receiver);
 
-        lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        lockInfo = provider.getLock(NODE_OPERATOR_ID);
         assertEq(lockInfo.amount, 140 ether);
         assertEq(token.balanceOf(receiver), 60 ether);
         assertEq(provider.getWeightBoostMultiplierBP(NODE_OPERATOR_ID), STEP_1_MULTIPLIER_BP);
@@ -586,20 +577,20 @@ contract ERC20LockBoostProviderWithdrawTest is ERC20LockBoostProviderBaseTest {
 
     function test_withdraw_ClearsLockUntilWhenFullyWithdrawn() public {
         _lock(10 ether);
-        IERC20LockBoostProvider.LockInfo memory lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        IERC20LockBoostProvider.OperatorLock memory lockInfo = provider.getLock(NODE_OPERATOR_ID);
 
         vm.warp(lockInfo.lockUntil);
         vm.prank(nodeOperatorOwner);
         provider.withdraw(NODE_OPERATOR_ID, 10 ether, receiver);
 
-        lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        lockInfo = provider.getLock(NODE_OPERATOR_ID);
         assertEq(lockInfo.amount, 0);
         assertEq(lockInfo.lockUntil, 0);
     }
 
     function test_withdraw_AfterVaultImplementationUpgrade() public {
         _lock(10 ether);
-        IERC20LockBoostProvider.LockInfo memory lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        IERC20LockBoostProvider.OperatorLock memory lockInfo = provider.getLock(NODE_OPERATOR_ID);
         IERC20LockVault vault = IERC20LockVault(lockInfo.vault);
         SnapshotDelegationMock newSnapshotDelegation = new SnapshotDelegationMock();
         LidoGovernanceLockVault newVaultImpl = new LidoGovernanceLockVault(
@@ -630,7 +621,7 @@ contract ERC20LockBoostProviderWithdrawTest is ERC20LockBoostProviderBaseTest {
     function test_withdraw_DoesNotRefreshRegistryWhenBoostUnchanged() public {
         _setDefaultSteps();
         _lock(STEP_1_AMOUNT + 10 ether);
-        IERC20LockBoostProvider.LockInfo memory lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        IERC20LockBoostProvider.OperatorLock memory lockInfo = provider.getLock(NODE_OPERATOR_ID);
 
         vm.warp(lockInfo.lockUntil);
         expectNoCall(
@@ -693,12 +684,12 @@ contract ERC20LockBoostProviderWithdrawTest is ERC20LockBoostProviderBaseTest {
 
     function test_withdraw_RevertWhen_InvalidInputs() public {
         _lock(10 ether);
-        IERC20LockBoostProvider.LockInfo memory lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        IERC20LockBoostProvider.OperatorLock memory lockInfo = provider.getLock(NODE_OPERATOR_ID);
         vm.warp(lockInfo.lockUntil);
 
         vm.startPrank(nodeOperatorOwner);
 
-        vm.expectRevert(IERC20LockVault.ZeroAddress.selector);
+        vm.expectRevert(IERC20LockVault.ZeroReceiverAddress.selector);
         provider.withdraw(NODE_OPERATOR_ID, 1 ether, address(0));
 
         vm.expectRevert(IERC20LockBoostProvider.InvalidAmount.selector);
@@ -732,7 +723,7 @@ contract ERC20LockBoostProviderWithdrawTest is ERC20LockBoostProviderBaseTest {
 contract ERC20LockBoostProviderVotingTest is ERC20LockBoostProviderBaseTest {
     function test_assignAndUnassignVotingDelegate() public {
         _lock(10 ether);
-        IERC20LockBoostProvider.LockInfo memory lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        IERC20LockBoostProvider.OperatorLock memory lockInfo = provider.getLock(NODE_OPERATOR_ID);
         IAragonVotingLockVault vault = IAragonVotingLockVault(lockInfo.vault);
 
         vm.prank(nodeOperatorOwner);
@@ -748,7 +739,7 @@ contract ERC20LockBoostProviderVotingTest is ERC20LockBoostProviderBaseTest {
 
     function test_assignAndUnassignSnapshotDelegate() public {
         _lock(10 ether);
-        IERC20LockBoostProvider.LockInfo memory lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        IERC20LockBoostProvider.OperatorLock memory lockInfo = provider.getLock(NODE_OPERATOR_ID);
         ISnapshotDelegationLockVault vault = ISnapshotDelegationLockVault(lockInfo.vault);
 
         vm.prank(nodeOperatorOwner);
@@ -770,7 +761,7 @@ contract ERC20LockBoostProviderVotingTest is ERC20LockBoostProviderBaseTest {
         address newVotingDelegate = nextAddress("NEW_VOTING_DELEGATE");
 
         _lock(10 ether);
-        IERC20LockBoostProvider.LockInfo memory lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        IERC20LockBoostProvider.OperatorLock memory lockInfo = provider.getLock(NODE_OPERATOR_ID);
         IAragonVotingLockVault vault = IAragonVotingLockVault(lockInfo.vault);
 
         vm.startPrank(nodeOperatorOwner);
@@ -788,7 +779,7 @@ contract ERC20LockBoostProviderVotingTest is ERC20LockBoostProviderBaseTest {
 
     function test_vote() public {
         _lock(10 ether);
-        IERC20LockBoostProvider.LockInfo memory lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        IERC20LockBoostProvider.OperatorLock memory lockInfo = provider.getLock(NODE_OPERATOR_ID);
         IAragonVotingLockVault vault = IAragonVotingLockVault(lockInfo.vault);
 
         vm.prank(nodeOperatorOwner);
@@ -802,7 +793,7 @@ contract ERC20LockBoostProviderVotingTest is ERC20LockBoostProviderBaseTest {
 
     function test_assignVotingDelegate_AllowsZeroDelegate() public {
         _lock(10 ether);
-        IERC20LockBoostProvider.LockInfo memory lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        IERC20LockBoostProvider.OperatorLock memory lockInfo = provider.getLock(NODE_OPERATOR_ID);
         IAragonVotingLockVault vault = IAragonVotingLockVault(lockInfo.vault);
 
         vm.prank(nodeOperatorOwner);
@@ -813,7 +804,7 @@ contract ERC20LockBoostProviderVotingTest is ERC20LockBoostProviderBaseTest {
 
     function test_assignVotingDelegate_AllowsSameDelegate() public {
         _lock(10 ether);
-        IERC20LockBoostProvider.LockInfo memory lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        IERC20LockBoostProvider.OperatorLock memory lockInfo = provider.getLock(NODE_OPERATOR_ID);
         IAragonVotingLockVault vault = IAragonVotingLockVault(lockInfo.vault);
 
         vm.startPrank(nodeOperatorOwner);
@@ -826,7 +817,7 @@ contract ERC20LockBoostProviderVotingTest is ERC20LockBoostProviderBaseTest {
 
     function test_assignDelegates_AllowsEmptyVault() public {
         _lock(10 ether);
-        IERC20LockBoostProvider.LockInfo memory lockInfo = provider.getNodeOperatorLock(NODE_OPERATOR_ID);
+        IERC20LockBoostProvider.OperatorLock memory lockInfo = provider.getLock(NODE_OPERATOR_ID);
         vm.warp(lockInfo.lockUntil);
 
         vm.prank(nodeOperatorOwner);
@@ -888,13 +879,13 @@ contract ERC20LockVaultTest is Test, Utilities {
     }
 
     function test_constructor_RevertWhen_ZeroAddresses() public {
-        vm.expectRevert(IERC20LockVault.ZeroAddress.selector);
+        vm.expectRevert(IERC20LockVault.ZeroTokenAddress.selector);
         new ERC20LockVault(address(0), provider, module);
 
-        vm.expectRevert(IERC20LockVault.ZeroAddress.selector);
+        vm.expectRevert(IERC20LockVault.ZeroProviderAddress.selector);
         new ERC20LockVault(address(token), address(0), module);
 
-        vm.expectRevert(IERC20LockVault.ZeroAddress.selector);
+        vm.expectRevert(IERC20LockVault.ZeroModuleAddress.selector);
         new ERC20LockVault(address(token), provider, address(0));
     }
 
@@ -920,7 +911,7 @@ contract ERC20LockVaultTest is Test, Utilities {
         vault.transferTokens(receiver, 1 ether);
 
         vm.prank(provider);
-        vm.expectRevert(IERC20LockVault.ZeroAddress.selector);
+        vm.expectRevert(IERC20LockVault.ZeroReceiverAddress.selector);
         vault.transferTokens(address(0), 1 ether);
     }
 }
@@ -992,10 +983,10 @@ contract LidoGovernanceLockVaultTest is Test, Utilities {
     }
 
     function test_constructor_RevertWhen_ZeroGovernanceAddresses() public {
-        vm.expectRevert(IERC20LockVault.ZeroAddress.selector);
+        vm.expectRevert(IAragonVotingLockVault.ZeroVotingContractAddress.selector);
         new LidoGovernanceLockVault(address(token), provider, address(module), address(0), address(snapshotDelegation));
 
-        vm.expectRevert(IERC20LockVault.ZeroAddress.selector);
+        vm.expectRevert(ISnapshotDelegationLockVault.ZeroSnapshotDelegationAddress.selector);
         new LidoGovernanceLockVault(address(token), provider, address(module), address(voting), address(0));
     }
 

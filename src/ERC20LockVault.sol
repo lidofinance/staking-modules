@@ -20,7 +20,9 @@ contract ERC20LockVault is IERC20LockVault, Initializable {
     IBaseModule public immutable MODULE;
 
     constructor(address token, address provider, address module) {
-        if (token == address(0) || provider == address(0) || module == address(0)) revert ZeroAddress();
+        if (token == address(0)) revert ZeroTokenAddress();
+        if (provider == address(0)) revert ZeroProviderAddress();
+        if (module == address(0)) revert ZeroModuleAddress();
 
         TOKEN = token;
         PROVIDER = provider;
@@ -37,7 +39,7 @@ contract ERC20LockVault is IERC20LockVault, Initializable {
     /// @inheritdoc IERC20LockVault
     function transferTokens(address receiver, uint256 amount) external {
         _onlyProvider();
-        if (receiver == address(0)) revert ZeroAddress();
+        if (receiver == address(0)) revert ZeroReceiverAddress();
 
         IERC20(TOKEN).safeTransfer(receiver, amount);
     }

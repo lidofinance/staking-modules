@@ -3,19 +3,17 @@
 
 pragma solidity 0.8.33;
 
-import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-
-import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
-import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
-import { INodeOperatorStrikes, StrikeInput, Strike, StrikeThreshold } from "./interfaces/INodeOperatorStrikes.sol";
+import { BaseWeightBoostProvider } from "./abstract/BaseWeightBoostProvider.sol";
+import { StepwiseWeightBoost } from "./abstract/StepwiseWeightBoost.sol";
+import { INodeOperatorStrikes, StrikeInput, Strike } from "./interfaces/INodeOperatorStrikes.sol";
+import { Step } from "./interfaces/IStepwiseWeightBoost.sol";
 import { IWeightBoostProvider } from "./interfaces/IWeightBoostProvider.sol";
 import { MAX_BP } from "./lib/Constants.sol";
 
 /// @notice Committee-issued, operator-level strikes that cumulatively reduce
 ///         a Node Operator's allocation weight. Strikes persist until removed;
 ///         removal is permissionless once a strike's lifetime elapses.
-contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessControlEnumerableUpgradeable {
+contract NodeOperatorStrikes is INodeOperatorStrikes, StepwiseWeightBoost {
     struct OperatorStrikes {
         /// @dev Monotonic strike ID counter; removed IDs are never reused.
         uint64 lastId;
@@ -26,44 +24,30 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
 
     /// @custom:storage-location erc7201:NodeOperatorStrikes
     struct NodeOperatorStrikesStorage {
-        StrikeThreshold[] thresholds;
         mapping(uint256 nodeOperatorId => OperatorStrikes) operatorStrikes;
     }
 
     bytes32 public constant STRIKES_COMMITTEE_ROLE = keccak256("STRIKES_COMMITTEE_ROLE");
 
-    uint256 public constant MAX_THRESHOLDS = 16;
     uint256 public constant MAX_DESCRIPTION_LENGTH = 1024;
-
-    ICuratedModule public immutable MODULE;
-    IMetaRegistry public immutable META_REGISTRY;
 
     // keccak256(abi.encode(uint256(keccak256("NodeOperatorStrikes")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant NODE_OPERATOR_STRIKES_STORAGE_LOCATION =
         0x510f8e4bbf34090117edc1d950679ffb8abd223dc216175d997628968b892400;
 
     /// @param module CuratedModule proxy address.
-    constructor(address module) {
-        if (module == address(0)) revert ZeroModuleAddress();
-
-        MODULE = ICuratedModule(module);
-        META_REGISTRY = ICuratedModule(module).META_REGISTRY();
-
-        _disableInitializers();
-    }
+    constructor(address module) StepwiseWeightBoost(module) {}
 
     /// @inheritdoc INodeOperatorStrikes
-    function initialize(address admin, StrikeThreshold[] calldata thresholds) external initializer {
-        if (admin == address(0)) revert ZeroAdminAddress();
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _setStrikeThresholds(thresholds);
+    function initialize(address admin, Step[] calldata steps) external initializer {
+        StepwiseWeightBoost._initialize(admin, steps);
     }
 
     /// @inheritdoc INodeOperatorStrikes
     function issueStrike(
         StrikeInput calldata input
     ) external onlyRole(STRIKES_COMMITTEE_ROLE) returns (uint256 strikeId) {
-        _onlyExistingOperator(input.nodeOperatorId);
+        BaseWeightBoostProvider._onlyExistingNodeOperator(input.nodeOperatorId);
 
         uint256 descLength = bytes(input.description).length;
         if (descLength == 0 || descLength > MAX_DESCRIPTION_LENGTH) revert InvalidDescription();
@@ -74,6 +58,7 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         if (expiry > type(uint64).max) revert LifetimeTooLong();
 
         OperatorStrikes storage rec = _storage().operatorStrikes[input.nodeOperatorId];
+        uint256 previousCount = rec.activeIds.length;
         strikeId = ++rec.lastId;
         rec.activeIds.push(strikeId);
         rec.strikes[strikeId] = Strike({
@@ -91,25 +76,26 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
             description: input.description
         });
 
-        META_REGISTRY.notifyWeightBoostChanged(input.nodeOperatorId);
+        StepwiseWeightBoost._notifyMetaRegistryIfWeightChanged(input.nodeOperatorId, previousCount, previousCount + 1);
     }
 
     /// @inheritdoc INodeOperatorStrikes
     function removeStrike(uint256 nodeOperatorId, uint256 strikeId) external onlyRole(STRIKES_COMMITTEE_ROLE) {
         OperatorStrikes storage rec = _storage().operatorStrikes[nodeOperatorId];
+        uint256 previousCount = rec.activeIds.length;
         _removeStrike(rec, _activeIndex(rec, strikeId), strikeId);
         emit StrikeRemoved(nodeOperatorId, strikeId);
 
-        META_REGISTRY.notifyWeightBoostChanged(nodeOperatorId);
+        StepwiseWeightBoost._notifyMetaRegistryIfWeightChanged(nodeOperatorId, previousCount, previousCount - 1);
     }
 
     /// @inheritdoc INodeOperatorStrikes
     function removeExpiredStrikes(uint256 nodeOperatorId) external {
         OperatorStrikes storage rec = _storage().operatorStrikes[nodeOperatorId];
         uint256[] storage activeIds = rec.activeIds;
+        uint256 previousCount = activeIds.length;
 
         // Back-to-front so swap-pop never skips an id.
-        bool removed;
         uint256 i = activeIds.length;
         while (i > 0) {
             --i;
@@ -117,33 +103,17 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
             if (rec.strikes[strikeId].expiry > block.timestamp) continue;
             _removeStrike(rec, i, strikeId);
             emit ExpiredStrikeRemoved(nodeOperatorId, strikeId);
-            removed = true;
         }
 
-        if (removed) META_REGISTRY.notifyWeightBoostChanged(nodeOperatorId);
-    }
-
-    /// @inheritdoc INodeOperatorStrikes
-    function setStrikeThresholds(StrikeThreshold[] calldata thresholds) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setStrikeThresholds(thresholds);
-        META_REGISTRY.notifyWeightBoostProviderConfigChanged();
+        StepwiseWeightBoost._notifyMetaRegistryIfWeightChanged(nodeOperatorId, previousCount, activeIds.length);
     }
 
     /// @inheritdoc IWeightBoostProvider
     /// @dev Expiry only enables permissionless removal; a strike keeps reducing weight until it is removed.
     function getWeightBoostMultiplierBP(uint256 nodeOperatorId) external view returns (uint256 multiplierBP) {
-        NodeOperatorStrikesStorage storage $ = _storage();
-        uint256 count = $.operatorStrikes[nodeOperatorId].activeIds.length;
-
-        StrikeThreshold[] storage thresholds = $.thresholds;
-        uint256 reductionBP;
-        uint256 len = thresholds.length;
-        for (uint256 i; i < len; ++i) {
-            if (count < thresholds[i].minCount) break; // thresholds ascend by minCount
-            reductionBP = thresholds[i].reductionBP;
-        }
+        uint256 count = _storage().operatorStrikes[nodeOperatorId].activeIds.length;
         unchecked {
-            multiplierBP = MAX_BP - reductionBP;
+            multiplierBP = MAX_BP - StepwiseWeightBoost._stepValueAt(count);
         }
     }
 
@@ -156,7 +126,7 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
     function getStrike(uint256 nodeOperatorId, uint256 strikeId) external view returns (Strike memory strike) {
         strike = _storage().operatorStrikes[nodeOperatorId].strikes[strikeId];
         // expiry == 0 means removed or never issued.
-        if (strike.expiry == 0) revert StrikeNotExist();
+        if (strike.expiry == 0) revert StrikeDoesNotExist();
     }
 
     /// @inheritdoc INodeOperatorStrikes
@@ -171,11 +141,6 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         }
     }
 
-    /// @inheritdoc INodeOperatorStrikes
-    function getStrikeThresholds() external view returns (StrikeThreshold[] memory thresholds) {
-        return _storage().thresholds;
-    }
-
     /// @dev Swap-pops the id and deletes the record. Caller emits and refreshes the weight (once per batch).
     function _removeStrike(OperatorStrikes storage rec, uint256 idx, uint256 strikeId) internal {
         uint256[] storage activeIds = rec.activeIds;
@@ -187,47 +152,19 @@ contract NodeOperatorStrikes is INodeOperatorStrikes, Initializable, AccessContr
         delete rec.strikes[strikeId];
     }
 
-    function _setStrikeThresholds(StrikeThreshold[] calldata thresholds) internal {
-        _validateStrikeThresholds(thresholds);
-
-        NodeOperatorStrikesStorage storage $ = _storage();
-        delete $.thresholds;
-        for (uint256 i; i < thresholds.length; ++i) {
-            $.thresholds.push(thresholds[i]);
-        }
-
-        emit StrikeThresholdsSet(thresholds);
-    }
-
-    function _onlyExistingOperator(uint256 nodeOperatorId) internal view {
-        if (nodeOperatorId >= MODULE.getNodeOperatorsCount()) revert NodeOperatorDoesNotExist();
-    }
-
-    /// @dev Index of `strikeId` in `activeIds`; reverts `StrikeNotExist` if absent.
+    /// @dev Index of `strikeId` in `activeIds`; reverts `StrikeDoesNotExist` if absent.
     function _activeIndex(OperatorStrikes storage rec, uint256 strikeId) internal view returns (uint256) {
         uint256[] storage activeIds = rec.activeIds;
         uint256 len = activeIds.length;
         for (uint256 i; i < len; ++i) {
             if (activeIds[i] == strikeId) return i;
         }
-        revert StrikeNotExist();
+        revert StrikeDoesNotExist();
     }
 
-    function _validateStrikeThresholds(StrikeThreshold[] calldata thresholds) internal pure {
-        uint256 len = thresholds.length;
-        if (len == 0 || len > MAX_THRESHOLDS) revert InvalidStrikeThresholds();
-        if (thresholds[0].minCount == 0) revert InvalidStrikeThresholds();
-        if (thresholds[0].reductionBP == 0 || thresholds[0].reductionBP > MAX_BP) {
-            revert InvalidStrikeThresholds();
-        }
-
-        for (uint256 i = 1; i < len; ++i) {
-            StrikeThreshold calldata current = thresholds[i];
-            StrikeThreshold calldata previous = thresholds[i - 1];
-            if (current.minCount <= previous.minCount) revert InvalidStrikeThresholds();
-            if (current.reductionBP <= previous.reductionBP) revert InvalidStrikeThresholds();
-            if (current.reductionBP > MAX_BP) revert InvalidStrikeThresholds();
-        }
+    /// @dev A strike reduces weight, so a reduction above MAX_BP could never be applied.
+    function _isValidStep(Step calldata step) internal pure override returns (bool) {
+        return step.threshold != 0 && step.value != 0 && step.value <= MAX_BP;
     }
 
     function _storage() internal pure returns (NodeOperatorStrikesStorage storage $) {

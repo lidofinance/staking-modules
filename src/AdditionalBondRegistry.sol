@@ -3,69 +3,55 @@
 
 pragma solidity 0.8.33;
 
-import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-
+import { BaseWeightBoostProvider } from "./abstract/BaseWeightBoostProvider.sol";
+import { StepwiseWeightBoost } from "./abstract/StepwiseWeightBoost.sol";
 import { IAccounting } from "./interfaces/IAccounting.sol";
-import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
-import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
-import { IAdditionalBondRegistry, BoostStep, PendingCurveMultiplierReduction } from "./interfaces/IAdditionalBondRegistry.sol";
+import { IAdditionalBondRegistry, PendingCurveMultiplierReduction } from "./interfaces/IAdditionalBondRegistry.sol";
+import { Step } from "./interfaces/IStepwiseWeightBoost.sol";
 import { IWeightBoostProvider } from "./interfaces/IWeightBoostProvider.sol";
-import { MAX_BP, MAX_WEIGHT_BOOST_BP } from "./lib/Constants.sol";
+import { MAX_BP } from "./lib/Constants.sol";
 
-/// @notice Maps an operator's curve multiplier to a weight multiplier via governance-set boost steps.
-contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, AccessControlEnumerableUpgradeable {
+/// @notice Maps an operator's curve multiplier to a weight multiplier via governance-set steps. See
+///         IAdditionalBondRegistry for the model.
+contract AdditionalBondRegistry is IAdditionalBondRegistry, StepwiseWeightBoost {
     /// @custom:storage-location erc7201:AdditionalBondRegistry
     struct AdditionalBondRegistryStorage {
-        BoostStep[] boostSteps;
+        uint256 curveMultiplierReductionCooldown;
         /// @dev Downgrade cooldown and pending curve multiplier increment, per operator.
         mapping(uint256 nodeOperatorId => PendingCurveMultiplierReduction) pending;
     }
 
-    // Sanity guard: effective multiplier <= 10x.
-    uint256 public constant MAX_CURVE_MULTIPLIER = MAX_WEIGHT_BOOST_BP;
-    uint256 public constant MAX_WEIGHT_MULTIPLIER = MAX_WEIGHT_BOOST_BP;
+    // Sanity guard: effective multiplier <= 10x. MAX_STEP_VALUE caps step values, this caps thresholds.
+    uint256 public constant MAX_CURVE_MULTIPLIER = MAX_STEP_VALUE;
     // Requested curve multiplier must be a multiple of this (1%).
     uint256 public constant CURVE_MULTIPLIER_STEP = MAX_BP / 100;
+    uint256 public constant MAX_CURVE_MULTIPLIER_REDUCTION_COOLDOWN = 365 days;
 
-    ICuratedModule public immutable MODULE;
     IAccounting public immutable ACCOUNTING;
-    IMetaRegistry public immutable META_REGISTRY;
-    uint256 public immutable CURVE_MULTIPLIER_REDUCTION_COOLDOWN;
 
     // keccak256(abi.encode(uint256(keccak256("AdditionalBondRegistry")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant ADDITIONAL_BOND_REGISTRY_STORAGE_LOCATION =
         0xe06435b00cfe5ab72c52612ef2f4c7b5f9c4cc44634ef79a78a1888f5b1eb300;
 
-    /// @param module                CuratedModule address.
-    /// @param curveMultiplierCooldown Cooldown in seconds after a downgrade before `applyCurveMultiplier` can be called.
-    constructor(address module, uint256 curveMultiplierCooldown) {
-        MODULE = ICuratedModule(module);
+    /// @param module CuratedModule proxy address.
+    constructor(address module) StepwiseWeightBoost(module) {
         ACCOUNTING = IAccounting(MODULE.ACCOUNTING());
-        META_REGISTRY = IMetaRegistry(MODULE.META_REGISTRY());
-
-        CURVE_MULTIPLIER_REDUCTION_COOLDOWN = curveMultiplierCooldown;
-
-        _disableInitializers();
     }
 
     /// @inheritdoc IAdditionalBondRegistry
-    function initialize(address admin, BoostStep[] calldata boostSteps) external initializer {
-        if (admin == address(0)) revert ZeroAdminAddress();
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _setBoostSteps(boostSteps);
-    }
-
-    /// @inheritdoc IAdditionalBondRegistry
-    function setBoostSteps(BoostStep[] calldata boostSteps) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setBoostSteps(boostSteps);
-        META_REGISTRY.notifyWeightBoostProviderConfigChanged();
+    function initialize(
+        address admin,
+        uint256 curveMultiplierReductionCooldown,
+        Step[] calldata steps
+    ) external initializer {
+        _setCurveMultiplierReductionCooldown(curveMultiplierReductionCooldown);
+        StepwiseWeightBoost._initialize(admin, steps);
     }
 
     /// @inheritdoc IAdditionalBondRegistry
     function requestCurveMultiplier(uint256 nodeOperatorId, uint256 curveMultiplier) external {
         AdditionalBondRegistryStorage storage $ = _storage();
-        _checkOperatorOwner(nodeOperatorId);
+        BaseWeightBoostProvider._onlyNodeOperatorOwner(nodeOperatorId);
 
         if (curveMultiplier > MAX_CURVE_MULTIPLIER || curveMultiplier % CURVE_MULTIPLIER_STEP != 0) {
             revert InvalidCurveMultiplier();
@@ -75,108 +61,126 @@ contract AdditionalBondRegistry is IAdditionalBondRegistry, Initializable, Acces
         uint256 curMul = ACCOUNTING.getBondCurveMultiplier(nodeOperatorId);
         if (newMul == curMul) revert SameCurveMultiplier();
 
+        PendingCurveMultiplierReduction storage pending = $.pending[nodeOperatorId];
+        uint256 previousTargetCurveMultiplier = _getTargetCurveMultiplier(pending, curMul);
+
         if (newMul > curMul) {
             // NOTE: Takes into account current bond amount and keys count.
             //       Value `0` as a second arg for the following method means current keys count.
             if (ACCOUNTING.getRequiredBondForNextKeys(nodeOperatorId, 0, newMul) > 0) {
                 revert InsufficientBond();
             }
-            if ($.pending[nodeOperatorId].cooldownUntil != 0) {
-                _removeCurveMultiplierReductionCooldown(nodeOperatorId);
-            }
+            if (pending.cooldownUntil != 0) _cancelCurveMultiplierReduction(nodeOperatorId);
             ACCOUNTING.setBondCurveMultiplier(nodeOperatorId, curveMultiplier);
         } else {
-            _setCurveMultiplierReductionCooldown(nodeOperatorId, curveMultiplier);
-            emit CurveMultiplierReductionRequested(nodeOperatorId, curveMultiplier);
+            uint256 cooldownUntil = block.timestamp + $.curveMultiplierReductionCooldown;
+            $.pending[nodeOperatorId] = PendingCurveMultiplierReduction({
+                cooldownUntil: uint128(cooldownUntil),
+                curveMultiplier: uint128(curveMultiplier)
+            });
+            emit CurveMultiplierReductionRequested(nodeOperatorId, curveMultiplier, cooldownUntil);
         }
 
-        META_REGISTRY.notifyWeightBoostChanged(nodeOperatorId);
+        StepwiseWeightBoost._notifyMetaRegistryIfWeightChanged(
+            nodeOperatorId,
+            previousTargetCurveMultiplier,
+            curveMultiplier
+        );
     }
 
     /// @inheritdoc IAdditionalBondRegistry
-    function applyCurveMultiplier(uint256 nodeOperatorId) external {
-        _checkOperatorOwner(nodeOperatorId);
+    function applyCurveMultiplierReduction(uint256 nodeOperatorId) external {
+        BaseWeightBoostProvider._onlyNodeOperatorOwner(nodeOperatorId);
 
         PendingCurveMultiplierReduction storage p = _storage().pending[nodeOperatorId];
         if (p.cooldownUntil == 0) revert NoCurveMultiplierReductionCooldown();
         if (p.cooldownUntil > block.timestamp) revert CurveMultiplierReductionCooldownNotElapsed();
 
         uint256 curveMultiplier = p.curveMultiplier;
-        _removeCurveMultiplierReductionCooldown(nodeOperatorId);
+        delete _storage().pending[nodeOperatorId];
+        emit CurveMultiplierReductionApplied(nodeOperatorId, curveMultiplier);
         ACCOUNTING.setBondCurveMultiplier(nodeOperatorId, curveMultiplier);
     }
 
     /// @inheritdoc IAdditionalBondRegistry
-    function getBoostSteps() external view returns (BoostStep[] memory) {
-        return _storage().boostSteps;
+    function cancelCurveMultiplierReduction(uint256 nodeOperatorId) external {
+        BaseWeightBoostProvider._onlyNodeOperatorOwner(nodeOperatorId);
+
+        PendingCurveMultiplierReduction storage pending = _storage().pending[nodeOperatorId];
+        if (pending.cooldownUntil == 0) revert NoCurveMultiplierReductionCooldown();
+
+        uint256 previousCurveMultiplier = pending.curveMultiplier;
+        // Dropping the pending target hands the weight back to the multiplier Accounting still holds.
+        uint256 currentCurveMultiplier = ACCOUNTING.getBondCurveMultiplier(nodeOperatorId) - MAX_BP;
+
+        _cancelCurveMultiplierReduction(nodeOperatorId);
+        StepwiseWeightBoost._notifyMetaRegistryIfWeightChanged(
+            nodeOperatorId,
+            previousCurveMultiplier,
+            currentCurveMultiplier
+        );
+    }
+
+    /// @inheritdoc IAdditionalBondRegistry
+    function setCurveMultiplierReductionCooldown(
+        uint256 curveMultiplierReductionCooldown
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setCurveMultiplierReductionCooldown(curveMultiplierReductionCooldown);
+    }
+
+    /// @inheritdoc IAdditionalBondRegistry
+    function getCurveMultiplierReductionCooldown() external view returns (uint256) {
+        return _storage().curveMultiplierReductionCooldown;
+    }
+
+    /// @inheritdoc IAdditionalBondRegistry
+    function getPendingCurveMultiplierReduction(
+        uint256 nodeOperatorId
+    ) external view returns (PendingCurveMultiplierReduction memory pending) {
+        return _storage().pending[nodeOperatorId];
     }
 
     /// @inheritdoc IWeightBoostProvider
     function getWeightBoostMultiplierBP(uint256 nodeOperatorId) external view returns (uint256 multiplierBP) {
-        PendingCurveMultiplierReduction storage p = _storage().pending[nodeOperatorId];
-        // During a downgrade cooldown, weight follows the pending (lower) multiplier; Accounting still holds the higher one.
-        uint256 curveMultiplier = p.cooldownUntil != 0
-            ? p.curveMultiplier
-            : ACCOUNTING.getBondCurveMultiplier(nodeOperatorId) - MAX_BP;
-        multiplierBP = _weightMultiplierFor(curveMultiplier);
+        PendingCurveMultiplierReduction storage pending = _storage().pending[nodeOperatorId];
+        uint256 currentMultiplierBP = ACCOUNTING.getBondCurveMultiplier(nodeOperatorId);
+        multiplierBP =
+            MAX_BP +
+            StepwiseWeightBoost._stepValueAt(_getTargetCurveMultiplier(pending, currentMultiplierBP));
     }
 
-    function _setBoostSteps(BoostStep[] calldata boostSteps) internal {
-        if (boostSteps.length == 0) revert EmptyBoostSteps();
-        AdditionalBondRegistryStorage storage $ = _storage();
-        delete $.boostSteps;
-        for (uint256 i = 0; i < boostSteps.length; ++i) {
-            _validateBoostStep(boostSteps, i);
-            $.boostSteps.push(boostSteps[i]);
-        }
-        emit BoostStepsSet(boostSteps);
-    }
-
-    /// @dev Starts the cooldown and stores the pending curve multiplier increment.
-    function _setCurveMultiplierReductionCooldown(uint256 nodeOperatorId, uint256 curveMultiplier) internal {
-        uint256 cooldownUntil = block.timestamp + CURVE_MULTIPLIER_REDUCTION_COOLDOWN;
-        _storage().pending[nodeOperatorId] = PendingCurveMultiplierReduction({
-            cooldownUntil: uint128(cooldownUntil),
-            curveMultiplier: uint128(curveMultiplier)
-        });
-        emit CurveMultiplierReductionCooldownSet(nodeOperatorId, cooldownUntil);
-    }
-
-    function _removeCurveMultiplierReductionCooldown(uint256 nodeOperatorId) internal {
+    /// @dev Drops the pending downgrade. The caller notifies MetaRegistry when the weight moves.
+    function _cancelCurveMultiplierReduction(uint256 nodeOperatorId) internal {
         delete _storage().pending[nodeOperatorId];
-        emit CurveMultiplierReductionCooldownRemoved(nodeOperatorId);
+        emit CurveMultiplierReductionCancelled(nodeOperatorId);
     }
 
-    /// @dev Weight multiplier for a curve multiplier increment: MAX_BP + the highest step at or below it, else MAX_BP.
-    function _weightMultiplierFor(uint256 curveMultiplier) internal view returns (uint256 weightMul) {
-        BoostStep[] storage boostSteps = _storage().boostSteps;
-        weightMul = MAX_BP;
-        uint256 len = boostSteps.length;
-        for (uint256 i = 0; i < len; ++i) {
-            if (curveMultiplier < boostSteps[i].minCurveMultiplier) break;
-            weightMul = MAX_BP + boostSteps[i].weightMultiplier;
+    function _setCurveMultiplierReductionCooldown(uint256 curveMultiplierReductionCooldown) internal {
+        if (
+            curveMultiplierReductionCooldown == 0 ||
+            curveMultiplierReductionCooldown > MAX_CURVE_MULTIPLIER_REDUCTION_COOLDOWN
+        ) {
+            revert InvalidCurveMultiplierReductionCooldown();
         }
+        _storage().curveMultiplierReductionCooldown = curveMultiplierReductionCooldown;
+        emit CurveMultiplierReductionCooldownSet(curveMultiplierReductionCooldown);
     }
 
-    // TODO: Have the same in many places. Move to lib
-    function _checkOperatorOwner(uint256 nodeOperatorId) internal view {
-        if (msg.sender != MODULE.getNodeOperatorOwner(nodeOperatorId)) revert SenderIsNotOperatorOwner();
+    /// @dev The multiplier increment the allocation weight follows: the pending one during a downgrade
+    ///      cooldown, otherwise the one Accounting currently holds.
+    function _getTargetCurveMultiplier(
+        PendingCurveMultiplierReduction storage pending,
+        uint256 currentMultiplierBP
+    ) internal view returns (uint256) {
+        return pending.cooldownUntil != 0 ? pending.curveMultiplier : currentMultiplierBP - MAX_BP;
     }
 
-    /// @dev Validates step `i`: within bounds and strictly above the previous. Fields are increments (0 allowed).
-    function _validateBoostStep(BoostStep[] calldata boostSteps, uint256 i) internal pure {
-        BoostStep calldata s = boostSteps[i];
-        if (s.minCurveMultiplier > MAX_CURVE_MULTIPLIER) revert InvalidCurveMultiplier();
-        if (s.weightMultiplier > MAX_WEIGHT_MULTIPLIER) revert InvalidWeightMultiplier();
-        if (i == 0) return;
-        // Strictly increasing: a higher curve multiplier maps to a higher weight.
-        if (s.minCurveMultiplier <= boostSteps[i - 1].minCurveMultiplier) revert InvalidCurveMultiplier();
-        if (s.weightMultiplier <= boostSteps[i - 1].weightMultiplier) revert InvalidWeightMultiplier();
+    function _isValidStep(Step calldata step) internal pure override returns (bool) {
+        return step.threshold <= MAX_CURVE_MULTIPLIER && step.threshold % CURVE_MULTIPLIER_STEP == 0;
     }
 
     function _storage() internal pure returns (AdditionalBondRegistryStorage storage $) {
         assembly ("memory-safe") {
-            // keccak256(abi.encode(uint256(keccak256("AdditionalBondRegistry")) - 1)) & ~bytes32(uint256(0xff))
             $.slot := ADDITIONAL_BOND_REGISTRY_STORAGE_LOCATION
         }
     }

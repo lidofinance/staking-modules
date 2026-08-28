@@ -5,16 +5,14 @@ pragma solidity 0.8.33;
 
 import { IBeacon } from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 
-import { IWeightBoostProvider } from "./IWeightBoostProvider.sol";
+import { IStepwiseWeightBoost, Step } from "./IStepwiseWeightBoost.sol";
 
-/// @notice Operator-level ERC20 lock registry and weight boost provider.
-interface IERC20LockBoostProvider is IWeightBoostProvider {
-    struct LockBoostStep {
-        uint128 minAmount;
-        uint32 weightBoostBP;
-    }
-
-    struct LockInfo {
+/// @notice Operator-level ERC20 lock registry and weight boost provider. In this provider,
+///         `Step.threshold` is the locked token amount and `Step.value` is the weight multiplier increment above MAX_BP.
+interface IERC20LockBoostProvider is IStepwiseWeightBoost {
+    /// @dev Lock state of a Node Operator. `vault` is zero until the first lock creates it; `lockUntil`
+    ///      restarts on every lock and is zeroed once the lock is fully withdrawn.
+    struct OperatorLock {
         address vault;
         uint128 amount;
         uint128 lockUntil;
@@ -29,16 +27,12 @@ interface IERC20LockBoostProvider is IWeightBoostProvider {
     );
     event VaultCreated(uint256 indexed nodeOperatorId, address indexed vault, address indexed token);
     event LockPeriodSet(uint256 lockPeriod);
-    event LockBoostStepsSet(LockBoostStep[] steps);
 
-    error ZeroAddress();
-    error ZeroAdminAddress();
+    error ZeroTokenAddress();
+    error ZeroVaultBeaconAddress();
     error InvalidAmount();
     error InvalidLockPeriod();
-    error InvalidLockBoostSteps();
     error SameLockPeriod();
-    error NodeOperatorDoesNotExist();
-    error SenderIsNotNodeOperatorOwner();
     error NoTokensLocked();
     error LockPeriodNotEnded();
 
@@ -48,63 +42,48 @@ interface IERC20LockBoostProvider is IWeightBoostProvider {
     /// @notice Beacon used by per-operator ERC20 lock vault proxies.
     function VAULT_BEACON() external view returns (IBeacon);
 
-    /// @notice Minimum lock period allowed by the registry.
+    /// @notice Minimum lock period allowed by the provider.
     function MIN_LOCK_PERIOD() external view returns (uint256);
 
-    /// @notice Maximum lock period allowed by the registry.
+    /// @notice Maximum lock period allowed by the provider.
     function MAX_LOCK_PERIOD() external view returns (uint256);
 
-    /// @notice Role allowed to set the default lock period.
-    function SET_LOCK_PERIOD_ROLE() external view returns (bytes32);
-
-    // TODO: Add initialize functions to the remaining initializable contract interfaces.
     /// @notice Initialize the provider.
     /// @param admin Address to receive DEFAULT_ADMIN_ROLE.
     /// @param lockPeriod Initial token lock period.
-    function initialize(address admin, uint256 lockPeriod) external;
-
-    /// @notice Returns the initialized version of the contract.
-    function getInitializedVersion() external view returns (uint64);
+    /// @param steps Initial steps. Thresholds must be nonzero; values must not exceed MAX_STEP_VALUE.
+    function initialize(address admin, uint256 lockPeriod, Step[] calldata steps) external;
 
     /// @notice Returns the current lock period.
     function getLockPeriod() external view returns (uint256);
 
-    /// @notice Set the default lock period applied to new locks and top-ups.
-    /// @param lockPeriod New lock period.
+    /// @notice Set the default lock period applied to new locks and top-ups. Only DEFAULT_ADMIN_ROLE;
+    ///         existing locks keep their deadlines.
+    /// @param lockPeriod New lock period, in [MIN_LOCK_PERIOD, MAX_LOCK_PERIOD].
     function setLockPeriod(uint256 lockPeriod) external;
 
-    /// @notice Set token lock weight multiplier steps.
-    /// @param steps Ordered lock amount thresholds with weight boost increments in basis points.
-    /// @dev Each step applies from minAmount inclusive until the next step minAmount.
-    ///      The effective multiplier is 10_000 + weightBoostBP; zero means no scaling.
-    ///      Existing weights are not refreshed by this call;
-    ///      a full deposit info update is requested via MetaRegistry.
-    ///      Disable the boost provider in MetaRegistry to turn off the configured boosts.
-    function setLockBoostSteps(LockBoostStep[] calldata steps) external;
-
-    /// @notice Returns token lock boost steps.
-    /// @return steps Stored lock boost steps.
-    function getLockBoostSteps() external view returns (LockBoostStep[] memory steps);
-
-    /// @notice Lock tokens for a Node Operator or add tokens to an existing lock.
-    /// @param nodeOperatorId Node Operator ID.
+    /// @notice Lock tokens for a Node Operator or add tokens to an existing lock. Only the Node
+    ///         Operator owner.
+    /// @dev Each call restarts the lock period for the whole locked amount.
+    /// @param nodeOperatorId ID of the Node Operator.
     /// @param amount Token amount to lock.
-    /// @dev Each call resets the lock period.
     function lock(uint256 nodeOperatorId, uint256 amount) external;
 
-    /// @notice Withdraw tokens after the lock period or when early withdrawal is allowed.
-    /// @param nodeOperatorId Node Operator ID.
+    /// @notice Withdraw locked tokens. Only the Node Operator owner. Allowed after the lock period, or
+    ///         early when the operator is outside any group and has neither active nor depositable
+    ///         validators.
+    /// @param nodeOperatorId ID of the Node Operator.
     /// @param amount Token amount to withdraw.
     /// @param receiver Address to receive tokens.
     function withdraw(uint256 nodeOperatorId, uint256 amount, address receiver) external;
 
-    /// @notice Get Node Operator lock info.
-    /// @param nodeOperatorId Node Operator ID.
-    /// @return lockInfo Stored lock info.
-    function getNodeOperatorLock(uint256 nodeOperatorId) external view returns (LockInfo memory lockInfo);
+    /// @notice Returns the Node Operator lock state.
+    /// @param nodeOperatorId ID of the Node Operator.
+    /// @return operatorLock Stored lock state.
+    function getLock(uint256 nodeOperatorId) external view returns (OperatorLock memory operatorLock);
 
-    /// @notice Get Node Operator vault address.
-    /// @param nodeOperatorId Node Operator ID.
+    /// @notice Returns the Node Operator vault address.
+    /// @param nodeOperatorId ID of the Node Operator.
     /// @return vault Stored vault address or zero if no vault has been created yet.
     function getVault(uint256 nodeOperatorId) external view returns (address vault);
 }

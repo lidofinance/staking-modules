@@ -8,20 +8,18 @@ import { Test } from "forge-std/Test.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import { AdditionalBondRegistry } from "src/AdditionalBondRegistry.sol";
-import { IAdditionalBondRegistry, BoostStep } from "src/interfaces/IAdditionalBondRegistry.sol";
-import { MAX_WEIGHT_BOOST_BP } from "src/lib/Constants.sol";
+import { IAdditionalBondRegistry } from "src/interfaces/IAdditionalBondRegistry.sol";
+import { IBaseWeightBoostProvider } from "src/interfaces/IBaseWeightBoostProvider.sol";
+import { IStepwiseWeightBoost, Step } from "src/interfaces/IStepwiseWeightBoost.sol";
 
-import { CuratedMock } from "../helpers/mocks/CuratedMock.sol";
 import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
-import { MetaRegistryMock } from "../helpers/mocks/MetaRegistryMock.sol";
-import { NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
+import { CuratedProviderFixture } from "../helpers/CuratedProviderFixture.sol";
+import { StepwiseWeightBoostBehaviour } from "../helpers/StepwiseWeightBoostBehaviour.sol";
 import { Utilities } from "../helpers/Utilities.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
 
-contract AdditionalBondRegistryBaseTest is Test, Utilities, Fixtures {
-    CuratedMock public module;
+contract AdditionalBondRegistryBaseTest is Test, Utilities, Fixtures, CuratedProviderFixture {
     AdditionalBondRegistry public additionalBondRegistry;
-    MetaRegistryMock public metaRegistryMock;
     AccountingMock internal acct;
 
     address public admin;
@@ -36,28 +34,15 @@ contract AdditionalBondRegistryBaseTest is Test, Utilities, Fixtures {
         nodeOperatorOwner = nextAddress("NODE_OPERATOR_OWNER");
         stranger = nextAddress("STRANGER");
 
-        module = new CuratedMock();
-        module.mock_setNodeOperatorsCount(3);
-        module.mock_setNodeOperatorManagementProperties(
-            NodeOperatorManagementProperties({
-                managerAddress: nodeOperatorOwner,
-                rewardAddress: nodeOperatorOwner,
-                extendedManagerPermissions: true
-            })
-        );
+        _deployModuleWithMetaRegistryMock(3);
+        _setNodeOperatorOwner(nodeOperatorOwner);
 
-        metaRegistryMock = new MetaRegistryMock();
-        module.mock_setMetaRegistry(address(metaRegistryMock));
-
-        additionalBondRegistry = new AdditionalBondRegistry({
-            module: address(module),
-            curveMultiplierCooldown: CURVE_MULTIPLIER_REDUCTION_COOLDOWN
-        });
-        // Non-empty placeholder; suites that care about the scale replace it via setBoostSteps.
-        BoostStep[] memory boostSteps = new BoostStep[](1);
-        boostSteps[0] = BoostStep({ minCurveMultiplier: 100, weightMultiplier: 100 });
+        additionalBondRegistry = new AdditionalBondRegistry({ module: address(module) });
+        // Non-empty placeholder; suites that care about the scale replace it via setSteps.
+        Step[] memory steps = new Step[](1);
+        steps[0] = Step({ threshold: 100, value: 100 });
         _enableInitializers(address(additionalBondRegistry));
-        additionalBondRegistry.initialize(admin, boostSteps);
+        additionalBondRegistry.initialize(admin, CURVE_MULTIPLIER_REDUCTION_COOLDOWN, steps);
 
         acct = AccountingMock(address(module.ACCOUNTING()));
     }
@@ -68,10 +53,15 @@ contract AdditionalBondRegistryConstructorTest is AdditionalBondRegistryBaseTest
         assertEq(address(additionalBondRegistry.MODULE()), address(module));
         assertEq(address(additionalBondRegistry.ACCOUNTING()), address(module.ACCOUNTING()));
         assertEq(address(additionalBondRegistry.META_REGISTRY()), address(metaRegistryMock));
-        assertEq(additionalBondRegistry.MAX_CURVE_MULTIPLIER(), MAX_WEIGHT_BOOST_BP);
-        assertEq(additionalBondRegistry.MAX_WEIGHT_MULTIPLIER(), MAX_WEIGHT_BOOST_BP);
+        assertEq(additionalBondRegistry.MAX_CURVE_MULTIPLIER(), 9 * uint256(MAX_BP));
+        assertEq(additionalBondRegistry.MAX_STEP_VALUE(), 9 * uint256(MAX_BP));
         assertEq(additionalBondRegistry.CURVE_MULTIPLIER_STEP(), 100);
-        assertEq(additionalBondRegistry.CURVE_MULTIPLIER_REDUCTION_COOLDOWN(), CURVE_MULTIPLIER_REDUCTION_COOLDOWN);
+        assertEq(additionalBondRegistry.MAX_CURVE_MULTIPLIER_REDUCTION_COOLDOWN(), 365 days);
+    }
+
+    function test_constructor_RevertWhen_ZeroModule() public {
+        vm.expectRevert(IBaseWeightBoostProvider.ZeroModuleAddress.selector);
+        new AdditionalBondRegistry(address(0));
     }
 }
 
@@ -80,139 +70,138 @@ contract AdditionalBondRegistryInitializeTest is AdditionalBondRegistryBaseTest 
         assertTrue(additionalBondRegistry.hasRole(additionalBondRegistry.DEFAULT_ADMIN_ROLE(), admin));
     }
 
-    function test_initialize_RevertWhen_ZeroAdmin() public {
-        AdditionalBondRegistry tp = new AdditionalBondRegistry(address(module), CURVE_MULTIPLIER_REDUCTION_COOLDOWN);
+    function test_initialize_SetsCooldown() public view {
+        assertEq(additionalBondRegistry.getCurveMultiplierReductionCooldown(), CURVE_MULTIPLIER_REDUCTION_COOLDOWN);
+    }
+
+    function test_initialize_RevertWhen_ZeroCooldown() public {
+        AdditionalBondRegistry tp = new AdditionalBondRegistry(address(module));
         _enableInitializers(address(tp));
-        vm.expectRevert(IAdditionalBondRegistry.ZeroAdminAddress.selector);
-        tp.initialize(address(0), new BoostStep[](0));
+        vm.expectRevert(IAdditionalBondRegistry.InvalidCurveMultiplierReductionCooldown.selector);
+        tp.initialize(admin, 0, new Step[](0));
+    }
+
+    function test_initialize_RevertWhen_CooldownExceedsMax() public {
+        AdditionalBondRegistry tp = new AdditionalBondRegistry(address(module));
+        _enableInitializers(address(tp));
+        vm.expectRevert(IAdditionalBondRegistry.InvalidCurveMultiplierReductionCooldown.selector);
+        tp.initialize(admin, 365 days + 1, new Step[](0));
+    }
+
+    function test_initialize_RevertWhen_ZeroAdmin() public {
+        AdditionalBondRegistry tp = new AdditionalBondRegistry(address(module));
+        _enableInitializers(address(tp));
+        vm.expectRevert(IBaseWeightBoostProvider.ZeroAdminAddress.selector);
+        tp.initialize(address(0), CURVE_MULTIPLIER_REDUCTION_COOLDOWN, new Step[](0));
     }
 
     function test_initialize_RevertWhen_DoubleCall() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        additionalBondRegistry.initialize(admin, new BoostStep[](0));
+        additionalBondRegistry.initialize(admin, CURVE_MULTIPLIER_REDUCTION_COOLDOWN, new Step[](0));
     }
 
-    function test_initialize_RevertWhen_EmptyBoostSteps() public {
-        AdditionalBondRegistry tp = new AdditionalBondRegistry(address(module), CURVE_MULTIPLIER_REDUCTION_COOLDOWN);
+    function test_initialize_RevertWhen_EmptySteps() public {
+        AdditionalBondRegistry tp = new AdditionalBondRegistry(address(module));
         _enableInitializers(address(tp));
-        vm.expectRevert(IAdditionalBondRegistry.EmptyBoostSteps.selector);
-        tp.initialize(admin, new BoostStep[](0));
+        vm.expectRevert(IStepwiseWeightBoost.InvalidStepCount.selector);
+        tp.initialize(admin, CURVE_MULTIPLIER_REDUCTION_COOLDOWN, new Step[](0));
     }
 
-    function test_initialize_SetsBoostSteps() public {
-        AdditionalBondRegistry tp = new AdditionalBondRegistry(address(module), CURVE_MULTIPLIER_REDUCTION_COOLDOWN);
+    function test_initialize_SetsSteps() public {
+        AdditionalBondRegistry tp = new AdditionalBondRegistry(address(module));
         _enableInitializers(address(tp));
-        BoostStep[] memory boostSteps = new BoostStep[](1);
-        boostSteps[0] = BoostStep({ minCurveMultiplier: 5_000, weightMultiplier: 2_000 });
-        tp.initialize(admin, boostSteps);
+        Step[] memory steps = new Step[](1);
+        steps[0] = Step({ threshold: 5_000, value: 2_000 });
+        tp.initialize(admin, CURVE_MULTIPLIER_REDUCTION_COOLDOWN, steps);
 
-        assertEq(tp.getBoostSteps().length, 1);
-        assertEq(tp.getBoostSteps()[0].minCurveMultiplier, 5_000);
-        assertEq(tp.getBoostSteps()[0].weightMultiplier, 2_000);
+        assertEq(tp.getSteps().length, 1);
+        assertEq(tp.getSteps()[0].threshold, 5_000);
+        assertEq(tp.getSteps()[0].value, 2_000);
     }
 }
 
-contract AdditionalBondRegistrySetBoostStepsTest is AdditionalBondRegistryBaseTest {
+contract AdditionalBondRegistrySetStepsTest is AdditionalBondRegistryBaseTest, StepwiseWeightBoostBehaviour {
     uint256 constant T1_BOND = 5_000;
     uint256 constant T1_WEIGHT = 2_000;
     uint256 constant T2_BOND = 10_000;
     uint256 constant T2_WEIGHT = 8_000;
 
-    function _boostSteps() internal pure returns (BoostStep[] memory boostSteps) {
-        boostSteps = new BoostStep[](2);
-        boostSteps[0] = BoostStep({ minCurveMultiplier: uint128(T1_BOND), weightMultiplier: uint128(T1_WEIGHT) });
-        boostSteps[1] = BoostStep({ minCurveMultiplier: uint128(T2_BOND), weightMultiplier: uint128(T2_WEIGHT) });
+    function _stepwise() internal view override returns (IStepwiseWeightBoost) {
+        return IStepwiseWeightBoost(address(additionalBondRegistry));
     }
 
-    function _setBoostSteps(BoostStep[] memory boostSteps) internal {
+    function _stepwiseAdmin() internal view override returns (address) {
+        return admin;
+    }
+
+    function _stepwiseSteps(uint256 count) internal view override returns (Step[] memory steps) {
+        steps = new Step[](count);
+        for (uint256 i; i < count; ++i) {
+            // Curve multiplier increments are 1%-aligned and may start at zero.
+            steps[i] = Step({ threshold: uint128(i * 100), value: uint128((i + 1) * 100) });
+        }
+    }
+
+    function _steps() internal pure returns (Step[] memory steps) {
+        steps = new Step[](2);
+        steps[0] = Step({ threshold: uint128(T1_BOND), value: uint128(T1_WEIGHT) });
+        steps[1] = Step({ threshold: uint128(T2_BOND), value: uint128(T2_WEIGHT) });
+    }
+
+    function _setSteps(Step[] memory steps) internal {
         vm.prank(admin);
-        additionalBondRegistry.setBoostSteps(boostSteps);
+        additionalBondRegistry.setSteps(steps);
     }
 
-    function test_setBoostSteps() public {
-        BoostStep[] memory boostSteps = _boostSteps();
+    function test_setSteps() public {
+        Step[] memory steps = _steps();
         vm.expectEmit(address(additionalBondRegistry));
-        emit IAdditionalBondRegistry.BoostStepsSet(boostSteps);
-        _setBoostSteps(boostSteps);
+        emit IStepwiseWeightBoost.StepsSet(steps);
+        _setSteps(steps);
 
-        BoostStep[] memory stored = additionalBondRegistry.getBoostSteps();
+        Step[] memory stored = additionalBondRegistry.getSteps();
         assertEq(stored.length, 2);
-        assertEq(stored[0].minCurveMultiplier, T1_BOND);
-        assertEq(stored[0].weightMultiplier, T1_WEIGHT);
-        assertEq(stored[1].minCurveMultiplier, T2_BOND);
-        assertEq(stored[1].weightMultiplier, T2_WEIGHT);
+        assertEq(stored[0].threshold, T1_BOND);
+        assertEq(stored[0].value, T1_WEIGHT);
+        assertEq(stored[1].threshold, T2_BOND);
+        assertEq(stored[1].value, T2_WEIGHT);
     }
 
-    function test_setBoostSteps_NotifiesProviderConfigChanged() public {
-        _setBoostSteps(_boostSteps());
+    function test_setSteps_NotifiesProviderConfigChanged() public {
+        _setSteps(_steps());
         assertEq(metaRegistryMock.notifyWeightBoostProviderConfigChangedCallCount(), 1);
     }
 
-    function test_setBoostSteps_Replaces() public {
-        _setBoostSteps(_boostSteps());
-        BoostStep[] memory boostSteps = new BoostStep[](1);
-        boostSteps[0] = BoostStep({ minCurveMultiplier: uint128(T2_BOND), weightMultiplier: uint128(T2_WEIGHT) });
-        _setBoostSteps(boostSteps);
-        assertEq(additionalBondRegistry.getBoostSteps().length, 1);
+    function test_setSteps_AllowsZeroStep() public {
+        Step[] memory steps = new Step[](1);
+        steps[0] = Step({ threshold: 0, value: 0 });
+        _setSteps(steps);
+        assertEq(additionalBondRegistry.getSteps()[0].threshold, 0);
     }
 
-    function test_setBoostSteps_AllowsZeroIncrement() public {
-        BoostStep[] memory boostSteps = new BoostStep[](1);
-        boostSteps[0] = BoostStep({ minCurveMultiplier: 0, weightMultiplier: 0 });
-        _setBoostSteps(boostSteps);
-        assertEq(additionalBondRegistry.getBoostSteps()[0].minCurveMultiplier, 0);
-    }
-
-    function test_setBoostSteps_AllowsMaxIncrement() public {
+    function test_setSteps_AllowsMaxThresholdAndValue() public {
         uint256 maxCurve = additionalBondRegistry.MAX_CURVE_MULTIPLIER();
-        uint256 maxWeight = additionalBondRegistry.MAX_WEIGHT_MULTIPLIER();
-        BoostStep[] memory boostSteps = new BoostStep[](1);
-        boostSteps[0] = BoostStep({ minCurveMultiplier: uint128(maxCurve), weightMultiplier: uint128(maxWeight) });
-        _setBoostSteps(boostSteps);
-        assertEq(additionalBondRegistry.getBoostSteps()[0].minCurveMultiplier, maxCurve);
+        uint256 maxWeight = additionalBondRegistry.MAX_STEP_VALUE();
+        Step[] memory steps = new Step[](1);
+        steps[0] = Step({ threshold: uint128(maxCurve), value: uint128(maxWeight) });
+        _setSteps(steps);
+        assertEq(additionalBondRegistry.getSteps()[0].threshold, maxCurve);
     }
 
-    function test_setBoostSteps_RevertWhen_NotAdmin() public {
-        vm.expectRevert();
-        vm.prank(stranger);
-        additionalBondRegistry.setBoostSteps(_boostSteps());
-    }
-
-    function test_setBoostSteps_RevertWhen_Empty() public {
-        vm.expectRevert(IAdditionalBondRegistry.EmptyBoostSteps.selector);
-        _setBoostSteps(new BoostStep[](0));
-    }
-
-    function test_setBoostSteps_RevertWhen_CurveMulAboveMax() public {
+    function test_setSteps_RevertWhen_ThresholdAboveMax() public {
         uint256 aboveMax = additionalBondRegistry.MAX_CURVE_MULTIPLIER() + 1;
-        BoostStep[] memory boostSteps = new BoostStep[](1);
-        boostSteps[0] = BoostStep({ minCurveMultiplier: uint128(aboveMax), weightMultiplier: uint128(T1_WEIGHT) });
-        vm.expectRevert(IAdditionalBondRegistry.InvalidCurveMultiplier.selector);
-        _setBoostSteps(boostSteps);
+        Step[] memory steps = new Step[](1);
+        steps[0] = Step({ threshold: uint128(aboveMax), value: uint128(T1_WEIGHT) });
+        vm.expectRevert(abi.encodeWithSelector(IStepwiseWeightBoost.InvalidStep.selector, 0));
+        _setSteps(steps);
     }
 
-    function test_setBoostSteps_RevertWhen_WeightMulAboveMax() public {
-        uint256 aboveMax = additionalBondRegistry.MAX_WEIGHT_MULTIPLIER() + 1;
-        BoostStep[] memory boostSteps = new BoostStep[](1);
-        boostSteps[0] = BoostStep({ minCurveMultiplier: uint128(T1_BOND), weightMultiplier: uint128(aboveMax) });
-        vm.expectRevert(IAdditionalBondRegistry.InvalidWeightMultiplier.selector);
-        _setBoostSteps(boostSteps);
-    }
-
-    function test_setBoostSteps_RevertWhen_CurveNotAscending() public {
-        BoostStep[] memory boostSteps = new BoostStep[](2);
-        boostSteps[0] = BoostStep({ minCurveMultiplier: uint128(T2_BOND), weightMultiplier: uint128(T1_WEIGHT) });
-        boostSteps[1] = BoostStep({ minCurveMultiplier: uint128(T1_BOND), weightMultiplier: uint128(T2_WEIGHT) });
-        vm.expectRevert(IAdditionalBondRegistry.InvalidCurveMultiplier.selector);
-        _setBoostSteps(boostSteps);
-    }
-
-    function test_setBoostSteps_RevertWhen_WeightNotAscending() public {
-        BoostStep[] memory boostSteps = new BoostStep[](2);
-        boostSteps[0] = BoostStep({ minCurveMultiplier: uint128(T1_BOND), weightMultiplier: uint128(T2_WEIGHT) });
-        boostSteps[1] = BoostStep({ minCurveMultiplier: uint128(T2_BOND), weightMultiplier: uint128(T1_WEIGHT) });
-        vm.expectRevert(IAdditionalBondRegistry.InvalidWeightMultiplier.selector);
-        _setBoostSteps(boostSteps);
+    function test_setSteps_RevertWhen_ThresholdNotAligned() public {
+        uint256 offGrid = T1_BOND + additionalBondRegistry.CURVE_MULTIPLIER_STEP() / 2;
+        Step[] memory steps = new Step[](1);
+        steps[0] = Step({ threshold: uint128(offGrid), value: uint128(T1_WEIGHT) });
+        vm.expectRevert(abi.encodeWithSelector(IStepwiseWeightBoost.InvalidStep.selector, 0));
+        _setSteps(steps);
     }
 }
 
@@ -222,19 +211,19 @@ contract AdditionalBondRegistryRequestCurveMultiplierBaseTest is AdditionalBondR
     uint256 constant T2_BOND = 10_000;
     uint256 constant T2_WEIGHT = 8_000;
 
-    function _setBoostSteps() internal {
-        BoostStep[] memory boostSteps = new BoostStep[](2);
-        boostSteps[0] = BoostStep({ minCurveMultiplier: uint128(T1_BOND), weightMultiplier: uint128(T1_WEIGHT) });
-        boostSteps[1] = BoostStep({ minCurveMultiplier: uint128(T2_BOND), weightMultiplier: uint128(T2_WEIGHT) });
+    function _setSteps() internal {
+        Step[] memory steps = new Step[](2);
+        steps[0] = Step({ threshold: uint128(T1_BOND), value: uint128(T1_WEIGHT) });
+        steps[1] = Step({ threshold: uint128(T2_BOND), value: uint128(T2_WEIGHT) });
         vm.prank(admin);
-        additionalBondRegistry.setBoostSteps(boostSteps);
+        additionalBondRegistry.setSteps(steps);
     }
 }
 
 contract AdditionalBondRegistryRequestCurveMultiplierTest is AdditionalBondRegistryRequestCurveMultiplierBaseTest {
     function setUp() public override {
         super.setUp();
-        _setBoostSteps();
+        _setSteps();
     }
 
     function test_requestCurveMultiplier_Upgrade_Tier0ToTier1() public {
@@ -264,15 +253,15 @@ contract AdditionalBondRegistryRequestCurveMultiplierTest is AdditionalBondRegis
 
         uint256 expectedCooldown = block.timestamp + CURVE_MULTIPLIER_REDUCTION_COOLDOWN;
         vm.expectEmit(true, false, false, true, address(additionalBondRegistry));
-        emit IAdditionalBondRegistry.CurveMultiplierReductionCooldownSet(0, expectedCooldown);
-        vm.expectEmit(true, false, false, true, address(additionalBondRegistry));
-        emit IAdditionalBondRegistry.CurveMultiplierReductionRequested(0, 0);
+        emit IAdditionalBondRegistry.CurveMultiplierReductionRequested(0, 0, expectedCooldown);
         vm.prank(nodeOperatorOwner);
         additionalBondRegistry.requestCurveMultiplier(0, 0);
 
         // The bond multiplier stays until apply, so it remains above MAX_BP while the weight already dropped.
         assertEq(acct.getBondCurveMultiplier(0), MAX_BP + T1_BOND);
         assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP);
+        assertEq(additionalBondRegistry.getPendingCurveMultiplierReduction(0).curveMultiplier, 0);
+        assertEq(additionalBondRegistry.getPendingCurveMultiplierReduction(0).cooldownUntil, expectedCooldown);
         assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), 2);
     }
 
@@ -285,10 +274,11 @@ contract AdditionalBondRegistryRequestCurveMultiplierTest is AdditionalBondRegis
 
         vm.prank(nodeOperatorOwner);
         vm.expectEmit(true, false, false, false, address(additionalBondRegistry));
-        emit IAdditionalBondRegistry.CurveMultiplierReductionCooldownRemoved(0);
+        emit IAdditionalBondRegistry.CurveMultiplierReductionCancelled(0);
         additionalBondRegistry.requestCurveMultiplier(0, T2_BOND);
 
         assertEq(acct.getBondCurveMultiplier(0), MAX_BP + T2_BOND);
+        assertEq(additionalBondRegistry.getPendingCurveMultiplierReduction(0).cooldownUntil, 0);
     }
 
     function test_requestCurveMultiplier_WithinStep() public {
@@ -296,15 +286,17 @@ contract AdditionalBondRegistryRequestCurveMultiplierTest is AdditionalBondRegis
         uint256 within = T1_BOND + additionalBondRegistry.CURVE_MULTIPLIER_STEP(); // 1%-aligned, still first step
         vm.prank(nodeOperatorOwner);
         additionalBondRegistry.requestCurveMultiplier(0, T1_BOND);
+        uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
         vm.prank(nodeOperatorOwner);
         additionalBondRegistry.requestCurveMultiplier(0, within);
 
         assertEq(acct.getBondCurveMultiplier(0), MAX_BP + within);
         assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP + T1_WEIGHT);
+        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore);
     }
 
     function test_requestCurveMultiplier_RevertWhen_NotOwner() public {
-        vm.expectRevert(IAdditionalBondRegistry.SenderIsNotOperatorOwner.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.SenderIsNotNodeOperatorOwner.selector);
         vm.prank(stranger);
         additionalBondRegistry.requestCurveMultiplier(0, T1_BOND);
     }
@@ -366,18 +358,33 @@ contract AdditionalBondRegistryRequestCurveMultiplierTest is AdditionalBondRegis
         additionalBondRegistry.requestCurveMultiplier(0, 0);
 
         assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP); // weight follows new pending (0)
-        assertEq(acct.getBondCurveMultiplier(0), MAX_BP + T2_BOND); // bond untouched until applyCurveMultiplier
+        assertEq(acct.getBondCurveMultiplier(0), MAX_BP + T2_BOND); // bond untouched until applyCurveMultiplierReduction
+    }
+
+    function test_requestCurveMultiplier_LowerAgainWithinStepDoesNotNotify() public {
+        uint256 withinFirstStep = T1_BOND + additionalBondRegistry.CURVE_MULTIPLIER_STEP();
+        vm.prank(nodeOperatorOwner);
+        additionalBondRegistry.requestCurveMultiplier(0, T2_BOND);
+        vm.prank(nodeOperatorOwner);
+        additionalBondRegistry.requestCurveMultiplier(0, withinFirstStep);
+        uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
+
+        vm.prank(nodeOperatorOwner);
+        additionalBondRegistry.requestCurveMultiplier(0, T1_BOND);
+
+        assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP + T1_WEIGHT);
+        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore);
     }
 
     function test_requestCurveMultiplier_LowerToIntermediateResetsCooldown() public {
         // A middle step at 7_000: an intermediate value is below the committed multiplier, so it is a lower —
         // it resets the pending target and weight but never touches the bond in Accounting.
-        BoostStep[] memory boostSteps = new BoostStep[](3);
-        boostSteps[0] = BoostStep({ minCurveMultiplier: uint128(T1_BOND), weightMultiplier: uint128(T1_WEIGHT) });
-        boostSteps[1] = BoostStep({ minCurveMultiplier: 7_000, weightMultiplier: 4_000 });
-        boostSteps[2] = BoostStep({ minCurveMultiplier: uint128(T2_BOND), weightMultiplier: uint128(T2_WEIGHT) });
+        Step[] memory steps = new Step[](3);
+        steps[0] = Step({ threshold: uint128(T1_BOND), value: uint128(T1_WEIGHT) });
+        steps[1] = Step({ threshold: 7_000, value: 4_000 });
+        steps[2] = Step({ threshold: uint128(T2_BOND), value: uint128(T2_WEIGHT) });
         vm.prank(admin);
-        additionalBondRegistry.setBoostSteps(boostSteps);
+        additionalBondRegistry.setSteps(steps);
 
         vm.prank(nodeOperatorOwner);
         additionalBondRegistry.requestCurveMultiplier(0, T2_BOND);
@@ -392,28 +399,32 @@ contract AdditionalBondRegistryRequestCurveMultiplierTest is AdditionalBondRegis
     }
 }
 
-contract AdditionalBondRegistryApplyCurveMultiplierTest is AdditionalBondRegistryRequestCurveMultiplierBaseTest {
+contract AdditionalBondRegistryApplyCurveMultiplierReductionTest is
+    AdditionalBondRegistryRequestCurveMultiplierBaseTest
+{
     function setUp() public override {
         super.setUp();
-        _setBoostSteps();
+        _setSteps();
         vm.prank(nodeOperatorOwner);
         additionalBondRegistry.requestCurveMultiplier(0, T1_BOND);
         vm.prank(nodeOperatorOwner);
         additionalBondRegistry.requestCurveMultiplier(0, 0);
     }
 
-    function test_applyCurveMultiplier() public {
+    function test_applyCurveMultiplierReduction() public {
         vm.warp(block.timestamp + CURVE_MULTIPLIER_REDUCTION_COOLDOWN + 1);
 
-        vm.expectEmit(true, false, false, false, address(additionalBondRegistry));
-        emit IAdditionalBondRegistry.CurveMultiplierReductionCooldownRemoved(0);
+        vm.expectEmit(true, false, false, true, address(additionalBondRegistry));
+        emit IAdditionalBondRegistry.CurveMultiplierReductionApplied(0, 0);
         vm.prank(nodeOperatorOwner);
-        additionalBondRegistry.applyCurveMultiplier(0);
+        additionalBondRegistry.applyCurveMultiplierReduction(0);
 
         assertEq(acct.getBondCurveMultiplier(0), MAX_BP);
+        assertEq(additionalBondRegistry.getPendingCurveMultiplierReduction(0).curveMultiplier, 0);
+        assertEq(additionalBondRegistry.getPendingCurveMultiplierReduction(0).cooldownUntil, 0);
     }
 
-    function test_applyCurveMultiplier_SettlesToRequestedNotDefault() public {
+    function test_applyCurveMultiplierReduction_SettlesToRequestedNotDefault() public {
         vm.prank(nodeOperatorOwner);
         additionalBondRegistry.requestCurveMultiplier(0, T2_BOND);
         vm.prank(nodeOperatorOwner);
@@ -422,45 +433,148 @@ contract AdditionalBondRegistryApplyCurveMultiplierTest is AdditionalBondRegistr
 
         vm.warp(block.timestamp + CURVE_MULTIPLIER_REDUCTION_COOLDOWN + 1);
         vm.prank(nodeOperatorOwner);
-        additionalBondRegistry.applyCurveMultiplier(0);
+        additionalBondRegistry.applyCurveMultiplierReduction(0);
 
         assertEq(acct.getBondCurveMultiplier(0), MAX_BP + T1_BOND);
     }
 
-    function test_applyCurveMultiplier_RevertWhen_NotOwner() public {
+    function test_applyCurveMultiplierReduction_RevertWhen_NotOwner() public {
         vm.warp(block.timestamp + CURVE_MULTIPLIER_REDUCTION_COOLDOWN + 1);
-        vm.expectRevert(IAdditionalBondRegistry.SenderIsNotOperatorOwner.selector);
+        vm.expectRevert(IBaseWeightBoostProvider.SenderIsNotNodeOperatorOwner.selector);
         vm.prank(stranger);
-        additionalBondRegistry.applyCurveMultiplier(0);
+        additionalBondRegistry.applyCurveMultiplierReduction(0);
     }
 
-    function test_applyCurveMultiplier_RevertWhen_NoCurveMultiplierReductionCooldown() public {
+    function test_applyCurveMultiplierReduction_RevertWhen_NoCurveMultiplierReductionCooldown() public {
         vm.warp(block.timestamp + CURVE_MULTIPLIER_REDUCTION_COOLDOWN + 1);
         vm.prank(nodeOperatorOwner);
-        additionalBondRegistry.applyCurveMultiplier(0);
+        additionalBondRegistry.applyCurveMultiplierReduction(0);
         vm.expectRevert(IAdditionalBondRegistry.NoCurveMultiplierReductionCooldown.selector);
         vm.prank(nodeOperatorOwner);
-        additionalBondRegistry.applyCurveMultiplier(0);
+        additionalBondRegistry.applyCurveMultiplierReduction(0);
     }
 
-    function test_applyCurveMultiplier_RevertWhen_CurveMultiplierReductionCooldownNotElapsed() public {
+    function test_applyCurveMultiplierReduction_RevertWhen_CurveMultiplierReductionCooldownNotElapsed() public {
         vm.expectRevert(IAdditionalBondRegistry.CurveMultiplierReductionCooldownNotElapsed.selector);
         vm.prank(nodeOperatorOwner);
-        additionalBondRegistry.applyCurveMultiplier(0);
+        additionalBondRegistry.applyCurveMultiplierReduction(0);
+    }
+}
+
+contract AdditionalBondRegistryCancelCurveMultiplierReductionTest is
+    AdditionalBondRegistryRequestCurveMultiplierBaseTest
+{
+    function setUp() public override {
+        super.setUp();
+        _setSteps();
+        vm.prank(nodeOperatorOwner);
+        additionalBondRegistry.requestCurveMultiplier(0, T1_BOND);
+        vm.prank(nodeOperatorOwner);
+        additionalBondRegistry.requestCurveMultiplier(0, 0);
+    }
+
+    function test_cancelCurveMultiplierReduction() public {
+        uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
+
+        vm.expectEmit(true, false, false, false, address(additionalBondRegistry));
+        emit IAdditionalBondRegistry.CurveMultiplierReductionCancelled(0);
+        vm.prank(nodeOperatorOwner);
+        additionalBondRegistry.cancelCurveMultiplierReduction(0);
+
+        // The weight returns to the multiplier Accounting still holds; the bond was never touched.
+        assertEq(acct.getBondCurveMultiplier(0), MAX_BP + T1_BOND);
+        assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP + T1_WEIGHT);
+        assertEq(additionalBondRegistry.getPendingCurveMultiplierReduction(0).cooldownUntil, 0);
+        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore + 1);
+    }
+
+    function test_cancelCurveMultiplierReduction_AfterCooldown() public {
+        vm.warp(block.timestamp + CURVE_MULTIPLIER_REDUCTION_COOLDOWN + 1);
+
+        vm.prank(nodeOperatorOwner);
+        additionalBondRegistry.cancelCurveMultiplierReduction(0);
+
+        assertEq(acct.getBondCurveMultiplier(0), MAX_BP + T1_BOND);
+        assertEq(additionalBondRegistry.getPendingCurveMultiplierReduction(0).cooldownUntil, 0);
+    }
+
+    function test_cancelCurveMultiplierReduction_DoesNotNotifyWhenWithinStep() public {
+        uint256 withinFirstStep = T1_BOND + additionalBondRegistry.CURVE_MULTIPLIER_STEP();
+        vm.prank(nodeOperatorOwner);
+        additionalBondRegistry.requestCurveMultiplier(0, withinFirstStep);
+        vm.prank(nodeOperatorOwner);
+        additionalBondRegistry.requestCurveMultiplier(0, T1_BOND); // pending, same band as current
+        uint256 notifyCallsBefore = metaRegistryMock.notifyWeightBoostChangedCallCount();
+
+        vm.prank(nodeOperatorOwner);
+        additionalBondRegistry.cancelCurveMultiplierReduction(0);
+
+        assertEq(metaRegistryMock.notifyWeightBoostChangedCallCount(), notifyCallsBefore);
+    }
+
+    function test_cancelCurveMultiplierReduction_RevertWhen_NotOwner() public {
+        vm.expectRevert(IBaseWeightBoostProvider.SenderIsNotNodeOperatorOwner.selector);
+        vm.prank(stranger);
+        additionalBondRegistry.cancelCurveMultiplierReduction(0);
+    }
+
+    function test_cancelCurveMultiplierReduction_RevertWhen_NoPendingReduction() public {
+        vm.prank(nodeOperatorOwner);
+        additionalBondRegistry.cancelCurveMultiplierReduction(0);
+
+        vm.expectRevert(IAdditionalBondRegistry.NoCurveMultiplierReductionCooldown.selector);
+        vm.prank(nodeOperatorOwner);
+        additionalBondRegistry.cancelCurveMultiplierReduction(0);
+    }
+}
+
+contract AdditionalBondRegistrySetCurveMultiplierReductionCooldownTest is AdditionalBondRegistryBaseTest {
+    function test_setCurveMultiplierReductionCooldown() public {
+        vm.expectEmit(address(additionalBondRegistry));
+        emit IAdditionalBondRegistry.CurveMultiplierReductionCooldownSet(30 days);
+        vm.prank(admin);
+        additionalBondRegistry.setCurveMultiplierReductionCooldown(30 days);
+
+        assertEq(additionalBondRegistry.getCurveMultiplierReductionCooldown(), 30 days);
+    }
+
+    function test_setCurveMultiplierReductionCooldown_Max() public {
+        vm.prank(admin);
+        additionalBondRegistry.setCurveMultiplierReductionCooldown(365 days);
+
+        assertEq(additionalBondRegistry.getCurveMultiplierReductionCooldown(), 365 days);
+    }
+
+    function test_setCurveMultiplierReductionCooldown_RevertWhen_NotAdmin() public {
+        expectRoleRevert(stranger, additionalBondRegistry.DEFAULT_ADMIN_ROLE());
+        vm.prank(stranger);
+        additionalBondRegistry.setCurveMultiplierReductionCooldown(30 days);
+    }
+
+    function test_setCurveMultiplierReductionCooldown_RevertWhen_Zero() public {
+        vm.expectRevert(IAdditionalBondRegistry.InvalidCurveMultiplierReductionCooldown.selector);
+        vm.prank(admin);
+        additionalBondRegistry.setCurveMultiplierReductionCooldown(0);
+    }
+
+    function test_setCurveMultiplierReductionCooldown_RevertWhen_ExceedsMax() public {
+        vm.expectRevert(IAdditionalBondRegistry.InvalidCurveMultiplierReductionCooldown.selector);
+        vm.prank(admin);
+        additionalBondRegistry.setCurveMultiplierReductionCooldown(365 days + 1);
     }
 }
 
 contract AdditionalBondRegistryViewsTest is AdditionalBondRegistryRequestCurveMultiplierBaseTest {
     function setUp() public override {
         super.setUp();
-        _setBoostSteps();
+        _setSteps();
     }
 
-    function test_getBoostSteps() public view {
-        BoostStep[] memory boostSteps = additionalBondRegistry.getBoostSteps();
-        assertEq(boostSteps.length, 2);
-        assertEq(boostSteps[0].minCurveMultiplier, T1_BOND);
-        assertEq(boostSteps[0].weightMultiplier, T1_WEIGHT);
+    function test_getSteps() public view {
+        Step[] memory steps = additionalBondRegistry.getSteps();
+        assertEq(steps.length, 2);
+        assertEq(steps[0].threshold, T1_BOND);
+        assertEq(steps[0].value, T1_WEIGHT);
     }
 
     function test_getWeightBoostMultiplierBP_Default() public view {
@@ -471,6 +585,27 @@ contract AdditionalBondRegistryViewsTest is AdditionalBondRegistryRequestCurveMu
         vm.prank(nodeOperatorOwner);
         additionalBondRegistry.requestCurveMultiplier(0, T1_BOND);
         assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP + T1_WEIGHT);
+    }
+
+    function test_getWeightBoostMultiplierBP_BinarySearchBoundaries() public {
+        uint256 curveStep = additionalBondRegistry.CURVE_MULTIPLIER_STEP();
+
+        vm.startPrank(nodeOperatorOwner);
+        additionalBondRegistry.requestCurveMultiplier(0, T1_BOND - curveStep); // before first threshold
+        assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP);
+
+        additionalBondRegistry.requestCurveMultiplier(0, T1_BOND); // exactly first threshold
+        assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP + T1_WEIGHT);
+
+        additionalBondRegistry.requestCurveMultiplier(0, T2_BOND - curveStep); // between thresholds
+        assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP + T1_WEIGHT);
+
+        additionalBondRegistry.requestCurveMultiplier(0, T2_BOND); // exactly final threshold
+        assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP + T2_WEIGHT);
+
+        additionalBondRegistry.requestCurveMultiplier(0, T2_BOND + curveStep); // after final threshold
+        assertEq(additionalBondRegistry.getWeightBoostMultiplierBP(0), MAX_BP + T2_WEIGHT);
+        vm.stopPrank();
     }
 
     function test_getWeightBoostMultiplierBP_DuringDowngradeCooldown() public {

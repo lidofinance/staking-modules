@@ -5,7 +5,6 @@ pragma solidity 0.8.33;
 
 import { IAccounting } from "./IAccounting.sol";
 import { ICuratedModule } from "./ICuratedModule.sol";
-import { IAdditionalBondRegistry } from "./IAdditionalBondRegistry.sol";
 import { IWeightBoostProvider } from "./IWeightBoostProvider.sol";
 
 /// @notice Stored operator metadata.
@@ -15,7 +14,7 @@ struct OperatorMetadata {
     bool ownerEditsRestricted;
 }
 
-/// @notice Meta registry for curated node operator groups.
+/// @notice Meta registry for curated Node Operator groups.
 interface IMetaRegistry {
     struct SubNodeOperator {
         uint64 nodeOperatorId;
@@ -90,14 +89,12 @@ interface IMetaRegistry {
     /// @notice Role allowed to set bond curve weights.
     function SET_BOND_CURVE_WEIGHT_ROLE() external view returns (bytes32);
 
-    /// @notice Curated module allowed to call module-only hooks.
+    /// @notice Curated module the registry serves: weight changes and deposit info update requests are
+    ///         pushed to it, and it is the source of operator existence and ownership.
     function MODULE() external view returns (ICuratedModule);
 
     /// @notice Accounting contract used for bond curve lookups.
     function ACCOUNTING() external view returns (IAccounting);
-
-    /// @notice Tier provider that manages operator bond tiers.
-    function ADDITIONAL_BOND_REGISTRY() external view returns (IAdditionalBondRegistry);
 
     /// @notice Returns configured weight boost providers.
     function getWeightBoostProviders() external view returns (IWeightBoostProvider[] memory providers);
@@ -107,10 +104,11 @@ interface IMetaRegistry {
 
     /// @notice Returns configured weight boost provider entry by ID.
     /// @param providerId Provider ID.
-    /// @return entry Configured boost provider entry.
+    /// @return entry Configured boost provider entry; zeroed for an unknown ID.
     function getWeightBoostProvider(uint256 providerId) external view returns (WeightBoostProviderEntry memory entry);
 
     /// @notice Returns configured weight boost provider mode by ID.
+    /// @dev An unknown ID reads as `PerNodeOperator`; check the entry's provider address first.
     /// @param providerId Provider ID.
     /// @return mode Provider aggregation mode.
     function getWeightBoostProviderMode(uint256 providerId) external view returns (WeightBoostProviderMode mode);
@@ -127,13 +125,13 @@ interface IMetaRegistry {
     /// @notice Returns the initialized version of the contract.
     function getInitializedVersion() external view returns (uint64);
 
-    /// @notice Set or update metadata for a node operator (callable by SET_OPERATOR_INFO_ROLE).
-    /// @param nodeOperatorId Node operator ID.
+    /// @notice Set or update metadata for a Node Operator (callable by SET_OPERATOR_INFO_ROLE).
+    /// @param nodeOperatorId ID of the Node Operator.
     /// @param metadata Metadata payload to persist.
     function setOperatorMetadataAsAdmin(uint256 nodeOperatorId, OperatorMetadata calldata metadata) external;
 
-    /// @notice Set or update metadata by the node operator owner.
-    /// @param nodeOperatorId Node operator ID.
+    /// @notice Set or update metadata by the Node Operator owner.
+    /// @param nodeOperatorId ID of the Node Operator.
     /// @param name Display name.
     /// @param description Long description.
     /// @dev Reverts if module does not support IBaseModule interface.
@@ -143,8 +141,8 @@ interface IMetaRegistry {
         string calldata description
     ) external;
 
-    /// @notice Get metadata for a node operator.
-    /// @param nodeOperatorId Node operator ID.
+    /// @notice Returns metadata of a Node Operator.
+    /// @param nodeOperatorId ID of the Node Operator.
     /// @return metadata Stored metadata struct.
     function getOperatorMetadata(uint256 nodeOperatorId) external view returns (OperatorMetadata memory metadata);
 
@@ -163,12 +161,12 @@ interface IMetaRegistry {
     /// @notice Returns total operator groups count.
     function getOperatorGroupsCount() external view returns (uint256 count);
 
-    /// @notice Get Node Operator group ID (returns NO_GROUP_ID if the operator is not in any group).
-    /// @param nodeOperatorId Node operator ID to query.
+    /// @notice Returns the Node Operator group ID ( NO_GROUP_ID if the operator is not in any group).
+    /// @param nodeOperatorId ID of the Node Operator.
     /// @return operatorGroupId Group ID.
     function getNodeOperatorGroupId(uint256 nodeOperatorId) external view returns (uint256 operatorGroupId);
 
-    /// @notice Get External Operator group ID (returns NO_GROUP_ID if the operator is not in any group).
+    /// @notice Returns the External Operator group ID ( NO_GROUP_ID if the operator is not in any group).
     /// @param op External operator.
     /// @return operatorGroupId Group ID.
     function getExternalOperatorGroupId(ExternalOperator calldata op) external view returns (uint256 operatorGroupId);
@@ -200,15 +198,15 @@ interface IMetaRegistry {
     /// @param enabled Whether the provider should participate in weight calculations.
     function setWeightBoostProviderEnabled(uint256 providerId, bool enabled) external;
 
-    /// @notice Returns effective weight for the node operator.
-    /// @param nodeOperatorId Node operator ID to query.
+    /// @notice Returns effective weight for the Node Operator.
+    /// @param nodeOperatorId ID of the Node Operator.
     /// @return weight Effective allocation weight.
     /// @dev Returns the cached effective weight.
     /// @dev Operators outside any group are expected to have zero cached weight.
     function getNodeOperatorWeight(uint256 nodeOperatorId) external view returns (uint256 weight);
 
-    /// @notice Returns effective weight and external stake for the node operator.
-    /// @param nodeOperatorId Node operator ID to query.
+    /// @notice Returns effective weight and external stake for the Node Operator.
+    /// @param nodeOperatorId ID of the Node Operator.
     /// @return weight Effective allocation weight.
     /// @return externalStake External stake amount in wei.
     /// @dev Returns (0, 0) if the operator is not in a group.
@@ -219,15 +217,16 @@ interface IMetaRegistry {
         uint256 nodeOperatorId
     ) external view returns (uint256 weight, uint256 externalStake);
 
-    /// @notice Returns allocation weights for the given node operators.
-    /// @param nodeOperatorIds Node operator IDs to query.
+    /// @notice Returns allocation weights for the given Node Operators.
+    /// @param nodeOperatorIds IDs of the Node Operators.
     /// @return operatorWeights Weights aligned with nodeOperatorIds.
     function getOperatorWeights(
         uint256[] calldata nodeOperatorIds
     ) external view returns (uint256[] memory operatorWeights);
 
     /// @notice Trigger the operator weight update routine in the registry.
-    /// @param nodeOperatorId Node operator ID to trigger the update for.
+    /// @dev No-op for operators outside any group.
+    /// @param nodeOperatorId ID of the Node Operator to trigger the update for.
     function refreshOperatorWeight(uint256 nodeOperatorId) external;
 
     /// @notice Trigger the group weight update routine in the registry.
@@ -236,12 +235,16 @@ interface IMetaRegistry {
     ///      notifyWeightBoostProviderConfigChanged(), and setWeightBoostProviderEnabled().
     function refreshGroupWeights(uint256 groupId) external;
 
-    /// @notice Notify the registry that a configured provider changed a node operator boost.
-    /// @param nodeOperatorId Node operator ID whose provider boost changed.
+    /// @notice Notify the registry that a configured provider changed a Node Operator boost.
+    /// @dev Reverts for callers that are not registered providers. No-op for operators outside any
+    ///      group and for disabled providers. A `PerNodeOperator` provider refreshes only the operator's
+    ///      cached weight; a `MaxPerGroup` provider refreshes the whole group.
+    /// @param nodeOperatorId ID of the Node Operator whose provider boost changed.
     function notifyWeightBoostChanged(uint256 nodeOperatorId) external;
 
     /// @notice Notify the registry that a configured provider changed global boost parameters.
-    /// @dev Requests a full deposit info update when the sender is an enabled provider.
-    ///      Unregistered or disabled providers are ignored since cached weights do not depend on them.
+    /// @dev Reverts for callers that are not registered providers. Requests a full deposit info update
+    ///      when the sender is enabled; disabled providers are ignored since cached weights do not
+    ///      depend on them.
     function notifyWeightBoostProviderConfigChanged() external;
 }

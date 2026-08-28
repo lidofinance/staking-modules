@@ -21,9 +21,10 @@ import { ExitPenalties } from "../../src/ExitPenalties.sol";
 import { MetaRegistry } from "../../src/MetaRegistry.sol";
 import { AdditionalBondRegistry } from "../../src/AdditionalBondRegistry.sol";
 import { NodeOperatorStrikes } from "../../src/NodeOperatorStrikes.sol";
-import { BoostStep } from "../../src/interfaces/IAdditionalBondRegistry.sol";
+import { CustomFeeRegistry } from "../../src/CustomFeeRegistry.sol";
 import { ERC20LockBoostProvider } from "../../src/ERC20LockBoostProvider.sol";
 import { LidoGovernanceLockVault } from "../../src/LidoGovernanceLockVault.sol";
+import { Step } from "../../src/interfaces/IStepwiseWeightBoost.sol";
 import { CuratedGate } from "../../src/CuratedGate.sol";
 import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 
@@ -33,10 +34,8 @@ import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
 import { IVerifier } from "../../src/interfaces/IVerifier.sol";
 import { IParametersRegistry } from "../../src/interfaces/IParametersRegistry.sol";
 import { IBondCurve } from "../../src/interfaces/IBondCurve.sol";
-import { IERC20LockBoostProvider } from "../../src/interfaces/IERC20LockBoostProvider.sol";
 import { IMetaRegistry } from "../../src/interfaces/IMetaRegistry.sol";
 import { IWeightBoostProvider } from "../../src/interfaces/IWeightBoostProvider.sol";
-import { StrikeThreshold } from "../../src/interfaces/INodeOperatorStrikes.sol";
 
 import { JsonObj, Json } from "../utils/Json.sol";
 import { Dummy } from "../utils/Dummy.sol";
@@ -48,6 +47,7 @@ struct GateCurveParams {
     IParametersRegistry.MarkedUint248 generalDelayedPenaltyAdditionalFine;
     IParametersRegistry.MarkedUint248 keysLimit;
     uint256[2][] avgPerfLeewayData;
+    // Legacy ParametersRegistry compatibility value. Curated fees are sourced from CustomFeeRegistry.
     uint256[2][] rewardShareData;
     IParametersRegistry.MarkedUint248 strikesLifetimeFrames;
     IParametersRegistry.MarkedUint248 strikesThreshold;
@@ -70,9 +70,15 @@ struct CuratedGateConfig {
 }
 
 struct AdditionalBondRegistryConfig {
-    uint256 curveMultiplierCooldown;
-    // Each entry is [minCurveMultiplier, weightMultiplier] (increments above MAX_BP).
-    uint256[2][] boostSteps;
+    uint256 curveMultiplierReductionCooldown;
+    // `threshold` is a curve multiplier increment and `value` a weight multiplier increment, both above MAX_BP.
+    Step[] boostSteps;
+}
+
+struct NodeOperatorStrikesConfig {
+    address committee;
+    // `threshold` is the minimum active strike count and `value` the weight reduction from MAX_BP.
+    Step[] thresholds;
 }
 
 struct ERC20LockBoostProviderConfig {
@@ -81,7 +87,12 @@ struct ERC20LockBoostProviderConfig {
     address snapshotDelegation;
     uint256 minLockPeriod;
     uint256 lockPeriod;
-    IERC20LockBoostProvider.LockBoostStep[] lockBoostSteps;
+    Step[] lockBoostSteps;
+}
+
+struct CustomFeeRegistryConfig {
+    uint256 feeShareDiscountCutCooldown;
+    Step[] boostSteps;
 }
 
 struct CuratedDeployParams {
@@ -122,6 +133,7 @@ struct CuratedDeployParams {
     uint256 defaultGeneralDelayedPenaltyAdditionalFine;
     uint256 defaultKeysLimit;
     uint256 defaultAvgPerfLeewayBP;
+    // Legacy ParametersRegistry compatibility value. Curated fees are sourced from CustomFeeRegistry.
     uint256 defaultRewardShareBP;
     uint256 defaultStrikesLifetimeFrames;
     uint256 defaultStrikesThreshold;
@@ -150,10 +162,11 @@ struct CuratedDeployParams {
     // AdditionalBondRegistry
     AdditionalBondRegistryConfig additionalBondRegistryConfig;
     // NodeOperatorStrikes
-    address strikesCommittee;
-    StrikeThreshold[] strikesThresholds;
+    NodeOperatorStrikesConfig nodeOperatorStrikesConfig;
     // LDO lock boost provider
     ERC20LockBoostProviderConfig ldoLockBoostProviderConfig;
+    // CustomFeeRegistry
+    CustomFeeRegistryConfig customFeeRegistryConfig;
 }
 
 abstract contract DeployBase is Script {
@@ -182,6 +195,8 @@ abstract contract DeployBase is Script {
     ERC20LockBoostProvider public ldoLockBoostProviderImpl;
     LidoGovernanceLockVault public ldoLockVaultImpl;
     UpgradeableBeacon public ldoLockVaultBeacon;
+    CustomFeeRegistry public customFeeRegistry;
+    CustomFeeRegistry public customFeeRegistryImpl;
     MerkleGateFactory public curatedGateFactory;
     address[] public curatedGateInstances;
     address internal curatedGateImpl;
@@ -273,6 +288,7 @@ abstract contract DeployBase is Script {
             additionalBondRegistry = AdditionalBondRegistry(_deployProxy(deployer, address(dummyImpl)));
             nodeOperatorStrikes = NodeOperatorStrikes(_deployProxy(deployer, address(dummyImpl)));
             ldoLockBoostProvider = ERC20LockBoostProvider(_deployProxy(deployer, address(dummyImpl)));
+            customFeeRegistry = CustomFeeRegistry(_deployProxy(deployer, address(dummyImpl)));
 
             FeeDistributor feeDistributorImpl = new FeeDistributor({
                 stETH: locator.lido(),
@@ -342,56 +358,44 @@ abstract contract DeployBase is Script {
                 metaRegistry: address(metaRegistry)
             });
 
-            {
-                OssifiableProxy moduleProxy = OssifiableProxy(payable(address(curatedModule)));
-                moduleProxy.proxy__upgradeToAndCall(
-                    address(curatedModuleImpl),
-                    abi.encodeCall(CuratedModule.initialize, (deployer))
-                );
-                moduleProxy.proxy__changeAdmin(config.proxyAdmin);
-            }
+            _upgradeAndHandoffProxy(
+                address(curatedModule),
+                address(curatedModuleImpl),
+                abi.encodeCall(CuratedModule.initialize, (deployer))
+            );
 
-            MetaRegistry metaRegistryImpl = new MetaRegistry({
-                module: address(curatedModule),
-                additionalBondRegistry: address(additionalBondRegistry)
-            });
+            MetaRegistry metaRegistryImpl = new MetaRegistry({ module: address(curatedModule) });
 
-            {
-                OssifiableProxy metaRegistryProxy = OssifiableProxy(payable(address(metaRegistry)));
-                metaRegistryProxy.proxy__upgradeToAndCall(
-                    address(metaRegistryImpl),
-                    abi.encodeCall(MetaRegistry.initialize, (deployer))
-                );
-                metaRegistryProxy.proxy__changeAdmin(config.proxyAdmin);
-            }
+            _upgradeAndHandoffProxy(
+                address(metaRegistry),
+                address(metaRegistryImpl),
+                abi.encodeCall(MetaRegistry.initialize, (deployer))
+            );
 
             AdditionalBondRegistry additionalBondRegistryImpl = new AdditionalBondRegistry({
-                module: address(curatedModule),
-                curveMultiplierCooldown: config.additionalBondRegistryConfig.curveMultiplierCooldown
+                module: address(curatedModule)
             });
 
-            {
-                OssifiableProxy additionalBondRegistryProxy = OssifiableProxy(payable(address(additionalBondRegistry)));
-                BoostStep[] memory initialBoostSteps = CommonScriptUtils.arraysToBoostSteps(
-                    config.additionalBondRegistryConfig.boostSteps
-                );
-                additionalBondRegistryProxy.proxy__upgradeToAndCall(
-                    address(additionalBondRegistryImpl),
-                    abi.encodeCall(AdditionalBondRegistry.initialize, (deployer, initialBoostSteps))
-                );
-                additionalBondRegistryProxy.proxy__changeAdmin(config.proxyAdmin);
-            }
+            _upgradeAndHandoffProxy(
+                address(additionalBondRegistry),
+                address(additionalBondRegistryImpl),
+                abi.encodeCall(
+                    AdditionalBondRegistry.initialize,
+                    (
+                        deployer,
+                        config.additionalBondRegistryConfig.curveMultiplierReductionCooldown,
+                        config.additionalBondRegistryConfig.boostSteps
+                    )
+                )
+            );
 
             NodeOperatorStrikes nodeOperatorStrikesImpl = new NodeOperatorStrikes({ module: address(curatedModule) });
 
-            {
-                OssifiableProxy nodeOperatorStrikesProxy = OssifiableProxy(payable(address(nodeOperatorStrikes)));
-                nodeOperatorStrikesProxy.proxy__upgradeToAndCall(
-                    address(nodeOperatorStrikesImpl),
-                    abi.encodeCall(NodeOperatorStrikes.initialize, (deployer, config.strikesThresholds))
-                );
-                nodeOperatorStrikesProxy.proxy__changeAdmin(config.proxyAdmin);
-            }
+            _upgradeAndHandoffProxy(
+                address(nodeOperatorStrikes),
+                address(nodeOperatorStrikesImpl),
+                abi.encodeCall(NodeOperatorStrikes.initialize, (deployer, config.nodeOperatorStrikesConfig.thresholds))
+            );
 
             // LDO lock boost provider
             {
@@ -413,30 +417,47 @@ abstract contract DeployBase is Script {
                     minLockPeriod: ldoConfig.minLockPeriod
                 });
 
-                OssifiableProxy ldoLockBoostProviderProxy = OssifiableProxy(payable(address(ldoLockBoostProvider)));
-                ldoLockBoostProviderProxy.proxy__upgradeToAndCall(
+                _upgradeAndHandoffProxy(
+                    address(ldoLockBoostProvider),
                     address(ldoLockBoostProviderImpl),
-                    abi.encodeCall(ERC20LockBoostProvider.initialize, (deployer, ldoConfig.lockPeriod))
+                    abi.encodeCall(
+                        ERC20LockBoostProvider.initialize,
+                        (deployer, ldoConfig.lockPeriod, ldoConfig.lockBoostSteps)
+                    )
                 );
-                ldoLockBoostProviderProxy.proxy__changeAdmin(config.proxyAdmin);
             }
+
+            customFeeRegistryImpl = new CustomFeeRegistry({ module: address(curatedModule) });
+
+            _upgradeAndHandoffProxy(
+                address(customFeeRegistry),
+                address(customFeeRegistryImpl),
+                abi.encodeCall(
+                    CustomFeeRegistry.initialize,
+                    (
+                        deployer,
+                        config.customFeeRegistryConfig.feeShareDiscountCutCooldown,
+                        config.customFeeRegistryConfig.boostSteps
+                    )
+                )
+            );
 
             accounting.grantRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
             accounting.grantRole(accounting.SET_BOND_CURVE_MULTIPLIER_ROLE(), address(additionalBondRegistry));
-            metaRegistry.addWeightBoostProvider(
-                IWeightBoostProvider(address(additionalBondRegistry)),
+            _addWeightBoostProvider(
+                address(additionalBondRegistry),
                 IMetaRegistry.WeightBoostProviderMode.PerNodeOperator
             );
-            metaRegistry.addWeightBoostProvider(
-                IWeightBoostProvider(address(nodeOperatorStrikes)),
+            _addWeightBoostProvider(
+                address(nodeOperatorStrikes),
                 IMetaRegistry.WeightBoostProviderMode.PerNodeOperator
             );
-            nodeOperatorStrikes.grantRole(nodeOperatorStrikes.STRIKES_COMMITTEE_ROLE(), config.strikesCommittee);
-            metaRegistry.addWeightBoostProvider(
-                IWeightBoostProvider(address(ldoLockBoostProvider)),
-                IMetaRegistry.WeightBoostProviderMode.MaxPerGroup
+            _addWeightBoostProvider(address(ldoLockBoostProvider), IMetaRegistry.WeightBoostProviderMode.MaxPerGroup);
+            _addWeightBoostProvider(address(customFeeRegistry), IMetaRegistry.WeightBoostProviderMode.PerNodeOperator);
+            nodeOperatorStrikes.grantRole(
+                nodeOperatorStrikes.STRIKES_COMMITTEE_ROLE(),
+                config.nodeOperatorStrikesConfig.committee
             );
-            ldoLockBoostProvider.setLockBoostSteps(config.ldoLockBoostProviderConfig.lockBoostSteps);
             metaRegistry.grantRole(metaRegistry.SET_BOND_CURVE_WEIGHT_ROLE(), deployer);
 
             for (uint256 i = 0; i < gatesCount; i++) {
@@ -503,6 +524,7 @@ abstract contract DeployBase is Script {
                     parametersRegistry.setMaxElWithdrawalRequestFee(curveId, params.maxElWithdrawalRequestFee.value);
                 }
             }
+
             accounting.revokeRole(accounting.MANAGE_BOND_CURVES_ROLE(), address(deployer));
             metaRegistry.revokeRole(metaRegistry.SET_BOND_CURVE_WEIGHT_ROLE(), deployer);
 
@@ -644,6 +666,8 @@ abstract contract DeployBase is Script {
             ldoLockBoostProvider.revokeRole(ldoLockBoostProvider.DEFAULT_ADMIN_ROLE(), deployer);
 
             ldoLockVaultBeacon.transferOwnership(config.aragonAgent);
+            customFeeRegistry.grantRole(customFeeRegistry.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
+            customFeeRegistry.revokeRole(customFeeRegistry.DEFAULT_ADMIN_ROLE(), deployer);
 
             verifier.grantRole(verifier.DEFAULT_ADMIN_ROLE(), config.aragonAgent);
             verifier.revokeRole(verifier.DEFAULT_ADMIN_ROLE(), deployer);
@@ -677,6 +701,8 @@ abstract contract DeployBase is Script {
             deployJson.set("LDOLockBoostProviderImpl", address(ldoLockBoostProviderImpl));
             deployJson.set("LDOLockVaultImpl", address(ldoLockVaultImpl));
             deployJson.set("LDOLockVaultBeacon", address(ldoLockVaultBeacon));
+            deployJson.set("CustomFeeRegistry", address(customFeeRegistry));
+            deployJson.set("CustomFeeRegistryImpl", address(customFeeRegistryImpl));
             deployJson.set("ParametersRegistry", address(parametersRegistry));
             deployJson.set("ParametersRegistryImpl", address(parametersRegistryImpl));
             deployJson.set("Accounting", address(accounting));
@@ -744,10 +770,16 @@ abstract contract DeployBase is Script {
         return gates;
     }
 
-    function _addLDOLockBoostStep(uint128 minAmount, uint32 weightBoostBP) internal {
-        config.ldoLockBoostProviderConfig.lockBoostSteps.push(
-            IERC20LockBoostProvider.LockBoostStep({ minAmount: minAmount, weightBoostBP: weightBoostBP })
-        );
+    /// @dev Points the proxy at `impl`, runs the initializer, and hands proxy administration to the DAO.
+    function _upgradeAndHandoffProxy(address proxyAddress, address impl, bytes memory initCalldata) internal {
+        OssifiableProxy proxy = OssifiableProxy(payable(proxyAddress));
+        proxy.proxy__upgradeToAndCall(impl, initCalldata);
+        proxy.proxy__changeAdmin(config.proxyAdmin);
+    }
+
+    /// @dev Registration order assigns the provider ids, so keep the call sequence stable.
+    function _addWeightBoostProvider(address provider, IMetaRegistry.WeightBoostProviderMode mode) internal {
+        metaRegistry.addWeightBoostProvider(IWeightBoostProvider(provider), mode);
     }
 
     function _deployProxy(address admin, address implementation) internal returns (address) {
@@ -780,6 +812,7 @@ abstract contract DeployBase is Script {
         additionalBondRegistry.grantRole(additionalBondRegistry.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         nodeOperatorStrikes.grantRole(nodeOperatorStrikes.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         ldoLockBoostProvider.grantRole(ldoLockBoostProvider.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
+        customFeeRegistry.grantRole(customFeeRegistry.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
         for (uint256 i = 0; i < curatedGateInstances.length; i++) {
             CuratedGate gate = CuratedGate(curatedGateInstances[i]);
             gate.grantRole(gate.DEFAULT_ADMIN_ROLE(), config.secondAdminAddress);
