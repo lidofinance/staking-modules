@@ -154,7 +154,10 @@ def test_fetch_high_signal_max_uses_ssv_when_higher(monkeypatch):
                 raise_for_status=lambda: None,
                 json=lambda: {
                     "username": "alice",
-                    "totalScores": [{"totalScore": 35}, {"totalScore": 90}],
+                    "totalScores": [
+                        {"day": "2026-06-09", "totalScore": 35},
+                        {"day": "2026-06-08", "totalScore": 90},
+                    ],
                 },
             )
         assert params["project"] == "ssv"
@@ -166,7 +169,10 @@ def test_fetch_high_signal_max_uses_ssv_when_higher(monkeypatch):
             raise_for_status=lambda: None,
             json=lambda: {
                 "username": "alice",
-                "totalScores": [{"totalScore": 75}, {"totalScore": 95}],
+                "totalScores": [
+                    {"day": "2026-06-09", "totalScore": 75},
+                    {"day": "2026-06-08", "totalScore": 95},
+                ],
             },
         )
 
@@ -190,7 +196,10 @@ def test_fetch_high_signal_max_keeps_lido_when_ssv_missing(monkeypatch):
                 raise_for_status=lambda: None,
                 json=lambda: {
                     "username": "alice",
-                    "totalScores": [{"totalScore": 42}, {"totalScore": 90}],
+                    "totalScores": [
+                        {"day": "2026-06-09", "totalScore": 42},
+                        {"day": "2026-06-08", "totalScore": 90},
+                    ],
                 },
             )
         return types.SimpleNamespace(
@@ -203,6 +212,35 @@ def test_fetch_high_signal_max_keeps_lido_when_ssv_missing(monkeypatch):
 
     assert mod.fetch_high_signal_max({"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, "secret") == (
         42.0,
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "alice",
+        "lido",
+    )
+
+
+def test_fetch_high_signal_max_ignores_scores_after_cutoff(monkeypatch):
+    mod = _load_sources_module(monkeypatch)
+
+    def fake_get(url, params=None, timeout=None):
+        return types.SimpleNamespace(
+            status_code=200,
+            raise_for_status=lambda: None,
+            json=lambda: {
+                "username": "alice",
+                "totalScores": [
+                    {"day": "2026-06-10", "totalScore": 99},
+                    {"day": "2026-06-08", "totalScore": 31},
+                    {"day": "2026-06-09", "totalScore": 30},
+                ],
+            },
+        )
+
+    monkeypatch.setattr(mod.requests, "get", fake_get)
+
+    assert mod.fetch_high_signal_max(
+        {"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, "secret"
+    ) == (
+        30.0,
         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "alice",
         "lido",
