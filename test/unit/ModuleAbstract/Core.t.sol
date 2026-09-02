@@ -11,7 +11,7 @@ import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
 import { NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
-import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
+import { PenalizedWithdrawnValidatorLib } from "src/lib/PenalizedWithdrawnValidatorLib.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 import { ERC20Testable } from "../../helpers/ERCTestable.sol";
