@@ -15,8 +15,8 @@ import { SigningKeys } from "./SigningKeys.sol";
 import { ValidatorBalanceLimits } from "./ValidatorBalanceLimits.sol";
 
 /// @dev External deployment-linked library used by BaseModule-compatible modules
-///      to extract withdrawn validator processing from module bytecode.
-library WithdrawnValidatorLib {
+///      to apply the penalized withdrawal policy outside module bytecode.
+library PenalizedWithdrawnValidatorLib {
     uint256 public constant PENALTY_QUOTIENT = 1 ether;
     /// @dev Acts as the denominator to calculate the scaled penalty.
     uint256 public constant PENALTY_SCALE = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE / PENALTY_QUOTIENT;

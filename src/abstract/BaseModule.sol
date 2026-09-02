@@ -17,7 +17,7 @@ import { IBaseModule } from "../interfaces/IBaseModule.sol";
 import { SigningKeys } from "../lib/SigningKeys.sol";
 import { GeneralPenalty } from "../lib/GeneralPenaltyLib.sol";
 import { PausableUntil } from "../lib/utils/PausableUntil.sol";
-import { WithdrawnValidatorLib } from "../lib/WithdrawnValidatorLib.sol";
+import { PenalizedWithdrawnValidatorLib } from "../lib/PenalizedWithdrawnValidatorLib.sol";
 import { NOAddresses } from "../lib/NOAddresses.sol";
 import { NodeOperatorOps } from "../lib/NodeOperatorOps.sol";
 import { KeyPointerLib } from "../lib/KeyPointerLib.sol";
@@ -661,7 +661,7 @@ abstract contract BaseModule is
             uint256[] memory touchedOperatorIds,
             uint256[] memory trackedBalanceDecreases,
             uint256 touchedCount
-        ) = WithdrawnValidatorLib.processBatch(validatorInfos, slashed, _baseStorage());
+        ) = PenalizedWithdrawnValidatorLib.processBatch(validatorInfos, slashed, _baseStorage());
 
         if (touchedCount == 0) return;
 

@@ -6,7 +6,7 @@ pragma solidity 0.8.33;
 import { IStakingModuleV2 } from "src/interfaces/IStakingModule.sol";
 import { ICSModule } from "src/interfaces/ICSModule.sol";
 import { IBaseModule, NodeOperator } from "src/interfaces/IBaseModule.sol";
-import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
+import { PenalizedWithdrawnValidatorLib } from "src/lib/PenalizedWithdrawnValidatorLib.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 import { SigningKeys } from "src/lib/SigningKeys.sol";
 import { Vm } from "forge-std/Vm.sol";
