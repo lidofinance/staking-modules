@@ -72,6 +72,23 @@ abstract contract ModuleReportValidatorBalance is ModuleFixtures {
         assertEq(module.getNodeOperatorBalance(noId), balanceWei);
     }
 
+    function test_reportValidatorBalance_emitsBalanceEventsInOrder() public {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        uint256 extraBalance = 10 ether;
+        uint256 balanceWei = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + extraBalance;
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.KeyAllocatedBalanceChanged(noId, 0, extraBalance);
+        vm.expectEmit(address(module));
+        emit IBaseModule.KeyConfirmedBalanceChanged(noId, 0, extraBalance);
+        vm.expectEmit(address(module));
+        emit IBaseModule.NodeOperatorBalanceUpdated(noId, balanceWei);
+
+        module.reportValidatorBalance(noId, 0, balanceWei);
+    }
+
     function test_reportValidatorBalance_increasesWhenHigher() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
