@@ -14,7 +14,7 @@ import { ModuleLinearStorage } from "../abstract/ModuleLinearStorage.sol";
 import { ValidatorCountsReport } from "./ValidatorCountsReport.sol";
 import { ValidatorBalanceLimits } from "./ValidatorBalanceLimits.sol";
 import { KeyPointerLib } from "./KeyPointerLib.sol";
-import { StakeTracker } from "./StakeTracker.sol";
+import { ConfirmedBalanceTracker } from "./ConfirmedBalanceTracker.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "./TransientUintUintMapLib.sol";
 import { SigningKeys } from "./SigningKeys.sol";
 
@@ -163,7 +163,7 @@ library NodeOperatorOps {
             newConfirmed = currentBalanceWei - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
         }
 
-        StakeTracker.reportValidatorBalance($, nodeOperatorId, keyIndex, newConfirmed);
+        ConfirmedBalanceTracker.reportValidatorBalance($, nodeOperatorId, keyIndex, newConfirmed);
     }
 
     function removeKeys(
