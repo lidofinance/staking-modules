@@ -280,7 +280,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     ) external;
 
     /// @notice Compensate general delayed penalty (locked bond) for the given Node Operator from Node Operator's bond
-    /// @dev Can only be called by the Node Operator manager
+    /// @dev Can only be called by the Node Operator owner
     /// @param nodeOperatorId ID of the Node Operator
     function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external;
 
