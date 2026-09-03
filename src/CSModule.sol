@@ -18,7 +18,7 @@ import { SigningKeys } from "./lib/SigningKeys.sol";
 import { DepositQueueOps } from "./lib/DepositQueueOps.sol";
 import { TopUpQueueOps } from "./lib/TopUpQueueOps.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
-import { StakeTracker } from "./lib/StakeTracker.sol";
+import { HighWatermarkBalanceTracker } from "./lib/HighWatermarkBalanceTracker.sol";
 import { OperatorTracker } from "./lib/OperatorTracker.sol";
 
 contract CSModule is ICSModule, BaseModule {
@@ -132,6 +132,7 @@ contract CSModule is ICSModule, BaseModule {
         );
 
         allocations = TopUpQueueOps.allocateDeposits({
+            $: _baseStorage(),
             topUpQueue: _topUpQueue(),
             maxDepositAmount: maxDepositAmount,
             pubkeys: pubkeys,
@@ -142,8 +143,6 @@ contract CSModule is ICSModule, BaseModule {
 
         if (allocations.length == 0) return allocations;
 
-        StakeTracker.increaseKeyBalances(_baseStorage(), operatorIds, keyIndices, allocations);
-
         _incrementModuleNonce();
     }
 
@@ -151,10 +150,22 @@ contract CSModule is ICSModule, BaseModule {
     function reportValidatorBalance(
         uint256 nodeOperatorId,
         uint256 keyIndex,
-        uint256 currentBalanceWei
-    ) public override(BaseModule, IBaseModule) {
+        uint256 currentBalanceWei,
+        uint64 /* balanceSlot */
+    ) public override(IBaseModule) {
         _onlyEnabledTopUpQueue();
-        super.reportValidatorBalance(nodeOperatorId, keyIndex, currentBalanceWei);
+        _checkVerifierRole();
+
+        HighWatermarkBalanceTracker.updateValidatorBalance({
+            $: _baseStorage(),
+            nodeOperatorId: nodeOperatorId,
+            keyIndex: keyIndex,
+            currentBalanceWei: currentBalanceWei
+        });
+
+        // NOTE: We do not increment nonce because individual validator balances don't change the distribution
+        // returned by the module. The distribution from `allocateDeposits` might change but still meets
+        // expectations of StakingRouter.
     }
 
     /// @inheritdoc ICSModule

@@ -104,6 +104,7 @@ library CuratedDepositAllocator {
         ModuleLinearStorage.BaseModuleStorage storage $,
         uint256 allocationAmount,
         uint256[] calldata operatorIds,
+        uint256[] calldata keyIndices,
         uint256[] calldata topUpLimits
     ) external returns (uint256[] memory allocations) {
         uint256[] memory allocatedOperatorIds;
@@ -115,13 +116,19 @@ library CuratedDepositAllocator {
             uniqueOperatorIds
         );
         if (allocatedOperatorIds.length == 0) return new uint256[](operatorIds.length);
-        return
-            _distributeAllocationsWithinLimits({
-                operatorIds: operatorIds,
-                topUpLimits: topUpLimits,
-                allocatedOperatorIds: allocatedOperatorIds,
-                remainingOperatorAllocations: remainingOperatorAllocations
-            });
+        allocations = _distributeAllocationsWithinLimits({
+            operatorIds: operatorIds,
+            topUpLimits: topUpLimits,
+            allocatedOperatorIds: allocatedOperatorIds,
+            remainingOperatorAllocations: remainingOperatorAllocations
+        });
+        _applyTopUpAllocations({
+            $: $,
+            operatorIds: operatorIds,
+            keyIndices: keyIndices,
+            allocations: allocations,
+            allocatedOperatorIds: allocatedOperatorIds
+        });
     }
 
     function _uniqueOperatorIds(uint256[] calldata operatorIds) private returns (uint256[] memory uniqueOperatorIds) {
@@ -426,6 +433,35 @@ library CuratedDepositAllocator {
                 allocations[i] = amount;
                 remainingOperatorAllocations[allocationIndex] = remaining - amount;
             }
+        }
+    }
+
+    function _applyTopUpAllocations(
+        ModuleLinearStorage.BaseModuleStorage storage $,
+        uint256[] calldata operatorIds,
+        uint256[] calldata keyIndices,
+        uint256[] memory allocations,
+        uint256[] memory allocatedOperatorIds
+    ) private {
+        uint256[] memory appliedIncrements = new uint256[](allocatedOperatorIds.length);
+        TransientUintUintMap operatorIndexes = TransientUintUintMapLib.create();
+        for (uint256 i; i < allocatedOperatorIds.length; ++i) {
+            operatorIndexes.set(allocatedOperatorIds[i], i + 1);
+        }
+
+        for (uint256 i; i < allocations.length; ++i) {
+            if (allocations[i] == 0) continue;
+            uint256 operatorIndex = operatorIndexes.get(operatorIds[i]) - 1;
+            appliedIncrements[operatorIndex] += StakeTracker.applyKeyTopUp(
+                $.keyAllocatedBalance,
+                operatorIds[i],
+                keyIndices[i],
+                allocations[i]
+            );
+        }
+
+        for (uint256 i; i < allocatedOperatorIds.length; ++i) {
+            StakeTracker.increaseOperatorBalance($, allocatedOperatorIds[i], appliedIncrements[i]);
         }
     }
 

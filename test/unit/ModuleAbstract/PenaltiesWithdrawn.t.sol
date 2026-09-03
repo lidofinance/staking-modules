@@ -137,37 +137,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(module.getNodeOperatorBalance(noId), 0);
     }
 
-    function test_reportRegularWithdrawnValidators_exitBalanceBelowKeyBalance() public assertInvariants {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        uint256 maxReportedBalance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether;
-        uint256 exitBalance = maxReportedBalance - 1 ether;
-        uint256 expectedPenalty = maxReportedBalance - exitBalance;
-
-        module.reportValidatorBalance(noId, keyIndex, maxReportedBalance);
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: exitBalance,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-
-        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, expectedPenalty));
-        module.reportRegularWithdrawnValidators(validatorInfos);
-
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalWithdrawnKeys, 1);
-        assertEq(module.getTotalModuleStake(), 0);
-        assertEq(module.getNodeOperatorBalance(noId), 0);
-    }
-
-    function test_reportRegularWithdrawnValidators_removesAllocatedButUnconfirmedExtra() public assertInvariants {
+    function test_reportRegularWithdrawnValidators_removesAllocatedExtra() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
@@ -181,7 +151,6 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         });
 
         assertEq(module.getKeyAllocatedBalances(noId, 0, 1), UintArr(10 ether));
-        assertEq(module.getKeyConfirmedBalances(noId, 0, 1), UintArr(0));
         assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether);
         assertEq(module.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 10 ether);
 
@@ -229,50 +198,6 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
         assertEq(module.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
-    }
-
-    function test_reportRegularWithdrawnValidators_exitPenaltyScaledByMaxReportedBalance() public assertInvariants {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        uint248 penalty = 1 ether;
-        uint256 multiplier = 3;
-
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
-            ExitPenaltyInfo({
-                legacyDelayFee: MarkedUint248(0, false),
-                strikesPenalty: MarkedUint248(penalty, true),
-                elWithdrawalRequestFee: MarkedUint248(0, false)
-            })
-        );
-
-        uint256 maxReportedBalance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier + 1 wei;
-        uint256 exitBalance = maxReportedBalance - 1 ether;
-        uint256 expectedPenalty = maxReportedBalance - exitBalance;
-
-        module.reportValidatorBalance(noId, keyIndex, maxReportedBalance);
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: exitBalance,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(accounting.penalize.selector, noId, penalty * multiplier + expectedPenalty)
-        );
-        module.reportRegularWithdrawnValidators(validatorInfos);
-
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalWithdrawnKeys, 1);
-        assertEq(module.getTotalModuleStake(), 0);
-        assertEq(module.getNodeOperatorBalance(noId), 0);
     }
 
     function test_reportRegularWithdrawnValidators_superLowExitBalance() public assertInvariants {
@@ -1246,58 +1171,5 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
         module.reportValidatorSlashing(noId, 0);
-    }
-
-    function test_keyConfirmedBalance_chargesOnWithdraw() public assertInvariants {
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        uint256 balanceShortage = 10 ether;
-
-        setKeyConfirmedBalance(noId, 0, balanceShortage);
-
-        vm.deal(address(this), 100 ether);
-        accounting.depositETH{ value: 100 ether }(noId);
-        uint256 bondBefore = accounting.getBond(noId);
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-
-        module.reportRegularWithdrawnValidators(validatorInfos);
-        assertEq(accounting.getBond(noId), bondBefore - balanceShortage);
-    }
-
-    function test_keyConfirmedBalance_PenalizeWhenSlashed() public assertInvariants {
-        uint256 noId = createNodeOperator();
-
-        module.obtainDepositData(1, "");
-        module.reportValidatorSlashing(noId, 0);
-
-        uint256 topUp = 10 ether;
-        uint256 balanceShortage = 1 ether;
-
-        setKeyConfirmedBalance(noId, 0, topUp);
-
-        vm.deal(address(this), 100 ether);
-        accounting.depositETH{ value: 100 ether }(noId);
-        uint256 bondBefore = accounting.getBond(noId);
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + topUp - balanceShortage,
-            slashingPenalty: 0,
-            isSlashed: true
-        });
-
-        module.reportSlashedWithdrawnValidators(validatorInfos);
-        assertEq(accounting.getBond(noId), bondBefore - balanceShortage);
     }
 }
