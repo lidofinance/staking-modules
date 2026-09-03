@@ -194,6 +194,10 @@ contract MyModule is BaseModule {
         revert NotImplementedInTest();
     }
 
+    function reportValidatorBalance(uint256, uint256, uint256, uint64) public pure override {
+        revert NotImplementedInTest();
+    }
+
     function _applyDepositableValidatorsCount(
         NodeOperator storage no,
         uint256 nodeOperatorId,

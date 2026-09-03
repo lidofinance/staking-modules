@@ -8,12 +8,34 @@ import { IStakingModuleV2 } from "./IStakingModule.sol";
 import { IMetaRegistry } from "./IMetaRegistry.sol";
 
 interface ICuratedModule is IBaseModule, IStakingModuleV2 {
+    event ValidatorBalanceSynced(
+        uint256 indexed nodeOperatorId,
+        uint256 indexed keyIndex,
+        uint64 balanceSlot,
+        uint256 normalizedBalance
+    );
+
     error ZeroMetaRegistryAddress();
     error SenderIsNotMetaRegistry();
+    error BalanceDecreaseNotAllowed();
+    error StaleBalanceUpdate();
 
     /// @notice Initializes the contract.
     /// @param admin An address to grant the DEFAULT_ADMIN_ROLE to.
     function initialize(address admin) external;
+
+    /// @notice Synchronizes a key's allocated balance to a verified consensus-layer balance.
+    /// @dev Allows the allocated balance to increase or decrease.
+    /// @param nodeOperatorId ID of the Node Operator.
+    /// @param keyIndex Index of the key in the Node Operator's keys storage.
+    /// @param actualBalanceWei Verified consensus-layer validator balance in wei.
+    /// @param balanceSlot Slot of the beacon state containing the verified balance.
+    function syncValidatorBalance(
+        uint256 nodeOperatorId,
+        uint256 keyIndex,
+        uint256 actualBalanceWei,
+        uint64 balanceSlot
+    ) external;
 
     /// @notice Notifies the module about the weight change of a node operator.
     /// @param nodeOperatorId ID of the Node Operator

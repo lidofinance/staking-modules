@@ -355,26 +355,6 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function reportValidatorBalance(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        uint256 currentBalanceWei
-    ) public virtual {
-        _checkVerifierRole();
-
-        NodeOperatorOps.reportValidatorBalance({
-            $: _baseStorage(),
-            nodeOperatorId: nodeOperatorId,
-            keyIndex: keyIndex,
-            currentBalanceWei: currentBalanceWei
-        });
-
-        // NOTE: We do not increment nonce because individual validator balances don't change the distribution
-        // returned by the module. The distribution from `allocateDeposits` might change but still meets
-        // expectations of StakingRouter.
-    }
-
-    /// @inheritdoc IBaseModule
     function reportSlashedWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external {
         _checkRole(REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE);
         _reportWithdrawnValidators(validatorInfos, true);

@@ -263,7 +263,12 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             data.recentBlock.header.slot
         );
 
-        MODULE.reportValidatorBalance(data.validator.nodeOperatorId, data.validator.keyIndex, gweiToWei(balanceGwei));
+        MODULE.reportValidatorBalance(
+            data.validator.nodeOperatorId,
+            data.validator.keyIndex,
+            gweiToWei(balanceGwei),
+            data.recentBlock.header.slot.unwrap()
+        );
     }
 
     /// @inheritdoc IVerifier
@@ -292,7 +297,12 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             data.historicalBlock.header.slot
         );
 
-        MODULE.reportValidatorBalance(data.validator.nodeOperatorId, data.validator.keyIndex, gweiToWei(balanceGwei));
+        MODULE.reportValidatorBalance(
+            data.validator.nodeOperatorId,
+            data.validator.keyIndex,
+            gweiToWei(balanceGwei),
+            data.historicalBlock.header.slot.unwrap()
+        );
     }
 
     function _reportSingleValidator(WithdrawnValidatorInfo memory info) internal {
