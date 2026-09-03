@@ -387,18 +387,6 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IStakingModule
-    function reportValidatorExitDelay(
-        uint256 nodeOperatorId,
-        uint256 proofSlotTimestamp, // solhint-disable-line no-unused-vars
-        bytes calldata publicKey,
-        uint256 eligibleToExitInSec
-    ) external {
-        _checkStakingRouterRole();
-        _onlyExistingNodeOperator(nodeOperatorId);
-        _exitPenalties().processExitDelayReport(nodeOperatorId, publicKey, eligibleToExitInSec);
-    }
-
-    /// @inheritdoc IStakingModule
     function onValidatorExitTriggered(
         uint256 nodeOperatorId,
         bytes calldata publicKey,
@@ -621,23 +609,6 @@ abstract contract BaseModule is
         uint256 limit
     ) external view returns (uint256[] memory nodeOperatorIds) {
         return NodeOperatorOps.getNodeOperatorIds(_baseStorage().nodeOperatorsCount, offset, limit);
-    }
-
-    /// @inheritdoc IStakingModule
-    function isValidatorExitDelayPenaltyApplicable(
-        uint256 nodeOperatorId,
-        uint256 proofSlotTimestamp, // solhint-disable-line no-unused-vars
-        bytes calldata publicKey,
-        uint256 eligibleToExitInSec
-    ) external view returns (bool) {
-        _onlyExistingNodeOperator(nodeOperatorId);
-        return _exitPenalties().isValidatorExitDelayPenaltyApplicable(nodeOperatorId, publicKey, eligibleToExitInSec);
-    }
-
-    /// @inheritdoc IStakingModule
-    function exitDeadlineThreshold(uint256 nodeOperatorId) external view returns (uint256) {
-        _onlyExistingNodeOperator(nodeOperatorId);
-        return _parametersRegistry().getAllowedExitDelay(_getBondCurveId(nodeOperatorId));
     }
 
     /// @inheritdoc IBaseModule

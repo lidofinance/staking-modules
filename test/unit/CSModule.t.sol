@@ -2512,12 +2512,6 @@ contract CSMMisc is ModuleMisc, CSMCommon {
     }
 }
 
-contract CSMExitDeadlineThreshold is ModuleExitDeadlineThreshold, CSMCommon {}
-
-contract CSMIsValidatorExitDelayPenaltyApplicable is ModuleIsValidatorExitDelayPenaltyApplicable, CSMCommon {}
-
-contract CSMReportValidatorExitDelay is ModuleReportValidatorExitDelay, CSMCommon {}
-
 contract CSMOnValidatorExitTriggered is ModuleOnValidatorExitTriggered, CSMCommon {}
 
 contract CSMCreateNodeOperators is ModuleCreateNodeOperators, CSMCommon {}

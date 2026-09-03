@@ -122,8 +122,6 @@ library WithdrawnValidatorLib {
         ExitPenaltyInfo memory penaltyInfo,
         uint256 keyConfirmedBalance
     ) private {
-        bool chargeElWithdrawalRequestFee = false;
-
         uint256 minExpectedBalance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + keyConfirmedBalance;
         uint256 penaltyMultiplier = _getPenaltyMultiplier(
             _clamp(validatorInfo.exitBalance, minExpectedBalance, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE)
@@ -131,19 +129,14 @@ library WithdrawnValidatorLib {
         uint256 penaltySum;
         uint256 feeSum;
 
-        if (penaltyInfo.delayFee.isValue) {
-            feeSum = _scalePenaltyByMultiplier(penaltyInfo.delayFee.value, penaltyMultiplier);
-            chargeElWithdrawalRequestFee = true;
-        }
         if (penaltyInfo.strikesPenalty.isValue) {
             penaltySum = _scalePenaltyByMultiplier(penaltyInfo.strikesPenalty.value, penaltyMultiplier);
-            chargeElWithdrawalRequestFee = true;
         }
 
-        // The EL withdrawal request fee is taken when either a delay was reported or the validator exited due to
-        // strikes. Otherwise, the fee has already been paid by the node operator upon withdrawal trigger, or it is
-        // a DAO decision to withdraw the validator before the withdrawal request becomes delayed.
-        if (chargeElWithdrawalRequestFee && penaltyInfo.elWithdrawalRequestFee.value != 0) {
+        // The EL withdrawal request fee is taken when the validator exited due to strikes. Otherwise, the fee has
+        // already been paid by the node operator upon withdrawal trigger, or it is a DAO decision to withdraw the
+        // validator.
+        if (penaltyInfo.strikesPenalty.isValue && penaltyInfo.elWithdrawalRequestFee.value != 0) {
             // EL withdrawal request fee is not scaled because sending a withdrawal request for a validator does
             // not depend on the size of a validator.
             feeSum += penaltyInfo.elWithdrawalRequestFee.value;

@@ -2227,12 +2227,6 @@ contract CuratedMisc is ModuleMisc, CuratedCommon {
     }
 }
 
-contract CuratedExitDeadlineThreshold is ModuleExitDeadlineThreshold, CuratedCommon {}
-
-contract CuratedIsValidatorExitDelayPenaltyApplicable is ModuleIsValidatorExitDelayPenaltyApplicable, CuratedCommon {}
-
-contract CuratedReportValidatorExitDelay is ModuleReportValidatorExitDelay, CuratedCommon {}
-
 contract CuratedOnValidatorExitTriggered is ModuleOnValidatorExitTriggered, CuratedCommon {}
 
 contract CuratedCreateNodeOperators is ModuleCreateNodeOperators, CuratedCommon {}

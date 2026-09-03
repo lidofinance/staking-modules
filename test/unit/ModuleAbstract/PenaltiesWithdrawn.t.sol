@@ -236,13 +236,13 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        uint248 fee = 1 ether;
+        uint248 penalty = 1 ether;
         uint256 multiplier = 3;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(fee, true),
-                strikesPenalty: MarkedUint248(0, false),
+                legacyDelayFee: MarkedUint248(0, false),
+                strikesPenalty: MarkedUint248(penalty, true),
                 elWithdrawalRequestFee: MarkedUint248(0, false)
             })
         );
@@ -265,9 +265,8 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         vm.expectCall(
             address(accounting),
-            abi.encodeWithSelector(accounting.chargeFee.selector, noId, fee * multiplier)
+            abi.encodeWithSelector(accounting.penalize.selector, noId, penalty * multiplier + expectedPenalty)
         );
-        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, expectedPenalty));
         module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -301,110 +300,6 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.depositableValidatorsCount, 2);
     }
 
-    function test_reportRegularWithdrawnValidators_exitDelayFee() public assertInvariants {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        uint256 exitDelayFeeAmount = BOND_SIZE - 1 ether;
-
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
-            ExitPenaltyInfo({
-                delayFee: MarkedUint248(_toUint248(exitDelayFeeAmount), true),
-                strikesPenalty: MarkedUint248(0, false),
-                elWithdrawalRequestFee: MarkedUint248(0, false)
-            })
-        );
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(accounting.chargeFee.selector, noId, exitDelayFeeAmount)
-        );
-        module.reportRegularWithdrawnValidators(validatorInfos);
-
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalWithdrawnKeys, 1);
-        // There should be no target limit if the penalty is covered by the bond.
-        assertEq(no.targetLimit, 0);
-        assertEq(no.targetLimitMode, 0);
-    }
-
-    function test_reportRegularWithdrawnValidators_exitDelayFeeWithMultiplier() public assertInvariants {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        uint248 fee = 1 ether;
-        uint256 multiplier = 3;
-
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
-            ExitPenaltyInfo({
-                delayFee: MarkedUint248(fee, true),
-                strikesPenalty: MarkedUint248(0, false),
-                elWithdrawalRequestFee: MarkedUint248(0, false)
-            })
-        );
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier + 1 ether - 1 wei,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(accounting.chargeFee.selector, noId, fee * multiplier)
-        );
-        module.reportRegularWithdrawnValidators(validatorInfos);
-    }
-
-    function test_reportRegularWithdrawnValidators_exitDelayFeeAtMaxWithMultiplier() public assertInvariants {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        // (1 << (256 - log2(2048))) - 1
-        uint248 fee = (1 << 245) - 1;
-        uint256 multiplier = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE /
-            ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
-
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
-            ExitPenaltyInfo({
-                delayFee: MarkedUint248(fee, true),
-                strikesPenalty: MarkedUint248(0, false),
-                elWithdrawalRequestFee: MarkedUint248(0, false)
-            })
-        );
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier + 1000 ether,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(accounting.chargeFee.selector, noId, fee * multiplier)
-        );
-        module.reportRegularWithdrawnValidators(validatorInfos);
-    }
-
     function test_reportRegularWithdrawnValidators_strikesPenalty() public assertInvariants {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
@@ -414,7 +309,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(0, false),
+                legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(_toUint248(strikesPenaltyAmount), true),
                 elWithdrawalRequestFee: MarkedUint248(0, false)
             })
@@ -452,7 +347,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(0, false),
+                legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(_toUint248(strikesPenaltyAmount), true),
                 elWithdrawalRequestFee: MarkedUint248(0, false)
             })
@@ -490,7 +385,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(0, false),
+                legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(penalty, true),
                 elWithdrawalRequestFee: MarkedUint248(0, false)
             })
@@ -524,7 +419,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(0, false),
+                legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(penalty, true),
                 elWithdrawalRequestFee: MarkedUint248(0, false)
             })
@@ -710,45 +605,6 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         module.reportSlashedWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportRegularWithdrawnValidators_chargeWithdrawalFee_DelayFee() public assertInvariants {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        uint256 exitDelayFeeAmount = 0.7 ether;
-        uint256 withdrawalRequestFeeAmount = 0.3 ether;
-
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
-            ExitPenaltyInfo({
-                delayFee: MarkedUint248(_toUint248(exitDelayFeeAmount), true),
-                strikesPenalty: MarkedUint248(0, false),
-                elWithdrawalRequestFee: MarkedUint248(_toUint248(withdrawalRequestFeeAmount), true)
-            })
-        );
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(accounting.chargeFee.selector, noId, exitDelayFeeAmount + withdrawalRequestFeeAmount)
-        );
-        module.reportRegularWithdrawnValidators(validatorInfos);
-
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalWithdrawnKeys, 1);
-        // There should be no target limit if the penalties and charges are covered by the bond.
-        assertEq(no.targetLimit, 0);
-        assertEq(no.targetLimitMode, 0);
-    }
-
     function test_reportRegularWithdrawnValidators_chargeWithdrawalFee_StrikesPenalty() public assertInvariants {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
@@ -759,7 +615,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(0, false),
+                legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(_toUint248(strikesPenaltyAmount), true),
                 elWithdrawalRequestFee: MarkedUint248(_toUint248(withdrawalRequestFeeAmount), true)
             })
@@ -802,7 +658,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(0, false),
+                legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(_toUint248(strikesPenaltyAmount), true),
                 elWithdrawalRequestFee: MarkedUint248(_toUint248(withdrawalRequestFeeAmount), true)
             })
@@ -844,7 +700,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(0, false),
+                legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(_toUint248(strikesPenaltyAmount), true),
                 elWithdrawalRequestFee: MarkedUint248(_toUint248(withdrawalRequestFeeAmount), true)
             })
@@ -876,96 +732,6 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertNotEq(no.targetLimitMode, 2);
     }
 
-    function test_reportRegularWithdrawnValidators_chargeWithdrawalFee_DelayAndStrikesPenalties()
-        public
-        assertInvariants
-    {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        uint256 exitDelayFeeAmount = 0.17 ether;
-        uint256 strikesPenaltyAmount = 0.31 ether;
-        uint256 withdrawalRequestFeeAmount = 0.42 ether;
-
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
-            ExitPenaltyInfo({
-                delayFee: MarkedUint248(_toUint248(exitDelayFeeAmount), true),
-                strikesPenalty: MarkedUint248(_toUint248(strikesPenaltyAmount), true),
-                elWithdrawalRequestFee: MarkedUint248(_toUint248(withdrawalRequestFeeAmount), true)
-            })
-        );
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(accounting.chargeFee.selector, noId, exitDelayFeeAmount + withdrawalRequestFeeAmount)
-        );
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(accounting.penalize.selector, noId, strikesPenaltyAmount)
-        );
-        module.reportRegularWithdrawnValidators(validatorInfos);
-
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalWithdrawnKeys, 1);
-        // There should be no target limit if the penalties and charges are covered by the bond.
-        assertEq(no.targetLimit, 0);
-        assertEq(no.targetLimitMode, 0);
-    }
-
-    function test_reportRegularWithdrawnValidators_chargeWithdrawalFee_DelayAndStrikesPenalties_AllHuge() public {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        uint256 exitDelayFeeAmount = BOND_SIZE + 17 ether;
-        uint256 strikesPenaltyAmount = BOND_SIZE + 31 ether;
-        uint256 withdrawalRequestFeeAmount = BOND_SIZE + 42 ether;
-
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
-            ExitPenaltyInfo({
-                delayFee: MarkedUint248(_toUint248(exitDelayFeeAmount), true),
-                strikesPenalty: MarkedUint248(_toUint248(strikesPenaltyAmount), true),
-                elWithdrawalRequestFee: MarkedUint248(_toUint248(withdrawalRequestFeeAmount), true)
-            })
-        );
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-
-        expectNoCall(
-            address(accounting),
-            abi.encodeWithSelector(accounting.chargeFee.selector, noId, exitDelayFeeAmount + withdrawalRequestFeeAmount)
-        );
-        vm.expectCall(
-            address(accounting),
-            abi.encodeWithSelector(accounting.penalize.selector, noId, strikesPenaltyAmount)
-        );
-        module.reportRegularWithdrawnValidators(validatorInfos);
-
-        NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(no.totalWithdrawnKeys, 1);
-        assertEq(no.targetLimit, 0);
-        assertEq(no.targetLimitMode, 0);
-    }
-
     function test_reportRegularWithdrawnValidators_chargeWithdrawalFee_zeroPenaltyValue() public assertInvariants {
         uint256 keyIndex = 0;
         uint256 noId = createNodeOperator();
@@ -975,7 +741,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(0, true),
+                legacyDelayFee: MarkedUint248(0, true),
                 strikesPenalty: MarkedUint248(0, true),
                 elWithdrawalRequestFee: MarkedUint248(_toUint248(withdrawalRequestFeeAmount), true)
             })
@@ -1014,7 +780,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(0, true),
+                legacyDelayFee: MarkedUint248(0, true),
                 strikesPenalty: MarkedUint248(0, true),
                 elWithdrawalRequestFee: MarkedUint248(withdrawalRequestFee, true)
             })
@@ -1045,7 +811,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(0, false),
+                legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(0, false),
                 elWithdrawalRequestFee: MarkedUint248(_toUint248(withdrawalRequestFeeAmount), true)
             })
@@ -1074,6 +840,40 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(no.targetLimitMode, 0);
     }
 
+    function test_reportRegularWithdrawnValidators_ignoresLegacyDelayFee() public assertInvariants {
+        uint256 keyIndex = 0;
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        // A shifted or reused deprecated slot would surface as a settled penalty or fee here.
+        exitPenalties.mock_setDelayedExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(_toUint248(BOND_SIZE), true),
+                strikesPenalty: MarkedUint248(0, false),
+                elWithdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
+
+        validatorInfos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: keyIndex,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        expectNoCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector));
+        expectNoCall(address(accounting), abi.encodeWithSelector(accounting.chargeFee.selector));
+        module.reportRegularWithdrawnValidators(validatorInfos);
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(no.totalWithdrawnKeys, 1);
+        assertEq(no.targetLimit, 0);
+        assertEq(no.targetLimitMode, 0);
+    }
+
     function test_reportRegularWithdrawnValidators_dontChargeWithdrawalFee_exitBalancePenalty()
         public
         assertInvariants
@@ -1087,7 +887,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(0, false),
+                legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(0, false),
                 elWithdrawalRequestFee: MarkedUint248(_toUint248(withdrawalRequestFeeAmount), true)
             })
