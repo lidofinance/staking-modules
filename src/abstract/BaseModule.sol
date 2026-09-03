@@ -325,7 +325,7 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external {
-        _onlyNodeOperatorManager(nodeOperatorId, msg.sender);
+        _onlyNodeOperatorOwner(nodeOperatorId, msg.sender);
         GeneralPenalty.compensateGeneralDelayedPenalty(nodeOperatorId);
     }
 
@@ -502,8 +502,7 @@ abstract contract BaseModule is
 
     /// @inheritdoc IBaseModule
     function getNodeOperatorOwner(uint256 nodeOperatorId) external view returns (address) {
-        NodeOperator storage no = _baseStorage().nodeOperators[nodeOperatorId];
-        return no.extendedManagerPermissions ? no.managerAddress : no.rewardAddress;
+        return _getNodeOperatorOwner(nodeOperatorId);
     }
 
     /// @inheritdoc IBaseModule
@@ -777,6 +776,17 @@ abstract contract BaseModule is
         address managerAddress = _baseStorage().nodeOperators[nodeOperatorId].managerAddress;
         if (managerAddress == address(0)) revert NodeOperatorDoesNotExist();
         if (managerAddress != from) revert SenderIsNotEligible();
+    }
+
+    function _onlyNodeOperatorOwner(uint256 nodeOperatorId, address from) internal view {
+        if (_baseStorage().nodeOperators[nodeOperatorId].managerAddress == address(0))
+            revert NodeOperatorDoesNotExist();
+        if (_getNodeOperatorOwner(nodeOperatorId) != from) revert SenderIsNotEligible();
+    }
+
+    function _getNodeOperatorOwner(uint256 nodeOperatorId) internal view returns (address) {
+        NodeOperator storage no = _baseStorage().nodeOperators[nodeOperatorId];
+        return no.extendedManagerPermissions ? no.managerAddress : no.rewardAddress;
     }
 
     function _nodeOperatorExists(uint256 nodeOperatorId) internal view returns (bool) {

@@ -81,7 +81,6 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
         uint256 slashingPenalty,
         bytes pubkey
     );
-    event TotalWithdrawnValidatorsRebuilt(uint256 totalWithdrawnValidators);
     event NodeOperatorBalanceUpdated(uint256 indexed operatorId, uint256 balanceWei);
     event ValidatorSlashingReported(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
     event UnresolvedSlashedValidatorsCountChanged(uint256 indexed nodeOperatorId, uint256 count);
@@ -280,7 +279,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     ) external;
 
     /// @notice Compensate general delayed penalty (locked bond) for the given Node Operator from Node Operator's bond
-    /// @dev Can only be called by the Node Operator manager
+    /// @dev Can only be called by the Node Operator owner
     /// @param nodeOperatorId ID of the Node Operator
     function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external;
 
