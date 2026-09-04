@@ -42,8 +42,9 @@ contract DeployCSM0x02LocalDevNet is DeployCSM0x02Base {
         config.setResetBondCurveAddress = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
         config.chargePenaltyRecipient = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
         // Module
-        config.moduleType = "community-onchain-v1"; // Just a unique type name to be used by the off-chain tooling
+        config.moduleType = "community-onchain-v1"; // Type identifier used by the off-chain tooling
         config.generalDelayedPenaltyReporter = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
+        config.rewindTopUpQueueRoleHolder = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
         // TODO: Reconsider the top-up queue limit value for CSM0x02.
         config.topUpQueueLimit = 32;
 

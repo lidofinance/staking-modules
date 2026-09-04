@@ -5,6 +5,8 @@ pragma solidity 0.8.33;
 
 import { Test } from "forge-std/Test.sol";
 
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 import { DeployCSM0x02Params } from "script/csm0x02/DeployCSM0x02Base.s.sol";
 
 import { Utilities } from "../../helpers/Utilities.sol";
@@ -12,7 +14,6 @@ import { DeploymentFixtures } from "../../helpers/Fixtures.sol";
 
 contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
     DeployCSM0x02Params internal deployParams;
-    uint256 adminsCount;
 
     function setUp() public {
         Env memory env = envVars();
@@ -21,11 +22,23 @@ contract DeploymentBaseTest is Test, Utilities, DeploymentFixtures {
         if (moduleType != ModuleType.Community0x02)
             vm.skip(true, "Current deployment is not Community0x02 module type");
         deployParams = parseDeployParams0x02(env.DEPLOY_CONFIG);
-        adminsCount = block.chainid == 1 ? 1 : 2;
     }
 }
 
 contract ModuleDeploymentTest is DeploymentBaseTest {
+    function test_state_onlyFull() public view {
+        assertEq(module.getInitializedVersion(), 3);
+        assertEq(module.getNodeOperatorDepositInfoToUpdateCount(), 0);
+    }
+
+    function test_slotsReusedForMappingsAreClean_onlyFull() public {
+        bytes32 slot3 = vm.load(address(module), bytes32(uint256(3)));
+        assertEq(slot3, bytes32(0), "assert slot3 is clean");
+
+        bytes32 slot4 = vm.load(address(module), bytes32(uint256(4)));
+        assertEq(slot4, bytes32(0), "assert slot4 is clean");
+    }
+
     function test_roles_onlyFull() public view {
         bytes32 role = module.CREATE_NODE_OPERATOR_ROLE();
         assertEq(module.getRoleMemberCount(role), 1);
@@ -33,7 +46,7 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
 
         role = module.REWIND_TOP_UP_QUEUE_ROLE();
         assertEq(module.getRoleMemberCount(role), 1);
-        assertTrue(module.hasRole(role, deployParams.setResetBondCurveAddress));
+        assertTrue(module.hasRole(role, deployParams.rewindTopUpQueueRoleHolder));
     }
 
     function test_topUpQueueConfig() public view {
@@ -42,6 +55,18 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         (bool enabled, uint256 limit, , ) = module.getTopUpQueue();
         assertTrue(enabled, "top-up queue is disabled");
         assertEq(limit, deployParams.topUpQueueLimit, "top-up queue limit mismatch");
+    }
+
+    function test_initialization_onlyFull() public {
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        module.initialize({ admin: deployParams.aragonAgent, topUpQueueLimit: deployParams.topUpQueueLimit });
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        moduleImpl.initialize({ admin: deployParams.aragonAgent, topUpQueueLimit: deployParams.topUpQueueLimit });
+    }
+
+    function test_proxy_onlyFull() public view {
+        _assertProxy(address(module), address(moduleImpl), deployParams.proxyAdmin, "module");
     }
 }
 
@@ -57,6 +82,14 @@ contract AccountingDeploymentTest is DeploymentBaseTest {
     function test_roles_onlyFull() public view {
         assertEq(accounting.getRoleMemberCount(accounting.SET_BOND_CURVE_ROLE()), 1);
         assertTrue(accounting.hasRole(accounting.SET_BOND_CURVE_ROLE(), deployParams.setResetBondCurveAddress));
+    }
+
+    function test_bondCurves_scratch_onlyFull() public view {
+        _assertBondCurve(accounting, accounting.DEFAULT_BOND_CURVE_ID(), deployParams.defaultBondCurve);
+
+        for (uint256 i; i < deployParams.extraBondCurves.length; ++i) {
+            _assertBondCurve(accounting, accounting.DEFAULT_BOND_CURVE_ID() + i + 1, deployParams.extraBondCurves[i]);
+        }
     }
 }
 
@@ -92,11 +125,6 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
 }
 
 contract CircuitBreakerDeploymentTest is DeploymentBaseTest {
-    function test_configuration_afterVote() public {
-        address pauser = circuitBreaker.getPauser(address(module));
-        assertEq(pauser, deployParams.circuitBreakerPauser, "pauser");
-    }
-
     function test_pausables_afterVote() public {
         assertEq(circuitBreaker.getPauser(address(module)), deployParams.circuitBreakerPauser, "module pauser");
         assertEq(circuitBreaker.getPauser(address(accounting)), deployParams.circuitBreakerPauser, "accounting pauser");
@@ -113,13 +141,7 @@ contract PermissionlessGateDeploymentTest is DeploymentBaseTest {
     }
 
     function test_roles() public view {
-        assertTrue(permissionlessGate.hasRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), deployParams.aragonAgent));
-        assertEq(permissionlessGate.getRoleMemberCount(permissionlessGate.DEFAULT_ADMIN_ROLE()), adminsCount);
-        if (deployParams.secondAdminAddress != address(0)) {
-            assertTrue(
-                permissionlessGate.hasRole(permissionlessGate.DEFAULT_ADMIN_ROLE(), deployParams.secondAdminAddress)
-            );
-        }
+        _checkAdminRole(address(permissionlessGate), deployParams.aragonAgent, deployParams.secondAdminAddress);
         assertEq(permissionlessGate.getRoleMemberCount(permissionlessGate.RECOVERER_ROLE()), 0);
     }
 }

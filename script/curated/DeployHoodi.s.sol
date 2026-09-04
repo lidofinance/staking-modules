@@ -21,7 +21,7 @@ contract DeployHoodi is DeployBase {
         config.oracleReportEpochsPerFrame = 225 * 7; // 7 days
         config.fastLaneLengthSlots = 128;
         config.consensusVersion = 4;
-        config.oracleMembers = new address[](12);
+        config.oracleMembers = new address[](10);
         config.oracleMembers[0] = 0xf7aE520e99ed3C41180B5E12681d31Aa7302E4e5;
         config.oracleMembers[1] = 0x948A62cc0414979dc7aa9364BA5b96ECb29f8736;
         config.oracleMembers[2] = 0x1932f53B1457a5987791a40Ba91f71c5Efd5788F;
@@ -32,9 +32,7 @@ contract DeployHoodi is DeployBase {
         config.oracleMembers[7] = 0xcA80ee7313A315879f326105134F938676Cfd7a9;
         config.oracleMembers[8] = 0x99B2B75F490fFC9A29E4E1f5987BE8e30E690aDF;
         config.oracleMembers[9] = 0x43C45C2455C49eed320F463fF4f1Ece3D2BF5aE2;
-        config.oracleMembers[10] = 0x44e3996629a9026BF95C4Be3c1a38242D1E64a01;
-        config.oracleMembers[11] = 0x0f30c4ceBE7F3057e81949B0Ab1591FC256226b5;
-        config.hashConsensusQuorum = 7;
+        config.hashConsensusQuorum = 6;
 
         // Verifier
         config.verifierGIndices = GIndices.electraToGloas();

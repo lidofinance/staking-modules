@@ -183,6 +183,9 @@ contract DeployLocalDevNet is DeployBase {
         config.circuitBreaker = vm.envAddress("CSM_CIRCUIT_BREAKER_ADDRESS");
         config.circuitBreakerPauser = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
 
+        // DG
+        config.resealManager = vm.envAddress("CSM_RESEAL_MANAGER_ADDRESS");
+
         config.secondAdminAddress = vm.envOr("CSM_SECOND_ADMIN_ADDRESS", address(0));
 
         _setUp();
