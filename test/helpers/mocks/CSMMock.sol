@@ -21,6 +21,7 @@ import { LidoLocatorMock } from "./LidoLocatorMock.sol";
 contract CSMMock is Utilities, Fixtures {
     NodeOperator internal mockNodeOperator;
     uint256 internal nodeOperatorsCount;
+    uint256 internal unresolvedSlashedValidators;
     mapping(uint256 => mapping(uint256 => bool)) internal isValidatorWithdrawnByKey;
     IAccounting public immutable ACCOUNTING;
     IParametersRegistry public immutable PARAMETERS_REGISTRY;
@@ -53,6 +54,14 @@ contract CSMMock is Utilities, Fixtures {
 
     function getNodeOperator(uint256 /* nodeOperatorId */) external view returns (NodeOperator memory) {
         return mockNodeOperator;
+    }
+
+    function mock_setNodeOperatorUnresolvedSlashedValidators(uint256 count) external {
+        unresolvedSlashedValidators = count;
+    }
+
+    function getNodeOperatorUnresolvedSlashedValidators(uint256 /* nodeOperatorId */) external view returns (uint256) {
+        return unresolvedSlashedValidators;
     }
 
     function mock_setNodeOperatorManagementProperties(
@@ -134,9 +143,5 @@ contract CSMMock is Utilities, Fixtures {
         uint256 keysCount
     ) external pure returns (bytes memory pubkeys) {
         (pubkeys, ) = keysSignatures(keysCount, startIndex);
-    }
-
-    function exitDeadlineThreshold(uint256 /* nodeOperatorId */) external view returns (uint256) {
-        return PARAMETERS_REGISTRY.getAllowedExitDelay(0);
     }
 }

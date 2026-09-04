@@ -55,58 +55,6 @@ contract ExitPenaltiesTestMisc is ExitPenaltiesTestBase {
     }
 }
 
-contract ExitPenaltiesTestProcessExitDelayReport is ExitPenaltiesTestBase {
-    function test_processExitDelayReport() public {
-        uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID) + 1;
-        bytes memory publicKey = randomBytes(48);
-        uint256 penalty = parametersRegistry.getExitDelayFee(0);
-
-        vm.expectEmit(address(exitPenalties));
-        emit IExitPenalties.ValidatorExitDelayProcessed(NO_ID, publicKey, penalty);
-        vm.prank(address(csm));
-        exitPenalties.processExitDelayReport(NO_ID, publicKey, eligibleToExit);
-
-        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(NO_ID, publicKey);
-        assertEq(exitPenaltyInfo.delayFee.value, penalty);
-    }
-
-    function test_processExitDelayReport_revertWhen_notApplicable() public {
-        uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID) + 1;
-        bytes memory publicKey = randomBytes(48);
-
-        vm.prank(address(csm));
-        vm.expectRevert(IExitPenalties.ValidatorExitDelayNotApplicable.selector);
-        exitPenalties.processExitDelayReport(NO_ID, publicKey, eligibleToExit - 1 seconds);
-        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(NO_ID, publicKey);
-        assertEq(exitPenaltyInfo.delayFee.isValue, false, "Penalty should not be applied");
-    }
-
-    function test_processExitDelayReport_ignoreWhen_alreadyReported() public {
-        uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID) + 1;
-        bytes memory publicKey = randomBytes(48);
-        uint256 penalty = parametersRegistry.getExitDelayFee(0);
-
-        vm.prank(address(csm));
-        exitPenalties.processExitDelayReport(NO_ID, publicKey, eligibleToExit);
-
-        parametersRegistry.setExitDelayFee(0, penalty + 1);
-
-        vm.prank(address(csm));
-        exitPenalties.processExitDelayReport(NO_ID, publicKey, eligibleToExit + 1);
-        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(NO_ID, publicKey);
-        assertEq(exitPenaltyInfo.delayFee.value, penalty, "Penalty should not be updated");
-    }
-
-    function test_processExitDelayReport_revertWhen_SenderIsNotModule() public {
-        uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID) + 1;
-        bytes memory publicKey = randomBytes(48);
-
-        vm.prank(stranger);
-        vm.expectRevert(IExitPenalties.SenderIsNotModule.selector);
-        exitPenalties.processExitDelayReport(NO_ID, publicKey, eligibleToExit);
-    }
-}
-
 contract ExitPenaltiesTestProcessTriggeredExit is ExitPenaltiesTestBase {
     function test_processTriggeredExit() public {
         bytes memory publicKey = randomBytes(48);
@@ -240,46 +188,5 @@ contract ExitPenaltiesTestProcessStrikesReport is ExitPenaltiesTestBase {
         vm.prank(stranger);
         vm.expectRevert(IExitPenalties.SenderIsNotStrikes.selector);
         exitPenalties.processStrikesReport(NO_ID, publicKey);
-    }
-}
-
-contract ExitPenaltiesTestIsValidatorExitDelayPenaltyApplicable is ExitPenaltiesTestBase {
-    function test_isValidatorExitDelayPenaltyApplicable_notDelayedYet() public {
-        uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID);
-        bytes memory publicKey = randomBytes(48);
-
-        vm.prank(address(csm));
-        bool applicable = exitPenalties.isValidatorExitDelayPenaltyApplicable(NO_ID, publicKey, eligibleToExit);
-        assertFalse(applicable, "Penalty should not be applicable yet");
-    }
-
-    function test_isValidatorExitDelayPenaltyApplicable_delayed() public {
-        uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID) + 1;
-        bytes memory publicKey = randomBytes(48);
-
-        vm.prank(address(csm));
-        bool applicable = exitPenalties.isValidatorExitDelayPenaltyApplicable(NO_ID, publicKey, eligibleToExit);
-        assertTrue(applicable, "Penalty should be applicable");
-    }
-
-    function test_isValidatorExitDelayPenaltyApplicable_alreadyReported() public {
-        uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID) + 1;
-        bytes memory publicKey = randomBytes(48);
-
-        vm.prank(address(csm));
-        exitPenalties.processExitDelayReport(NO_ID, publicKey, eligibleToExit);
-
-        vm.prank(address(csm));
-        bool applicable = exitPenalties.isValidatorExitDelayPenaltyApplicable(NO_ID, publicKey, eligibleToExit);
-        assertFalse(applicable, "Penalty should not be applicable anymore");
-    }
-
-    function test_isValidatorExitDelayPenaltyApplicable_revertWhen_SenderIsNotModule() public {
-        uint256 eligibleToExit = csm.exitDeadlineThreshold(NO_ID) + 1;
-        bytes memory publicKey = randomBytes(48);
-
-        vm.prank(stranger);
-        vm.expectRevert(IExitPenalties.SenderIsNotModule.selector);
-        exitPenalties.isValidatorExitDelayPenaltyApplicable(NO_ID, publicKey, eligibleToExit);
     }
 }

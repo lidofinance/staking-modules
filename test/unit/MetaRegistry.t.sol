@@ -14,9 +14,12 @@ import { NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { IBaseModule } from "src/interfaces/IBaseModule.sol";
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
+import { IWeightBoostProvider } from "src/interfaces/IWeightBoostProvider.sol";
 import { ExternalOperatorLib } from "src/lib/ExternalOperatorLib.sol";
 
 import { CuratedMock } from "../helpers/mocks/CuratedMock.sol";
+import { AccountingMock } from "../helpers/mocks/AccountingMock.sol";
+import { AdditionalBondRegistryMock } from "../helpers/mocks/AdditionalBondRegistryMock.sol";
 import { NodeOperatorsRegistryMock } from "../helpers/mocks/NodeOperatorsRegistryMock.sol";
 import { StakingRouterMock } from "../helpers/mocks/StakingRouterMock.sol";
 import { Utilities } from "../helpers/Utilities.sol";
@@ -34,10 +37,26 @@ contract MetaRegistryForTest is MetaRegistry {
     }
 }
 
+contract WeightBoostProviderMock is IWeightBoostProvider {
+    uint256 internal constant DEFAULT_MULTIPLIER_BP = 10_000;
+
+    mapping(uint256 nodeOperatorId => uint256 multiplierBP) public multiplierBP;
+
+    function mock_setMultiplierBP(uint256 nodeOperatorId, uint256 value) external {
+        multiplierBP[nodeOperatorId] = value;
+    }
+
+    function getWeightBoostMultiplierBP(uint256 nodeOperatorId) external view returns (uint256) {
+        uint256 value = multiplierBP[nodeOperatorId];
+        return value == 0 ? DEFAULT_MULTIPLIER_BP : value;
+    }
+}
+
 contract MetaRegistryBaseTest is Test, Utilities, Fixtures {
     CuratedMock public module;
     StakingRouterMock public stakingRouter;
     MetaRegistryForTest public registry;
+    AdditionalBondRegistryMock public additionalBondRegistry;
 
     address public admin;
     address public metadataAdmin;
@@ -75,6 +94,8 @@ contract MetaRegistryBaseTest is Test, Utilities, Fixtures {
         address[] memory modules = new address[](1);
         modules[0] = address(module);
         stakingRouter.setModules(modules);
+
+        additionalBondRegistry = new AdditionalBondRegistryMock();
 
         registry = new MetaRegistryForTest(address(module));
         _enableInitializers(address(registry));
@@ -1068,6 +1089,544 @@ contract MetaRegistryWeightsTest is MetaRegistryGroupsBaseTest {
     }
 }
 
+contract MetaRegistryWeightBoostProviderTest is MetaRegistryGroupsBaseTest {
+    WeightBoostProviderMock public provider;
+    WeightBoostProviderMock public secondProvider;
+
+    IMetaRegistry.WeightBoostProviderMode internal constant PER_NODE_OPERATOR_MODE =
+        IMetaRegistry.WeightBoostProviderMode.PerNodeOperator;
+    IMetaRegistry.WeightBoostProviderMode internal constant MAX_PER_GROUP_MODE =
+        IMetaRegistry.WeightBoostProviderMode.MaxPerGroup;
+
+    function setUp() public override {
+        super.setUp();
+
+        provider = new WeightBoostProviderMock();
+        secondProvider = new WeightBoostProviderMock();
+    }
+
+    function _assertWeightBoostProvider(
+        uint256 providerId,
+        IWeightBoostProvider expectedProvider,
+        IMetaRegistry.WeightBoostProviderMode expectedMode,
+        bool expectedEnabled
+    ) internal view {
+        IMetaRegistry.WeightBoostProviderEntry memory entry = registry.getWeightBoostProvider(providerId);
+        assertEq(address(entry.provider), address(expectedProvider));
+        assertEq(uint256(entry.mode), uint256(expectedMode));
+        assertEq(entry.enabled, expectedEnabled);
+    }
+
+    function test_addWeightBoostProvider_StoresPerNodeOperatorProviderAndLeavesExistingGroupsStale() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        uint256 groupId = _nextGroupId();
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+
+        provider.mock_setMultiplierBP(0, 11000);
+
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector));
+        vm.expectEmit(address(registry));
+        emit IMetaRegistry.WeightBoostProviderAdded(address(provider), PER_NODE_OPERATOR_MODE);
+        vm.prank(admin);
+        registry.addWeightBoostProvider(provider, PER_NODE_OPERATOR_MODE);
+
+        IWeightBoostProvider[] memory providers = registry.getWeightBoostProviders();
+        assertEq(providers.length, 1);
+        assertEq(address(providers[0]), address(provider));
+        _assertWeightBoostProvider(1, provider, PER_NODE_OPERATOR_MODE, true);
+        assertEq(uint256(registry.getWeightBoostProviderMode(1)), uint256(PER_NODE_OPERATOR_MODE));
+        assertEq(registry.getWeightBoostProviderId(address(provider)), 1);
+        assertEq(registry.getWeightBoostProvidersCount(), 1);
+        assertEq(registry.getNodeOperatorWeight(0), CURVE_WEIGHT);
+
+        registry.refreshGroupWeights(groupId);
+        assertEq(registry.getNodeOperatorWeight(0), 11000);
+    }
+
+    function test_addWeightBoostProvider_StoresMaxPerGroupProviderAndLeavesExistingGroupsStale() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        uint256 groupId = _nextGroupId();
+        vm.prank(groupManager);
+        _createGroup(
+            _subOperatorsArr2(
+                IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: MAX_BP / 2 }),
+                IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: MAX_BP / 2 })
+            ),
+            _extOperatorsArr0()
+        );
+
+        secondProvider.mock_setMultiplierBP(0, 11000);
+        secondProvider.mock_setMultiplierBP(1, 12000);
+
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector));
+        vm.expectEmit(address(registry));
+        emit IMetaRegistry.WeightBoostProviderAdded(address(secondProvider), MAX_PER_GROUP_MODE);
+        vm.prank(admin);
+        registry.addWeightBoostProvider(secondProvider, MAX_PER_GROUP_MODE);
+
+        assertEq(registry.getWeightBoostProvidersCount(), 1);
+        _assertWeightBoostProvider(1, secondProvider, MAX_PER_GROUP_MODE, true);
+        assertEq(registry.getNodeOperatorWeight(0), 5000);
+        assertEq(registry.getNodeOperatorWeight(1), 5000);
+
+        registry.refreshGroupWeights(groupId);
+        assertEq(registry.getNodeOperatorWeight(0), 6000);
+        assertEq(registry.getNodeOperatorWeight(1), 6000);
+    }
+
+    function test_addWeightBoostProvider_RevertWhen_InvalidOrDuplicate() public {
+        vm.startPrank(admin);
+
+        vm.expectRevert(IMetaRegistry.InvalidWeightBoostProvider.selector);
+        registry.addWeightBoostProvider(IWeightBoostProvider(address(0)), PER_NODE_OPERATOR_MODE);
+
+        registry.addWeightBoostProvider(provider, MAX_PER_GROUP_MODE);
+
+        vm.expectRevert(IMetaRegistry.WeightBoostProviderAlreadyAdded.selector);
+        registry.addWeightBoostProvider(provider, PER_NODE_OPERATOR_MODE);
+
+        vm.stopPrank();
+    }
+
+    function test_addWeightBoostProvider_RevertWhen_NoRole() public {
+        expectRoleRevert(stranger, registry.DEFAULT_ADMIN_ROLE());
+        vm.prank(stranger);
+        registry.addWeightBoostProvider(provider, MAX_PER_GROUP_MODE);
+    }
+
+    function test_setWeightBoostProviderEnabled_DisablesProviderAndLeavesExistingGroupsStale() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        uint256 groupId = _nextGroupId();
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+
+        provider.mock_setMultiplierBP(0, 11000);
+        vm.prank(admin);
+        registry.addWeightBoostProvider(provider, PER_NODE_OPERATOR_MODE);
+
+        registry.refreshGroupWeights(groupId);
+        assertEq(registry.getNodeOperatorWeight(0), 11000);
+
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector));
+        vm.expectEmit(address(registry));
+        emit IMetaRegistry.WeightBoostProviderStateSet(address(provider), false);
+        vm.prank(admin);
+        registry.setWeightBoostProviderEnabled(1, false);
+
+        _assertWeightBoostProvider(1, provider, PER_NODE_OPERATOR_MODE, false);
+        assertEq(registry.getNodeOperatorWeight(0), 11000);
+
+        registry.refreshGroupWeights(groupId);
+        assertEq(registry.getNodeOperatorWeight(0), CURVE_WEIGHT);
+    }
+
+    function test_refreshGroupWeights_SkipsDisabledProviderInMultiplierLoop() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        provider.mock_setMultiplierBP(0, 12000);
+        secondProvider.mock_setMultiplierBP(0, 11000);
+
+        vm.startPrank(admin);
+        registry.addWeightBoostProvider(provider, PER_NODE_OPERATOR_MODE);
+        registry.addWeightBoostProvider(secondProvider, PER_NODE_OPERATOR_MODE);
+        registry.setWeightBoostProviderEnabled(1, false);
+        vm.stopPrank();
+
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+
+        assertEq(registry.getNodeOperatorWeight(0), 11000);
+
+        registry.refreshOperatorWeight(0);
+        assertEq(registry.getNodeOperatorWeight(0), 11000);
+    }
+
+    function test_setWeightBoostProviderEnabled_EnablesProviderAndLeavesExistingGroupsStale() public {
+        provider.mock_setMultiplierBP(0, 11000);
+        vm.startPrank(admin);
+        registry.addWeightBoostProvider(provider, PER_NODE_OPERATOR_MODE);
+        registry.setWeightBoostProviderEnabled(1, false);
+        vm.stopPrank();
+
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        uint256 groupId = _nextGroupId();
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+        assertEq(registry.getNodeOperatorWeight(0), CURVE_WEIGHT);
+
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector));
+        vm.expectEmit(address(registry));
+        emit IMetaRegistry.WeightBoostProviderStateSet(address(provider), true);
+        vm.prank(admin);
+        registry.setWeightBoostProviderEnabled(1, true);
+
+        _assertWeightBoostProvider(1, provider, PER_NODE_OPERATOR_MODE, true);
+        assertEq(registry.getNodeOperatorWeight(0), CURVE_WEIGHT);
+
+        registry.refreshGroupWeights(groupId);
+        assertEq(registry.getNodeOperatorWeight(0), 11000);
+    }
+
+    function test_refreshGroupWeights_UsesDefaultMaxPerGroupMultiplierForEmptyGroup() public {
+        vm.prank(admin);
+        registry.addWeightBoostProvider(provider, MAX_PER_GROUP_MODE);
+
+        uint256 groupId = _nextGroupId();
+        vm.startPrank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+        _clearGroup(groupId);
+        vm.stopPrank();
+
+        registry.refreshGroupWeights(groupId);
+
+        assertEq(registry.getNodeOperatorWeight(0), 0);
+    }
+
+    function test_setWeightBoostProviderEnabled_SkipsDisabledMaxPerGroupProvider() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        provider.mock_setMultiplierBP(0, 11000);
+        provider.mock_setMultiplierBP(1, 12000);
+
+        vm.startPrank(admin);
+        registry.addWeightBoostProvider(provider, MAX_PER_GROUP_MODE);
+        registry.setWeightBoostProviderEnabled(1, false);
+        vm.stopPrank();
+
+        uint256 groupId = _nextGroupId();
+        vm.prank(groupManager);
+        _createGroup(
+            _subOperatorsArr2(
+                IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: MAX_BP / 2 }),
+                IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: MAX_BP / 2 })
+            ),
+            _extOperatorsArr0()
+        );
+
+        assertEq(registry.getNodeOperatorWeight(0), 5000);
+        assertEq(registry.getNodeOperatorWeight(1), 5000);
+
+        vm.prank(admin);
+        registry.setWeightBoostProviderEnabled(1, true);
+
+        registry.refreshGroupWeights(groupId);
+        assertEq(registry.getNodeOperatorWeight(0), 6000);
+        assertEq(registry.getNodeOperatorWeight(1), 6000);
+    }
+
+    function test_setWeightBoostProviderEnabled_RevertWhen_NotFoundSameOrNoRole() public {
+        vm.prank(admin);
+        vm.expectRevert(IMetaRegistry.WeightBoostProviderNotFound.selector);
+        registry.setWeightBoostProviderEnabled(1, false);
+
+        vm.prank(admin);
+        registry.addWeightBoostProvider(provider, PER_NODE_OPERATOR_MODE);
+
+        vm.prank(admin);
+        vm.expectRevert(IMetaRegistry.SameWeightBoostProviderEnabled.selector);
+        registry.setWeightBoostProviderEnabled(1, true);
+
+        expectRoleRevert(stranger, registry.DEFAULT_ADMIN_ROLE());
+        vm.prank(stranger);
+        registry.setWeightBoostProviderEnabled(1, false);
+
+        vm.prank(admin);
+        registry.setWeightBoostProviderEnabled(1, false);
+
+        vm.prank(admin);
+        vm.expectRevert(IMetaRegistry.SameWeightBoostProviderEnabled.selector);
+        registry.setWeightBoostProviderEnabled(1, false);
+    }
+
+    function test_notifyWeightBoostChanged_FromDisabledProviderDoesNotRefresh() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+
+        vm.startPrank(admin);
+        registry.addWeightBoostProvider(provider, PER_NODE_OPERATOR_MODE);
+        registry.setWeightBoostProviderEnabled(1, false);
+        vm.stopPrank();
+
+        provider.mock_setMultiplierBP(0, 11000);
+        vm.prank(address(provider));
+        registry.notifyWeightBoostChanged(0);
+
+        assertEq(registry.getNodeOperatorWeight(0), CURVE_WEIGHT);
+    }
+
+    function test_notifyWeightBoostChanged_NoOpWhenOperatorHasNoGroup() public {
+        vm.prank(admin);
+        registry.addWeightBoostProvider(provider, PER_NODE_OPERATOR_MODE);
+
+        provider.mock_setMultiplierBP(0, 11000);
+        vm.prank(address(provider));
+        registry.notifyWeightBoostChanged(0);
+
+        assertEq(registry.getNodeOperatorWeight(0), 0);
+    }
+
+    function test_notifyWeightBoostProviderConfigChanged_RequestsFullDepositInfoUpdate() public {
+        vm.prank(admin);
+        registry.addWeightBoostProvider(provider, PER_NODE_OPERATOR_MODE);
+
+        vm.expectCall(address(module), abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector));
+        vm.expectEmit(address(registry));
+        emit IMetaRegistry.WeightBoostProviderConfigChanged(address(provider));
+        vm.prank(address(provider));
+        registry.notifyWeightBoostProviderConfigChanged();
+    }
+
+    function test_notifyWeightBoostProviderConfigChanged_RevertWhen_ProviderNotFound() public {
+        vm.prank(address(provider));
+        vm.expectRevert(IMetaRegistry.WeightBoostProviderNotFound.selector);
+        registry.notifyWeightBoostProviderConfigChanged();
+    }
+
+    function test_notifyWeightBoostProviderConfigChanged_NoOpWhenProviderDisabled() public {
+        vm.startPrank(admin);
+        registry.addWeightBoostProvider(provider, PER_NODE_OPERATOR_MODE);
+        registry.setWeightBoostProviderEnabled(1, false);
+        vm.stopPrank();
+
+        vm.mockCallRevert(
+            address(module),
+            abi.encodeWithSelector(IBaseModule.requestFullDepositInfoUpdate.selector),
+            abi.encode("UNEXPECTED_REQUEST_FULL_DEPOSIT_INFO_UPDATE")
+        );
+
+        vm.prank(address(provider));
+        registry.notifyWeightBoostProviderConfigChanged();
+    }
+
+    function test_createAndUpdateGroup_RecalculatesMaxPerGroupFromComposition() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        provider.mock_setMultiplierBP(0, 11000);
+        provider.mock_setMultiplierBP(1, 12000);
+
+        vm.prank(admin);
+        registry.addWeightBoostProvider(provider, MAX_PER_GROUP_MODE);
+
+        uint256 groupId = _nextGroupId();
+        vm.prank(groupManager);
+        _createGroup(
+            _subOperatorsArr2(
+                IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: MAX_BP / 2 }),
+                IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: MAX_BP / 2 })
+            ),
+            _extOperatorsArr0()
+        );
+        assertEq(registry.getNodeOperatorWeight(0), 6000);
+        assertEq(registry.getNodeOperatorWeight(1), 6000);
+
+        vm.prank(groupManager);
+        _updateGroup(groupId, _subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+        assertEq(registry.getNodeOperatorWeight(0), 11000);
+        assertEq(registry.getNodeOperatorWeight(1), 0);
+
+        vm.prank(groupManager);
+        _clearGroup(groupId);
+        assertEq(registry.getNodeOperatorWeight(0), 0);
+    }
+
+    function test_notifyWeightBoostChanged_FromMaxPerGroupProviderRefreshesWholeGroupWhenMaxChanges() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        vm.prank(groupManager);
+        _createGroup(
+            _subOperatorsArr2(
+                IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: MAX_BP / 2 }),
+                IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: MAX_BP / 2 })
+            ),
+            _extOperatorsArr0()
+        );
+
+        vm.prank(admin);
+        registry.addWeightBoostProvider(provider, MAX_PER_GROUP_MODE);
+        provider.mock_setMultiplierBP(0, 12000);
+
+        vm.prank(address(provider));
+        registry.notifyWeightBoostChanged(0);
+
+        assertEq(registry.getNodeOperatorWeight(0), 6000);
+        assertEq(registry.getNodeOperatorWeight(1), 6000);
+    }
+
+    function test_notifyWeightBoostChanged_FromMaxPerGroupProviderRefreshesWholeGroupWhenMaxUnchanged() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        provider.mock_setMultiplierBP(0, 11000);
+        provider.mock_setMultiplierBP(1, 12000);
+
+        vm.prank(admin);
+        registry.addWeightBoostProvider(provider, MAX_PER_GROUP_MODE);
+        uint256 groupId = _nextGroupId();
+        vm.prank(groupManager);
+        _createGroup(
+            _subOperatorsArr2(
+                IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: MAX_BP / 2 }),
+                IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: MAX_BP / 2 })
+            ),
+            _extOperatorsArr0()
+        );
+
+        provider.mock_setMultiplierBP(0, 11500);
+
+        vm.expectEmit(address(registry));
+        emit IMetaRegistry.GroupWeightsRefreshed(groupId);
+        vm.prank(address(provider));
+        registry.notifyWeightBoostChanged(0);
+
+        assertEq(registry.getNodeOperatorWeight(0), 6000);
+        assertEq(registry.getNodeOperatorWeight(1), 6000);
+    }
+
+    function test_notifyWeightBoostChanged_FromPerNodeOperatorProviderRefreshesOnlyOperator() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        vm.prank(groupManager);
+        _createGroup(
+            _subOperatorsArr2(
+                IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: MAX_BP / 2 }),
+                IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: MAX_BP / 2 })
+            ),
+            _extOperatorsArr0()
+        );
+
+        vm.prank(admin);
+        registry.addWeightBoostProvider(provider, PER_NODE_OPERATOR_MODE);
+        provider.mock_setMultiplierBP(0, 11000);
+
+        vm.prank(address(provider));
+        registry.notifyWeightBoostChanged(0);
+
+        assertEq(registry.getNodeOperatorWeight(0), 5500);
+        assertEq(registry.getNodeOperatorWeight(1), 5000);
+    }
+
+    function test_refreshGroupWeights_MultipliesProviderMultipliers() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        provider.mock_setMultiplierBP(0, 12000);
+        secondProvider.mock_setMultiplierBP(0, 11000);
+
+        vm.startPrank(admin);
+        registry.addWeightBoostProvider(provider, MAX_PER_GROUP_MODE);
+        registry.addWeightBoostProvider(secondProvider, PER_NODE_OPERATOR_MODE);
+        vm.stopPrank();
+
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+
+        assertEq(registry.getNodeOperatorWeight(0), 13200);
+    }
+
+    function test_refreshGroupWeights_CachesMaxPerGroupProviderMultiplierPerRefresh() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        provider.mock_setMultiplierBP(0, 11000);
+        provider.mock_setMultiplierBP(1, 12000);
+        provider.mock_setMultiplierBP(2, 13000);
+
+        IMetaRegistry.SubNodeOperator[] memory subOperators = new IMetaRegistry.SubNodeOperator[](3);
+        subOperators[0] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: 3000 });
+        subOperators[1] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 1, share: 3000 });
+        subOperators[2] = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 2, share: 4000 });
+
+        uint256 groupId = _nextGroupId();
+        vm.prank(groupManager);
+        _createGroup(subOperators, _extOperatorsArr0());
+
+        vm.prank(admin);
+        registry.addWeightBoostProvider(provider, MAX_PER_GROUP_MODE);
+
+        vm.expectCall(
+            address(provider),
+            abi.encodeCall(IWeightBoostProvider.getWeightBoostMultiplierBP, (uint256(0))),
+            1
+        );
+        vm.expectCall(
+            address(provider),
+            abi.encodeCall(IWeightBoostProvider.getWeightBoostMultiplierBP, (uint256(1))),
+            1
+        );
+        vm.expectCall(
+            address(provider),
+            abi.encodeCall(IWeightBoostProvider.getWeightBoostMultiplierBP, (uint256(2))),
+            1
+        );
+
+        registry.refreshGroupWeights(groupId);
+
+        assertEq(registry.getNodeOperatorWeight(0), 3900);
+        assertEq(registry.getNodeOperatorWeight(1), 3900);
+        assertEq(registry.getNodeOperatorWeight(2), 5200);
+    }
+
+    function test_refreshGroupWeights_UsesSameOrderedMultiplierAsOperatorRefresh() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        WeightBoostProviderMock thirdProvider = new WeightBoostProviderMock();
+
+        provider.mock_setMultiplierBP(0, 16293);
+        secondProvider.mock_setMultiplierBP(0, 14016);
+        thirdProvider.mock_setMultiplierBP(0, 13527);
+
+        vm.startPrank(admin);
+        registry.addWeightBoostProvider(provider, PER_NODE_OPERATOR_MODE);
+        registry.addWeightBoostProvider(secondProvider, MAX_PER_GROUP_MODE);
+        registry.addWeightBoostProvider(thirdProvider, PER_NODE_OPERATOR_MODE);
+        vm.stopPrank();
+
+        uint256 groupId = _nextGroupId();
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+
+        assertEq(registry.getNodeOperatorWeight(0), 30890);
+
+        registry.refreshOperatorWeight(0);
+
+        assertEq(registry.getNodeOperatorWeight(0), 30890);
+        registry.refreshGroupWeights(groupId);
+        assertEq(registry.getNodeOperatorWeight(0), 30890);
+    }
+
+    function test_refreshOperatorWeight_AllowsProviderMultiplierBelowBaseline() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+
+        vm.prank(admin);
+        registry.addWeightBoostProvider(provider, PER_NODE_OPERATOR_MODE);
+        provider.mock_setMultiplierBP(0, 9000);
+
+        registry.refreshOperatorWeight(0);
+
+        assertEq(registry.getNodeOperatorWeight(0), 9000);
+    }
+
+    function test_notifyWeightBoostChanged_RevertWhen_ProviderNotFound() public {
+        vm.expectRevert(IMetaRegistry.WeightBoostProviderNotFound.selector);
+        registry.notifyWeightBoostChanged(0);
+    }
+
+    function test_refreshGroupWeights_RevertWhen_InvalidGroupId() public {
+        vm.expectRevert(IMetaRegistry.InvalidOperatorGroupId.selector);
+        registry.refreshGroupWeights(NO_GROUP_ID);
+
+        uint256 nonExistingGroupId = _nextGroupId();
+        vm.expectRevert(IMetaRegistry.InvalidOperatorGroupId.selector);
+        registry.refreshGroupWeights(nonExistingGroupId);
+    }
+
+    function test_refreshOperatorWeight_RecalculatesCurrentProviderValues() public {
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(0, MAX_BP), _extOperatorsArr0());
+
+        vm.prank(admin);
+        registry.addWeightBoostProvider(provider, PER_NODE_OPERATOR_MODE);
+        provider.mock_setMultiplierBP(0, 11000);
+
+        registry.refreshOperatorWeight(0);
+
+        assertEq(registry.getNodeOperatorWeight(0), 11000);
+    }
+}
+
 contract MetaRegistryBondCurveTest is MetaRegistryGroupsBaseTest {
     uint256 internal constant VALID_BOND_CURVE_WEIGHT = CURVE_WEIGHT + 123;
 
@@ -1198,6 +1757,44 @@ contract MetaRegistryBondCurveTest is MetaRegistryGroupsBaseTest {
         // Operator 1 still has stale cached weight.
         (uint256 w1After, ) = registry.getNodeOperatorWeightAndExternalStake(1);
         assertEq(w1After, 4000);
+    }
+
+    function test_refreshOperatorWeight_AppliesTierWeightMultiplier() public {
+        uint64 noId = 0;
+
+        vm.prank(admin);
+        registry.addWeightBoostProvider(additionalBondRegistry, IMetaRegistry.WeightBoostProviderMode.PerNodeOperator);
+
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr1(noId, MAX_BP), _extOperatorsArr0());
+
+        _setBondCurveWeight(0, CURVE_WEIGHT);
+        additionalBondRegistry.mock_setWeightMultiplier(noId, 5_000);
+        registry.refreshOperatorWeight(noId);
+
+        (uint256 weight, ) = registry.getNodeOperatorWeightAndExternalStake(noId);
+        assertEq(weight, 15_000); // 10000 * 15000 / 10000
+    }
+
+    function test_refreshOperatorWeight_TierWeightMultiplierScalesAfterShare() public {
+        IMetaRegistry.SubNodeOperator memory op0 = IMetaRegistry.SubNodeOperator({ nodeOperatorId: 0, share: 1 });
+        IMetaRegistry.SubNodeOperator memory op1 = IMetaRegistry.SubNodeOperator({
+            nodeOperatorId: 1,
+            share: MAX_BP - 1
+        });
+
+        vm.prank(admin);
+        registry.addWeightBoostProvider(additionalBondRegistry, IMetaRegistry.WeightBoostProviderMode.PerNodeOperator);
+
+        vm.prank(groupManager);
+        _createGroup(_subOperatorsArr2(op0, op1), _extOperatorsArr0());
+
+        _setBondCurveWeight(0, CURVE_WEIGHT + 1);
+        additionalBondRegistry.mock_setWeightMultiplier(0, 9_999);
+        registry.refreshOperatorWeight(0);
+
+        (uint256 weight, ) = registry.getNodeOperatorWeightAndExternalStake(0);
+        assertEq(weight, 1); // shared=1, 1 * 19999 / 10000 = 1
     }
 }
 

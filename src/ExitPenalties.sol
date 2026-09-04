@@ -46,25 +46,6 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
     }
 
     /// @inheritdoc IExitPenalties
-    function processExitDelayReport(
-        uint256 nodeOperatorId,
-        bytes calldata publicKey,
-        uint256 eligibleToExitInSec
-    ) external onlyModule {
-        uint256 curveId = ACCOUNTING.getBondCurveId(nodeOperatorId);
-
-        uint256 allowedExitDelay = PARAMETERS_REGISTRY.getAllowedExitDelay(curveId);
-        if (eligibleToExitInSec <= allowedExitDelay) revert ValidatorExitDelayNotApplicable();
-
-        ExitPenaltyInfo storage exitPenaltyInfo = _exitPenaltyInfo[KeyPointerLib.keyPointer(nodeOperatorId, publicKey)];
-        if (exitPenaltyInfo.delayFee.isValue) return;
-
-        uint256 delayFee = PARAMETERS_REGISTRY.getExitDelayFee(curveId);
-        exitPenaltyInfo.delayFee = MarkedUint248(delayFee.toUint248(), true);
-        emit ValidatorExitDelayProcessed(nodeOperatorId, publicKey, delayFee);
-    }
-
-    /// @inheritdoc IExitPenalties
     function processTriggeredExit(
         uint256 nodeOperatorId,
         bytes calldata publicKey,
@@ -101,22 +82,6 @@ contract ExitPenalties is IExitPenalties, ExitTypes {
         uint256 penalty = PARAMETERS_REGISTRY.getBadPerformancePenalty(curveId);
         exitPenaltyInfo.strikesPenalty = MarkedUint248(penalty.toUint248(), true);
         emit StrikesPenaltyProcessed(nodeOperatorId, publicKey, penalty);
-    }
-
-    /// @inheritdoc IExitPenalties
-    /// @dev There is a `onlyModule` modifier to prevent using it from outside
-    ///     as it gives a false-positive information for non-existent node operators.
-    ///     Use `isValidatorExitDelayPenaltyApplicable` in the `BaseModule.sol` instead.
-    function isValidatorExitDelayPenaltyApplicable(
-        uint256 nodeOperatorId,
-        bytes calldata publicKey,
-        uint256 eligibleToExitInSec
-    ) external view onlyModule returns (bool) {
-        uint256 curveId = ACCOUNTING.getBondCurveId(nodeOperatorId);
-        uint256 allowedExitDelay = PARAMETERS_REGISTRY.getAllowedExitDelay(curveId);
-        if (eligibleToExitInSec <= allowedExitDelay) return false;
-        bool isPenaltySet = _exitPenaltyInfo[KeyPointerLib.keyPointer(nodeOperatorId, publicKey)].delayFee.isValue;
-        return !isPenaltySet;
     }
 
     /// @inheritdoc IExitPenalties

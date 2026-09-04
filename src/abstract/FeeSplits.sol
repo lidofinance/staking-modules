@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.33;
 
+import { FeeSplitsLib } from "../lib/FeeSplitsLib.sol";
+
 import { IFeeSplits } from "../interfaces/IFeeSplits.sol";
 
 /// @dev Fee split mechanics abstract contract
@@ -25,8 +27,7 @@ abstract contract FeeSplits is IFeeSplits {
     bytes32 private constant FEE_SPLITS_STORAGE_LOCATION =
         0xac5584dcb35bfb1b3f4187762b10cb284ff937e63b5eb675e2e8e8876c7ee000;
 
-    uint256 internal constant MAX_BP = 10_000;
-    uint256 public constant MAX_FEE_SPLITS = 10;
+    uint256 public constant MAX_FEE_SPLITS = FeeSplitsLib.MAX_FEE_SPLITS;
 
     /// @inheritdoc IFeeSplits
     function getFeeSplits(uint256 nodeOperatorId) external view returns (FeeSplit[] memory) {
@@ -42,18 +43,8 @@ abstract contract FeeSplits is IFeeSplits {
     function getFeeSplitTransfers(
         uint256 nodeOperatorId,
         uint256 splittableShares
-    ) public view returns (SplitTransfer[] memory transfers) {
-        if (splittableShares == 0) return transfers;
-        FeeSplitsStorage storage $ = _getFeeSplitsStorage();
-        FeeSplit[] storage splits = $.feeSplits[nodeOperatorId];
-        transfers = new SplitTransfer[](splits.length);
-        uint256 splitsCount = splits.length;
-        for (uint256 i; i < splitsCount; ++i) {
-            FeeSplit storage feeSplit = splits[i];
-            // NOTE: Due to rounding error, shares left for the node operator might contain some dust.
-            uint256 amount = (splittableShares * feeSplit.share) / MAX_BP;
-            transfers[i] = SplitTransfer({ recipient: feeSplit.recipient, shares: amount });
-        }
+    ) public view returns (SplitTransfer[] memory) {
+        return FeeSplitsLib.getFeeSplitTransfers(_getFeeSplitsStorage(), nodeOperatorId, splittableShares);
     }
 
     /// @inheritdoc IFeeSplits
@@ -62,58 +53,26 @@ abstract contract FeeSplits is IFeeSplits {
     }
 
     function _updateFeeSplits(uint256 nodeOperatorId, FeeSplit[] calldata feeSplits, address stETH) internal {
-        FeeSplitsStorage storage $ = _getFeeSplitsStorage();
-        if ($.pendingSharesToSplit[nodeOperatorId] > 0) revert PendingSharesExist();
-
-        uint256 len = _validateFeeSplits(feeSplits, stETH);
-
-        FeeSplit[] storage dst = $.feeSplits[nodeOperatorId];
-        delete $.feeSplits[nodeOperatorId];
-        for (uint256 i; i < len; ++i) {
-            dst.push(feeSplits[i]);
-        }
-
-        emit FeeSplitsSet(nodeOperatorId, feeSplits);
+        FeeSplitsLib.updateFeeSplits(_getFeeSplitsStorage(), nodeOperatorId, feeSplits, stETH);
     }
 
     function _increasePendingSharesToSplit(uint256 nodeOperatorId, uint256 shares) internal {
-        if (shares == 0) return;
-        FeeSplitsStorage storage $ = _getFeeSplitsStorage();
-        uint256 newPendingSharesToSplit = $.pendingSharesToSplit[nodeOperatorId] + shares;
-        $.pendingSharesToSplit[nodeOperatorId] = newPendingSharesToSplit;
-        emit PendingSharesToSplitChanged(nodeOperatorId, newPendingSharesToSplit);
+        FeeSplitsLib.increasePendingSharesToSplit(_getFeeSplitsStorage(), nodeOperatorId, shares);
     }
 
-    /// @dev Expects `shares` not to exceed the current value of `pendingSharesToSplit`.
-    function _unsafeDecreasePendingSharesToSplit(uint256 nodeOperatorId, uint256 shares) internal {
-        if (shares == 0) return;
-        FeeSplitsStorage storage $ = _getFeeSplitsStorage();
-        uint256 newPendingSharesToSplit = $.pendingSharesToSplit[nodeOperatorId] - shares;
-        $.pendingSharesToSplit[nodeOperatorId] = newPendingSharesToSplit;
-        emit PendingSharesToSplitChanged(nodeOperatorId, newPendingSharesToSplit);
+    /// @dev Transfer the pending shares to the fee split recipients, capped by the claimable amount
+    /// @return transferredShares Shares sent to the recipients, to be deducted from the Node Operator's bond
+    function _splitPendingShares(
+        uint256 nodeOperatorId,
+        uint256 claimableShares,
+        address stETH
+    ) internal returns (uint256 transferredShares) {
+        return FeeSplitsLib.splitPendingShares(_getFeeSplitsStorage(), nodeOperatorId, claimableShares, stETH);
     }
 
     function _getFeeSplitsStorage() internal pure returns (FeeSplitsStorage storage $) {
         assembly ("memory-safe") {
             $.slot := FEE_SPLITS_STORAGE_LOCATION
         }
-    }
-
-    function _validateFeeSplits(FeeSplit[] calldata feeSplits, address stETH) private pure returns (uint256 len) {
-        len = feeSplits.length;
-        if (len > MAX_FEE_SPLITS) revert TooManySplits();
-
-        uint256 totalShare;
-        for (uint256 i; i < len; ++i) {
-            FeeSplit calldata fs = feeSplits[i];
-            if (fs.recipient == address(0)) revert ZeroSplitRecipient();
-            if (fs.recipient == stETH) revert InvalidSplitRecipient();
-            if (fs.share == 0) revert ZeroSplitShare();
-            totalShare += fs.share;
-        }
-
-        // totalShare might be lower than MAX_BP. The remainder goes to the
-        // Node Operator's bond.
-        if (totalShare > MAX_BP) revert TooManySplitShares();
     }
 }

@@ -1,7 +1,7 @@
 [profile.default]
 evm_version = "osaka"
 optimizer = true
-optimizer_runs = 150
+optimizer_runs = 25
 bytecode_hash = "none" # The metadata hash removed from the bytecode (not the metadata itself).
 # uncomment this to inspect storage layouts in build artifacts
 # extra_output = ["storageLayout"]
@@ -66,7 +66,7 @@ block_gas_limit = 60_000_000
 [profile.deploy]
 # unknown problem of too high estimated gas usage in the implementation deployment script
 # after upgrading forge-std 1.7.6 -> 1.9.5
-block_gas_limit = 60_000_000
+block_gas_limit = 90_000_000
 
 [profile.upgrades]
 extra_output = ["storageLayout"]

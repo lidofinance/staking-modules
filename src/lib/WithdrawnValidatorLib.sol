@@ -21,20 +21,6 @@ library WithdrawnValidatorLib {
     /// @dev Acts as the denominator to calculate the scaled penalty.
     uint256 public constant PENALTY_SCALE = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE / PENALTY_QUOTIENT;
 
-    function rebuildTotalWithdrawnValidators(ModuleLinearStorage.BaseModuleStorage storage $) external {
-        uint256 totalWithdrawnValidators;
-        unchecked {
-            for (uint256 i; i < $.nodeOperatorsCount; ++i) {
-                totalWithdrawnValidators += $.nodeOperators[i].totalWithdrawnKeys;
-            }
-        }
-
-        if ($.totalWithdrawnValidators == totalWithdrawnValidators) return;
-
-        $.totalWithdrawnValidators = totalWithdrawnValidators;
-        emit IBaseModule.TotalWithdrawnValidatorsRebuilt(totalWithdrawnValidators);
-    }
-
     function processBatch(
         WithdrawnValidatorInfo[] calldata validatorInfos,
         bool slashed,
@@ -58,6 +44,19 @@ library WithdrawnValidatorLib {
             _process($.nodeOperators[info.nodeOperatorId], info, $.keyConfirmedBalance[pointer]);
 
             $.isValidatorWithdrawn[pointer] = true;
+            // Any withdrawal report accounts for the key losses, hence resolves the slashing.
+            if ($.isValidatorSlashed[pointer]) {
+                uint256 unresolved = $.unresolvedSlashedValidators[info.nodeOperatorId];
+                // The decrement is saturating: a slashing reported before the counter was introduced is not counted.
+                // NOTE: The counter is per Node Operator, so such a legacy slashing resolves a newer one instead.
+                if (unresolved != 0) {
+                    unchecked {
+                        --unresolved;
+                    }
+                    $.unresolvedSlashedValidators[info.nodeOperatorId] = unresolved;
+                    emit IBaseModule.UnresolvedSlashedValidatorsCountChanged(info.nodeOperatorId, unresolved);
+                }
+            }
             touchedOperatorIds[touchedCount] = info.nodeOperatorId;
             trackedBalanceDecreases[touchedCount] = $.keyAllocatedBalance[pointer];
             unchecked {
@@ -109,8 +108,6 @@ library WithdrawnValidatorLib {
         ExitPenaltyInfo memory penaltyInfo,
         uint256 keyConfirmedBalance
     ) private {
-        bool chargeElWithdrawalRequestFee = false;
-
         uint256 minExpectedBalance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + keyConfirmedBalance;
         uint256 penaltyMultiplier = _getPenaltyMultiplier(
             _clamp(validatorInfo.exitBalance, minExpectedBalance, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE)
@@ -118,19 +115,14 @@ library WithdrawnValidatorLib {
         uint256 penaltySum;
         uint256 feeSum;
 
-        if (penaltyInfo.delayFee.isValue) {
-            feeSum = _scalePenaltyByMultiplier(penaltyInfo.delayFee.value, penaltyMultiplier);
-            chargeElWithdrawalRequestFee = true;
-        }
         if (penaltyInfo.strikesPenalty.isValue) {
             penaltySum = _scalePenaltyByMultiplier(penaltyInfo.strikesPenalty.value, penaltyMultiplier);
-            chargeElWithdrawalRequestFee = true;
         }
 
-        // The EL withdrawal request fee is taken when either a delay was reported or the validator exited due to
-        // strikes. Otherwise, the fee has already been paid by the node operator upon withdrawal trigger, or it is
-        // a DAO decision to withdraw the validator before the withdrawal request becomes delayed.
-        if (chargeElWithdrawalRequestFee && penaltyInfo.elWithdrawalRequestFee.value != 0) {
+        // The EL withdrawal request fee is taken when the validator exited due to strikes. Otherwise, the fee has
+        // already been paid by the node operator upon withdrawal trigger, or it is a DAO decision to withdraw the
+        // validator.
+        if (penaltyInfo.strikesPenalty.isValue && penaltyInfo.elWithdrawalRequestFee.value != 0) {
             // EL withdrawal request fee is not scaled because sending a withdrawal request for a validator does
             // not depend on the size of a validator.
             feeSum += penaltyInfo.elWithdrawalRequestFee.value;

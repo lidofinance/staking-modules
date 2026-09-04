@@ -4,6 +4,7 @@ pragma solidity 0.8.33;
 
 import { IBondCurve } from "../interfaces/IBondCurve.sol";
 import { BondCurve } from "../abstract/BondCurve.sol";
+import { MAX_BP } from "../lib/Constants.sol";
 
 /// Library for managing BondCurves
 /// @dev External deployment-linked library used by Accounting.
@@ -37,10 +38,10 @@ library BondCurvesLib {
     function getBondAmountByKeysCount(
         BondCurve.BondCurveStorage storage bondCurveStorage,
         uint256 keys,
-        uint256 curveId
+        uint256 curveId,
+        uint256 multiplier
     ) external view returns (uint256) {
-        _ensureCurveExists(bondCurveStorage, curveId);
-        IBondCurve.BondCurveInterval[] storage intervals = bondCurveStorage.bondCurves[curveId].intervals;
+        IBondCurve.BondCurveInterval[] memory intervals = _loadCurve(bondCurveStorage, curveId, multiplier);
         if (keys == 0) return 0;
 
         unchecked {
@@ -54,7 +55,7 @@ library BondCurvesLib {
                     low = mid;
                 }
             }
-            IBondCurve.BondCurveInterval storage interval = intervals[low];
+            IBondCurve.BondCurveInterval memory interval = intervals[low];
             return interval.minBond + (keys - interval.minKeysCount) * interval.trend;
         }
     }
@@ -62,11 +63,10 @@ library BondCurvesLib {
     function getKeysCountByBondAmount(
         BondCurve.BondCurveStorage storage bondCurveStorage,
         uint256 amount,
-        uint256 curveId
+        uint256 curveId,
+        uint256 multiplier
     ) external view returns (uint256) {
-        _ensureCurveExists(bondCurveStorage, curveId);
-        IBondCurve.BondCurveInterval[] storage intervals = bondCurveStorage.bondCurves[curveId].intervals;
-
+        IBondCurve.BondCurveInterval[] memory intervals = _loadCurve(bondCurveStorage, curveId, multiplier);
         // intervals[0].minBond is essentially the amount of bond required for the very first key
         if (amount < intervals[0].minBond) return 0;
 
@@ -82,7 +82,7 @@ library BondCurvesLib {
                 }
             }
 
-            IBondCurve.BondCurveInterval storage interval;
+            IBondCurve.BondCurveInterval memory interval;
 
             //
             // Imagine we have:
@@ -120,6 +120,35 @@ library BondCurvesLib {
             interval.minKeysCount = currMinKeysCount;
             interval.trend = currTrend;
             interval.minBond = prev.minBond + currTrend + (currMinKeysCount - prev.minKeysCount - 1) * prev.trend;
+        }
+    }
+
+    function _loadCurve(
+        BondCurve.BondCurveStorage storage bondCurveStorage,
+        uint256 curveId,
+        uint256 multiplier
+    ) internal view returns (IBondCurve.BondCurveInterval[] memory curve) {
+        _ensureCurveExists(bondCurveStorage, curveId);
+        IBondCurve.BondCurveInterval[] storage src = bondCurveStorage.bondCurves[curveId].intervals;
+        if (multiplier == MAX_BP) return src;
+        if (multiplier < MAX_BP) revert IBondCurve.InvalidMultiplier();
+
+        uint256 len = src.length;
+        curve = new IBondCurve.BondCurveInterval[](len);
+
+        uint256 sTrend = (src[0].trend * multiplier) / MAX_BP;
+        curve[0].minKeysCount = src[0].minKeysCount;
+        curve[0].trend = sTrend;
+        curve[0].minBond = sTrend;
+
+        for (uint256 i = 1; i < len; ++i) {
+            IBondCurve.BondCurveInterval memory prev = curve[i - 1];
+            uint256 currMinKeysCount = src[i].minKeysCount;
+            uint256 currTrend = (src[i].trend * multiplier) / MAX_BP;
+
+            curve[i].minKeysCount = currMinKeysCount;
+            curve[i].trend = currTrend;
+            curve[i].minBond = prev.minBond + currTrend + (currMinKeysCount - prev.minKeysCount - 1) * prev.trend;
         }
     }
 

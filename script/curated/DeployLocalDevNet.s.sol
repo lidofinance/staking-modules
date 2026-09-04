@@ -4,6 +4,7 @@
 pragma solidity 0.8.33;
 
 import { DeployBase, CuratedGateConfig } from "./DeployBase.s.sol";
+import { Step } from "../../src/interfaces/IStepwiseWeightBoost.sol";
 import { GIndices } from "../constants/GIndices.sol";
 import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
 import { HashConsensus } from "../../src/lib/base-oracle/HashConsensus.sol";
@@ -54,6 +55,7 @@ contract DeployLocalDevNet is DeployBase {
         config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
         config.defaultKeysLimit = 100;
         config.defaultAvgPerfLeewayBP = 10000;
+        // Legacy ParametersRegistry compatibility value; Curated fees come from CustomFeeRegistry.
         config.defaultRewardShareBP = 6250; // 62.5% of 4% = 2.5% of the total
         config.defaultStrikesLifetimeFrames = 6;
         config.defaultStrikesThreshold = 3;
@@ -189,6 +191,34 @@ contract DeployLocalDevNet is DeployBase {
         config.resealManager = vm.envAddress("CSM_RESEAL_MANAGER_ADDRESS");
 
         config.secondAdminAddress = vm.envOr("CSM_SECOND_ADMIN_ADDRESS", address(0));
+
+        // CurveMultiplier
+        config.additionalBondRegistryConfig.curveMultiplierReductionCooldown = 1 days;
+        // TODO: reconsider — placeholder initial boost steps.
+        config.additionalBondRegistryConfig.boostSteps.push(Step({ threshold: 5_000, value: 2_000 }));
+        config.additionalBondRegistryConfig.boostSteps.push(Step({ threshold: 10_000, value: 8_000 }));
+
+        // NodeOperatorStrikes
+        config.nodeOperatorStrikesConfig.committee = vm.envAddress("CSM_FIRST_ADMIN_ADDRESS"); // Dev team EOA
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 2, value: 2_500 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 3, value: 5_000 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 4, value: 7_500 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 5, value: 10_000 }));
+
+        // LDO lock boost provider
+        config.ldoLockBoostProviderConfig.token = vm.envAddress("CSM_LDO_TOKEN_ADDRESS");
+        config.ldoLockBoostProviderConfig.votingContract = vm.envAddress("CSM_LDO_VOTING_ADDRESS");
+        config.ldoLockBoostProviderConfig.snapshotDelegation = vm.envAddress("CSM_SNAPSHOT_DELEGATION_ADDRESS");
+        config.ldoLockBoostProviderConfig.minLockPeriod = 1 days;
+        config.ldoLockBoostProviderConfig.lockPeriod = 1 days;
+        config.ldoLockBoostProviderConfig.lockBoostSteps.push(Step({ threshold: 100_000 ether, value: 1_000 }));
+        config.ldoLockBoostProviderConfig.lockBoostSteps.push(Step({ threshold: 200_000 ether, value: 1_500 }));
+
+        // CustomFeeRegistry
+        config.customFeeRegistryConfig.feeShareDiscountCutCooldown = 15 days;
+        for (uint128 i = 1; i < 35; ++i) {
+            config.customFeeRegistryConfig.boostSteps.push(Step({ threshold: i * 100, value: i * 400 }));
+        }
 
         _setUp();
     }

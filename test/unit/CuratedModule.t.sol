@@ -171,6 +171,7 @@ contract CuratedCommon is ModuleFixtures {
 
     function _moduleInvariants() internal override {
         assertModuleKeys(module);
+        assertModuleSlashings(module);
     }
 
     function _topUpToOperatorBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 targetBalanceWei) internal {
@@ -2225,12 +2226,6 @@ contract CuratedMisc is ModuleMisc, CuratedCommon {
         module.requestFullDepositInfoUpdate();
     }
 }
-
-contract CuratedExitDeadlineThreshold is ModuleExitDeadlineThreshold, CuratedCommon {}
-
-contract CuratedIsValidatorExitDelayPenaltyApplicable is ModuleIsValidatorExitDelayPenaltyApplicable, CuratedCommon {}
-
-contract CuratedReportValidatorExitDelay is ModuleReportValidatorExitDelay, CuratedCommon {}
 
 contract CuratedOnValidatorExitTriggered is ModuleOnValidatorExitTriggered, CuratedCommon {}
 

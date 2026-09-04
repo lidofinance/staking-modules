@@ -4,6 +4,7 @@
 pragma solidity 0.8.33;
 
 import { DeployBase, CuratedGateConfig } from "./DeployBase.s.sol";
+import { Step } from "../../src/interfaces/IStepwiseWeightBoost.sol";
 import { GIndices } from "../constants/GIndices.sol";
 
 contract DeployMainnet is DeployBase {
@@ -61,6 +62,7 @@ contract DeployMainnet is DeployBase {
         config.defaultGeneralDelayedPenaltyAdditionalFine = 0.1 ether;
         config.defaultKeysLimit = 100;
         config.defaultAvgPerfLeewayBP = 10000;
+        // Legacy ParametersRegistry compatibility value; Curated fees come from CustomFeeRegistry.
         config.defaultRewardShareBP = 6250; // 62.5% of 4% = 2.5% of the total
         config.defaultStrikesLifetimeFrames = 6;
         config.defaultStrikesThreshold = 3;
@@ -197,6 +199,37 @@ contract DeployMainnet is DeployBase {
 
         // DG
         config.resealManager = 0x7914b5a1539b97Bd0bbd155757F25FD79A522d24;
+
+        // CurveMultiplier
+        config.additionalBondRegistryConfig.curveMultiplierReductionCooldown = 7 days;
+        // TODO: reconsider — placeholder initial boost steps.
+        config.additionalBondRegistryConfig.boostSteps.push(Step({ threshold: 5_000, value: 2_000 }));
+        config.additionalBondRegistryConfig.boostSteps.push(Step({ threshold: 10_000, value: 8_000 }));
+
+        // NodeOperatorStrikes
+        config.nodeOperatorStrikesConfig.committee = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
+        // TODO: finalize strike weight-reduction thresholds
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 2, value: 2_500 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 3, value: 5_000 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 4, value: 7_500 }));
+        config.nodeOperatorStrikesConfig.thresholds.push(Step({ threshold: 5, value: 10_000 }));
+
+        // LDO lock boost provider
+        config.ldoLockBoostProviderConfig.token = 0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32;
+        config.ldoLockBoostProviderConfig.votingContract = 0x2e59A20f205bB85a89C53f1936454680651E618e;
+        config.ldoLockBoostProviderConfig.snapshotDelegation = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
+        config.ldoLockBoostProviderConfig.minLockPeriod = 30 days;
+        config.ldoLockBoostProviderConfig.lockPeriod = 30 days;
+        config.ldoLockBoostProviderConfig.lockBoostSteps.push(Step({ threshold: 100_000 ether, value: 1_000 }));
+        config.ldoLockBoostProviderConfig.lockBoostSteps.push(Step({ threshold: 200_000 ether, value: 1_500 }));
+
+        // CustomFeeRegistry
+        // TODO: finalize custom fee parameters.
+        config.customFeeRegistryConfig.feeShareDiscountCutCooldown = 15 days;
+        for (uint128 i = 1; i < 35; ++i) {
+            config.customFeeRegistryConfig.boostSteps.push(Step({ threshold: i * 100, value: i * 400 }));
+        }
+
         _setUp();
     }
 }
