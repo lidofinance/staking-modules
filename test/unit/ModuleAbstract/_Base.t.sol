@@ -7,7 +7,7 @@ import { Test } from "forge-std/Test.sol";
 
 import { BaseModule } from "src/abstract/BaseModule.sol";
 import { NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
-import { PenalizedWithdrawnValidatorLib } from "src/lib/PenalizedWithdrawnValidatorLib.sol";
+import { BalanceBasedWithdrawalProcessor } from "src/lib/BalanceBasedWithdrawalProcessor.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 import { AccountingMock } from "../../helpers/mocks/AccountingMock.sol";
