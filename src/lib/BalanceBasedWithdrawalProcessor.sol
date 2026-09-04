@@ -14,13 +14,20 @@ import { KeyPointerLib } from "./KeyPointerLib.sol";
 import { SigningKeys } from "./SigningKeys.sol";
 import { ValidatorBalanceLimits } from "./ValidatorBalanceLimits.sol";
 
-/// @dev External deployment-linked library used by BaseModule-compatible modules
-///      to extract withdrawn validator processing from module bytecode.
-library WithdrawnValidatorLib {
+/// @dev External deployment-linked library that derives withdrawal obligations
+///      from validator balances, including scaled strikes obligations.
+library BalanceBasedWithdrawalProcessor {
     uint256 public constant PENALTY_QUOTIENT = 1 ether;
     /// @dev Acts as the denominator to calculate the scaled penalty.
     uint256 public constant PENALTY_SCALE = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE / PENALTY_QUOTIENT;
 
+    /// @dev Processes terminal validator reports using balance-based withdrawal obligations.
+    /// @param validatorInfos Validator withdrawal reports to process.
+    /// @param slashed Whether the batch was submitted through the slashed-withdrawal path.
+    /// @param $ Base module storage.
+    /// @return touchedOperatorIds Compact list of affected Node Operator IDs.
+    /// @return trackedBalanceDecreases Allocated balances to remove for the affected keys.
+    /// @return touchedCount Number of populated entries in both returned arrays.
     function processBatch(
         WithdrawnValidatorInfo[] calldata validatorInfos,
         bool slashed,
@@ -39,24 +46,15 @@ library WithdrawnValidatorLib {
             uint256 pointer = KeyPointerLib.keyPointer(info.nodeOperatorId, info.keyIndex);
             if ($.isValidatorWithdrawn[pointer]) continue;
             if (info.isSlashed != slashed) revert IBaseModule.InvalidWithdrawnValidatorInfo();
-            if (info.isSlashed && !$.isValidatorSlashed[pointer]) revert IBaseModule.SlashingPenaltyIsNotApplicable();
+            // A reported slashing must be resolved through the dedicated slashed-withdrawal path.
+            if ($.isValidatorSlashed[pointer] && !slashed) revert IBaseModule.InvalidWithdrawnValidatorInfo();
+            if (!$.isValidatorSlashed[pointer] && slashed) revert IBaseModule.SlashingPenaltyIsNotApplicable();
+            if (info.slashingPenalty != 0 && !slashed) revert IBaseModule.InvalidWithdrawnValidatorInfo();
 
             _process($.nodeOperators[info.nodeOperatorId], info, $.keyConfirmedBalance[pointer]);
 
             $.isValidatorWithdrawn[pointer] = true;
-            // Any withdrawal report accounts for the key losses, hence resolves the slashing.
-            if ($.isValidatorSlashed[pointer]) {
-                uint256 unresolved = $.unresolvedSlashedValidators[info.nodeOperatorId];
-                // The decrement is saturating: a slashing reported before the counter was introduced is not counted.
-                // NOTE: The counter is per Node Operator, so such a legacy slashing resolves a newer one instead.
-                if (unresolved != 0) {
-                    unchecked {
-                        --unresolved;
-                    }
-                    $.unresolvedSlashedValidators[info.nodeOperatorId] = unresolved;
-                    emit IBaseModule.UnresolvedSlashedValidatorsCountChanged(info.nodeOperatorId, unresolved);
-                }
-            }
+            if (slashed) _resolveSlashing($, info.nodeOperatorId);
             touchedOperatorIds[touchedCount] = info.nodeOperatorId;
             trackedBalanceDecreases[touchedCount] = $.keyAllocatedBalance[pointer];
             unchecked {
@@ -65,15 +63,24 @@ library WithdrawnValidatorLib {
         }
     }
 
+    function _resolveSlashing(ModuleLinearStorage.BaseModuleStorage storage $, uint256 nodeOperatorId) private {
+        uint256 unresolved = $.unresolvedSlashedValidators[nodeOperatorId];
+        // Keep the decrement saturating for compatibility with slashing records that were not counted.
+        // NOTE: The counter is per Node Operator, so such a record can resolve another outstanding slashing.
+        if (unresolved == 0) return;
+
+        unchecked {
+            --unresolved;
+        }
+        $.unresolvedSlashedValidators[nodeOperatorId] = unresolved;
+        emit IBaseModule.UnresolvedSlashedValidatorsCountChanged(nodeOperatorId, unresolved);
+    }
+
     function _process(
         NodeOperator storage no,
         WithdrawnValidatorInfo calldata validatorInfo,
         uint256 keyConfirmedBalance
     ) private {
-        if (validatorInfo.slashingPenalty > 0 && !validatorInfo.isSlashed) {
-            revert IBaseModule.InvalidWithdrawnValidatorInfo();
-        }
-
         // For slashed validator this value should reflect pre-slashing, hence non-zero balance.
         // For non-slashed validator it will reflect the withdrawal amount, hence it cannot be zero either.
         if (validatorInfo.exitBalance == 0) revert IBaseModule.ZeroExitBalance();

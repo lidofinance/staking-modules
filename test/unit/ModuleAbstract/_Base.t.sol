@@ -7,7 +7,7 @@ import { Test } from "forge-std/Test.sol";
 
 import { BaseModule } from "src/abstract/BaseModule.sol";
 import { NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
-import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
+import { BalanceBasedWithdrawalProcessor } from "src/lib/BalanceBasedWithdrawalProcessor.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 import { AccountingMock } from "../../helpers/mocks/AccountingMock.sol";
@@ -187,26 +187,6 @@ abstract contract ModuleFixtures is Test, Fixtures, Utilities, InvariantAsserts 
             isSlashed: false
         });
         module.reportRegularWithdrawnValidators(withdrawalsInfo);
-    }
-
-    /// @dev Sets keyConfirmedBalance via reportValidatorBalance.
-    function setKeyConfirmedBalance(uint256 noId, uint256 keyIndex, uint256 confirmedBalance) internal {
-        uint256 current = module.getKeyConfirmedBalances(noId, keyIndex, 1)[0];
-        if (confirmedBalance == current) return;
-
-        assertGt(confirmedBalance, current, "key confirmed balance cannot be decreased");
-
-        module.reportValidatorBalance({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            currentBalanceWei: confirmedBalance + ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE
-        });
-
-        assertEq(
-            module.getKeyConfirmedBalances(noId, keyIndex, 1)[0],
-            confirmedBalance,
-            "key confirmed balance must match target"
-        );
     }
 
     function getNodeOperatorSummary(uint256 noId) public view returns (NodeOperatorSummary memory) {

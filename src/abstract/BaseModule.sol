@@ -17,7 +17,6 @@ import { IBaseModule } from "../interfaces/IBaseModule.sol";
 import { SigningKeys } from "../lib/SigningKeys.sol";
 import { GeneralPenalty } from "../lib/GeneralPenaltyLib.sol";
 import { PausableUntil } from "../lib/utils/PausableUntil.sol";
-import { WithdrawnValidatorLib } from "../lib/WithdrawnValidatorLib.sol";
 import { NOAddresses } from "../lib/NOAddresses.sol";
 import { NodeOperatorOps } from "../lib/NodeOperatorOps.sol";
 import { KeyPointerLib } from "../lib/KeyPointerLib.sol";
@@ -355,26 +354,6 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function reportValidatorBalance(
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        uint256 currentBalanceWei
-    ) public virtual {
-        _checkVerifierRole();
-
-        NodeOperatorOps.reportValidatorBalance({
-            $: _baseStorage(),
-            nodeOperatorId: nodeOperatorId,
-            keyIndex: keyIndex,
-            currentBalanceWei: currentBalanceWei
-        });
-
-        // NOTE: We do not increment nonce because individual validator balances don't change the distribution
-        // returned by the module. The distribution from `allocateDeposits` might change but still meets
-        // expectations of StakingRouter.
-    }
-
-    /// @inheritdoc IBaseModule
     function reportSlashedWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external {
         _checkRole(REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE);
         _reportWithdrawnValidators(validatorInfos, true);
@@ -661,7 +640,7 @@ abstract contract BaseModule is
             uint256[] memory touchedOperatorIds,
             uint256[] memory trackedBalanceDecreases,
             uint256 touchedCount
-        ) = WithdrawnValidatorLib.processBatch(validatorInfos, slashed, _baseStorage());
+        ) = _processWithdrawnValidators(validatorInfos, slashed);
 
         if (touchedCount == 0) return;
 
@@ -678,6 +657,14 @@ abstract contract BaseModule is
 
         _incrementModuleNonce();
     }
+
+    function _processWithdrawnValidators(
+        WithdrawnValidatorInfo[] calldata validatorInfos,
+        bool slashed
+    )
+        internal
+        virtual
+        returns (uint256[] memory touchedOperatorIds, uint256[] memory trackedBalanceDecreases, uint256 touchedCount);
 
     function _incrementModuleNonce() internal {
         unchecked {
