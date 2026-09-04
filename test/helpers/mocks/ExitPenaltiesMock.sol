@@ -14,25 +14,14 @@ contract ExitPenaltiesMock is IExitPenalties, ExitTypes {
     IAccounting public ACCOUNTING;
     IParametersRegistry public immutable PARAMETERS_REGISTRY;
     ExitPenaltyInfo internal penaltyInfo;
-    bool applicable;
 
     function STRIKES() external pure returns (address) {
         return address(0);
     }
 
-    function processExitDelayReport(uint256, bytes calldata, uint256) external {}
-
     function processTriggeredExit(uint256, bytes calldata, uint256, uint256) external {}
 
     function processStrikesReport(uint256 nodeOperatorId, bytes calldata publicKey) external {}
-
-    function mock_isValidatorExitDelayPenaltyApplicable(bool flag) external {
-        applicable = flag;
-    }
-
-    function isValidatorExitDelayPenaltyApplicable(uint256, bytes calldata, uint256) external view returns (bool) {
-        return applicable;
-    }
 
     function mock_setDelayedExitPenaltyInfo(ExitPenaltyInfo memory _penaltyInfo) external {
         penaltyInfo = _penaltyInfo;

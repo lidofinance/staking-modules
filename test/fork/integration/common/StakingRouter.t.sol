@@ -8,7 +8,6 @@ import { NodeOperator } from "src/interfaces/IBaseModule.sol";
 import { IStakingRouter } from "src/interfaces/IStakingRouter.sol";
 import { IWithdrawalVault } from "src/interfaces/IWithdrawalVault.sol";
 
-import { ExitPenaltyInfo } from "../../../../src/interfaces/IExitPenalties.sol";
 import { ModuleTypeBase } from "./ModuleTypeBase.sol";
 
 abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
@@ -286,26 +285,6 @@ abstract contract StakingRouterIntegrationTestBase is ModuleTypeBase {
         stakingRouter.unsafeSetExitedValidatorsCount(moduleId, noId, false, correction);
 
         assertEq(module.getNodeOperator(noId).totalExitedKeys, unsafeExited);
-    }
-
-    function test_reportValidatorExitDelay() public assertInvariants {
-        uint256 totalKeys = 1;
-        uint256 noId = integrationHelpers.addNodeOperator(nextAddress(), totalKeys);
-        bytes memory publicKey = module.getSigningKeys(noId, 0, 1);
-        uint256 curveId = accounting.getBondCurveId(noId);
-        uint256 exitDelay = parametersRegistry.getAllowedExitDelay(curveId);
-        assertFalse(module.isValidatorExitDelayPenaltyApplicable(noId, 12345, publicKey, exitDelay));
-        exitDelay += 1;
-        assertTrue(module.isValidatorExitDelayPenaltyApplicable(noId, 12345, publicKey, exitDelay));
-
-        vm.prank(stakingRouter.getRoleMember(keccak256("REPORT_VALIDATOR_EXITING_STATUS_ROLE"), 0));
-        stakingRouter.reportValidatorExitDelay(moduleId, noId, 12345, publicKey, exitDelay);
-
-        ExitPenaltyInfo memory exitPenaltyInfo = exitPenalties.getExitPenaltyInfo(noId, publicKey);
-        uint256 expectedPenalty = parametersRegistry.getExitDelayFee(accounting.getBondCurveId(noId));
-
-        assertTrue(exitPenaltyInfo.delayFee.isValue);
-        assertEq(exitPenaltyInfo.delayFee.value, expectedPenalty);
     }
 
     function _getExpectedRouterDepositRequestCount() internal returns (uint256 expected) {

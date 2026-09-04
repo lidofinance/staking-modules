@@ -144,8 +144,4 @@ contract CSMMock is Utilities, Fixtures {
     ) external pure returns (bytes memory pubkeys) {
         (pubkeys, ) = keysSignatures(keysCount, startIndex);
     }
-
-    function exitDeadlineThreshold(uint256 /* nodeOperatorId */) external view returns (uint256) {
-        return PARAMETERS_REGISTRY.getAllowedExitDelay(0);
-    }
 }
