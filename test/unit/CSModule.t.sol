@@ -2181,13 +2181,13 @@ contract CSMReportWithdrawnValidatorsWithConfirmedBalance is CSMCommon {
         uint256 noId = createNodeOperator();
         csm.obtainDepositData(1, "");
 
-        uint248 fee = 1 ether;
+        uint248 penalty = 1 ether;
         uint256 multiplier = 3;
 
         exitPenalties.mock_setDelayedExitPenaltyInfo(
             ExitPenaltyInfo({
-                delayFee: MarkedUint248(fee, true),
-                strikesPenalty: MarkedUint248(0, false),
+                legacyDelayFee: MarkedUint248(0, false),
+                strikesPenalty: MarkedUint248(penalty, true),
                 elWithdrawalRequestFee: MarkedUint248(0, false)
             })
         );
@@ -2209,9 +2209,8 @@ contract CSMReportWithdrawnValidatorsWithConfirmedBalance is CSMCommon {
 
         vm.expectCall(
             address(accounting),
-            abi.encodeWithSelector(accounting.chargeFee.selector, noId, fee * multiplier)
+            abi.encodeWithSelector(accounting.penalize.selector, noId, penalty * multiplier + expectedPenalty)
         );
-        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, expectedPenalty));
         csm.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = csm.getNodeOperator(noId);
@@ -2624,6 +2623,31 @@ contract CSMAccessControl is ModuleAccessControl, CSMCommonNoRoles {
         super.setUp();
     }
 
+    function test_reportSlashedWithdrawnValidatorsRole() public {
+        uint256 noId = createNodeOperator();
+        bytes32 role = module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE();
+
+        vm.startPrank(admin);
+        module.grantRole(role, actor);
+        module.grantRole(module.STAKING_ROUTER_ROLE(), admin);
+        module.grantRole(module.VERIFIER_ROLE(), admin);
+        module.obtainDepositData(1, "");
+        module.reportValidatorSlashing(noId, 0);
+        vm.stopPrank();
+
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: true
+        });
+
+        vm.prank(actor);
+        module.reportSlashedWithdrawnValidators(validatorInfos);
+    }
+
     function test_setTopUpQueueLimit_RevertWhenNoRole() public {
         uint256 noId = createNodeOperator();
         bytes32 role = csm.MANAGE_TOP_UP_QUEUE_ROLE();
@@ -2668,7 +2692,43 @@ contract CSMStakingRouterAccessControl is ModuleStakingRouterAccessControl, CSMC
     }
 }
 
-contract CSMDepositableValidatorsCount is ModuleDepositableValidatorsCount, CSMCommon {}
+contract CSMDepositableValidatorsCount is ModuleDepositableValidatorsCount, CSMCommon {
+    function test_depositableValidatorsCountChanges_OnPenalizedWithdrawal() public assertInvariants {
+        uint256 noId = createNodeOperator(7);
+        module.obtainDepositData(4, "");
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
+
+        penalize(noId, BOND_SIZE * 3);
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](3);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+        infos[1] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 1,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+        infos[2] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 2,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - BOND_SIZE,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 0);
+        module.reportRegularWithdrawnValidators(infos);
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 2);
+        assertEq(getStakingModuleSummary().depositableValidatorsCount, 2);
+    }
+}
 
 contract CSMNodeOperatorStateAfterUpdateCurve is ModuleNodeOperatorStateAfterUpdateCurve, CSMCommon {}
 

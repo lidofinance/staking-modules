@@ -6,7 +6,7 @@ pragma solidity 0.8.33;
 import { Vm } from "forge-std/Test.sol";
 
 import { IBaseModule, NodeOperator, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
-import { PenalizedWithdrawnValidatorLib } from "src/lib/PenalizedWithdrawnValidatorLib.sol";
+import { BalanceBasedWithdrawalProcessor } from "src/lib/BalanceBasedWithdrawalProcessor.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 import { ModuleFixtures } from "./_Base.t.sol";
@@ -570,42 +570,6 @@ abstract contract ModuleDepositableValidatorsCount is ModuleFixtures {
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
         assertEq(getStakingModuleSummary().depositableValidatorsCount, 3);
         assertEq(module.getNonce(), nonce + 1);
-    }
-
-    function test_depositableValidatorsCountChanges_OnWithdrawal() public assertInvariants {
-        uint256 noId = createNodeOperator(7);
-        module.obtainDepositData(4, "");
-        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
-
-        penalize(noId, BOND_SIZE * 3);
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](3);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-        validatorInfos[1] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 1,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-        validatorInfos[2] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 2,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - BOND_SIZE,
-            slashingPenalty: 0,
-            isSlashed: false
-        }); // Large CL balance drop, that doesn't change the unbonded count.
-
-        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 0);
-        module.reportRegularWithdrawnValidators(validatorInfos);
-        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 2);
-        assertEq(getStakingModuleSummary().depositableValidatorsCount, 2);
     }
 
     function test_depositableValidatorsCountChanges_OnReportGeneralDelayedPenalty() public assertInvariants {

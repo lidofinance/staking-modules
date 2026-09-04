@@ -17,7 +17,6 @@ import { IBaseModule } from "../interfaces/IBaseModule.sol";
 import { SigningKeys } from "../lib/SigningKeys.sol";
 import { GeneralPenalty } from "../lib/GeneralPenaltyLib.sol";
 import { PausableUntil } from "../lib/utils/PausableUntil.sol";
-import { PenalizedWithdrawnValidatorLib } from "../lib/PenalizedWithdrawnValidatorLib.sol";
 import { NOAddresses } from "../lib/NOAddresses.sol";
 import { NodeOperatorOps } from "../lib/NodeOperatorOps.sol";
 import { KeyPointerLib } from "../lib/KeyPointerLib.sol";
@@ -641,7 +640,7 @@ abstract contract BaseModule is
             uint256[] memory touchedOperatorIds,
             uint256[] memory trackedBalanceDecreases,
             uint256 touchedCount
-        ) = PenalizedWithdrawnValidatorLib.processBatch(validatorInfos, slashed, _baseStorage());
+        ) = _processWithdrawnValidators(validatorInfos, slashed);
 
         if (touchedCount == 0) return;
 
@@ -658,6 +657,14 @@ abstract contract BaseModule is
 
         _incrementModuleNonce();
     }
+
+    function _processWithdrawnValidators(
+        WithdrawnValidatorInfo[] calldata validatorInfos,
+        bool slashed
+    )
+        internal
+        virtual
+        returns (uint256[] memory touchedOperatorIds, uint256[] memory trackedBalanceDecreases, uint256 touchedCount);
 
     function _incrementModuleNonce() internal {
         unchecked {

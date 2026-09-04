@@ -5,24 +5,24 @@ pragma solidity 0.8.33;
 
 import { Test } from "forge-std/Test.sol";
 
-import { PenalizedWithdrawnValidatorLib } from "src/lib/PenalizedWithdrawnValidatorLib.sol";
+import { BalanceBasedWithdrawalProcessor } from "src/lib/BalanceBasedWithdrawalProcessor.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 contract Library {
     function scalePenaltyByMultiplier(uint256 penalty, uint256 multiplier) external pure returns (uint256) {
-        return PenalizedWithdrawnValidatorLib._scalePenaltyByMultiplier(penalty, multiplier);
+        return BalanceBasedWithdrawalProcessor._scalePenaltyByMultiplier(penalty, multiplier);
     }
 
     function getPenaltyMultiplier(uint256 balance) external pure returns (uint256 penaltyMultiplier) {
-        return PenalizedWithdrawnValidatorLib._getPenaltyMultiplier(balance);
+        return BalanceBasedWithdrawalProcessor._getPenaltyMultiplier(balance);
     }
 
     function clamp(uint256 v, uint256 min, uint256 max) external pure returns (uint256) {
-        return PenalizedWithdrawnValidatorLib._clamp(v, min, max);
+        return BalanceBasedWithdrawalProcessor._clamp(v, min, max);
     }
 }
 
-contract TestPenalizedWithdrawnValidatorLib is Test {
+contract TestBalanceBasedWithdrawalProcessor is Test {
     Library internal lib;
 
     function setUp() public {

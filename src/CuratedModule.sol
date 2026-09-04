@@ -6,7 +6,7 @@ pragma solidity 0.8.33;
 import { ICuratedModule } from "./interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "./interfaces/IMetaRegistry.sol";
 import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.sol";
-import { IBaseModule, NodeOperator } from "./interfaces/IBaseModule.sol";
+import { IBaseModule, NodeOperator, WithdrawnValidatorInfo } from "./interfaces/IBaseModule.sol";
 
 import { BaseModule } from "./abstract/BaseModule.sol";
 
@@ -14,6 +14,7 @@ import { SigningKeys } from "./lib/SigningKeys.sol";
 import { CheckpointBalanceTracker } from "./lib/CheckpointBalanceTracker.sol";
 import { CuratedDepositAllocator } from "./lib/allocator/CuratedDepositAllocator.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
+import { FlatPenaltyWithdrawalProcessor } from "./lib/FlatPenaltyWithdrawalProcessor.sol";
 
 contract CuratedModule is ICuratedModule, BaseModule {
     IMetaRegistry public immutable META_REGISTRY;
@@ -248,6 +249,17 @@ contract CuratedModule is ICuratedModule, BaseModule {
     function _updateDepositInfo(uint256 nodeOperatorId) internal override {
         _metaRegistry().refreshOperatorWeight(nodeOperatorId);
         super._updateDepositInfo(nodeOperatorId);
+    }
+
+    function _processWithdrawnValidators(
+        WithdrawnValidatorInfo[] calldata validatorInfos,
+        bool slashed
+    )
+        internal
+        override
+        returns (uint256[] memory touchedOperatorIds, uint256[] memory trackedBalanceDecreases, uint256 touchedCount)
+    {
+        return FlatPenaltyWithdrawalProcessor.processBatch(validatorInfos, slashed, _baseStorage());
     }
 
     function _applyDepositableValidatorsCount(

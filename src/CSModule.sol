@@ -9,7 +9,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { BaseModule } from "./abstract/BaseModule.sol";
 
 import { IStakingModule, IStakingModuleV2 } from "./interfaces/IStakingModule.sol";
-import { IBaseModule, NodeOperatorManagementProperties, NodeOperator } from "./interfaces/IBaseModule.sol";
+import { IBaseModule, NodeOperatorManagementProperties, NodeOperator, WithdrawnValidatorInfo } from "./interfaces/IBaseModule.sol";
 import { ICSModule } from "./interfaces/ICSModule.sol";
 
 import { TopUpQueueLib, TopUpQueueItem } from "./lib/TopUpQueueLib.sol";
@@ -20,6 +20,7 @@ import { TopUpQueueOps } from "./lib/TopUpQueueOps.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
 import { HighWatermarkBalanceTracker } from "./lib/HighWatermarkBalanceTracker.sol";
 import { OperatorTracker } from "./lib/OperatorTracker.sol";
+import { BalanceBasedWithdrawalProcessor } from "./lib/BalanceBasedWithdrawalProcessor.sol";
 
 contract CSModule is ICSModule, BaseModule {
     using DepositQueueLib for DepositQueueLib.Queue;
@@ -288,6 +289,17 @@ contract CSModule is ICSModule, BaseModule {
         // Do not allow of multiple calls of addValidatorKeys* methods for the creator contract.
         OperatorTracker.forgetCreator(nodeOperatorId);
         super._addKeysAndUpdateDepositableValidatorsCount(nodeOperatorId, keysCount, publicKeys, signatures);
+    }
+
+    function _processWithdrawnValidators(
+        WithdrawnValidatorInfo[] calldata validatorInfos,
+        bool slashed
+    )
+        internal
+        override
+        returns (uint256[] memory touchedOperatorIds, uint256[] memory trackedBalanceDecreases, uint256 touchedCount)
+    {
+        return BalanceBasedWithdrawalProcessor.processBatch(validatorInfos, slashed, _baseStorage());
     }
 
     /// @dev Setting `topUpQueueLimit` to 0 effectively disables the top-up queue permanently.

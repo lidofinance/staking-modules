@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { ExitPenaltyInfo, MarkedUint248 } from "src/interfaces/IExitPenalties.sol";
 import { IBaseModule, NodeOperator, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
-import { PenalizedWithdrawnValidatorLib } from "src/lib/PenalizedWithdrawnValidatorLib.sol";
+import { BalanceBasedWithdrawalProcessor } from "src/lib/BalanceBasedWithdrawalProcessor.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 import { KeyPointerLib } from "src/lib/KeyPointerLib.sol";
 
@@ -1085,31 +1085,22 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         module.reportValidatorSlashing(noId, keyIndex);
     }
 
-    function test_reportRegularWithdrawnValidators_resolvesSlashingOfSlashedKey() public assertInvariants {
+    function test_reportRegularWithdrawnValidators_RevertWhen_ValidatorSlashingReported() public {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
         module.reportValidatorSlashing(noId, 0);
-        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 1);
 
-        // A slashed key might be reported as a regular withdrawal, i.e. penalized by the exit balance shortage.
-        uint256 balanceShortage = 1 ether;
         WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
             slashingPenalty: 0,
             isSlashed: false
         });
 
-        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, balanceShortage));
+        vm.expectRevert(IBaseModule.InvalidWithdrawnValidatorInfo.selector);
         module.reportRegularWithdrawnValidators(validatorInfos);
-
-        assertEq(
-            module.getNodeOperatorUnresolvedSlashedValidators(noId),
-            0,
-            "the losses are accounted for, so the slashing should be resolved"
-        );
     }
 
     function test_reportSlashedWithdrawnValidators_slashingReportedBeforeUpgrade() public assertInvariants {

@@ -105,8 +105,6 @@ library TopUpQueueOps {
                 allocations[i] = Math.min(limit, maxDepositAmount);
                 maxDepositAmount -= allocations[i];
 
-                // TODO: Decide whether to preserve the previous event ordering where TopUpQueueItemProcessed
-                // events preceded KeyAllocatedBalanceChanged events.
                 _applyKeyAllocation({
                     $: $,
                     operatorId: data.operatorIds[i],

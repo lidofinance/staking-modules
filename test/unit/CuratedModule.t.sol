@@ -11,10 +11,11 @@ import { StakeTracker } from "src/lib/StakeTracker.sol";
 import { KeyPointerLib } from "src/lib/KeyPointerLib.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 import { CuratedModule } from "src/CuratedModule.sol";
-import { IBaseModule, NodeOperator, NodeOperatorManagementProperties } from "src/interfaces/IBaseModule.sol";
+import { IBaseModule, NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 import { IBondCurve } from "src/interfaces/IBondCurve.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
+import { ExitPenaltyInfo, MarkedUint248 } from "src/interfaces/IExitPenalties.sol";
 
 import { Stub } from "../helpers/mocks/Stub.sol";
 import { ParametersRegistryMock } from "../helpers/mocks/ParametersRegistryMock.sol";
@@ -56,6 +57,10 @@ contract CuratedModuleHarness is CuratedModule {
 
     function exposedSetKeyAllocatedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 balanceWei) external {
         StakeTracker.setKeyAllocatedBalance(_baseStorage(), nodeOperatorId, keyIndex, balanceWei);
+    }
+
+    function exposedSetKeyConfirmedBalance(uint256 nodeOperatorId, uint256 keyIndex, uint256 balanceWei) external {
+        _baseStorage().keyConfirmedBalance[KeyPointerLib.keyPointer(nodeOperatorId, keyIndex)] = balanceWei;
     }
 }
 
@@ -1826,7 +1831,380 @@ contract CuratedSettleGeneralDelayedPenaltyAdvanced is ModuleSettleGeneralDelaye
 
 contract CuratedCompensateGeneralDelayedPenalty is ModuleCompensateGeneralDelayedPenalty, CuratedCommon {}
 
-contract CuratedReportWithdrawnValidators is ModuleReportWithdrawnValidators, CuratedCommon {}
+contract CuratedReportWithdrawnValidators is CuratedCommon {
+    function test_isValidatorWithdrawn_DefaultFalse() public assertInvariants {
+        uint256 noId = createNodeOperator(1);
+
+        assertFalse(module.isValidatorWithdrawn(noId, 0));
+    }
+
+    function test_reportRegularWithdrawnValidators_finalizesWithZeroExitBalance() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        (bytes memory pubkey, ) = module.obtainDepositData(1, "");
+        uint256 nonce = module.getNonce();
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.ValidatorWithdrawn(noId, 0, 0, 0, pubkey);
+        module.reportRegularWithdrawnValidators(infos);
+
+        assertTrue(module.isValidatorWithdrawn(noId, 0));
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+        assertEq(module.getNonce(), nonce + 1);
+        assertEq(module.getTotalModuleStake(), 0);
+        assertEq(module.getNodeOperatorBalance(noId), 0);
+    }
+
+    function test_reportRegularWithdrawnValidators_appliesFlatExitObligations() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        vm.deal(address(this), 100 ether);
+        accounting.depositETH{ value: 100 ether }(noId);
+        uint256 bondBefore = accounting.getBond(noId);
+        exitPenalties.mock_setDelayedExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(1 ether, true),
+                strikesPenalty: MarkedUint248(2 ether, true),
+                elWithdrawalRequestFee: MarkedUint248(3 ether, true)
+            })
+        );
+        curatedHarness.exposedSetKeyConfirmedBalance(noId, 0, 10 ether);
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 1 ether,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        module.reportRegularWithdrawnValidators(infos);
+
+        // 2 ETH strikes penalty + 3 ETH EL request fee; the legacy delay fee is ignored and nothing is scaled.
+        assertEq(accounting.getBond(noId), bondBefore - 5 ether);
+    }
+
+    function test_reportRegularWithdrawnValidators_doesNotChargeFeesWhenPenaltyIsNotCovered() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        uint256 bond = accounting.getBond(noId);
+        uint248 strikesPenalty = _toUint248(bond + 1 ether);
+        uint248 elWithdrawalRequestFee = 2 ether;
+
+        exitPenalties.mock_setDelayedExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(1 ether, true),
+                strikesPenalty: MarkedUint248(strikesPenalty, true),
+                elWithdrawalRequestFee: MarkedUint248(elWithdrawalRequestFee, true)
+            })
+        );
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, strikesPenalty));
+        expectNoCall(
+            address(accounting),
+            abi.encodeWithSelector(accounting.chargeFee.selector, noId, elWithdrawalRequestFee)
+        );
+        module.reportRegularWithdrawnValidators(infos);
+
+        assertEq(accounting.getBond(noId), 0);
+    }
+
+    function test_reportRegularWithdrawnValidators_removesFullTrackedContribution() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        module.obtainDepositData(2, "");
+        bytes memory key = module.getSigningKeys(noId, 0, 1);
+        cm.allocateDeposits(10 ether, BytesArr(key), UintArr(0), UintArr(noId), UintArr(10 ether));
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        module.reportRegularWithdrawnValidators(infos);
+
+        assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+        assertEq(module.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+    }
+
+    function test_reportRegularWithdrawnValidators_duplicateIsIgnored() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+        module.reportRegularWithdrawnValidators(infos);
+        uint256 nonce = module.getNonce();
+
+        module.reportRegularWithdrawnValidators(infos);
+
+        assertEq(module.getNonce(), nonce);
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+    }
+
+    function test_reportRegularWithdrawnValidators_emptyBatchDoesNotChangeNonce() public assertInvariants {
+        uint256 nonce = module.getNonce();
+
+        module.reportRegularWithdrawnValidators(new WithdrawnValidatorInfo[](0));
+
+        assertEq(module.getNonce(), nonce);
+    }
+
+    function test_reportRegularWithdrawnValidators_batchIncrementsNonceOnce() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        module.obtainDepositData(2, "");
+        uint256 nonce = module.getNonce();
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](2);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+        infos[1] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 1,
+            exitBalance: 0,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        module.reportRegularWithdrawnValidators(infos);
+
+        assertEq(module.getNonce(), nonce + 1);
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 2);
+        assertEq(module.getTotalModuleStake(), 0);
+    }
+
+    function test_reportRegularWithdrawnValidators_revertWhen_NoNodeOperator() public {
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: 0,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
+        module.reportRegularWithdrawnValidators(infos);
+    }
+
+    function test_reportRegularWithdrawnValidators_revertWhen_InvalidKeyIndex() public {
+        uint256 noId = createNodeOperator();
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
+        module.reportRegularWithdrawnValidators(infos);
+    }
+
+    function test_reportRegularWithdrawnValidators_revertWhen_SlashedInfo() public {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 0,
+            isSlashed: true
+        });
+
+        vm.expectRevert(IBaseModule.InvalidWithdrawnValidatorInfo.selector);
+        module.reportRegularWithdrawnValidators(infos);
+    }
+
+    function test_reportRegularWithdrawnValidators_revertWhen_SlashingPenaltyPresent() public {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 1 ether,
+            isSlashed: false
+        });
+
+        vm.expectRevert(IBaseModule.InvalidWithdrawnValidatorInfo.selector);
+        module.reportRegularWithdrawnValidators(infos);
+    }
+
+    function test_reportRegularWithdrawnValidators_revertWhen_ValidatorSlashingReported() public {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        module.reportValidatorSlashing(noId, 0);
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+
+        vm.expectRevert(IBaseModule.InvalidWithdrawnValidatorInfo.selector);
+        module.reportRegularWithdrawnValidators(infos);
+    }
+
+    function test_reportSlashedWithdrawnValidators_appliesReportedSlashingPenaltyWithZeroExitBalance()
+        public
+        assertInvariants
+    {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        module.reportValidatorSlashing(noId, 0);
+
+        vm.deal(address(this), 100 ether);
+        accounting.depositETH{ value: 100 ether }(noId);
+        uint256 bondBefore = accounting.getBond(noId);
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 1 ether,
+            isSlashed: true
+        });
+
+        module.reportSlashedWithdrawnValidators(infos);
+
+        assertEq(accounting.getBond(noId), bondBefore - 1 ether);
+        assertTrue(module.isValidatorWithdrawn(noId, 0));
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 0);
+    }
+
+    function test_reportSlashedWithdrawnValidators_appliesFlatExitObligations() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        module.reportValidatorSlashing(noId, 0);
+        curatedHarness.exposedSetKeyConfirmedBalance(noId, 0, 32 ether);
+
+        vm.deal(address(this), 100 ether);
+        accounting.depositETH{ value: 100 ether }(noId);
+        uint256 bondBefore = accounting.getBond(noId);
+        exitPenalties.mock_setDelayedExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(1 ether, true),
+                strikesPenalty: MarkedUint248(2 ether, true),
+                elWithdrawalRequestFee: MarkedUint248(3 ether, true)
+            })
+        );
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 4 ether,
+            isSlashed: true
+        });
+
+        module.reportSlashedWithdrawnValidators(infos);
+
+        // 4 ETH explicit slashing + 2 ETH strikes penalty + 3 ETH EL request fee; legacy delay fee is ignored.
+        assertEq(accounting.getBond(noId), bondBefore - 9 ether);
+    }
+
+    function test_reportSlashedWithdrawnValidators_acceptsZeroSlashingPenalty() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        module.reportValidatorSlashing(noId, 0);
+        uint256 bondBefore = accounting.getBond(noId);
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0,
+            isSlashed: true
+        });
+
+        module.reportSlashedWithdrawnValidators(infos);
+
+        assertEq(accounting.getBond(noId), bondBefore);
+        assertTrue(module.isValidatorWithdrawn(noId, 0));
+        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 0);
+    }
+
+    function test_reportSlashedWithdrawnValidators_revertWhen_NotSlashedInfo() public {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 1 ether,
+            isSlashed: false
+        });
+
+        vm.expectRevert(IBaseModule.InvalidWithdrawnValidatorInfo.selector);
+        module.reportSlashedWithdrawnValidators(infos);
+    }
+
+    function test_reportSlashedWithdrawnValidators_revertWhen_SlashingNotReported() public {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 0,
+            slashingPenalty: 1 ether,
+            isSlashed: true
+        });
+
+        vm.expectRevert(IBaseModule.SlashingPenaltyIsNotApplicable.selector);
+        module.reportSlashedWithdrawnValidators(infos);
+    }
+}
 
 contract CuratedGetKeyAllocatedBalances is ModuleGetKeyAllocatedBalances, CuratedCommon {}
 
@@ -2332,11 +2710,60 @@ contract CuratedTotalModuleStake is CuratedCommon {
 
 contract CuratedGetStakingModuleSummary is ModuleGetStakingModuleSummary, CuratedCommon {}
 
-contract CuratedAccessControl is ModuleAccessControl, CuratedCommonNoRoles {}
+contract CuratedAccessControl is ModuleAccessControl, CuratedCommonNoRoles {
+    function test_reportSlashedWithdrawnValidatorsRole() public {
+        uint256 noId = createNodeOperator();
+        bytes32 role = module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE();
+
+        vm.startPrank(admin);
+        module.grantRole(role, actor);
+        module.grantRole(module.STAKING_ROUTER_ROLE(), admin);
+        module.grantRole(module.VERIFIER_ROLE(), admin);
+        module.obtainDepositData(1, "");
+        module.reportValidatorSlashing(noId, 0);
+        vm.stopPrank();
+
+        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
+        validatorInfos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 1 ether,
+            isSlashed: true
+        });
+
+        vm.prank(actor);
+        module.reportSlashedWithdrawnValidators(validatorInfos);
+    }
+}
 
 contract CuratedStakingRouterAccessControl is ModuleStakingRouterAccessControl, CuratedCommonNoRoles {}
 
 contract CuratedDepositableValidatorsCount is ModuleDepositableValidatorsCount, CuratedCommon {
+    function test_depositableValidatorsCountChanges_OnPenaltyFreeWithdrawal() public assertInvariants {
+        uint256 noId = createNodeOperator(7);
+        module.obtainDepositData(4, "");
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
+
+        penalize(noId, BOND_SIZE * 3);
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](3);
+        for (uint256 i; i < infos.length; ++i) {
+            infos[i] = WithdrawnValidatorInfo({
+                nodeOperatorId: noId,
+                keyIndex: i,
+                exitBalance: i == 2 ? ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - BOND_SIZE : 0,
+                slashingPenalty: 0,
+                isSlashed: false
+            });
+        }
+
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 0);
+        module.reportRegularWithdrawnValidators(infos);
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
+        assertEq(getStakingModuleSummary().depositableValidatorsCount, 3);
+    }
+
     function test_updateDepositableValidatorsCount_zeroWeightNullifiesDepositable() public assertInvariants {
         uint256 noId = createNodeOperator(1);
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 1);
