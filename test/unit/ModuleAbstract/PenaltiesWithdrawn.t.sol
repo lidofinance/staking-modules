@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { ExitPenaltyInfo, MarkedUint248 } from "src/interfaces/IExitPenalties.sol";
 import { IBaseModule, NodeOperator, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
-import { BalanceBasedWithdrawalProcessor } from "src/lib/BalanceBasedWithdrawalProcessor.sol";
+import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 import { KeyPointerLib } from "src/lib/KeyPointerLib.sol";
 
@@ -784,6 +784,9 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             isSlashed: true
         });
 
+        bytes memory pubkey = module.getSigningKeys(noId, 0, 1);
+        vm.expectEmit(address(module));
+        emit IBaseModule.ValidatorWithdrawn(noId, 0, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE, 1 ether, pubkey);
         vm.expectEmit(address(module));
         emit IBaseModule.UnresolvedSlashedValidatorsCountChanged(noId, 1);
         module.reportSlashedWithdrawnValidators(validatorInfos);

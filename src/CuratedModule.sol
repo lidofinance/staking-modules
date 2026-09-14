@@ -14,7 +14,7 @@ import { SigningKeys } from "./lib/SigningKeys.sol";
 import { CheckpointBalanceTracker } from "./lib/CheckpointBalanceTracker.sol";
 import { CuratedDepositAllocator } from "./lib/allocator/CuratedDepositAllocator.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
-import { FlatPenaltyWithdrawalProcessor } from "./lib/FlatPenaltyWithdrawalProcessor.sol";
+import { WithdrawnValidatorLib } from "./lib/WithdrawnValidatorLib.sol";
 
 contract CuratedModule is ICuratedModule, BaseModule {
     IMetaRegistry public immutable META_REGISTRY;
@@ -259,7 +259,13 @@ contract CuratedModule is ICuratedModule, BaseModule {
         override
         returns (uint256[] memory touchedOperatorIds, uint256[] memory trackedBalanceDecreases, uint256 touchedCount)
     {
-        return FlatPenaltyWithdrawalProcessor.processBatch(validatorInfos, slashed, _baseStorage());
+        return
+            WithdrawnValidatorLib.processBatch({
+                validatorInfos: validatorInfos,
+                slashed: slashed,
+                balanceBased: false,
+                $: _baseStorage()
+            });
     }
 
     function _applyDepositableValidatorsCount(

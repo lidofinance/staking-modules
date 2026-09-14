@@ -20,7 +20,7 @@ import { TopUpQueueOps } from "./lib/TopUpQueueOps.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
 import { HighWatermarkBalanceTracker } from "./lib/HighWatermarkBalanceTracker.sol";
 import { OperatorTracker } from "./lib/OperatorTracker.sol";
-import { BalanceBasedWithdrawalProcessor } from "./lib/BalanceBasedWithdrawalProcessor.sol";
+import { WithdrawnValidatorLib } from "./lib/WithdrawnValidatorLib.sol";
 
 contract CSModule is ICSModule, BaseModule {
     using DepositQueueLib for DepositQueueLib.Queue;
@@ -299,7 +299,13 @@ contract CSModule is ICSModule, BaseModule {
         override
         returns (uint256[] memory touchedOperatorIds, uint256[] memory trackedBalanceDecreases, uint256 touchedCount)
     {
-        return BalanceBasedWithdrawalProcessor.processBatch(validatorInfos, slashed, _baseStorage());
+        return
+            WithdrawnValidatorLib.processBatch({
+                validatorInfos: validatorInfos,
+                slashed: slashed,
+                balanceBased: true,
+                $: _baseStorage()
+            });
     }
 
     /// @dev Setting `topUpQueueLimit` to 0 effectively disables the top-up queue permanently.

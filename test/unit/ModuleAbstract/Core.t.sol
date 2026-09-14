@@ -11,7 +11,7 @@ import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
 import { IAccounting } from "src/interfaces/IAccounting.sol";
 import { NodeOperator, NodeOperatorManagementProperties, WithdrawnValidatorInfo } from "src/interfaces/IBaseModule.sol";
 import { PausableUntil } from "src/lib/utils/PausableUntil.sol";
-import { BalanceBasedWithdrawalProcessor } from "src/lib/BalanceBasedWithdrawalProcessor.sol";
+import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 import { ERC20Testable } from "../../helpers/ERCTestable.sol";
@@ -206,7 +206,13 @@ contract MyModule is BaseModule {
         override
         returns (uint256[] memory touchedOperatorIds, uint256[] memory trackedBalanceDecreases, uint256 touchedCount)
     {
-        return BalanceBasedWithdrawalProcessor.processBatch(validatorInfos, slashed, _baseStorage());
+        return
+            WithdrawnValidatorLib.processBatch({
+                validatorInfos: validatorInfos,
+                slashed: slashed,
+                balanceBased: true,
+                $: _baseStorage()
+            });
     }
 
     function _applyDepositableValidatorsCount(
