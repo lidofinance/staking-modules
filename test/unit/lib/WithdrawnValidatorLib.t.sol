@@ -9,6 +9,10 @@ import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
 import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 contract Library {
+    function scalePenalty(uint256 penalty, uint256 balance) external pure returns (uint256) {
+        return WithdrawnValidatorLib.scalePenalty(penalty, balance);
+    }
+
     function scalePenaltyByMultiplier(uint256 penalty, uint256 multiplier) external pure returns (uint256) {
         return WithdrawnValidatorLib._scalePenaltyByMultiplier(penalty, multiplier);
     }
@@ -52,6 +56,19 @@ contract TestWithdrawnValidatorLib is Test {
 
         s = lib.scalePenaltyByMultiplier(32 ether, 2048);
         assertEq(s, 2048 ether);
+    }
+
+    function testFuzz_scalePenalty(uint128 penalty, uint256 balance) public {
+        balance = bound(balance, 0, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE + 1 ether);
+        uint256 clamped = balance;
+        if (balance < ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE) {
+            clamped = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
+        } else if (balance > ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE) {
+            clamped = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE;
+        }
+        uint256 expected = (uint256(penalty) * (clamped / WithdrawnValidatorLib.PENALTY_QUOTIENT)) /
+            WithdrawnValidatorLib.PENALTY_SCALE;
+        assertEq(lib.scalePenalty(penalty, balance), expected);
     }
 
     function test_getPenaltyMultiplier_Step() public {

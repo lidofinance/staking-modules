@@ -52,7 +52,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         });
 
         vm.expectEmit(address(module));
-        emit IBaseModule.ValidatorWithdrawn(noId, keyIndex, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE, 0, pubkey);
+        emit IBaseModule.ValidatorWithdrawn(noId, keyIndex, 0, pubkey);
         module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -88,13 +88,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         });
 
         vm.expectEmit(address(module));
-        emit IBaseModule.ValidatorWithdrawn(
-            noId,
-            keyIndex,
-            ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
-            0,
-            pubkey
-        );
+        emit IBaseModule.ValidatorWithdrawn(noId, keyIndex, 0, pubkey);
         module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -239,7 +233,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         uint248 penalty = 1 ether;
         uint256 multiplier = 3;
 
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
+        exitPenalties.mock_setExitPenaltyInfo(
             ExitPenaltyInfo({
                 legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(penalty, true),
@@ -307,7 +301,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         uint256 strikesPenaltyAmount = BOND_SIZE - 1 ether;
 
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
+        exitPenalties.mock_setExitPenaltyInfo(
             ExitPenaltyInfo({
                 legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(_toUint248(strikesPenaltyAmount), true),
@@ -345,7 +339,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         uint256 strikesPenaltyAmount = BOND_SIZE + 1 ether;
 
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
+        exitPenalties.mock_setExitPenaltyInfo(
             ExitPenaltyInfo({
                 legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(_toUint248(strikesPenaltyAmount), true),
@@ -383,7 +377,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         uint248 penalty = 1 ether;
         uint256 multiplier = 3;
 
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
+        exitPenalties.mock_setExitPenaltyInfo(
             ExitPenaltyInfo({
                 legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(penalty, true),
@@ -417,7 +411,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         uint256 multiplier = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE /
             ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
 
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
+        exitPenalties.mock_setExitPenaltyInfo(
             ExitPenaltyInfo({
                 legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(penalty, true),
@@ -611,7 +605,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         module.obtainDepositData(1, "");
 
         // A shifted or reused deprecated slot would surface as a settled penalty or fee here.
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
+        exitPenalties.mock_setExitPenaltyInfo(
             ExitPenaltyInfo({
                 legacyDelayFee: MarkedUint248(_toUint248(BOND_SIZE), true),
                 strikesPenalty: MarkedUint248(0, false),
@@ -815,6 +809,115 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertTrue(module.isValidatorSlashed(noId, keyIndex));
     }
 
+    function test_switchAutomatedPenaltiesMode() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+
+        assertEq(module.automatedSlashingPenalty(), 0);
+        vm.expectEmit(address(module));
+        emit IBaseModule.AutomatedPenaltiesModeSet(1 ether);
+        module.switchAutomatedPenaltiesMode(1 ether);
+        assertEq(module.automatedSlashingPenalty(), 1 ether);
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.AutomatedPenaltiesModeSet(2 ether);
+        module.switchAutomatedPenaltiesMode(2 ether);
+        assertEq(module.automatedSlashingPenalty(), 2 ether);
+
+        vm.expectEmit(address(module));
+        emit IBaseModule.AutomatedPenaltiesModeSet(0);
+        module.switchAutomatedPenaltiesMode(0);
+        assertEq(module.automatedSlashingPenalty(), 0);
+
+        expectNoCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector));
+        module.reportValidatorSlashing(noId, 0);
+        assertFalse(module.isValidatorWithdrawn(noId, 0));
+        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 1);
+    }
+
+    function test_switchAutomatedPenaltiesMode_maxPenalty() public {
+        uint256 quotient = WithdrawnValidatorLib.PENALTY_QUOTIENT;
+        uint256 penalty = (uint256(type(uint128).max) / quotient) * quotient;
+
+        module.switchAutomatedPenaltiesMode(penalty);
+
+        assertEq(module.automatedSlashingPenalty(), penalty);
+    }
+
+    function test_reportValidatorSlashing_automatedPenalty() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        uint256 slashingPenalty = 1 ether;
+        module.switchAutomatedPenaltiesMode(slashingPenalty);
+
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, slashingPenalty));
+        module.reportValidatorSlashing(noId, 0);
+
+        assertTrue(module.isValidatorWithdrawn(noId, 0));
+        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 0);
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+        assertEq(module.getTotalModuleStake(), 0);
+    }
+
+    function test_reportValidatorSlashing_automatedPenaltyScaledByAllocatedBalance() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        uint256 topUp = 10 ether;
+        bytes memory pubkey = module.getSigningKeys(noId, 0, 1);
+        module.allocateDeposits({
+            maxDepositAmount: topUp,
+            pubkeys: BytesArr(pubkey),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(noId),
+            topUpLimits: UintArr(topUp)
+        });
+        assertEq(module.getKeyAllocatedBalances(noId, 0, 1), UintArr(topUp));
+        assertEq(module.getKeyConfirmedBalances(noId, 0, 1), UintArr(0));
+
+        exitPenalties.mock_setExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(0, false),
+                strikesPenalty: MarkedUint248(0.01 ether, true),
+                legacyElWithdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+        module.switchAutomatedPenaltiesMode(1 ether);
+        uint256 slashingPenalty = 1.3125 ether;
+        uint256 totalPenalty = slashingPenalty + 0.013125 ether;
+        uint256 nonce = module.getNonce();
+
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, totalPenalty), 1);
+        vm.expectEmit(address(module));
+        emit IBaseModule.ValidatorWithdrawn(noId, 0, slashingPenalty, pubkey);
+        module.reportValidatorSlashing(noId, 0);
+
+        assertEq(module.getNodeOperatorBalance(noId), 0);
+        assertEq(module.getTotalModuleStake(), 0);
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+        assertEq(module.getNonce(), nonce + 1);
+    }
+
+    function test_switchAutomatedPenaltiesMode_RevertWhen_PenaltyExceedsMax() public {
+        uint256 quotient = WithdrawnValidatorLib.PENALTY_QUOTIENT;
+        uint256 slashingPenalty = (uint256(type(uint128).max) / quotient + 1) * quotient;
+
+        vm.expectRevert(IBaseModule.InvalidAmount.selector);
+        module.switchAutomatedPenaltiesMode(slashingPenalty);
+    }
+
+    function test_switchAutomatedPenaltiesMode_RevertWhen_PenaltyNotMultiple() public {
+        vm.expectRevert(IBaseModule.InvalidAmount.selector);
+        module.switchAutomatedPenaltiesMode(1 ether + 1 wei);
+    }
+
+    function test_switchAutomatedPenaltiesMode_RevertWhen_NoRole() public {
+        bytes32 role = module.DEFAULT_ADMIN_ROLE();
+
+        vm.prank(stranger);
+        expectRoleRevert(stranger, role);
+        module.switchAutomatedPenaltiesMode(1 ether);
+    }
+
     function test_isValidatorSlashed_DefaultFalse() public assertInvariants {
         uint256 noId = createNodeOperator(1);
 
@@ -873,14 +976,91 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 0);
     }
 
-    function test_reportValidatorSlashing_RevertWhen_CalledTwice() public {
+    function test_reportValidatorSlashing_CalledTwice() public assertInvariants {
         uint256 noId = createNodeOperator(17);
         module.obtainDepositData(17, "");
         uint256 keyIndex = 11;
 
         module.reportValidatorSlashing(noId, keyIndex);
-        vm.expectRevert(IBaseModule.ValidatorSlashingAlreadyReported.selector, address(module));
+        uint256 nonce = module.getNonce();
+
+        expectNoCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector));
+        vm.recordLogs();
         module.reportValidatorSlashing(noId, keyIndex);
+
+        assertEq(vm.getRecordedLogs().length, 0);
+        assertEq(module.getNonce(), nonce);
+        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 1);
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 0);
+        assertEq(module.getTotalModuleStake(), 17 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+    }
+
+    function test_reportValidatorSlashing_automatedPenaltyIgnoresLaterReports() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        module.switchAutomatedPenaltiesMode(1 ether);
+        module.reportValidatorSlashing(noId, 0);
+        uint256 nonce = module.getNonce();
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 1 ether,
+            isSlashed: true
+        });
+
+        expectNoCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector));
+        vm.recordLogs();
+        module.reportValidatorSlashing(noId, 0);
+        module.reportSlashedWithdrawnValidators(infos);
+        infos[0].isSlashed = false;
+        infos[0].slashingPenalty = 0;
+        module.reportRegularWithdrawnValidators(infos);
+
+        assertEq(vm.getRecordedLogs().length, 0);
+        assertEq(module.getNonce(), nonce);
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+        assertEq(module.getTotalModuleStake(), 0);
+    }
+
+    function test_reportValidatorSlashing_automatedPenaltyResolvesSlashingReportedBeforeTheMode()
+        public
+        assertInvariants
+    {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        module.reportValidatorSlashing(noId, 0);
+        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 1);
+
+        uint256 slashingPenalty = 1 ether;
+        module.switchAutomatedPenaltiesMode(slashingPenalty);
+
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, slashingPenalty));
+        module.reportValidatorSlashing(noId, 0);
+
+        assertTrue(module.isValidatorWithdrawn(noId, 0));
+        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 0);
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+    }
+
+    function test_reportValidatorSlashing_automatedPenaltyDecrementsExistingUnresolvedCount() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        module.obtainDepositData(2, "");
+        module.reportValidatorSlashing(noId, 0);
+        module.switchAutomatedPenaltiesMode(1 ether);
+
+        module.reportValidatorSlashing(noId, 1);
+
+        assertTrue(module.isValidatorWithdrawn(noId, 1));
+        assertFalse(module.isValidatorWithdrawn(noId, 0));
+        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 0);
+
+        module.reportValidatorSlashing(noId, 0);
+
+        assertTrue(module.isValidatorWithdrawn(noId, 0));
+        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 0);
     }
 
     function test_reportRegularWithdrawnValidators_resolvesSlashingOfSlashedKey() public assertInvariants {
@@ -957,6 +1137,22 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             0,
             "a slashing of a withdrawn validator has nothing left to resolve"
         );
+    }
+
+    function test_reportValidatorSlashing_automatedPenaltySkipsWithdrawnKey() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        withdrawKey(noId, 0);
+        module.switchAutomatedPenaltiesMode(1 ether);
+        uint256 nonce = module.getNonce();
+
+        expectNoCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector));
+        module.reportValidatorSlashing(noId, 0);
+
+        assertTrue(module.isValidatorSlashed(noId, 0));
+        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 0);
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+        assertEq(module.getNonce(), nonce);
     }
 
     function test_reportValidatorSlashing_RevertWhen_OperatorDoesNotExist() public {

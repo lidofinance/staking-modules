@@ -343,6 +343,21 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         module.reportValidatorSlashing(noId, 0);
     }
 
+    function test_verifierRole_automatedPenalties() public {
+        uint256 noId = createNodeOperator();
+
+        vm.startPrank(admin);
+        module.grantRole(module.VERIFIER_ROLE(), actor);
+        module.grantRole(module.STAKING_ROUTER_ROLE(), admin);
+        module.obtainDepositData(1, "");
+        module.switchAutomatedPenaltiesMode(1 ether);
+        vm.stopPrank();
+
+        vm.prank(actor);
+        module.reportValidatorSlashing(noId, 0);
+        assertTrue(module.isValidatorWithdrawn(noId, 0));
+    }
+
     function test_verifierRole_revert() public {
         uint256 noId = createNodeOperator();
         bytes32 role = module.VERIFIER_ROLE();

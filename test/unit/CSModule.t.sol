@@ -2125,6 +2125,19 @@ contract CSMReportWithdrawnValidators is ModuleReportWithdrawnValidators, CSMCom
     }
 }
 
+contract CSMAutomatedPenaltiesMode is CSMCommon {
+    function test_switchAutomatedPenaltiesMode_keepsDefaultPerformanceLeeway() public {
+        parametersRegistry.setDefaultPerformanceLeeway(500);
+
+        module.switchAutomatedPenaltiesMode(1 ether);
+
+        assertEq(parametersRegistry.defaultPerformanceLeeway(), 500);
+
+        module.switchAutomatedPenaltiesMode(0);
+        assertEq(parametersRegistry.defaultPerformanceLeeway(), 500);
+    }
+}
+
 contract CSMKeyAllocatedBalance is ModuleKeyAllocatedBalance, CSMCommon {
     function setUp() public override {
         topUpQueueLimit = 32;

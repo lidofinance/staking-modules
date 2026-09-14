@@ -14,8 +14,11 @@ import { SigningKeys } from "./lib/SigningKeys.sol";
 import { CuratedDepositAllocator } from "./lib/allocator/CuratedDepositAllocator.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
 import { StakeTracker } from "./lib/StakeTracker.sol";
+import { MAX_BP } from "./lib/Constants.sol";
 
 contract CuratedModule is ICuratedModule, BaseModule {
+    uint256 public constant DEFAULT_PERFORMANCE_LEEWAY_AUTO = 9000;
+
     IMetaRegistry public immutable META_REGISTRY;
 
     constructor(
@@ -212,6 +215,10 @@ contract CuratedModule is ICuratedModule, BaseModule {
     function _updateDepositInfo(uint256 nodeOperatorId) internal override {
         _metaRegistry().refreshOperatorWeight(nodeOperatorId);
         super._updateDepositInfo(nodeOperatorId);
+    }
+
+    function _onAutomatedPenaltiesModeChanged(bool enabled) internal override {
+        PARAMETERS_REGISTRY.setDefaultPerformanceLeeway(enabled ? DEFAULT_PERFORMANCE_LEEWAY_AUTO : MAX_BP);
     }
 
     function _applyDepositableValidatorsCount(

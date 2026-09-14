@@ -74,15 +74,10 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
         uint256 targetLimitMode,
         uint256 targetValidatorsCount
     );
-    event ValidatorWithdrawn(
-        uint256 indexed nodeOperatorId,
-        uint256 keyIndex,
-        uint256 exitBalance,
-        uint256 slashingPenalty,
-        bytes pubkey
-    );
+    event ValidatorWithdrawn(uint256 indexed nodeOperatorId, uint256 keyIndex, uint256 slashingPenalty, bytes pubkey);
     event NodeOperatorBalanceUpdated(uint256 indexed operatorId, uint256 balanceWei);
     event ValidatorSlashingReported(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
+    event AutomatedPenaltiesModeSet(uint256 automatedSlashingPenalty);
     event UnresolvedSlashedValidatorsCountChanged(uint256 indexed nodeOperatorId, uint256 count);
     event KeyAllocatedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
     event KeyConfirmedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newBalance);
@@ -130,7 +125,6 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     error InvalidVetKeysPointer();
     error ZeroExitBalance();
     error SlashingPenaltyIsNotApplicable();
-    error ValidatorSlashingAlreadyReported();
     error InvalidWithdrawnValidatorInfo();
 
     error InvalidAmount();
@@ -432,9 +426,20 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @notice Report Node Operator's key as slashed.
     /// @notice Called by `Verifier` contract. See `Verifier.processSlashedProof`.
     /// @dev A slashing reported for an already withdrawn key does not restrict the bond claims.
+    /// @dev While the automated penalties mode is on, the key is penalized and reported as withdrawn right away.
     /// @param nodeOperatorId The ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex) external;
+
+    /// @notice Switch the automated penalties mode. See `reportValidatorSlashing`.
+    /// @dev A multiple of 1 ETH enables the mode, zero disables it. A module tolerating any performance by default
+    ///      starts issuing strikes along with the mode.
+    /// @param slashingPenalty Penalty amount per 32 ETH of the slashed key balance
+    function switchAutomatedPenaltiesMode(uint256 slashingPenalty) external;
+
+    /// @notice Get the automated slashing penalty applied per 32 ETH of the key balance. Zero means the mode is off.
+    /// @return Penalty amount in wei per 32 ETH of the slashed key balance
+    function automatedSlashingPenalty() external view returns (uint256);
 
     /// @notice Update verified on-chain balance for a key.
     /// @dev The function stores balance relative to MIN_ACTIVATION_BALANCE.

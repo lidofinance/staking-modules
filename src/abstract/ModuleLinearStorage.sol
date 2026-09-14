@@ -32,6 +32,8 @@ abstract contract ModuleLinearStorage {
         /* 12 */ mapping(uint256 nodeOperatorId => uint256 firstDepositAt) nodeOperatorFirstDepositAt;
         /// @dev Slashed validators of the Node Operator whose withdrawal losses are not processed yet.
         /* 13 */ mapping(uint256 nodeOperatorId => uint256) unresolvedSlashedValidators;
+        /// @dev Penalty in wei per 32 ETH of the key balance applied right on a slashing report. Zero disables the mode.
+        /* 14 */ uint256 automatedSlashingPenalty;
     }
 
     function _baseStorage() internal pure returns (BaseModuleStorage storage $) {

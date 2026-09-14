@@ -22,6 +22,8 @@ contract ParametersRegistryMock {
 
     uint256 public badPerformancePenalty = 0.01 ether;
 
+    uint256 public defaultPerformanceLeeway = 10_000;
+
     uint256 public QUEUE_LOWEST_PRIORITY;
 
     function setQueueLowestPriority(uint256 value) external {
@@ -90,6 +92,10 @@ contract ParametersRegistryMock {
     function setRewardShareData(uint256, IParametersRegistry.KeyNumberValueInterval[] calldata) external {}
 
     function setPerformanceLeewayData(uint256, IParametersRegistry.KeyNumberValueInterval[] calldata) external {}
+
+    function setDefaultPerformanceLeeway(uint256 leeway) external {
+        defaultPerformanceLeeway = leeway;
+    }
 
     function getQueueConfig(uint256 curveId) external view returns (uint32 priority, uint32 maxDeposits) {
         MarkedQueueConfig storage config = _queueConfigs[curveId];

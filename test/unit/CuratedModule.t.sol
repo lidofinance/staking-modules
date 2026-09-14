@@ -1811,6 +1811,18 @@ contract CuratedCompensateGeneralDelayedPenalty is ModuleCompensateGeneralDelaye
 
 contract CuratedReportWithdrawnValidators is ModuleReportWithdrawnValidators, CuratedCommon {}
 
+contract CuratedAutomatedPenaltiesMode is CuratedCommon {
+    function test_switchAutomatedPenaltiesMode_setsDefaultPerformanceLeeway() public {
+        parametersRegistry.setDefaultPerformanceLeeway(500);
+
+        module.switchAutomatedPenaltiesMode(1 ether);
+        assertEq(parametersRegistry.defaultPerformanceLeeway(), 9000);
+
+        module.switchAutomatedPenaltiesMode(0);
+        assertEq(parametersRegistry.defaultPerformanceLeeway(), 10_000);
+    }
+}
+
 contract CuratedKeyAllocatedBalance is ModuleKeyAllocatedBalance, CuratedCommon {}
 
 contract CuratedReportValidatorBalance is ModuleReportValidatorBalance, CuratedCommon {

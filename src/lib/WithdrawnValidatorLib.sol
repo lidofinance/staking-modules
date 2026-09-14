@@ -46,8 +46,8 @@ library WithdrawnValidatorLib {
             // Any withdrawal report accounts for the key losses, hence resolves the slashing.
             if ($.isValidatorSlashed[pointer]) {
                 uint256 unresolved = $.unresolvedSlashedValidators[info.nodeOperatorId];
-                // The decrement is saturating: a slashing reported before the counter was introduced is not counted.
-                // NOTE: The counter is per Node Operator, so such a legacy slashing resolves a newer one instead.
+                // The decrement is saturating: a slashing reported before the counter was introduced or in automated mode is not counted.
+                // NOTE: The counter is per Node Operator, so such an uncounted slashing resolves another one instead.
                 if (unresolved != 0) {
                     unchecked {
                         --unresolved;
@@ -94,7 +94,6 @@ library WithdrawnValidatorLib {
         emit IBaseModule.ValidatorWithdrawn({
             nodeOperatorId: validatorInfo.nodeOperatorId,
             keyIndex: validatorInfo.keyIndex,
-            exitBalance: validatorInfo.exitBalance,
             slashingPenalty: validatorInfo.slashingPenalty,
             pubkey: pubkey
         });
@@ -108,13 +107,13 @@ library WithdrawnValidatorLib {
         uint256 keyConfirmedBalance
     ) private {
         uint256 minExpectedBalance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + keyConfirmedBalance;
-        uint256 penaltyMultiplier = _getPenaltyMultiplier(
-            _clamp(validatorInfo.exitBalance, minExpectedBalance, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE)
-        );
         uint256 penaltySum;
 
         if (penaltyInfo.strikesPenalty.isValue) {
-            penaltySum = _scalePenaltyByMultiplier(penaltyInfo.strikesPenalty.value, penaltyMultiplier);
+            penaltySum = scalePenalty(
+                penaltyInfo.strikesPenalty.value,
+                Math.max(validatorInfo.exitBalance, minExpectedBalance)
+            );
         }
 
         if (validatorInfo.isSlashed && validatorInfo.slashingPenalty > 0) {
@@ -131,6 +130,16 @@ library WithdrawnValidatorLib {
         if (penaltySum > 0) {
             IBaseModule(address(this)).ACCOUNTING().penalize(validatorInfo.nodeOperatorId, penaltySum);
         }
+    }
+
+    function scalePenalty(uint256 penalty, uint256 balance) internal pure returns (uint256) {
+        balance = _clamp(
+            balance,
+            ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+            ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE
+        );
+        uint256 multiplier = _getPenaltyMultiplier(balance);
+        return _scalePenaltyByMultiplier(penalty, multiplier);
     }
 
     /// @dev Acts as the numerator to calculate the scaled penalty.
