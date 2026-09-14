@@ -5,6 +5,7 @@ pragma solidity 0.8.33;
 import { Test, StdStorage, Vm, stdStorage } from "forge-std/Test.sol";
 
 import { FeeDistributor } from "src/FeeDistributor.sol";
+import { OssifiableProxy } from "src/lib/proxy/OssifiableProxy.sol";
 import { IAssetRecovererLib } from "src/lib/AssetRecovererLib.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
@@ -127,6 +128,28 @@ contract FeeDistributorInitTest is FeeDistributorTestBase {
 
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         feeDistributor.initialize(address(this), rebateRecipient);
+    }
+
+    function test_initialize_RevertWhen_selfRebateRecipient() public {
+        FeeDistributor proxy = FeeDistributor(address(new OssifiableProxy(address(feeDistributor), address(this), "")));
+
+        vm.expectRevert(IFeeDistributor.InvalidRebateRecipientAddress.selector);
+        proxy.initialize(address(this), address(proxy));
+    }
+
+    function test_setRebateRecipient_revertWhen_SelfRebateRecipientAddress() public {
+        FeeDistributor proxy = FeeDistributor(
+            address(
+                new OssifiableProxy(
+                    address(feeDistributor),
+                    address(this),
+                    abi.encodeCall(FeeDistributor.initialize, (address(this), rebateRecipient))
+                )
+            )
+        );
+
+        vm.expectRevert(IFeeDistributor.InvalidRebateRecipientAddress.selector);
+        proxy.setRebateRecipient(address(proxy));
     }
 
     function test_finalizeUpgradeV3() public {
