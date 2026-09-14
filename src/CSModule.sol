@@ -20,7 +20,6 @@ import { TopUpQueueOps } from "./lib/TopUpQueueOps.sol";
 import { NodeOperatorOps } from "./lib/NodeOperatorOps.sol";
 import { StakeTracker } from "./lib/StakeTracker.sol";
 import { OperatorTracker } from "./lib/OperatorTracker.sol";
-import { WithdrawnValidatorLib } from "./lib/WithdrawnValidatorLib.sol";
 
 contract CSModule is ICSModule, BaseModule {
     using DepositQueueLib for DepositQueueLib.Queue;
@@ -70,13 +69,6 @@ contract CSModule is ICSModule, BaseModule {
         // The next statement writes to slot `1` replacing old QueueLib.Queue struct pointers.
         $.totalWithdrawnValidators = 0;
         $.upToDateOperatorDepositInfoCount = $.nodeOperatorsCount;
-    }
-
-    /// @inheritdoc ICSModule
-    function rebuildTotalWithdrawnValidators() external {
-        if (_getInitializedVersion() != INITIALIZED_VERSION) revert UpgradeIsNotFinalized();
-
-        WithdrawnValidatorLib.rebuildTotalWithdrawnValidators(_baseStorage());
     }
 
     /// @inheritdoc IBaseModule

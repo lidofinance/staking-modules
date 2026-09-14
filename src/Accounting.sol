@@ -15,7 +15,6 @@ import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
 
 import { AssetRecovererLib } from "./lib/AssetRecovererLib.sol";
 
-import { IStakingModule } from "./interfaces/IStakingModule.sol";
 import { IBaseModule, NodeOperatorManagementProperties } from "./interfaces/IBaseModule.sol";
 import { IAccounting } from "./interfaces/IAccounting.sol";
 import { IFeeDistributor } from "./interfaces/IFeeDistributor.sol";
@@ -38,6 +37,7 @@ contract Accounting is
 
     bytes32 public constant MANAGE_BOND_CURVES_ROLE = keccak256("MANAGE_BOND_CURVES_ROLE");
     bytes32 public constant SET_BOND_CURVE_ROLE = keccak256("SET_BOND_CURVE_ROLE");
+    bytes32 public constant SET_BOND_CURVE_MULTIPLIER_ROLE = keccak256("SET_BOND_CURVE_MULTIPLIER_ROLE");
     IBaseModule public immutable MODULE;
     IFeeDistributor public immutable FEE_DISTRIBUTOR;
 
@@ -150,6 +150,16 @@ contract Accounting is
     function setBondCurve(uint256 nodeOperatorId, uint256 curveId) external onlyRole(SET_BOND_CURVE_ROLE) {
         _onlyExistingNodeOperator(nodeOperatorId);
         BondCurve._setBondCurve(nodeOperatorId, curveId);
+        MODULE.updateDepositInfo(nodeOperatorId);
+    }
+
+    /// @inheritdoc IAccounting
+    function setBondCurveMultiplier(
+        uint256 nodeOperatorId,
+        uint256 multiplier
+    ) external onlyRole(SET_BOND_CURVE_MULTIPLIER_ROLE) {
+        _onlyExistingNodeOperator(nodeOperatorId);
+        BondCurve._setBondCurveMultiplier(nodeOperatorId, multiplier);
         MODULE.updateDepositInfo(nodeOperatorId);
     }
 
@@ -278,12 +288,6 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
-    function unlockExpiredLock(uint256 nodeOperatorId) public {
-        BondLock._unlockExpiredLock(nodeOperatorId);
-        MODULE.updateDepositableValidatorsCount(nodeOperatorId);
-    }
-
-    /// @inheritdoc IAccounting
     function compensateLockedBond(uint256 nodeOperatorId) external onlyModule returns (uint256 compensatedAmount) {
         uint256 lockedAmount = BondLock.getLockedBond(nodeOperatorId);
         if (lockedAmount == 0) return 0;
@@ -404,8 +408,22 @@ contract Accounting is
     }
 
     /// @inheritdoc IAccounting
+    function getRequiredBondForNextKeysWstETH(
+        uint256 nodeOperatorId,
+        uint256 additionalKeys,
+        uint256 multiplier
+    ) external view returns (uint256) {
+        return _sharesByEth(getRequiredBondForNextKeys(nodeOperatorId, additionalKeys, multiplier));
+    }
+
+    /// @inheritdoc IAccounting
     function getClaimableBondShares(uint256 nodeOperatorId) external view returns (uint256) {
         return _getClaimableBondShares(nodeOperatorId);
+    }
+
+    /// @inheritdoc IAccounting
+    function isBondClaimRestricted(uint256 nodeOperatorId) external view returns (bool) {
+        return _isBondClaimRestricted(nodeOperatorId);
     }
 
     /// @inheritdoc IAccounting
@@ -414,6 +432,8 @@ contract Accounting is
         uint256 cumulativeFeeShares,
         bytes32[] calldata rewardsProof
     ) external view returns (uint256 claimableShares) {
+        if (_isBondClaimRestricted(nodeOperatorId)) return 0;
+
         uint256 feesToDistribute = FEE_DISTRIBUTOR.getFeesToDistribute(
             nodeOperatorId,
             cumulativeFeeShares,
@@ -429,28 +449,50 @@ contract Accounting is
     /// @inheritdoc IAccounting
     function getNodeOperatorBondInfo(uint256 nodeOperatorId) external view returns (NodeOperatorBondInfo memory info) {
         info.currentBond = BondCore.getBond(nodeOperatorId);
-        info.requiredBond = _getRequiredBond(nodeOperatorId, 0);
+        info.requiredBond = _getRequiredBond(nodeOperatorId, 0, BondCurve.getBondCurveMultiplier(nodeOperatorId));
         info.lockedBond = BondLock.getLockedBond(nodeOperatorId);
         info.bondDebt = BondCore.getBondDebt(nodeOperatorId);
         info.pendingSharesToSplit = FeeSplits.getPendingSharesToSplit(nodeOperatorId);
     }
 
     /// @inheritdoc IAccounting
+    function unlockExpiredLock(uint256 nodeOperatorId) public {
+        BondLock._unlockExpiredLock(nodeOperatorId);
+        MODULE.updateDepositableValidatorsCount(nodeOperatorId);
+    }
+
+    /// @inheritdoc IAccounting
     function getBondSummary(uint256 nodeOperatorId) public view returns (uint256 current, uint256 required) {
         current = BondCore.getBond(nodeOperatorId);
-        required = _getRequiredBond(nodeOperatorId, 0);
+        required = _getRequiredBond(nodeOperatorId, 0, BondCurve.getBondCurveMultiplier(nodeOperatorId));
     }
 
     /// @inheritdoc IAccounting
     function getBondSummaryShares(uint256 nodeOperatorId) public view returns (uint256 current, uint256 required) {
         current = BondCore.getBondShares(nodeOperatorId);
-        required = _getRequiredBondShares(nodeOperatorId, 0);
+        required = _sharesByEth(_getRequiredBond(nodeOperatorId, 0, BondCurve.getBondCurveMultiplier(nodeOperatorId)));
     }
 
     /// @inheritdoc IAccounting
     function getRequiredBondForNextKeys(uint256 nodeOperatorId, uint256 additionalKeys) public view returns (uint256) {
         uint256 current = BondCore.getBond(nodeOperatorId);
-        uint256 totalRequired = _getRequiredBond(nodeOperatorId, additionalKeys);
+        uint256 totalRequired = _getRequiredBond(
+            nodeOperatorId,
+            additionalKeys,
+            BondCurve.getBondCurveMultiplier(nodeOperatorId)
+        );
+
+        return Math.saturatingSub(totalRequired, current);
+    }
+
+    /// @inheritdoc IAccounting
+    function getRequiredBondForNextKeys(
+        uint256 nodeOperatorId,
+        uint256 additionalKeys,
+        uint256 multiplier
+    ) public view returns (uint256) {
+        uint256 current = BondCore.getBond(nodeOperatorId);
+        uint256 totalRequired = _getRequiredBond(nodeOperatorId, additionalKeys, multiplier);
 
         return Math.saturatingSub(totalRequired, current);
     }
@@ -476,27 +518,13 @@ contract Accounting is
         }
         claimableShares = _getClaimableBondShares(nodeOperatorId);
         if (hasSplits && claimableShares != 0) {
-            uint256 pendingToSplit = FeeSplits.getPendingSharesToSplit(nodeOperatorId);
-            if (pendingToSplit == 0) return claimableShares;
-
-            uint256 splittableShares = claimableShares > pendingToSplit ? pendingToSplit : claimableShares;
-            SplitTransfer[] memory transfers = FeeSplits.getFeeSplitTransfers(nodeOperatorId, splittableShares);
-            uint256 transferredShares;
-            for (uint256 i; i < transfers.length; ++i) {
-                uint256 shares = transfers[i].shares;
-                if (shares != 0) {
-                    LIDO.transferShares(transfers[i].recipient, shares);
-                    transferredShares += shares;
+            uint256 transferredShares = FeeSplits._splitPendingShares(nodeOperatorId, claimableShares, address(LIDO));
+            if (transferredShares != 0) {
+                BondCore._unsafeReduceBond(nodeOperatorId, transferredShares);
+                // NOTE: It is safe to use unchecked here since `transferredShares` is always <= `claimableShares`
+                unchecked {
+                    claimableShares -= transferredShares;
                 }
-            }
-            // NOTE: `splittableShares` is the whole split operation base. It includes
-            //       the Node Operator's retained shares (split remainder), so we
-            //       must decrease pending by the base, not by transferred shares sum.
-            FeeSplits._unsafeDecreasePendingSharesToSplit(nodeOperatorId, splittableShares);
-            BondCore._unsafeReduceBond(nodeOperatorId, transferredShares);
-            // NOTE: It is safe to use unchecked here since `transferredShares` is always <= `claimableShares`
-            unchecked {
-                claimableShares -= transferredShares;
             }
         }
     }
@@ -519,23 +547,33 @@ contract Accounting is
     ///      Does not subtract pending split transfers, so in rare cases (e.g. locked bond or bond debt)
     ///      may overestimate the operator-receivable amount.
     ///      Off-chain integrations should account for `getPendingSharesToSplit`.
+    /// @dev Returns zero while bond claims are restricted, blocking fee split payouts as well.
     function _getClaimableBondShares(uint256 nodeOperatorId) internal view returns (uint256) {
+        if (_isBondClaimRestricted(nodeOperatorId)) return 0;
+
         (uint256 currentShares, uint256 requiredShares) = getBondSummaryShares(nodeOperatorId);
         return Math.saturatingSub(currentShares, requiredShares);
     }
 
-    function _getRequiredBond(uint256 nodeOperatorId, uint256 additionalKeys) internal view returns (uint256) {
-        uint256 curveId = BondCurve.getBondCurveId(nodeOperatorId);
-        uint256 nonWithdrawnKeys = MODULE.getNodeOperatorNonWithdrawnKeys(nodeOperatorId);
-        uint256 requiredBondForKeys = BondCurve.getBondAmountByKeysCount(nonWithdrawnKeys + additionalKeys, curveId);
-        uint256 lockedBond = BondLock.getLockedBond(nodeOperatorId);
-        uint256 bondDebt = BondCore.getBondDebt(nodeOperatorId);
-
-        return requiredBondForKeys + lockedBond + bondDebt;
+    /// @dev Returns true until all the slashed validators are reported as withdrawn. The uncovered losses remain
+    ///      as the bond debt, which is a part of the required bond.
+    function _isBondClaimRestricted(uint256 nodeOperatorId) internal view returns (bool) {
+        return MODULE.getNodeOperatorUnresolvedSlashedValidators(nodeOperatorId) != 0;
     }
 
-    function _getRequiredBondShares(uint256 nodeOperatorId, uint256 additionalKeys) internal view returns (uint256) {
-        return _sharesByEth(_getRequiredBond(nodeOperatorId, additionalKeys));
+    function _getRequiredBond(
+        uint256 nodeOperatorId,
+        uint256 additionalKeys,
+        uint256 mul
+    ) internal view returns (uint256) {
+        return
+            BondCurve.getBondAmountByKeysCount(
+                MODULE.getNodeOperatorNonWithdrawnKeys(nodeOperatorId) + additionalKeys,
+                BondCurve.getBondCurveId(nodeOperatorId),
+                mul
+            ) +
+            BondLock.getLockedBond(nodeOperatorId) +
+            BondCore.getBondDebt(nodeOperatorId);
     }
 
     /// @dev Unbonded stands for the amount of keys not fully covered with bond
@@ -562,7 +600,8 @@ contract Accounting is
         // Should be sufficient for ~ 40 years
         uint256 bondedKeys = BondCurve.getKeysCountByBondAmount(
             currentBond + 10 wei,
-            BondCurve.getBondCurveId(nodeOperatorId)
+            BondCurve.getBondCurveId(nodeOperatorId),
+            BondCurve.getBondCurveMultiplier(nodeOperatorId)
         );
         return Math.saturatingSub(nonWithdrawnKeys, bondedKeys);
     }
@@ -576,7 +615,7 @@ contract Accounting is
     }
 
     function _onlyExistingNodeOperator(uint256 nodeOperatorId) internal view {
-        if (nodeOperatorId < IStakingModule(address(MODULE)).getNodeOperatorsCount()) return;
+        if (nodeOperatorId < MODULE.getNodeOperatorsCount()) return;
 
         revert NodeOperatorDoesNotExist();
     }

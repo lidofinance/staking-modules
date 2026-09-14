@@ -12,6 +12,8 @@ import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 import { ModuleFixtures } from "./_Base.t.sol";
 
 abstract contract ModuleObtainDepositData is ModuleFixtures {
+    uint256 internal constant NODE_OPERATOR_FIRST_DEPOSIT_AT_SLOT = 12;
+
     function test_obtainDepositData() public assertInvariants {
         uint256 nodeOperatorId = createNodeOperator(1);
         (bytes memory keys, bytes memory signatures) = module.getSigningKeysWithSignatures(nodeOperatorId, 0, 1);
@@ -23,6 +25,42 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         assertEq(obtainedSignatures, signatures);
         assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
         assertEq(module.getNodeOperatorBalance(nodeOperatorId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
+    }
+
+    function test_obtainDepositData_setsFirstDepositAt() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        uint256 firstDepositAt = 1_754_000_000;
+        vm.warp(firstDepositAt);
+
+        module.obtainDepositData(1, "");
+
+        assertEq(module.getNodeOperatorFirstDepositAt(noId), firstDepositAt);
+    }
+
+    function test_obtainDepositData_doesNotUpdateFirstDepositAt() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        uint256 firstDepositAt = 1_754_000_000;
+        vm.warp(firstDepositAt);
+        module.obtainDepositData(1, "");
+
+        vm.warp(firstDepositAt + 1 days);
+        module.obtainDepositData(1, "");
+
+        assertEq(module.getNodeOperatorFirstDepositAt(noId), firstDepositAt);
+    }
+
+    function test_obtainDepositData_doesNotBackfillFirstDepositAt() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        module.obtainDepositData(1, "");
+
+        // Simulate an operator whose first deposit predates timestamp tracking.
+        bytes32 firstDepositAtPosition = keccak256(abi.encode(noId, NODE_OPERATOR_FIRST_DEPOSIT_AT_SLOT));
+        vm.store(address(module), firstDepositAtPosition, bytes32(0));
+
+        vm.warp(block.timestamp + 1 days);
+        module.obtainDepositData(1, "");
+
+        assertEq(module.getNodeOperatorFirstDepositAt(noId), 0);
     }
 
     function test_obtainDepositData_counters() public assertInvariants {
@@ -59,6 +97,7 @@ abstract contract ModuleObtainDepositData is ModuleFixtures {
         assertEq(module.getNonce(), nonceBefore);
         assertEq(module.getTotalModuleStake(), 0);
         assertEq(module.getNodeOperatorBalance(noId), 0);
+        assertEq(module.getNodeOperatorFirstDepositAt(noId), 0);
     }
 
     function test_obtainDepositData_unvettedKeys() public assertInvariants {
