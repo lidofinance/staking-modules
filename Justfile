@@ -183,7 +183,7 @@ import "tools.just"
 default: clean deps build test-all
 
 build *args:
-    forge build --skip test --skip script {{args}}
+    forge build src {{args}}
 
 clean:
     forge clean
