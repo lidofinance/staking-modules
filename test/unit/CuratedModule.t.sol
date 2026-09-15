@@ -1863,7 +1863,7 @@ contract CuratedReportWithdrawnValidators is CuratedCommon {
         assertEq(module.getNodeOperatorBalance(noId), 0);
     }
 
-    function test_reportRegularWithdrawnValidators_appliesFlatExitObligations() public assertInvariants {
+    function test_reportRegularWithdrawnValidators_appliesBaseStrikesPenalty() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
@@ -1890,8 +1890,82 @@ contract CuratedReportWithdrawnValidators is CuratedCommon {
 
         module.reportRegularWithdrawnValidators(infos);
 
-        // Only the 2 ETH strikes penalty is applied; both legacy fee fields are ignored and nothing is scaled.
+        // Allocated extra balance is zero: apply the base strikes penalty, ignoring confirmed balance and legacy fees.
         assertEq(accounting.getBond(noId), bondBefore - 2 ether);
+    }
+
+    function test_reportRegularWithdrawnValidators_scalesStrikesByAllocatedBalance() public assertInvariants {
+        uint256 noId = createNodeOperator(3);
+        module.obtainDepositData(3, "");
+        bytes memory key = module.getSigningKeys(noId, 0, 1);
+        // A top-up is already part of the penalty basis before any consensus-layer balance proof arrives.
+        cm.allocateDeposits(32.9 ether, BytesArr(key), UintArr(0), UintArr(noId), UintArr(32.9 ether));
+        module.reportValidatorBalance(noId, 1, 2048 ether, 10);
+        module.reportValidatorBalance(noId, 2, 3000 ether, 10);
+
+        vm.deal(address(this), 100 ether);
+        accounting.depositETH{ value: 100 ether }(noId);
+        uint256 bondBefore = accounting.getBond(noId);
+        exitPenalties.mock_setDelayedExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(0, false),
+                strikesPenalty: MarkedUint248(0.1 ether, true),
+                legacyElWithdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](3);
+        for (uint256 i; i < infos.length; ++i) {
+            infos[i] = WithdrawnValidatorInfo({
+                nodeOperatorId: noId,
+                keyIndex: i,
+                exitBalance: 0,
+                slashingPenalty: 0,
+                isSlashed: false
+            });
+        }
+
+        module.reportRegularWithdrawnValidators(infos);
+
+        // Whole-ETH scaling: 64 ETH gives x2; both capped balances give x64. No withdrawal deficit is charged.
+        assertEq(accounting.getBond(noId), bondBefore - 13 ether);
+    }
+
+    function test_reportRegularWithdrawnValidators_checkpointReducesStrikesPenalty() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        module.obtainDepositData(2, "");
+        module.reportValidatorBalance(noId, 0, 2048 ether, 10);
+        module.reportValidatorBalance(noId, 1, 2048 ether, 10);
+        cm.syncValidatorBalance(noId, 1, 32 ether, 11);
+
+        vm.deal(address(this), 100 ether);
+        accounting.depositETH{ value: 100 ether }(noId);
+        uint256 bondBefore = accounting.getBond(noId);
+        exitPenalties.mock_setDelayedExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(0, false),
+                strikesPenalty: MarkedUint248(0.1 ether, true),
+                legacyElWithdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
+            nodeOperatorId: noId,
+            keyIndex: 0,
+            exitBalance: 1 ether,
+            slashingPenalty: 0,
+            isSlashed: false
+        });
+        module.reportRegularWithdrawnValidators(infos);
+        assertEq(accounting.getBond(noId), bondBefore - 6.4 ether);
+
+        // The second key has a reported partial withdrawal: its penalty uses the reduced allocation.
+        // Even a larger terminal balance does not override the allocation estimate in Curated.
+        infos[0].keyIndex = 1;
+        infos[0].exitBalance = 2048 ether;
+        module.reportRegularWithdrawnValidators(infos);
+        assertEq(accounting.getBond(noId), bondBefore - 6.5 ether);
     }
 
     function test_reportRegularWithdrawnValidators_removesFullTrackedContribution() public assertInvariants {
@@ -2083,11 +2157,12 @@ contract CuratedReportWithdrawnValidators is CuratedCommon {
         assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 0);
     }
 
-    function test_reportSlashedWithdrawnValidators_appliesFlatExitObligations() public assertInvariants {
+    function test_reportSlashedWithdrawnValidators_scalesStrikesButNotSlashingPenalty() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
+        module.reportValidatorBalance(noId, 0, 64 ether, 10);
         module.reportValidatorSlashing(noId, 0);
-        curatedHarness.exposedSetKeyConfirmedBalance(noId, 0, 32 ether);
+        curatedHarness.exposedSetKeyConfirmedBalance(noId, 0, 2016 ether);
 
         vm.deal(address(this), 100 ether);
         accounting.depositETH{ value: 100 ether }(noId);
@@ -2111,13 +2186,14 @@ contract CuratedReportWithdrawnValidators is CuratedCommon {
 
         module.reportSlashedWithdrawnValidators(infos);
 
-        // 4 ETH explicit slashing + 2 ETH strikes penalty; both legacy fee fields are ignored.
-        assertEq(accounting.getBond(noId), bondBefore - 6 ether);
+        // 4 ETH explicit slashing + 2 ETH strikes scaled by 64/32; confirmed balance and legacy fees are ignored.
+        assertEq(accounting.getBond(noId), bondBefore - 8 ether);
     }
 
     function test_reportSlashedWithdrawnValidators_acceptsZeroSlashingPenalty() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
+        module.reportValidatorBalance(noId, 0, 2048 ether, 10);
         module.reportValidatorSlashing(noId, 0);
         uint256 bondBefore = accounting.getBond(noId);
 

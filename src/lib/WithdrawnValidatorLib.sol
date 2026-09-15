@@ -15,6 +15,8 @@ import { ValidatorBalanceLimits } from "./ValidatorBalanceLimits.sol";
 
 /// @dev External deployment-linked library that processes withdrawn validators.
 library WithdrawnValidatorLib {
+    /// @dev Balance-derived inputs for penalty calculation. Scaling applies to penalties expressed at the base
+    ///      validator balance; explicitly supplied loss amounts are already calculated and are added without scaling.
     struct PenaltyBasis {
         uint256 strikesMultiplier;
         uint256 balanceLoss;
@@ -27,7 +29,8 @@ library WithdrawnValidatorLib {
     /// @dev Processes terminal validator reports.
     /// @param validatorInfos Validator withdrawal reports to process.
     /// @param slashed Whether the batch was submitted through the slashed-withdrawal path.
-    /// @param balanceBased Whether to derive withdrawal obligations from validator balances.
+    /// @param useConfirmedBalance Whether to use confirmed balance and charge balance deficits (CSM).
+    ///        Otherwise, use allocated balance for penalty scaling without charging deficits (Curated).
     /// @param $ Base module storage.
     /// @return touchedOperatorIds Compact list of affected Node Operator IDs.
     /// @return trackedBalanceDecreases Allocated balances to remove for the affected keys.
@@ -35,7 +38,7 @@ library WithdrawnValidatorLib {
     function processBatch(
         WithdrawnValidatorInfo[] calldata validatorInfos,
         bool slashed,
-        bool balanceBased,
+        bool useConfirmedBalance,
         ModuleLinearStorage.BaseModuleStorage storage $
     )
         external
@@ -56,7 +59,10 @@ library WithdrawnValidatorLib {
             if (!$.isValidatorSlashed[pointer] && slashed) revert IBaseModule.SlashingPenaltyIsNotApplicable();
             if (info.slashingPenalty != 0 && !slashed) revert IBaseModule.InvalidWithdrawnValidatorInfo();
 
-            PenaltyBasis memory penaltyBasis = _getPenaltyBasis(info, $.keyConfirmedBalance[pointer], balanceBased);
+            uint256 extraBalance = useConfirmedBalance
+                ? $.keyConfirmedBalance[pointer]
+                : $.keyAllocatedBalance[pointer];
+            PenaltyBasis memory penaltyBasis = _getPenaltyBasis(info, extraBalance, useConfirmedBalance);
             _processValidator($.nodeOperators[info.nodeOperatorId], info, penaltyBasis);
 
             $.isValidatorWithdrawn[pointer] = true;
@@ -77,10 +83,6 @@ library WithdrawnValidatorLib {
 
     function _scalePenaltyByMultiplier(uint256 penalty, uint256 multiplier) internal pure returns (uint256) {
         return (penalty * multiplier) / PENALTY_SCALE;
-    }
-
-    function _clamp(uint256 v, uint256 min, uint256 max) internal pure returns (uint256) {
-        return Math.min(Math.max(v, min), max);
     }
 
     function _processValidator(
@@ -107,11 +109,11 @@ library WithdrawnValidatorLib {
         }
 
         if (info.isSlashed && info.slashingPenalty > 0) {
-            // Slashing penalty doesn't scale because all the losses are already accounted.
+            // The explicitly supplied slashing penalty already accounts for the losses and is not scaled again.
             penaltySum += info.slashingPenalty;
         } else {
             // If an exact slashing penalty is absent, the balance loss is a best-effort permissionless fallback.
-            // Flat processing leaves the balance loss at zero, making zero an explicit committee decision.
+            // Curated processing leaves the balance loss at zero, making zero an explicit committee decision.
             penaltySum += penaltyBasis.balanceLoss;
         }
 
@@ -142,23 +144,23 @@ library WithdrawnValidatorLib {
 
     function _getPenaltyBasis(
         WithdrawnValidatorInfo calldata info,
-        uint256 keyConfirmedBalance,
-        bool balanceBased
+        uint256 extraBalance,
+        bool useConfirmedBalance
     ) private pure returns (PenaltyBasis memory penaltyBasis) {
-        penaltyBasis.strikesMultiplier = PENALTY_SCALE;
-        if (!balanceBased) return penaltyBasis;
+        uint256 balance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + extraBalance;
+        if (useConfirmedBalance) {
+            // For slashed validator this value should reflect pre-slashing, hence non-zero balance.
+            // For non-slashed validator it will reflect the withdrawal amount, hence it cannot be zero either.
+            if (info.exitBalance == 0) revert IBaseModule.ZeroExitBalance();
 
-        // For slashed validator this value should reflect pre-slashing, hence non-zero balance.
-        // For non-slashed validator it will reflect the withdrawal amount, hence it cannot be zero either.
-        if (info.exitBalance == 0) revert IBaseModule.ZeroExitBalance();
-
-        uint256 minExpectedBalance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + keyConfirmedBalance;
-        penaltyBasis.strikesMultiplier = _getPenaltyMultiplier(
-            _clamp(info.exitBalance, minExpectedBalance, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE)
-        );
-
-        if (info.exitBalance < minExpectedBalance) {
-            penaltyBasis.balanceLoss = minExpectedBalance - info.exitBalance;
+            if (info.exitBalance < balance) penaltyBasis.balanceLoss = balance - info.exitBalance;
+            balance = Math.max(info.exitBalance, balance);
         }
+
+        // Curated uses the allocation estimate before finalization, irrespective of the withdrawal amount.
+        // Proof ordering can affect this estimate and the final penalty, but scaling is capped at 2048 ETH.
+        penaltyBasis.strikesMultiplier = _getPenaltyMultiplier(
+            Math.min(balance, ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE)
+        );
     }
 }

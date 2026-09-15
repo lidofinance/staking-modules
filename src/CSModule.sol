@@ -303,7 +303,7 @@ contract CSModule is ICSModule, BaseModule {
             WithdrawnValidatorLib.processBatch({
                 validatorInfos: validatorInfos,
                 slashed: slashed,
-                balanceBased: true,
+                useConfirmedBalance: true,
                 $: _baseStorage()
             });
     }

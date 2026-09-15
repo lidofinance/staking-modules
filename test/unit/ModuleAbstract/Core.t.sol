@@ -210,7 +210,7 @@ contract MyModule is BaseModule {
             WithdrawnValidatorLib.processBatch({
                 validatorInfos: validatorInfos,
                 slashed: slashed,
-                balanceBased: true,
+                useConfirmedBalance: true,
                 $: _baseStorage()
             });
     }

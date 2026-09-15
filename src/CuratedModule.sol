@@ -234,7 +234,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
         uint256 keyIndex,
         uint256 actualBalanceWei,
         uint64 balanceSlot
-    ) public override(IBaseModule) {
+    ) external {
         _checkVerifierRole();
         CheckpointBalanceTracker.updateValidatorBalance({
             $: _baseStorage(),
@@ -263,7 +263,7 @@ contract CuratedModule is ICuratedModule, BaseModule {
             WithdrawnValidatorLib.processBatch({
                 validatorInfos: validatorInfos,
                 slashed: slashed,
-                balanceBased: false,
+                useConfirmedBalance: false,
                 $: _baseStorage()
             });
     }
