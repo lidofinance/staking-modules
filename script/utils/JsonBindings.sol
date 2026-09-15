@@ -34,15 +34,15 @@ library JsonBindings {
         return vm.serializeJsonType(objectKey, valueKey, schema_DeployParams, abi.encode(value));
     }
 
-    function deserializeDeployParams(string memory json) public pure returns (DeployParams memory) {
+    function deserializeDeployParams(string memory json) internal pure returns (DeployParams memory) {
         return abi.decode(vm.parseJsonType(json, schema_DeployParams), (DeployParams));
     }
 
-    function deserializeDeployParams(string memory json, string memory path) public pure returns (DeployParams memory) {
+    function deserializeDeployParams(string memory json, string memory path) internal pure returns (DeployParams memory) {
         return abi.decode(vm.parseJsonType(json, path, schema_DeployParams), (DeployParams));
     }
 
-    function deserializeDeployParamsArray(string memory json, string memory path) public pure returns (DeployParams[] memory) {
+    function deserializeDeployParamsArray(string memory json, string memory path) internal pure returns (DeployParams[] memory) {
         return abi.decode(vm.parseJsonTypeArray(json, path, schema_DeployParams), (DeployParams[]));
     }
 
@@ -54,15 +54,15 @@ library JsonBindings {
         return vm.serializeJsonType(objectKey, valueKey, schema_DeployCSM0x02Params, abi.encode(value));
     }
 
-    function deserializeDeployCSM0x02Params(string memory json) public pure returns (DeployCSM0x02Params memory) {
+    function deserializeDeployCSM0x02Params(string memory json) internal pure returns (DeployCSM0x02Params memory) {
         return abi.decode(vm.parseJsonType(json, schema_DeployCSM0x02Params), (DeployCSM0x02Params));
     }
 
-    function deserializeDeployCSM0x02Params(string memory json, string memory path) public pure returns (DeployCSM0x02Params memory) {
+    function deserializeDeployCSM0x02Params(string memory json, string memory path) internal pure returns (DeployCSM0x02Params memory) {
         return abi.decode(vm.parseJsonType(json, path, schema_DeployCSM0x02Params), (DeployCSM0x02Params));
     }
 
-    function deserializeDeployCSM0x02ParamsArray(string memory json, string memory path) public pure returns (DeployCSM0x02Params[] memory) {
+    function deserializeDeployCSM0x02ParamsArray(string memory json, string memory path) internal pure returns (DeployCSM0x02Params[] memory) {
         return abi.decode(vm.parseJsonTypeArray(json, path, schema_DeployCSM0x02Params), (DeployCSM0x02Params[]));
     }
 
@@ -74,15 +74,15 @@ library JsonBindings {
         return vm.serializeJsonType(objectKey, valueKey, schema_GateCurveParams, abi.encode(value));
     }
 
-    function deserializeGateCurveParams(string memory json) public pure returns (GateCurveParams memory) {
+    function deserializeGateCurveParams(string memory json) internal pure returns (GateCurveParams memory) {
         return abi.decode(vm.parseJsonType(json, schema_GateCurveParams), (GateCurveParams));
     }
 
-    function deserializeGateCurveParams(string memory json, string memory path) public pure returns (GateCurveParams memory) {
+    function deserializeGateCurveParams(string memory json, string memory path) internal pure returns (GateCurveParams memory) {
         return abi.decode(vm.parseJsonType(json, path, schema_GateCurveParams), (GateCurveParams));
     }
 
-    function deserializeGateCurveParamsArray(string memory json, string memory path) public pure returns (GateCurveParams[] memory) {
+    function deserializeGateCurveParamsArray(string memory json, string memory path) internal pure returns (GateCurveParams[] memory) {
         return abi.decode(vm.parseJsonTypeArray(json, path, schema_GateCurveParams), (GateCurveParams[]));
     }
 
@@ -94,15 +94,15 @@ library JsonBindings {
         return vm.serializeJsonType(objectKey, valueKey, schema_CuratedGateConfig, abi.encode(value));
     }
 
-    function deserializeCuratedGateConfig(string memory json) public pure returns (CuratedGateConfig memory) {
+    function deserializeCuratedGateConfig(string memory json) internal pure returns (CuratedGateConfig memory) {
         return abi.decode(vm.parseJsonType(json, schema_CuratedGateConfig), (CuratedGateConfig));
     }
 
-    function deserializeCuratedGateConfig(string memory json, string memory path) public pure returns (CuratedGateConfig memory) {
+    function deserializeCuratedGateConfig(string memory json, string memory path) internal pure returns (CuratedGateConfig memory) {
         return abi.decode(vm.parseJsonType(json, path, schema_CuratedGateConfig), (CuratedGateConfig));
     }
 
-    function deserializeCuratedGateConfigArray(string memory json, string memory path) public pure returns (CuratedGateConfig[] memory) {
+    function deserializeCuratedGateConfigArray(string memory json, string memory path) internal pure returns (CuratedGateConfig[] memory) {
         return abi.decode(vm.parseJsonTypeArray(json, path, schema_CuratedGateConfig), (CuratedGateConfig[]));
     }
 
@@ -114,15 +114,15 @@ library JsonBindings {
         return vm.serializeJsonType(objectKey, valueKey, schema_CuratedDeployParams, abi.encode(value));
     }
 
-    function deserializeCuratedDeployParams(string memory json) public pure returns (CuratedDeployParams memory) {
+    function deserializeCuratedDeployParams(string memory json) internal pure returns (CuratedDeployParams memory) {
         return abi.decode(vm.parseJsonType(json, schema_CuratedDeployParams), (CuratedDeployParams));
     }
 
-    function deserializeCuratedDeployParams(string memory json, string memory path) public pure returns (CuratedDeployParams memory) {
+    function deserializeCuratedDeployParams(string memory json, string memory path) internal pure returns (CuratedDeployParams memory) {
         return abi.decode(vm.parseJsonType(json, path, schema_CuratedDeployParams), (CuratedDeployParams));
     }
 
-    function deserializeCuratedDeployParamsArray(string memory json, string memory path) public pure returns (CuratedDeployParams[] memory) {
+    function deserializeCuratedDeployParamsArray(string memory json, string memory path) internal pure returns (CuratedDeployParams[] memory) {
         return abi.decode(vm.parseJsonTypeArray(json, path, schema_CuratedDeployParams), (CuratedDeployParams[]));
     }
 
@@ -134,15 +134,15 @@ library JsonBindings {
         return vm.serializeJsonType(objectKey, valueKey, schema_TwoPhaseFrameConfigUpdateParams, abi.encode(value));
     }
 
-    function deserializeTwoPhaseFrameConfigUpdateParams(string memory json) public pure returns (TwoPhaseFrameConfigUpdateParams memory) {
+    function deserializeTwoPhaseFrameConfigUpdateParams(string memory json) internal pure returns (TwoPhaseFrameConfigUpdateParams memory) {
         return abi.decode(vm.parseJsonType(json, schema_TwoPhaseFrameConfigUpdateParams), (TwoPhaseFrameConfigUpdateParams));
     }
 
-    function deserializeTwoPhaseFrameConfigUpdateParams(string memory json, string memory path) public pure returns (TwoPhaseFrameConfigUpdateParams memory) {
+    function deserializeTwoPhaseFrameConfigUpdateParams(string memory json, string memory path) internal pure returns (TwoPhaseFrameConfigUpdateParams memory) {
         return abi.decode(vm.parseJsonType(json, path, schema_TwoPhaseFrameConfigUpdateParams), (TwoPhaseFrameConfigUpdateParams));
     }
 
-    function deserializeTwoPhaseFrameConfigUpdateParamsArray(string memory json, string memory path) public pure returns (TwoPhaseFrameConfigUpdateParams[] memory) {
+    function deserializeTwoPhaseFrameConfigUpdateParamsArray(string memory json, string memory path) internal pure returns (TwoPhaseFrameConfigUpdateParams[] memory) {
         return abi.decode(vm.parseJsonTypeArray(json, path, schema_TwoPhaseFrameConfigUpdateParams), (TwoPhaseFrameConfigUpdateParams[]));
     }
 }

@@ -210,18 +210,20 @@ lint:
     just bind-json-check
 
 # Generate the JSON (de)serialization bindings for the deployment params structs
-bind-json:
-    forge bind-json
+bind-json out=`forge config --json | jq -r .bind_json.out`:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    forge bind-json "{{out}}" >/dev/null
+    sed -i 's/) public pure returns (/) internal pure returns (/' "{{out}}"
 
 # Check that the generated bindings are in sync with the structs
 bind-json-check:
     #!/usr/bin/env bash
     set -euo pipefail
-    bindings=script/utils/JsonBindings.sol
-    # Generated aside to keep the committed bindings intact when the check fails.
+    bindings=$(forge config --json | jq -r .bind_json.out)
     expected=$(mktemp --suffix=.sol)
     trap 'rm -f "$expected"' EXIT
-    forge bind-json "$expected" >/dev/null
+    just bind-json "$expected"
     if ! diff -u "$bindings" "$expected"; then
         echo "$bindings is out of date, run \`just bind-json\`" >&2
         exit 1
