@@ -104,13 +104,6 @@ contract ModuleDeploymentTest is DeploymentBaseTest {
         assertEq(module.getRoleMemberCount(module.VERIFIER_ROLE()), 1);
         assertTrue(module.hasRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), address(verifier)));
         assertEq(module.getRoleMemberCount(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE()), 1);
-        assertTrue(
-            module.hasRole(
-                module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(),
-                address(deployParams.easyTrackEVMScriptExecutor)
-            )
-        );
-        assertEq(module.getRoleMemberCount(module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE()), 1);
 
         assertEq(module.getRoleMemberCount(module.RECOVERER_ROLE()), 0);
     }
@@ -526,7 +519,8 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
                 defaultSyncWeight: deployParams.defaultSyncWeight,
                 defaultAllowedExitDelay: deployParams.defaultAllowedExitDelay,
                 defaultExitDelayFee: deployParams.defaultExitDelayFee,
-                defaultMaxElWithdrawalRequestFee: deployParams.defaultMaxElWithdrawalRequestFee
+                defaultMaxElWithdrawalRequestFee: deployParams.defaultMaxElWithdrawalRequestFee,
+                defaultSlashingPenalty: deployParams.defaultSlashingPenalty
             });
     }
 }

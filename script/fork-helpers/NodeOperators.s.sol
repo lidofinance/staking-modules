@@ -145,19 +145,14 @@ contract NodeOperators is Script, DeploymentFixtures, ForkHelpersCommon, Utiliti
     }
 
     function slash(uint256 noId, uint256 keyIndex) external broadcastVerifier {
-        module.reportValidatorSlashing(noId, keyIndex);
+        module.reportValidatorSlashing(noId, keyIndex, block.timestamp);
     }
 
-    function withdraw(
-        uint256 noId,
-        uint256 keyIndex,
-        uint256 exitBalance,
-        uint256 slashingPenalty
-    ) external broadcastVerifier {
+    function withdraw(uint256 noId, uint256 keyIndex, uint256 exitBalance) external broadcastVerifier {
         uint256 withdrawnBefore = module.getNodeOperator(noId).totalWithdrawnKeys;
 
         WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo(noId, keyIndex, exitBalance, slashingPenalty, slashingPenalty > 0);
+        validatorInfos[0] = WithdrawnValidatorInfo(noId, keyIndex, exitBalance, 0);
         module.reportRegularWithdrawnValidators(validatorInfos);
 
         assertTrue(module.isValidatorWithdrawn(noId, keyIndex));

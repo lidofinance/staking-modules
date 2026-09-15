@@ -87,6 +87,7 @@ struct DeployParams {
     uint256 defaultAllowedExitDelay;
     uint256 defaultExitDelayFee;
     uint256 defaultMaxElWithdrawalRequestFee;
+    uint256 defaultSlashingPenalty;
     address penaltiesManager;
     // ICS VettedGate
     // TODO: Legacy-only field. Kept only for SimulateVote.upgrade() END_REFERRAL_SEASON_ROLE revoke.
@@ -220,7 +221,8 @@ abstract contract DeployBase is Script {
                     defaultSyncWeight: config.defaultSyncWeight,
                     defaultAllowedExitDelay: config.defaultAllowedExitDelay,
                     defaultExitDelayFee: config.defaultExitDelayFee,
-                    defaultMaxElWithdrawalRequestFee: config.defaultMaxElWithdrawalRequestFee
+                    defaultMaxElWithdrawalRequestFee: config.defaultMaxElWithdrawalRequestFee,
+                    defaultSlashingPenalty: config.defaultSlashingPenalty
                 });
             parametersRegistry = ParametersRegistry(
                 _deployProxy(
@@ -256,6 +258,8 @@ abstract contract DeployBase is Script {
                 withdrawalAddress: locator.withdrawalVault(),
                 module: address(csm),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
+                secondsPerSlot: uint64(config.secondsPerSlot),
+                genesisTime: uint64(config.clGenesisTime),
                 gindices: IVerifier.GIndices({
                     gIFirstWithdrawalPrev: config.gIFirstWithdrawal,
                     gIFirstWithdrawalCurr: config.gIFirstWithdrawal,
@@ -541,7 +545,6 @@ abstract contract DeployBase is Script {
 
             csm.grantRole(csm.VERIFIER_ROLE(), address(verifier));
             csm.grantRole(csm.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), address(verifier));
-            csm.grantRole(csm.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(), config.easyTrackEVMScriptExecutor);
 
             if (config.secondAdminAddress != address(0)) {
                 if (config.secondAdminAddress == deployer) revert InvalidSecondAdmin();
