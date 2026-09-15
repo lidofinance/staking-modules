@@ -14,7 +14,6 @@ import { ModuleLinearStorage } from "../abstract/ModuleLinearStorage.sol";
 import { ValidatorCountsReport } from "./ValidatorCountsReport.sol";
 import { ValidatorBalanceLimits } from "./ValidatorBalanceLimits.sol";
 import { KeyPointerLib } from "./KeyPointerLib.sol";
-import { StakeTracker } from "./StakeTracker.sol";
 import { TransientUintUintMap, TransientUintUintMapLib } from "./TransientUintUintMapLib.sol";
 import { SigningKeys } from "./SigningKeys.sol";
 
@@ -140,30 +139,6 @@ library NodeOperatorOps {
 
             module.updateDepositableValidatorsCount(nodeOperatorId);
         }
-    }
-
-    function reportValidatorBalance(
-        ModuleLinearStorage.BaseModuleStorage storage $,
-        uint256 nodeOperatorId,
-        uint256 keyIndex,
-        uint256 currentBalanceWei
-    ) external {
-        _onlyExistingNodeOperator(nodeOperatorId, $.nodeOperatorsCount);
-        if (keyIndex >= $.nodeOperators[nodeOperatorId].totalDepositedKeys) {
-            revert IBaseModule.SigningKeysInvalidOffset();
-        }
-
-        if (currentBalanceWei < ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE) revert IBaseModule.UnreportableBalance();
-        if (currentBalanceWei > ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE) {
-            currentBalanceWei = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE;
-        }
-
-        uint256 newConfirmed;
-        unchecked {
-            newConfirmed = currentBalanceWei - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
-        }
-
-        StakeTracker.reportValidatorBalance($, nodeOperatorId, keyIndex, newConfirmed);
     }
 
     function removeKeys(
@@ -343,7 +318,7 @@ library NodeOperatorOps {
     ) external returns (uint256[] memory cappedTopUpLimits) {
         uint256 len = topUpLimits.length;
         cappedTopUpLimits = new uint256[](len);
-        uint256 cap = _keyBalanceCap();
+        uint256 cap = ValidatorBalanceLimits.MAX_EXTRA_BALANCE;
         TransientUintUintMap reservedByKey = TransientUintUintMapLib.create();
         for (uint256 i; i < len; ++i) {
             uint256 pointer = KeyPointerLib.keyPointer(operatorIds[i], keyIndices[i]);
@@ -434,9 +409,5 @@ library NodeOperatorOps {
         if (nodeOperatorId < nodeOperatorsCount) return;
 
         revert IBaseModule.NodeOperatorDoesNotExist();
-    }
-
-    function _keyBalanceCap() private pure returns (uint256) {
-        return ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE - ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
     }
 }
