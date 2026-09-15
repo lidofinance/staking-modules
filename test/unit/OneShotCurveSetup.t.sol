@@ -587,6 +587,7 @@ contract OneShotCurveSetupTest is Test, Utilities, Fixtures {
         data.defaultAllowedExitDelay = 1 days;
         data.defaultExitDelayFee = 0.05 ether;
         data.defaultMaxElWithdrawalRequestFee = 0.1 ether;
+        data.defaultSlashingPenalty = 1 ether;
     }
 
     function _paramsWithAllOverrides() internal pure returns (IOneShotCurveSetup.ConstructorParams memory params) {

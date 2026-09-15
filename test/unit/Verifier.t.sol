@@ -44,6 +44,9 @@ using { dec, inc, add } for Slot;
 
 GIndex constant NULL_GINDEX = GIndex.wrap(0);
 
+uint64 constant SECONDS_PER_SLOT = 12;
+uint64 constant GENESIS_TIME = 1606824023;
+
 contract VerifierTestBase is Test, Utilities {
     using stdJson for string;
 
@@ -79,6 +82,8 @@ contract VerifierTestConstructor is VerifierTestBase {
             withdrawalAddress: withdrawalAddress,
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: pack(0xe1c0, 4),
                 gIFirstWithdrawalCurr: pack(0xe1c1, 4),
@@ -99,6 +104,8 @@ contract VerifierTestConstructor is VerifierTestBase {
         assertEq(address(verifier.WITHDRAWAL_ADDRESS()), withdrawalAddress);
         assertEq(address(verifier.MODULE()), address(module));
         assertEq(verifier.SLOTS_PER_EPOCH(), 32);
+        assertEq(verifier.SECONDS_PER_SLOT(), SECONDS_PER_SLOT);
+        assertEq(verifier.GENESIS_TIME(), GENESIS_TIME);
         assertEq(verifier.SLOTS_PER_HISTORICAL_ROOT(), 8192);
         assertEq(GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_PREV()), GIndex.unwrap(pack(0xe1c0, 4)));
         assertEq(GIndex.unwrap(verifier.GI_FIRST_WITHDRAWAL_CURR()), GIndex.unwrap(pack(0xe1c1, 4)));
@@ -121,6 +128,8 @@ contract VerifierTestConstructor is VerifierTestBase {
             withdrawalAddress: nextAddress(),
             module: address(module),
             slotsPerEpoch: 0,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: pack(0xe1c0, 4),
                 gIFirstWithdrawalCurr: pack(0xe1c0, 4),
@@ -139,12 +148,50 @@ contract VerifierTestConstructor is VerifierTestBase {
         });
     }
 
+    function test_constructor_RevertWhen_InvalidChainConfig_SecondsPerSlot() public {
+        vm.expectRevert(IVerifier.InvalidChainConfig.selector);
+        verifier = _deployVerifierWithChainConfig({ secondsPerSlot: 0, genesisTime: GENESIS_TIME });
+    }
+
+    function test_constructor_RevertWhen_InvalidChainConfig_GenesisTime() public {
+        vm.expectRevert(IVerifier.InvalidChainConfig.selector);
+        verifier = _deployVerifierWithChainConfig({ secondsPerSlot: SECONDS_PER_SLOT, genesisTime: 0 });
+    }
+
+    function _deployVerifierWithChainConfig(uint64 secondsPerSlot, uint64 genesisTime) internal returns (Verifier) {
+        return
+            new Verifier({
+                withdrawalAddress: nextAddress(),
+                module: address(module),
+                slotsPerEpoch: 32,
+                secondsPerSlot: secondsPerSlot,
+                genesisTime: genesisTime,
+                gindices: IVerifier.GIndices({
+                    gIFirstWithdrawalPrev: pack(0xe1c0, 4),
+                    gIFirstWithdrawalCurr: pack(0xe1c0, 4),
+                    gIFirstValidatorPrev: pack(0x560000000000, 40),
+                    gIFirstValidatorCurr: pack(0x560000000000, 40),
+                    gIFirstHistoricalSummaryPrev: pack(0x3b, 0),
+                    gIFirstHistoricalSummaryCurr: pack(0x3b, 0),
+                    gIFirstBalanceNodePrev: pack(0x260000000000, 40),
+                    gIFirstBalanceNodeCurr: pack(0x260000000000, 40)
+                }),
+                firstSupportedSlot: firstSupportedSlot,
+                pivotSlot: firstSupportedSlot,
+                capellaSlot: firstSupportedSlot,
+                minWithdrawalRatio: 9000,
+                admin: admin
+            });
+    }
+
     function test_constructor_RevertWhen_InvalidPivotSlot() public {
         vm.expectRevert(IVerifier.InvalidPivotSlot.selector);
         verifier = new Verifier({
             withdrawalAddress: nextAddress(),
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: pack(0xe1c0, 4),
                 gIFirstWithdrawalCurr: pack(0xe1c0, 4),
@@ -169,6 +216,8 @@ contract VerifierTestConstructor is VerifierTestBase {
             withdrawalAddress: nextAddress(),
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: pack(0xe1c0, 4),
                 gIFirstWithdrawalCurr: pack(0xe1c0, 4),
@@ -193,6 +242,8 @@ contract VerifierTestConstructor is VerifierTestBase {
             withdrawalAddress: nextAddress(),
             module: address(0),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: pack(0xe1c0, 4),
                 gIFirstWithdrawalCurr: pack(0xe1c0, 4),
@@ -217,6 +268,8 @@ contract VerifierTestConstructor is VerifierTestBase {
             withdrawalAddress: address(0),
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: pack(0xe1c0, 4),
                 gIFirstWithdrawalCurr: pack(0xe1c0, 4),
@@ -241,6 +294,8 @@ contract VerifierTestConstructor is VerifierTestBase {
             withdrawalAddress: nextAddress(),
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: pack(0xe1c0, 4),
                 gIFirstWithdrawalCurr: pack(0xe1c0, 4),
@@ -265,6 +320,8 @@ contract VerifierTestConstructor is VerifierTestBase {
             withdrawalAddress: nextAddress(),
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: pack(0xe1c0, 4),
                 gIFirstWithdrawalCurr: pack(0xe1c0, 4),
@@ -289,6 +346,8 @@ contract VerifierTestConstructor is VerifierTestBase {
             withdrawalAddress: nextAddress(),
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: pack(0xe1c0, 4),
                 gIFirstWithdrawalCurr: pack(0xe1c0, 4),
@@ -329,6 +388,8 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             withdrawalAddress: fixture.data.withdrawal.object.withdrawalAddress,
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: GIndices.FIRST_WITHDRAWAL_ELECTRA,
                 gIFirstWithdrawalCurr: GIndices.FIRST_WITHDRAWAL_ELECTRA,
@@ -363,8 +424,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             nodeOperatorId: 0,
             keyIndex: 0,
             exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectCall(
@@ -473,8 +533,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             nodeOperatorId: 0,
             keyIndex: 0,
             exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectCall(
@@ -508,8 +567,7 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             nodeOperatorId: 0,
             keyIndex: 0,
             exitBalance: uint256(fixture.data.withdrawal.object.amount) * 1e9,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectCall(
@@ -573,6 +631,8 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             withdrawalAddress: fixture.data.withdrawal.object.withdrawalAddress,
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: GIndices.FIRST_WITHDRAWAL_ELECTRA,
                 gIFirstWithdrawalCurr: NULL_GINDEX,
@@ -598,6 +658,8 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             withdrawalAddress: fixture.data.withdrawal.object.withdrawalAddress,
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: NULL_GINDEX,
                 gIFirstWithdrawalCurr: GIndices.FIRST_WITHDRAWAL_ELECTRA,
@@ -623,6 +685,8 @@ contract VerifierWithdrawalTest is VerifierTestBase {
             withdrawalAddress: fixture.data.withdrawal.object.withdrawalAddress,
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: NULL_GINDEX,
                 gIFirstWithdrawalCurr: GIndices.FIRST_WITHDRAWAL_ELECTRA,
@@ -716,6 +780,8 @@ contract VerifierSlashingTest is VerifierTestBase {
             withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: NULL_GINDEX,
                 gIFirstWithdrawalCurr: NULL_GINDEX,
@@ -747,12 +813,18 @@ contract VerifierSlashingTest is VerifierTestBase {
     }
 
     function test_processSlashed_HappyPath() public {
+        uint256 withdrawableTimestamp = GENESIS_TIME +
+            uint256(fixture.data.validator.object.withdrawableEpoch) *
+            verifier.SLOTS_PER_EPOCH() *
+            SECONDS_PER_SLOT;
+
         vm.expectCall(
             address(module),
             abi.encodeWithSelector(
                 IBaseModule.reportValidatorSlashing.selector,
                 fixture.data.validator.nodeOperatorId,
-                fixture.data.validator.keyIndex
+                fixture.data.validator.keyIndex,
+                withdrawableTimestamp
             )
         );
 
@@ -843,6 +915,8 @@ contract VerifierPauseTest is VerifierTestBase {
             withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: NULL_GINDEX,
                 gIFirstWithdrawalCurr: NULL_GINDEX,
@@ -944,6 +1018,8 @@ contract VerifierTestable is Verifier {
         address withdrawalAddress,
         address module,
         uint64 slotsPerEpoch,
+        uint64 secondsPerSlot,
+        uint64 genesisTime,
         IVerifier.GIndices memory gindices,
         Slot firstSupportedSlot,
         Slot pivotSlot,
@@ -955,6 +1031,8 @@ contract VerifierTestable is Verifier {
             withdrawalAddress,
             module,
             slotsPerEpoch,
+            secondsPerSlot,
+            genesisTime,
             gindices,
             firstSupportedSlot,
             pivotSlot,
@@ -1016,6 +1094,8 @@ contract VerifierGIndexTest is Test, Utilities {
             withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: pack(0xe1c0, 4),
                 gIFirstWithdrawalCurr: pack(0x161c0, 4),
@@ -1288,6 +1368,8 @@ contract VerifierGIndexCapellaZeroTest is Test, Utilities {
             withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: pack(0xe1c0, 4),
                 gIFirstWithdrawalCurr: pack(0x161c0, 4),
@@ -1411,6 +1493,8 @@ contract VerifierValidatorBalanceTest is Test, Utilities {
             withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: NULL_GINDEX,
                 gIFirstWithdrawalCurr: NULL_GINDEX,
@@ -1601,6 +1685,8 @@ contract VerifierBalanceProofTest is VerifierTestBase {
             withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: NULL_GINDEX,
                 gIFirstWithdrawalCurr: NULL_GINDEX,
@@ -1743,6 +1829,8 @@ contract VerifierParentBlockRootTest is Test, Utilities {
             withdrawalAddress: 0xb3E29C46Ee1745724417C0C51Eb2351A1C01cF36,
             module: address(module),
             slotsPerEpoch: 32,
+            secondsPerSlot: SECONDS_PER_SLOT,
+            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: NULL_GINDEX,
                 gIFirstWithdrawalCurr: NULL_GINDEX,

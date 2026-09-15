@@ -22,6 +22,9 @@ import { Utilities } from "../../helpers/Utilities.sol";
 import { WstETHMock } from "../../helpers/mocks/WstETHMock.sol";
 
 abstract contract ModuleFixtures is Test, Fixtures, Utilities, InvariantAsserts {
+    /// @dev `BaseModuleStorage.isValidatorSlashed` mapping slot
+    uint256 internal constant IS_VALIDATOR_SLASHED_SLOT = 8;
+
     enum ModuleType {
         Community,
         Curated
@@ -183,8 +186,7 @@ abstract contract ModuleFixtures is Test, Fixtures, Utilities, InvariantAsserts 
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
         module.reportRegularWithdrawnValidators(withdrawalsInfo);
     }

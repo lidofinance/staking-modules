@@ -340,21 +340,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         vm.stopPrank();
 
         vm.prank(actor);
-        module.reportValidatorSlashing(noId, 0);
-    }
-
-    function test_verifierRole_automatedPenalties() public {
-        uint256 noId = createNodeOperator();
-
-        vm.startPrank(admin);
-        module.grantRole(module.VERIFIER_ROLE(), actor);
-        module.grantRole(module.STAKING_ROUTER_ROLE(), admin);
-        module.obtainDepositData(1, "");
-        module.switchAutomatedPenaltiesMode(1 ether);
-        vm.stopPrank();
-
-        vm.prank(actor);
-        module.reportValidatorSlashing(noId, 0);
+        module.reportValidatorSlashing(noId, 0, block.timestamp);
         assertTrue(module.isValidatorWithdrawn(noId, 0));
     }
 
@@ -364,7 +350,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        module.reportValidatorSlashing(noId, 0);
+        module.reportValidatorSlashing(noId, 0, block.timestamp);
     }
 
     function test_reportRegularWithdrawnValidatorsRole() public {
@@ -382,8 +368,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: 1 ether,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.prank(actor);
@@ -399,56 +384,12 @@ abstract contract ModuleAccessControl is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: 1 ether,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
         module.reportRegularWithdrawnValidators(validatorInfos);
-    }
-
-    function test_reportSlashedWithdrawnValidatorsRole() public {
-        uint256 noId = createNodeOperator();
-        bytes32 role = module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE();
-
-        vm.startPrank(admin);
-        module.grantRole(role, actor);
-        module.grantRole(module.STAKING_ROUTER_ROLE(), admin);
-        module.grantRole(module.VERIFIER_ROLE(), admin);
-        module.obtainDepositData(1, "");
-        module.reportValidatorSlashing(noId, 0);
-        vm.stopPrank();
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: true
-        });
-
-        vm.prank(actor);
-        module.reportSlashedWithdrawnValidators(validatorInfos);
-    }
-
-    function test_reportSlashedWithdrawnValidatorsRole_revert() public {
-        uint256 noId = createNodeOperator();
-        bytes32 role = module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE();
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: true
-        });
-
-        vm.prank(stranger);
-        expectRoleRevert(stranger, role);
-        module.reportSlashedWithdrawnValidators(validatorInfos);
     }
 
     function test_recovererRole() public {

@@ -22,6 +22,8 @@ contract ParametersRegistryMock {
 
     uint256 public badPerformancePenalty = 0.01 ether;
 
+    uint256 public slashingPenalty = 1 ether;
+
     uint256 public defaultPerformanceLeeway = 10_000;
 
     uint256 public QUEUE_LOWEST_PRIORITY;
@@ -76,6 +78,14 @@ contract ParametersRegistryMock {
 
     function setBadPerformancePenalty(uint256 /* curveId */, uint256 penalty) external {
         badPerformancePenalty = penalty;
+    }
+
+    function getSlashingPenalty(uint256 /* curveId */) external view returns (uint256) {
+        return slashingPenalty;
+    }
+
+    function setSlashingPenalty(uint256 /* curveId */, uint256 penalty) external {
+        slashingPenalty = penalty;
     }
 
     function setQueueConfig(uint256 curveId, uint256 priority, uint256 maxDeposits) external {

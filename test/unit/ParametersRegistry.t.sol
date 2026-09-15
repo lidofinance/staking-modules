@@ -7,6 +7,8 @@ import { Test } from "forge-std/Test.sol";
 
 import { ParametersRegistry } from "src/ParametersRegistry.sol";
 import { IParametersRegistry } from "src/interfaces/IParametersRegistry.sol";
+import { WithdrawnValidatorLib } from "src/lib/WithdrawnValidatorLib.sol";
+import { ValidatorBalanceLimits } from "src/lib/ValidatorBalanceLimits.sol";
 
 import { Utilities } from "../helpers/Utilities.sol";
 import { Fixtures } from "../helpers/Fixtures.sol";
@@ -43,7 +45,8 @@ contract ParametersRegistryBaseTest is Test, Utilities, Fixtures {
             defaultSyncWeight: 2,
             defaultAllowedExitDelay: 1 days,
             defaultExitDelayFee: 0.05 ether,
-            defaultMaxElWithdrawalRequestFee: 0.1 ether
+            defaultMaxElWithdrawalRequestFee: 0.1 ether,
+            defaultSlashingPenalty: 1 ether
         });
     }
 }
@@ -143,17 +146,18 @@ contract ParametersRegistryInitTest is ParametersRegistryBaseTest {
     function test_finalizeUpgradeV3() public {
         _enableInitializers(address(parametersRegistry));
 
-        parametersRegistry.finalizeUpgradeV3();
+        parametersRegistry.finalizeUpgradeV3(1 ether);
 
+        assertEq(parametersRegistry.defaultSlashingPenalty(), 1 ether);
         assertEq(parametersRegistry.getInitializedVersion(), 3);
     }
 
     function test_finalizeUpgradeV3_RevertWhen_calledTwice() public {
         _enableInitializers(address(parametersRegistry));
-        parametersRegistry.finalizeUpgradeV3();
+        parametersRegistry.finalizeUpgradeV3(1 ether);
 
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        parametersRegistry.finalizeUpgradeV3();
+        parametersRegistry.finalizeUpgradeV3(1 ether);
     }
 
     function test_initialize_RevertWhen_ZeroAdminAddress() public {
@@ -1496,6 +1500,159 @@ contract ParametersRegistryBadPerformancePenaltyTest is ParametersRegistryBaseTe
     }
 }
 
+contract ParametersRegistrySlashingPenaltyTest is ParametersRegistryBaseTestInitialized, ParametersTest {
+    uint256 internal constant PENALTY = 2 ether;
+
+    function setUp() public virtual override {
+        super.setUp();
+        vm.startPrank(admin);
+        parametersRegistry.grantRole(parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE(), roleMember);
+        vm.stopPrank();
+    }
+
+    function test_setDefault() public override {
+        _test_set_default(roleMember);
+    }
+
+    function test_setDefault_FromRoleAdmin() public override {
+        _test_set_default(admin);
+    }
+
+    function test_setDefault_RevertWhen_noRole() public override {
+        bytes32 role = parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
+        expectRoleRevert(stranger, role);
+        vm.prank(stranger);
+        parametersRegistry.setDefaultSlashingPenalty(PENALTY);
+    }
+
+    function test_set() public override {
+        _test_set(roleMember);
+    }
+
+    function test_set_FromRoleAdmin() public override {
+        _test_set(admin);
+    }
+
+    function test_set_FromCurveRoleMember() public {
+        _test_set(curveRoleMember);
+    }
+
+    function test_set_RevertWhen_noRole() public override {
+        bytes32 role = parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
+        expectRoleRevert(stranger, role);
+        vm.prank(stranger);
+        parametersRegistry.setSlashingPenalty(1, PENALTY);
+    }
+
+    function test_unset() public override {
+        _test_unset(roleMember);
+    }
+
+    function test_unset_FromRoleAdmin() public override {
+        _test_unset(admin);
+    }
+
+    function test_unset_FromCurveRoleMember() public {
+        _test_unset(curveRoleMember);
+    }
+
+    function test_unset_RevertWhen_noRole() public override {
+        bytes32 role = parametersRegistry.MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE();
+        expectRoleRevert(stranger, role);
+        vm.prank(stranger);
+        parametersRegistry.unsetSlashingPenalty(1);
+    }
+
+    function test_get_usualData() public override {
+        uint256 curveId = 1;
+
+        vm.prank(admin);
+        parametersRegistry.setSlashingPenalty(curveId, PENALTY);
+
+        assertEq(parametersRegistry.getSlashingPenalty(curveId), PENALTY);
+    }
+
+    function test_get_defaultData() public view override {
+        assertEq(parametersRegistry.getSlashingPenalty(10), defaultInitData.defaultSlashingPenalty);
+    }
+
+    function test_setDefault_maxPenalty() public {
+        vm.prank(admin);
+        parametersRegistry.setDefaultSlashingPenalty(type(uint128).max);
+
+        assertEq(parametersRegistry.defaultSlashingPenalty(), type(uint128).max);
+    }
+
+    function test_set_subEtherPenalty() public {
+        // A 2048 ETH validator is penalized by 64 times the per-32-ETH rate.
+        uint256 curveId = 1;
+
+        vm.prank(admin);
+        parametersRegistry.setSlashingPenalty(curveId, 0.171875 ether);
+
+        assertEq(
+            WithdrawnValidatorLib.scalePenalty(
+                parametersRegistry.getSlashingPenalty(curveId),
+                ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE
+            ),
+            11 ether
+        );
+    }
+
+    function test_setDefault_RevertWhen_Zero() public {
+        vm.expectRevert(IParametersRegistry.InvalidSlashingPenalty.selector);
+        vm.prank(admin);
+        parametersRegistry.setDefaultSlashingPenalty(0);
+    }
+
+    function test_setDefault_RevertWhen_PenaltyExceedsMax() public {
+        vm.expectRevert(IParametersRegistry.InvalidSlashingPenalty.selector);
+        vm.prank(admin);
+        parametersRegistry.setDefaultSlashingPenalty(uint256(type(uint128).max) + 1);
+    }
+
+    function test_set_RevertWhen_Zero() public {
+        vm.expectRevert(IParametersRegistry.InvalidSlashingPenalty.selector);
+        vm.prank(admin);
+        parametersRegistry.setSlashingPenalty(1, 0);
+    }
+
+    function _test_set_default(address from) internal {
+        vm.expectEmit(address(parametersRegistry));
+        emit IParametersRegistry.DefaultSlashingPenaltySet(PENALTY);
+        vm.prank(from);
+        parametersRegistry.setDefaultSlashingPenalty(PENALTY);
+
+        assertEq(parametersRegistry.defaultSlashingPenalty(), PENALTY);
+    }
+
+    function _test_set(address from) internal {
+        uint256 curveId = 1;
+
+        vm.expectEmit(address(parametersRegistry));
+        emit IParametersRegistry.SlashingPenaltySet(curveId, PENALTY);
+        vm.prank(from);
+        parametersRegistry.setSlashingPenalty(curveId, PENALTY);
+
+        assertEq(parametersRegistry.getSlashingPenalty(curveId), PENALTY);
+    }
+
+    function _test_unset(address from) internal {
+        uint256 curveId = 1;
+
+        vm.prank(from);
+        parametersRegistry.setSlashingPenalty(curveId, PENALTY);
+        assertEq(parametersRegistry.getSlashingPenalty(curveId), PENALTY);
+
+        vm.expectEmit(address(parametersRegistry));
+        emit IParametersRegistry.SlashingPenaltyUnset(curveId);
+        vm.prank(from);
+        parametersRegistry.unsetSlashingPenalty(curveId);
+
+        assertEq(parametersRegistry.getSlashingPenalty(curveId), defaultInitData.defaultSlashingPenalty);
+    }
+}
+
 contract ParametersRegistryPerformanceCoefficientsTest is ParametersRegistryBaseTestInitialized, ParametersTest {
     function setUp() public virtual override {
         super.setUp();
@@ -2288,6 +2445,7 @@ contract ParametersRegistryCurveParametersTest is ParametersRegistryBaseTestInit
         assertEq(p.allowedExitDelay, defaultInitData.defaultAllowedExitDelay);
         assertEq(p.exitDelayFee, defaultInitData.defaultExitDelayFee);
         assertEq(p.maxElWithdrawalRequestFee, defaultInitData.defaultMaxElWithdrawalRequestFee);
+        assertEq(p.slashingPenalty, defaultInitData.defaultSlashingPenalty);
 
         _assertConsistency(CURVE_ID);
     }
@@ -2324,6 +2482,7 @@ contract ParametersRegistryCurveParametersTest is ParametersRegistryBaseTestInit
         assertEq(p.allowedExitDelay, 3 days);
         assertEq(p.exitDelayFee, 0.2 ether);
         assertEq(p.maxElWithdrawalRequestFee, 0.3 ether);
+        assertEq(p.slashingPenalty, 4 ether);
 
         _assertConsistency(CURVE_ID);
     }
@@ -2354,6 +2513,7 @@ contract ParametersRegistryCurveParametersTest is ParametersRegistryBaseTestInit
         parametersRegistry.setAllowedExitDelay(CURVE_ID, 3 days);
         parametersRegistry.setExitDelayFee(CURVE_ID, 0.2 ether);
         parametersRegistry.setMaxElWithdrawalRequestFee(CURVE_ID, 0.3 ether);
+        parametersRegistry.setSlashingPenalty(CURVE_ID, 4 ether);
         vm.stopPrank();
     }
 
@@ -2401,5 +2561,6 @@ contract ParametersRegistryCurveParametersTest is ParametersRegistryBaseTestInit
         assertEq(p.allowedExitDelay, parametersRegistry.getAllowedExitDelay(curveId));
         assertEq(p.exitDelayFee, parametersRegistry.getExitDelayFee(curveId));
         assertEq(p.maxElWithdrawalRequestFee, parametersRegistry.getMaxElWithdrawalRequestFee(curveId));
+        assertEq(p.slashingPenalty, parametersRegistry.getSlashingPenalty(curveId));
     }
 }

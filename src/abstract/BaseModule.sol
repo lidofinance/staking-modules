@@ -42,10 +42,12 @@ abstract contract BaseModule is
     bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
     bytes32 public constant REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE =
         keccak256("REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE");
-    bytes32 public constant REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE =
-        keccak256("REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE");
     bytes32 public constant CREATE_NODE_OPERATOR_ROLE = keccak256("CREATE_NODE_OPERATOR_ROLE");
     bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE = keccak256("OPERATOR_ADDRESSES_ADMIN_ROLE");
+
+    /// @dev Added on top of the withdrawable timestamp of a slashed key to cover the delayed Consensus Layer penalties.
+    uint256 public constant BOND_CLAIM_LOCK_DELAY = 14 days;
+
     ILidoLocator public immutable LIDO_LOCATOR;
     IStETH public immutable STETH;
     IParametersRegistry public immutable PARAMETERS_REGISTRY;
@@ -331,7 +333,7 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex) external {
+    function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex, uint256 withdrawableTimestamp) external {
         _checkVerifierRole();
         _onlyExistingNodeOperator(nodeOperatorId);
         BaseModuleStorage storage $ = _baseStorage();
@@ -339,57 +341,29 @@ abstract contract BaseModule is
         if (keyIndex >= no.totalDepositedKeys) revert SigningKeysInvalidOffset();
 
         uint256 pointer = KeyPointerLib.keyPointer(nodeOperatorId, keyIndex);
-        uint256 autoPenalty = $.automatedSlashingPenalty;
-        bool withdrawn = $.isValidatorWithdrawn[pointer];
-
+        // Replaying the report settles a slashing recorded before the upgrade.
         if (!$.isValidatorSlashed[pointer]) {
             $.isValidatorSlashed[pointer] = true;
 
-            // A slashing reported after the withdrawal of the key has nothing left to resolve.
-            if (!withdrawn && autoPenalty == 0) {
-                uint256 unresolved;
-                unchecked {
-                    unresolved = $.unresolvedSlashedValidators[nodeOperatorId] + 1;
-                }
-                $.unresolvedSlashedValidators[nodeOperatorId] = unresolved;
-                emit UnresolvedSlashedValidatorsCountChanged(nodeOperatorId, unresolved);
-            }
-
             bytes memory pubkey = SigningKeys.loadKeys(nodeOperatorId, keyIndex, 1);
             emit ValidatorSlashingReported(nodeOperatorId, keyIndex, pubkey);
+
+            uint256 lockedUntil = withdrawableTimestamp + BOND_CLAIM_LOCK_DELAY;
+            if (lockedUntil > $.bondClaimLockedUntil[nodeOperatorId]) {
+                $.bondClaimLockedUntil[nodeOperatorId] = lockedUntil;
+                emit BondClaimLockedUntilChanged(nodeOperatorId, lockedUntil);
+            }
         }
 
-        if (withdrawn || autoPenalty == 0) return;
-
-        // The tracked key balance stands for the pre-slashing one to scale the penalty by.
-        uint256 keyBalance = ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + $.keyAllocatedBalance[pointer];
         WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: nodeOperatorId,
             keyIndex: keyIndex,
-            exitBalance: keyBalance,
-            slashingPenalty: WithdrawnValidatorLib.scalePenalty(autoPenalty, keyBalance),
-            isSlashed: true
+            // The tracked key balance stands for the pre-slashing one to scale the penalty by.
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + $.keyAllocatedBalance[pointer],
+            slashingPenalty: PARAMETERS_REGISTRY.getSlashingPenalty(_getBondCurveId(nodeOperatorId))
         });
-        _reportWithdrawnValidators(validatorInfos, true);
-    }
-
-    /// @inheritdoc IBaseModule
-    function switchAutomatedPenaltiesMode(uint256 slashingPenalty) external {
-        _checkRole(DEFAULT_ADMIN_ROLE);
-        // Prevent overflow when scaling the penalty.
-        if (slashingPenalty > type(uint128).max || slashingPenalty % WithdrawnValidatorLib.PENALTY_QUOTIENT != 0) {
-            revert InvalidAmount();
-        }
-
-        _baseStorage().automatedSlashingPenalty = slashingPenalty;
-        _onAutomatedPenaltiesModeChanged(slashingPenalty != 0);
-        emit AutomatedPenaltiesModeSet(slashingPenalty);
-    }
-
-    /// @inheritdoc IBaseModule
-    function automatedSlashingPenalty() external view returns (uint256) {
-        return _baseStorage().automatedSlashingPenalty;
+        _reportWithdrawnValidators(validatorInfos);
     }
 
     /// @inheritdoc IBaseModule
@@ -413,15 +387,9 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function reportSlashedWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external {
-        _checkRole(REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE);
-        _reportWithdrawnValidators(validatorInfos, true);
-    }
-
-    /// @inheritdoc IBaseModule
     function reportRegularWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external {
         _checkRole(REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE);
-        _reportWithdrawnValidators(validatorInfos, false);
+        _reportWithdrawnValidators(validatorInfos);
     }
 
     /// @inheritdoc IBaseModule
@@ -540,8 +508,8 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function getNodeOperatorUnresolvedSlashedValidators(uint256 nodeOperatorId) external view returns (uint256) {
-        return _baseStorage().unresolvedSlashedValidators[nodeOperatorId];
+    function getBondClaimLockedUntil(uint256 nodeOperatorId) external view returns (uint256) {
+        return _baseStorage().bondClaimLockedUntil[nodeOperatorId];
     }
 
     /// @inheritdoc IBaseModule
@@ -682,15 +650,12 @@ abstract contract BaseModule is
         _updateDepositableValidatorsCount({ nodeOperatorId: nodeOperatorId, incrementNonceIfUpdated: true });
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function _onAutomatedPenaltiesModeChanged(bool enabled) internal virtual {}
-
-    function _reportWithdrawnValidators(WithdrawnValidatorInfo[] memory validatorInfos, bool slashed) internal {
+    function _reportWithdrawnValidators(WithdrawnValidatorInfo[] memory validatorInfos) internal {
         (
             uint256[] memory touchedOperatorIds,
             uint256[] memory trackedBalanceDecreases,
             uint256 touchedCount
-        ) = WithdrawnValidatorLib.processBatch(validatorInfos, slashed, _baseStorage());
+        ) = WithdrawnValidatorLib.processBatch(validatorInfos, _baseStorage());
 
         if (touchedCount == 0) return;
 

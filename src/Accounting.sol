@@ -555,10 +555,10 @@ contract Accounting is
         return Math.saturatingSub(currentShares, requiredShares);
     }
 
-    /// @dev Returns true until all the slashed validators are reported as withdrawn. The uncovered losses remain
-    ///      as the bond debt, which is a part of the required bond.
+    /// @dev Returns true until the reported slashings are fully accounted on the Consensus Layer. The uncovered losses
+    ///      remain as the bond debt, which is a part of the required bond.
     function _isBondClaimRestricted(uint256 nodeOperatorId) internal view returns (bool) {
-        return MODULE.getNodeOperatorUnresolvedSlashedValidators(nodeOperatorId) != 0;
+        return block.timestamp < MODULE.getBondClaimLockedUntil(nodeOperatorId);
     }
 
     function _getRequiredBond(
