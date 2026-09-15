@@ -79,7 +79,13 @@ _copy-file src_path dest_path:
     cp "{{src_path}}" "{{dest_path}}"
 
 _merge-external-libraries deploy_config_path transactions_path:
-    node script/mergeExternalLibraries.js {{deploy_config_path}} {{transactions_path}}
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Requires jq of a version that keeps the uint256 literals intact, @see `just check-tools`.
+    merged=$(mktemp)
+    trap 'rm -f "$merged"' EXIT
+    jq --slurpfile tx "{{transactions_path}}" -f script/mergeExternalLibraries.jq "{{deploy_config_path}}" > "$merged"
+    mv "$merged" "{{deploy_config_path}}"
 
 # Shared local fork helpers
 _local-private-key:
@@ -171,6 +177,7 @@ import "fork.just"
 import "csm.just"
 import "csm0x02.just"
 import "curated.just"
+import "tools.just"
 
 # Default and top-level workflows
 default: clean deps build test-all
@@ -200,6 +207,25 @@ lint-fix:
 lint:
     just lint-foundry
     yarn lint:check
+    just bind-json-check
+
+# Generate the JSON (de)serialization bindings for the deployment params structs
+bind-json:
+    forge bind-json
+
+# Check that the generated bindings are in sync with the structs
+bind-json-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bindings=script/utils/JsonBindings.sol
+    # Generated aside to keep the committed bindings intact when the check fails.
+    expected=$(mktemp --suffix=.sol)
+    trap 'rm -f "$expected"' EXIT
+    forge bind-json "$expected" >/dev/null
+    if ! diff -u "$bindings" "$expected"; then
+        echo "$bindings is out of date, run \`just bind-json\`" >&2
+        exit 1
+    fi
 
 test-all:
     #!/usr/bin/env bash
