@@ -1000,7 +1000,7 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory key1 = slice(packedPubkeys, 48, 48);
 
         // Slashed keys must not receive new top-ups even though the top-up queue still references them.
-        csm.reportValidatorSlashing(0, 0, block.timestamp);
+        csm.reportValidatorSlashing(0, 0, 0);
         assertTrue(csm.isValidatorSlashed(0, 0));
         assertEq(_getTopUpQueueLength(), 2);
 

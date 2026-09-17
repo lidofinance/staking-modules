@@ -10,6 +10,7 @@ import { encodeParameters } from "web3-eth-abi";
 import VerifierSlashingTest from "../../../out/Verifier.t.sol/VerifierSlashingTest.json" assert { type: "json" };
 
 const SLOTS_PER_EPOCH = 32;
+const EPOCHS_PER_SLASHINGS_VECTOR = 8192;
 
 const MAX_VALIDATORS = 1_000;
 const Fork = ssz.electra;
@@ -18,7 +19,8 @@ const Fork = ssz.electra;
  * @param {Object} opts
  * @param {number} opts.validatorIndex - Index of a validator in the `validators` list.
  * @param {string} opts.address - Ethereum address for withdrawal credentials.
- * @param {number} opts.withdrawableEpoch - Epoch to calculate slot for withdrawable block.
+ * @param {number} opts.withdrawableEpoch - Epoch the validator becomes withdrawable at.
+ * @param {number} opts.recentEpoch - Epoch of the recent block the slashing is proven against.
  */
 function main(opts) {
   assert(opts);
@@ -43,7 +45,7 @@ function main(opts) {
   ]);
 
   const state = Fork.BeaconState.defaultView();
-  state.slot = opts.withdrawableEpoch * SLOTS_PER_EPOCH;
+  state.slot = opts.recentEpoch * SLOTS_PER_EPOCH;
 
   while (state.validators.length < MAX_VALIDATORS) {
     state.validators.push(Validator.defaultView());
@@ -125,8 +127,10 @@ class Faker {
   }
 }
 
+// A slashing is normally proven right after it happens, EPOCHS_PER_SLASHINGS_VECTOR epochs before withdrawable.
 main({
   validatorIndex: 17,
   address: "b3e29c46ee1745724417c0c51eb2351a1c01cf36",
   withdrawableEpoch: 100_500,
+  recentEpoch: parseInt(process.argv[2]) || 100_500 - EPOCHS_PER_SLASHINGS_VECTOR,
 });

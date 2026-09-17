@@ -1966,7 +1966,7 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         cm.obtainDepositData(2, "");
 
         // Slash key 0, leave key 1 intact.
-        cm.reportValidatorSlashing(noId, 0, block.timestamp);
+        cm.reportValidatorSlashing(noId, 0, 0);
 
         bytes memory packed = cm.getSigningKeys(noId, 0, 2);
         bytes[] memory pubkeys = BytesArr(slice(packed, 0, 48), slice(packed, 48, 48));

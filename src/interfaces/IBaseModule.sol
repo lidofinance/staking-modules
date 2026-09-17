@@ -423,8 +423,8 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     ///      The key is reported as withdrawn right away.
     /// @param nodeOperatorId The ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
-    /// @param withdrawableTimestamp Timestamp of the epoch the slashed key becomes withdrawable at
-    function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex, uint256 withdrawableTimestamp) external;
+    /// @param timeToWithdrawable Time left until the slashed key becomes withdrawable on the Consensus Layer
+    function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex, uint256 timeToWithdrawable) external;
 
     /// @notice Update verified on-chain balance for a key.
     /// @dev The function stores balance relative to MIN_ACTIVATION_BALANCE.

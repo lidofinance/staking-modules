@@ -629,8 +629,8 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         module.obtainDepositData(17, "");
         uint256 keyIndex = 11;
         bytes memory pubkey = module.getSigningKeys(noId, keyIndex, 1);
-        uint256 withdrawableTimestamp = block.timestamp + 36 days;
-        uint256 lockedUntil = withdrawableTimestamp + 14 days;
+        uint256 timeToWithdrawable = 36 days;
+        uint256 lockedUntil = block.timestamp + timeToWithdrawable + 14 days;
         uint256 slashingPenalty = 1 ether;
 
         vm.expectEmit(address(module));
@@ -638,7 +638,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         vm.expectEmit(address(module));
         emit IBaseModule.BondClaimLockedUntilChanged(noId, lockedUntil);
         vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, slashingPenalty));
-        module.reportValidatorSlashing(noId, keyIndex, withdrawableTimestamp);
+        module.reportValidatorSlashing(noId, keyIndex, timeToWithdrawable);
 
         assertTrue(module.isValidatorSlashed(noId, keyIndex));
         assertTrue(module.isValidatorWithdrawn(noId, keyIndex));
@@ -653,7 +653,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         parametersRegistry.setSlashingPenalty(accounting.getBondCurveId(noId), slashingPenalty);
 
         vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, slashingPenalty));
-        module.reportValidatorSlashing(noId, 0, block.timestamp);
+        module.reportValidatorSlashing(noId, 0, 0);
 
         assertTrue(module.isValidatorWithdrawn(noId, 0));
         assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
@@ -663,14 +663,14 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
     function test_reportValidatorSlashing_keepsTheFurthestLock() public assertInvariants {
         uint256 noId = createNodeOperator(2);
         module.obtainDepositData(2, "");
-        uint256 withdrawableTimestamp = block.timestamp + 36 days;
-        uint256 lockedUntil = withdrawableTimestamp + module.BOND_CLAIM_LOCK_DELAY();
+        uint256 timeToWithdrawable = 36 days;
+        uint256 lockedUntil = block.timestamp + timeToWithdrawable + module.BOND_CLAIM_LOCK_DELAY();
 
-        module.reportValidatorSlashing(noId, 0, withdrawableTimestamp);
+        module.reportValidatorSlashing(noId, 0, timeToWithdrawable);
         assertEq(module.getBondClaimLockedUntil(noId), lockedUntil);
 
         // An earlier slashing does not shorten the lock set by the later one.
-        module.reportValidatorSlashing(noId, 1, withdrawableTimestamp - 1 days);
+        module.reportValidatorSlashing(noId, 1, timeToWithdrawable - 1 days);
 
         assertEq(module.getBondClaimLockedUntil(noId), lockedUntil);
     }
@@ -704,7 +704,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, totalPenalty), 1);
         vm.expectEmit(address(module));
         emit IBaseModule.ValidatorWithdrawn(noId, 0, pubkey);
-        module.reportValidatorSlashing(noId, 0, block.timestamp);
+        module.reportValidatorSlashing(noId, 0, 0);
 
         assertEq(module.getNodeOperatorBalance(noId), 0);
         assertEq(module.getTotalModuleStake(), 0);
@@ -736,13 +736,13 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         module.obtainDepositData(17, "");
         uint256 keyIndex = 11;
 
-        module.reportValidatorSlashing(noId, keyIndex, block.timestamp);
+        module.reportValidatorSlashing(noId, keyIndex, 0);
         uint256 nonce = module.getNonce();
         uint256 lockedUntil = module.getBondClaimLockedUntil(noId);
 
         expectNoCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector));
         vm.recordLogs();
-        module.reportValidatorSlashing(noId, keyIndex, block.timestamp + 365 days);
+        module.reportValidatorSlashing(noId, keyIndex, 365 days);
 
         assertEq(vm.getRecordedLogs().length, 0);
         assertEq(module.getNonce(), nonce);
@@ -754,7 +754,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
     function test_reportValidatorSlashing_ignoresLaterWithdrawalReports() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
-        module.reportValidatorSlashing(noId, 0, block.timestamp);
+        module.reportValidatorSlashing(noId, 0, 0);
         uint256 nonce = module.getNonce();
 
         WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
@@ -785,7 +785,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         assertFalse(module.isValidatorWithdrawn(noId, 0));
 
         vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, 1 ether));
-        module.reportValidatorSlashing(noId, 0, block.timestamp);
+        module.reportValidatorSlashing(noId, 0, 0);
 
         assertTrue(module.isValidatorWithdrawn(noId, 0));
         assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
@@ -794,14 +794,14 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
     function test_reportValidatorSlashing_RevertWhen_OperatorDoesNotExist() public {
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
-        module.reportValidatorSlashing(0, 0, block.timestamp);
+        module.reportValidatorSlashing(0, 0, 0);
     }
 
     function test_reportValidatorSlashing_RevertWhen_InvalidKeyIndex() public {
         uint256 noId = createNodeOperator(1);
 
         vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
-        module.reportValidatorSlashing(noId, 0, block.timestamp);
+        module.reportValidatorSlashing(noId, 0, 0);
     }
 
     function test_keyConfirmedBalance_chargesOnWithdraw() public assertInvariants {
@@ -843,7 +843,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + topUp
         );
 
-        module.reportValidatorSlashing(noId, 0, block.timestamp);
+        module.reportValidatorSlashing(noId, 0, 0);
 
         assertEq(
             accounting.getBond(noId),

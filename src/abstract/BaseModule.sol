@@ -45,7 +45,7 @@ abstract contract BaseModule is
     bytes32 public constant CREATE_NODE_OPERATOR_ROLE = keccak256("CREATE_NODE_OPERATOR_ROLE");
     bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE = keccak256("OPERATOR_ADDRESSES_ADMIN_ROLE");
 
-    /// @dev Added on top of the withdrawable timestamp of a slashed key to cover the delayed Consensus Layer penalties.
+    /// @dev Covers the Consensus Layer penalties applied once the slashed key becomes withdrawable.
     uint256 public constant BOND_CLAIM_LOCK_DELAY = 14 days;
 
     ILidoLocator public immutable LIDO_LOCATOR;
@@ -333,7 +333,7 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex, uint256 withdrawableTimestamp) external {
+    function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex, uint256 timeToWithdrawable) external {
         _checkVerifierRole();
         _onlyExistingNodeOperator(nodeOperatorId);
         BaseModuleStorage storage $ = _baseStorage();
@@ -348,7 +348,7 @@ abstract contract BaseModule is
             bytes memory pubkey = SigningKeys.loadKeys(nodeOperatorId, keyIndex, 1);
             emit ValidatorSlashingReported(nodeOperatorId, keyIndex, pubkey);
 
-            uint256 lockedUntil = withdrawableTimestamp + BOND_CLAIM_LOCK_DELAY;
+            uint256 lockedUntil = block.timestamp + timeToWithdrawable + BOND_CLAIM_LOCK_DELAY;
             if (lockedUntil > $.bondClaimLockedUntil[nodeOperatorId]) {
                 $.bondClaimLockedUntil[nodeOperatorId] = lockedUntil;
                 emit BondClaimLockedUntilChanged(nodeOperatorId, lockedUntil);

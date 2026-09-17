@@ -107,8 +107,6 @@ interface IVerifier {
 
     function SECONDS_PER_SLOT() external view returns (uint64);
 
-    function GENESIS_TIME() external view returns (uint64);
-
     function SLOTS_PER_HISTORICAL_ROOT() external view returns (uint64);
 
     function GI_FIRST_WITHDRAWAL_PREV() external view returns (GIndex);
@@ -138,8 +136,8 @@ interface IVerifier {
     function MODULE() external view returns (IBaseModule);
 
     /// @notice Verify proof of a slashed validator and report it to the module
-    /// @dev The proven `withdrawableEpoch` is passed to the module as a timestamp to lock the bond claims until
-    ///      the slashing is fully accounted on the Consensus Layer.
+    /// @dev The time left until the proven `withdrawableEpoch` is passed to the module to lock the bond claims
+    ///      until the slashing is fully accounted on the Consensus Layer.
     /// @param data @see ProcessSlashedInput
     function processSlashedProof(ProcessSlashedInput calldata data) external;
 

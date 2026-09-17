@@ -46,9 +46,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
     uint64 public immutable SECONDS_PER_SLOT;
 
-    /// @dev Unix timestamp of the beacon chain genesis, the origin for the slot timestamps.
-    uint64 public immutable GENESIS_TIME;
-
     /// @dev Count of historical roots per accumulator.
     /// @dev See https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#time-parameters
     uint64 public constant SLOTS_PER_HISTORICAL_ROOT = 8192;
@@ -103,7 +100,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         address module,
         uint64 slotsPerEpoch,
         uint64 secondsPerSlot,
-        uint64 genesisTime,
         GIndices memory gindices,
         Slot firstSupportedSlot,
         Slot pivotSlot,
@@ -114,7 +110,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         if (withdrawalAddress == address(0)) revert ZeroWithdrawalAddress();
         if (module == address(0)) revert ZeroModuleAddress();
         if (admin == address(0)) revert ZeroAdminAddress();
-        if (slotsPerEpoch == 0 || secondsPerSlot == 0 || genesisTime == 0) revert InvalidChainConfig();
+        if (slotsPerEpoch == 0 || secondsPerSlot == 0) revert InvalidChainConfig();
         if (firstSupportedSlot > pivotSlot) revert InvalidPivotSlot();
         if (capellaSlot > firstSupportedSlot) revert InvalidCapellaSlot();
         if (minWithdrawalRatio == 0 || minWithdrawalRatio > MAX_BP) revert InvalidMinWithdrawalRatio();
@@ -125,7 +121,6 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
         SLOTS_PER_EPOCH = slotsPerEpoch;
         SECONDS_PER_SLOT = secondsPerSlot;
-        GENESIS_TIME = genesisTime;
 
         GI_FIRST_WITHDRAWAL_PREV = gindices.gIFirstWithdrawalPrev;
         GI_FIRST_WITHDRAWAL_CURR = gindices.gIFirstWithdrawalCurr;
@@ -173,7 +168,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         MODULE.reportValidatorSlashing(
             data.validator.nodeOperatorId,
             data.validator.keyIndex,
-            _computeTimestampAtEpoch(data.validator.object.withdrawableEpoch)
+            _timeToWithdrawable(data.validator.object.withdrawableEpoch, data.recentBlock.header.slot)
         );
     }
 
@@ -461,9 +456,12 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         return slot.unwrap() / SLOTS_PER_EPOCH;
     }
 
-    /// @dev Returns the timestamp of the first slot of the given epoch.
-    function _computeTimestampAtEpoch(uint64 epoch) internal view returns (uint256) {
-        return GENESIS_TIME + uint256(epoch) * SLOTS_PER_EPOCH * SECONDS_PER_SLOT;
+    function _timeToWithdrawable(uint64 withdrawableEpoch, Slot headerSlot) internal view returns (uint256) {
+        uint256 withdrawableSlot = uint256(withdrawableEpoch) * SLOTS_PER_EPOCH;
+        uint256 slot = headerSlot.unwrap();
+        if (withdrawableSlot <= slot) return 0;
+
+        return (withdrawableSlot - slot) * SECONDS_PER_SLOT;
     }
 
     function __checkRole(bytes32 role) internal view override {

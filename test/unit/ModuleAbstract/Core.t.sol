@@ -340,7 +340,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         vm.stopPrank();
 
         vm.prank(actor);
-        module.reportValidatorSlashing(noId, 0, block.timestamp);
+        module.reportValidatorSlashing(noId, 0, 0);
         assertTrue(module.isValidatorWithdrawn(noId, 0));
     }
 
@@ -350,7 +350,7 @@ abstract contract ModuleAccessControl is ModuleFixtures {
 
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
-        module.reportValidatorSlashing(noId, 0, block.timestamp);
+        module.reportValidatorSlashing(noId, 0, 0);
     }
 
     function test_reportRegularWithdrawnValidatorsRole() public {

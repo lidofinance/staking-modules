@@ -34,7 +34,6 @@ using { dec, inc } for Slot;
 GIndex constant NULL_GINDEX = GIndex.wrap(0);
 
 uint64 constant SECONDS_PER_SLOT = 12;
-uint64 constant GENESIS_TIME = 1606824023;
 
 GIndex constant FIRST_WITHDRAWAL_DENEB = GIndex.wrap(
     0x0000000000000000000000000000000000000000000000000000000000e1c004
@@ -108,7 +107,6 @@ contract VerifierHistoricalTest is VerifierHistoricalBase {
             module: address(module),
             slotsPerEpoch: 32,
             secondsPerSlot: SECONDS_PER_SLOT,
-            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: NULL_GINDEX,
                 gIFirstWithdrawalCurr: GIndices.FIRST_WITHDRAWAL_ELECTRA,
@@ -267,7 +265,6 @@ contract VerifierCrossForkHistoricalBalanceTest is Test, Utilities {
             module: address(module),
             slotsPerEpoch: 32,
             secondsPerSlot: SECONDS_PER_SLOT,
-            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: NULL_GINDEX,
                 gIFirstWithdrawalCurr: NULL_GINDEX,
@@ -351,7 +348,6 @@ contract VerifierCrossForkHistoricalBalanceAtPivotSlotTest is Test, Utilities {
             module: address(module),
             slotsPerEpoch: 32,
             secondsPerSlot: SECONDS_PER_SLOT,
-            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: NULL_GINDEX,
                 gIFirstWithdrawalCurr: NULL_GINDEX,
@@ -435,7 +431,6 @@ contract VerifierHistoricalBalanceTest is Test, Utilities {
             module: address(module),
             slotsPerEpoch: 32,
             secondsPerSlot: SECONDS_PER_SLOT,
-            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: NULL_GINDEX,
                 gIFirstWithdrawalCurr: NULL_GINDEX,
@@ -579,7 +574,6 @@ contract VerifierCrossForkHistoricalTest is VerifierHistoricalBase {
             module: address(module),
             slotsPerEpoch: 32,
             secondsPerSlot: SECONDS_PER_SLOT,
-            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: FIRST_WITHDRAWAL_DENEB,
                 gIFirstWithdrawalCurr: GIndices.FIRST_WITHDRAWAL_ELECTRA,
@@ -627,7 +621,6 @@ contract VerifierCrossForkHistoricalAtPivotSlotTest is VerifierHistoricalBase {
             module: address(module),
             slotsPerEpoch: 32,
             secondsPerSlot: SECONDS_PER_SLOT,
-            genesisTime: GENESIS_TIME,
             gindices: IVerifier.GIndices({
                 gIFirstWithdrawalPrev: FIRST_WITHDRAWAL_DENEB,
                 gIFirstWithdrawalCurr: GIndices.FIRST_WITHDRAWAL_ELECTRA,
