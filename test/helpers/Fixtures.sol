@@ -32,6 +32,7 @@ import { CuratedModule } from "src/CuratedModule.sol";
 import { MetaRegistry } from "src/MetaRegistry.sol";
 import { IMetaRegistry } from "src/interfaces/IMetaRegistry.sol";
 import { ICuratedModule } from "src/interfaces/ICuratedModule.sol";
+import { IVerifier } from "src/interfaces/IVerifier.sol";
 import { CuratedGate } from "src/CuratedGate.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
 import { DeployCSM0x02Params } from "script/csm0x02/DeployCSM0x02Base.s.sol";
@@ -133,11 +134,8 @@ contract DeploymentHelpers is Asserts {
         uint256 consensusVersion;
         address[] oracleMembers;
         uint256 hashConsensusQuorum;
-        GIndex gIFirstWithdrawal;
-        GIndex gIFirstValidator;
-        GIndex gIFirstHistoricalSummary;
-        GIndex gIFirstBalanceNode;
         uint256 verifierFirstSupportedSlot;
+        uint256 verifierGloasSlot;
         uint256 capellaSlot;
         uint256 minWithdrawalRatio;
         uint256[2][] defaultBondCurve;
@@ -459,11 +457,8 @@ contract DeploymentHelpers is Asserts {
         dst.hashConsensusQuorum = src.hashConsensusQuorum;
 
         // Verifier
-        dst.gIFirstWithdrawal = src.gIFirstWithdrawal;
-        dst.gIFirstValidator = src.gIFirstValidator;
-        dst.gIFirstHistoricalSummary = src.gIFirstHistoricalSummary;
-        dst.gIFirstBalanceNode = src.gIFirstBalanceNode;
         dst.verifierFirstSupportedSlot = src.verifierFirstSupportedSlot;
+        dst.verifierGloasSlot = src.verifierGloasSlot;
         dst.capellaSlot = src.capellaSlot;
         dst.minWithdrawalRatio = src.minWithdrawalRatio;
 
@@ -575,11 +570,8 @@ contract DeploymentHelpers is Asserts {
         params.consensusVersion = decoded.consensusVersion;
         params.oracleMembers = decoded.oracleMembers;
         params.hashConsensusQuorum = decoded.hashConsensusQuorum;
-        params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
-        params.gIFirstValidator = decoded.gIFirstValidator;
-        params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
-        params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
+        params.verifierGloasSlot = decoded.verifierGloasSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.minWithdrawalRatio = decoded.minWithdrawalRatio;
         params.defaultBondCurve = decoded.defaultBondCurve;
@@ -629,11 +621,8 @@ contract DeploymentHelpers is Asserts {
         params.consensusVersion = decoded.consensusVersion;
         params.oracleMembers = decoded.oracleMembers;
         params.hashConsensusQuorum = decoded.hashConsensusQuorum;
-        params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
-        params.gIFirstValidator = decoded.gIFirstValidator;
-        params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
-        params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
+        params.verifierGloasSlot = decoded.verifierGloasSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.minWithdrawalRatio = decoded.minWithdrawalRatio;
         params.defaultBondCurve = decoded.defaultBondCurve;
@@ -683,11 +672,8 @@ contract DeploymentHelpers is Asserts {
         params.consensusVersion = decoded.consensusVersion;
         params.oracleMembers = decoded.oracleMembers;
         params.hashConsensusQuorum = decoded.hashConsensusQuorum;
-        params.gIFirstWithdrawal = decoded.gIFirstWithdrawal;
-        params.gIFirstValidator = decoded.gIFirstValidator;
-        params.gIFirstHistoricalSummary = decoded.gIFirstHistoricalSummary;
-        params.gIFirstBalanceNode = decoded.gIFirstBalanceNode;
         params.verifierFirstSupportedSlot = decoded.verifierFirstSupportedSlot;
+        params.verifierGloasSlot = decoded.verifierGloasSlot;
         params.capellaSlot = decoded.capellaSlot;
         params.minWithdrawalRatio = decoded.minWithdrawalRatio;
         params.defaultBondCurve = decoded.defaultBondCurve;

@@ -27,13 +27,13 @@ const MAX_VALIDATORS = 1_000;
 function main(opts) {
   assert(opts);
   assert(opts.validatorIndex < MAX_VALIDATORS);
-  assert(["deneb", "electra"].includes(opts.fork));
+  assert(["electra", "gloas"].includes(opts.fork));
   assert(opts.capellaSlot % SLOTS_PER_HISTORICAL_ROOT === 0);
 
   const faker = new Faker("seed sEed seEd");
 
-  const LatestFork = ssz.fulu;
-  /** @type {ssz.deneb | ssz.electra} */
+  const LatestFork = ssz.gloas;
+  /** @type {ssz.electra | ssz.gloas} */
   const HistoricalFork = ssz[opts.fork];
 
   const historicalState = HistoricalFork.BeaconState.defaultView();
@@ -56,14 +56,14 @@ function main(opts) {
   validator.exitEpoch = Number.MAX_SAFE_INTEGER;
   validator.withdrawableEpoch = Number.MAX_SAFE_INTEGER;
 
-  while (historicalState.validators.length < MAX_VALIDATORS) {
-    historicalState.validators.push(Validator.defaultView());
-  }
+  historicalState.validators = historicalState.validators.type.toView(
+    Array.from({ length: MAX_VALIDATORS }, () => Validator.defaultValue()),
+  );
   historicalState.validators.set(opts.validatorIndex, validator);
 
-  while (historicalState.balances.length < MAX_VALIDATORS) {
-    historicalState.balances.push(0);
-  }
+  historicalState.balances = historicalState.balances.type.toView(
+    new Array(MAX_VALIDATORS).fill(0),
+  );
   historicalState.balances.set(opts.validatorIndex, Number(opts.balanceGwei));
 
   const validatorProof = createProof(historicalState.node, {
@@ -86,15 +86,16 @@ function main(opts) {
   const recentState = LatestFork.BeaconState.defaultView();
   recentState.slot = historicalState.slot + 0x421337;
 
-  recentState.historicalSummaries.push(recentState.historicalSummaries.type.defaultView());
+  const historicalSummaries = [LatestFork.HistoricalSummary.defaultValue()];
+  let blockRootsPatch;
 
   for (let s = opts.capellaSlot; s < recentState.slot; s += SLOTS_PER_HISTORICAL_ROOT) {
-    const summary = LatestFork.HistoricalSummary.defaultView();
+    const summary = LatestFork.HistoricalSummary.defaultValue();
     summary.blockSummaryRoot = faker.someBytes32();
     summary.stateSummaryRoot = faker.someBytes32();
 
     // This branch significantly improves performance.
-    if (recentState.historicalSummaries.length == summaryIndex) {
+    if (historicalSummaries.length == summaryIndex) {
       const BlockRoots = recentState.blockRoots.type;
       const blockRoots = BlockRoots.fromJson(
         new Array(8192).fill(faker.someBytes32().toString("hex")),
@@ -106,17 +107,23 @@ function main(opts) {
       summary.stateSummaryRoot = faker.someBytes32();
 
       // Patching the state tree.
-      const nav = recentState.type.getPathInfo([
-        "historicalSummaries",
-        recentState.historicalSummaries.length,
-        "blockSummaryRoot",
-      ]);
-      recentState.historicalSummaries.push(summary);
-      recentState.tree.setNode(nav.gindex, BlockRoots.toView(blockRoots).node);
-    } else {
-      recentState.historicalSummaries.push(summary);
+      blockRootsPatch = {
+        index: historicalSummaries.length,
+        node: BlockRoots.toView(blockRoots).node,
+      };
     }
+    historicalSummaries.push(summary);
   }
+
+  recentState.historicalSummaries =
+    recentState.historicalSummaries.type.toView(historicalSummaries);
+  assert(blockRootsPatch);
+  const nav = recentState.type.getPathInfo([
+    "historicalSummaries",
+    blockRootsPatch.index,
+    "blockSummaryRoot",
+  ]);
+  recentState.tree.setNode(nav.gindex, blockRootsPatch.node);
 
   const historicalBlockProof = createProof(recentState.node, {
     type: ProofType.single,

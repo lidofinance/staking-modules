@@ -1,4 +1,4 @@
-// Usage: node withdrawal.mjs [withdrawal_offset=0] [amount_gwei=32e9]
+// Usage: node withdrawal.mjs [withdrawal_offset=0] [amount_gwei=32e9] [fork=electra]
 
 "use strict";
 
@@ -12,24 +12,32 @@ import { encodeParameters } from "web3-eth-abi";
 import VerifierWithdrawalTest from "../../../out/Verifier.t.sol/VerifierWithdrawalTest.json" assert { type: "json" };
 
 const SLOTS_PER_EPOCH = 32;
+const SLOTS_PER_HISTORICAL_ROOT = 8192;
 
 const MAX_VALIDATORS = 1_000;
-const Fork = ssz.electra;
+const MAX_WITHDRAWALS = 16;
 
 /**
  * @param {Object} opts
  * @param {number} opts.validatorIndex - Index of a validator in the `validators` list.
  * @param {string} opts.address - Ethereum address for the withdrawal credentials.
  * @param {number} opts.amount - Amount in gwei for the withdrawal.
+ * @param {string} opts.fork - Fork from the `ssz` library.
  * @param {number} opts.withdrawableEpoch - Epoch used to calculate the slot for the withdrawable block.
  * @param {number} opts.withdrawalOffset - Offset of the withdrawal in the block.
  */
 function main(opts) {
   assert(opts);
   assert(opts.validatorIndex < MAX_VALIDATORS);
-  assert(opts.withdrawalOffset < 16);
+  assert(opts.withdrawalOffset < MAX_WITHDRAWALS);
+  assert(["electra", "gloas"].includes(opts.fork));
 
   const faker = new Faker("seed sEed seEd");
+  const Fork = ssz[opts.fork];
+
+  // -------------------------------------------------------------------------
+  // Withdrawal block: validator + withdrawal pinned in its own state.
+  // -------------------------------------------------------------------------
 
   /** @type {import('@chainsafe/ssz').ContainerType} */
   const Validator = Fork.BeaconState.getPathInfo(["validators", 0]).type;
@@ -47,52 +55,52 @@ function main(opts) {
     ...hexStrToBytesArr(opts.address),
   ]);
 
-  const state = Fork.BeaconState.defaultView();
-  state.slot = opts.withdrawableEpoch * SLOTS_PER_EPOCH;
+  const withdrawalState = Fork.BeaconState.defaultView();
+  withdrawalState.slot = opts.withdrawableEpoch * SLOTS_PER_EPOCH;
 
-  while (state.validators.length < MAX_VALIDATORS) {
-    state.validators.push(Validator.defaultView());
-  }
-  state.validators.set(opts.validatorIndex, validator);
+  withdrawalState.validators = withdrawalState.validators.type.toView(
+    Array.from({ length: MAX_VALIDATORS }, () => Validator.defaultValue()),
+  );
+  withdrawalState.validators.set(opts.validatorIndex, validator);
 
   const withdrawalBlock = Fork.BeaconBlock.defaultView();
 
   /** @type {import('@chainsafe/ssz').ContainerType} */
-  const Withdrawal = Fork.BeaconBlock.getPathInfo([
-    "body",
-    "executionPayload",
-    "withdrawals",
-    0,
-  ]).type;
+  const Withdrawal = Fork.Withdrawals.elementType;
 
-  /** @type {import('@chainsafe/ssz').CompositeView} */
-  const withdrawal = Withdrawal.defaultView();
+  const withdrawal = Withdrawal.defaultValue();
 
   withdrawal.index = 42;
   withdrawal.validatorIndex = opts.validatorIndex;
   withdrawal.address = hexStrToBytesArr(opts.address);
   withdrawal.amount = BigInt(opts.amount);
 
-  for (let i = 0; i != opts.withdrawalOffset; i++)
-    withdrawalBlock.body.executionPayload.withdrawals.push(Withdrawal.defaultView());
-  withdrawalBlock.body.executionPayload.withdrawals.push(withdrawal);
+  const withdrawalValues = Array.from({ length: opts.withdrawalOffset }, () =>
+    Withdrawal.defaultValue(),
+  );
+  withdrawalValues.push(withdrawal);
+  const withdrawals = Fork.Withdrawals.toView(withdrawalValues);
 
-  state.latestExecutionPayloadHeader.withdrawalsRoot =
-    withdrawalBlock.body.executionPayload.withdrawals.hashTreeRoot();
+  let pathFromStateToWithdrawals;
+  if (opts.fork === "gloas") {
+    withdrawalState.payloadExpectedWithdrawals = withdrawals;
+    pathFromStateToWithdrawals = withdrawalState.type.getPathInfo(["payloadExpectedWithdrawals"]);
+  } else {
+    withdrawalBlock.body.executionPayload.withdrawals = withdrawals;
+    withdrawalState.latestExecutionPayloadHeader.withdrawalsRoot = withdrawals.hashTreeRoot();
+    pathFromStateToWithdrawals = withdrawalState.type.getPathInfo([
+      "latestExecutionPayloadHeader",
+      "withdrawalsRoot",
+    ]);
+    withdrawalState.tree.setNode(pathFromStateToWithdrawals.gindex, withdrawals.node);
+  }
 
-  const validatorProof = createProof(state.node, {
+  const validatorProof = createProof(withdrawalState.node, {
     type: ProofType.single,
-    gindex: state.type.getPathInfo(["validators", opts.validatorIndex]).gindex,
+    gindex: withdrawalState.type.getPathInfo(["validators", opts.validatorIndex]).gindex,
   });
 
-  const pathFromStateToWithdrawals = state.type.getPathInfo([
-    "latestExecutionPayloadHeader",
-    "withdrawalsRoot",
-  ]);
-  const withdrawals = withdrawalBlock.body.executionPayload.withdrawals;
-  state.tree.setNode(pathFromStateToWithdrawals.gindex, withdrawals.node);
-
-  const withdrawalProof = createProof(state.node, {
+  const withdrawalProof = createProof(withdrawalState.node, {
     type: ProofType.single,
     gindex: concatGindices([
       pathFromStateToWithdrawals.gindex,
@@ -100,12 +108,37 @@ function main(opts) {
     ]),
   });
 
-  withdrawalBlock.slot = state.slot;
+  withdrawalBlock.slot = withdrawalState.slot;
   withdrawalBlock.parentRoot = faker.someBytes32();
-  withdrawalBlock.stateRoot = state.hashTreeRoot();
+  withdrawalBlock.stateRoot = withdrawalState.hashTreeRoot();
+
+  // -------------------------------------------------------------------------
+  // Recent block: only thing we need from its state is a populated entry in
+  // the `block_roots` ring buffer pointing at the withdrawal block root.
+  // -------------------------------------------------------------------------
+
+  const rootIndex = withdrawalBlock.slot % SLOTS_PER_HISTORICAL_ROOT;
+
+  const recentState = Fork.BeaconState.defaultView();
+  recentState.slot = withdrawalBlock.slot + 1;
+  recentState.blockRoots.set(rootIndex, withdrawalBlock.hashTreeRoot());
+
+  const blockRootsProof = createProof(recentState.node, {
+    type: ProofType.single,
+    gindex: recentState.type.getPathInfo(["blockRoots", rootIndex]).gindex,
+  });
+
+  const recentBlock = Fork.BeaconBlock.defaultView();
+  recentBlock.slot = recentState.slot;
+  recentBlock.parentRoot = faker.someBytes32();
+  recentBlock.stateRoot = recentState.hashTreeRoot();
+
+  // -------------------------------------------------------------------------
+  // Assemble fixture in the shape expected by ProcessWithdrawalInput.
+  // -------------------------------------------------------------------------
 
   const fixture = {
-    blockRoot: withdrawalBlock.hashTreeRoot(),
+    blockRoot: recentBlock.hashTreeRoot(),
     data: {
       validator: {
         index: opts.validatorIndex,
@@ -133,6 +166,16 @@ function main(opts) {
         },
         proof: withdrawalProof.witnesses,
       },
+      recentBlock: {
+        header: {
+          slot: recentBlock.slot,
+          proposerIndex: recentBlock.proposerIndex,
+          parentRoot: recentBlock.parentRoot,
+          stateRoot: recentBlock.stateRoot,
+          bodyRoot: recentBlock.body.hashTreeRoot(),
+        },
+        rootsTimestamp: 42,
+      },
       withdrawalBlock: {
         header: {
           slot: withdrawalBlock.slot,
@@ -141,7 +184,7 @@ function main(opts) {
           stateRoot: withdrawalBlock.stateRoot,
           bodyRoot: withdrawalBlock.body.hashTreeRoot(),
         },
-        rootsTimestamp: 42,
+        proof: blockRootsProof.witnesses,
       },
     },
   };
@@ -185,4 +228,5 @@ main({
   withdrawableEpoch: 100_500,
   withdrawalOffset: parseInt(process.argv[2]) || 0,
   amount: Number(process.argv[3]) || 32e9,
+  fork: process.argv[4] || "electra",
 });

@@ -6,48 +6,45 @@ import { Test } from "forge-std/Test.sol";
 
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
-import { GIndex, pack, IndexOutOfRange, fls } from "src/lib/GIndex.sol";
+import { GIndex, toGIndex, IndexOutOfRange, fls, ceilLog2, staticListNodeGIndex, vectorNodeGIndex, progressiveListNodeGIndex } from "src/lib/GIndex.sol";
 
 // Wrap the library internal methods to make an actual call to them.
 // Supposed to be used with `expectRevert` cheatcode.
 contract Library {
-    function concat(GIndex lhs, GIndex rhs) public pure returns (GIndex) {
+    function concat(GIndex lhs, GIndex rhs) external pure returns (GIndex) {
         return lhs.concat(rhs);
     }
 
-    function shr(GIndex self, uint256 n) public pure returns (GIndex) {
-        return self.shr(n);
+    function ceilLog2(uint256 x) external pure returns (uint256) {
+        return ceilLog2(x);
     }
 
-    function shl(GIndex self, uint256 n) public pure returns (GIndex) {
-        return self.shl(n);
+    function staticListNodeGIndex(uint256 i, uint256 depth) external pure returns (GIndex) {
+        return staticListNodeGIndex(i, depth);
+    }
+
+    function vectorNodeGIndex(uint256 i, uint256 length) external pure returns (GIndex) {
+        return vectorNodeGIndex(i, length);
+    }
+
+    function progressiveListNodeGIndex(uint256 i) external pure returns (GIndex) {
+        return progressiveListNodeGIndex(i);
     }
 }
 
 contract GIndexTest is Test {
     using Strings for uint256;
 
-    GIndex internal ZERO = GIndex.wrap(bytes32(0));
-    GIndex internal ROOT = GIndex.wrap(0x0000000000000000000000000000000000000000000000000000000000000100);
-    GIndex internal MAX = GIndex.wrap(bytes32(type(uint256).max));
+    uint256 internal constant LARGEST_PROGRESSIVE_LIST_IDX = ((4 ** 84 - 1) * 4) / 3;
+
+    GIndex internal ZERO = toGIndex(0);
+    GIndex internal ROOT = toGIndex(1);
+    GIndex internal MAX = toGIndex(type(uint256).max);
 
     Library internal lib;
 
     function setUp() public {
         lib = new Library();
-    }
-
-    function test_pack() public view {
-        GIndex gI;
-
-        gI = pack(0x7b426f79504c6a8e9d31415b722f696e705c8a3d9f41, 42);
-        assertEq(
-            gI.unwrap(),
-            0x0000000000000000007b426f79504c6a8e9d31415b722f696e705c8a3d9f412a,
-            "Invalid gindex encoded"
-        );
-
-        assertEq(MAX.unwrap(), bytes32(type(uint256).max), "Invalid gindex encoded");
     }
 
     function test_isRootTrue() public view {
@@ -57,44 +54,40 @@ contract GIndexTest is Test {
     function test_isRootFalse() public pure {
         GIndex gI;
 
-        gI = pack(0, 0);
-        assertFalse(gI.isRoot(), "Expected [0,0].isRoot() to be false");
+        gI = toGIndex(0);
+        assertFalse(gI.isRoot(), "Expected toGIndex(0).isRoot() to be false");
 
-        gI = pack(42, 0);
-        assertFalse(gI.isRoot(), "Expected [42,0].isRoot() to be false");
+        gI = toGIndex(42);
+        assertFalse(gI.isRoot(), "Expected toGIndex(42).isRoot() to be false");
 
-        gI = pack(42, 4);
-        assertFalse(gI.isRoot(), "Expected [42,4].isRoot() to be false");
+        gI = toGIndex(2048);
+        assertFalse(gI.isRoot(), "Expected toGIndex(2048).isRoot() to be false");
 
-        gI = pack(2048, 4);
-        assertFalse(gI.isRoot(), "Expected [2048,4].isRoot() to be false");
-
-        gI = pack(type(uint248).max, type(uint8).max);
-        assertFalse(gI.isRoot(), "Expected [uint248.max,uint8.max].isRoot() to be false");
+        gI = toGIndex(type(uint256).max);
+        assertFalse(gI.isRoot(), "Expected toGIndex(uint256.max).isRoot() to be false");
     }
 
     function test_concat() public view {
-        assertEq(pack(2, 99).concat(pack(3, 99)).unwrap(), pack(5, 99).unwrap());
-        assertEq(pack(31, 99).concat(pack(3, 99)).unwrap(), pack(63, 99).unwrap());
-        assertEq(pack(31, 99).concat(pack(6, 99)).unwrap(), pack(126, 99).unwrap());
-        assertEq(ROOT.concat(pack(2, 1)).concat(pack(5, 1)).concat(pack(9, 1)).unwrap(), pack(73, 1).unwrap());
-        assertEq(ROOT.concat(pack(2, 9)).concat(pack(5, 1)).concat(pack(9, 4)).unwrap(), pack(73, 4).unwrap());
+        assertEq(toGIndex(2).concat(toGIndex(3)).unwrap(), 5);
+        assertEq(toGIndex(31).concat(toGIndex(3)).unwrap(), 63);
+        assertEq(toGIndex(31).concat(toGIndex(6)).unwrap(), 126);
+        assertEq(ROOT.concat(toGIndex(2)).concat(toGIndex(5)).concat(toGIndex(9)).unwrap(), 73);
 
         assertEq(ROOT.concat(MAX).unwrap(), MAX.unwrap());
     }
 
     function test_concat_RevertsIfZeroGIndex() public {
         vm.expectRevert(IndexOutOfRange.selector);
-        lib.concat(ZERO, pack(1024, 1));
+        lib.concat(ZERO, toGIndex(1024));
 
         vm.expectRevert(IndexOutOfRange.selector);
-        lib.concat(pack(1024, 1), ZERO);
+        lib.concat(toGIndex(1024), ZERO);
     }
 
     function test_concat_BigIndicesBorderCases() public view {
-        lib.concat(pack(2 ** 9, 0), pack(2 ** 238, 0));
-        lib.concat(pack(2 ** 47, 0), pack(2 ** 200, 0));
-        lib.concat(pack(2 ** 199, 0), pack(2 ** 48, 0));
+        lib.concat(toGIndex(2 ** 9), toGIndex(2 ** 246));
+        lib.concat(toGIndex(2 ** 55), toGIndex(2 ** 200));
+        lib.concat(toGIndex(2 ** 199), toGIndex(2 ** 56));
     }
 
     function test_concat_RevertsIfTooBigIndices() public {
@@ -102,184 +95,35 @@ contract GIndexTest is Test {
         lib.concat(MAX, MAX);
 
         vm.expectRevert(IndexOutOfRange.selector);
-        lib.concat(pack(2 ** 48, 0), pack(2 ** 200, 0));
+        lib.concat(toGIndex(2 ** 56), toGIndex(2 ** 200));
 
         vm.expectRevert(IndexOutOfRange.selector);
-        lib.concat(pack(2 ** 200, 0), pack(2 ** 48, 0));
+        lib.concat(toGIndex(2 ** 200), toGIndex(2 ** 56));
+    }
+
+    function testFuzz_concat(uint256 lhsPath, uint256 rhsPath, uint8 lhsDepth, uint8 rhsDepth) public {
+        uint256 lDepth = lhsDepth;
+        uint256 rDepth = uint256(rhsDepth) % (256 - lDepth);
+        uint256 lRoot = 1 << lDepth;
+        uint256 rRoot = 1 << rDepth;
+        GIndex lhs = toGIndex(lRoot | (lhsPath & (lRoot - 1)));
+        GIndex rhs = toGIndex(rRoot | (rhsPath & (rRoot - 1)));
+
+        string[] memory cmd = new string[](5);
+        cmd[0] = "node";
+        cmd[1] = "--no-warnings";
+        cmd[2] = "test/fixtures/ssz/concat_gindex.mjs";
+        cmd[3] = lhs.unwrap().toString();
+        cmd[4] = rhs.unwrap().toString();
+        bytes memory res = vm.ffi(cmd);
+        uint256 expected = abi.decode(res, (uint256));
+
+        assertEq(lhs.concat(rhs).unwrap(), expected);
     }
 
     function testFuzz_concat_WithRoot(GIndex rhs) public view {
-        vm.assume(rhs.index() > 0);
+        vm.assume(rhs.unwrap() > 0);
         assertEq(ROOT.concat(rhs).unwrap(), rhs.unwrap(), "`concat` with a root should return right-hand side value");
-    }
-
-    function testFuzz_unpack(uint248 index, uint8 pow) public pure {
-        GIndex gI = pack(index, pow);
-        assertEq(gI.index(), index);
-        assertEq(gI.width(), 2 ** pow);
-    }
-
-    function test_shr() public pure {
-        GIndex gI;
-
-        gI = pack(1024, 4);
-        assertEq(gI.shr(0).unwrap(), pack(1024, 4).unwrap());
-        assertEq(gI.shr(1).unwrap(), pack(1025, 4).unwrap());
-        assertEq(gI.shr(15).unwrap(), pack(1039, 4).unwrap());
-
-        gI = pack(1031, 4);
-        assertEq(gI.shr(0).unwrap(), pack(1031, 4).unwrap());
-        assertEq(gI.shr(1).unwrap(), pack(1032, 4).unwrap());
-        assertEq(gI.shr(8).unwrap(), pack(1039, 4).unwrap());
-
-        gI = pack(2049, 4);
-        assertEq(gI.shr(0).unwrap(), pack(2049, 4).unwrap());
-        assertEq(gI.shr(1).unwrap(), pack(2050, 4).unwrap());
-        assertEq(gI.shr(14).unwrap(), pack(2063, 4).unwrap());
-    }
-
-    function test_shr_AfterConcat() public pure {
-        GIndex gI;
-        GIndex gIParent = pack(5, 4);
-
-        gI = pack(1024, 4);
-        assertEq(gIParent.concat(gI).shr(0).unwrap(), pack(5120, 4).unwrap());
-        assertEq(gIParent.concat(gI).shr(1).unwrap(), pack(5121, 4).unwrap());
-        assertEq(gIParent.concat(gI).shr(15).unwrap(), pack(5135, 4).unwrap());
-
-        gI = pack(1031, 4);
-        assertEq(gIParent.concat(gI).shr(0).unwrap(), pack(5127, 4).unwrap());
-        assertEq(gIParent.concat(gI).shr(1).unwrap(), pack(5128, 4).unwrap());
-        assertEq(gIParent.concat(gI).shr(8).unwrap(), pack(5135, 4).unwrap());
-
-        gI = pack(2049, 4);
-        assertEq(gIParent.concat(gI).shr(0).unwrap(), pack(10241, 4).unwrap());
-        assertEq(gIParent.concat(gI).shr(1).unwrap(), pack(10242, 4).unwrap());
-        assertEq(gIParent.concat(gI).shr(14).unwrap(), pack(10255, 4).unwrap());
-    }
-
-    function test_shr_OffTheWidth() public {
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shr(ROOT, 1);
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shr(pack(1024, 4), 16);
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shr(pack(1031, 4), 9);
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shr(pack(1023, 4), 1);
-    }
-
-    function test_shr_OffTheWidth_AfterConcat() public {
-        GIndex gIParent = pack(154, 4);
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shr(gIParent.concat(ROOT), 1);
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shr(gIParent.concat(pack(1024, 4)), 16);
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shr(gIParent.concat(pack(1031, 4)), 9);
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shr(gIParent.concat(pack(1023, 4)), 1);
-    }
-
-    function testFuzz_shr_OffTheWidth_AfterConcat(GIndex lhs, GIndex rhs, uint256 shift) public {
-        // Indices concatenation overflow protection.
-        vm.assume(fls(lhs.index()) + 1 + fls(rhs.index()) < 248);
-        vm.assume(rhs.index() >= rhs.width());
-        unchecked {
-            vm.assume(rhs.width() + shift > rhs.width());
-            vm.assume(lhs.concat(rhs).index() + shift > lhs.concat(rhs).index());
-        }
-
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shr(lhs.concat(rhs), rhs.width() + shift);
-    }
-
-    function test_shl() public pure {
-        GIndex gI;
-
-        gI = pack(1023, 4);
-        assertEq(gI.shl(0).unwrap(), pack(1023, 4).unwrap());
-        assertEq(gI.shl(1).unwrap(), pack(1022, 4).unwrap());
-        assertEq(gI.shl(15).unwrap(), pack(1008, 4).unwrap());
-
-        gI = pack(1031, 4);
-        assertEq(gI.shl(0).unwrap(), pack(1031, 4).unwrap());
-        assertEq(gI.shl(1).unwrap(), pack(1030, 4).unwrap());
-        assertEq(gI.shl(7).unwrap(), pack(1024, 4).unwrap());
-
-        gI = pack(2063, 4);
-        assertEq(gI.shl(0).unwrap(), pack(2063, 4).unwrap());
-        assertEq(gI.shl(1).unwrap(), pack(2062, 4).unwrap());
-        assertEq(gI.shl(15).unwrap(), pack(2048, 4).unwrap());
-    }
-
-    function test_shl_AfterConcat() public pure {
-        GIndex gI;
-        GIndex gIParent = pack(5, 4);
-
-        gI = pack(1023, 4);
-        assertEq(gIParent.concat(gI).shl(0).unwrap(), pack(3071, 4).unwrap());
-        assertEq(gIParent.concat(gI).shl(1).unwrap(), pack(3070, 4).unwrap());
-        assertEq(gIParent.concat(gI).shl(15).unwrap(), pack(3056, 4).unwrap());
-
-        gI = pack(1031, 4);
-        assertEq(gIParent.concat(gI).shl(0).unwrap(), pack(5127, 4).unwrap());
-        assertEq(gIParent.concat(gI).shl(1).unwrap(), pack(5126, 4).unwrap());
-        assertEq(gIParent.concat(gI).shl(7).unwrap(), pack(5120, 4).unwrap());
-
-        gI = pack(2063, 4);
-        assertEq(gIParent.concat(gI).shl(0).unwrap(), pack(10255, 4).unwrap());
-        assertEq(gIParent.concat(gI).shl(1).unwrap(), pack(10254, 4).unwrap());
-        assertEq(gIParent.concat(gI).shl(15).unwrap(), pack(10240, 4).unwrap());
-    }
-
-    function test_shl_OffTheWidth() public {
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shl(ROOT, 1);
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shl(pack(1024, 4), 1);
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shl(pack(1031, 4), 9);
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shl(pack(1023, 4), 16);
-    }
-
-    function test_shl_OffTheWidth_AfterConcat() public {
-        GIndex gIParent = pack(154, 4);
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shl(gIParent.concat(ROOT), 1);
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shl(gIParent.concat(pack(1024, 4)), 1);
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shl(gIParent.concat(pack(1031, 4)), 9);
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shl(gIParent.concat(pack(1023, 4)), 16);
-    }
-
-    function testFuzz_shl_OffTheWidth_AfterConcat(GIndex lhs, GIndex rhs, uint256 shift) public {
-        // Indices concatenation overflow protection.
-        vm.assume(fls(lhs.index()) + 1 + fls(rhs.index()) < 248);
-        vm.assume(rhs.index() >= rhs.width());
-        vm.assume(shift > rhs.index() % rhs.width());
-
-        vm.expectRevert(IndexOutOfRange.selector);
-        lib.shl(lhs.concat(rhs), shift);
-    }
-
-    function testFuzz_shl_shr_Idempotent(GIndex gI, uint256 shift) public view {
-        vm.assume(gI.index() > 0);
-        vm.assume(gI.index() >= gI.width());
-        vm.assume(shift < gI.index() % gI.width());
-
-        assertEq(lib.shr(lib.shl(gI, shift), shift).unwrap(), gI.unwrap());
-    }
-
-    function testFuzz_shr_shl_Idempotent(GIndex gI, uint256 shift) public view {
-        vm.assume(gI.index() > 0);
-        vm.assume(gI.index() >= gI.width());
-        vm.assume(shift < gI.width() - (gI.index() % gI.width()));
-
-        assertEq(lib.shl(lib.shr(gI, shift), shift).unwrap(), gI.unwrap());
     }
 
     function test_fls() public {
@@ -305,5 +149,127 @@ contract GIndexTest is Test {
         vm.startSnapshotGas("GIndex.fls");
         fls(31337);
         vm.stopSnapshotGas();
+    }
+
+    function test_ceilLog2() public pure {
+        assertEq(ceilLog2(0), 0);
+        assertEq(ceilLog2(1), 0);
+        assertEq(ceilLog2(2), 1);
+        assertEq(ceilLog2(3), 2);
+        assertEq(ceilLog2(8191), 13);
+        assertEq(ceilLog2(8192), 13);
+        assertEq(ceilLog2(8193), 14);
+        assertEq(ceilLog2(1 << 255), 255);
+        assertEq(ceilLog2(type(uint256).max), 256);
+    }
+
+    function testFuzz_ceilLog2(uint256 x) public pure {
+        x = (x >> 1) + 1;
+
+        uint256 p = ceilLog2(x);
+        uint256 r = 1 << p;
+        assertGe(r, x);
+        if (x > 1) assertLt(1 << (p - 1), x);
+    }
+
+    function test_staticListNodeGIndex() public {
+        assertEq(staticListNodeGIndex(0, 40).unwrap(), 0x020000000000);
+        assertEq(staticListNodeGIndex(12345678, 40).unwrap(), 0x020000bc614e);
+        assertEq(staticListNodeGIndex((1 << 40) - 1, 40).unwrap(), 0x02ffffffffff);
+    }
+
+    function testFuzz_staticListNodeGIndex(uint256 i) public {
+        uint256 depth = uint256(fls(i) & type(uint8).max) + 1;
+        vm.assume(depth < 255);
+
+        string[] memory cmd = new string[](5);
+        cmd[0] = "node";
+        cmd[1] = "--no-warnings";
+        cmd[2] = "test/fixtures/ssz/static_list_gindex.mjs";
+        cmd[3] = i.toString();
+        cmd[4] = (1 << depth).toString();
+        bytes memory res = vm.ffi(cmd);
+        uint256 expected = abi.decode(res, (uint256));
+
+        assertEq(staticListNodeGIndex(i, uint8(depth)).unwrap(), expected);
+    }
+
+    function test_vectorNodeGIndex() public pure {
+        assertEq(vectorNodeGIndex(0, 6).unwrap(), 8);
+        assertEq(vectorNodeGIndex(5, 6).unwrap(), 13);
+        assertEq(vectorNodeGIndex(0, 8192).unwrap(), 8192);
+        assertEq(vectorNodeGIndex(4096, 8192).unwrap(), 12288);
+        assertEq(vectorNodeGIndex(8191, 8192).unwrap(), 16383);
+    }
+
+    function testFuzz_vectorNodeGIndex(uint256 i, uint256 length) public pure {
+        length = (length >> 1) + 1;
+        i %= length;
+
+        assertEq(vectorNodeGIndex(i, length).unwrap(), (1 << ceilLog2(length)) + i);
+    }
+
+    function test_progressiveListNodeGIndex() public {
+        vm.startSnapshotGas("GIndex.progressiveListNodeGIndex");
+        assertEq(progressiveListNodeGIndex(0).unwrap(), 0x4);
+        vm.stopSnapshotGas();
+
+        assertEq(progressiveListNodeGIndex(1).unwrap(), 0x28);
+        assertEq(progressiveListNodeGIndex(2).unwrap(), 0x29);
+        assertEq(progressiveListNodeGIndex(4).unwrap(), 0x2b);
+        assertEq(progressiveListNodeGIndex(5).unwrap(), 0x160);
+        assertEq(progressiveListNodeGIndex(128).unwrap(), 0x5e2b);
+        assertEq(progressiveListNodeGIndex(12345678).unwrap(), 0x5ffe670bf9);
+        assertEq(progressiveListNodeGIndex((1 << 40) - 1).unwrap(), 0x5ffffeaaaaaaaaaa);
+        assertEq(
+            progressiveListNodeGIndex(((4 ** 84 - 1) * 4) / 3).unwrap(),
+            0x5ffffffffffffffffffffeffffffffffffffffffffffffffffffffffffffffff
+        );
+    }
+
+    function testFuzz_progressiveListNodeGIndex(uint256 i) public {
+        vm.assume(i < 1 << 166);
+
+        string[] memory cmd = new string[](4);
+        cmd[0] = "node";
+        cmd[1] = "--no-warnings";
+        cmd[2] = "test/fixtures/ssz/progressive_list_gindex.mjs";
+        cmd[3] = i.toString();
+        bytes memory res = vm.ffi(cmd);
+        uint256 expected = abi.decode(res, (uint256));
+
+        assertEq(progressiveListNodeGIndex(i).unwrap(), expected);
+    }
+
+    function test_staticListNodeGIndex_RevertsWhenTooDeep() public {
+        vm.expectRevert(IndexOutOfRange.selector);
+        lib.staticListNodeGIndex(0, 255);
+    }
+
+    function testFuzz_staticListNodeGIndex_RevertsWhenIndexTooLargeForDepth(uint8 d) public {
+        vm.assume(d < 255);
+
+        vm.expectRevert(IndexOutOfRange.selector);
+        lib.staticListNodeGIndex(1 << (d + 1), d);
+    }
+
+    function test_vectorNodeGIndex_RevertsWhenDepthDoesNotFit() public {
+        vm.expectRevert(IndexOutOfRange.selector);
+        lib.vectorNodeGIndex(0, (1 << 255) + 1);
+    }
+
+    function test_vectorNodeGIndex_RevertsWhenLengthIsZero() public {
+        vm.expectRevert(IndexOutOfRange.selector);
+        lib.vectorNodeGIndex(0, 0);
+    }
+
+    function test_vectorNodeGIndex_RevertsWhenIndexIsTooLarge() public {
+        vm.expectRevert(IndexOutOfRange.selector);
+        lib.vectorNodeGIndex(6, 6);
+    }
+
+    function test_progressiveListNodeGIndex_RevertsWhenIndexTooLarge() public {
+        vm.expectRevert(IndexOutOfRange.selector);
+        lib.progressiveListNodeGIndex(LARGEST_PROGRESSIVE_LIST_IDX + 1);
     }
 }

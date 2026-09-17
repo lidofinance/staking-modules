@@ -7,7 +7,8 @@ import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensio
 
 import { BeaconBlockHeader, Slot, Validator, Withdrawal } from "./lib/Types.sol";
 import { PausableWithRoles } from "./abstract/PausableWithRoles.sol";
-import { GIndex } from "./lib/GIndex.sol";
+import { GIndex, staticListNodeGIndex, vectorNodeGIndex, progressiveListNodeGIndex } from "./lib/GIndex.sol";
+import { GIndices } from "./lib/GIndices.sol";
 import { SSZ } from "./lib/SSZ.sol";
 
 import { IVerifier } from "./interfaces/IVerifier.sol";
@@ -48,90 +49,83 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     /// @dev See https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#time-parameters
     uint64 public constant SLOTS_PER_HISTORICAL_ROOT = 8192;
 
-    /// @dev This index is relative to a state like: `BeaconState.latest_execution_payload_header.withdrawals[0]`.
-    GIndex public immutable GI_FIRST_WITHDRAWAL_PREV;
+    /// @dev Pre-Gloas: `BeaconState.latest_execution_payload_header.withdrawals_root`, the withdrawals list root.
+    GIndex public constant GI_WITHDRAWALS_PRE_GLOAS = GIndices.WITHDRAWALS_ELECTRA;
 
-    /// @dev This index is relative to a state like: `BeaconState.latest_execution_payload_header.withdrawals[0]`.
-    GIndex public immutable GI_FIRST_WITHDRAWAL_CURR;
+    /// @dev Gloas: `BeaconState.payload_expected_withdrawals`, the withdrawals list itself.
+    GIndex public constant GI_WITHDRAWALS = GIndices.WITHDRAWALS_GLOAS;
 
-    /// @dev This index is relative to a state like: `BeaconState.validators[0]`.
-    GIndex public immutable GI_FIRST_VALIDATOR_PREV;
+    /// @dev Pre-Gloas: `BeaconState.validators`.
+    GIndex public constant GI_VALIDATORS_PRE_GLOAS = GIndices.VALIDATORS_ELECTRA;
 
-    /// @dev This index is relative to a state like: `BeaconState.validators[0]`.
-    GIndex public immutable GI_FIRST_VALIDATOR_CURR;
+    /// @dev Gloas: `BeaconState.validators`.
+    GIndex public constant GI_VALIDATORS = GIndices.VALIDATORS_GLOAS;
 
-    /// @dev This index is relative to a state like: `BeaconState.historical_summaries[0]`.
-    GIndex public immutable GI_FIRST_HISTORICAL_SUMMARY_PREV;
+    /// @dev Pre-Gloas: `BeaconState.balances`.
+    GIndex public constant GI_BALANCES_PRE_GLOAS = GIndices.BALANCES_ELECTRA;
 
-    /// @dev This index is relative to a state like: `BeaconState.historical_summaries[0]`.
-    GIndex public immutable GI_FIRST_HISTORICAL_SUMMARY_CURR;
+    /// @dev Gloas: `BeaconState.balances`.
+    GIndex public constant GI_BALANCES = GIndices.BALANCES_GLOAS;
 
-    /// @dev This index is relative to HistoricalSummary like: HistoricalSummary.blockRoots[0].
-    ///      Considered constant across forks.
-    GIndex public constant GI_FIRST_BLOCK_ROOT_IN_SUMMARY =
-        GIndex.wrap(0x000000000000000000000000000000000000000000000000000000000040000d);
+    /// @dev Pre-Gloas: `BeaconState.block_roots`.
+    GIndex public constant GI_BLOCK_ROOTS_PRE_GLOAS = GIndices.BLOCK_ROOTS_ELECTRA;
 
-    /// @dev This index is relative to a state like: `BeaconState.balances[0]`.
-    GIndex public immutable GI_FIRST_BALANCES_NODE_PREV;
+    /// @dev Gloas: `BeaconState.block_roots`.
+    GIndex public constant GI_BLOCK_ROOTS = GIndices.BLOCK_ROOTS_GLOAS;
 
-    /// @dev This index is relative to a state like: `BeaconState.balances[0]`.
-    GIndex public immutable GI_FIRST_BALANCES_NODE_CURR;
+    /// @dev Pre-Gloas: `BeaconState.historical_summaries`.
+    GIndex public constant GI_HISTORICAL_SUMMARIES_PRE_GLOAS = GIndices.HISTORICAL_SUMMARIES_ELECTRA;
+
+    /// @dev Gloas: `BeaconState.historical_summaries`.
+    GIndex public constant GI_HISTORICAL_SUMMARIES = GIndices.HISTORICAL_SUMMARIES_GLOAS;
+
+    /// @dev `HistoricalSummary.block_summary_root`, the root of the block roots vector.
+    GIndex public constant GI_BLOCK_ROOT_IN_SUMMARY = GIndices.BLOCK_ROOT_IN_SUMMARY;
 
     /// @dev The very first slot the verifier is supposed to accept proofs for.
     Slot public immutable FIRST_SUPPORTED_SLOT;
 
-    /// @dev The first slot of the currently compatible fork.
-    Slot public immutable PIVOT_SLOT;
+    /// @dev The first slot of the Gloas fork. Slots below it are proven against the pre-Gloas state layout,
+    ///      and slots at or above it against the Gloas one. Set it to `type(uint64).max` if the fork is not
+    ///      scheduled yet, or to `FIRST_SUPPORTED_SLOT` to serve the Gloas layout only.
+    Slot public immutable GLOAS_SLOT;
 
     /// @dev Historical summaries started accumulating from the slot of Capella fork.
     Slot public immutable CAPELLA_SLOT;
 
-    /// @dev An address withdrawals are supposed to happen to (Lido withdrawal credentials).
-    address public immutable WITHDRAWAL_ADDRESS;
+    /// @dev Withdrawal credentials validators are supposed to have.
+    bytes32 public immutable WITHDRAWAL_CREDENTIALS;
 
     /// @dev Staking module contract.
     IBaseModule public immutable MODULE;
 
-    /// @dev The previous and current forks can be essentially the same.
+    /// @dev The verifier serves the pre-Gloas and Gloas state layouts only, @see `GLOAS_SLOT`.
     constructor(
-        address withdrawalAddress,
+        bytes32 withdrawalCredentials,
         address module,
         uint64 slotsPerEpoch,
-        GIndices memory gindices,
         Slot firstSupportedSlot,
-        Slot pivotSlot,
+        Slot gloasSlot,
         Slot capellaSlot,
         uint256 minWithdrawalRatio,
         address admin
     ) {
-        if (withdrawalAddress == address(0)) revert ZeroWithdrawalAddress();
+        if (withdrawalCredentials == bytes32(0)) revert ZeroWithdrawalCredentials();
         if (module == address(0)) revert ZeroModuleAddress();
         if (admin == address(0)) revert ZeroAdminAddress();
         if (slotsPerEpoch == 0) revert InvalidChainConfig();
-        if (firstSupportedSlot > pivotSlot) revert InvalidPivotSlot();
+        if (firstSupportedSlot > gloasSlot) revert InvalidGloasSlot();
         if (capellaSlot > firstSupportedSlot) revert InvalidCapellaSlot();
         if (minWithdrawalRatio == 0 || minWithdrawalRatio > MAX_BP) revert InvalidMinWithdrawalRatio();
 
-        WITHDRAWAL_ADDRESS = withdrawalAddress;
+        WITHDRAWAL_CREDENTIALS = withdrawalCredentials;
         MODULE = IBaseModule(module);
         MIN_WITHDRAWAL_RATIO = minWithdrawalRatio;
 
         SLOTS_PER_EPOCH = slotsPerEpoch;
 
-        GI_FIRST_WITHDRAWAL_PREV = gindices.gIFirstWithdrawalPrev;
-        GI_FIRST_WITHDRAWAL_CURR = gindices.gIFirstWithdrawalCurr;
-
-        GI_FIRST_VALIDATOR_PREV = gindices.gIFirstValidatorPrev;
-        GI_FIRST_VALIDATOR_CURR = gindices.gIFirstValidatorCurr;
-
-        GI_FIRST_HISTORICAL_SUMMARY_PREV = gindices.gIFirstHistoricalSummaryPrev;
-        GI_FIRST_HISTORICAL_SUMMARY_CURR = gindices.gIFirstHistoricalSummaryCurr;
-
-        GI_FIRST_BALANCES_NODE_PREV = gindices.gIFirstBalanceNodePrev;
-        GI_FIRST_BALANCES_NODE_CURR = gindices.gIFirstBalanceNodeCurr;
-
         FIRST_SUPPORTED_SLOT = firstSupportedSlot;
-        PIVOT_SLOT = pivotSlot;
+        GLOAS_SLOT = gloasSlot;
         CAPELLA_SLOT = capellaSlot;
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -171,9 +165,16 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         }
 
         {
-            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.withdrawalBlock.rootsTimestamp);
-            if (trustedHeaderRoot != data.withdrawalBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
+            bytes32 trustedHeaderRoot = _getParentBlockRoot(data.recentBlock.rootsTimestamp);
+            if (trustedHeaderRoot != data.recentBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
         }
+
+        SSZ.verifyProof({
+            proof: data.withdrawalBlock.proof,
+            root: data.recentBlock.header.stateRoot,
+            leaf: data.withdrawalBlock.header.hashTreeRoot(),
+            gI: _getBlockRootsBlockGI(data.recentBlock.header.slot, data.withdrawalBlock.header.slot)
+        });
 
         {
             bytes memory pubkey = MODULE.getSigningKeys(data.validator.nodeOperatorId, data.validator.keyIndex, 1);
@@ -201,7 +202,7 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
     }
 
     /// @inheritdoc IVerifier
-    function processHistoricalWithdrawalProof(ProcessHistoricalWithdrawalInput calldata data) external whenResumed {
+    function processHistoricalWithdrawalProof(ProcessWithdrawalInput calldata data) external whenResumed {
         if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) revert UnsupportedSlot(data.recentBlock.header.slot);
         if (data.withdrawalBlock.header.slot < FIRST_SUPPORTED_SLOT) {
             revert UnsupportedSlot(data.withdrawalBlock.header.slot);
@@ -247,8 +248,8 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
 
     /// @inheritdoc IVerifier
     function processBalanceProof(ProcessBalanceProofInput calldata data) external whenResumed {
-        if (data.recentBlock.header.slot < FIRST_SUPPORTED_SLOT) {
-            revert UnsupportedSlot(data.recentBlock.header.slot);
+        if (data.balanceBlock.header.slot < FIRST_SUPPORTED_SLOT) {
+            revert UnsupportedSlot(data.balanceBlock.header.slot);
         }
 
         {
@@ -256,11 +257,18 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
             if (trustedHeaderRoot != data.recentBlock.header.hashTreeRoot()) revert InvalidBlockHeader();
         }
 
+        SSZ.verifyProof({
+            proof: data.balanceBlock.proof,
+            root: data.recentBlock.header.stateRoot,
+            leaf: data.balanceBlock.header.hashTreeRoot(),
+            gI: _getBlockRootsBlockGI(data.recentBlock.header.slot, data.balanceBlock.header.slot)
+        });
+
         uint64 balanceGwei = _processBalanceProof(
             data.validator,
             data.balance,
-            data.recentBlock.header.stateRoot,
-            data.recentBlock.header.slot
+            data.balanceBlock.header.stateRoot,
+            data.balanceBlock.header.slot
         );
 
         MODULE.reportValidatorBalance(data.validator.nodeOperatorId, data.validator.keyIndex, gweiToWei(balanceGwei));
@@ -317,10 +325,12 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         uint256 nodeOperatorId,
         uint256 keyIndex
     ) internal view returns (uint256 withdrawalAmount) {
-        if (address(uint160(uint256(validator.object.withdrawalCredentials))) != WITHDRAWAL_ADDRESS) {
+        if (validator.object.withdrawalCredentials != WITHDRAWAL_CREDENTIALS) {
+            revert InvalidWithdrawalCredentials();
+        }
+        if (withdrawal.object.withdrawalAddress != address(uint160(uint256(WITHDRAWAL_CREDENTIALS)))) {
             revert InvalidWithdrawalAddress();
         }
-        if (withdrawal.object.withdrawalAddress != WITHDRAWAL_ADDRESS) revert InvalidWithdrawalAddress();
 
         if (validator.object.slashed) revert ValidatorIsSlashed();
         if (_computeEpochAtSlot(header.slot) < validator.object.withdrawableEpoch) revert ValidatorIsNotWithdrawable();
@@ -414,19 +424,52 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         balanceGwei = uint64(uint256(balanceNode));
     }
 
-    function _getValidatorGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
-        GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_VALIDATOR_PREV : GI_FIRST_VALIDATOR_CURR;
-        return gI.shr(offset);
+    function _getValidatorGI(uint256 offset, Slot stateSlot) internal view returns (GIndex gI) {
+        if (stateSlot < GLOAS_SLOT) {
+            gI = GI_VALIDATORS_PRE_GLOAS;
+            gI = gI.concat(staticListNodeGIndex(offset, 40)); // log2(VALIDATOR_REGISTRY_LIMIT)
+        } else {
+            gI = GI_VALIDATORS;
+            gI = gI.concat(progressiveListNodeGIndex(offset));
+        }
     }
 
-    function _getWithdrawalGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
-        GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_WITHDRAWAL_PREV : GI_FIRST_WITHDRAWAL_CURR;
-        return gI.shr(offset);
+    function _getWithdrawalGI(uint256 offset, Slot stateSlot) internal view returns (GIndex gI) {
+        if (stateSlot < GLOAS_SLOT) {
+            gI = GI_WITHDRAWALS_PRE_GLOAS;
+            gI = gI.concat(staticListNodeGIndex(offset, 4)); // log2(MAX_WITHDRAWALS_PER_PAYLOAD)
+        } else {
+            gI = GI_WITHDRAWALS;
+            gI = gI.concat(progressiveListNodeGIndex(offset));
+        }
     }
 
-    function _getValidatorBalanceGI(uint256 offset, Slot stateSlot) internal view returns (GIndex) {
-        GIndex gI = stateSlot < PIVOT_SLOT ? GI_FIRST_BALANCES_NODE_PREV : GI_FIRST_BALANCES_NODE_CURR;
-        return gI.shr(offset);
+    function _getValidatorBalanceGI(uint256 offset, Slot stateSlot) internal view returns (GIndex gI) {
+        if (stateSlot < GLOAS_SLOT) {
+            gI = GI_BALANCES_PRE_GLOAS;
+            gI = gI.concat(staticListNodeGIndex(offset, 38)); // log2(VALIDATOR_REGISTRY_LIMIT / 4), 4 balances per node
+        } else {
+            gI = GI_BALANCES;
+            gI = gI.concat(progressiveListNodeGIndex(offset));
+        }
+    }
+
+    /// @dev Generalized index of the `targetSlot` block root in the `recentSlot` state `block_roots`.
+    function _getBlockRootsBlockGI(Slot recentSlot, Slot targetSlot) internal view returns (GIndex gI) {
+        // `state.block_roots` at the post-state of `recentSlot` carries the previous block root
+        // at index `i % 8192` for `i in [recentSlot - SLOTS_PER_HISTORICAL_ROOT, recentSlot - 1]`,
+        // so the target slot must be strictly older than the recent slot and within the ring.
+        if (targetSlot.unwrap() >= recentSlot.unwrap()) revert BlockRootNotInRange();
+        if (recentSlot.unwrap() - targetSlot.unwrap() > SLOTS_PER_HISTORICAL_ROOT) revert BlockRootNotInRange();
+
+        uint64 rootIndex = targetSlot.unwrap() % SLOTS_PER_HISTORICAL_ROOT;
+
+        if (recentSlot < GLOAS_SLOT) {
+            gI = GI_BLOCK_ROOTS_PRE_GLOAS;
+        } else {
+            gI = GI_BLOCK_ROOTS;
+        }
+        gI = gI.concat(vectorNodeGIndex(rootIndex, SLOTS_PER_HISTORICAL_ROOT));
     }
 
     function _getHistoricalBlockRootGI(Slot recentSlot, Slot targetSlot) internal view returns (GIndex gI) {
@@ -437,11 +480,16 @@ contract Verifier is IVerifier, AccessControlEnumerable, PausableWithRoles {
         Slot summaryCreatedAtSlot = Slot.wrap(targetSlot.unwrap() - rootIndex + SLOTS_PER_HISTORICAL_ROOT);
         if (summaryCreatedAtSlot > recentSlot) revert HistoricalSummaryDoesNotExist();
 
-        gI = recentSlot < PIVOT_SLOT ? GI_FIRST_HISTORICAL_SUMMARY_PREV : GI_FIRST_HISTORICAL_SUMMARY_CURR;
+        if (recentSlot < GLOAS_SLOT) {
+            gI = GI_HISTORICAL_SUMMARIES_PRE_GLOAS;
+        } else {
+            gI = GI_HISTORICAL_SUMMARIES;
+        }
 
-        gI = gI.shr(summaryIndex); // historicalSummaries[summaryIndex]
-        gI = gI.concat(GI_FIRST_BLOCK_ROOT_IN_SUMMARY); // historicalSummaries[summaryIndex].blockRoots[0]
-        gI = gI.shr(rootIndex); // historicalSummaries[summaryIndex].blockRoots[rootIndex]
+        gI = gI.concat(staticListNodeGIndex(summaryIndex, 24)); // log2(HISTORICAL_ROOTS_LIMIT)
+        // historical_summaries[summaryIndex].block_summary_root
+        gI = gI.concat(GI_BLOCK_ROOT_IN_SUMMARY);
+        gI = gI.concat(vectorNodeGIndex(rootIndex, SLOTS_PER_HISTORICAL_ROOT));
     }
 
     // From HashConsensus contract.

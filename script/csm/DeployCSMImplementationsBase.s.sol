@@ -18,13 +18,13 @@ import { MerkleGateFactory } from "../../src/MerkleGateFactory.sol";
 import { ParametersRegistry } from "../../src/ParametersRegistry.sol";
 import { OneShotCurveSetup } from "../../src/utils/OneShotCurveSetup.sol";
 import { IOneShotCurveSetup } from "../../src/interfaces/IOneShotCurveSetup.sol";
-import { IVerifier } from "../../src/interfaces/IVerifier.sol";
 import { OssifiableProxy } from "../../src/lib/proxy/OssifiableProxy.sol";
 
 import { JsonObj, Json } from "../utils/Json.sol";
 import { JsonBindings } from "../utils/JsonBindings.sol";
 import { CommonScriptUtils } from "../utils/Common.sol";
 import { Slot } from "../../src/lib/Types.sol";
+import { WCType, toWC } from "../../src/utils/WithdrawalCredentials.sol";
 
 abstract contract DeployCSMImplementationsBase is DeployBase {
     Verifier public verifierV3;
@@ -107,23 +107,12 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
                 _identifiedDVTClusterCurveSetupParams()
             );
 
-            // prettier-ignore
             verifierV3 = new Verifier({
-                withdrawalAddress: locator.withdrawalVault(),
+                withdrawalCredentials: toWC(locator.withdrawalVault(), WCType.Eth1),
                 module: address(csm),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
-                gindices: IVerifier.GIndices({
-                    gIFirstWithdrawalPrev: config.gIFirstWithdrawal,
-                    gIFirstWithdrawalCurr: config.gIFirstWithdrawal,
-                    gIFirstValidatorPrev: config.gIFirstValidator,
-                    gIFirstValidatorCurr: config.gIFirstValidator,
-                    gIFirstHistoricalSummaryPrev: config.gIFirstHistoricalSummary,
-                    gIFirstHistoricalSummaryCurr: config.gIFirstHistoricalSummary,
-                    gIFirstBalanceNodePrev: config.gIFirstBalanceNode,
-                    gIFirstBalanceNodeCurr: config.gIFirstBalanceNode
-                }),
                 firstSupportedSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
-                pivotSlot: Slot.wrap(uint64(config.verifierFirstSupportedSlot)),
+                gloasSlot: Slot.wrap(uint64(config.verifierGloasSlot)),
                 capellaSlot: Slot.wrap(uint64(config.capellaSlot)),
                 minWithdrawalRatio: config.minWithdrawalRatio,
                 admin: deployer

@@ -4,7 +4,6 @@
 pragma solidity 0.8.33;
 
 import { DeployBase, CuratedGateConfig } from "./DeployBase.s.sol";
-import { GIndices } from "../constants/GIndices.sol";
 import { BaseOracle } from "../../src/lib/base-oracle/BaseOracle.sol";
 import { HashConsensus } from "../../src/lib/base-oracle/HashConsensus.sol";
 import { ILidoLocator } from "../../src/interfaces/ILidoLocator.sol";
@@ -27,11 +26,8 @@ contract DeployLocalDevNet is DeployBase {
         (config.oracleMembers, config.hashConsensusQuorum) = _readAccountingHashConsensus();
 
         // Verifier
-        config.gIFirstWithdrawal = GIndices.FIRST_WITHDRAWAL_ELECTRA;
-        config.gIFirstValidator = GIndices.FIRST_VALIDATOR_ELECTRA;
-        config.gIFirstHistoricalSummary = GIndices.FIRST_HISTORICAL_SUMMARY_ELECTRA; // prettier-ignore
-        config.gIFirstBalanceNode = GIndices.FIRST_BALANCE_NODE_ELECTRA;
         config.verifierFirstSupportedSlot = vm.envUint("DEVNET_ELECTRA_EPOCH") * config.slotsPerEpoch;
+        config.verifierGloasSlot = vm.envUint("DEVNET_GLOAS_EPOCH") * config.slotsPerEpoch;
         config.capellaSlot = vm.envUint("DEVNET_CAPELLA_EPOCH") * config.slotsPerEpoch;
         config.minWithdrawalRatio = 9950;
 
