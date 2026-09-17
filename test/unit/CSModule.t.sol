@@ -103,7 +103,6 @@ contract CSMCommon is ModuleFixtures {
         module.grantRole(module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), address(this));
         module.grantRole(module.VERIFIER_ROLE(), address(this));
         module.grantRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), address(this));
-        module.grantRole(module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(), address(this));
         vm.stopPrank();
     }
 
@@ -971,8 +970,7 @@ contract CSMTopUpQueue is CSMCommon {
             nodeOperatorId: 0,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 2 ether,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
         csm.reportRegularWithdrawnValidators(infos);
 
@@ -1002,7 +1000,7 @@ contract CSMTopUpQueue is CSMCommon {
         bytes memory key1 = slice(packedPubkeys, 48, 48);
 
         // Slashed keys must not receive new top-ups even though the top-up queue still references them.
-        csm.reportValidatorSlashing(0, 0);
+        csm.reportValidatorSlashing(0, 0, 0);
         assertTrue(csm.isValidatorSlashed(0, 0));
         assertEq(_getTopUpQueueLength(), 2);
 
@@ -1016,8 +1014,9 @@ contract CSMTopUpQueue is CSMCommon {
 
         assertEq(allocations, UintArr(0, 4 ether));
         assertEq(csm.getKeyAllocatedBalances(0, 0, 2), UintArr(0, 4 ether));
-        assertEq(module.getTotalModuleStake(), 2 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
-        assertEq(module.getNodeOperatorBalance(0), 2 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
+        // The slashed key is withdrawn right on the report, so only the topped-up key is left staked.
+        assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
+        assertEq(module.getNodeOperatorBalance(0), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
         // Both the slashed head key and the topped-up follower must be cleared from the queue.
         assertEq(_getTopUpQueueLength(), 0);
     }
@@ -1196,8 +1195,7 @@ contract CSMTopUpQueue is CSMCommon {
             nodeOperatorId: 0,
             keyIndex: 0,
             exitBalance: 40 ether,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         csm.reportRegularWithdrawnValidators(infos);
@@ -1744,8 +1742,7 @@ contract CSMQueueOps is CSMCommon {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectEmit(address(module));
@@ -2213,8 +2210,7 @@ contract CSMTotalModuleStake is CSMCommon {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: 1 ether,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
         csm.reportRegularWithdrawnValidators(infos);
 
@@ -2286,8 +2282,7 @@ contract CSMTotalModuleStake is CSMCommon {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: 1 ether,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
         csm.reportRegularWithdrawnValidators(infos);
 

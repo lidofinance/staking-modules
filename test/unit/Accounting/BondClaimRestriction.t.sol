@@ -5,7 +5,7 @@ pragma solidity 0.8.33;
 
 import { BaseTest } from "./_Base.t.sol";
 
-// Bond claims are restricted until all the slashed validators are reported as withdrawn and the losses are compensated.
+// Bond claims are restricted until the reported slashings are accounted on the Consensus Layer and the losses are compensated.
 contract BondClaimRestrictionTest is BaseTest {
     uint256 internal constant KEYS_COUNT = 16;
     uint256 internal constant REQUIRED_BOND = 32 ether; // 2 ether per key
@@ -25,8 +25,12 @@ contract BondClaimRestrictionTest is BaseTest {
     function test_isBondClaimRestricted() public assertInvariants {
         assertFalse(accounting.isBondClaimRestricted(0));
 
-        mock_getNodeOperatorUnresolvedSlashedValidators(1);
+        mock_getBondClaimLockedUntil(block.timestamp + 1);
         assertTrue(accounting.isBondClaimRestricted(0));
+
+        // The restriction is lifted at the very timestamp the lock is set to.
+        mock_getBondClaimLockedUntil(block.timestamp);
+        assertFalse(accounting.isBondClaimRestricted(0));
     }
 
     function test_getClaimableBondShares_notRestricted() public assertInvariants {
@@ -34,19 +38,19 @@ contract BondClaimRestrictionTest is BaseTest {
             accounting.getClaimableBondShares(0),
             stETH.getSharesByPooledEth(EXCESS_BOND),
             1 wei,
-            "excess bond should be claimable without unresolved slashings"
+            "excess bond should be claimable without reported slashings"
         );
     }
 
     function test_getClaimableBondShares_zeroWhenRestricted() public assertInvariants {
-        mock_getNodeOperatorUnresolvedSlashedValidators(1);
+        mock_getBondClaimLockedUntil(block.timestamp + 1);
 
         assertEq(accounting.getClaimableBondShares(0), 0, "nothing should be claimable while restricted");
     }
 
     function test_getClaimableRewardsAndBondShares_zeroWhenRestricted() public assertInvariants {
         uint256 feeShares = _fundRewards({ fee: 0.1 ether });
-        mock_getNodeOperatorUnresolvedSlashedValidators(1);
+        mock_getBondClaimLockedUntil(block.timestamp + 1);
 
         assertEq(
             accounting.getClaimableRewardsAndBondShares(0, feeShares, proof),
@@ -57,7 +61,7 @@ contract BondClaimRestrictionTest is BaseTest {
 
     function test_claimRewardsStETH_claimsNothingButPullsRewardsWhenRestricted() public assertInvariants {
         uint256 feeShares = _fundRewards({ fee: 0.1 ether });
-        mock_getNodeOperatorUnresolvedSlashedValidators(1);
+        mock_getBondClaimLockedUntil(block.timestamp + 1);
 
         uint256 bondSharesBefore = accounting.getBondShares(0);
 
@@ -69,12 +73,11 @@ contract BondClaimRestrictionTest is BaseTest {
         assertEq(stETH.sharesOf(user), 0, "nothing should be transferred to the Node Operator");
     }
 
-    function test_claimRewardsStETH_claimableOnceSlashedValidatorWithdrawalReported() public assertInvariants {
-        mock_getNodeOperatorUnresolvedSlashedValidators(1);
+    function test_claimRewardsStETH_claimableOnceLockExpired() public assertInvariants {
+        mock_getBondClaimLockedUntil(block.timestamp + 1);
         assertEq(accounting.getClaimableBondShares(0), 0);
 
-        // The withdrawal report of the slashed validator resolves the slashing.
-        mock_getNodeOperatorUnresolvedSlashedValidators(0);
+        mock_getBondClaimLockedUntil(0);
 
         vm.prank(user);
         uint256 claimedShares = accounting.claimRewardsStETH(0, UINT256_MAX, 0, proof);
@@ -83,15 +86,15 @@ contract BondClaimRestrictionTest is BaseTest {
     }
 
     function test_claimableStaysZeroUntilLossesCompensated() public assertInvariants {
-        mock_getNodeOperatorUnresolvedSlashedValidators(1);
+        mock_getBondClaimLockedUntil(block.timestamp + 1);
 
         // The losses exceed the bond, so the uncovered part becomes the bond debt.
         uint256 uncoveredLosses = 1 ether;
         _penalize({ amount: accounting.getBond(0) + uncoveredLosses });
         assertApproxEqAbs(accounting.getBondDebt(0), uncoveredLosses, 1 wei, "uncovered losses become the bond debt");
 
-        // The withdrawal report lifts the restriction, but the losses are not compensated yet.
-        mock_getNodeOperatorUnresolvedSlashedValidators(0);
+        // The expired lock lifts the restriction, but the losses are not compensated yet.
+        mock_getBondClaimLockedUntil(0);
         assertEq(accounting.getClaimableBondShares(0), 0, "nothing to claim until the debt is compensated");
 
         // A partial compensation is fully spent on the debt.
@@ -111,7 +114,7 @@ contract BondClaimRestrictionTest is BaseTest {
     }
 
     function test_claimRewardsWstETH_claimsNothingWhenRestricted() public assertInvariants {
-        mock_getNodeOperatorUnresolvedSlashedValidators(1);
+        mock_getBondClaimLockedUntil(block.timestamp + 1);
         uint256 bondSharesBefore = accounting.getBondShares(0);
 
         vm.prank(user);
@@ -122,7 +125,7 @@ contract BondClaimRestrictionTest is BaseTest {
     }
 
     function test_claimRewardsUnstETH_claimsNothingWhenRestricted() public assertInvariants {
-        mock_getNodeOperatorUnresolvedSlashedValidators(1);
+        mock_getBondClaimLockedUntil(block.timestamp + 1);
         uint256 bondSharesBefore = accounting.getBondShares(0);
 
         vm.prank(user);

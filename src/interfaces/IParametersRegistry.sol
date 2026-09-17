@@ -52,6 +52,7 @@ interface IParametersRegistry {
         uint256 defaultAllowedExitDelay;
         uint256 defaultExitDelayFee;
         uint256 defaultMaxElWithdrawalRequestFee;
+        uint256 defaultSlashingPenalty;
     }
 
     struct CurveParameters {
@@ -71,6 +72,7 @@ interface IParametersRegistry {
         uint256 allowedExitDelay;
         uint256 exitDelayFee;
         uint256 maxElWithdrawalRequestFee;
+        uint256 slashingPenalty;
     }
 
     event DefaultKeyRemovalChargeSet(uint256 value);
@@ -85,6 +87,7 @@ interface IParametersRegistry {
     event DefaultAllowedExitDelaySet(uint256 delay);
     event DefaultExitDelayFeeSet(uint256 penalty);
     event DefaultMaxElWithdrawalRequestFeeSet(uint256 fee);
+    event DefaultSlashingPenaltySet(uint256 penalty);
 
     event KeyRemovalChargeSet(uint256 indexed curveId, uint256 keyRemovalCharge);
     event GeneralDelayedPenaltyAdditionalFineSet(uint256 indexed curveId, uint256 fine);
@@ -103,6 +106,7 @@ interface IParametersRegistry {
     event AllowedExitDelaySet(uint256 indexed curveId, uint256 delay);
     event ExitDelayFeeSet(uint256 indexed curveId, uint256 penalty);
     event MaxElWithdrawalRequestFeeSet(uint256 indexed curveId, uint256 fee);
+    event SlashingPenaltySet(uint256 indexed curveId, uint256 penalty);
 
     event KeyRemovalChargeUnset(uint256 indexed curveId);
     event GeneralDelayedPenaltyAdditionalFineUnset(uint256 indexed curveId);
@@ -116,6 +120,7 @@ interface IParametersRegistry {
     event AllowedExitDelayUnset(uint256 indexed curveId);
     event ExitDelayFeeUnset(uint256 indexed curveId);
     event MaxElWithdrawalRequestFeeUnset(uint256 indexed curveId);
+    event SlashingPenaltyUnset(uint256 indexed curveId);
 
     error InvalidRewardShareData();
     error InvalidPerformanceLeewayData();
@@ -126,8 +131,9 @@ interface IParametersRegistry {
     error ZeroAdminAddress();
     error QueueCannotBeUsed();
     error InvalidAllowedExitDelay();
+    error InvalidSlashingPenalty();
 
-    /// @notice Role to manage general penalties and charges parameters: key removal charge and general delayed penalty additional fine
+    /// @notice Role to manage general penalties and charges parameters: key removal charge, general delayed penalty additional fine and slashing penalty
     function MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE() external view returns (bytes32);
 
     /// @notice Role to manage keys limit parameter
@@ -196,6 +202,9 @@ interface IParametersRegistry {
     /// @notice Get default value for max EL withdrawal request fee
     function defaultMaxElWithdrawalRequestFee() external returns (uint256);
 
+    /// @notice Get default value for the slashing penalty
+    function defaultSlashingPenalty() external returns (uint256);
+
     /// @notice Set default value for the key removal charge. Default value is used if a specific value is not set for the curveId. This parameter is not used in Curated Module
     /// @param keyRemovalCharge Value to be set as default for the key removal charge
     function setDefaultKeyRemovalCharge(uint256 keyRemovalCharge) external;
@@ -255,6 +264,11 @@ interface IParametersRegistry {
     /// @notice set default value for max EL withdrawal request fee. Default value is used if a specific value is not set for the curveId
     /// @param fee Value to be set as default for the max EL withdrawal request fee
     function setDefaultMaxElWithdrawalRequestFee(uint256 fee) external;
+
+    /// @notice Set the default slashing penalty for a single 32 ether validator.
+    ///         Default value is used if a specific value is not set for the curveId
+    /// @param penalty Value to be set as default for the slashing penalty
+    function setDefaultSlashingPenalty(uint256 penalty) external;
 
     /// @notice Set key removal charge for the curveId. This parameter is not used in Curated Module
     /// @param curveId Curve Id to associate key removal charge with
@@ -458,6 +472,20 @@ interface IParametersRegistry {
     /// @dev `defaultMaxElWithdrawalRequestFee` is returned if the value is not set for the given curveId.
     /// @param curveId Curve Id to get max EL withdrawal request fee for
     function getMaxElWithdrawalRequestFee(uint256 curveId) external view returns (uint256 fee);
+
+    /// @notice Set the slashing penalty for a single 32 ether validator for the given curveId
+    /// @param curveId Curve Id to associate slashing penalty with
+    /// @param penalty Slashing penalty
+    function setSlashingPenalty(uint256 curveId, uint256 penalty) external;
+
+    /// @notice Unset slashing penalty for the curveId
+    /// @param curveId Curve Id to unset slashing penalty for
+    function unsetSlashingPenalty(uint256 curveId) external;
+
+    /// @notice Get the slashing penalty for a single 32 ether validator by the curveId
+    /// @dev `defaultSlashingPenalty` is returned if the value is not set for the given curveId.
+    /// @param curveId Curve Id to get the slashing penalty for
+    function getSlashingPenalty(uint256 curveId) external view returns (uint256 penalty);
 
     /// @notice Get all parameters resolved for the given curveId in one call
     /// @dev Per-curve values are returned where set, otherwise defaults are used

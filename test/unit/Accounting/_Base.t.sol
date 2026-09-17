@@ -76,10 +76,10 @@ contract AccountingFixtures is Test, Fixtures, Utilities, InvariantAsserts {
         );
     }
 
-    function mock_getNodeOperatorUnresolvedSlashedValidators(uint256 returnValue) internal {
+    function mock_getBondClaimLockedUntil(uint256 returnValue) internal {
         vm.mockCall(
             address(stakingModule),
-            abi.encodeWithSelector(IBaseModule.getNodeOperatorUnresolvedSlashedValidators.selector, 0),
+            abi.encodeWithSelector(IBaseModule.getBondClaimLockedUntil.selector, 0),
             abi.encode(returnValue)
         );
     }
@@ -153,7 +153,7 @@ contract BaseTest is AccountingFixtures {
         mock_updateDepositableValidatorsCount();
         mock_updateDepositInfo(0);
         mock_requestFullDepositInfoUpdate();
-        mock_getNodeOperatorUnresolvedSlashedValidators(0);
+        mock_getBondClaimLockedUntil(0);
 
         IBondCurve.BondCurveIntervalInput[] memory curve = new IBondCurve.BondCurveIntervalInput[](1);
         curve[0] = IBondCurve.BondCurveIntervalInput({ minKeysCount: 1, trend: 2 ether });

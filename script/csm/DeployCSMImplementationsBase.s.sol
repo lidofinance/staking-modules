@@ -111,6 +111,7 @@ abstract contract DeployCSMImplementationsBase is DeployBase {
                 withdrawalAddress: locator.withdrawalVault(),
                 module: address(csm),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
+                secondsPerSlot: uint64(config.secondsPerSlot),
                 gindices: IVerifier.GIndices({
                     gIFirstWithdrawalPrev: config.gIFirstWithdrawal,
                     gIFirstWithdrawalCurr: config.gIFirstWithdrawal,

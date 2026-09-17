@@ -38,7 +38,6 @@ abstract contract PenaltyIntegrationTestBase is ModuleTypeBase, PermitHelper {
         module.grantRole(module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), address(this));
         module.grantRole(module.SETTLE_GENERAL_DELAYED_PENALTY_ROLE(), address(this));
         module.grantRole(module.VERIFIER_ROLE(), address(this));
-        module.grantRole(module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(), address(this));
         vm.stopPrank();
 
         handleStakingLimit();
@@ -93,7 +92,7 @@ abstract contract PenaltyIntegrationTestBase is ModuleTypeBase, PermitHelper {
         accounting.depositETH{ value: topUp }(noId);
         assertGt(accounting.getClaimableBondShares(noId), 0);
 
-        module.reportValidatorSlashing(noId, keyIndex);
+        module.reportValidatorSlashing(noId, keyIndex, 0);
 
         assertTrue(accounting.isBondClaimRestricted(noId));
         assertEq(accounting.getClaimableBondShares(noId), 0);
@@ -104,15 +103,7 @@ abstract contract PenaltyIntegrationTestBase is ModuleTypeBase, PermitHelper {
         assertEq(claimedShares, 0);
         assertEq(lido.sharesOf(rewardAddress), rewardSharesBefore);
 
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: excessBond / 10,
-            isSlashed: true
-        });
-        module.reportSlashedWithdrawnValidators(validatorInfos);
+        vm.warp(module.getBondClaimLockedUntil(noId));
 
         assertFalse(accounting.isBondClaimRestricted(noId));
         assertGt(accounting.getClaimableBondShares(noId), 0);

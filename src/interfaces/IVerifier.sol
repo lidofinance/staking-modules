@@ -105,6 +105,8 @@ interface IVerifier {
 
     function SLOTS_PER_EPOCH() external view returns (uint64);
 
+    function SECONDS_PER_SLOT() external view returns (uint64);
+
     function SLOTS_PER_HISTORICAL_ROOT() external view returns (uint64);
 
     function GI_FIRST_WITHDRAWAL_PREV() external view returns (GIndex);
@@ -134,20 +136,20 @@ interface IVerifier {
     function MODULE() external view returns (IBaseModule);
 
     /// @notice Verify proof of a slashed validator and report it to the module
+    /// @dev The time left until the proven `withdrawableEpoch` is passed to the module to lock the bond claims
+    ///      until the slashing is fully accounted on the Consensus Layer.
     /// @param data @see ProcessSlashedInput
     function processSlashedProof(ProcessSlashedInput calldata data) external;
 
     /// @notice Verify withdrawal proof and report withdrawal to the module for valid proofs
-    /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
-    /// determining the exact penalty amounts and calling the `IBaseModule.reportSlashedWithdrawnValidators` method via
-    /// an EasyTrack motion.
+    /// @notice The method doesn't accept proofs for slashed validators. Such validators are settled right on the
+    /// slashing report. See `processSlashedProof`.
     /// @param data @see ProcessWithdrawalInput
     function processWithdrawalProof(ProcessWithdrawalInput calldata data) external;
 
     /// @notice Verify withdrawal proof against historical summaries data and report withdrawal to the module for valid proofs
-    /// @notice The method doesn't accept proofs for slashed validators. A dedicated committee is responsible for
-    /// determining the exact penalty amounts and calling the `IBaseModule.reportSlashedWithdrawnValidators` method via
-    /// an EasyTrack motion.
+    /// @notice The method doesn't accept proofs for slashed validators. Such validators are settled right on the
+    /// slashing report. See `processSlashedProof`.
     /// @param data @see ProcessHistoricalWithdrawalInput
     function processHistoricalWithdrawalProof(ProcessHistoricalWithdrawalInput calldata data) external;
 

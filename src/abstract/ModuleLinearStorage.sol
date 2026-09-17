@@ -30,8 +30,8 @@ abstract contract ModuleLinearStorage {
         /* 10 */ mapping(uint256 nodeOperatorId => uint256 extraBalance) operatorBalances;
         /* 11 */ uint256 totalExtraStake;
         /* 12 */ mapping(uint256 nodeOperatorId => uint256 firstDepositAt) nodeOperatorFirstDepositAt;
-        /// @dev Slashed validators of the Node Operator whose withdrawal losses are not processed yet.
-        /* 13 */ mapping(uint256 nodeOperatorId => uint256) unresolvedSlashedValidators;
+        /// @dev Timestamp until which the Node Operator bond claims are restricted due to a reported slashing.
+        /* 13 */ mapping(uint256 nodeOperatorId => uint256) bondClaimLockedUntil;
     }
 
     function _baseStorage() internal pure returns (BaseModuleStorage storage $) {

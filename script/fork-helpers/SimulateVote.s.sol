@@ -223,7 +223,7 @@ contract SimulateVote is Script, ForkHelpersCommon {
             // 3-4. Upgrade and finalize ParametersRegistry v3 in a single tx
             parametersRegistryProxy.proxy__upgradeToAndCall(
                 deploymentConfig.parametersRegistryImpl,
-                abi.encodeCall(ParametersRegistry.finalizeUpgradeV3, ())
+                abi.encodeCall(ParametersRegistry.finalizeUpgradeV3, (deployParams.defaultSlashingPenalty))
             );
             vm.stopBroadcast();
         }
@@ -316,11 +316,6 @@ contract SimulateVote is Script, ForkHelpersCommon {
             module.grantRole(module.VERIFIER_ROLE(), deploymentConfig.verifierV3);
             // 21. Grant REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE to VerifierV3
             module.grantRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), deploymentConfig.verifierV3);
-            // 22. Grant REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE to Easy Track
-            module.grantRole(
-                module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(),
-                deployParams.easyTrackEVMScriptExecutor
-            );
             // 23. Revoke CREATE_NODE_OPERATOR_ROLE from old PermissionlessGate
             module.revokeRole(module.CREATE_NODE_OPERATOR_ROLE(), oldPermissionlessGate);
             // 24. Grant CREATE_NODE_OPERATOR_ROLE to new PermissionlessGate

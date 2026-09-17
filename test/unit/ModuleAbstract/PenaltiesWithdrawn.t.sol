@@ -12,9 +12,6 @@ import { KeyPointerLib } from "src/lib/KeyPointerLib.sol";
 import { ModuleFixtures } from "./_Base.t.sol";
 
 abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
-    /// @dev `BaseModuleStorage.isValidatorSlashed` mapping slot
-    uint256 internal constant IS_VALIDATOR_SLASHED_SLOT = 8;
-
     function test_isValidatorWithdrawn_DefaultFalse() public assertInvariants {
         uint256 noId = createNodeOperator(1);
 
@@ -47,12 +44,11 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: keyIndex,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectEmit(address(module));
-        emit IBaseModule.ValidatorWithdrawn(noId, keyIndex, ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE, 0, pubkey);
+        emit IBaseModule.ValidatorWithdrawn(noId, keyIndex, pubkey);
         module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -83,18 +79,11 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: keyIndex,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectEmit(address(module));
-        emit IBaseModule.ValidatorWithdrawn(
-            noId,
-            keyIndex,
-            ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
-            0,
-            pubkey
-        );
+        emit IBaseModule.ValidatorWithdrawn(noId, keyIndex, pubkey);
         module.reportRegularWithdrawnValidators(validatorInfos);
 
         NodeOperator memory no = module.getNodeOperator(noId);
@@ -121,8 +110,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: keyIndex,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, balanceShortage));
@@ -154,8 +142,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: keyIndex,
             exitBalance: exitBalance,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, expectedPenalty));
@@ -190,8 +177,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         module.reportRegularWithdrawnValidators(validatorInfos);
@@ -221,8 +207,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         module.reportRegularWithdrawnValidators(validatorInfos);
@@ -239,7 +224,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         uint248 penalty = 1 ether;
         uint256 multiplier = 3;
 
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
+        exitPenalties.mock_setExitPenaltyInfo(
             ExitPenaltyInfo({
                 legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(penalty, true),
@@ -259,8 +244,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: keyIndex,
             exitBalance: exitBalance,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectCall(
@@ -288,8 +272,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: keyIndex,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, balanceShortage));
@@ -307,7 +290,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         uint256 strikesPenaltyAmount = BOND_SIZE - 1 ether;
 
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
+        exitPenalties.mock_setExitPenaltyInfo(
             ExitPenaltyInfo({
                 legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(_toUint248(strikesPenaltyAmount), true),
@@ -321,8 +304,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: keyIndex,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectCall(
@@ -345,7 +327,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
         uint256 strikesPenaltyAmount = BOND_SIZE + 1 ether;
 
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
+        exitPenalties.mock_setExitPenaltyInfo(
             ExitPenaltyInfo({
                 legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(_toUint248(strikesPenaltyAmount), true),
@@ -359,8 +341,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: keyIndex,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectCall(
@@ -383,7 +364,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         uint248 penalty = 1 ether;
         uint256 multiplier = 3;
 
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
+        exitPenalties.mock_setExitPenaltyInfo(
             ExitPenaltyInfo({
                 legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(penalty, true),
@@ -396,8 +377,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: keyIndex,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier + 1 ether - 1 wei,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectCall(
@@ -417,7 +397,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         uint256 multiplier = ValidatorBalanceLimits.MAX_EFFECTIVE_BALANCE /
             ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE;
 
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
+        exitPenalties.mock_setExitPenaltyInfo(
             ExitPenaltyInfo({
                 legacyDelayFee: MarkedUint248(0, false),
                 strikesPenalty: MarkedUint248(penalty, true),
@@ -430,8 +410,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: keyIndex,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier + 1000 ether,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectCall(
@@ -441,168 +420,20 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         module.reportRegularWithdrawnValidators(validatorInfos);
     }
 
-    function test_reportRegularWithdrawnValidators_revertWhen_SlashingPenaltyPresent() public assertInvariants {
-        uint256 keyIndex = 0;
+    function test_reportRegularWithdrawnValidators_RevertWhen_SlashingPenaltyPresent() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
         WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
         validatorInfos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
-            keyIndex: keyIndex,
+            keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 154,
-            isSlashed: false
-        });
-
-        vm.expectRevert(IBaseModule.InvalidWithdrawnValidatorInfo.selector, address(module));
-        module.reportRegularWithdrawnValidators(validatorInfos);
-    }
-
-    function test_reportSlashedWithdrawnValidators_slashingPenaltyApplied() public assertInvariants {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-        module.reportValidatorSlashing(noId, keyIndex);
-
-        uint256 slashingPenalty = 5 ether;
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: slashingPenalty,
-            isSlashed: true
-        });
-
-        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, slashingPenalty));
-        module.reportSlashedWithdrawnValidators(validatorInfos);
-    }
-
-    function test_reportSlashedWithdrawnValidators_slashingPenaltyOverridesExitBalancePenalty()
-        public
-        assertInvariants
-    {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-        module.reportValidatorSlashing(noId, keyIndex);
-
-        uint256 slashingPenalty = 5 ether;
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - 11 ether,
-            slashingPenalty: slashingPenalty,
-            isSlashed: true
-        });
-
-        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, slashingPenalty));
-        module.reportSlashedWithdrawnValidators(validatorInfos);
-    }
-
-    function test_reportSlashedWithdrawnValidators_slashingPenaltyNotScaled() public assertInvariants {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-        module.reportValidatorSlashing(noId, keyIndex);
-
-        uint256 slashingPenalty = 7 ether;
-        uint256 multiplier = 5;
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE * multiplier,
-            slashingPenalty: slashingPenalty,
-            isSlashed: true
-        });
-
-        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, slashingPenalty));
-        module.reportSlashedWithdrawnValidators(validatorInfos);
-    }
-
-    function test_reportSlashedWithdrawnValidators_slashingPenaltyIsZero_fallbackPath() public assertInvariants {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-        module.reportValidatorSlashing(noId, keyIndex);
-
-        uint256 balanceShortage = 1 ether;
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
-            slashingPenalty: 0,
-            isSlashed: true
-        });
-
-        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, balanceShortage));
-        module.reportSlashedWithdrawnValidators(validatorInfos);
-    }
-
-    function test_reportSlashedWithdrawnValidators_slashingPenalty_RevertWhenNotReported() public assertInvariants {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        uint256 slashingPenalty = 5 ether;
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: slashingPenalty,
-            isSlashed: true
+            slashingPenalty: 1 ether
         });
 
         vm.expectRevert(IBaseModule.SlashingPenaltyIsNotApplicable.selector, address(module));
-
-        module.reportSlashedWithdrawnValidators(validatorInfos);
-    }
-
-    function test_reportRegularWithdrawnValidators_RevertWhen_SlashedInfoWithRegularMethod() public assertInvariants {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-        module.reportValidatorSlashing(noId, keyIndex);
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 1 ether,
-            isSlashed: true
-        });
-
-        vm.expectRevert(IBaseModule.InvalidWithdrawnValidatorInfo.selector, address(module));
         module.reportRegularWithdrawnValidators(validatorInfos);
-    }
-
-    function test_reportSlashedWithdrawnValidators_RevertWhen_NotSlashedInfo() public assertInvariants {
-        uint256 keyIndex = 0;
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: keyIndex,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-
-        vm.expectRevert(IBaseModule.InvalidWithdrawnValidatorInfo.selector, address(module));
-        module.reportSlashedWithdrawnValidators(validatorInfos);
     }
 
     function test_reportRegularWithdrawnValidators_ignoresLegacyFees() public assertInvariants {
@@ -611,7 +442,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         module.obtainDepositData(1, "");
 
         // A shifted or reused deprecated slot would surface as a settled penalty or fee here.
-        exitPenalties.mock_setDelayedExitPenaltyInfo(
+        exitPenalties.mock_setExitPenaltyInfo(
             ExitPenaltyInfo({
                 legacyDelayFee: MarkedUint248(_toUint248(BOND_SIZE), true),
                 strikesPenalty: MarkedUint248(0, false),
@@ -625,8 +456,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: keyIndex,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         expectNoCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector));
@@ -650,8 +480,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: keyIndex,
             exitBalance: 1 ether,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         module.reportRegularWithdrawnValidators(validatorInfos);
@@ -668,8 +497,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: keyIndex,
             exitBalance: 0,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectRevert(IBaseModule.ZeroExitBalance.selector);
@@ -682,8 +510,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: 0,
             keyIndex: 0,
             exitBalance: 32 ether,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
@@ -698,8 +525,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: 32 ether,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
@@ -715,8 +541,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         module.reportRegularWithdrawnValidators(validatorInfos);
@@ -750,8 +575,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 nodeOperatorId: noId,
                 keyIndex: i,
                 exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-                slashingPenalty: 0,
-                isSlashed: false
+                slashingPenalty: 0
             });
         }
 
@@ -773,8 +597,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 nodeOperatorId: noId,
                 keyIndex: i,
                 exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-                slashingPenalty: 0,
-                isSlashed: false
+                slashingPenalty: 0
             });
         }
         module.reportRegularWithdrawnValidators(validatorInfos);
@@ -792,8 +615,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
                 nodeOperatorId: noId,
                 keyIndex: i,
                 exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-                slashingPenalty: 0,
-                isSlashed: false
+                slashingPenalty: 0
             });
         }
 
@@ -802,17 +624,92 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         vm.stopSnapshotGas();
     }
 
-    function test_reportValidatorSlashing_HappyPath() public {
+    function test_reportValidatorSlashing_HappyPath() public assertInvariants {
         uint256 noId = createNodeOperator(17);
         module.obtainDepositData(17, "");
         uint256 keyIndex = 11;
         bytes memory pubkey = module.getSigningKeys(noId, keyIndex, 1);
+        uint256 timeToWithdrawable = 36 days;
+        uint256 lockedUntil = block.timestamp + timeToWithdrawable + 14 days;
+        uint256 slashingPenalty = 1 ether;
 
         vm.expectEmit(address(module));
         emit IBaseModule.ValidatorSlashingReported(noId, keyIndex, pubkey);
+        vm.expectEmit(address(module));
+        emit IBaseModule.BondClaimLockedUntilChanged(noId, lockedUntil);
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, slashingPenalty));
+        module.reportValidatorSlashing(noId, keyIndex, timeToWithdrawable);
 
-        module.reportValidatorSlashing(noId, keyIndex);
         assertTrue(module.isValidatorSlashed(noId, keyIndex));
+        assertTrue(module.isValidatorWithdrawn(noId, keyIndex));
+        assertEq(module.getBondClaimLockedUntil(noId), lockedUntil);
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+    }
+
+    function test_reportValidatorSlashing_penaltyFromTheCurve() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        uint256 slashingPenalty = 3 ether;
+        parametersRegistry.setSlashingPenalty(accounting.getBondCurveId(noId), slashingPenalty);
+
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, slashingPenalty));
+        module.reportValidatorSlashing(noId, 0, 0);
+
+        assertTrue(module.isValidatorWithdrawn(noId, 0));
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+        assertEq(module.getTotalModuleStake(), 0);
+    }
+
+    function test_reportValidatorSlashing_keepsTheFurthestLock() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        module.obtainDepositData(2, "");
+        uint256 timeToWithdrawable = 36 days;
+        uint256 lockedUntil = block.timestamp + timeToWithdrawable + module.BOND_CLAIM_LOCK_DELAY();
+
+        module.reportValidatorSlashing(noId, 0, timeToWithdrawable);
+        assertEq(module.getBondClaimLockedUntil(noId), lockedUntil);
+
+        // An earlier slashing does not shorten the lock set by the later one.
+        module.reportValidatorSlashing(noId, 1, timeToWithdrawable - 1 days);
+
+        assertEq(module.getBondClaimLockedUntil(noId), lockedUntil);
+    }
+
+    function test_reportValidatorSlashing_penaltyScaledByAllocatedBalance() public assertInvariants {
+        uint256 noId = createNodeOperator();
+        module.obtainDepositData(1, "");
+        uint256 topUp = 10 ether;
+        bytes memory pubkey = module.getSigningKeys(noId, 0, 1);
+        module.allocateDeposits({
+            maxDepositAmount: topUp,
+            pubkeys: BytesArr(pubkey),
+            keyIndices: UintArr(0),
+            operatorIds: UintArr(noId),
+            topUpLimits: UintArr(topUp)
+        });
+        assertEq(module.getKeyAllocatedBalances(noId, 0, 1), UintArr(topUp));
+        assertEq(module.getKeyConfirmedBalances(noId, 0, 1), UintArr(0));
+
+        exitPenalties.mock_setExitPenaltyInfo(
+            ExitPenaltyInfo({
+                legacyDelayFee: MarkedUint248(0, false),
+                strikesPenalty: MarkedUint248(0.01 ether, true),
+                legacyElWithdrawalRequestFee: MarkedUint248(0, false)
+            })
+        );
+        uint256 slashingPenalty = 1.3125 ether;
+        uint256 totalPenalty = slashingPenalty + 0.013125 ether;
+        uint256 nonce = module.getNonce();
+
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, totalPenalty), 1);
+        vm.expectEmit(address(module));
+        emit IBaseModule.ValidatorWithdrawn(noId, 0, pubkey);
+        module.reportValidatorSlashing(noId, 0, 0);
+
+        assertEq(module.getNodeOperatorBalance(noId), 0);
+        assertEq(module.getTotalModuleStake(), 0);
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+        assertEq(module.getNonce(), nonce + 1);
     }
 
     function test_isValidatorSlashed_DefaultFalse() public assertInvariants {
@@ -834,141 +731,77 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
         module.isValidatorSlashed(noId, 1);
     }
 
-    function test_reportValidatorSlashing_unresolvedSlashedValidatorsCounter() public assertInvariants {
-        uint256 keysCount = 2;
-        uint256 noId = createNodeOperator(keysCount);
-        module.obtainDepositData(keysCount, "");
-
-        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 0);
-
-        vm.expectEmit(address(module));
-        emit IBaseModule.UnresolvedSlashedValidatorsCountChanged(noId, 1);
-        module.reportValidatorSlashing(noId, 0);
-
-        vm.expectEmit(address(module));
-        emit IBaseModule.UnresolvedSlashedValidatorsCountChanged(noId, 2);
-        module.reportValidatorSlashing(noId, 1);
-        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), keysCount);
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 1 ether,
-            isSlashed: true
-        });
-
-        vm.expectEmit(address(module));
-        emit IBaseModule.UnresolvedSlashedValidatorsCountChanged(noId, 1);
-        module.reportSlashedWithdrawnValidators(validatorInfos);
-        assertEq(
-            module.getNodeOperatorUnresolvedSlashedValidators(noId),
-            keysCount - 1,
-            "slashing should be resolved by the withdrawal report"
-        );
-
-        validatorInfos[0].keyIndex = 1;
-        module.reportSlashedWithdrawnValidators(validatorInfos);
-        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 0);
-    }
-
-    function test_reportValidatorSlashing_RevertWhen_CalledTwice() public {
+    function test_reportValidatorSlashing_CalledTwice() public assertInvariants {
         uint256 noId = createNodeOperator(17);
         module.obtainDepositData(17, "");
         uint256 keyIndex = 11;
 
-        module.reportValidatorSlashing(noId, keyIndex);
-        vm.expectRevert(IBaseModule.ValidatorSlashingAlreadyReported.selector, address(module));
-        module.reportValidatorSlashing(noId, keyIndex);
+        module.reportValidatorSlashing(noId, keyIndex, 0);
+        uint256 nonce = module.getNonce();
+        uint256 lockedUntil = module.getBondClaimLockedUntil(noId);
+
+        expectNoCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector));
+        vm.recordLogs();
+        module.reportValidatorSlashing(noId, keyIndex, 365 days);
+
+        assertEq(vm.getRecordedLogs().length, 0);
+        assertEq(module.getNonce(), nonce);
+        assertEq(module.getBondClaimLockedUntil(noId), lockedUntil);
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+        assertEq(module.getTotalModuleStake(), 16 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE);
     }
 
-    function test_reportRegularWithdrawnValidators_resolvesSlashingOfSlashedKey() public assertInvariants {
+    function test_reportValidatorSlashing_ignoresLaterWithdrawalReports() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
-        module.reportValidatorSlashing(noId, 0);
-        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 1);
+        module.reportValidatorSlashing(noId, 0, 0);
+        uint256 nonce = module.getNonce();
 
-        // A slashed key might be reported as a regular withdrawal, i.e. penalized by the exit balance shortage.
-        uint256 balanceShortage = 1 ether;
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
+        WithdrawnValidatorInfo[] memory infos = new WithdrawnValidatorInfo[](1);
+        infos[0] = WithdrawnValidatorInfo({
             nodeOperatorId: noId,
             keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE - balanceShortage,
-            slashingPenalty: 0,
-            isSlashed: false
+            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
+            slashingPenalty: 0
         });
 
-        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, balanceShortage));
-        module.reportRegularWithdrawnValidators(validatorInfos);
+        expectNoCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector));
+        vm.recordLogs();
+        module.reportRegularWithdrawnValidators(infos);
 
-        assertEq(
-            module.getNodeOperatorUnresolvedSlashedValidators(noId),
-            0,
-            "the losses are accounted for, so the slashing should be resolved"
-        );
+        assertEq(vm.getRecordedLogs().length, 0);
+        assertEq(module.getNonce(), nonce);
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+        assertEq(module.getTotalModuleStake(), 0);
     }
 
-    function test_reportSlashedWithdrawnValidators_slashingReportedBeforeUpgrade() public assertInvariants {
+    function test_reportValidatorSlashing_settlesSlashingReportedBeforeUpgrade() public assertInvariants {
         uint256 noId = createNodeOperator();
         module.obtainDepositData(1, "");
 
-        // A validator slashed before the upgrade has no unresolved slashing counted.
+        // A validator slashed before the module started settling slashings right on the report.
         uint256 pointer = KeyPointerLib.keyPointer(noId, 0);
         vm.store(address(module), keccak256(abi.encode(pointer, IS_VALIDATOR_SLASHED_SLOT)), bytes32(uint256(1)));
-        assertTrue(module.isValidatorSlashed(noId, 0));
-        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 0);
+        assertFalse(module.isValidatorWithdrawn(noId, 0));
 
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 1 ether,
-            isSlashed: true
-        });
-
-        module.reportSlashedWithdrawnValidators(validatorInfos);
+        vm.expectCall(address(accounting), abi.encodeWithSelector(accounting.penalize.selector, noId, 1 ether));
+        module.reportValidatorSlashing(noId, 0, 0);
 
         assertTrue(module.isValidatorWithdrawn(noId, 0));
-        assertEq(module.getNodeOperatorUnresolvedSlashedValidators(noId), 0);
-    }
-
-    function test_reportValidatorSlashing_retrospectiveReportKeepsSlashingResolved() public assertInvariants {
-        uint256 noId = createNodeOperator();
-        module.obtainDepositData(1, "");
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
-        });
-        module.reportRegularWithdrawnValidators(validatorInfos);
-
-        module.reportValidatorSlashing(noId, 0);
-
-        assertTrue(module.isValidatorSlashed(noId, 0));
-        assertEq(
-            module.getNodeOperatorUnresolvedSlashedValidators(noId),
-            0,
-            "a slashing of a withdrawn validator has nothing left to resolve"
-        );
+        assertEq(module.getNodeOperator(noId).totalWithdrawnKeys, 1);
+        assertEq(module.getBondClaimLockedUntil(noId), 0, "a replayed report does not re-record the slashing");
     }
 
     function test_reportValidatorSlashing_RevertWhen_OperatorDoesNotExist() public {
         vm.expectRevert(IBaseModule.NodeOperatorDoesNotExist.selector);
-        module.reportValidatorSlashing(0, 0);
+        module.reportValidatorSlashing(0, 0, 0);
     }
 
     function test_reportValidatorSlashing_RevertWhen_InvalidKeyIndex() public {
         uint256 noId = createNodeOperator(1);
 
         vm.expectRevert(IBaseModule.SigningKeysInvalidOffset.selector);
-        module.reportValidatorSlashing(noId, 0);
+        module.reportValidatorSlashing(noId, 0, 0);
     }
 
     function test_keyConfirmedBalance_chargesOnWithdraw() public assertInvariants {
@@ -988,8 +821,7 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
 
         module.reportRegularWithdrawnValidators(validatorInfos);
@@ -998,29 +830,25 @@ abstract contract ModuleReportWithdrawnValidators is ModuleFixtures {
 
     function test_keyConfirmedBalance_PenalizeWhenSlashed() public assertInvariants {
         uint256 noId = createNodeOperator();
-
         module.obtainDepositData(1, "");
-        module.reportValidatorSlashing(noId, 0);
 
         uint256 topUp = 10 ether;
-        uint256 balanceShortage = 1 ether;
-
         setKeyConfirmedBalance(noId, 0, topUp);
 
         vm.deal(address(this), 100 ether);
         accounting.depositETH{ value: 100 ether }(noId);
         uint256 bondBefore = accounting.getBond(noId);
+        uint256 slashingPenalty = WithdrawnValidatorLib.scalePenalty(
+            parametersRegistry.slashingPenalty(),
+            ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + topUp
+        );
 
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + topUp - balanceShortage,
-            slashingPenalty: 0,
-            isSlashed: true
-        });
+        module.reportValidatorSlashing(noId, 0, 0);
 
-        module.reportSlashedWithdrawnValidators(validatorInfos);
-        assertEq(accounting.getBond(noId), bondBefore - balanceShortage);
+        assertEq(
+            accounting.getBond(noId),
+            bondBefore - slashingPenalty,
+            "the confirmed balance scales the slashing penalty"
+        );
     }
 }

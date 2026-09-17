@@ -162,6 +162,7 @@ contract DeploymentHelpers is Asserts {
         uint256 defaultAllowedExitDelay;
         uint256 defaultExitDelayFee;
         uint256 defaultMaxElWithdrawalRequestFee;
+        uint256 defaultSlashingPenalty;
         address penaltiesManager;
         uint256 weightBoostProviderConfigChangesCount;
     }
@@ -548,6 +549,7 @@ contract DeploymentHelpers is Asserts {
         dst.defaultAllowedExitDelay = src.defaultAllowedExitDelay;
         dst.defaultExitDelayFee = src.defaultExitDelayFee;
         dst.defaultMaxElWithdrawalRequestFee = src.defaultMaxElWithdrawalRequestFee;
+        dst.defaultSlashingPenalty = src.defaultSlashingPenalty;
         dst.penaltiesManager = src.penaltiesManager;
 
         // Curated gates
@@ -680,6 +682,7 @@ contract DeploymentHelpers is Asserts {
         params.defaultAllowedExitDelay = decoded.defaultAllowedExitDelay;
         params.defaultExitDelayFee = decoded.defaultExitDelayFee;
         params.defaultMaxElWithdrawalRequestFee = decoded.defaultMaxElWithdrawalRequestFee;
+        params.defaultSlashingPenalty = decoded.defaultSlashingPenalty;
         params.penaltiesManager = decoded.penaltiesManager;
         return params;
     }
@@ -734,6 +737,7 @@ contract DeploymentHelpers is Asserts {
         params.defaultAllowedExitDelay = decoded.defaultAllowedExitDelay;
         params.defaultExitDelayFee = decoded.defaultExitDelayFee;
         params.defaultMaxElWithdrawalRequestFee = decoded.defaultMaxElWithdrawalRequestFee;
+        params.defaultSlashingPenalty = decoded.defaultSlashingPenalty;
         params.penaltiesManager = decoded.penaltiesManager;
         return params;
     }
@@ -788,6 +792,7 @@ contract DeploymentHelpers is Asserts {
         params.defaultAllowedExitDelay = decoded.defaultAllowedExitDelay;
         params.defaultExitDelayFee = decoded.defaultExitDelayFee;
         params.defaultMaxElWithdrawalRequestFee = decoded.defaultMaxElWithdrawalRequestFee;
+        params.defaultSlashingPenalty = decoded.defaultSlashingPenalty;
         params.penaltiesManager = decoded.penaltiesManager;
         return params;
     }

@@ -76,6 +76,7 @@ contract DeployMainnet is DeployBase {
         config.defaultAllowedExitDelay = 4 days;
         config.defaultExitDelayFee = 0.01 ether;
         config.defaultMaxElWithdrawalRequestFee = 0.1 ether;
+        config.defaultSlashingPenalty = 1 ether;
         config.penaltiesManager = 0x2570e0b22AD904501dfB0d49575991ACB801dD91; // CMC https://docs.lido.fi/multisigs/committees#220-curated-module-committee-cmc
 
         // Curated gates

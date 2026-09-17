@@ -85,6 +85,7 @@ struct DeployCSM0x02Params {
     uint256 defaultAllowedExitDelay;
     uint256 defaultExitDelayFee;
     uint256 defaultMaxElWithdrawalRequestFee;
+    uint256 defaultSlashingPenalty;
     address penaltiesManager;
     // CircuitBreaker
     address circuitBreaker;
@@ -178,7 +179,8 @@ abstract contract DeployCSM0x02Base is Script {
                     defaultSyncWeight: config.defaultSyncWeight,
                     defaultAllowedExitDelay: config.defaultAllowedExitDelay,
                     defaultExitDelayFee: config.defaultExitDelayFee,
-                    defaultMaxElWithdrawalRequestFee: config.defaultMaxElWithdrawalRequestFee
+                    defaultMaxElWithdrawalRequestFee: config.defaultMaxElWithdrawalRequestFee,
+                    defaultSlashingPenalty: config.defaultSlashingPenalty
                 });
             parametersRegistry = ParametersRegistry(
                 _deployProxy(
@@ -214,6 +216,7 @@ abstract contract DeployCSM0x02Base is Script {
                 withdrawalAddress: locator.withdrawalVault(),
                 module: address(csm),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
+                secondsPerSlot: uint64(config.secondsPerSlot),
                 gindices: IVerifier.GIndices({
                     gIFirstWithdrawalPrev: config.gIFirstWithdrawal,
                     gIFirstWithdrawalCurr: config.gIFirstWithdrawal,
@@ -371,7 +374,6 @@ abstract contract DeployCSM0x02Base is Script {
 
             csm.grantRole(csm.VERIFIER_ROLE(), address(verifier));
             csm.grantRole(csm.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), address(verifier));
-            csm.grantRole(csm.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(), config.easyTrackEVMScriptExecutor);
 
             if (config.secondAdminAddress != address(0)) {
                 if (config.secondAdminAddress == deployer) revert InvalidSecondAdmin();

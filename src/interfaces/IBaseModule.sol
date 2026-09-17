@@ -45,13 +45,12 @@ struct WithdrawnValidatorInfo {
     // Index of the withdrawn key in the Node Operator's keys storage.
     uint256 keyIndex;
     // Balance to be used to calculate penalties. For a regular withdrawal of a validator it's the withdrawal amount.
-    // For a slashed validator it's its balance before slashing if slashing penalty is provided explicitly, otherwise it's the balance after slashing to calculate penalty using a less precise on-chain fallback.
-    // The balance will be used to scale incurred penalties and calculate penalties due to offline or slashing penalties via the shortcut mechanism.
+    // For a slashed validator it's its balance before slashing.
+    // The balance will be used to scale incurred penalties and calculate penalties due to offline validators via the shortcut mechanism.
     uint256 exitBalance;
-    // Amount of ETH/stETH to penalize Node Operator due to slashing.
+    // Penalty for a single 32 ETH validator to charge due to slashing, scaled by the balance above.
+    // Zero for a regular withdrawal, which is penalized by the balance shortage instead.
     uint256 slashingPenalty;
-    // Whether the validator has been slashed.
-    bool isSlashed;
 }
 
 /// @notice Base module interface for repository modules such as `ICSModule` and `ICuratedModule`.
@@ -74,16 +73,10 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
         uint256 targetLimitMode,
         uint256 targetValidatorsCount
     );
-    event ValidatorWithdrawn(
-        uint256 indexed nodeOperatorId,
-        uint256 keyIndex,
-        uint256 exitBalance,
-        uint256 slashingPenalty,
-        bytes pubkey
-    );
+    event ValidatorWithdrawn(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
     event NodeOperatorBalanceUpdated(uint256 indexed operatorId, uint256 balanceWei);
     event ValidatorSlashingReported(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
-    event UnresolvedSlashedValidatorsCountChanged(uint256 indexed nodeOperatorId, uint256 count);
+    event BondClaimLockedUntilChanged(uint256 indexed nodeOperatorId, uint256 lockedUntil);
     event KeyAllocatedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
     event KeyConfirmedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newBalance);
     event KeyRemovalChargeApplied(uint256 indexed nodeOperatorId);
@@ -130,8 +123,6 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     error InvalidVetKeysPointer();
     error ZeroExitBalance();
     error SlashingPenaltyIsNotApplicable();
-    error ValidatorSlashingAlreadyReported();
-    error InvalidWithdrawnValidatorInfo();
 
     error InvalidAmount();
     error InvalidInput();
@@ -173,8 +164,6 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     function VERIFIER_ROLE() external view returns (bytes32);
 
     function REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE() external view returns (bytes32);
-
-    function REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE() external view returns (bytes32);
 
     function CREATE_NODE_OPERATOR_ROLE() external view returns (bytes32);
 
@@ -392,12 +381,11 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @return Non-withdrawn keys count
     function getNodeOperatorNonWithdrawnKeys(uint256 nodeOperatorId) external view returns (uint256);
 
-    /// @notice Get the number of slashed validators whose withdrawal losses have not been processed yet
-    /// @dev Increased on a slashing report and decreased on the withdrawal report of the slashed validator.
-    ///      A non-zero value restricts bond claims, see `IAccounting.getClaimableBondShares`.
+    /// @notice Get the timestamp until which the Node Operator bond claims are restricted
+    /// @dev Set on a slashing report, see `IAccounting.getClaimableBondShares`.
     /// @param nodeOperatorId ID of the Node Operator
-    /// @return Unresolved slashed validators count
-    function getNodeOperatorUnresolvedSlashedValidators(uint256 nodeOperatorId) external view returns (uint256);
+    /// @return Timestamp until which the bond claims are restricted
+    function getBondClaimLockedUntil(uint256 nodeOperatorId) external view returns (uint256);
 
     /// @notice Returns tracked operator balance (active validator base stake plus tracked extra).
     /// @dev The tracked extra is intentionally monotonic for active validators and is reduced on withdrawal reporting,
@@ -429,12 +417,14 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
         uint256 keysCount
     ) external view returns (bytes memory keys, bytes memory signatures);
 
-    /// @notice Report Node Operator's key as slashed.
+    /// @notice Report Node Operator's key as slashed, penalize it and restrict the bond claims.
     /// @notice Called by `Verifier` contract. See `Verifier.processSlashedProof`.
-    /// @dev A slashing reported for an already withdrawn key does not restrict the bond claims.
+    /// @dev The penalty rate comes from the Node Operator's curve and is scaled by the pre-slashing key balance.
+    ///      The key is reported as withdrawn right away.
     /// @param nodeOperatorId The ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
-    function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex) external;
+    /// @param timeToWithdrawable Time left until the slashed key becomes withdrawable on the Consensus Layer
+    function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex, uint256 timeToWithdrawable) external;
 
     /// @notice Update verified on-chain balance for a key.
     /// @dev The function stores balance relative to MIN_ACTIVATION_BALANCE.
@@ -469,19 +459,11 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     ///         A validator is considered withdrawn in the following cases:
     ///         - if it's an exit of a non-slashed validator, when a withdrawal of the validator is included in a beacon
     ///           block;
-    ///         - if it's an exit of a slashed validator, when the committee reports such a validator as withdrawn; note
-    ///           that it can happen earlier than the actual withdrawal is included on the beacon chain if the committee
-    ///           decides it can account for all penalties in advance;
     ///         - if it's a consolidated validator, when the corresponding pending consolidation is processed and the
     ///           balance of the validator has been moved to another validator.
     /// @notice Called by `Verifier` contract.
     /// @param validatorInfos An array of WithdrawnValidatorInfo structs
     function reportRegularWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external;
-
-    /// @notice Report withdrawn validators that have been slashed.
-    /// @notice Called by the Easy Track EVM script executor via a motion started by the dedicated committee.
-    /// @param validatorInfos An array of WithdrawnValidatorInfo structs
-    function reportSlashedWithdrawnValidators(WithdrawnValidatorInfo[] calldata validatorInfos) external;
 
     /// @notice Checks if a validator was reported as slashed
     /// @param nodeOperatorId The ID of the node operator

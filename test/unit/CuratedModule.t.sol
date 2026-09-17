@@ -113,7 +113,6 @@ contract CuratedCommon is ModuleFixtures {
         module.grantRole(module.REPORT_GENERAL_DELAYED_PENALTY_ROLE(), address(this));
         module.grantRole(module.VERIFIER_ROLE(), address(this));
         module.grantRole(module.REPORT_REGULAR_WITHDRAWN_VALIDATORS_ROLE(), address(this));
-        module.grantRole(module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE(), address(this));
         vm.stopPrank();
     }
 
@@ -584,8 +583,7 @@ contract CuratedObtainDepositData is ModuleObtainDepositData, CuratedCommon {
             nodeOperatorId: firstId,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
         module.reportRegularWithdrawnValidators(validatorInfos);
 
@@ -1915,8 +1913,7 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
         cm.reportRegularWithdrawnValidators(validatorInfos);
 
@@ -1939,8 +1936,11 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         uint256 noId = createNodeOperator(1);
         cm.obtainDepositData(1, "");
 
-        cm.reportValidatorSlashing(noId, 0);
+        // A slashing recorded before the upgrade leaves the key slashed but not withdrawn yet.
+        uint256 pointer = KeyPointerLib.keyPointer(noId, 0);
+        vm.store(address(cm), keccak256(abi.encode(pointer, IS_VALIDATOR_SLASHED_SLOT)), bytes32(uint256(1)));
         assertTrue(cm.isValidatorSlashed(noId, 0));
+        assertFalse(cm.isValidatorWithdrawn(noId, 0));
 
         bytes memory key = cm.getSigningKeys(noId, 0, 1);
         uint256[] memory allocations = cm.allocateDeposits({
@@ -1966,7 +1966,7 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         cm.obtainDepositData(2, "");
 
         // Slash key 0, leave key 1 intact.
-        cm.reportValidatorSlashing(noId, 0);
+        cm.reportValidatorSlashing(noId, 0, 0);
 
         bytes memory packed = cm.getSigningKeys(noId, 0, 2);
         bytes[] memory pubkeys = BytesArr(slice(packed, 0, 48), slice(packed, 48, 48));
@@ -1982,8 +1982,9 @@ contract CuratedTopUpKeyAllocatedBalance is CuratedCommon {
         // Slashed head key gets no allocation; remaining key receives the full per-key limit.
         assertEq(allocations, UintArr(0, 4 ether));
         assertEq(cm.getKeyAllocatedBalances(noId, 0, 2), UintArr(0, 4 ether));
-        assertEq(module.getTotalModuleStake(), 2 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
-        assertEq(cm.getNodeOperatorBalance(noId), 2 * ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
+        // The slashed key is withdrawn right on the report, so only the topped-up key is left staked.
+        assertEq(module.getTotalModuleStake(), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
+        assertEq(cm.getNodeOperatorBalance(noId), ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE + 4 ether);
     }
 
     function test_topUp_duplicateKeySharesRemainingHeadroom() public {
@@ -2119,8 +2120,7 @@ contract CuratedTotalModuleStake is CuratedCommon {
             nodeOperatorId: noId,
             keyIndex: 0,
             exitBalance: 1 ether,
-            slashingPenalty: 0,
-            isSlashed: false
+            slashingPenalty: 0
         });
         cm.reportRegularWithdrawnValidators(validatorInfos);
 

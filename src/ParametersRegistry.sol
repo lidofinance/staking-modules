@@ -80,6 +80,9 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     uint256 public defaultMaxElWithdrawalRequestFee;
     mapping(uint256 => MarkedUint248) internal _maxElWithdrawalRequestFees;
 
+    uint256 public defaultSlashingPenalty;
+    mapping(uint256 => MarkedUint248) internal _slashingPenalties;
+
     modifier onlyRoleMemberOrAdmin(bytes32 role) {
         _onlyRoleMemberOrAdmin(role);
         _;
@@ -119,6 +122,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         _setDefaultAllowedExitDelay(data.defaultAllowedExitDelay);
         _setDefaultExitDelayFee(data.defaultExitDelayFee);
         _setDefaultMaxElWithdrawalRequestFee(data.defaultMaxElWithdrawalRequestFee);
+        _setDefaultSlashingPenalty(data.defaultSlashingPenalty);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
@@ -126,8 +130,10 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing
     ///      version 2 deployment. If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
     ///      To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
-    // solhint-disable-next-line no-empty-blocks
-    function finalizeUpgradeV3() external reinitializer(INITIALIZED_VERSION) {}
+    /// @param slashingPenalty Value to be set as default for the slashing penalty
+    function finalizeUpgradeV3(uint256 slashingPenalty) external reinitializer(INITIALIZED_VERSION) {
+        _setDefaultSlashingPenalty(slashingPenalty);
+    }
 
     ////////////////////////////////////////////////////////////////////////////////
     // Setters for default parameters
@@ -213,6 +219,13 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         uint256 fee
     ) external onlyRoleMemberOrAdmin(MANAGE_VALIDATOR_EXIT_PARAMETERS_ROLE) {
         _setDefaultMaxElWithdrawalRequestFee(fee);
+    }
+
+    /// @inheritdoc IParametersRegistry
+    function setDefaultSlashingPenalty(
+        uint256 penalty
+    ) external onlyRoleMemberOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
+        _setDefaultSlashingPenalty(penalty);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -349,6 +362,16 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         emit MaxElWithdrawalRequestFeeSet(curveId, fee);
     }
 
+    /// @inheritdoc IParametersRegistry
+    function setSlashingPenalty(
+        uint256 curveId,
+        uint256 penalty
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
+        _validateSlashingPenalty(penalty);
+        _slashingPenalties[curveId] = MarkedUint248(penalty.toUint248(), true);
+        emit SlashingPenaltySet(curveId, penalty);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     // Unsetters for per-curve parameters
     ////////////////////////////////////////////////////////////////////////////////
@@ -449,6 +472,14 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         emit MaxElWithdrawalRequestFeeUnset(curveId);
     }
 
+    /// @inheritdoc IParametersRegistry
+    function unsetSlashingPenalty(
+        uint256 curveId
+    ) external onlyRoleMemberOrCurveParametersRoleOrAdmin(MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE) {
+        delete _slashingPenalties[curveId];
+        emit SlashingPenaltyUnset(curveId);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     // Getters for per-curve parameters
     ////////////////////////////////////////////////////////////////////////////////
@@ -516,6 +547,11 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
     }
 
     /// @inheritdoc IParametersRegistry
+    function getSlashingPenalty(uint256 curveId) external view returns (uint256 penalty) {
+        return _getSlashingPenalty(curveId);
+    }
+
+    /// @inheritdoc IParametersRegistry
     function getCurveParameters(uint256 curveId) external view returns (CurveParameters memory params) {
         params.keyRemovalCharge = _getKeyRemovalCharge(curveId);
         params.generalDelayedPenaltyAdditionalFine = _getGeneralDelayedPenaltyAdditionalFine(curveId);
@@ -529,6 +565,7 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         params.allowedExitDelay = _getAllowedExitDelay(curveId);
         params.exitDelayFee = _getExitDelayFee(curveId);
         params.maxElWithdrawalRequestFee = _getMaxElWithdrawalRequestFee(curveId);
+        params.slashingPenalty = _getSlashingPenalty(curveId);
     }
 
     /// @inheritdoc IParametersRegistry
@@ -616,6 +653,12 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         emit DefaultMaxElWithdrawalRequestFeeSet(fee);
     }
 
+    function _setDefaultSlashingPenalty(uint256 penalty) internal {
+        _validateSlashingPenalty(penalty);
+        defaultSlashingPenalty = penalty;
+        emit DefaultSlashingPenaltySet(penalty);
+    }
+
     function _getKeyRemovalCharge(uint256 curveId) internal view returns (uint256) {
         MarkedUint248 storage data = _keyRemovalCharges[curveId];
         return data.isValue ? data.value : defaultKeyRemovalCharge;
@@ -691,6 +734,11 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         return data.isValue ? data.value : defaultMaxElWithdrawalRequestFee;
     }
 
+    function _getSlashingPenalty(uint256 curveId) internal view returns (uint256) {
+        MarkedUint248 storage data = _slashingPenalties[curveId];
+        return data.isValue ? data.value : defaultSlashingPenalty;
+    }
+
     function _onlyRoleMemberOrAdmin(bytes32 role) internal view {
         address sender = msg.sender;
         if (!(hasRole(role, sender) || hasRole(getRoleAdmin(role), sender))) {
@@ -718,6 +766,11 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
 
     function _validateAllowedExitDelay(uint256 delay) internal pure {
         if (delay == 0) revert InvalidAllowedExitDelay();
+    }
+
+    /// @dev The upper bound keeps the penalty scaling by the slashed key balance overflow-free.
+    function _validateSlashingPenalty(uint256 penalty) internal pure {
+        if (penalty == 0 || penalty > type(uint128).max) revert InvalidSlashingPenalty();
     }
 
     function _validatePerformanceCoefficients(
