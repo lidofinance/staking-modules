@@ -36,6 +36,7 @@ import { CuratedGate } from "src/CuratedGate.sol";
 import { DeployParams } from "script/csm/DeployBase.s.sol";
 import { DeployCSM0x02Params } from "script/csm0x02/DeployCSM0x02Base.s.sol";
 import { CuratedDeployParams } from "script/curated/DeployBase.s.sol";
+import { JsonBindings } from "script/utils/JsonBindings.sol";
 import { GIndex } from "src/lib/GIndex.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IACL } from "src/interfaces/IACL.sol";
@@ -418,27 +419,24 @@ contract DeploymentHelpers is Asserts {
 
     function parseDeployParams(string memory deployConfigPath) internal view returns (DeployParams memory) {
         string memory config = vm.readFile(deployConfigPath);
-        return abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (DeployParams));
+        return JsonBindings.deserializeDeployParams(config, ".DeployParams");
     }
 
     function parseDeployParams0x02(string memory deployConfigPath) internal view returns (DeployCSM0x02Params memory) {
         string memory config = vm.readFile(deployConfigPath);
-        return abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (DeployCSM0x02Params));
+        return JsonBindings.deserializeDeployCSM0x02Params(config, ".DeployParams");
     }
 
     function parseCuratedDeployParams(
         string memory deployConfigPath
     ) internal view returns (CuratedDeployParams memory) {
         string memory config = vm.readFile(deployConfigPath);
-        return abi.decode(vm.parseJsonBytes(config, ".CuratedDeployParams"), (CuratedDeployParams));
+        return JsonBindings.deserializeCuratedDeployParams(config, ".CuratedDeployParams");
     }
 
     function updateCuratedDeployParams(CuratedDeployParams storage dst, string memory deployConfigPath) internal {
         string memory config = vm.readFile(deployConfigPath);
-        CuratedDeployParams memory src = abi.decode(
-            vm.parseJsonBytes(config, ".CuratedDeployParams"),
-            (CuratedDeployParams)
-        );
+        CuratedDeployParams memory src = JsonBindings.deserializeCuratedDeployParams(config, ".CuratedDeployParams");
         // copy every value separately to avoid `Unimplemented feature` error from solc when copying memory array of structs into storage
         // Lido addresses
         dst.lidoLocatorAddress = src.lidoLocatorAddress;
@@ -527,9 +525,9 @@ contract DeploymentHelpers is Asserts {
         if (bytes(config).length == 0) return params;
 
         if (vm.keyExistsJson(config, ".CuratedModule")) {
-            CuratedDeployParams memory decoded = abi.decode(
-                vm.parseJsonBytes(config, ".CuratedDeployParams"),
-                (CuratedDeployParams)
+            CuratedDeployParams memory decoded = JsonBindings.deserializeCuratedDeployParams(
+                config,
+                ".CuratedDeployParams"
             );
             return _fillCommonFromCurated(params, decoded);
         } else {
@@ -540,13 +538,13 @@ contract DeploymentHelpers is Asserts {
                 vettedGate == address(0) &&
                 vettedGateImpl == address(0);
             if (isCsm0x02) {
-                DeployCSM0x02Params memory decoded = abi.decode(
-                    vm.parseJsonBytes(config, ".DeployParams"),
-                    (DeployCSM0x02Params)
+                DeployCSM0x02Params memory decoded = JsonBindings.deserializeDeployCSM0x02Params(
+                    config,
+                    ".DeployParams"
                 );
                 return _fillCommonFromCommunity0x02(params, decoded);
             } else {
-                DeployParams memory decoded = abi.decode(vm.parseJsonBytes(config, ".DeployParams"), (DeployParams));
+                DeployParams memory decoded = JsonBindings.deserializeDeployParams(config, ".DeployParams");
                 return _fillCommonFromCommunity(params, decoded);
             }
         }
