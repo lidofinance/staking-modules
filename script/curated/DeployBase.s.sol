@@ -311,7 +311,6 @@ abstract contract DeployBase is Script {
                 module: address(curatedModule),
                 slotsPerEpoch: uint64(config.slotsPerEpoch),
                 secondsPerSlot: uint64(config.secondsPerSlot),
-                genesisTime: uint64(config.clGenesisTime),
                 gindices: IVerifier.GIndices({
                     gIFirstWithdrawalPrev: config.gIFirstWithdrawal,
                     gIFirstWithdrawalCurr: config.gIFirstWithdrawal,

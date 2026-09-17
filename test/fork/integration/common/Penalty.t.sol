@@ -92,7 +92,7 @@ abstract contract PenaltyIntegrationTestBase is ModuleTypeBase, PermitHelper {
         accounting.depositETH{ value: topUp }(noId);
         assertGt(accounting.getClaimableBondShares(noId), 0);
 
-        module.reportValidatorSlashing(noId, keyIndex, block.timestamp);
+        module.reportValidatorSlashing(noId, keyIndex, 0);
 
         assertTrue(accounting.isBondClaimRestricted(noId));
         assertEq(accounting.getClaimableBondShares(noId), 0);
