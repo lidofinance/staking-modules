@@ -53,6 +53,65 @@ abstract contract ModuleVetKeys is ModuleFixtures {
 }
 
 abstract contract ModuleDecreaseVettedSigningKeysCount is ModuleFixtures {
+    function test_decreaseVettedSigningKeysCount_TargetCapped() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        module.updateTargetValidatorsLimits(noId, 1, 1);
+        uint256 nonce = module.getNonce();
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 1);
+
+        vm.expectEmit(address(module));
+        emit IStakingModule.NonceChanged(nonce + 1);
+        unvetKeys(noId, 1);
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(no.totalVettedKeys, 1);
+        assertEq(no.depositableValidatorsCount, 1);
+        assertEq(module.getNonce(), nonce + 1);
+
+        unvetKeys(noId, 1);
+        assertEq(module.getNonce(), nonce + 1);
+    }
+
+    function test_decreaseVettedSigningKeysCount_BondCapped() public assertInvariants {
+        uint256 noId = createNodeOperator(2);
+        vm.mockCall(
+            address(accounting),
+            abi.encodeWithSelector(accounting.getUnbondedKeysCount.selector, noId),
+            abi.encode(uint256(1))
+        );
+        module.updateDepositableValidatorsCount(noId);
+        uint256 nonce = module.getNonce();
+        assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 1);
+
+        vm.expectEmit(address(module));
+        emit IStakingModule.NonceChanged(nonce + 1);
+        unvetKeys(noId, 1);
+
+        NodeOperator memory no = module.getNodeOperator(noId);
+        assertEq(no.totalVettedKeys, 1);
+        assertEq(no.depositableValidatorsCount, 1);
+        assertEq(module.getNonce(), nonce + 1);
+    }
+
+    function test_decreaseVettedSigningKeysCount_CappedBatch() public assertInvariants {
+        uint256 firstNoId = createNodeOperator(2);
+        uint256 secondNoId = createNodeOperator(2);
+        module.updateTargetValidatorsLimits(firstNoId, 1, 1);
+        module.updateTargetValidatorsLimits(secondNoId, 1, 1);
+        uint256 nonce = module.getNonce();
+
+        module.decreaseVettedSigningKeysCount(
+            _encodeNodeOperatorPair(firstNoId, secondNoId),
+            bytes.concat(_encodeUint128Value(1), _encodeUint128Value(1))
+        );
+
+        assertEq(module.getNodeOperator(firstNoId).totalVettedKeys, 1);
+        assertEq(module.getNodeOperator(secondNoId).totalVettedKeys, 1);
+        assertEq(module.getNodeOperator(firstNoId).depositableValidatorsCount, 1);
+        assertEq(module.getNodeOperator(secondNoId).depositableValidatorsCount, 1);
+        assertEq(module.getNonce(), nonce + 1);
+    }
+
     function test_decreaseVettedSigningKeysCount_counters() public assertInvariants {
         uint256 noId = createNodeOperator(3);
         uint256 nonce = module.getNonce();
@@ -64,7 +123,7 @@ abstract contract ModuleDecreaseVettedSigningKeysCount is ModuleFixtures {
         unvetKeys({ noId: noId, to: 1 });
 
         NodeOperator memory no = module.getNodeOperator(noId);
-        assertEq(module.getNonce(), nonce + 1);
+        assertEq(module.getNonce(), nonce + 2);
         assertEq(no.totalVettedKeys, 1);
         assertEq(no.depositableValidatorsCount, 1);
     }
@@ -131,7 +190,7 @@ abstract contract ModuleDecreaseVettedSigningKeysCount is ModuleFixtures {
             )
         );
 
-        assertEq(module.getNonce(), nonce + 1);
+        assertEq(module.getNonce(), nonce + 2);
         assertEq(module.getNodeOperator(staleNoId).totalVettedKeys, staleReportedVetted);
         assertEq(module.getNodeOperator(activeNoId).totalVettedKeys, activeReportedVetted);
     }

@@ -44,6 +44,13 @@ contract GetUnbondedKeysCountTest is BondStateBaseTest {
         assertEq(accounting.getUnbondedKeysCount(0), 7);
     }
 
+    function test_WithMultiplier() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 11.5 ether });
+        _multiplier({ multiplier: 15_000 });
+        assertEq(accounting.getUnbondedKeysCount(0), 13);
+    }
+
     function test_WithOneWithdrawnValidator() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 1 });
         _deposit({ bond: 11.5 ether });
@@ -156,6 +163,13 @@ contract GetUnbondedKeysCountToEjectTest is BondStateBaseTest {
         _curve(curveWithDiscount);
         _lock({ amount: 1 ether });
         assertEq(accounting.getUnbondedKeysCountToEject(0), 6);
+    }
+
+    function test_WithMultiplier() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 11.5 ether });
+        _multiplier({ multiplier: 15_000 });
+        assertEq(accounting.getUnbondedKeysCountToEject(0), 13);
     }
 
     function test_WithOneWithdrawnValidator() public override assertInvariants {

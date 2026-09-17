@@ -81,9 +81,9 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
         uint256 slashingPenalty,
         bytes pubkey
     );
-    event TotalWithdrawnValidatorsRebuilt(uint256 totalWithdrawnValidators);
     event NodeOperatorBalanceUpdated(uint256 indexed operatorId, uint256 balanceWei);
     event ValidatorSlashingReported(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
+    event UnresolvedSlashedValidatorsCountChanged(uint256 indexed nodeOperatorId, uint256 count);
     event KeyAllocatedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
     event KeyConfirmedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newBalance);
     event KeyRemovalChargeApplied(uint256 indexed nodeOperatorId);
@@ -279,7 +279,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     ) external;
 
     /// @notice Compensate general delayed penalty (locked bond) for the given Node Operator from Node Operator's bond
-    /// @dev Can only be called by the Node Operator manager
+    /// @dev Can only be called by the Node Operator owner
     /// @param nodeOperatorId ID of the Node Operator
     function compensateGeneralDelayedPenalty(uint256 nodeOperatorId) external;
 
@@ -369,6 +369,12 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @return Node Operator info
     function getNodeOperator(uint256 nodeOperatorId) external view returns (NodeOperator memory);
 
+    /// @notice Returns the timestamp when a Node Operator's first deposit was allocated by the module.
+    /// @dev Returns zero for Node Operators whose first deposit predates timestamp tracking.
+    /// @param nodeOperatorId ID of the Node Operator.
+    /// @return firstDepositAt Node Operator first deposit timestamp.
+    function getNodeOperatorFirstDepositAt(uint256 nodeOperatorId) external view returns (uint256 firstDepositAt);
+
     /// @notice Get Node Operator management properties
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Node Operator management properties
@@ -385,6 +391,13 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @param nodeOperatorId ID of the Node Operator
     /// @return Non-withdrawn keys count
     function getNodeOperatorNonWithdrawnKeys(uint256 nodeOperatorId) external view returns (uint256);
+
+    /// @notice Get the number of slashed validators whose withdrawal losses have not been processed yet
+    /// @dev Increased on a slashing report and decreased on the withdrawal report of the slashed validator.
+    ///      A non-zero value restricts bond claims, see `IAccounting.getClaimableBondShares`.
+    /// @param nodeOperatorId ID of the Node Operator
+    /// @return Unresolved slashed validators count
+    function getNodeOperatorUnresolvedSlashedValidators(uint256 nodeOperatorId) external view returns (uint256);
 
     /// @notice Returns tracked operator balance (active validator base stake plus tracked extra).
     /// @dev The tracked extra is intentionally monotonic for active validators and is reduced on withdrawal reporting,
@@ -418,6 +431,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
 
     /// @notice Report Node Operator's key as slashed.
     /// @notice Called by `Verifier` contract. See `Verifier.processSlashedProof`.
+    /// @dev A slashing reported for an already withdrawn key does not restrict the bond claims.
     /// @param nodeOperatorId The ID of the Node Operator
     /// @param keyIndex Index of the key in the Node Operator's keys storage
     function reportValidatorSlashing(uint256 nodeOperatorId, uint256 keyIndex) external;

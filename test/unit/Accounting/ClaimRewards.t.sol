@@ -87,6 +87,33 @@ contract ClaimStETHRewardsTest is ClaimRewardsBaseTest {
         assertEq(accounting.getBondShares(0), stETH.sharesOf(address(accounting)));
     }
 
+    function test_WithMultiplier() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 50 ether });
+        _rewards({ fee: 0.1 ether });
+        _multiplier({ multiplier: 15_000 });
+
+        uint256 bondSharesBefore = accounting.getBondShares(0);
+        vm.prank(user);
+        accounting.claimRewardsStETH(leaf.nodeOperatorId, UINT256_MAX, leaf.shares, leaf.proof);
+        uint256 bondSharesAfter = accounting.getBondShares(0);
+
+        assertApproxEqAbs(
+            stETH.balanceOf(rewardAddress),
+            stETHAsFee + 2 ether,
+            1 wei,
+            "reward address balance should be the fee reward plus the excess over the scaled requirement"
+        );
+        assertApproxEqAbs(
+            bondSharesAfter,
+            bondSharesBefore - stETH.getSharesByPooledEth(2 ether),
+            1 wei,
+            "bond shares should drop by the claimed excess"
+        );
+        assertEq(stETH.sharesOf(address(accounting)), bondSharesAfter);
+        assertEq(accounting.totalBondShares(), bondSharesAfter);
+    }
+
     function test_WithCurveAndLocked() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
         _deposit({ bond: 32 ether });
@@ -568,6 +595,34 @@ contract ClaimWstETHRewardsTest is ClaimRewardsBaseTest {
         assertEq(wstETH.balanceOf(rewardAddress), 0);
     }
 
+    function test_WithMultiplier() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 50 ether });
+        _rewards({ fee: 0.1 ether });
+        _multiplier({ multiplier: 15_000 });
+
+        uint256 bondSharesBefore = accounting.getBondShares(0);
+        vm.prank(user);
+        accounting.claimRewardsWstETH(leaf.nodeOperatorId, UINT256_MAX, leaf.shares, leaf.proof);
+        uint256 bondSharesAfter = accounting.getBondShares(0);
+
+        assertApproxEqAbs(
+            wstETH.balanceOf(rewardAddress),
+            wstETHAsFee + stETH.getSharesByPooledEth(2 ether),
+            1 wei,
+            "reward address balance should be the fee reward plus the excess over the scaled requirement"
+        );
+        assertApproxEqAbs(
+            bondSharesAfter,
+            bondSharesBefore - stETH.getSharesByPooledEth(2 ether),
+            1 wei,
+            "bond shares should drop by the claimed excess"
+        );
+        assertEq(wstETH.balanceOf(address(accounting)), 0, "bond manager wstETH balance should be 0");
+        assertEq(stETH.sharesOf(address(accounting)), bondSharesAfter);
+        assertEq(accounting.totalBondShares(), bondSharesAfter);
+    }
+
     function test_WithCurveAndLocked() public override assertInvariants {
         _operator({ ongoing: 16, withdrawn: 0 });
         _deposit({ bond: 32 ether });
@@ -1043,6 +1098,27 @@ contract ClaimRewardsUnstETHTest is ClaimRewardsBaseTest {
         vm.prank(user);
         uint256 requestId = accounting.claimRewardsUnstETH(leaf.nodeOperatorId, UINT256_MAX, leaf.shares, leaf.proof);
         assertEq(requestId, 0);
+    }
+
+    function test_WithMultiplier() public override assertInvariants {
+        _operator({ ongoing: 16, withdrawn: 0 });
+        _deposit({ bond: 50 ether });
+        _rewards({ fee: 0.1 ether });
+        _multiplier({ multiplier: 15_000 });
+
+        uint256 bondSharesBefore = accounting.getBondShares(0);
+        vm.prank(user);
+        accounting.claimRewardsUnstETH(leaf.nodeOperatorId, UINT256_MAX, leaf.shares, leaf.proof);
+        uint256 bondSharesAfter = accounting.getBondShares(0);
+
+        assertApproxEqAbs(
+            bondSharesAfter,
+            bondSharesBefore - stETH.getSharesByPooledEth(2 ether),
+            1 wei,
+            "bond shares should drop by the withdrawn excess"
+        );
+        assertEq(stETH.sharesOf(rewardAddress), 0, "reward address shares should be 0");
+        assertEq(accounting.totalBondShares(), bondSharesAfter, "total bond shares should be equal to after");
     }
 
     function test_WithCurveAndLocked() public override assertInvariants {
