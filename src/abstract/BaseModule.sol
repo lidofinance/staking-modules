@@ -269,7 +269,15 @@ abstract contract BaseModule is
         bytes calldata vettedSigningKeysCounts
     ) external {
         _checkStakingRouterRole();
-        NodeOperatorOps.decreaseVettedSigningKeysCount(_baseStorage(), nodeOperatorIds, vettedSigningKeysCounts);
+        bool changed = NodeOperatorOps.decreaseVettedSigningKeysCount(
+            _baseStorage(),
+            nodeOperatorIds,
+            vettedSigningKeysCounts
+        );
+        // Unvetting changes the keys state even when depositable capacity stays unchanged.
+        // Capacity updates may increment the nonce once per operator.
+        // The additional batch increment here is intentional.
+        if (changed) _incrementModuleNonce();
     }
 
     /// @inheritdoc IBaseModule

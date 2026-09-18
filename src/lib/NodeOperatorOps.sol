@@ -109,7 +109,7 @@ library NodeOperatorOps {
         ModuleLinearStorage.BaseModuleStorage storage $,
         bytes calldata nodeOperatorIds,
         bytes calldata vettedSigningKeysCounts
-    ) external {
+    ) external returns (bool changed) {
         IBaseModule module = IBaseModule(address(this));
         uint256 operatorsInReport = ValidatorCountsReport.safeCountOperators(nodeOperatorIds, vettedSigningKeysCounts);
 
@@ -132,6 +132,7 @@ library NodeOperatorOps {
             // `vettedSigningKeysCount` within those limits, so this cast is safe.
             // forge-lint: disable-next-line(unsafe-typecast)
             no.totalVettedKeys = uint32(vettedSigningKeysCount);
+            changed = true;
             emit IBaseModule.VettedSigningKeysCountChanged(nodeOperatorId, vettedSigningKeysCount);
 
             // @dev separate event for intentional decrease from Staking Router
