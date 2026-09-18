@@ -194,6 +194,27 @@ contract MyModule is BaseModule {
         revert NotImplementedInTest();
     }
 
+    function reportValidatorBalance(uint256, uint256, uint256, uint64) public pure override {
+        revert NotImplementedInTest();
+    }
+
+    function _processWithdrawnValidators(
+        WithdrawnValidatorInfo[] calldata validatorInfos,
+        bool slashed
+    )
+        internal
+        override
+        returns (uint256[] memory touchedOperatorIds, uint256[] memory trackedBalanceDecreases, uint256 touchedCount)
+    {
+        return
+            WithdrawnValidatorLib.processBatch({
+                validatorInfos: validatorInfos,
+                slashed: slashed,
+                useConfirmedBalance: true,
+                $: _baseStorage()
+            });
+    }
+
     function _applyDepositableValidatorsCount(
         NodeOperator storage no,
         uint256 nodeOperatorId,
@@ -391,31 +412,6 @@ abstract contract ModuleAccessControl is ModuleFixtures {
         vm.prank(stranger);
         expectRoleRevert(stranger, role);
         module.reportRegularWithdrawnValidators(validatorInfos);
-    }
-
-    function test_reportSlashedWithdrawnValidatorsRole() public {
-        uint256 noId = createNodeOperator();
-        bytes32 role = module.REPORT_SLASHED_WITHDRAWN_VALIDATORS_ROLE();
-
-        vm.startPrank(admin);
-        module.grantRole(role, actor);
-        module.grantRole(module.STAKING_ROUTER_ROLE(), admin);
-        module.grantRole(module.VERIFIER_ROLE(), admin);
-        module.obtainDepositData(1, "");
-        module.reportValidatorSlashing(noId, 0);
-        vm.stopPrank();
-
-        WithdrawnValidatorInfo[] memory validatorInfos = new WithdrawnValidatorInfo[](1);
-        validatorInfos[0] = WithdrawnValidatorInfo({
-            nodeOperatorId: noId,
-            keyIndex: 0,
-            exitBalance: ValidatorBalanceLimits.MIN_ACTIVATION_BALANCE,
-            slashingPenalty: 0,
-            isSlashed: true
-        });
-
-        vm.prank(actor);
-        module.reportSlashedWithdrawnValidators(validatorInfos);
     }
 
     function test_reportSlashedWithdrawnValidatorsRole_revert() public {

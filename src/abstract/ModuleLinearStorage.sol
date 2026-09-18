@@ -32,6 +32,8 @@ abstract contract ModuleLinearStorage {
         /* 12 */ mapping(uint256 nodeOperatorId => uint256 firstDepositAt) nodeOperatorFirstDepositAt;
         /// @dev Slashed validators of the Node Operator whose withdrawal losses are not processed yet.
         /* 13 */ mapping(uint256 nodeOperatorId => uint256) unresolvedSlashedValidators;
+        /// @dev Curated Module-only slot of the latest applied validator balance update.
+        /* 14 */ mapping(uint256 noKeyIndexPacked => uint64) lastBalanceUpdateSlot;
     }
 
     function _baseStorage() internal pure returns (BaseModuleStorage storage $) {
