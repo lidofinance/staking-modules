@@ -558,7 +558,7 @@ contract Accounting is
     /// @dev Returns true until the reported slashings are fully accounted on the Consensus Layer. The uncovered losses
     ///      remain as the bond debt, which is a part of the required bond.
     function _isBondClaimRestricted(uint256 nodeOperatorId) internal view returns (bool) {
-        return block.timestamp < MODULE.getBondClaimLockedUntil(nodeOperatorId);
+        return block.timestamp < MODULE.getSlashingSettleDeadline(nodeOperatorId);
     }
 
     function _getRequiredBond(

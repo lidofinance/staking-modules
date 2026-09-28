@@ -30,8 +30,8 @@ abstract contract ModuleLinearStorage {
         /* 10 */ mapping(uint256 nodeOperatorId => uint256 extraBalance) operatorBalances;
         /* 11 */ uint256 totalExtraStake;
         /* 12 */ mapping(uint256 nodeOperatorId => uint256 firstDepositAt) nodeOperatorFirstDepositAt;
-        /// @dev Timestamp until which the Node Operator bond claims are restricted due to a reported slashing.
-        /* 13 */ mapping(uint256 nodeOperatorId => uint256) bondClaimLockedUntil;
+        /// @dev When the Consensus Layer is done accounting the reported slashings of the Node Operator.
+        /* 13 */ mapping(uint256 nodeOperatorId => uint256) slashingSettleDeadline;
     }
 
     function _baseStorage() internal pure returns (BaseModuleStorage storage $) {

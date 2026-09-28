@@ -76,7 +76,7 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     event ValidatorWithdrawn(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
     event NodeOperatorBalanceUpdated(uint256 indexed operatorId, uint256 balanceWei);
     event ValidatorSlashingReported(uint256 indexed nodeOperatorId, uint256 keyIndex, bytes pubkey);
-    event BondClaimLockedUntilChanged(uint256 indexed nodeOperatorId, uint256 lockedUntil);
+    event SlashingSettleDeadlineChanged(uint256 indexed nodeOperatorId, uint256 deadline);
     event KeyAllocatedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newTotal);
     event KeyConfirmedBalanceChanged(uint256 indexed nodeOperatorId, uint256 indexed keyIndex, uint256 newBalance);
     event KeyRemovalChargeApplied(uint256 indexed nodeOperatorId);
@@ -381,11 +381,11 @@ interface IBaseModule is IStakingModule, IAccessControlEnumerable, IAssetRecover
     /// @return Non-withdrawn keys count
     function getNodeOperatorNonWithdrawnKeys(uint256 nodeOperatorId) external view returns (uint256);
 
-    /// @notice Get the timestamp until which the Node Operator bond claims are restricted
-    /// @dev Set on a slashing report, see `IAccounting.getClaimableBondShares`.
+    /// @notice Get when the Consensus Layer is done accounting the reported slashings of the Node Operator
+    /// @dev Set on a slashing report. Restricts the bond claims, see `IAccounting.getClaimableBondShares`.
     /// @param nodeOperatorId ID of the Node Operator
-    /// @return Timestamp until which the bond claims are restricted
-    function getBondClaimLockedUntil(uint256 nodeOperatorId) external view returns (uint256);
+    /// @return Timestamp of the latest slashing settlement
+    function getSlashingSettleDeadline(uint256 nodeOperatorId) external view returns (uint256);
 
     /// @notice Returns tracked operator balance (active validator base stake plus tracked extra).
     /// @dev The tracked extra is intentionally monotonic for active validators and is reduced on withdrawal reporting,

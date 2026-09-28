@@ -199,7 +199,7 @@ interface IAccounting is IBondCore, IBondCurve, IBondLock, IFeeSplits, IAssetRec
 
     /// @notice Check whether bond claims of the given Node Operator are restricted due to a reported slashing
     /// @param nodeOperatorId ID of the Node Operator
-    /// @return True if the Node Operator bond claims are restricted, see `IBaseModule.getBondClaimLockedUntil`
+    /// @return True if the Node Operator bond claims are restricted, see `IBaseModule.getSlashingSettleDeadline`
     function isBondClaimRestricted(uint256 nodeOperatorId) external view returns (bool);
 
     /// @notice Get current claimable bond in stETH shares for the given Node Operator

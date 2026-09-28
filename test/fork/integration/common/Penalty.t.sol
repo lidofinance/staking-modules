@@ -103,7 +103,7 @@ abstract contract PenaltyIntegrationTestBase is ModuleTypeBase, PermitHelper {
         assertEq(claimedShares, 0);
         assertEq(lido.sharesOf(rewardAddress), rewardSharesBefore);
 
-        vm.warp(module.getBondClaimLockedUntil(noId));
+        vm.warp(module.getSlashingSettleDeadline(noId));
 
         assertFalse(accounting.isBondClaimRestricted(noId));
         assertGt(accounting.getClaimableBondShares(noId), 0);

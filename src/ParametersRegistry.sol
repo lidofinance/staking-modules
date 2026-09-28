@@ -15,7 +15,7 @@ import { IParametersRegistry } from "./interfaces/IParametersRegistry.sol";
 contract ParametersRegistry is IParametersRegistry, Initializable, AccessControlEnumerableUpgradeable {
     using SafeCast for uint256;
 
-    uint64 internal constant INITIALIZED_VERSION = 3;
+    uint64 internal constant INITIALIZED_VERSION = 4;
 
     bytes32 public constant MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE =
         keccak256("MANAGE_GENERAL_PENALTIES_AND_CHARGES_ROLE");
@@ -127,11 +127,11 @@ contract ParametersRegistry is IParametersRegistry, Initializable, AccessControl
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
-    /// @dev This method is expected to be called only when the contract is upgraded from version 2 to version 3 for the existing
-    ///      version 2 deployment. If the version 3 contract is deployed from scratch, the `initialize` method should be used instead.
+    /// @dev This method is expected to be called only when the contract is upgraded to version 4 for an existing
+    ///      deployment. If the version 4 contract is deployed from scratch, the `initialize` method should be used instead.
     ///      To prevent possible frontrun this method should strictly be called in the same TX as the upgrade transaction and should not be called separately.
     /// @param slashingPenalty Value to be set as default for the slashing penalty
-    function finalizeUpgradeV3(uint256 slashingPenalty) external reinitializer(INITIALIZED_VERSION) {
+    function finalizeUpgradeV4(uint256 slashingPenalty) external reinitializer(INITIALIZED_VERSION) {
         _setDefaultSlashingPenalty(slashingPenalty);
     }
 

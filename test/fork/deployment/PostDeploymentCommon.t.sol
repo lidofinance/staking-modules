@@ -461,7 +461,7 @@ contract ParametersRegistryDeploymentTest is DeploymentBaseTest {
     }
 
     function test_state_onlyFull() public view {
-        assertEq(parametersRegistry.getInitializedVersion(), 3);
+        assertEq(parametersRegistry.getInitializedVersion(), 4);
     }
 
     function test_roles_onlyFull() public view {

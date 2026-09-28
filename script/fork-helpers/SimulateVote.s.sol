@@ -220,10 +220,10 @@ contract SimulateVote is Script, ForkHelpersCommon {
         {
             OssifiableProxy parametersRegistryProxy = OssifiableProxy(payable(deploymentConfig.parametersRegistry));
             vm.startBroadcast(_prepareProxyAdmin(address(parametersRegistryProxy)));
-            // 3-4. Upgrade and finalize ParametersRegistry v3 in a single tx
+            // 3-4. Upgrade and finalize ParametersRegistry v4 in a single tx
             parametersRegistryProxy.proxy__upgradeToAndCall(
                 deploymentConfig.parametersRegistryImpl,
-                abi.encodeCall(ParametersRegistry.finalizeUpgradeV3, (deployParams.defaultSlashingPenalty))
+                abi.encodeCall(ParametersRegistry.finalizeUpgradeV4, (deployParams.defaultSlashingPenalty))
             );
             vm.stopBroadcast();
         }

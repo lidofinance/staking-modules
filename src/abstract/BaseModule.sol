@@ -46,7 +46,7 @@ abstract contract BaseModule is
     bytes32 public constant OPERATOR_ADDRESSES_ADMIN_ROLE = keccak256("OPERATOR_ADDRESSES_ADMIN_ROLE");
 
     /// @dev Covers the Consensus Layer penalties applied once the slashed key becomes withdrawable.
-    uint256 public constant BOND_CLAIM_LOCK_DELAY = 14 days;
+    uint256 public constant SLASHING_SETTLE_DELAY = 14 days;
 
     ILidoLocator public immutable LIDO_LOCATOR;
     IStETH public immutable STETH;
@@ -348,10 +348,10 @@ abstract contract BaseModule is
             bytes memory pubkey = SigningKeys.loadKeys(nodeOperatorId, keyIndex, 1);
             emit ValidatorSlashingReported(nodeOperatorId, keyIndex, pubkey);
 
-            uint256 lockedUntil = block.timestamp + timeToWithdrawable + BOND_CLAIM_LOCK_DELAY;
-            if (lockedUntil > $.bondClaimLockedUntil[nodeOperatorId]) {
-                $.bondClaimLockedUntil[nodeOperatorId] = lockedUntil;
-                emit BondClaimLockedUntilChanged(nodeOperatorId, lockedUntil);
+            uint256 deadline = block.timestamp + timeToWithdrawable + SLASHING_SETTLE_DELAY;
+            if (deadline > $.slashingSettleDeadline[nodeOperatorId]) {
+                $.slashingSettleDeadline[nodeOperatorId] = deadline;
+                emit SlashingSettleDeadlineChanged(nodeOperatorId, deadline);
             }
         }
 
@@ -508,8 +508,8 @@ abstract contract BaseModule is
     }
 
     /// @inheritdoc IBaseModule
-    function getBondClaimLockedUntil(uint256 nodeOperatorId) external view returns (uint256) {
-        return _baseStorage().bondClaimLockedUntil[nodeOperatorId];
+    function getSlashingSettleDeadline(uint256 nodeOperatorId) external view returns (uint256) {
+        return _baseStorage().slashingSettleDeadline[nodeOperatorId];
     }
 
     /// @inheritdoc IBaseModule

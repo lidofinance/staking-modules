@@ -25,11 +25,11 @@ contract BondClaimRestrictionTest is BaseTest {
     function test_isBondClaimRestricted() public assertInvariants {
         assertFalse(accounting.isBondClaimRestricted(0));
 
-        mock_getBondClaimLockedUntil(block.timestamp + 1);
+        mock_getSlashingSettleDeadline(block.timestamp + 1);
         assertTrue(accounting.isBondClaimRestricted(0));
 
         // The restriction is lifted at the very timestamp the lock is set to.
-        mock_getBondClaimLockedUntil(block.timestamp);
+        mock_getSlashingSettleDeadline(block.timestamp);
         assertFalse(accounting.isBondClaimRestricted(0));
     }
 
@@ -43,14 +43,14 @@ contract BondClaimRestrictionTest is BaseTest {
     }
 
     function test_getClaimableBondShares_zeroWhenRestricted() public assertInvariants {
-        mock_getBondClaimLockedUntil(block.timestamp + 1);
+        mock_getSlashingSettleDeadline(block.timestamp + 1);
 
         assertEq(accounting.getClaimableBondShares(0), 0, "nothing should be claimable while restricted");
     }
 
     function test_getClaimableRewardsAndBondShares_zeroWhenRestricted() public assertInvariants {
         uint256 feeShares = _fundRewards({ fee: 0.1 ether });
-        mock_getBondClaimLockedUntil(block.timestamp + 1);
+        mock_getSlashingSettleDeadline(block.timestamp + 1);
 
         assertEq(
             accounting.getClaimableRewardsAndBondShares(0, feeShares, proof),
@@ -61,7 +61,7 @@ contract BondClaimRestrictionTest is BaseTest {
 
     function test_claimRewardsStETH_claimsNothingButPullsRewardsWhenRestricted() public assertInvariants {
         uint256 feeShares = _fundRewards({ fee: 0.1 ether });
-        mock_getBondClaimLockedUntil(block.timestamp + 1);
+        mock_getSlashingSettleDeadline(block.timestamp + 1);
 
         uint256 bondSharesBefore = accounting.getBondShares(0);
 
@@ -74,10 +74,10 @@ contract BondClaimRestrictionTest is BaseTest {
     }
 
     function test_claimRewardsStETH_claimableOnceLockExpired() public assertInvariants {
-        mock_getBondClaimLockedUntil(block.timestamp + 1);
+        mock_getSlashingSettleDeadline(block.timestamp + 1);
         assertEq(accounting.getClaimableBondShares(0), 0);
 
-        mock_getBondClaimLockedUntil(0);
+        mock_getSlashingSettleDeadline(0);
 
         vm.prank(user);
         uint256 claimedShares = accounting.claimRewardsStETH(0, UINT256_MAX, 0, proof);
@@ -86,7 +86,7 @@ contract BondClaimRestrictionTest is BaseTest {
     }
 
     function test_claimableStaysZeroUntilLossesCompensated() public assertInvariants {
-        mock_getBondClaimLockedUntil(block.timestamp + 1);
+        mock_getSlashingSettleDeadline(block.timestamp + 1);
 
         // The losses exceed the bond, so the uncovered part becomes the bond debt.
         uint256 uncoveredLosses = 1 ether;
@@ -94,7 +94,7 @@ contract BondClaimRestrictionTest is BaseTest {
         assertApproxEqAbs(accounting.getBondDebt(0), uncoveredLosses, 1 wei, "uncovered losses become the bond debt");
 
         // The expired lock lifts the restriction, but the losses are not compensated yet.
-        mock_getBondClaimLockedUntil(0);
+        mock_getSlashingSettleDeadline(0);
         assertEq(accounting.getClaimableBondShares(0), 0, "nothing to claim until the debt is compensated");
 
         // A partial compensation is fully spent on the debt.
@@ -114,7 +114,7 @@ contract BondClaimRestrictionTest is BaseTest {
     }
 
     function test_claimRewardsWstETH_claimsNothingWhenRestricted() public assertInvariants {
-        mock_getBondClaimLockedUntil(block.timestamp + 1);
+        mock_getSlashingSettleDeadline(block.timestamp + 1);
         uint256 bondSharesBefore = accounting.getBondShares(0);
 
         vm.prank(user);
@@ -125,7 +125,7 @@ contract BondClaimRestrictionTest is BaseTest {
     }
 
     function test_claimRewardsUnstETH_claimsNothingWhenRestricted() public assertInvariants {
-        mock_getBondClaimLockedUntil(block.timestamp + 1);
+        mock_getSlashingSettleDeadline(block.timestamp + 1);
         uint256 bondSharesBefore = accounting.getBondShares(0);
 
         vm.prank(user);
