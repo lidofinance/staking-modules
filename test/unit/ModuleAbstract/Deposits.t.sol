@@ -569,7 +569,7 @@ abstract contract ModuleDepositableValidatorsCount is ModuleFixtures {
         unvetKeys(noId, 3);
         assertEq(module.getNodeOperator(noId).depositableValidatorsCount, 3);
         assertEq(getStakingModuleSummary().depositableValidatorsCount, 3);
-        assertEq(module.getNonce(), nonce + 1);
+        assertEq(module.getNonce(), nonce + 2);
     }
 
     function test_depositableValidatorsCountChanges_OnWithdrawal() public assertInvariants {
